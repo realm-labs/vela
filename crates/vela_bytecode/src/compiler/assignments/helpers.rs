@@ -21,6 +21,21 @@ pub(super) fn expressions_are_i64(
     )
 }
 
+pub(super) fn assignment_value_payload_matches_expr(
+    payload: &CompilerExpressionPayload<'_>,
+    value: &Expr,
+) -> bool {
+    let Some(kind) = payload.stored_syntax_kind() else {
+        return false;
+    };
+    if kind == SyntaxExpressionKind::Paren {
+        return true;
+    }
+    expr_syntax_kind(value) == Some(kind)
+        && (kind != SyntaxExpressionKind::Path
+            || value_path_is_self(value) == Some(payload.syntax_is_self()))
+}
+
 pub(super) fn record_path_parts(path: &[String]) -> Option<(&str, Vec<String>)> {
     if path.len() < 2 {
         return None;
@@ -31,6 +46,36 @@ pub(super) fn record_path_parts(path: &[String]) -> Option<(&str, Vec<String>)> 
 pub(super) fn record_field_base_parts(path: &[String]) -> Option<(&str, Vec<String>)> {
     let root = path.first()?;
     Some((root.as_str(), path[1..].to_vec()))
+}
+
+fn expr_syntax_kind(expr: &Expr) -> Option<SyntaxExpressionKind> {
+    Some(match expr.kind {
+        ExprKind::Path(_) | ExprKind::SelfValue => SyntaxExpressionKind::Path,
+        ExprKind::Field { .. } => SyntaxExpressionKind::Field,
+        ExprKind::Index { .. } => SyntaxExpressionKind::Index,
+        ExprKind::Assign { .. } => SyntaxExpressionKind::Assign,
+        ExprKind::Call { .. } => SyntaxExpressionKind::Call,
+        ExprKind::Unary { .. } => SyntaxExpressionKind::Unary,
+        ExprKind::Binary { .. } => SyntaxExpressionKind::Binary,
+        ExprKind::Try(_) => SyntaxExpressionKind::Try,
+        ExprKind::Array(_) => SyntaxExpressionKind::Array,
+        ExprKind::Map(_) => SyntaxExpressionKind::Map,
+        ExprKind::Record { .. } => SyntaxExpressionKind::Record,
+        ExprKind::Lambda { .. } => SyntaxExpressionKind::Lambda,
+        ExprKind::Block(_) => SyntaxExpressionKind::Block,
+        ExprKind::If(_) => SyntaxExpressionKind::If,
+        ExprKind::Match(_) => SyntaxExpressionKind::Match,
+        ExprKind::Literal(_) | ExprKind::InterpolatedString(_) => SyntaxExpressionKind::Literal,
+        ExprKind::Error => return None,
+    })
+}
+
+fn value_path_is_self(value: &Expr) -> Option<bool> {
+    match value.kind {
+        ExprKind::Path(_) => Some(false),
+        ExprKind::SelfValue => Some(true),
+        _ => None,
+    }
 }
 
 pub(super) fn record_field_expr_parts_with_payload<'expr>(
