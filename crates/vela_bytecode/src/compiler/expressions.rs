@@ -259,23 +259,37 @@ impl Compiler<'_, '_> {
                 )
             }
             SyntaxExpressionKind::Field => {
-                let ExprKind::Field { base, name: _ } = &expr.kind else {
-                    unreachable!("validated CST field expression payload kind");
-                };
-                if !payload_syntax_overlaps_expr(payload, expr) {
+                let Some(source) = payload.source() else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "mismatched CST field expression payload",
                     )));
+                };
+                let Some(expression) = payload.syntax_expression() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST field expression payload",
+                    )));
+                };
+                let Some(field) = expression.as_field() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST field expression payload",
+                    )));
+                };
+                if field.receiver().is_none() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST field receiver",
+                    )));
                 }
-                let base_payload = payload.field_base_payload();
-                reject_missing_expression_payload(
-                    base_payload.as_ref(),
-                    "missing CST field receiver",
-                )?;
-                let name = payload.syntax_field_name().ok_or_else(|| {
-                    CompileError::new(CompileErrorKind::UnsupportedSyntax("field expression"))
-                })?;
-                self.compile_field_expr(expr, base, &name, base_payload.as_ref(), Some(payload))
+                if field.name_text().is_none() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "field expression",
+                    )));
+                }
+                let Some(register) = self.compile_syntax_expression(source, expression)? else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST field expression payload",
+                    )));
+                };
+                Ok(register)
             }
             SyntaxExpressionKind::Index => {
                 let ExprKind::Index { base, index } = &expr.kind else {

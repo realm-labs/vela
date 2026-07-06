@@ -489,28 +489,33 @@ impl Compiler<'_, '_> {
                     })
             });
         let enum_slot = self
-            .script_fact_for_syntax_expression(source, &receiver_expression)
-            .and_then(|fact| {
-                let variant = fact.enum_variant.as_deref()?;
-                self.facts
-                    .script_field_slots
-                    .enum_variant(&fact.type_name, variant, &field_name)
+            .syntax_record_enum_slot(source, &receiver_expression, &field_name)
+            .or_else(|| {
+                self.script_fact_for_syntax_expression(source, &receiver_expression)
+                    .and_then(|fact| {
+                        let variant = fact.enum_variant.as_deref()?;
+                        self.facts.script_field_slots.enum_variant(
+                            &fact.type_name,
+                            variant,
+                            &field_name,
+                        )
+                    })
             });
         let Some(record) = self.compile_syntax_expression(source, &receiver_expression)? else {
             return Ok(None);
         };
         let dst = self.alloc_register()?;
-        if let Some(slot) = record_slot {
-            self.emit(UnlinkedInstructionKind::GetRecordSlot {
-                dst,
-                record,
-                field: field_name,
-                slot,
-            });
-        } else if let Some(slot) = enum_slot {
+        if let Some(slot) = enum_slot {
             self.emit(UnlinkedInstructionKind::GetEnumSlot {
                 dst,
                 value: record,
+                field: field_name,
+                slot,
+            });
+        } else if let Some(slot) = record_slot {
+            self.emit(UnlinkedInstructionKind::GetRecordSlot {
+                dst,
+                record,
                 field: field_name,
                 slot,
             });
@@ -522,6 +527,36 @@ impl Compiler<'_, '_> {
             });
         }
         Ok(Some(dst))
+    }
+
+    fn syntax_record_enum_slot(
+        &self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+        field_name: &str,
+    ) -> Option<usize> {
+        let record = expression.as_record()?;
+        let (enum_name, variant) = enum_variant_path(&record.path_segments())?;
+        let type_name = self
+            .type_symbol_at_span(syntax_expression_span(source, expression))
+            .unwrap_or(enum_name);
+        self.facts
+            .script_field_slots
+            .enum_variant(&type_name, &variant, field_name)
+            .or_else(|| Self::syntax_record_literal_field_slot(&record, field_name))
+    }
+
+    fn syntax_record_literal_field_slot(
+        record: &vela_syntax::ast::SyntaxRecordExpr,
+        field_name: &str,
+    ) -> Option<usize> {
+        let mut names = record
+            .field_list()?
+            .fields()
+            .filter_map(|field| field.label_text())
+            .collect::<Vec<_>>();
+        names.sort_unstable();
+        names.iter().position(|name| name == field_name)
     }
 
     pub(in crate::compiler) fn compile_syntax_logical_chain(

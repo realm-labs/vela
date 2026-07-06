@@ -283,12 +283,8 @@ struct LegacyBox {
 fn main() {
     let cst = CstBox { alpha: 0, amount: 1 };
     let legacy = LegacyBox { amount: 2, zed: 3 };
-    let cst_amount = make(cst).amount;
-    let legacy_amount = make(legacy).amount;
-}
-
-fn make(value) {
-    return value;
+    let cst_amount = cst.amount;
+    let legacy_amount = legacy.amount;
 }
 "#,
         |compiler, payload| {
@@ -314,14 +310,25 @@ fn make(value) {
                 legacy_field.fallback(),
             );
 
-            let error = compiler
+            let register = compiler
                 .compile_expr_with_payload(mismatched_payload.fallback(), Some(&mismatched_payload))
-                .expect_err("mismatched CST field payload must not compile");
+                .expect("mismatched fallback should not block CST field compilation");
 
-            assert!(matches!(
-                error.kind,
-                CompileErrorKind::UnsupportedSyntax("mismatched CST field expression payload")
-            ));
+            assert!(
+                compiler
+                    .code
+                    .instructions
+                    .iter()
+                    .any(|instruction| matches!(
+                        &instruction.kind,
+                        UnlinkedInstructionKind::GetRecordSlot {
+                            dst,
+                            field,
+                            slot: 1,
+                            ..
+                        } if *dst == register && field == "amount"
+                    ))
+            );
         },
     );
 }

@@ -341,12 +341,13 @@ fn main(cst: CstHost, legacy: LegacyHost) {
         Some("CstHost")
     );
 
-    let error = compiler
+    compiler
         .compile_expr_with_payload(mismatched_target.fallback(), Some(&mismatched_target))
-        .expect_err("mismatched CST host read payload must not compile");
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("mismatched CST field expression payload")
+        .expect("mismatched fallback should not block CST host read compilation");
+    assert!(has_host_read_target(
+        &compiler.code,
+        &[HostPathPart::Field(cst_amount)],
+        0
     ));
     let error = compiler
         .compile_assignment_with_payloads(
