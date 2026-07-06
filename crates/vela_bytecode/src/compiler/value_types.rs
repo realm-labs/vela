@@ -477,28 +477,24 @@ fn payload_matches_static_type_expression(
     payload_overlaps_expression_facts(
         payload,
         expr.span,
-        static_type_expression_kind(expr),
+        expression_syntax_kind(expr).filter(|kind| {
+            matches!(
+                kind,
+                SyntaxExpressionKind::Literal
+                    | SyntaxExpressionKind::Array
+                    | SyntaxExpressionKind::Map
+                    | SyntaxExpressionKind::Lambda
+                    | SyntaxExpressionKind::Binary
+                    | SyntaxExpressionKind::Try
+                    | SyntaxExpressionKind::Path
+                    | SyntaxExpressionKind::Block
+                    | SyntaxExpressionKind::If
+                    | SyntaxExpressionKind::Match
+            )
+        }),
         expression_path_is_self(expr),
         true,
     )
-}
-
-fn static_type_expression_kind(expr: &Expr) -> Option<SyntaxExpressionKind> {
-    expression_syntax_kind(expr).filter(|kind| {
-        matches!(
-            kind,
-            SyntaxExpressionKind::Literal
-                | SyntaxExpressionKind::Array
-                | SyntaxExpressionKind::Map
-                | SyntaxExpressionKind::Lambda
-                | SyntaxExpressionKind::Binary
-                | SyntaxExpressionKind::Try
-                | SyntaxExpressionKind::Path
-                | SyntaxExpressionKind::Block
-                | SyntaxExpressionKind::If
-                | SyntaxExpressionKind::Match
-        )
-    })
 }
 
 fn static_syntax_expr_type(
