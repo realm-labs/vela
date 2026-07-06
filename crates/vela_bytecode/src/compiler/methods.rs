@@ -17,11 +17,12 @@ pub(super) fn host_method_call<'ast>(
     receiver_type: Option<&str>,
     path_root_is_local: bool,
 ) -> Option<HostMethodCall<'ast>> {
+    let callee_payload = callee_payload?;
     match &callee.kind {
-        ExprKind::Field { base, name } => {
-            let receiver_payload = callee_payload.and_then(|payload| payload.field_base_payload());
+        ExprKind::Field { base, .. } => {
+            let receiver_payload = callee_payload.field_base_payload();
             let receiver = host_method_receiver_path(compiler, base, receiver_payload.as_ref())?;
-            let name = callee_field_name(callee_payload, name)?;
+            let name = callee_field_name(callee_payload)?;
             let method =
                 compiler.host_method_id(receiver_type.or(receiver.type_name.as_deref()), &name)?;
             Some(HostMethodCall {
@@ -30,13 +31,9 @@ pub(super) fn host_method_call<'ast>(
                 method,
             })
         }
-        ExprKind::Path(path) => {
-            let cst_path = callee_payload.and_then(CompilerExpressionPayload::syntax_path_segments);
-            let lookup_path = match (cst_path.as_deref(), callee_payload.is_some()) {
-                (Some(path), _) => path,
-                (None, true) => return None,
-                (None, false) => path,
-            };
+        ExprKind::Path(_) => {
+            let cst_path = callee_payload.syntax_path_segments()?;
+            let lookup_path = cst_path.as_slice();
             if lookup_path.len() < 2 {
                 return None;
             }
@@ -58,17 +55,11 @@ pub(super) fn host_method_call<'ast>(
     }
 }
 
-fn callee_field_name(
-    callee_payload: Option<&CompilerExpressionPayload<'_>>,
-    default_name: &str,
-) -> Option<String> {
-    match callee_payload {
-        Some(payload) => match payload.syntax_kind() {
-            Some(SyntaxExpressionKind::Field) | None => payload.syntax_field_name(),
-            Some(SyntaxExpressionKind::Path) => None,
-            Some(_) => None,
-        },
-        None => Some(default_name.to_owned()),
+fn callee_field_name(callee_payload: &CompilerExpressionPayload<'_>) -> Option<String> {
+    match callee_payload.syntax_kind() {
+        Some(SyntaxExpressionKind::Field) | None => callee_payload.syntax_field_name(),
+        Some(SyntaxExpressionKind::Path) => None,
+        Some(_) => None,
     }
 }
 
