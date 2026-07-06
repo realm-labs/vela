@@ -167,13 +167,17 @@ impl Compiler<'_, '_> {
                 let ExprKind::Record { path: _, fields } = &expr.kind else {
                     unreachable!("validated CST record expression payload kind");
                 };
-                let field_payloads = payload.record_field_payloads();
                 let path = payload.syntax_record_path_segments().ok_or_else(|| {
                     CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST record path",
                     ))
                 })?;
-                self.compile_record(expr, &path, fields, field_payloads.as_deref())
+                let Some(field_payloads) = payload.record_field_payloads() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST record field payload",
+                    )));
+                };
+                self.compile_record(expr, &path, fields, &field_payloads)
             }
             SyntaxExpressionKind::Assign => {
                 let ExprKind::Assign { .. } = &expr.kind else {
@@ -405,7 +409,9 @@ impl Compiler<'_, '_> {
             ExprKind::Map(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST map entry payload",
             ))),
-            ExprKind::Record { path, fields } => self.compile_record(expr, path, fields, None),
+            ExprKind::Record { .. } => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST record field payload",
+            ))),
             ExprKind::If(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST if expression payload",
             ))),
@@ -624,9 +630,9 @@ impl Compiler<'_, '_> {
         expr: &Expr,
         path: &[String],
         fields: &[RecordField],
-        payloads: Option<&[CompilerRecordFieldPayload]>,
+        payloads: &[CompilerRecordFieldPayload],
     ) -> CompileResult<Register> {
-        if payloads.is_some_and(|payloads| payloads.len() > fields.len()) {
+        if payloads.len() > fields.len() {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST record fields",
             )));
@@ -648,7 +654,7 @@ impl Compiler<'_, '_> {
                 &format!("{enum_name}::{variant}"),
                 shape.as_ref(),
                 fields,
-                field_names.as_deref(),
+                Some(&field_names),
                 expr.span,
             ))?;
             let defaults = schema_default_fields(shape.as_ref());
@@ -669,7 +675,7 @@ impl Compiler<'_, '_> {
                 &type_name,
                 shape.as_ref(),
                 fields,
-                field_names.as_deref(),
+                Some(&field_names),
                 expr.span,
             ))?;
             let defaults = schema_default_fields(shape.as_ref());

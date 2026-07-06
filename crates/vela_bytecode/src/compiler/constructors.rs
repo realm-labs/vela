@@ -21,20 +21,17 @@ use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 pub(super) fn record_field_names(
     fields: &[vela_syntax::ast::RecordField],
-    payloads: Option<&[CompilerRecordFieldPayload]>,
-) -> Option<Vec<Option<String>>> {
-    let payloads = payloads?;
-    Some(
-        fields
-            .iter()
-            .enumerate()
-            .map(|(index, _field)| {
-                payloads
-                    .get(index)
-                    .and_then(CompilerRecordFieldPayload::syntax_label_name)
-            })
-            .collect(),
-    )
+    payloads: &[CompilerRecordFieldPayload],
+) -> Vec<Option<String>> {
+    fields
+        .iter()
+        .enumerate()
+        .map(|(index, _field)| {
+            payloads
+                .get(index)
+                .and_then(CompilerRecordFieldPayload::syntax_label_name)
+        })
+        .collect()
 }
 
 impl<'ast, 'registry> Compiler<'ast, 'registry> {
@@ -130,12 +127,16 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         fields: &[vela_syntax::ast::RecordField],
         defaults: Vec<SchemaFieldDefault>,
         shape: Option<&ConstructorShape>,
-        payloads: Option<&[CompilerRecordFieldPayload]>,
+        payloads: &[CompilerRecordFieldPayload],
     ) -> CompileResult<Vec<(String, Register)>> {
         let mut compiled = Vec::new();
         let mut explicit_names = BTreeSet::new();
         for (index, field) in fields.iter().enumerate() {
-            let payload = payloads.and_then(|payloads| payloads.get(index));
+            let payload = payloads.get(index).ok_or_else(|| {
+                CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST record field payload",
+                ))
+            })?;
             let field_name = record_field_name(fields, payloads, field)?;
             explicit_names.insert(field_name.clone());
             compiled.push(self.compile_record_field(
@@ -193,10 +194,10 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         field: &vela_syntax::ast::RecordField,
         field_name: &str,
         expected: Option<RuntimeTypeFact>,
-        payload: Option<&CompilerRecordFieldPayload>,
+        payload: &CompilerRecordFieldPayload,
     ) -> CompileResult<(String, Register)> {
         let value = if let Some(value) = &field.value {
-            if payload.is_some_and(|payload| !payload.has_value_syntax()) {
+            if !payload.has_value_syntax() {
                 return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                     "missing CST record field value",
                 )));
@@ -205,7 +206,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
                 value,
                 field_name,
                 expected,
-                payload.and_then(CompilerRecordFieldPayload::value_expression_payload),
+                payload.value_expression_payload(),
             )?
         } else {
             self.local_register_at_span(field.span, field_name)?
@@ -341,12 +342,9 @@ fn argument_name(
 
 fn record_field_name(
     fields: &[vela_syntax::ast::RecordField],
-    field_payloads: Option<&[CompilerRecordFieldPayload]>,
+    field_payloads: &[CompilerRecordFieldPayload],
     field: &vela_syntax::ast::RecordField,
 ) -> CompileResult<String> {
-    let Some(field_payloads) = field_payloads else {
-        return Ok(field.name.clone());
-    };
     let index = fields
         .iter()
         .position(|candidate| std::ptr::eq(candidate, field))

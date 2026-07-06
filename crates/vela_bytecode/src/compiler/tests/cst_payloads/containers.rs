@@ -239,9 +239,9 @@ fn main() {
             assert_eq!(
                 crate::compiler::constructors::record_field_names(
                     &legacy_named_fields,
-                    Some(&record_fields),
+                    &record_fields,
                 ),
-                Some(vec![Some("first".to_owned())]),
+                vec![Some("first".to_owned())],
                 "record field names must come from the CST field payload"
             );
         },
@@ -866,7 +866,7 @@ fn main() {
     assert!(!missing.has_value_syntax());
 
     let error = compiler
-        .compile_record_fields(legacy_fields, Vec::new(), None, Some(&[missing]))
+        .compile_record_fields(legacy_fields, Vec::new(), None, &[missing])
         .expect_err("missing record field value payload must not compile legacy value");
 
     assert!(matches!(

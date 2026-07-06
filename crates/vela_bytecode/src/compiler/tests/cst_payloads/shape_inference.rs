@@ -56,7 +56,7 @@ fn make(value) {
         |compiler, payload| {
             let statements = paired_statement_payloads_for_body(SourceId::new(1), &payload.body);
             compiler
-                .compile_statement(statements[0].fallback())
+                .compile_statement_payload_for_test(&statements[0])
                 .expect("legacy local should compile");
             let cst_block = statements[1]
                 .let_initializer_expression_payload()
