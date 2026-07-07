@@ -61,7 +61,6 @@ struct HostCollectionMethodTarget<'ast> {
 
 enum HostCollectionFieldReceiver<'ast> {
     Expr {
-        expr: &'ast Expr,
         payload: Option<CompilerExpressionPayload<'ast>>,
     },
     Syntax {
@@ -667,10 +666,7 @@ impl Compiler<'_, '_> {
                 self.host_field_path(base)
                     .map(|path| HostCollectionMethodTarget {
                         path,
-                        field_receiver: Some(HostCollectionFieldReceiver::Expr {
-                            expr: base,
-                            payload: None,
-                        }),
+                        field_receiver: Some(HostCollectionFieldReceiver::Expr { payload: None }),
                     })
             }
             ExprKind::Path(parts) if parts.last().is_some_and(|name| name == method) => self
@@ -689,8 +685,8 @@ impl Compiler<'_, '_> {
         kind: HostIndexAccessKind,
     ) -> CompileResult<()> {
         match receiver {
-            HostCollectionFieldReceiver::Expr { expr, payload } => {
-                self.reject_terminal_host_index_access(expr, payload.as_ref(), kind)
+            HostCollectionFieldReceiver::Expr { payload } => {
+                self.reject_terminal_host_index_access(payload.as_ref(), kind)
             }
             HostCollectionFieldReceiver::Syntax { source, expression } => {
                 self.reject_invalid_syntax_host_index_access(source, &expression, &expression, kind)
@@ -962,16 +958,6 @@ impl Compiler<'_, '_> {
             })
     }
 
-    pub(super) fn reject_invalid_host_index_access(
-        &self,
-        expr: &Expr,
-        base: &Expr,
-        index: &Expr,
-        kind: HostIndexAccessKind,
-    ) -> CompileResult<()> {
-        self.reject_invalid_host_index_access_with_payload(expr, base, index, kind, None, None)
-    }
-
     pub(in crate::compiler) fn reject_invalid_host_index_access_with_payload(
         &self,
         expr: &Expr,
@@ -1053,7 +1039,6 @@ impl Compiler<'_, '_> {
 
     pub(in crate::compiler) fn reject_terminal_host_index_access(
         &self,
-        expr: &Expr,
         payload: Option<&CompilerExpressionPayload<'_>>,
         kind: HostIndexAccessKind,
     ) -> CompileResult<()> {
@@ -1074,19 +1059,10 @@ impl Compiler<'_, '_> {
                         source, expression, expression, kind,
                     )
                 }
-                Some(_) => Ok(()),
-                None => {
-                    let ExprKind::Index { base, index } = &expr.kind else {
-                        return Ok(());
-                    };
-                    self.reject_invalid_host_index_access(expr, base, index, kind)
-                }
+                Some(_) | None => Ok(()),
             };
         }
-        let ExprKind::Index { base, index } = &expr.kind else {
-            return Ok(());
-        };
-        self.reject_invalid_host_index_access(expr, base, index, kind)
+        Ok(())
     }
 
     fn host_index_receiver_type_name(

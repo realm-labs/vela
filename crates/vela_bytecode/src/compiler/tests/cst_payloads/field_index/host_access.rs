@@ -199,7 +199,7 @@ fn main(cst: CstMap, legacy: LegacyMap) {
                     readable: true,
                     writable: true,
                     addable: true,
-                    removable: true,
+                    removable: false,
                     key_type: Some("bool".to_owned()),
                     value_type: Some("i64".to_owned()),
                 },
@@ -248,18 +248,15 @@ fn main(cst: CstMap, legacy: LegacyMap) {
         )
         .expect("CST receiver payload should select CstMap key contract");
     compiler
-        .reject_terminal_host_index_access(
-            mismatched_index.fallback(),
-            None,
-            HostIndexAccessKind::Remove,
-        )
-        .expect("legacy receiver should allow removable host index");
+        .reject_terminal_host_index_access(None, HostIndexAccessKind::Remove)
+        .expect("absent CST payload must not validate the legacy host index");
+    let missing_payload =
+        crate::compiler::body_payloads::CompilerExpressionPayload::missing_syntax(source);
+    compiler
+        .reject_terminal_host_index_access(Some(&missing_payload), HostIndexAccessKind::Remove)
+        .expect("missing CST payload must not validate the legacy host index");
     let cst_remove_error = compiler
-        .reject_terminal_host_index_access(
-            mismatched_index.fallback(),
-            Some(&mismatched_index),
-            HostIndexAccessKind::Remove,
-        )
+        .reject_terminal_host_index_access(Some(&mismatched_index), HostIndexAccessKind::Remove)
         .expect_err("CST receiver should reject non-removable host index");
     assert_eq!(
         semantic_diagnostic_codes(cst_remove_error),
