@@ -209,15 +209,10 @@ impl Compiler<'_, '_> {
                 None => None,
             },
             ExprKind::Index { base, index } => {
-                let (base_payload, index_payload) = match payload.as_ref() {
-                    Some(payload) => {
-                        let (base, index) = payload.index_operand_payloads()?;
-                        (Some(base), Some(index))
-                    }
-                    None => (None, None),
-                };
+                let payload = payload.as_ref()?;
+                let (base_payload, index_payload) = payload.index_operand_payloads()?;
                 let mut receiver =
-                    self.resolve_host_path_index_receiver_with_payload(base, base_payload)?;
+                    self.resolve_host_path_index_receiver_with_payload(base, Some(base_payload))?;
                 let dynamic_kind = receiver
                     .type_name
                     .as_deref()
@@ -226,7 +221,7 @@ impl Compiler<'_, '_> {
                     .map_or(DynamicHostPathPart::Key, dynamic_host_path_part);
                 receiver.path.segments.push(HostPathPart::Value {
                     expr: index,
-                    payload: index_payload,
+                    payload: Some(index_payload),
                     dynamic_kind,
                 });
                 let value_type = receiver.type_name.as_deref().and_then(|type_name| {
