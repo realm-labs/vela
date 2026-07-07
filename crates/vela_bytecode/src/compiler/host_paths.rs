@@ -203,7 +203,7 @@ impl Compiler<'_, '_> {
                 {
                     None
                 }
-                None => self.resolve_host_path(expr),
+                None => None,
             },
             ExprKind::Index { base, index } => {
                 let (base_payload, index_payload) = match payload.as_ref() {

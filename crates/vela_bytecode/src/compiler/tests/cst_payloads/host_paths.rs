@@ -299,6 +299,12 @@ fn main(player: Player) {
             .is_none(),
         "missing source-backed CST path payload must not resolve the legacy host path"
     );
+    assert!(
+        compiler
+            .resolve_host_path_with_payload(legacy_expr, None)
+            .is_none(),
+        "absent CST path payload must not resolve the legacy host path"
+    );
 }
 
 #[test]
