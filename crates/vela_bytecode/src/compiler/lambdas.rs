@@ -4,13 +4,13 @@ use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::HirLocalId;
 use vela_syntax::ast::{
-    AstNode, Expr, ExprKind, Param, SyntaxBlock, SyntaxElseBranch, SyntaxExpression,
-    SyntaxExpressionKind, SyntaxLambdaBody, SyntaxStatementKind,
+    AstNode, Param, SyntaxBlock, SyntaxElseBranch, SyntaxExpression, SyntaxExpressionKind,
+    SyntaxLambdaBody, SyntaxStatementKind,
 };
 
 use crate::{Register, UnlinkedCodeObject, UnlinkedInstructionKind};
 
-use super::body_payloads::{CompilerBodyPayload, CompilerExpressionPayload};
+use super::body_payloads::CompilerBodyPayload;
 use super::record_shapes::ValueShape;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
@@ -21,123 +21,7 @@ pub(crate) struct LambdaCapture {
     pub register: Register,
 }
 
-pub(in crate::compiler) fn collect_lambda_captures_with_payload(
-    bindings: &BindingMap,
-    available: &HashMap<HirLocalId, Register>,
-    _body: &Expr,
-    body_payload: Option<&CompilerExpressionPayload<'_>>,
-) -> Vec<LambdaCapture> {
-    let Some(payload) = body_payload else {
-        return Vec::new();
-    };
-    let (Some(source), Some(syntax)) = (payload.source(), payload.syntax_expression()) else {
-        return Vec::new();
-    };
-
-    let mut captures = BTreeMap::new();
-    collect_syntax_expr(bindings, available, source, syntax, &mut captures);
-    captures.into_values().collect()
-}
-
 impl Compiler<'_, '_> {
-    pub(super) fn compile_lambda(
-        &mut self,
-        lambda: &Expr,
-        params: &[Param],
-        body: &Expr,
-        body_payload: Option<&CompilerExpressionPayload<'_>>,
-    ) -> CompileResult<Register> {
-        self.compile_lambda_with_callback_shapes(lambda, params, body, body_payload, &[])
-    }
-
-    pub(super) fn compile_lambda_with_callback_shapes(
-        &mut self,
-        lambda: &Expr,
-        params: &[Param],
-        body: &Expr,
-        body_payload: Option<&CompilerExpressionPayload<'_>>,
-        callback_shapes: &[Option<ValueShape>],
-    ) -> CompileResult<Register> {
-        let captures = collect_lambda_captures_with_payload(
-            self.bindings,
-            &self.hir_locals,
-            body,
-            body_payload,
-        );
-        let capture_registers = captures
-            .iter()
-            .map(|capture| capture.register)
-            .collect::<Vec<_>>();
-        let mut lambda_compiler = Compiler::new_lambda(
-            format!("{}::<lambda@{}>", self.code.name, lambda.span.start),
-            lambda.span,
-            params,
-            self.body.clone(),
-            &captures,
-            self.bindings,
-            self.facts.clone(),
-        )?;
-        for capture in &captures {
-            if let Some(script_fact) = self.script_types.local_fact(capture.local) {
-                lambda_compiler.script_types.set_local_fact(
-                    capture.local,
-                    &capture.name,
-                    Some(script_fact),
-                );
-            }
-            if let Some(value_type) = self.value_types.local(capture.local) {
-                lambda_compiler.value_types.set_local(
-                    capture.local,
-                    &capture.name,
-                    Some(value_type),
-                );
-            }
-            if let Some(value_shape) = self.value_shapes.local(capture.local) {
-                lambda_compiler.value_shapes.set_local(
-                    capture.local,
-                    &capture.name,
-                    Some(value_shape),
-                );
-            }
-        }
-        for (index, shape) in callback_shapes.iter().enumerate() {
-            let Some(shape) = shape else {
-                continue;
-            };
-            let Some(param) = params.get(index) else {
-                continue;
-            };
-            if let Some(local) = self.bindings.local_named_at(
-                &param.name,
-                vela_hir::binding::LocalBindingKind::LambdaParameter,
-                param.span,
-            ) {
-                lambda_compiler
-                    .value_types
-                    .set_local(local, &param.name, shape.value_type());
-                lambda_compiler
-                    .value_shapes
-                    .set_local(local, &param.name, Some(shape.clone()));
-            } else {
-                lambda_compiler
-                    .value_types
-                    .set_name(&param.name, shape.value_type());
-                lambda_compiler
-                    .value_shapes
-                    .set_name(&param.name, Some(shape.clone()));
-            }
-        }
-        let code = lambda_compiler.compile_lambda_body(body, body_payload)?;
-        let function = self.code.push_nested_function(code);
-        let dst = self.alloc_register()?;
-        self.emit(UnlinkedInstructionKind::MakeClosure {
-            dst,
-            function,
-            captures: capture_registers,
-        });
-        Ok(dst)
-    }
-
     pub(in crate::compiler) fn compile_syntax_lambda_with_callback_shapes(
         &mut self,
         source: SourceId,
@@ -260,40 +144,6 @@ impl Compiler<'_, '_> {
         Ok(Some(dst))
     }
 
-    fn compile_lambda_body(
-        mut self,
-        body: &Expr,
-        body_payload: Option<&CompilerExpressionPayload<'_>>,
-    ) -> CompileResult<UnlinkedCodeObject> {
-        self.compile_param_defaults()?;
-        match &body.kind {
-            ExprKind::Block(_) => {
-                let dst = self.alloc_register()?;
-                let body_payload =
-                    body_payload.ok_or_else(missing_cst_lambda_block_body_payload)?;
-                let source = body_payload
-                    .source()
-                    .ok_or_else(missing_cst_lambda_block_body_payload)?;
-                let expression = body_payload
-                    .syntax_expression()
-                    .ok_or_else(missing_cst_lambda_block_body_payload)?;
-                let Some(returned) = self.compile_syntax_block_expr_to(source, expression, dst)?
-                else {
-                    return Err(missing_cst_lambda_block_body_payload());
-                };
-                if !returned {
-                    self.emit(UnlinkedInstructionKind::Return { src: dst });
-                }
-            }
-            _ => {
-                let value = self.compile_expr_with_payload(body, body_payload)?;
-                self.emit(UnlinkedInstructionKind::Return { src: value });
-            }
-        }
-        self.code.register_count = self.next_register;
-        Ok(self.code)
-    }
-
     fn compile_syntax_lambda_body(
         mut self,
         source: SourceId,
@@ -324,12 +174,6 @@ impl Compiler<'_, '_> {
         self.code.register_count = self.next_register;
         Ok(self.code)
     }
-}
-
-fn missing_cst_lambda_block_body_payload() -> CompileError {
-    CompileError::new(CompileErrorKind::UnsupportedSyntax(
-        "missing CST lambda block body payload",
-    ))
 }
 
 fn collect_syntax_expr(

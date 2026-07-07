@@ -498,7 +498,9 @@ impl Compiler<'_, '_> {
                 self.compile_index_expr(expr, base, index, None, None, None)
             }
             ExprKind::Call { callee, args } => self.compile_call_expr(expr, callee, args),
-            ExprKind::Lambda { params, body } => self.compile_lambda(expr, params, body, None),
+            ExprKind::Lambda { .. } => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST lambda expression payload",
+            ))),
             ExprKind::Try(value) => {
                 let src = self.compile_expr(value)?;
                 let dst = self.alloc_register()?;

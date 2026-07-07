@@ -194,7 +194,7 @@ fn main() {
 }
 
 #[test]
-fn missing_lambda_block_body_payload_does_not_use_legacy_block() {
+fn missing_lambda_source_payload_does_not_use_legacy_block() {
     with_cst_payload_compiler(
         r#"
 fn main() {
@@ -208,29 +208,18 @@ fn main() {
             let lambda_payload = lambda_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("CST lambda initializer");
-            let body_payload = lambda_payload
-                .lambda_body_payload()
-                .expect("CST lambda body payload");
-            let missing_block_body = body_payloads::CompilerExpressionPayload::from_syntax(
+            let missing_source_lambda = body_payloads::CompilerExpressionPayload::from_syntax(
                 None,
-                body_payload.syntax_expression().cloned(),
+                lambda_payload.syntax_expression().cloned(),
             );
-            let ExprKind::Lambda { params, body } = &lambda_payload.fallback().kind else {
-                panic!("expected lambda expression");
-            };
 
             let error = compiler
-                .compile_lambda(
-                    lambda_payload.fallback(),
-                    params,
-                    body,
-                    Some(&missing_block_body),
-                )
-                .expect_err("missing CST lambda block payload must not compile legacy block");
+                .compile_expr_with_payload(lambda_payload.fallback(), Some(&missing_source_lambda))
+                .expect_err("missing CST lambda source payload must not compile legacy block");
 
             assert!(matches!(
                 error.kind,
-                CompileErrorKind::UnsupportedSyntax("missing CST lambda block body payload")
+                CompileErrorKind::UnsupportedSyntax("mismatched CST lambda expression payload")
             ));
         },
     );
