@@ -63,9 +63,9 @@ pub(super) fn indexed_record_field_parts_with_payload<'expr>(
     target: &'expr Expr,
     payload: Option<CompilerExpressionPayload<'expr>>,
 ) -> Option<(&'expr Expr, &'expr Expr, Vec<String>)> {
+    let payload = payload?;
     if payload
-        .as_ref()
-        .and_then(CompilerExpressionPayload::syntax_kind)
+        .syntax_kind()
         .is_some_and(|kind| kind != SyntaxExpressionKind::Field)
     {
         return None;
@@ -73,7 +73,7 @@ pub(super) fn indexed_record_field_parts_with_payload<'expr>(
     let ExprKind::Field { base, name } = &target.kind else {
         return None;
     };
-    let (base_payload, name) = field_payload_parts(payload.as_ref(), name)?;
+    let (base_payload, name) = field_payload_parts(Some(&payload), name)?;
     let (collection, index, mut fields) =
         indexed_record_field_base_parts_with_payload(base, base_payload)?;
     fields.push(name);
@@ -94,7 +94,7 @@ fn indexed_record_field_base_parts_with_payload<'expr>(
                     return None;
                 };
                 let (base_payload, _) = payload.as_ref()?.index_operand_payloads()?;
-                is_local_index_collection_with_payload(base, Some(&base_payload)).then_some((
+                is_local_index_collection_with_payload(Some(&base_payload)).then_some((
                     base.as_ref(),
                     index.as_ref(),
                     Vec::new(),
@@ -113,19 +113,7 @@ fn indexed_record_field_base_parts_with_payload<'expr>(
             _ => None,
         };
     }
-    match &expr.kind {
-        ExprKind::Index { base, index } if is_local_index_collection(base) => {
-            Some((base, index, Vec::new()))
-        }
-        ExprKind::Field { base, name } => {
-            let (base_payload, name) = field_payload_parts(payload.as_ref(), name)?;
-            let (collection, index, mut fields) =
-                indexed_record_field_base_parts_with_payload(base, base_payload)?;
-            fields.push(name);
-            Some((collection, index, fields))
-        }
-        _ => None,
-    }
+    None
 }
 
 fn field_payload_parts<'expr>(
@@ -141,14 +129,7 @@ fn field_payload_parts<'expr>(
     }
 }
 
-pub(super) fn is_local_index_collection(expr: &Expr) -> bool {
-    matches!(&expr.kind, ExprKind::Path(path) if path.len() == 1)
-}
-
-fn is_local_index_collection_with_payload(
-    expr: &Expr,
-    payload: Option<&CompilerExpressionPayload<'_>>,
-) -> bool {
+fn is_local_index_collection_with_payload(payload: Option<&CompilerExpressionPayload<'_>>) -> bool {
     if let Some(payload) = payload {
         return match payload.syntax_kind() {
             Some(SyntaxExpressionKind::Path) | None => payload
@@ -157,7 +138,7 @@ fn is_local_index_collection_with_payload(
             Some(_) => false,
         };
     }
-    is_local_index_collection(expr)
+    false
 }
 
 pub(super) fn compound_assignment_instruction_or_error(

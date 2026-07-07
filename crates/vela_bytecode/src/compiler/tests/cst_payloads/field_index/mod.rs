@@ -624,6 +624,51 @@ fn main() {
 }
 
 #[test]
+fn missing_indexed_record_assignment_target_payload_does_not_use_legacy_target() {
+    with_cst_payload_compiler(
+        r#"
+struct Box {
+    amount: i64,
+}
+
+fn main() {
+    let items = [Box { amount: 1 }];
+    items[0].amount = 10;
+}
+"#,
+        |compiler, payload| {
+            let statements = field_index_statement_payloads(&payload.body);
+            compiler
+                .compile_statement_payload_for_test(&statements[0])
+                .expect("items local should compile");
+            let assignment = statements[1]
+                .expression_payload()
+                .expect("indexed record assignment expression");
+            let value = assignment
+                .assignment_value_payload()
+                .expect("assignment value payload");
+
+            let error = compiler
+                .compile_assignment_with_payloads(
+                    assignment.fallback(),
+                    crate::compiler::assignments::AssignmentTargetSyntax::new(None),
+                    crate::compiler::assignments::AssignmentValueSyntax::new(
+                        value.syntax_kind(),
+                        assignment.syntax_assignment_operator(),
+                        Some(&value),
+                    ),
+                )
+                .expect_err("missing CST indexed record target must not compile legacy target");
+
+            assert_eq!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("missing CST assignment target field")
+            );
+        },
+    );
+}
+
+#[test]
 fn string_key_index_reads_prefer_cst_index_literal_payloads() {
     with_cst_payload_compiler(
         r#"
