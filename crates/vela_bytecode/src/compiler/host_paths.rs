@@ -1086,24 +1086,18 @@ impl Compiler<'_, '_> {
         if let Some(payload) = payload {
             return match payload.syntax_kind() {
                 Some(SyntaxExpressionKind::Index) => {
-                    let ExprKind::Index { base, index } = &expr.kind else {
+                    let Some(source) = payload.source() else {
                         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                             "mismatched CST host index receiver payload",
                         )));
                     };
-                    let Some((base_payload, index_payload)) = payload.index_operand_payloads()
-                    else {
+                    let Some(expression) = payload.syntax_expression() else {
                         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                             "mismatched CST host index receiver payload",
                         )));
                     };
-                    self.reject_invalid_host_index_access_with_payload(
-                        expr,
-                        base,
-                        index,
-                        kind,
-                        Some(&base_payload),
-                        Some(&index_payload),
+                    self.reject_invalid_syntax_host_index_access(
+                        source, expression, expression, kind,
                     )
                 }
                 Some(_) => Ok(()),
