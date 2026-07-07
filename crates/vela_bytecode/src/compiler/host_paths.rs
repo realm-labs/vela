@@ -176,8 +176,8 @@ impl Compiler<'_, '_> {
         payload: Option<CompilerExpressionPayload<'ast>>,
     ) -> Option<ResolvedHostPath<'ast>> {
         match &expr.kind {
-            ExprKind::Field { base, name } => {
-                let name = host_path_field_name(payload.as_ref(), name)?;
+            ExprKind::Field { base, name: _ } => {
+                let name = host_path_field_name(payload.as_ref())?;
                 let base_payload = payload
                     .as_ref()
                     .and_then(CompilerExpressionPayload::field_base_payload);
@@ -1131,16 +1131,11 @@ impl Compiler<'_, '_> {
     }
 }
 
-fn host_path_field_name(
-    payload: Option<&CompilerExpressionPayload<'_>>,
-    default_name: &str,
-) -> Option<String> {
-    match payload {
-        Some(payload) => match payload.syntax_kind() {
-            Some(SyntaxExpressionKind::Field) | None => payload.syntax_field_name(),
-            Some(_) => None,
-        },
-        None => Some(default_name.to_owned()),
+fn host_path_field_name(payload: Option<&CompilerExpressionPayload<'_>>) -> Option<String> {
+    let payload = payload?;
+    match payload.syntax_kind() {
+        Some(SyntaxExpressionKind::Field) => payload.syntax_field_name(),
+        Some(_) | None => None,
     }
 }
 

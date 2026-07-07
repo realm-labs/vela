@@ -509,3 +509,68 @@ fn make(value) {
         "misaligned CST field receiver must not resolve the legacy host receiver"
     );
 }
+
+#[test]
+fn missing_host_field_payload_does_not_use_legacy_field_name() {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let legacy_player = registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty(
+                "host",
+                std::iter::empty::<&str>(),
+                "LegacyPlayer",
+            ))
+            .host_runtime_id(78),
+        )
+        .expect("LegacyPlayer host type should register");
+    registry
+        .register_field(
+            vela_registry::FieldDef::new(
+                DefPath::field("host", std::iter::empty::<&str>(), "LegacyPlayer", "level"),
+                legacy_player,
+            )
+            .host_runtime_id(FieldId::new(4).get())
+            .writable(true),
+        )
+        .expect("LegacyPlayer level field should register");
+
+    let source = SourceId::new(1);
+    let semantic = parse_semantic_source(
+        source,
+        r#"
+fn main(legacy: LegacyPlayer) {
+    make(legacy).level;
+}
+
+fn make(value) {
+    return value;
+}
+"#,
+    )
+    .expect("semantic source should parse");
+    let facts = cst_payload_compiler_facts_with_options(
+        &semantic,
+        CompilerOptions::default(),
+        Some(registry.compile_view()),
+    );
+    let (payload, signature, bindings) = semantic.function("main").expect("main function");
+    let legacy_field = paired_statement_payloads_for_body(source, &payload.body)[0]
+        .expression_payload()
+        .expect("legacy host field expression");
+    let compiler = Compiler::new_with_param_defaults(
+        payload.name.clone(),
+        payload.body.clone(),
+        payload.param_defaults.clone(),
+        signature,
+        bindings,
+        facts,
+    )
+    .expect("compiler should initialize");
+
+    assert!(
+        compiler
+            .resolve_host_path_with_payload(legacy_field.fallback(), None)
+            .is_none(),
+        "payload-aware host field paths must not resolve from legacy field names"
+    );
+}
