@@ -2,7 +2,7 @@ mod callee;
 pub(in crate::compiler) mod metadata;
 mod payload_guards;
 
-use vela_syntax::ast::{Argument, Expr, ExprKind, SyntaxArgument, SyntaxExpressionKind};
+use vela_syntax::ast::{Argument, Expr, SyntaxArgument, SyntaxExpressionKind};
 
 use crate::{CallArgument, DynamicCallArgument, UnlinkedInstructionKind};
 
@@ -12,7 +12,6 @@ use super::call_args::{CallArgumentSyntax, resolve_script_call_arguments};
 use super::expression_facts::ExpressionFacts;
 #[cfg(test)]
 use super::expression_facts::expression_facts;
-use super::expression_facts::payload_matches_expression_facts;
 use super::methods::host_method_call;
 use super::record_shapes::{ValueShape, callback_param_shapes};
 use super::value_types::{RuntimeTypeFact, TypeContractContext, type_hint_value_type};
@@ -36,6 +35,15 @@ struct MethodCallFacts<'facts> {
     receiver_type: Option<&'facts str>,
     value_receiver_type: Option<&'facts RuntimeTypeFact>,
     receiver_shape: Option<&'facts ValueShape>,
+}
+
+#[derive(Clone, Copy)]
+struct ResolvedMethodCallFacts<'facts> {
+    call_facts: MethodCallFacts<'facts>,
+    method_id: Option<MethodId>,
+    value_method_id: Option<MethodId>,
+    has_static_receiver_type: bool,
+    value_receiver_methods_known: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -150,13 +158,9 @@ impl Compiler<'_, '_> {
             return Ok(push);
         }
 
-        if let Some(script_method_call) = self.compile_script_method_call_from_callee(
-            expr,
-            callee,
-            args,
-            callee_payload,
-            arg_syntax,
-        ) {
+        if let Some(script_method_call) =
+            self.compile_script_method_call_from_callee(expr, args, callee_payload, arg_syntax)
+        {
             return script_method_call;
         }
         if let Some((method, receiver_path)) = local_path_method_call(callee_path, &self.locals) {
@@ -273,19 +277,18 @@ impl Compiler<'_, '_> {
         self.compile_metadata_register_args(&params, args, call_span, arg_syntax)
     }
 
-    fn compile_script_method_call(
+    fn compile_script_method_call_from_payload(
         &mut self,
         expr: &Expr,
-        base: &Expr,
+        receiver_payload: &CompilerExpressionPayload<'_>,
         name: &str,
         args: &[Argument],
-        base_payload: Option<&CompilerExpressionPayload<'_>>,
         arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<crate::Register> {
-        let receiver_type = self.script_type_for_expression_payload(base_payload);
-        let receiver_shape = self.value_shape_for_expression_payload(base_payload);
+        let receiver_type = self.script_type_for_expression_payload(Some(receiver_payload));
+        let receiver_shape = self.value_shape_for_expression_payload(Some(receiver_payload));
         let value_receiver_type = self
-            .value_type_for_expression_payload(base_payload)
+            .value_type_for_expression_payload(Some(receiver_payload))
             .or_else(|| receiver_shape.as_ref().and_then(ValueShape::value_type));
         self.reject_static_array_ordering_method_without_ord(
             name,
@@ -294,27 +297,48 @@ impl Compiler<'_, '_> {
             receiver_shape.as_ref(),
             expr.span,
         )?;
-        let method_id = receiver_type
-            .as_deref()
-            .and_then(|type_name| self.script_method_id_for_type(type_name, name));
-        let value_method_id = value_receiver_type
-            .as_ref()
-            .and_then(|type_name| self.value_method_id_for_type(type_name, name));
-        let value_receiver_methods_known = value_receiver_type
-            .as_ref()
-            .is_some_and(|receiver_type| self.registry_value_type_id(receiver_type).is_some());
-        let receiver = self.compile_expr_with_payload(base, base_payload)?;
+        let facts = self.resolve_method_call_facts(
+            &receiver_type,
+            &value_receiver_type,
+            &receiver_shape,
+            name,
+        );
+        let source = receiver_payload.source().ok_or_else(|| {
+            CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST method receiver payload",
+            ))
+        })?;
+        let receiver_expression = receiver_payload.syntax_expression().ok_or_else(|| {
+            CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST method receiver payload",
+            ))
+        })?;
+        let receiver = self
+            .compile_syntax_expression(source, receiver_expression)?
+            .ok_or_else(|| {
+                CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST method receiver payload",
+                ))
+            })?;
+        self.emit_script_method_call(expr.span, receiver, name, args, arg_syntax, facts)
+    }
+
+    fn emit_script_method_call(
+        &mut self,
+        span: Span,
+        receiver: crate::Register,
+        name: &str,
+        args: &[Argument],
+        arg_syntax: CallArgumentSyntax<'_, '_>,
+        facts: ResolvedMethodCallFacts<'_>,
+    ) -> CompileResult<crate::Register> {
         let dst = self.alloc_register()?;
-        if let Some(method_id) = method_id {
+        if let Some(method_id) = facts.method_id {
             let arg_registers = self.compile_script_method_call_args(
-                MethodCallFacts {
-                    receiver_type: receiver_type.as_deref(),
-                    value_receiver_type: value_receiver_type.as_ref(),
-                    receiver_shape: receiver_shape.as_ref(),
-                },
+                facts.call_facts,
                 name,
                 args,
-                expr.span,
+                span,
                 arg_syntax,
             )?;
             self.emit_spanned(
@@ -325,18 +349,14 @@ impl Compiler<'_, '_> {
                     method_id,
                     args: arg_registers,
                 },
-                expr.span,
+                span,
             );
-        } else if let Some(method_id) = value_method_id {
+        } else if let Some(method_id) = facts.value_method_id {
             let arg_registers = self.compile_script_method_call_args(
-                MethodCallFacts {
-                    receiver_type: receiver_type.as_deref(),
-                    value_receiver_type: value_receiver_type.as_ref(),
-                    receiver_shape: receiver_shape.as_ref(),
-                },
+                facts.call_facts,
                 name,
                 args,
-                expr.span,
+                span,
                 arg_syntax,
             )?;
             self.emit_spanned(
@@ -347,10 +367,10 @@ impl Compiler<'_, '_> {
                     method_id,
                     args: arg_registers,
                 },
-                expr.span,
+                span,
             );
-        } else if receiver_type.is_some() || value_receiver_methods_known {
-            return Err(unresolved_static_method_error(name, expr.span));
+        } else if facts.has_static_receiver_type || facts.value_receiver_methods_known {
+            return Err(unresolved_static_method_error(name, span));
         } else {
             let args = self.compile_dynamic_method_call_args(args, arg_syntax)?;
             self.emit_spanned(
@@ -360,7 +380,7 @@ impl Compiler<'_, '_> {
                     method: name.to_owned(),
                     args,
                 },
-                expr.span,
+                span,
             );
         }
         Ok(dst)
@@ -369,7 +389,6 @@ impl Compiler<'_, '_> {
     fn compile_script_method_call_from_callee(
         &mut self,
         expr: &Expr,
-        callee: &Expr,
         args: &[Argument],
         callee_payload: Option<&CompilerExpressionPayload<'_>>,
         arg_syntax: CallArgumentSyntax<'_, '_>,
@@ -382,25 +401,40 @@ impl Compiler<'_, '_> {
             return None;
         }
         let name = payload.syntax_field_name()?;
-        let ExprKind::Field { base, .. } = &callee.kind else {
-            return None;
-        };
         let base_payload = payload.field_base_payload()?;
-        #[cfg(test)]
-        let base_facts = expression_facts(base);
-        #[cfg(not(test))]
-        let base_facts = ExpressionFacts::span_only(base.span);
-        if !payload_matches_expression_facts(&base_payload, base_facts) {
-            return None;
-        }
-        Some(self.compile_script_method_call(
+        Some(self.compile_script_method_call_from_payload(
             expr,
-            base,
+            &base_payload,
             &name,
             args,
-            Some(&base_payload),
             arg_syntax,
         ))
+    }
+
+    fn resolve_method_call_facts<'facts>(
+        &self,
+        receiver_type: &'facts Option<String>,
+        value_receiver_type: &'facts Option<RuntimeTypeFact>,
+        receiver_shape: &'facts Option<ValueShape>,
+        method: &str,
+    ) -> ResolvedMethodCallFacts<'facts> {
+        ResolvedMethodCallFacts {
+            call_facts: MethodCallFacts {
+                receiver_type: receiver_type.as_deref(),
+                value_receiver_type: value_receiver_type.as_ref(),
+                receiver_shape: receiver_shape.as_ref(),
+            },
+            method_id: receiver_type
+                .as_deref()
+                .and_then(|type_name| self.script_method_id_for_type(type_name, method)),
+            value_method_id: value_receiver_type
+                .as_ref()
+                .and_then(|type_name| self.value_method_id_for_type(type_name, method)),
+            has_static_receiver_type: receiver_type.is_some(),
+            value_receiver_methods_known: value_receiver_type
+                .as_ref()
+                .is_some_and(|receiver_type| self.registry_value_type_id(receiver_type).is_some()),
+        }
     }
 
     fn compile_script_path_method_call(
