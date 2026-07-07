@@ -1145,6 +1145,25 @@ impl super::Compiler<'_, '_> {
         self.record_shape_for_type_inner(type_name, &mut BTreeSet::new())
     }
 
+    pub(in crate::compiler) fn schema_record_field_value_type(
+        &self,
+        root_type: Option<&str>,
+        fields: &[String],
+    ) -> Option<RuntimeTypeFact> {
+        let mut current_type = root_type?.to_owned();
+        let (leaf, parents) = fields.split_last()?;
+        for field in parents {
+            current_type = self
+                .facts
+                .script_field_slots
+                .record_field_fact(&current_type, field)?
+                .type_name;
+        }
+        self.facts
+            .script_field_slots
+            .record_field_value_type(&current_type, leaf)
+    }
+
     fn record_shape_for_type_inner(
         &self,
         type_name: &str,

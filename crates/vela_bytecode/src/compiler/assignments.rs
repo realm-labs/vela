@@ -101,14 +101,6 @@ impl<'payload, 'ast> AssignmentValueSyntax<'payload, 'ast> {
             expression,
         }
     }
-
-    fn none() -> Self {
-        Self {
-            kind: None,
-            op: None,
-            expression: None,
-        }
-    }
 }
 
 #[derive(Clone, Copy)]
@@ -122,10 +114,6 @@ impl<'payload, 'ast> AssignmentTargetSyntax<'payload, 'ast> {
         expression: Option<&'payload CompilerExpressionPayload<'ast>>,
     ) -> Self {
         Self { expression }
-    }
-
-    fn none() -> Self {
-        Self { expression: None }
     }
 
     fn field_base_payload(&self) -> Option<CompilerExpressionPayload<'ast>> {
@@ -177,14 +165,6 @@ fn record_field_root_payload<'ast>(
 }
 
 impl Compiler<'_, '_> {
-    pub(super) fn compile_assignment(&mut self, expr: &Expr) -> CompileResult<Register> {
-        self.compile_assignment_with_payloads(
-            expr,
-            AssignmentTargetSyntax::none(),
-            AssignmentValueSyntax::none(),
-        )
-    }
-
     pub(in crate::compiler) fn compile_assignment_with_payloads(
         &mut self,
         expr: &Expr,
@@ -868,25 +848,6 @@ impl Compiler<'_, '_> {
             }
         }
         Ok(assigned)
-    }
-
-    pub(in crate::compiler) fn schema_record_field_value_type(
-        &self,
-        root_type: Option<&str>,
-        fields: &[String],
-    ) -> Option<RuntimeTypeFact> {
-        let mut current_type = root_type?.to_owned();
-        let (leaf, parents) = fields.split_last()?;
-        for field in parents {
-            current_type = self
-                .facts
-                .script_field_slots
-                .record_field_fact(&current_type, field)?
-                .type_name;
-        }
-        self.facts
-            .script_field_slots
-            .record_field_value_type(&current_type, leaf)
     }
 
     fn compile_host_assignment(

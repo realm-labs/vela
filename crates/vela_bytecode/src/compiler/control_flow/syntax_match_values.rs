@@ -5,7 +5,9 @@ use vela_syntax::ast::{
     SyntaxPatternKind,
 };
 
-use crate::compiler::body_payloads::{CompilerBodyPayload, CompilerExpressionPayload};
+use crate::compiler::body_payloads::CompilerBodyPayload;
+#[cfg(test)]
+use crate::compiler::body_payloads::CompilerExpressionPayload;
 use crate::compiler::patterns::PatternBindingFacts;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{Constant, Register, UnlinkedInstructionKind};
@@ -27,6 +29,7 @@ impl Compiler<'_, '_> {
         Ok(Some(dst))
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn compile_syntax_match_payload_value_to(
         &mut self,
         payload: &CompilerExpressionPayload<'_>,

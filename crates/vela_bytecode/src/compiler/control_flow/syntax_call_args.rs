@@ -26,6 +26,17 @@ use crate::{
 
 use super::syntax_statement_values::syntax_expression_span;
 
+struct SyntaxMethodArgument<'a> {
+    source: SourceId,
+    receiver_type: Option<&'a RuntimeTypeFact>,
+    receiver_shape: Option<&'a ValueShape>,
+    method: &'a str,
+    param_name: &'a str,
+    position: usize,
+    expression: &'a SyntaxExpression,
+    param: Option<&'a ParamHint>,
+}
+
 impl Compiler<'_, '_> {
     pub(in crate::compiler::control_flow) fn compile_syntax_call_arguments(
         &mut self,
@@ -143,16 +154,16 @@ impl Compiler<'_, '_> {
                     let Some(expression) = argument.expression() else {
                         return Ok(None);
                     };
-                    let register = self.compile_syntax_method_argument(
+                    let register = self.compile_syntax_method_argument(SyntaxMethodArgument {
                         source,
                         receiver_type,
                         receiver_shape,
                         method,
-                        "",
-                        index,
-                        &expression,
-                        None,
-                    )?;
+                        param_name: "",
+                        position: index,
+                        expression: &expression,
+                        param: None,
+                    })?;
                     Ok(register.map(CallArgument::Register))
                 })
                 .collect::<CompileResult<Option<Vec<_>>>>();
@@ -170,16 +181,16 @@ impl Compiler<'_, '_> {
                         return Ok(None);
                     };
                     let register = if let Some(param) = params.get(index) {
-                        self.compile_syntax_method_argument(
+                        self.compile_syntax_method_argument(SyntaxMethodArgument {
                             source,
                             receiver_type,
                             receiver_shape,
                             method,
-                            param.name.as_str(),
-                            index,
-                            &expression,
-                            Some(param),
-                        )?
+                            param_name: param.name.as_str(),
+                            position: index,
+                            expression: &expression,
+                            param: Some(param),
+                        })?
                     } else {
                         self.compile_syntax_expression(source, &expression)?
                     };
@@ -195,16 +206,16 @@ impl Compiler<'_, '_> {
         let mut registers = Vec::new();
         for (index, (slot, param)) in slots.into_iter().zip(params.iter()).enumerate() {
             if let Some(arg) = slot {
-                let Some(register) = self.compile_syntax_method_argument(
+                let Some(register) = self.compile_syntax_method_argument(SyntaxMethodArgument {
                     source,
                     receiver_type,
                     receiver_shape,
                     method,
-                    param.name.as_str(),
-                    index,
-                    &arg.value,
-                    Some(param),
-                )?
+                    param_name: param.name.as_str(),
+                    position: index,
+                    expression: &arg.value,
+                    param: Some(param),
+                })?
                 else {
                     return Ok(None);
                 };
@@ -218,15 +229,18 @@ impl Compiler<'_, '_> {
 
     fn compile_syntax_method_argument(
         &mut self,
-        source: SourceId,
-        receiver_type: Option<&RuntimeTypeFact>,
-        receiver_shape: Option<&ValueShape>,
-        method: &str,
-        param_name: &str,
-        position: usize,
-        expression: &SyntaxExpression,
-        param: Option<&ParamHint>,
+        argument: SyntaxMethodArgument<'_>,
     ) -> CompileResult<Option<Register>> {
+        let SyntaxMethodArgument {
+            source,
+            receiver_type,
+            receiver_shape,
+            method,
+            param_name,
+            position,
+            expression,
+            param,
+        } = argument;
         if let Some(expected) =
             typed_container_mutation_arg_contract(receiver_type, method, param_name, position)
         {
@@ -523,14 +537,14 @@ impl Compiler<'_, '_> {
         {
             return self.emit_constant(constant).map(Some);
         }
-        if expected_is_function {
-            if let Some(register) = self.compile_syntax_lambda_with_callback_shapes(
+        if expected_is_function
+            && let Some(register) = self.compile_syntax_lambda_with_callback_shapes(
                 source,
                 expression,
                 callback_shapes,
-            )? {
-                return Ok(Some(register));
-            }
+            )?
+        {
+            return Ok(Some(register));
         }
         let Some(register) = self.compile_syntax_expression(source, expression)? else {
             return Ok(None);

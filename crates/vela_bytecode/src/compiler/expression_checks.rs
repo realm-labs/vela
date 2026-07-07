@@ -294,6 +294,7 @@ fn binary_op_source_name(op: BinaryOp) -> &'static str {
     }
 }
 
+#[cfg(test)]
 pub(in crate::compiler) fn payload_syntax_overlaps_expr(
     payload: &CompilerExpressionPayload<'_>,
     expr: &Expr,
@@ -323,6 +324,7 @@ pub(in crate::compiler) fn reject_missing_expression_payload(
     Ok(())
 }
 
+#[cfg(test)]
 fn spans_overlap(left: Span, right: Span) -> bool {
     left.start < right.end && right.start < left.end
 }

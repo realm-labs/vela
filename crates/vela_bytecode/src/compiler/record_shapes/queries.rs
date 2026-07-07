@@ -62,6 +62,7 @@ impl Compiler<'_, '_> {
             })
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn record_shape_for_index_collection(
         &self,
         payload: Option<&CompilerExpressionPayload<'_>>,

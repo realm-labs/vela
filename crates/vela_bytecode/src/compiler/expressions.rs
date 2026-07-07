@@ -506,7 +506,9 @@ impl Compiler<'_, '_> {
             ExprKind::If(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST if expression payload",
             ))),
-            ExprKind::Assign { .. } => self.compile_assignment(expr),
+            ExprKind::Assign { .. } => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST assignment expression payload",
+            ))),
             ExprKind::SelfValue => self.local_register_at_span(expr.span, "self"),
             ExprKind::Error => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "expression",
