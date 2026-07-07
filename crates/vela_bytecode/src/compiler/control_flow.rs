@@ -290,9 +290,8 @@ impl Compiler<'_, '_> {
             .is_some_and(|(hint, value)| hint == value);
         let script_fact = merge_type_hint_and_value_fact(hinted_script_fact, value_script_fact);
         let hinted_value_type = hir_type_hint.and_then(type_hint_value_type);
-        let value_type = value.and_then(|value| {
-            self.value_type_for_expr_with_payload(value, syntax_payloads.expression)
-        });
+        let value_type =
+            value.and_then(|_| self.value_type_for_expression_payload(syntax_payloads.expression));
         let value_type = hinted_value_type.clone().or(value_type);
         let value_shape =
             value.and_then(|_| self.value_shape_for_expression_payload(syntax_payloads.expression));

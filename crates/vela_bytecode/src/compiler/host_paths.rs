@@ -997,7 +997,7 @@ impl Compiler<'_, '_> {
             ));
         }
         if let Some(expected) = capability.key_type.as_deref()
-            && let Some(actual) = self.value_type_for_expr_with_payload(index, index_payload)
+            && let Some(actual) = self.value_type_for_expression_payload(index_payload)
             && actual.source_type_name() != expected
             && actual.std_type_name() != expected
         {

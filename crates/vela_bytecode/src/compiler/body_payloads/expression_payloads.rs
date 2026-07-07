@@ -4,10 +4,14 @@ use vela_syntax::ast::AssignOp;
 #[cfg(test)]
 use vela_syntax::ast::BinaryOp;
 #[cfg(test)]
+use vela_syntax::ast::SyntaxExpressionKind;
+#[cfg(test)]
 use vela_syntax::ast::SyntaxLambdaBody;
 #[cfg(test)]
+use vela_syntax::ast::SyntaxMapEntry;
+#[cfg(test)]
 use vela_syntax::ast::SyntaxRecordExprField;
-use vela_syntax::ast::{AstNode, Literal, SyntaxExpression, SyntaxExpressionKind, SyntaxMapEntry};
+use vela_syntax::ast::{AstNode, Literal, SyntaxExpression};
 #[cfg(test)]
 use vela_syntax::ast::{
     SyntaxMatchArm, SyntaxPattern, SyntaxPatternKind, SyntaxRecordPatternField,
@@ -19,10 +23,9 @@ use super::CompilerArgumentPayload;
 use super::CompilerBodyPayload;
 #[cfg(test)]
 use super::CompilerRecordFieldPayload;
-use super::{
-    CompilerArrayElementPayload, CompilerExpressionPayload, CompilerInterpolationPayload,
-    CompilerMapEntryPayload,
-};
+#[cfg(test)]
+use super::{CompilerArrayElementPayload, CompilerMapEntryPayload};
+use super::{CompilerExpressionPayload, CompilerInterpolationPayload};
 #[cfg(test)]
 use super::{CompilerIfPayload, if_payload_for_syntax};
 #[cfg(test)]
@@ -168,6 +171,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         self.syntax.as_ref()?.as_unary()?.operator()
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn try_operand_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
@@ -322,6 +326,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         Some(self.child_payload(syntax))
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn array_element_payloads(
         &self,
     ) -> Option<Vec<CompilerArrayElementPayload>> {
@@ -354,6 +359,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn map_entry_payloads(&self) -> Option<Vec<CompilerMapEntryPayload>> {
         if !self.matches_syntax_kind(SyntaxExpressionKind::Map) {
             return None;
@@ -457,6 +463,7 @@ fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Sp
     Span::new(source, range.start().into(), range.end().into())
 }
 
+#[cfg(test)]
 impl CompilerArrayElementPayload {
     #[cfg(test)]
     pub(in crate::compiler) fn syntax_expression(&self) -> Option<&SyntaxExpression> {
@@ -485,6 +492,7 @@ impl CompilerInterpolationPayload {
     }
 }
 
+#[cfg(test)]
 impl CompilerMapEntryPayload {
     #[cfg(test)]
     pub(in crate::compiler) fn syntax_key_name(&self) -> Option<String> {

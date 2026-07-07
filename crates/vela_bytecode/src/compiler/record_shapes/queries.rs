@@ -35,7 +35,6 @@ impl Compiler<'_, '_> {
             .cloned()
     }
 
-    #[cfg(not(test))]
     pub(in crate::compiler) fn record_field_value_type_for_expression_payload(
         &self,
         payload: Option<&CompilerExpressionPayload<'_>>,

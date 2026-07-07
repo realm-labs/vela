@@ -712,8 +712,8 @@ impl Compiler<'_, '_> {
         let rhs = self.compile_expr_with_payload(right, right_payload)?;
         let dst = self.alloc_register()?;
         let instruction = if expressions_are_i64(
-            self.value_type_for_expr_with_payload(left, left_payload),
-            self.value_type_for_expr_with_payload(right, right_payload),
+            self.value_type_for_expression_payload(left_payload),
+            self.value_type_for_expression_payload(right_payload),
         ) {
             i64_binary_instruction(op, dst, lhs, rhs)
         } else {
@@ -766,7 +766,7 @@ impl Compiler<'_, '_> {
         literal: UnsuffixedNumericLiteral,
         side: BinaryLiteralSide,
     ) -> CompileResult<Option<Register>> {
-        let value_type = self.value_type_for_expr_with_payload(value_expr, value_payload);
+        let value_type = self.value_type_for_expression_payload(value_payload);
         if side == BinaryLiteralSide::Right
             && value_type == Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
             && let Some(imm) = self.i64_immediate_literal(&literal, span)?

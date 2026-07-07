@@ -206,15 +206,13 @@ impl Compiler<'_, '_> {
         validate_assignment_value_payload(value.span, value_syntax.expression)?;
         if let Some(local_target) = self.local_assignment_target(target, target_syntax.expression) {
             let target_value_type =
-                self.value_type_for_expr_with_payload(target, target_syntax.expression);
+                self.value_type_for_expression_payload(target_syntax.expression);
             let assigned_value_type = match op {
-                AssignOp::Set => {
-                    self.value_type_for_expr_with_payload(value, value_syntax.expression)
-                }
+                AssignOp::Set => self.value_type_for_expression_payload(value_syntax.expression),
                 AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Rem
                     if expressions_are_i64(
                         target_value_type.clone(),
-                        self.value_type_for_expr_with_payload(value, value_syntax.expression),
+                        self.value_type_for_expression_payload(value_syntax.expression),
                     ) =>
                 {
                     Some(RuntimeTypeFact::Primitive(vela_common::PrimitiveTag::I64))

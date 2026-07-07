@@ -160,11 +160,11 @@ impl Compiler<'_, '_> {
             )));
         }
         let payload = arg_syntax.value_expression_payload_for(arg);
-        let outcome = self.expected_type_for_expr_with_payload(
-            value,
+        let outcome = self.expected_type_for_expression_payload(
+            payload.as_ref(),
             expected.clone(),
             context.clone(),
-            payload.as_ref(),
+            value.span,
         )?;
         let requires_guard = matches!(outcome, ExpectedTypeOutcome::RequiresRuntimeGuard(_));
         self.compile_expr_with_expected_type_and_payload(value, expected, context, payload.as_ref())

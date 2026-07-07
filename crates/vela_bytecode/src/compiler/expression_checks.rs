@@ -24,7 +24,7 @@ impl Compiler<'_, '_> {
             ("left", left, left_payload),
             ("right", right, right_payload),
         ] {
-            if let Some(type_name) = self.static_non_identity_operand_type(expr, payload) {
+            if let Some(type_name) = self.static_non_identity_operand_type(payload) {
                 return Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
                     vec![
                         Diagnostic::error(format!(
@@ -186,10 +186,9 @@ impl Compiler<'_, '_> {
 
     fn static_non_identity_operand_type(
         &self,
-        expr: &Expr,
         payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> Option<String> {
-        if let Some(fact) = self.value_type_for_expr_with_payload(expr, payload) {
+        if let Some(fact) = self.value_type_for_expression_payload(payload) {
             return (!runtime_type_is_identity_operand(&fact)).then(|| fact.source_type_display());
         }
         if let Some(shape) = self.value_shape_for_expression_payload(payload) {

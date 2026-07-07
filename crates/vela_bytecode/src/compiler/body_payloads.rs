@@ -4,10 +4,12 @@ use vela_common::{SourceId, Span};
 #[cfg(test)]
 use vela_syntax::ast::SyntaxLambdaBody;
 #[cfg(test)]
+use vela_syntax::ast::SyntaxMapEntry;
+#[cfg(test)]
 use vela_syntax::ast::SyntaxRecordExprField;
 use vela_syntax::ast::{
     AstNode, SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxForStmt,
-    SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchExpr, SyntaxStatement, SyntaxStatementKind,
+    SyntaxIfExpr, SyntaxMatchExpr, SyntaxStatement, SyntaxStatementKind,
 };
 #[cfg(test)]
 use vela_syntax::ast::{Expr, ExprKind, InterpolatedStringPart, Stmt, StmtKind};
@@ -71,6 +73,7 @@ pub(in crate::compiler) struct CompilerArgumentPayload {
     syntax: Option<SyntaxArgument>,
 }
 
+#[cfg(test)]
 pub(in crate::compiler) struct CompilerArrayElementPayload {
     source: Option<SourceId>,
     syntax: Option<SyntaxExpression>,
@@ -88,6 +91,7 @@ pub(in crate::compiler) struct CompilerExpressionPayload<'ast> {
     _ast: PhantomData<&'ast ()>,
 }
 
+#[cfg(test)]
 pub(in crate::compiler) struct CompilerMapEntryPayload {
     source: Option<SourceId>,
     syntax: Option<SyntaxMapEntry>,

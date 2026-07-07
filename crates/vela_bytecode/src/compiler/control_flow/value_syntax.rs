@@ -64,11 +64,11 @@ impl Compiler<'_, '_> {
         context: TypeContractContext,
         syntax_payloads: ValueSyntaxPayloads<'_, '_>,
     ) -> CompileResult<()> {
-        self.expected_type_for_expr_with_payload(
-            value,
+        self.expected_type_for_expression_payload(
+            syntax_payloads.expression,
             expected,
             context,
-            syntax_payloads.expression,
+            value.span,
         )
         .map(|_| ())
     }
