@@ -11,10 +11,11 @@ use super::expression_checks::{
     UnsuffixedNumericLiteral, expressions_are_i64, reject_missing_binary_operand_payload,
     unsuffixed_numeric_literal_with_payload,
 };
-#[cfg(not(test))]
-use super::expression_facts::ExpressionFacts;
 #[cfg(test)]
 use super::expression_facts::expression_facts;
+#[cfg(not(test))]
+use super::expression_facts::payload_overlaps_span;
+#[cfg(test)]
 use super::expression_facts::payload_stored_kind_matches_expression_facts;
 use super::host_paths::HostPath;
 use super::operators::{
@@ -39,10 +40,14 @@ impl Compiler<'_, '_> {
             && let Some(kind) = payload.stored_syntax_kind()
         {
             #[cfg(test)]
-            let expr_facts = expression_facts(expr);
+            let payload_matches_expr = payload_stored_kind_matches_expression_facts(
+                payload,
+                expression_facts(expr),
+                false,
+            );
             #[cfg(not(test))]
-            let expr_facts = ExpressionFacts::span_only(expr.span);
-            if payload_stored_kind_matches_expression_facts(payload, expr_facts, false) {
+            let payload_matches_expr = payload_overlaps_span(payload, expr.span);
+            if payload_matches_expr {
                 return self.compile_expr_with_payload_kind(payload, kind);
             }
         }

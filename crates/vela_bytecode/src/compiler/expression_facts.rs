@@ -3,10 +3,12 @@ use vela_common::Span;
 use vela_syntax::ast::Expr;
 #[cfg(test)]
 use vela_syntax::ast::ExprKind;
+#[cfg(test)]
 use vela_syntax::ast::SyntaxExpressionKind;
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 
+#[cfg(test)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) struct ExpressionFacts {
     span: Span,
@@ -15,18 +17,8 @@ pub(super) struct ExpressionFacts {
     kind_is_wildcard: bool,
 }
 
+#[cfg(test)]
 impl ExpressionFacts {
-    #[cfg(not(test))]
-    pub(super) fn span_only(span: Span) -> Self {
-        Self {
-            span,
-            kind: None,
-            path_is_self: None,
-            kind_is_wildcard: true,
-        }
-    }
-
-    #[cfg(test)]
     pub(super) fn new(
         span: Span,
         kind: Option<SyntaxExpressionKind>,
@@ -40,7 +32,6 @@ impl ExpressionFacts {
         }
     }
 
-    #[cfg(test)]
     pub(super) fn with_kind_filter(self, keep: impl FnOnce(SyntaxExpressionKind) -> bool) -> Self {
         Self {
             kind: self.kind.filter(|kind| keep(*kind)),
@@ -63,6 +54,12 @@ impl ExpressionFacts {
     fn kind_is_wildcard(self) -> bool {
         self.kind_is_wildcard
     }
+}
+
+pub(super) fn payload_overlaps_span(payload: &CompilerExpressionPayload<'_>, span: Span) -> bool {
+    payload
+        .syntax_span()
+        .is_some_and(|payload_span| payload_span.start < span.end && span.start < payload_span.end)
 }
 
 #[cfg(test)]
@@ -106,19 +103,19 @@ fn expression_path_is_self(expr: &Expr) -> Option<bool> {
     }
 }
 
+#[cfg(test)]
 pub(super) fn payload_matches_expression_facts(
     payload: &CompilerExpressionPayload<'_>,
     facts: ExpressionFacts,
 ) -> bool {
-    payload.syntax_span().is_some_and(|payload_span| {
-        payload_span.start < facts.span().end && facts.span().start < payload_span.end
-    }) && payload_kind_matches_expression_facts(
-        payload.stored_syntax_kind(),
-        facts.kind(),
-        facts.path_is_self(),
-        facts.kind_is_wildcard(),
-        payload.syntax_is_self(),
-    )
+    payload_overlaps_span(payload, facts.span())
+        && payload_kind_matches_expression_facts(
+            payload.stored_syntax_kind(),
+            facts.kind(),
+            facts.path_is_self(),
+            facts.kind_is_wildcard(),
+            payload.syntax_is_self(),
+        )
 }
 
 #[cfg(test)]
@@ -141,11 +138,11 @@ pub(super) fn payload_overlaps_expression_facts(
     facts: ExpressionFacts,
     missing_kind_matches: bool,
 ) -> bool {
-    payload.syntax_span().is_some_and(|payload_span| {
-        payload_span.start < facts.span().end && facts.span().start < payload_span.end
-    }) && payload_stored_kind_matches_expression_facts(payload, facts, missing_kind_matches)
+    payload_overlaps_span(payload, facts.span())
+        && payload_stored_kind_matches_expression_facts(payload, facts, missing_kind_matches)
 }
 
+#[cfg(test)]
 pub(super) fn payload_stored_kind_matches_expression_facts(
     payload: &CompilerExpressionPayload<'_>,
     facts: ExpressionFacts,
@@ -163,6 +160,7 @@ pub(super) fn payload_stored_kind_matches_expression_facts(
     }
 }
 
+#[cfg(test)]
 fn payload_kind_matches_expression_facts(
     payload_kind: Option<SyntaxExpressionKind>,
     expr_kind: Option<SyntaxExpressionKind>,

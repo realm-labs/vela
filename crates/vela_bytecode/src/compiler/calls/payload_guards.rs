@@ -2,6 +2,9 @@ use vela_common::Span;
 use vela_syntax::ast::SyntaxExpressionKind;
 
 use crate::compiler::body_payloads::{CompilerArgumentPayload, CompilerExpressionPayload};
+#[cfg(not(test))]
+use crate::compiler::expression_facts::payload_overlaps_span;
+#[cfg(test)]
 use crate::compiler::expression_facts::{ExpressionFacts, payload_matches_expression_facts};
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult};
 
@@ -23,6 +26,7 @@ pub(super) fn callback_lambda_payload_is_authoritative(
     }
 }
 
+#[cfg(test)]
 pub(super) fn reject_mismatched_call_callee_payload(
     callee: ExpressionFacts,
     callee_payload: Option<&CompilerExpressionPayload<'_>>,
@@ -31,6 +35,23 @@ pub(super) fn reject_mismatched_call_callee_payload(
         return Ok(());
     };
     if payload_matches_expression_facts(payload, callee) {
+        Ok(())
+    } else {
+        Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "mismatched CST call callee payload",
+        )))
+    }
+}
+
+#[cfg(not(test))]
+pub(super) fn reject_mismatched_call_callee_payload(
+    callee_span: Span,
+    callee_payload: Option<&CompilerExpressionPayload<'_>>,
+) -> CompileResult<()> {
+    let Some(payload) = callee_payload else {
+        return Ok(());
+    };
+    if payload_overlaps_span(payload, callee_span) {
         Ok(())
     } else {
         Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

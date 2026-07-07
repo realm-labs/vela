@@ -8,8 +8,6 @@ use crate::{CallArgument, DynamicCallArgument, UnlinkedInstructionKind};
 
 use super::body_payloads::{CompilerArgumentPayload, CompilerExpressionPayload};
 use super::call_args::{CallArgumentSyntax, resolve_script_call_arguments};
-#[cfg(not(test))]
-use super::expression_facts::ExpressionFacts;
 #[cfg(test)]
 use super::expression_facts::expression_facts;
 use super::methods::host_method_call;
@@ -78,7 +76,7 @@ impl Compiler<'_, '_> {
         #[cfg(test)]
         let callee_facts = expression_facts(callee);
         #[cfg(not(test))]
-        let callee_facts = ExpressionFacts::span_only(callee.span);
+        let callee_facts = callee.span;
         reject_mismatched_call_callee_payload(callee_facts, callee_payload)?;
         reject_mismatched_call_argument_payloads(callee_payload, args.len(), arg_payloads)?;
         let callee_path = callee_payload.and_then(CompilerExpressionPayload::syntax_path_segments);
