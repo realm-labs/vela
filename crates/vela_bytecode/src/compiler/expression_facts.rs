@@ -3,7 +3,55 @@ use vela_syntax::ast::{Expr, ExprKind, SyntaxExpressionKind};
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 
-pub(super) fn expression_syntax_kind(expr: &Expr) -> Option<SyntaxExpressionKind> {
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) struct ExpressionFacts {
+    span: Span,
+    kind: Option<SyntaxExpressionKind>,
+    path_is_self: Option<bool>,
+}
+
+impl ExpressionFacts {
+    pub(super) fn new(
+        span: Span,
+        kind: Option<SyntaxExpressionKind>,
+        path_is_self: Option<bool>,
+    ) -> Self {
+        Self {
+            span,
+            kind,
+            path_is_self,
+        }
+    }
+
+    pub(super) fn with_kind_filter(self, keep: impl FnOnce(SyntaxExpressionKind) -> bool) -> Self {
+        Self {
+            kind: self.kind.filter(|kind| keep(*kind)),
+            ..self
+        }
+    }
+
+    pub(super) fn span(self) -> Span {
+        self.span
+    }
+
+    pub(super) fn kind(self) -> Option<SyntaxExpressionKind> {
+        self.kind
+    }
+
+    pub(super) fn path_is_self(self) -> Option<bool> {
+        self.path_is_self
+    }
+}
+
+pub(super) fn expression_facts(expr: &Expr) -> ExpressionFacts {
+    ExpressionFacts::new(
+        expr.span,
+        expression_syntax_kind(expr),
+        expression_path_is_self(expr),
+    )
+}
+
+fn expression_syntax_kind(expr: &Expr) -> Option<SyntaxExpressionKind> {
     Some(match expr.kind {
         ExprKind::Path(_) | ExprKind::SelfValue => SyntaxExpressionKind::Path,
         ExprKind::Field { .. } => SyntaxExpressionKind::Field,
@@ -25,7 +73,7 @@ pub(super) fn expression_syntax_kind(expr: &Expr) -> Option<SyntaxExpressionKind
     })
 }
 
-pub(super) fn expression_path_is_self(expr: &Expr) -> Option<bool> {
+fn expression_path_is_self(expr: &Expr) -> Option<bool> {
     match expr.kind {
         ExprKind::Path(_) => Some(false),
         ExprKind::SelfValue => Some(true),
@@ -35,64 +83,51 @@ pub(super) fn expression_path_is_self(expr: &Expr) -> Option<bool> {
 
 pub(super) fn payload_matches_expression_facts(
     payload: &CompilerExpressionPayload<'_>,
-    span: Span,
-    kind: Option<SyntaxExpressionKind>,
-    path_is_self: Option<bool>,
+    facts: ExpressionFacts,
 ) -> bool {
-    payload
-        .syntax_span()
-        .is_some_and(|payload_span| payload_span.start < span.end && span.start < payload_span.end)
-        && payload_kind_matches_expression_facts(
-            payload.stored_syntax_kind(),
-            kind,
-            path_is_self,
-            payload.syntax_is_self(),
-        )
+    payload.syntax_span().is_some_and(|payload_span| {
+        payload_span.start < facts.span().end && facts.span().start < payload_span.end
+    }) && payload_kind_matches_expression_facts(
+        payload.stored_syntax_kind(),
+        facts.kind(),
+        facts.path_is_self(),
+        payload.syntax_is_self(),
+    )
 }
 
 #[cfg(test)]
 pub(super) fn payload_syntax_kind_matches_expression_facts(
     payload: &CompilerExpressionPayload<'_>,
-    kind: Option<SyntaxExpressionKind>,
-    path_is_self: Option<bool>,
+    facts: ExpressionFacts,
 ) -> bool {
     payload_kind_matches_known_expression_facts(
         payload.syntax_kind(),
-        kind,
-        path_is_self,
+        facts.kind(),
+        facts.path_is_self(),
         payload.syntax_is_self(),
     )
 }
 
 pub(super) fn payload_overlaps_expression_facts(
     payload: &CompilerExpressionPayload<'_>,
-    span: Span,
-    kind: Option<SyntaxExpressionKind>,
-    path_is_self: Option<bool>,
+    facts: ExpressionFacts,
     missing_kind_matches: bool,
 ) -> bool {
-    payload
-        .syntax_span()
-        .is_some_and(|payload_span| payload_span.start < span.end && span.start < payload_span.end)
-        && payload_stored_kind_matches_expression_facts(
-            payload,
-            kind,
-            path_is_self,
-            missing_kind_matches,
-        )
+    payload.syntax_span().is_some_and(|payload_span| {
+        payload_span.start < facts.span().end && facts.span().start < payload_span.end
+    }) && payload_stored_kind_matches_expression_facts(payload, facts, missing_kind_matches)
 }
 
 pub(super) fn payload_stored_kind_matches_expression_facts(
     payload: &CompilerExpressionPayload<'_>,
-    kind: Option<SyntaxExpressionKind>,
-    path_is_self: Option<bool>,
+    facts: ExpressionFacts,
     missing_kind_matches: bool,
 ) -> bool {
     match payload.stored_syntax_kind() {
         Some(payload_kind) => payload_kind_matches_expression_facts(
             Some(payload_kind),
-            kind,
-            path_is_self,
+            facts.kind(),
+            facts.path_is_self(),
             payload.syntax_is_self(),
         ),
         None => missing_kind_matches,

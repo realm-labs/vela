@@ -7,9 +7,7 @@ use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::{Expr, SyntaxExpression, SyntaxExpressionKind};
 
 use super::body_payloads::CompilerExpressionPayload;
-use super::expression_facts::{
-    expression_path_is_self, expression_syntax_kind, payload_overlaps_expression_facts,
-};
+use super::expression_facts::{expression_facts, payload_overlaps_expression_facts};
 use super::patterns::enum_variant_path;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -143,8 +141,7 @@ fn payload_matches_script_fact_expression(
 ) -> bool {
     payload_overlaps_expression_facts(
         payload,
-        expr.span,
-        expression_syntax_kind(expr).filter(|kind| {
+        expression_facts(expr).with_kind_filter(|kind| {
             matches!(
                 kind,
                 SyntaxExpressionKind::Record
@@ -152,7 +149,6 @@ fn payload_matches_script_fact_expression(
                     | SyntaxExpressionKind::Path
             )
         }),
-        expression_path_is_self(expr),
         true,
     )
 }

@@ -6,7 +6,7 @@ use crate::compiler::{CompileResult, Compiler};
 use vela_syntax::ast::{Expr, SyntaxExpressionKind};
 
 use crate::compiler::expression_facts::{
-    expression_path_is_self, expression_syntax_kind, payload_stored_kind_matches_expression_facts,
+    expression_facts, payload_stored_kind_matches_expression_facts,
 };
 
 #[derive(Clone, Copy)]
@@ -53,12 +53,7 @@ impl<'payload, 'ast> ValueSyntaxPayloads<'payload, 'ast> {
 }
 
 fn value_payload_matches_expr(payload: &CompilerExpressionPayload<'_>, value: &Expr) -> bool {
-    payload_stored_kind_matches_expression_facts(
-        payload,
-        expression_syntax_kind(value),
-        expression_path_is_self(value),
-        false,
-    )
+    payload_stored_kind_matches_expression_facts(payload, expression_facts(value), false)
 }
 
 impl Compiler<'_, '_> {

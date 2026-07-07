@@ -4,7 +4,7 @@ use crate::compiler::body_payloads::CompilerExpressionPayload;
 use crate::compiler::const_eval::compile_literal_constant_for_type;
 use crate::compiler::control_flow::classification::condition_operator_for_payload;
 use crate::compiler::expression_facts::{
-    expression_path_is_self, expression_syntax_kind, payload_syntax_kind_matches_expression_facts,
+    expression_facts, payload_syntax_kind_matches_expression_facts,
 };
 use crate::compiler::operators::i64_compare_op;
 use crate::compiler::value_types::RuntimeTypeFact;
@@ -96,9 +96,5 @@ fn condition_payload_matches_expr(
     payload: &CompilerExpressionPayload<'_>,
     condition: &Expr,
 ) -> bool {
-    payload_syntax_kind_matches_expression_facts(
-        payload,
-        expression_syntax_kind(condition),
-        expression_path_is_self(condition),
-    )
+    payload_syntax_kind_matches_expression_facts(payload, expression_facts(condition))
 }

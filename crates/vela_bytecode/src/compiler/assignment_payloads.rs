@@ -1,19 +1,19 @@
 use vela_common::Span;
-use vela_syntax::ast::SyntaxExpressionKind;
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 use crate::compiler::error::{CompileError, CompileErrorKind, CompileResult};
+use crate::compiler::expression_facts::ExpressionFacts;
 
 pub(in crate::compiler) fn validate_assignment_target_payload(
-    target_span: Span,
-    target_kind: Option<SyntaxExpressionKind>,
-    target_path_is_self: Option<bool>,
+    target: ExpressionFacts,
     payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> CompileResult<()> {
     if payload.is_some_and(|payload| {
-        !payload_span_overlaps(payload, target_span)
-            || payload.stored_syntax_kind() != target_kind
-            || target_path_is_self.is_some_and(|is_self| payload.syntax_is_self() != is_self)
+        !payload_span_overlaps(payload, target.span())
+            || payload.stored_syntax_kind() != target.kind()
+            || target
+                .path_is_self()
+                .is_some_and(|is_self| payload.syntax_is_self() != is_self)
     }) {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "mismatched CST assignment target",

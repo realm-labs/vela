@@ -8,9 +8,7 @@ use crate::{CallArgument, DynamicCallArgument, UnlinkedInstructionKind};
 
 use super::body_payloads::{CompilerArgumentPayload, CompilerExpressionPayload};
 use super::call_args::{CallArgumentSyntax, resolve_script_call_arguments};
-use super::expression_facts::{
-    expression_path_is_self, expression_syntax_kind, payload_matches_expression_facts,
-};
+use super::expression_facts::{expression_facts, payload_matches_expression_facts};
 use super::methods::host_method_call;
 use super::record_shapes::{ValueShape, callback_param_shapes};
 use super::value_types::{RuntimeTypeFact, TypeContractContext, type_hint_value_type};
@@ -65,12 +63,7 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<crate::Register> {
         let arg_syntax = CallArgumentSyntax::new(args, arg_payloads);
         reject_missing_call_callee_payload(callee_payload)?;
-        reject_mismatched_call_callee_payload(
-            callee.span,
-            expression_syntax_kind(callee),
-            expression_path_is_self(callee),
-            callee_payload,
-        )?;
+        reject_mismatched_call_callee_payload(expression_facts(callee), callee_payload)?;
         reject_mismatched_call_argument_payloads(callee_payload, args.len(), arg_payloads)?;
         let callee_path = callee_payload.and_then(CompilerExpressionPayload::syntax_path_segments);
         let callee_path = callee_path.as_deref();
@@ -376,12 +369,7 @@ impl Compiler<'_, '_> {
             return None;
         };
         let base_payload = payload.field_base_payload()?;
-        if !payload_matches_expression_facts(
-            &base_payload,
-            base.span,
-            expression_syntax_kind(base),
-            expression_path_is_self(base),
-        ) {
+        if !payload_matches_expression_facts(&base_payload, expression_facts(base)) {
             return None;
         }
         Some(self.compile_script_method_call(
@@ -670,7 +658,7 @@ impl Compiler<'_, '_> {
         if !callback_lambda_payload_is_authoritative(
             arg_payload.as_ref(),
             arg.value.span,
-            expression_syntax_kind(&arg.value),
+            expression_facts(&arg.value).kind(),
         ) {
             return self.compile_call_argument_value(arg, arg_syntax);
         }

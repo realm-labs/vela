@@ -9,7 +9,7 @@ use vela_syntax::ast::{
 use crate::compiler::Compiler;
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 use crate::compiler::expression_facts::{
-    expression_path_is_self, expression_syntax_kind, payload_stored_kind_matches_expression_facts,
+    expression_facts, payload_stored_kind_matches_expression_facts,
 };
 use crate::compiler::value_types::{RuntimeTypeFact, StandardRuntimeType};
 
@@ -35,11 +35,11 @@ pub(super) fn payload_matches_shape_expression(
     if payload.source().is_none() {
         return false;
     }
-    let kind = expression_syntax_kind(expr);
-    if payload.stored_syntax_kind().is_some() && kind.is_none() {
+    let facts = expression_facts(expr);
+    if payload.stored_syntax_kind().is_some() && facts.kind().is_none() {
         return false;
     }
-    payload_stored_kind_matches_expression_facts(payload, kind, expression_path_is_self(expr), true)
+    payload_stored_kind_matches_expression_facts(payload, facts, true)
 }
 
 pub(super) fn payload_shape_must_come_from_syntax(

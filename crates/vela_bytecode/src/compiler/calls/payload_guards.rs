@@ -2,7 +2,7 @@ use vela_common::Span;
 use vela_syntax::ast::SyntaxExpressionKind;
 
 use crate::compiler::body_payloads::{CompilerArgumentPayload, CompilerExpressionPayload};
-use crate::compiler::expression_facts::payload_matches_expression_facts;
+use crate::compiler::expression_facts::{ExpressionFacts, payload_matches_expression_facts};
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult};
 
 pub(super) fn callback_lambda_payload_is_authoritative(
@@ -24,15 +24,13 @@ pub(super) fn callback_lambda_payload_is_authoritative(
 }
 
 pub(super) fn reject_mismatched_call_callee_payload(
-    callee_span: Span,
-    callee_kind: Option<SyntaxExpressionKind>,
-    callee_path_is_self: Option<bool>,
+    callee: ExpressionFacts,
     callee_payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> CompileResult<()> {
     let Some(payload) = callee_payload else {
         return Ok(());
     };
-    if payload_matches_expression_facts(payload, callee_span, callee_kind, callee_path_is_self) {
+    if payload_matches_expression_facts(payload, callee) {
         Ok(())
     } else {
         Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

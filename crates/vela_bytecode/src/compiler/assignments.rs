@@ -13,7 +13,7 @@ use super::assignment_payloads::{
 };
 use super::body_payloads::CompilerExpressionPayload;
 use super::expression_checks::payload_syntax_overlaps_expr;
-use super::expression_facts::{expression_path_is_self, expression_syntax_kind};
+use super::expression_facts::expression_facts;
 use super::expressions::literal_string_with_payload;
 use super::host_paths::{HostIndexAccessKind, HostPath};
 use super::operators::i64_compound_assignment_instruction;
@@ -197,12 +197,7 @@ impl Compiler<'_, '_> {
             )));
         };
         let op = value_syntax.op.unwrap_or(*op);
-        validate_assignment_target_payload(
-            target.span,
-            expression_syntax_kind(target),
-            expression_path_is_self(target),
-            target_syntax.expression,
-        )?;
+        validate_assignment_target_payload(expression_facts(target), target_syntax.expression)?;
         if value_syntax.expression.is_some() && value_syntax.kind.is_none() {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST assignment value",

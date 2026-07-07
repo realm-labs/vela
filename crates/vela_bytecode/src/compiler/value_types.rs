@@ -11,9 +11,7 @@ use vela_syntax::ast::{
 };
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
-use crate::compiler::expression_facts::{
-    expression_path_is_self, expression_syntax_kind, payload_overlaps_expression_facts,
-};
+use crate::compiler::expression_facts::{expression_facts, payload_overlaps_expression_facts};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) enum RuntimeTypeFact {
@@ -453,8 +451,7 @@ fn payload_matches_static_type_expression(
 ) -> bool {
     payload_overlaps_expression_facts(
         payload,
-        expr.span,
-        expression_syntax_kind(expr).filter(|kind| {
+        expression_facts(expr).with_kind_filter(|kind| {
             matches!(
                 kind,
                 SyntaxExpressionKind::Literal
@@ -469,7 +466,6 @@ fn payload_matches_static_type_expression(
                     | SyntaxExpressionKind::Match
             )
         }),
-        expression_path_is_self(expr),
         true,
     )
 }
