@@ -136,21 +136,10 @@ impl Compiler<'_, '_> {
         source: SourceId,
         expression: &SyntaxExpression,
     ) -> CompileResult<Option<Register>> {
-        let Some(index) = expression.as_index() else {
+        if expression.as_index().is_none() {
             return Ok(None);
-        };
-        let Some(receiver_expression) = index.receiver() else {
-            return Ok(None);
-        };
-        let Some(index_expression) = index.index() else {
-            return Ok(None);
-        };
-        self.reject_invalid_syntax_host_index_read(
-            source,
-            expression,
-            &receiver_expression,
-            &index_expression,
-        )?;
+        }
+        self.reject_invalid_syntax_host_index_read(source, expression)?;
         let Some(path) = self.syntax_root_host_index_path(source, expression) else {
             return Ok(None);
         };
@@ -347,10 +336,8 @@ impl Compiler<'_, '_> {
         let Some(index_expression) = index.index() else {
             return Ok(());
         };
-        let Some(receiver_type) = self
-            .script_fact_for_syntax_expression(source, &receiver_expression)
-            .map(|fact| fact.type_name)
-            .filter(|type_name| self.host_runtime_type_id(type_name).is_some())
+        let Some(receiver_type) =
+            self.syntax_host_index_receiver_type(source, &receiver_expression)
         else {
             return Ok(());
         };
@@ -410,5 +397,19 @@ impl Compiler<'_, '_> {
             )));
         }
         Ok(())
+    }
+
+    fn syntax_host_index_receiver_type(
+        &self,
+        source: SourceId,
+        receiver_expression: &SyntaxExpression,
+    ) -> Option<String> {
+        self.script_fact_for_syntax_expression(source, receiver_expression)
+            .map(|fact| fact.type_name)
+            .filter(|type_name| self.host_runtime_type_id(type_name).is_some())
+            .or_else(|| {
+                self.syntax_host_field_path(source, receiver_expression)
+                    .and_then(|resolved| resolved.type_name)
+            })
     }
 }

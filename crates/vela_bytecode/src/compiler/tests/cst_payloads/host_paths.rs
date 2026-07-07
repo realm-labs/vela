@@ -169,6 +169,71 @@ fn main(player: Player, amount) {
 }
 
 #[test]
+fn nested_syntax_host_index_validates_receiver_capability_from_cst_path() {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty("host", std::iter::empty::<&str>(), "Player"))
+                .host_runtime_id(77),
+        )
+        .expect("Player host type should register");
+    let inventory_type = registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty(
+                "host",
+                std::iter::empty::<&str>(),
+                "Inventory",
+            ))
+            .host_runtime_id(78),
+        )
+        .expect("Inventory host type should register");
+    registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty("host", std::iter::empty::<&str>(), "ItemMap"))
+                .host_runtime_id(79),
+        )
+        .expect("ItemMap host type should register");
+    registry
+        .register_field(
+            vela_registry::FieldDef::new(
+                DefPath::field("host", std::iter::empty::<&str>(), "Player", "inventory"),
+                player,
+            )
+            .host_runtime_id(FieldId::new(3).get())
+            .writable(true)
+            .type_hint(Some("Inventory".to_owned())),
+        )
+        .expect("Player inventory field should register");
+    registry
+        .register_field(
+            vela_registry::FieldDef::new(
+                DefPath::field("host", std::iter::empty::<&str>(), "Inventory", "items"),
+                inventory_type,
+            )
+            .host_runtime_id(FieldId::new(4).get())
+            .writable(true)
+            .type_hint(Some("ItemMap".to_owned())),
+        )
+        .expect("Inventory items field should register");
+
+    let error = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main(player: Player) {
+    return player.inventory.items["gold"];
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect_err("nested CST host index receiver without capability should fail");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["analysis::host_index_not_supported"]
+    );
+}
+
+#[test]
 fn missing_host_path_expression_payload_does_not_use_legacy_path() {
     let mut registry = vela_registry::DefinitionRegistry::new();
     let player = registry
