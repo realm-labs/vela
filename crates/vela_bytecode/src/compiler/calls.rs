@@ -276,7 +276,7 @@ impl Compiler<'_, '_> {
         arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<crate::Register> {
         let receiver_type = self.script_type_for_expr_with_payload(base, base_payload);
-        let receiver_shape = self.value_shape_for_expr_with_payload(base, base_payload);
+        let receiver_shape = self.value_shape_for_expression_payload(base_payload);
         let value_receiver_type = self
             .value_type_for_expr_with_payload(base, base_payload)
             .or_else(|| receiver_shape.as_ref().and_then(ValueShape::value_type));

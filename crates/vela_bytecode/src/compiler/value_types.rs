@@ -261,6 +261,7 @@ impl ValueTypeFlow {
     }
 }
 
+#[cfg(test)]
 pub(super) fn expression_value_type(
     expr: &Expr,
     local_type_at_span: impl Fn(Span) -> Option<RuntimeTypeFact>,
@@ -1112,10 +1113,15 @@ impl super::Compiler<'_, '_> {
             &|span| self.value_types.local_at_span(self.bindings, span),
             &|name| self.value_types.name(name),
         ) {
-            StaticExprType::Dynamic => self
-                .record_field_value_type_for_expr_with_payload(expr, payload)
-                .map(StaticExprType::Exact)
-                .unwrap_or(StaticExprType::Dynamic),
+            StaticExprType::Dynamic => {
+                #[cfg(test)]
+                let field_type = self.record_field_value_type_for_expr_with_payload(expr, payload);
+                #[cfg(not(test))]
+                let field_type = self.record_field_value_type_for_expression_payload(payload);
+                field_type
+                    .map(StaticExprType::Exact)
+                    .unwrap_or(StaticExprType::Dynamic)
+            }
             known => known,
         }
     }

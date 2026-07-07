@@ -192,7 +192,7 @@ impl Compiler<'_, '_> {
         if let Some(fact) = self.value_type_for_expr_with_payload(expr, payload) {
             return (!runtime_type_is_identity_operand(&fact)).then(|| fact.source_type_display());
         }
-        if let Some(shape) = self.value_shape_for_expr_with_payload(expr, payload) {
+        if let Some(shape) = self.value_shape_for_expression_payload(payload) {
             return non_identity_shape_type(&shape);
         }
         None

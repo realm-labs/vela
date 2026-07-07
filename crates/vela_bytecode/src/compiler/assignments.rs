@@ -226,7 +226,7 @@ impl Compiler<'_, '_> {
                 .then(|| self.script_fact_for_expr_with_payload(value, value_syntax.expression))
                 .flatten();
             let value_shape = (op == AssignOp::Set)
-                .then(|| self.value_shape_for_expr_with_payload(value, value_syntax.expression))
+                .then(|| self.value_shape_for_expression_payload(value_syntax.expression))
                 .flatten();
             let facts = LocalAssignmentFacts {
                 script: script_fact,

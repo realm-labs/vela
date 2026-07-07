@@ -1,4 +1,5 @@
 use vela_common::Span;
+#[cfg(test)]
 use vela_syntax::ast::Expr;
 
 use crate::compiler::Compiler;
@@ -7,6 +8,14 @@ use crate::compiler::body_payloads::CompilerExpressionPayload;
 use super::RecordShape;
 
 impl Compiler<'_, '_> {
+    pub(in crate::compiler) fn value_shape_for_expression_payload(
+        &self,
+        payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> Option<super::ValueShape> {
+        self.value_shape_for_syntax_payload(payload?)
+    }
+
+    #[cfg(test)]
     pub(in crate::compiler) fn record_shape_for_expr_with_payload(
         &self,
         expr: &Expr,
@@ -24,6 +33,18 @@ impl Compiler<'_, '_> {
         self.value_shape_for_syntax_payload(payload?)?
             .as_record()
             .cloned()
+    }
+
+    #[cfg(not(test))]
+    pub(in crate::compiler) fn record_field_value_type_for_expression_payload(
+        &self,
+        payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> Option<crate::compiler::value_types::RuntimeTypeFact> {
+        let payload = payload?;
+        let field_name = payload.syntax_field_name()?;
+        let base_payload = payload.field_base_payload()?;
+        self.record_shape_for_expression_payload(Some(&base_payload))?
+            .field_value_type(&field_name)
     }
 
     pub(in crate::compiler) fn record_shape_for_path_root(

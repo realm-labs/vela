@@ -2,12 +2,15 @@ use std::collections::BTreeMap;
 
 use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_syntax::SyntaxKind;
+#[cfg(test)]
+use vela_syntax::ast::Expr;
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Expr, Literal, SyntaxArgument, SyntaxExpression, SyntaxExpressionKind,
+    AstNode, BinaryOp, Literal, SyntaxArgument, SyntaxExpression, SyntaxExpressionKind,
 };
 
 use crate::compiler::Compiler;
 use crate::compiler::body_payloads::CompilerExpressionPayload;
+#[cfg(test)]
 use crate::compiler::expression_facts::{
     expression_facts, payload_stored_kind_matches_expression_facts,
 };
@@ -15,6 +18,7 @@ use crate::compiler::value_types::{RuntimeTypeFact, StandardRuntimeType};
 
 use super::{RecordFieldShape, RecordShape, ValueShape, common_shape, record_reflection_shapes};
 
+#[cfg(test)]
 pub(super) fn field_payload_parts<'ast>(
     name: &str,
     payload: Option<&CompilerExpressionPayload<'ast>>,
@@ -28,6 +32,7 @@ pub(super) fn field_payload_parts<'ast>(
     }
 }
 
+#[cfg(test)]
 pub(super) fn payload_matches_shape_expression(
     payload: &CompilerExpressionPayload<'_>,
     expr: &Expr,
@@ -42,6 +47,7 @@ pub(super) fn payload_matches_shape_expression(
     payload_stored_kind_matches_expression_facts(payload, facts, true)
 }
 
+#[cfg(test)]
 pub(super) fn payload_shape_must_come_from_syntax(
     payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> bool {

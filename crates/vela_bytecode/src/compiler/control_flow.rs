@@ -294,9 +294,8 @@ impl Compiler<'_, '_> {
             self.value_type_for_expr_with_payload(value, syntax_payloads.expression)
         });
         let value_type = hinted_value_type.clone().or(value_type);
-        let value_shape = value.and_then(|value| {
-            self.value_shape_for_expr_with_payload(value, syntax_payloads.expression)
-        });
+        let value_shape =
+            value.and_then(|_| self.value_shape_for_expression_payload(syntax_payloads.expression));
         let (register, returned) = if let Some(value) = value {
             self.compile_let_initializer(
                 value,

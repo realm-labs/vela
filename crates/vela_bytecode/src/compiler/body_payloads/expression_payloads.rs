@@ -2,12 +2,12 @@ use vela_common::{SourceId, Span};
 #[cfg(test)]
 use vela_syntax::ast::AssignOp;
 #[cfg(test)]
+use vela_syntax::ast::BinaryOp;
+#[cfg(test)]
 use vela_syntax::ast::SyntaxLambdaBody;
 #[cfg(test)]
 use vela_syntax::ast::SyntaxRecordExprField;
-use vela_syntax::ast::{
-    AstNode, BinaryOp, Literal, SyntaxExpression, SyntaxExpressionKind, SyntaxMapEntry,
-};
+use vela_syntax::ast::{AstNode, Literal, SyntaxExpression, SyntaxExpressionKind, SyntaxMapEntry};
 #[cfg(test)]
 use vela_syntax::ast::{
     SyntaxMatchArm, SyntaxPattern, SyntaxPatternKind, SyntaxRecordPatternField,
@@ -190,6 +190,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         ))
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn syntax_binary_operator(&self) -> Option<BinaryOp> {
         self.source?;
         let binary = self.syntax.as_ref()?.as_binary()?;
