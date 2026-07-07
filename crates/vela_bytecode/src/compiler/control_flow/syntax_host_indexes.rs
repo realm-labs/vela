@@ -331,7 +331,7 @@ impl Compiler<'_, '_> {
         Some((receiver_type, field))
     }
 
-    fn reject_invalid_syntax_host_index_access(
+    pub(in crate::compiler) fn reject_invalid_syntax_host_index_access(
         &self,
         source: SourceId,
         expression: &SyntaxExpression,

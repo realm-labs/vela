@@ -59,9 +59,15 @@ struct HostCollectionMethodTarget<'ast> {
     field_receiver: Option<HostCollectionFieldReceiver<'ast>>,
 }
 
-struct HostCollectionFieldReceiver<'ast> {
-    expr: Option<&'ast Expr>,
-    payload: Option<CompilerExpressionPayload<'ast>>,
+enum HostCollectionFieldReceiver<'ast> {
+    Expr {
+        expr: &'ast Expr,
+        payload: Option<CompilerExpressionPayload<'ast>>,
+    },
+    Syntax {
+        source: SourceId,
+        expression: SyntaxExpression,
+    },
 }
 
 #[derive(Clone, Copy)]
@@ -654,17 +660,15 @@ impl Compiler<'_, '_> {
                     if payload.syntax_field_name()?.as_str() != method {
                         return None;
                     }
-                    let ExprKind::Field { base, .. } = &callee.kind else {
-                        return None;
-                    };
-                    let base = base.as_ref();
                     let base_payload = payload.field_base_payload()?;
-                    let path = self.host_field_path_with_payload(base, Some(&base_payload))?;
+                    let source = base_payload.source()?;
+                    let expression = base_payload.syntax_expression()?.clone();
+                    let path = self.syntax_host_field_path(source, &expression)?.path;
                     Some(HostCollectionMethodTarget {
                         path,
-                        field_receiver: Some(HostCollectionFieldReceiver {
-                            expr: Some(base),
-                            payload: Some(base_payload),
+                        field_receiver: Some(HostCollectionFieldReceiver::Syntax {
+                            source,
+                            expression,
                         }),
                     })
                 }
@@ -689,8 +693,8 @@ impl Compiler<'_, '_> {
                 self.host_field_path(base)
                     .map(|path| HostCollectionMethodTarget {
                         path,
-                        field_receiver: Some(HostCollectionFieldReceiver {
-                            expr: Some(base),
+                        field_receiver: Some(HostCollectionFieldReceiver::Expr {
+                            expr: base,
                             payload: None,
                         }),
                     })
@@ -710,10 +714,14 @@ impl Compiler<'_, '_> {
         receiver: HostCollectionFieldReceiver<'_>,
         kind: HostIndexAccessKind,
     ) -> CompileResult<()> {
-        let Some(expr) = receiver.expr else {
-            return Ok(());
-        };
-        self.reject_terminal_host_index_access(expr, receiver.payload.as_ref(), kind)
+        match receiver {
+            HostCollectionFieldReceiver::Expr { expr, payload } => {
+                self.reject_terminal_host_index_access(expr, payload.as_ref(), kind)
+            }
+            HostCollectionFieldReceiver::Syntax { source, expression } => {
+                self.reject_invalid_syntax_host_index_access(source, &expression, &expression, kind)
+            }
+        }
     }
 
     #[cfg(test)]
