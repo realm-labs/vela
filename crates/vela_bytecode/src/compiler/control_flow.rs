@@ -281,9 +281,8 @@ impl Compiler<'_, '_> {
             let known_type_names = self.facts.known_type_names();
             type_hint_script_type(hint, known_type_names.iter()).map(ScriptTypeFact::new)
         });
-        let value_script_fact = value.and_then(|value| {
-            self.script_fact_for_expr_with_payload(value, syntax_payloads.expression)
-        });
+        let value_script_fact =
+            value.and_then(|_| self.script_fact_for_expression_payload(syntax_payloads.expression));
         let script_hint_proven = hinted_script_fact
             .as_ref()
             .zip(value_script_fact.as_ref())

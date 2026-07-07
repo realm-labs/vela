@@ -201,7 +201,7 @@ impl Compiler<'_, '_> {
                 AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Rem => None,
             };
             let script_fact = (op == AssignOp::Set)
-                .then(|| self.script_fact_for_expr_with_payload(value, value_syntax.expression))
+                .then(|| self.script_fact_for_expression_payload(value_syntax.expression))
                 .flatten();
             let value_shape = (op == AssignOp::Set)
                 .then(|| self.value_shape_for_expression_payload(value_syntax.expression))
@@ -516,8 +516,7 @@ impl Compiler<'_, '_> {
                     )));
                 };
                 let root_payload = syntax.record_field_root_payload();
-                let root_type =
-                    self.script_type_for_expr_with_payload(parts.root, root_payload.as_ref());
+                let root_type = self.script_type_for_expression_payload(root_payload.as_ref());
                 let shape = root_type
                     .as_deref()
                     .and_then(|type_name| self.record_shape_for_type(type_name))

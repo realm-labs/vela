@@ -296,7 +296,7 @@ impl Compiler<'_, '_> {
         receiver: &'ast Expr,
         payload: Option<CompilerExpressionPayload<'ast>>,
     ) -> ResolvedHostPath<'ast> {
-        let type_name = self.script_type_for_expr_with_payload(receiver, payload.as_ref());
+        let type_name = self.script_type_for_expression_payload(payload.as_ref());
         ResolvedHostPath {
             path: HostPath {
                 root: HostPathRoot::Expr {
@@ -353,7 +353,7 @@ impl Compiler<'_, '_> {
         }
         let type_name = self
             .script_type_for_payload(&payload)
-            .or_else(|| self.script_type_for_expr_with_payload(receiver, Some(&payload)))?;
+            .or_else(|| self.script_type_for_expression_payload(Some(&payload)))?;
         self.facts.options.host_index_capability(&type_name)?;
         Some(ResolvedHostPath {
             path: HostPath {
@@ -819,11 +819,11 @@ impl Compiler<'_, '_> {
     fn host_path_root_type_name(&self, root: HostPathRoot<'_>) -> Option<String> {
         match root {
             HostPathRoot::Expr {
-                expr,
                 payload: Some(payload),
+                ..
             } => self
                 .script_type_for_payload(&payload)
-                .or_else(|| self.script_type_for_expr_with_payload(expr, Some(&payload))),
+                .or_else(|| self.script_type_for_expression_payload(Some(&payload))),
             HostPathRoot::Expr { payload: None, .. } => None,
             HostPathRoot::LocalPath { name, span } => self.host_local_type_name(name, span),
             HostPathRoot::OwnedLocalPath { name, span } => self.host_local_type_name(&name, span),
@@ -1088,7 +1088,7 @@ impl Compiler<'_, '_> {
             .or_else(|| {
                 let type_name = payload
                     .and_then(|payload| self.script_type_for_payload(payload))
-                    .or_else(|| self.script_type_for_expr_with_payload(receiver, payload))?;
+                    .or_else(|| self.script_type_for_expression_payload(payload))?;
                 self.host_runtime_type_id(&type_name).map(|_| type_name)
             })
     }

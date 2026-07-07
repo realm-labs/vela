@@ -79,7 +79,7 @@ fn host_method_receiver_path<'ast>(
                     },
                     segments: Vec::new(),
                 },
-                type_name: compiler.script_type_for_expr_with_payload(receiver, receiver_payload),
+                type_name: compiler.script_type_for_expression_payload(receiver_payload),
             })
         })
 }

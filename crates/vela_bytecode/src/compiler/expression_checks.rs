@@ -49,13 +49,12 @@ impl Compiler<'_, '_> {
         &self,
         op: BinaryOp,
         span: Span,
-        left: &Expr,
         left_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<()> {
         let Some(requirement) = ComparisonTraitRequirement::for_op(op) else {
             return Ok(());
         };
-        let Some(type_name) = self.script_type_for_expr_with_payload(left, left_payload) else {
+        let Some(type_name) = self.script_type_for_expression_payload(left_payload) else {
             return Ok(());
         };
         if !self.is_declared_script_type(&type_name)

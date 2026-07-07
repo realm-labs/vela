@@ -18,8 +18,7 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<bool> {
         reject_missing_match_scrutinee_payload(scrutinee_payload)?;
         reject_missing_optional_match_arm_payloads(match_expr, scrutinee_payload, arm_payloads)?;
-        let scrutinee_fact =
-            self.script_fact_for_expr_with_payload(&match_expr.scrutinee, scrutinee_payload);
+        let scrutinee_fact = self.script_fact_for_expression_payload(scrutinee_payload);
         let scrutinee = self.compile_expr_with_payload(&match_expr.scrutinee, scrutinee_payload)?;
         let mut end_jumps = Vec::new();
         let mut all_arms_return = !match_expr.arms.is_empty();
@@ -146,8 +145,7 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<bool> {
         reject_missing_match_scrutinee_payload(scrutinee_payload)?;
         reject_missing_match_arm_payloads(match_expr, scrutinee_payload, arm_payloads)?;
-        let scrutinee_fact =
-            self.script_fact_for_expr_with_payload(&match_expr.scrutinee, scrutinee_payload);
+        let scrutinee_fact = self.script_fact_for_expression_payload(scrutinee_payload);
         let scrutinee = self.compile_expr_with_payload(&match_expr.scrutinee, scrutinee_payload)?;
         let mut end_jumps = Vec::new();
         let mut all_arms_return = !match_expr.arms.is_empty();

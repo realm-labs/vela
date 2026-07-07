@@ -527,7 +527,7 @@ impl Compiler<'_, '_> {
         base_payload: Option<&CompilerExpressionPayload<'_>>,
         expr_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Register> {
-        let receiver_type = self.script_type_for_expr_with_payload(base, base_payload);
+        let receiver_type = self.script_type_for_expression_payload(base_payload);
         let typed_record_slot = receiver_type
             .as_deref()
             .and_then(|type_name| self.script_record_field_slot_for_type(type_name, name))
@@ -536,7 +536,7 @@ impl Compiler<'_, '_> {
                     .and_then(|shape| shape.field_slot(name))
             });
         let typed_enum_slot = self
-            .script_fact_for_expr_with_payload(base, base_payload)
+            .script_fact_for_expression_payload(base_payload)
             .and_then(|fact| {
                 let variant = fact.enum_variant.as_deref()?;
                 self.facts
@@ -697,7 +697,7 @@ impl Compiler<'_, '_> {
             left_payload,
             right_payload,
         )?;
-        self.reject_static_comparison_without_trait(op, span, left, left_payload)?;
+        self.reject_static_comparison_without_trait(op, span, left_payload)?;
 
         if let Some(register) = self.compile_binary_with_inline_literal(
             op,
