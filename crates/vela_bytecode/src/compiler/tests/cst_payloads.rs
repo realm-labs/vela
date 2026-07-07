@@ -489,7 +489,7 @@ fn fallback_body() {
 }
 
 #[test]
-fn mismatched_statement_payloads_do_not_compile_legacy_statement() {
+fn mismatched_statement_payloads_compile_cst_statement() {
     let source = SourceId::new(1);
     let text = r#"
 fn main(value) {
@@ -502,14 +502,22 @@ fn main(value) {
     let mismatched =
         statement_payload_with_fallback_offset(source, &payload.body, &payload.body, 1, 0);
 
-    let error = compiler
+    let returned = compiler
         .compile_statement_payload_for_test(&mismatched)
-        .expect_err("mismatched statement payload must not use legacy fallback");
+        .expect("mismatched statement payload should compile the CST statement");
 
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST return value payload")
-    ));
+    assert!(returned);
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .all(|instruction| !matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::MakeArray { .. }
+            )),
+        "legacy let statement must not be compiled"
+    );
 }
 
 #[test]

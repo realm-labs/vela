@@ -404,7 +404,11 @@ fn main(flag) {
             };
 
             let error = compiler
-                .compile_if_value_with_payloads(if_expr, Register(0), &truncated_if_payload)
+                .compile_if_value_with_payloads(
+                    if_expr.as_ref(),
+                    Register(0),
+                    &truncated_if_payload,
+                )
                 .expect_err("missing CST if branch payload must not use legacy branches");
 
             assert!(matches!(

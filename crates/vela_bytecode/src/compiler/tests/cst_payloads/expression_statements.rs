@@ -414,7 +414,7 @@ fn expression_statements() {
 }
 
 #[test]
-fn mismatched_expression_statement_payload_does_not_use_legacy_expression() {
+fn mismatched_expression_statement_payload_compiles_cst_expression() {
     let source = SourceId::new(1);
     let text = r#"
 fn take(value) {
@@ -432,14 +432,19 @@ fn main() {
     let mismatched =
         statement_payload_with_fallback_offset(source, &payload.body, &payload.body, 1, 1);
 
-    let error = compiler
+    compiler
         .compile_statement_payload_for_test(&mismatched)
-        .expect_err("mismatched expression statement payload must not compile legacy expression");
+        .expect("mismatched expression statement payload should compile the CST expression");
 
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("mismatched CST expression statement payload")
-    ));
+    assert!(compiler.code.constants.contains(&Constant::i64(1)));
+    assert!(
+        compiler
+            .code
+            .constants
+            .iter()
+            .all(|constant| *constant != Constant::i64(0)),
+        "legacy index expression must not be compiled"
+    );
 }
 
 #[test]

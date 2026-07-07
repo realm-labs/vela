@@ -36,17 +36,18 @@ fn main() {
         Some(SyntaxStatementKind::Expr)
     );
     assert_eq!(mismatched.stored_value_expression_kind(), None);
-    let expr = mismatched
-        .expression_fallback_for_test()
-        .expect("expected legacy expression tail");
+    assert!(
+        mismatched.expression_fallback_for_test().is_none(),
+        "recovered CST tail without an expression must not expose a legacy tail"
+    );
 
     let error = compiler
-        .compile_block_tail_expr_to_for_test(expr, Some(&mismatched), Register(0))
+        .compile_statement_payload_for_test(&mismatched)
         .expect_err("recovered CST tail must not compile the legacy tail expression");
 
     assert!(matches!(
         error.kind,
-        CompileErrorKind::UnsupportedSyntax("mismatched CST block tail expression")
+        CompileErrorKind::UnsupportedSyntax("missing CST expression statement payload")
     ));
 }
 

@@ -117,7 +117,7 @@ fn main() {
 }
 
 #[test]
-fn extra_statement_call_argument_payloads_do_not_compile_fallback_args() {
+fn extra_statement_call_argument_payloads_use_cst_argument_count() {
     let source = SourceId::new(1);
     let cst_text = r#"
 fn take(value) {
@@ -155,14 +155,11 @@ fn main() {
 
     let error = compiler
         .compile_statement_payload_for_test(&mismatched)
-        .expect_err("extra CST statement call arguments must not compile fallback call");
+        .expect_err("extra CST statement call arguments should use the CST argument count");
 
-    assert!(
-        matches!(
-            error.kind,
-            CompileErrorKind::UnsupportedSyntax("mismatched CST call arguments")
-        ),
-        "expected mismatched CST call arguments, got {error:?}"
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["compiler::too_many_arguments"]
     );
 }
 

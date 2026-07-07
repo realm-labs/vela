@@ -12,7 +12,7 @@ fn let_return_statement_payloads<'ast>(
 }
 
 #[test]
-fn mismatched_let_initializer_payload_does_not_use_legacy_expression() {
+fn mismatched_let_initializer_payload_compiles_cst_expression() {
     let source = SourceId::new(1);
     let text = r#"
 fn take(value) {
@@ -20,7 +20,7 @@ fn take(value) {
 }
 
 fn main() {
-    let cst_value = take(1);
+    let cst_value = take(2);
     let legacy_value = [1];
     return 0;
 }
@@ -30,14 +30,22 @@ fn main() {
     let mismatched =
         statement_payload_with_fallback_offset(source, &payload.body, &payload.body, 1, 0);
 
-    let error = compiler
+    compiler
         .compile_statement_payload_for_test(&mismatched)
-        .expect_err("mismatched let initializer payload must not compile legacy expression");
+        .expect("mismatched let initializer payload should compile the CST expression");
 
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("mismatched CST let initializer payload")
-    ));
+    assert!(compiler.code.constants.contains(&Constant::i64(2)));
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .all(|instruction| !matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::MakeArray { .. }
+            )),
+        "legacy array initializer must not be compiled"
+    );
 }
 
 #[test]
@@ -1742,7 +1750,7 @@ fn main() {
 }
 
 #[test]
-fn mismatched_return_value_payload_does_not_use_legacy_expression() {
+fn mismatched_return_value_payload_compiles_cst_expression() {
     let source = SourceId::new(1);
     let text = r#"
 fn take(value) {
@@ -1751,7 +1759,7 @@ fn take(value) {
 
 fn main() {
     let value = 1;
-    return take(value);
+    return take(2);
     return [value];
 }
 "#;
@@ -1760,14 +1768,21 @@ fn main() {
     let mismatched =
         statement_payload_with_fallback_offset(source, &payload.body, &payload.body, 1, 1);
 
-    let error = compiler
+    compiler
         .compile_statement_payload_for_test(&mismatched)
-        .expect_err("mismatched return value payload must not compile legacy expression");
+        .expect("mismatched return value payload should compile the CST expression");
 
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("mismatched CST return value payload")
-    ));
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .all(|instruction| !matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::MakeArray { .. }
+            )),
+        "legacy array return value must not be compiled"
+    );
 }
 
 #[test]
