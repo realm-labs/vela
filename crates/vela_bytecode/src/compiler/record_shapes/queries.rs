@@ -35,10 +35,9 @@ impl Compiler<'_, '_> {
 
     pub(in crate::compiler) fn record_shape_for_index_collection(
         &self,
-        collection: &Expr,
         payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> Option<RecordShape> {
-        self.value_shape_for_expr_with_payload(collection, payload)?
+        self.value_shape_for_syntax_payload(payload?)?
             .array_element_record()
             .cloned()
     }
