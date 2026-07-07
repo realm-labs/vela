@@ -13,6 +13,9 @@ use super::assignment_payloads::{
 };
 use super::body_payloads::CompilerExpressionPayload;
 use super::expression_checks::payload_syntax_overlaps_expr;
+#[cfg(not(test))]
+use super::expression_facts::ExpressionFacts;
+#[cfg(test)]
 use super::expression_facts::expression_facts;
 use super::expressions::literal_string_with_payload;
 use super::host_paths::{HostIndexAccessKind, HostPath};
@@ -177,7 +180,11 @@ impl Compiler<'_, '_> {
             )));
         };
         let op = value_syntax.op.unwrap_or(*op);
-        validate_assignment_target_payload(expression_facts(target), target_syntax.expression)?;
+        #[cfg(test)]
+        let target_facts = expression_facts(target);
+        #[cfg(not(test))]
+        let target_facts = ExpressionFacts::span_only(target.span);
+        validate_assignment_target_payload(target_facts, target_syntax.expression)?;
         if value_syntax.expression.is_some() && value_syntax.kind.is_none() {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST assignment value",

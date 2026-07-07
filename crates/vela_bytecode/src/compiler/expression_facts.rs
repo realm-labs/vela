@@ -1,7 +1,9 @@
 use vela_common::Span;
 #[cfg(test)]
+use vela_syntax::ast::Expr;
+#[cfg(test)]
 use vela_syntax::ast::ExprKind;
-use vela_syntax::ast::{Expr, SyntaxExpressionKind};
+use vela_syntax::ast::SyntaxExpressionKind;
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 
@@ -10,9 +12,21 @@ pub(super) struct ExpressionFacts {
     span: Span,
     kind: Option<SyntaxExpressionKind>,
     path_is_self: Option<bool>,
+    kind_is_wildcard: bool,
 }
 
 impl ExpressionFacts {
+    #[cfg(not(test))]
+    pub(super) fn span_only(span: Span) -> Self {
+        Self {
+            span,
+            kind: None,
+            path_is_self: None,
+            kind_is_wildcard: true,
+        }
+    }
+
+    #[cfg(test)]
     pub(super) fn new(
         span: Span,
         kind: Option<SyntaxExpressionKind>,
@@ -22,6 +36,7 @@ impl ExpressionFacts {
             span,
             kind,
             path_is_self,
+            kind_is_wildcard: false,
         }
     }
 
@@ -44,19 +59,19 @@ impl ExpressionFacts {
     pub(super) fn path_is_self(self) -> Option<bool> {
         self.path_is_self
     }
+
+    fn kind_is_wildcard(self) -> bool {
+        self.kind_is_wildcard
+    }
 }
 
+#[cfg(test)]
 pub(super) fn expression_facts(expr: &Expr) -> ExpressionFacts {
     ExpressionFacts::new(
         expr.span,
         expression_syntax_kind(expr),
         expression_path_is_self(expr),
     )
-}
-
-#[cfg(not(test))]
-fn expression_syntax_kind(_expr: &Expr) -> Option<SyntaxExpressionKind> {
-    None
 }
 
 #[cfg(test)]
@@ -82,11 +97,6 @@ fn expression_syntax_kind(expr: &Expr) -> Option<SyntaxExpressionKind> {
     })
 }
 
-#[cfg(not(test))]
-fn expression_path_is_self(_expr: &Expr) -> Option<bool> {
-    None
-}
-
 #[cfg(test)]
 fn expression_path_is_self(expr: &Expr) -> Option<bool> {
     match expr.kind {
@@ -106,6 +116,7 @@ pub(super) fn payload_matches_expression_facts(
         payload.stored_syntax_kind(),
         facts.kind(),
         facts.path_is_self(),
+        facts.kind_is_wildcard(),
         payload.syntax_is_self(),
     )
 }
@@ -119,6 +130,7 @@ pub(super) fn payload_syntax_kind_matches_expression_facts(
         payload.syntax_kind(),
         facts.kind(),
         facts.path_is_self(),
+        facts.kind_is_wildcard(),
         payload.syntax_is_self(),
     )
 }
@@ -144,6 +156,7 @@ pub(super) fn payload_stored_kind_matches_expression_facts(
             Some(payload_kind),
             facts.kind(),
             facts.path_is_self(),
+            facts.kind_is_wildcard(),
             payload.syntax_is_self(),
         ),
         None => missing_kind_matches,
@@ -154,13 +167,10 @@ fn payload_kind_matches_expression_facts(
     payload_kind: Option<SyntaxExpressionKind>,
     expr_kind: Option<SyntaxExpressionKind>,
     path_is_self: Option<bool>,
+    kind_is_wildcard: bool,
     payload_is_self: bool,
 ) -> bool {
-    #[cfg(test)]
-    let kind_matches =
-        payload_kind == expr_kind || payload_kind == Some(SyntaxExpressionKind::Paren);
-    #[cfg(not(test))]
-    let kind_matches = expr_kind.is_none()
+    let kind_matches = kind_is_wildcard
         || payload_kind == expr_kind
         || payload_kind == Some(SyntaxExpressionKind::Paren);
 
@@ -172,6 +182,7 @@ fn payload_kind_matches_known_expression_facts(
     payload_kind: Option<SyntaxExpressionKind>,
     expr_kind: Option<SyntaxExpressionKind>,
     path_is_self: Option<bool>,
+    kind_is_wildcard: bool,
     payload_is_self: bool,
 ) -> bool {
     if payload_kind == Some(SyntaxExpressionKind::Paren) {
@@ -182,6 +193,7 @@ fn payload_kind_matches_known_expression_facts(
             payload_kind,
             expr_kind,
             path_is_self,
+            kind_is_wildcard,
             payload_is_self,
         )
 }

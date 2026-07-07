@@ -8,7 +8,11 @@ use crate::{CallArgument, DynamicCallArgument, UnlinkedInstructionKind};
 
 use super::body_payloads::{CompilerArgumentPayload, CompilerExpressionPayload};
 use super::call_args::{CallArgumentSyntax, resolve_script_call_arguments};
-use super::expression_facts::{expression_facts, payload_matches_expression_facts};
+#[cfg(not(test))]
+use super::expression_facts::ExpressionFacts;
+#[cfg(test)]
+use super::expression_facts::expression_facts;
+use super::expression_facts::payload_matches_expression_facts;
 use super::methods::host_method_call;
 use super::record_shapes::{ValueShape, callback_param_shapes};
 use super::value_types::{RuntimeTypeFact, TypeContractContext, type_hint_value_type};
@@ -63,7 +67,11 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<crate::Register> {
         let arg_syntax = CallArgumentSyntax::new(args, arg_payloads);
         reject_missing_call_callee_payload(callee_payload)?;
-        reject_mismatched_call_callee_payload(expression_facts(callee), callee_payload)?;
+        #[cfg(test)]
+        let callee_facts = expression_facts(callee);
+        #[cfg(not(test))]
+        let callee_facts = ExpressionFacts::span_only(callee.span);
+        reject_mismatched_call_callee_payload(callee_facts, callee_payload)?;
         reject_mismatched_call_argument_payloads(callee_payload, args.len(), arg_payloads)?;
         let callee_path = callee_payload.and_then(CompilerExpressionPayload::syntax_path_segments);
         let callee_path = callee_path.as_deref();
@@ -379,7 +387,11 @@ impl Compiler<'_, '_> {
             return None;
         };
         let base_payload = payload.field_base_payload()?;
-        if !payload_matches_expression_facts(&base_payload, expression_facts(base)) {
+        #[cfg(test)]
+        let base_facts = expression_facts(base);
+        #[cfg(not(test))]
+        let base_facts = ExpressionFacts::span_only(base.span);
+        if !payload_matches_expression_facts(&base_payload, base_facts) {
             return None;
         }
         Some(self.compile_script_method_call(
@@ -668,7 +680,9 @@ impl Compiler<'_, '_> {
         if !callback_lambda_payload_is_authoritative(
             arg_payload.as_ref(),
             arg.value.span,
-            expression_facts(&arg.value).kind(),
+            arg_payload
+                .as_ref()
+                .and_then(|payload| payload.syntax_kind()),
         ) {
             return self.compile_call_argument_value(arg, arg_syntax);
         }

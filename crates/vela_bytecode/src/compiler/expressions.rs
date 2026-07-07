@@ -11,7 +11,11 @@ use super::expression_checks::{
     UnsuffixedNumericLiteral, expressions_are_i64, reject_missing_binary_operand_payload,
     unsuffixed_numeric_literal_with_payload,
 };
-use super::expression_facts::{expression_facts, payload_stored_kind_matches_expression_facts};
+#[cfg(not(test))]
+use super::expression_facts::ExpressionFacts;
+#[cfg(test)]
+use super::expression_facts::expression_facts;
+use super::expression_facts::payload_stored_kind_matches_expression_facts;
 use super::host_paths::HostPath;
 use super::operators::{
     binary_literal_op, i64_binary_instruction, i64_immediate_instruction,
@@ -33,9 +37,14 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<Register> {
         if let Some(payload) = payload
             && let Some(kind) = payload.stored_syntax_kind()
-            && payload_stored_kind_matches_expression_facts(payload, expression_facts(expr), false)
         {
-            return self.compile_expr_with_payload_kind(payload, kind);
+            #[cfg(test)]
+            let expr_facts = expression_facts(expr);
+            #[cfg(not(test))]
+            let expr_facts = ExpressionFacts::span_only(expr.span);
+            if payload_stored_kind_matches_expression_facts(payload, expr_facts, false) {
+                return self.compile_expr_with_payload_kind(payload, kind);
+            }
         }
         if payload.is_some_and(|payload| payload.syntax_expression().is_none())
             && payload.is_some_and(CompilerExpressionPayload::rejects_missing_payload)
