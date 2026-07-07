@@ -4,8 +4,6 @@ use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::BinaryOp;
 #[cfg(test)]
 use vela_syntax::ast::{Expr, ExprKind};
-#[cfg(test)]
-use vela_syntax::ast::{Stmt, StmtKind, SyntaxStatementKind};
 
 #[cfg(test)]
 use crate::compiler::body_payloads::CompilerExpressionPayload;
@@ -27,23 +25,6 @@ pub(super) fn i64_pattern_facts() -> PatternBindingFacts {
 }
 
 #[cfg(test)]
-pub(super) fn statement_kind_for_stmt(stmt: &Stmt) -> SyntaxStatementKind {
-    match &stmt.kind {
-        StmtKind::Let { .. } => SyntaxStatementKind::Let,
-        StmtKind::Return(_) => SyntaxStatementKind::Return,
-        StmtKind::Break => SyntaxStatementKind::Break,
-        StmtKind::Continue => SyntaxStatementKind::Continue,
-        StmtKind::For { .. } => SyntaxStatementKind::For,
-        StmtKind::Block(_) => SyntaxStatementKind::Block,
-        StmtKind::Expr(expr) => match &expr.kind {
-            ExprKind::If(_) => SyntaxStatementKind::If,
-            ExprKind::Match(_) => SyntaxStatementKind::Match,
-            _ => SyntaxStatementKind::Expr,
-        },
-    }
-}
-
-#[cfg(test)]
 pub(super) fn value_expression_requires_matching_syntax(expr: &Expr) -> bool {
     matches!(
         expr.kind,
@@ -56,17 +37,6 @@ pub(super) fn value_expression_requires_matching_syntax(expr: &Expr) -> bool {
             | ExprKind::Path(_)
             | ExprKind::SelfValue
     )
-}
-
-#[cfg(test)]
-pub(super) fn range_iterable_for_payload(
-    payload: Option<&CompilerExpressionPayload<'_>>,
-) -> Option<bool> {
-    match payload.and_then(CompilerExpressionPayload::syntax_binary_operator) {
-        Some(BinaryOp::Range) => Some(false),
-        Some(BinaryOp::RangeInclusive) => Some(true),
-        _ => None,
-    }
 }
 
 #[cfg(test)]

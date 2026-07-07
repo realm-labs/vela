@@ -10,14 +10,6 @@ use crate::{Constant, Register, UnlinkedInstructionKind};
 
 impl Compiler<'_, '_> {
     #[cfg(test)]
-    pub(in crate::compiler) fn compile_match(
-        &mut self,
-        match_expr: &MatchExpr,
-    ) -> CompileResult<bool> {
-        self.compile_match_with_payloads(match_expr, None, None)
-    }
-
-    #[cfg(test)]
     pub(in crate::compiler) fn compile_match_with_payloads(
         &mut self,
         match_expr: &MatchExpr,

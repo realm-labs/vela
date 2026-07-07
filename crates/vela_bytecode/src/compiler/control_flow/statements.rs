@@ -376,26 +376,11 @@ impl Compiler<'_, '_> {
                 }
                 Ok(true)
             }
-            SyntaxStatementKind::If => {
-                let Some(if_expr) = stmt.if_expression_fallback() else {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST if statement payload",
-                    )));
-                };
-                let if_payload = stmt
-                    .expression_payload()
-                    .and_then(|payload| payload.if_payload());
-                if if_payload.is_none() {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST if statement payload",
-                    )));
-                }
-                self.compile_if(if_expr, if_payload.as_ref())
-            }
             SyntaxStatementKind::Block
             | SyntaxStatementKind::Break
             | SyntaxStatementKind::Continue
             | SyntaxStatementKind::For
+            | SyntaxStatementKind::If
             | SyntaxStatementKind::Match
             | SyntaxStatementKind::Expr => Err(CompileError::new(
                 CompileErrorKind::UnsupportedSyntax("unsupported CST statement payload"),

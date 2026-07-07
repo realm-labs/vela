@@ -8,7 +8,7 @@ use vela_syntax::ast::{
     SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchExpr, SyntaxStatement, SyntaxStatementKind,
 };
 #[cfg(test)]
-use vela_syntax::ast::{Expr, ExprKind, IfExpr, Pattern, Stmt, StmtKind};
+use vela_syntax::ast::{Expr, Pattern, Stmt, StmtKind};
 #[cfg(test)]
 use vela_syntax::ast::{SyntaxMatchArm, SyntaxPattern, SyntaxRecordPatternField};
 
@@ -487,14 +487,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
     #[cfg(test)]
     pub(in crate::compiler) fn fallback_span(&self) -> Option<Span> {
         self.expression_fallbacks.statement_span
-    }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn if_expression_fallback(&self) -> Option<&'ast IfExpr> {
-        let ExprKind::If(if_expr) = &self.expression_fallbacks.expression?.kind else {
-            return None;
-        };
-        Some(if_expr)
     }
 
     #[cfg(test)]

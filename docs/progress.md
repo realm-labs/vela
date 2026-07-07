@@ -458,6 +458,9 @@ the old paired for-part accessor has been removed.
 Paired `match` statement payload dispatch now also uses the rowan CST `match`
 lowering path instead of compiling through the old-AST match expression, and
 the old paired match-expression fallback accessor has been removed.
+Paired `if` statement payload dispatch now also uses the rowan CST `if`
+lowering path, and the exposed dead old-AST statement dispatcher plus its old
+for/if/match statement helpers have been deleted.
 Host collection method targets built from CST payloads no longer store the old
 receiver `Expr`; terminal host-index validation resolves the checked fallback
 only when that validation is needed.

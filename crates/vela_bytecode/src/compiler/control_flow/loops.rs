@@ -1,18 +1,12 @@
 use vela_common::{SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
 use vela_syntax::ast::{AstNode, BinaryOp, SyntaxExpression, SyntaxForStmt};
-#[cfg(test)]
-use vela_syntax::ast::{Expr, Pattern, SyntaxExpressionKind};
 
 use crate::Register;
 
 use crate::compiler::body_payloads::CompilerBodyPayload;
-#[cfg(test)]
-use crate::compiler::body_payloads::{CompilerExpressionPayload, CompilerPatternPayload};
 use crate::compiler::control_flow::classification::{i64_pattern_facts, iterable_item_shape};
 use crate::compiler::control_flow::syntax_statement_values::syntax_expression_span;
-#[cfg(test)]
-use crate::compiler::expression_facts::{expression_path_is_self, expression_syntax_kind};
 use crate::compiler::patterns::PatternBindingFacts;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -33,35 +27,6 @@ pub(super) enum LoopIterable {
         done: Register,
         inclusive: bool,
     },
-}
-
-#[cfg(test)]
-pub(super) struct ForStatementParts<'ast> {
-    pub(super) stmt_span: Span,
-    pub(super) index_pattern: Option<&'ast Pattern>,
-    pub(super) pattern: &'ast Pattern,
-    pub(super) iterable: &'ast Expr,
-    pub(super) index_pattern_payload: Option<CompilerPatternPayload>,
-    pub(super) pattern_payload: Option<CompilerPatternPayload>,
-    pub(super) iterable_payload: Option<CompilerExpressionPayload<'ast>>,
-    pub(super) body_payload: Option<CompilerBodyPayload<'ast>>,
-}
-
-#[cfg(test)]
-pub(super) fn for_iterable_payload_matches_expr(
-    payload: &CompilerExpressionPayload<'_>,
-    iterable: &Expr,
-) -> bool {
-    let Some(kind) = payload.stored_syntax_kind() else {
-        return false;
-    };
-    if kind == SyntaxExpressionKind::Paren {
-        return true;
-    }
-    expression_syntax_kind(iterable) == Some(kind)
-        && (kind != SyntaxExpressionKind::Path
-            || expression_path_is_self(iterable)
-                .is_some_and(|is_self| is_self == payload.syntax_is_self()))
 }
 
 impl LoopContext {

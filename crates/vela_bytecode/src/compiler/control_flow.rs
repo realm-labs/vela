@@ -31,12 +31,8 @@ use vela_hir::binding::LocalBindingKind;
 #[cfg(test)]
 use vela_syntax::ast::SyntaxExpressionKind;
 #[cfg(test)]
-use vela_syntax::ast::{Block, ElseBranch, IfExpr, Stmt, StmtKind, SyntaxStatementKind};
-#[cfg(test)]
 use vela_syntax::ast::{Expr, ExprKind};
 
-#[cfg(test)]
-use crate::InstructionOffset;
 #[cfg(test)]
 use crate::Register;
 #[cfg(test)]
@@ -47,29 +43,17 @@ use super::assignments::{AssignmentTargetSyntax, AssignmentValueSyntax};
 #[cfg(test)]
 use super::body_payloads::CompilerExpressionPayload;
 use super::body_payloads::CompilerStatementPayload;
-#[cfg(test)]
-use super::body_payloads::{CompilerBodyPayload, CompilerIfPayload, CompilerPatternPayload};
-#[cfg(test)]
-use super::patterns::PatternBindingFacts;
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
 use super::value_types::{
     RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type, type_hint_value_type,
 };
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
 #[cfg(test)]
-use classification::{i64_pattern_facts, iterable_item_shape};
-#[cfg(test)]
 use classification::{
     is_map_or_set_type_hint, merge_type_hint_and_value_fact,
     value_expression_requires_matching_syntax,
 };
-#[cfg(test)]
-use classification::{range_iterable_for_payload, statement_kind_for_stmt};
 pub(super) use loops::LoopContext;
-#[cfg(test)]
-use loops::LoopIterable;
-#[cfg(test)]
-use loops::{ForStatementParts, for_iterable_payload_matches_expr};
 #[cfg(test)]
 use value_syntax::ValueSyntaxPayloads;
 
@@ -272,91 +256,6 @@ impl Compiler<'_, '_> {
     }
 
     #[cfg(test)]
-    pub(super) fn compile_statements(&mut self, statements: &[Stmt]) -> CompileResult<bool> {
-        for stmt in statements {
-            if self.compile_statement(stmt)? {
-                return Ok(true);
-            }
-        }
-        Ok(false)
-    }
-
-    #[cfg(test)]
-    pub(super) fn compile_statement(&mut self, stmt: &Stmt) -> CompileResult<bool> {
-        self.compile_statement_as(statement_kind_for_stmt(stmt), stmt)
-    }
-
-    #[cfg(test)]
-    fn compile_statement_as(
-        &mut self,
-        kind: SyntaxStatementKind,
-        stmt: &Stmt,
-    ) -> CompileResult<bool> {
-        match kind {
-            SyntaxStatementKind::Let => self.compile_let_statement(
-                stmt,
-                ValueSyntaxPayloads::new(None, None, None, None, false),
-            ),
-            SyntaxStatementKind::Return => self.compile_return_statement(
-                stmt,
-                ValueSyntaxPayloads::new(None, None, None, None, false),
-            ),
-            SyntaxStatementKind::Break => {
-                let StmtKind::Break = &stmt.kind else {
-                    return self.compile_statement(stmt);
-                };
-                self.compile_break()
-            }
-            SyntaxStatementKind::Continue => {
-                let StmtKind::Continue = &stmt.kind else {
-                    return self.compile_statement(stmt);
-                };
-                self.compile_continue()
-            }
-            SyntaxStatementKind::For => self.compile_for_statement(stmt, None, None, None, None),
-            SyntaxStatementKind::If => self.compile_if_statement(stmt, None),
-            SyntaxStatementKind::Match => {
-                let StmtKind::Expr(expr) = &stmt.kind else {
-                    return self.compile_statement(stmt);
-                };
-                let ExprKind::Match(match_expr) = &expr.kind else {
-                    return self.compile_statement(stmt);
-                };
-                self.compile_match(match_expr)
-            }
-            SyntaxStatementKind::Block => {
-                let StmtKind::Block(block) = &stmt.kind else {
-                    return self.compile_statement(stmt);
-                };
-                self.compile_statements(&block.statements)
-            }
-            SyntaxStatementKind::Expr => {
-                let StmtKind::Expr(expr) = &stmt.kind else {
-                    return self.compile_statement(stmt);
-                };
-                self.compile_expr_statement(expr)
-            }
-        }
-    }
-
-    #[cfg(test)]
-    fn compile_let_statement(
-        &mut self,
-        stmt: &Stmt,
-        syntax_payloads: ValueSyntaxPayloads<'_, '_>,
-    ) -> CompileResult<bool> {
-        let StmtKind::Let {
-            name,
-            type_hint: _,
-            value,
-        } = &stmt.kind
-        else {
-            return self.compile_statement(stmt);
-        };
-        self.compile_let_binding(name.clone(), stmt.span, value.as_ref(), syntax_payloads)
-    }
-
-    #[cfg(test)]
     fn compile_let_binding(
         &mut self,
         name: String,
@@ -453,84 +352,6 @@ impl Compiler<'_, '_> {
             self.value_shapes.set_name(name, value_shape);
         }
         Ok(returned)
-    }
-
-    #[cfg(test)]
-    fn compile_return_statement(
-        &mut self,
-        stmt: &Stmt,
-        syntax_payloads: ValueSyntaxPayloads<'_, '_>,
-    ) -> CompileResult<bool> {
-        let StmtKind::Return(value) = &stmt.kind else {
-            return self.compile_statement(stmt);
-        };
-        let (register, returned) =
-            self.compile_return_value(stmt.span, value.as_ref(), syntax_payloads)?;
-        if !returned {
-            self.emit(UnlinkedInstructionKind::Return { src: register });
-        }
-        Ok(true)
-    }
-
-    #[cfg(test)]
-    fn compile_for_statement<'ast>(
-        &mut self,
-        stmt: &'ast Stmt,
-        iterable_payload: Option<CompilerExpressionPayload<'ast>>,
-        body_payload: Option<CompilerBodyPayload<'ast>>,
-        index_pattern_payload: Option<CompilerPatternPayload>,
-        pattern_payload: Option<CompilerPatternPayload>,
-    ) -> CompileResult<bool> {
-        let StmtKind::For {
-            index_pattern,
-            pattern,
-            iterable,
-            body: _,
-        } = &stmt.kind
-        else {
-            return self.compile_statement(stmt);
-        };
-        self.compile_for(ForStatementParts {
-            stmt_span: stmt.span,
-            index_pattern: index_pattern.as_ref(),
-            pattern,
-            iterable,
-            index_pattern_payload,
-            pattern_payload,
-            iterable_payload,
-            body_payload,
-        })
-    }
-
-    #[cfg(test)]
-    fn compile_if_statement(
-        &mut self,
-        stmt: &Stmt,
-        payload: Option<&CompilerIfPayload<'_>>,
-    ) -> CompileResult<bool> {
-        let StmtKind::Expr(expr) = &stmt.kind else {
-            return self.compile_statement(stmt);
-        };
-        let ExprKind::If(if_expr) = &expr.kind else {
-            return self.compile_statement(stmt);
-        };
-        self.compile_if(if_expr, payload)
-    }
-
-    #[cfg(test)]
-    fn compile_expr_statement(&mut self, expr: &Expr) -> CompileResult<bool> {
-        if let ExprKind::If(if_expr) = &expr.kind {
-            return self.compile_if(if_expr, None);
-        }
-        if let ExprKind::Match(match_expr) = &expr.kind {
-            return self.compile_match(match_expr);
-        }
-        if let ExprKind::Assign { .. } = &expr.kind {
-            self.compile_assignment(expr)?;
-            return Ok(false);
-        }
-        self.compile_expr(expr)?;
-        Ok(false)
     }
 
     #[cfg(test)]
@@ -901,186 +722,6 @@ impl Compiler<'_, '_> {
         }
     }
 
-    #[cfg(test)]
-    fn compile_for(&mut self, parts: ForStatementParts<'_>) -> CompileResult<bool> {
-        if let Some(payload) = parts.iterable_payload.as_ref()
-            && !for_iterable_payload_matches_expr(payload, parts.iterable)
-        {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST for iterable payload",
-            )));
-        }
-        let range_iterable = range_iterable_for_payload(parts.iterable_payload.as_ref());
-        let iterable_operand_payloads =
-            match (range_iterable.is_some(), parts.iterable_payload.as_ref()) {
-                (true, Some(payload)) => {
-                    let ExprKind::Binary { .. } = &parts.iterable.kind else {
-                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "missing CST range operand payload",
-                        )));
-                    };
-                    Some(payload.binary_operand_payloads().ok_or_else(|| {
-                        CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "missing CST range operand payload",
-                        ))
-                    })?)
-                }
-                _ => None,
-            };
-        let item_facts = if range_iterable.is_some() {
-            i64_pattern_facts()
-        } else {
-            PatternBindingFacts::value_shape(
-                self.value_shape_for_expr_with_payload(
-                    parts.iterable,
-                    parts.iterable_payload.as_ref(),
-                )
-                .and_then(iterable_item_shape),
-            )
-        };
-        let loop_iterable = if let Some(inclusive) = range_iterable {
-            let ExprKind::Binary { left, right, .. } = &parts.iterable.kind else {
-                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                    "missing CST range operand payload",
-                )));
-            };
-            let (start_payload, end_payload) = iterable_operand_payloads
-                .as_ref()
-                .map(|(start_payload, end_payload)| (Some(start_payload), Some(end_payload)))
-                .unwrap_or((None, None));
-            let cursor = self.compile_expr_with_payload(left, start_payload)?;
-            let end = self.compile_expr_with_payload(right, end_payload)?;
-            let done = self.alloc_register()?;
-            self.emit_bool_constant_to(done, false);
-            LoopIterable::Range {
-                cursor,
-                end,
-                done,
-                inclusive,
-            }
-        } else {
-            let iterable_register =
-                self.compile_expr_with_payload(parts.iterable, parts.iterable_payload.as_ref())?;
-            let iterator = self.alloc_register()?;
-            self.emit_spanned(
-                UnlinkedInstructionKind::IterInit {
-                    dst: iterator,
-                    iterable: iterable_register,
-                },
-                parts.iterable.span,
-            );
-            LoopIterable::Generic { iterator }
-        };
-
-        let item_register = self.alloc_register()?;
-        let loop_index = if parts.index_pattern.is_some() {
-            let counter = self.alloc_register()?;
-            self.emit_constant_to(counter, Constant::Scalar(vela_common::ScalarValue::I64(0)));
-            Some((
-                counter,
-                self.emit_constant(Constant::Scalar(vela_common::ScalarValue::I64(1)))?,
-            ))
-        } else {
-            None
-        };
-        let index_register = if parts.index_pattern.is_some() {
-            Some(self.alloc_register()?)
-        } else {
-            None
-        };
-        let previous_locals = self.locals.clone();
-        let previous_hir_locals = self.hir_locals.clone();
-        let previous_script_types = self.script_types.clone();
-        let previous_value_types = self.value_types.clone();
-        let previous_value_shapes = self.value_shapes.clone();
-
-        let loop_start = self.current_offset();
-        let done_jump = match loop_iterable {
-            LoopIterable::Generic { iterator } => self.emit_iter_next(iterator, item_register),
-            LoopIterable::Range {
-                cursor,
-                end,
-                done,
-                inclusive,
-            } => self.emit_range_next(cursor, end, done, inclusive, item_register),
-        };
-        if let (Some((counter, one)), Some(index_register)) = (loop_index, index_register) {
-            self.emit(UnlinkedInstructionKind::Move {
-                dst: index_register,
-                src: counter,
-            });
-            self.emit(UnlinkedInstructionKind::Add {
-                dst: counter,
-                lhs: counter,
-                rhs: one,
-            });
-        }
-        let mut mismatch_jumps = Vec::new();
-        if let (Some(index_pattern), Some(index_register)) = (parts.index_pattern, index_register) {
-            mismatch_jumps.extend(self.compile_match_pattern(
-                index_register,
-                index_pattern,
-                parts.index_pattern_payload.as_ref(),
-            )?);
-            self.bind_pattern_locals(
-                index_register,
-                index_pattern,
-                parts.index_pattern_payload.as_ref(),
-                parts.stmt_span,
-                i64_pattern_facts(),
-                LocalBindingKind::For,
-            )?;
-        }
-        mismatch_jumps.extend(self.compile_match_pattern(
-            item_register,
-            parts.pattern,
-            parts.pattern_payload.as_ref(),
-        )?);
-        self.bind_pattern_locals(
-            item_register,
-            parts.pattern,
-            parts.pattern_payload.as_ref(),
-            parts.stmt_span,
-            item_facts,
-            LocalBindingKind::For,
-        )?;
-        let Some(body_payload) = parts.body_payload else {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "missing CST for statement body payload",
-            )));
-        };
-        self.loop_stack.push(LoopContext::new(loop_start));
-        let body_returned = self.compile_body_payload_statements(&body_payload)?;
-        let loop_context = self
-            .loop_stack
-            .pop()
-            .expect("loop context pushed before compiling for body");
-        if !body_returned {
-            self.emit(UnlinkedInstructionKind::Jump {
-                target: InstructionOffset(loop_start),
-            });
-        }
-        let loop_end = self.current_offset();
-        self.patch_jump(done_jump, loop_end)?;
-        for jump in mismatch_jumps {
-            self.patch_jump(jump, loop_start)?;
-        }
-        for jump in loop_context.break_jumps() {
-            self.patch_jump(*jump, loop_end)?;
-        }
-        for jump in loop_context.continue_jumps() {
-            self.patch_jump(*jump, loop_context.continue_target())?;
-        }
-
-        self.locals = previous_locals;
-        self.hir_locals = previous_hir_locals;
-        self.script_types = previous_script_types;
-        self.value_types = previous_value_types;
-        self.value_shapes = previous_value_shapes;
-
-        Ok(false)
-    }
-
     fn compile_break(&mut self) -> CompileResult<bool> {
         if self.loop_stack.is_empty() {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -1108,75 +749,6 @@ impl Compiler<'_, '_> {
             .push_continue(jump);
         Ok(true)
     }
-
-    #[cfg(test)]
-    fn compile_if(
-        &mut self,
-        if_expr: &IfExpr,
-        payload: Option<&CompilerIfPayload<'_>>,
-    ) -> CompileResult<bool> {
-        let condition_payload = payload.and_then(CompilerIfPayload::condition_payload);
-        let condition_payload = required_if_statement_child_payload(
-            payload,
-            condition_payload.as_ref(),
-            "missing CST if condition payload",
-        )?;
-        let jump_to_else =
-            self.emit_condition_jump_if_false(&if_expr.condition, condition_payload)?;
-
-        let then_payload = required_if_statement_child_payload(
-            payload,
-            payload.and_then(CompilerIfPayload::then_body),
-            "missing CST if then body payload",
-        )?;
-        let then_returned = self.compile_if_block(&if_expr.then_branch, then_payload)?;
-        let jump_to_end = if then_returned {
-            None
-        } else {
-            Some(self.emit_jump())
-        };
-
-        self.patch_jump(jump_to_else, self.current_offset())?;
-
-        let else_returned = match &if_expr.else_branch {
-            Some(ElseBranch::Block(block)) => self.compile_if_block(
-                block,
-                required_if_statement_child_payload(
-                    payload,
-                    payload.and_then(CompilerIfPayload::else_body),
-                    "missing CST if else body payload",
-                )?,
-            )?,
-            Some(ElseBranch::If(if_expr)) => self.compile_if(
-                if_expr,
-                required_if_statement_child_payload(
-                    payload,
-                    payload.and_then(CompilerIfPayload::else_if),
-                    "missing CST else-if payload",
-                )?,
-            )?,
-            None => false,
-        };
-
-        if let Some(jump_to_end) = jump_to_end {
-            self.patch_jump(jump_to_end, self.current_offset())?;
-        }
-
-        Ok(then_returned && else_returned)
-    }
-
-    #[cfg(test)]
-    fn compile_if_block(
-        &mut self,
-        block: &Block,
-        payload: Option<&CompilerBodyPayload<'_>>,
-    ) -> CompileResult<bool> {
-        if let Some(payload) = payload {
-            self.compile_body_payload_statements(payload)
-        } else {
-            self.compile_statements(&block.statements)
-        }
-    }
 }
 
 fn static_type_runtime_fact(static_type: StaticExprType) -> Option<RuntimeTypeFact> {
@@ -1189,20 +761,5 @@ fn static_type_runtime_fact(static_type: StaticExprType) -> Option<RuntimeTypeFa
             Some(RuntimeTypeFact::primitive(PrimitiveTag::F64))
         }
         StaticExprType::Dynamic => None,
-    }
-}
-
-#[cfg(test)]
-fn required_if_statement_child_payload<'payload, T>(
-    parent: Option<&CompilerIfPayload<'_>>,
-    child: Option<&'payload T>,
-    message: &'static str,
-) -> CompileResult<Option<&'payload T>> {
-    if parent.is_some() && child.is_none() {
-        Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            message,
-        )))
-    } else {
-        Ok(child)
     }
 }
