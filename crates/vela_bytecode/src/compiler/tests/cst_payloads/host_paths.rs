@@ -308,6 +308,60 @@ fn main(player: Player) {
 }
 
 #[test]
+fn missing_root_host_index_payload_does_not_use_legacy_index_root() {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty("host", std::iter::empty::<&str>(), "Player"))
+                .host_runtime_id(77),
+        )
+        .expect("Player host type should register");
+
+    let source = SourceId::new(1);
+    let semantic = parse_semantic_source(
+        source,
+        r#"
+fn main(player: Player) {
+    player["gold"];
+}
+"#,
+    )
+    .expect("semantic source should parse");
+    let facts = cst_payload_compiler_facts_with_options(
+        &semantic,
+        CompilerOptions::default().with_host_index_capability(
+            "Player",
+            crate::compiler::options::HostIndexCapabilityInfo {
+                readable: true,
+                value_type: Some("Item".to_owned()),
+                ..Default::default()
+            },
+        ),
+        Some(registry.compile_view()),
+    );
+    let (payload, signature, bindings) = semantic.function("main").expect("main function");
+    let legacy_index = paired_statement_payloads_for_body(source, &payload.body)[0]
+        .expression_payload()
+        .expect("legacy root host index expression");
+    let compiler = Compiler::new_with_param_defaults(
+        payload.name.clone(),
+        payload.body.clone(),
+        payload.param_defaults.clone(),
+        signature,
+        bindings,
+        facts,
+    )
+    .expect("compiler should initialize");
+
+    assert!(
+        compiler
+            .resolve_host_path_with_payload(legacy_index.fallback(), None)
+            .is_none(),
+        "payload-aware root host indexes must not resolve from legacy roots"
+    );
+}
+
+#[test]
 fn indexed_host_path_with_non_index_cst_payload_does_not_use_legacy_index() {
     let mut registry = vela_registry::DefinitionRegistry::new();
     let player = registry

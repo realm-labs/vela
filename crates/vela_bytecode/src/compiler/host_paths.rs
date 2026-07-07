@@ -280,9 +280,7 @@ impl Compiler<'_, '_> {
                     .unwrap_or_else(|| {
                         self.expr_host_path_receiver_with_payload(receiver, Some(payload))
                     }),
-                None => self
-                    .resolve_host_path(receiver)
-                    .unwrap_or_else(|| self.expr_host_path_receiver(receiver)),
+                None => self.expr_host_path_receiver(receiver),
             },
             _ => self.expr_host_path_receiver_with_payload(receiver, payload),
         }
@@ -341,11 +339,9 @@ impl Compiler<'_, '_> {
             ExprKind::Field { .. } | ExprKind::Index { .. } => {
                 self.resolve_host_path_with_owned_payload(receiver, payload)
             }
-            ExprKind::Path(path) => match payload {
+            ExprKind::Path(_) => match payload {
                 Some(payload) => self.host_index_payload_root_path(receiver, Some(payload)),
-                None => self
-                    .resolve_host_path(receiver)
-                    .or_else(|| self.host_index_root_path(receiver.span, path)),
+                None => None,
             },
             _ => None,
         }
