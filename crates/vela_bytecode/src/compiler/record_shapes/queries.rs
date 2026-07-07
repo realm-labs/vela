@@ -17,6 +17,15 @@ impl Compiler<'_, '_> {
             .cloned()
     }
 
+    pub(in crate::compiler) fn record_shape_for_expression_payload(
+        &self,
+        payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> Option<RecordShape> {
+        self.value_shape_for_syntax_payload(payload?)?
+            .as_record()
+            .cloned()
+    }
+
     pub(in crate::compiler) fn record_shape_for_path_root(
         &self,
         span: Span,

@@ -543,9 +543,7 @@ impl Compiler<'_, '_> {
                 let shape = root_type
                     .as_deref()
                     .and_then(|type_name| self.record_shape_for_type(type_name))
-                    .or_else(|| {
-                        self.record_shape_for_expr_with_payload(parts.root, root_payload.as_ref())
-                    });
+                    .or_else(|| self.record_shape_for_expression_payload(root_payload.as_ref()));
                 let slot = (parts.fields.len() == 1)
                     .then(|| {
                         let field = parts.fields.first().map_or(name.as_str(), String::as_str);

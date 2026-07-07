@@ -530,7 +530,7 @@ impl Compiler<'_, '_> {
             .as_deref()
             .and_then(|type_name| self.script_record_field_slot_for_type(type_name, name))
             .or_else(|| {
-                self.record_shape_for_expr_with_payload(base, base_payload)
+                self.record_shape_for_expression_payload(base_payload)
                     .and_then(|shape| shape.field_slot(name))
             });
         let typed_enum_slot = self
