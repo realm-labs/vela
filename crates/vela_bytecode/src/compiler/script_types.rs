@@ -4,9 +4,12 @@ use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::HirLocalId;
 use vela_hir::type_hint::HirTypeHint;
-use vela_syntax::ast::{Expr, SyntaxExpression, SyntaxExpressionKind};
+#[cfg(test)]
+use vela_syntax::ast::SyntaxExpressionKind;
+use vela_syntax::ast::{Expr, SyntaxExpression};
 
 use super::body_payloads::CompilerExpressionPayload;
+#[cfg(test)]
 use super::expression_facts::{expression_facts, payload_overlaps_expression_facts};
 use super::patterns::enum_variant_path;
 
@@ -115,6 +118,7 @@ impl ScriptTypeFlow {
     }
 }
 
+#[cfg(test)]
 pub(super) fn expression_script_fact_with_payload(
     expr: &Expr,
     payload: Option<&CompilerExpressionPayload<'_>>,
@@ -135,6 +139,7 @@ pub(super) fn expression_script_fact_with_payload(
     )
 }
 
+#[cfg(test)]
 fn payload_matches_script_fact_expression(
     payload: &CompilerExpressionPayload<'_>,
     expr: &Expr,
@@ -217,6 +222,7 @@ pub(super) fn expression_script_type_from_payload(
     .map(|fact| fact.type_name)
 }
 
+#[cfg(test)]
 pub(super) fn expression_script_type_with_payload(
     expr: &Expr,
     payload: Option<&CompilerExpressionPayload<'_>>,
@@ -260,7 +266,8 @@ impl super::Compiler<'_, '_> {
         expr: &Expr,
         payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> Option<String> {
-        expression_script_type_with_payload(
+        #[cfg(test)]
+        return expression_script_type_with_payload(
             expr,
             payload,
             |span| self.type_symbol_at_span(span),
@@ -274,7 +281,26 @@ impl super::Compiler<'_, '_> {
                     .name(name)
                     .or_else(|| self.global_type_named(name))
             },
-        )
+        );
+
+        #[cfg(not(test))]
+        {
+            let _ = expr;
+            expression_script_type_from_payload(
+                payload?,
+                |span| self.type_symbol_at_span(span),
+                |span| {
+                    self.script_types
+                        .local_at_span(self.bindings, span)
+                        .or_else(|| self.global_type_at_span(span))
+                },
+                |name| {
+                    self.script_types
+                        .name(name)
+                        .or_else(|| self.global_type_named(name))
+                },
+            )
+        }
     }
 
     pub(in crate::compiler) fn script_type_for_payload(
@@ -302,7 +328,8 @@ impl super::Compiler<'_, '_> {
         expr: &Expr,
         payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> Option<ScriptTypeFact> {
-        expression_script_fact_with_payload(
+        #[cfg(test)]
+        return expression_script_fact_with_payload(
             expr,
             payload,
             |span| self.type_symbol_at_span(span),
@@ -316,7 +343,26 @@ impl super::Compiler<'_, '_> {
                     .name_fact(name)
                     .or_else(|| self.global_type_named(name).map(ScriptTypeFact::new))
             },
-        )
+        );
+
+        #[cfg(not(test))]
+        {
+            let _ = expr;
+            expression_script_fact_from_payload_syntax(
+                payload?,
+                &|span| self.type_symbol_at_span(span),
+                &|span| {
+                    self.script_types
+                        .local_fact_at_span(self.bindings, span)
+                        .or_else(|| self.global_type_at_span(span).map(ScriptTypeFact::new))
+                },
+                &|name| {
+                    self.script_types
+                        .name_fact(name)
+                        .or_else(|| self.global_type_named(name).map(ScriptTypeFact::new))
+                },
+            )
+        }
     }
 
     pub(super) fn script_fact_for_syntax_expression(

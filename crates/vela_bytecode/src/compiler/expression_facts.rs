@@ -25,6 +25,7 @@ impl ExpressionFacts {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn with_kind_filter(self, keep: impl FnOnce(SyntaxExpressionKind) -> bool) -> Self {
         Self {
             kind: self.kind.filter(|kind| keep(*kind)),
@@ -122,6 +123,7 @@ pub(super) fn payload_syntax_kind_matches_expression_facts(
     )
 }
 
+#[cfg(test)]
 pub(super) fn payload_overlaps_expression_facts(
     payload: &CompilerExpressionPayload<'_>,
     facts: ExpressionFacts,
