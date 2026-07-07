@@ -698,14 +698,7 @@ impl Compiler<'_, '_> {
             }
             _ => {}
         }
-        self.reject_static_identity_comparison_operands(
-            op,
-            span,
-            left,
-            right,
-            left_payload,
-            right_payload,
-        )?;
+        self.reject_static_identity_comparison_operands(op, span, left_payload, right_payload)?;
         self.reject_static_comparison_without_trait(op, span, left_payload)?;
 
         if let Some(register) = self.compile_binary_with_inline_literal(

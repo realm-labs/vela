@@ -1,6 +1,8 @@
 use vela_common::{Diagnostic, PrimitiveTag, Span};
 use vela_def::MethodId;
-use vela_syntax::ast::{BinaryOp, Expr, Literal};
+#[cfg(test)]
+use vela_syntax::ast::Expr;
+use vela_syntax::ast::{BinaryOp, Literal};
 
 use super::body_payloads::CompilerExpressionPayload;
 use super::record_shapes::ValueShape;
@@ -12,19 +14,17 @@ impl Compiler<'_, '_> {
         &self,
         op: BinaryOp,
         span: Span,
-        left: &Expr,
-        right: &Expr,
         left_payload: Option<&CompilerExpressionPayload<'_>>,
         right_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<()> {
         if !matches!(op, BinaryOp::IdentityEqual | BinaryOp::IdentityNotEqual) {
             return Ok(());
         }
-        for (side, expr, payload) in [
-            ("left", left, left_payload),
-            ("right", right, right_payload),
-        ] {
+        for (side, payload) in [("left", left_payload), ("right", right_payload)] {
             if let Some(type_name) = self.static_non_identity_operand_type(payload) {
+                let operand_span = payload
+                    .and_then(CompilerExpressionPayload::syntax_span)
+                    .unwrap_or(span);
                 return Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
                     vec![
                         Diagnostic::error(format!(
@@ -35,7 +35,7 @@ impl Compiler<'_, '_> {
                         .with_span(span)
                         .with_label(span, "identity comparison requires reference operands")
                         .with_label(
-                            expr.span,
+                            operand_span,
                             format!("{side} operand is statically `{type_name}`"),
                         ),
                     ],
