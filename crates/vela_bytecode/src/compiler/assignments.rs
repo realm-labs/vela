@@ -191,7 +191,7 @@ impl Compiler<'_, '_> {
             )));
         }
         validate_assignment_value_payload(value.span, value_syntax.expression)?;
-        if let Some(local_target) = self.local_assignment_target(target, target_syntax.expression) {
+        if let Some(local_target) = self.local_assignment_target(target_syntax.expression) {
             let target_value_type =
                 self.value_type_for_expression_payload(target_syntax.expression);
             let assigned_value_type = match op {
@@ -263,30 +263,21 @@ impl Compiler<'_, '_> {
 
     fn local_assignment_target(
         &self,
-        target: &Expr,
         target_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> Option<LocalAssignmentTarget> {
-        let (target_span, name) = if let Some(payload) = target_payload {
-            if !matches!(
-                payload.syntax_kind(),
-                Some(SyntaxExpressionKind::Path) | None
-            ) {
-                return None;
-            }
-            let path = payload.syntax_path_segments()?;
-            let [name] = path.as_slice() else {
-                return None;
-            };
-            (payload.syntax_span()?, name.clone())
-        } else {
-            let ExprKind::Path(path) = &target.kind else {
-                return None;
-            };
-            let [name] = path.as_slice() else {
-                return None;
-            };
-            (target.span, name.clone())
+        let payload = target_payload?;
+        if !matches!(
+            payload.syntax_kind(),
+            Some(SyntaxExpressionKind::Path) | None
+        ) {
+            return None;
+        }
+        let path = payload.syntax_path_segments()?;
+        let [name] = path.as_slice() else {
+            return None;
         };
+        let target_span = payload.syntax_span()?;
+        let name = name.clone();
         let local = match self.bindings.resolution_at_span(target_span) {
             Some(BindingResolution::Local(local)) => Some(*local),
             _ if self.locals.contains_key(&name) => None,

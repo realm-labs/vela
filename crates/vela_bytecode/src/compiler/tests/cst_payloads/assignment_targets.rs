@@ -31,6 +31,47 @@ fn main() {
 }
 
 #[test]
+fn missing_local_assignment_target_payload_does_not_use_legacy_target() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let value = 1;
+    value += 2;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = paired_statement_payloads_for_body(source, &payload.body);
+    compiler
+        .compile_statement_payload_for_test(&statements[0])
+        .expect("local target should compile");
+    let assignment = statements[1]
+        .expression_payload()
+        .expect("assignment expression payload");
+    let value = assignment
+        .assignment_value_payload()
+        .expect("assignment value payload");
+
+    let error = compiler
+        .compile_assignment_with_payloads(
+            assignment.fallback(),
+            crate::compiler::assignments::AssignmentTargetSyntax::new(None),
+            crate::compiler::assignments::AssignmentValueSyntax::new(
+                value.syntax_kind(),
+                assignment.syntax_assignment_operator(),
+                Some(&value),
+            ),
+        )
+        .expect_err("missing CST assignment target payload must not compile legacy local target");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("assignment target")
+            | CompileErrorKind::UnsupportedSyntax("host path")
+    ));
+}
+
+#[test]
 fn record_assignment_with_non_field_cst_payload_does_not_use_legacy_field_target() {
     with_cst_payload_compiler(
         r#"
@@ -370,6 +411,9 @@ fn assert_assignment_block_value_without_child_payloads_compiles(text: &str) {
         let assignment = statements[1]
             .expression_payload()
             .expect("assignment expression payload");
+        let target = assignment
+            .assignment_target_payload()
+            .expect("assignment target expression payload");
         let value = statements[1]
             .expression_payload()
             .and_then(|payload| payload.assignment_value_payload())
@@ -378,7 +422,7 @@ fn assert_assignment_block_value_without_child_payloads_compiles(text: &str) {
         compiler
             .compile_assignment_with_payloads(
                 assignment.fallback(),
-                crate::compiler::assignments::AssignmentTargetSyntax::new(None),
+                crate::compiler::assignments::AssignmentTargetSyntax::new(Some(&target)),
                 crate::compiler::assignments::AssignmentValueSyntax::new(
                     Some(SyntaxExpressionKind::Block),
                     None,
@@ -398,6 +442,9 @@ fn assert_assignment_match_value_without_child_payloads_compiles(text: &str) {
         let assignment = statements[1]
             .expression_payload()
             .expect("assignment expression payload");
+        let target = assignment
+            .assignment_target_payload()
+            .expect("assignment target expression payload");
         let value = assignment
             .assignment_value_payload()
             .expect("assignment value expression payload");
@@ -405,7 +452,7 @@ fn assert_assignment_match_value_without_child_payloads_compiles(text: &str) {
         compiler
             .compile_assignment_with_payloads(
                 assignment.fallback(),
-                crate::compiler::assignments::AssignmentTargetSyntax::new(None),
+                crate::compiler::assignments::AssignmentTargetSyntax::new(Some(&target)),
                 crate::compiler::assignments::AssignmentValueSyntax::new(
                     Some(SyntaxExpressionKind::Match),
                     None,
@@ -425,6 +472,9 @@ fn assert_assignment_if_value_without_child_payloads_compiles(text: &str) {
         let assignment = statements[1]
             .expression_payload()
             .expect("assignment expression payload");
+        let target = assignment
+            .assignment_target_payload()
+            .expect("assignment target expression payload");
         let value = assignment
             .assignment_value_payload()
             .expect("assignment value expression payload");
@@ -432,7 +482,7 @@ fn assert_assignment_if_value_without_child_payloads_compiles(text: &str) {
         compiler
             .compile_assignment_with_payloads(
                 assignment.fallback(),
-                crate::compiler::assignments::AssignmentTargetSyntax::new(None),
+                crate::compiler::assignments::AssignmentTargetSyntax::new(Some(&target)),
                 crate::compiler::assignments::AssignmentValueSyntax::new(
                     Some(SyntaxExpressionKind::If),
                     None,
