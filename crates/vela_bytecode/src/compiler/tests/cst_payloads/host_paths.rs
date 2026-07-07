@@ -359,6 +359,12 @@ fn main(player: Player) {
             .is_none(),
         "payload-aware root host indexes must not resolve from legacy roots"
     );
+    assert!(
+        compiler
+            .resolve_host_path(legacy_index.fallback())
+            .is_none(),
+        "root host indexes must not resolve from legacy roots without CST"
+    );
 }
 
 #[test]
