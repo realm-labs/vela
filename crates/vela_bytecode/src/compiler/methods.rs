@@ -1,27 +1,26 @@
-use vela_common::HostMethodId;
-use vela_syntax::ast::{Expr, ExprKind, SyntaxExpressionKind};
+use vela_common::{HostMethodId, Span};
+use vela_syntax::ast::SyntaxExpressionKind;
 
 use super::body_payloads::CompilerExpressionPayload;
 use super::host_paths::{HostPath, HostPathPart, HostPathRoot, ResolvedHostPath};
 
-pub(super) struct HostMethodCall<'ast> {
-    pub(super) receiver: HostPathRoot<'ast>,
-    pub(super) segments: Vec<HostPathPart<'ast>>,
+pub(super) struct HostMethodCall {
+    pub(super) receiver: HostPathRoot<'static>,
+    pub(super) segments: Vec<HostPathPart<'static>>,
     pub(super) method: HostMethodId,
 }
 
-pub(super) fn host_method_call<'ast>(
+pub(super) fn host_method_call(
     compiler: &super::Compiler<'_, '_>,
-    callee: &'ast Expr,
-    callee_payload: Option<&CompilerExpressionPayload<'ast>>,
+    callee_payload: Option<&CompilerExpressionPayload<'_>>,
     receiver_type: Option<&str>,
     path_root_is_local: bool,
-) -> Option<HostMethodCall<'ast>> {
+) -> Option<HostMethodCall> {
     let callee_payload = callee_payload?;
-    match &callee.kind {
-        ExprKind::Field { base, .. } => {
+    match callee_payload.syntax_kind()? {
+        SyntaxExpressionKind::Field => {
             let receiver_payload = callee_payload.field_base_payload();
-            let receiver = host_method_receiver_path(compiler, base, receiver_payload.as_ref())?;
+            let receiver = host_method_receiver_path(compiler, receiver_payload.as_ref())?;
             let name = callee_field_name(callee_payload)?;
             let method =
                 compiler.host_method_id(receiver_type.or(receiver.type_name.as_deref()), &name)?;
@@ -31,7 +30,7 @@ pub(super) fn host_method_call<'ast>(
                 method,
             })
         }
-        ExprKind::Path(_) => {
+        SyntaxExpressionKind::Path => {
             let cst_path = callee_payload.syntax_path_segments()?;
             let lookup_path = cst_path.as_slice();
             if lookup_path.len() < 2 {
@@ -41,8 +40,9 @@ pub(super) fn host_method_call<'ast>(
                 return None;
             }
             let method_name = lookup_path.last()?;
+            let span = callee_payload.syntax_span()?;
             let receiver =
-                host_method_path_receiver(compiler, callee, &lookup_path[..lookup_path.len() - 1])?;
+                host_method_path_receiver(compiler, span, &lookup_path[..lookup_path.len() - 1])?;
             let method = compiler
                 .host_method_id(receiver_type.or(receiver.type_name.as_deref()), method_name)?;
             Some(HostMethodCall {
@@ -65,43 +65,32 @@ fn callee_field_name(callee_payload: &CompilerExpressionPayload<'_>) -> Option<S
 
 fn host_method_receiver_path<'ast>(
     compiler: &super::Compiler<'_, '_>,
-    receiver: &'ast Expr,
     receiver_payload: Option<&CompilerExpressionPayload<'ast>>,
-) -> Option<ResolvedHostPath<'ast>> {
-    compiler
-        .resolve_host_path_with_payload(receiver, receiver_payload)
-        .or_else(|| {
-            Some(ResolvedHostPath {
-                path: HostPath {
-                    root: HostPathRoot::Expr {
-                        expr: receiver,
-                        payload: receiver_payload.cloned(),
-                    },
-                    segments: Vec::new(),
-                },
-                type_name: compiler.script_type_for_expression_payload(receiver_payload),
-            })
-        })
+) -> Option<ResolvedHostPath<'static>> {
+    let payload = receiver_payload?;
+    let source = payload.source()?;
+    let expression = payload.syntax_expression()?.clone();
+    Some(compiler.syntax_host_method_receiver(source, &expression))
 }
 
-fn host_method_path_receiver<'ast>(
+fn host_method_path_receiver(
     compiler: &super::Compiler<'_, '_>,
-    callee: &'ast Expr,
+    span: Span,
     path: &[String],
-) -> Option<ResolvedHostPath<'ast>> {
+) -> Option<ResolvedHostPath<'static>> {
     let root = path.first()?;
     if path.len() == 1 {
         Some(ResolvedHostPath {
             path: HostPath {
                 root: HostPathRoot::OwnedLocalPath {
                     name: root.clone(),
-                    span: callee.span,
+                    span,
                 },
                 segments: Vec::new(),
             },
-            type_name: compiler.host_local_type_name(root, callee.span),
+            type_name: compiler.host_local_type_name(root, span),
         })
     } else {
-        compiler.owned_host_field_path_parts(callee.span, path)
+        compiler.owned_host_field_path_parts(span, path)
     }
 }

@@ -25,6 +25,10 @@ pub(super) enum HostPathRoot<'ast> {
         expr: &'ast Expr,
         payload: Option<CompilerExpressionPayload<'ast>>,
     },
+    SyntaxExpr {
+        source: SourceId,
+        expression: SyntaxExpression,
+    },
     LocalPath {
         name: &'ast str,
         span: Span,
@@ -722,6 +726,7 @@ impl Compiler<'_, '_> {
         let target = self.host_collection_method_target(callee, callee_payload, method)?;
         match target.path.root {
             HostPathRoot::Expr { .. } => Some("<expr>".to_owned()),
+            HostPathRoot::SyntaxExpr { .. } => Some("<expr>".to_owned()),
             HostPathRoot::LocalPath { name, .. } => Some(name.to_owned()),
             HostPathRoot::OwnedLocalPath { name, .. } => Some(name),
         }
@@ -735,6 +740,13 @@ impl Compiler<'_, '_> {
             HostPathRoot::Expr { expr, payload } => {
                 self.compile_expr_with_payload(expr, payload.as_ref())
             }
+            HostPathRoot::SyntaxExpr { source, expression } => self
+                .compile_syntax_expression(*source, expression)?
+                .ok_or_else(|| {
+                    CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "host path syntax expression root",
+                    ))
+                }),
             HostPathRoot::LocalPath { name, span } => self.local_register_at_span(*span, name),
             HostPathRoot::OwnedLocalPath { name, span } => self.local_register_at_span(*span, name),
         }
@@ -825,6 +837,9 @@ impl Compiler<'_, '_> {
                 .script_type_for_payload(&payload)
                 .or_else(|| self.script_type_for_expression_payload(Some(&payload))),
             HostPathRoot::Expr { payload: None, .. } => None,
+            HostPathRoot::SyntaxExpr { source, expression } => self
+                .script_fact_for_syntax_expression(source, &expression)
+                .map(|fact| fact.type_name),
             HostPathRoot::LocalPath { name, span } => self.host_local_type_name(name, span),
             HostPathRoot::OwnedLocalPath { name, span } => self.host_local_type_name(&name, span),
         }
@@ -943,6 +958,26 @@ impl Compiler<'_, '_> {
         expression: &SyntaxExpression,
     ) -> Option<ResolvedHostPath<'static>> {
         self.syntax_host_path(source, expression)
+    }
+
+    pub(in crate::compiler) fn syntax_host_method_receiver(
+        &self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> ResolvedHostPath<'static> {
+        self.syntax_host_path(source, expression)
+            .unwrap_or_else(|| ResolvedHostPath {
+                path: HostPath {
+                    root: HostPathRoot::SyntaxExpr {
+                        source,
+                        expression: expression.clone(),
+                    },
+                    segments: Vec::new(),
+                },
+                type_name: self
+                    .script_fact_for_syntax_expression(source, expression)
+                    .map(|fact| fact.type_name),
+            })
     }
 
     pub(super) fn reject_invalid_host_index_access(

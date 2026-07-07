@@ -120,7 +120,6 @@ impl Compiler<'_, '_> {
         let path_root_is_local = path_root_is_local(callee_path, &self.locals);
         if let Some(call) = host_method_call(
             self,
-            callee,
             callee_payload,
             host_receiver_type.as_deref(),
             path_root_is_local,
