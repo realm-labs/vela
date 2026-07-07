@@ -159,6 +159,79 @@ fn main() {
 }
 
 #[test]
+fn missing_record_field_receiver_payload_does_not_use_legacy_receiver() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main() {
+    let box = { amount: 0 };
+    .amount = 1;
+}
+"#;
+    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
+    let cst_assignment = cst_parse
+        .tree()
+        .functions()
+        .next()
+        .expect("CST function")
+        .body()
+        .expect("CST function body")
+        .statements()
+        .nth(1)
+        .expect("CST assignment statement")
+        .as_expr()
+        .expect("CST expression statement")
+        .expression()
+        .expect("CST assignment expression");
+
+    let legacy_text = r#"
+fn main() {
+    let box = { amount: 0 };
+    box.amount = 1;
+}
+"#;
+    let semantic = parse_semantic_source(source, legacy_text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = paired_statement_payloads_for_body(source, &payload.body);
+    compiler
+        .compile_statement_payload_for_test(&statements[0])
+        .expect("record local should compile");
+    let legacy_assignment = statements[1]
+        .expression_payload()
+        .expect("legacy assignment expression payload");
+    let target =
+        body_payloads::CompilerExpressionPayload::from_syntax(Some(source), Some(cst_assignment))
+            .assignment_target_payload()
+            .expect("CST assignment target payload");
+    let value = legacy_assignment
+        .assignment_value_payload()
+        .expect("assignment value payload");
+
+    let error = compiler
+        .compile_assignment_with_payloads(
+            legacy_assignment.fallback(),
+            crate::compiler::assignments::AssignmentTargetSyntax::new(Some(&target)),
+            crate::compiler::assignments::AssignmentValueSyntax::new(
+                value.syntax_kind(),
+                legacy_assignment.syntax_assignment_operator(),
+                Some(&value),
+            ),
+        )
+        .expect_err("missing CST field receiver must not compile legacy receiver");
+
+    assert!(
+        matches!(
+            error.kind,
+            CompileErrorKind::UnsupportedSyntax("mismatched CST assignment target")
+                | CompileErrorKind::UnsupportedSyntax("missing CST expression payload")
+                | CompileErrorKind::UnsupportedSyntax("missing CST field receiver")
+                | CompileErrorKind::UnsupportedSyntax("record field assignment target")
+        ),
+        "{:?}",
+        error.kind
+    );
+}
+
+#[test]
 fn record_assignment_with_non_field_cst_payload_does_not_use_legacy_field_target() {
     with_cst_payload_compiler(
         r#"
