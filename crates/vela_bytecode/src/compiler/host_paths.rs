@@ -60,12 +60,14 @@ struct HostCollectionMethodTarget<'ast> {
 }
 
 enum HostCollectionFieldReceiver<'ast> {
+    #[cfg(test)]
     Expr {
         payload: Option<CompilerExpressionPayload<'ast>>,
     },
     Syntax {
         source: SourceId,
         expression: SyntaxExpression,
+        _ast: std::marker::PhantomData<&'ast ()>,
     },
 }
 
@@ -82,6 +84,7 @@ impl HostPath<'_> {
 }
 
 impl Compiler<'_, '_> {
+    #[cfg(test)]
     pub(super) fn host_field_path<'ast>(&self, expr: &'ast Expr) -> Option<HostPath<'ast>> {
         self.resolve_host_path(expr).map(|resolved| resolved.path)
     }
@@ -103,6 +106,7 @@ impl Compiler<'_, '_> {
         self.resolve_host_path_with_owned_payload(expr, payload.cloned())
     }
 
+    #[cfg(test)]
     pub(super) fn resolve_host_path<'ast>(
         &self,
         expr: &'ast Expr,
@@ -240,6 +244,7 @@ impl Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     fn resolve_host_path_receiver<'ast>(&self, receiver: &'ast Expr) -> ResolvedHostPath<'ast> {
         match &receiver.kind {
             ExprKind::Field { .. } | ExprKind::Index { .. } => self
@@ -316,6 +321,7 @@ impl Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     fn resolve_host_path_index_receiver<'ast>(
         &self,
         receiver: &'ast Expr,
@@ -642,6 +648,7 @@ impl Compiler<'_, '_> {
                         field_receiver: Some(HostCollectionFieldReceiver::Syntax {
                             source,
                             expression,
+                            _ast: std::marker::PhantomData,
                         }),
                     })
                 }
@@ -661,21 +668,31 @@ impl Compiler<'_, '_> {
             };
         }
 
-        match &callee.kind {
-            ExprKind::Field { base, name } if name == method => {
-                self.host_field_path(base)
-                    .map(|path| HostCollectionMethodTarget {
-                        path,
-                        field_receiver: Some(HostCollectionFieldReceiver::Expr { payload: None }),
-                    })
+        #[cfg(test)]
+        {
+            match &callee.kind {
+                ExprKind::Field { base, name } if name == method => {
+                    self.host_field_path(base)
+                        .map(|path| HostCollectionMethodTarget {
+                            path,
+                            field_receiver: Some(HostCollectionFieldReceiver::Expr {
+                                payload: None,
+                            }),
+                        })
+                }
+                ExprKind::Path(parts) if parts.last().is_some_and(|name| name == method) => self
+                    .host_field_path_parts(callee.span, &parts[..parts.len() - 1])
+                    .map(|resolved| HostCollectionMethodTarget {
+                        path: resolved.path,
+                        field_receiver: None,
+                    }),
+                _ => None,
             }
-            ExprKind::Path(parts) if parts.last().is_some_and(|name| name == method) => self
-                .host_field_path_parts(callee.span, &parts[..parts.len() - 1])
-                .map(|resolved| HostCollectionMethodTarget {
-                    path: resolved.path,
-                    field_receiver: None,
-                }),
-            _ => None,
+        }
+        #[cfg(not(test))]
+        {
+            let _ = callee;
+            None
         }
     }
 
@@ -685,10 +702,13 @@ impl Compiler<'_, '_> {
         kind: HostIndexAccessKind,
     ) -> CompileResult<()> {
         match receiver {
+            #[cfg(test)]
             HostCollectionFieldReceiver::Expr { payload } => {
                 self.reject_terminal_host_index_access(payload.as_ref(), kind)
             }
-            HostCollectionFieldReceiver::Syntax { source, expression } => {
+            HostCollectionFieldReceiver::Syntax {
+                source, expression, ..
+            } => {
                 self.reject_invalid_syntax_host_index_access(source, &expression, &expression, kind)
             }
         }
@@ -1037,6 +1057,7 @@ impl Compiler<'_, '_> {
         )
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn reject_terminal_host_index_access(
         &self,
         payload: Option<&CompilerExpressionPayload<'_>>,
