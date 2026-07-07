@@ -5,8 +5,8 @@ use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
 #[cfg(test)]
-use vela_syntax::ast::RecordField;
-use vela_syntax::ast::{Argument, AstNode, SyntaxExpression};
+use vela_syntax::ast::{Argument, RecordField};
+use vela_syntax::ast::{AstNode, SyntaxExpression};
 
 use crate::Constant;
 
@@ -402,6 +402,7 @@ pub(super) fn record_constructor_field_diagnostics(
     diagnostics
 }
 
+#[cfg(test)]
 pub(super) fn tuple_constructor_diagnostics(
     type_name: &str,
     variant: &str,
@@ -437,6 +438,7 @@ pub(super) fn syntax_tuple_constructor_diagnostics(
     }
 }
 
+#[cfg(test)]
 pub(super) fn resolve_tuple_constructor_arguments<'ast>(
     shape: &ConstructorShape,
     owner: &str,

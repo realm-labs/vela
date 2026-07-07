@@ -81,13 +81,23 @@ impl Compiler<'_, '_> {
             && let Some((enum_name, variant)) =
                 self.tuple_enum_constructor_call_at_span(path, callee_span)
         {
-            let fields = self.compile_tuple_variant_fields(
+            let Some((source, syntax_args)) = arg_syntax.syntax_arguments() else {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST tuple variant argument payloads",
+                )));
+            };
+            let Some(fields) = self.compile_syntax_tuple_variant_fields(
+                source,
                 callee_span,
                 &enum_name,
                 &variant,
-                args,
-                arg_payloads,
-            )?;
+                &syntax_args,
+            )?
+            else {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST tuple variant argument payloads",
+                )));
+            };
             let dst = self.alloc_register()?;
             self.emit(UnlinkedInstructionKind::MakeEnum {
                 dst,

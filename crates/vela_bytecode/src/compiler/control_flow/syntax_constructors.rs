@@ -23,7 +23,7 @@ use crate::{
 };
 
 impl Compiler<'_, '_> {
-    pub(in crate::compiler::control_flow) fn compile_syntax_tuple_variant_fields(
+    pub(in crate::compiler) fn compile_syntax_tuple_variant_fields(
         &mut self,
         source: SourceId,
         constructor_span: Span,

@@ -1,18 +1,25 @@
 use std::collections::BTreeSet;
 
-use vela_common::{Diagnostic, Span};
+use vela_common::Diagnostic;
+#[cfg(test)]
+use vela_common::Span;
+#[cfg(test)]
 use vela_syntax::ast::Argument;
 
 use crate::Register;
 
 #[cfg(test)]
 use super::body_payloads::CompilerRecordFieldPayload;
+#[cfg(test)]
 use super::body_payloads::{CompilerArgumentPayload, CompilerExpressionPayload};
 use super::const_eval::evaluate_syntax_const_expr;
+#[cfg(test)]
 use super::patterns::tuple_variant_field_name;
+use super::schema_defaults::{ConstructorShape, SchemaFieldDefault};
+#[cfg(test)]
 use super::schema_defaults::{
-    ConstructorShape, SchemaFieldDefault, resolve_tuple_constructor_arguments,
-    tuple_constructor_diagnostics, unknown_enum_variant_diagnostic,
+    resolve_tuple_constructor_arguments, tuple_constructor_diagnostics,
+    unknown_enum_variant_diagnostic,
 };
 use super::value_types::{
     RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type,
@@ -36,6 +43,7 @@ pub(super) fn record_field_names(
 }
 
 impl<'ast, 'registry> Compiler<'ast, 'registry> {
+    #[cfg(test)]
     pub(super) fn compile_tuple_variant_fields(
         &mut self,
         constructor_span: Span,
@@ -223,6 +231,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         Ok((field_name.to_owned(), value))
     }
 
+    #[cfg(test)]
     fn compile_constructor_value(
         &mut self,
         value: &vela_syntax::ast::Expr,
@@ -292,6 +301,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
     }
 }
 
+#[cfg(test)]
 fn argument_expression_payload<'ast>(
     args: &[Argument],
     arg_payloads: Option<&[CompilerArgumentPayload]>,
@@ -322,6 +332,7 @@ fn argument_expression_payload<'ast>(
         .transpose()
 }
 
+#[cfg(test)]
 fn reject_mismatched_tuple_variant_argument_payloads(
     args: &[Argument],
     arg_payloads: Option<&[CompilerArgumentPayload]>,
@@ -336,6 +347,7 @@ fn reject_mismatched_tuple_variant_argument_payloads(
     Ok(())
 }
 
+#[cfg(test)]
 fn argument_names(
     args: &[Argument],
     arg_payloads: Option<&[CompilerArgumentPayload]>,
@@ -347,6 +359,7 @@ fn argument_names(
     })
 }
 
+#[cfg(test)]
 fn argument_name(
     args: &[Argument],
     arg_payloads: Option<&[CompilerArgumentPayload]>,
