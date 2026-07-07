@@ -507,8 +507,13 @@ impl Compiler<'_, '_> {
                 if self.host_field_path(target).is_some() {
                     return Ok(None);
                 }
+                let Some(target_payload) = syntax.expression else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST assignment target field",
+                    )));
+                };
                 let Some(parts) =
-                    record_field_expr_parts_with_payload(target, syntax.expression.cloned())
+                    record_field_expr_parts_with_payload(target, Some(target_payload.clone()))
                 else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "record field assignment target",

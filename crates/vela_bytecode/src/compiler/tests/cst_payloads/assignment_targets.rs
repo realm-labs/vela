@@ -115,6 +115,50 @@ fn main() {
 }
 
 #[test]
+fn missing_record_field_assignment_target_payload_does_not_use_legacy_field() {
+    let source = SourceId::new(1);
+    let text = r#"
+struct Box {
+    amount: i64,
+}
+
+fn main() {
+    let box = Box { amount: 0 };
+    box.amount = 1;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = paired_statement_payloads_for_body(source, &payload.body);
+    compiler
+        .compile_statement_payload_for_test(&statements[0])
+        .expect("record local should compile");
+    let assignment = statements[1]
+        .expression_payload()
+        .expect("record field assignment expression payload");
+    let value = assignment
+        .assignment_value_payload()
+        .expect("assignment value payload");
+
+    let error = compiler
+        .compile_assignment_with_payloads(
+            assignment.fallback(),
+            crate::compiler::assignments::AssignmentTargetSyntax::new(None),
+            crate::compiler::assignments::AssignmentValueSyntax::new(
+                value.syntax_kind(),
+                assignment.syntax_assignment_operator(),
+                Some(&value),
+            ),
+        )
+        .expect_err("missing CST record field target must not compile legacy field");
+
+    assert_eq!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST assignment target field")
+    );
+}
+
+#[test]
 fn record_assignment_with_non_field_cst_payload_does_not_use_legacy_field_target() {
     with_cst_payload_compiler(
         r#"
@@ -256,11 +300,14 @@ fn main() {
             let legacy_assignment = statements[2]
                 .expression_payload()
                 .expect("legacy assignment expression");
+            let target = legacy_assignment
+                .assignment_target_payload()
+                .expect("assignment target expression payload");
 
             let error = compiler
                 .compile_assignment_with_payloads(
                     legacy_assignment.fallback(),
-                    crate::compiler::assignments::AssignmentTargetSyntax::new(None),
+                    crate::compiler::assignments::AssignmentTargetSyntax::new(Some(&target)),
                     crate::compiler::assignments::AssignmentValueSyntax::new(
                         Some(SyntaxExpressionKind::Array),
                         None,
@@ -294,6 +341,9 @@ fn main() {
             let assignment = statements[1]
                 .expression_payload()
                 .expect("assignment expression payload");
+            let target = assignment
+                .assignment_target_payload()
+                .expect("assignment target expression payload");
             let value = statements[1]
                 .expression_payload()
                 .and_then(|payload| payload.assignment_value_payload())
@@ -309,7 +359,7 @@ fn main() {
             let error = compiler
                 .compile_assignment_with_payloads(
                     assignment.fallback(),
-                    crate::compiler::assignments::AssignmentTargetSyntax::new(None),
+                    crate::compiler::assignments::AssignmentTargetSyntax::new(Some(&target)),
                     crate::compiler::assignments::AssignmentValueSyntax::new(
                         None,
                         None,
@@ -561,6 +611,9 @@ fn main() {{
         let assignment = statements[2]
             .expression_payload()
             .expect("field assignment expression payload");
+        let target = assignment
+            .assignment_target_payload()
+            .expect("field assignment target expression payload");
         let value = statements[2]
             .expression_payload()
             .and_then(|payload| payload.assignment_value_payload())
@@ -569,7 +622,7 @@ fn main() {{
         compiler
             .compile_assignment_with_payloads(
                 assignment.fallback(),
-                crate::compiler::assignments::AssignmentTargetSyntax::new(None),
+                crate::compiler::assignments::AssignmentTargetSyntax::new(Some(&target)),
                 crate::compiler::assignments::AssignmentValueSyntax::new(
                     Some(SyntaxExpressionKind::Block),
                     None,
@@ -605,6 +658,9 @@ fn main() {{
         let assignment = statements[2]
             .expression_payload()
             .expect("field assignment expression payload");
+        let target = assignment
+            .assignment_target_payload()
+            .expect("field assignment target expression payload");
         let value = assignment
             .assignment_value_payload()
             .expect("field assignment value expression payload");
@@ -612,7 +668,7 @@ fn main() {{
         compiler
             .compile_assignment_with_payloads(
                 assignment.fallback(),
-                crate::compiler::assignments::AssignmentTargetSyntax::new(None),
+                crate::compiler::assignments::AssignmentTargetSyntax::new(Some(&target)),
                 crate::compiler::assignments::AssignmentValueSyntax::new(
                     Some(SyntaxExpressionKind::If),
                     None,
@@ -648,6 +704,9 @@ fn main() {{
         let assignment = statements[2]
             .expression_payload()
             .expect("field assignment expression payload");
+        let target = assignment
+            .assignment_target_payload()
+            .expect("field assignment target expression payload");
         let value = assignment
             .assignment_value_payload()
             .expect("field assignment value expression payload");
@@ -655,7 +714,7 @@ fn main() {{
         compiler
             .compile_assignment_with_payloads(
                 assignment.fallback(),
-                crate::compiler::assignments::AssignmentTargetSyntax::new(None),
+                crate::compiler::assignments::AssignmentTargetSyntax::new(Some(&target)),
                 crate::compiler::assignments::AssignmentValueSyntax::new(
                     Some(SyntaxExpressionKind::Match),
                     None,
