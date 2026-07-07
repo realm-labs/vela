@@ -460,16 +460,17 @@ impl Compiler<'_, '_> {
         syntax: AssignmentTargetSyntax<'_, '_>,
     ) -> CompileResult<Option<RecordFieldAssignmentTarget>> {
         match &target.kind {
-            ExprKind::Path(path) => {
-                let path = if let Some(payload) = syntax.expression {
-                    payload.syntax_path_segments().ok_or_else(|| {
-                        CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "missing CST assignment target path",
-                        ))
-                    })?
-                } else {
-                    path.to_owned()
+            ExprKind::Path(_) => {
+                let Some(payload) = syntax.expression else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST assignment target path",
+                    )));
                 };
+                let path = payload.syntax_path_segments().ok_or_else(|| {
+                    CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST assignment target path",
+                    ))
+                })?;
                 let Some((record, fields)) = record_path_parts(&path) else {
                     return Ok(None);
                 };
