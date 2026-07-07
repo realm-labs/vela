@@ -1142,7 +1142,10 @@ pub(super) enum HostIndexAccessKind {
 }
 
 impl HostIndexAccessKind {
-    fn allowed_by(self, capability: &crate::compiler::options::HostIndexCapabilityInfo) -> bool {
+    pub(super) fn allowed_by(
+        self,
+        capability: &crate::compiler::options::HostIndexCapabilityInfo,
+    ) -> bool {
         match self {
             Self::Read => capability.readable,
             Self::Write => capability.writable,
@@ -1151,7 +1154,7 @@ impl HostIndexAccessKind {
         }
     }
 
-    const fn denied_code(self) -> &'static str {
+    pub(super) const fn denied_code(self) -> &'static str {
         match self {
             Self::Read => "analysis::host_index_not_readable",
             Self::Write => "analysis::host_index_not_writable",
@@ -1160,7 +1163,7 @@ impl HostIndexAccessKind {
         }
     }
 
-    const fn access_name(self) -> &'static str {
+    pub(super) const fn access_name(self) -> &'static str {
         match self {
             Self::Read => "reads",
             Self::Write => "writes",
@@ -1169,7 +1172,7 @@ impl HostIndexAccessKind {
         }
     }
 
-    const fn capability_label(self) -> &'static str {
+    pub(super) const fn capability_label(self) -> &'static str {
         match self {
             Self::Read => "host index capability is not readable",
             Self::Write => "host index capability is not writable",
@@ -1178,7 +1181,7 @@ impl HostIndexAccessKind {
         }
     }
 
-    const fn enable_label(self) -> &'static str {
+    pub(super) const fn enable_label(self) -> &'static str {
         match self {
             Self::Read => "enable readable host index access for this type",
             Self::Write => "enable writable host index access for this type",

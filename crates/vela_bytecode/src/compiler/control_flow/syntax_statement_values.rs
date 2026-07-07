@@ -23,11 +23,11 @@ use crate::compiler::operators::{
 };
 use crate::compiler::param_defaults::syntax_map_key_name;
 use crate::compiler::patterns::enum_variant_path;
-use crate::compiler::record_shapes::ValueShape;
-use crate::compiler::script_types::ScriptTypeFact;
+use crate::compiler::record_shapes::{RecordShape, ValueShape};
+use crate::compiler::script_types::{ScriptTypeFact, type_hint_script_type};
 use crate::compiler::value_types::{
-    ExpectedTypeOutcome, RuntimeTypeFact, StandardRuntimeType, StaticExprType, TypeContractContext,
-    check_expected_type,
+    ExpectedTypeOutcome, RuntimeTypeFact, StandardRuntimeType, TypeContractContext,
+    check_expected_type, type_hint_value_type,
 };
 use crate::compiler::{
     CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind,
@@ -37,6 +37,8 @@ use crate::{BinaryLiteralSide, Constant, FormatStringPart};
 use crate::{
     GuardKind, Register, UnlinkedGuardContext, UnlinkedInstructionKind, UnlinkedTypeGuard,
 };
+
+use super::classification::merge_type_hint_and_value_fact;
 
 impl Compiler<'_, '_> {
     pub(in crate::compiler::control_flow) fn compile_let_syntax_expression(
@@ -78,6 +80,15 @@ impl Compiler<'_, '_> {
         let local_binding = self
             .bindings
             .local_named_at(&name, LocalBindingKind::Let, span);
+        let hir_type_hint = local_binding
+            .and_then(|local| self.bindings.local(local))
+            .and_then(|binding| binding.type_hint.as_ref());
+        let hinted_script_fact = hir_type_hint.and_then(|hint| {
+            let known_type_names = self.facts.known_type_names();
+            type_hint_script_type(hint, known_type_names.iter()).map(ScriptTypeFact::new)
+        });
+        let script_fact = merge_type_hint_and_value_fact(hinted_script_fact, script_fact);
+        let value_type = hir_type_hint.and_then(type_hint_value_type).or(value_type);
         if let Some(local) = local_binding {
             self.hir_locals.insert(local, register);
             self.script_types
@@ -930,6 +941,28 @@ impl Compiler<'_, '_> {
         let Some(field_name) = field.name_text() else {
             return Ok(None);
         };
+        if let Some(target) =
+            self.syntax_indexed_record_field_assignment_target(source, target_expression)
+        {
+            return self.compile_syntax_indexed_record_field_assignment(
+                source,
+                op,
+                target,
+                value_expression,
+                value,
+            );
+        }
+        if let Some(target) =
+            self.syntax_nested_record_field_assignment_target(source, target_expression)
+        {
+            return self.compile_syntax_nested_record_field_assignment(
+                source,
+                op,
+                target,
+                value_expression,
+                value,
+            );
+        }
         let receiver_span = syntax_expression_span(source, &receiver_expression);
         let field_slot = expression_syntax_path_or_self(&receiver_expression)
             .and_then(|path| {
@@ -1026,6 +1059,258 @@ impl Compiler<'_, '_> {
         self.schema_record_field_value_type(Some(root_type.as_str()), fields)
     }
 
+    fn syntax_nested_record_field_assignment_target(
+        &self,
+        source: SourceId,
+        target_expression: &SyntaxExpression,
+    ) -> Option<SyntaxNestedRecordFieldAssignmentTarget> {
+        let path = expression_syntax_path_or_field(target_expression)?;
+        if path.len() <= 2 {
+            return None;
+        }
+        let root = path.first()?.clone();
+        let fields = path[1..].to_vec();
+        let root_span = syntax_path_root_span(source, target_expression)
+            .unwrap_or_else(|| syntax_expression_span(source, target_expression));
+        let root_type = self.script_type_for_path_root(root_span, &root);
+        let shape = self
+            .record_shape_for_path_root(root_span, &root)
+            .or_else(|| {
+                root_type
+                    .as_deref()
+                    .and_then(|type_name| self.record_shape_for_type(type_name))
+            });
+        let value_type = self.schema_record_field_value_type(root_type.as_deref(), &fields);
+        Some(SyntaxNestedRecordFieldAssignmentTarget {
+            root,
+            root_span,
+            fields,
+            shape,
+            value_type,
+        })
+    }
+
+    fn syntax_indexed_record_field_assignment_target(
+        &self,
+        source: SourceId,
+        target_expression: &SyntaxExpression,
+    ) -> Option<SyntaxIndexedRecordFieldAssignmentTarget> {
+        let (collection, index, fields) =
+            syntax_indexed_record_field_parts(target_expression.clone())?;
+        let element_shape = self
+            .value_shape_for_syntax_expression(Some(source), &collection)?
+            .array_element_record()
+            .cloned();
+        Some(SyntaxIndexedRecordFieldAssignmentTarget {
+            collection,
+            index,
+            fields,
+            element_shape,
+        })
+    }
+
+    fn compile_syntax_indexed_record_field_assignment(
+        &mut self,
+        source: SourceId,
+        op: AssignOp,
+        target: SyntaxIndexedRecordFieldAssignmentTarget,
+        value_expression: &SyntaxExpression,
+        value: Register,
+    ) -> CompileResult<Option<Register>> {
+        let Some(collection) = self.compile_syntax_expression(source, &target.collection)? else {
+            return Ok(None);
+        };
+        let Some(index) = self.compile_syntax_expression(source, &target.index)? else {
+            return Ok(None);
+        };
+        let record = self.alloc_register()?;
+        self.emit(UnlinkedInstructionKind::GetIndex {
+            dst: record,
+            base: collection,
+            index,
+        });
+        let assigned = self.compile_syntax_nested_record_field_assignment_at_root(
+            source,
+            op,
+            SyntaxNestedRecordFieldAssignmentRoot {
+                root: record,
+                fields: target.fields,
+                shape: target.element_shape,
+                value_type: None,
+            },
+            value_expression,
+            value,
+        )?;
+        self.emit(UnlinkedInstructionKind::SetIndex {
+            base: collection,
+            index,
+            src: record,
+        });
+        Ok(Some(assigned))
+    }
+
+    fn compile_syntax_nested_record_field_assignment(
+        &mut self,
+        source: SourceId,
+        op: AssignOp,
+        target: SyntaxNestedRecordFieldAssignmentTarget,
+        value_expression: &SyntaxExpression,
+        value: Register,
+    ) -> CompileResult<Option<Register>> {
+        let root = self.local_register_at_span(target.root_span, &target.root)?;
+        let assigned = self.compile_syntax_nested_record_field_assignment_at_root(
+            source,
+            op,
+            SyntaxNestedRecordFieldAssignmentRoot {
+                root,
+                fields: target.fields,
+                shape: target.shape,
+                value_type: target.value_type,
+            },
+            value_expression,
+            value,
+        )?;
+        Ok(Some(assigned))
+    }
+
+    fn compile_syntax_nested_record_field_assignment_at_root(
+        &mut self,
+        source: SourceId,
+        op: AssignOp,
+        target: SyntaxNestedRecordFieldAssignmentRoot,
+        value_expression: &SyntaxExpression,
+        value: Register,
+    ) -> CompileResult<Register> {
+        let SyntaxNestedRecordFieldAssignmentRoot {
+            root,
+            fields,
+            shape,
+            value_type,
+        } = target;
+        let mut records = vec![root];
+        let mut shapes = vec![shape];
+        for field in fields.iter().take(fields.len().saturating_sub(1)) {
+            let dst = self.alloc_register()?;
+            let record = *records
+                .last()
+                .expect("nested record assignment always has root");
+            let shape = shapes.last().and_then(|shape| shape.as_ref());
+            if let Some(slot) = shape.and_then(|shape| shape.field_slot(field)) {
+                self.emit(UnlinkedInstructionKind::GetRecordSlot {
+                    dst,
+                    record,
+                    field: field.clone(),
+                    slot,
+                });
+            } else {
+                self.emit(UnlinkedInstructionKind::GetRecordField {
+                    dst,
+                    record,
+                    field: field.clone(),
+                });
+            }
+            shapes.push(
+                shape
+                    .and_then(|shape| shape.field_record_shape(field))
+                    .cloned(),
+            );
+            records.push(dst);
+        }
+
+        let leaf_record = *records
+            .last()
+            .expect("nested record assignment always has leaf parent");
+        let leaf_field = fields
+            .last()
+            .expect("nested record assignment has at least one field")
+            .clone();
+        let assigned = match op {
+            AssignOp::Set => self.compile_syntax_record_field_value(
+                source,
+                value_expression,
+                value_type,
+                leaf_field.clone(),
+                value,
+            )?,
+            AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
+                let current = self.alloc_register()?;
+                let leaf_slot = shapes
+                    .last()
+                    .and_then(|shape| shape.as_ref())
+                    .and_then(|shape| shape.field_slot(&leaf_field));
+                if let Some(slot) = leaf_slot {
+                    self.emit(UnlinkedInstructionKind::GetRecordSlot {
+                        dst: current,
+                        record: leaf_record,
+                        field: leaf_field.clone(),
+                        slot,
+                    });
+                } else {
+                    self.emit(UnlinkedInstructionKind::GetRecordField {
+                        dst: current,
+                        record: leaf_record,
+                        field: leaf_field.clone(),
+                    });
+                }
+                let dst = self.alloc_register()?;
+                let instruction = compound_assignment_instruction(op, dst, current, value)
+                    .ok_or_else(|| {
+                        crate::compiler::CompileError::new(
+                            crate::compiler::CompileErrorKind::UnsupportedSyntax(
+                                "compound assignment",
+                            ),
+                        )
+                    })?;
+                self.emit(instruction);
+                dst
+            }
+        };
+
+        let leaf_slot = shapes
+            .last()
+            .and_then(|shape| shape.as_ref())
+            .and_then(|shape| shape.field_slot(&leaf_field));
+        if let Some(slot) = leaf_slot {
+            self.emit(UnlinkedInstructionKind::SetRecordSlot {
+                record: leaf_record,
+                field: leaf_field,
+                slot,
+                src: assigned,
+            });
+        } else {
+            self.emit(UnlinkedInstructionKind::SetRecordField {
+                record: leaf_record,
+                field: leaf_field,
+                src: assigned,
+            });
+        }
+        for (index, field) in fields
+            .iter()
+            .take(fields.len().saturating_sub(1))
+            .enumerate()
+            .rev()
+        {
+            let slot = shapes[index]
+                .as_ref()
+                .and_then(|shape| shape.field_slot(field));
+            if let Some(slot) = slot {
+                self.emit(UnlinkedInstructionKind::SetRecordSlot {
+                    record: records[index],
+                    field: field.clone(),
+                    slot,
+                    src: records[index + 1],
+                });
+            } else {
+                self.emit(UnlinkedInstructionKind::SetRecordField {
+                    record: records[index],
+                    field: field.clone(),
+                    src: records[index + 1],
+                });
+            }
+        }
+        Ok(assigned)
+    }
+
     fn compile_syntax_record_field_value(
         &mut self,
         source: SourceId,
@@ -1039,11 +1324,15 @@ impl Compiler<'_, '_> {
         };
         let span = syntax_expression_span(source, expression);
         let context = TypeContractContext::Field { name: field_name };
-        let static_type = self
-            .syntax_value_type_for_expression(Some(source), expression)
-            .map(StaticExprType::Exact)
-            .unwrap_or(StaticExprType::Dynamic);
+        let static_type = self.syntax_static_type_for_expression(Some(source), expression);
         let outcome = check_expected_type(static_type, expected, span, context.clone())?;
+        if let ExpectedTypeOutcome::Contextualized(RuntimeTypeFact::Primitive(tag)) = &outcome
+            && let Some(literal) = expression_syntax_literal(expression)
+            && let Some(constant) = compile_literal_constant_for_type(&literal, *tag)
+                .map_err(|error| error.with_span(span))?
+        {
+            return self.emit_constant(constant);
+        }
         if let ExpectedTypeOutcome::RequiresRuntimeGuard(expected) = &outcome
             && let Some((location, name)) = guard_location_and_name(context)
             && let Some(plan) = type_guard_plan_for_runtime_type(expected)
@@ -1118,6 +1407,9 @@ impl Compiler<'_, '_> {
         let Some(base) = self.compile_syntax_expression(source, &receiver_expression)? else {
             return Ok(None);
         };
+        if let Some(Literal::String(key)) = expression_syntax_literal(&index_expression) {
+            return self.compile_syntax_string_key_index_assignment(op, base, key, value);
+        }
         let Some(index) = self.compile_syntax_expression(source, &index_expression)? else {
             return Ok(None);
         };
@@ -1146,6 +1438,44 @@ impl Compiler<'_, '_> {
         self.emit(UnlinkedInstructionKind::SetIndex {
             base,
             index,
+            src: assigned,
+        });
+        Ok(Some(assigned))
+    }
+
+    fn compile_syntax_string_key_index_assignment(
+        &mut self,
+        op: AssignOp,
+        base: Register,
+        key: String,
+        value: Register,
+    ) -> CompileResult<Option<Register>> {
+        let key = self.code.push_constant(crate::Constant::String(key));
+        let assigned = match op {
+            AssignOp::Set => value,
+            AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
+                let current = self.alloc_register()?;
+                self.emit(UnlinkedInstructionKind::GetStringKeyIndex {
+                    dst: current,
+                    base,
+                    key,
+                });
+                let dst = self.alloc_register()?;
+                let instruction = compound_assignment_instruction(op, dst, current, value)
+                    .ok_or_else(|| {
+                        crate::compiler::CompileError::new(
+                            crate::compiler::CompileErrorKind::UnsupportedSyntax(
+                                "compound assignment",
+                            ),
+                        )
+                    })?;
+                self.emit(instruction);
+                dst
+            }
+        };
+        self.emit(UnlinkedInstructionKind::SetStringKeyIndex {
+            base,
+            key,
             src: assigned,
         });
         Ok(Some(assigned))
@@ -1804,7 +2134,7 @@ fn syntax_assignment_value_type(
 ) -> Option<RuntimeTypeFact> {
     match op {
         AssignOp::Set => value_type,
-        AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Rem
+        AssignOp::Add | AssignOp::Sub | AssignOp::Mul
             if target_type == Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
                 && value_type == Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64)) =>
         {
@@ -1812,6 +2142,53 @@ fn syntax_assignment_value_type(
         }
         AssignOp::Div | AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Rem => None,
     }
+}
+
+struct SyntaxNestedRecordFieldAssignmentTarget {
+    root: String,
+    root_span: Span,
+    fields: Vec<String>,
+    shape: Option<RecordShape>,
+    value_type: Option<RuntimeTypeFact>,
+}
+
+struct SyntaxIndexedRecordFieldAssignmentTarget {
+    collection: SyntaxExpression,
+    index: SyntaxExpression,
+    fields: Vec<String>,
+    element_shape: Option<RecordShape>,
+}
+
+struct SyntaxNestedRecordFieldAssignmentRoot {
+    root: Register,
+    fields: Vec<String>,
+    shape: Option<RecordShape>,
+    value_type: Option<RuntimeTypeFact>,
+}
+
+fn syntax_indexed_record_field_parts(
+    expression: SyntaxExpression,
+) -> Option<(SyntaxExpression, SyntaxExpression, Vec<String>)> {
+    let field = expression.as_field()?;
+    let receiver = field.receiver()?;
+    let field_name = field.name_text()?;
+    if let Some(index) = receiver.as_index() {
+        let collection = index.receiver()?;
+        let index = index.index()?;
+        return Some((collection, index, vec![field_name]));
+    }
+    let (collection, index, mut fields) = syntax_indexed_record_field_parts(receiver)?;
+    fields.push(field_name);
+    Some((collection, index, fields))
+}
+
+fn syntax_path_root_span(source: SourceId, expression: &SyntaxExpression) -> Option<Span> {
+    if expression_syntax_path_or_self(expression).is_some() {
+        return Some(syntax_expression_span(source, expression));
+    }
+    let field = expression.as_field()?;
+    let receiver = field.receiver()?;
+    syntax_path_root_span(source, &receiver)
 }
 
 fn syntax_path_numeric_literal_operands<'expression>(

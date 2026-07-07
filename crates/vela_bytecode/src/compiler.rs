@@ -45,11 +45,7 @@ use vela_hir::module_graph::ModulePath;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModuleSource};
 use vela_hir::type_hint::{FunctionSignature, HirTypeHint, ParamHint};
 use vela_registry::RegistryCompileView;
-#[cfg(test)]
-use vela_syntax::ast::AstNode;
 use vela_syntax::ast::{Argument, Param, SyntaxExpressionKind};
-#[cfg(test)]
-use vela_syntax::body_parser_support::parse_owned_body_blocks_for_tests;
 
 use crate::{
     Constant, FrameSlotInfo, FrameSlotKind, GuardKind, GuardLocation, InstructionOffset, Register,
@@ -971,9 +967,6 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn compile(mut self) -> CompileResult<UnlinkedCodeObject> {
         self.compile_param_defaults()?;
-        #[cfg(test)]
-        let statements = compilation_statement_payloads(&self.body);
-        #[cfg(not(test))]
         let statements = self.body.statement_payloads();
         let returned = self.compile_statement_payloads(&statements)?;
         if !returned {
@@ -1374,40 +1367,6 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             .frame
             .push_slot(FrameSlotInfo::new(name, register, kind, local, span));
     }
-}
-
-#[cfg(test)]
-fn compilation_statement_payloads<'ast>(
-    body: &CompilerBodyPayload<'ast>,
-) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
-    let payload = body.syntax_payload();
-    let fallback_statements = fallback_statements_for_syntax_body(payload.source, &payload.body);
-    body_payloads::CompilerBodyPayload::paired_statement_payloads_for_test(
-        payload.source,
-        payload.body.clone(),
-        fallback_statements,
-    )
-}
-
-#[cfg(test)]
-fn fallback_statements_for_syntax_body(
-    source: SourceId,
-    body: &vela_syntax::ast::SyntaxBlock,
-) -> &'static [vela_syntax::ast::Stmt] {
-    let body_text = body.syntax().text().to_string();
-    let range = body.syntax().text_range();
-    let start: u32 = range.start().into();
-    let end: u32 = range.end().into();
-    let mut text = " ".repeat(usize::try_from(start).expect("body start should fit usize"));
-    text.push_str(&body_text);
-    let span = Span::new(source, start, end);
-    let Some(block) = parse_owned_body_blocks_for_tests(source, &text, &[span])
-        .into_iter()
-        .next()
-    else {
-        return &[];
-    };
-    Box::leak(block.statements.into_boxed_slice())
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

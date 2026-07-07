@@ -1073,7 +1073,7 @@ fn missing_array_ord_error(
     ]))
 }
 
-fn typed_container_mutation_arg_contract(
+pub(in crate::compiler) fn typed_container_mutation_arg_contract(
     receiver_type: Option<&RuntimeTypeFact>,
     method: &str,
     param_name: &str,
@@ -1141,7 +1141,11 @@ fn mutation_arg_role(method: &str, param_name: &str, position: usize) -> Mutatio
     }
 }
 
-fn mutation_arg_debug_name(method: &str, param_name: &str, position: usize) -> String {
+pub(in crate::compiler) fn mutation_arg_debug_name(
+    method: &str,
+    param_name: &str,
+    position: usize,
+) -> String {
     if param_name.is_empty() {
         match mutation_arg_role(method, param_name, position) {
             MutationArgRole::Key => "key",
