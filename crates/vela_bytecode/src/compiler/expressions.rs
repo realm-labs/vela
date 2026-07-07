@@ -500,12 +500,9 @@ impl Compiler<'_, '_> {
             ExprKind::Lambda { .. } => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST lambda expression payload",
             ))),
-            ExprKind::Try(value) => {
-                let src = self.compile_expr(value)?;
-                let dst = self.alloc_register()?;
-                self.emit(UnlinkedInstructionKind::TryPropagate { dst, src });
-                Ok(dst)
-            }
+            ExprKind::Try(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST try expression payload",
+            ))),
             ExprKind::Block(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST block expression payload",
             ))),
