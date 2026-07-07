@@ -300,6 +300,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         self.syntax.as_ref()?.as_field()?.name_text()
     }
 
+    #[allow(dead_code)]
     pub(in crate::compiler) fn index_operand_payloads(
         &self,
     ) -> Option<(
