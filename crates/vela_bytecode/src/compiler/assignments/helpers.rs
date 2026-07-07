@@ -33,30 +33,36 @@ pub(super) fn record_field_base_parts(path: &[String]) -> Option<(&str, Vec<Stri
     Some((root.as_str(), path[1..].to_vec()))
 }
 
-pub(super) fn record_field_expr_parts_with_payload<'expr>(
+fn record_field_expr_parts_with_payload<'expr>(
     expr: &'expr Expr,
-    payload: Option<CompilerExpressionPayload<'expr>>,
+    payload: CompilerExpressionPayload<'expr>,
 ) -> Option<RecordFieldExprParts<'expr>> {
-    if payload
-        .as_ref()
-        .and_then(CompilerExpressionPayload::syntax_kind)
-        .is_some_and(|kind| kind != SyntaxExpressionKind::Field)
-    {
+    match payload.syntax_kind()? {
+        SyntaxExpressionKind::Field => match &expr.kind {
+            ExprKind::Field { base, .. } => {
+                let (base_payload, name) = field_payload_parts(&payload)?;
+                let mut parts = record_field_expr_parts_with_payload(base, base_payload)?;
+                parts.fields.push(name);
+                Some(parts)
+            }
+            _ => None,
+        },
+        _ => Some(RecordFieldExprParts {
+            root: expr,
+            fields: Vec::new(),
+        }),
+    }
+}
+
+pub(super) fn record_field_root_parts_with_payload<'expr>(
+    expr: &'expr Expr,
+    payload: CompilerExpressionPayload<'expr>,
+) -> Option<RecordFieldExprParts<'expr>> {
+    let parts = record_field_expr_parts_with_payload(expr, payload)?;
+    if parts.fields.is_empty() {
         return None;
     }
-    match &expr.kind {
-        ExprKind::Field { base, name } => {
-            let (base_payload, name) = field_payload_parts(payload.as_ref(), name)?;
-            let mut parts = record_field_expr_parts_with_payload(base, base_payload)
-                .unwrap_or_else(|| RecordFieldExprParts {
-                    root: base,
-                    fields: Vec::new(),
-                });
-            parts.fields.push(name);
-            Some(parts)
-        }
-        _ => None,
-    }
+    Some(parts)
 }
 
 pub(super) fn indexed_record_field_parts_with_payload<'expr>(
@@ -70,10 +76,10 @@ pub(super) fn indexed_record_field_parts_with_payload<'expr>(
     {
         return None;
     }
-    let ExprKind::Field { base, name } = &target.kind else {
+    let ExprKind::Field { base, .. } = &target.kind else {
         return None;
     };
-    let (base_payload, name) = field_payload_parts(Some(&payload), name)?;
+    let (base_payload, name) = field_payload_parts(&payload)?;
     let (collection, index, mut fields) =
         indexed_record_field_base_parts_with_payload(base, base_payload)?;
     fields.push(name);
@@ -82,63 +88,47 @@ pub(super) fn indexed_record_field_parts_with_payload<'expr>(
 
 fn indexed_record_field_base_parts_with_payload<'expr>(
     expr: &'expr Expr,
-    payload: Option<CompilerExpressionPayload<'expr>>,
+    payload: CompilerExpressionPayload<'expr>,
 ) -> Option<(&'expr Expr, &'expr Expr, Vec<String>)> {
-    if let Some(kind) = payload
-        .as_ref()
-        .and_then(CompilerExpressionPayload::syntax_kind)
-    {
-        return match kind {
-            SyntaxExpressionKind::Index => {
-                let ExprKind::Index { base, index } = &expr.kind else {
-                    return None;
-                };
-                let (base_payload, _) = payload.as_ref()?.index_operand_payloads()?;
-                is_local_index_collection_with_payload(Some(&base_payload)).then_some((
-                    base.as_ref(),
-                    index.as_ref(),
-                    Vec::new(),
-                ))
-            }
-            SyntaxExpressionKind::Field => {
-                let ExprKind::Field { base, name } = &expr.kind else {
-                    return None;
-                };
-                let (base_payload, name) = field_payload_parts(payload.as_ref(), name)?;
-                let (collection, index, mut fields) =
-                    indexed_record_field_base_parts_with_payload(base, base_payload)?;
-                fields.push(name);
-                Some((collection, index, fields))
-            }
-            _ => None,
-        };
+    match payload.syntax_kind()? {
+        SyntaxExpressionKind::Index => {
+            let ExprKind::Index { base, index } = &expr.kind else {
+                return None;
+            };
+            let (base_payload, _) = payload.index_operand_payloads()?;
+            is_local_index_collection_with_payload(&base_payload).then_some((
+                base.as_ref(),
+                index.as_ref(),
+                Vec::new(),
+            ))
+        }
+        SyntaxExpressionKind::Field => {
+            let ExprKind::Field { base, .. } = &expr.kind else {
+                return None;
+            };
+            let (base_payload, name) = field_payload_parts(&payload)?;
+            let (collection, index, mut fields) =
+                indexed_record_field_base_parts_with_payload(base, base_payload)?;
+            fields.push(name);
+            Some((collection, index, fields))
+        }
+        _ => None,
     }
-    None
 }
 
 fn field_payload_parts<'expr>(
-    payload: Option<&CompilerExpressionPayload<'expr>>,
-    default_name: &str,
-) -> Option<(Option<CompilerExpressionPayload<'expr>>, String)> {
-    match payload {
-        Some(payload) => Some((
-            Some(payload.field_base_payload()?),
-            payload.syntax_field_name()?,
-        )),
-        None => Some((None, default_name.to_owned())),
-    }
+    payload: &CompilerExpressionPayload<'expr>,
+) -> Option<(CompilerExpressionPayload<'expr>, String)> {
+    Some((payload.field_base_payload()?, payload.syntax_field_name()?))
 }
 
-fn is_local_index_collection_with_payload(payload: Option<&CompilerExpressionPayload<'_>>) -> bool {
-    if let Some(payload) = payload {
-        return match payload.syntax_kind() {
-            Some(SyntaxExpressionKind::Path) | None => payload
-                .syntax_path_segments()
-                .is_some_and(|path| path.len() == 1),
-            Some(_) => false,
-        };
+fn is_local_index_collection_with_payload(payload: &CompilerExpressionPayload<'_>) -> bool {
+    match payload.syntax_kind() {
+        Some(SyntaxExpressionKind::Path) => payload
+            .syntax_path_segments()
+            .is_some_and(|path| path.len() == 1),
+        Some(_) | None => false,
     }
-    false
 }
 
 pub(super) fn compound_assignment_instruction_or_error(

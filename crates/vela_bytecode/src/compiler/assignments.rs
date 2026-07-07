@@ -26,7 +26,7 @@ use super::value_types::{RuntimeTypeFact, TypeContractContext};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use helpers::{
     compound_assignment_instruction_or_error, expressions_are_i64,
-    indexed_record_field_parts_with_payload, record_field_expr_parts_with_payload,
+    indexed_record_field_parts_with_payload, record_field_root_parts_with_payload,
     record_path_parts,
 };
 
@@ -513,7 +513,7 @@ impl Compiler<'_, '_> {
                     )));
                 };
                 let Some(parts) =
-                    record_field_expr_parts_with_payload(target, Some(target_payload.clone()))
+                    record_field_root_parts_with_payload(target, target_payload.clone())
                 else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "record field assignment target",
