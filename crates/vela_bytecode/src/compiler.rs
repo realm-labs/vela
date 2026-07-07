@@ -20,6 +20,7 @@ mod field_slots;
 mod function_payloads;
 mod host_paths;
 mod lambdas;
+#[cfg(test)]
 mod methods;
 mod operators;
 pub mod options;
@@ -47,14 +48,20 @@ use vela_hir::module_graph::ModulePath;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModuleSource};
 use vela_hir::type_hint::{FunctionSignature, HirTypeHint, ParamHint};
 use vela_registry::RegistryCompileView;
-use vela_syntax::ast::{Argument, Param, SyntaxExpressionKind};
+#[cfg(test)]
+use vela_syntax::ast::Argument;
+use vela_syntax::ast::Param;
+#[cfg(test)]
+use vela_syntax::ast::SyntaxExpressionKind;
 
 use crate::{
     Constant, FrameSlotInfo, FrameSlotKind, GuardKind, GuardLocation, InstructionOffset, Register,
     UnlinkedCodeObject, UnlinkedGuardContext, UnlinkedInstruction, UnlinkedInstructionKind,
     UnlinkedProgram, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
 };
-use body_payloads::{CompilerBodyPayload, CompilerExpressionPayload};
+use body_payloads::CompilerBodyPayload;
+#[cfg(test)]
+use body_payloads::CompilerExpressionPayload;
 use cache_sites::{attach_cache_site, cache_site_kind};
 use control_flow::LoopContext;
 use error::{CompileError, CompileErrorKind, CompileResult};
@@ -62,6 +69,7 @@ use field_slots::ScriptFieldSlots;
 use lambdas::LambdaCapture;
 use options::CompilerOptions;
 use param_defaults::ParamDefaultValue;
+#[cfg(test)]
 use patterns::enum_variant_path;
 use record_shapes::ValueShapeFlow;
 use schema_defaults::ScriptSchemaDefaults;
@@ -1019,6 +1027,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         Ok(())
     }
 
+    #[cfg(test)]
     fn tuple_enum_constructor_call_at_span(
         &self,
         callee_path: &[String],
@@ -1084,6 +1093,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             })
     }
 
+    #[cfg(test)]
     fn host_method_receiver_type(
         &self,
         callee_payload: Option<&CompilerExpressionPayload<'_>>,
@@ -1113,6 +1123,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         self.facts.script_field_slots.record(type_name, field)
     }
 
+    #[cfg(test)]
     fn script_type_for_receiver_path(&self, receiver_path: &[String]) -> Option<String> {
         let [receiver] = receiver_path else {
             return None;
@@ -1120,6 +1131,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         self.script_types.name(receiver)
     }
 
+    #[cfg(test)]
     fn value_type_for_receiver_path(&self, receiver_path: &[String]) -> Option<RuntimeTypeFact> {
         let [receiver] = receiver_path else {
             let (field, prefix) = receiver_path.split_last()?;
@@ -1152,6 +1164,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         registry.resolve_type(&DefPath::ty("host", std::iter::empty::<&str>(), type_name))
     }
 
+    #[cfg(test)]
     pub(super) fn is_native_module_root(&self, root: &str) -> bool {
         self.facts.options.is_native_module_root(root)
     }
@@ -1413,6 +1426,7 @@ fn param_default_flags(signature: &FunctionSignature) -> Vec<bool> {
         .collect()
 }
 
+#[cfg(test)]
 fn reject_named_args(args: &[Argument], context: &'static str) -> CompileResult<()> {
     if args.iter().any(|arg| arg.name.is_some()) {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

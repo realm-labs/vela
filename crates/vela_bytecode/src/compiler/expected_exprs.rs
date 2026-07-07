@@ -1,15 +1,24 @@
+#[cfg(test)]
 use vela_common::Span;
+#[cfg(test)]
 use vela_syntax::ast::{Expr, Literal, SyntaxExpressionKind};
 
+use crate::GuardLocation;
+#[cfg(test)]
 use crate::{
-    GuardKind, GuardLocation, Register, UnlinkedGuardContext, UnlinkedInstructionKind,
-    UnlinkedTypeGuard,
+    GuardKind, Register, UnlinkedGuardContext, UnlinkedInstructionKind, UnlinkedTypeGuard,
 };
 
+use super::Compiler;
+#[cfg(test)]
 use super::body_payloads::CompilerExpressionPayload;
+#[cfg(test)]
 use super::const_eval::compile_literal_constant_for_type;
-use super::value_types::{ExpectedTypeOutcome, RuntimeTypeFact, TypeContractContext};
-use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
+use super::value_types::TypeContractContext;
+#[cfg(test)]
+use super::value_types::{ExpectedTypeOutcome, RuntimeTypeFact};
+#[cfg(test)]
+use super::{CompileError, CompileErrorKind, CompileResult};
 
 impl Compiler<'_, '_> {
     #[cfg(test)]
@@ -22,6 +31,7 @@ impl Compiler<'_, '_> {
         self.compile_expr_with_expected_type_and_payload(expr, expected, context, None)
     }
 
+    #[cfg(test)]
     pub(super) fn compile_expr_with_expected_type_and_payload(
         &mut self,
         expr: &Expr,
@@ -78,6 +88,7 @@ impl Compiler<'_, '_> {
     }
 }
 
+#[cfg(test)]
 fn contextual_literal_payload(
     payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> CompileResult<Option<(Literal, Span)>> {

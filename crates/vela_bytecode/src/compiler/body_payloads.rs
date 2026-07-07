@@ -2,14 +2,16 @@ use std::marker::PhantomData;
 
 use vela_common::{SourceId, Span};
 #[cfg(test)]
+use vela_syntax::ast::SyntaxArgument;
+#[cfg(test)]
 use vela_syntax::ast::SyntaxLambdaBody;
 #[cfg(test)]
 use vela_syntax::ast::SyntaxMapEntry;
 #[cfg(test)]
 use vela_syntax::ast::SyntaxRecordExprField;
 use vela_syntax::ast::{
-    AstNode, SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxForStmt,
-    SyntaxIfExpr, SyntaxMatchExpr, SyntaxStatement, SyntaxStatementKind,
+    AstNode, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxForStmt, SyntaxIfExpr,
+    SyntaxMatchExpr, SyntaxStatement, SyntaxStatementKind,
 };
 #[cfg(test)]
 use vela_syntax::ast::{Expr, ExprKind, InterpolatedStringPart, Stmt, StmtKind};
@@ -68,6 +70,7 @@ pub(in crate::compiler) struct CompilerRecordPatternFieldPayload {
     syntax: Option<SyntaxRecordPatternField>,
 }
 
+#[cfg(test)]
 pub(in crate::compiler) struct CompilerArgumentPayload {
     source: Option<SourceId>,
     syntax: Option<SyntaxArgument>,
@@ -1014,6 +1017,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 }
 
+#[cfg(test)]
 impl CompilerArgumentPayload {
     pub(in crate::compiler) fn source(&self) -> Option<SourceId> {
         self.source
@@ -1096,6 +1100,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         self.source
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn syntax_kind(&self) -> Option<SyntaxExpressionKind> {
         self.source?;
         self.stored_syntax_kind()

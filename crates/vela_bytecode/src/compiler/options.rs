@@ -39,6 +39,7 @@ impl CompilerOptions {
         self
     }
 
+    #[cfg(test)]
     pub(super) fn is_native_module_root(&self, root: &str) -> bool {
         self.native_module_roots.contains(root)
     }

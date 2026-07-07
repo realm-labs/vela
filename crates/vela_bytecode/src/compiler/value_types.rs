@@ -706,6 +706,7 @@ fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Sp
     Span::new(source, range.start().into(), range.end().into())
 }
 
+#[cfg(test)]
 fn payload_span_mismatches(
     payload: Option<&CompilerExpressionPayload<'_>>,
     expected_span: Span,
@@ -1143,6 +1144,7 @@ impl super::Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn expected_type_for_expression_payload(
         &self,
         payload: Option<&CompilerExpressionPayload<'_>>,

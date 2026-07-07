@@ -1,34 +1,53 @@
+#[cfg(test)]
 mod callee;
 pub(in crate::compiler) mod metadata;
+#[cfg(test)]
 mod payload_guards;
 
-use vela_syntax::ast::{Argument, Expr, SyntaxArgument, SyntaxExpressionKind};
+use vela_syntax::ast::SyntaxArgument;
+#[cfg(test)]
+use vela_syntax::ast::{Argument, Expr, SyntaxExpressionKind};
 
+#[cfg(test)]
 use crate::{CallArgument, DynamicCallArgument, UnlinkedInstructionKind};
 
+#[cfg(test)]
 use super::body_payloads::{CompilerArgumentPayload, CompilerExpressionPayload};
+#[cfg(test)]
 use super::call_args::{CallArgumentSyntax, resolve_script_call_arguments};
 #[cfg(test)]
 use super::expression_facts::expression_facts;
+#[cfg(test)]
 use super::methods::host_method_call;
-use super::record_shapes::{ValueShape, callback_param_shapes};
-use super::value_types::{RuntimeTypeFact, TypeContractContext, type_hint_value_type};
+use super::record_shapes::ValueShape;
+#[cfg(test)]
+use super::record_shapes::callback_param_shapes;
+use super::value_types::RuntimeTypeFact;
+#[cfg(test)]
+use super::value_types::{TypeContractContext, type_hint_value_type};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
+#[cfg(test)]
 use callee::{
     callable_name, callee_is_closure_call, callee_path_segments, local_path_method_call,
     path_root_is_local,
 };
+#[cfg(test)]
 use metadata::{registry_param_hints, registry_type_hint, unresolved_static_method_error};
+#[cfg(test)]
 use payload_guards::{
     callback_lambda_payload_is_authoritative, reject_mismatched_call_argument_payloads,
     reject_mismatched_call_callee_payload, reject_missing_call_callee_payload,
 };
-use vela_common::{Diagnostic, HostMethodId, PrimitiveTag, Span};
+#[cfg(test)]
+use vela_common::HostMethodId;
+use vela_common::{Diagnostic, PrimitiveTag, Span};
 use vela_def::{DefPath, FunctionId, MethodId, TypeId};
+#[cfg(test)]
 use vela_hir::type_hint::ParamHint;
 use vela_registry::ParamDef;
 
 #[derive(Clone, Copy)]
+#[cfg(test)]
 struct MethodCallFacts<'facts> {
     receiver_type: Option<&'facts str>,
     value_receiver_type: Option<&'facts RuntimeTypeFact>,
@@ -36,6 +55,7 @@ struct MethodCallFacts<'facts> {
 }
 
 #[derive(Clone, Copy)]
+#[cfg(test)]
 struct ResolvedMethodCallFacts<'facts> {
     call_facts: MethodCallFacts<'facts>,
     method_id: Option<MethodId>,
@@ -45,6 +65,7 @@ struct ResolvedMethodCallFacts<'facts> {
 }
 
 #[derive(Clone, Copy)]
+#[cfg(test)]
 struct MethodArgContext<'facts> {
     receiver_type: Option<&'facts RuntimeTypeFact>,
     receiver_shape: Option<&'facts ValueShape>,
@@ -54,15 +75,7 @@ struct MethodArgContext<'facts> {
 }
 
 impl Compiler<'_, '_> {
-    pub(super) fn compile_call_expr(
-        &mut self,
-        expr: &Expr,
-        callee: &Expr,
-        args: &[Argument],
-    ) -> CompileResult<crate::Register> {
-        self.compile_call_expr_with_arg_payloads(expr, callee, args, None, None)
-    }
-
+    #[cfg(test)]
     pub(in crate::compiler) fn compile_call_expr_with_arg_payloads(
         &mut self,
         expr: &Expr,
@@ -246,6 +259,7 @@ impl Compiler<'_, '_> {
         Ok(dst)
     }
 
+    #[cfg(test)]
     fn compile_host_method_call_args(
         &mut self,
         method: HostMethodId,
@@ -275,6 +289,7 @@ impl Compiler<'_, '_> {
         self.compile_metadata_register_args(&params, args, call_span, arg_syntax)
     }
 
+    #[cfg(test)]
     fn compile_script_method_call_from_payload(
         &mut self,
         expr: &Expr,
@@ -321,6 +336,7 @@ impl Compiler<'_, '_> {
         self.emit_script_method_call(expr.span, receiver, name, args, arg_syntax, facts)
     }
 
+    #[cfg(test)]
     fn emit_script_method_call(
         &mut self,
         span: Span,
@@ -384,6 +400,7 @@ impl Compiler<'_, '_> {
         Ok(dst)
     }
 
+    #[cfg(test)]
     fn compile_script_method_call_from_callee(
         &mut self,
         expr: &Expr,
@@ -409,6 +426,7 @@ impl Compiler<'_, '_> {
         ))
     }
 
+    #[cfg(test)]
     fn resolve_method_call_facts<'facts>(
         &self,
         receiver_type: &'facts Option<String>,
@@ -435,6 +453,7 @@ impl Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     fn compile_script_path_method_call(
         &mut self,
         expr: &Expr,
@@ -528,6 +547,7 @@ impl Compiler<'_, '_> {
         Ok(dst)
     }
 
+    #[cfg(test)]
     fn compile_script_method_call_args(
         &mut self,
         facts: MethodCallFacts<'_>,
@@ -577,6 +597,7 @@ impl Compiler<'_, '_> {
             .collect()
     }
 
+    #[cfg(test)]
     fn compile_dynamic_method_call_args(
         &mut self,
         args: &[Argument],
@@ -592,6 +613,7 @@ impl Compiler<'_, '_> {
             .collect()
     }
 
+    #[cfg(test)]
     fn compile_value_method_call_args(
         &mut self,
         receiver_type: Option<&RuntimeTypeFact>,
@@ -647,6 +669,7 @@ impl Compiler<'_, '_> {
         Ok(registers)
     }
 
+    #[cfg(test)]
     fn compile_positional_method_args(
         &mut self,
         receiver_type: Option<&RuntimeTypeFact>,
@@ -674,6 +697,7 @@ impl Compiler<'_, '_> {
             .collect()
     }
 
+    #[cfg(test)]
     fn compile_method_arg(
         &mut self,
         context: MethodArgContext<'_>,
@@ -759,6 +783,7 @@ impl Compiler<'_, '_> {
             })
     }
 
+    #[cfg(test)]
     fn compile_metadata_register_args(
         &mut self,
         params: &[ParamHint],
@@ -784,6 +809,7 @@ impl Compiler<'_, '_> {
         Ok(registers)
     }
 
+    #[cfg(test)]
     fn compile_native_call_args(
         &mut self,
         name: &str,
@@ -856,6 +882,7 @@ impl Compiler<'_, '_> {
         Ok(registers)
     }
 
+    #[cfg(test)]
     fn compile_native_argument_for_param(
         &mut self,
         function: &str,
@@ -951,6 +978,7 @@ impl Compiler<'_, '_> {
 }
 
 impl Compiler<'_, '_> {
+    #[cfg(test)]
     fn reject_static_array_ordering_method_without_ord(
         &self,
         method: &str,
@@ -1217,6 +1245,7 @@ fn function_id_for_path(package: &str, name: &str) -> FunctionId {
     FunctionId::from_def_id(DefPath::function(package, segments, function).id())
 }
 
+#[cfg(test)]
 fn reject_named_call_args(
     arg_syntax: CallArgumentSyntax<'_, '_>,
     context: &'static str,

@@ -206,7 +206,7 @@ fn main(player: Player) {
 
     assert!(matches!(
         error.kind,
-        CompileErrorKind::UnsupportedSyntax("callable expression")
+        CompileErrorKind::UnsupportedSyntax("missing CST call expression payload")
     ));
 }
 

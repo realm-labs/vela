@@ -1,14 +1,22 @@
 use std::collections::BTreeSet;
 
-use vela_common::{Diagnostic, SourceId, Span};
+#[cfg(test)]
+use vela_common::SourceId;
+use vela_common::{Diagnostic, Span};
+#[cfg(test)]
 use vela_hir::ids::HirDeclId;
 use vela_hir::type_hint::ParamHint;
-use vela_syntax::ast::{Argument, SyntaxArgument, SyntaxExpression};
+use vela_syntax::ast::SyntaxExpression;
+#[cfg(test)]
+use vela_syntax::ast::{Argument, SyntaxArgument};
 
 use crate::{CallArgument, ScriptCallMode};
 
+#[cfg(test)]
 use super::body_payloads::{CompilerArgumentPayload, CompilerExpressionPayload};
+#[cfg(test)]
 use super::value_types::{ExpectedTypeOutcome, TypeContractContext, type_hint_value_type};
+#[cfg(test)]
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -25,11 +33,13 @@ pub(in crate::compiler) struct SyntaxCallArgument {
 }
 
 #[derive(Clone, Copy)]
+#[cfg(test)]
 pub(in crate::compiler) struct CallArgumentSyntax<'payload, 'ast> {
     args: &'ast [Argument],
     payloads: Option<&'payload [CompilerArgumentPayload]>,
 }
 
+#[cfg(test)]
 impl<'payload, 'ast> CallArgumentSyntax<'payload, 'ast> {
     pub(in crate::compiler) fn new(
         args: &'ast [Argument],
@@ -96,6 +106,7 @@ impl<'payload, 'ast> CallArgumentSyntax<'payload, 'ast> {
     }
 }
 
+#[cfg(test)]
 impl Compiler<'_, '_> {
     pub(in crate::compiler) fn compile_script_call_args_with_payloads(
         &mut self,
@@ -189,6 +200,7 @@ impl Compiler<'_, '_> {
     }
 }
 
+#[cfg(test)]
 pub(super) fn resolve_script_call_arguments<'ast>(
     params: &[ParamHint],
     args: &'ast [Argument],

@@ -3,16 +3,23 @@ use vela_common::Span;
 use vela_common::{Diagnostic, HostTypeId};
 use vela_def::FieldId;
 #[cfg(test)]
+use vela_syntax::ast::Argument;
+#[cfg(test)]
 use vela_syntax::ast::ExprKind;
-use vela_syntax::ast::{Argument, AstNode, Expr, Literal, SyntaxExpression, SyntaxExpressionKind};
+use vela_syntax::ast::{AstNode, Expr, Literal, SyntaxExpression, SyntaxExpressionKind};
 
-use crate::{CacheSiteId, Constant, HostTargetPlanId, Register, UnlinkedInstructionKind};
+#[cfg(test)]
+use crate::Constant;
+use crate::{CacheSiteId, HostTargetPlanId, Register, UnlinkedInstructionKind};
 use vela_host::resolved::HostMutationOp;
 use vela_host::target::HostTargetPlan;
 
 use super::body_payloads::{CompilerExpressionPayload, expression_syntax_path_or_self};
+#[cfg(test)]
 use super::call_args::CallArgumentSyntax;
-use super::{CompileError, CompileErrorKind, CompileResult, Compiler, reject_named_args};
+#[cfg(test)]
+use super::reject_named_args;
+use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 pub(super) struct HostPath<'ast> {
     pub(super) root: HostPathRoot<'ast>,
@@ -55,11 +62,13 @@ pub(super) enum HostPathPart<'ast> {
     },
 }
 
+#[cfg(test)]
 struct HostCollectionMethodTarget<'ast> {
     path: HostPath<'ast>,
     field_receiver: Option<HostCollectionFieldReceiver<'ast>>,
 }
 
+#[cfg(test)]
 enum HostCollectionFieldReceiver<'ast> {
     #[cfg(test)]
     Expr {
@@ -450,6 +459,7 @@ impl Compiler<'_, '_> {
         Ok(())
     }
 
+    #[cfg(test)]
     pub(super) fn host_path_push_call(
         &mut self,
         callee: &Expr,
@@ -479,6 +489,7 @@ impl Compiler<'_, '_> {
         Ok(Some(dst))
     }
 
+    #[cfg(test)]
     pub(super) fn host_path_remove_call(
         &mut self,
         callee: &Expr,
@@ -509,6 +520,7 @@ impl Compiler<'_, '_> {
         Ok(Some(dst))
     }
 
+    #[cfg(test)]
     fn host_collection_method_target<'ast>(
         &self,
         callee: &'ast Expr,
@@ -578,6 +590,7 @@ impl Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     fn reject_terminal_host_index_receiver_access(
         &self,
         receiver: HostCollectionFieldReceiver<'_>,
@@ -871,6 +884,7 @@ impl Compiler<'_, '_> {
         self.syntax_host_path(source, expression)
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn syntax_host_method_receiver(
         &self,
         source: SourceId,

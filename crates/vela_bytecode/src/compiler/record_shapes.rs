@@ -1109,6 +1109,7 @@ impl super::Compiler<'_, '_> {
             })
     }
 
+    #[cfg(test)]
     pub(super) fn value_shape_for_receiver_path(
         &self,
         receiver_path: &[String],

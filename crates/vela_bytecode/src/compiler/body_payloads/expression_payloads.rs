@@ -18,6 +18,7 @@ use vela_syntax::ast::{
 };
 
 #[cfg(test)]
+#[cfg(test)]
 use super::CompilerArgumentPayload;
 #[cfg(test)]
 use super::CompilerBodyPayload;
@@ -245,6 +246,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
+    #[cfg(test)]
     #[cfg(test)]
     pub(in crate::compiler) fn call_argument_payloads(
         &self,

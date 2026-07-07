@@ -496,7 +496,9 @@ impl Compiler<'_, '_> {
             ExprKind::Index { base, index } => {
                 self.compile_index_expr(expr, base, index, None, None, None)
             }
-            ExprKind::Call { callee, args } => self.compile_call_expr(expr, callee, args),
+            ExprKind::Call { .. } => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST call expression payload",
+            ))),
             ExprKind::Lambda { .. } => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST lambda expression payload",
             ))),
