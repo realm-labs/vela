@@ -22,7 +22,6 @@ use super::operators::{
     binary_literal_op, i64_binary_instruction, i64_immediate_instruction,
     i64_immediate_op_supported, non_logical_binary_instruction,
 };
-use super::patterns::enum_variant_path;
 use super::value_types::RuntimeTypeFact;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
@@ -559,25 +558,7 @@ impl Compiler<'_, '_> {
                     .script_field_slots
                     .enum_variant(&fact.type_name, variant, name)
             });
-        if let Some((slot_kind, slot)) = record_literal_field_slot(base, name) {
-            let root = self.compile_expr_with_payload(base, base_payload)?;
-            let dst = self.alloc_register()?;
-            match slot_kind {
-                LiteralFieldSlotKind::Record => self.emit(UnlinkedInstructionKind::GetRecordSlot {
-                    dst,
-                    record: root,
-                    field: name.to_owned(),
-                    slot,
-                }),
-                LiteralFieldSlotKind::Enum => self.emit(UnlinkedInstructionKind::GetEnumSlot {
-                    dst,
-                    value: root,
-                    field: name.to_owned(),
-                    slot,
-                }),
-            }
-            Ok(dst)
-        } else if let Some(slot) = typed_record_slot {
+        if let Some(slot) = typed_record_slot {
             let root = self.compile_expr_with_payload(base, base_payload)?;
             let dst = self.alloc_register()?;
             self.emit(UnlinkedInstructionKind::GetRecordSlot {
@@ -987,32 +968,4 @@ pub(super) fn literal_string_with_payload(
         return Some(value);
     }
     None
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum LiteralFieldSlotKind {
-    Record,
-    Enum,
-}
-
-fn record_literal_field_slot(expr: &Expr, field: &str) -> Option<(LiteralFieldSlotKind, usize)> {
-    let ExprKind::Record { path, fields } = &expr.kind else {
-        return None;
-    };
-    let slot = sorted_field_slot(fields, field)?;
-    let kind = if enum_variant_path(path).is_some() {
-        LiteralFieldSlotKind::Enum
-    } else {
-        LiteralFieldSlotKind::Record
-    };
-    Some((kind, slot))
-}
-
-fn sorted_field_slot(fields: &[vela_syntax::ast::RecordField], field: &str) -> Option<usize> {
-    let mut names = fields
-        .iter()
-        .map(|field| field.name.as_str())
-        .collect::<Vec<_>>();
-    names.sort_unstable();
-    names.iter().position(|name| *name == field)
 }
