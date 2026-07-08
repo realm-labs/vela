@@ -1,3 +1,4 @@
+#[cfg(feature = "legacy-body-parser")]
 use vela_common::Span;
 
 #[path = "ast/attributes.rs"]
@@ -60,12 +61,14 @@ pub use syntax::{
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct SourceFile {
     pub items: Vec<Item>,
     pub diagnostics: Vec<vela_common::Diagnostic>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct Item {
     pub attrs: Vec<Attribute>,
     pub visibility: Visibility,
@@ -80,6 +83,7 @@ pub enum Visibility {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub enum ItemKind {
     Use(UseItem),
     Const(ConstItem),
@@ -92,12 +96,14 @@ pub enum ItemKind {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct UseItem {
     pub path: Vec<String>,
     pub alias: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct ConstItem {
     pub name: String,
     pub type_hint: Option<TypeHint>,
@@ -105,12 +111,14 @@ pub struct ConstItem {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct GlobalItem {
     pub name: String,
     pub type_hint: TypeHint,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct TypeHint {
     pub path: Vec<String>,
     pub args: Vec<TypeHint>,
@@ -118,6 +126,7 @@ pub struct TypeHint {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct Param {
     pub name: String,
     pub span: Span,
@@ -126,6 +135,7 @@ pub struct Param {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct FunctionItem {
     pub name: String,
     pub params: Vec<Param>,
@@ -134,12 +144,14 @@ pub struct FunctionItem {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct StructItem {
     pub name: String,
     pub fields: Vec<StructField>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct StructField {
     pub attrs: Vec<Attribute>,
     pub name: String,
@@ -149,12 +161,14 @@ pub struct StructField {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct EnumItem {
     pub name: String,
     pub variants: Vec<EnumVariant>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct EnumVariant {
     pub attrs: Vec<Attribute>,
     pub name: String,
@@ -163,6 +177,7 @@ pub struct EnumVariant {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub enum EnumVariantFields {
     Unit,
     Tuple(Vec<Param>),
@@ -170,12 +185,14 @@ pub enum EnumVariantFields {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct TraitItem {
     pub name: String,
     pub methods: Vec<TraitMethod>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct TraitMethod {
     pub attrs: Vec<Attribute>,
     pub name: String,
@@ -187,6 +204,7 @@ pub struct TraitMethod {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct ImplItem {
     pub kind: ImplKind,
     pub target_path: Vec<String>,
@@ -194,12 +212,14 @@ pub struct ImplItem {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub enum ImplKind {
     Inherent,
     Trait { trait_path: Vec<String> },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct ImplMethod {
     pub attrs: Vec<Attribute>,
     pub function: FunctionItem,
@@ -207,6 +227,7 @@ pub struct ImplMethod {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct Attribute {
     pub path: Vec<String>,
     pub value: Option<String>,
@@ -214,12 +235,14 @@ pub struct Attribute {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct Block {
     pub statements: Vec<Stmt>,
     pub span: Span,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct Stmt {
     pub attrs: Vec<Attribute>,
     pub kind: StmtKind,
@@ -227,6 +250,7 @@ pub struct Stmt {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub enum StmtKind {
     Let {
         name: String,
@@ -247,12 +271,14 @@ pub enum StmtKind {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct Expr {
     pub kind: ExprKind,
     pub span: Span,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub enum ExprKind {
     Literal(Literal),
     InterpolatedString(Vec<InterpolatedStringPart>),
@@ -302,18 +328,21 @@ pub enum ExprKind {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct Argument {
     pub name: Option<String>,
     pub value: Expr,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct MapEntry {
     pub key: Expr,
     pub value: Expr,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct RecordField {
     pub name: String,
     pub span: Span,
@@ -321,6 +350,7 @@ pub struct RecordField {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct IfExpr {
     pub condition: Expr,
     pub then_branch: Block,
@@ -328,24 +358,28 @@ pub struct IfExpr {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub enum ElseBranch {
     If(Box<IfExpr>),
     Block(Block),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub enum InterpolatedStringPart {
     Text(String),
     Expr(Expr),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct MatchExpr {
     pub scrutinee: Expr,
     pub arms: Vec<MatchArm>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct MatchArm {
     pub pattern: Pattern,
     pub guard: Option<Expr>,
@@ -353,6 +387,7 @@ pub struct MatchArm {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub enum Pattern {
     Wildcard,
     Literal(Literal),
@@ -369,6 +404,7 @@ pub enum Pattern {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg(feature = "legacy-body-parser")]
 pub struct RecordPatternField {
     pub name: String,
     pub span: Span,
