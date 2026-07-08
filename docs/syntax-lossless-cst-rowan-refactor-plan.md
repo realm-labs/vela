@@ -11,13 +11,24 @@ must not change Vela language semantics, VM behavior, compiler/runtime host
 boundary rules, hot reload semantics, reflection mutation policy, or LSP
 analysis-only constraints.
 
-Hard-switch policy: the remaining work should prefer deleting obsolete syntax
-surfaces first and using compiler errors as the migration queue. It is
+Hard-switch policy: this plan is intended to be run by goal-mode loops using
+large deletion-first slices, not one-fallback micro-commits. At the start of
+each slice, delete the obsolete surface for that subsystem first, then use
+compiler errors and focused failing tests as the migration queue. It is
 acceptable for the working tree to be temporarily uncompilable while a
-hard-switch slice is in progress. Do not add or extend fallback code,
-CST-to-owned adapters, duplicate parser APIs, alias types, or temporary
-dispatch paths only to keep the project compiling during the switch. Restoring
-focused compilation and tests is still required before committing a checkpoint.
+hard-switch slice is in progress, but every committed checkpoint must compile
+and pass the relevant focused validation. Do not add or extend fallback code,
+CST-to-owned adapters, duplicate parser APIs, alias types, migration helpers,
+temporary test-only syntax stacks, or temporary dispatch paths only to keep the
+project compiling during the switch. The final state must not contain the
+legacy parser, owned AST bodies, fallback payloads, migration-only names,
+transitional tests, or token-gap formatter production paths.
+
+Commit policy: prefer large subsystem checkpoints. A valid checkpoint removes
+an entire obsolete subsystem class, such as the legacy syntax feature, old
+bytecode expression inputs, transitional fallback tests, or token-state
+formatter. Do not commit one old fallback removal at a time unless that single
+removal is the last blocker for a subsystem checkpoint.
 
 ## 0. Codex Goal
 
@@ -35,44 +46,54 @@ is a breaking internal refactor: the priority is to delete old syntax surfaces
 and finish the CST-only architecture, not to preserve compatibility.
 
 At the start of each execution turn, inspect the current git diff, then inspect
-remaining production references to vela_syntax::legacy,
-parse_body_blocks_at_spans, old parser entrypoints, old owned AST structs,
-Expr, ExprKind, StmtKind, Block, SourceFile, ItemKind, token-gap formatting
-paths, CST-to-owned adapters, and migration-only names. Work with any existing
-user changes and do not revert them.
+remaining references to legacy-body-parser, legacy_body_parser,
+parse_owned_body_blocks_for_tests, parse_body_blocks_at_spans, old parser
+entrypoints, old owned AST structs, Expr, ExprKind, Stmt, StmtKind, Block,
+Argument, RecordField, SourceFile, ItemKind, `.fallback()`, token-gap
+formatting paths, CST-to-owned adapters, and migration-only names. Work with
+any existing user changes and do not revert them.
 
-Use a hard-switch strategy. Prefer deleting the obsolete fallback/API at the
-start of a slice, then use compiler errors and focused failing tests as the
-migration queue. It is acceptable for the working tree to be temporarily
-uncompilable during the turn, but do not commit until the changed slice has
-focused tests passing. Do not add new compatibility shims, CST-to-owned
-adapters, duplicate parser APIs, alias types, optional fallback paths, or
-migration-only dispatch just to keep both syntax stacks alive.
+Use a hard-switch strategy with large subsystem slices. Delete the obsolete
+fallback/API at the start of a slice, then use compiler errors and focused
+failing tests as the migration queue. It is acceptable for the working tree to
+be temporarily uncompilable during the turn, but do not commit until the
+changed slice has focused tests passing. Do not add new compatibility shims,
+CST-to-owned adapters, duplicate parser APIs, alias types, optional fallback
+paths, migration-only dispatch, or temporary replacement test scaffolds just to
+keep both syntax stacks alive.
 
 Current execution order:
-1. Finish any dirty in-progress bytecode hard-switch edits first, especially
-   control-flow payload changes.
-2. Delete the remaining production old-body fallback path: BodyBlockLookup's
-   dependency on vela_syntax::legacy::parse_body_blocks_at_spans.
-3. Remove old-AST fallback fields from CompilerBodyPayload,
-   CompilerStatementPayload, CompilerExpressionPayload, and child payload
-   structs.
-4. Replace production bytecode usage of Expr, ExprKind, StmtKind, Block,
-   SourceFile, and ItemKind with CST wrappers, HIR facts, or bytecode-owned
-   payload/fact structs.
-5. Delete vela_syntax::legacy, old parser production APIs, old owned AST
-   production structs, and any remaining CST-to-owned conversion helpers.
-6. Rename surviving CST APIs to concise canonical names only after old
+1. Delete the legacy syntax and owned-AST feature boundary: remove
+   legacy-body-parser, legacy_body_parser, parse_owned_body_blocks_for_tests,
+   old owned AST structs, and the dev-dependency feature that keeps them alive.
+   Fix downstream compile errors against typed CST wrappers, HIR facts, or
+   compiler-owned facts. Do not replace the feature with another compatibility
+   facade.
+2. Hard-switch bytecode to CST-only compiler inputs. Remove old Expr, ExprKind,
+   Stmt, StmtKind, Block, Argument, and RecordField dependencies from compiler
+   production and test helpers. Replace fallback payload tests with
+   source-to-bytecode, source-to-runtime, or source-to-diagnostic behavior
+   tests.
+3. Delete transitional fallback payload scaffolding: `.fallback()` accessors,
+   paired old/CST payload constructors, source-less fallback fixtures, and
+   tests whose only purpose is proving that legacy fallback is ignored.
+4. Audit HIR, analysis, language service, and LSP after the deletion. Keep
+   behavior stable, but remove old parser imports, migration-only names,
+   unnecessary re-exports, more-than-one-super imports, and touched active files
+   over 1200 lines.
+5. Replace the formatter token-state machine with CST/typed-AST layout rules in
+   this plan, then delete token-gap formatter production paths and any tests
+   that exist only for the old token-gap model.
+6. Rename surviving syntax APIs to concise canonical names only after old
    fallbacks are gone; do not keep long migration names like parse_syntax_* or
-   Syntax* names that only existed to distinguish old/new stacks unless they
-   are still the best final API.
-7. Replace the remaining formatter layout state machine with CST/typed-AST
-   layout rules, then delete token-gap formatter production paths.
-8. Audit language service, LSP, HIR, analysis, and bytecode for old parser
-   imports, migration-only names, unnecessary re-exports, more-than-one-super
-   imports, and touched active files over 1200 lines.
-9. Update docs/progress.md and the plan checklist only when milestone state or
-   remaining gaps materially change.
+   names that only existed to distinguish old/new stacks unless they are still
+   the best final API.
+7. Before final acceptance, run zero-result audits for legacy-body-parser,
+   legacy_body_parser, parse_owned_body_blocks_for_tests, old owned AST types,
+   `.fallback()`, CST-to-owned helpers, token-gap formatter paths, and
+   migration-only names.
+8. Update docs/progress.md, docs/decisions.md, and this checklist only when
+   milestone state, final architecture, or remaining gaps materially change.
 
 Use the local rust-analyzer checkout at ~/CLionProjects/rust-analyzer as the
 main architecture reference when it is available. Inspect the relevant files
@@ -105,20 +126,19 @@ unclear file placement. Keep active source and test files under 1200 lines
 unless a documented exception explains why splitting would make ownership or
 logic materially worse.
 
-For each checkpoint, choose the smallest deletion-first slice that permanently
-removes one old production dependency or fallback class. Validate with the
-narrowest relevant tests first, usually
-cargo test -p vela_bytecode cst_payloads --no-fail-fast for bytecode slices,
-then cargo test -p vela_syntax parser ast formatting, cargo test -p vela_hir,
-cargo test -p vela_analysis,
-cargo test -p vela_language_service completion formatting semantic_tokens inlay,
-and cargo test -p vela_lsp_server completion formatting semantic_tokens
-lifecycle as the touched surface expands. Close out with
+For each checkpoint, choose the largest deletion-first subsystem slice that can
+be restored to focused green validation in one execution turn. Avoid
+one-fallback commits. Validate with the narrowest relevant tests first, usually
+cargo test -p vela_syntax, cargo test -p vela_bytecode --no-fail-fast,
+cargo test -p vela_hir, cargo test -p vela_analysis, cargo test -p
+vela_language_service completion formatting semantic_tokens inlay, and cargo
+test -p vela_lsp_server completion formatting semantic_tokens lifecycle as the
+touched surface expands. Close out with
 cargo fmt --all -- --check,
 cargo clippy --workspace --all-targets -- -D warnings, and
 cargo test --workspace when practical. Update
 docs/progress.md only when milestone state changes, update docs/decisions.md for
-durable architecture decisions, and commit small Conventional Commit
+durable architecture decisions, and commit large coherent Conventional Commit
 checkpoints.
 ```
 
@@ -351,7 +371,8 @@ cargo test -p vela_syntax parser
 
 ### Phase 3: Build rowan parser and typed AST wrappers
 
-- [ ] Task: Replace the parser output with a lossless CST and rowan-backed AST views.
+- [ ] Task: Delete the old parser/owned-AST feature boundary and leave rowan CST
+      as the only syntax model.
 
 Checkpoint checklist:
 
@@ -392,12 +413,6 @@ Checkpoint checklist:
   shorthand classification.
 - [x] Split rowan-backed typed wrappers into focused syntax, attribute, item,
   statement, expression, and pattern modules.
-- [ ] Close the remaining pattern coverage called out in `docs/progress.md`.
-- [ ] Close the remaining control-flow expression coverage called out in
-  `docs/progress.md`.
-- [ ] Hard-switch the parser API by deleting the old owned parser entrypoint
-  and owned AST production types before downstream cleanup, accepting compiler
-  errors as the migration queue.
 - [x] Hide old owned AST structs from normal `vela_syntax` production builds
   behind `legacy-body-parser`, leaving only shared literal/operator/visibility
   facts available to CST consumers.
@@ -408,10 +423,17 @@ Checkpoint checklist:
   legacy body parser and remove the obsolete attribute normalizer.
 - [x] Delete old owned lambda parameter default-value fallback storage; CST/HIR
   parameter-default payloads are the remaining default source.
-- [ ] Delete old owned `SourceFile`, `ItemKind`, `ExprKind`, and the old parser
-  output as part of the hard switch, then fix downstream compile errors against
-  CST/HIR directly.
+- [ ] Delete the `legacy-body-parser` feature, `legacy_body_parser` module,
+  `body_parser_support` re-export, and `parse_owned_body_blocks_for_tests`
+  entrypoint before downstream cleanup.
+- [ ] Delete old owned `Expr`, `ExprKind`, `Stmt`, `StmtKind`, `Block`,
+  `Argument`, `RecordField`, `Pattern`, `MatchExpr`, and related old parser
+  body structs, then fix downstream compile errors against CST/HIR directly.
+- [ ] Remove the dev-dependency feature path that keeps old parser structs alive
+  for bytecode tests.
 - [ ] Ensure no production parser path returns the old owned AST.
+- [ ] Ensure no test-only parser path returns the old owned AST or constructs
+  owned AST bodies for fallback assertions.
 
 Expected behavior:
 
@@ -421,10 +443,11 @@ Expected behavior:
 - Every parse returns a source-file root, even with syntax errors.
 - Error recovery keeps useful tree shape for incomplete items, expressions,
   types, patterns, calls, containers, and blocks.
-- Typed AST wrappers cover the current owned AST surface needed by downstream
+- Typed AST wrappers cover the current language surface needed by downstream
   crates.
-- Old owned AST structs are deleted at the start of the hard-switch checkpoint
-  series; downstream call sites are then fixed against CST/HIR directly.
+- Old owned AST structs and the feature that exposes them are deleted at the
+  start of the hard-switch checkpoint; downstream call sites are then fixed
+  against CST/HIR directly.
 
 Do not change:
 
@@ -432,6 +455,8 @@ Do not change:
   layer.
 - Do not reintroduce owned AST aliases, adapters, or parser entrypoints to make
   intermediate compilation easier.
+- Do not keep test-only owned AST parser support as a transitional assertion
+  boundary.
 - Do not make AST wrappers compute HIR facts implicitly.
 
 Validation:
@@ -439,6 +464,7 @@ Validation:
 ```bash
 cargo test -p vela_syntax parser
 cargo test -p vela_syntax ast
+cargo check -p vela_bytecode --lib
 ```
 
 ### Phase 4: Migrate HIR and module graph lowering
@@ -487,10 +513,10 @@ cargo test -p vela_hir
 cargo test -p vela_language_service module
 ```
 
-### Phase 5: Migrate compiler and analysis callers
+### Phase 5: Hard-switch compiler and analysis callers
 
-- [ ] Task: Update bytecode compilation and analysis to consume the new syntax/HIR
-shape.
+- [ ] Task: Delete bytecode fallback payload scaffolding and make compiler
+      tests/production consume CST/HIR-only syntax inputs.
 
 Checkpoint checklist:
 
@@ -506,8 +532,9 @@ Checkpoint checklist:
   from rowan parameter lists.
 - [x] Introduce a shared compiler body payload carrying rowan CST bodies plus
   a temporary legacy fallback.
-- [ ] Retire the shared compiler body payload's old-AST fallback side and make
-  CST body payloads the only compiler body representation.
+- [ ] Delete old-AST fallback sides from `CompilerBodyPayload`,
+  `CompilerStatementPayload`, `CompilerExpressionPayload`, and child payload
+  structs instead of leaving them as test-only fixtures.
 - [x] Route top-level statement dispatch through rowan statement categories
   when payloads align.
 - [x] Route expression statement, assignment, call, let, and return payloads
@@ -528,21 +555,26 @@ Checkpoint checklist:
   record.
 - [x] Remove `crates/vela_bytecode/src/compiler/legacy_payloads.rs`.
 - [x] Remove runtime default-expression fallback.
-- [ ] Remove temporary old-AST body fallback.
-- [ ] Remove production imports of old `Expr`, `ExprKind`, `ItemKind`, and
+- [ ] Remove temporary old-AST body fallback helpers, `.fallback()` accessors,
+  paired payload constructors, and source-less legacy assertion paths.
+- [ ] Remove all imports and type signatures for old `Expr`, `ExprKind`,
+  `Stmt`, `StmtKind`, `Block`, `Argument`, `RecordField`, `ItemKind`, and
   `SourceFile` from `vela_bytecode`.
 - [x] Remove production imports of old expression AST types from
   `vela_analysis`.
-- [ ] Close remaining pattern lowering coverage in compiler and analysis.
-- [ ] Close remaining control-flow expression lowering coverage in compiler
-  and analysis.
+- [ ] Replace tests whose only purpose is "does not use legacy fallback" with
+  source-driven bytecode, runtime, or diagnostic behavior tests; delete tests
+  that have no behavior value after the old fallback path is gone.
+- [ ] Close any remaining pattern and control-flow expression lowering gaps
+  exposed by deleting the old AST, using typed CST wrappers or HIR facts only.
 - [ ] Prove compile-dir and checked examples pass with CST/HIR-only syntax
   inputs.
 
 Expected behavior:
 
 - `vela_bytecode` no longer depends on old owned AST types.
-- Compiler payload structures do not pair CST nodes with old-AST fallback nodes.
+- Compiler payload structures do not pair CST nodes with old-AST fallback nodes
+  in production or tests.
 - Expression, pattern, statement, literal, type, const-eval, and semantic
   lowering behavior matches the pre-refactor behavior.
 - `vela_analysis` diagnostics and symbol facts remain behavior-compatible.
@@ -553,6 +585,8 @@ Do not change:
 - Do not change VM opcodes unless a separate milestone explicitly requires it.
 - Do not change host boundary rules, reflection, or hot reload behavior.
 - Do not add fallback lowering paths only to preserve old owned-AST behavior.
+- Do not keep transitional cst_payload tests, helpers, or names after they no
+  longer test user-visible behavior.
 
 Validation:
 
@@ -562,6 +596,7 @@ cargo test -p vela_analysis
 cargo test --manifest-path examples/Cargo.toml --test runnable_examples
 cargo run --manifest-path examples/Cargo.toml --bin level_up
 cargo run --manifest-path examples/Cargo.toml --bin modules
+rg -n "legacy-body-parser|legacy_body_parser|parse_owned_body_blocks_for_tests|\\.fallback\\(|\\bExprKind\\b|\\bStmtKind\\b|vela_syntax::ast::(Expr|Stmt|Block|Argument|RecordField)|vela_syntax::ast::\\{[^}]*\\b(Expr|Stmt|Block|Argument|RecordField)\\b" crates/vela_bytecode crates/vela_syntax
 ```
 
 ### Phase 6: Migrate language service features
@@ -616,8 +651,8 @@ cargo test -p vela_lsp_server completion semantic_tokens lifecycle
 
 ### Phase 7: Replace formatter with CST layout rules
 
-- [ ] Task: Delete the token-gap formatter and build formatting from the CST/typed AST
-layout model.
+- [ ] Task: Delete the token-state formatter and build formatting from the
+      CST/typed-AST layout model.
 
 Checkpoint checklist:
 
@@ -635,19 +670,23 @@ Checkpoint checklist:
   selected impl/trait methods.
 - [x] Serve on-type reflow for top-level items, impl/trait methods, and enum
   record variants.
-- [ ] Replace the remaining layout state machine with CST/typed-AST layout
-  rules.
-- [ ] Delete obsolete `extract_format_elements`, token-gap `Formatter`, and
-  related production paths.
+- [ ] Replace the remaining token/layout state machine with CST/typed-AST
+  layout rules in this refactor plan, not a later track.
+- [ ] Delete obsolete `extract_format_elements`, token-gap `Formatter`, token
+  adjacency state, delimiter-stack layout inference, and related production
+  paths.
 - [ ] Add CST-rule coverage for item, statement, expression, pattern, type,
   trivia, and error-recovery formatting decisions.
 - [ ] Prove full-document, range, and on-type formatting are all CST-rule
   backed.
 - [ ] Prove formatting diagnostics and skipped-error behavior are explicit.
+- [ ] Delete formatter tests that only lock in old token-gap implementation
+  details, replacing them with idempotent behavior fixtures where needed.
 
 Expected behavior:
 
-- Full-document, range, and on-type formatting use CST/typed-AST layout rules.
+- Full-document, range, and on-type formatting use CST/typed-AST layout rules,
+  not token adjacency or parser-gap reconstruction.
 - Container type hints format like Rust-style generics without spaces around
   angle brackets: `Map<String, i64>`, `Array<i64>`, `Result<Map<String, i64>,
   String>`.
@@ -657,11 +696,14 @@ Expected behavior:
 - Formatting diagnostics and skipped-error behavior are explicit and tested.
 - Obsolete `extract_format_elements`, token-gap `Formatter`, and related
   production paths are removed.
+- Formatter tests describe source formatting behavior and trivia preservation,
+  not internal token-state transitions.
 
 Do not change:
 
 - Do not use formatter rules to hide parser recovery bugs.
 - Do not silently drop comments or trivia.
+- Do not keep a token-state formatter as a fallback or compatibility path.
 
 Validation:
 
@@ -669,6 +711,7 @@ Validation:
 cargo test -p vela_syntax formatting
 cargo test -p vela_language_service formatting
 cargo test -p vela_lsp_server formatting
+rg -n "extract_format_elements|struct Formatter|token-gap|delimiter_stack|previous_token" crates/vela_syntax crates/vela_language_service crates/vela_lsp_server
 ```
 
 ### Phase 8: Remove obsolete APIs and close out docs
@@ -677,15 +720,19 @@ cargo test -p vela_lsp_server formatting
 
 Checkpoint checklist:
 
-- [ ] Delete the old owned AST production structs after all call sites migrate.
-- [ ] Delete the old non-lossless parser production API after all call sites
-  migrate.
-- [ ] Delete transitional CST-to-owned fallback helpers.
+- [ ] Prove old owned AST structs, old parser feature gates, and old body parser
+  test support are deleted from production and tests.
+- [ ] Prove the old non-lossless parser API and any test-only old parser entry
+  points are deleted.
+- [ ] Delete transitional CST-to-owned fallback helpers and paired CST/owned
+  payload fixtures.
 - [ ] Delete or rename migration-only identifiers such as `legacy_*`,
-  `parse_syntax_*`, and verbose new-vs-old disambiguation names.
+  `parse_syntax_*`, `*_fallback*`, and verbose new-vs-old disambiguation names.
 - [ ] Rename the final CST API to concise canonical names after old fallbacks
   are gone.
 - [ ] Delete the token-gap formatter production path.
+- [ ] Delete transitional tests that exist only to prove old fallback paths are
+  ignored; preserve or rewrite behavior tests that still matter.
 - [ ] Audit public `vela_syntax` exports and remove re-exports that are not a
   deliberate scoped public API.
 - [ ] Audit import paths touched by this track for the "no more than one
@@ -697,14 +744,17 @@ Checkpoint checklist:
 - [ ] Update `docs/progress.md` when milestone state changes.
 - [ ] Update `docs/decisions.md` for durable syntax architecture decisions.
 - [ ] Run focused syntax/downstream validation.
+- [ ] Run final zero-result legacy audit searches before declaring the plan
+  complete.
 - [ ] Run full formatting, clippy, and workspace tests when practical.
 
 Expected behavior:
 
-- No production code imports old owned AST structs.
-- No production code uses the old parser output or token-gap formatter.
-- No public or production API keeps migration-only naming that existed only to
-  distinguish the new CST path from the old fallback path.
+- No production or test code imports old owned AST structs.
+- No production or test code uses the old parser output, old body parser, or
+  token-gap formatter.
+- No public, production, or test API keeps migration-only naming that existed
+  only to distinguish the new CST path from the old fallback path.
 - Final syntax structures and functions use concise canonical names appropriate
   for a single production syntax stack.
 - Public `vela_syntax` API exposes a deliberate scoped syntax facade.
@@ -725,6 +775,7 @@ Validation:
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
+rg -n "legacy-body-parser|legacy_body_parser|parse_owned_body_blocks_for_tests|\\.fallback\\(|\\bExprKind\\b|\\bStmtKind\\b|vela_syntax::ast::(Expr|Stmt|Block|Argument|RecordField)|vela_syntax::ast::\\{[^}]*\\b(Expr|Stmt|Block|Argument|RecordField)\\b|parse_syntax_|fallback payload|token-gap|extract_format_elements|struct Formatter" crates examples editors
 ```
 
 ## 7. Acceptance Criteria
@@ -737,13 +788,15 @@ cargo test --workspace
 - Parsing invalid or incomplete source always returns a source-file root plus
   diagnostics.
 - Old owned AST structs and old non-lossless parser production APIs are removed.
-- Migration-only fallback naming is removed from final public and production
-  APIs; the surviving CST API uses concise canonical structure and function
-  names.
+- Old owned AST structs, old body parser support, fallback payload helpers, and
+  transitional fallback tests are removed from production and tests.
+- Migration-only fallback naming is removed from final public, production, and
+  test APIs; the surviving CST API uses concise canonical structure and
+  function names.
 - HIR, analysis, compiler, language service, and LSP tests pass against the new
   syntax API.
-- Formatting is CST/typed-AST based and no production path uses the old
-  token-gap formatter.
+- Formatting is CST/typed-AST based and no production or test path depends on
+  the old token-gap formatter.
 - Vela language semantics, VM behavior, HostAccess boundaries, reflection
   mutation rules, and hot reload behavior remain unchanged.
 - Active source and test files touched by this track stay below 1200 lines unless
@@ -752,6 +805,8 @@ cargo test --workspace
 - Re-exports are limited to deliberate scoped public APIs.
 - The final close-out includes focused tests, workspace tests, formatting, and
   clippy when practical.
+- Final zero-result audits prove the forbidden legacy syntax and formatter
+  symbols are gone from `crates/`, `examples/`, and editor package sources.
 
 ## 8. Validation Matrix
 
@@ -772,6 +827,13 @@ cargo test -p vela_analysis
 cargo test -p vela_bytecode
 cargo test -p vela_language_service completion formatting semantic_tokens inlay
 cargo test -p vela_lsp_server completion formatting semantic_tokens lifecycle
+```
+
+Final legacy audit validation:
+
+```bash
+rg -n "legacy-body-parser|legacy_body_parser|parse_owned_body_blocks_for_tests|\\.fallback\\(|\\bExprKind\\b|\\bStmtKind\\b|vela_syntax::ast::(Expr|Stmt|Block|Argument|RecordField)|vela_syntax::ast::\\{[^}]*\\b(Expr|Stmt|Block|Argument|RecordField)\\b" crates/vela_bytecode crates/vela_syntax
+rg -n "extract_format_elements|struct Formatter|token-gap|delimiter_stack|previous_token" crates/vela_syntax crates/vela_language_service crates/vela_lsp_server
 ```
 
 Full close-out:
