@@ -284,7 +284,7 @@ impl Compiler<'_, '_> {
         else {
             return Ok(());
         };
-        if access.writable {
+        if access.writable || access.variant_field {
             return Ok(());
         }
         let span = syntax_expression_span(source, error_expression);

@@ -184,5 +184,10 @@ fn temp_workspace() -> PathBuf {
 }
 
 fn file_uri(path: &std::path::Path) -> String {
-    format!("file://{}", path.display())
+    let path = path.display().to_string().replace('\\', "/");
+    if path.starts_with('/') {
+        format!("file://{path}")
+    } else {
+        format!("file:///{path}")
+    }
 }

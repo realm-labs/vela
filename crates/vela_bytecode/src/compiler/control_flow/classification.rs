@@ -1,12 +1,6 @@
 use vela_common::PrimitiveTag;
 use vela_hir::type_hint::HirTypeHint;
-#[cfg(test)]
-use vela_syntax::ast::BinaryOp;
-#[cfg(test)]
-use vela_syntax::ast::{Expr, ExprKind};
 
-#[cfg(test)]
-use crate::compiler::body_payloads::CompilerExpressionPayload;
 use crate::compiler::patterns::PatternBindingFacts;
 use crate::compiler::record_shapes::ValueShape;
 use crate::compiler::script_types::ScriptTypeFact;
@@ -22,28 +16,6 @@ pub(super) fn iterable_item_shape(shape: ValueShape) -> Option<ValueShape> {
 
 pub(super) fn i64_pattern_facts() -> PatternBindingFacts {
     PatternBindingFacts::value(Some(RuntimeTypeFact::primitive(PrimitiveTag::I64)))
-}
-
-#[cfg(test)]
-pub(super) fn value_expression_requires_matching_syntax(expr: &Expr) -> bool {
-    matches!(
-        expr.kind,
-        ExprKind::Block(_)
-            | ExprKind::If(_)
-            | ExprKind::Match(_)
-            | ExprKind::Array(_)
-            | ExprKind::Map(_)
-            | ExprKind::Record { .. }
-            | ExprKind::Path(_)
-            | ExprKind::SelfValue
-    )
-}
-
-#[cfg(test)]
-pub(super) fn condition_operator_for_payload(
-    payload: Option<&CompilerExpressionPayload<'_>>,
-) -> Option<BinaryOp> {
-    payload.and_then(CompilerExpressionPayload::syntax_binary_operator)
 }
 
 pub(super) fn merge_type_hint_and_value_fact(

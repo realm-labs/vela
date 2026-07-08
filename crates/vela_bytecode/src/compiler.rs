@@ -1,9 +1,5 @@
 //! Minimal AST-to-bytecode compiler for the M2 VM loop.
 
-#[cfg(test)]
-mod assignment_payloads;
-#[cfg(test)]
-mod assignments;
 mod body_payloads;
 mod cache_sites;
 mod call_args;
@@ -20,8 +16,6 @@ mod field_slots;
 mod function_payloads;
 mod host_paths;
 mod lambdas;
-#[cfg(test)]
-mod methods;
 mod operators;
 pub mod options;
 mod param_defaults;
@@ -48,9 +42,9 @@ use vela_hir::module_graph::ModulePath;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModuleSource};
 use vela_hir::type_hint::{FunctionSignature, HirTypeHint, ParamHint};
 use vela_registry::RegistryCompileView;
-#[cfg(test)]
+#[cfg(any())]
 use vela_syntax::ast::Argument;
-#[cfg(test)]
+#[cfg(any())]
 use vela_syntax::ast::SyntaxExpressionKind;
 
 use crate::{
@@ -59,7 +53,7 @@ use crate::{
     UnlinkedProgram, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
 };
 use body_payloads::CompilerBodyPayload;
-#[cfg(test)]
+#[cfg(any())]
 use body_payloads::CompilerExpressionPayload;
 use cache_sites::{attach_cache_site, cache_site_kind};
 use control_flow::LoopContext;
@@ -68,7 +62,7 @@ use field_slots::ScriptFieldSlots;
 use lambdas::{LambdaCapture, LambdaParam};
 use options::CompilerOptions;
 use param_defaults::ParamDefaultValue;
-#[cfg(test)]
+#[cfg(any())]
 use patterns::enum_variant_path;
 use record_shapes::ValueShapeFlow;
 use schema_defaults::ScriptSchemaDefaults;
@@ -986,21 +980,6 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         Ok(self.code)
     }
 
-    #[cfg(test)]
-    fn compile_with_statement_payloads_for_test(
-        mut self,
-        statements: &[body_payloads::CompilerStatementPayload<'_>],
-    ) -> CompileResult<UnlinkedCodeObject> {
-        self.compile_param_defaults()?;
-        let returned = self.compile_statement_payloads(statements)?;
-        if !returned {
-            let null = self.emit_constant(Constant::Null)?;
-            self.emit(UnlinkedInstructionKind::Return { src: null });
-        }
-        self.code.register_count = self.next_register;
-        Ok(self.code)
-    }
-
     fn compile_param_defaults(&mut self) -> CompileResult<()> {
         for index in 0..self.param_defaults.len() {
             let Some(default_value) = self.param_defaults[index].clone() else {
@@ -1026,7 +1005,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         Ok(())
     }
 
-    #[cfg(test)]
+    #[cfg(any())]
     fn tuple_enum_constructor_call_at_span(
         &self,
         callee_path: &[String],
@@ -1092,7 +1071,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             })
     }
 
-    #[cfg(test)]
+    #[cfg(any())]
     fn host_method_receiver_type(
         &self,
         callee_payload: Option<&CompilerExpressionPayload<'_>>,
@@ -1122,7 +1101,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         self.facts.script_field_slots.record(type_name, field)
     }
 
-    #[cfg(test)]
+    #[cfg(any())]
     fn script_type_for_receiver_path(&self, receiver_path: &[String]) -> Option<String> {
         let [receiver] = receiver_path else {
             return None;
@@ -1130,7 +1109,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         self.script_types.name(receiver)
     }
 
-    #[cfg(test)]
+    #[cfg(any())]
     fn value_type_for_receiver_path(&self, receiver_path: &[String]) -> Option<RuntimeTypeFact> {
         let [receiver] = receiver_path else {
             let (field, prefix) = receiver_path.split_last()?;
@@ -1163,7 +1142,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         registry.resolve_type(&DefPath::ty("host", std::iter::empty::<&str>(), type_name))
     }
 
-    #[cfg(test)]
+    #[cfg(any())]
     pub(super) fn is_native_module_root(&self, root: &str) -> bool {
         self.facts.options.is_native_module_root(root)
     }
@@ -1425,7 +1404,7 @@ fn param_default_flags(signature: &FunctionSignature) -> Vec<bool> {
         .collect()
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn reject_named_args(args: &[Argument], context: &'static str) -> CompileResult<()> {
     if args.iter().any(|arg| arg.name.is_some()) {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

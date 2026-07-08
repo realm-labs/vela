@@ -215,7 +215,7 @@ fn help_text() -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::{Command, parse_args};
+    use super::{Command, normalize_cli_path, parse_args};
 
     #[test]
     fn cli_config_flags_parse_roots_and_schema() {
@@ -251,14 +251,18 @@ mod tests {
             configuration.host_schema(),
             Some("file:///workspace/target/vela/schema.json")
         );
+        let expected_profile_path = normalize_cli_path("/tmp/vela-lsp-profile.jsonl")
+            .expect("profile path should normalize");
         assert_eq!(
             configuration.profile_path(),
-            Some("/tmp/vela-lsp-profile.jsonl")
+            Some(expected_profile_path.as_str())
         );
         assert_eq!(configuration.profile_slow_ms(), 25);
+        let expected_trace_path =
+            normalize_cli_path("/tmp/vela-lsp-trace.jsonl").expect("trace path should normalize");
         assert_eq!(
             configuration.trace_log_path(),
-            Some("/tmp/vela-lsp-trace.jsonl")
+            Some(expected_trace_path.as_str())
         );
         assert!(!configuration.watch_files_enabled());
     }

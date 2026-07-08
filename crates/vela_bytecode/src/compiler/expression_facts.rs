@@ -1,16 +1,16 @@
-#[cfg(test)]
+#[cfg(any())]
 use vela_common::Span;
-#[cfg(test)]
+#[cfg(any())]
 use vela_syntax::ast::Expr;
-#[cfg(test)]
+#[cfg(any())]
 use vela_syntax::ast::ExprKind;
-#[cfg(test)]
+#[cfg(any())]
 use vela_syntax::ast::SyntaxExpressionKind;
 
-#[cfg(test)]
+#[cfg(any())]
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 
-#[cfg(test)]
+#[cfg(any())]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) struct ExpressionFacts {
     span: Span,
@@ -19,7 +19,7 @@ pub(super) struct ExpressionFacts {
     kind_is_wildcard: bool,
 }
 
-#[cfg(test)]
+#[cfg(any())]
 impl ExpressionFacts {
     pub(super) fn new(
         span: Span,
@@ -58,14 +58,14 @@ impl ExpressionFacts {
     }
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(super) fn payload_overlaps_span(payload: &CompilerExpressionPayload<'_>, span: Span) -> bool {
     payload
         .syntax_span()
         .is_some_and(|payload_span| payload_span.start < span.end && span.start < payload_span.end)
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(super) fn expression_facts(expr: &Expr) -> ExpressionFacts {
     ExpressionFacts::new(
         expr.span,
@@ -74,7 +74,7 @@ pub(super) fn expression_facts(expr: &Expr) -> ExpressionFacts {
     )
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn expression_syntax_kind(expr: &Expr) -> Option<SyntaxExpressionKind> {
     Some(match expr.kind {
         ExprKind::Path(_) | ExprKind::SelfValue => SyntaxExpressionKind::Path,
@@ -97,7 +97,7 @@ fn expression_syntax_kind(expr: &Expr) -> Option<SyntaxExpressionKind> {
     })
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn expression_path_is_self(expr: &Expr) -> Option<bool> {
     match expr.kind {
         ExprKind::Path(_) => Some(false),
@@ -106,7 +106,7 @@ fn expression_path_is_self(expr: &Expr) -> Option<bool> {
     }
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(super) fn payload_matches_expression_facts(
     payload: &CompilerExpressionPayload<'_>,
     facts: ExpressionFacts,
@@ -121,7 +121,7 @@ pub(super) fn payload_matches_expression_facts(
         )
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(super) fn payload_syntax_kind_matches_expression_facts(
     payload: &CompilerExpressionPayload<'_>,
     facts: ExpressionFacts,
@@ -135,7 +135,7 @@ pub(super) fn payload_syntax_kind_matches_expression_facts(
     )
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(super) fn payload_overlaps_expression_facts(
     payload: &CompilerExpressionPayload<'_>,
     facts: ExpressionFacts,
@@ -145,7 +145,7 @@ pub(super) fn payload_overlaps_expression_facts(
         && payload_stored_kind_matches_expression_facts(payload, facts, missing_kind_matches)
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(super) fn payload_stored_kind_matches_expression_facts(
     payload: &CompilerExpressionPayload<'_>,
     facts: ExpressionFacts,
@@ -163,7 +163,7 @@ pub(super) fn payload_stored_kind_matches_expression_facts(
     }
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn payload_kind_matches_expression_facts(
     payload_kind: Option<SyntaxExpressionKind>,
     expr_kind: Option<SyntaxExpressionKind>,
@@ -178,7 +178,7 @@ fn payload_kind_matches_expression_facts(
     kind_matches && path_is_self.is_none_or(|is_self| is_self == payload_is_self)
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn payload_kind_matches_known_expression_facts(
     payload_kind: Option<SyntaxExpressionKind>,
     expr_kind: Option<SyntaxExpressionKind>,

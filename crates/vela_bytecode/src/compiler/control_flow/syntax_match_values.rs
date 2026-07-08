@@ -6,8 +6,6 @@ use vela_syntax::ast::{
 };
 
 use crate::compiler::body_payloads::CompilerBodyPayload;
-#[cfg(test)]
-use crate::compiler::body_payloads::CompilerExpressionPayload;
 use crate::compiler::patterns::PatternBindingFacts;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{Constant, Register, UnlinkedInstructionKind};
@@ -27,28 +25,6 @@ impl Compiler<'_, '_> {
         let dst = self.alloc_register()?;
         self.compile_syntax_match_value_to(source, &match_expr, dst)?;
         Ok(Some(dst))
-    }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn compile_syntax_match_payload_value_to(
-        &mut self,
-        payload: &CompilerExpressionPayload<'_>,
-        dst: Register,
-    ) -> CompileResult<Option<bool>> {
-        let Some(source) = payload.source() else {
-            return Ok(None);
-        };
-        let Some(match_expr) = payload
-            .syntax_expression()
-            .and_then(SyntaxExpression::as_match)
-        else {
-            return Ok(None);
-        };
-        if !syntax_match_value_lowering_covers(&match_expr) {
-            return Ok(None);
-        }
-        self.compile_syntax_match_value_to(source, &match_expr, dst)
-            .map(Some)
     }
 
     pub(in crate::compiler::control_flow) fn compile_syntax_match_statement(

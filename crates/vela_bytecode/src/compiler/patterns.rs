@@ -1,12 +1,12 @@
 use vela_common::Span;
 use vela_hir::binding::{BindingResolution, LocalBindingKind};
-#[cfg(test)]
+#[cfg(any())]
 use vela_syntax::ast::{Literal, Pattern, RecordPatternField};
 use vela_syntax::ast::{SyntaxPattern, SyntaxPatternKind, SyntaxRecordPatternField};
 
 use crate::{Register, UnlinkedInstructionKind};
 
-#[cfg(test)]
+#[cfg(any())]
 use super::body_payloads::{CompilerPatternPayload, CompilerRecordPatternFieldPayload};
 use super::record_shapes::ValueShape;
 use super::script_types::ScriptTypeFact;
@@ -21,7 +21,7 @@ pub(crate) fn enum_variant_path(path: &[String]) -> Option<(String, String)> {
     Some((enum_path.join("::"), variant.clone()))
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(crate) fn record_pattern_field_match(field: &RecordPatternField) -> Option<&Pattern> {
     match field.pattern.as_ref() {
         Some(Pattern::Wildcard | Pattern::Binding(_)) | None => None,
@@ -29,7 +29,7 @@ pub(crate) fn record_pattern_field_match(field: &RecordPatternField) -> Option<&
     }
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(crate) fn record_pattern_field_declares_locals(field: &RecordPatternField) -> bool {
     field.pattern.as_ref().is_none_or(pattern_declares_locals)
 }
@@ -38,7 +38,7 @@ pub(crate) fn tuple_variant_field_name(index: usize) -> String {
     index.to_string()
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn record_pattern_field_name(
     payload: Option<&CompilerRecordPatternFieldPayload>,
     field: &RecordPatternField,
@@ -51,7 +51,7 @@ fn record_pattern_field_name(
     })
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(in crate::compiler) fn record_pattern_field_payload_declares_locals(
     payload: &CompilerRecordPatternFieldPayload,
     field: &RecordPatternField,
@@ -72,7 +72,7 @@ pub(in crate::compiler) fn record_pattern_field_payload_declares_locals(
         })
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn pattern_literal_payload(
     payload: Option<&CompilerPatternPayload>,
     fallback: &Literal,
@@ -85,7 +85,7 @@ fn pattern_literal_payload(
         .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("literal pattern")))
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn pattern_path_segments(
     payload: Option<&CompilerPatternPayload>,
     fallback: &[String],
@@ -98,7 +98,7 @@ fn pattern_path_segments(
         .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("path pattern")))
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn pattern_binding_name(
     payload: Option<&CompilerPatternPayload>,
     fallback: &str,
@@ -111,7 +111,7 @@ fn pattern_binding_name(
         .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("binding pattern")))
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn required_pattern_kind(
     payload: &CompilerPatternPayload,
     context: &'static str,
@@ -121,7 +121,7 @@ fn required_pattern_kind(
         .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax(context)))
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn reject_mismatched_record_pattern_payloads(
     payload: Option<&CompilerPatternPayload>,
     fields: &[vela_syntax::ast::RecordPatternField],
@@ -138,7 +138,7 @@ fn reject_mismatched_record_pattern_payloads(
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn reject_mismatched_tuple_pattern_payloads(
     payload: Option<&CompilerPatternPayload>,
     fields: &[vela_syntax::ast::Pattern],
@@ -155,7 +155,7 @@ fn reject_mismatched_tuple_pattern_payloads(
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(in crate::compiler) fn record_pattern_field_payload_at(
     payloads: Option<&[CompilerRecordPatternFieldPayload]>,
     index: usize,
@@ -176,7 +176,7 @@ pub(in crate::compiler) fn record_pattern_field_payload_at(
     Ok(Some(payload))
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(in crate::compiler) fn tuple_pattern_payload_at(
     payloads: Option<&[CompilerPatternPayload]>,
     index: usize,
@@ -206,7 +206,7 @@ fn pattern_kind_declares_locals(kind: SyntaxPatternKind) -> bool {
     )
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn pattern_kind_needs_match_check(kind: SyntaxPatternKind) -> bool {
     matches!(
         kind,
@@ -217,7 +217,7 @@ fn pattern_kind_needs_match_check(kind: SyntaxPatternKind) -> bool {
     )
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn reject_compound_pattern_kind_mismatch(
     kind: SyntaxPatternKind,
     pattern: &Pattern,
@@ -240,7 +240,7 @@ fn reject_compound_pattern_kind_mismatch(
     )))
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(crate) fn pattern_declares_locals(pattern: &Pattern) -> bool {
     match pattern {
         Pattern::Binding(_) => true,
@@ -260,7 +260,7 @@ pub(super) struct PatternBindingFacts {
 }
 
 impl PatternBindingFacts {
-    #[cfg(test)]
+    #[cfg(any())]
     pub(super) fn new(script: Option<ScriptTypeFact>) -> Self {
         Self {
             script,
@@ -300,7 +300,7 @@ impl PatternBindingFacts {
 }
 
 impl Compiler<'_, '_> {
-    #[cfg(test)]
+    #[cfg(any())]
     pub(super) fn compile_match_pattern(
         &mut self,
         scrutinee: Register,
@@ -459,7 +459,7 @@ impl Compiler<'_, '_> {
         Ok(vec![self.emit_jump_if_false(condition)])
     }
 
-    #[cfg(test)]
+    #[cfg(any())]
     pub(super) fn bind_pattern_locals(
         &mut self,
         scrutinee: Register,

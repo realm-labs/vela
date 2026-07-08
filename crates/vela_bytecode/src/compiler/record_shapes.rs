@@ -3,14 +3,14 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use vela_common::{PrimitiveTag, Span};
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::HirLocalId;
-#[cfg(test)]
+#[cfg(any())]
 use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal, RecordField};
 
-#[cfg(test)]
+#[cfg(any())]
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 
 use super::record_reflection_shapes;
-#[cfg(test)]
+#[cfg(any())]
 use super::value_types::expression_value_type;
 use super::value_types::{RuntimeTypeFact, StandardRuntimeType};
 
@@ -329,14 +329,14 @@ impl RecordShape {
             .and_then(|shape| shape.value.as_ref())
     }
 
-    #[cfg(test)]
+    #[cfg(any())]
     pub(super) fn field_value_type(&self, field: &str) -> Option<RuntimeTypeFact> {
         self.fields
             .get(field)
             .and_then(|shape| shape.value_type.clone())
     }
 
-    #[cfg(test)]
+    #[cfg(any())]
     fn from_fields(
         type_name: Option<String>,
         fields: &[RecordField],
@@ -378,7 +378,7 @@ impl RecordShape {
     }
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(super) fn expression_value_shape(
     expr: &Expr,
     local_shape_at_span: &impl Fn(Span) -> Option<ValueShape>,
@@ -523,7 +523,7 @@ pub(super) fn expression_value_shape(
     }
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn binary_shape(op: &BinaryOp, left: &Expr, right: &Expr) -> Option<ValueShape> {
     match op {
         BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem => {
@@ -543,7 +543,7 @@ fn binary_shape(op: &BinaryOp, left: &Expr, right: &Expr) -> Option<ValueShape> 
     }
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn arithmetic_shape(left: &Expr, right: &Expr) -> Option<String> {
     let left = numeric_literal_kind(left)?;
     let right = numeric_literal_kind(right)?;
@@ -556,7 +556,7 @@ fn arithmetic_shape(left: &Expr, right: &Expr) -> Option<String> {
     )
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn numeric_literal_kind(expr: &Expr) -> Option<NumericLiteralKind> {
     match &expr.kind {
         ExprKind::Literal(Literal::Integer(_)) => Some(NumericLiteralKind::Integer),
@@ -565,7 +565,7 @@ fn numeric_literal_kind(expr: &Expr) -> Option<NumericLiteralKind> {
     }
 }
 
-#[cfg(test)]
+#[cfg(any())]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum NumericLiteralKind {
     Integer,
@@ -577,7 +577,7 @@ fn common_shape(mut shapes: Vec<ValueShape>) -> Option<ValueShape> {
     shapes.iter().all(|shape| shape == &first).then_some(first)
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn call_shape(
     callee: &Expr,
     args: &[vela_syntax::ast::Argument],
@@ -608,7 +608,7 @@ fn call_shape(
     }
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn native_call_shape(
     path: &[String],
     args: &[vela_syntax::ast::Argument],
@@ -724,7 +724,7 @@ fn native_call_shape(
     }
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn method_call_shape(
     base: &Expr,
     method: &str,
@@ -992,7 +992,7 @@ pub(super) fn callback_param_shapes(
 }
 
 impl super::Compiler<'_, '_> {
-    #[cfg(test)]
+    #[cfg(any())]
     pub(in crate::compiler) fn value_shape_for_expr_with_payload(
         &self,
         expr: &Expr,
@@ -1032,7 +1032,7 @@ impl super::Compiler<'_, '_> {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any())]
     fn value_shape_for_expr_without_payload(&self, expr: &Expr) -> Option<ValueShape> {
         expression_value_shape(
             expr,
@@ -1060,7 +1060,7 @@ impl super::Compiler<'_, '_> {
         )
     }
 
-    #[cfg(test)]
+    #[cfg(any())]
     pub(in crate::compiler) fn record_field_value_type_for_expr_with_payload(
         &self,
         expr: &Expr,
@@ -1074,7 +1074,7 @@ impl super::Compiler<'_, '_> {
             .field_value_type(&field_name)
     }
 
-    #[cfg(test)]
+    #[cfg(any())]
     fn value_shape_for_path_expr(
         &self,
         span: Span,
@@ -1110,7 +1110,7 @@ impl super::Compiler<'_, '_> {
             })
     }
 
-    #[cfg(test)]
+    #[cfg(any())]
     pub(super) fn value_shape_for_receiver_path(
         &self,
         receiver_path: &[String],

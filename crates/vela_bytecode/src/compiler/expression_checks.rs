@@ -1,23 +1,23 @@
-#[cfg(test)]
+#[cfg(any())]
 use vela_common::PrimitiveTag;
 use vela_common::{Diagnostic, Span};
 use vela_def::MethodId;
 use vela_syntax::ast::BinaryOp;
-#[cfg(test)]
+#[cfg(any())]
 use vela_syntax::ast::Expr;
-#[cfg(test)]
+#[cfg(any())]
 use vela_syntax::ast::Literal;
 
-#[cfg(test)]
+#[cfg(any())]
 use super::body_payloads::CompilerExpressionPayload;
-#[cfg(test)]
+#[cfg(any())]
 use super::record_shapes::ValueShape;
-#[cfg(test)]
+#[cfg(any())]
 use super::value_types::{RuntimeTypeFact, StandardRuntimeType};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 impl Compiler<'_, '_> {
-    #[cfg(test)]
+    #[cfg(any())]
     pub(in crate::compiler) fn reject_static_identity_comparison_operands(
         &self,
         op: BinaryOp,
@@ -53,7 +53,7 @@ impl Compiler<'_, '_> {
         Ok(())
     }
 
-    #[cfg(test)]
+    #[cfg(any())]
     pub(in crate::compiler) fn reject_static_comparison_without_trait(
         &self,
         op: BinaryOp,
@@ -192,7 +192,7 @@ impl Compiler<'_, '_> {
                 .is_some_and(|traits| traits.contains(trait_name))
     }
 
-    #[cfg(test)]
+    #[cfg(any())]
     fn static_non_identity_operand_type(
         &self,
         payload: Option<&CompilerExpressionPayload<'_>>,
@@ -207,7 +207,7 @@ impl Compiler<'_, '_> {
     }
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn runtime_type_is_identity_operand(fact: &RuntimeTypeFact) -> bool {
     match fact {
         RuntimeTypeFact::Primitive(_) | RuntimeTypeFact::Standard(StandardRuntimeType::Range) => {
@@ -232,7 +232,7 @@ fn runtime_type_is_identity_operand(fact: &RuntimeTypeFact) -> bool {
     }
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn non_identity_shape_type(shape: &ValueShape) -> Option<String> {
     match shape {
         ValueShape::Scalar(type_name) => Some(type_name.clone()),
@@ -305,7 +305,7 @@ fn binary_op_source_name(op: BinaryOp) -> &'static str {
     }
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(in crate::compiler) fn payload_syntax_overlaps_expr(
     payload: &CompilerExpressionPayload<'_>,
     expr: &Expr,
@@ -315,7 +315,7 @@ pub(in crate::compiler) fn payload_syntax_overlaps_expr(
         .is_some_and(|span| spans_overlap(span, expr.span))
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(in crate::compiler) fn reject_missing_binary_operand_payload(
     left_payload: Option<&CompilerExpressionPayload<'_>>,
     right_payload: Option<&CompilerExpressionPayload<'_>>,
@@ -324,7 +324,7 @@ pub(in crate::compiler) fn reject_missing_binary_operand_payload(
     reject_missing_expression_payload(right_payload, "missing CST binary operand")
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(in crate::compiler) fn reject_missing_expression_payload(
     payload: Option<&CompilerExpressionPayload<'_>>,
     message: &'static str,
@@ -337,19 +337,19 @@ pub(in crate::compiler) fn reject_missing_expression_payload(
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn spans_overlap(left: Span, right: Span) -> bool {
     left.start < right.end && right.start < left.end
 }
 
-#[cfg(test)]
+#[cfg(any())]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(in crate::compiler) enum UnsuffixedNumericLiteral {
     Integer(String),
     Float(String),
 }
 
-#[cfg(test)]
+#[cfg(any())]
 impl UnsuffixedNumericLiteral {
     pub(in crate::compiler) fn matches_primitive_tag(&self, tag: PrimitiveTag) -> bool {
         match self {
@@ -369,7 +369,7 @@ impl UnsuffixedNumericLiteral {
     }
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(in crate::compiler) fn unsuffixed_numeric_literal_with_payload(
     payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> Option<UnsuffixedNumericLiteral> {
@@ -378,7 +378,7 @@ pub(in crate::compiler) fn unsuffixed_numeric_literal_with_payload(
         .and_then(|literal| unsuffixed_numeric_literal_from_literal(&literal))
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn unsuffixed_numeric_literal_from_literal(literal: &Literal) -> Option<UnsuffixedNumericLiteral> {
     match literal {
         Literal::Integer(value) if value.suffix.is_none() => Some(
@@ -391,7 +391,7 @@ fn unsuffixed_numeric_literal_from_literal(literal: &Literal) -> Option<Unsuffix
     }
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(in crate::compiler) fn expressions_are_i64(
     left: Option<RuntimeTypeFact>,
     right: Option<RuntimeTypeFact>,

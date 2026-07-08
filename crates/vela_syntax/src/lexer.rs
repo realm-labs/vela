@@ -19,8 +19,7 @@ pub fn lex(source: SourceId, text: &str) -> Lexed {
 }
 
 #[must_use]
-#[cfg(feature = "legacy-body-parser")]
-pub(crate) fn lex_at(source: SourceId, text: &str, base_offset: u32) -> Lexed {
+pub fn lex_at(source: SourceId, text: &str, base_offset: u32) -> Lexed {
     Lexer::new_at(source, text, base_offset).lex()
 }
 
@@ -49,7 +48,6 @@ impl<'src> Lexer<'src> {
         }
     }
 
-    #[cfg(feature = "legacy-body-parser")]
     fn new_at(source: SourceId, text: &'src str, base_offset: u32) -> Self {
         Self {
             source,

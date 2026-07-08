@@ -8,8 +8,5 @@ license.workspace = true
 rowan = { workspace = true }
 vela_common = { workspace = true }
 
-[features]
-legacy-body-parser = []
-
 [lints]
 workspace = true

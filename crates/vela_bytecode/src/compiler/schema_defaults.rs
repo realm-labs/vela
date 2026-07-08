@@ -4,7 +4,7 @@ use vela_common::{Diagnostic, SourceId, Span};
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
-#[cfg(test)]
+#[cfg(any())]
 use vela_syntax::ast::{Argument, RecordField};
 use vela_syntax::ast::{AstNode, SyntaxExpression};
 
@@ -344,7 +344,7 @@ fn schema_field_default(
     }
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(super) fn record_constructor_diagnostics(
     type_name: &str,
     shape: Option<&ConstructorShape>,
@@ -402,7 +402,7 @@ pub(super) fn record_constructor_field_diagnostics(
     diagnostics
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(super) fn tuple_constructor_diagnostics(
     type_name: &str,
     variant: &str,
@@ -438,7 +438,7 @@ pub(super) fn syntax_tuple_constructor_diagnostics(
     }
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(super) fn resolve_tuple_constructor_arguments<'ast>(
     shape: &ConstructorShape,
     owner: &str,
@@ -579,7 +579,7 @@ fn duplicate_record_field_diagnostics(fields: &[ConstructorFieldUse]) -> Vec<Dia
     diagnostics
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn record_field_name<'field>(
     field_names: Option<&'field [Option<String>]>,
     index: usize,

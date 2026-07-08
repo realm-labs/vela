@@ -1,49 +1,45 @@
-#[cfg(test)]
+#[cfg(any())]
+use super::body_payloads::CompilerExpressionPayload;
+use super::body_payloads::expression_syntax_path_or_self;
+#[cfg(any())]
+use super::call_args::CallArgumentSyntax;
+#[cfg(any())]
+use super::reject_named_args;
+use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
+#[cfg(any())]
+use crate::Constant;
+use crate::{CacheSiteId, HostTargetPlanId, Register, UnlinkedInstructionKind};
+#[cfg(any())]
 use vela_common::Diagnostic;
 use vela_common::HostTypeId;
 use vela_common::SourceId;
 use vela_common::Span;
 use vela_def::FieldId;
-#[cfg(test)]
-use vela_syntax::ast::Argument;
-#[cfg(test)]
-use vela_syntax::ast::Expr;
-#[cfg(test)]
-use vela_syntax::ast::ExprKind;
-#[cfg(test)]
-use vela_syntax::ast::Literal;
-#[cfg(test)]
-use vela_syntax::ast::SyntaxExpressionKind;
-use vela_syntax::ast::{AstNode, SyntaxExpression};
-
-#[cfg(test)]
-use crate::Constant;
-use crate::{CacheSiteId, HostTargetPlanId, Register, UnlinkedInstructionKind};
 use vela_host::resolved::HostMutationOp;
 use vela_host::target::HostTargetPlan;
-
-#[cfg(test)]
-use super::body_payloads::CompilerExpressionPayload;
-use super::body_payloads::expression_syntax_path_or_self;
-#[cfg(test)]
-use super::call_args::CallArgumentSyntax;
-#[cfg(test)]
-use super::reject_named_args;
-use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
-
+#[cfg(any())]
+use vela_syntax::ast::Argument;
+#[cfg(any())]
+use vela_syntax::ast::Expr;
+#[cfg(any())]
+use vela_syntax::ast::ExprKind;
+#[cfg(any())]
+use vela_syntax::ast::Literal;
+#[cfg(any())]
+use vela_syntax::ast::SyntaxExpressionKind;
+use vela_syntax::ast::{AstNode, SyntaxExpression};
 pub(super) struct HostPath<'ast> {
     pub(super) root: HostPathRoot<'ast>,
     pub(super) segments: Vec<HostPathPart<'ast>>,
 }
-
 #[derive(Clone)]
 pub(super) enum HostPathRoot<'ast> {
-    #[cfg(test)]
+    #[cfg(any())]
     Expr {
         expr: &'ast Expr,
         payload: Option<CompilerExpressionPayload<'ast>>,
     },
-    #[cfg(test)]
+    #[cfg(any())]
     SyntaxExpr {
         source: SourceId,
         expression: SyntaxExpression,
@@ -57,11 +53,10 @@ pub(super) enum HostPathRoot<'ast> {
         span: Span,
     },
 }
-
 pub(super) enum HostPathPart<'ast> {
     Field(FieldId),
     VariantField(FieldId),
-    #[cfg(test)]
+    #[cfg(any())]
     Value {
         expr: &'ast Expr,
         payload: Option<CompilerExpressionPayload<'ast>>,
@@ -74,16 +69,14 @@ pub(super) enum HostPathPart<'ast> {
         _ast: std::marker::PhantomData<&'ast ()>,
     },
 }
-
-#[cfg(test)]
+#[cfg(any())]
 struct HostCollectionMethodTarget<'ast> {
     path: HostPath<'ast>,
     field_receiver: Option<HostCollectionFieldReceiver<'ast>>,
 }
-
-#[cfg(test)]
+#[cfg(any())]
 enum HostCollectionFieldReceiver<'ast> {
-    #[cfg(test)]
+    #[cfg(any())]
     Expr {
         payload: Option<CompilerExpressionPayload<'ast>>,
     },
@@ -93,26 +86,22 @@ enum HostCollectionFieldReceiver<'ast> {
         _ast: std::marker::PhantomData<&'ast ()>,
     },
 }
-
 #[derive(Clone, Copy)]
 pub(super) enum DynamicHostPathPart {
     Index,
     Key,
 }
-
 impl HostPath<'_> {
     pub(super) fn requires_path_instruction(&self) -> bool {
         !matches!(self.segments.as_slice(), [HostPathPart::Field(_)])
     }
 }
-
 impl Compiler<'_, '_> {
-    #[cfg(test)]
+    #[cfg(any())]
     pub(super) fn host_field_path<'ast>(&self, expr: &'ast Expr) -> Option<HostPath<'ast>> {
         self.resolve_host_path(expr).map(|resolved| resolved.path)
     }
-
-    #[cfg(test)]
+    #[cfg(any())]
     pub(super) fn host_field_path_with_payload<'ast>(
         &self,
         expr: &'ast Expr,
@@ -121,8 +110,7 @@ impl Compiler<'_, '_> {
         self.resolve_host_path_with_payload(expr, payload)
             .map(|resolved| resolved.path)
     }
-
-    #[cfg(test)]
+    #[cfg(any())]
     pub(super) fn resolve_host_path_with_payload<'ast>(
         &self,
         expr: &'ast Expr,
@@ -130,8 +118,7 @@ impl Compiler<'_, '_> {
     ) -> Option<ResolvedHostPath<'ast>> {
         self.resolve_host_path_with_owned_payload(expr, payload.cloned())
     }
-
-    #[cfg(test)]
+    #[cfg(any())]
     pub(super) fn resolve_host_path<'ast>(
         &self,
         expr: &'ast Expr,
@@ -174,8 +161,7 @@ impl Compiler<'_, '_> {
             _ => None,
         }
     }
-
-    #[cfg(test)]
+    #[cfg(any())]
     fn resolve_host_path_with_owned_payload<'ast>(
         &self,
         expr: &'ast Expr,
@@ -185,19 +171,18 @@ impl Compiler<'_, '_> {
         let source = payload.as_ref()?.source()?;
         let expression = payload.as_ref()?.syntax_expression()?;
         match expression.expression_kind() {
-            #[cfg(test)]
+            #[cfg(any())]
             SyntaxExpressionKind::Field => {
                 self.syntax_host_field_path_with_receiver_fallback(source, expression)
             }
-            #[cfg(test)]
+            #[cfg(any())]
             SyntaxExpressionKind::Path
             | SyntaxExpressionKind::Index
             | SyntaxExpressionKind::Paren => self.syntax_host_path(source, expression),
             _ => None,
         }
     }
-
-    #[cfg(test)]
+    #[cfg(any())]
     fn resolve_host_path_receiver<'ast>(&self, receiver: &'ast Expr) -> ResolvedHostPath<'ast> {
         match &receiver.kind {
             ExprKind::Field { .. } | ExprKind::Index { .. } => self
@@ -221,8 +206,7 @@ impl Compiler<'_, '_> {
             _ => self.expr_host_path_receiver(receiver),
         }
     }
-
-    #[cfg(test)]
+    #[cfg(any())]
     fn expr_host_path_receiver<'ast>(&self, receiver: &'ast Expr) -> ResolvedHostPath<'ast> {
         ResolvedHostPath {
             path: HostPath {
@@ -235,8 +219,7 @@ impl Compiler<'_, '_> {
             type_name: None,
         }
     }
-
-    #[cfg(test)]
+    #[cfg(any())]
     fn resolve_host_path_index_receiver<'ast>(
         &self,
         receiver: &'ast Expr,
@@ -247,8 +230,7 @@ impl Compiler<'_, '_> {
             _ => None,
         }
     }
-
-    #[cfg(test)]
+    #[cfg(any())]
     fn resolve_host_path_index_receiver_with_payload<'ast>(
         &self,
         receiver: &'ast Expr,
@@ -258,8 +240,7 @@ impl Compiler<'_, '_> {
         self.resolve_host_path_with_owned_payload(receiver, Some(payload.clone()))
             .or_else(|| self.host_index_payload_root_path(receiver, Some(payload)))
     }
-
-    #[cfg(test)]
+    #[cfg(any())]
     fn host_index_payload_root_path<'ast>(
         &self,
         receiver: &'ast Expr,
@@ -286,7 +267,6 @@ impl Compiler<'_, '_> {
             type_name: Some(type_name),
         })
     }
-
     pub(super) fn host_field_path_parts<'ast>(
         &self,
         span: Span,
@@ -311,7 +291,6 @@ impl Compiler<'_, '_> {
             type_name: current_type,
         })
     }
-
     pub(super) fn owned_host_field_path_parts<'ast>(
         &self,
         span: Span,
@@ -336,7 +315,6 @@ impl Compiler<'_, '_> {
             type_name: current_type,
         })
     }
-
     fn host_path_field_part(
         &self,
         receiver_type: Option<&str>,
@@ -354,7 +332,6 @@ impl Compiler<'_, '_> {
         }
         None
     }
-
     pub(super) fn emit_host_read(
         &mut self,
         dst: Register,
@@ -378,7 +355,6 @@ impl Compiler<'_, '_> {
         );
         Ok(())
     }
-
     pub(super) fn emit_host_write(
         &mut self,
         root: Register,
@@ -402,7 +378,6 @@ impl Compiler<'_, '_> {
         );
         Ok(())
     }
-
     pub(super) fn emit_host_mutate(
         &mut self,
         root: Register,
@@ -428,7 +403,6 @@ impl Compiler<'_, '_> {
         );
         Ok(())
     }
-
     pub(super) fn emit_host_remove(
         &mut self,
         root: Register,
@@ -450,7 +424,6 @@ impl Compiler<'_, '_> {
         );
         Ok(())
     }
-
     pub(super) fn emit_host_call(
         &mut self,
         dst: Option<Register>,
@@ -478,8 +451,7 @@ impl Compiler<'_, '_> {
         );
         Ok(())
     }
-
-    #[cfg(test)]
+    #[cfg(any())]
     pub(super) fn host_path_push_call(
         &mut self,
         callee: &Expr,
@@ -508,8 +480,7 @@ impl Compiler<'_, '_> {
         self.emit_constant_to(dst, Constant::Null);
         Ok(Some(dst))
     }
-
-    #[cfg(test)]
+    #[cfg(any())]
     pub(super) fn host_path_remove_call(
         &mut self,
         callee: &Expr,
@@ -539,8 +510,7 @@ impl Compiler<'_, '_> {
         self.emit_constant_to(dst, Constant::Null);
         Ok(Some(dst))
     }
-
-    #[cfg(test)]
+    #[cfg(any())]
     fn host_collection_method_target<'ast>(
         &self,
         callee: &'ast Expr,
@@ -581,8 +551,7 @@ impl Compiler<'_, '_> {
                 Some(_) => None,
             };
         }
-
-        #[cfg(test)]
+        #[cfg(any())]
         {
             match &callee.kind {
                 ExprKind::Field { base, name } if name == method => {
@@ -609,15 +578,14 @@ impl Compiler<'_, '_> {
             None
         }
     }
-
-    #[cfg(test)]
+    #[cfg(any())]
     fn reject_terminal_host_index_receiver_access(
         &self,
         receiver: HostCollectionFieldReceiver<'_>,
         kind: HostIndexAccessKind,
     ) -> CompileResult<()> {
         match receiver {
-            #[cfg(test)]
+            #[cfg(any())]
             HostCollectionFieldReceiver::Expr { payload } => {
                 self.reject_terminal_host_index_access(payload.as_ref(), kind)
             }
@@ -628,8 +596,7 @@ impl Compiler<'_, '_> {
             }
         }
     }
-
-    #[cfg(test)]
+    #[cfg(any())]
     pub(in crate::compiler) fn host_collection_method_target_root_name_for_test<'ast>(
         &self,
         callee: &'ast Expr,
@@ -644,17 +611,16 @@ impl Compiler<'_, '_> {
             HostPathRoot::OwnedLocalPath { name, .. } => Some(name),
         }
     }
-
     pub(super) fn compile_host_path_root<'expr>(
         &mut self,
         root: &HostPathRoot<'expr>,
     ) -> CompileResult<Register> {
         match root {
-            #[cfg(test)]
+            #[cfg(any())]
             HostPathRoot::Expr { expr, payload } => {
                 self.compile_expr_with_payload(expr, payload.as_ref())
             }
-            #[cfg(test)]
+            #[cfg(any())]
             HostPathRoot::SyntaxExpr { source, expression } => self
                 .compile_syntax_expression(*source, expression)?
                 .ok_or_else(|| {
@@ -666,7 +632,6 @@ impl Compiler<'_, '_> {
             HostPathRoot::OwnedLocalPath { name, span } => self.local_register_at_span(*span, name),
         }
     }
-
     fn compile_host_target<'expr>(
         &mut self,
         path: HostPath<'expr>,
@@ -682,7 +647,7 @@ impl Compiler<'_, '_> {
                 HostPathPart::VariantField(field) => {
                     plan = plan.variant_field(field);
                 }
-                #[cfg(test)]
+                #[cfg(any())]
                 HostPathPart::Value {
                     expr,
                     payload,
@@ -738,25 +703,23 @@ impl Compiler<'_, '_> {
             dynamic_args,
         })
     }
-
     fn host_path_root_type(&self, root: HostPathRoot<'_>) -> HostTypeId {
         self.host_path_root_type_name(root)
             .and_then(|type_name| self.host_runtime_type_id(&type_name))
             .unwrap_or_else(|| HostTypeId::new(0))
     }
-
     fn host_path_root_type_name(&self, root: HostPathRoot<'_>) -> Option<String> {
         match root {
-            #[cfg(test)]
+            #[cfg(any())]
             HostPathRoot::Expr {
                 payload: Some(payload),
                 ..
             } => self
                 .script_type_for_payload(&payload)
                 .or_else(|| self.script_type_for_expression_payload(Some(&payload))),
-            #[cfg(test)]
+            #[cfg(any())]
             HostPathRoot::Expr { payload: None, .. } => None,
-            #[cfg(test)]
+            #[cfg(any())]
             HostPathRoot::SyntaxExpr { source, expression } => self
                 .script_fact_for_syntax_expression(source, &expression)
                 .map(|fact| fact.type_name),
@@ -764,15 +727,13 @@ impl Compiler<'_, '_> {
             HostPathRoot::OwnedLocalPath { name, span } => self.host_local_type_name(&name, span),
         }
     }
-
-    #[cfg(test)]
+    #[cfg(any())]
     pub(in crate::compiler) fn host_path_root_type_name_for_test(
         &self,
         root: HostPathRoot<'_>,
     ) -> Option<String> {
         self.host_path_root_type_name(root)
     }
-
     pub(super) fn host_local_type_name(&self, name: &str, span: Span) -> Option<String> {
         self.script_types
             .local_at_span(self.bindings, span)
@@ -780,7 +741,6 @@ impl Compiler<'_, '_> {
             .or_else(|| self.script_types.name(name))
             .or_else(|| self.global_type_named(name))
     }
-
     pub(in crate::compiler) fn syntax_root_host_index_path(
         &self,
         source: SourceId,
@@ -789,7 +749,6 @@ impl Compiler<'_, '_> {
         self.syntax_host_index_path(source, expression)
             .map(|resolved| resolved.path)
     }
-
     fn syntax_host_index_path(
         &self,
         source: SourceId,
@@ -820,14 +779,12 @@ impl Compiler<'_, '_> {
         resolved.type_name = self.syntax_host_index_value_type(receiver_type.as_deref());
         Some(resolved)
     }
-
     fn syntax_host_index_dynamic_kind(&self, receiver_type: Option<&str>) -> DynamicHostPathPart {
         receiver_type
             .and_then(|type_name| self.facts.options.host_index_capability(type_name))
             .and_then(|capability| capability.key_type.as_deref())
             .map_or(DynamicHostPathPart::Key, dynamic_host_path_part)
     }
-
     fn syntax_host_index_value_type(&self, receiver_type: Option<&str>) -> Option<String> {
         receiver_type.and_then(|type_name| {
             self.facts
@@ -836,7 +793,6 @@ impl Compiler<'_, '_> {
                 .and_then(|capability| capability.value_type.clone())
         })
     }
-
     fn syntax_host_path(
         &self,
         source: SourceId,
@@ -872,8 +828,7 @@ impl Compiler<'_, '_> {
         resolved.type_name = field.type_hint;
         Some(resolved)
     }
-
-    #[cfg(test)]
+    #[cfg(any())]
     fn syntax_host_field_path_with_receiver_fallback(
         &self,
         source: SourceId,
@@ -904,7 +859,6 @@ impl Compiler<'_, '_> {
         resolved.type_name = field.type_hint;
         Some(resolved)
     }
-
     pub(in crate::compiler) fn syntax_host_field_path(
         &self,
         source: SourceId,
@@ -912,8 +866,7 @@ impl Compiler<'_, '_> {
     ) -> Option<ResolvedHostPath<'static>> {
         self.syntax_host_path(source, expression)
     }
-
-    #[cfg(test)]
+    #[cfg(any())]
     pub(in crate::compiler) fn syntax_host_method_receiver(
         &self,
         source: SourceId,
@@ -933,8 +886,7 @@ impl Compiler<'_, '_> {
                     .map(|fact| fact.type_name),
             })
     }
-
-    #[cfg(test)]
+    #[cfg(any())]
     pub(in crate::compiler) fn reject_invalid_host_index_access_with_payload(
         &self,
         expr: &Expr,
@@ -995,8 +947,7 @@ impl Compiler<'_, '_> {
         }
         Ok(())
     }
-
-    #[cfg(test)]
+    #[cfg(any())]
     pub(in crate::compiler) fn reject_invalid_host_index_read_with_payload(
         &self,
         expr: &Expr,
@@ -1014,8 +965,7 @@ impl Compiler<'_, '_> {
             index_payload,
         )
     }
-
-    #[cfg(test)]
+    #[cfg(any())]
     pub(in crate::compiler) fn reject_terminal_host_index_access(
         &self,
         payload: Option<&CompilerExpressionPayload<'_>>,
@@ -1043,8 +993,7 @@ impl Compiler<'_, '_> {
         }
         Ok(())
     }
-
-    #[cfg(test)]
+    #[cfg(any())]
     fn host_index_receiver_type_name(
         &self,
         receiver: &Expr,
@@ -1060,35 +1009,29 @@ impl Compiler<'_, '_> {
             })
     }
 }
-
-#[cfg(test)]
+#[cfg(any())]
 fn host_index_diagnostic_error(diagnostic: Diagnostic) -> CompileError {
     CompileError::new(CompileErrorKind::SemanticDiagnostics(vec![diagnostic]))
 }
-
 pub(super) struct ResolvedHostPath<'ast> {
     pub(super) path: HostPath<'ast>,
     pub(super) type_name: Option<String>,
 }
-
 struct ResolvedHostPathField {
     part: HostPathPart<'static>,
     type_hint: Option<String>,
 }
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct CompiledHostTarget {
     pub(super) target: HostTargetPlanId,
     pub(super) dynamic_args: Vec<Register>,
 }
-
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg(test)]
+#[cfg(any())]
 enum ConstHostPathArg {
     Index(u32),
     Key(String),
 }
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum HostIndexAccessKind {
     Read,
@@ -1096,7 +1039,6 @@ pub(super) enum HostIndexAccessKind {
     Mutate,
     Remove,
 }
-
 impl HostIndexAccessKind {
     pub(super) fn allowed_by(
         self,
@@ -1109,7 +1051,6 @@ impl HostIndexAccessKind {
             Self::Remove => capability.removable,
         }
     }
-
     pub(super) const fn denied_code(self) -> &'static str {
         match self {
             Self::Read => "analysis::host_index_not_readable",
@@ -1118,7 +1059,6 @@ impl HostIndexAccessKind {
             Self::Remove => "analysis::host_index_not_removable",
         }
     }
-
     pub(super) const fn access_name(self) -> &'static str {
         match self {
             Self::Read => "reads",
@@ -1127,7 +1067,6 @@ impl HostIndexAccessKind {
             Self::Remove => "removals",
         }
     }
-
     pub(super) const fn capability_label(self) -> &'static str {
         match self {
             Self::Read => "host index capability is not readable",
@@ -1136,7 +1075,6 @@ impl HostIndexAccessKind {
             Self::Remove => "host index capability is not removable",
         }
     }
-
     pub(super) const fn enable_label(self) -> &'static str {
         match self {
             Self::Read => "enable readable host index access for this type",
@@ -1146,8 +1084,7 @@ impl HostIndexAccessKind {
         }
     }
 }
-
-#[cfg(test)]
+#[cfg(any())]
 fn const_host_path_arg_with_payload(
     payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> Option<ConstHostPathArg> {
@@ -1155,8 +1092,7 @@ fn const_host_path_arg_with_payload(
         .and_then(CompilerExpressionPayload::syntax_literal)
         .and_then(|literal| const_host_path_arg_from_literal(&literal))
 }
-
-#[cfg(test)]
+#[cfg(any())]
 fn const_host_path_arg_from_literal(literal: &Literal) -> Option<ConstHostPathArg> {
     match literal {
         Literal::Integer(value) if value.suffix.is_none() => value
@@ -1168,14 +1104,12 @@ fn const_host_path_arg_from_literal(literal: &Literal) -> Option<ConstHostPathAr
         _ => None,
     }
 }
-
 fn dynamic_host_path_part(key_type: &str) -> DynamicHostPathPart {
     match key_type {
         "i64" => DynamicHostPathPart::Index,
         _ => DynamicHostPathPart::Key,
     }
 }
-
 fn syntax_host_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {
     let range = expression.syntax().text_range();
     Span::new(source, range.start().into(), range.end().into())

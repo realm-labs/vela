@@ -39,11 +39,6 @@ impl CompilerOptions {
         self
     }
 
-    #[cfg(test)]
-    pub(super) fn is_native_module_root(&self, root: &str) -> bool {
-        self.native_module_roots.contains(root)
-    }
-
     #[must_use]
     pub fn host_index_capability(&self, type_name: &str) -> Option<&HostIndexCapabilityInfo> {
         self.host_index_capabilities.get(type_name)

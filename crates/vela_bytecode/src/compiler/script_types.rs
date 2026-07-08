@@ -5,11 +5,11 @@ use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::HirLocalId;
 use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::SyntaxExpression;
-#[cfg(test)]
+#[cfg(any())]
 use vela_syntax::ast::{Expr, SyntaxExpressionKind};
 
 use super::body_payloads::CompilerExpressionPayload;
-#[cfg(test)]
+#[cfg(any())]
 use super::expression_facts::{expression_facts, payload_overlaps_expression_facts};
 use super::patterns::enum_variant_path;
 
@@ -118,7 +118,7 @@ impl ScriptTypeFlow {
     }
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(super) fn expression_script_fact_with_payload(
     expr: &Expr,
     payload: Option<&CompilerExpressionPayload<'_>>,
@@ -139,7 +139,7 @@ pub(super) fn expression_script_fact_with_payload(
     )
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn payload_matches_script_fact_expression(
     payload: &CompilerExpressionPayload<'_>,
     expr: &Expr,
@@ -207,7 +207,7 @@ fn expression_script_fact_from_payload_syntax(
     None
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(super) fn expression_script_type_from_payload(
     payload: &CompilerExpressionPayload<'_>,
     type_symbol_at_span: impl Fn(Span) -> Option<String>,
@@ -244,7 +244,7 @@ pub(super) fn type_hint_script_type<'a>(
 }
 
 impl super::Compiler<'_, '_> {
-    #[cfg(test)]
+    #[cfg(any())]
     pub(super) fn script_type_for_expression_payload(
         &self,
         payload: Option<&CompilerExpressionPayload<'_>>,
@@ -265,7 +265,7 @@ impl super::Compiler<'_, '_> {
         )
     }
 
-    #[cfg(test)]
+    #[cfg(any())]
     pub(in crate::compiler) fn script_type_for_payload(
         &self,
         payload: &CompilerExpressionPayload<'_>,
@@ -286,7 +286,7 @@ impl super::Compiler<'_, '_> {
         )
     }
 
-    #[cfg(test)]
+    #[cfg(any())]
     pub(super) fn script_fact_for_expression_payload(
         &self,
         payload: Option<&CompilerExpressionPayload<'_>>,

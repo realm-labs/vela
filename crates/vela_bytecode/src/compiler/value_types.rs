@@ -9,12 +9,12 @@ use vela_syntax::ast::{
     AstNode, BinaryOp, Literal, SyntaxBlock, SyntaxElseBranch, SyntaxExpression,
     SyntaxExpressionKind,
 };
-#[cfg(test)]
+#[cfg(any())]
 use vela_syntax::ast::{Expr, ExprKind};
 
-#[cfg(test)]
+#[cfg(any())]
 use crate::compiler::body_payloads::CompilerExpressionPayload;
-#[cfg(test)]
+#[cfg(any())]
 use crate::compiler::expression_facts::{expression_facts, payload_overlaps_expression_facts};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -265,7 +265,7 @@ impl ValueTypeFlow {
     }
 }
 
-#[cfg(test)]
+#[cfg(any())]
 pub(super) fn expression_value_type(
     expr: &Expr,
     local_type_at_span: impl Fn(Span) -> Option<RuntimeTypeFact>,
@@ -274,7 +274,7 @@ pub(super) fn expression_value_type(
     expression_value_type_with_payload(expr, None, &local_type_at_span, &local_type_named)
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn expression_value_type_with_payload(
     expr: &Expr,
     payload: Option<&CompilerExpressionPayload<'_>>,
@@ -293,7 +293,7 @@ fn expression_value_type_with_payload(
     }
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn static_expr_type_with_payload(
     expr: &Expr,
     payload: Option<&CompilerExpressionPayload<'_>>,
@@ -452,7 +452,7 @@ fn static_expr_type_with_payload(
     }
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn payload_matches_static_type_expression(
     payload: &CompilerExpressionPayload<'_>,
     expr: &Expr,
@@ -707,7 +707,7 @@ fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Sp
     Span::new(source, range.start().into(), range.end().into())
 }
 
-#[cfg(test)]
+#[cfg(any())]
 fn payload_span_mismatches(
     payload: Option<&CompilerExpressionPayload<'_>>,
     expected_span: Span,
@@ -1102,7 +1102,7 @@ impl super::Compiler<'_, '_> {
         )
     }
 
-    #[cfg(test)]
+    #[cfg(any())]
     pub(in crate::compiler) fn value_type_for_expression_payload(
         &self,
         payload: Option<&CompilerExpressionPayload<'_>>,
@@ -1119,7 +1119,7 @@ impl super::Compiler<'_, '_> {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any())]
     pub(in crate::compiler) fn static_type_for_expression_payload(
         &self,
         payload: Option<&CompilerExpressionPayload<'_>>,
@@ -1147,7 +1147,7 @@ impl super::Compiler<'_, '_> {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any())]
     pub(in crate::compiler) fn expected_type_for_expression_payload(
         &self,
         payload: Option<&CompilerExpressionPayload<'_>>,
@@ -1163,7 +1163,7 @@ impl super::Compiler<'_, '_> {
         check_expected_type(actual, expected, span, context)
     }
 
-    #[cfg(test)]
+    #[cfg(any())]
     pub(in crate::compiler) fn static_type_for_expr_with_payload(
         &self,
         expr: &Expr,
@@ -1176,7 +1176,7 @@ impl super::Compiler<'_, '_> {
             &|name| self.value_types.name(name),
         ) {
             StaticExprType::Dynamic => {
-                #[cfg(test)]
+                #[cfg(any())]
                 let field_type = self.record_field_value_type_for_expr_with_payload(expr, payload);
                 #[cfg(not(test))]
                 let field_type = self.record_field_value_type_for_expression_payload(payload);
@@ -1188,7 +1188,7 @@ impl super::Compiler<'_, '_> {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any())]
     pub(in crate::compiler) fn expected_type_for_expr_with_payload(
         &self,
         expr: &Expr,
