@@ -1,8 +1,6 @@
 //! Lexer and parser for Vela source files.
 
 pub mod ast;
-#[cfg(feature = "legacy-body-parser")]
-mod attribute;
 mod cst_parser;
 pub mod formatting;
 #[cfg(feature = "legacy-body-parser")]

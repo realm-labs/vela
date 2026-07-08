@@ -22,11 +22,7 @@ impl Parser {
     }
 
     pub(super) fn parse_statement(&mut self) -> Option<Stmt> {
-        let attrs = self.parse_attributes();
-        let start = attrs
-            .first()
-            .map(|attr| attr.span.start)
-            .unwrap_or(self.current().span.start);
+        let start = self.skip_attributes().unwrap_or(self.current().span.start);
 
         let kind = if self.eat_keyword(Keyword::Let).is_some() {
             self.parse_let_statement()
@@ -52,7 +48,6 @@ impl Parser {
         self.eat_symbol(Symbol::Semicolon);
         let end = self.previous_span().end;
         Some(Stmt {
-            attrs,
             kind,
             span: Span::new(self.current().span.source, start, end),
         })

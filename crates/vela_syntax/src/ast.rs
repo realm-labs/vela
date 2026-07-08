@@ -85,14 +85,6 @@ pub struct Param {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg(feature = "legacy-body-parser")]
-pub struct Attribute {
-    pub path: Vec<String>,
-    pub value: Option<String>,
-    pub span: Span,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg(feature = "legacy-body-parser")]
 pub struct Block {
     pub statements: Vec<Stmt>,
     pub span: Span,
@@ -101,7 +93,6 @@ pub struct Block {
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg(feature = "legacy-body-parser")]
 pub struct Stmt {
-    pub attrs: Vec<Attribute>,
     pub kind: StmtKind,
     pub span: Span,
 }

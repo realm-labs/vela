@@ -398,6 +398,9 @@ The unused top-level owned AST declarations (`SourceFile`, item kinds, item
 payload structs, and impl/trait wrapper structs) have been deleted entirely;
 only the owned body/expression/pattern fixture shapes still needed by the
 temporary bytecode legacy body parser remain behind the feature.
+Legacy body-parser statement attributes no longer materialize old owned
+`Attribute` nodes; the parser skips them only for statement span/recovery, and
+the obsolete owned-attribute normalizer module has been deleted.
 `BodyBlockLookup` no longer imports or calls `parse_body_blocks_at_spans` in
 production builds; the span-keyed owned body lookup is compiled only for
 bytecode fixture pairing under tests.

@@ -3,12 +3,10 @@ use vela_common::{Diagnostic, SourceId, Span};
 
 #[cfg(feature = "legacy-body-parser")]
 use crate::ast::{
-    Argument, AssignOp, Attribute, BinaryOp, Block, ElseBranch, Expr, ExprKind, IfExpr,
+    Argument, AssignOp, BinaryOp, Block, ElseBranch, Expr, ExprKind, IfExpr,
     InterpolatedStringPart, Literal, MapEntry, MatchArm, MatchExpr, Param, Pattern, RecordField,
     RecordPatternField, Stmt, StmtKind, TypeHint, UnaryOp,
 };
-#[cfg(feature = "legacy-body-parser")]
-use crate::attribute::normalize_attribute_value;
 #[cfg(feature = "legacy-body-parser")]
 use crate::lexer::lex_at;
 #[cfg(feature = "legacy-body-parser")]
