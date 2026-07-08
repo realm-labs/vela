@@ -5,8 +5,10 @@ use vela_def::FieldId;
 #[cfg(test)]
 use vela_syntax::ast::Argument;
 #[cfg(test)]
+use vela_syntax::ast::Expr;
+#[cfg(test)]
 use vela_syntax::ast::ExprKind;
-use vela_syntax::ast::{AstNode, Expr, Literal, SyntaxExpression, SyntaxExpressionKind};
+use vela_syntax::ast::{AstNode, Literal, SyntaxExpression, SyntaxExpressionKind};
 
 #[cfg(test)]
 use crate::Constant;
@@ -28,6 +30,7 @@ pub(super) struct HostPath<'ast> {
 
 #[derive(Clone)]
 pub(super) enum HostPathRoot<'ast> {
+    #[cfg(test)]
     Expr {
         expr: &'ast Expr,
         payload: Option<CompilerExpressionPayload<'ast>>,
@@ -49,7 +52,7 @@ pub(super) enum HostPathRoot<'ast> {
 pub(super) enum HostPathPart<'ast> {
     Field(FieldId),
     VariantField(FieldId),
-    #[allow(dead_code)]
+    #[cfg(test)]
     Value {
         expr: &'ast Expr,
         payload: Option<CompilerExpressionPayload<'ast>>,
@@ -59,6 +62,7 @@ pub(super) enum HostPathPart<'ast> {
         source: SourceId,
         expression: SyntaxExpression,
         dynamic_kind: DynamicHostPathPart,
+        _ast: std::marker::PhantomData<&'ast ()>,
     },
 }
 
@@ -99,6 +103,7 @@ impl Compiler<'_, '_> {
         self.resolve_host_path(expr).map(|resolved| resolved.path)
     }
 
+    #[cfg(test)]
     pub(super) fn host_field_path_with_payload<'ast>(
         &self,
         expr: &'ast Expr,
@@ -108,6 +113,7 @@ impl Compiler<'_, '_> {
             .map(|resolved| resolved.path)
     }
 
+    #[cfg(test)]
     pub(super) fn resolve_host_path_with_payload<'ast>(
         &self,
         expr: &'ast Expr,
@@ -160,6 +166,7 @@ impl Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     fn resolve_host_path_with_owned_payload<'ast>(
         &self,
         expr: &'ast Expr,
@@ -230,6 +237,7 @@ impl Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     fn resolve_host_path_index_receiver_with_payload<'ast>(
         &self,
         receiver: &'ast Expr,
@@ -240,6 +248,7 @@ impl Compiler<'_, '_> {
             .or_else(|| self.host_index_payload_root_path(receiver, Some(payload)))
     }
 
+    #[cfg(test)]
     fn host_index_payload_root_path<'ast>(
         &self,
         receiver: &'ast Expr,
@@ -630,6 +639,7 @@ impl Compiler<'_, '_> {
         root: &HostPathRoot<'expr>,
     ) -> CompileResult<Register> {
         match root {
+            #[cfg(test)]
             HostPathRoot::Expr { expr, payload } => {
                 self.compile_expr_with_payload(expr, payload.as_ref())
             }
@@ -660,6 +670,7 @@ impl Compiler<'_, '_> {
                 HostPathPart::VariantField(field) => {
                     plan = plan.variant_field(field);
                 }
+                #[cfg(test)]
                 HostPathPart::Value {
                     expr,
                     payload,
@@ -688,6 +699,7 @@ impl Compiler<'_, '_> {
                     source,
                     expression,
                     dynamic_kind,
+                    ..
                 } => {
                     let arg = u8::try_from(dynamic_args.len()).map_err(|_| {
                         CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -723,12 +735,14 @@ impl Compiler<'_, '_> {
 
     fn host_path_root_type_name(&self, root: HostPathRoot<'_>) -> Option<String> {
         match root {
+            #[cfg(test)]
             HostPathRoot::Expr {
                 payload: Some(payload),
                 ..
             } => self
                 .script_type_for_payload(&payload)
                 .or_else(|| self.script_type_for_expression_payload(Some(&payload))),
+            #[cfg(test)]
             HostPathRoot::Expr { payload: None, .. } => None,
             HostPathRoot::SyntaxExpr { source, expression } => self
                 .script_fact_for_syntax_expression(source, &expression)
@@ -788,6 +802,7 @@ impl Compiler<'_, '_> {
             source,
             expression: index_expression,
             dynamic_kind,
+            _ast: std::marker::PhantomData,
         });
         resolved.type_name = self.syntax_host_index_value_type(receiver_type.as_deref());
         Some(resolved)
@@ -905,6 +920,7 @@ impl Compiler<'_, '_> {
             })
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn reject_invalid_host_index_access_with_payload(
         &self,
         expr: &Expr,
@@ -966,6 +982,7 @@ impl Compiler<'_, '_> {
         Ok(())
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn reject_invalid_host_index_read_with_payload(
         &self,
         expr: &Expr,
@@ -1013,6 +1030,7 @@ impl Compiler<'_, '_> {
         Ok(())
     }
 
+    #[cfg(test)]
     fn host_index_receiver_type_name(
         &self,
         receiver: &Expr,

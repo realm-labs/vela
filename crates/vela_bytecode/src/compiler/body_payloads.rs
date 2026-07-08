@@ -82,6 +82,7 @@ pub(in crate::compiler) struct CompilerArrayElementPayload {
     syntax: Option<SyntaxExpression>,
 }
 
+#[cfg(test)]
 pub(in crate::compiler) struct CompilerInterpolationPayload {
     source: Option<SourceId>,
     syntax: Option<SyntaxExpression>,

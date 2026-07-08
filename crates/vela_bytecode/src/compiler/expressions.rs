@@ -1,35 +1,47 @@
-use vela_common::{PrimitiveTag, Span};
-use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal, SyntaxExpressionKind, UnaryOp};
+#[cfg(test)]
+use vela_common::PrimitiveTag;
+use vela_common::Span;
+use vela_syntax::ast::Literal;
+#[cfg(test)]
+use vela_syntax::ast::{BinaryOp, Expr, ExprKind, SyntaxExpressionKind, UnaryOp};
 
-use crate::{BinaryLiteralSide, Register, UnlinkedInstructionKind};
+#[cfg(test)]
+use crate::BinaryLiteralSide;
+use crate::{Register, UnlinkedInstructionKind};
 
 use super::body_payloads::CompilerExpressionPayload;
-use super::const_eval::{
-    compile_literal_constant, compile_literal_constant_for_type, compile_negated_literal_constant,
-};
+use super::const_eval::compile_literal_constant;
+#[cfg(test)]
+use super::const_eval::{compile_literal_constant_for_type, compile_negated_literal_constant};
+#[cfg(test)]
 use super::expression_checks::{
     UnsuffixedNumericLiteral, expressions_are_i64, reject_missing_binary_operand_payload,
     unsuffixed_numeric_literal_with_payload,
 };
 #[cfg(test)]
 use super::expression_facts::expression_facts;
-#[cfg(not(test))]
-use super::expression_facts::payload_overlaps_span;
 #[cfg(test)]
 use super::expression_facts::payload_stored_kind_matches_expression_facts;
+#[cfg(test)]
 use super::host_paths::HostPath;
+#[cfg(test)]
 use super::operators::{
     binary_literal_op, i64_binary_instruction, i64_immediate_instruction,
     i64_immediate_op_supported, non_logical_binary_instruction,
 };
+#[cfg(test)]
 use super::value_types::RuntimeTypeFact;
-use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
+#[cfg(test)]
+use super::{CompileError, CompileErrorKind};
+use super::{CompileResult, Compiler};
 
+#[cfg(test)]
 pub(in crate::compiler) mod interpolated;
 #[cfg(test)]
 pub(in crate::compiler) use interpolated::interpolated_expression_payload_at;
 
 impl Compiler<'_, '_> {
+    #[cfg(test)]
     pub(in crate::compiler) fn compile_expr_with_payload(
         &mut self,
         expr: &Expr,
@@ -38,14 +50,11 @@ impl Compiler<'_, '_> {
         if let Some(payload) = payload
             && let Some(kind) = payload.stored_syntax_kind()
         {
-            #[cfg(test)]
             let payload_matches_expr = payload_stored_kind_matches_expression_facts(
                 payload,
                 expression_facts(expr),
                 false,
             );
-            #[cfg(not(test))]
-            let payload_matches_expr = payload_overlaps_span(payload, expr.span);
             if payload_matches_expr {
                 return self.compile_expr_with_payload_kind(payload, kind);
             }
@@ -67,6 +76,7 @@ impl Compiler<'_, '_> {
         self.compile_expr(expr)
     }
 
+    #[cfg(test)]
     fn compile_expr_with_payload_kind(
         &mut self,
         payload: &CompilerExpressionPayload<'_>,
@@ -478,6 +488,7 @@ impl Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn compile_expr(&mut self, expr: &Expr) -> CompileResult<Register> {
         match &expr.kind {
             ExprKind::Literal(literal) => self.compile_literal(Some(expr.span), literal),
@@ -533,6 +544,7 @@ impl Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     fn compile_field_expr(
         &mut self,
         expr: &Expr,
@@ -611,6 +623,7 @@ impl Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     fn compile_index_expr(
         &mut self,
         expr: &Expr,
@@ -666,6 +679,7 @@ impl Compiler<'_, '_> {
         self.emit_constant(constant)
     }
 
+    #[cfg(test)]
     fn compile_binary(
         &mut self,
         op: BinaryOp,
@@ -716,6 +730,7 @@ impl Compiler<'_, '_> {
         Ok(dst)
     }
 
+    #[cfg(test)]
     fn compile_binary_with_inline_literal(
         &mut self,
         op: BinaryOp,
@@ -748,6 +763,7 @@ impl Compiler<'_, '_> {
         Ok(None)
     }
 
+    #[cfg(test)]
     fn compile_binary_literal_candidate(
         &mut self,
         op: BinaryOp,
@@ -829,6 +845,7 @@ impl Compiler<'_, '_> {
         Ok(None)
     }
 
+    #[cfg(test)]
     fn i64_immediate_literal(
         &self,
         literal: &UnsuffixedNumericLiteral,
@@ -844,6 +861,7 @@ impl Compiler<'_, '_> {
         Ok(Some(value))
     }
 
+    #[cfg(test)]
     fn compile_inline_numeric_literal_as(
         &self,
         literal: &UnsuffixedNumericLiteral,
@@ -864,6 +882,7 @@ impl Compiler<'_, '_> {
         .map(|constant| constant.expect("literal kind and primitive tag were checked by caller"))
     }
 
+    #[cfg(test)]
     fn compile_range(
         &mut self,
         left: &Expr,
@@ -893,6 +912,7 @@ impl Compiler<'_, '_> {
         Ok(())
     }
 
+    #[cfg(test)]
     fn compile_unary(
         &mut self,
         op: UnaryOp,
@@ -923,6 +943,7 @@ impl Compiler<'_, '_> {
         Ok(dst)
     }
 
+    #[cfg(test)]
     fn compile_negated_equality(
         &mut self,
         span: Span,

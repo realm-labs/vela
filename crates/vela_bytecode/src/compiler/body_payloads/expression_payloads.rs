@@ -22,11 +22,13 @@ use vela_syntax::ast::{
 use super::CompilerArgumentPayload;
 #[cfg(test)]
 use super::CompilerBodyPayload;
+use super::CompilerExpressionPayload;
+#[cfg(test)]
+use super::CompilerInterpolationPayload;
 #[cfg(test)]
 use super::CompilerRecordFieldPayload;
 #[cfg(test)]
 use super::{CompilerArrayElementPayload, CompilerMapEntryPayload};
-use super::{CompilerExpressionPayload, CompilerInterpolationPayload};
 #[cfg(test)]
 use super::{CompilerIfPayload, if_payload_for_syntax};
 #[cfg(test)]
@@ -181,6 +183,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         Some(self.child_payload(syntax))
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn binary_operand_payloads(
         &self,
     ) -> Option<(
@@ -481,6 +484,7 @@ impl CompilerArrayElementPayload {
     }
 }
 
+#[cfg(test)]
 impl CompilerInterpolationPayload {
     #[cfg(test)]
     pub(in crate::compiler) fn syntax_expression(&self) -> Option<&SyntaxExpression> {
