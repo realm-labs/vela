@@ -394,6 +394,10 @@ Old owned AST data structs such as `SourceFile`, `ItemKind`, `Block`,
 compiled only behind `legacy-body-parser`; normal production `vela_syntax`
 builds expose the rowan CST wrappers plus shared literal/operator/visibility
 facts instead of the owned syntax tree.
+The unused top-level owned AST declarations (`SourceFile`, item kinds, item
+payload structs, and impl/trait wrapper structs) have been deleted entirely;
+only the owned body/expression/pattern fixture shapes still needed by the
+temporary bytecode legacy body parser remain behind the feature.
 `BodyBlockLookup` no longer imports or calls `parse_body_blocks_at_spans` in
 production builds; the span-keyed owned body lookup is compiled only for
 bytecode fixture pairing under tests.

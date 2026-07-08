@@ -401,6 +401,9 @@ Checkpoint checklist:
 - [x] Hide old owned AST structs from normal `vela_syntax` production builds
   behind `legacy-body-parser`, leaving only shared literal/operator/visibility
   facts available to CST consumers.
+- [x] Delete unused top-level owned AST declarations (`SourceFile`, item
+  kinds, item payload structs, and impl/trait wrapper structs) that are no
+  longer needed by the temporary bytecode legacy body parser.
 - [ ] Delete old owned `SourceFile`, `ItemKind`, `ExprKind`, and the old parser
   output as part of the hard switch, then fix downstream compile errors against
   CST/HIR directly.

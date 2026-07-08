@@ -61,60 +61,9 @@ pub use syntax::{
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg(feature = "legacy-body-parser")]
-pub struct SourceFile {
-    pub items: Vec<Item>,
-    pub diagnostics: Vec<vela_common::Diagnostic>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg(feature = "legacy-body-parser")]
-pub struct Item {
-    pub attrs: Vec<Attribute>,
-    pub visibility: Visibility,
-    pub kind: ItemKind,
-    pub span: Span,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Visibility {
     Private,
     Public,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg(feature = "legacy-body-parser")]
-pub enum ItemKind {
-    Use(UseItem),
-    Const(ConstItem),
-    Global(GlobalItem),
-    Function(FunctionItem),
-    Struct(StructItem),
-    Enum(EnumItem),
-    Trait(TraitItem),
-    Impl(ImplItem),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg(feature = "legacy-body-parser")]
-pub struct UseItem {
-    pub path: Vec<String>,
-    pub alias: Option<String>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg(feature = "legacy-body-parser")]
-pub struct ConstItem {
-    pub name: String,
-    pub type_hint: Option<TypeHint>,
-    pub value: Expr,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg(feature = "legacy-body-parser")]
-pub struct GlobalItem {
-    pub name: String,
-    pub type_hint: TypeHint,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -132,98 +81,6 @@ pub struct Param {
     pub span: Span,
     pub type_hint: Option<TypeHint>,
     pub default_value: Option<Expr>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg(feature = "legacy-body-parser")]
-pub struct FunctionItem {
-    pub name: String,
-    pub params: Vec<Param>,
-    pub return_type: Option<TypeHint>,
-    pub body: Block,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg(feature = "legacy-body-parser")]
-pub struct StructItem {
-    pub name: String,
-    pub fields: Vec<StructField>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg(feature = "legacy-body-parser")]
-pub struct StructField {
-    pub attrs: Vec<Attribute>,
-    pub name: String,
-    pub span: Span,
-    pub type_hint: Option<TypeHint>,
-    pub default_value: Option<Expr>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg(feature = "legacy-body-parser")]
-pub struct EnumItem {
-    pub name: String,
-    pub variants: Vec<EnumVariant>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg(feature = "legacy-body-parser")]
-pub struct EnumVariant {
-    pub attrs: Vec<Attribute>,
-    pub name: String,
-    pub span: Span,
-    pub fields: EnumVariantFields,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg(feature = "legacy-body-parser")]
-pub enum EnumVariantFields {
-    Unit,
-    Tuple(Vec<Param>),
-    Record(Vec<StructField>),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg(feature = "legacy-body-parser")]
-pub struct TraitItem {
-    pub name: String,
-    pub methods: Vec<TraitMethod>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg(feature = "legacy-body-parser")]
-pub struct TraitMethod {
-    pub attrs: Vec<Attribute>,
-    pub name: String,
-    pub span: Span,
-    pub params: Vec<Param>,
-    pub return_type: Option<TypeHint>,
-    pub has_default: bool,
-    pub default_body: Option<Block>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg(feature = "legacy-body-parser")]
-pub struct ImplItem {
-    pub kind: ImplKind,
-    pub target_path: Vec<String>,
-    pub methods: Vec<ImplMethod>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg(feature = "legacy-body-parser")]
-pub enum ImplKind {
-    Inherent,
-    Trait { trait_path: Vec<String> },
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg(feature = "legacy-body-parser")]
-pub struct ImplMethod {
-    pub attrs: Vec<Attribute>,
-    pub function: FunctionItem,
-    pub span: Span,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
