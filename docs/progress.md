@@ -389,6 +389,11 @@ The old `parse_body_blocks_at_spans` parser entrypoint and its supporting
 owned-AST parser helpers are now compiled only behind the explicit
 `legacy-body-parser` feature, which `vela_bytecode` enables only for its
 remaining CST payload fixture tests.
+Old owned AST data structs such as `SourceFile`, `ItemKind`, `Block`,
+`StmtKind`, `ExprKind`, `Pattern`, and `RecordPatternField` are now also
+compiled only behind `legacy-body-parser`; normal production `vela_syntax`
+builds expose the rowan CST wrappers plus shared literal/operator/visibility
+facts instead of the owned syntax tree.
 `BodyBlockLookup` no longer imports or calls `parse_body_blocks_at_spans` in
 production builds; the span-keyed owned body lookup is compiled only for
 bytecode fixture pairing under tests.

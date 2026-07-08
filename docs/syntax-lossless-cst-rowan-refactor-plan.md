@@ -398,6 +398,9 @@ Checkpoint checklist:
 - [ ] Hard-switch the parser API by deleting the old owned parser entrypoint
   and owned AST production types before downstream cleanup, accepting compiler
   errors as the migration queue.
+- [x] Hide old owned AST structs from normal `vela_syntax` production builds
+  behind `legacy-body-parser`, leaving only shared literal/operator/visibility
+  facts available to CST consumers.
 - [ ] Delete old owned `SourceFile`, `ItemKind`, `ExprKind`, and the old parser
   output as part of the hard switch, then fix downstream compile errors against
   CST/HIR directly.
