@@ -150,7 +150,7 @@ fn assert_cst_statements(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[(SyntaxStatementKind, &str)],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     assert_eq!(statements.len(), expected.len());
     for (statement, (expected_kind, expected_text)) in statements.iter().zip(expected) {
         let syntax = statement
@@ -165,7 +165,7 @@ fn assert_cst_expr_statements(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[(SyntaxExpressionKind, &str)],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .filter_map(|statement| {
@@ -187,7 +187,7 @@ fn assert_cst_assignment_values(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[(SyntaxExpressionKind, &str)],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .filter_map(|statement| {
@@ -209,7 +209,7 @@ fn assert_cst_call_argument_values(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[(SyntaxExpressionKind, &str)],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .flat_map(|statement| {
@@ -239,13 +239,12 @@ fn assert_cst_block_statement_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .filter_map(|statement| {
             let block = statement.block_body_payload()?;
-            let statements =
-                paired_statement_payloads_for_body(block.syntax_payload().source, &block);
+            let statements = block.statement_payloads();
             Some(
                 statements
                     .iter()
@@ -275,7 +274,7 @@ fn assert_cst_for_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .filter_map(|statement| {
@@ -283,8 +282,7 @@ fn assert_cst_for_body_payloads(
                 statement.syntax_statement_span()?.source,
                 statement.syntax_statement()?.as_for()?.body()?,
             );
-            let statements =
-                paired_statement_payloads_for_body(body.syntax_payload().source, &body);
+            let statements = body.statement_payloads();
             Some(
                 statements
                     .iter()
@@ -314,7 +312,7 @@ fn assert_cst_let_initializer_if_body_payloads(
     expected_then: &[Vec<(SyntaxStatementKind, &str)>],
     expected_else: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let payloads = statements
         .iter()
         .filter_map(cst_let_initializer_if_from_expression)
@@ -338,7 +336,7 @@ fn assert_cst_return_value_if_body_payloads(
     expected_then: &[Vec<(SyntaxStatementKind, &str)>],
     expected_else: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let payloads = statements
         .iter()
         .filter_map(cst_return_value_if_from_expression)
@@ -362,7 +360,7 @@ fn assert_cst_let_initializer_else_if_body_payloads(
     expected_then: &[Vec<(SyntaxStatementKind, &str)>],
     expected_else: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let nested = statements
         .iter()
         .filter_map(cst_let_initializer_if_from_expression)
@@ -391,7 +389,7 @@ fn assert_cst_return_value_else_if_body_payloads(
     expected_then: &[Vec<(SyntaxStatementKind, &str)>],
     expected_else: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let nested = statements
         .iter()
         .filter_map(cst_return_value_if_from_expression)
@@ -419,7 +417,7 @@ fn assert_cst_match_arm_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .flat_map(|statement| cst_match_arm_body_texts_from_statement(statement))
@@ -431,7 +429,7 @@ fn assert_cst_let_initializer_match_arm_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .flat_map(|statement| {
@@ -448,7 +446,7 @@ fn assert_cst_return_value_match_arm_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .flat_map(|statement| {
@@ -465,7 +463,7 @@ fn assert_cst_let_initializer_block_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .filter_map(|statement| statement.let_initializer_block_body_payload())
@@ -478,7 +476,7 @@ fn assert_cst_return_value_block_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .filter_map(|statement| statement.return_value_block_body_payload())
@@ -491,7 +489,7 @@ fn assert_cst_assignment_value_block_from_expression(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .filter_map(cst_assignment_value_block_from_expression)
@@ -505,7 +503,7 @@ fn assert_cst_assignment_value_if_body_payloads(
     expected_then: &[Vec<(SyntaxStatementKind, &str)>],
     expected_else: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let payloads = statements
         .iter()
         .filter_map(cst_assignment_value_if_from_expression)
@@ -528,7 +526,7 @@ fn assert_cst_assignment_value_match_arm_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .flat_map(|statement| {
@@ -546,7 +544,7 @@ fn assert_cst_call_argument_block_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .flat_map(|statement| {
@@ -568,7 +566,7 @@ fn assert_cst_call_argument_if_body_payloads(
     expected_then: &[Vec<(SyntaxStatementKind, &str)>],
     expected_else: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let payloads = statements
         .iter()
         .flat_map(|statement| {
@@ -597,7 +595,7 @@ fn assert_cst_call_argument_match_arm_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .flat_map(|statement| {
@@ -618,7 +616,7 @@ fn assert_cst_let_initializer_array_element_body_payloads(
     expected_else: &[Vec<(SyntaxStatementKind, &str)>],
     expected_match: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let elements = statements
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
@@ -637,7 +635,7 @@ fn assert_cst_assignment_value_array_element_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected_block: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .filter_map(|statement| {
@@ -658,7 +656,7 @@ fn assert_cst_return_value_array_element_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected_block: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .filter_map(|statement| statement.return_value_expression_payload())
@@ -675,7 +673,7 @@ fn assert_cst_call_argument_array_element_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected_block: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .flat_map(|statement| {
@@ -700,7 +698,7 @@ fn assert_cst_let_initializer_map_entry_value_body_payloads(
     expected_else: &[Vec<(SyntaxStatementKind, &str)>],
     expected_match: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let values = statements
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
@@ -719,7 +717,7 @@ fn assert_cst_assignment_value_map_entry_value_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected_block: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .filter_map(|statement| {
@@ -740,7 +738,7 @@ fn assert_cst_return_value_map_entry_value_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected_block: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .filter_map(|statement| statement.return_value_expression_payload())
@@ -757,7 +755,7 @@ fn assert_cst_call_argument_map_entry_value_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected_block: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .flat_map(|statement| {
@@ -817,11 +815,11 @@ fn assert_cst_let_initializer_block_tail_match_arm_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .filter_map(|statement| statement.let_initializer_block_body_payload())
-        .flat_map(|block| paired_statement_payloads_for_body(block.syntax_payload().source, &block))
+        .flat_map(|block| block.statement_payloads())
         .flat_map(|statement| cst_match_arm_body_texts_from_statement(&statement))
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
@@ -863,7 +861,7 @@ fn cst_match_arm_body_texts(
 fn cst_statement_texts(
     body: &body_payloads::CompilerBodyPayload<'_>,
 ) -> Vec<(SyntaxStatementKind, String)> {
-    paired_statement_payloads_for_body(body.syntax_payload().source, body)
+    body.statement_payloads()
         .iter()
         .filter_map(|statement| {
             let syntax = statement.syntax_statement()?;
@@ -889,7 +887,7 @@ fn assert_cst_let_initializers(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[(SyntaxExpressionKind, &str)],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .filter_map(|statement| {
@@ -914,7 +912,7 @@ fn assert_cst_return_values(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[(SyntaxExpressionKind, &str)],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .filter_map(|statement| {
@@ -936,7 +934,7 @@ fn assert_cst_for_iterables(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[(SyntaxExpressionKind, Option<BinaryOp>, &str)],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .filter_map(|statement| {
@@ -962,7 +960,7 @@ fn assert_cst_if_conditions(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[(SyntaxExpressionKind, Option<BinaryOp>, &str)],
 ) {
-    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
+    let statements = body.statement_payloads();
     let actual = statements
         .iter()
         .filter_map(|statement| {
