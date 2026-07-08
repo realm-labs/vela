@@ -4,7 +4,7 @@ use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::HirLocalId;
 use vela_syntax::ast::{
-    AstNode, Param, SyntaxBlock, SyntaxElseBranch, SyntaxExpression, SyntaxExpressionKind,
+    AstNode, SyntaxBlock, SyntaxElseBranch, SyntaxExpression, SyntaxExpressionKind,
     SyntaxLambdaBody, SyntaxStatementKind,
 };
 
@@ -19,6 +19,12 @@ pub(crate) struct LambdaCapture {
     pub local: HirLocalId,
     pub name: String,
     pub register: Register,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct LambdaParam {
+    pub name: String,
+    pub span: Span,
 }
 
 impl Compiler<'_, '_> {
@@ -45,11 +51,9 @@ impl Compiler<'_, '_> {
                         "missing CST lambda parameter name",
                     ))
                 })?;
-                Ok(Param {
+                Ok(LambdaParam {
                     name,
                     span: syntax_param_span(source, &param),
-                    type_hint: None,
-                    default_value: None,
                 })
             })
             .collect::<CompileResult<Vec<_>>>()?;

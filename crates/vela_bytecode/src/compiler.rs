@@ -50,7 +50,6 @@ use vela_hir::type_hint::{FunctionSignature, HirTypeHint, ParamHint};
 use vela_registry::RegistryCompileView;
 #[cfg(test)]
 use vela_syntax::ast::Argument;
-use vela_syntax::ast::Param;
 #[cfg(test)]
 use vela_syntax::ast::SyntaxExpressionKind;
 
@@ -66,7 +65,7 @@ use cache_sites::{attach_cache_site, cache_site_kind};
 use control_flow::LoopContext;
 use error::{CompileError, CompileErrorKind, CompileResult};
 use field_slots::ScriptFieldSlots;
-use lambdas::LambdaCapture;
+use lambdas::{LambdaCapture, LambdaParam};
 use options::CompilerOptions;
 use param_defaults::ParamDefaultValue;
 #[cfg(test)]
@@ -852,7 +851,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
     fn new_lambda(
         name: String,
         _lambda_span: Span,
-        params: &[Param],
+        params: &[LambdaParam],
         body: CompilerBodyPayload<'ast>,
         captures: &[LambdaCapture],
         bindings: &'ast BindingMap,
