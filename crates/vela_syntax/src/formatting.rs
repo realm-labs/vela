@@ -1,7 +1,7 @@
 use vela_common::{Diagnostic, SourceId};
 
 use crate::parse::parse_source_with_id;
-use crate::{SyntaxKind, SyntaxToken};
+use crate::{SyntaxKind, SyntaxNode, SyntaxToken};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FormattedSource {
@@ -27,8 +27,9 @@ pub fn format_source(source: SourceId, text: &str) -> FormattedSource {
     let tokens = parsed
         .syntax_node()
         .descendants_with_tokens()
-        .filter_map(|element| element.into_token());
-    let mut formatter = Formatter::new();
+        .filter_map(|element| element.into_token())
+        .map(LayoutToken::from_token);
+    let mut formatter = CstLayoutWriter::new();
     formatter.format(tokens);
     FormattedSource {
         text: formatter.finish(),
@@ -37,14 +38,12 @@ pub fn format_source(source: SourceId, text: &str) -> FormattedSource {
 }
 
 #[derive(Debug, Default)]
-struct Formatter {
+struct CstLayoutWriter {
     output: String,
     indent: usize,
     line_start: bool,
     pending_blank_lines: usize,
-    previous_token: Option<PreviousToken>,
-    delimiter_stack: Vec<SyntaxKind>,
-    type_argument_depth: usize,
+    last_token: Option<WrittenToken>,
     brace_context_stack: Vec<BraceContext>,
     declaration_brace_pending: bool,
     use_item_pending: bool,
@@ -57,12 +56,41 @@ enum BraceContext {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-struct PreviousToken {
+struct WrittenToken {
     kind: SyntaxKind,
     text: String,
 }
 
-impl Formatter {
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+struct LayoutContext {
+    in_type_arguments: bool,
+    opens_declaration_members: bool,
+    comma_breaks_line: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct LayoutToken {
+    kind: SyntaxKind,
+    text: String,
+    context: LayoutContext,
+}
+
+impl LayoutToken {
+    fn from_token(token: SyntaxToken) -> Self {
+        let kind = token.kind();
+        Self {
+            kind,
+            text: token.text().to_owned(),
+            context: LayoutContext {
+                in_type_arguments: token_has_ancestor(&token, SyntaxKind::TypeArgList),
+                opens_declaration_members: token_opens_declaration_members(&token),
+                comma_breaks_line: token_comma_breaks_line(&token),
+            },
+        }
+    }
+}
+
+impl CstLayoutWriter {
     fn new() -> Self {
         Self {
             line_start: true,
@@ -70,9 +98,9 @@ impl Formatter {
         }
     }
 
-    fn format(&mut self, tokens: impl IntoIterator<Item = SyntaxToken>) {
+    fn format(&mut self, tokens: impl IntoIterator<Item = LayoutToken>) {
         for token in tokens {
-            self.write_token(&token);
+            self.write_token(token);
         }
     }
 
@@ -84,14 +112,17 @@ impl Formatter {
         self.output
     }
 
-    fn write_trivia(&mut self, kind: SyntaxKind, text: &str) {
+    fn write_trivia(&mut self, token: &LayoutToken) {
+        let kind = token.kind;
+        let text = token.text.as_str();
         match kind {
             SyntaxKind::Whitespace => {
-                if self.in_type_arguments() {
+                if token.context.in_type_arguments {
                     return;
                 }
                 let newline_count = text.matches('\n').count();
-                if newline_count > 0 && self.use_item_pending && self.delimiter_stack.is_empty() {
+                if newline_count > 0 && self.use_item_pending && self.brace_context_stack.is_empty()
+                {
                     self.newline();
                     self.pending_blank_lines = self
                         .pending_blank_lines
@@ -139,16 +170,16 @@ impl Formatter {
         self.output.push_str(text);
     }
 
-    fn write_token(&mut self, token: &SyntaxToken) {
-        let kind = token.kind();
-        let text = token.text();
+    fn write_token(&mut self, token: LayoutToken) {
+        let kind = token.kind;
+        let text = token.text.as_str();
         match kind {
             SyntaxKind::Eof => {}
             kind if kind.is_trivia() || kind == SyntaxKind::Unknown => {
-                self.write_trivia(kind, text);
+                self.write_trivia(&token);
                 return;
             }
-            kind if kind.is_symbol() => self.write_symbol(kind, text),
+            kind if kind.is_symbol() => self.write_symbol(&token),
             _ => {
                 self.write_space_before_word(kind);
                 self.write_indent_if_needed();
@@ -156,27 +187,28 @@ impl Formatter {
             }
         }
         self.observe_token(kind);
-        self.previous_token = Some(PreviousToken {
+        self.last_token = Some(WrittenToken {
             kind,
-            text: text.to_owned(),
+            text: token.text,
         });
     }
 
-    fn write_symbol(&mut self, symbol: SyntaxKind, text: &str) {
+    fn write_symbol(&mut self, token: &LayoutToken) {
+        let symbol = token.kind;
+        let text = token.text.as_str();
         match symbol {
             SyntaxKind::LBrace => {
                 self.write_space_before_open_brace();
                 self.write_indent_if_needed();
                 self.output.push_str(text);
-                self.delimiter_stack.push(symbol);
-                self.brace_context_stack.push(self.next_brace_context());
+                self.brace_context_stack
+                    .push(self.next_brace_context(token.context));
                 self.declaration_brace_pending = false;
                 self.indent = self.indent.saturating_add(1);
                 self.newline();
             }
             SyntaxKind::RBrace => {
                 self.indent = self.indent.saturating_sub(1);
-                self.pop_delimiter(SyntaxKind::LBrace);
                 self.brace_context_stack.pop();
                 self.ensure_line_start();
                 self.write_indent_if_needed();
@@ -185,24 +217,21 @@ impl Formatter {
             SyntaxKind::LParen | SyntaxKind::LBracket => {
                 self.write_indent_if_needed();
                 self.output.push_str(text);
-                self.delimiter_stack.push(symbol);
             }
             SyntaxKind::RParen => {
                 self.trim_trailing_horizontal_space();
-                self.pop_delimiter(SyntaxKind::LParen);
                 self.output.push_str(text);
             }
             SyntaxKind::RBracket => {
                 self.trim_trailing_horizontal_space();
-                self.pop_delimiter(SyntaxKind::LBracket);
                 self.output.push_str(text);
             }
             SyntaxKind::Comma => {
                 self.trim_trailing_horizontal_space();
                 self.output.push_str(text);
-                if self.in_type_arguments() {
+                if token.context.in_type_arguments {
                     self.output.push(' ');
-                } else if self.in_brace_block() {
+                } else if token.context.comma_breaks_line {
                     self.newline();
                 } else {
                     self.output.push(' ');
@@ -222,16 +251,15 @@ impl Formatter {
                 self.output.push_str(text);
                 self.output.push(' ');
             }
-            SyntaxKind::Less if self.starts_type_arguments() => {
+            SyntaxKind::Less if token.context.in_type_arguments => {
                 self.trim_trailing_horizontal_space();
                 self.write_indent_if_needed();
                 self.output.push_str(text);
-                self.type_argument_depth = self.type_argument_depth.saturating_add(1);
             }
-            SyntaxKind::Greater if self.in_type_arguments() => {
+            SyntaxKind::Greater if token.context.in_type_arguments => {
                 self.write_type_argument_close(text);
             }
-            SyntaxKind::GreaterEqual if self.in_type_arguments() => {
+            SyntaxKind::GreaterEqual if token.context.in_type_arguments => {
                 self.write_type_argument_close(">");
                 self.output.push(' ');
                 self.output.push('=');
@@ -273,7 +301,7 @@ impl Formatter {
             return;
         }
 
-        if self.line_start || !needs_space_between(self.previous_token.as_ref(), token) {
+        if self.line_start || !needs_space_between(self.last_token.as_ref(), token) {
             return;
         }
         self.trim_trailing_horizontal_space();
@@ -353,43 +381,21 @@ impl Formatter {
         }
     }
 
-    fn pop_delimiter(&mut self, expected: SyntaxKind) {
-        if let Some(position) = self
-            .delimiter_stack
-            .iter()
-            .rposition(|symbol| *symbol == expected)
-        {
-            self.delimiter_stack.truncate(position);
-        }
-    }
-
-    fn in_brace_block(&self) -> bool {
-        self.delimiter_stack.last() == Some(&SyntaxKind::LBrace)
-    }
-
     fn in_declaration_members(&self) -> bool {
         self.brace_context_stack.last() == Some(&BraceContext::DeclarationMembers)
-    }
-
-    fn in_type_arguments(&self) -> bool {
-        self.type_argument_depth > 0
-    }
-
-    fn starts_type_arguments(&self) -> bool {
-        self.previous_token.as_ref().is_some_and(|token| {
-            token.kind == SyntaxKind::Ident && is_builtin_container_type_name(&token.text)
-        })
     }
 
     fn write_type_argument_close(&mut self, text: &str) {
         self.trim_trailing_horizontal_space();
         self.write_indent_if_needed();
         self.output.push_str(text);
-        self.type_argument_depth = self.type_argument_depth.saturating_sub(1);
     }
 
-    fn next_brace_context(&self) -> BraceContext {
-        if self.declaration_brace_pending || self.starts_nested_declaration_members() {
+    fn next_brace_context(&self, context: LayoutContext) -> BraceContext {
+        if context.opens_declaration_members
+            || self.declaration_brace_pending
+            || self.starts_nested_declaration_members()
+        {
             BraceContext::DeclarationMembers
         } else {
             BraceContext::Code
@@ -404,7 +410,7 @@ impl Formatter {
         self.in_declaration_members()
             && !self.line_start
             && token == SyntaxKind::Ident
-            && previous_token_can_end_declaration_member(self.previous_kind())
+            && preceding_significant_can_end_declaration_member(self.previous_kind())
     }
 
     fn observe_token(&mut self, token: SyntaxKind) {
@@ -445,11 +451,11 @@ impl Formatter {
     }
 
     fn previous_kind(&self) -> Option<SyntaxKind> {
-        self.previous_token.as_ref().map(|token| token.kind)
+        self.last_token.as_ref().map(|token| token.kind)
     }
 }
 
-fn needs_space_between(previous: Option<&PreviousToken>, current: SyntaxKind) -> bool {
+fn needs_space_between(previous: Option<&WrittenToken>, current: SyntaxKind) -> bool {
     let Some(previous) = previous else {
         return false;
     };
@@ -512,7 +518,7 @@ fn is_word_like(token: SyntaxKind) -> bool {
     )
 }
 
-fn previous_token_can_end_declaration_member(previous: Option<SyntaxKind>) -> bool {
+fn preceding_significant_can_end_declaration_member(previous: Option<SyntaxKind>) -> bool {
     matches!(
         previous,
         Some(
@@ -533,10 +539,81 @@ fn previous_token_can_end_declaration_member(previous: Option<SyntaxKind>) -> bo
     )
 }
 
-fn is_builtin_container_type_name(name: &str) -> bool {
+fn token_has_ancestor(token: &SyntaxToken, kind: SyntaxKind) -> bool {
+    token.parent_ancestors().any(|node| node.kind() == kind)
+}
+
+fn token_opens_declaration_members(token: &SyntaxToken) -> bool {
+    token.kind() == SyntaxKind::LBrace
+        && token
+            .parent_ancestors()
+            .find(is_braced_layout_owner)
+            .is_some_and(|node| {
+                matches!(
+                    node.kind(),
+                    SyntaxKind::StructItem
+                        | SyntaxKind::EnumItem
+                        | SyntaxKind::TraitItem
+                        | SyntaxKind::ImplItem
+                        | SyntaxKind::StructFieldList
+                        | SyntaxKind::EnumVariantList
+                        | SyntaxKind::RecordFieldList
+                )
+            })
+}
+
+fn token_comma_breaks_line(token: &SyntaxToken) -> bool {
+    token.kind() == SyntaxKind::Comma
+        && token
+            .parent_ancestors()
+            .find(is_comma_layout_owner)
+            .is_some_and(|node| {
+                matches!(
+                    node.kind(),
+                    SyntaxKind::MapExpr
+                        | SyntaxKind::RecordExprFieldList
+                        | SyntaxKind::StructFieldList
+                        | SyntaxKind::EnumVariantList
+                        | SyntaxKind::RecordFieldList
+                        | SyntaxKind::MatchArmList
+                )
+            })
+}
+
+fn is_comma_layout_owner(node: &SyntaxNode) -> bool {
     matches!(
-        name,
-        "Array" | "Map" | "Set" | "Iterator" | "Option" | "Result"
+        node.kind(),
+        SyntaxKind::TypeArgList
+            | SyntaxKind::ArgList
+            | SyntaxKind::ArrayExpr
+            | SyntaxKind::ParamList
+            | SyntaxKind::TupleFieldList
+            | SyntaxKind::TuplePattern
+            | SyntaxKind::MapExpr
+            | SyntaxKind::RecordExprFieldList
+            | SyntaxKind::StructFieldList
+            | SyntaxKind::EnumVariantList
+            | SyntaxKind::RecordFieldList
+            | SyntaxKind::RecordPattern
+            | SyntaxKind::MatchArmList
+    )
+}
+
+fn is_braced_layout_owner(node: &SyntaxNode) -> bool {
+    matches!(
+        node.kind(),
+        SyntaxKind::Block
+            | SyntaxKind::MapExpr
+            | SyntaxKind::RecordExpr
+            | SyntaxKind::RecordPattern
+            | SyntaxKind::StructItem
+            | SyntaxKind::EnumItem
+            | SyntaxKind::TraitItem
+            | SyntaxKind::ImplItem
+            | SyntaxKind::StructFieldList
+            | SyntaxKind::EnumVariantList
+            | SyntaxKind::RecordFieldList
+            | SyntaxKind::RecordExprFieldList
     )
 }
 

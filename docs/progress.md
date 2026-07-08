@@ -281,8 +281,11 @@ path. The old owned match child-payload path, owned-pattern binding walker,
 structs, bytecode fallback payload helpers, and fallback fixture suites have
 now been deleted from the active syntax/bytecode build. The inert `cfg(any())`
 old-AST bytecode compiler tombstones have also been deleted, leaving the next
-hard-switch cleanup focused on HIR/analysis/language-service/LSP audits,
-formatter token-gap paths, and migration-era API names.
+hard-switch cleanup focused on HIR/analysis/language-service/LSP audits and
+migration-era API names.
+The formatter token-state production path has been replaced with a CST-context
+layout writer that derives type-argument, comma, and declaration-member layout
+from rowan ancestor facts instead of delimiter-gap reconstruction.
 CST script-function
 call lowering now resolves named arguments, defaulted parameter slots, typed
 argument checks, and checked script-call mode from HIR signatures. The

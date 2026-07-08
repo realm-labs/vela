@@ -564,12 +564,12 @@ impl LanguageServiceDatabases {
             return SemanticTokenDelta::new(current.result_id().to_owned(), Vec::new());
         }
 
-        let previous_token_count = semantic_token_count_from_result_id(previous_result_id);
+        let previous_result_token_count = semantic_token_count_from_result_id(previous_result_id);
         SemanticTokenDelta::new(
             current.result_id().to_owned(),
             vec![SemanticTokenEdit::new(
                 0,
-                previous_token_count,
+                previous_result_token_count,
                 current.tokens().to_vec(),
             )],
         )
