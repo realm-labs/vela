@@ -406,6 +406,8 @@ Checkpoint checklist:
   longer needed by the temporary bytecode legacy body parser.
 - [x] Delete old owned `Attribute` statement payload storage from the temporary
   legacy body parser and remove the obsolete attribute normalizer.
+- [x] Delete old owned lambda parameter default-value fallback storage; CST/HIR
+  parameter-default payloads are the remaining default source.
 - [ ] Delete old owned `SourceFile`, `ItemKind`, `ExprKind`, and the old parser
   output as part of the hard switch, then fix downstream compile errors against
   CST/HIR directly.

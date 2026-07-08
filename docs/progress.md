@@ -401,6 +401,8 @@ temporary bytecode legacy body parser remain behind the feature.
 Legacy body-parser statement attributes no longer materialize old owned
 `Attribute` nodes; the parser skips them only for statement span/recovery, and
 the obsolete owned-attribute normalizer module has been deleted.
+Old owned lambda parameters no longer carry default-value fallback slots;
+parameter defaults are represented by CST/HIR/default-payload facts instead.
 `BodyBlockLookup` no longer imports or calls `parse_body_blocks_at_spans` in
 production builds; the span-keyed owned body lookup is compiled only for
 bytecode fixture pairing under tests.

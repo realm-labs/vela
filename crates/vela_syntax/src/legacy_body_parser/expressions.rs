@@ -457,7 +457,6 @@ impl Parser {
                     name: param,
                     span: Span::new(name_span.source, name_span.start, end),
                     type_hint,
-                    default_value: None,
                 });
             } else {
                 self.error_here("expected lambda parameter");
