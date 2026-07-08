@@ -1077,6 +1077,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         Self::from_syntax(Some(source), None)
     }
 
+    #[cfg(test)]
     fn matches_syntax_kind(&self, syntax_kind: SyntaxExpressionKind) -> bool {
         syntax_kind == SyntaxExpressionKind::Paren || self.stored_syntax_kind() == Some(syntax_kind)
     }
@@ -1092,6 +1093,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             .expect("expression payload has no owned expression fallback")
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn source(&self) -> Option<SourceId> {
         self.source
     }
@@ -1102,12 +1104,14 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         self.stored_syntax_kind()
     }
 
+    #[cfg(test)]
     pub(super) fn stored_syntax_kind(&self) -> Option<SyntaxExpressionKind> {
         self.syntax
             .as_ref()
             .map(|expression| expression.expression_kind())
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn requires_matching_payload(&self) -> bool {
         [
             SyntaxExpressionKind::Block,
@@ -1122,6 +1126,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         .any(|kind| self.matches_syntax_kind(kind))
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn rejects_missing_payload(&self) -> bool {
         if self.source.is_some() && self.syntax.is_none() {
             return true;
@@ -1142,6 +1147,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             .any(|kind| self.matches_syntax_kind(kind))
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn syntax_expression(&self) -> Option<&SyntaxExpression> {
         self.source?;
         self.syntax.as_ref()

@@ -1,3 +1,4 @@
+#[cfg(test)]
 use vela_common::Span;
 #[cfg(test)]
 use vela_syntax::ast::Expr;
@@ -6,6 +7,7 @@ use vela_syntax::ast::ExprKind;
 #[cfg(test)]
 use vela_syntax::ast::SyntaxExpressionKind;
 
+#[cfg(test)]
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 
 #[cfg(test)]
@@ -56,6 +58,7 @@ impl ExpressionFacts {
     }
 }
 
+#[cfg(test)]
 pub(super) fn payload_overlaps_span(payload: &CompilerExpressionPayload<'_>, span: Span) -> bool {
     payload
         .syntax_span()

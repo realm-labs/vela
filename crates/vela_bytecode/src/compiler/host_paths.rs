@@ -1,6 +1,8 @@
+#[cfg(test)]
+use vela_common::Diagnostic;
+use vela_common::HostTypeId;
 use vela_common::SourceId;
 use vela_common::Span;
-use vela_common::{Diagnostic, HostTypeId};
 use vela_def::FieldId;
 #[cfg(test)]
 use vela_syntax::ast::Argument;
@@ -8,7 +10,11 @@ use vela_syntax::ast::Argument;
 use vela_syntax::ast::Expr;
 #[cfg(test)]
 use vela_syntax::ast::ExprKind;
-use vela_syntax::ast::{AstNode, Literal, SyntaxExpression, SyntaxExpressionKind};
+#[cfg(test)]
+use vela_syntax::ast::Literal;
+#[cfg(test)]
+use vela_syntax::ast::SyntaxExpressionKind;
+use vela_syntax::ast::{AstNode, SyntaxExpression};
 
 #[cfg(test)]
 use crate::Constant;
@@ -16,7 +22,9 @@ use crate::{CacheSiteId, HostTargetPlanId, Register, UnlinkedInstructionKind};
 use vela_host::resolved::HostMutationOp;
 use vela_host::target::HostTargetPlan;
 
-use super::body_payloads::{CompilerExpressionPayload, expression_syntax_path_or_self};
+#[cfg(test)]
+use super::body_payloads::CompilerExpressionPayload;
+use super::body_payloads::expression_syntax_path_or_self;
 #[cfg(test)]
 use super::call_args::CallArgumentSyntax;
 #[cfg(test)]
@@ -35,6 +43,7 @@ pub(super) enum HostPathRoot<'ast> {
         expr: &'ast Expr,
         payload: Option<CompilerExpressionPayload<'ast>>,
     },
+    #[cfg(test)]
     SyntaxExpr {
         source: SourceId,
         expression: SyntaxExpression,
@@ -176,9 +185,11 @@ impl Compiler<'_, '_> {
         let source = payload.as_ref()?.source()?;
         let expression = payload.as_ref()?.syntax_expression()?;
         match expression.expression_kind() {
+            #[cfg(test)]
             SyntaxExpressionKind::Field => {
                 self.syntax_host_field_path_with_receiver_fallback(source, expression)
             }
+            #[cfg(test)]
             SyntaxExpressionKind::Path
             | SyntaxExpressionKind::Index
             | SyntaxExpressionKind::Paren => self.syntax_host_path(source, expression),
@@ -643,6 +654,7 @@ impl Compiler<'_, '_> {
             HostPathRoot::Expr { expr, payload } => {
                 self.compile_expr_with_payload(expr, payload.as_ref())
             }
+            #[cfg(test)]
             HostPathRoot::SyntaxExpr { source, expression } => self
                 .compile_syntax_expression(*source, expression)?
                 .ok_or_else(|| {
@@ -744,6 +756,7 @@ impl Compiler<'_, '_> {
                 .or_else(|| self.script_type_for_expression_payload(Some(&payload))),
             #[cfg(test)]
             HostPathRoot::Expr { payload: None, .. } => None,
+            #[cfg(test)]
             HostPathRoot::SyntaxExpr { source, expression } => self
                 .script_fact_for_syntax_expression(source, &expression)
                 .map(|fact| fact.type_name),
@@ -860,6 +873,7 @@ impl Compiler<'_, '_> {
         Some(resolved)
     }
 
+    #[cfg(test)]
     fn syntax_host_field_path_with_receiver_fallback(
         &self,
         source: SourceId,
@@ -1047,6 +1061,7 @@ impl Compiler<'_, '_> {
     }
 }
 
+#[cfg(test)]
 fn host_index_diagnostic_error(diagnostic: Diagnostic) -> CompileError {
     CompileError::new(CompileErrorKind::SemanticDiagnostics(vec![diagnostic]))
 }
@@ -1068,6 +1083,7 @@ pub(super) struct CompiledHostTarget {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg(test)]
 enum ConstHostPathArg {
     Index(u32),
     Key(String),
@@ -1131,6 +1147,7 @@ impl HostIndexAccessKind {
     }
 }
 
+#[cfg(test)]
 fn const_host_path_arg_with_payload(
     payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> Option<ConstHostPathArg> {
@@ -1139,6 +1156,7 @@ fn const_host_path_arg_with_payload(
         .and_then(|literal| const_host_path_arg_from_literal(&literal))
 }
 
+#[cfg(test)]
 fn const_host_path_arg_from_literal(literal: &Literal) -> Option<ConstHostPathArg> {
     match literal {
         Literal::Integer(value) if value.suffix.is_none() => value

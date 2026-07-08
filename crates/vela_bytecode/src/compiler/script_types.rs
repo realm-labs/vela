@@ -207,6 +207,7 @@ fn expression_script_fact_from_payload_syntax(
     None
 }
 
+#[cfg(test)]
 pub(super) fn expression_script_type_from_payload(
     payload: &CompilerExpressionPayload<'_>,
     type_symbol_at_span: impl Fn(Span) -> Option<String>,
@@ -243,6 +244,7 @@ pub(super) fn type_hint_script_type<'a>(
 }
 
 impl super::Compiler<'_, '_> {
+    #[cfg(test)]
     pub(super) fn script_type_for_expression_payload(
         &self,
         payload: Option<&CompilerExpressionPayload<'_>>,
@@ -263,6 +265,7 @@ impl super::Compiler<'_, '_> {
         )
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn script_type_for_payload(
         &self,
         payload: &CompilerExpressionPayload<'_>,
@@ -283,6 +286,7 @@ impl super::Compiler<'_, '_> {
         )
     }
 
+    #[cfg(test)]
     pub(super) fn script_fact_for_expression_payload(
         &self,
         payload: Option<&CompilerExpressionPayload<'_>>,

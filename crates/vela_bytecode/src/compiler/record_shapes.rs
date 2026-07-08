@@ -329,6 +329,7 @@ impl RecordShape {
             .and_then(|shape| shape.value.as_ref())
     }
 
+    #[cfg(test)]
     pub(super) fn field_value_type(&self, field: &str) -> Option<RuntimeTypeFact> {
         self.fields
             .get(field)

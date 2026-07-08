@@ -9,6 +9,7 @@ use vela_syntax::ast::{
 };
 
 use crate::compiler::Compiler;
+#[cfg(test)]
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 #[cfg(test)]
 use crate::compiler::expression_facts::{
@@ -62,6 +63,7 @@ pub(super) fn payload_shape_must_come_from_syntax(
 }
 
 impl Compiler<'_, '_> {
+    #[cfg(test)]
     pub(super) fn value_shape_for_syntax_payload(
         &self,
         payload: &CompilerExpressionPayload<'_>,

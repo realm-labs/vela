@@ -4,6 +4,8 @@ use vela_syntax::ast::AssignOp;
 #[cfg(test)]
 use vela_syntax::ast::BinaryOp;
 #[cfg(test)]
+use vela_syntax::ast::Literal;
+#[cfg(test)]
 use vela_syntax::ast::SyntaxExpressionKind;
 #[cfg(test)]
 use vela_syntax::ast::SyntaxLambdaBody;
@@ -11,7 +13,7 @@ use vela_syntax::ast::SyntaxLambdaBody;
 use vela_syntax::ast::SyntaxMapEntry;
 #[cfg(test)]
 use vela_syntax::ast::SyntaxRecordExprField;
-use vela_syntax::ast::{AstNode, Literal, SyntaxExpression};
+use vela_syntax::ast::{AstNode, SyntaxExpression};
 #[cfg(test)]
 use vela_syntax::ast::{
     SyntaxMatchArm, SyntaxPattern, SyntaxPatternKind, SyntaxRecordPatternField,
@@ -118,6 +120,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         ))
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn syntax_literal(&self) -> Option<Literal> {
         self.source?;
         self.syntax.as_ref()?.as_literal()?.literal()
@@ -292,6 +295,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         Some(self.child_payload(syntax))
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn field_base_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
@@ -300,6 +304,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         Some(self.child_payload(syntax))
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn syntax_field_name(&self) -> Option<String> {
         self.source?;
         self.syntax.as_ref()?.as_field()?.name_text()

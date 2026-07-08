@@ -1,15 +1,23 @@
-use vela_common::{Diagnostic, PrimitiveTag, Span};
+#[cfg(test)]
+use vela_common::PrimitiveTag;
+use vela_common::{Diagnostic, Span};
 use vela_def::MethodId;
+use vela_syntax::ast::BinaryOp;
 #[cfg(test)]
 use vela_syntax::ast::Expr;
-use vela_syntax::ast::{BinaryOp, Literal};
+#[cfg(test)]
+use vela_syntax::ast::Literal;
 
+#[cfg(test)]
 use super::body_payloads::CompilerExpressionPayload;
+#[cfg(test)]
 use super::record_shapes::ValueShape;
+#[cfg(test)]
 use super::value_types::{RuntimeTypeFact, StandardRuntimeType};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 impl Compiler<'_, '_> {
+    #[cfg(test)]
     pub(in crate::compiler) fn reject_static_identity_comparison_operands(
         &self,
         op: BinaryOp,
@@ -45,6 +53,7 @@ impl Compiler<'_, '_> {
         Ok(())
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn reject_static_comparison_without_trait(
         &self,
         op: BinaryOp,
@@ -183,6 +192,7 @@ impl Compiler<'_, '_> {
                 .is_some_and(|traits| traits.contains(trait_name))
     }
 
+    #[cfg(test)]
     fn static_non_identity_operand_type(
         &self,
         payload: Option<&CompilerExpressionPayload<'_>>,
@@ -197,6 +207,7 @@ impl Compiler<'_, '_> {
     }
 }
 
+#[cfg(test)]
 fn runtime_type_is_identity_operand(fact: &RuntimeTypeFact) -> bool {
     match fact {
         RuntimeTypeFact::Primitive(_) | RuntimeTypeFact::Standard(StandardRuntimeType::Range) => {
@@ -221,6 +232,7 @@ fn runtime_type_is_identity_operand(fact: &RuntimeTypeFact) -> bool {
     }
 }
 
+#[cfg(test)]
 fn non_identity_shape_type(shape: &ValueShape) -> Option<String> {
     match shape {
         ValueShape::Scalar(type_name) => Some(type_name.clone()),
@@ -303,6 +315,7 @@ pub(in crate::compiler) fn payload_syntax_overlaps_expr(
         .is_some_and(|span| spans_overlap(span, expr.span))
 }
 
+#[cfg(test)]
 pub(in crate::compiler) fn reject_missing_binary_operand_payload(
     left_payload: Option<&CompilerExpressionPayload<'_>>,
     right_payload: Option<&CompilerExpressionPayload<'_>>,
@@ -311,6 +324,7 @@ pub(in crate::compiler) fn reject_missing_binary_operand_payload(
     reject_missing_expression_payload(right_payload, "missing CST binary operand")
 }
 
+#[cfg(test)]
 pub(in crate::compiler) fn reject_missing_expression_payload(
     payload: Option<&CompilerExpressionPayload<'_>>,
     message: &'static str,
@@ -328,12 +342,14 @@ fn spans_overlap(left: Span, right: Span) -> bool {
     left.start < right.end && right.start < left.end
 }
 
+#[cfg(test)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(in crate::compiler) enum UnsuffixedNumericLiteral {
     Integer(String),
     Float(String),
 }
 
+#[cfg(test)]
 impl UnsuffixedNumericLiteral {
     pub(in crate::compiler) fn matches_primitive_tag(&self, tag: PrimitiveTag) -> bool {
         match self {
@@ -353,6 +369,7 @@ impl UnsuffixedNumericLiteral {
     }
 }
 
+#[cfg(test)]
 pub(in crate::compiler) fn unsuffixed_numeric_literal_with_payload(
     payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> Option<UnsuffixedNumericLiteral> {
@@ -361,6 +378,7 @@ pub(in crate::compiler) fn unsuffixed_numeric_literal_with_payload(
         .and_then(|literal| unsuffixed_numeric_literal_from_literal(&literal))
 }
 
+#[cfg(test)]
 fn unsuffixed_numeric_literal_from_literal(literal: &Literal) -> Option<UnsuffixedNumericLiteral> {
     match literal {
         Literal::Integer(value) if value.suffix.is_none() => Some(
@@ -373,6 +391,7 @@ fn unsuffixed_numeric_literal_from_literal(literal: &Literal) -> Option<Unsuffix
     }
 }
 
+#[cfg(test)]
 pub(in crate::compiler) fn expressions_are_i64(
     left: Option<RuntimeTypeFact>,
     right: Option<RuntimeTypeFact>,

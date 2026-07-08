@@ -12,6 +12,7 @@ use vela_syntax::ast::{
 #[cfg(test)]
 use vela_syntax::ast::{Expr, ExprKind};
 
+#[cfg(test)]
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 #[cfg(test)]
 use crate::compiler::expression_facts::{expression_facts, payload_overlaps_expression_facts};
@@ -1101,6 +1102,7 @@ impl super::Compiler<'_, '_> {
         )
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn value_type_for_expression_payload(
         &self,
         payload: Option<&CompilerExpressionPayload<'_>>,
@@ -1117,6 +1119,7 @@ impl super::Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn static_type_for_expression_payload(
         &self,
         payload: Option<&CompilerExpressionPayload<'_>>,

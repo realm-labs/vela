@@ -3,11 +3,13 @@ use vela_common::Span;
 use vela_syntax::ast::Expr;
 
 use crate::compiler::Compiler;
+#[cfg(test)]
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 
 use super::RecordShape;
 
 impl Compiler<'_, '_> {
+    #[cfg(test)]
     pub(in crate::compiler) fn value_shape_for_expression_payload(
         &self,
         payload: Option<&CompilerExpressionPayload<'_>>,
@@ -26,6 +28,7 @@ impl Compiler<'_, '_> {
             .cloned()
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn record_shape_for_expression_payload(
         &self,
         payload: Option<&CompilerExpressionPayload<'_>>,
@@ -35,6 +38,7 @@ impl Compiler<'_, '_> {
             .cloned()
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn record_field_value_type_for_expression_payload(
         &self,
         payload: Option<&CompilerExpressionPayload<'_>>,

@@ -9,6 +9,7 @@ use vela_syntax::ast::{BinaryOp, Expr, ExprKind, SyntaxExpressionKind, UnaryOp};
 use crate::BinaryLiteralSide;
 use crate::{Register, UnlinkedInstructionKind};
 
+#[cfg(test)]
 use super::body_payloads::CompilerExpressionPayload;
 use super::const_eval::compile_literal_constant;
 #[cfg(test)]
@@ -979,6 +980,7 @@ impl Compiler<'_, '_> {
     }
 }
 
+#[cfg(test)]
 pub(super) fn literal_string_with_payload(
     payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> Option<String> {
