@@ -715,11 +715,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     #[cfg(test)]
-    pub(in crate::compiler) fn fallback_span(&self) -> Option<Span> {
-        self.syntax_statement_span()
-    }
-
-    #[cfg(test)]
     pub(in crate::compiler) fn for_iterable_expression_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {

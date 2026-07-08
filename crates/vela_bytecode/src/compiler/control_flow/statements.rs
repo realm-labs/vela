@@ -314,14 +314,11 @@ impl Compiler<'_, '_> {
                         "missing CST let binding name",
                     )));
                 };
-                let span = stmt
-                    .syntax_statement_span()
-                    .or_else(|| stmt.fallback_span())
-                    .ok_or_else(|| {
-                        CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "missing CST statement payload",
-                        ))
-                    })?;
+                let span = stmt.syntax_statement_span().ok_or_else(|| {
+                    CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST statement payload",
+                    ))
+                })?;
                 self.compile_let_binding(
                     name,
                     span,
@@ -350,14 +347,11 @@ impl Compiler<'_, '_> {
                         "missing CST return value payload",
                     )));
                 }
-                let span = stmt
-                    .syntax_statement_span()
-                    .or_else(|| stmt.fallback_span())
-                    .ok_or_else(|| {
-                        CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "missing CST statement payload",
-                        ))
-                    })?;
+                let span = stmt.syntax_statement_span().ok_or_else(|| {
+                    CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST statement payload",
+                    ))
+                })?;
                 let (register, returned) = self.compile_return_value(
                     span,
                     value_expression
