@@ -3,7 +3,7 @@ use super::*;
 fn statement_body_payloads<'ast>(
     body: &body_payloads::CompilerBodyPayload<'ast>,
 ) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
-    paired_statement_payloads_for_body(body.syntax_payload().source, body)
+    body.statement_payloads()
 }
 
 #[test]
@@ -263,7 +263,7 @@ fn main(flag) {
 }
 "#,
         |compiler, payload| {
-            let statements = statement_body_payloads(&payload.body);
+            let statements = paired_statement_payloads_for_body(SourceId::new(1), &payload.body);
             let if_statement = statements
                 .iter()
                 .find(|statement| {
@@ -388,7 +388,7 @@ fn main(flag) {
 }
 "#,
         |compiler, payload| {
-            let statements = statement_body_payloads(&payload.body);
+            let statements = paired_statement_payloads_for_body(SourceId::new(1), &payload.body);
             let if_statement = statements
                 .iter()
                 .find(|statement| {

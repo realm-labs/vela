@@ -3,7 +3,7 @@ use super::*;
 fn source_identity_statement_payloads<'ast>(
     body: &body_payloads::CompilerBodyPayload<'ast>,
 ) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
-    paired_statement_payloads_for_body(body.syntax_payload().source, body)
+    body.statement_payloads()
 }
 
 #[test]
@@ -577,9 +577,10 @@ fn main(value) {
 }
 "#,
         |_, payload| {
-            let match_value = source_identity_statement_payloads(&payload.body)[0]
-                .return_value_expression_payload()
-                .expect("match return payload");
+            let match_value = paired_statement_payloads_for_body(SourceId::new(1), &payload.body)
+                [0]
+            .return_value_expression_payload()
+            .expect("match return payload");
             let vela_syntax::ast::ExprKind::Match(fallback_match) = &match_value.fallback().kind
             else {
                 panic!("expected fallback match expression");

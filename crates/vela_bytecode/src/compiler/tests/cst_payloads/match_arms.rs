@@ -12,7 +12,7 @@ fn body_fallback(
 fn match_statement_payloads<'ast>(
     body: &body_payloads::CompilerBodyPayload<'ast>,
 ) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
-    paired_statement_payloads_for_body(body.syntax_payload().source, body)
+    body.statement_payloads()
 }
 
 #[test]
