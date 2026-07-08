@@ -5,12 +5,8 @@ use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::HirLocalId;
 use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::SyntaxExpression;
-#[cfg(any())]
-use vela_syntax::ast::{Expr, SyntaxExpressionKind};
 
 use super::body_payloads::CompilerExpressionPayload;
-#[cfg(any())]
-use super::expression_facts::{expression_facts, payload_overlaps_expression_facts};
 use super::patterns::enum_variant_path;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -118,46 +114,6 @@ impl ScriptTypeFlow {
     }
 }
 
-#[cfg(any())]
-pub(super) fn expression_script_fact_with_payload(
-    expr: &Expr,
-    payload: Option<&CompilerExpressionPayload<'_>>,
-    type_symbol_at_span: impl Fn(Span) -> Option<String>,
-    local_fact_at_span: impl Fn(Span) -> Option<ScriptTypeFact>,
-    local_fact_named: impl Fn(&str) -> Option<ScriptTypeFact>,
-) -> Option<ScriptTypeFact> {
-    let payload = payload?;
-    if !payload_matches_script_fact_expression(payload, expr) {
-        return None;
-    }
-
-    expression_script_fact_from_payload_syntax(
-        payload,
-        &type_symbol_at_span,
-        &local_fact_at_span,
-        &local_fact_named,
-    )
-}
-
-#[cfg(any())]
-fn payload_matches_script_fact_expression(
-    payload: &CompilerExpressionPayload<'_>,
-    expr: &Expr,
-) -> bool {
-    payload_overlaps_expression_facts(
-        payload,
-        expression_facts(expr).with_kind_filter(|kind| {
-            matches!(
-                kind,
-                SyntaxExpressionKind::Record
-                    | SyntaxExpressionKind::Call
-                    | SyntaxExpressionKind::Path
-            )
-        }),
-        true,
-    )
-}
-
 fn expression_script_fact_from_payload_syntax(
     payload: &CompilerExpressionPayload<'_>,
     type_symbol_at_span: &impl Fn(Span) -> Option<String>,
@@ -207,22 +163,6 @@ fn expression_script_fact_from_payload_syntax(
     None
 }
 
-#[cfg(any())]
-pub(super) fn expression_script_type_from_payload(
-    payload: &CompilerExpressionPayload<'_>,
-    type_symbol_at_span: impl Fn(Span) -> Option<String>,
-    local_type_at_span: impl Fn(Span) -> Option<String>,
-    local_type_named: impl Fn(&str) -> Option<String>,
-) -> Option<String> {
-    expression_script_fact_from_payload_syntax(
-        payload,
-        &type_symbol_at_span,
-        &|span| local_type_at_span(span).map(ScriptTypeFact::new),
-        &|name| local_type_named(name).map(ScriptTypeFact::new),
-    )
-    .map(|fact| fact.type_name)
-}
-
 pub(super) fn type_hint_script_type<'a>(
     hint: &HirTypeHint,
     type_names: impl IntoIterator<Item = &'a String>,
@@ -244,69 +184,6 @@ pub(super) fn type_hint_script_type<'a>(
 }
 
 impl super::Compiler<'_, '_> {
-    #[cfg(any())]
-    pub(super) fn script_type_for_expression_payload(
-        &self,
-        payload: Option<&CompilerExpressionPayload<'_>>,
-    ) -> Option<String> {
-        expression_script_type_from_payload(
-            payload?,
-            |span| self.type_symbol_at_span(span),
-            |span| {
-                self.script_types
-                    .local_at_span(self.bindings, span)
-                    .or_else(|| self.global_type_at_span(span))
-            },
-            |name| {
-                self.script_types
-                    .name(name)
-                    .or_else(|| self.global_type_named(name))
-            },
-        )
-    }
-
-    #[cfg(any())]
-    pub(in crate::compiler) fn script_type_for_payload(
-        &self,
-        payload: &CompilerExpressionPayload<'_>,
-    ) -> Option<String> {
-        expression_script_type_from_payload(
-            payload,
-            |span| self.type_symbol_at_span(span),
-            |span| {
-                self.script_types
-                    .local_at_span(self.bindings, span)
-                    .or_else(|| self.global_type_at_span(span))
-            },
-            |name| {
-                self.script_types
-                    .name(name)
-                    .or_else(|| self.global_type_named(name))
-            },
-        )
-    }
-
-    #[cfg(any())]
-    pub(super) fn script_fact_for_expression_payload(
-        &self,
-        payload: Option<&CompilerExpressionPayload<'_>>,
-    ) -> Option<ScriptTypeFact> {
-        expression_script_fact_from_payload_syntax(
-            payload?,
-            &|span| self.type_symbol_at_span(span),
-            &|span| {
-                self.script_types
-                    .local_fact_at_span(self.bindings, span)
-                    .or_else(|| self.global_type_at_span(span).map(ScriptTypeFact::new))
-            },
-            &|name| {
-                self.script_types
-                    .name_fact(name)
-                    .or_else(|| self.global_type_named(name).map(ScriptTypeFact::new))
-            },
-        )
-    }
-
     pub(super) fn script_fact_for_syntax_expression(
         &self,
         source: SourceId,

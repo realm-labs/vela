@@ -279,9 +279,10 @@ lowering no longer compiles through the old owned `MatchExpr` child-payload
 path. The old owned match child-payload path, owned-pattern binding walker,
 `legacy-body-parser` feature, `legacy_body_parser` module, old owned AST body
 structs, bytecode fallback payload helpers, and fallback fixture suites have
-now been deleted from the active syntax/bytecode build. Remaining cleanup in
-this hard-switch track is to delete inert `cfg(any())` old-AST blocks that are
-already unreachable.
+now been deleted from the active syntax/bytecode build. The inert `cfg(any())`
+old-AST bytecode compiler tombstones have also been deleted, leaving the next
+hard-switch cleanup focused on HIR/analysis/language-service/LSP audits,
+formatter token-gap paths, and migration-era API names.
 CST script-function
 call lowering now resolves named arguments, defaulted parameter slots, typed
 argument checks, and checked script-call mode from HIR signatures. The

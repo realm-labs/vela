@@ -1,32 +1,12 @@
-#[cfg(any())]
-use super::body_payloads::CompilerExpressionPayload;
 use super::body_payloads::expression_syntax_path_or_self;
-#[cfg(any())]
-use super::call_args::CallArgumentSyntax;
-#[cfg(any())]
-use super::reject_named_args;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
-#[cfg(any())]
-use crate::Constant;
 use crate::{CacheSiteId, HostTargetPlanId, Register, UnlinkedInstructionKind};
-#[cfg(any())]
-use vela_common::Diagnostic;
 use vela_common::HostTypeId;
 use vela_common::SourceId;
 use vela_common::Span;
 use vela_def::FieldId;
 use vela_host::resolved::HostMutationOp;
 use vela_host::target::HostTargetPlan;
-#[cfg(any())]
-use vela_syntax::ast::Argument;
-#[cfg(any())]
-use vela_syntax::ast::Expr;
-#[cfg(any())]
-use vela_syntax::ast::ExprKind;
-#[cfg(any())]
-use vela_syntax::ast::Literal;
-#[cfg(any())]
-use vela_syntax::ast::SyntaxExpressionKind;
 use vela_syntax::ast::{AstNode, SyntaxExpression};
 pub(super) struct HostPath<'ast> {
     pub(super) root: HostPathRoot<'ast>,
@@ -34,55 +14,16 @@ pub(super) struct HostPath<'ast> {
 }
 #[derive(Clone)]
 pub(super) enum HostPathRoot<'ast> {
-    #[cfg(any())]
-    Expr {
-        expr: &'ast Expr,
-        payload: Option<CompilerExpressionPayload<'ast>>,
-    },
-    #[cfg(any())]
-    SyntaxExpr {
-        source: SourceId,
-        expression: SyntaxExpression,
-    },
-    LocalPath {
-        name: &'ast str,
-        span: Span,
-    },
-    OwnedLocalPath {
-        name: String,
-        span: Span,
-    },
+    LocalPath { name: &'ast str, span: Span },
+    OwnedLocalPath { name: String, span: Span },
 }
 pub(super) enum HostPathPart<'ast> {
     Field(FieldId),
     VariantField(FieldId),
-    #[cfg(any())]
-    Value {
-        expr: &'ast Expr,
-        payload: Option<CompilerExpressionPayload<'ast>>,
-        dynamic_kind: DynamicHostPathPart,
-    },
     SyntaxValue {
         source: SourceId,
         expression: SyntaxExpression,
         dynamic_kind: DynamicHostPathPart,
-        _ast: std::marker::PhantomData<&'ast ()>,
-    },
-}
-#[cfg(any())]
-struct HostCollectionMethodTarget<'ast> {
-    path: HostPath<'ast>,
-    field_receiver: Option<HostCollectionFieldReceiver<'ast>>,
-}
-#[cfg(any())]
-enum HostCollectionFieldReceiver<'ast> {
-    #[cfg(any())]
-    Expr {
-        payload: Option<CompilerExpressionPayload<'ast>>,
-    },
-    Syntax {
-        source: SourceId,
-        expression: SyntaxExpression,
         _ast: std::marker::PhantomData<&'ast ()>,
     },
 }
@@ -97,176 +38,6 @@ impl HostPath<'_> {
     }
 }
 impl Compiler<'_, '_> {
-    #[cfg(any())]
-    pub(super) fn host_field_path<'ast>(&self, expr: &'ast Expr) -> Option<HostPath<'ast>> {
-        self.resolve_host_path(expr).map(|resolved| resolved.path)
-    }
-    #[cfg(any())]
-    pub(super) fn host_field_path_with_payload<'ast>(
-        &self,
-        expr: &'ast Expr,
-        payload: Option<&CompilerExpressionPayload<'ast>>,
-    ) -> Option<HostPath<'ast>> {
-        self.resolve_host_path_with_payload(expr, payload)
-            .map(|resolved| resolved.path)
-    }
-    #[cfg(any())]
-    pub(super) fn resolve_host_path_with_payload<'ast>(
-        &self,
-        expr: &'ast Expr,
-        payload: Option<&CompilerExpressionPayload<'ast>>,
-    ) -> Option<ResolvedHostPath<'ast>> {
-        self.resolve_host_path_with_owned_payload(expr, payload.cloned())
-    }
-    #[cfg(any())]
-    pub(super) fn resolve_host_path<'ast>(
-        &self,
-        expr: &'ast Expr,
-    ) -> Option<ResolvedHostPath<'ast>> {
-        match &expr.kind {
-            ExprKind::Field { base, name } => {
-                let mut receiver = self.resolve_host_path_receiver(base);
-                let field = self.host_path_field_part(receiver.type_name.as_deref(), name)?;
-                receiver.path.segments.push(field.part);
-                Some(ResolvedHostPath {
-                    path: receiver.path,
-                    type_name: field.type_hint,
-                })
-            }
-            ExprKind::Path(path) => self.host_field_path_parts(expr.span, path),
-            ExprKind::Index { base, index } => {
-                let mut receiver = self.resolve_host_path_index_receiver(base)?;
-                let dynamic_kind = receiver
-                    .type_name
-                    .as_deref()
-                    .and_then(|type_name| self.facts.options.host_index_capability(type_name))
-                    .and_then(|capability| capability.key_type.as_deref())
-                    .map_or(DynamicHostPathPart::Key, dynamic_host_path_part);
-                receiver.path.segments.push(HostPathPart::Value {
-                    expr: index,
-                    payload: None,
-                    dynamic_kind,
-                });
-                let value_type = receiver.type_name.as_deref().and_then(|type_name| {
-                    self.facts
-                        .options
-                        .host_index_capability(type_name)
-                        .and_then(|capability| capability.value_type.clone())
-                });
-                Some(ResolvedHostPath {
-                    path: receiver.path,
-                    type_name: value_type,
-                })
-            }
-            _ => None,
-        }
-    }
-    #[cfg(any())]
-    fn resolve_host_path_with_owned_payload<'ast>(
-        &self,
-        expr: &'ast Expr,
-        payload: Option<CompilerExpressionPayload<'ast>>,
-    ) -> Option<ResolvedHostPath<'ast>> {
-        let _ = expr;
-        let source = payload.as_ref()?.source()?;
-        let expression = payload.as_ref()?.syntax_expression()?;
-        match expression.expression_kind() {
-            #[cfg(any())]
-            SyntaxExpressionKind::Field => {
-                self.syntax_host_field_path_with_receiver_fallback(source, expression)
-            }
-            #[cfg(any())]
-            SyntaxExpressionKind::Path
-            | SyntaxExpressionKind::Index
-            | SyntaxExpressionKind::Paren => self.syntax_host_path(source, expression),
-            _ => None,
-        }
-    }
-    #[cfg(any())]
-    fn resolve_host_path_receiver<'ast>(&self, receiver: &'ast Expr) -> ResolvedHostPath<'ast> {
-        match &receiver.kind {
-            ExprKind::Field { .. } | ExprKind::Index { .. } => self
-                .resolve_host_path(receiver)
-                .unwrap_or_else(|| self.expr_host_path_receiver(receiver)),
-            ExprKind::Path(path) => self
-                .host_field_path_parts(receiver.span, path)
-                .or_else(|| {
-                    path.first().map(|root| ResolvedHostPath {
-                        path: HostPath {
-                            root: HostPathRoot::LocalPath {
-                                name: root,
-                                span: receiver.span,
-                            },
-                            segments: Vec::new(),
-                        },
-                        type_name: self.host_local_type_name(root, receiver.span),
-                    })
-                })
-                .unwrap_or_else(|| self.expr_host_path_receiver(receiver)),
-            _ => self.expr_host_path_receiver(receiver),
-        }
-    }
-    #[cfg(any())]
-    fn expr_host_path_receiver<'ast>(&self, receiver: &'ast Expr) -> ResolvedHostPath<'ast> {
-        ResolvedHostPath {
-            path: HostPath {
-                root: HostPathRoot::Expr {
-                    expr: receiver,
-                    payload: None,
-                },
-                segments: Vec::new(),
-            },
-            type_name: None,
-        }
-    }
-    #[cfg(any())]
-    fn resolve_host_path_index_receiver<'ast>(
-        &self,
-        receiver: &'ast Expr,
-    ) -> Option<ResolvedHostPath<'ast>> {
-        match &receiver.kind {
-            ExprKind::Field { .. } | ExprKind::Index { .. } => self.resolve_host_path(receiver),
-            ExprKind::Path(path) => self.host_field_path_parts(receiver.span, path),
-            _ => None,
-        }
-    }
-    #[cfg(any())]
-    fn resolve_host_path_index_receiver_with_payload<'ast>(
-        &self,
-        receiver: &'ast Expr,
-        payload: Option<CompilerExpressionPayload<'ast>>,
-    ) -> Option<ResolvedHostPath<'ast>> {
-        let payload = payload?;
-        self.resolve_host_path_with_owned_payload(receiver, Some(payload.clone()))
-            .or_else(|| self.host_index_payload_root_path(receiver, Some(payload)))
-    }
-    #[cfg(any())]
-    fn host_index_payload_root_path<'ast>(
-        &self,
-        receiver: &'ast Expr,
-        payload: Option<CompilerExpressionPayload<'ast>>,
-    ) -> Option<ResolvedHostPath<'ast>> {
-        let _ = receiver;
-        let payload = payload?;
-        let cst_path = payload.syntax_path_segments()?;
-        if cst_path.len() != 1 {
-            return None;
-        }
-        let type_name = self
-            .script_type_for_payload(&payload)
-            .or_else(|| self.script_type_for_expression_payload(Some(&payload)))?;
-        self.facts.options.host_index_capability(&type_name)?;
-        Some(ResolvedHostPath {
-            path: HostPath {
-                root: HostPathRoot::SyntaxExpr {
-                    source: payload.source()?,
-                    expression: payload.syntax_expression()?.clone(),
-                },
-                segments: Vec::new(),
-            },
-            type_name: Some(type_name),
-        })
-    }
     pub(super) fn host_field_path_parts<'ast>(
         &self,
         span: Span,
@@ -451,183 +222,11 @@ impl Compiler<'_, '_> {
         );
         Ok(())
     }
-    #[cfg(any())]
-    pub(super) fn host_path_push_call(
-        &mut self,
-        callee: &Expr,
-        callee_payload: Option<&CompilerExpressionPayload<'_>>,
-        args: &[Argument],
-        arg_syntax: CallArgumentSyntax<'_, '_>,
-    ) -> CompileResult<Option<Register>> {
-        let Some(target) = self.host_collection_method_target(callee, callee_payload, "push")
-        else {
-            return Ok(None);
-        };
-        let path = target.path;
-        if path.segments.is_empty() {
-            return Ok(None);
-        }
-        reject_named_args(args, "host path push")?;
-        let [arg] = args else {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "host path push arity",
-            )));
-        };
-        let root = self.compile_host_path_root(&path.root)?;
-        let value = self.compile_call_argument_value(arg, arg_syntax)?;
-        self.emit_host_mutate(root, path, HostMutationOp::Push, value, callee.span)?;
-        let dst = self.alloc_register()?;
-        self.emit_constant_to(dst, Constant::Null);
-        Ok(Some(dst))
-    }
-    #[cfg(any())]
-    pub(super) fn host_path_remove_call(
-        &mut self,
-        callee: &Expr,
-        callee_payload: Option<&CompilerExpressionPayload<'_>>,
-        args: &[Argument],
-    ) -> CompileResult<Option<Register>> {
-        let Some(target) = self.host_collection_method_target(callee, callee_payload, "remove")
-        else {
-            return Ok(None);
-        };
-        let path = target.path;
-        if path.segments.is_empty() {
-            return Ok(None);
-        }
-        reject_named_args(args, "host path remove")?;
-        if !args.is_empty() {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "host path remove arity",
-            )));
-        }
-        if let Some(base) = target.field_receiver {
-            self.reject_terminal_host_index_receiver_access(base, HostIndexAccessKind::Remove)?;
-        }
-        let root = self.compile_host_path_root(&path.root)?;
-        self.emit_host_remove(root, path, callee.span)?;
-        let dst = self.alloc_register()?;
-        self.emit_constant_to(dst, Constant::Null);
-        Ok(Some(dst))
-    }
-    #[cfg(any())]
-    fn host_collection_method_target<'ast>(
-        &self,
-        callee: &'ast Expr,
-        callee_payload: Option<&CompilerExpressionPayload<'ast>>,
-        method: &str,
-    ) -> Option<HostCollectionMethodTarget<'ast>> {
-        if let Some(payload) = callee_payload {
-            return match payload.syntax_kind() {
-                Some(SyntaxExpressionKind::Field) | None => {
-                    if payload.syntax_field_name()?.as_str() != method {
-                        return None;
-                    }
-                    let base_payload = payload.field_base_payload()?;
-                    let source = base_payload.source()?;
-                    let expression = base_payload.syntax_expression()?.clone();
-                    let path = self.syntax_host_field_path(source, &expression)?.path;
-                    Some(HostCollectionMethodTarget {
-                        path,
-                        field_receiver: Some(HostCollectionFieldReceiver::Syntax {
-                            source,
-                            expression,
-                            _ast: std::marker::PhantomData,
-                        }),
-                    })
-                }
-                Some(SyntaxExpressionKind::Path) => {
-                    let parts = payload.syntax_path_segments()?;
-                    if parts.last().is_none_or(|name| name != method) {
-                        return None;
-                    }
-                    let span = payload.syntax_span()?;
-                    self.owned_host_field_path_parts(span, &parts[..parts.len() - 1])
-                        .map(|resolved| HostCollectionMethodTarget {
-                            path: resolved.path,
-                            field_receiver: None,
-                        })
-                }
-                Some(_) => None,
-            };
-        }
-        #[cfg(any())]
-        {
-            match &callee.kind {
-                ExprKind::Field { base, name } if name == method => {
-                    self.host_field_path(base)
-                        .map(|path| HostCollectionMethodTarget {
-                            path,
-                            field_receiver: Some(HostCollectionFieldReceiver::Expr {
-                                payload: None,
-                            }),
-                        })
-                }
-                ExprKind::Path(parts) if parts.last().is_some_and(|name| name == method) => self
-                    .host_field_path_parts(callee.span, &parts[..parts.len() - 1])
-                    .map(|resolved| HostCollectionMethodTarget {
-                        path: resolved.path,
-                        field_receiver: None,
-                    }),
-                _ => None,
-            }
-        }
-        #[cfg(not(test))]
-        {
-            let _ = callee;
-            None
-        }
-    }
-    #[cfg(any())]
-    fn reject_terminal_host_index_receiver_access(
-        &self,
-        receiver: HostCollectionFieldReceiver<'_>,
-        kind: HostIndexAccessKind,
-    ) -> CompileResult<()> {
-        match receiver {
-            #[cfg(any())]
-            HostCollectionFieldReceiver::Expr { payload } => {
-                self.reject_terminal_host_index_access(payload.as_ref(), kind)
-            }
-            HostCollectionFieldReceiver::Syntax {
-                source, expression, ..
-            } => {
-                self.reject_invalid_syntax_host_index_access(source, &expression, &expression, kind)
-            }
-        }
-    }
-    #[cfg(any())]
-    pub(in crate::compiler) fn host_collection_method_target_root_name_for_test<'ast>(
-        &self,
-        callee: &'ast Expr,
-        callee_payload: Option<&CompilerExpressionPayload<'ast>>,
-        method: &str,
-    ) -> Option<String> {
-        let target = self.host_collection_method_target(callee, callee_payload, method)?;
-        match target.path.root {
-            HostPathRoot::Expr { .. } => Some("<expr>".to_owned()),
-            HostPathRoot::SyntaxExpr { .. } => Some("<expr>".to_owned()),
-            HostPathRoot::LocalPath { name, .. } => Some(name.to_owned()),
-            HostPathRoot::OwnedLocalPath { name, .. } => Some(name),
-        }
-    }
     pub(super) fn compile_host_path_root<'expr>(
         &mut self,
         root: &HostPathRoot<'expr>,
     ) -> CompileResult<Register> {
         match root {
-            #[cfg(any())]
-            HostPathRoot::Expr { expr, payload } => {
-                self.compile_expr_with_payload(expr, payload.as_ref())
-            }
-            #[cfg(any())]
-            HostPathRoot::SyntaxExpr { source, expression } => self
-                .compile_syntax_expression(*source, expression)?
-                .ok_or_else(|| {
-                    CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "host path syntax expression root",
-                    ))
-                }),
             HostPathRoot::LocalPath { name, span } => self.local_register_at_span(*span, name),
             HostPathRoot::OwnedLocalPath { name, span } => self.local_register_at_span(*span, name),
         }
@@ -646,31 +245,6 @@ impl Compiler<'_, '_> {
                 }
                 HostPathPart::VariantField(field) => {
                     plan = plan.variant_field(field);
-                }
-                #[cfg(any())]
-                HostPathPart::Value {
-                    expr,
-                    payload,
-                    dynamic_kind,
-                } => {
-                    if let Some(arg) = const_host_path_arg_with_payload(payload.as_ref()) {
-                        plan = match arg {
-                            ConstHostPathArg::Index(index) => plan.const_index(index),
-                            ConstHostPathArg::Key(key) => plan.const_key(key),
-                        };
-                        continue;
-                    }
-                    let arg = u8::try_from(dynamic_args.len()).map_err(|_| {
-                        CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "host path dynamic argument count",
-                        ))
-                    })?;
-                    let register = self.compile_expr_with_payload(expr, payload.as_ref())?;
-                    dynamic_args.push(register);
-                    plan = match dynamic_kind {
-                        DynamicHostPathPart::Index => plan.dyn_index(arg),
-                        DynamicHostPathPart::Key => plan.dyn_key(arg),
-                    };
                 }
                 HostPathPart::SyntaxValue {
                     source,
@@ -710,29 +284,9 @@ impl Compiler<'_, '_> {
     }
     fn host_path_root_type_name(&self, root: HostPathRoot<'_>) -> Option<String> {
         match root {
-            #[cfg(any())]
-            HostPathRoot::Expr {
-                payload: Some(payload),
-                ..
-            } => self
-                .script_type_for_payload(&payload)
-                .or_else(|| self.script_type_for_expression_payload(Some(&payload))),
-            #[cfg(any())]
-            HostPathRoot::Expr { payload: None, .. } => None,
-            #[cfg(any())]
-            HostPathRoot::SyntaxExpr { source, expression } => self
-                .script_fact_for_syntax_expression(source, &expression)
-                .map(|fact| fact.type_name),
             HostPathRoot::LocalPath { name, span } => self.host_local_type_name(name, span),
             HostPathRoot::OwnedLocalPath { name, span } => self.host_local_type_name(&name, span),
         }
-    }
-    #[cfg(any())]
-    pub(in crate::compiler) fn host_path_root_type_name_for_test(
-        &self,
-        root: HostPathRoot<'_>,
-    ) -> Option<String> {
-        self.host_path_root_type_name(root)
     }
     pub(super) fn host_local_type_name(&self, name: &str, span: Span) -> Option<String> {
         self.script_types
@@ -828,37 +382,6 @@ impl Compiler<'_, '_> {
         resolved.type_name = field.type_hint;
         Some(resolved)
     }
-    #[cfg(any())]
-    fn syntax_host_field_path_with_receiver_fallback(
-        &self,
-        source: SourceId,
-        expression: &SyntaxExpression,
-    ) -> Option<ResolvedHostPath<'static>> {
-        if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
-            return self.syntax_host_field_path_with_receiver_fallback(source, &inner);
-        }
-        let field = expression.as_field()?;
-        let receiver = field.receiver()?;
-        let name = field.name_text()?;
-        let mut resolved =
-            self.syntax_host_path(source, &receiver)
-                .unwrap_or_else(|| ResolvedHostPath {
-                    path: HostPath {
-                        root: HostPathRoot::SyntaxExpr {
-                            source,
-                            expression: receiver.clone(),
-                        },
-                        segments: Vec::new(),
-                    },
-                    type_name: self
-                        .script_fact_for_syntax_expression(source, &receiver)
-                        .map(|fact| fact.type_name),
-                });
-        let field = self.host_path_field_part(resolved.type_name.as_deref(), &name)?;
-        resolved.path.segments.push(field.part);
-        resolved.type_name = field.type_hint;
-        Some(resolved)
-    }
     pub(in crate::compiler) fn syntax_host_field_path(
         &self,
         source: SourceId,
@@ -866,152 +389,6 @@ impl Compiler<'_, '_> {
     ) -> Option<ResolvedHostPath<'static>> {
         self.syntax_host_path(source, expression)
     }
-    #[cfg(any())]
-    pub(in crate::compiler) fn syntax_host_method_receiver(
-        &self,
-        source: SourceId,
-        expression: &SyntaxExpression,
-    ) -> ResolvedHostPath<'static> {
-        self.syntax_host_path(source, expression)
-            .unwrap_or_else(|| ResolvedHostPath {
-                path: HostPath {
-                    root: HostPathRoot::SyntaxExpr {
-                        source,
-                        expression: expression.clone(),
-                    },
-                    segments: Vec::new(),
-                },
-                type_name: self
-                    .script_fact_for_syntax_expression(source, expression)
-                    .map(|fact| fact.type_name),
-            })
-    }
-    #[cfg(any())]
-    pub(in crate::compiler) fn reject_invalid_host_index_access_with_payload(
-        &self,
-        expr: &Expr,
-        base: &Expr,
-        index: &Expr,
-        kind: HostIndexAccessKind,
-        base_payload: Option<&CompilerExpressionPayload<'_>>,
-        index_payload: Option<&CompilerExpressionPayload<'_>>,
-    ) -> CompileResult<()> {
-        let Some(receiver_type) = self.host_index_receiver_type_name(base, base_payload) else {
-            return Ok(());
-        };
-        let Some(capability) = self.facts.options.host_index_capability(&receiver_type) else {
-            return Err(host_index_diagnostic_error(
-                Diagnostic::error(format!(
-                    "type `{receiver_type}` does not support host index access"
-                ))
-                .with_code("analysis::host_index_not_supported")
-                .with_span(expr.span)
-                .with_label(
-                    expr.span,
-                    "host index access is not registered for this type",
-                )
-                .with_label(
-                    base.span,
-                    "register a host index capability or expose a field/method instead",
-                ),
-            ));
-        };
-        if !kind.allowed_by(capability) {
-            return Err(host_index_diagnostic_error(
-                Diagnostic::error(format!(
-                    "type `{receiver_type}` does not allow host index {}",
-                    kind.access_name()
-                ))
-                .with_code(kind.denied_code())
-                .with_span(expr.span)
-                .with_label(expr.span, kind.capability_label())
-                .with_label(base.span, kind.enable_label()),
-            ));
-        }
-        if let Some(expected) = capability.key_type.as_deref()
-            && let Some(actual) = self.value_type_for_expression_payload(index_payload)
-            && actual.source_type_name() != expected
-            && actual.std_type_name() != expected
-        {
-            return Err(host_index_diagnostic_error(
-                Diagnostic::error(format!(
-                    "host index key for `{receiver_type}` must be `{expected}`"
-                ))
-                .with_code("analysis::host_index_key_mismatch")
-                .with_span(expr.span)
-                .with_label(
-                    index.span,
-                    format!("index expression has type `{}`", actual.source_type_name()),
-                ),
-            ));
-        }
-        Ok(())
-    }
-    #[cfg(any())]
-    pub(in crate::compiler) fn reject_invalid_host_index_read_with_payload(
-        &self,
-        expr: &Expr,
-        base: &Expr,
-        index: &Expr,
-        base_payload: Option<&CompilerExpressionPayload<'_>>,
-        index_payload: Option<&CompilerExpressionPayload<'_>>,
-    ) -> CompileResult<()> {
-        self.reject_invalid_host_index_access_with_payload(
-            expr,
-            base,
-            index,
-            HostIndexAccessKind::Read,
-            base_payload,
-            index_payload,
-        )
-    }
-    #[cfg(any())]
-    pub(in crate::compiler) fn reject_terminal_host_index_access(
-        &self,
-        payload: Option<&CompilerExpressionPayload<'_>>,
-        kind: HostIndexAccessKind,
-    ) -> CompileResult<()> {
-        if let Some(payload) = payload {
-            return match payload.syntax_kind() {
-                Some(SyntaxExpressionKind::Index) => {
-                    let Some(source) = payload.source() else {
-                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "mismatched CST host index receiver payload",
-                        )));
-                    };
-                    let Some(expression) = payload.syntax_expression() else {
-                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "mismatched CST host index receiver payload",
-                        )));
-                    };
-                    self.reject_invalid_syntax_host_index_access(
-                        source, expression, expression, kind,
-                    )
-                }
-                Some(_) | None => Ok(()),
-            };
-        }
-        Ok(())
-    }
-    #[cfg(any())]
-    fn host_index_receiver_type_name(
-        &self,
-        receiver: &Expr,
-        payload: Option<&CompilerExpressionPayload<'_>>,
-    ) -> Option<String> {
-        self.resolve_host_path_index_receiver_with_payload(receiver, payload.cloned())
-            .and_then(|resolved| resolved.type_name)
-            .or_else(|| {
-                let type_name = payload
-                    .and_then(|payload| self.script_type_for_payload(payload))
-                    .or_else(|| self.script_type_for_expression_payload(payload))?;
-                self.host_runtime_type_id(&type_name).map(|_| type_name)
-            })
-    }
-}
-#[cfg(any())]
-fn host_index_diagnostic_error(diagnostic: Diagnostic) -> CompileError {
-    CompileError::new(CompileErrorKind::SemanticDiagnostics(vec![diagnostic]))
 }
 pub(super) struct ResolvedHostPath<'ast> {
     pub(super) path: HostPath<'ast>,
@@ -1025,12 +402,6 @@ struct ResolvedHostPathField {
 pub(super) struct CompiledHostTarget {
     pub(super) target: HostTargetPlanId,
     pub(super) dynamic_args: Vec<Register>,
-}
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg(any())]
-enum ConstHostPathArg {
-    Index(u32),
-    Key(String),
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum HostIndexAccessKind {
@@ -1082,26 +453,6 @@ impl HostIndexAccessKind {
             Self::Mutate => "enable addable host index access for this type",
             Self::Remove => "enable removable host index access for this type",
         }
-    }
-}
-#[cfg(any())]
-fn const_host_path_arg_with_payload(
-    payload: Option<&CompilerExpressionPayload<'_>>,
-) -> Option<ConstHostPathArg> {
-    payload
-        .and_then(CompilerExpressionPayload::syntax_literal)
-        .and_then(|literal| const_host_path_arg_from_literal(&literal))
-}
-#[cfg(any())]
-fn const_host_path_arg_from_literal(literal: &Literal) -> Option<ConstHostPathArg> {
-    match literal {
-        Literal::Integer(value) if value.suffix.is_none() => value
-            .source_text()
-            .parse::<u32>()
-            .ok()
-            .map(ConstHostPathArg::Index),
-        Literal::String(value) => Some(ConstHostPathArg::Key(value.clone())),
-        _ => None,
     }
 }
 fn dynamic_host_path_part(key_type: &str) -> DynamicHostPathPart {

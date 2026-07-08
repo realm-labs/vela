@@ -291,16 +291,3 @@ fn function_id_for_path(package: &str, name: &str) -> FunctionId {
     let function = segments.pop().unwrap_or(name);
     FunctionId::from_def_id(DefPath::function(package, segments, function).id())
 }
-
-#[cfg(any())]
-fn reject_named_call_args(
-    arg_syntax: CallArgumentSyntax<'_, '_>,
-    context: &'static str,
-) -> CompileResult<()> {
-    if arg_syntax.has_named_args() {
-        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            context,
-        )));
-    }
-    Ok(())
-}

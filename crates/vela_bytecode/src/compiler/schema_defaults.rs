@@ -4,8 +4,6 @@ use vela_common::{Diagnostic, SourceId, Span};
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
-#[cfg(any())]
-use vela_syntax::ast::{Argument, RecordField};
 use vela_syntax::ast::{AstNode, SyntaxExpression};
 
 use crate::Constant;
@@ -344,25 +342,6 @@ fn schema_field_default(
     }
 }
 
-#[cfg(any())]
-pub(super) fn record_constructor_diagnostics(
-    type_name: &str,
-    shape: Option<&ConstructorShape>,
-    fields: &[RecordField],
-    field_names: Option<&[Option<String>]>,
-    constructor_span: Span,
-) -> Vec<Diagnostic> {
-    let fields = fields
-        .iter()
-        .enumerate()
-        .map(|(index, field)| ConstructorFieldUse {
-            name: record_field_name(field_names, index, field).to_owned(),
-            span: field.span,
-        })
-        .collect::<Vec<_>>();
-    record_constructor_field_diagnostics(type_name, shape, &fields, constructor_span)
-}
-
 pub(super) fn record_constructor_field_diagnostics(
     type_name: &str,
     shape: Option<&ConstructorShape>,
@@ -402,25 +381,6 @@ pub(super) fn record_constructor_field_diagnostics(
     diagnostics
 }
 
-#[cfg(any())]
-pub(super) fn tuple_constructor_diagnostics(
-    type_name: &str,
-    variant: &str,
-    shape: Option<&ConstructorShape>,
-    args: &[Argument],
-    arg_names: Option<&[Option<String>]>,
-    constructor_span: Span,
-) -> Vec<Diagnostic> {
-    let Some(shape) = shape else {
-        return Vec::new();
-    };
-    let owner = format!("{type_name}::{variant}");
-    match resolve_tuple_constructor_arguments(shape, &owner, args, arg_names, constructor_span) {
-        Ok(_) => Vec::new(),
-        Err(diagnostics) => diagnostics,
-    }
-}
-
 pub(super) fn syntax_tuple_constructor_diagnostics(
     type_name: &str,
     variant: &str,
@@ -435,67 +395,6 @@ pub(super) fn syntax_tuple_constructor_diagnostics(
     match resolve_syntax_tuple_constructor_arguments(shape, &owner, args, constructor_span) {
         Ok(_) => Vec::new(),
         Err(diagnostics) => diagnostics,
-    }
-}
-
-#[cfg(any())]
-pub(super) fn resolve_tuple_constructor_arguments<'ast>(
-    shape: &ConstructorShape,
-    owner: &str,
-    args: &'ast [Argument],
-    arg_names: Option<&[Option<String>]>,
-    constructor_span: Span,
-) -> Result<Vec<Option<&'ast Argument>>, Vec<Diagnostic>> {
-    let mut diagnostics = Vec::new();
-    let mut slots = vec![None; shape.len()];
-    let mut slot_spans = vec![None; shape.len()];
-    let mut next_positional = 0_usize;
-    let mut seen_named = false;
-
-    for (arg_index, arg) in args.iter().enumerate() {
-        let arg_span = arg.value.span;
-        let arg_name = arg_names
-            .and_then(|names| names.get(arg_index))
-            .and_then(|name| name.as_deref())
-            .or(arg.name.as_deref());
-        let Some(index) = tuple_argument_index(
-            shape,
-            arg_name,
-            arg_span,
-            &mut next_positional,
-            &mut seen_named,
-            &mut diagnostics,
-            owner,
-        ) else {
-            continue;
-        };
-
-        if let Some(previous_span) = slot_spans[index] {
-            diagnostics.push(duplicate_constructor_field_diagnostic(
-                shape.fields[index].argument_name.as_str(),
-                previous_span,
-                arg_span,
-            ));
-            continue;
-        }
-        slots[index] = Some(arg);
-        slot_spans[index] = Some(arg_span);
-    }
-
-    for (slot, field) in slots.iter().zip(&shape.fields) {
-        if slot.is_none() && field.default.is_none() {
-            diagnostics.push(missing_field_diagnostic(
-                owner,
-                &field.argument_name,
-                constructor_span,
-            ));
-        }
-    }
-
-    if diagnostics.is_empty() {
-        Ok(slots)
-    } else {
-        Err(diagnostics)
     }
 }
 
@@ -577,21 +476,6 @@ fn duplicate_record_field_diagnostics(fields: &[ConstructorFieldUse]) -> Vec<Dia
         }
     }
     diagnostics
-}
-
-#[cfg(any())]
-fn record_field_name<'field>(
-    field_names: Option<&'field [Option<String>]>,
-    index: usize,
-    field: &'field RecordField,
-) -> &'field str {
-    let Some(field_names) = field_names else {
-        return field.name.as_str();
-    };
-    field_names
-        .get(index)
-        .and_then(|name| name.as_deref())
-        .unwrap_or("")
 }
 
 fn tuple_argument_index(

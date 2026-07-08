@@ -10,7 +10,6 @@ mod control_flow;
 pub mod error;
 mod expected_exprs;
 mod expression_checks;
-mod expression_facts;
 mod expressions;
 mod field_slots;
 mod function_payloads;
@@ -42,10 +41,6 @@ use vela_hir::module_graph::ModulePath;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModuleSource};
 use vela_hir::type_hint::{FunctionSignature, HirTypeHint, ParamHint};
 use vela_registry::RegistryCompileView;
-#[cfg(any())]
-use vela_syntax::ast::Argument;
-#[cfg(any())]
-use vela_syntax::ast::SyntaxExpressionKind;
 
 use crate::{
     Constant, FrameSlotInfo, FrameSlotKind, GuardKind, GuardLocation, InstructionOffset, Register,
@@ -53,8 +48,6 @@ use crate::{
     UnlinkedProgram, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
 };
 use body_payloads::CompilerBodyPayload;
-#[cfg(any())]
-use body_payloads::CompilerExpressionPayload;
 use cache_sites::{attach_cache_site, cache_site_kind};
 use control_flow::LoopContext;
 use error::{CompileError, CompileErrorKind, CompileResult};
@@ -62,8 +55,6 @@ use field_slots::ScriptFieldSlots;
 use lambdas::{LambdaCapture, LambdaParam};
 use options::CompilerOptions;
 use param_defaults::ParamDefaultValue;
-#[cfg(any())]
-use patterns::enum_variant_path;
 use record_shapes::ValueShapeFlow;
 use schema_defaults::ScriptSchemaDefaults;
 use script_types::{ScriptTypeFlow, type_hint_script_type};
@@ -1005,17 +996,6 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         Ok(())
     }
 
-    #[cfg(any())]
-    fn tuple_enum_constructor_call_at_span(
-        &self,
-        callee_path: &[String],
-        callee_span: Span,
-    ) -> Option<(String, String)> {
-        let (_, variant) = enum_variant_path(callee_path)?;
-        let enum_name = self.type_symbol_at_span(callee_span)?;
-        Some((enum_name, variant))
-    }
-
     fn script_function_call_at_span(&self, callee_span: Span) -> Option<(HirDeclId, String)> {
         let Some(BindingResolution::Declaration(declaration)) =
             self.bindings.resolution_at_span(callee_span)
@@ -1071,56 +1051,8 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             })
     }
 
-    #[cfg(any())]
-    fn host_method_receiver_type(
-        &self,
-        callee_payload: Option<&CompilerExpressionPayload<'_>>,
-    ) -> Option<String> {
-        let payload = callee_payload?;
-        match payload.syntax_kind()? {
-            SyntaxExpressionKind::Field => {
-                let base = payload.field_base_payload()?;
-                self.script_type_for_payload(&base)
-            }
-            SyntaxExpressionKind::Path => {
-                let path = payload.syntax_path_segments()?;
-                let [receiver, _method] = path.as_slice() else {
-                    return None;
-                };
-                self.script_types.name(receiver).or_else(|| {
-                    payload
-                        .syntax_span()
-                        .and_then(|span| self.global_type_at_span(span))
-                })
-            }
-            _ => None,
-        }
-    }
-
     fn script_record_field_slot_for_type(&self, type_name: &str, field: &str) -> Option<usize> {
         self.facts.script_field_slots.record(type_name, field)
-    }
-
-    #[cfg(any())]
-    fn script_type_for_receiver_path(&self, receiver_path: &[String]) -> Option<String> {
-        let [receiver] = receiver_path else {
-            return None;
-        };
-        self.script_types.name(receiver)
-    }
-
-    #[cfg(any())]
-    fn value_type_for_receiver_path(&self, receiver_path: &[String]) -> Option<RuntimeTypeFact> {
-        let [receiver] = receiver_path else {
-            let (field, prefix) = receiver_path.split_last()?;
-            let root = prefix.first()?;
-            let mut shape = self.value_shapes.name(root)?.as_record().cloned()?;
-            for segment in prefix.iter().skip(1) {
-                shape = shape.field_record_shape(segment)?.clone();
-            }
-            return shape.field_value_type(field);
-        };
-        self.value_types.name(receiver)
     }
 
     fn script_method_id_for_type(&self, type_name: &str, method: &str) -> Option<MethodId> {
@@ -1140,11 +1072,6 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
     fn host_type_id_for_name(&self, type_name: &str) -> Option<TypeId> {
         let registry = self.facts.registry?;
         registry.resolve_type(&DefPath::ty("host", std::iter::empty::<&str>(), type_name))
-    }
-
-    #[cfg(any())]
-    pub(super) fn is_native_module_root(&self, root: &str) -> bool {
-        self.facts.options.is_native_module_root(root)
     }
 
     pub(super) fn host_runtime_type_id(&self, type_name: &str) -> Option<HostTypeId> {
@@ -1402,16 +1329,6 @@ fn param_default_flags(signature: &FunctionSignature) -> Vec<bool> {
         .iter()
         .map(|param| param.default_value_span.is_some())
         .collect()
-}
-
-#[cfg(any())]
-fn reject_named_args(args: &[Argument], context: &'static str) -> CompileResult<()> {
-    if args.iter().any(|arg| arg.name.is_some()) {
-        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            context,
-        )));
-    }
-    Ok(())
 }
 
 #[cfg(test)]

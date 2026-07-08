@@ -2,75 +2,16 @@ use std::collections::BTreeMap;
 
 use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_syntax::SyntaxKind;
-#[cfg(any())]
-use vela_syntax::ast::Expr;
 use vela_syntax::ast::{
     AstNode, BinaryOp, Literal, SyntaxArgument, SyntaxExpression, SyntaxExpressionKind,
 };
 
 use crate::compiler::Compiler;
-#[cfg(any())]
-use crate::compiler::body_payloads::CompilerExpressionPayload;
-#[cfg(any())]
-use crate::compiler::expression_facts::{
-    expression_facts, payload_stored_kind_matches_expression_facts,
-};
 use crate::compiler::value_types::{RuntimeTypeFact, StandardRuntimeType};
 
 use super::{RecordFieldShape, RecordShape, ValueShape, common_shape, record_reflection_shapes};
 
-#[cfg(any())]
-pub(super) fn field_payload_parts<'ast>(
-    name: &str,
-    payload: Option<&CompilerExpressionPayload<'ast>>,
-) -> Option<(String, Option<CompilerExpressionPayload<'ast>>)> {
-    match payload {
-        Some(payload) => Some((
-            payload.syntax_field_name()?,
-            Some(payload.field_base_payload()?),
-        )),
-        None => Some((name.to_owned(), None)),
-    }
-}
-
-#[cfg(any())]
-pub(super) fn payload_matches_shape_expression(
-    payload: &CompilerExpressionPayload<'_>,
-    expr: &Expr,
-) -> bool {
-    if payload.source().is_none() {
-        return false;
-    }
-    let facts = expression_facts(expr);
-    if payload.stored_syntax_kind().is_some() && facts.kind().is_none() {
-        return false;
-    }
-    payload_stored_kind_matches_expression_facts(payload, facts, true)
-}
-
-#[cfg(any())]
-pub(super) fn payload_shape_must_come_from_syntax(
-    payload: Option<&CompilerExpressionPayload<'_>>,
-) -> bool {
-    let Some(payload) = payload else {
-        return false;
-    };
-    matches!(
-        payload.syntax_binary_operator(),
-        Some(BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem)
-    ) || payload.syntax_call_callee_path_segments().is_some()
-        || payload.syntax_record_path_segments().is_some()
-}
-
 impl Compiler<'_, '_> {
-    #[cfg(any())]
-    pub(super) fn value_shape_for_syntax_payload(
-        &self,
-        payload: &CompilerExpressionPayload<'_>,
-    ) -> Option<ValueShape> {
-        self.value_shape_for_syntax_expression(payload.source(), payload.syntax_expression()?)
-    }
-
     pub(in crate::compiler) fn record_shape_for_syntax_expression(
         &self,
         source: Option<SourceId>,
