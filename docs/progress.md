@@ -157,7 +157,10 @@ stored by `HirExprId` and `HirPatternId`, with range queries projecting
 through HIR expression/pattern source lookup instead of owning a parallel
 range-keyed fact map. The bytecode compiler now receives HIR body
 origins for its current syntax payloads and resolves local/declaration facts
-through HIR expression identity rather than `BindingMap` span scans. HIR lambda
+through HIR expression identity rather than `BindingMap` span scans. Function
+body statement payloads now read root statement order and statement kinds from
+`HirBody`/`HirStmtId`, with `for` body statements owned by nested HIR blocks
+instead of leaking into the enclosing root block. HIR lambda
 bodies now record transitive capture chains for nested lambdas, and bytecode
 lambda capture and parameter setup reads `HirBody::captures` and
 `HirBody::params` instead of walking lambda body syntax or re-finding

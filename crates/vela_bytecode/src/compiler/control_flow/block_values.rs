@@ -36,7 +36,7 @@ impl Compiler<'_, '_> {
         body: &CompilerBodyPayload<'_>,
         dst: Register,
     ) -> CompileResult<bool> {
-        let statements = body.statement_payloads();
+        let statements = body.statement_payloads()?;
         self.compile_block_payload_value_to_from_statements(body, dst, &statements)
     }
 

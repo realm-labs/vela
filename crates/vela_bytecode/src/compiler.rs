@@ -1006,7 +1006,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn compile(mut self) -> CompileResult<UnlinkedCodeObject> {
         self.compile_param_defaults()?;
-        let statements = self.body.statement_payloads();
+        let statements = self.body.statement_payloads()?;
         let returned = self.compile_statement_payloads(&statements)?;
         if !returned {
             let unit = self.emit_constant(Constant::Unit)?;

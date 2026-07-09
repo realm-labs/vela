@@ -722,6 +722,24 @@ fn main(values, state) {
     let bindings = graph.bindings(main).expect("main bindings");
     let body = graph.function_body(main).expect("main body");
 
+    let HirBodyRoot::Block(root_block) = body.root else {
+        panic!("expected function body root block");
+    };
+    let root_block = body.blocks.get(&root_block).expect("root block");
+    assert_eq!(
+        root_block.statements.len(),
+        4,
+        "root block should own only top-level function statements"
+    );
+    assert!(body.blocks.values().any(|block| {
+        block.id != root_block.id
+            && block.statements.iter().any(|statement| {
+                body.statements
+                    .get(statement)
+                    .is_some_and(|statement| statement.kind == HirStmtKind::Let)
+            })
+    }));
+
     assert!(body.root_scope.is_some());
     assert!(
         body.scopes

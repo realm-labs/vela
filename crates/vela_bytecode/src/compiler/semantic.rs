@@ -65,8 +65,14 @@ impl SemanticSource {
         let metadata = self.graph.declaration(declaration)?;
         let signature = self.graph.function_signature(declaration)?;
         let bindings = self.graph.bindings(declaration)?;
-        let payload =
-            function_body_payload(self.source, &self.syntax, metadata.name.as_str(), signature)?;
+        let hir_body = self.graph.function_body(declaration)?;
+        let payload = function_body_payload(
+            self.source,
+            &self.syntax,
+            metadata.name.as_str(),
+            signature,
+            hir_body,
+        )?;
         Some((payload, signature, bindings, self.graph.bodies().collect()))
     }
 
@@ -237,7 +243,9 @@ impl SemanticModules {
         let bindings = self.graph.bindings(declaration)?;
         let syntax = self.syntax.get(&metadata.module)?;
         let source = self.source_ids.get(&metadata.module).copied()?;
-        let payload = function_body_payload(source, syntax, metadata.name.as_str(), signature)?;
+        let hir_body = self.graph.function_body(declaration)?;
+        let payload =
+            function_body_payload(source, syntax, metadata.name.as_str(), signature, hir_body)?;
         Some((payload, signature, bindings, self.graph.bodies().collect()))
     }
 
@@ -491,13 +499,17 @@ fn function_body_payload<'ast>(
     syntax: &SyntaxParse<SyntaxSourceFile>,
     name: &str,
     signature: &FunctionSignature,
+    hir_body: &'ast HirBody,
 ) -> Option<FunctionBodyPayload<'ast>> {
     let syntax_function = syntax
         .tree()
         .functions()
         .find(|function| function.name_text().as_deref() == Some(name))?;
-    let body =
-        super::body_payloads::CompilerBodyPayload::nested_syntax(source, syntax_function.body()?);
+    let body = super::body_payloads::CompilerBodyPayload::hir_body(
+        source,
+        syntax_function.body()?,
+        hir_body,
+    );
     let param_defaults = function_param_defaults(source, syntax_function.param_list(), signature);
     Some(FunctionBodyPayload {
         name: name.to_owned(),

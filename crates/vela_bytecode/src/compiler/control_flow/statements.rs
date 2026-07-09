@@ -23,7 +23,7 @@ impl Compiler<'_, '_> {
         if body.syntax_statements_are_empty() {
             return Ok(false);
         }
-        let statements = body.statement_payloads();
+        let statements = body.statement_payloads()?;
         self.compile_statement_payloads(&statements)
     }
 

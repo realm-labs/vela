@@ -1,10 +1,13 @@
 use std::marker::PhantomData;
 
 use vela_common::{SourceId, Span};
+use vela_hir::body::{HirBody, HirBodyRoot, HirStmt, HirStmtKind};
 use vela_syntax::ast::{
     AstNode, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxForStmt, SyntaxIfExpr,
     SyntaxMatchExpr, SyntaxPattern, SyntaxStatement, SyntaxStatementKind,
 };
+
+use crate::compiler::{CompileError, CompileErrorKind, CompileResult};
 
 mod simple_values;
 
@@ -26,12 +29,14 @@ pub(super) struct SyntaxBodyPayload {
 #[derive(Clone)]
 pub(super) struct CompilerBodyPayload<'ast> {
     syntax: SyntaxBodyPayload,
+    hir_body: Option<&'ast HirBody>,
     _ast: PhantomData<&'ast ()>,
 }
 
 pub(super) struct CompilerStatementPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxStatement>,
+    hir_kind: Option<HirStmtKind>,
     _ast: PhantomData<&'ast ()>,
 }
 
@@ -48,18 +53,35 @@ impl<'ast> CompilerBodyPayload<'ast> {
     pub(super) fn nested_syntax(source: SourceId, body: SyntaxBlock) -> Self {
         Self {
             syntax: SyntaxBodyPayload { source, body },
+            hir_body: None,
             _ast: PhantomData,
         }
     }
 
-    pub(super) fn statement_payloads(&self) -> Vec<CompilerStatementPayload<'ast>> {
-        syntax_body_statements(&self.syntax.body)
+    pub(super) fn hir_body(source: SourceId, body: SyntaxBlock, hir_body: &'ast HirBody) -> Self {
+        Self {
+            syntax: SyntaxBodyPayload { source, body },
+            hir_body: Some(hir_body),
+            _ast: PhantomData,
+        }
+    }
+
+    pub(super) fn statement_payloads(&self) -> CompileResult<Vec<CompilerStatementPayload<'ast>>> {
+        if let Some(hir_body) = self.hir_body {
+            return hir_body_statements(hir_body, self.syntax.source, &self.syntax.body);
+        }
+        Ok(syntax_body_statements(&self.syntax.body)
             .into_iter()
             .map(|syntax| CompilerStatementPayload::new_syntax(self.syntax.source, syntax))
-            .collect()
+            .collect())
     }
 
     pub(super) fn syntax_statements_are_empty(&self) -> bool {
+        if let Some(hir_body) = self.hir_body
+            && let Some(statement_ids) = hir_body_root_statement_ids(hir_body)
+        {
+            return statement_ids.is_empty();
+        }
         syntax_body_statements(&self.syntax.body).is_empty()
     }
 
@@ -79,6 +101,60 @@ impl<'ast> CompilerBodyPayload<'ast> {
             CompilerBlockValue::Statements(statements)
         }
     }
+}
+
+fn hir_body_statements<'ast>(
+    hir_body: &'ast HirBody,
+    source: SourceId,
+    body: &SyntaxBlock,
+) -> CompileResult<Vec<CompilerStatementPayload<'ast>>> {
+    let syntax_statements = syntax_body_statements(body);
+    let statement_ids = hir_body_root_statement_ids(hir_body).ok_or_else(|| {
+        CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "HIR function body root block",
+        ))
+    })?;
+    statement_ids
+        .iter()
+        .map(|statement| {
+            let statement = hir_body.statements.get(statement).ok_or_else(|| {
+                CompileError::new(CompileErrorKind::UnsupportedSyntax("HIR statement"))
+            })?;
+            let syntax = syntax_statement_for_hir(source, statement, &syntax_statements)
+                .ok_or_else(|| {
+                    CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "HIR statement source origin",
+                    ))
+                    .with_span(statement.origin.span)
+                })?;
+            Ok(CompilerStatementPayload::new_hir_syntax(
+                source, syntax, statement,
+            ))
+        })
+        .collect()
+}
+
+fn hir_body_root_statement_ids(hir_body: &HirBody) -> Option<&[vela_hir::ids::HirStmtId]> {
+    let HirBodyRoot::Block(block) = hir_body.root else {
+        return None;
+    };
+    Some(hir_body.blocks.get(&block)?.statements.as_slice())
+}
+
+fn syntax_statement_for_hir(
+    source: SourceId,
+    statement: &HirStmt,
+    syntax_statements: &[SyntaxStatement],
+) -> Option<SyntaxStatement> {
+    syntax_statements
+        .iter()
+        .find(|syntax| syntax_statement_span(source, syntax) == statement.origin.span)
+        .cloned()
+}
+
+fn syntax_statement_span(source: SourceId, statement: &SyntaxStatement) -> Span {
+    let range = statement.syntax().text_range();
+    Span::new(source, u32::from(range.start()), u32::from(range.end()))
 }
 
 fn syntax_body_statements(body: &SyntaxBlock) -> Vec<SyntaxStatement> {
@@ -134,12 +210,24 @@ impl<'ast> CompilerStatementPayload<'ast> {
         Self {
             source: Some(source),
             syntax: Some(syntax),
+            hir_kind: None,
+            _ast: PhantomData,
+        }
+    }
+
+    fn new_hir_syntax(source: SourceId, syntax: SyntaxStatement, statement: &HirStmt) -> Self {
+        Self {
+            source: Some(source),
+            syntax: Some(syntax),
+            hir_kind: Some(statement.kind),
             _ast: PhantomData,
         }
     }
 
     pub(super) fn stored_statement_kind(&self) -> Option<SyntaxStatementKind> {
-        self.syntax.as_ref().map(SyntaxStatement::statement_kind)
+        self.hir_kind
+            .and_then(hir_statement_kind_to_syntax)
+            .or_else(|| self.syntax.as_ref().map(SyntaxStatement::statement_kind))
     }
 
     pub(super) fn stored_expression_kind(&self) -> Option<SyntaxExpressionKind> {
@@ -297,5 +385,20 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .as_expr()
             .and_then(|stmt| stmt.expression())
             .or_else(|| SyntaxExpression::cast(syntax.syntax().clone()))
+    }
+}
+
+fn hir_statement_kind_to_syntax(kind: HirStmtKind) -> Option<SyntaxStatementKind> {
+    match kind {
+        HirStmtKind::Let => Some(SyntaxStatementKind::Let),
+        HirStmtKind::Return => Some(SyntaxStatementKind::Return),
+        HirStmtKind::Break => Some(SyntaxStatementKind::Break),
+        HirStmtKind::Continue => Some(SyntaxStatementKind::Continue),
+        HirStmtKind::For => Some(SyntaxStatementKind::For),
+        HirStmtKind::If => Some(SyntaxStatementKind::If),
+        HirStmtKind::Match => Some(SyntaxStatementKind::Match),
+        HirStmtKind::Block => Some(SyntaxStatementKind::Block),
+        HirStmtKind::Expr => Some(SyntaxStatementKind::Expr),
+        HirStmtKind::Unknown => None,
     }
 }

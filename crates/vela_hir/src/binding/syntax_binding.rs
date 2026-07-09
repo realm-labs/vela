@@ -319,6 +319,13 @@ impl<'a> SyntaxBindingLowerer<'a> {
         }
     }
 
+    fn bind_block_in_current_scope(&mut self, block: &SyntaxBlock) {
+        let block_id = self.next_block(span_for(self.source, block.syntax().text_range()));
+        self.block_stack.push(block_id);
+        self.bind_block_without_new_scope(block);
+        self.block_stack.pop();
+    }
+
     fn bind_statement(&mut self, statement: &SyntaxStatement) {
         let statement_id = self.next_stmt(
             span_for(self.source, statement.syntax().text_range()),
@@ -401,7 +408,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
                 }
                 self.pattern_statement_stack.pop();
                 if let Some(body) = statement.body() {
-                    self.bind_block_without_new_scope(&body);
+                    self.bind_block_in_current_scope(&body);
                 }
                 self.pop_scope();
             }
