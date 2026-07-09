@@ -886,6 +886,36 @@ fn ast_field_expression_exposes_receiver_and_member_name() {
 }
 
 #[test]
+fn ast_field_expression_exposes_tuple_projection_index() {
+    let source = r#"fn update(pair) {
+    let first = pair.0;
+}
+"#;
+    let parse = parse_source(source);
+    let body = parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function item")
+        .body()
+        .expect("function body");
+    let initializer = body
+        .let_statements()
+        .next()
+        .expect("projection binding")
+        .initializer()
+        .expect("projection initializer");
+    let field = SyntaxFieldExpr::cast(initializer.syntax().clone()).expect("field expr");
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert_eq!(field.dot_token().expect("dot").kind(), SyntaxKind::Dot);
+    assert!(field.name_token().is_none());
+    assert_eq!(field.name_text(), None);
+    assert_eq!(field.tuple_index_token().expect("tuple index").text(), "0");
+    assert_eq!(field.tuple_index(), Some(0));
+}
+
+#[test]
 fn ast_index_expression_exposes_receiver_and_index() {
     let source = r#"fn update(items, index) {
     let item = items[index + 1];

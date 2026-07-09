@@ -552,12 +552,12 @@ impl ExpressionFactCollector<'_> {
                 .as_field()
                 .and_then(|expr| {
                     let base = expr.receiver()?;
+                    let receiver = self.type_fact_from_expr(&base, scope);
+                    if let Some(index) = expr.tuple_index() {
+                        return Some(tuple_projection_fact(receiver, index));
+                    }
                     let name = expr.name_text()?;
-                    Some(field_access_fact(
-                        self.type_fact_from_expr(&base, scope),
-                        &name,
-                        self.schema,
-                    ))
+                    Some(field_access_fact(receiver, &name, self.schema))
                 })
                 .unwrap_or(TypeFact::Unknown),
             SyntaxExpressionKind::Index => expr
@@ -1085,6 +1085,20 @@ fn path_field_fact(
 
 fn field_access_fact(receiver: TypeFact, field: &str, facts: &RegistryFacts) -> TypeFact {
     registry_field_fact(&receiver, field, facts).unwrap_or(TypeFact::Unknown)
+}
+
+fn tuple_projection_fact(receiver: TypeFact, index: usize) -> TypeFact {
+    match receiver {
+        TypeFact::Tuple { elements } => elements.get(index).cloned().unwrap_or(TypeFact::Unknown),
+        TypeFact::Union(members) => TypeFact::union(
+            members
+                .into_iter()
+                .map(|member| tuple_projection_fact(member, index))
+                .filter(|fact| !matches!(fact, TypeFact::Unknown)),
+        ),
+        TypeFact::Any | TypeFact::Unknown => TypeFact::Unknown,
+        _ => TypeFact::Unknown,
+    }
 }
 
 fn registry_field_fact(

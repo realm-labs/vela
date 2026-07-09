@@ -275,6 +275,26 @@ impl SyntaxFieldExpr {
     pub fn name_text(&self) -> Option<String> {
         self.name_token().map(|token| token.text().to_owned())
     }
+
+    #[must_use]
+    pub fn tuple_index_token(&self) -> Option<SyntaxToken> {
+        let mut past_dot = false;
+        self.syntax
+            .children_with_tokens()
+            .filter_map(|element| element.into_token())
+            .find(|token| {
+                if token.kind() == SyntaxKind::Dot {
+                    past_dot = true;
+                    return false;
+                }
+                past_dot && token.kind() == SyntaxKind::Int
+            })
+    }
+
+    #[must_use]
+    pub fn tuple_index(&self) -> Option<usize> {
+        self.tuple_index_token()?.text().parse().ok()
+    }
 }
 
 impl AstNode for SyntaxFieldExpr {

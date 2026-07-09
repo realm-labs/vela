@@ -510,6 +510,22 @@ fn main() {
     }
 
     #[test]
+    fn string_split_once_pair_supports_tuple_projection() {
+        let source = r#"
+fn main() {
+    let pair = "count=3".split_once("=").unwrap_or(("", "0"));
+    return pair.0 == "count" && pair.1 == "3";
+}
+"#;
+        let code = compile_function_source(SourceId::new(1), source, "main")
+            .expect("tuple projection source should compile");
+
+        let result =
+            run_linked_string_test_code(&Vm::new(), code).expect("tuple projection should run");
+        assert_eq!(result, OwnedValue::Bool(true));
+    }
+
+    #[test]
     fn managed_heap_execution_runs_string_split_once() {
         let source = r#"
 fn main() {

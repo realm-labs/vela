@@ -651,6 +651,29 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_tuple_projection_field_reads() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let pair = (2, 5);
+    return pair.0 + pair.1;
+}
+"#,
+        "main",
+    )
+    .expect("tuple projection should compile");
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::GetTupleField { index: 0, .. }
+    )));
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::GetTupleField { index: 1, .. }
+    )));
+}
+
+#[test]
 fn compiler_lowers_local_assignment_operators() {
     let code = compile_function_source(
         SourceId::new(1),

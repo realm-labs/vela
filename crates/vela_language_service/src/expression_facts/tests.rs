@@ -110,6 +110,36 @@ fn expression_facts_include_tuple_destructuring_bindings() {
     );
 }
 
+#[test]
+fn expression_facts_include_tuple_projection_fields() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let source = r#"pub fn main() {
+            let pair = ("Ada", 1)
+            pair.0
+            pair.1
+        }"#;
+    let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project);
+    let source_id = databases
+        .source_db()
+        .records()
+        .get(&document)
+        .expect("document source record should exist")
+        .source_id();
+
+    assert_eq!(
+        fact_for_range(&databases, source_id, range_for_nth(source, "pair.0", 1)),
+        Some(TypeFact::STRING)
+    );
+    assert_eq!(
+        fact_for_range(&databases, source_id, range_for_nth(source, "pair.1", 1)),
+        Some(TypeFact::I64)
+    );
+}
+
 fn range_for_nth(source: &str, needle: &str, occurrence: usize) -> TextRange {
     let start = source
         .match_indices(needle)

@@ -164,6 +164,14 @@ impl Compiler<'_, '_> {
         let Some(receiver_expression) = field.receiver() else {
             return Ok(None);
         };
+        if let Some(index) = field.tuple_index() {
+            let Some(value) = self.compile_syntax_expression(source, &receiver_expression)? else {
+                return Ok(None);
+            };
+            let dst = self.alloc_register()?;
+            self.emit(UnlinkedInstructionKind::GetTupleField { dst, value, index });
+            return Ok(Some(dst));
+        }
         let Some(field_name) = field.name_text() else {
             return Ok(None);
         };

@@ -319,7 +319,10 @@ module.exports = grammar({
     named_argument: ($) => prec(1, seq(field("name", $.identifier), "=", field("value", $._expression))),
 
     field_expression: ($) =>
-      prec.left(PREC.postfix, seq(field("object", $._expression), ".", field("field", $.identifier))),
+      prec.left(
+        PREC.postfix,
+        seq(field("object", $._expression), ".", field("field", choice($.identifier, $.integer_literal))),
+      ),
 
     index_expression: ($) =>
       prec.left(PREC.postfix, seq(field("object", $._expression), "[", field("index", $._expression), "]")),
