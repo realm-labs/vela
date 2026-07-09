@@ -92,6 +92,7 @@ struct SyntaxBindingLowerer<'a> {
     next_pattern_id: &'a mut u32,
     next_param_id: &'a mut u32,
     next_capture_id: &'a mut u32,
+    root_body: HirBodyId,
     scopes: Vec<ActiveScope>,
     body_stack: Vec<HirBodyId>,
     block_stack: Vec<HirBlockId>,
@@ -154,6 +155,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
             next_pattern_id: input.next_pattern_id,
             next_param_id: input.next_param_id,
             next_capture_id: input.next_capture_id,
+            root_body: input.body_id,
             scopes: vec![ActiveScope {
                 id: root_scope,
                 locals: BTreeMap::new(),
@@ -261,6 +263,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
             next_pattern_id: input.next_pattern_id,
             next_param_id: input.next_param_id,
             next_capture_id: input.next_capture_id,
+            root_body: input.body_id,
             scopes: vec![ActiveScope {
                 id: root_scope,
                 locals: BTreeMap::new(),
@@ -286,6 +289,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
         (
             BindingMap {
                 declaration: self.declaration,
+                body: self.root_body,
                 locals: self.locals,
                 locals_by_name: self.locals_by_name,
                 expressions: self.expressions,

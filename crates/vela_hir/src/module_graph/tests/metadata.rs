@@ -459,10 +459,12 @@ const BONUS = BASE + 1
     assert!(body.params.is_empty());
     assert!(body.expressions.len() >= 3);
 
+    let initializer_bindings = graph
+        .const_initializer_bindings(bonus)
+        .expect("const initializer bindings");
+    assert_eq!(initializer_bindings.body(), body.id);
     assert!(
-        graph
-            .const_initializer_bindings(bonus)
-            .expect("const initializer bindings")
+        initializer_bindings
             .resolutions()
             .any(|(_, resolution)| resolution == &BindingResolution::Import("BASE".to_owned()))
     );
@@ -768,6 +770,7 @@ impl Damageable for Player {
     let default_body = graph
         .trait_default_method_body(default_node)
         .expect("trait default method body");
+    assert_eq!(default_bindings.body(), default_body.id);
     assert_eq!(
         default_body.owner,
         HirBodyOwner::TraitDefaultMethod(default_node)
@@ -814,6 +817,7 @@ impl Damageable for Player {
     let body = graph
         .impl_method_body(method.node)
         .expect("impl method body");
+    assert_eq!(bindings.body(), body.id);
     assert_eq!(body.owner, HirBodyOwner::ImplMethod(method.node));
     assert!(matches!(body.root, HirBodyRoot::Block(_)));
     assert_eq!(body.params.len(), 2);

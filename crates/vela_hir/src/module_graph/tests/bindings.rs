@@ -501,7 +501,9 @@ fn grant(amount = BASE, bonus = amount + 1) {
         .expect("grant declaration");
     assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
 
+    let bindings = graph.bindings(grant).expect("grant bindings");
     let body = graph.function_body(grant).expect("grant body");
+    assert_eq!(bindings.body(), body.id);
     assert_eq!(body.owner, HirBodyOwner::Declaration(grant));
     assert!(matches!(body.root, HirBodyRoot::Block(_)));
     assert_eq!(body.params.len(), 2);

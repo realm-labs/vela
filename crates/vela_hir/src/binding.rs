@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use vela_common::Span;
 
 use crate::{
-    ids::{HirDeclId, HirExprId, HirLocalId},
+    ids::{HirBodyId, HirDeclId, HirExprId, HirLocalId},
     type_hint::HirTypeHint,
 };
 
@@ -57,6 +57,7 @@ pub(crate) struct ImportBinding {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BindingMap {
     pub declaration: HirDeclId,
+    body: HirBodyId,
     pub(crate) locals: BTreeMap<HirLocalId, LocalBinding>,
     pub(crate) locals_by_name: BTreeMap<String, Vec<HirLocalId>>,
     pub(crate) expressions: BTreeMap<HirExprId, ExprInfo>,
@@ -65,6 +66,11 @@ pub struct BindingMap {
 }
 
 impl BindingMap {
+    #[must_use]
+    pub const fn body(&self) -> HirBodyId {
+        self.body
+    }
+
     #[must_use]
     pub fn local(&self, local: HirLocalId) -> Option<&LocalBinding> {
         self.locals.get(&local)
