@@ -211,8 +211,11 @@ impl Compiler<'_, '_> {
     ) -> Option<ValueShape> {
         let field = expression.as_field()?;
         let receiver = field.receiver()?;
-        let name = field.name_text()?;
-        self.value_shape_for_syntax_expression(source, &receiver)?
+        let source = source?;
+        let name = self
+            .hir_field_name_for_span(syntax_expression_span(source, expression))?
+            .to_owned();
+        self.value_shape_for_syntax_expression(Some(source), &receiver)?
             .as_record()?
             .field_value_shape(&name)
             .cloned()
@@ -361,7 +364,10 @@ impl Compiler<'_, '_> {
         let field = callee.as_field()?;
         let receiver = field.receiver()?;
         let receiver = self.value_shape_for_syntax_expression(source, &receiver)?;
-        match field.name_text()?.as_str() {
+        let method = self
+            .hir_field_name_for_span(syntax_expression_span(source?, callee))?
+            .to_owned();
+        match method.as_str() {
             "to_upper" | "to_lower" | "trim" | "trim_start" | "trim_end" | "replace" | "repeat"
             | "join" => Some(string_shape()),
             "len" | "count" | "sum" => Some(ValueShape::Scalar("i64".to_owned())),
@@ -798,8 +804,11 @@ impl Compiler<'_, '_> {
     ) -> Option<ValueShape> {
         let field = expression.as_field()?;
         let receiver = field.receiver()?;
-        let name = field.name_text()?;
-        self.value_shape_for_syntax_expression_with_locals(source, &receiver, local_shapes)?
+        let source = source?;
+        let name = self
+            .hir_field_name_for_span(syntax_expression_span(source, expression))?
+            .to_owned();
+        self.value_shape_for_syntax_expression_with_locals(Some(source), &receiver, local_shapes)?
             .as_record()?
             .field_value_shape(&name)
             .cloned()
@@ -832,7 +841,10 @@ impl Compiler<'_, '_> {
         let receiver = field.receiver()?;
         let receiver =
             self.value_shape_for_syntax_expression_with_locals(source, &receiver, local_shapes)?;
-        match field.name_text()?.as_str() {
+        let method = self
+            .hir_field_name_for_span(syntax_expression_span(source?, &callee))?
+            .to_owned();
+        match method.as_str() {
             "to_upper" | "to_lower" | "trim" | "trim_start" | "trim_end" | "replace" | "repeat"
             | "join" => Some(string_shape()),
             "len" | "count" | "sum" => Some(ValueShape::Scalar("i64".to_owned())),

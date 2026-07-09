@@ -199,6 +199,8 @@ Bytecode script, value, dynamic, and host method-call lowering now also reads
 the method member from HIR field facts instead of callee field syntax.
 Bytecode parameter-default field lowering now reads record/host field names
 from HIR field facts instead of field-expression syntax.
+Bytecode record-shape inference now reads field and method member names from
+HIR field facts for direct and lambda-local shape queries.
 Incremental language-service updates now rebuild Heavy HIR for body-only source
 edits so HIR-owned call/member/path/body facts stay current while
 declaration/import indexes remain reusable. Semantic-token local record facts
