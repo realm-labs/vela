@@ -535,6 +535,16 @@ impl ModuleGraph {
             .filter(move |field| field.member_origin.source == source)
     }
 
+    pub fn member_calls_in_source(&self, source: SourceId) -> impl Iterator<Item = &HirField> + '_ {
+        self.bodies.values().flat_map(move |body| {
+            body.calls.values().filter_map(move |call| {
+                body.fields
+                    .get(&call.callee)
+                    .filter(|field| field.member_origin.source == source)
+            })
+        })
+    }
+
     #[must_use]
     pub fn expression_containing_span(&self, span: Span) -> Option<HirExprId> {
         self.bodies

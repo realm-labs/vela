@@ -1006,6 +1006,24 @@ fn main() { return helper(); }
 }
 
 #[test]
+fn function_bodies_record_member_call_field_callees() {
+    let mut graph = ModuleGraph::new();
+    let source_text = r#"
+fn main(player) {
+    player.grant();
+}
+"#;
+    graph.add_source(source(1, "game::main", source_text));
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+
+    let calls = graph
+        .member_calls_in_source(SourceId::new(1))
+        .map(|field| field.name.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(calls, vec!["grant"]);
+}
+
+#[test]
 fn function_bodies_record_field_receiver_expression_ids() {
     let mut graph = ModuleGraph::new();
     let source_text = r#"

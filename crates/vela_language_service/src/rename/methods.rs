@@ -6,7 +6,7 @@ use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::ImplMetadataKind;
 
-use crate::{DocumentId, LanguageServiceDatabases, TextRange, member_access, query_context};
+use crate::{DocumentId, LanguageServiceDatabases, TextRange, query_context};
 
 use super::{
     RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, is_identifier_boundary,
@@ -152,25 +152,37 @@ fn push_script_method_use_edits(
     let graph = databases.hir_db().graph();
     for source in databases.source_db().records().values() {
         let text = source.text();
-        let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) else {
-            continue;
-        };
-        for site in member_access::member_call_sites(parsed) {
-            if site.member != target.method {
+        for field in graph.member_calls_in_source(source.source_id()) {
+            if field.name != target.method {
                 continue;
             }
-            if script_method_target_for_call_site(databases, graph, source, &site, &target.method)
-                .is_some_and(|found| {
-                    found.owner == target.owner
-                        && found.method == target.method
-                        && found.target_kind == target.target_kind
-                })
-            {
+            let Some(receiver_range) = graph
+                .expression_span(field.receiver)
+                .and_then(span_text_range)
+            else {
+                continue;
+            };
+            let Some(member_range) = span_text_range(field.member_origin.span) else {
+                continue;
+            };
+            if script_method_target_for_call_field(
+                databases,
+                graph,
+                source,
+                receiver_range,
+                member_range,
+                &target.method,
+            )
+            .is_some_and(|found| {
+                found.owner == target.owner
+                    && found.method == target.method
+                    && found.target_kind == target.target_kind
+            }) {
                 edits_by_document
                     .entry(source.document_id().clone())
                     .or_default()
                     .push(TextEdit {
-                        range: diagnostic_range(text, site.member_range),
+                        range: diagnostic_range(text, member_range),
                         new_text: new_name.to_owned(),
                     });
             }
@@ -185,15 +197,16 @@ struct ScriptMethodTarget {
     target_kind: ScriptMethodRenameTargetKind,
 }
 
-fn script_method_target_for_call_site(
+fn script_method_target_for_call_field(
     databases: &LanguageServiceDatabases,
     graph: &ModuleGraph,
     source: &crate::SourceRecord,
-    site: &member_access::MemberCallSite,
+    receiver_range: TextRange,
+    member_range: TextRange,
     method: &str,
 ) -> Option<ScriptMethodTarget> {
-    if token_text(source.text(), site.receiver_range) == Some("self") {
-        let start = u32::try_from(site.member_range.start).ok()?;
+    if token_text(source.text(), receiver_range) == Some("self") {
+        let start = u32::try_from(member_range.start).ok()?;
         for declaration in graph.declarations() {
             if declaration.span.source != source.source_id() || !declaration.span.contains(start) {
                 continue;
@@ -207,11 +220,8 @@ fn script_method_target_for_call_site(
             }
         }
     }
-    let receiver = query_context::type_fact_for_source_range(
-        databases,
-        source.source_id(),
-        site.receiver_range,
-    )?;
+    let receiver =
+        query_context::type_fact_for_source_range(databases, source.source_id(), receiver_range)?;
     let owner = script_method_owner(graph, &receiver, method)?;
     Some(ScriptMethodTarget {
         owner,

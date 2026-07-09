@@ -170,7 +170,9 @@ instead of a syntax-built receiver map, and query-context visible locals now use
 binding scope spans so let bindings are not visible inside their own
 initializers. Script field reference and rename use scans now read
 source-scoped `HirField` facts from `ModuleGraph` instead of rebuilding member
-access sites from parsed syntax.
+access sites from parsed syntax, and script method reference/rename use scans
+now read HIR member-call field callee facts instead of parsed member-call
+sites.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

@@ -4,7 +4,7 @@ use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::ImplMetadataKind;
 
-use crate::{LanguageServiceDatabases, TextRange, member_access, query_context};
+use crate::{LanguageServiceDatabases, TextRange, query_context};
 
 use super::{
     Reference, ReferenceKind, ReferenceToken, diagnostic_range, is_identifier_boundary,
@@ -147,14 +147,20 @@ fn script_method_use_references_for_source(
     let mut references = Vec::new();
     let source_id = source.source_id();
     let text = source.text();
-    let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) else {
-        return references;
-    };
-    for site in member_access::member_call_sites(parsed) {
-        if site.member != target.method {
+    for field in graph.member_calls_in_source(source_id) {
+        if field.name != target.method {
             continue;
         }
-        if query_context::type_fact_for_source_range(databases, source_id, site.receiver_range)
+        let Some(receiver_range) = graph
+            .expression_span(field.receiver)
+            .and_then(span_text_range)
+        else {
+            continue;
+        };
+        let Some(member_range) = span_text_range(field.member_origin.span) else {
+            continue;
+        };
+        if query_context::type_fact_for_source_range(databases, source_id, receiver_range)
             .and_then(|receiver| {
                 script_method_target_for_receiver_fact(graph, &receiver, &target.method)
             })
@@ -163,7 +169,7 @@ fn script_method_use_references_for_source(
         {
             references.push(Reference {
                 document_id: source.document_id().clone(),
-                range: diagnostic_range(text, site.member_range),
+                range: diagnostic_range(text, member_range),
                 kind: ReferenceKind::Call,
                 symbol: method_target_symbol(graph, target)
                     .expect("method target should have a source symbol"),
