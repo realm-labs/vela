@@ -9,7 +9,9 @@ use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
 use vela_hir::type_hint::{FunctionSignature, ImplMetadata, ImplMetadataKind, TraitShape};
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::TextRange;
-use vela_syntax::ast::{AstNode, SyntaxImplItem, SyntaxSourceFile, SyntaxTraitItem};
+use vela_syntax::ast::{
+    AstNode, SyntaxImplItem, SyntaxImplMethod, SyntaxSourceFile, SyntaxTraitItem, SyntaxTraitMethod,
+};
 
 use super::body_payloads::CompilerBodyPayload;
 use super::param_defaults::{ParamDefaultValue, param_default_values};
@@ -51,9 +53,15 @@ pub(super) fn source_methods<'ast>(
             let target_type = local_target_name(&impl_metadata.target_path);
             let trait_item = impl_metadata.trait_path().and_then(|trait_path| {
                 let declaration = trait_declaration(graph, declaration.module, trait_path)?;
+                let trait_declaration_metadata = graph.declaration(declaration)?;
                 let shape = graph.trait_shape(declaration)?;
-                let payloads =
-                    trait_default_method_payloads(syntax, source, trait_path, graph, shape);
+                let payloads = trait_default_method_payloads(
+                    syntax,
+                    source,
+                    trait_declaration_metadata.span,
+                    graph,
+                    shape,
+                );
                 Some((shape, payloads))
             });
             collect_methods(
@@ -134,7 +142,11 @@ pub(super) fn module_methods<'ast>(
                         (
                             shape,
                             trait_default_method_payloads(
-                                syntax, source_id, trait_path, graph, shape,
+                                syntax,
+                                source_id,
+                                trait_declaration_metadata.span,
+                                graph,
+                                shape,
                             ),
                         )
                     })
@@ -263,7 +275,8 @@ fn impl_method_payloads<'ast>(
         .iter()
         .filter_map(|method_metadata| {
             let syntax_method = syntax_item.methods().find(|syntax_method| {
-                syntax_method.name_text().as_deref() == Some(method_metadata.name.as_str())
+                syntax_impl_method_body_span(source, syntax_method)
+                    == Some(method_metadata.body_span)
             })?;
             let hir_body = graph.impl_method_body(method_metadata.node)?;
             let body = CompilerBodyPayload::hir_body(source, syntax_method.body()?, hir_body);
@@ -286,11 +299,11 @@ fn impl_method_payloads<'ast>(
 fn trait_default_method_payloads<'ast>(
     syntax: &SyntaxParse<SyntaxSourceFile>,
     source: SourceId,
-    path: &[String],
+    trait_span: Span,
     graph: &'ast ModuleGraph,
     shape: &TraitShape,
 ) -> BTreeMap<String, MethodBodyPayload<'ast>> {
-    let Some(syntax_item) = syntax_trait_item(syntax, path) else {
+    let Some(syntax_item) = syntax_trait_item(syntax, source, trait_span) else {
         return BTreeMap::new();
     };
     shape
@@ -298,8 +311,9 @@ fn trait_default_method_payloads<'ast>(
         .iter()
         .filter_map(|method_metadata| {
             let default_node = method_metadata.default_body_node?;
+            let default_body_span = method_metadata.default_body_span?;
             let syntax_method = syntax_item.methods().find(|syntax_method| {
-                syntax_method.name_text().as_deref() == Some(method_metadata.name.as_str())
+                syntax_trait_method_body_span(source, syntax_method) == Some(default_body_span)
             })?;
             let hir_body = graph.trait_default_method_body(default_node)?;
             let body = CompilerBodyPayload::hir_body(source, syntax_method.body()?, hir_body);
@@ -332,17 +346,27 @@ fn syntax_impl_item(
 
 fn syntax_trait_item(
     parsed: &SyntaxParse<SyntaxSourceFile>,
-    path: &[String],
+    source: SourceId,
+    span: Span,
 ) -> Option<SyntaxTraitItem> {
-    let name = path.last()?;
     parsed
         .tree()
         .traits()
-        .find(|item| item.name_text().as_deref() == Some(name.as_str()))
+        .find(|item| span_for(source, item.syntax().text_range()) == span)
 }
 
 fn span_for(source: SourceId, range: TextRange) -> Span {
     Span::new(source, range.start().into(), range.end().into())
+}
+
+fn syntax_impl_method_body_span(source: SourceId, method: &SyntaxImplMethod) -> Option<Span> {
+    let body = method.body()?;
+    Some(span_for(source, body.syntax().text_range()))
+}
+
+fn syntax_trait_method_body_span(source: SourceId, method: &SyntaxTraitMethod) -> Option<Span> {
+    let body = method.body()?;
+    Some(span_for(source, body.syntax().text_range()))
 }
 
 fn trait_declaration(

@@ -9,7 +9,8 @@ use vela_hir::module_graph::{
 };
 use vela_hir::type_hint::{FunctionSignature, ParamHint};
 use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::SyntaxSourceFile;
+use vela_syntax::TextRange;
+use vela_syntax::ast::{AstNode, SyntaxFunctionItem, SyntaxSourceFile};
 use vela_syntax::parse::parse_source_with_id;
 
 use crate::Constant;
@@ -60,17 +61,10 @@ impl SemanticSource {
         Vec<&HirBody>,
     )> {
         let declaration = self.function_declaration(name)?;
-        let metadata = self.graph.declaration(declaration)?;
         let signature = self.graph.function_signature(declaration)?;
         let bindings = self.graph.bindings(declaration)?;
         let hir_body = self.graph.function_body(declaration)?;
-        let payload = function_body_payload(
-            self.source,
-            &self.syntax,
-            &self.graph,
-            metadata.name.as_str(),
-            hir_body,
-        )?;
+        let payload = function_body_payload(self.source, &self.syntax, &self.graph, hir_body)?;
         Some((payload, signature, bindings, self.graph.bodies().collect()))
     }
 
@@ -242,13 +236,7 @@ impl SemanticModules {
         let syntax = self.syntax.get(&metadata.module)?;
         let source = self.source_ids.get(&metadata.module).copied()?;
         let hir_body = self.graph.function_body(declaration)?;
-        let payload = function_body_payload(
-            source,
-            syntax,
-            &self.graph,
-            metadata.name.as_str(),
-            hir_body,
-        )?;
+        let payload = function_body_payload(source, syntax, &self.graph, hir_body)?;
         Some((payload, signature, bindings, self.graph.bodies().collect()))
     }
 
@@ -501,13 +489,11 @@ fn function_body_payload<'ast>(
     source: SourceId,
     syntax: &SyntaxParse<SyntaxSourceFile>,
     graph: &ModuleGraph,
-    name: &str,
     hir_body: &'ast HirBody,
 ) -> Option<FunctionBodyPayload<'ast>> {
-    let syntax_function = syntax
-        .tree()
-        .functions()
-        .find(|function| function.name_text().as_deref() == Some(name))?;
+    let syntax_function = syntax.tree().functions().find(|function| {
+        syntax_function_body_span(source, function) == Some(hir_body.origin.span)
+    })?;
     let body = super::body_payloads::CompilerBodyPayload::hir_body(
         source,
         syntax_function.body()?,
@@ -516,10 +502,28 @@ fn function_body_payload<'ast>(
     let param_defaults =
         param_default_values(source, syntax_function.param_list(), graph, hir_body);
     Some(FunctionBodyPayload {
-        name: name.to_owned(),
+        name: function_name_for_body(hir_body, graph)?,
         body,
         param_defaults,
     })
+}
+
+fn function_name_for_body(hir_body: &HirBody, graph: &ModuleGraph) -> Option<String> {
+    let vela_hir::body::HirBodyOwner::Declaration(declaration) = hir_body.owner else {
+        return None;
+    };
+    graph
+        .declaration(declaration)
+        .map(|metadata| metadata.name.clone())
+}
+
+fn syntax_function_body_span(source: SourceId, function: &SyntaxFunctionItem) -> Option<Span> {
+    let body = function.body()?;
+    Some(span_for(source, body.syntax().text_range()))
+}
+
+fn span_for(source: SourceId, range: TextRange) -> Span {
+    Span::new(source, range.start().into(), range.end().into())
 }
 
 pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResult<SemanticSource> {

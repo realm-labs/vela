@@ -204,6 +204,8 @@ HIR field facts for direct and lambda-local shape queries.
 Bytecode schema-default payload collection now keys default expressions to
 struct and enum field identity through HIR metadata spans instead of parsed
 type, variant, and field names.
+Bytecode function, impl-method, and trait-default method body payload pairing
+now uses HIR-owned body/default spans instead of parsed declaration names.
 Incremental language-service updates now rebuild Heavy HIR for body-only source
 edits so HIR-owned call/member/path/body facts stay current while
 declaration/import indexes remain reusable. Semantic-token local record facts
