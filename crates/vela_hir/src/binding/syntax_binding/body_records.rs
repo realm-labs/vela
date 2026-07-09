@@ -187,4 +187,18 @@ impl<'a> SyntaxBindingLowerer<'a> {
             self.next_capture(current_body, *local, expression);
         }
     }
+
+    pub(super) fn record_self_use(
+        &mut self,
+        expression: HirExprId,
+        resolution: &BindingResolution,
+    ) {
+        let BindingResolution::Local(local) = resolution else {
+            return;
+        };
+        let body = self.current_body();
+        if self.body_mut(body).self_binding == Some(*local) {
+            self.body_mut(body).self_uses.push(expression);
+        }
+    }
 }

@@ -737,6 +737,7 @@ struct Player { hp: i64 }
 impl Damageable for Player {
     fn damage(self, amount: i64) -> i64 {
         let remaining: i64 = self.hp - amount;
+        let adjust = |bonus| self.hp + bonus;
         return remaining;
     }
 }
@@ -816,7 +817,31 @@ impl Damageable for Player {
     assert_eq!(body.owner, HirBodyOwner::ImplMethod(method.node));
     assert!(matches!(body.root, HirBodyRoot::Block(_)));
     assert_eq!(body.params.len(), 2);
-    assert_eq!(body.statements.len(), 2);
+    assert_eq!(body.statements.len(), 3);
+    let [self_local] = bindings.locals_named("self") else {
+        panic!("expected self binding");
+    };
+    assert_eq!(body.self_binding, Some(*self_local));
+    assert!(!body.self_uses.is_empty());
+    assert!(
+        body.self_uses
+            .iter()
+            .all(|expression| body.expressions.contains_key(expression))
+    );
+    let method_body_id = body.id;
+    let lambda_body = graph
+        .bodies()
+        .find(|body| {
+            matches!(body.owner, HirBodyOwner::Lambda { parent, .. } if parent == method_body_id)
+        })
+        .expect("lambda body");
+    assert!(
+        lambda_body
+            .captures
+            .iter()
+            .any(|capture| capture.local == *self_local),
+        "lambda should capture method self"
+    );
     let [remaining] = bindings.locals_named("remaining") else {
         panic!("expected remaining binding");
     };

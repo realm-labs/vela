@@ -129,8 +129,9 @@ statement, pattern, parameter, and capture IDs plus `HirBody` records for
 functions, const initializers, trait defaults, impl methods, lambdas, and
 parameter defaults while preserving current binding/compiler behavior. Body HIR
 now also records root, block, loop, lambda, and match-arm scopes with owned
-locals and child-scope links while preserving existing binding, analysis, and
-language-service behavior. Heavy HIR will next move resolution tables, body
+locals, child-scope links, explicit method `self` bindings, and lambda captures
+while preserving existing binding, analysis, and language-service behavior.
+Heavy HIR will next move resolution tables, body
 facts, language-service queries, and bytecode lowering away from body-level
 syntax reconstruction. MIR will then add an internal `vela_mir`
 execution-shape layer for CFG, typed operations, guards, liveness, bytecode

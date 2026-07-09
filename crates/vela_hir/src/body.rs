@@ -51,6 +51,8 @@ pub struct HirBody {
     pub expressions: BTreeMap<HirExprId, HirExpr>,
     pub patterns: BTreeMap<HirPatternId, HirPattern>,
     pub locals: Vec<HirLocalId>,
+    pub self_binding: Option<HirLocalId>,
+    pub self_uses: Vec<HirExprId>,
     pub captures: Vec<HirCapture>,
 }
 
@@ -70,6 +72,8 @@ impl HirBody {
             expressions: BTreeMap::new(),
             patterns: BTreeMap::new(),
             locals: Vec::new(),
+            self_binding: None,
+            self_uses: Vec::new(),
             captures: Vec::new(),
         }
     }

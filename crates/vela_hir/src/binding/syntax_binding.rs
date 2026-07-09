@@ -416,6 +416,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
                     return id;
                 };
                 if path.is_self() {
+                    self.bind_self_path(id);
                     return id;
                 }
                 self.bind_path(
@@ -781,6 +782,15 @@ impl<'a> SyntaxBindingLowerer<'a> {
         }
     }
 
+    fn bind_self_path(&mut self, id: HirExprId) {
+        let Some(resolution) = self.resolve_name("self") else {
+            return;
+        };
+        self.record_capture_for_resolution(id, &resolution);
+        self.record_self_use(id, &resolution);
+        self.resolutions.insert(id, resolution);
+    }
+
     fn bind_constructor_path(&mut self, id: HirExprId, path: &[String]) {
         if let Some(resolution) = self.resolve_constructor_path(path) {
             self.record_capture_for_resolution(id, &resolution);
@@ -992,6 +1002,13 @@ impl<'a> SyntaxBindingLowerer<'a> {
             );
         }
         let local = self.declare_local(name, kind, type_hint, span);
+        if self
+            .locals
+            .get(&local)
+            .is_some_and(|binding| binding.name == "self")
+        {
+            self.body_mut(self.current_body()).self_binding = Some(local);
+        }
         self.next_param(local, span);
         local
     }

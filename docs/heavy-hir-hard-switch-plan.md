@@ -214,7 +214,7 @@ Purpose: make all lexical and binding facts body-HIR-owned.
   tables.
 - [x] Represent pattern locals for `let`, `match`, and `for` bindings with
   token spans and binding scope spans.
-- [~] Represent lambda captures and `self` bindings explicitly.
+- [x] Represent lambda captures and `self` bindings explicitly.
 - [ ] Represent imports, declaration references, shadowing, and unresolved
   references through HIR resolution records.
 - [x] Preserve current diagnostics for unresolved names, duplicate bindings,
