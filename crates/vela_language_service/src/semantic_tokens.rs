@@ -427,7 +427,6 @@ struct SemanticTokenClassification {
 
 struct SemanticClassificationContext<'a> {
     facts: &'a AnalysisFacts,
-    member_receivers: &'a BTreeMap<(usize, usize), TextRange>,
     receiver_facts: &'a BTreeMap<(usize, usize), TypeFact>,
     path_calls: &'a BTreeMap<(usize, usize), Vec<String>>,
     path_expressions: &'a BTreeMap<(usize, usize), Vec<String>>,
@@ -440,7 +439,6 @@ struct SemanticClassificationInput<'a> {
     source_id: SourceId,
     text: &'a str,
     tokens: &'a [Token],
-    member_receivers: &'a BTreeMap<(usize, usize), TextRange>,
     receiver_facts: &'a BTreeMap<(usize, usize), TypeFact>,
     path_calls: &'a BTreeMap<(usize, usize), Vec<String>>,
     path_expressions: &'a BTreeMap<(usize, usize), Vec<String>>,
@@ -465,11 +463,6 @@ impl LanguageServiceDatabases {
         };
         let line_index = LineIndex::new(source.text());
         let lexed = lex(source.source_id(), source.text());
-        let member_receivers = self
-            .parse_db()
-            .syntax_parse(document_id)
-            .map(crate::member_access::member_receiver_ranges)
-            .unwrap_or_default();
         let receiver_facts = self
             .parse_db()
             .syntax_parse(document_id)
@@ -493,7 +486,6 @@ impl LanguageServiceDatabases {
             source_id: source.source_id(),
             text: source.text(),
             tokens: &lexed.tokens,
-            member_receivers: &member_receivers,
             receiver_facts: &receiver_facts,
             path_calls: &path_sites.calls,
             path_expressions: &path_sites.expressions,
@@ -582,7 +574,6 @@ impl LanguageServiceDatabases {
         let unresolved_identifiers = unresolved::ranges(graph, input.source_id);
         let context = SemanticClassificationContext {
             facts: &facts,
-            member_receivers: input.member_receivers,
             receiver_facts: input.receiver_facts,
             path_calls: input.path_calls,
             path_expressions: input.path_expressions,
@@ -647,7 +638,6 @@ impl LanguageServiceDatabases {
                     facts: context.facts,
                     schema,
                     text,
-                    member_receivers: context.member_receivers,
                     receiver_facts: context.receiver_facts,
                     inferred_local_facts: context.inferred_local_facts,
                 };

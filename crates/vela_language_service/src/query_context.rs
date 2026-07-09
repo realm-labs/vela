@@ -205,9 +205,10 @@ impl<'a> QueryContext<'a> {
     pub fn local_bindings_before_cursor(&self) -> impl Iterator<Item = &LocalBinding> + '_ {
         let offset = u32::try_from(self.cursor.replace_range().end).ok();
         self.bindings.into_iter().flat_map(move |bindings| {
-            bindings
-                .locals()
-                .filter(move |local| offset.is_some_and(|offset| local.span.end <= offset))
+            bindings.locals().filter(move |local| {
+                let visible_after = local.scope_span.unwrap_or(local.span);
+                offset.is_some_and(|offset| visible_after.end <= offset)
+            })
         })
     }
 

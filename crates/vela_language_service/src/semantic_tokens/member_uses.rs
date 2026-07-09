@@ -23,7 +23,6 @@ pub(super) struct MemberUseContext<'a> {
     pub(super) facts: &'a AnalysisFacts,
     pub(super) schema: &'a RegistryFacts,
     pub(super) text: &'a str,
-    pub(super) member_receivers: &'a BTreeMap<(usize, usize), TextRange>,
     pub(super) receiver_facts: &'a BTreeMap<(usize, usize), TypeFact>,
     pub(super) inferred_local_facts: &'a BTreeMap<HirLocalId, TypeFact>,
 }
@@ -33,24 +32,26 @@ pub(super) fn classify(
     name: &str,
     range: TextRange,
 ) -> Option<SemanticTokenClassification> {
-    let receiver_range = *context.member_receivers.get(&(range.start, range.end))?;
-    let receiver_span = span_for_range(
-        context
-            .graph
-            .declaration(context.bindings.declaration)?
-            .span
-            .source,
-        receiver_range,
-    )?;
+    let source = context
+        .graph
+        .declaration(context.bindings.declaration)?
+        .span
+        .source;
+    let member_span = span_for_range(source, range)?;
+    let field = context.graph.field_at_member_span(member_span)?;
+    if field.name != name {
+        return None;
+    }
+    let receiver_span = context.graph.expression_span(field.receiver)?;
+    let receiver_range = text_range_for_span(receiver_span)?;
     let receiver = context
         .receiver_facts
         .get(&(receiver_range.start, receiver_range.end))
         .cloned()
         .or_else(|| {
-            let expression = context.graph.expression_at_span(receiver_span)?;
             context
                 .bindings
-                .resolution(expression)
+                .resolution(field.receiver)
                 .and_then(|resolution| {
                     type_fact_for_resolution(
                         resolution,
@@ -61,6 +62,7 @@ pub(super) fn classify(
                     )
                 })
         })?;
+
     let is_call = next_non_whitespace(context.text, range.end) == Some('(');
 
     if is_call
@@ -81,6 +83,13 @@ pub(super) fn classify(
                 )
             })
     })
+}
+
+fn text_range_for_span(span: vela_common::Span) -> Option<TextRange> {
+    Some(TextRange::new(
+        usize::try_from(span.start).ok()?,
+        usize::try_from(span.end).ok()?,
+    ))
 }
 
 fn method_use_classification(

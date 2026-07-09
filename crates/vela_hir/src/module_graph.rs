@@ -22,7 +22,7 @@ use names::{closest_name, import_binding_name};
 use self::body_binding::FunctionBodySource;
 use crate::attributes::HirAttribute;
 use crate::binding::BindingMap;
-use crate::body::HirBody;
+use crate::body::{HirBody, HirField};
 use crate::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId, ModuleId};
 #[cfg(test)]
 use crate::type_hint::HirTypeHint;
@@ -518,6 +518,14 @@ impl ModuleGraph {
             .values()
             .find_map(|body| body.calls.get(&expression))
             .map(|call| call.callee)
+    }
+
+    #[must_use]
+    pub fn field_at_member_span(&self, span: Span) -> Option<&HirField> {
+        self.bodies
+            .values()
+            .flat_map(|body| body.fields.values())
+            .find(|field| field.member_origin.span == span)
     }
 
     #[must_use]

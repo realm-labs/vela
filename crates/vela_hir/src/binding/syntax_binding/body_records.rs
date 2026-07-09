@@ -5,7 +5,7 @@ use vela_common::Span;
 use super::{ActiveScope, SyntaxBindingLowerer};
 use crate::binding::BindingResolution;
 use crate::body::{
-    HirBlock, HirBody, HirBodyOwner, HirCall, HirCapture, HirExpr, HirExprKind, HirParam,
+    HirBlock, HirBody, HirBodyOwner, HirCall, HirCapture, HirExpr, HirExprKind, HirField, HirParam,
     HirPattern, HirPatternKind, HirScope, HirScopeKind, HirSourceOrigin, HirStmt, HirStmtKind,
     HirUnresolvedReference,
 };
@@ -129,6 +129,29 @@ impl<'a> SyntaxBindingLowerer<'a> {
         self.body_mut(body)
             .calls
             .insert(expression, HirCall { expression, callee });
+    }
+
+    pub(super) fn record_field(
+        &mut self,
+        expression: HirExprId,
+        receiver: HirExprId,
+        name: String,
+        member_span: Span,
+    ) {
+        let body = self.current_body();
+        let source = self.source;
+        self.body_mut(body).fields.insert(
+            expression,
+            HirField {
+                expression,
+                receiver,
+                name,
+                member_origin: HirSourceOrigin {
+                    source,
+                    span: member_span,
+                },
+            },
+        );
     }
 
     pub(super) fn next_pattern(&mut self, span: Span, kind: HirPatternKind) -> HirPatternId {

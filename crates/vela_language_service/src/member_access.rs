@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use vela_syntax::ast::{AstNode, SyntaxCallExpr, SyntaxFieldExpr, SyntaxSourceFile};
 use vela_syntax::{Parse as SyntaxParse, TextRange as SyntaxTextRange, TextSize};
 
@@ -17,20 +15,6 @@ pub(crate) struct MemberCallSite {
     pub(crate) member: String,
     pub(crate) member_range: TextRange,
     pub(crate) receiver_range: TextRange,
-}
-
-pub(crate) fn member_receiver_ranges(
-    parsed: &SyntaxParse<SyntaxSourceFile>,
-) -> BTreeMap<(usize, usize), TextRange> {
-    member_access_sites(parsed)
-        .into_iter()
-        .map(|site| {
-            (
-                (site.member_range.start, site.member_range.end),
-                site.receiver_range,
-            )
-        })
-        .collect()
 }
 
 pub(crate) fn member_call_sites(parsed: &SyntaxParse<SyntaxSourceFile>) -> Vec<MemberCallSite> {
@@ -89,34 +73,6 @@ mod tests {
     use vela_syntax::parse::parse_source;
 
     use super::*;
-
-    #[test]
-    fn member_receiver_ranges_come_from_field_expression_spans() {
-        let source = "\
-fn main(player: Player) {
-    let level = player.level
-    player.grant(level)
-}";
-        let parsed = parse_source(source);
-
-        let ranges = member_receiver_ranges(&parsed);
-
-        let player_start = source.find("player.level").expect("field receiver");
-        let call_receiver_start = source.find("player.grant").expect("method receiver");
-        let level_start = player_start + "player.".len();
-        let grant_start = call_receiver_start + "player.".len();
-        assert_eq!(
-            ranges.get(&(level_start, level_start + "level".len())),
-            Some(&TextRange::new(player_start, player_start + "player".len()))
-        );
-        assert_eq!(
-            ranges.get(&(grant_start, grant_start + "grant".len())),
-            Some(&TextRange::new(
-                call_receiver_start,
-                call_receiver_start + "player".len()
-            ))
-        );
-    }
 
     #[test]
     fn member_call_sites_come_from_call_callee_spans() {

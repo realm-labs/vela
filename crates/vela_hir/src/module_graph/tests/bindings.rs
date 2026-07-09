@@ -1004,6 +1004,48 @@ fn main() { return helper(); }
         Some(&BindingResolution::Declaration(helper))
     );
 }
+
+#[test]
+fn function_bodies_record_field_receiver_expression_ids() {
+    let mut graph = ModuleGraph::new();
+    let source_text = r#"
+fn main(player) {
+    return player.level;
+}
+"#;
+    let module = graph.add_source(source(1, "game::main", source_text));
+    let main = graph
+        .module(module)
+        .and_then(|module| module.get("main"))
+        .expect("main declaration");
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+
+    let member_start = source_text.find("level").expect("member token") as u32;
+    let member_span = Span::new(
+        SourceId::new(1),
+        member_start,
+        member_start + "level".len() as u32,
+    );
+    let field = graph
+        .field_at_member_span(member_span)
+        .expect("field member fact");
+    assert_eq!(field.name, "level");
+    let body = graph.function_body(main).expect("main body");
+    assert!(
+        body.expressions
+            .get(&field.expression)
+            .is_some_and(|expression| expression.kind == HirExprKind::Field)
+    );
+    assert_eq!(
+        graph.expression_span(field.receiver),
+        Some(Span::new(
+            SourceId::new(1),
+            source_text.find("player.level").expect("receiver") as u32,
+            (source_text.find("player.level").expect("receiver") + "player".len()) as u32,
+        ))
+    );
+}
+
 #[test]
 fn function_bindings_resolve_import_aliases() {
     let mut graph = ModuleGraph::new();

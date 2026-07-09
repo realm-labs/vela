@@ -490,8 +490,17 @@ impl<'a> SyntaxBindingLowerer<'a> {
                 }
             }
             SyntaxExpressionKind::Field => {
-                if let Some(base) = expr.as_field().and_then(|expr| expr.receiver()) {
-                    self.bind_expr(&base, PathUsage::FieldBase);
+                if let Some(field) = expr.as_field()
+                    && let Some(base) = field.receiver()
+                {
+                    let receiver = self.bind_expr(&base, PathUsage::FieldBase);
+                    if let Some(name) = field.name_text() {
+                        let member_span = field
+                            .name_token()
+                            .map(|token| span_for(self.source, token.text_range()))
+                            .unwrap_or_else(|| span_for(self.source, field.syntax().text_range()));
+                        self.record_field(id, receiver, name, member_span);
+                    }
                 }
             }
             SyntaxExpressionKind::Call => {
