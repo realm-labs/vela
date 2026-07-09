@@ -209,6 +209,9 @@ value/record shape queries now share HIR expression local/global fact helpers,
 and the old generic span-resolution helpers have been deleted. Pattern local
 binding setup now maps syntax origins to stable `HirPatternId` records before
 reading HIR local facts, deleting the old name/span pattern-local scan.
+Static value-type inference and callback-local value-shape inference now read
+path-local facts through HIR expression/span lookup instead of syntax path-name
+fallbacks.
 Bytecode match and parameter-default enum pattern lowering now reads HIR
 pattern path facts from `HirPatternId` owners instead of reconstructing variant
 paths from syntax. Path

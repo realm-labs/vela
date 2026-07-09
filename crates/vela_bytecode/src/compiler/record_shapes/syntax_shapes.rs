@@ -610,7 +610,7 @@ impl Compiler<'_, '_> {
                 self.record_shape_with_locals(source, expression, local_shapes)
             }
             SyntaxExpressionKind::Path => self
-                .local_path_shape(expression, local_shapes)
+                .local_path_shape(source, expression, local_shapes)
                 .or_else(|| self.path_shape(source, expression)),
             SyntaxExpressionKind::Field => {
                 self.field_shape_with_locals(source, expression, local_shapes)
@@ -646,10 +646,13 @@ impl Compiler<'_, '_> {
 
     fn local_path_shape(
         &self,
+        source: Option<SourceId>,
         expression: &SyntaxExpression,
         local_shapes: &BTreeMap<String, ValueShape>,
     ) -> Option<ValueShape> {
-        let path = expression.as_path()?.path_segments();
+        let source = source?;
+        let span = syntax_expression_span(source, expression);
+        let path = self.hir_value_path_for_span(span)?;
         let [name] = path.as_slice() else {
             return None;
         };
