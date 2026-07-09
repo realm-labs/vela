@@ -570,8 +570,9 @@ Focused validation:
 - [x] Reject tuple Map/Set keys in the first slice with precise diagnostics.
 - [~] Add hot-reload rejection for exported unit/tuple signature changes,
   tuple arity changes, and tuple element contract changes. Descriptor and
-  schema ABI comparisons now parse unit and tuple type hints structurally;
-  real source-reload tuple signature fixtures remain open.
+  schema ABI comparisons now parse unit and tuple type hints structurally, and
+  source-reload tuple signature fixtures cover equivalent formatting plus
+  tuple arity rejection. Typed dynamic-boundary tuple guard plans remain open.
 - [ ] Add focused benchmark rows for common tuple-return stdlib paths if they
   are introduced.
 

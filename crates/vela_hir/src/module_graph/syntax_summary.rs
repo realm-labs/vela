@@ -526,6 +526,31 @@ fn param_hint(source: SourceId, param: &SyntaxParam) -> Option<ParamHint> {
 }
 
 fn hir_type_hint(source: SourceId, hint: &SyntaxTypeHint) -> HirTypeHint {
+    let span = span_for(source, hint.syntax().text_range());
+    if hint.is_unit() {
+        return HirTypeHint {
+            path: vec![HirTypeHint::UNIT_PATH.to_owned()],
+            args: Vec::new(),
+            span,
+        };
+    }
+
+    let tuple_elements = hint.tuple_element_hints().collect::<Vec<_>>();
+    if hint.is_tuple() {
+        return HirTypeHint {
+            path: vec![HirTypeHint::UNIT_PATH.to_owned()],
+            args: tuple_elements
+                .iter()
+                .map(|arg| hir_type_hint(source, arg))
+                .collect(),
+            span,
+        };
+    }
+
+    if hint.l_paren_token().is_some() && tuple_elements.len() == 1 {
+        return hir_type_hint(source, &tuple_elements[0]);
+    }
+
     HirTypeHint {
         path: hint.path_segments(),
         args: hint
@@ -534,7 +559,7 @@ fn hir_type_hint(source: SourceId, hint: &SyntaxTypeHint) -> HirTypeHint {
             .flat_map(|args| args.type_hints())
             .map(|arg| hir_type_hint(source, &arg))
             .collect(),
-        span: span_for(source, hint.syntax().text_range()),
+        span,
     }
 }
 

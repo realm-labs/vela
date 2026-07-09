@@ -126,6 +126,55 @@ fn grant(player: Plyer) {
         "candidate `Player` is declared here"
     );
 }
+
+#[test]
+fn lowers_unit_and_tuple_type_hint_metadata() {
+    let mut graph = ModuleGraph::new();
+    let module = graph.add_source(source(
+        1,
+        "game::tuples",
+        r#"
+fn split(value: String, fallback: ()) -> Option<(String, i64)> {
+    let pair: (String, i64) = ("level", 3);
+    return Option::Some(pair);
+}
+"#,
+    ));
+    let declarations = graph.module(module).expect("module declarations");
+    let split = declarations.get("split").expect("split declaration");
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+
+    let split_signature = graph.function_signature(split).expect("split signature");
+    assert_eq!(
+        split_signature.params[1]
+            .type_hint
+            .as_ref()
+            .map(HirTypeHint::display)
+            .as_deref(),
+        Some("()")
+    );
+    assert_eq!(
+        split_signature
+            .return_type
+            .as_ref()
+            .map(HirTypeHint::display)
+            .as_deref(),
+        Some("Option<(String, i64)>")
+    );
+    let bindings = graph.bindings(split).expect("split bindings");
+    let [pair] = bindings.locals_named("pair") else {
+        panic!("expected pair local");
+    };
+    assert_eq!(
+        bindings
+            .local(*pair)
+            .and_then(|local| local.type_hint.as_ref())
+            .map(HirTypeHint::display)
+            .as_deref(),
+        Some("(String, i64)")
+    );
+}
+
 #[test]
 fn unknown_impl_schema_names_report_trait_and_target_candidates() {
     let mut graph = ModuleGraph::new();

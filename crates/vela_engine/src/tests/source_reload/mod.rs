@@ -40,6 +40,7 @@ mod runtime_safe_points;
 mod source_file_native_method;
 mod source_file_runtime;
 mod source_file_schema_trait;
+mod source_file_tuple_abi;
 
 include!("fixtures.rs");
 include!("report_helpers.rs");

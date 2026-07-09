@@ -10,8 +10,23 @@ pub struct HirTypeHint {
 }
 
 impl HirTypeHint {
+    pub const UNIT_PATH: &'static str = "()";
+
     #[must_use]
     pub fn display(&self) -> String {
+        if self.path.as_slice() == [Self::UNIT_PATH] {
+            if self.args.is_empty() {
+                return Self::UNIT_PATH.to_owned();
+            }
+            let args = self
+                .args
+                .iter()
+                .map(Self::display)
+                .collect::<Vec<_>>()
+                .join(", ");
+            return format!("({args})");
+        }
+
         let path = self.path.join("::");
         if self.args.is_empty() {
             path
