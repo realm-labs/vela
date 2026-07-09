@@ -2,7 +2,11 @@ use std::collections::BTreeMap;
 
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
-use vela_hir::{binding::LocalBindingKind, ids::HirLocalId, module_graph::ModuleGraph};
+use vela_hir::{
+    body::{HirPatternKind, HirStmtKind},
+    ids::HirLocalId,
+    module_graph::ModuleGraph,
+};
 use vela_syntax::ast::{AstNode, SyntaxLetStmt, SyntaxSourceFile};
 use vela_syntax::{Parse as SyntaxParse, TextRange as SyntaxTextRange, TextSize};
 
@@ -31,31 +35,28 @@ fn local_record_fact(
     source_id: SourceId,
     statement: &SyntaxLetStmt,
 ) -> Option<(HirLocalId, TypeFact)> {
-    let name = statement.name_text()?;
+    statement.name_text()?;
     let record = statement.initializer()?.as_record()?;
     let record_path = record.path_text()?;
     let statement_span = span_from_text_range(source_id, statement.syntax().text_range());
-    let local = local_for_statement(graph, statement_span, &name)?;
+    let local = local_for_statement(graph, statement_span)?;
     Some((local, TypeFact::record(record_path)))
 }
 
-fn local_for_statement(
-    graph: &ModuleGraph,
-    statement_span: Span,
-    name: &str,
-) -> Option<HirLocalId> {
-    for declaration in graph.declarations() {
-        if declaration.span.source != statement_span.source
-            || !declaration.span.contains(statement_span.start)
-        {
-            continue;
-        }
-        let Some(bindings) = graph.bindings(declaration.id) else {
+fn local_for_statement(graph: &ModuleGraph, statement_span: Span) -> Option<HirLocalId> {
+    for body in graph.bodies() {
+        let Some(statement) = body.statements.values().find(|statement| {
+            statement.kind == HirStmtKind::Let && statement.origin.span == statement_span
+        }) else {
             continue;
         };
-        if let Some(local) = bindings.local_named_at(name, LocalBindingKind::Let, statement_span) {
-            return Some(local);
-        }
+        return statement.patterns.iter().find_map(|pattern| {
+            let pattern = body.patterns.get(pattern)?;
+            if pattern.kind != HirPatternKind::Binding {
+                return None;
+            }
+            pattern.local
+        });
     }
     None
 }

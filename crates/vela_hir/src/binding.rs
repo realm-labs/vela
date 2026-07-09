@@ -82,20 +82,6 @@ impl BindingMap {
     }
 
     #[must_use]
-    pub fn local_named_at(
-        &self,
-        name: &str,
-        kind: LocalBindingKind,
-        span: Span,
-    ) -> Option<HirLocalId> {
-        self.locals_named(name).iter().copied().find(|local| {
-            self.local(*local).is_some_and(|binding| {
-                binding.kind == kind && (binding.span == span || binding.scope_span == Some(span))
-            })
-        })
-    }
-
-    #[must_use]
     pub fn resolution(&self, expression: HirExprId) -> Option<&BindingResolution> {
         self.resolutions.get(&expression)
     }

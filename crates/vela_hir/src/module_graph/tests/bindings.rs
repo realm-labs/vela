@@ -1,5 +1,7 @@
 use super::*;
-use crate::body::{HirBodyOwner, HirBodyRoot, HirExprKind, HirPathKind, HirScopeKind, HirStmtKind};
+use crate::body::{
+    HirBodyOwner, HirBodyRoot, HirExprKind, HirPathKind, HirPatternKind, HirScopeKind, HirStmtKind,
+};
 
 fn hir_resolution_for_span<'a>(
     graph: &ModuleGraph,
@@ -8,6 +10,27 @@ fn hir_resolution_for_span<'a>(
 ) -> Option<&'a BindingResolution> {
     let expression = graph.expression_at_span(span)?;
     bindings.resolution(expression)
+}
+
+fn let_local_for_statement_span(graph: &ModuleGraph, span: Span) -> Option<crate::ids::HirLocalId> {
+    for body in graph.bodies() {
+        let Some(statement) = body
+            .statements
+            .values()
+            .find(|statement| statement.kind == HirStmtKind::Let && statement.origin.span == span)
+        else {
+            continue;
+        };
+        if let Some(local) = statement.patterns.iter().find_map(|pattern| {
+            let pattern = body.patterns.get(pattern)?;
+            (pattern.kind == HirPatternKind::Binding)
+                .then_some(pattern.local)
+                .flatten()
+        }) {
+            return Some(local);
+        }
+    }
+    None
 }
 
 #[test]
@@ -144,9 +167,8 @@ fn main(player) {
     let let_start = text.find("let even").expect("even let");
     let let_end = let_start + "let even = 0;".len();
     assert_eq!(
-        bindings.local_named_at(
-            "even",
-            LocalBindingKind::Let,
+        let_local_for_statement_span(
+            &graph,
             Span::new(SourceId::new(1), let_start as u32, let_end as u32)
         ),
         Some(*even)
@@ -213,9 +235,8 @@ fn main() {
     let even_capture_start = text.find("{ even }").expect("even capture") + "{ ".len();
     let odd_capture_start = text.find("{ odd }").expect("odd capture") + "{ ".len();
     assert_eq!(
-        bindings.local_named_at(
-            "even",
-            LocalBindingKind::Let,
+        let_local_for_statement_span(
+            &graph,
             Span::new(
                 SourceId::new(1),
                 even_let_start as u32,
@@ -225,9 +246,8 @@ fn main() {
         Some(*even)
     );
     assert_eq!(
-        bindings.local_named_at(
-            "odd",
-            LocalBindingKind::Let,
+        let_local_for_statement_span(
+            &graph,
             Span::new(
                 SourceId::new(1),
                 odd_let_start as u32,
@@ -302,9 +322,8 @@ fn main() {
 
     let reward_let_start = text.find("let reward").expect("reward let");
     assert_eq!(
-        bindings.local_named_at(
-            "reward",
-            LocalBindingKind::Let,
+        let_local_for_statement_span(
+            &graph,
             Span::new(
                 SourceId::new(1),
                 reward_let_start as u32,
@@ -353,9 +372,8 @@ fn binding_resolves_core_conformance_block_capture_at_vm_span() {
     let reward_capture_start = core.find("reward.score()").expect("reward capture");
     let lambda_capture_start = core.find("reward.count + 9").expect("lambda capture");
     assert_eq!(
-        bindings.local_named_at(
-            "reward",
-            LocalBindingKind::Let,
+        let_local_for_statement_span(
+            &graph,
             Span::new(
                 SourceId::new(1),
                 reward_let_start as u32,

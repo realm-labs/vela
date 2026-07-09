@@ -177,7 +177,10 @@ HIR bodies now also record field/member receiver expression facts keyed by
 `HirExprId`, semantic-token member classification reads those HIR member facts
 instead of a syntax-built receiver map, and query-context visible locals now use
 binding scope spans so let bindings are not visible inside their own
-initializers. Script field reference and rename use scans now read
+initializers. Semantic-token local record facts now identify let locals through
+HIR statement-owned binding pattern IDs instead of `BindingMap` name/span
+lookup, and the old `local_named_at` binding helper has been removed. Script
+field reference and rename use scans now read
 source-scoped `HirField` facts from `ModuleGraph` instead of rebuilding member
 access sites from parsed syntax, and script method reference/rename use scans
 now read HIR member-call field callee facts instead of parsed member-call
