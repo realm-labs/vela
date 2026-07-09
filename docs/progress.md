@@ -135,7 +135,10 @@ root `HirBodyId`. Language-service query contexts now expose the active
 `HirBody` through that root body identity, and unresolved-name semantic tokens
 now read body-owned unresolved reference facts, including unresolved callees,
 instead of reconstructing body unresolved names from diagnostics or syntax call
-sites.
+sites. Analysis facts can now be built with registry schema facts for local
+type hints, and language-service range type queries use HIR expression source
+origins plus `HirExprId`-keyed analysis facts for resolved identifier facts
+instead of scanning binding resolutions by span.
 Heavy HIR will next move resolution tables, body
 facts, language-service queries, and bytecode lowering away from body-level
 syntax reconstruction. MIR will then add an internal `vela_mir`

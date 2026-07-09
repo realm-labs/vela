@@ -10,14 +10,12 @@ use crate::{
     cursor_context_at, expression_facts,
 };
 use vela_analysis::facts::AnalysisFacts;
-use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
-use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
+use vela_hir::binding::{BindingMap, LocalBinding};
 use vela_hir::body::HirBody;
-use vela_hir::ids::HirDeclId;
+use vela_hir::ids::{HirDeclId, HirExprId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
-use vela_hir::type_hint::HirTypeHint;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct CallArgumentFacts<'a> {
@@ -380,43 +378,6 @@ fn active_call_parameter_index(args_text: &str) -> usize {
     active
 }
 
-fn type_fact_for_resolution(
-    resolution: &BindingResolution,
-    bindings: &BindingMap,
-    facts: &AnalysisFacts,
-    schema: &RegistryFacts,
-) -> Option<TypeFact> {
-    match resolution {
-        BindingResolution::Local(local) => {
-            let binding = bindings.local(*local)?;
-            facts
-                .local(*local)
-                .cloned()
-                .filter(|fact| !matches!(fact, TypeFact::Unknown))
-                .or_else(|| schema_fact_for_local_hint(binding, schema))
-        }
-        BindingResolution::Declaration(declaration) => facts.declaration(*declaration).cloned(),
-        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
-    }
-}
-
-fn schema_fact_for_local_hint(binding: &LocalBinding, schema: &RegistryFacts) -> Option<TypeFact> {
-    schema_fact_for_hint(binding.type_hint.as_ref()?, schema)
-}
-
-fn schema_fact_for_hint(hint: &HirTypeHint, schema: &RegistryFacts) -> Option<TypeFact> {
-    if !hint.args.is_empty() {
-        return None;
-    }
-    let qualified = hint.path.join("::");
-    schema
-        .type_fact(&qualified)
-        .or_else(|| schema.trait_fact(&qualified))
-        .or_else(|| hint.path.last().and_then(|name| schema.type_fact(name)))
-        .or_else(|| hint.path.last().and_then(|name| schema.trait_fact(name)))
-        .cloned()
-}
-
 pub(crate) fn type_fact_for_source_range(
     databases: &LanguageServiceDatabases,
     source_id: SourceId,
@@ -426,13 +387,18 @@ pub(crate) fn type_fact_for_source_range(
     let end = u32::try_from(range.end).ok()?;
     let span = Span::new(source_id, start, end);
     let graph = databases.hir_db().graph();
-    let facts = AnalysisFacts::from_module_graph(graph);
-    binding_maps_at(databases, source_id, start)
-        .find_map(|bindings| {
-            let resolution = bindings.resolution_at_span(span)?;
-            type_fact_for_resolution(resolution, bindings, &facts, databases.schema_db().facts())
-        })
+    let facts = AnalysisFacts::from_module_graph_and_schema(graph, databases.schema_db().facts());
+    hir_expression_at_span(graph, span)
+        .and_then(|expression| facts.expression(expression).cloned())
+        .filter(|fact| !matches!(fact, TypeFact::Unknown))
         .or_else(|| expression_facts::fact_for_range(databases, source_id, range))
+}
+
+fn hir_expression_at_span(graph: &ModuleGraph, span: Span) -> Option<HirExprId> {
+    graph
+        .bodies()
+        .flat_map(|body| body.expressions.values())
+        .find_map(|expression| (expression.origin.span == span).then_some(expression.id))
 }
 
 fn query_bindings<'a>(

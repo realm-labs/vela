@@ -5,6 +5,7 @@ use vela_hir::ids::{HirDeclId, HirExprId, HirLocalId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 
 use crate::hints::{declaration_schema_fact, type_fact_from_hint_in_module};
+use crate::registry::RegistryFacts;
 use crate::type_fact::TypeFact;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -17,6 +18,15 @@ pub struct AnalysisFacts {
 impl AnalysisFacts {
     #[must_use]
     pub fn from_module_graph(graph: &ModuleGraph) -> Self {
+        Self::from_module_graph_with_schema(graph, None)
+    }
+
+    #[must_use]
+    pub fn from_module_graph_and_schema(graph: &ModuleGraph, schema: &RegistryFacts) -> Self {
+        Self::from_module_graph_with_schema(graph, Some(schema))
+    }
+
+    fn from_module_graph_with_schema(graph: &ModuleGraph, schema: Option<&RegistryFacts>) -> Self {
         let mut facts = Self::default();
 
         for declaration in graph.declarations() {
@@ -27,10 +37,15 @@ impl AnalysisFacts {
             if let Some(bindings) = graph.bindings(declaration.id) {
                 facts.locals.extend(bindings.locals().filter_map(|local| {
                     let hint = local.type_hint.as_ref()?;
-                    Some((
-                        local.id,
-                        type_fact_from_hint_in_module(graph, declaration.module, hint),
-                    ))
+                    let fact = type_fact_from_hint_in_module(graph, declaration.module, hint);
+                    let fact = if matches!(fact, TypeFact::Unknown) {
+                        schema
+                            .and_then(|schema| schema_fact_for_hint(schema, &hint.path))
+                            .unwrap_or(fact)
+                    } else {
+                        fact
+                    };
+                    Some((local.id, fact))
                 }));
             }
         }
@@ -87,6 +102,19 @@ impl AnalysisFacts {
             BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
         }
     }
+}
+
+fn schema_fact_for_hint(schema: &RegistryFacts, path: &[String]) -> Option<TypeFact> {
+    if path.is_empty() {
+        return None;
+    }
+    let qualified = path.join("::");
+    schema
+        .type_fact(&qualified)
+        .or_else(|| schema.trait_fact(&qualified))
+        .or_else(|| path.last().and_then(|name| schema.type_fact(name)))
+        .or_else(|| path.last().and_then(|name| schema.trait_fact(name)))
+        .cloned()
 }
 
 fn declaration_fact(graph: &ModuleGraph, declaration: HirDeclId) -> Option<TypeFact> {
@@ -260,6 +288,42 @@ mod tests {
         assert!(saw_amount);
         assert!(saw_base);
         assert!(saw_bonus);
+    }
+
+    #[test]
+    fn analysis_facts_include_schema_local_hints_for_expression_facts() {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_qualified("game"),
+            r#"
+            fn main(enemy: Enemy) {
+                return enemy;
+            }
+            "#,
+        ));
+        graph.resolve_imports();
+        assert_eq!(graph.diagnostics(), &[]);
+        let mut schema = RegistryFacts::default();
+        schema.insert_type("Enemy", TypeFact::host("Enemy"));
+
+        let main = graph
+            .declarations()
+            .find(|declaration| declaration.name == "main")
+            .expect("main declaration");
+        let bindings = graph.bindings(main.id).expect("main bindings");
+        let facts = AnalysisFacts::from_module_graph_and_schema(&graph, &schema);
+        let [enemy] = bindings.locals_named("enemy") else {
+            panic!("expected enemy parameter");
+        };
+
+        assert_eq!(facts.local(*enemy), Some(&TypeFact::host("Enemy")));
+        assert!(bindings.resolutions().any(|(expression, resolution)| {
+            if resolution != &BindingResolution::Local(*enemy) {
+                return false;
+            }
+            facts.expression(expression) == Some(&TypeFact::host("Enemy"))
+        }));
     }
 
     #[test]
