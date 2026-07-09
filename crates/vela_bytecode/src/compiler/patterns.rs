@@ -143,7 +143,7 @@ impl Compiler<'_, '_> {
         patterns: &mut Vec<HirPatternId>,
     ) -> CompileResult<()> {
         patterns.push(
-            self.required_pattern_at_span(span_for_range(source, pattern.syntax().text_range()))?,
+            self.required_hir_pattern_at_source_origin(source, pattern.syntax().text_range())?,
         );
         match pattern.pattern_kind() {
             Some(SyntaxPatternKind::RecordVariant) => {
@@ -158,10 +158,12 @@ impl Compiler<'_, '_> {
                             source, &pattern, patterns,
                         )?;
                     } else if let Some(binding) = field.shorthand_binding_name_token() {
-                        patterns.push(self.required_pattern_at_span(span_for_range(
-                            source,
-                            binding.text_range(),
-                        ))?);
+                        patterns.push(
+                            self.required_hir_pattern_at_source_origin(
+                                source,
+                                binding.text_range(),
+                            )?,
+                        );
                     }
                 }
             }
@@ -353,10 +355,30 @@ impl Compiler<'_, '_> {
         }
     }
 
-    fn required_pattern_at_span(&self, span: Span) -> CompileResult<HirPatternId> {
-        self.pattern_at_span(span).ok_or_else(|| {
-            CompileError::new(CompileErrorKind::UnsupportedSyntax("HIR pattern")).with_span(span)
-        })
+    fn required_hir_pattern_at_source_origin(
+        &self,
+        source: SourceId,
+        range: TextRange,
+    ) -> CompileResult<HirPatternId> {
+        self.hir_pattern_at_source_origin(source, range)
+            .ok_or_else(|| {
+                CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "HIR pattern source origin",
+                ))
+                .with_span(span_for_range(source, range))
+            })
+    }
+
+    fn hir_pattern_at_source_origin(
+        &self,
+        source: SourceId,
+        range: TextRange,
+    ) -> Option<HirPatternId> {
+        let span = span_for_range(source, range);
+        self.hir_bodies
+            .iter()
+            .flat_map(|body| body.patterns.values())
+            .find_map(|pattern| (pattern.origin.span == span).then_some(pattern.id))
     }
 
     pub(in crate::compiler) fn enum_variant_field_fact(
@@ -443,8 +465,7 @@ impl Compiler<'_, '_> {
         source: SourceId,
         pattern: &SyntaxPattern,
     ) -> Option<Vec<String>> {
-        let pattern =
-            self.pattern_at_span(span_for_range(source, pattern.syntax().text_range()))?;
+        let pattern = self.hir_pattern_at_source_origin(source, pattern.syntax().text_range())?;
         self.hir_bodies
             .iter()
             .flat_map(|body| body.paths.iter())

@@ -1079,27 +1079,6 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         })
     }
 
-    pub(in crate::compiler) fn let_local_binding_for_pattern_span(
-        &self,
-        span: Span,
-    ) -> Option<(HirLocalId, Option<HirTypeHint>)> {
-        let pattern = self.pattern_at_span(span)?;
-        let local = self.local_for_pattern(pattern, LocalBindingKind::Let)?;
-        let binding = self.bindings.local(local)?;
-        Some((local, binding.type_hint.clone()))
-    }
-
-    pub(in crate::compiler) fn pattern_at_span(&self, span: Span) -> Option<HirPatternId> {
-        for body in &self.hir_bodies {
-            for pattern in body.patterns.values() {
-                if pattern.origin.span == span {
-                    return Some(pattern.id);
-                }
-            }
-        }
-        None
-    }
-
     pub(in crate::compiler) fn local_for_pattern(
         &self,
         pattern_id: HirPatternId,

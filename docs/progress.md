@@ -271,8 +271,10 @@ uses each `HirParam::default_body` to select the default expression, deleting
 the old function-signature default-span matching helper. Simple ordinary lets
 now pass statement-owned `HirPatternId`s through every bytecode fast path, and
 parameter-default block lets resolve through HIR pattern origins instead of the
-deleted name-plus-statement-span binding helper. For-loop pattern local setup
-now consumes the statement-owned HIR pattern sequence with a shared cursor for
+deleted name-plus-statement-span binding helper. The bytecode compiler no
+longer exposes a generic pattern-at-span local lookup; syntax-to-HIR pattern
+pairing is contained in the pattern lowering boundary. For-loop pattern local
+setup now consumes the statement-owned HIR pattern sequence with a shared cursor for
 indexed and value patterns instead of re-finding for-pattern locals by span.
 Match statement and match expression local setup now collects the HIR pattern
 ID sequence for each arm and uses the same HIR cursor path, deleting the shared

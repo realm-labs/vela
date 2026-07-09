@@ -333,10 +333,13 @@ impl Compiler<'_, '_> {
         let Some(name_token) = let_stmt.name_token() else {
             return Err(param_default_block_unsupported(source, block));
         };
+        let Some(pattern) = let_stmt.pattern() else {
+            return Err(param_default_block_unsupported(source, block));
+        };
         let name = name_token.text().to_owned();
         let span = span_for_range(source, let_stmt.syntax().text_range());
-        let binding_span = span_for_range(source, name_token.text_range());
-        let local_binding = self.let_local_binding_for_pattern_span(binding_span);
+        let hir_patterns = self.hir_pattern_ids_for_syntax_pattern(source, &pattern)?;
+        let local_binding = self.let_local_binding_for_patterns(&hir_patterns);
         let hir_type_hint = local_binding.as_ref().and_then(|(_, hint)| hint.as_ref());
         let hinted_value_type = hir_type_hint.and_then(type_hint_value_type);
         let register = if let Some(initializer) = let_stmt.initializer() {
