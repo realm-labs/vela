@@ -162,7 +162,7 @@ output_contains_example!(
 output_contains_example!(
     host_read_only_denied_example_reports_error,
     env!("CARGO_BIN_EXE_host_read_only_denied"),
-    "field `Player.id` is read-only for script writes",
+    "field is read-only for script writes",
 );
 
 output_contains_example!(

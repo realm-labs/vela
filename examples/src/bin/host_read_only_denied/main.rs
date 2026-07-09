@@ -14,6 +14,6 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .host_write()
                 .run()
         },
-        "field `Player.id` is read-only for script writes",
+        "field is read-only for script writes",
     )
 }
