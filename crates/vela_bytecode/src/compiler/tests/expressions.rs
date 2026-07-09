@@ -989,6 +989,40 @@ fn main() {
         )
     }));
 }
+
+#[test]
+fn compiler_resolves_indexed_record_read_shape_from_hir() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let players = [
+        Player { level: 2, exp: 5 },
+        Player { level: 7, exp: 1 },
+    ];
+    return players[0].level;
+}
+"#,
+        "main",
+    )
+    .expect("indexed record read shape should compile through HIR index facts");
+    assert!(code.instructions.iter().any(|instruction| {
+        matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::GetRecordSlot {
+                ref field,
+                ..
+            } if field == "level"
+        )
+    }));
+    assert!(!code.instructions.iter().any(|instruction| {
+        matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::GetRecordField { .. }
+        )
+    }));
+}
+
 #[test]
 fn compiler_lowers_immediate_record_field_reads_to_slots() {
     let code = compile_function_source(

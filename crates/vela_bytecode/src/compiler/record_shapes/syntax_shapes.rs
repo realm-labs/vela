@@ -266,9 +266,13 @@ impl Compiler<'_, '_> {
         source: Option<SourceId>,
         expression: &SyntaxExpression,
     ) -> Option<ValueShape> {
-        let index = expression.as_index()?;
-        let receiver = index.receiver()?;
-        match self.value_shape_for_syntax_expression(source, &receiver)? {
+        expression.as_index()?;
+        let source = source?;
+        let span = syntax_expression_span(source, expression);
+        let index = self.hir_index_for_span(span)?;
+        let receiver_span = self.expression_span(index.receiver)?;
+        let receiver = syntax_shape_expression_at_span(source, expression, receiver_span)?;
+        match self.value_shape_for_syntax_expression(Some(source), &receiver)? {
             ValueShape::Array(element) => Some(*element),
             ValueShape::Map { value, .. } => Some(*value),
             _ => None,
@@ -826,9 +830,17 @@ impl Compiler<'_, '_> {
         expression: &SyntaxExpression,
         local_shapes: &BTreeMap<String, ValueShape>,
     ) -> Option<ValueShape> {
-        let index = expression.as_index()?;
-        let receiver = index.receiver()?;
-        match self.value_shape_for_syntax_expression_with_locals(source, &receiver, local_shapes)? {
+        expression.as_index()?;
+        let source = source?;
+        let span = syntax_expression_span(source, expression);
+        let index = self.hir_index_for_span(span)?;
+        let receiver_span = self.expression_span(index.receiver)?;
+        let receiver = syntax_shape_expression_at_span(source, expression, receiver_span)?;
+        match self.value_shape_for_syntax_expression_with_locals(
+            Some(source),
+            &receiver,
+            local_shapes,
+        )? {
             ValueShape::Array(element) => Some(*element),
             ValueShape::Map { value, .. } => Some(*value),
             _ => None,

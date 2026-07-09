@@ -1693,7 +1693,9 @@ callable parameter facts, stable `TypeFact`s, `Any`/unknown suppression, and
   index target parts for cache-ready host access plans. HIR bodies now also
   record index receiver and subscript operand facts keyed by `HirExprId`, and
   ordinary bytecode index-read lowering consumes those facts instead of
-  reconstructing receiver/index operands from index syntax.
+  reconstructing receiver/index operands from index syntax. Bytecode
+  record-shape inference now uses the same HIR index operand facts for direct
+  and lambda-local index shapes instead of asking index syntax for receivers.
 
 ### Remaining Gaps
 
