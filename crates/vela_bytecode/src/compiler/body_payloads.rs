@@ -36,9 +36,9 @@ pub(super) struct CompilerBodyPayload<'ast> {
 }
 
 pub(super) struct CompilerStatementPayload<'ast> {
-    source: Option<SourceId>,
-    syntax: Option<SyntaxStatement>,
-    hir_kind: Option<HirStmtKind>,
+    source: SourceId,
+    syntax: SyntaxStatement,
+    hir_kind: HirStmtKind,
     _ast: PhantomData<&'ast ()>,
 }
 
@@ -111,8 +111,8 @@ impl<'ast> CompilerBodyPayload<'ast> {
             return CompilerBlockValue::Empty;
         };
         if matches!(
-            tail.stored_statement_kind(),
-            Some(SyntaxStatementKind::Expr | SyntaxStatementKind::If | SyntaxStatementKind::Match)
+            tail.hir_statement_kind(),
+            HirStmtKind::Expr | HirStmtKind::If | HirStmtKind::Match
         ) {
             CompilerBlockValue::TailExpression { prefix, tail }
         } else {
@@ -235,17 +235,15 @@ fn syntax_statement_starts_with_infix_continuation(statement: &SyntaxStatement) 
 impl<'ast> CompilerStatementPayload<'ast> {
     fn new_hir_syntax(source: SourceId, syntax: SyntaxStatement, statement: &HirStmt) -> Self {
         Self {
-            source: Some(source),
-            syntax: Some(syntax),
-            hir_kind: Some(statement.kind),
+            source,
+            syntax,
+            hir_kind: statement.kind,
             _ast: PhantomData,
         }
     }
 
-    pub(super) fn stored_statement_kind(&self) -> Option<SyntaxStatementKind> {
+    pub(super) fn hir_statement_kind(&self) -> HirStmtKind {
         self.hir_kind
-            .and_then(hir_statement_kind_to_syntax)
-            .or_else(|| self.syntax.as_ref().map(SyntaxStatement::statement_kind))
     }
 
     pub(super) fn stored_expression_kind(&self) -> Option<SyntaxExpressionKind> {
@@ -256,36 +254,31 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(in crate::compiler) fn expression_statement_syntax_expression(
         &self,
     ) -> Option<(SourceId, SyntaxExpression)> {
-        Some((self.source?, self.expression()?))
+        Some((self.source, self.expression()?))
     }
 
     pub(super) fn stored_let_initializer_kind(&self) -> Option<SyntaxExpressionKind> {
         self.syntax
-            .as_ref()?
             .as_let()?
             .initializer()
             .map(|expression| expression.expression_kind())
     }
 
     pub(super) fn let_initializer_missing_in_syntax(&self) -> bool {
-        self.source.is_some()
-            && self
-                .syntax
-                .as_ref()
-                .and_then(SyntaxStatement::as_let)
-                .is_some_and(|statement| statement.initializer().is_none())
+        self.syntax
+            .as_let()
+            .is_some_and(|statement| statement.initializer().is_none())
     }
 
     pub(super) fn let_name_text(&self) -> Option<String> {
-        self.source?;
-        self.syntax.as_ref()?.as_let()?.name_text()
+        self.syntax.as_let()?.name_text()
     }
 
     pub(super) fn let_pattern_initializer_syntax_expression_and_span(
         &self,
     ) -> Option<(SourceId, SyntaxPattern, SyntaxExpression, Span)> {
-        let source = self.source?;
-        let statement = self.syntax.as_ref()?.as_let()?;
+        let source = self.source;
+        let statement = self.syntax.as_let()?;
         let pattern = statement.pattern()?;
         let expression = statement.initializer()?;
         let range = statement.syntax().text_range();
@@ -296,8 +289,8 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(in crate::compiler) fn let_initializer_syntax_literal_and_span(
         &self,
     ) -> Option<(vela_syntax::ast::Literal, Span)> {
-        let source = self.source?;
-        let expression = self.syntax.as_ref()?.as_let()?.initializer()?;
+        let source = self.source;
+        let expression = self.syntax.as_let()?.initializer()?;
         let range = expression.syntax().text_range();
         let span = Span::new(source, range.start().into(), range.end().into());
         let literal = expression_syntax_literal(&expression)?;
@@ -307,8 +300,8 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(in crate::compiler) fn let_initializer_syntax_negated_literal_and_span(
         &self,
     ) -> Option<(vela_syntax::ast::Literal, Span)> {
-        let source = self.source?;
-        let expression = self.syntax.as_ref()?.as_let()?.initializer()?;
+        let source = self.source;
+        let expression = self.syntax.as_let()?.initializer()?;
         let range = expression.syntax().text_range();
         let span = Span::new(source, range.start().into(), range.end().into());
         let literal = expression_syntax_negated_number_literal(&expression)?;
@@ -318,8 +311,8 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(in crate::compiler) fn let_initializer_syntax_expression_and_span(
         &self,
     ) -> Option<(SourceId, SyntaxExpression, Span)> {
-        let source = self.source?;
-        let expression = self.syntax.as_ref()?.as_let()?.initializer()?;
+        let source = self.source;
+        let expression = self.syntax.as_let()?.initializer()?;
         let range = expression.syntax().text_range();
         let span = Span::new(source, range.start().into(), range.end().into());
         Some((source, expression, span))
@@ -327,29 +320,28 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     pub(super) fn stored_return_value_kind(&self) -> Option<SyntaxExpressionKind> {
         self.syntax
-            .as_ref()?
             .as_return()?
             .expression()
             .map(|expression| expression.expression_kind())
     }
 
     pub(in crate::compiler) fn syntax_if(&self) -> Option<(SourceId, SyntaxIfExpr)> {
-        Some((self.source?, self.syntax.as_ref()?.as_if()?))
+        Some((self.source, self.syntax.as_if()?))
     }
 
     pub(in crate::compiler) fn syntax_for(&self) -> Option<(SourceId, SyntaxForStmt)> {
-        Some((self.source?, self.syntax.as_ref()?.as_for()?))
+        Some((self.source, self.syntax.as_for()?))
     }
 
     pub(in crate::compiler) fn syntax_match(&self) -> Option<(SourceId, SyntaxMatchExpr)> {
-        Some((self.source?, self.expression()?.as_match()?))
+        Some((self.source, self.expression()?.as_match()?))
     }
 
     pub(in crate::compiler) fn return_value_syntax_literal_and_span(
         &self,
     ) -> Option<(vela_syntax::ast::Literal, Span)> {
-        let source = self.source?;
-        let expression = self.syntax.as_ref()?.as_return()?.expression()?;
+        let source = self.source;
+        let expression = self.syntax.as_return()?.expression()?;
         let range = expression.syntax().text_range();
         let span = Span::new(source, range.start().into(), range.end().into());
         let literal = expression_syntax_literal(&expression)?;
@@ -359,8 +351,8 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(in crate::compiler) fn return_value_syntax_negated_literal_and_span(
         &self,
     ) -> Option<(vela_syntax::ast::Literal, Span)> {
-        let source = self.source?;
-        let expression = self.syntax.as_ref()?.as_return()?.expression()?;
+        let source = self.source;
+        let expression = self.syntax.as_return()?.expression()?;
         let range = expression.syntax().text_range();
         let span = Span::new(source, range.start().into(), range.end().into());
         let literal = expression_syntax_negated_number_literal(&expression)?;
@@ -370,52 +362,34 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(in crate::compiler) fn return_value_syntax_expression_and_span(
         &self,
     ) -> Option<(SourceId, SyntaxExpression, Span)> {
-        let source = self.source?;
-        let expression = self.syntax.as_ref()?.as_return()?.expression()?;
+        let source = self.source;
+        let expression = self.syntax.as_return()?.expression()?;
         let range = expression.syntax().text_range();
         let span = Span::new(source, range.start().into(), range.end().into());
         Some((source, expression, span))
     }
 
     pub(super) fn syntax_statement_span(&self) -> Option<Span> {
-        let source = self.source?;
-        let range = self.syntax.as_ref()?.syntax().text_range();
+        let source = self.source;
+        let range = self.syntax.syntax().text_range();
         Some(Span::new(source, range.start().into(), range.end().into()))
     }
 
     pub(super) fn return_value_missing_in_syntax(&self) -> bool {
-        self.source.is_some()
-            && self
-                .syntax
-                .as_ref()
-                .and_then(SyntaxStatement::as_return)
-                .is_some_and(|statement| statement.expression().is_none())
+        self.syntax
+            .as_return()
+            .is_some_and(|statement| statement.expression().is_none())
     }
 
     pub(super) fn block_syntax_body(&self) -> Option<(SourceId, SyntaxBlock)> {
-        Some((self.source?, self.syntax.as_ref()?.as_block()?))
+        Some((self.source, self.syntax.as_block()?))
     }
 
     fn expression(&self) -> Option<SyntaxExpression> {
-        let syntax = self.syntax.as_ref()?;
+        let syntax = &self.syntax;
         syntax
             .as_expr()
             .and_then(|stmt| stmt.expression())
             .or_else(|| SyntaxExpression::cast(syntax.syntax().clone()))
-    }
-}
-
-fn hir_statement_kind_to_syntax(kind: HirStmtKind) -> Option<SyntaxStatementKind> {
-    match kind {
-        HirStmtKind::Let => Some(SyntaxStatementKind::Let),
-        HirStmtKind::Return => Some(SyntaxStatementKind::Return),
-        HirStmtKind::Break => Some(SyntaxStatementKind::Break),
-        HirStmtKind::Continue => Some(SyntaxStatementKind::Continue),
-        HirStmtKind::For => Some(SyntaxStatementKind::For),
-        HirStmtKind::If => Some(SyntaxStatementKind::If),
-        HirStmtKind::Match => Some(SyntaxStatementKind::Match),
-        HirStmtKind::Block => Some(SyntaxStatementKind::Block),
-        HirStmtKind::Expr => Some(SyntaxStatementKind::Expr),
-        HirStmtKind::Unknown => None,
     }
 }

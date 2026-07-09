@@ -258,7 +258,10 @@ reconstructing a syntax-only block body during lambda lowering. General nested
 block payloads for block statements, block expressions, loops, if branches,
 match arms, and parameter-default block lowering now require a matching
 `HirBlockId`, and `CompilerBodyPayload` no longer carries a syntax-only
-statement enumeration path.
+statement enumeration path. Statement payloads now carry concrete HIR statement
+kind facts, and bytecode statement/control-flow dispatch branches on
+`HirStmtKind` instead of converting HIR statements back to syntax statement
+kinds.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`
