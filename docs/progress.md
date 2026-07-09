@@ -210,6 +210,8 @@ Bytecode const initializer payload collection now keys syntax expressions by
 HIR const declaration IDs and initializer spans instead of parsed const names.
 Bytecode ordinary `let` statement lowering now reads destination binding names
 from HIR pattern-local bindings instead of parsed let-name syntax.
+Bytecode callback return-shape inference now reads lambda parameter names from
+HIR lambda parameter locals instead of parsed lambda parameter syntax.
 Incremental language-service updates now rebuild Heavy HIR for body-only source
 edits so HIR-owned call/member/path/body facts stay current while
 declaration/import indexes remain reusable. Semantic-token local record facts

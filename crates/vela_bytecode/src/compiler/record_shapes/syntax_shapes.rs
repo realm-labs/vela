@@ -579,11 +579,15 @@ impl Compiler<'_, '_> {
         args: &[SyntaxArgument],
         source: Option<SourceId>,
     ) -> Option<ValueShape> {
-        let lambda = args.first()?.expression()?.as_lambda()?;
-        let params = lambda
-            .param_list()?
-            .params()
-            .filter_map(|param| param.name_text())
+        let expression = args.first()?.expression()?;
+        let lambda = expression.as_lambda()?;
+        let source = source?;
+        let lambda_span = syntax_expression_span(source, &expression);
+        let params = self
+            .lambda_params_from_hir(self.hir_lambda_body(lambda_span).ok()?)
+            .ok()?
+            .into_iter()
+            .map(|param| param.name)
             .collect::<Vec<_>>();
         let hints = super::callback_param_shapes(receiver, method, params.len())?;
         let local_shapes = params
@@ -592,7 +596,7 @@ impl Compiler<'_, '_> {
             .filter_map(|(name, shape)| shape.map(|shape| (name, shape)))
             .collect::<BTreeMap<_, _>>();
         let body = lambda.body_expression()?;
-        self.value_shape_for_syntax_expression_with_locals(source, &body, &local_shapes)
+        self.value_shape_for_syntax_expression_with_locals(Some(source), &body, &local_shapes)
     }
 
     fn value_shape_for_syntax_expression_with_locals(

@@ -104,7 +104,10 @@ impl<'ast> Compiler<'ast, '_> {
         Ok(Some(dst))
     }
 
-    fn hir_lambda_body(&self, lambda_span: Span) -> CompileResult<&HirBody> {
+    pub(in crate::compiler) fn hir_lambda_body(
+        &self,
+        lambda_span: Span,
+    ) -> CompileResult<&HirBody> {
         let expression = self.expression_at_span(lambda_span).ok_or_else(|| {
             CompileError::new(CompileErrorKind::UnsupportedSyntax("lambda HIR expression"))
                 .with_span(lambda_span)
@@ -127,7 +130,10 @@ impl<'ast> Compiler<'ast, '_> {
             })
     }
 
-    fn lambda_params_from_hir(&self, body: &HirBody) -> CompileResult<Vec<LambdaParam>> {
+    pub(in crate::compiler) fn lambda_params_from_hir(
+        &self,
+        body: &HirBody,
+    ) -> CompileResult<Vec<LambdaParam>> {
         body.params
             .iter()
             .map(|param| {
