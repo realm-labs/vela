@@ -106,7 +106,9 @@ impl Compiler<'_, '_> {
                 {
                     return Ok(compiled);
                 }
-                if let Some((path, path_span)) = stmt.let_initializer_syntax_path_and_span() {
+                if let Some((_, _, path_span)) = stmt.let_initializer_syntax_expression_and_span()
+                    && let Some(path) = self.hir_value_path_for_span(path_span)
+                {
                     let Some(name) = stmt.let_name_text() else {
                         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                             "missing let binding name",
@@ -180,7 +182,9 @@ impl Compiler<'_, '_> {
                 {
                     return Ok(compiled);
                 }
-                if let Some((path, span)) = stmt.return_value_syntax_path_and_span() {
+                if let Some((_, _, span)) = stmt.return_value_syntax_expression_and_span()
+                    && let Some(path) = self.hir_value_path_for_span(span)
+                {
                     return self.compile_return_path(path, span);
                 }
                 if stmt.stored_return_value_kind() == Some(SyntaxExpressionKind::Block)

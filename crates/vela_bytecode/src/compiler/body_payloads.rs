@@ -210,17 +210,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
         Some((literal, span))
     }
 
-    pub(in crate::compiler) fn let_initializer_syntax_path_and_span(
-        &self,
-    ) -> Option<(Vec<String>, Span)> {
-        let source = self.source?;
-        let expression = self.syntax.as_ref()?.as_let()?.initializer()?;
-        let range = expression.syntax().text_range();
-        let span = Span::new(source, range.start().into(), range.end().into());
-        let path = expression_syntax_path_or_self(&expression)?;
-        (!path.is_empty()).then_some((path, span))
-    }
-
     pub(in crate::compiler) fn let_initializer_syntax_expression_and_span(
         &self,
     ) -> Option<(SourceId, SyntaxExpression, Span)> {
@@ -271,17 +260,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let span = Span::new(source, range.start().into(), range.end().into());
         let literal = expression_syntax_negated_number_literal(&expression)?;
         Some((literal, span))
-    }
-
-    pub(in crate::compiler) fn return_value_syntax_path_and_span(
-        &self,
-    ) -> Option<(Vec<String>, Span)> {
-        let source = self.source?;
-        let expression = self.syntax.as_ref()?.as_return()?.expression()?;
-        let range = expression.syntax().text_range();
-        let span = Span::new(source, range.start().into(), range.end().into());
-        let path = expression_syntax_path_or_self(&expression)?;
-        (!path.is_empty()).then_some((path, span))
     }
 
     pub(in crate::compiler) fn return_value_syntax_expression_and_span(

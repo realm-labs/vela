@@ -265,8 +265,12 @@ impl Compiler<'_, '_> {
         expression: &SyntaxExpression,
     ) -> Option<(Vec<String>, Span)> {
         let span = syntax_expression_span(source, expression);
+        self.hir_value_path_for_span(span).map(|path| (path, span))
+    }
+
+    pub(in crate::compiler) fn hir_value_path_for_span(&self, span: Span) -> Option<Vec<String>> {
         let expression = self.expression_at_span(span)?;
         let path = self.hir_value_path(expression)?;
-        (!path.is_empty()).then(|| (path.to_vec(), span))
+        (!path.is_empty()).then(|| path.to_vec())
     }
 }

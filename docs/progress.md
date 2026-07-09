@@ -207,7 +207,9 @@ and the old generic span-resolution helpers have been deleted. Pattern local
 binding setup now maps syntax origins to stable `HirPatternId` records before
 reading HIR local facts, deleting the old name/span pattern-local scan. Path
 expression statement and tail-value lowering now reads HIR value-path facts
-instead of rebuilding path segments from syntax in `path_values`.
+instead of rebuilding path segments from syntax in `path_values`, and let/return
+statement path extraction has moved out of `CompilerStatementPayload` onto that
+same HIR value-path query.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`
