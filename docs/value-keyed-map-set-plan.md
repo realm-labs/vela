@@ -84,7 +84,7 @@ iteration.
 - Preserve original key/element `Value`s for iteration, `keys()`, `entries()`,
   reflection, serialization, and GC tracing.
 - Support value-key equality for immutable/key-stable leaf values:
-  `null`, `bool`, `char`, scalar numeric tags, `String`, and `Bytes`.
+  `()`, `bool`, `char`, scalar numeric tags, `String`, and `Bytes`.
 - Support identity-key equality for script heap aggregate values and host refs:
   records, enums, arrays, maps, sets, closures, iterators, and `HostRef`.
 - Reject transient or non-data values as keys: `Missing` and `PathProxy`.
@@ -133,7 +133,7 @@ Add a focused VM module, for example `crates/vela_vm/src/value_key.rs`:
 ```rust
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub(crate) enum ValueKey {
-    Null,
+    Unit,
     Bool(bool),
     Char(char),
     I8(i8),
@@ -370,7 +370,7 @@ docs
 Static keyable type hints include:
 
 ```text
-null
+()
 bool
 char
 i8 i16 i32 i64

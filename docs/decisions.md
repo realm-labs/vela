@@ -233,7 +233,7 @@ analysis diagnostics should still be published from the available source
 facts.
 
 LSP code actions may apply structured quick fixes and source-owned refactors,
-but semantic rewrites such as null-check to Option/Result guard conversion
+but semantic rewrites such as absence-check to Option/Result guard conversion
 must wait for a structured diagnostic or syntax pattern that proves the edit is
 local, source-owned, and semantics-preserving. The server must reject dynamic
 receiver typo fixes and ambiguous imports rather than invent type facts or
@@ -1124,7 +1124,7 @@ are `display`, `kind`, `name`, and `args`; tuple descriptors use
 `kind == "tuple"` with element descriptors in `args` and `name == Option::None`,
 while unit uses `kind == "unit"` and `name == Option::Some("()")`. Missing,
 empty, or unparsable hint descriptors are represented as `Option::None`, not
-unit or a null-like sentinel.
+unit or any sentinel value.
 `reflect::type_of(value)` follows the same absence rule: values with registered
 reflected type metadata return `Option::Some(ReflectType)`, and values without
 registered metadata return `Option::None`.

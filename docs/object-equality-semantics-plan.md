@@ -317,7 +317,7 @@ comparable.
 These values have cheap builtin value equality:
 
 ```text
-null
+()
 bool
 char
 i8 i16 i32 i64

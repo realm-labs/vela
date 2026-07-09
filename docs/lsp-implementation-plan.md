@@ -1691,7 +1691,7 @@ Purpose: turn structured diagnostics into safe edits.
 - [x] Add remove-unused-import action after unused diagnostics exist.
 - [x] Add fill missing match arms when enum facts are known.
 - [x] Add missing record fields for known constructors.
-- [x] Drop old simple `if` null-check rewrite plans after source-level null
+- [x] Drop old simple `if` absence-check rewrite plans after source-level null
   removal.
   - Future Option/Result guard rewrites still need a structured diagnostic or
     syntax pattern proving the edit is local, source-owned, and

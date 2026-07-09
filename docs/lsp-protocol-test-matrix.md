@@ -122,7 +122,7 @@ Use these dimensions as row references in the matrix.
 | S4 | Members and constructors | Source/schema fields, methods, trait methods, enum variants, tuple/record/unit variants, record constructors, shorthand fields, field labels, member writes. |
 | S5 | Calls and arguments | Source functions, source methods, stdlib functions/methods, schema functions/methods, named arguments, defaulted parameters, active parameter tracking, dynamic or unresolved calls. |
 | S6 | Patterns and control flow | `match` enum patterns, record-variant fields, binding patterns, guards where supported, `for` iteration, `break`, `continue`, control-flow keywords. |
-| S7 | Literals and operators | Strings, bytes, numbers, booleans, null, arrays, maps, sets, records, unary/binary/logical operators, ranges, indexing, punctuation families. |
+| S7 | Literals and operators | Strings, bytes, numbers, booleans, unit, tuples, arrays, maps, sets, records, unary/binary/logical operators, ranges, indexing, punctuation families. |
 | S8 | Modules and imports | Qualified module paths, imported declarations, import aliases if supported, private/public visibility, source-backed schema spans, unresolved imports. |
 | S9 | Error recovery | Parser recovery, incomplete member/call/type contexts, malformed declarations, unresolved names, diagnostics with candidates, partial stale facts. |
 | S10 | Symbol ownership | Local, parameter, source declaration, source member, source variant, schema/host fact, stdlib fact, builtin fact, module, dynamic `Any`, unresolved. |
@@ -186,7 +186,7 @@ in `vela_lsp_server`.
 
 | Protocol method or behavior | Capability or provider | Syntax dimensions | Required positive coverage | Required negative/degraded coverage |
 |---|---|---:|---|---|
-| `initialize` | Server lifecycle and capability object | S0, S11 | Exact advertised capability keys, provider options, trigger characters, semantic-token legend, server info, workspace folder support. | Unsupported providers are absent or null; unsupported provider requests return method-not-found and unsupported notifications are no-response no-ops; client capability variations do not change service semantics; notification-shaped initialize messages do not initialize; malformed params reject without initializing; feature requests before `initialize` return server-not-initialized; repeated `initialize` requests are rejected without resetting server state. |
+| `initialize` | Server lifecycle and capability object | S0, S11 | Exact advertised capability keys, provider options, trigger characters, semantic-token legend, server info, workspace folder support. | Unsupported providers are absent or protocol JSON null; unsupported provider requests return method-not-found and unsupported notifications are no-response no-ops; client capability variations do not change service semantics; notification-shaped initialize messages do not initialize; malformed params reject without initializing; feature requests before `initialize` return server-not-initialized; repeated `initialize` requests are rejected without resetting server state. |
 | `initialized` | Lifecycle notification | S0 | Notification has no response and may trigger watcher/config setup. | Repeated initialization stays stable without duplicate watcher registration; minimal initialization stays stable. |
 | `shutdown`, `exit` | Lifecycle termination | S0, S11 | Shutdown response after initialization, clean exit behavior, no pending background publication after shutdown; `exit` remains allowed after shutdown. | `shutdown` before `initialize` returns server-not-initialized without closing the server; notification-shaped `shutdown` does not close the server; request-shaped `exit` reports invalid-request but still exits; requests after shutdown are rejected consistently with invalid-request errors; messages after `exit` are ignored because the server lifecycle has ended. |
 | `$/cancelRequest` | Cancellation | S11 | Stale queued or expensive requests are discarded by generation/cancellation tokens. | Unknown, malformed, or already-completed request IDs are no-response no-ops and do not poison later requests; request-shaped cancel messages are rejected without cancelling the target ID. |
@@ -197,12 +197,12 @@ in `vela_lsp_server`.
 | `textDocument/publishDiagnostics` | Server notification | S0, S1, S3, S8, S9, S11 | Parser, HIR, analysis, schema, config, missing import, unused import, and structured repair metadata project to LSP diagnostics. | One-file syntax errors do not block unrelated modules; stale schema degrades to `Any`; deleted files clear diagnostics. |
 | `textDocument/completion` | `completionProvider` | S1-S11, S13, S14 | Item, statement, expression, type, member, record field, map key, module path, call argument, lambda parameter, schema, stdlib, builtin, and cross-file imported declaration completions. Must prove structured authoring contexts before item rendering, then include empty-prefix typed receiver `.` completions for source/schema/builtin methods and fields, struct-field declaration body contexts, readable label/detail separation for source and schema types, and `for in`/`match` snippets. | Dynamic receivers suppress member guesses; unknown constructors suppress record fields; struct declaration bodies suppress global/value/constructor fallback; labels and insert text must not contain unrelated fully qualified path suffixes; stale/cancelled queries discard; malformed cursor contexts recover. |
 | `completionItem/resolve` | Completion resolve | S3, S4, S5, S10 | Lazy docs/details for schema, stdlib, and source-backed items where supported; items without lazy payloads pass through unchanged. | Unknown resolve payloads return an invalid-request error without panics; initial completion list stays lightweight. |
-| `textDocument/signatureHelp` | `signatureHelpProvider` | S3, S5, S8-S10 | Source functions, source methods, schema functions/methods, trait methods, stdlib functions/methods, active parameter, named/default args, and imported function/method calls. | Unknown calls and dynamic `Any` receiver calls return null; incomplete calls resolve only when target facts exist; stale schema. |
-| `textDocument/hover` | `hoverProvider` | S1-S10 | Locals, params, declarations, fields, methods, variants, modules, type hints, schema facts, stdlib facts, docs, effects, permissions, and imported source facts. | Unresolved names and dynamic `Any` member targets return null; missing-schema type hints degrade to `Any`; schema facts without source spans and parser recovery remain explicit audits. |
+| `textDocument/signatureHelp` | `signatureHelpProvider` | S3, S5, S8-S10 | Source functions, source methods, schema functions/methods, trait methods, stdlib functions/methods, active parameter, named/default args, and imported function/method calls. | Unknown calls and dynamic `Any` receiver calls return protocol JSON null; incomplete calls resolve only when target facts exist; stale schema. |
+| `textDocument/hover` | `hoverProvider` | S1-S10 | Locals, params, declarations, fields, methods, variants, modules, type hints, schema facts, stdlib facts, docs, effects, permissions, and imported source facts. | Unresolved names and dynamic `Any` member targets return protocol JSON null; missing-schema type hints degrade to `Any`; schema facts without source spans and parser recovery remain explicit audits. |
 | `textDocument/definition` | `definitionProvider` | S1, S3-S5, S8-S10 | Local bindings, source declarations, cross-file imported declarations, imported const/global uses, imported function calls, source fields/methods/variants, schema facts with source spans. | Schema facts without source spans return no false enclosing declaration; dynamic/unresolved targets return no location. |
 | `textDocument/declaration` | `declarationProvider` | S1, S3-S5, S8-S10 | Source declaration targets, including cross-file imported declarations, where declaration and definition are the same or explicitly distinct. | Must not silently alias unrelated definition behavior for members or type facts; dynamic/unresolved targets return no location. |
-| `textDocument/typeDefinition` | `typeDefinitionProvider` | S1, S3, S4, S8, S10 | Variables, parameters, and member expressions with source/schema type facts jump to source/schema type declarations when source-backed, including imported source types. | Field values such as `cell.value` must not jump to the enclosing function by fallback; builtin/dynamic/unknown types use an explicit null policy. |
-| `textDocument/implementation` | Not advertised | S1, S3, S4, S10 | No positive coverage until trait/impl implementation semantics are specified. | Capability remains absent/null and direct requests return method-not-found or an explicit unsupported response. |
+| `textDocument/typeDefinition` | `typeDefinitionProvider` | S1, S3, S4, S8, S10 | Variables, parameters, and member expressions with source/schema type facts jump to source/schema type declarations when source-backed, including imported source types. | Field values such as `cell.value` must not jump to the enclosing function by fallback; builtin/dynamic/unknown types use an explicit protocol JSON null policy. |
+| `textDocument/implementation` | Not advertised | S1, S3, S4, S10 | No positive coverage until trait/impl implementation semantics are specified. | Capability remains absent or protocol JSON null and direct requests return method-not-found or an explicit unsupported response. |
 | `textDocument/references` | `referencesProvider` | S1-S6, S8-S11 | Locals, parameters, source declarations, imports, functions, const/global uses, fields, methods, variants, schema-backed source spans, read/write classification, and cross-file uses. | Shadowed locals stay separate; schema-only, builtin, dynamic, unresolved, and missing-schema targets are classified or rejected consistently. |
 | `textDocument/documentHighlight` | `documentHighlightProvider` | S1-S6, S8-S10 | Same-document highlights for locals, params, functions, fields, methods, variants, schema member calls, read/write/text kind. | Parser recovery, dynamic members, unresolved names, shadowing. |
 | `textDocument/prepareRename` | `renameProvider.prepareProvider` | S1-S6, S8-S10 | Editable ranges for source-owned locals, private declarations, source members, variants, and source-backed schema spans where allowed. | Reject keywords, literals, schema-only host facts, builtin facts, dynamic `Any`, unresolved names, public ABI risk without metadata, collisions. |
@@ -277,7 +277,7 @@ These were the first places compared against the matrix before acceptance:
    from insert text; `struct Player { | }` field-declaration context
    completion; and `for in`/`match` statement snippets.
 2. Navigation semantics must stay separate per protocol. Current focused
-   fixtures cover `typeDefinition` type-fact targets and null fallback for
+   fixtures cover `typeDefinition` type-fact targets and protocol JSON null fallback for
    local source values, dynamic local values, source/schema member values,
    schema types without source spans, imported source type aliases used by
    locals and source fields, imported source function calls whose return type
@@ -301,21 +301,21 @@ These were the first places compared against the matrix before acceptance:
    provider. A capability is incomplete if the lifecycle test advertises it but
    there is no method fixture and no service proof.
 6. Dynamic boundaries need explicit negative tests. Current focused fixtures
-   pin `typeDefinition` null results for dynamic local values and dynamic
+   pin `typeDefinition` protocol JSON null results for dynamic local values and dynamic
    receiver members,
-   `signatureHelp` null results for unresolved calls, dynamic receiver calls,
-   and source functions returning `Any` used as receivers, and `hover` null
+   `signatureHelp` protocol JSON null results for unresolved calls, dynamic receiver calls,
+   and source functions returning `Any` used as receivers, and `hover` protocol JSON null
    results for unresolved names plus dynamic receiver members, including
    source functions returning `Any` used as receivers, while preserving
    parameter hovers under parser recovery, plus
    `completion` empty results for source and schema functions returning `Any`
    used as member receivers without falling back to globals, plus
-   `definition`, `declaration`, and `typeDefinition` null results for unknown
+   `definition`, `declaration`, and `typeDefinition` protocol JSON null results for unknown
    source members, dynamic receiver members, and source functions returning
    `Any` used as receivers where applicable, plus `references` and
    `documentHighlight` empty results for unresolved names and dynamic receiver
    members, including source functions returning `Any` used as receivers, plus
-   `prepareRename`/`rename` null results for dynamic receiver members,
+   `prepareRename`/`rename` protocol JSON null results for dynamic receiver members,
    including source functions returning `Any` used as receivers, plus
    `prepareCallHierarchy` empty results for unresolved calls, dynamic receiver
    calls including source functions returning `Any` used as receivers, and
@@ -327,7 +327,7 @@ These were the first places compared against the matrix before acceptance:
    plus semantic-token suppression of member provenance for source functions
    returning `Any` used as receivers; broader `Any`, missing schema, stale
    schema, unresolved name, and parser recovery cases should degrade by
-   returning null, empty results, diagnostics, or suppressed hints, not guessed
+   returning protocol JSON null, empty results, diagnostics, or suppressed hints, not guessed
    semantic facts.
 7. Multi-file and overlay behavior should be present in each cross-file
    feature family: completion, hover, navigation, references, rename, symbols,

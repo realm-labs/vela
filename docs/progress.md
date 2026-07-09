@@ -157,8 +157,8 @@ standard/native no-result metadata, control-flow defaults, and Rust
 `Option<T>` embedding conversion to script `Option<T>` enums. Runtime-owned
 tuple payloads now materialize through the VM heap and owned boundary, Rust
 `()` converts at the script-argument boundary, Rust tuple conversion supports
-arities 2 through 4, serde tuple conversion uses tuple values rather than raw
-null or array aliases, ordinary tuple expressions now lower through a
+arities 2 through 4, serde tuple conversion uses tuple values rather than
+sentinel or array aliases, ordinary tuple expressions now lower through a
 first-class `MakeTuple` bytecode instruction, and tuple destructuring patterns
 now lower for `let`, `match`, and `for` bindings through tuple arity guards and
 field reads. Tuple type facts, runtime/shape guard plans, tuple type-hint
@@ -1101,7 +1101,7 @@ M20.5 Phase 11 update: imported module path segments now participate in
 language-service and native LSP references across workspace imports, and
 document highlights mark matching module segments in the active document.
 
-M20.5 Phase 13 update: old conditional null-check to Option/Result guard
+M20.5 Phase 13 update: old conditional absence-check to Option/Result guard
 rewrite plans are superseded by the source-level null removal; future
 Option/Result guard rewrites still need a structured diagnostic or syntax
 pattern proving the rewrite is local, source-owned, and
