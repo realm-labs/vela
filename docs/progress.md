@@ -175,7 +175,9 @@ now read HIR member-call field callee facts instead of parsed member-call
 sites. Call hierarchy method-call range resolution also reads those HIR
 member-call facts while keeping declaration-call resolution on binding facts,
 and member-call return type-definition queries resolve receiver/member ranges
-from HIR call facts.
+from HIR call facts. Source-backed schema field and method reference/rename
+use scans also read HIR field/member-call facts instead of parsed member-access
+sites.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

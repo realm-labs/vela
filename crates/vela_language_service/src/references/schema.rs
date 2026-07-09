@@ -4,7 +4,7 @@ use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::SyntaxSourceFile;
 
 use crate::{
-    LanguageServiceDatabases, SymbolRef, TextRange, member_access, path_calls, query_context,
+    LanguageServiceDatabases, SymbolRef, TextRange, path_calls, query_context,
     symbol_ref::{
         schema_member_symbol as shared_schema_member_symbol,
         schema_variant_symbol as shared_schema_variant_symbol,
@@ -375,14 +375,21 @@ fn schema_method_use_references_for_source(
     let mut references = Vec::new();
     let source_id = source.source_id();
     let text = source.text();
-    let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) else {
-        return references;
-    };
-    for site in member_access::member_call_sites(parsed) {
-        if site.member != target.method {
+    let graph = databases.hir_db().graph();
+    for field in graph.member_calls_in_source(source_id) {
+        if field.name != target.method {
             continue;
         }
-        if query_context::type_fact_for_source_range(databases, source_id, site.receiver_range)
+        let Some(receiver_range) = graph
+            .expression_span(field.receiver)
+            .and_then(span_text_range)
+        else {
+            continue;
+        };
+        let Some(member_range) = span_text_range(field.member_origin.span) else {
+            continue;
+        };
+        if query_context::type_fact_for_source_range(databases, source_id, receiver_range)
             .and_then(|receiver| {
                 schema_method_target_for_receiver_fact(schema, &receiver, &target.method)
             })
@@ -391,7 +398,7 @@ fn schema_method_use_references_for_source(
         {
             references.push(Reference {
                 document_id: source.document_id().clone(),
-                range: diagnostic_range(text, site.member_range),
+                range: diagnostic_range(text, member_range),
                 kind: ReferenceKind::Call,
                 symbol: schema_method_symbol(target),
             });
@@ -409,14 +416,21 @@ fn schema_field_use_references_for_source(
     let mut references = Vec::new();
     let source_id = source.source_id();
     let text = source.text();
-    let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) else {
-        return references;
-    };
-    for site in member_access::member_access_sites(parsed) {
-        if site.member != target.field {
+    let graph = databases.hir_db().graph();
+    for field in graph.fields_in_source(source_id) {
+        if field.name != target.field {
             continue;
         }
-        if query_context::type_fact_for_source_range(databases, source_id, site.receiver_range)
+        let Some(receiver_range) = graph
+            .expression_span(field.receiver)
+            .and_then(span_text_range)
+        else {
+            continue;
+        };
+        let Some(member_range) = span_text_range(field.member_origin.span) else {
+            continue;
+        };
+        if query_context::type_fact_for_source_range(databases, source_id, receiver_range)
             .and_then(|receiver| {
                 schema_field_target_for_receiver_fact(schema, &receiver, &target.field)
             })
@@ -425,8 +439,8 @@ fn schema_field_use_references_for_source(
         {
             references.push(Reference {
                 document_id: source.document_id().clone(),
-                range: diagnostic_range(text, site.member_range),
-                kind: resolved_use_reference_kind(text, site.member_range),
+                range: diagnostic_range(text, member_range),
+                kind: resolved_use_reference_kind(text, member_range),
                 symbol: schema_field_symbol(target),
             });
         }

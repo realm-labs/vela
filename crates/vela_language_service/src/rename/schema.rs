@@ -2,12 +2,12 @@ use std::collections::BTreeMap;
 
 use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::{SourceId, Span};
-use vela_hir::module_graph::Declaration;
+use vela_hir::body::HirField;
+use vela_hir::module_graph::{Declaration, ModuleGraph};
 use vela_hir::type_hint::HirTypeHint;
 
 use crate::{
-    DocumentId, LanguageServiceDatabases, QueryContext, TextRange, member_access, path_calls,
-    query_context,
+    DocumentId, LanguageServiceDatabases, QueryContext, TextRange, path_calls, query_context,
 };
 
 use super::{
@@ -606,24 +606,21 @@ fn push_schema_member_use_edits(
     new_name: &str,
     edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
 ) {
+    let graph = databases.hir_db().graph();
     for source in databases.source_db().records().values() {
-        let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) else {
-            continue;
-        };
         match target.kind {
             SchemaMemberRenameKind::Field => {
-                for site in member_access::member_access_sites(parsed) {
-                    if site.member != target.member {
+                for field in graph.fields_in_source(source.source_id()) {
+                    if field.name != target.member {
                         continue;
                     }
+                    let Some(site) = schema_member_site_for_field(graph, field, false) else {
+                        continue;
+                    };
                     push_schema_member_site_edit(
                         databases,
                         source,
-                        SchemaMemberSite {
-                            member_range: site.member_range,
-                            receiver_range: site.receiver_range,
-                            is_call: false,
-                        },
+                        site,
                         target,
                         new_name,
                         edits_by_document,
@@ -631,18 +628,17 @@ fn push_schema_member_use_edits(
                 }
             }
             SchemaMemberRenameKind::Method | SchemaMemberRenameKind::TraitMethod => {
-                for site in member_access::member_call_sites(parsed) {
-                    if site.member != target.member {
+                for field in graph.member_calls_in_source(source.source_id()) {
+                    if field.name != target.member {
                         continue;
                     }
+                    let Some(site) = schema_member_site_for_field(graph, field, true) else {
+                        continue;
+                    };
                     push_schema_member_site_edit(
                         databases,
                         source,
-                        SchemaMemberSite {
-                            member_range: site.member_range,
-                            receiver_range: site.receiver_range,
-                            is_call: true,
-                        },
+                        site,
                         target,
                         new_name,
                         edits_by_document,
@@ -651,6 +647,20 @@ fn push_schema_member_use_edits(
             }
         }
     }
+}
+
+fn schema_member_site_for_field(
+    graph: &ModuleGraph,
+    field: &HirField,
+    is_call: bool,
+) -> Option<SchemaMemberSite> {
+    Some(SchemaMemberSite {
+        member_range: span_text_range(field.member_origin.span)?,
+        receiver_range: graph
+            .expression_span(field.receiver)
+            .and_then(span_text_range)?,
+        is_call,
+    })
 }
 
 fn push_schema_member_site_edit(
