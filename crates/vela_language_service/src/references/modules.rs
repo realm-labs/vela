@@ -1,11 +1,9 @@
 use vela_common::SourceId;
 use vela_hir::module_graph::{ModuleGraph, ModulePath};
 
-use crate::{LanguageServiceDatabases, TextRange, symbol_ref::source_module_symbol_from_segments};
+use crate::{LanguageServiceDatabases, symbol_ref::source_module_symbol_from_segments};
 
-use super::{
-    Reference, ReferenceKind, ReferenceToken, diagnostic_range, span_text_range, token_text,
-};
+use super::{Reference, ReferenceKind, ReferenceToken, diagnostic_range, span_text_range};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) struct ImportModuleTarget {
@@ -15,7 +13,6 @@ pub(super) struct ImportModuleTarget {
 pub(super) fn import_module_target(
     graph: &ModuleGraph,
     source_id: SourceId,
-    text: &str,
     token: &ReferenceToken,
 ) -> Option<ImportModuleTarget> {
     for module in graph.module_ids() {
@@ -26,8 +23,7 @@ pub(super) fn import_module_target(
             if import.span.source != source_id {
                 continue;
             }
-            let Some(segment_index) = import_segment_index(text, import.span, &import.path, token)
-            else {
+            let Some(segment_index) = import_segment_index(import, source_id, token) else {
                 continue;
             };
             if segment_index + 1 >= import.path.len() {
@@ -70,12 +66,11 @@ pub(super) fn import_module_references(
             else {
                 continue;
             };
-            let Some(range) = import_segment_range(
-                source.text(),
-                import.span,
-                &import.path,
-                target.path.len() - 1,
-            ) else {
+            let Some(range) = import
+                .path_spans
+                .get(target.path.len() - 1)
+                .and_then(|span| span_text_range(*span))
+            else {
                 continue;
             };
             references.push(Reference {
@@ -99,34 +94,14 @@ pub(super) fn import_module_references(
 }
 
 fn import_segment_index(
-    text: &str,
-    span: vela_common::Span,
-    path: &[String],
+    import: &vela_hir::module_graph::Import,
+    source_id: SourceId,
     token: &ReferenceToken,
 ) -> Option<usize> {
-    let name = token_text(text, token.range)?;
-    let index = path.iter().position(|segment| segment == name)?;
-    let range = import_segment_range(text, span, path, index)?;
-    (range.start <= token.range.start && token.range.end <= range.end).then_some(index)
-}
-
-fn import_segment_range(
-    text: &str,
-    span: vela_common::Span,
-    path: &[String],
-    segment_index: usize,
-) -> Option<TextRange> {
-    let import_range = span_text_range(span)?;
-    let import_text = text.get(import_range.start..import_range.end)?;
-    let mut search_start = 0;
-    for (index, segment) in path.iter().enumerate() {
-        let relative = import_text.get(search_start..)?.find(segment)? + search_start;
-        let start = import_range.start + relative;
-        let end = start + segment.len();
-        if index == segment_index {
-            return Some(TextRange::new(start, end));
-        }
-        search_start = relative + segment.len();
-    }
-    None
+    import.path_spans.iter().position(|span| {
+        span.source == source_id
+            && span_text_range(*span).is_some_and(|range| {
+                range.start <= token.range.start && token.range.end <= range.end
+            })
+    })
 }

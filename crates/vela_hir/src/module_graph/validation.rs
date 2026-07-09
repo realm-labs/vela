@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use vela_common::{Diagnostic, Span};
 
-use super::names::import_binding_name;
+use super::names::{import_binding_name, import_binding_span};
 use super::*;
 use crate::attributes::{HirAttribute, SchemaIdAttrError, parse_schema_id_attr};
 use crate::type_hint::{EnumShape, EnumVariantFieldsHint, ImplMetadata, StructShape, TraitShape};
@@ -14,13 +14,14 @@ impl ModuleGraph {
             let Some(name) = import_binding_name(import) else {
                 continue;
             };
-            if let Some(previous_span) = imported_names.insert(name.clone(), import.span) {
+            let binding_span = import_binding_span(import).unwrap_or(import.span);
+            if let Some(previous_span) = imported_names.insert(name.clone(), binding_span) {
                 self.diagnostics.push(
                     Diagnostic::error(format!("duplicate import `{name}`"))
                         .with_code("hir::duplicate_import")
-                        .with_span(import.span)
+                        .with_span(binding_span)
                         .with_label(previous_span, "previous import is here")
-                        .with_label(import.span, "duplicate import is here"),
+                        .with_label(binding_span, "duplicate import is here"),
                 );
             }
             if let Some(declaration) = module
@@ -33,9 +34,9 @@ impl ModuleGraph {
                         "import `{name}` conflicts with a local declaration"
                     ))
                     .with_code("hir::import_conflict")
-                    .with_span(import.span)
+                    .with_span(binding_span)
                     .with_label(declaration.name_span, "local declaration is here")
-                    .with_label(import.span, "conflicting import is here"),
+                    .with_label(binding_span, "conflicting import is here"),
                 );
             }
         }

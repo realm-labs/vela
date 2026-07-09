@@ -440,14 +440,11 @@ fn grant(amount = BASE, bonus = amount + 1) {
 #[test]
 fn lowers_const_initializer_bodies_and_refreshes_imports() {
     let mut graph = ModuleGraph::new();
-    let main = graph.add_source(source(
-        1,
-        "game::main",
-        r#"
+    let main_text = r#"
 use game::config::BASE
 const BONUS = BASE + 1
-"#,
-    ));
+"#;
+    let main = graph.add_source(source(1, "game::main", main_text));
     let config = graph.add_source(source(2, "game::config", "pub const BASE = 10"));
 
     let bonus = graph
@@ -476,6 +473,16 @@ const BONUS = BASE + 1
         initializer_bindings
             .resolutions()
             .any(|(_, resolution)| resolution == &BindingResolution::Import("BASE".to_owned()))
+    );
+    let imports = graph.imports(main).expect("main imports");
+    assert_eq!(imports.len(), 1);
+    assert_eq!(
+        imports[0]
+            .path_spans
+            .iter()
+            .map(|span| span_text(main_text, *span))
+            .collect::<Vec<_>>(),
+        ["game", "config", "BASE"]
     );
     graph.resolve_imports();
     assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());

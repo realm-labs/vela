@@ -247,13 +247,11 @@ impl LanguageServiceDatabases {
                 let Some(source) = self.source_record_for_rename(import.span.source) else {
                     continue;
                 };
-                let Some(span_range) = span_text_range(import.span) else {
-                    continue;
-                };
-                let Some(name) = import.path.last() else {
-                    continue;
-                };
-                let Some(range) = name_range_in_text(source.text(), span_range, name) else {
+                let Some(range) = import
+                    .path_spans
+                    .last()
+                    .and_then(|span| span_text_range(*span))
+                else {
                     continue;
                 };
                 edits_by_document
@@ -588,16 +586,22 @@ fn rename_target<'a>(
             continue;
         };
         for import in imports {
-            if import.span.source != source_id || !import.span.contains(offset) {
+            if import.span.source != source_id {
                 continue;
             }
             let Some(ImportResolution::Declaration(declaration_id)) = import.resolution else {
                 continue;
             };
-            let Some(name) = import.path.last() else {
+            let Some(path_name_range) = import
+                .path_spans
+                .last()
+                .and_then(|span| span_text_range(*span))
+            else {
                 continue;
             };
-            if token_text(text, token.range) != Some(name.as_str()) {
+            if !(path_name_range.start <= token.range.start
+                && token.range.end <= path_name_range.end)
+            {
                 continue;
             }
             let Some(target) = graph.declaration(declaration_id) else {
@@ -1000,15 +1004,6 @@ fn span_text_range(span: Span) -> Option<TextRange> {
     let start = usize::try_from(span.start).ok()?;
     let end = usize::try_from(span.end).ok()?;
     Some(TextRange::new(start, end))
-}
-
-fn name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRange> {
-    let slice = text.get(range.start..range.end)?;
-    slice.match_indices(name).find_map(|(offset, matched)| {
-        let start = range.start + offset;
-        let end = start + matched.len();
-        is_identifier_boundary(text, start, end).then(|| TextRange::new(start, end))
-    })
 }
 
 fn last_name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRange> {

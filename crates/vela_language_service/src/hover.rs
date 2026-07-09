@@ -238,7 +238,7 @@ impl LanguageServiceDatabases {
     fn import_hover(
         &self,
         document_id: &DocumentId,
-        text: &str,
+        _text: &str,
         source_id: vela_common::SourceId,
         facts: &AnalysisFacts,
         target: &SymbolTarget,
@@ -251,7 +251,7 @@ impl LanguageServiceDatabases {
             if import.span.source != source_id {
                 return None;
             }
-            let segment = import_path_segment_at(text, import, target)?;
+            let segment = import_path_segment_at(import, target)?;
             if segment + 1 == import.path.len() {
                 let ImportResolution::Declaration(declaration) = import.resolution?;
                 let declaration = graph.declaration(declaration)?;
@@ -286,23 +286,11 @@ fn module_hover(
     ))
 }
 
-fn import_path_segment_at(text: &str, import: &Import, target: &SymbolTarget) -> Option<usize> {
-    let range = span_text_range(import.span)?;
-    if target.range().start < range.start || range.end < target.range().end {
-        return None;
-    }
-    let slice = text.get(range.start..range.end)?;
-    let path_text = import.path.join("::");
-    slice.match_indices(&path_text).find_map(|(relative, _)| {
-        let mut segment_start = range.start + relative;
-        for (index, segment) in import.path.iter().enumerate() {
-            let segment_end = segment_start + segment.len();
-            if segment_start <= target.range().start && target.range().end <= segment_end {
-                return Some(index);
-            }
-            segment_start = segment_end + "::".len();
-        }
-        None
+fn import_path_segment_at(import: &Import, target: &SymbolTarget) -> Option<usize> {
+    import.path_spans.iter().position(|span| {
+        span_text_range(*span).is_some_and(|range| {
+            range.start <= target.range().start && target.range().end <= range.end
+        })
     })
 }
 

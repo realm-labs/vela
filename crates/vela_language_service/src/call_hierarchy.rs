@@ -121,7 +121,7 @@ impl LanguageServiceDatabases {
         {
             return vec![item];
         }
-        if let Some(target) = imported_function_target(graph, source_id, source.text(), &token)
+        if let Some(target) = imported_function_target(graph, source_id, &token)
             && let Some(item) =
                 self.call_hierarchy_item_for_target(&CallHierarchyTarget::Function(target))
         {
@@ -730,7 +730,6 @@ fn declaration_call_target(
 fn imported_function_target(
     graph: &ModuleGraph,
     source_id: SourceId,
-    text: &str,
     token: &CallHierarchyToken,
 ) -> Option<HirDeclId> {
     for module in graph.module_ids() {
@@ -738,7 +737,7 @@ fn imported_function_target(
             continue;
         };
         for import in imports {
-            if import.span.source != source_id || !import_token_matches(text, import, token) {
+            if import.span.source != source_id || !import_token_matches(import, token) {
                 continue;
             }
             let ImportResolution::Declaration(declaration) = import.resolution?;
@@ -753,26 +752,15 @@ fn imported_function_target(
     None
 }
 
-fn import_token_matches(text: &str, import: &Import, token: &CallHierarchyToken) -> bool {
-    import
-        .alias
-        .as_deref()
-        .is_some_and(|alias| import_name_matches(text, import, alias, token))
-        || import
-            .path
-            .last()
-            .is_some_and(|name| import_name_matches(text, import, name, token))
-}
-
-fn import_name_matches(
-    text: &str,
-    import: &Import,
-    name: &str,
-    token: &CallHierarchyToken,
-) -> bool {
-    span_text_range(import.span)
-        .and_then(|range| name_range_in_text(text, range, name))
-        .is_some_and(|range| range.start <= token.range.start && token.range.end <= range.end)
+fn import_token_matches(import: &Import, token: &CallHierarchyToken) -> bool {
+    [import.alias_span, import.path_spans.last().copied()]
+        .into_iter()
+        .flatten()
+        .any(|span| {
+            span_text_range(span).is_some_and(|range| {
+                range.start <= token.range.start && token.range.end <= range.end
+            })
+        })
 }
 
 fn script_method_declaration_target(
@@ -1095,28 +1083,8 @@ fn span_contains_range(span: Span, range: TextRange) -> bool {
     span.start <= start && end <= span.end
 }
 
-fn name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRange> {
-    let slice = text.get(range.start..range.end)?;
-    slice.match_indices(name).find_map(|(offset, matched)| {
-        let start = range.start + offset;
-        let end = start + matched.len();
-        is_identifier_boundary(text, start, end).then(|| TextRange::new(start, end))
-    })
-}
-
-fn is_identifier_boundary(text: &str, start: usize, end: usize) -> bool {
-    let before = text[..start].chars().next_back();
-    let after = text[end..].chars().next();
-    before.is_none_or(|ch| !is_identifier_continue(ch))
-        && after.is_none_or(|ch| !is_identifier_continue(ch))
-}
-
 fn token_text(text: &str, range: TextRange) -> Option<&str> {
     text.get(range.start..range.end)
-}
-
-fn is_identifier_continue(ch: char) -> bool {
-    ch == '_' || ch.is_ascii_alphanumeric()
 }
 
 #[cfg(test)]

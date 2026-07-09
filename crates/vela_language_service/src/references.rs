@@ -14,7 +14,7 @@ use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::body::HirPathKind;
 use vela_hir::ids::{HirDeclId, HirLocalId};
-use vela_hir::module_graph::{Declaration, DeclarationKind, ImportResolution, ModuleGraph};
+use vela_hir::module_graph::{Declaration, DeclarationKind, Import, ImportResolution, ModuleGraph};
 use vela_hir::type_hint::ImplMetadataKind;
 
 mod fields;
@@ -243,8 +243,7 @@ impl LanguageServiceDatabases {
         if let Some(target) = schema::schema_field_declaration_target(self, source_id, &token) {
             return schema::schema_field_references(self, &target, include_declaration);
         }
-        if let Some(target) = modules::import_module_target(graph, source_id, source.text(), &token)
-        {
+        if let Some(target) = modules::import_module_target(graph, source_id, &token) {
             return modules::import_module_references(self, &target);
         }
         if let Some(declaration) =
@@ -431,22 +430,11 @@ impl LanguageServiceDatabases {
 
         for module in graph.module_ids() {
             if let Some(imports) = graph.imports(module) {
-                references.extend(imports.iter().filter_map(|import| {
-                    match import.resolution {
-                        Some(ImportResolution::Declaration(resolved))
-                            if resolved == declaration =>
-                        {
-                            self.reference_for_import(
-                                import.span,
-                                import
-                                    .alias
-                                    .as_deref()
-                                    .or_else(|| import.path.last().map(String::as_str)),
-                                symbol.clone(),
-                            )
-                        }
-                        Some(ImportResolution::Declaration(_)) | None => None,
+                references.extend(imports.iter().filter_map(|import| match import.resolution {
+                    Some(ImportResolution::Declaration(resolved)) if resolved == declaration => {
+                        self.reference_for_import(import, symbol.clone())
                     }
+                    Some(ImportResolution::Declaration(_)) | None => None,
                 }));
             }
         }
@@ -613,17 +601,12 @@ impl LanguageServiceDatabases {
         SymbolRef::local_for_binding(binding, source.document_id().clone())
     }
 
-    fn reference_for_import(
-        &self,
-        span: Span,
-        name: Option<&str>,
-        symbol: SymbolRef,
-    ) -> Option<Reference> {
+    fn reference_for_import(&self, import: &Import, symbol: SymbolRef) -> Option<Reference> {
+        let span = import
+            .alias_span
+            .or_else(|| import.path_spans.last().copied())?;
         let source = self.source_record_for_reference(span.source)?;
-        let span_range = span_text_range(span)?;
-        let range = name
-            .and_then(|name| name_range_in_text(source.text(), span_range, name))
-            .unwrap_or(span_range);
+        let range = span_text_range(span)?;
         Some(Reference {
             document_id: source.document_id().clone(),
             range: diagnostic_range(source.text(), range),

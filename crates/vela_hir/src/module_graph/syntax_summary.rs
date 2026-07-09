@@ -45,6 +45,15 @@ pub(super) struct SyntaxExpressionSourcePart {
     pub(super) expression: SyntaxExpression,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct SyntaxImportHeader {
+    pub(super) path: Vec<String>,
+    pub(super) path_spans: Vec<Span>,
+    pub(super) alias: Option<String>,
+    pub(super) alias_span: Option<Span>,
+    pub(super) span: Span,
+}
+
 impl SyntaxModuleSummary {
     pub(super) fn from_parse(source: SourceId, parsed: &SyntaxParse<SyntaxSourceFile>) -> Self {
         let (items, item_headers): (Vec<_>, Vec<_>) = parsed
@@ -77,11 +86,21 @@ impl SyntaxModuleSummary {
             .map(|(index, item)| (index, item.syntax().kind()))
     }
 
-    pub(super) fn import(&self, index: usize) -> Option<(Vec<String>, Option<String>, Span)> {
+    pub(super) fn import(&self, index: usize) -> Option<SyntaxImportHeader> {
         match self.item_headers.get(index) {
-            Some(SyntaxItemHeader::Import { path, alias, span }) => {
-                Some((path.clone(), alias.clone(), *span))
-            }
+            Some(SyntaxItemHeader::Import {
+                path,
+                path_spans,
+                alias,
+                alias_span,
+                span,
+            }) => Some(SyntaxImportHeader {
+                path: path.clone(),
+                path_spans: path_spans.clone(),
+                alias: alias.clone(),
+                alias_span: *alias_span,
+                span: *span,
+            }),
             _ => None,
         }
     }
@@ -232,7 +251,9 @@ impl SyntaxModuleSummary {
 enum SyntaxItemHeader {
     Import {
         path: Vec<String>,
+        path_spans: Vec<Span>,
         alias: Option<String>,
+        alias_span: Option<Span>,
         span: Span,
     },
     Declaration {
@@ -249,12 +270,25 @@ impl SyntaxItemHeader {
         match item.syntax().kind() {
             SyntaxKind::UseItem => {
                 let use_item = SyntaxUseItem::cast(item.syntax().clone())?;
+                let path_tokens = use_item
+                    .path()
+                    .map(|path| path.path_tokens())
+                    .unwrap_or_default();
                 Some(Self::Import {
-                    path: use_item
-                        .path()
-                        .map(|path| path.path_segments())
-                        .unwrap_or_default(),
+                    path: path_tokens
+                        .iter()
+                        .filter(|token| token.kind() == SyntaxKind::Ident)
+                        .map(|token| token.text().to_owned())
+                        .collect(),
+                    path_spans: path_tokens
+                        .iter()
+                        .filter(|token| token.kind() == SyntaxKind::Ident)
+                        .map(|token| span_for(source, token.text_range()))
+                        .collect(),
                     alias: use_item.alias_text(),
+                    alias_span: use_item
+                        .alias_token()
+                        .map(|token| span_for(source, token.text_range())),
                     span: span_for(source, item.text_range()),
                 })
             }

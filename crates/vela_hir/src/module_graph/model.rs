@@ -80,7 +80,9 @@ pub enum DeclarationKind {
 pub struct Import {
     pub module: ModuleId,
     pub path: Vec<String>,
+    pub path_spans: Vec<Span>,
     pub alias: Option<String>,
+    pub alias_span: Option<Span>,
     pub span: Span,
     pub resolution: Option<ImportResolution>,
 }

@@ -1,16 +1,16 @@
 use vela_common::Span;
-use vela_hir::module_graph::{ImportResolution, ModuleGraph};
+use vela_hir::module_graph::{Import, ImportResolution, ModuleGraph};
 
 use crate::TextRange;
 
 use super::{
     SemanticTokenClassification, SemanticTokenModifiers, SemanticTokenType,
-    declaration_use_classification, span_contains_range, token_range, token_text,
+    declaration_use_classification, span_contains_range,
 };
 
 pub(super) fn classification(
     graph: &ModuleGraph,
-    text: &str,
+    _text: &str,
     name: &str,
     range: TextRange,
     span: Span,
@@ -23,8 +23,7 @@ pub(super) fn classification(
             if import.span.source != span.source || !import.span.contains(span.start) {
                 continue;
             }
-            let Some(segment_index) = segment_index(text, import.span, &import.path, name, range)
-            else {
+            let Some(segment_index) = segment_index(import, name, range) else {
                 continue;
             };
             if segment_index + 1 < import.path.len() {
@@ -47,28 +46,10 @@ pub(super) fn classification(
     None
 }
 
-fn segment_index(
-    text: &str,
-    span: Span,
-    path: &[String],
-    name: &str,
-    range: TextRange,
-) -> Option<usize> {
-    (token_text(text, range)? == name).then_some(())?;
-    let import_range = token_range(span)?;
-    if !span_contains_range(span, range) {
-        return None;
-    }
-    let import_text = text.get(import_range.start..import_range.end)?;
-    let mut search_start = 0;
-    for (index, segment) in path.iter().enumerate() {
-        let relative = import_text.get(search_start..)?.find(segment)? + search_start;
-        let start = import_range.start + relative;
-        let end = start + segment.len();
-        if start == range.start && end == range.end {
-            return Some(index);
-        }
-        search_start = relative + segment.len();
-    }
-    None
+fn segment_index(import: &Import, name: &str, range: TextRange) -> Option<usize> {
+    import
+        .path
+        .iter()
+        .zip(&import.path_spans)
+        .position(|(segment, span)| segment == name && span_contains_range(*span, range))
 }

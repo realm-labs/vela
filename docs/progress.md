@@ -194,7 +194,12 @@ text scan helpers from those paths. Top-level declaration metadata now carries
 exact declaration name spans as well, and declaration duplicate/import-conflict
 diagnostics plus language-service declaration definitions, references, renames,
 hovers, call hierarchy, semantic tokens, and symbol-target resolution project
-those HIR name spans directly instead of scanning broad item text. Script
+those HIR name spans directly instead of scanning broad item text. Import
+metadata now carries per-segment path spans plus alias spans, and import
+diagnostics, module references, import semantic tokens, call-hierarchy import
+preparation, declaration reference imports, rename import edits, import hovers,
+and import symbol targeting use those HIR spans instead of reconstructing
+import ranges from source text. Script
 field reference and rename use scans now read
 source-scoped `HirField` facts from `ModuleGraph` instead of rebuilding member
 access sites from parsed syntax, and script method reference/rename use scans

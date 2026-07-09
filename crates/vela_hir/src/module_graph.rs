@@ -147,14 +147,16 @@ impl ModuleGraph {
         for (item_index, item_kind) in syntax_summary.items() {
             match item_kind {
                 SyntaxKind::UseItem => {
-                    let Some((path, alias, span)) = syntax_summary.import(item_index) else {
+                    let Some(import) = syntax_summary.import(item_index) else {
                         continue;
                     };
                     hir_module.imports.push(Import {
                         module,
-                        path,
-                        alias,
-                        span,
+                        path: import.path,
+                        path_spans: import.path_spans,
+                        alias: import.alias,
+                        alias_span: import.alias_span,
+                        span: import.span,
                         resolution: None,
                     });
                 }

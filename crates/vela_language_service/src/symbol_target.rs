@@ -216,7 +216,7 @@ fn symbol_ref_for_import(
         if import.span.source != source_id {
             return None;
         }
-        let segment = import_segment_index(query.text(), import, text, range)?;
+        let segment = import_segment_index(import, text, range)?;
         if segment + 1 == import.path.len() {
             let ImportResolution::Declaration(declaration) = import.resolution?;
             let declaration = graph.declaration(declaration)?;
@@ -383,34 +383,16 @@ fn contains_range(container: TextRange, contained: TextRange) -> bool {
     container.start <= contained.start && contained.end <= container.end
 }
 
-fn import_segment_index(
-    text: &str,
-    import: &Import,
-    segment_text: &str,
-    range: TextRange,
-) -> Option<usize> {
-    let import_range = span_text_range(import.span)?;
-    if !contains_range(import_range, range) {
-        return None;
-    }
-    let import_text = text.get(import_range.start..import_range.end)?;
-    let mut search_start = 0usize;
-    for (index, segment) in import.path.iter().enumerate() {
-        if segment != segment_text {
-            search_start = search_start.saturating_add(segment.len() + "::".len());
-            continue;
-        }
-        let relative = import_text.get(search_start..)?.find(segment)? + search_start;
-        let segment_range = TextRange::new(
-            import_range.start + relative,
-            import_range.start + relative + segment.len(),
-        );
-        if contains_range(segment_range, range) {
-            return Some(index);
-        }
-        search_start = relative + segment.len();
-    }
-    None
+fn import_segment_index(import: &Import, segment_text: &str, range: TextRange) -> Option<usize> {
+    import
+        .path
+        .iter()
+        .zip(&import.path_spans)
+        .position(|(segment, span)| {
+            segment == segment_text
+                && span_text_range(*span)
+                    .is_some_and(|segment_range| contains_range(segment_range, range))
+        })
 }
 
 fn record_owner_names(fact: &TypeFact) -> Vec<String> {

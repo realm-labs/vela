@@ -27,6 +27,12 @@ pub(super) fn import_binding_name(import: &Import) -> Option<String> {
     import.alias.clone().or_else(|| import.path.last().cloned())
 }
 
+pub(super) fn import_binding_span(import: &Import) -> Option<vela_common::Span> {
+    import
+        .alias_span
+        .or_else(|| import.path_spans.last().copied())
+}
+
 pub(super) fn candidate_distance(wanted: &str, candidate: &str) -> usize {
     if wanted.contains(candidate) || candidate.contains(wanted) {
         return 0;
