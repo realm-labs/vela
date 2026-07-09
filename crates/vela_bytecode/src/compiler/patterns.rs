@@ -134,6 +134,25 @@ impl Compiler<'_, '_> {
         )
     }
 
+    pub(in crate::compiler) fn bind_syntax_pattern_locals_from_hir_cursor(
+        &mut self,
+        scrutinee: Register,
+        pattern: &SyntaxPattern,
+        body_span: Span,
+        facts: PatternBindingFacts,
+        kind: LocalBindingKind,
+        cursor: &mut HirPatternCursor<'_>,
+    ) -> CompileResult<()> {
+        self.bind_syntax_pattern_locals_inner(
+            scrutinee,
+            pattern,
+            body_span,
+            facts,
+            kind,
+            Some(cursor),
+        )
+    }
+
     fn bind_syntax_pattern_locals_inner(
         &mut self,
         scrutinee: Register,
@@ -418,13 +437,13 @@ impl Compiler<'_, '_> {
     }
 }
 
-struct HirPatternCursor<'a> {
+pub(in crate::compiler) struct HirPatternCursor<'a> {
     patterns: &'a [HirPatternId],
     index: usize,
 }
 
 impl<'a> HirPatternCursor<'a> {
-    const fn new(patterns: &'a [HirPatternId]) -> Self {
+    pub(in crate::compiler) const fn new(patterns: &'a [HirPatternId]) -> Self {
         Self { patterns, index: 0 }
     }
 

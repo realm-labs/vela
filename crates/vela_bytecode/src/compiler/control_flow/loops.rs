@@ -4,7 +4,7 @@ use vela_syntax::ast::{AstNode, BinaryOp, SyntaxExpression, SyntaxForStmt};
 
 use crate::Register;
 
-use crate::compiler::patterns::PatternBindingFacts;
+use crate::compiler::patterns::{HirPatternCursor, PatternBindingFacts};
 
 use super::classification::{i64_pattern_facts, iterable_item_shape};
 use super::spans::syntax_expression_span;
@@ -64,6 +64,7 @@ impl crate::compiler::Compiler<'_, '_> {
         &mut self,
         source: SourceId,
         statement: &SyntaxForStmt,
+        hir_patterns: &[vela_hir::ids::HirPatternId],
     ) -> crate::compiler::CompileResult<Option<bool>> {
         let Some(iterable_expression) = statement.iterable() else {
             return Ok(None);
@@ -175,6 +176,7 @@ impl crate::compiler::Compiler<'_, '_> {
         }
 
         let mut mismatch_jumps = Vec::new();
+        let mut hir_pattern_cursor = HirPatternCursor::new(hir_patterns);
         if let (Some(index_pattern), Some(index_register)) =
             (index_pattern.as_ref(), index_register)
         {
@@ -183,12 +185,13 @@ impl crate::compiler::Compiler<'_, '_> {
                 index_register,
                 index_pattern,
             )?);
-            self.bind_syntax_pattern_locals(
+            self.bind_syntax_pattern_locals_from_hir_cursor(
                 index_register,
                 index_pattern,
                 statement_span,
                 i64_pattern_facts(),
                 LocalBindingKind::For,
+                &mut hir_pattern_cursor,
             )?;
         }
         mismatch_jumps.extend(self.compile_syntax_match_pattern(
@@ -196,12 +199,13 @@ impl crate::compiler::Compiler<'_, '_> {
             item_register,
             &value_pattern,
         )?);
-        self.bind_syntax_pattern_locals(
+        self.bind_syntax_pattern_locals_from_hir_cursor(
             item_register,
             &value_pattern,
             statement_span,
             item_facts,
             LocalBindingKind::For,
+            &mut hir_pattern_cursor,
         )?;
 
         self.loop_stack.push(LoopContext::new(loop_start));

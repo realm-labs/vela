@@ -220,7 +220,8 @@ impl Compiler<'_, '_> {
             }
             HirStmtKind::For => {
                 if let Some((source, for_stmt)) = stmt.syntax_for()
-                    && let Some(compiled) = self.compile_syntax_for_statement(source, &for_stmt)?
+                    && let Some(compiled) =
+                        self.compile_syntax_for_statement(source, &for_stmt, stmt.hir_patterns())?
                 {
                     return Ok(compiled);
                 }
