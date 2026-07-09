@@ -257,6 +257,61 @@ pub fn main() {
 }
 
 #[test]
+fn inlay_hints_show_tuple_destructuring_binding_typefacts() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"pub fn main(pairs: Array<(String, i64)>) {
+    let (let_name, let_score) = ("Ada", 1)
+    for (for_name, for_score) in pairs {
+    }
+    match ("Grace", 2) {
+        (match_name, match_score) => {}
+    }
+}"#;
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let hints = databases.inlay_hints(
+        &document,
+        DiagnosticRange::new(Position::new(0, 0), Position::new(8, 0)),
+    );
+
+    assert_eq!(
+        hint_labels(&hints),
+        vec![
+            (
+                position_after_nth(text, "let_name", 1),
+                ": String".to_owned()
+            ),
+            (position_after_nth(text, "let_score", 1), ": i64".to_owned()),
+            (
+                position_after_nth(text, "for_name", 1),
+                ": String".to_owned()
+            ),
+            (position_after_nth(text, "for_score", 1), ": i64".to_owned()),
+            (
+                position_after_nth(text, "match_name", 1),
+                ": String".to_owned()
+            ),
+            (
+                position_after_nth(text, "match_score", 1),
+                ": i64".to_owned()
+            )
+        ]
+    );
+    assert!(hints.iter().all(|hint| hint.kind() == InlayHintKind::Type));
+    assert_eq!(
+        hint_symbols(&hints),
+        vec![
+            Some(local_symbol_at(&document, text, "let_name", 1)),
+            Some(local_symbol_at(&document, text, "let_score", 1)),
+            Some(local_symbol_at(&document, text, "for_name", 1)),
+            Some(local_symbol_at(&document, text, "for_score", 1)),
+            Some(local_symbol_at(&document, text, "match_name", 1)),
+            Some(local_symbol_at(&document, text, "match_score", 1)),
+        ]
+    );
+}
+
+#[test]
 fn inlay_hints_show_lambda_parameter_facts() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"pub fn main() {
@@ -572,4 +627,30 @@ fn hint_labels(hints: &[InlayHint]) -> Vec<(Position, String)> {
 
 fn hint_symbols(hints: &[InlayHint]) -> Vec<Option<SymbolRef>> {
     hints.iter().map(|hint| hint.symbol().cloned()).collect()
+}
+
+fn position_after_nth(text: &str, needle: &str, occurrence: usize) -> Position {
+    let line_index = LineIndex::new(text);
+    line_index.position(nth_offset(text, needle, occurrence) + needle.len())
+}
+
+fn local_symbol_at(
+    document: &DocumentId,
+    text: &str,
+    needle: &str,
+    occurrence: usize,
+) -> SymbolRef {
+    let start = nth_offset(text, needle, occurrence);
+    SymbolRef::local_at(
+        needle.to_owned(),
+        document.clone(),
+        TextRange::new(start, start + needle.len()),
+    )
+}
+
+fn nth_offset(text: &str, needle: &str, occurrence: usize) -> usize {
+    text.match_indices(needle)
+        .nth(occurrence - 1)
+        .map(|(offset, _)| offset)
+        .unwrap_or_else(|| panic!("{needle} occurrence {occurrence} should exist"))
 }

@@ -438,6 +438,57 @@ fn hover_reports_tuple_and_unit_parameter_facts() {
 }
 
 #[test]
+fn hover_reports_tuple_destructuring_binding_facts() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"pub fn main(pairs: Array<(String, i64)>) {
+    let (let_name, let_score) = ("Ada", 1)
+    let_name
+    let_score
+    for (for_name, for_score) in pairs {
+        for_name
+        for_score
+    }
+    match ("Grace", 2) {
+        (match_name, match_score) => {
+            match_name
+            match_score
+        },
+    }
+}"#;
+    let databases = databases_for(&document, text, RegistryFacts::default());
+
+    let let_name_hover = hover_for_nth(&databases, &document, text, "let_name", 2);
+    assert_eq!(let_name_hover.kind(), HoverKind::Local);
+    assert_eq!(let_name_hover.label(), "let_name");
+    assert_eq!(let_name_hover.detail(), "String");
+
+    let let_score_hover = hover_for_nth(&databases, &document, text, "let_score", 2);
+    assert_eq!(let_score_hover.kind(), HoverKind::Local);
+    assert_eq!(let_score_hover.label(), "let_score");
+    assert_eq!(let_score_hover.detail(), "i64");
+
+    let for_name_hover = hover_for_nth(&databases, &document, text, "for_name", 2);
+    assert_eq!(for_name_hover.kind(), HoverKind::Local);
+    assert_eq!(for_name_hover.label(), "for_name");
+    assert_eq!(for_name_hover.detail(), "String");
+
+    let for_score_hover = hover_for_nth(&databases, &document, text, "for_score", 2);
+    assert_eq!(for_score_hover.kind(), HoverKind::Local);
+    assert_eq!(for_score_hover.label(), "for_score");
+    assert_eq!(for_score_hover.detail(), "i64");
+
+    let match_name_hover = hover_for_nth(&databases, &document, text, "match_name", 2);
+    assert_eq!(match_name_hover.kind(), HoverKind::Local);
+    assert_eq!(match_name_hover.label(), "match_name");
+    assert_eq!(match_name_hover.detail(), "String");
+
+    let match_score_hover = hover_for_nth(&databases, &document, text, "match_score", 2);
+    assert_eq!(match_score_hover.kind(), HoverKind::Local);
+    assert_eq!(match_score_hover.label(), "match_score");
+    assert_eq!(match_score_hover.detail(), "i64");
+}
+
+#[test]
 fn hover_recovers_parameter_fact_after_body_parse_error() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\
@@ -1051,4 +1102,25 @@ fn databases_for_files(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabas
     let mut databases = LanguageServiceDatabases::new();
     databases.update(&project);
     databases
+}
+
+fn hover_for_nth(
+    databases: &LanguageServiceDatabases,
+    document: &DocumentId,
+    text: &str,
+    needle: &str,
+    occurrence: usize,
+) -> Hover {
+    let line_index = LineIndex::new(text);
+    let offset = nth_offset(text, needle, occurrence);
+    databases
+        .hover(document, line_index.position(offset))
+        .unwrap_or_else(|| panic!("hover should resolve {needle} occurrence {occurrence}"))
+}
+
+fn nth_offset(text: &str, needle: &str, occurrence: usize) -> usize {
+    text.match_indices(needle)
+        .nth(occurrence - 1)
+        .map(|(offset, _)| offset)
+        .unwrap_or_else(|| panic!("{needle} occurrence {occurrence} should exist"))
 }

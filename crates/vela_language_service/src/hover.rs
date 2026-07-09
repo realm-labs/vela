@@ -363,7 +363,16 @@ fn hover_from_resolution_at_target(
     match resolution {
         BindingResolution::Local(local) => {
             let binding = bindings.local(*local)?;
-            let fact = local_fact(binding, facts).unwrap_or(TypeFact::Unknown);
+            let fact = local_fact(binding, facts)
+                .filter(|fact| !matches!(fact, TypeFact::Unknown))
+                .or_else(|| {
+                    crate::query_context::type_fact_for_source_range(
+                        databases,
+                        binding.span.source,
+                        target.range(),
+                    )
+                })
+                .unwrap_or(TypeFact::Unknown);
             Some(local_hover(
                 databases,
                 binding,

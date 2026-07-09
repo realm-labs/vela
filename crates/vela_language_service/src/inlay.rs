@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+mod pattern_hints;
 mod type_facts;
 
 use vela_analysis::{
@@ -24,6 +25,7 @@ use crate::{
     SymbolRef, TextRange,
 };
 
+use self::pattern_hints::iterable_item_fact;
 use self::type_facts::syntax_type_fact_from_hint;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -759,23 +761,11 @@ impl TypeHintCollector<'_, '_> {
                     self.collect_expr(&value);
                     if statement.type_hint().is_none()
                         && let Some(fact) = self.expression_fact(&value)
-                        && let Some(label) = type_hint_label(&fact)
-                        && let Some(name_token) = statement.name_token()
                     {
-                        let position_offset = text_size_to_usize(name_token.text_range().end());
-                        if self.range.contains(position_offset) {
-                            let name = name_token.text().to_owned();
-                            let start = text_size_to_usize(name_token.text_range().start());
-                            self.hints.push(InlayHint {
-                                position: self.line_index.position(position_offset),
-                                label,
-                                kind: InlayHintKind::Type,
-                                symbol: Some(SymbolRef::local_at(
-                                    name,
-                                    self.document_id.clone(),
-                                    TextRange::new(start, position_offset),
-                                )),
-                            });
+                        if let Some(pattern) = statement.pattern() {
+                            self.collect_pattern_type_hints(&pattern, &fact);
+                        } else if let Some(name_token) = statement.name_token() {
+                            self.collect_binding_token_type_hint(&name_token, &fact);
                         }
                     }
                 }
@@ -790,8 +780,17 @@ impl TypeHintCollector<'_, '_> {
             }
             SyntaxStatementKind::For => {
                 if let Some(statement) = statement.as_for() {
-                    if let Some(iterable) = statement.iterable() {
+                    let item_fact = if let Some(iterable) = statement.iterable() {
                         self.collect_expr(&iterable);
+                        self.expression_fact(&iterable)
+                            .and_then(|fact| iterable_item_fact(&fact))
+                    } else {
+                        None
+                    };
+                    if let (Some(pattern), Some(fact)) =
+                        (statement.value_pattern(), item_fact.as_ref())
+                    {
+                        self.collect_pattern_type_hints(&pattern, fact);
                     }
                     if let Some(body) = statement.body() {
                         self.collect_block(&body);
@@ -818,10 +817,18 @@ impl TypeHintCollector<'_, '_> {
             }
             SyntaxStatementKind::Match => {
                 if let Some(expr) = statement.as_match() {
-                    if let Some(scrutinee) = expr.scrutinee() {
+                    let scrutinee_fact = if let Some(scrutinee) = expr.scrutinee() {
                         self.collect_expr(&scrutinee);
-                    }
+                        self.expression_fact(&scrutinee)
+                    } else {
+                        None
+                    };
                     for arm in expr.arms() {
+                        if let (Some(pattern), Some(fact)) =
+                            (arm.pattern(), scrutinee_fact.as_ref())
+                        {
+                            self.collect_pattern_type_hints(&pattern, fact);
+                        }
                         if let Some(guard) = arm.guard() {
                             self.collect_expr(&guard);
                         }
@@ -959,10 +966,18 @@ impl TypeHintCollector<'_, '_> {
             }
             SyntaxExpressionKind::Match => {
                 if let Some(expr) = expr.as_match() {
-                    if let Some(scrutinee) = expr.scrutinee() {
+                    let scrutinee_fact = if let Some(scrutinee) = expr.scrutinee() {
                         self.collect_expr(&scrutinee);
-                    }
+                        self.expression_fact(&scrutinee)
+                    } else {
+                        None
+                    };
                     for arm in expr.arms() {
+                        if let (Some(pattern), Some(fact)) =
+                            (arm.pattern(), scrutinee_fact.as_ref())
+                        {
+                            self.collect_pattern_type_hints(&pattern, fact);
+                        }
                         if let Some(guard) = arm.guard() {
                             self.collect_expr(&guard);
                         }
