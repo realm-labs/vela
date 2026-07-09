@@ -141,13 +141,13 @@ HIR, analysis, language-service, LSP, runtime-facing diagnostics, and behavior
 tests use syntax/domain terminology.
 
 The close-out validation for this track passed with focused syntax, HIR,
-analysis, bytecode, language-service, LSP, and runnable-example tests. The only
-remaining architecture cleanup noted from the close-out audit is that
+analysis, bytecode, language-service, LSP, and runnable-example tests. The
+follow-up bytecode control-flow module-size cleanup is complete:
 `crates/vela_bytecode/src/compiler/control_flow/syntax_statement_values.rs`
-still exceeds the ordinary 1200-line guideline. It no longer carries Rowan
-fallback scaffolding, but future bytecode compiler cleanup should split that
-module by lowering responsibility rather than adding new expression or
-statement families to it.
+now contains statement-level syntax lowering only, while expression dispatch,
+assignment lowering, call lowering, index lowering, and array/map container
+lowering live in focused sibling modules under the ordinary 1200-line
+guideline.
 ## Milestone Snapshot
 
 | Milestone | Status | Current note |

@@ -2,8 +2,8 @@
 
 Track: syntax foundation, parser, formatter, and downstream analysis migration
 
-Document status: close-out complete for the Rowan hard-switch; one bytecode
-module-size cleanup remains as a follow-up architecture item
+Document status: close-out complete for the Rowan hard-switch and bytecode
+control-flow close-out cleanup
 
 Compatibility policy: this is an intentionally breaking pre-release syntax
 infrastructure refactor. Old owned AST structs, the old non-lossless parser API,
@@ -621,13 +621,14 @@ Checkpoint checklist:
   Avoid sequences of `if !condition { return false; }` when the same logic can
   be expressed as a match, `Option`/iterator combinators, or named helper
   predicates that describe the supported language shape.
-- [ ] Split or reorganize migration-dense compiler files after the hard switch.
-  Priority targets include `control_flow/syntax_statement_values.rs`, which is
-  over 2200 lines and contains many syntax-shape probes, and
-  `param_defaults.rs`, whose compile and support-check logic are tightly
-  interleaved. Split by expression family, statement family, assignment/host
-  path lowering, container literals, calls, or parameter-default support, as
-  appropriate for ownership and tests.
+- [x] Split or reorganize migration-dense compiler files after the hard switch.
+  `control_flow/syntax_statement_values.rs` was split by lowering ownership:
+  statement-level lowering remains in that file, expression dispatch moved to
+  `syntax_expression_dispatch.rs`, assignment lowering moved to
+  `syntax_assignments.rs`, call lowering moved to `syntax_calls.rs`, index
+  lowering moved to `syntax_indexes.rs`, and array/map container lowering moved
+  to `syntax_containers.rs`. `param_defaults.rs` remains under the ordinary
+  line guideline after its support predicate cleanup.
 - [x] Remove "fallback-shaped" control flow after the fallback is gone. Branches
   that repeatedly return `Ok(None)`, `return false`, or generic unsupported
   errors should either be a deliberate optional fast path with a clear caller
@@ -713,14 +714,19 @@ Code review findings to close in the next bytecode slice:
   matters.
   Evidence:
   - `crates/vela_bytecode/src/compiler/control_flow/syntax_statement_values.rs:255`
-- [ ] `control_flow/syntax_statement_values.rs` is still over the ordinary
+- [x] `control_flow/syntax_statement_values.rs` is still over the ordinary
   1200-line guideline and mixes
   expression lowering, assignment lowering, host path lowering, calls,
   container literals, logical chains, numeric special cases, and shape/type
   probes. Split by ownership after removing the fallback-shaped probes; do not
   accept this as the final architecture without a documented exception.
   Evidence:
-  - `crates/vela_bytecode/src/compiler/control_flow/syntax_statement_values.rs:1`
+  - `crates/vela_bytecode/src/compiler/control_flow/syntax_statement_values.rs`
+    is now 230 lines.
+  - New focused modules are all under the 1200-line guideline:
+    `syntax_assignments.rs` 714 lines, `syntax_calls.rs` 322 lines,
+    `syntax_expression_dispatch.rs` 302 lines, `syntax_indexes.rs` 56 lines,
+    and `syntax_containers.rs` 55 lines.
 - [x] Parameter-default lowering keeps a second support predicate tree named
   `param_default_cst_lowering_covers` beside the real lowering functions. This
   duplicates shape knowledge and risks drift as language forms are added.
@@ -864,7 +870,7 @@ rg -n "extract_format_elements|struct Formatter|token-gap|delimiter_stack|previo
 
 ### Phase 8: Remove obsolete APIs and close out docs
 
-- [ ] Task: Finish the breaking cleanup and document the new syntax architecture.
+- [x] Task: Finish the breaking cleanup and document the new syntax architecture.
 
 Checkpoint checklist:
 
@@ -891,9 +897,9 @@ Checkpoint checklist:
   deliberate scoped public API.
 - [x] Audit import paths touched by this track for the "no more than one
   `super`" rule.
-- [ ] Audit touched active source/test files for the 1200-line rule and split
+- [x] Audit touched active source/test files for the 1200-line rule and split
   by ownership when needed.
-- [ ] Audit migration-dense control flow in touched downstream crates. Replace
+- [x] Audit migration-dense control flow in touched downstream crates. Replace
   fallback-shaped `if let`/early-return ladders with canonical enum dispatch,
   typed classifiers, or focused helper modules when that makes branch ownership
   clearer. Record any intentionally retained large file or guard-heavy
@@ -920,11 +926,14 @@ Close-out notes:
   lexer, token, and formatting APIs.
 - No multi-level `super::super` imports remain in the touched syntax,
   bytecode, HIR, analysis, language-service, or LSP crates.
-- The remaining close-out architecture item is module size: after the hard
-  switch, `crates/vela_bytecode/src/compiler/control_flow/syntax_statement_values.rs`
-  is 1629 lines. It no longer carries Rowan fallback scaffolding, but future
-  bytecode compiler work should split it by lowering responsibility instead of
-  adding new expression or statement families to that file.
+- The bytecode control-flow close-out is complete. The former mixed
+  `syntax_statement_values.rs` module now contains statement-level syntax
+  lowering only and is 230 lines. Expression dispatch, assignment lowering,
+  call lowering, index lowering, and array/map container lowering live in
+  focused sibling modules, all under the ordinary 1200-line guideline. Future
+  bytecode compiler work should add new syntax families to the focused module
+  that owns the lowering behavior, or create a new focused module when no
+  current owner fits.
 
 Expected behavior:
 
