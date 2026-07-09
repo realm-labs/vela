@@ -5,8 +5,7 @@ use vela_hir::binding::LocalBindingKind;
 use vela_syntax::ast::{Literal, SyntaxExpression};
 
 use crate::compiler::body_payloads::{
-    expression_syntax_negated_number_literal, expression_syntax_path_or_field,
-    expression_syntax_range_operands,
+    expression_syntax_negated_number_literal, expression_syntax_range_operands,
 };
 use crate::compiler::const_eval::{compile_negated_literal_constant, evaluate_syntax_const_expr};
 use crate::compiler::record_shapes::ValueShape;
@@ -175,7 +174,7 @@ impl Compiler<'_, '_> {
         if let Some(literal) = expression_syntax_negated_number_literal(expression) {
             return self.compile_syntax_negated_range_operand(literal, span);
         }
-        if let Some(path) = expression_syntax_path_or_field(expression) {
+        if let Some(path) = self.hir_value_path_for_span(span) {
             return self.compile_path_expr(span, &path);
         }
         if let Some(constant) = evaluate_syntax_const_expr(source, expression, &BTreeMap::new())? {

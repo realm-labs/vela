@@ -5,9 +5,7 @@ use vela_syntax::ast::{
 };
 
 use crate::Constant;
-use crate::compiler::body_payloads::{
-    CompilerBodyPayload, expression_syntax_literal, expression_syntax_path_or_field,
-};
+use crate::compiler::body_payloads::{CompilerBodyPayload, expression_syntax_literal};
 use crate::compiler::const_eval::compile_literal_constant_for_type;
 use crate::compiler::script_types::{ScriptTypeFact, type_hint_script_type};
 use crate::compiler::value_types::{RuntimeTypeFact, type_hint_value_type};
@@ -218,10 +216,10 @@ impl Compiler<'_, '_> {
         let Some(rhs_expression) = binary.rhs() else {
             return Ok(None);
         };
-        let Some(lhs_path) = expression_syntax_path_or_field(&lhs_expression) else {
+        let lhs_span = syntax_expression_span(source, &lhs_expression);
+        let Some(lhs_path) = self.hir_value_path_for_span(lhs_span) else {
             return Ok(None);
         };
-        let lhs_span = syntax_expression_span(source, &lhs_expression);
         if self.value_type_for_path(lhs_span, &lhs_path)
             != Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
         {

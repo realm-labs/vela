@@ -2,7 +2,7 @@ use vela_common::{Diagnostic, PrimitiveTag, SourceId, Span};
 use vela_syntax::ast::{BinaryOp, Literal, SyntaxExpression, UnaryOp};
 
 use super::spans::syntax_expression_span;
-use crate::compiler::body_payloads::{expression_syntax_literal, expression_syntax_path_or_field};
+use crate::compiler::body_payloads::expression_syntax_literal;
 use crate::compiler::const_eval::{
     compile_literal_constant_for_type, compile_negated_literal_constant,
 };
@@ -470,14 +470,14 @@ impl Compiler<'_, '_> {
         else {
             return Ok(None);
         };
-        let Some(path) = expression_syntax_path_or_field(path_expression) else {
-            return Ok(None);
-        };
         let literal = expression_syntax_literal(literal_expression)
             .and_then(InlineNumericLiteral::from_literal)
             .expect("numeric literal operand helper checks literal availability");
         let span = syntax_expression_span(source, expression);
         let path_span = syntax_expression_span(source, path_expression);
+        let Some(path) = self.hir_value_path_for_span(path_span) else {
+            return Ok(None);
+        };
         let script_type = self
             .script_fact_for_path(path_span, &path)
             .map(|fact| fact.type_name);
@@ -560,17 +560,15 @@ fn syntax_path_numeric_literal_operands<'expression>(
     &'expression SyntaxExpression,
     BinaryLiteralSide,
 )> {
-    if expression_syntax_path_or_field(lhs).is_some()
-        && expression_syntax_literal(rhs)
-            .and_then(InlineNumericLiteral::from_literal)
-            .is_some()
+    if expression_syntax_literal(rhs)
+        .and_then(InlineNumericLiteral::from_literal)
+        .is_some()
     {
         return Some((lhs, rhs, BinaryLiteralSide::Right));
     }
     if expression_syntax_literal(lhs)
         .and_then(InlineNumericLiteral::from_literal)
         .is_some()
-        && expression_syntax_path_or_field(rhs).is_some()
     {
         return Some((rhs, lhs, BinaryLiteralSide::Left));
     }
