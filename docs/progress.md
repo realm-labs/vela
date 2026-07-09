@@ -165,11 +165,12 @@ field reads. Tuple type facts, runtime/shape guard plans, tuple type-hint
 validation, and `String.split_once -> Option<(String, String)>` now exist
 across analysis, bytecode, VM, reflection metadata, examples, docs, and cached
 and uncached stdlib paths. Result tuple payload fixtures now cover typed
-`?`/destructuring propagation and linked parameter guards. Remaining follow-up
-work includes broader schema/reflection tuple descriptors and replacing
-reflection metadata gaps with structured Option or omitted fields instead of
-unit placeholders. Tuple Map/Set keys are rejected by source type-hint
-validation and runtime `ValueKey` keyability.
+`?`/destructuring propagation and linked parameter guards. Reflected descriptor
+type-hint strings now parse into structured tuple facts for analysis and schema
+artifact export. Remaining follow-up work includes broader reflection tuple
+descriptors and replacing reflection metadata gaps with structured Option or
+omitted fields instead of unit placeholders. Tuple Map/Set keys are rejected by
+source type-hint validation and runtime `ValueKey` keyability.
 ## Milestone Snapshot
 
 | Milestone | Status | Current note |

@@ -571,7 +571,9 @@ Focused validation:
   Tuple TypeFacts, compiler runtime facts, value shapes, runtime guard plans,
   descriptor validation, and `split_once` reflection metadata are implemented;
   Result tuple payload fixtures now cover VM `?`/destructuring propagation and
-  linked parameter guards. Broader schema/reflection artifacts remain open.
+  linked parameter guards. Reflected descriptor type-hint strings now parse into
+  structured tuple facts for analysis and schema artifact export. Broader
+  reflection tuple descriptors remain open.
 - [x] Add tuple `OwnedValue` conversion and tuple serde behavior that does not
   use raw null.
 - [x] Reject tuple Map/Set keys in the first slice with precise diagnostics.
@@ -587,6 +589,8 @@ Focused validation:
 
 - [ ] `cargo test -p vela_hot_reload`
 - [ ] `cargo test -p vela_bytecode type_contract`
+- [x] `cargo test -p vela_analysis`
+- [x] `cargo test -p vela_language_service schema`
 - [x] `cargo test -p vela_vm option_result`
 - [x] `cargo test -p vela_vm type_guards`
 - [ ] focused benchmark command recorded if tuple hot paths are added

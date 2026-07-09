@@ -16,6 +16,12 @@ fn sample_facts() -> RegistryFacts {
     ));
     facts.insert_field("Player", "level", TypeFact::I64);
     facts.insert_field_docs("Player", "level", "Current player level.");
+    facts.insert_field(
+        "Player",
+        "split_name",
+        TypeFact::option(TypeFact::tuple([TypeFact::STRING, TypeFact::STRING])),
+    );
+    facts.insert_field_docs("Player", "split_name", "Split player display name.");
     facts.insert_field_access(RegistryFieldAccessFact {
         owner: "Player".to_owned(),
         name: "level".to_owned(),
@@ -79,6 +85,10 @@ fn schema_export_round_trips_registry_facts() {
     let json = artifact
         .to_json()
         .expect("schema artifact should encode as JSON");
+    assert!(
+        json.contains(r#""kind": "tuple""#),
+        "schema artifact should expose tuple facts structurally: {json}"
+    );
     let parsed = SchemaArtifact::from_json(&json).expect("schema artifact should decode from JSON");
     let round_tripped = parsed.to_registry_facts();
 
@@ -94,6 +104,13 @@ fn schema_export_round_trips_registry_facts() {
     assert_eq!(
         round_tripped.module_source_span("game::reward"),
         Some(Span::new(SourceId::new(7), 10, 20))
+    );
+    assert_eq!(
+        round_tripped.field_fact("Player", "split_name"),
+        Some(&TypeFact::option(TypeFact::tuple([
+            TypeFact::STRING,
+            TypeFact::STRING
+        ])))
     );
 }
 

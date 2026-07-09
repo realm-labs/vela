@@ -6,6 +6,7 @@ use vela_reflect::modules::{FunctionDesc, ModuleDesc};
 use vela_reflect::registry::{
     FieldDesc, MethodDesc, TraitMethodDesc, TypeDesc, TypeKind, TypeRegistry,
 };
+use vela_registry::TypeHintDef;
 
 use crate::type_fact::TypeFact;
 
@@ -1033,6 +1034,49 @@ fn trait_method_desc_fact(registry: &TypeRegistry, desc: &TraitMethodDesc) -> Ty
 }
 
 fn registry_hint_fact(registry: &TypeRegistry, hint: &str) -> TypeFact {
+    TypeHintDef::parse(hint).map_or_else(
+        || raw_registry_hint_fact(registry, hint),
+        |hint| type_hint_def_fact(registry, &hint),
+    )
+}
+
+fn type_hint_def_fact(registry: &TypeRegistry, hint: &TypeHintDef) -> TypeFact {
+    let path = hint.path.join("::");
+    match (path.as_str(), hint.args.as_slice()) {
+        ("()", []) => TypeFact::UNIT,
+        ("()", elements) if elements.len() >= 2 => TypeFact::tuple(
+            elements
+                .iter()
+                .map(|element| type_hint_def_fact(registry, element)),
+        ),
+        ("Any", []) => TypeFact::Any,
+        ("String", []) => TypeFact::STRING,
+        ("Bytes", []) => TypeFact::BYTES,
+        ("Array", []) => TypeFact::array(TypeFact::Unknown),
+        ("Array", [element]) => TypeFact::array(type_hint_def_fact(registry, element)),
+        ("Map", []) => TypeFact::map(TypeFact::Unknown, TypeFact::Unknown),
+        ("Map", [key, value]) => TypeFact::map(
+            type_hint_def_fact(registry, key),
+            type_hint_def_fact(registry, value),
+        ),
+        ("Set", []) => TypeFact::set(TypeFact::Unknown),
+        ("Set", [element]) => TypeFact::set(type_hint_def_fact(registry, element)),
+        ("Iterator", []) => TypeFact::iterator(TypeFact::Unknown),
+        ("Iterator", [item]) => TypeFact::iterator(type_hint_def_fact(registry, item)),
+        ("Function", []) => TypeFact::function(Vec::new(), TypeFact::Unknown),
+        ("Option", []) => TypeFact::option(TypeFact::Unknown),
+        ("Option", [some]) => TypeFact::option(type_hint_def_fact(registry, some)),
+        ("Result", []) => TypeFact::result(TypeFact::Unknown, TypeFact::Unknown),
+        ("Result", [ok, err]) => TypeFact::result(
+            type_hint_def_fact(registry, ok),
+            type_hint_def_fact(registry, err),
+        ),
+        (name, []) => raw_registry_hint_fact(registry, name),
+        _ => TypeFact::Unknown,
+    }
+}
+
+fn raw_registry_hint_fact(registry: &TypeRegistry, hint: &str) -> TypeFact {
     if let Some(tag) = PrimitiveTag::from_name(hint) {
         return TypeFact::primitive(tag);
     }
@@ -1260,6 +1304,61 @@ mod tests {
         assert_eq!(
             facts.field_fact("Player", "mystery"),
             Some(&TypeFact::Unknown)
+        );
+    }
+
+    #[test]
+    fn registry_facts_parse_structural_tuple_hints_from_descriptors() {
+        let player = TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+            .field(FieldDesc::new(FieldId::new(1), "split").type_hint("Option<(String, String)>"))
+            .field(
+                FieldDesc::new(FieldId::new(2), "outcome").type_hint("Result<(String, i64), ()>"),
+            )
+            .method(
+                MethodDesc::new(HostMethodId::new(1), "join")
+                    .param(MethodParamDesc::new("parts").type_hint("(String, String)"))
+                    .return_type("Option<(String, String)>"),
+            );
+
+        let mut registry = TypeRegistry::new();
+        registry.register(player);
+        registry.register_function(
+            FunctionDesc::new(FunctionId::new(1), "game::reward::split")
+                .return_type("Result<Option<(String, i64)>, ()>"),
+        );
+
+        let facts = RegistryFacts::from_registry(&registry);
+
+        assert_eq!(
+            facts.field_fact("Player", "split"),
+            Some(&TypeFact::option(TypeFact::tuple([
+                TypeFact::STRING,
+                TypeFact::STRING
+            ])))
+        );
+        assert_eq!(
+            facts.field_fact("Player", "outcome"),
+            Some(&TypeFact::result(
+                TypeFact::tuple([TypeFact::STRING, TypeFact::I64]),
+                TypeFact::UNIT,
+            ))
+        );
+        assert_eq!(
+            facts.method_fact("Player", "join"),
+            Some(&TypeFact::function(
+                vec![TypeFact::tuple([TypeFact::STRING, TypeFact::STRING])],
+                TypeFact::option(TypeFact::tuple([TypeFact::STRING, TypeFact::STRING])),
+            ))
+        );
+        assert_eq!(
+            facts.function_fact("game::reward::split"),
+            Some(&TypeFact::function(
+                Vec::new(),
+                TypeFact::result(
+                    TypeFact::option(TypeFact::tuple([TypeFact::STRING, TypeFact::I64])),
+                    TypeFact::UNIT,
+                ),
+            ))
         );
     }
 
