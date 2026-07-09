@@ -141,10 +141,16 @@ deleted owned parser, legacy body-parser feature, CST-to-owned fallback
 payloads, and token-gap formatter are not compatibility surfaces and should
 not be restored.
 
-There is no separate public IR crate yet. `HIR + TypeFacts + bytecode` is the
-current semantic pipeline; a lower IR/MIR should only be introduced when
-optimization, CFG/data-flow, register allocation, or lowering complexity
-requires it.
+The current semantic pipeline is being split into two explicit internal
+architecture tracks. Heavy HIR is the semantic truth layer: body/expression/
+pattern IDs, source origins, scopes, bindings, captures, type/effect/call/member
+facts, and control-flow facts belong in `vela_hir` plus analysis facts keyed by
+stable HIR IDs. MIR is the execution-shape layer: CFG, temporaries, places,
+typed operations, guards, liveness, debug/root metadata, and lowering decisions
+belong in a future internal `vela_mir` crate. MIR must consume Heavy HIR and
+analysis facts only; it must not parse source or repair missing semantic facts.
+The execution plans are [heavy-hir-hard-switch-plan.md](heavy-hir-hard-switch-plan.md)
+and [mir-lowering-jit-foundation-plan.md](mir-lowering-jit-foundation-plan.md).
 
 ### Native-First LSP Boundary
 

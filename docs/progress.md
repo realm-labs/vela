@@ -122,6 +122,17 @@ M19/M20 optimization. It remains analysis-only: no script or host execution, no
 runtime semantic changes, and no custom IDE product. Debugger/DAP and Cranelift
 JIT remain separate roadmap tracks.
 
+The Heavy HIR and MIR architecture plans are now established as the next
+internal execution/lowering architecture track, but implementation has not
+started. Heavy HIR will first upgrade `vela_hir` into the body/expression/
+pattern semantic truth layer for analysis, language-service, bytecode, and
+later MIR. MIR will then add an internal `vela_mir` execution-shape layer for
+CFG, typed operations, guards, liveness, bytecode lowering, and future M22
+Cranelift input. M20 cache-family audit and measured close-out may continue in
+parallel, but new broad lowering architecture work should follow
+[heavy-hir-hard-switch-plan.md](heavy-hir-hard-switch-plan.md) before
+[mir-lowering-jit-foundation-plan.md](mir-lowering-jit-foundation-plan.md).
+
 The lossless CST rowan refactor is complete as a breaking syntax foundation
 track. `vela_syntax` now uses rowan-backed lossless parse trees and typed AST
 wrappers as the production syntax model; whitespace, comments, shebangs,
@@ -1489,6 +1500,8 @@ diagnostics.
   deferred before starting more implementation.
 - Close only named cache-family gaps with focused tests and paired benchmark
   evidence. Avoid generic "continue specialization" tasks.
+- Use the Heavy HIR plan before MIR or JIT-facing lowering work: semantic gaps
+  must be solved in `vela_hir`/analysis before they become MIR inputs.
 - Keep the completed primitive scalar, bytes, type-hint contract, and guard-plan
   refactor as the baseline; do not reintroduce old `int`/`float` compatibility
   paths or string fallback dispatch.
