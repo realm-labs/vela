@@ -236,6 +236,16 @@ impl Compiler<'_, '_> {
                         .is_some_and(pattern_kind_declares_locals)
                         || (field_pattern.is_none() && field.is_shorthand());
                     if !field_declares_locals {
+                        if let Some(field_pattern) = field_pattern {
+                            self.bind_syntax_pattern_locals_inner(
+                                scrutinee,
+                                &field_pattern,
+                                body_span,
+                                PatternBindingFacts::default(),
+                                kind,
+                                cursor,
+                            )?;
+                        }
                         continue;
                     }
                     let dst =
@@ -280,6 +290,14 @@ impl Compiler<'_, '_> {
                         let field_kind =
                             required_syntax_pattern_kind(&field, "tuple pattern field")?;
                         if !pattern_kind_declares_locals(field_kind) {
+                            self.bind_syntax_pattern_locals_inner(
+                                scrutinee,
+                                &field,
+                                body_span,
+                                PatternBindingFacts::default(),
+                                kind,
+                                cursor,
+                            )?;
                             continue;
                         }
                         let field_value = self.emit_tuple_pattern_field_read(scrutinee, index)?;
@@ -297,6 +315,14 @@ impl Compiler<'_, '_> {
                 for (index, field) in tuple.patterns().enumerate() {
                     let field_kind = required_syntax_pattern_kind(&field, "tuple pattern field")?;
                     if !pattern_kind_declares_locals(field_kind) {
+                        self.bind_syntax_pattern_locals_inner(
+                            scrutinee,
+                            &field,
+                            body_span,
+                            PatternBindingFacts::default(),
+                            kind,
+                            cursor,
+                        )?;
                         continue;
                     }
                     let field_name = tuple_variant_field_name(index);

@@ -22,30 +22,6 @@ impl Compiler<'_, '_> {
         self.compile_path_access(span, path)
     }
 
-    pub(super) fn local_register_at_span(
-        &mut self,
-        span: Span,
-        name: &str,
-    ) -> CompileResult<Register> {
-        if let Some(expression) = self.expression_at_span(span)
-            && let Ok(register) = self.local_register_for_hir_expression(expression, name, span)
-        {
-            return Ok(register);
-        }
-        if let Some(global) = self.global_symbol_named(name) {
-            let dst = self.alloc_register()?;
-            self.emit_load_global(dst, global);
-            return Ok(dst);
-        }
-        if let Some(value) = self.const_value_at_span(span) {
-            return self.emit_constant(value);
-        }
-        self.locals
-            .get(name)
-            .copied()
-            .ok_or_else(|| CompileError::new(CompileErrorKind::UnknownLocal(name.to_owned())))
-    }
-
     pub(super) fn required_local_register_at_hir_expression_span(
         &mut self,
         span: Span,
@@ -135,7 +111,7 @@ impl Compiler<'_, '_> {
                 "path expression",
             )));
         };
-        self.local_register_at_span(span, name)
+        self.required_local_register_at_hir_expression_span(span, name)
     }
 
     fn emit_load_global(&mut self, dst: Register, global: String) {
@@ -164,12 +140,14 @@ impl Compiler<'_, '_> {
             self.emit_host_read(dst, root, host_path, span)?;
             return Ok(dst);
         }
-        let mut current = self.local_register_at_span(span, &path[0])?;
-        let mut current_record_shape = self.record_shape_for_path_root(span, &path[0]);
+        let root_span = self.hir_value_path_root_span_for_span(span).unwrap_or(span);
+        let mut current =
+            self.required_local_register_at_hir_expression_span(root_span, &path[0])?;
+        let mut current_record_shape = self.record_shape_for_path_root(root_span, &path[0]);
         for (index, segment) in path.iter().enumerate().skip(1) {
             let dst = self.alloc_register()?;
             let record_slot = (index == 1)
-                .then(|| self.script_record_field_slot_for_path_root(span, &path[0], segment))
+                .then(|| self.script_record_field_slot_for_path_root(root_span, &path[0], segment))
                 .flatten()
                 .or_else(|| {
                     current_record_shape
@@ -185,7 +163,7 @@ impl Compiler<'_, '_> {
                 });
             } else if index == 1
                 && let Some(slot) =
-                    self.script_enum_field_slot_for_path_root(span, &path[0], segment)
+                    self.script_enum_field_slot_for_path_root(root_span, &path[0], segment)
             {
                 self.emit(UnlinkedInstructionKind::GetEnumSlot {
                     dst,
@@ -196,7 +174,7 @@ impl Compiler<'_, '_> {
             } else if index == 1
                 && let Some(field) = self
                     .host_field_info(
-                        self.host_local_type_name(&path[0], span).as_deref(),
+                        self.host_local_type_name(&path[0], root_span).as_deref(),
                         segment,
                     )
                     .map(|field| field.id)
@@ -207,7 +185,7 @@ impl Compiler<'_, '_> {
                     HostPath {
                         root: HostPathRoot::LocalPath {
                             name: &path[0],
-                            span,
+                            span: root_span,
                         },
                         segments: vec![HostPathPart::Field(field)],
                     },

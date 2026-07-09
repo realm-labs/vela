@@ -247,7 +247,10 @@ path helper has been deleted. HostPath root and field-only target construction n
 HIR value-path facts and carries the HIR root expression span through root
 register resolution, leaving syntax in that path only for structural index
 expressions that carry dynamic host path arguments; the old simple syntax
-path helper has been deleted. Parameter-default path values, path calls, and
+path helper has been deleted. Ordinary single-name and field-chain path reads
+now also require the HIR root expression identity for local/declaration
+register resolution, deleting the remaining generic span/name local-register
+fallback. Parameter-default path values, path calls, and
 host field reads now lower from HIR value/callee path facts, deleting the
 parameter-default host field syntax path reconstruction helper. Bytecode
 record/value shape inference now uses HIR constructor, value-path, and
@@ -285,7 +288,10 @@ Match statement and match expression local setup now collects the HIR pattern
 ID sequence for each arm and uses the same HIR cursor path, deleting the shared
 non-HIR pattern-local binding fallback.
 Parameter-default match pattern local setup now uses that same HIR pattern
-sequence binder, removing its custom span-based recursive local binder.
+sequence binder, removing its custom span-based recursive local binder. Pattern
+local setup now advances that HIR cursor across non-binding nested child
+patterns too, so later destructured locals keep their stable `HirLocalId` to
+register mapping instead of relying on name-map fallback.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`
