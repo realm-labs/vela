@@ -9,7 +9,7 @@ use vela_syntax::ast::{
 use crate::{Constant, Register, UnlinkedInstructionKind};
 
 use crate::compiler::const_eval::compile_literal_constant;
-use crate::compiler::patterns::{PatternBindingFacts, enum_variant_path, tuple_variant_field_name};
+use crate::compiler::patterns::{PatternBindingFacts, tuple_variant_field_name};
 use crate::compiler::value_types::StaticExprType;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
 
@@ -118,20 +118,14 @@ impl Compiler<'_, '_> {
                 Ok(vec![self.emit_jump_if_false(condition)])
             }
             Some(SyntaxPatternKind::Path) => {
-                let path = pattern.path_segments();
-                if enum_variant_path(&path).is_none() {
-                    return Err(param_default_pattern_unsupported(source, pattern));
-                }
+                let path = self.required_hir_pattern_path(source, pattern)?;
                 self.compile_variant_tag_pattern(scrutinee, &path)
             }
             Some(SyntaxPatternKind::TupleVariant) => {
                 let Some(tuple) = pattern.as_tuple_variant() else {
                     return Err(param_default_pattern_unsupported(source, pattern));
                 };
-                let path = tuple.path_segments();
-                if enum_variant_path(&path).is_none() {
-                    return Err(param_default_pattern_unsupported(source, pattern));
-                }
+                let path = self.required_hir_pattern_path(source, pattern)?;
                 let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
                 for (index, field_pattern) in tuple.patterns().enumerate() {
                     if matches!(
@@ -157,10 +151,7 @@ impl Compiler<'_, '_> {
                 let Some(record) = pattern.as_record_variant() else {
                     return Err(param_default_pattern_unsupported(source, pattern));
                 };
-                let path = record.path_segments();
-                if enum_variant_path(&path).is_none() {
-                    return Err(param_default_pattern_unsupported(source, pattern));
-                }
+                let path = self.required_hir_pattern_path(source, pattern)?;
                 let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
                 for field in record.fields() {
                     let Some(field_pattern) = field.pattern() else {
@@ -236,7 +227,7 @@ impl Compiler<'_, '_> {
                 let Some(tuple) = pattern.as_tuple_variant() else {
                     return Err(param_default_pattern_unsupported(source, pattern));
                 };
-                let path = tuple.path_segments();
+                let path = self.required_hir_pattern_path(source, pattern)?;
                 for (index, field_pattern) in tuple.patterns().enumerate() {
                     if !param_default_pattern_declares_locals(&field_pattern) {
                         continue;
@@ -261,7 +252,7 @@ impl Compiler<'_, '_> {
                 let Some(record) = pattern.as_record_variant() else {
                     return Err(param_default_pattern_unsupported(source, pattern));
                 };
-                let path = record.path_segments();
+                let path = self.required_hir_pattern_path(source, pattern)?;
                 for field in record.fields() {
                     let Some(field_name) = field.label_text() else {
                         return Err(param_default_pattern_unsupported(source, pattern));
@@ -394,22 +385,20 @@ fn param_default_pattern_supported(pattern: &SyntaxPattern) -> bool {
     match pattern.pattern_kind() {
         Some(SyntaxPatternKind::Wildcard | SyntaxPatternKind::Binding) => true,
         Some(SyntaxPatternKind::Literal) => pattern.literal().is_some(),
-        Some(SyntaxPatternKind::Path) => enum_variant_path(&pattern.path_segments()).is_some(),
+        Some(SyntaxPatternKind::Path) => true,
         Some(SyntaxPatternKind::TupleVariant) => pattern.as_tuple_variant().is_some_and(|tuple| {
-            enum_variant_path(&tuple.path_segments()).is_some()
-                && tuple
-                    .patterns()
-                    .all(|pattern| param_default_pattern_supported(&pattern))
+            tuple
+                .patterns()
+                .all(|pattern| param_default_pattern_supported(&pattern))
         }),
         Some(SyntaxPatternKind::RecordVariant) => {
             pattern.as_record_variant().is_some_and(|record| {
-                enum_variant_path(&record.path_segments()).is_some()
-                    && record.fields().all(|field| {
-                        field.label_text().is_some()
-                            && field
-                                .pattern()
-                                .is_none_or(|pattern| param_default_pattern_supported(&pattern))
-                    })
+                record.fields().all(|field| {
+                    field.label_text().is_some()
+                        && field
+                            .pattern()
+                            .is_none_or(|pattern| param_default_pattern_supported(&pattern))
+                })
             })
         }
         None => false,

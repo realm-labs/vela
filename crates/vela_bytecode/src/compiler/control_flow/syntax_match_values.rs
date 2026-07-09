@@ -192,7 +192,7 @@ impl Compiler<'_, '_> {
                     });
                     Ok(vec![self.emit_jump_if_false(condition)])
                 } else {
-                    let path = syntax_pattern_path_segments(source, pattern)?;
+                    let path = self.required_hir_pattern_path(source, pattern)?;
                     self.compile_variant_tag_pattern(scrutinee, &path)
                 }
             }
@@ -200,8 +200,7 @@ impl Compiler<'_, '_> {
                 let tuple = pattern
                     .tuple_pattern()
                     .ok_or_else(|| syntax_match_error(source, pattern.syntax().text_range()))?;
-                let path = tuple.path_segments();
-                if path.is_empty() {
+                let Some(path) = self.hir_pattern_path(source, pattern) else {
                     let condition = self.alloc_register()?;
                     self.emit(UnlinkedInstructionKind::TupleArityEqual {
                         dst: condition,
@@ -224,7 +223,7 @@ impl Compiler<'_, '_> {
                         )?);
                     }
                     return Ok(jumps);
-                }
+                };
                 let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
                 for (index, field) in tuple.patterns().enumerate() {
                     let Some(kind) = field.pattern_kind() else {
@@ -243,7 +242,7 @@ impl Compiler<'_, '_> {
                 Ok(jumps)
             }
             SyntaxPatternKind::RecordVariant => {
-                let path = syntax_pattern_path_segments(source, pattern)?;
+                let path = self.required_hir_pattern_path(source, pattern)?;
                 let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
                 let record = pattern
                     .record_pattern()
@@ -378,17 +377,6 @@ fn syntax_match_arm_body_span(source: SourceId, arm: &SyntaxMatchArm) -> Span {
         })
         .unwrap_or_else(|| arm.syntax().text_range());
     Span::new(source, range.start().into(), range.end().into())
-}
-
-fn syntax_pattern_path_segments(
-    source: SourceId,
-    pattern: &SyntaxPattern,
-) -> CompileResult<Vec<String>> {
-    let path = pattern.path_segments();
-    if path.is_empty() {
-        return Err(syntax_match_error(source, pattern.syntax().text_range()));
-    }
-    Ok(path)
 }
 
 const fn syntax_pattern_kind_needs_match_check(kind: SyntaxPatternKind) -> bool {

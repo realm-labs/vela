@@ -208,7 +208,10 @@ deleted. Path value flow now resolves local script/value/shape facts through
 value/record shape queries now share HIR expression local/global fact helpers,
 and the old generic span-resolution helpers have been deleted. Pattern local
 binding setup now maps syntax origins to stable `HirPatternId` records before
-reading HIR local facts, deleting the old name/span pattern-local scan. Path
+reading HIR local facts, deleting the old name/span pattern-local scan.
+Bytecode match and parameter-default enum pattern lowering now reads HIR
+pattern path facts from `HirPatternId` owners instead of reconstructing variant
+paths from syntax. Path
 expression statement and tail-value lowering now reads HIR value-path facts
 instead of rebuilding path segments from syntax in `path_values`, and let/return
 statement path extraction has moved out of `CompilerStatementPayload` onto that

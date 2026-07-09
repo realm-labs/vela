@@ -1,7 +1,8 @@
-use vela_common::Span;
+use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingResolution, LocalBindingKind};
+use vela_hir::body::{HirPathKind, HirPathOwner};
 use vela_syntax::TextRange;
-use vela_syntax::ast::{SyntaxPattern, SyntaxPatternKind, SyntaxRecordPatternField};
+use vela_syntax::ast::{AstNode, SyntaxPattern, SyntaxPatternKind, SyntaxRecordPatternField};
 
 use crate::{Register, UnlinkedInstructionKind};
 
@@ -118,7 +119,7 @@ impl Compiler<'_, '_> {
                 Ok(())
             }
             SyntaxPatternKind::RecordVariant => {
-                let path = syntax_pattern_path_segments(pattern)?;
+                let path = self.required_hir_pattern_path(body_span.source, pattern)?;
                 let record = pattern.record_pattern().ok_or_else(|| {
                     CompileError::new(CompileErrorKind::UnsupportedSyntax("match pattern"))
                 })?;
@@ -166,8 +167,7 @@ impl Compiler<'_, '_> {
                 let tuple = pattern.tuple_pattern().ok_or_else(|| {
                     CompileError::new(CompileErrorKind::UnsupportedSyntax("match pattern"))
                 })?;
-                let path = tuple.path_segments();
-                if path.is_empty() {
+                let Some(path) = self.hir_pattern_path(body_span.source, pattern) else {
                     self.emit(UnlinkedInstructionKind::GuardTupleArity {
                         value: scrutinee,
                         arity: tuple.patterns().count(),
@@ -188,7 +188,7 @@ impl Compiler<'_, '_> {
                         )?;
                     }
                     return Ok(());
-                }
+                };
                 for (index, field) in tuple.patterns().enumerate() {
                     let field_kind = required_syntax_pattern_kind(&field, "tuple pattern field")?;
                     if !pattern_kind_declares_locals(field_kind) {
@@ -335,16 +335,33 @@ impl Compiler<'_, '_> {
         };
         self.facts.type_symbols.get(declaration).cloned()
     }
-}
 
-fn syntax_pattern_path_segments(pattern: &SyntaxPattern) -> CompileResult<Vec<String>> {
-    let path = pattern.path_segments();
-    if path.is_empty() {
-        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            "path pattern",
-        )));
+    pub(in crate::compiler) fn hir_pattern_path(
+        &self,
+        source: SourceId,
+        pattern: &SyntaxPattern,
+    ) -> Option<Vec<String>> {
+        let pattern =
+            self.pattern_at_span(span_for_range(source, pattern.syntax().text_range()))?;
+        self.hir_bodies
+            .iter()
+            .flat_map(|body| body.paths.iter())
+            .find_map(|path| {
+                (path.kind == HirPathKind::Pattern && path.owner == HirPathOwner::Pattern(pattern))
+                    .then(|| path.path.clone())
+            })
     }
-    Ok(path)
+
+    pub(in crate::compiler) fn required_hir_pattern_path(
+        &self,
+        source: SourceId,
+        pattern: &SyntaxPattern,
+    ) -> CompileResult<Vec<String>> {
+        self.hir_pattern_path(source, pattern).ok_or_else(|| {
+            CompileError::new(CompileErrorKind::UnsupportedSyntax("path pattern"))
+                .with_span(span_for_range(source, pattern.syntax().text_range()))
+        })
+    }
 }
 
 fn required_syntax_pattern_kind(
