@@ -1,5 +1,5 @@
 use vela_common::{Diagnostic, SourceId};
-use vela_syntax::ast::SyntaxExpression;
+use vela_syntax::ast::{AstNode, SyntaxExpression};
 
 use crate::compiler::calls::metadata::unresolved_static_method_error;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
@@ -16,20 +16,31 @@ impl Compiler<'_, '_> {
         let Some(call) = expression.as_call() else {
             return Ok(None);
         };
-        let Some(callee) = call.callee() else {
+        let call_span = syntax_expression_span(source, expression);
+        let call_expression = self.expression_at_span(call_span);
+        let Some(callee_expression) =
+            call_expression.and_then(|call| self.call_callee_expression(call))
+        else {
             return Ok(None);
         };
-        let call_span = syntax_expression_span(source, expression);
-        let callee_span = syntax_expression_span(source, &callee);
+        let Some(callee_span) = self.expression_span(callee_expression) else {
+            return Ok(None);
+        };
+        let Some(callee) = syntax_call_expression_at_span(source, expression, callee_span) else {
+            return Ok(None);
+        };
         let arguments = call.arguments();
 
-        if let Some(field) = callee.as_field() {
-            let Some(receiver_expression) = field.receiver() else {
+        if let Some(field) = self.hir_field_for_expression(callee_expression) {
+            let Some(receiver_span) = self.expression_span(field.receiver) else {
                 return Ok(None);
             };
-            let Some(method) = self.hir_field_name_for_span(callee_span).map(str::to_owned) else {
+            let Some(receiver_expression) =
+                syntax_call_expression_at_span(source, expression, receiver_span)
+            else {
                 return Ok(None);
             };
+            let method = field.name.clone();
             if let Some(register) = self.compile_syntax_host_index_remove_call(
                 source,
                 &receiver_expression,
@@ -169,7 +180,6 @@ impl Compiler<'_, '_> {
             return Ok(Some(dst));
         }
 
-        let call_expression = self.expression_at_span(call_span);
         let Some(path) =
             call_expression.and_then(|call| self.hir_callee_path(call).map(<[String]>::to_vec))
         else {
@@ -325,4 +335,19 @@ impl Compiler<'_, '_> {
         );
         Ok(Some(dst))
     }
+}
+
+fn syntax_call_expression_at_span(
+    source: SourceId,
+    expression: &SyntaxExpression,
+    span: vela_common::Span,
+) -> Option<SyntaxExpression> {
+    if span.source != source {
+        return None;
+    }
+    expression
+        .syntax()
+        .descendants()
+        .filter_map(SyntaxExpression::cast)
+        .find(|child| syntax_expression_span(source, child) == span)
 }

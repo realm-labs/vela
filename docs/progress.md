@@ -198,8 +198,9 @@ read member names from HIR field facts instead of syntax field tokens.
 Bytecode host-path fallback resolution now also reads field receiver spans from
 HIR field facts for dynamic-index paths instead of asking field syntax for the
 receiver expression.
-Bytecode script, value, dynamic, and host method-call lowering now also reads
-the method member from HIR field facts instead of callee field syntax.
+Bytecode script, value, dynamic, and host method-call lowering now reads
+callee, method member, and receiver expressions from HIR call/field facts
+instead of callee/member syntax reconstruction.
 Bytecode parameter-default field lowering now reads record/host field names
 and receiver expressions from HIR field facts instead of field-expression
 syntax.
