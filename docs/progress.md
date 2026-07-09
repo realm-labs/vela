@@ -149,9 +149,10 @@ assignment lowering, call lowering, index lowering, and array/map container
 lowering live in focused sibling modules under the ordinary 1200-line
 guideline.
 
-The tuple/unit/null hard switch is now active. Source-level `null` has been
-removed from the ordinary syntax/tooling surface, and the core no-value model
-uses Unit across runtime values, owned/host values, bytecode constants,
+The tuple/unit/null hard switch is complete as a breaking pre-release value
+model track. Source-level `null` has been removed from the ordinary
+syntax/tooling surface, and the core no-value model uses Unit across runtime
+values, owned/host values, bytecode constants,
 primitive tags, reflection type kinds, hot-reload schema ABI, C API value kind,
 standard/native no-result metadata, control-flow defaults, and Rust
 `Option<T>` embedding and serde conversion to script `Option<T>` enums rather
@@ -185,7 +186,7 @@ Hot-reload ABI tests now explicitly reject exported unit return signature
 changes, tuple arity changes, and tuple element contract changes while accepting
 formatting-equivalent tuple contracts.
 Tuple Map/Set keys are rejected by source type-hint validation and runtime
-`ValueKey` keyability. The active null audit now classifies all
+`ValueKey` keyability. The final null audit classifies all
 surviving `null` strings as intentional removed-source diagnostics/no-completion
 tests, external JSON-RPC protocol data, external C ABI pointer terminology, or
 historical/planning text rather than Vela language values. Tree-sitter editor

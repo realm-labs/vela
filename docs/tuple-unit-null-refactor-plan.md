@@ -501,9 +501,12 @@ Focused validation:
 
 ### Phase 2: Core Value Model Hard Switch
 
-- [~] Add unit and tuple value representations across runtime, owned, host,
+- [x] Add unit and tuple value representations across runtime, owned, host,
   bytecode constants, type facts, guards, equality, display, verifier, and
-  heap conversion.
+  heap conversion. Unit is represented at the host boundary through
+  `HostValue::Unit`; tuple payloads remain runtime/owned/serde/script-heap
+  values rather than scalar `HostValue` aggregates, matching the host bridge
+  contract.
 - [x] Delete `Value::Null`, `OwnedValue::Null`, `HostValue::Null`,
   `Constant::Null`, `PrimitiveTag::Null`, `TypeKind::Null`, `TypeHint::null`,
   null keying, null truthiness, null equality, null register defaults, and null
@@ -524,7 +527,7 @@ Focused validation:
 - [x] Make empty blocks, statement-only blocks, expression branches with no
   meaningful value, loop bodies, no-return functions, and `return;` produce
   unit.
-- [~] Lower tuple construction and destructuring directly. Ordinary tuple
+- [x] Lower tuple construction and destructuring directly. Ordinary tuple
   expressions now lower through a first-class `MakeTuple` bytecode instruction,
   and tuple destructuring now lowers for `let`, `match`, and `for` patterns.
 - [x] Add tuple arity/type mismatch diagnostics for destructuring and dynamic
@@ -555,7 +558,7 @@ Focused validation:
 
 - [x] Change stdlib no-result signatures from `"null"` to `"()"`.
 - [x] Change mutation helpers and no-result native calls to return unit.
-- [~] Change lookup/search/split APIs to `Option<T>` and tuple payloads where
+- [x] Change lookup/search/split APIs to `Option<T>` and tuple payloads where
   useful. `String.split_once` now returns `Option<(String, String)>` through
   analysis facts, stdlib metadata, VM execution, cached materialization,
   reflection metadata, examples, and docs. Statically known scalar/string
@@ -578,7 +581,7 @@ Focused validation:
   enum values; `()` and raw payload values are rejected for Rust
   `Option<T>`.
 - [x] Add Rust `()` conversion and Rust tuple arity 2..=4 conversion.
-- [~] Remove reflection missing-metadata nulls in favor of `Option`, omitted
+- [x] Remove reflection missing-metadata nulls in favor of `Option`, omitted
   fields, or explicit structured absence. Field, parameter, and return hints
   now expose optional copied `ReflectTypeHint` descriptors alongside their raw
   strings; invalid or missing descriptors are `Option::None`, not unit.
@@ -595,7 +598,7 @@ Focused validation:
 
 ### Phase 5: Tuple Payloads, ABI, And Contracts
 
-- [~] Make `Option<(A, B)>` and `Result<(A, B), E>` precise in type facts,
+- [x] Make `Option<(A, B)>` and `Result<(A, B), E>` precise in type facts,
   guard plans, reflection descriptors, schema artifacts, and hot-reload ABI.
   Tuple TypeFacts, compiler runtime facts, value shapes, runtime guard plans,
   descriptor validation, and `split_once` reflection metadata are implemented;
@@ -632,11 +635,11 @@ Focused validation:
 
 ### Phase 6: Tooling, Docs, Examples, And Website
 
-- [~] Update architecture docs, grammar docs, examples, conformance fixtures,
+- [x] Update architecture docs, grammar docs, examples, conformance fixtures,
   playground/site examples, and user-facing diagnostics. The split_once tuple
   payload is documented in architecture and website stdlib docs, and the
   gameplay helper example uses tuple destructuring.
-- [~] Update LSP hover, completion, signature help, semantic tokens, rename,
+- [x] Update LSP hover, completion, signature help, semantic tokens, rename,
   references, code actions, formatting, inlay hints, and diagnostics for unit
   and tuples. Unit type-hint completion and tuple/unit hover and signature
   display now preserve structural type facts through the language-service
