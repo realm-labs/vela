@@ -21,7 +21,10 @@ impl Compiler<'_, '_> {
         let Some(receiver) = field.receiver() else {
             return Err(param_default_unsupported(source, expression));
         };
-        let Some(name) = field.name_text() else {
+        let Some(name) = self
+            .hir_field_name_for_span(span_for(source, expression))
+            .map(str::to_owned)
+        else {
             return Err(param_default_unsupported(source, expression));
         };
 
