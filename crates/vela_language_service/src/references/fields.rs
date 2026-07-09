@@ -9,8 +9,8 @@ use crate::{LanguageServiceDatabases, query_context};
 
 use super::{
     Reference, ReferenceKind, ReferenceToken, declaration_name_matches, diagnostic_range,
-    name_range_in_text, record_fields, record_owner_names, resolved_use_reference_kind,
-    source_member_symbol, span_text_range, token_text,
+    record_fields, record_owner_names, resolved_use_reference_kind, source_member_symbol,
+    span_text_range, token_text,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -59,7 +59,6 @@ pub(super) fn script_field_references(
 pub(super) fn script_field_declaration_target(
     graph: &ModuleGraph,
     source_id: SourceId,
-    text: &str,
     token: &ReferenceToken,
 ) -> Option<FieldReferenceTarget> {
     let start = u32::try_from(token.range.start).ok()?;
@@ -72,9 +71,8 @@ pub(super) fn script_field_declaration_target(
         }
         let shape = graph.struct_shape(declaration.id)?;
         for field in &shape.fields {
-            let span_range = span_text_range(field.span)?;
-            let name_range = name_range_in_text(text, span_range, &field.name)?;
-            if name_range.start <= token.range.start && token.range.end <= name_range.end {
+            let field_range = span_text_range(field.span)?;
+            if field_range.start <= token.range.start && token.range.end <= field_range.end {
                 return Some(FieldReferenceTarget {
                     owner: declaration.id,
                     field: field.name.clone(),
@@ -129,9 +127,7 @@ fn reference_for_script_field_declaration(
         .records()
         .values()
         .find(|record| record.source_id() == field.span.source)?;
-    let span_range = span_text_range(field.span)?;
-    let name_range =
-        name_range_in_text(source.text(), span_range, &field.name).unwrap_or(span_range);
+    let name_range = span_text_range(field.span)?;
     Some(Reference {
         document_id: source.document_id().clone(),
         range: diagnostic_range(source.text(), name_range),

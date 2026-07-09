@@ -216,22 +216,15 @@ impl LanguageServiceDatabases {
         if let Some(target) = trait_declaration_target(graph, source_id, source.text(), &token) {
             return self.trait_references(&target, include_declaration);
         }
-        if let Some(target) =
-            fields::script_field_declaration_target(graph, source_id, source.text(), &token)
-        {
+        if let Some(target) = fields::script_field_declaration_target(graph, source_id, &token) {
             return fields::script_field_references(self, &target, include_declaration);
         }
-        if let Some(target) =
-            enum_variant_declaration_target(graph, source_id, source.text(), &token)
-        {
+        if let Some(target) = enum_variant_declaration_target(graph, source_id, &token) {
             return self.enum_variant_references(&target, include_declaration);
         }
-        if let Some(target) = variant_fields::script_variant_field_declaration_target(
-            graph,
-            source_id,
-            source.text(),
-            &token,
-        ) {
+        if let Some(target) =
+            variant_fields::script_variant_field_declaration_target(graph, source_id, &token)
+        {
             return variant_fields::script_variant_field_references(
                 self,
                 &target,
@@ -653,9 +646,7 @@ impl LanguageServiceDatabases {
             .iter()
             .find(|variant| variant.name == target.variant)?;
         let source = self.source_record_for_reference(variant.span.source)?;
-        let span_range = span_text_range(variant.span)?;
-        let name_range =
-            name_range_in_text(source.text(), span_range, &variant.name).unwrap_or(span_range);
+        let name_range = span_text_range(variant.span)?;
         Some(Reference {
             document_id: source.document_id().clone(),
             range: diagnostic_range(source.text(), name_range),
@@ -707,7 +698,6 @@ fn trait_declaration_target(
 fn enum_variant_declaration_target(
     graph: &ModuleGraph,
     source_id: SourceId,
-    text: &str,
     token: &ReferenceToken,
 ) -> Option<EnumVariantReferenceTarget> {
     let start = u32::try_from(token.range.start).ok()?;
@@ -720,9 +710,8 @@ fn enum_variant_declaration_target(
         }
         let shape = graph.enum_shape(declaration.id)?;
         for variant in &shape.variants {
-            let span_range = span_text_range(variant.span)?;
-            let name_range = name_range_in_text(text, span_range, &variant.name)?;
-            if name_range.start <= token.range.start && token.range.end <= name_range.end {
+            let variant_range = span_text_range(variant.span)?;
+            if variant_range.start <= token.range.start && token.range.end <= variant_range.end {
                 return Some(EnumVariantReferenceTarget {
                     owner: declaration.id,
                     variant: variant.name.clone(),

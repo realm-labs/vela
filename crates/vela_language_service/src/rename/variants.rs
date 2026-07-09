@@ -13,7 +13,7 @@ use crate::{
 };
 
 use super::{
-    RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, name_range_in_text, span_text_range,
+    RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, span_text_range,
     workspace_edit_for_rename,
 };
 
@@ -52,7 +52,6 @@ pub(super) fn rename_enum_variant(
 pub(super) fn enum_variant_declaration_target(
     graph: &ModuleGraph,
     source_id: SourceId,
-    text: &str,
     token: &RenameToken,
 ) -> Option<EnumVariantRenameTarget> {
     let start = u32::try_from(token.range.start).ok()?;
@@ -66,9 +65,8 @@ pub(super) fn enum_variant_declaration_target(
         }
         let shape = graph.enum_shape(declaration.id)?;
         for variant in &shape.variants {
-            let span_range = span_text_range(variant.span)?;
-            let name_range = name_range_in_text(text, span_range, &variant.name)?;
-            if name_range.start <= token.range.start && token.range.end <= name_range.end {
+            let variant_range = span_text_range(variant.span)?;
+            if variant_range.start <= token.range.start && token.range.end <= variant_range.end {
                 return Some(EnumVariantRenameTarget {
                     owner: declaration.id,
                     variant: variant.name.clone(),
@@ -154,8 +152,7 @@ fn push_enum_variant_declaration_edit(
         .iter()
         .find(|variant| variant.name == target.variant)?;
     let source = databases.source_record_for_rename(variant.span.source)?;
-    let span_range = span_text_range(variant.span)?;
-    let range = name_range_in_text(source.text(), span_range, &variant.name)?;
+    let range = span_text_range(variant.span)?;
     edits_by_document
         .entry(source.document_id().clone())
         .or_default()

@@ -11,7 +11,7 @@ use crate::{
 };
 
 use super::{
-    RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, name_range_in_text, span_text_range,
+    RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, span_text_range,
     workspace_edit_for_rename,
 };
 
@@ -42,7 +42,6 @@ pub(super) fn rename_script_field(
 pub(super) fn script_field_declaration_target(
     graph: &ModuleGraph,
     source_id: SourceId,
-    text: &str,
     token: &RenameToken,
 ) -> Option<ScriptFieldRenameTarget> {
     let start = u32::try_from(token.range.start).ok()?;
@@ -55,9 +54,8 @@ pub(super) fn script_field_declaration_target(
         }
         let shape = graph.struct_shape(declaration.id)?;
         for field in &shape.fields {
-            let span_range = span_text_range(field.span)?;
-            let name_range = name_range_in_text(text, span_range, &field.name)?;
-            if name_range.start <= token.range.start && token.range.end <= name_range.end {
+            let field_range = span_text_range(field.span)?;
+            if field_range.start <= token.range.start && token.range.end <= field_range.end {
                 return Some(ScriptFieldRenameTarget {
                     owner: declaration.id,
                     field: field.name.clone(),
@@ -96,8 +94,7 @@ fn push_script_field_declaration_edit(
         .iter()
         .find(|field| field.name == target.field)?;
     let source = databases.source_record_for_rename(field.span.source)?;
-    let span_range = span_text_range(field.span)?;
-    let range = name_range_in_text(source.text(), span_range, &field.name)?;
+    let range = span_text_range(field.span)?;
     edits_by_document
         .entry(source.document_id().clone())
         .or_default()

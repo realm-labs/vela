@@ -183,7 +183,10 @@ lookup, and the old `local_named_at` binding helper has been removed. Function
 and lambda parameter locals now carry exact name-token source spans, and
 language-service local symbol, definition, reference, rename, and symbol-target
 range projection uses those HIR local spans directly instead of scanning source
-text inside broad parameter spans. Script
+text inside broad parameter spans. Struct fields, enum record fields, and enum
+variants now also carry exact declaration name spans in HIR metadata, and
+language-service field/variant declaration references and renames project those
+HIR spans directly instead of scanning declaration text. Script
 field reference and rename use scans now read
 source-scoped `HirField` facts from `ModuleGraph` instead of rebuilding member
 access sites from parsed syntax, and script method reference/rename use scans

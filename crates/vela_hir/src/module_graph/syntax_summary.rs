@@ -485,6 +485,7 @@ fn impl_method_metadata(
 }
 
 fn enum_variant_hint(source: SourceId, variant: &SyntaxEnumVariant) -> Option<EnumVariantHint> {
+    let name = variant.name_token()?;
     let fields = if let Some(fields) = variant.tuple_field_list() {
         EnumVariantFieldsHint::Tuple(
             fields
@@ -504,17 +505,18 @@ fn enum_variant_hint(source: SourceId, variant: &SyntaxEnumVariant) -> Option<En
     };
     Some(EnumVariantHint {
         attrs: attrs_from_cst(source, variant.attributes()),
-        name: variant.name_text()?,
-        span: span_for(source, variant.syntax().text_range()),
+        name: name.text().to_owned(),
+        span: span_for(source, name.text_range()),
         fields,
     })
 }
 
 fn struct_field_hint(source: SourceId, field: &SyntaxStructField) -> Option<StructFieldHint> {
+    let name = field.name_token()?;
     Some(StructFieldHint {
         attrs: attrs_from_cst(source, field.attributes()),
-        name: field.name_text()?,
-        span: span_for(source, field.syntax().text_range()),
+        name: name.text().to_owned(),
+        span: span_for(source, name.text_range()),
         type_hint: field
             .type_hint()
             .as_ref()
