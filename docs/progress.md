@@ -195,7 +195,11 @@ same HIR-backed constructor identity path. Immediate enum field-slot reads from
 record literals also use HIR constructor identity instead of syntax path
 reconstruction. Record constructor script-type facts now also come from HIR
 constructor facts, and the old compiler payload record-path helper plus
-type-symbol-at-span helper have been removed.
+type-symbol-at-span helper have been removed. Bytecode script-type flow now
+maps source expressions directly to `HirExprId` and derives constructor, call,
+path, local, and `self` receiver facts from HIR/binding records, so the old
+`CompilerExpressionPayload` type and expression-payload module have been
+deleted.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

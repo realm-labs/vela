@@ -4,9 +4,8 @@ use vela_common::{SourceId, Span};
 use vela_hir::body::{HirPathKind, HirPathOwner};
 use vela_hir::ids::{HirExprId, HirLocalId};
 use vela_hir::type_hint::HirTypeHint;
-use vela_syntax::ast::SyntaxExpression;
+use vela_syntax::ast::{AstNode, SyntaxExpression};
 
-use super::body_payloads::CompilerExpressionPayload;
 use super::patterns::enum_variant_path;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -98,41 +97,6 @@ impl ScriptTypeFlow {
     }
 }
 
-fn expression_script_fact_from_payload_syntax(
-    payload: &CompilerExpressionPayload<'_>,
-    local_fact_at_span: &impl Fn(Span) -> Option<ScriptTypeFact>,
-    local_fact_named: &impl Fn(&str) -> Option<ScriptTypeFact>,
-    hir_constructor_fact_at_span: &impl Fn(Span) -> Option<ScriptTypeFact>,
-    hir_call_fact_at_span: &impl Fn(Span) -> Option<ScriptTypeFact>,
-) -> Option<ScriptTypeFact> {
-    if let Some(fact) = payload.syntax_span().and_then(hir_constructor_fact_at_span) {
-        return Some(fact);
-    }
-
-    if let Some(fact) = payload.syntax_span().and_then(hir_call_fact_at_span) {
-        return Some(fact);
-    }
-
-    if payload.syntax_is_self() {
-        return payload
-            .syntax_span()
-            .and_then(local_fact_at_span)
-            .or_else(|| local_fact_named("self"));
-    }
-
-    if let Some(path) = payload.syntax_path_segments() {
-        if let Some(fact) = path
-            .first()
-            .and_then(|name| (path.len() == 1).then(|| local_fact_named(name)).flatten())
-        {
-            return Some(fact);
-        }
-        return payload.syntax_span().and_then(local_fact_at_span);
-    }
-
-    None
-}
-
 pub(super) fn type_hint_script_type<'a>(
     hint: &HirTypeHint,
     type_names: impl IntoIterator<Item = &'a String>,
@@ -180,6 +144,17 @@ impl super::Compiler<'_, '_> {
             .map(|path| path.path.as_slice())
     }
 
+    fn hir_value_path(&self, expression: HirExprId) -> Option<&[String]> {
+        self.hir_bodies
+            .iter()
+            .flat_map(|body| body.paths.iter())
+            .find(|path| {
+                path.kind == HirPathKind::Value
+                    && path.owner == HirPathOwner::Expression(expression)
+            })
+            .map(|path| path.path.as_slice())
+    }
+
     pub(in crate::compiler) fn script_fact_for_hir_constructor(
         &self,
         expression: HirExprId,
@@ -214,33 +189,52 @@ impl super::Compiler<'_, '_> {
         Some(ScriptTypeFact::enum_variant(type_name, variant))
     }
 
+    fn script_fact_for_hir_expression(&self, expression: HirExprId) -> Option<ScriptTypeFact> {
+        if let Some(fact) = self.script_fact_for_hir_constructor(expression) {
+            return Some(fact);
+        }
+        if let Some(fact) = self.script_fact_for_hir_call(expression) {
+            return Some(fact);
+        }
+
+        match self.bindings.resolution(expression) {
+            Some(vela_hir::binding::BindingResolution::Local(local)) => {
+                if let Some(fact) = self.script_types.local_fact(*local) {
+                    return Some(fact);
+                }
+                if let Some(binding) = self.bindings.local(*local)
+                    && let Some(fact) = self.script_types.name_fact(&binding.name)
+                {
+                    return Some(fact);
+                }
+            }
+            Some(vela_hir::binding::BindingResolution::Declaration(declaration)) => {
+                if let Some(type_name) = self.facts.global_type_symbols.get(declaration) {
+                    return Some(ScriptTypeFact::new(type_name.clone()));
+                }
+            }
+            _ => {}
+        }
+
+        let [name] = self.hir_value_path(expression)? else {
+            return None;
+        };
+        self.script_types
+            .name_fact(name)
+            .or_else(|| self.global_type_named(name).map(ScriptTypeFact::new))
+    }
+
     pub(super) fn script_fact_for_syntax_expression(
         &self,
         source: SourceId,
         expression: &SyntaxExpression,
     ) -> Option<ScriptTypeFact> {
-        let payload =
-            CompilerExpressionPayload::from_syntax(Some(source), Some(expression.clone()));
-        expression_script_fact_from_payload_syntax(
-            &payload,
-            &|span| {
-                self.local_at_span(span)
-                    .and_then(|local| self.script_types.local_fact(local))
-                    .or_else(|| self.global_type_at_span(span).map(ScriptTypeFact::new))
-            },
-            &|name| {
-                self.script_types
-                    .name_fact(name)
-                    .or_else(|| self.global_type_named(name).map(ScriptTypeFact::new))
-            },
-            &|span| {
-                let expression = self.expression_at_span(span)?;
-                self.script_fact_for_hir_constructor(expression)
-            },
-            &|span| {
-                let call = self.expression_at_span(span)?;
-                self.script_fact_for_hir_call(call)
-            },
-        )
+        let expression = self.expression_at_span(syntax_expression_span(source, expression))?;
+        self.script_fact_for_hir_expression(expression)
     }
+}
+
+fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {
+    let range = expression.syntax().text_range();
+    Span::new(source, range.start().into(), range.end().into())
 }

@@ -6,7 +6,6 @@ use vela_syntax::ast::{
     SyntaxMatchExpr, SyntaxPattern, SyntaxStatement, SyntaxStatementKind,
 };
 
-mod expression_payloads;
 mod simple_values;
 
 // Temporary 1200-line exception: this module owns the syntax body payload boundary.
@@ -34,13 +33,6 @@ pub(super) struct CompilerBodyPayload<'ast> {
 pub(super) struct CompilerStatementPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxStatement>,
-    _ast: PhantomData<&'ast ()>,
-}
-
-#[derive(Clone)]
-pub(in crate::compiler) struct CompilerExpressionPayload<'ast> {
-    source: Option<SourceId>,
-    syntax: Option<SyntaxExpression>,
     _ast: PhantomData<&'ast ()>,
 }
 
