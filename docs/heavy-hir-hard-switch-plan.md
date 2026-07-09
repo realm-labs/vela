@@ -17,6 +17,12 @@ temporarily uncompilable while a slice is in progress, but every committed
 checkpoint must compile and pass the focused validation for the touched
 subsystem.
 
+Default commit granularity is a complete subsystem slice, not one fallback,
+helper, or checklist item at a time. A completed checkpoint must not keep both
+the old syntax-semantic path and the new HIR-semantic path alive as parallel
+implementations; delete or rewrite the old path in the same checkpoint that
+makes the replacement green.
+
 Do not add compatibility HIR mirrors, syntax-to-HIR fallback adapters, duplicate
 fact stores, temporary payload names, or helper APIs that exist only to keep the
 old body-level syntax pipeline alive. The final state must make Heavy HIR the
@@ -39,8 +45,9 @@ control-flow semantics are represented by stable HIR IDs and facts. Move
 analysis, language-service, and bytecode compiler callers away from body-level
 syntax reconstruction. Prefer deletion-first subsystem slices over compatibility
 layers. Every checkpoint must pass the focused tests named in this document and
-must preserve VM behavior, diagnostics quality, HostAccess safety, hot reload,
-and analysis-only LSP behavior.
+must leave no parallel old/new semantic implementation behind for the migrated
+subsystem. Preserve VM behavior, diagnostics quality, HostAccess safety, hot
+reload, and analysis-only LSP behavior.
 ```
 
 ---

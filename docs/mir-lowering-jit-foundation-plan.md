@@ -14,6 +14,13 @@ not begin until the Heavy HIR hard switch is complete enough for MIR to consume
 body-level semantic facts without reading syntax. MIR exists to model execution
 shape, not to repair semantic gaps.
 
+Use deletion-first subsystem slices. The old direct bytecode lowering path is
+allowed to be broken during a checkpoint and may be used only as a compile-error
+migration queue inside that checkpoint. Do not keep direct lowering as a
+compatibility backend across completed checkpoints; the checkpoint that switches
+an equivalent MIR backend path green must also delete or rewrite the old direct
+path and its dual-path tests.
+
 MIR v1 must lower to the existing bytecode and VM. It must not introduce
 Cranelift, machine code, deoptimization runtime machinery, or user-visible
 language behavior changes. Cranelift remains M22 work.
@@ -34,8 +41,11 @@ Add an internal vela_mir crate that consumes Heavy HIR plus analysis facts,
 builds verified MIR with explicit CFG, operands, places, temporaries, typed ops,
 guards, liveness/debug metadata, and lowers MIR to the existing bytecode
 backend. Do not read syntax from MIR, do not add JIT, and do not change VM
-semantics. Validate every slice with MIR verifier tests, bytecode equivalence
-tests, VM tests, and workspace checks.
+semantics. Use deletion-first subsystem slices: delete or rewrite the matching
+direct lowering path in the same checkpoint that makes the MIR backend path
+green, and do not preserve dual bytecode backends as a compatibility layer.
+Validate every slice with MIR verifier tests, bytecode equivalence tests, VM
+tests, and workspace checks.
 ```
 
 ---
@@ -222,8 +232,9 @@ behavior.
   descriptions, and hot-reload metadata.
 - [ ] Add equivalence tests comparing current compiler output semantics and MIR
   backend execution for representative constructs.
-- [ ] Keep the old direct lowering path only as a temporary migration queue;
-  delete it before MIR final acceptance.
+- [ ] Delete or rewrite each old direct lowering path in the same completed
+  checkpoint that routes the equivalent construct through MIR. Do not keep the
+  old path as a cross-checkpoint compatibility backend.
 
 Validation:
 
@@ -242,7 +253,7 @@ semantics.
 
 - [ ] Represent proven i64 arithmetic, comparison, branch, and range-loop ops in
   MIR.
-- [ ] Represent generic dynamic ops and fallback boundaries explicitly.
+- [ ] Represent generic dynamic operation boundaries explicitly.
 - [ ] Represent guard/deopt-style metadata needed by inline caches and future
   JIT side exits, without adding JIT runtime behavior.
 - [ ] Compute liveness and root/debug metadata for locals, temporaries, heap
