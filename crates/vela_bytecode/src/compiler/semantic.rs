@@ -176,9 +176,9 @@ impl SemanticSource {
     pub(super) fn const_values(&self) -> CompileResult<BTreeMap<HirDeclId, Constant>> {
         let mut values_by_declaration = BTreeMap::new();
         let mut values_by_name = BTreeMap::new();
-        let payloads = const_value_payloads(&self.syntax);
+        let payloads = const_value_payloads(self.source, &self.syntax, &self.graph, self.module);
         for (declaration, name) in module_const_declarations(&self.graph, self.module) {
-            let Some(expr) = payloads.get(&name) else {
+            let Some(expr) = payloads.get(&declaration) else {
                 continue;
             };
             if let Some(value) = evaluate_const_expr(self.source, expr, &values_by_name, &|span| {
@@ -380,14 +380,14 @@ impl SemanticModules {
                 let Some(source) = self.source_ids.get(module).copied() else {
                     continue;
                 };
-                let payloads = const_value_payloads(parsed);
+                let payloads = const_value_payloads(source, parsed, &self.graph, *module);
                 for (declaration, name) in module_const_declarations(&self.graph, *module) {
                     if let Some(value) = values_by_declaration.get(&declaration).cloned() {
                         previous_values.insert(name.clone(), value);
                         continue;
                     }
 
-                    let Some(expr) = payloads.get(&name) else {
+                    let Some(expr) = payloads.get(&declaration) else {
                         continue;
                     };
 

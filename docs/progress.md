@@ -206,6 +206,8 @@ struct and enum field identity through HIR metadata spans instead of parsed
 type, variant, and field names.
 Bytecode function, impl-method, and trait-default method body payload pairing
 now uses HIR-owned body/default spans instead of parsed declaration names.
+Bytecode const initializer payload collection now keys syntax expressions by
+HIR const declaration IDs and initializer spans instead of parsed const names.
 Incremental language-service updates now rebuild Heavy HIR for body-only source
 edits so HIR-owned call/member/path/body facts stay current while
 declaration/import indexes remain reusable. Semantic-token local record facts

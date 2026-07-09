@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashMap};
 
 use vela_common::{SourceId, Span};
-use vela_hir::ids::ModuleId;
+use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::{AstNode, SyntaxExpression, SyntaxSourceFile};
@@ -9,19 +9,36 @@ use vela_syntax::ast::{AstNode, SyntaxExpression, SyntaxSourceFile};
 use super::schema_defaults::{SchemaDefaultPayloads, SchemaDefaultValue};
 
 pub(super) fn const_value_payloads(
+    source: SourceId,
     parsed: &SyntaxParse<SyntaxSourceFile>,
-) -> BTreeMap<String, SyntaxExpression> {
+    graph: &ModuleGraph,
+    module: ModuleId,
+) -> BTreeMap<HirDeclId, SyntaxExpression> {
     let mut payloads = BTreeMap::new();
+    let targets = const_value_targets(graph, module);
     for item in parsed.tree().consts() {
-        let Some(name) = item.name_text() else {
-            continue;
-        };
         let Some(value) = item.value() else {
             continue;
         };
-        payloads.entry(name).or_insert(value);
+        let Some(declaration) = targets.get(&syntax_expression_span(source, &value)) else {
+            continue;
+        };
+        payloads.entry(*declaration).or_insert(value);
     }
     payloads
+}
+
+fn const_value_targets(graph: &ModuleGraph, module: ModuleId) -> HashMap<Span, HirDeclId> {
+    graph
+        .declarations_in_module(module)
+        .into_iter()
+        .filter(|declaration| declaration.kind == DeclarationKind::Const)
+        .filter_map(|declaration| {
+            graph
+                .const_metadata(declaration.id)
+                .map(|metadata| (metadata.value_span, declaration.id))
+        })
+        .collect()
 }
 
 pub(super) fn schema_default_payloads(
