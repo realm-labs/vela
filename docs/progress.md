@@ -199,7 +199,9 @@ type-symbol-at-span helper have been removed. Bytecode script-type flow now
 maps source expressions directly to `HirExprId` and derives constructor, call,
 path, local, and `self` receiver facts from HIR/binding records, so the old
 `CompilerExpressionPayload` type and expression-payload module have been
-deleted.
+deleted. Path value flow now resolves local script/value/shape facts through
+`HirExprId` binding records instead of `local_at_span` lookups in
+`path_values`.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

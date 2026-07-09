@@ -1,5 +1,6 @@
 use vela_common::Span;
-use vela_hir::binding::LocalBindingKind;
+use vela_hir::binding::{BindingResolution, LocalBindingKind};
+use vela_hir::ids::{HirExprId, HirLocalId};
 use vela_syntax::ast::{AstNode, SyntaxExpression};
 
 use crate::{
@@ -187,12 +188,21 @@ impl Compiler<'_, '_> {
         span: Span,
         path: &[String],
     ) -> Option<RuntimeTypeFact> {
+        let expression = self.expression_at_span(span)?;
+        self.value_type_for_path_expression(expression, path)
+    }
+
+    fn value_type_for_path_expression(
+        &self,
+        expression: HirExprId,
+        path: &[String],
+    ) -> Option<RuntimeTypeFact> {
         let [name] = path else {
             return self
-                .local_at_span(span)
+                .local_for_expression(expression)
                 .and_then(|local| self.value_types.local(local));
         };
-        self.local_at_span(span)
+        self.local_for_expression(expression)
             .and_then(|local| self.value_types.local(local))
             .or_else(|| self.value_types.name(name))
     }
@@ -202,24 +212,42 @@ impl Compiler<'_, '_> {
         span: Span,
         path: &[String],
     ) -> Option<ScriptTypeFact> {
+        let expression = self.expression_at_span(span)?;
+        self.script_fact_for_path_expression(expression, path)
+    }
+
+    fn script_fact_for_path_expression(
+        &self,
+        expression: HirExprId,
+        path: &[String],
+    ) -> Option<ScriptTypeFact> {
         let [name] = path else {
             return self
-                .local_at_span(span)
+                .local_for_expression(expression)
                 .and_then(|local| self.script_types.local_fact(local));
         };
-        self.local_at_span(span)
+        self.local_for_expression(expression)
             .and_then(|local| self.script_types.local_fact(local))
             .or_else(|| self.script_types.name_fact(name))
             .or_else(|| self.global_type_named(name).map(ScriptTypeFact::new))
     }
 
     fn value_shape_for_path(&self, span: Span, path: &[String]) -> Option<ValueShape> {
+        let expression = self.expression_at_span(span)?;
+        self.value_shape_for_path_expression(expression, path)
+    }
+
+    fn value_shape_for_path_expression(
+        &self,
+        expression: HirExprId,
+        path: &[String],
+    ) -> Option<ValueShape> {
         let [name] = path else {
             return self
-                .local_at_span(span)
+                .local_for_expression(expression)
                 .and_then(|local| self.value_shapes.local(local));
         };
-        self.local_at_span(span)
+        self.local_for_expression(expression)
             .and_then(|local| self.value_shapes.local(local))
             .or_else(|| self.value_shapes.name(name))
             .or_else(|| {
@@ -229,6 +257,13 @@ impl Compiler<'_, '_> {
                     .and_then(|type_name| self.record_shape_for_type(&type_name))
                     .map(ValueShape::Record)
             })
+    }
+
+    fn local_for_expression(&self, expression: HirExprId) -> Option<HirLocalId> {
+        let BindingResolution::Local(local) = self.bindings.resolution(expression)? else {
+            return None;
+        };
+        Some(*local)
     }
 }
 
