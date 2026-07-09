@@ -180,6 +180,31 @@ fn expression_facts_use_hir_paths_for_record_constructors_and_calls() {
     );
 }
 
+#[test]
+fn expression_facts_use_hir_locals_for_lambda_parameter_scope() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let source = r#"pub fn main() {
+            let callback = |amount: i64| amount
+            callback(1)
+        }"#;
+    let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project);
+    let source_id = databases
+        .source_db()
+        .records()
+        .get(&document)
+        .expect("document source record should exist")
+        .source_id();
+
+    assert_eq!(
+        fact_for_range(&databases, source_id, range_for_nth(source, "amount", 2)),
+        Some(TypeFact::I64)
+    );
+}
+
 fn range_for_nth(source: &str, needle: &str, occurrence: usize) -> TextRange {
     let start = source
         .match_indices(needle)

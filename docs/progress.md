@@ -212,6 +212,9 @@ Bytecode ordinary `let` statement lowering now reads destination binding names
 from HIR pattern-local bindings instead of parsed let-name syntax.
 Bytecode callback return-shape inference now reads lambda parameter names from
 HIR lambda parameter locals instead of parsed lambda parameter syntax.
+Language-service expression-fact scope population now reads function, lambda,
+simple-let, and destructuring binding names from HIR local facts matched by
+source span and local kind instead of parsed binding-name syntax.
 Incremental language-service updates now rebuild Heavy HIR for body-only source
 edits so HIR-owned call/member/path/body facts stay current while
 declaration/import indexes remain reusable. Semantic-token local record facts

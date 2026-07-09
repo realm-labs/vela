@@ -15,12 +15,14 @@ use vela_analysis::{
 };
 use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_hir::{
+    binding::{BindingMap, LocalBinding, LocalBindingKind},
     body::{HirPathKind, HirPathOwner},
     ids::{HirExprId, HirPatternId},
     module_graph::{DeclarationKind, ModuleGraph},
     type_hint::ImplMetadataKind,
 };
 use vela_syntax::Parse as SyntaxParse;
+use vela_syntax::TextRange as SyntaxTextRange;
 use vela_syntax::ast::{
     AstNode, BinaryOp, Literal, SyntaxArgument, SyntaxBlock, SyntaxConstItem, SyntaxExpression,
     SyntaxExpressionKind, SyntaxFunctionItem, SyntaxIfExpr, SyntaxImplItem, SyntaxLambdaBody,
@@ -35,7 +37,6 @@ use self::owners::{
     declaration_name_matches, declaration_scope, impl_target_matches, record_owner_names,
     trait_declaration_for_path, trait_owner_names,
 };
-use self::patterns::insert_pattern_scope_facts;
 use self::type_hints::type_fact_from_syntax_hint;
 
 pub(crate) fn collect(
@@ -197,7 +198,10 @@ impl ExpressionFactCollector<'_> {
         params: impl IntoIterator<Item = SyntaxParam>,
     ) {
         for param in params {
-            if let Some(name) = param.name_text() {
+            if let Some(name) = param
+                .name_token()
+                .and_then(|token| self.param_local_name(token.text_range()))
+            {
                 if let Some(type_hint) = param.type_hint() {
                     scope.insert_path([name.clone()], self.type_fact_from_hint(&type_hint));
                 }
@@ -227,7 +231,10 @@ impl ExpressionFactCollector<'_> {
                     self.collect_expr(&value, scope);
                     let fact = self.type_fact_for_expr(&value, scope);
                     if !matches!(fact, TypeFact::Unknown) {
-                        if let Some(name) = statement.name_text() {
+                        if let Some(name) = statement
+                            .name_token()
+                            .and_then(|token| self.let_local_name(token.text_range()))
+                        {
                             scope.insert_path([name], fact);
                         } else if let Some(pattern) = statement.pattern() {
                             self.insert_pattern_facts(scope, &pattern, &fact);
@@ -235,7 +242,10 @@ impl ExpressionFactCollector<'_> {
                     }
                 } else if let Some(type_hint) = statement.type_hint() {
                     let fact = self.type_fact_from_hint(&type_hint);
-                    if let Some(name) = statement.name_text() {
+                    if let Some(name) = statement
+                        .name_token()
+                        .and_then(|token| self.let_local_name(token.text_range()))
+                    {
                         scope.insert_path([name], fact);
                     } else if let Some(pattern) = statement.pattern() {
                         self.insert_pattern_facts(scope, &pattern, &fact);
@@ -659,7 +669,7 @@ impl ExpressionFactCollector<'_> {
                 TypeFact::union(expr.arms().into_iter().filter_map(|arm| {
                     let mut arm_scope = scope.clone();
                     if let (Some(pattern), Some(fact)) = (arm.pattern(), scrutinee_fact.as_ref()) {
-                        insert_pattern_scope_facts(&mut arm_scope, &pattern, fact);
+                        self.insert_pattern_scope_facts(&mut arm_scope, &pattern, fact);
                     }
                     match arm.body() {
                         Some(SyntaxMatchArmBody::Expression(body)) => {
@@ -902,7 +912,10 @@ impl ExpressionFactCollector<'_> {
                         .and_then(|facts| facts.get(index).cloned())
                 })
                 .unwrap_or(TypeFact::Unknown);
-            if let Some(name) = param.name_text() {
+            if let Some(name) = param
+                .name_token()
+                .and_then(|token| self.param_local_name(token.text_range()))
+            {
                 nested.insert_path([name], fact.clone());
             }
             param_facts.push(fact);
@@ -1029,6 +1042,103 @@ impl ExpressionFactCollector<'_> {
             u32::from(range.end()),
         ))
     }
+
+    pub(super) fn pattern_local_name(&self, range: SyntaxTextRange) -> Option<String> {
+        self.local_name_for_range(
+            range,
+            &[
+                LocalBindingKind::Let,
+                LocalBindingKind::For,
+                LocalBindingKind::Pattern,
+            ],
+        )
+    }
+
+    fn param_local_name(&self, range: SyntaxTextRange) -> Option<String> {
+        self.local_name_for_range(
+            range,
+            &[
+                LocalBindingKind::Parameter,
+                LocalBindingKind::LambdaParameter,
+            ],
+        )
+    }
+
+    fn let_local_name(&self, range: SyntaxTextRange) -> Option<String> {
+        self.local_name_for_range(range, &[LocalBindingKind::Let])
+    }
+
+    fn local_name_for_range(
+        &self,
+        range: SyntaxTextRange,
+        kinds: &[LocalBindingKind],
+    ) -> Option<String> {
+        self.local_for_span(self.span_for_range(range), kinds)
+            .map(|local| local.name.clone())
+    }
+
+    fn local_for_span(&self, span: Span, kinds: &[LocalBindingKind]) -> Option<&LocalBinding> {
+        for declaration in self.graph.declarations() {
+            if let Some(local) = self
+                .graph
+                .bindings(declaration.id)
+                .and_then(|bindings| local_in_bindings(bindings, span, kinds))
+                .or_else(|| {
+                    self.graph
+                        .const_initializer_bindings(declaration.id)
+                        .and_then(|bindings| local_in_bindings(bindings, span, kinds))
+                })
+            {
+                return Some(local);
+            }
+            if let Some(local) = self
+                .graph
+                .trait_shape(declaration.id)
+                .into_iter()
+                .flat_map(|shape| shape.methods.iter())
+                .filter_map(|method| method.default_body_node)
+                .find_map(|node| {
+                    self.graph
+                        .trait_default_method_bindings(node)
+                        .and_then(|bindings| local_in_bindings(bindings, span, kinds))
+                })
+            {
+                return Some(local);
+            }
+            if let Some(local) = self
+                .graph
+                .impl_metadata(declaration.id)
+                .into_iter()
+                .flat_map(|metadata| metadata.methods.iter())
+                .find_map(|method| {
+                    self.graph
+                        .impl_method_bindings(method.node)
+                        .and_then(|bindings| local_in_bindings(bindings, span, kinds))
+                })
+            {
+                return Some(local);
+            }
+        }
+        None
+    }
+
+    fn span_for_range(&self, range: SyntaxTextRange) -> Span {
+        Span::new(
+            self.source,
+            u32::from(range.start()),
+            u32::from(range.end()),
+        )
+    }
+}
+
+fn local_in_bindings<'a>(
+    bindings: &'a BindingMap,
+    span: Span,
+    kinds: &[LocalBindingKind],
+) -> Option<&'a LocalBinding> {
+    bindings
+        .locals()
+        .find(|local| local.span == span && kinds.contains(&local.kind))
 }
 
 fn literal_fact(literal: Literal) -> TypeFact {
