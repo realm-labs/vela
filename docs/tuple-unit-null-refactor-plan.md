@@ -546,8 +546,10 @@ Focused validation:
 
 - [x] Change stdlib no-result signatures from `"null"` to `"()"`.
 - [x] Change mutation helpers and no-result native calls to return unit.
-- [ ] Change lookup/search/split APIs to `Option<T>` and tuple payloads where
-  useful.
+- [~] Change lookup/search/split APIs to `Option<T>` and tuple payloads where
+  useful. `String.split_once` now returns `Option<(String, String)>` through
+  analysis facts, stdlib metadata, VM execution, cached materialization,
+  reflection metadata, examples, and docs.
 - [x] Change Rust `Option<T>` conversion to script `Option<T>`.
 - [x] Add Rust `()` conversion and Rust tuple arity 2..=4 conversion.
 - [~] Remove reflection missing-metadata nulls in favor of `Option`, omitted
@@ -563,8 +565,12 @@ Focused validation:
 
 ### Phase 5: Tuple Payloads, ABI, And Contracts
 
-- [ ] Make `Option<(A, B)>` and `Result<(A, B), E>` precise in type facts,
+- [~] Make `Option<(A, B)>` and `Result<(A, B), E>` precise in type facts,
   guard plans, reflection descriptors, schema artifacts, and hot-reload ABI.
+  Tuple TypeFacts, compiler runtime facts, value shapes, runtime guard plans,
+  descriptor validation, and `split_once` reflection metadata are implemented;
+  broader schema artifacts, hot-reload coverage, and Result tuple payload
+  fixtures remain open.
 - [x] Add tuple `OwnedValue` conversion and tuple serde behavior that does not
   use raw null.
 - [x] Reject tuple Map/Set keys in the first slice with precise diagnostics.
@@ -585,8 +591,10 @@ Focused validation:
 
 ### Phase 6: Tooling, Docs, Examples, And Website
 
-- [ ] Update architecture docs, grammar docs, examples, conformance fixtures,
-  playground/site examples, and user-facing diagnostics.
+- [~] Update architecture docs, grammar docs, examples, conformance fixtures,
+  playground/site examples, and user-facing diagnostics. The split_once tuple
+  payload is documented in architecture and website stdlib docs, and the
+  gameplay helper example uses tuple destructuring.
 - [ ] Update LSP hover, completion, signature help, semantic tokens, rename,
   references, code actions, formatting, inlay hints, and diagnostics for unit
   and tuples.

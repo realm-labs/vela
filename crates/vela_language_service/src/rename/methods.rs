@@ -440,6 +440,7 @@ fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
         | TypeFact::Enum { .. }
         | TypeFact::Host { .. }
         | TypeFact::Trait { .. }
+        | TypeFact::Tuple { .. }
         | TypeFact::Module { .. } => {}
     }
 }

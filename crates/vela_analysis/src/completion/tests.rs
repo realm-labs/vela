@@ -340,7 +340,7 @@ fn receiver_completions_include_stdlib_collection_and_string_methods() {
         CompletionKind::Method,
         TypeFact::function(
             vec![TypeFact::STRING],
-            TypeFact::option(TypeFact::array(TypeFact::STRING))
+            TypeFact::option(TypeFact::tuple([TypeFact::STRING, TypeFact::STRING]))
         ),
     )));
     assert!(string.contains(&CompletionItem::new(

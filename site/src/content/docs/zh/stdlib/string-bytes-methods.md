@@ -27,16 +27,19 @@ fn main() {
 
 ## Split、Parse 和 Char
 
-`split`、`split_once`、`split_lines` 和 `split_whitespace` 产生数组。Parse
-helper 返回 `Option`，所以无效输入可以由脚本处理，不会直接变成 VM trap。
+`split`、`split_lines` 和 `split_whitespace` 产生数组。`split_once` 返回
+`Option<(String, String)>`。Parse helper 返回 `Option`，所以无效输入可以由
+脚本处理，不会直接变成 VM trap。
 
 ```vela
 fn main() {
     let parts = "count=3 enabled=true".split_whitespace();
-    let count = parts[0].split_once("=").unwrap_or(["count", "0"])[1]
+    let (_, count_text) = parts[0].split_once("=").unwrap_or(("count", "0"));
+    let (_, enabled_text) = parts[1].split_once("=").unwrap_or(("enabled", "false"));
+    let count = count_text
         .parse_i64()
         .unwrap_or(0);
-    let enabled = parts[1].split_once("=").unwrap_or(["enabled", "false"])[1]
+    let enabled = enabled_text
         .parse_bool()
         .unwrap_or(false);
     return enabled && count == 3;

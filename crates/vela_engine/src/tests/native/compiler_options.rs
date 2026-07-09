@@ -394,9 +394,9 @@ fn engine_compiler_options_emit_standard_string_split_method_ids() {
             SourceId::new(1),
             r#"
 fn main() {
-    let pair = "reward:gold".split_once(":").unwrap_or(["", ""]);
+    let (_, item) = "reward:gold".split_once(":").unwrap_or(("", ""));
     return "reward:gold".split(":").len() == 2
-        && pair[1] == "gold"
+        && item == "gold"
         && "reward\ngold".split_lines().len() == 2
         && "reward gold".split_whitespace().len() == 2;
 }
@@ -774,8 +774,8 @@ fn engine_compiler_options_lower_named_standard_value_method_arguments() {
             SourceId::new(1),
             r#"
 fn main() {
-    let pair = "reward:gold".split_once(separator = ":").unwrap_or(["", ""]);
-    return {"gold": 4}.get_or(default = 0, key = pair[1]);
+    let (_, item) = "reward:gold".split_once(separator = ":").unwrap_or(("", ""));
+    return {"gold": 4}.get_or(default = 0, key = item);
 }
 "#,
         )

@@ -859,6 +859,9 @@ enum SchemaTypeFact {
         params: Vec<SchemaTypeFact>,
         returns: Box<SchemaTypeFact>,
     },
+    Tuple {
+        elements: Vec<SchemaTypeFact>,
+    },
     Record {
         name: String,
     },
@@ -924,6 +927,9 @@ impl SchemaTypeFact {
                 params: params.iter().map(Self::from_type_fact).collect(),
                 returns: Box::new(Self::from_type_fact(returns)),
             },
+            TypeFact::Tuple { elements } => Self::Tuple {
+                elements: elements.iter().map(Self::from_type_fact).collect(),
+            },
             TypeFact::Record { name } => Self::Record { name: name.clone() },
             TypeFact::Enum { name, variant } => Self::Enum {
                 name: name.clone(),
@@ -961,6 +967,7 @@ impl SchemaTypeFact {
                 params.iter().map(Self::to_type_fact).collect(),
                 returns.to_type_fact(),
             ),
+            Self::Tuple { elements } => TypeFact::tuple(elements.iter().map(Self::to_type_fact)),
             Self::Record { name } => TypeFact::record(name),
             Self::Enum { name, variant } => TypeFact::enum_type(name, variant.clone()),
             Self::Host { name } => TypeFact::host(name),

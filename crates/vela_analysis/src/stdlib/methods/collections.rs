@@ -432,7 +432,7 @@ pub(super) fn string_method_fact(method: &str) -> Option<StdlibMethodFact> {
             StdlibMethodFact::new(
                 receiver,
                 "split_once",
-                TypeFact::option(TypeFact::array(TypeFact::STRING)),
+                TypeFact::option(TypeFact::tuple([TypeFact::STRING, TypeFact::STRING])),
             )
             .with_params(vec![TypeFact::STRING]),
         ),

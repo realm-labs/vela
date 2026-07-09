@@ -162,7 +162,7 @@ text.replace(old, new)
 text.repeat(count)
 text.slice(start, end) // byte range, must be UTF-8 boundaries
 text.split(separator)
-text.split_once(separator)
+text.split_once(separator) // Option<(String, String)>
 text.split_lines()
 text.split_whitespace()
 text.parse_i8()

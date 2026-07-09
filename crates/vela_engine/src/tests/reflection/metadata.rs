@@ -248,7 +248,10 @@ fn engine_standard_natives_register_reflection_metadata() {
         .expect("string.split_once method metadata");
     assert_eq!(split_once.params[0].name, "separator");
     assert_eq!(split_once.params[0].type_hint.as_deref(), Some("String"));
-    assert_eq!(split_once.return_type.as_deref(), Some("Option"));
+    assert_eq!(
+        split_once.return_type.as_deref(),
+        Some("Option<(String, String)>")
+    );
     let parse_i64 = string_type
         .methods
         .iter()
@@ -760,7 +763,7 @@ fn main() {
         && split_once.params.len() == 1
         && split_once.params[0].name == "separator"
         && split_once.params[0].type == "String"
-        && reflect::returns(split_once) == "Option"
+        && reflect::returns(split_once) == "Option<(String, String)>"
         && reflect::returns(parse_i64) == "Option"
         && reflect::returns(parse_char) == "Option"
         && bytes_read_u32_le.params[0].type == "i64"

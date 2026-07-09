@@ -437,7 +437,7 @@ fn linked_standard_value_method_caches_string_split_once_target() {
     let (program, site, dispatch, method_id) =
         linked_string_one_arg_cache_program("split_once", "count=3", "=");
     let caches = RecordingMethodCaches::new(1);
-    let expected = owned_option_some(OwnedValue::Array(vec![
+    let expected = owned_option_some(OwnedValue::Tuple(vec![
         OwnedValue::String("count".to_owned()),
         OwnedValue::String("3".to_owned()),
     ]));

@@ -314,6 +314,7 @@ impl LanguageServiceDatabases {
             | TypeFact::ResultOk { .. }
             | TypeFact::ResultErr { .. }
             | TypeFact::Function { .. }
+            | TypeFact::Tuple { .. }
             | TypeFact::Module { .. } => None,
         }
     }

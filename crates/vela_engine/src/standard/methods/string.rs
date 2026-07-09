@@ -100,7 +100,7 @@ const STRING_METHODS: &[MethodSpec] = &[
     MethodSpec::new(
         "split_once",
         &[ParamSpec::new("separator", "string")],
-        "Option",
+        "Option<(String, String)>",
         "Returns the first split pair, or Option::None.",
     ),
     MethodSpec::new(

@@ -161,11 +161,14 @@ arities 2 through 4, serde tuple conversion uses tuple values rather than raw
 null or array aliases, ordinary tuple expressions now lower through a
 first-class `MakeTuple` bytecode instruction, and tuple destructuring patterns
 now lower for `let`, `match`, and `for` bindings through tuple arity guards and
-field reads. Remaining follow-up work includes tuple type facts/guards/ABI
-descriptors, stdlib tuple-return APIs, and replacing reflection metadata gaps
-with structured Option or omitted fields instead of unit placeholders. Tuple
-Map/Set keys are rejected by source type-hint validation and runtime
-`ValueKey` keyability.
+field reads. Tuple type facts, runtime/shape guard plans, tuple type-hint
+validation, and `String.split_once -> Option<(String, String)>` now exist
+across analysis, bytecode, VM, reflection metadata, examples, docs, and cached
+and uncached stdlib paths. Remaining follow-up work includes broader
+schema/reflection tuple descriptors, Result tuple payload coverage beyond guard
+plan tests, and replacing reflection metadata gaps with structured Option or
+omitted fields instead of unit placeholders. Tuple Map/Set keys are rejected by
+source type-hint validation and runtime `ValueKey` keyability.
 ## Milestone Snapshot
 
 | Milestone | Status | Current note |

@@ -922,6 +922,118 @@ fn grant(value: Result<i64, String>) {
 }
 
 #[test]
+fn linked_parameter_guard_accepts_option_tuple_payload_contracts() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn split_pair(value: Option<(String, String)>) {
+    return value;
+}
+"#,
+    )
+    .expect("program should compile");
+
+    let pair = OwnedValue::tuple([
+        OwnedValue::String("count".to_owned()),
+        OwnedValue::String("3".to_owned()),
+    ]);
+    let some_pair = OwnedValue::enum_variant("Option", "Some", [("0", pair.clone())]);
+
+    let mut budget = ExecutionBudget::unbounded();
+    assert_eq!(
+        run_linked_test_program_with_budget(
+            &Vm::new(),
+            &program,
+            "split_pair",
+            &[some_pair],
+            &mut budget
+        )
+        .expect("Option tuple payload guard should pass"),
+        OwnedValue::enum_variant("Option", "Some", [("0", pair)])
+    );
+    assert_eq!(
+        run_linked_test_program_with_budget(
+            &Vm::new(),
+            &program,
+            "split_pair",
+            &[OwnedValue::enum_variant(
+                "Option",
+                "None",
+                Vec::<(&str, OwnedValue)>::new(),
+            )],
+            &mut budget
+        )
+        .expect("Option::None should not check a tuple payload"),
+        OwnedValue::enum_variant("Option", "None", Vec::<(&str, OwnedValue)>::new())
+    );
+}
+
+#[test]
+fn linked_parameter_guard_rejects_option_tuple_payload_mismatch() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn split_pair(value: Option<(String, String)>) {
+    return value;
+}
+"#,
+    )
+    .expect("program should compile");
+
+    let mut budget = ExecutionBudget::unbounded();
+    let array_error = run_linked_test_program_with_budget(
+        &Vm::new(),
+        &program,
+        "split_pair",
+        &[OwnedValue::enum_variant(
+            "Option",
+            "Some",
+            [(
+                "0",
+                OwnedValue::array([
+                    OwnedValue::String("count".to_owned()),
+                    OwnedValue::String("3".to_owned()),
+                ]),
+            )],
+        )],
+        &mut budget,
+    )
+    .expect_err("Option tuple payload must reject array pairs");
+    assert_eq!(
+        array_error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "tuple".to_owned(),
+            actual: "Array".to_owned(),
+            debug_name: "value".to_owned(),
+        }
+    );
+
+    let element_error = run_linked_test_program_with_budget(
+        &Vm::new(),
+        &program,
+        "split_pair",
+        &[OwnedValue::enum_variant(
+            "Option",
+            "Some",
+            [(
+                "0",
+                OwnedValue::tuple([OwnedValue::String("count".to_owned()), OwnedValue::i64(3)]),
+            )],
+        )],
+        &mut budget,
+    )
+    .expect_err("Option tuple payload must reject mismatched elements");
+    assert_eq!(
+        element_error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "String".to_owned(),
+            actual: "i64".to_owned(),
+            debug_name: "value".to_owned(),
+        }
+    );
+}
+
+#[test]
 fn linked_parameter_guard_rejects_option_and_result_payload_mismatch() {
     let program = compile_program_source(
         SourceId::new(1),

@@ -312,6 +312,59 @@ fn engine_accepts_supported_generic_variant_field_type_hints() {
 }
 
 #[test]
+fn engine_accepts_tuple_payload_type_hints() {
+    let result = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward")).variant(
+                VariantDesc::new(VariantId::new(1), "Gold").field(
+                    FieldDesc::new(FieldId::new(1), "split").type_hint("Option<(String, String)>"),
+                ),
+            ),
+        )
+        .build();
+
+    assert!(result.is_ok());
+}
+
+#[test]
+fn engine_rejects_tuple_map_and_set_key_type_hints() {
+    let map_result = Engine::builder()
+        .register_type(TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward")).field(
+            FieldDesc::new(FieldId::new(1), "splits").type_hint("Map<(String, String), i64>"),
+        ))
+        .build();
+
+    match map_result {
+        Err(error) => assert_eq!(
+            error.kind,
+            EngineErrorKind::InvalidTypeHintName {
+                descriptor: "field Reward.splits".to_owned(),
+                type_name: "Map<(String, String), i64>".to_owned(),
+            }
+        ),
+        Ok(_) => panic!("tuple map key should be rejected"),
+    }
+
+    let set_result =
+        Engine::builder()
+            .register_type(TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward")).field(
+                FieldDesc::new(FieldId::new(1), "splits").type_hint("Set<(String, String)>"),
+            ))
+            .build();
+
+    match set_result {
+        Err(error) => assert_eq!(
+            error.kind,
+            EngineErrorKind::InvalidTypeHintName {
+                descriptor: "field Reward.splits".to_owned(),
+                type_name: "Set<(String, String)>".to_owned(),
+            }
+        ),
+        Ok(_) => panic!("tuple set element should be rejected"),
+    }
+}
+
+#[test]
 fn engine_rejects_empty_trait_attribute_names() {
     let result = Engine::builder()
         .register_type(

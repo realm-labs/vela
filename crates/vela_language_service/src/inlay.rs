@@ -1140,6 +1140,7 @@ fn is_stable_type_fact(fact: &TypeFact) -> bool {
         TypeFact::Function { params, returns } => {
             params.iter().all(is_stable_type_fact) && is_stable_type_fact(returns)
         }
+        TypeFact::Tuple { elements } => elements.iter().all(is_stable_type_fact),
         TypeFact::Union(facts) => {
             !facts.is_empty()
                 && facts.iter().all(is_stable_type_fact)

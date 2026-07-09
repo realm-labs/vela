@@ -171,7 +171,7 @@ pub(super) fn call_cached_string_option(
                 Ok(payload) => payload,
                 Err(error) => return Some(Err(error)),
             };
-            Some(make_string_array_option(
+            Some(make_string_tuple_option(
                 payload,
                 heap,
                 budget,
@@ -524,12 +524,12 @@ fn split_once_payload(
     value: &str,
     args: &[Value],
     heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Option<Vec<String>>> {
+) -> VmResult<Option<(String, String)>> {
     crate::runtime_checks::expect_arity("split_once", args, 1)?;
     let separator = crate::string_methods::string_value(&args[0], heap, "method split_once")?;
     Ok(value
         .split_once(separator)
-        .map(|(before, after)| vec![before.to_owned(), after.to_owned()]))
+        .map(|(before, after)| (before.to_owned(), after.to_owned())))
 }
 
 fn split_payload(
@@ -651,14 +651,14 @@ fn make_string_option(
     make_option(payload, heap, budget)
 }
 
-fn make_string_array_option(
-    payload: Option<Vec<String>>,
+fn make_string_tuple_option(
+    payload: Option<(String, String)>,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<Value> {
     let payload = payload
-        .map(|values| make_string_array(values, heap, budget, operation))
+        .map(|values| make_string_tuple(values, heap, budget, operation))
         .transpose()?;
     make_option(payload, heap, budget)
 }
@@ -676,6 +676,19 @@ fn make_string_array(
     make_array(values, heap, budget, operation)
 }
 
+fn make_string_tuple(
+    values: (String, String),
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<Value> {
+    let values = [values.0, values.1]
+        .into_iter()
+        .map(|value| make_string(value, heap, budget, operation))
+        .collect::<VmResult<Vec<_>>>()?;
+    make_tuple(values, heap, budget, operation)
+}
+
 fn make_array(
     value: Vec<Value>,
     heap: &mut Option<&mut HeapExecution<'_>>,
@@ -686,6 +699,18 @@ fn make_array(
         return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
     };
     allocate_heap_value(HeapValue::Array(value), heap, budget.as_deref_mut())
+}
+
+fn make_tuple(
+    value: Vec<Value>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<Value> {
+    let Some(heap) = heap.as_deref_mut() else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
+    };
+    allocate_heap_value(HeapValue::Tuple(value), heap, budget.as_deref_mut())
 }
 
 fn make_bytes(

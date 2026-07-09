@@ -1,7 +1,7 @@
 use crate::option_result::option_value;
 use crate::{ExecutionBudget, HeapExecution, Value, VmResult};
 
-use super::{expect_arity, expect_no_args, make_array, make_string, string_value};
+use super::{expect_arity, expect_no_args, make_array, make_string, make_tuple, string_value};
 
 pub(crate) fn split(
     receiver: &Value,
@@ -30,9 +30,9 @@ pub(crate) fn split_once(
     let separator = string_value(&args[0], heap.as_deref(), "method split_once")?;
     let payload = value
         .split_once(separator)
-        .map(|(before, after)| [before.to_owned(), after.to_owned()]);
+        .map(|(before, after)| (before.to_owned(), after.to_owned()));
     let payload = payload
-        .map(|parts| string_array(parts.into(), heap, budget, "method split_once"))
+        .map(|parts| string_tuple(parts, heap, budget, "method split_once"))
         .transpose()?;
     let Some(heap) = heap.as_deref_mut() else {
         return super::type_error("method split_once");
@@ -78,4 +78,17 @@ fn string_array(
         .map(|part| make_string(part, heap, budget, operation))
         .collect::<VmResult<Vec<_>>>()?;
     make_array(values, heap, budget, operation)
+}
+
+fn string_tuple(
+    parts: (String, String),
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<Value> {
+    let values = [parts.0, parts.1]
+        .into_iter()
+        .map(|part| make_string(part, heap, budget, operation))
+        .collect::<VmResult<Vec<_>>>()?;
+    make_tuple(values, heap, budget, operation)
 }

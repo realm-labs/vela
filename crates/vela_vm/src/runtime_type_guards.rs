@@ -92,6 +92,9 @@ pub(crate) fn execute_unlinked_guard(
             context,
             &guard.context.debug_name,
         ),
+        UnlinkedTypeGuardPlan::Tuple { ref elements } => {
+            execute_tuple_guard(value, elements, context, &guard.context.debug_name)
+        }
         UnlinkedTypeGuardPlan::Option { ref some } => {
             execute_option_guard(value, some.as_deref(), context, &guard.context.debug_name)
         }
@@ -183,6 +186,9 @@ pub(crate) fn execute_linked_guard(
             context,
             debug_name,
         ),
+        TypeGuardPlan::Tuple { ref elements } => {
+            execute_linked_tuple_guard(value, elements, program, context, debug_name)
+        }
         TypeGuardPlan::Option { ref some } => {
             execute_linked_option_guard(value, some.as_deref(), program, context, debug_name)
         }
@@ -501,6 +507,32 @@ fn copied_map_entries(
             _ => None,
         })
         .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation: "Map" }))
+}
+
+fn copied_tuple_values(
+    value: &Value,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+    expected_arity: usize,
+) -> VmResult<Vec<Value>> {
+    let Value::HeapRef(reference) = value else {
+        return Err(type_contract_error(value, "tuple", heap, debug_name));
+    };
+    let values: Vec<Value> = heap
+        .and_then(|heap| heap.heap.get(*reference))
+        .and_then(|value| match value {
+            HeapValue::Tuple(values) => Some(values.iter().map(stored_runtime_value).collect()),
+            _ => None,
+        })
+        .ok_or_else(|| type_contract_error(value, "tuple", heap, debug_name))?;
+    if values.len() != expected_arity {
+        return Err(VmError::new(VmErrorKind::ArityMismatch {
+            name: debug_name.to_owned(),
+            expected: expected_arity,
+            actual: values.len(),
+        }));
+    }
+    Ok(values)
 }
 
 fn try_unlinked_container_contract_fast_path(
@@ -893,6 +925,22 @@ fn execute_map_guard(
     Ok(())
 }
 
+fn execute_tuple_guard(
+    value: &Value,
+    elements: &[Option<Box<UnlinkedTypeGuardPlan>>],
+    context: &mut GuardExecutionContext<'_, '_>,
+    debug_name: &str,
+) -> VmResult<()> {
+    let values = copied_tuple_values(value, context.heap(), debug_name, elements.len())?;
+    for (value, plan) in values.iter().zip(elements) {
+        if let Some(plan) = plan.as_deref() {
+            context.charge_scan_item()?;
+            execute_unlinked_guard_plan(value, plan, context, debug_name)?;
+        }
+    }
+    Ok(())
+}
+
 fn execute_result_guard(
     value: &Value,
     ok: Option<&UnlinkedTypeGuardPlan>,
@@ -969,6 +1017,9 @@ fn execute_unlinked_guard_plan(
             context,
             debug_name,
         ),
+        UnlinkedTypeGuardPlan::Tuple { elements } => {
+            execute_tuple_guard(value, elements, context, debug_name)
+        }
         UnlinkedTypeGuardPlan::Option { some } => {
             execute_option_guard(value, some.as_deref(), context, debug_name)
         }
@@ -1131,6 +1182,23 @@ fn execute_linked_map_guard(
     Ok(())
 }
 
+fn execute_linked_tuple_guard(
+    value: &Value,
+    elements: &[Option<Box<TypeGuardPlan>>],
+    program: &LinkedProgram,
+    context: &mut GuardExecutionContext<'_, '_>,
+    debug_name: &str,
+) -> VmResult<()> {
+    let values = copied_tuple_values(value, context.heap(), debug_name, elements.len())?;
+    for (value, plan) in values.iter().zip(elements) {
+        if let Some(plan) = plan.as_deref() {
+            context.charge_scan_item()?;
+            execute_linked_guard_plan(value, plan, program, context, debug_name)?;
+        }
+    }
+    Ok(())
+}
+
 fn execute_linked_result_guard(
     value: &Value,
     ok: Option<&TypeGuardPlan>,
@@ -1210,6 +1278,9 @@ fn execute_linked_guard_plan(
             context,
             debug_name,
         ),
+        TypeGuardPlan::Tuple { elements } => {
+            execute_linked_tuple_guard(value, elements, program, context, debug_name)
+        }
         TypeGuardPlan::Option { some } => {
             execute_linked_option_guard(value, some.as_deref(), program, context, debug_name)
         }
@@ -1447,6 +1518,7 @@ fn unlinked_plan_type_name(plan: &UnlinkedTypeGuardPlan) -> &'static str {
         UnlinkedTypeGuardPlan::Map { .. } => "Map",
         UnlinkedTypeGuardPlan::Set { .. } => "Set",
         UnlinkedTypeGuardPlan::Iterator { .. } => "Iterator",
+        UnlinkedTypeGuardPlan::Tuple { .. } => "tuple",
         UnlinkedTypeGuardPlan::Option { .. } => "Option",
         UnlinkedTypeGuardPlan::Result { .. } => "Result",
         UnlinkedTypeGuardPlan::Type(_) => "record",
@@ -1464,6 +1536,7 @@ fn linked_plan_type_name(plan: &TypeGuardPlan) -> &'static str {
         TypeGuardPlan::Map { .. } => "Map",
         TypeGuardPlan::Set { .. } => "Set",
         TypeGuardPlan::Iterator { .. } => "Iterator",
+        TypeGuardPlan::Tuple { .. } => "tuple",
         TypeGuardPlan::Option { .. } => "Option",
         TypeGuardPlan::Result { .. } => "Result",
         TypeGuardPlan::Type(_) | TypeGuardPlan::Shape { .. } => "record",

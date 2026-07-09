@@ -191,7 +191,10 @@ fn call_method_uses_standard_string_split_ids_before_name_fallback() {
             "reward:gold",
             &[Constant::String(":".to_owned())],
         ),
-        Ok(option_some(OwnedValue::array(["reward", "gold"])))
+        Ok(option_some(OwnedValue::tuple([
+            OwnedValue::String("reward".to_owned()),
+            OwnedValue::String("gold".to_owned()),
+        ])))
     );
     assert_eq!(
         run_string_transform_with_args_by_id(

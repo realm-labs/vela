@@ -481,7 +481,7 @@ fn string_methods_expose_replacement_and_split_facts() {
     assert_eq!(split_once.params, vec![TypeFact::STRING]);
     assert_eq!(
         split_once.returns,
-        TypeFact::option(TypeFact::array(TypeFact::STRING))
+        TypeFact::option(TypeFact::tuple([TypeFact::STRING, TypeFact::STRING]))
     );
 
     let split_lines =

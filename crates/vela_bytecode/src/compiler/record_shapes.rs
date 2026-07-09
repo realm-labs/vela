@@ -28,6 +28,7 @@ pub(super) enum ValueShape {
         value: Box<ValueShape>,
     },
     Set(Box<ValueShape>),
+    Tuple(Vec<ValueShape>),
     Option(Box<ValueShape>),
     Result {
         ok: Option<Box<ValueShape>>,
@@ -100,6 +101,7 @@ impl ValueShape {
             | Self::Iterator(_)
             | Self::Map { .. }
             | Self::Set(_)
+            | Self::Tuple(_)
             | Self::Option(_)
             | Self::Result { .. } => None,
         }
@@ -126,6 +128,12 @@ impl ValueShape {
                 .value_type()
                 .map(RuntimeTypeFact::set)
                 .or_else(|| Some(RuntimeTypeFact::standard(StandardRuntimeType::Set))),
+            Self::Tuple(elements) => Some(RuntimeTypeFact::tuple(
+                elements
+                    .iter()
+                    .map(ValueShape::value_type)
+                    .collect::<Option<Vec<_>>>()?,
+            )),
             Self::Option(value) => value
                 .value_type()
                 .map(|payload| RuntimeTypeFact::Option(Box::new(payload)))
@@ -183,6 +191,14 @@ impl ValueShape {
             }
             RuntimeTypeFact::Set(element) => {
                 return Self::Set(Box::new(Self::from_runtime_type(*element)));
+            }
+            RuntimeTypeFact::Tuple(elements) => {
+                return Self::Tuple(
+                    elements
+                        .into_iter()
+                        .map(Self::from_runtime_type)
+                        .collect::<Vec<_>>(),
+                );
             }
             RuntimeTypeFact::Standard(StandardRuntimeType::Range) => "Range",
             RuntimeTypeFact::Standard(StandardRuntimeType::Function) => "Function",

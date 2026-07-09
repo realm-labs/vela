@@ -363,6 +363,9 @@ pub enum TypeGuardPlan {
     Iterator {
         item: Option<Box<TypeGuardPlan>>,
     },
+    Tuple {
+        elements: Vec<Option<Box<TypeGuardPlan>>>,
+    },
     Option {
         some: Option<Box<TypeGuardPlan>>,
     },

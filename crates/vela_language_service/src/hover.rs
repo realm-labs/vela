@@ -953,6 +953,7 @@ fn collect_record_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
         | TypeFact::Enum { .. }
         | TypeFact::Host { .. }
         | TypeFact::Trait { .. }
+        | TypeFact::Tuple { .. }
         | TypeFact::Module { .. } => {}
     }
 }
@@ -990,6 +991,7 @@ fn collect_trait_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
         | TypeFact::Enum { .. }
         | TypeFact::Host { .. }
         | TypeFact::Record { .. }
+        | TypeFact::Tuple { .. }
         | TypeFact::Module { .. } => {}
     }
 }

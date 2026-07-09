@@ -636,6 +636,9 @@ pub enum UnlinkedTypeGuardPlan {
     Iterator {
         item: Option<Box<UnlinkedTypeGuardPlan>>,
     },
+    Tuple {
+        elements: Vec<Option<Box<UnlinkedTypeGuardPlan>>>,
+    },
     Option {
         some: Option<Box<UnlinkedTypeGuardPlan>>,
     },

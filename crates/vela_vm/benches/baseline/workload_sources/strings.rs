@@ -7,7 +7,7 @@ fn main() {
         let replaced = label.replace(".", "_");
         let repeated = "ab".repeat(3);
         let parts = "alpha,beta".split(",");
-        let pair = "count=3".split_once("=").unwrap_or([]);
+        let (pair_key, pair_value) = "count=3".split_once("=").unwrap_or(("", ""));
         let lines = "alpha\nbeta".split_lines();
         let words = "alpha beta".split_whitespace();
         let sliced = "hello".slice(1, 4);
@@ -29,7 +29,8 @@ fn main() {
             || replaced != "quest_done"
             || repeated != "ababab"
             || parts.len() != 2
-            || pair.len() != 2
+            || pair_key != "count"
+            || pair_value != "3"
             || lines.len() != 2
             || words.len() != 2
             || sliced != "ell"
@@ -47,7 +48,8 @@ fn main() {
             + replaced.len()
             + repeated.len()
             + parts.join("").len()
-            + pair.join("").len()
+            + pair_key.len()
+            + pair_value.len()
             + lines.join("").len()
             + words.join("").len()
             + sliced.len()
@@ -95,14 +97,14 @@ fn main() {
     let total = 0;
     for tick in 0..96 {
         let parts = "alpha,beta,gamma,delta".split(",");
-        let pair = "count=42".split_once("=").unwrap_or(["", ""]);
+        let (pair_key, pair_value) = "count=42".split_once("=").unwrap_or(("", ""));
         let lines = "alpha\nbeta\r\ngamma".split_lines();
         let words = " alpha\tbeta\ngamma ".split_whitespace();
 
         if parts.len() != 4
             || parts[2] != "gamma"
-            || pair[0] != "count"
-            || pair[1] != "42"
+            || pair_key != "count"
+            || pair_value != "42"
             || lines.len() != 3
             || words.join("|") != "alpha|beta|gamma"
         {
@@ -110,7 +112,8 @@ fn main() {
         }
 
         total += parts.join("").len()
-            + pair.join("").len()
+            + pair_key.len()
+            + pair_value.len()
             + lines.join("").len()
             + words.join("").len()
             + tick - tick;

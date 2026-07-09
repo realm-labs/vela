@@ -639,6 +639,7 @@ fn non_identity_runtime_type_name(fact: RuntimeTypeFact) -> Option<String> {
         | RuntimeTypeFact::Map { .. }
         | RuntimeTypeFact::Set(_)
         | RuntimeTypeFact::Iterator(_)
+        | RuntimeTypeFact::Tuple(_)
         | RuntimeTypeFact::Option(_)
         | RuntimeTypeFact::Result { .. } => None,
     }
@@ -653,6 +654,7 @@ fn non_identity_value_shape_name(shape: ValueShape) -> Option<String> {
         | ValueShape::Iterator(_)
         | ValueShape::Map { .. }
         | ValueShape::Set(_)
+        | ValueShape::Tuple(_)
         | ValueShape::Option(_)
         | ValueShape::Result { .. } => None,
     }

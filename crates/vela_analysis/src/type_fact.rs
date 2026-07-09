@@ -22,6 +22,9 @@ pub enum TypeFact {
     Iterator {
         item: Box<TypeFact>,
     },
+    Tuple {
+        elements: Vec<TypeFact>,
+    },
     Option {
         some: Box<TypeFact>,
     },
@@ -105,6 +108,12 @@ impl TypeFact {
     pub fn iterator(item: TypeFact) -> Self {
         Self::Iterator {
             item: Box::new(item),
+        }
+    }
+
+    pub fn tuple(elements: impl IntoIterator<Item = TypeFact>) -> Self {
+        Self::Tuple {
+            elements: elements.into_iter().collect(),
         }
     }
 
@@ -239,6 +248,14 @@ impl TypeFact {
             }
             Self::Set { element } => format!("Set({})", element.display_name()),
             Self::Iterator { .. } => "Iterator".to_owned(),
+            Self::Tuple { elements } => {
+                let elements = elements
+                    .iter()
+                    .map(Self::display_name)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("({elements})")
+            }
             Self::Option { some } => format!("Option({})", some.display_name()),
             Self::OptionSome { some } => format!("Option::Some({})", some.display_name()),
             Self::OptionNone => "Option::None".to_owned(),
@@ -308,6 +325,10 @@ mod tests {
         assert_eq!(
             TypeFact::result_err(TypeFact::STRING).display_name(),
             "Result::Err(String)"
+        );
+        assert_eq!(
+            TypeFact::tuple([TypeFact::STRING, TypeFact::I64]).display_name(),
+            "(String, i64)"
         );
         assert_eq!(TypeFact::iterator(TypeFact::I64).display_name(), "Iterator");
         assert!(!fact.display_name().contains('<'));

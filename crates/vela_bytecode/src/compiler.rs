@@ -511,6 +511,13 @@ fn type_guard_plan_for_hint_inner(
     };
     match name.as_str() {
         "Any" => None,
+        "()" if !hint.args.is_empty() => Some(UnlinkedTypeGuardPlan::Tuple {
+            elements: hint
+                .args
+                .iter()
+                .map(|arg| type_guard_plan_for_hint_inner(arg, facts).map(Box::new))
+                .collect(),
+        }),
         "()" => Some(UnlinkedTypeGuardPlan::Primitive(
             vela_common::PrimitiveTag::Unit,
         )),
@@ -677,6 +684,12 @@ fn type_guard_plan_for_runtime_type(ty: &RuntimeTypeFact) -> Option<UnlinkedType
         }),
         RuntimeTypeFact::Iterator(item) => Some(UnlinkedTypeGuardPlan::Iterator {
             item: type_guard_plan_for_runtime_type(item).map(Box::new),
+        }),
+        RuntimeTypeFact::Tuple(elements) => Some(UnlinkedTypeGuardPlan::Tuple {
+            elements: elements
+                .iter()
+                .map(|element| type_guard_plan_for_runtime_type(element).map(Box::new))
+                .collect(),
         }),
         RuntimeTypeFact::Option(payload) => Some(UnlinkedTypeGuardPlan::Option {
             some: type_guard_plan_for_runtime_type(payload).map(Box::new),

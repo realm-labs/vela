@@ -1212,6 +1212,15 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     .map(|plan| self.link_type_guard_plan(*plan).map(Box::new))
                     .transpose()?,
             }),
+            UnlinkedTypeGuardPlan::Tuple { elements } => Ok(TypeGuardPlan::Tuple {
+                elements: elements
+                    .into_iter()
+                    .map(|plan| {
+                        plan.map(|plan| self.link_type_guard_plan(*plan).map(Box::new))
+                            .transpose()
+                    })
+                    .collect::<Result<Vec<_>, _>>()?,
+            }),
             UnlinkedTypeGuardPlan::Option { some } => Ok(TypeGuardPlan::Option {
                 some: some
                     .map(|plan| self.link_type_guard_plan(*plan).map(Box::new))

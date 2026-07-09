@@ -720,6 +720,7 @@ fn schema_type_symbol_kind(fact: &TypeFact) -> DocumentSymbolKind {
         | TypeFact::Result { .. }
         | TypeFact::ResultOk { .. }
         | TypeFact::ResultErr { .. }
+        | TypeFact::Tuple { .. }
         | TypeFact::Union(_) => DocumentSymbolKind::Struct,
     }
 }

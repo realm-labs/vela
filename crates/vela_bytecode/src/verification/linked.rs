@@ -828,6 +828,12 @@ fn verify_linked_type_guard(
             }
             Ok(())
         }
+        TypeGuardPlan::Tuple { ref elements } => {
+            for element in elements.iter().flatten() {
+                verify_linked_type_guard_plan(function, context, element)?;
+            }
+            Ok(())
+        }
         TypeGuardPlan::Option { ref some } => {
             if let Some(some) = some {
                 verify_linked_type_guard_plan(function, context, some)?;
@@ -886,6 +892,12 @@ fn verify_linked_type_guard_plan(
         TypeGuardPlan::Iterator { ref item } => {
             if let Some(item) = item {
                 verify_linked_type_guard_plan(function, context, item)?;
+            }
+            Ok(())
+        }
+        TypeGuardPlan::Tuple { ref elements } => {
+            for element in elements.iter().flatten() {
+                verify_linked_type_guard_plan(function, context, element)?;
             }
             Ok(())
         }

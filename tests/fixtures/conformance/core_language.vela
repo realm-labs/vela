@@ -206,7 +206,7 @@ fn main() {
     let pieces = normalized.split(".");
     let prefix = normalized.strip_prefix("quest.");
     let suffix = normalized.strip_suffix("_done");
-    let pair = "count=3".split_once("=").unwrap_or(["", "0"]);
+    let (pair_key, pair_value) = "count=3".split_once("=").unwrap_or(("", "0"));
     let words = " grant\tgold 3 ".split_whitespace();
     let lines = "start\napply\ncommit".split_lines();
     let reward_char = '\0';
@@ -224,8 +224,8 @@ fn main() {
         && pieces[0] == "quest"
         && option::unwrap_or(option::unwrap_or(prefix, "").strip_suffix("_done"), "") == "reward"
         && option::unwrap_or(suffix, "") == "quest.reward"
-        && pair[0] == "count"
-        && pair[1].parse_i64().unwrap_or(0) == 3
+        && pair_key == "count"
+        && pair_value.parse_i64().unwrap_or(0) == 3
         && words.join(".") == "grant.gold.3"
         && lines[1] == "apply"
         && option::unwrap_or("true".parse_bool(), false)

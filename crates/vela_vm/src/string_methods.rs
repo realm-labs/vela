@@ -68,6 +68,18 @@ pub(super) fn make_array(
     allocate_heap_value(HeapValue::Array(values), heap, budget.as_deref_mut())
 }
 
+pub(super) fn make_tuple(
+    values: Vec<Value>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<Value> {
+    let Some(heap) = heap.as_deref_mut() else {
+        return type_error(operation);
+    };
+    allocate_heap_value(HeapValue::Tuple(values), heap, budget.as_deref_mut())
+}
+
 pub(super) fn expect_no_args(method: &str, args: &[Value]) -> VmResult<()> {
     expect_arity(method, args, 0)
 }
@@ -481,10 +493,10 @@ fn main() {
     fn string_split_once_returns_pair_options() {
         let source = r#"
 fn main() {
-    let pair = "count=3".split_once("=").unwrap_or(["", "0"]);
-    let missing = "count".split_once("=").unwrap_or(["missing", "none"]);
-    if pair[0] == "count" && pair[1] == "3" && missing[1] == "none" {
-        return pair[1].parse_i64().unwrap_or(0);
+    let (label, amount) = "count=3".split_once("=").unwrap_or(("", "0"));
+    let (_, missing_value) = "count".split_once("=").unwrap_or(("missing", "none"));
+    if label == "count" && amount == "3" && missing_value == "none" {
+        return amount.parse_i64().unwrap_or(0);
     }
     return 0;
 }
@@ -501,8 +513,8 @@ fn main() {
     fn managed_heap_execution_runs_string_split_once() {
         let source = r#"
 fn main() {
-    let pair = "item:gold".split_once(":").unwrap_or(["item", "none"]);
-    return pair[0] == "item" && pair[1] == "gold";
+    let (kind, item) = "item:gold".split_once(":").unwrap_or(("item", "none"));
+    return kind == "item" && item == "gold";
 }
 "#;
         let code = compile_function_source(SourceId::new(1), source, "main")

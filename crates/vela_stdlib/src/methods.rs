@@ -130,7 +130,7 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "String",
         "split_once",
         &[StdParamSpec::new("separator", "string")],
-        "Option",
+        "Option<(String, String)>",
         "Returns the first split pair, or Option::None.",
     ),
     StdMethodSpec::new(

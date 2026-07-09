@@ -734,6 +734,8 @@ fn is_valid_type_hint_def(hint: &vela_registry::TypeHintDef) -> bool {
         return hint.args.is_empty();
     };
     match (name.as_str(), hint.args.as_slice()) {
+        ("()", []) => true,
+        ("()", elements) => elements.len() >= 2 && elements.iter().all(is_valid_type_hint_def),
         ("Array" | "Iterator" | "Option", [element]) => is_valid_type_hint_def(element),
         ("Set", [element]) => is_valid_type_hint_def(element) && is_keyable_type_hint_def(element),
         ("Map", [key, value]) => {
@@ -744,7 +746,7 @@ fn is_valid_type_hint_def(hint: &vela_registry::TypeHintDef) -> bool {
         ("Result", [ok, err]) => is_valid_type_hint_def(ok) && is_valid_type_hint_def(err),
         (
             "Array" | "Set" | "Map" | "Range" | "Iterator" | "Function" | "Closure" | "Option"
-            | "Result" | "Any" | "String" | "Bytes" | "()" | "bool" | "char" | "i8" | "i16" | "i32"
+            | "Result" | "Any" | "String" | "Bytes" | "bool" | "char" | "i8" | "i16" | "i32"
             | "i64" | "u8" | "u16" | "u32" | "u64" | "f32" | "f64",
             [],
         ) => true,
@@ -755,6 +757,7 @@ fn is_valid_type_hint_def(hint: &vela_registry::TypeHintDef) -> bool {
 
 fn is_keyable_type_hint_def(hint: &vela_registry::TypeHintDef) -> bool {
     match hint.path.as_slice() {
+        [name] if name == "()" && !hint.args.is_empty() => false,
         [name]
             if matches!(
                 name.as_str(),

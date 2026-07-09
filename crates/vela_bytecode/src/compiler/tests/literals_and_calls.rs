@@ -1107,8 +1107,7 @@ fn compiler_lowers_set_method_ids_after_mixed_string_shapes() {
         SourceId::new(1),
         r#"
 fn main() {
-    let reward_pair = "reward:gold".split_once(":").unwrap_or(["reward", ""]);
-    let item = reward_pair[1];
+    let (_, item) = "reward:gold".split_once(":").unwrap_or(("reward", ""));
     let tags = set::from_array(["reward", item, "daily", item]);
     return tags.has("gold");
 }

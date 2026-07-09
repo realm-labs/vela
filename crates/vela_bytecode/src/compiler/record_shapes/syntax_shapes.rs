@@ -30,6 +30,7 @@ impl Compiler<'_, '_> {
         match expression.expression_kind() {
             SyntaxExpressionKind::Literal => self.literal_shape(expression),
             SyntaxExpressionKind::Array => self.array_shape(source, expression),
+            SyntaxExpressionKind::Tuple => self.tuple_shape(source, expression),
             SyntaxExpressionKind::Map => self.map_shape(source, expression),
             SyntaxExpressionKind::Record => self.record_shape(source, expression),
             SyntaxExpressionKind::Path => self.path_shape(source, expression),
@@ -40,7 +41,6 @@ impl Compiler<'_, '_> {
             SyntaxExpressionKind::Binary => self.binary_shape(expression),
             SyntaxExpressionKind::Try => self.try_shape(source, expression),
             SyntaxExpressionKind::Unit
-            | SyntaxExpressionKind::Tuple
             | SyntaxExpressionKind::Unary
             | SyntaxExpressionKind::Assign
             | SyntaxExpressionKind::Lambda
@@ -84,6 +84,22 @@ impl Compiler<'_, '_> {
             ValueShape::Unknown
         };
         Some(ValueShape::Array(Box::new(element)))
+    }
+
+    fn tuple_shape(
+        &self,
+        source: Option<SourceId>,
+        expression: &SyntaxExpression,
+    ) -> Option<ValueShape> {
+        let elements = expression
+            .as_tuple()?
+            .expressions()
+            .map(|value| {
+                self.value_shape_for_syntax_expression(source, &value)
+                    .unwrap_or(ValueShape::Unknown)
+            })
+            .collect::<Vec<_>>();
+        Some(ValueShape::Tuple(elements))
     }
 
     fn map_shape(
@@ -389,9 +405,10 @@ impl Compiler<'_, '_> {
             "split" | "split_whitespace" | "split_lines" => {
                 Some(ValueShape::Array(Box::new(string_shape())))
             }
-            "split_once" => Some(ValueShape::Option(Box::new(ValueShape::Array(Box::new(
+            "split_once" => Some(ValueShape::Option(Box::new(ValueShape::Tuple(vec![
                 string_shape(),
-            ))))),
+                string_shape(),
+            ])))),
             "strip_prefix" | "strip_suffix" => Some(ValueShape::Option(Box::new(string_shape()))),
             "filter" => match receiver {
                 ValueShape::Array(_)
@@ -602,6 +619,9 @@ impl Compiler<'_, '_> {
             SyntaxExpressionKind::Array => {
                 self.array_shape_with_locals(source, expression, local_shapes)
             }
+            SyntaxExpressionKind::Tuple => {
+                self.tuple_shape_with_locals(source, expression, local_shapes)
+            }
             SyntaxExpressionKind::Map => {
                 self.map_shape_with_locals(source, expression, local_shapes)
             }
@@ -634,7 +654,6 @@ impl Compiler<'_, '_> {
                 self.call_shape_with_locals(source, expression, local_shapes)
             }
             SyntaxExpressionKind::Unit
-            | SyntaxExpressionKind::Tuple
             | SyntaxExpressionKind::Unary
             | SyntaxExpressionKind::Assign
             | SyntaxExpressionKind::Lambda
@@ -680,6 +699,23 @@ impl Compiler<'_, '_> {
             ValueShape::Unknown
         };
         Some(ValueShape::Array(Box::new(element)))
+    }
+
+    fn tuple_shape_with_locals(
+        &self,
+        source: Option<SourceId>,
+        expression: &SyntaxExpression,
+        local_shapes: &BTreeMap<String, ValueShape>,
+    ) -> Option<ValueShape> {
+        let elements = expression
+            .as_tuple()?
+            .expressions()
+            .map(|value| {
+                self.value_shape_for_syntax_expression_with_locals(source, &value, local_shapes)
+                    .unwrap_or(ValueShape::Unknown)
+            })
+            .collect::<Vec<_>>();
+        Some(ValueShape::Tuple(elements))
     }
 
     fn map_shape_with_locals(

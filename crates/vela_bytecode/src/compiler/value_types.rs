@@ -21,6 +21,7 @@ pub(super) enum RuntimeTypeFact {
     },
     Set(Box<RuntimeTypeFact>),
     Iterator(Box<RuntimeTypeFact>),
+    Tuple(Vec<RuntimeTypeFact>),
     Option(Box<RuntimeTypeFact>),
     Result {
         ok: Box<RuntimeTypeFact>,
@@ -105,6 +106,10 @@ impl RuntimeTypeFact {
         Self::Iterator(Box::new(item))
     }
 
+    pub(super) fn tuple(elements: Vec<RuntimeTypeFact>) -> Self {
+        Self::Tuple(elements)
+    }
+
     pub(super) const fn std_type_name(&self) -> &'static str {
         match self {
             Self::Primitive(PrimitiveTag::Unit) => "Unit",
@@ -135,6 +140,7 @@ impl RuntimeTypeFact {
             Self::Map { .. } => "Map",
             Self::Set(_) => "Set",
             Self::Iterator(_) => "Iterator",
+            Self::Tuple(_) => "Tuple",
             Self::Option(_) => "Option",
             Self::Result { .. } => "Result",
         }
@@ -170,6 +176,7 @@ impl RuntimeTypeFact {
             Self::Map { .. } => "Map",
             Self::Set(_) => "Set",
             Self::Iterator(_) => "Iterator",
+            Self::Tuple(_) => "Tuple",
             Self::Option(_) => "Option",
             Self::Result { .. } => "Result",
         }
@@ -187,6 +194,14 @@ impl RuntimeTypeFact {
             }
             Self::Set(element) => format!("Set<{}>", element.source_type_display()),
             Self::Iterator(item) => format!("Iterator<{}>", item.source_type_display()),
+            Self::Tuple(elements) => {
+                let elements = elements
+                    .iter()
+                    .map(Self::source_type_display)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("({elements})")
+            }
             Self::Option(payload) => format!("Option<{}>", payload.source_type_display()),
             Self::Result { ok, err } => {
                 format!(
@@ -305,6 +320,21 @@ fn static_syntax_expr_type(
                 },
             ))))
         }
+        SyntaxExpressionKind::Tuple => {
+            let tuple = expression.as_tuple()?;
+            let elements = tuple
+                .expressions()
+                .map(|value| {
+                    syntax_expression_value_type(
+                        &value,
+                        source,
+                        local_type_at_span,
+                        local_type_named,
+                    )
+                })
+                .collect::<Option<Vec<_>>>()?;
+            Some(StaticExprType::Exact(RuntimeTypeFact::tuple(elements)))
+        }
         SyntaxExpressionKind::Lambda => Some(StaticExprType::Exact(RuntimeTypeFact::standard(
             StandardRuntimeType::Closure,
         ))),
@@ -407,9 +437,10 @@ fn static_syntax_expr_type(
                 _ => StaticExprType::Dynamic,
             })
         }
+        SyntaxExpressionKind::Unit => Some(StaticExprType::Exact(RuntimeTypeFact::primitive(
+            PrimitiveTag::Unit,
+        ))),
         SyntaxExpressionKind::Paren
-        | SyntaxExpressionKind::Unit
-        | SyntaxExpressionKind::Tuple
         | SyntaxExpressionKind::Unary
         | SyntaxExpressionKind::Assign
         | SyntaxExpressionKind::Field
@@ -546,6 +577,12 @@ pub(super) fn type_hint_value_type(hint: &HirTypeHint) -> Option<RuntimeTypeFact
         return None;
     };
     match name.as_str() {
+        "()" if !hint.args.is_empty() => hint
+            .args
+            .iter()
+            .map(type_hint_value_type)
+            .collect::<Option<Vec<_>>>()
+            .map(RuntimeTypeFact::tuple),
         "()" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Unit)),
         "bool" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bool)),
         "char" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Char)),
@@ -655,6 +692,7 @@ fn expected_primitive_tag(expected: &RuntimeTypeFact) -> Option<PrimitiveTag> {
         | RuntimeTypeFact::Map { .. }
         | RuntimeTypeFact::Set(_)
         | RuntimeTypeFact::Iterator(_)
+        | RuntimeTypeFact::Tuple(_)
         | RuntimeTypeFact::Option(_)
         | RuntimeTypeFact::Result { .. } => None,
     }
