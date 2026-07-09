@@ -680,6 +680,71 @@ rg -n "missing CST|unsupported CST|CST .*payload|cst_payload|cst_lowering_covers
 rg -n "return Ok\\(None\\)|return Ok\\(Some|return false;|if let Some\\(|else if let" crates/vela_bytecode/src/compiler/control_flow/syntax_statement_values.rs crates/vela_bytecode/src/compiler/param_defaults.rs crates/vela_bytecode/src/compiler/param_defaults
 ```
 
+Code review findings to close in the next bytecode slice:
+
+- [ ] User-visible error leakage risk: `vela_cli` renders `CompileError` with
+  `format!("{error:?}")` when no diagnostic exists, while
+  `CompileErrorKind::UnsupportedSyntax` intentionally returns no diagnostic.
+  Any bytecode `UnsupportedSyntax("missing CST ...")` or
+  `UnsupportedSyntax("unsupported CST ...")` string can therefore reach users
+  through CLI/debug output. Fix the bytecode errors to use semantic names or
+  emit proper diagnostics; do not leave CST/internal payload wording.
+  Evidence:
+  - `crates/vela_cli/src/diagnostics.rs:25`
+  - `crates/vela_bytecode/src/compiler/control_flow/statements.rs:36`
+  - `crates/vela_bytecode/src/compiler/control_flow/syntax_statement_values.rs:605`
+- [ ] `CompilerBodyPayload` and `CompilerStatementPayload` still encode the
+  deleted old/new syntax distinction through `syntax_only` and
+  `is_syntax_only()`. `is_syntax_only()` always returns `true`, so callers that
+  branch on it are carrying hard-switch residue instead of final compiler
+  architecture. Remove the concept or rename it to the actual semantic
+  condition being tested.
+  Evidence:
+  - `crates/vela_bytecode/src/compiler/body_payloads.rs:57`
+  - `crates/vela_bytecode/src/compiler/body_payloads.rs:154`
+  - `crates/vela_bytecode/src/compiler/control_flow/statements.rs:86`
+- [ ] `compile_syntax_expression` is an ordered probe chain over syntax shapes,
+  returning `Ok(Some(_))` for the first matching helper and `Ok(None)` when no
+  helper accepts the expression. This reads like a remaining fallback search
+  rather than a canonical lowering dispatch. Refactor toward a
+  `SyntaxExpressionKind` match plus focused helper dispatch, preserving any
+  deliberately ordered special cases with names that explain why ordering
+  matters.
+  Evidence:
+  - `crates/vela_bytecode/src/compiler/control_flow/syntax_statement_values.rs:255`
+- [ ] `control_flow/syntax_statement_values.rs` is over 2200 lines and mixes
+  expression lowering, assignment lowering, host path lowering, calls,
+  container literals, logical chains, numeric special cases, and shape/type
+  probes. Split by ownership after removing the fallback-shaped probes; do not
+  accept this as the final architecture without a documented exception.
+  Evidence:
+  - `crates/vela_bytecode/src/compiler/control_flow/syntax_statement_values.rs:1`
+- [ ] Parameter-default lowering keeps a second support predicate tree named
+  `param_default_cst_lowering_covers` beside the real lowering functions. This
+  duplicates shape knowledge and risks drift as language forms are added.
+  Rename it to a semantic support predicate or fold support checking into the
+  lowering path so unsupported cases have one source of truth and one
+  source-spanned error behavior.
+  Evidence:
+  - `crates/vela_bytecode/src/compiler/param_defaults.rs:57`
+  - `crates/vela_bytecode/src/compiler/param_defaults.rs:667`
+- [ ] Parameter-default tests still assert CST payload/scaffolding concepts
+  instead of behavior-oriented source-to-bytecode/source-to-diagnostic results.
+  Rewrite names and assertions around supported defaults, unsupported defaults,
+  diagnostics, and runtime behavior.
+  Evidence:
+  - `crates/vela_bytecode/src/compiler/param_defaults/tests.rs:7`
+  - `crates/vela_bytecode/src/compiler/param_defaults/tests.rs:49`
+- [ ] `docs/progress.md` is stale relative to the code: it still describes the
+  rowan refactor as "started" and contains legacy fallback/body-parser status
+  that is no longer true after the hard-switch deletions. Close-out must update
+  progress to current state; otherwise goal mode can claim code completion
+  while roadmap status remains misleading.
+  Evidence:
+  - `docs/progress.md:125`
+  - `docs/progress.md:280`
+  - `docs/progress.md:398`
+
 ### Phase 6: Migrate language service features
 
 - [ ] Task: Make editor features use CST, typed AST wrappers, HIR, and analysis facts.
