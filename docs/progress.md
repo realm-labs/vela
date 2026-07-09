@@ -195,10 +195,10 @@ syntax reconstruction. Interpolated string placeholders and schema field
 defaults now lower into HIR expression bodies/path facts, and bytecode tuple
 projection lowering reads the numeric member from HIR field facts while keeping
 tuple members out of composed value paths.
-Bytecode host-path and record field assignment lowering now read member names
-from HIR field facts instead of syntax field tokens, and ordinary record/enum
-field reads now read member names plus receiver expressions from HIR field
-facts instead of field-expression syntax.
+Bytecode host-path lowering now reads member names from HIR field facts instead
+of syntax field tokens, and ordinary record/enum field reads plus record field
+assignment lowering now read member names and receiver expressions from HIR
+field facts instead of field-expression syntax.
 Bytecode host-path fallback resolution now also reads field receiver spans from
 HIR field facts for dynamic-index paths instead of asking field syntax for the
 receiver expression.

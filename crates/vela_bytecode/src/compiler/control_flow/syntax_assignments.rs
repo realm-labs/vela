@@ -1,5 +1,5 @@
 use vela_common::{PrimitiveTag, SourceId, Span};
-use vela_syntax::ast::{AssignOp, Literal, SyntaxExpression};
+use vela_syntax::ast::{AssignOp, AstNode, Literal, SyntaxExpression};
 
 use crate::compiler::body_payloads::expression_syntax_literal;
 use crate::compiler::const_eval::compile_literal_constant_for_type;
@@ -97,14 +97,17 @@ impl Compiler<'_, '_> {
         value_expression: &SyntaxExpression,
         value: Register,
     ) -> CompileResult<Option<Register>> {
-        let Some(field) = target_expression.as_field() else {
-            return Ok(None);
-        };
-        let Some(receiver_expression) = field.receiver() else {
-            return Ok(None);
-        };
         let target_span = syntax_expression_span(source, target_expression);
-        let Some(field_name) = self.hir_field_name_for_span(target_span).map(str::to_owned) else {
+        let Some(field) = self.hir_field_for_span(target_span) else {
+            return Ok(None);
+        };
+        let Some(receiver_span) = self.expression_span(field.receiver) else {
+            return Ok(None);
+        };
+        let field_name = field.name.clone();
+        let Some(receiver_expression) =
+            syntax_assignment_expression_at_span(source, target_expression, receiver_span)
+        else {
             return Ok(None);
         };
         if let Some(target) =
@@ -149,7 +152,7 @@ impl Compiler<'_, '_> {
         let value_type = self.syntax_record_field_assignment_value_type(
             source,
             target_expression,
-            &receiver_expression,
+            receiver_span,
         );
         let Some(record) = self.compile_syntax_expression(source, &receiver_expression)? else {
             return Ok(None);
@@ -212,12 +215,11 @@ impl Compiler<'_, '_> {
         &self,
         source: SourceId,
         target_expression: &SyntaxExpression,
-        receiver_expression: &SyntaxExpression,
+        receiver_span: Span,
     ) -> Option<RuntimeTypeFact> {
         let target_span = syntax_expression_span(source, target_expression);
         let path = self.hir_value_path_for_span(target_span)?;
         let (root, fields) = path.split_first()?;
-        let receiver_span = syntax_expression_span(source, receiver_expression);
         let root_span = self
             .hir_value_path_for_span(receiver_span)
             .filter(|receiver| receiver.as_slice() == [root.as_str()])
@@ -656,11 +658,10 @@ impl Compiler<'_, '_> {
         source: SourceId,
         expression: SyntaxExpression,
     ) -> Option<(SyntaxExpression, SyntaxExpression, Vec<String>)> {
-        let field = expression.as_field()?;
-        let receiver = field.receiver()?;
-        let field_name = self
-            .hir_field_name_for_span(syntax_expression_span(source, &expression))?
-            .to_owned();
+        let field = self.hir_field_for_span(syntax_expression_span(source, &expression))?;
+        let receiver_span = self.expression_span(field.receiver)?;
+        let receiver = syntax_assignment_expression_at_span(source, &expression, receiver_span)?;
+        let field_name = field.name.clone();
         if let Some(index) = receiver.as_index() {
             let collection = index.receiver()?;
             let index = index.index()?;
@@ -671,6 +672,21 @@ impl Compiler<'_, '_> {
         fields.push(field_name);
         Some((collection, index, fields))
     }
+}
+
+fn syntax_assignment_expression_at_span(
+    source: SourceId,
+    expression: &SyntaxExpression,
+    span: Span,
+) -> Option<SyntaxExpression> {
+    if span.source != source {
+        return None;
+    }
+    expression
+        .syntax()
+        .descendants()
+        .filter_map(SyntaxExpression::cast)
+        .find(|child| syntax_expression_span(source, child) == span)
 }
 
 fn syntax_assignment_value_type(

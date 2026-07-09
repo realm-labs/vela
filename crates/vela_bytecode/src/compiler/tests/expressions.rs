@@ -864,6 +864,30 @@ fn main() {
         )
     }));
 }
+
+#[test]
+fn compiler_resolves_record_field_write_receiver_from_hir() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+struct Counter {
+    value: i64,
+}
+
+fn main(counter: Counter) {
+    counter.value = counter.value + 1;
+    return counter.value;
+}
+"#,
+        "main",
+    )
+    .expect("record field write should compile through HIR field facts");
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::SetRecordSlot { .. }
+    )));
+}
+
 #[test]
 fn compiler_lowers_nested_record_field_writes() {
     let code = compile_function_source(
