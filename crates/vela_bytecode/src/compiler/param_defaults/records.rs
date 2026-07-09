@@ -139,7 +139,7 @@ impl Compiler<'_, '_> {
         expected: Option<RuntimeTypeFact>,
     ) -> CompileResult<Register> {
         let Some(value) = field.value.as_ref() else {
-            return self.local_register_at_span(field.span, &field.name);
+            return self.required_local_register_at_hir_expression_span(field.span, &field.name);
         };
         let Some(expected) = expected else {
             return self.compile_param_default_expression(source, value);

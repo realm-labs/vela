@@ -200,7 +200,9 @@ re-resolving the callee syntax span. Bytecode parameter-default record and enum
 constructor lowering now reads HIR constructor path facts plus HIR expression
 binding facts instead of re-resolving constructor type symbols from the record
 syntax span, and ordinary bytecode record/enum constructor lowering uses the
-same HIR-backed constructor identity path. Immediate enum field-slot reads from
+same HIR-backed constructor identity path. Record constructor shorthand fields
+now require HIR expression resolution for their source labels instead of
+falling back to name lookup. Immediate enum field-slot reads from
 record literals also use HIR constructor identity instead of syntax path
 reconstruction. Record constructor script-type facts now also come from HIR
 constructor facts, and the old compiler payload record-path helper plus

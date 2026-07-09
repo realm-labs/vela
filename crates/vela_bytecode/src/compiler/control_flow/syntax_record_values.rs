@@ -90,7 +90,10 @@ impl Compiler<'_, '_> {
                 };
                 value
             } else if field.is_shorthand() {
-                self.local_register_at_span(syntax_record_field_label_span(source, field), &name)?
+                self.required_local_register_at_hir_expression_span(
+                    syntax_record_field_label_span(source, field),
+                    &name,
+                )?
             } else {
                 return Ok(None);
             };

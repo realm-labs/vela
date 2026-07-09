@@ -1,5 +1,6 @@
 use vela_common::Span;
 use vela_hir::binding::BindingResolution;
+use vela_hir::ids::HirExprId;
 
 use crate::{Constant, Register, UnlinkedInstructionKind};
 
@@ -27,23 +28,9 @@ impl Compiler<'_, '_> {
         name: &str,
     ) -> CompileResult<Register> {
         if let Some(expression) = self.expression_at_span(span)
-            && let Some(resolution) = self.binding_resolution_for_expression(expression)
+            && let Ok(register) = self.local_register_for_hir_expression(expression, name, span)
         {
-            match resolution {
-                BindingResolution::Local(local) => {
-                    if let Some(register) = self.hir_locals.get(local).copied() {
-                        return Ok(register);
-                    }
-                }
-                BindingResolution::Declaration(declaration) => {
-                    if let Some(global) = self.facts.global_symbols.get(declaration).cloned() {
-                        let dst = self.alloc_register()?;
-                        self.emit_load_global(dst, global);
-                        return Ok(dst);
-                    }
-                }
-                BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => {}
-            }
+            return Ok(register);
         }
         if let Some(global) = self.global_symbol_named(name) {
             let dst = self.alloc_register()?;
@@ -57,6 +44,55 @@ impl Compiler<'_, '_> {
             .get(name)
             .copied()
             .ok_or_else(|| CompileError::new(CompileErrorKind::UnknownLocal(name.to_owned())))
+    }
+
+    pub(super) fn required_local_register_at_hir_expression_span(
+        &mut self,
+        span: Span,
+        name: &str,
+    ) -> CompileResult<Register> {
+        let expression = self.expression_at_span(span).ok_or_else(|| {
+            CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "HIR expression source origin",
+            ))
+            .with_span(span)
+        })?;
+        self.local_register_for_hir_expression(expression, name, span)
+    }
+
+    fn local_register_for_hir_expression(
+        &mut self,
+        expression: HirExprId,
+        name: &str,
+        span: Span,
+    ) -> CompileResult<Register> {
+        match self.binding_resolution_for_expression(expression) {
+            Some(BindingResolution::Local(local)) => {
+                if let Some(register) = self.hir_locals.get(local).copied() {
+                    Ok(register)
+                } else {
+                    Err(CompileError::new(CompileErrorKind::UnknownLocal(
+                        name.to_owned(),
+                    )))
+                }
+            }
+            Some(BindingResolution::Declaration(declaration)) => {
+                if let Some(global) = self.facts.global_symbols.get(declaration).cloned() {
+                    let dst = self.alloc_register()?;
+                    self.emit_load_global(dst, global);
+                    Ok(dst)
+                } else if let Some(value) = self.facts.const_values.get(declaration).cloned() {
+                    self.emit_constant(value)
+                } else {
+                    Err(CompileError::new(CompileErrorKind::UnknownLocal(
+                        name.to_owned(),
+                    )))
+                }
+            }
+            Some(BindingResolution::Import(_) | BindingResolution::QualifiedPath(_)) | None => Err(
+                CompileError::new(CompileErrorKind::UnknownLocal(name.to_owned())).with_span(span),
+            ),
+        }
     }
 
     pub(super) fn const_value_at_span(&self, span: Span) -> Option<Constant> {
