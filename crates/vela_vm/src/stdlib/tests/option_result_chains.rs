@@ -73,6 +73,41 @@ fn main() {
 }
 
 #[test]
+fn managed_heap_execution_runs_result_tuple_payloads_with_try_destructuring() {
+    let source = r#"
+fn checked_pair(ok) -> Result<(i64, i64), String> {
+    if ok {
+        return result::ok((20, 22));
+    }
+    return result::err("missing");
+}
+
+fn sum_pair(ok) -> Result<i64, String> {
+    let (left, right) = checked_pair(ok)?;
+    return result::ok(left + right);
+}
+
+fn main() {
+    let ok = sum_pair(true);
+    let err = sum_pair(false);
+    return result::unwrap_or(ok, 0) == 42
+        && option::unwrap_or(result::to_error_option(err), "") == "missing";
+}
+"#;
+
+    let program = compile_standard_program_source(SourceId::new(1), source)
+        .expect("result tuple payload stdlib source should compile");
+    let mut vm = Vm::new();
+    vm.register_standard_natives();
+    let mut budget = ExecutionBudget::unbounded();
+
+    let result =
+        run_linked_stdlib_test_program_with_budget(&vm, &program, "main", &[], &mut budget)
+            .expect("result tuple payload stdlib source should run");
+    assert_eq!(result, OwnedValue::Bool(true));
+}
+
+#[test]
 fn managed_heap_execution_runs_option_result_standard_helper_natives() {
     let source = r#"
 fn main() {

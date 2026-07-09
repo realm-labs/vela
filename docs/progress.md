@@ -164,11 +164,12 @@ now lower for `let`, `match`, and `for` bindings through tuple arity guards and
 field reads. Tuple type facts, runtime/shape guard plans, tuple type-hint
 validation, and `String.split_once -> Option<(String, String)>` now exist
 across analysis, bytecode, VM, reflection metadata, examples, docs, and cached
-and uncached stdlib paths. Remaining follow-up work includes broader
-schema/reflection tuple descriptors, Result tuple payload coverage beyond guard
-plan tests, and replacing reflection metadata gaps with structured Option or
-omitted fields instead of unit placeholders. Tuple Map/Set keys are rejected by
-source type-hint validation and runtime `ValueKey` keyability.
+and uncached stdlib paths. Result tuple payload fixtures now cover typed
+`?`/destructuring propagation and linked parameter guards. Remaining follow-up
+work includes broader schema/reflection tuple descriptors and replacing
+reflection metadata gaps with structured Option or omitted fields instead of
+unit placeholders. Tuple Map/Set keys are rejected by source type-hint
+validation and runtime `ValueKey` keyability.
 ## Milestone Snapshot
 
 | Milestone | Status | Current note |

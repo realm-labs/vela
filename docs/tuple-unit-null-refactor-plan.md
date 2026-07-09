@@ -529,7 +529,8 @@ Focused validation:
   and tuple destructuring now lowers for `let`, `match`, and `for` patterns.
 - [~] Add tuple arity/type mismatch diagnostics for destructuring and dynamic
   boundary guards. Runtime arity guards now exist for tuple destructuring;
-  typed dynamic-boundary tuple guard plans remain open.
+  typed dynamic-boundary tuple guards now cover Option and Result tuple
+  payloads. Broader diagnostic polish remains open.
 - [ ] Keep `?` Rust-aligned and reject cross-family `Option`/`Result`
   propagation without explicit helpers.
 - [ ] Remove tests that assert null as void, null equality, null control-flow
@@ -569,8 +570,8 @@ Focused validation:
   guard plans, reflection descriptors, schema artifacts, and hot-reload ABI.
   Tuple TypeFacts, compiler runtime facts, value shapes, runtime guard plans,
   descriptor validation, and `split_once` reflection metadata are implemented;
-  broader schema artifacts, hot-reload coverage, and Result tuple payload
-  fixtures remain open.
+  Result tuple payload fixtures now cover VM `?`/destructuring propagation and
+  linked parameter guards. Broader schema/reflection artifacts remain open.
 - [x] Add tuple `OwnedValue` conversion and tuple serde behavior that does not
   use raw null.
 - [x] Reject tuple Map/Set keys in the first slice with precise diagnostics.
@@ -586,7 +587,8 @@ Focused validation:
 
 - [ ] `cargo test -p vela_hot_reload`
 - [ ] `cargo test -p vela_bytecode type_contract`
-- [ ] `cargo test -p vela_vm option_result`
+- [x] `cargo test -p vela_vm option_result`
+- [x] `cargo test -p vela_vm type_guards`
 - [ ] focused benchmark command recorded if tuple hot paths are added
 
 ### Phase 6: Tooling, Docs, Examples, And Website

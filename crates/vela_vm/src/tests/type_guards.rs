@@ -1034,6 +1034,109 @@ fn split_pair(value: Option<(String, String)>) {
 }
 
 #[test]
+fn linked_parameter_guard_checks_result_tuple_payload_contracts() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn split_pair(value: Result<(String, String), String>) {
+    return value;
+}
+"#,
+    )
+    .expect("program should compile");
+
+    let pair = OwnedValue::tuple([
+        OwnedValue::String("count".to_owned()),
+        OwnedValue::String("3".to_owned()),
+    ]);
+    let ok_pair = OwnedValue::enum_variant("Result", "Ok", [("0", pair.clone())]);
+    let err = OwnedValue::enum_variant(
+        "Result",
+        "Err",
+        [("0", OwnedValue::String("missing".to_owned()))],
+    );
+
+    let mut budget = ExecutionBudget::unbounded();
+    assert_eq!(
+        run_linked_test_program_with_budget(
+            &Vm::new(),
+            &program,
+            "split_pair",
+            &[ok_pair],
+            &mut budget
+        )
+        .expect("Result tuple Ok payload guard should pass"),
+        OwnedValue::enum_variant("Result", "Ok", [("0", pair)])
+    );
+    assert_eq!(
+        run_linked_test_program_with_budget(
+            &Vm::new(),
+            &program,
+            "split_pair",
+            &[err],
+            &mut budget
+        )
+        .expect("Result::Err should check only the error payload"),
+        OwnedValue::enum_variant(
+            "Result",
+            "Err",
+            [("0", OwnedValue::String("missing".to_owned()))],
+        )
+    );
+
+    let array_error = run_linked_test_program_with_budget(
+        &Vm::new(),
+        &program,
+        "split_pair",
+        &[OwnedValue::enum_variant(
+            "Result",
+            "Ok",
+            [(
+                "0",
+                OwnedValue::array([
+                    OwnedValue::String("count".to_owned()),
+                    OwnedValue::String("3".to_owned()),
+                ]),
+            )],
+        )],
+        &mut budget,
+    )
+    .expect_err("Result tuple payload must reject array pairs");
+    assert_eq!(
+        array_error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "tuple".to_owned(),
+            actual: "Array".to_owned(),
+            debug_name: "value".to_owned(),
+        }
+    );
+
+    let element_error = run_linked_test_program_with_budget(
+        &Vm::new(),
+        &program,
+        "split_pair",
+        &[OwnedValue::enum_variant(
+            "Result",
+            "Ok",
+            [(
+                "0",
+                OwnedValue::tuple([OwnedValue::String("count".to_owned()), OwnedValue::i64(3)]),
+            )],
+        )],
+        &mut budget,
+    )
+    .expect_err("Result tuple payload must reject mismatched elements");
+    assert_eq!(
+        element_error.kind(),
+        VmErrorKind::TypeContractViolation {
+            expected: "String".to_owned(),
+            actual: "i64".to_owned(),
+            debug_name: "value".to_owned(),
+        }
+    );
+}
+
+#[test]
 fn linked_parameter_guard_rejects_option_and_result_payload_mismatch() {
     let program = compile_program_source(
         SourceId::new(1),
