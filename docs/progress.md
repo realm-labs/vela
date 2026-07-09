@@ -222,7 +222,10 @@ binding setup now maps syntax origins to stable `HirPatternId` records before
 reading HIR local facts, deleting the old name/span pattern-local scan.
 Static value-type inference and callback-local value-shape inference now read
 path-local facts through HIR expression/span lookup instead of syntax path-name
-fallbacks. HIR also records path facts for map-literal path keys without
+fallbacks. Bytecode syntax-shaped static value-type inference now also splits
+source-origin lookup from local fact lookup and reads local type facts by
+`HirExprId`, deleting the old span-local type callback. HIR also records path
+facts for map-literal path keys without
 treating them as normal name reads, and bytecode map construction uses those
 facts instead of reconstructing key paths from syntax. Bytecode constant
 evaluation now receives HIR value-path facts for const reads and map key paths,

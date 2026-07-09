@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use vela_common::{PrimitiveTag, SourceId, Span};
-use vela_hir::ids::HirLocalId;
+use vela_hir::ids::{HirExprId, HirLocalId};
 use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::SyntaxKind;
 use vela_syntax::ast::{
@@ -264,7 +264,8 @@ impl ValueTypeFlow {
 fn static_syntax_expr_type(
     expression: &SyntaxExpression,
     source: Option<SourceId>,
-    local_type_at_span: &dyn Fn(Span) -> Option<RuntimeTypeFact>,
+    expression_at_span: &dyn Fn(Span) -> Option<HirExprId>,
+    local_type_for_expression: &dyn Fn(HirExprId) -> Option<RuntimeTypeFact>,
 ) -> Option<StaticExprType> {
     match expression.expression_kind() {
         SyntaxExpressionKind::Literal => {
@@ -282,9 +283,14 @@ fn static_syntax_expr_type(
         SyntaxExpressionKind::Array => {
             let array = expression.as_array()?;
             Some(StaticExprType::Exact(array_literal_type(
-                array
-                    .expressions()
-                    .map(|value| syntax_expression_value_type(&value, source, local_type_at_span)),
+                array.expressions().map(|value| {
+                    syntax_expression_value_type(
+                        &value,
+                        source,
+                        expression_at_span,
+                        local_type_for_expression,
+                    )
+                }),
             )))
         }
         SyntaxExpressionKind::Map => {
@@ -292,7 +298,12 @@ fn static_syntax_expr_type(
             Some(StaticExprType::Exact(map_literal_type(map.entries().map(
                 |entry| {
                     entry.value().and_then(|value| {
-                        syntax_expression_value_type(&value, source, local_type_at_span)
+                        syntax_expression_value_type(
+                            &value,
+                            source,
+                            expression_at_span,
+                            local_type_for_expression,
+                        )
                     })
                 },
             ))))
@@ -301,7 +312,14 @@ fn static_syntax_expr_type(
             let tuple = expression.as_tuple()?;
             let elements = tuple
                 .expressions()
-                .map(|value| syntax_expression_value_type(&value, source, local_type_at_span))
+                .map(|value| {
+                    syntax_expression_value_type(
+                        &value,
+                        source,
+                        expression_at_span,
+                        local_type_for_expression,
+                    )
+                })
                 .collect::<Option<Vec<_>>>()?;
             Some(StaticExprType::Exact(RuntimeTypeFact::tuple(elements)))
         }
@@ -311,41 +329,72 @@ fn static_syntax_expr_type(
         SyntaxExpressionKind::Binary => {
             let binary = expression.as_binary()?;
             let op = binary.operator()?;
-            let left = binary
-                .lhs()
-                .and_then(|value| syntax_expression_value_type(&value, source, local_type_at_span));
-            let right = binary
-                .rhs()
-                .and_then(|value| syntax_expression_value_type(&value, source, local_type_at_span));
+            let left = binary.lhs().and_then(|value| {
+                syntax_expression_value_type(
+                    &value,
+                    source,
+                    expression_at_span,
+                    local_type_for_expression,
+                )
+            });
+            let right = binary.rhs().and_then(|value| {
+                syntax_expression_value_type(
+                    &value,
+                    source,
+                    expression_at_span,
+                    local_type_for_expression,
+                )
+            });
             i64_binary_result_type(op, left.as_ref(), right.as_ref()).map(StaticExprType::Exact)
         }
         SyntaxExpressionKind::Path => {
             let span = source.map(|source| syntax_expression_span(source, expression))?;
+            let Some(expression) = expression_at_span(span) else {
+                return Some(StaticExprType::Dynamic);
+            };
             Some(
-                local_type_at_span(span)
+                local_type_for_expression(expression)
                     .map(StaticExprType::Exact)
                     .unwrap_or(StaticExprType::Dynamic),
             )
         }
-        SyntaxExpressionKind::Block => expression
-            .as_block()
-            .map(|block| static_syntax_block_type(&block, source, local_type_at_span)),
+        SyntaxExpressionKind::Block => expression.as_block().map(|block| {
+            static_syntax_block_type(
+                &block,
+                source,
+                expression_at_span,
+                local_type_for_expression,
+            )
+        }),
         SyntaxExpressionKind::If => {
             let if_expr = expression.as_if()?;
-            let then_type = if_expr
-                .then_block()
-                .map(|block| static_syntax_block_type(&block, source, local_type_at_span))?;
+            let then_type = if_expr.then_block().map(|block| {
+                static_syntax_block_type(
+                    &block,
+                    source,
+                    expression_at_span,
+                    local_type_for_expression,
+                )
+            })?;
             let else_type = match if_expr.else_branch() {
                 Some(SyntaxElseBranch::If(else_if)) => {
                     SyntaxExpression::cast(else_if.syntax().clone())
                         .and_then(|expression| {
-                            static_syntax_expr_type(&expression, source, local_type_at_span)
+                            static_syntax_expr_type(
+                                &expression,
+                                source,
+                                expression_at_span,
+                                local_type_for_expression,
+                            )
                         })
                         .unwrap_or(StaticExprType::Dynamic)
                 }
-                Some(SyntaxElseBranch::Block(block)) => {
-                    static_syntax_block_type(&block, source, local_type_at_span)
-                }
+                Some(SyntaxElseBranch::Block(block)) => static_syntax_block_type(
+                    &block,
+                    source,
+                    expression_at_span,
+                    local_type_for_expression,
+                ),
                 None => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Unit)),
             };
             Some(merge_branch_static_type(then_type, else_type))
@@ -356,17 +405,32 @@ fn static_syntax_expr_type(
             let Some(first) = arms.next() else {
                 return Some(StaticExprType::Dynamic);
             };
-            let first = static_syntax_match_arm_type(&first, source, local_type_at_span);
+            let first = static_syntax_match_arm_type(
+                &first,
+                source,
+                expression_at_span,
+                local_type_for_expression,
+            );
             Some(arms.fold(first, |merged, arm| {
                 merge_branch_static_type(
                     merged,
-                    static_syntax_match_arm_type(&arm, source, local_type_at_span),
+                    static_syntax_match_arm_type(
+                        &arm,
+                        source,
+                        expression_at_span,
+                        local_type_for_expression,
+                    ),
                 )
             }))
         }
         SyntaxExpressionKind::Try => {
             let operand_type = expression.as_try()?.expression().and_then(|operand| {
-                syntax_expression_value_type(&operand, source, local_type_at_span)
+                syntax_expression_value_type(
+                    &operand,
+                    source,
+                    expression_at_span,
+                    local_type_for_expression,
+                )
             });
             Some(match operand_type {
                 Some(RuntimeTypeFact::Option(payload)) => StaticExprType::Exact(*payload),
@@ -390,7 +454,8 @@ fn static_syntax_expr_type(
 fn static_syntax_block_type(
     block: &SyntaxBlock,
     source: Option<SourceId>,
-    local_type_at_span: &dyn Fn(Span) -> Option<RuntimeTypeFact>,
+    expression_at_span: &dyn Fn(Span) -> Option<HirExprId>,
+    local_type_for_expression: &dyn Fn(HirExprId) -> Option<RuntimeTypeFact>,
 ) -> StaticExprType {
     let Some(tail) = block.statements().last() else {
         return StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Unit));
@@ -403,20 +468,40 @@ fn static_syntax_block_type(
     }
     expr_stmt
         .expression()
-        .and_then(|expression| static_syntax_expr_type(&expression, source, local_type_at_span))
+        .and_then(|expression| {
+            static_syntax_expr_type(
+                &expression,
+                source,
+                expression_at_span,
+                local_type_for_expression,
+            )
+        })
         .unwrap_or(StaticExprType::Dynamic)
 }
 
 fn static_syntax_match_arm_type(
     arm: &vela_syntax::ast::SyntaxMatchArm,
     source: Option<SourceId>,
-    local_type_at_span: &dyn Fn(Span) -> Option<RuntimeTypeFact>,
+    expression_at_span: &dyn Fn(Span) -> Option<HirExprId>,
+    local_type_for_expression: &dyn Fn(HirExprId) -> Option<RuntimeTypeFact>,
 ) -> StaticExprType {
     if let Some(block) = arm.body_block() {
-        return static_syntax_block_type(&block, source, local_type_at_span);
+        return static_syntax_block_type(
+            &block,
+            source,
+            expression_at_span,
+            local_type_for_expression,
+        );
     }
     arm.body_expression()
-        .and_then(|expression| static_syntax_expr_type(&expression, source, local_type_at_span))
+        .and_then(|expression| {
+            static_syntax_expr_type(
+                &expression,
+                source,
+                expression_at_span,
+                local_type_for_expression,
+            )
+        })
         .unwrap_or(StaticExprType::Dynamic)
 }
 
@@ -431,9 +516,15 @@ fn merge_branch_static_type(left: StaticExprType, right: StaticExprType) -> Stat
 fn syntax_expression_value_type(
     expression: &SyntaxExpression,
     source: Option<SourceId>,
-    local_type_at_span: &dyn Fn(Span) -> Option<RuntimeTypeFact>,
+    expression_at_span: &dyn Fn(Span) -> Option<HirExprId>,
+    local_type_for_expression: &dyn Fn(HirExprId) -> Option<RuntimeTypeFact>,
 ) -> Option<RuntimeTypeFact> {
-    match static_syntax_expr_type(expression, source, local_type_at_span)? {
+    match static_syntax_expr_type(
+        expression,
+        source,
+        expression_at_span,
+        local_type_for_expression,
+    )? {
         StaticExprType::Exact(fact) => Some(fact),
         StaticExprType::UnsuffixedIntegerLiteral => {
             Some(RuntimeTypeFact::primitive(PrimitiveTag::I64))
@@ -819,11 +910,15 @@ impl super::Compiler<'_, '_> {
         source: Option<SourceId>,
         expression: &SyntaxExpression,
     ) -> StaticExprType {
-        static_syntax_expr_type(expression, source, &|span| {
-            self.expression_at_span(span)
-                .and_then(|expression| self.local_for_expression(expression))
-                .and_then(|local| self.value_types.local(local))
-        })
+        static_syntax_expr_type(
+            expression,
+            source,
+            &|span| self.expression_at_span(span),
+            &|expression| {
+                self.local_for_expression(expression)
+                    .and_then(|local| self.value_types.local(local))
+            },
+        )
         .unwrap_or(StaticExprType::Dynamic)
     }
 
@@ -832,10 +927,14 @@ impl super::Compiler<'_, '_> {
         source: Option<SourceId>,
         expression: &SyntaxExpression,
     ) -> Option<RuntimeTypeFact> {
-        syntax_expression_value_type(expression, source, &|span| {
-            self.expression_at_span(span)
-                .and_then(|expression| self.local_for_expression(expression))
-                .and_then(|local| self.value_types.local(local))
-        })
+        syntax_expression_value_type(
+            expression,
+            source,
+            &|span| self.expression_at_span(span),
+            &|expression| {
+                self.local_for_expression(expression)
+                    .and_then(|local| self.value_types.local(local))
+            },
+        )
     }
 }
