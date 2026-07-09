@@ -144,7 +144,7 @@ impl super::Compiler<'_, '_> {
             .map(|path| path.path.as_slice())
     }
 
-    fn hir_value_path(&self, expression: HirExprId) -> Option<&[String]> {
+    pub(in crate::compiler) fn hir_value_path(&self, expression: HirExprId) -> Option<&[String]> {
         self.hir_bodies
             .iter()
             .flat_map(|body| body.paths.iter())

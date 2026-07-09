@@ -1,19 +1,19 @@
 use vela_common::Span;
 use vela_hir::binding::LocalBindingKind;
 use vela_hir::ids::HirExprId;
-use vela_syntax::ast::{AstNode, SyntaxExpression};
+use vela_syntax::ast::SyntaxExpression;
 
 use crate::{
     GuardKind, Register, UnlinkedGuardContext, UnlinkedInstructionKind, UnlinkedTypeGuard,
 };
 
-use crate::compiler::body_payloads::expression_syntax_path_or_self;
 use crate::compiler::expected_exprs::guard_location_and_name;
 use crate::compiler::record_shapes::ValueShape;
 use crate::compiler::value_types::ExpectedTypeOutcome;
 use crate::compiler::{type_guard_for_hint, type_guard_plan_for_runtime_type};
 
 use super::classification::{is_map_or_set_type_hint, merge_type_hint_and_value_fact};
+use super::spans::syntax_expression_span;
 use super::{
     CompileError, CompileErrorKind, CompileResult, Compiler, RuntimeTypeFact, ScriptTypeFact,
     StaticExprType, TypeContractContext, check_expected_type, frame_slot_kind,
@@ -114,7 +114,7 @@ impl Compiler<'_, '_> {
         source: vela_common::SourceId,
         expression: &SyntaxExpression,
     ) -> CompileResult<Option<bool>> {
-        let Some((path, span)) = syntax_path_and_span(source, expression) else {
+        let Some((path, span)) = self.hir_value_path_and_span(source, expression) else {
             return Ok(None);
         };
         self.compile_path_expr(span, &path)?;
@@ -127,7 +127,7 @@ impl Compiler<'_, '_> {
         expression: &SyntaxExpression,
         dst: Register,
     ) -> CompileResult<Option<bool>> {
-        let Some((path, span)) = syntax_path_and_span(source, expression) else {
+        let Some((path, span)) = self.hir_value_path_and_span(source, expression) else {
             return Ok(None);
         };
         let value = self.compile_path_expr(span, &path)?;
@@ -258,19 +258,15 @@ impl Compiler<'_, '_> {
                     .map(ValueShape::Record)
             })
     }
-}
 
-fn syntax_path_and_span(
-    source: vela_common::SourceId,
-    expression: &SyntaxExpression,
-) -> Option<(Vec<String>, Span)> {
-    let path = expression_syntax_path_or_self(expression)?;
-    if path.is_empty() {
-        return None;
+    fn hir_value_path_and_span(
+        &self,
+        source: vela_common::SourceId,
+        expression: &SyntaxExpression,
+    ) -> Option<(Vec<String>, Span)> {
+        let span = syntax_expression_span(source, expression);
+        let expression = self.expression_at_span(span)?;
+        let path = self.hir_value_path(expression)?;
+        (!path.is_empty()).then(|| (path.to_vec(), span))
     }
-    let range = expression.syntax().text_range();
-    Some((
-        path,
-        Span::new(source, range.start().into(), range.end().into()),
-    ))
 }
