@@ -682,7 +682,6 @@ impl LanguageServiceDatabases {
                 if let Some(classification) = unresolved::classification(
                     bindings,
                     span,
-                    context.path_calls,
                     context.unresolved_identifiers,
                     range,
                 ) {

@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 use vela_common::{SourceId, Span};
 use vela_hir::{
@@ -15,13 +15,10 @@ pub(super) type IdentifierRanges = BTreeSet<(usize, usize)>;
 pub(super) fn classification(
     bindings: &BindingMap,
     span: Span,
-    path_calls: &BTreeMap<(usize, usize), Vec<String>>,
     unresolved_identifiers: &IdentifierRanges,
     range: TextRange,
 ) -> Option<SemanticTokenClassification> {
     if unresolved_identifiers.contains(&(range.start, range.end))
-        || (path_calls.contains_key(&(range.start, range.end))
-            && bindings.resolution_at_span(span).is_none())
         || matches!(
             bindings.resolution_at_span(span),
             Some(BindingResolution::Import(_) | BindingResolution::QualifiedPath(_))
@@ -37,10 +34,9 @@ pub(super) fn classification(
 
 pub(super) fn ranges(graph: &ModuleGraph, source_id: SourceId) -> IdentifierRanges {
     graph
-        .diagnostics()
-        .iter()
-        .filter(|diagnostic| diagnostic.code.as_deref() == Some("hir::unresolved_name"))
-        .filter_map(|diagnostic| diagnostic.span)
+        .bodies()
+        .flat_map(|body| body.unresolved_references.iter())
+        .map(|reference| reference.origin.span)
         .filter(|span| span.source == source_id)
         .filter_map(token_range)
         .map(|range| (range.start, range.end))

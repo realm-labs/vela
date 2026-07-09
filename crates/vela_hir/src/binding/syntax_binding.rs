@@ -780,8 +780,14 @@ impl<'a> SyntaxBindingLowerer<'a> {
             return;
         }
 
-        if matches!(usage, PathUsage::Value | PathUsage::AssignmentTarget) {
+        if matches!(
+            usage,
+            PathUsage::Value | PathUsage::Callee | PathUsage::AssignmentTarget
+        ) {
             self.record_unresolved_reference(id, name.clone(), span);
+        }
+
+        if matches!(usage, PathUsage::Value | PathUsage::AssignmentTarget) {
             self.diagnostics
                 .push(self.unresolved_name_diagnostic(name, span));
         }

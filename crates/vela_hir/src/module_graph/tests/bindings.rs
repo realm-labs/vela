@@ -701,6 +701,7 @@ fn body_hir_records_unresolved_references() {
     let text = r#"
 fn main(value) {
     let total = value + missing_symbol;
+    missing_call(total);
     return total;
 }
 "#;
@@ -717,6 +718,12 @@ fn main(value) {
         missing_start as u32,
         (missing_start + "missing_symbol".len()) as u32,
     );
+    let missing_call_start = text.find("missing_call").expect("missing call");
+    let missing_call_span = Span::new(
+        SourceId::new(1),
+        missing_call_start as u32,
+        (missing_call_start + "missing_call".len()) as u32,
+    );
 
     assert!(
         graph
@@ -726,11 +733,27 @@ fn main(value) {
         "{:?}",
         graph.diagnostics()
     );
-    assert_eq!(body.unresolved_references.len(), 1);
-    let unresolved = &body.unresolved_references[0];
-    assert_eq!(unresolved.name, "missing_symbol");
-    assert_eq!(unresolved.origin.span, missing_span);
-    assert!(body.expressions.contains_key(&unresolved.expression));
+    assert!(
+        graph
+            .diagnostics()
+            .iter()
+            .all(|diagnostic| diagnostic.message != "unresolved name `missing_call`"),
+        "{:?}",
+        graph.diagnostics()
+    );
+    assert_eq!(body.unresolved_references.len(), 2);
+    for (name, span) in [
+        ("missing_symbol", missing_span),
+        ("missing_call", missing_call_span),
+    ] {
+        let unresolved = body
+            .unresolved_references
+            .iter()
+            .find(|reference| reference.name == name)
+            .expect("unresolved reference");
+        assert_eq!(unresolved.origin.span, span);
+        assert!(body.expressions.contains_key(&unresolved.expression));
+    }
 }
 
 #[test]
