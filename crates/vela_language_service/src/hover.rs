@@ -180,8 +180,8 @@ impl LanguageServiceDatabases {
         if let Some(hover) = graph
             .declarations()
             .find(|declaration| {
-                declaration.span.source == source_id
-                    && declaration.span.contains(offset)
+                declaration.name_span.source == source_id
+                    && declaration.name_span.contains(offset)
                     && declaration.name == target.text()
             })
             .map(|declaration| hover_from_declaration(graph, &facts, declaration, range))

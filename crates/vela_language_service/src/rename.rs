@@ -214,9 +214,8 @@ impl LanguageServiceDatabases {
         new_name: &str,
         edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
     ) -> Option<()> {
-        let source = self.source_record_for_rename(declaration.span.source)?;
-        let span_range = span_text_range(declaration.span)?;
-        let range = name_range_in_text(source.text(), span_range, &declaration.name)?;
+        let source = self.source_record_for_rename(declaration.name_span.source)?;
+        let range = span_text_range(declaration.name_span)?;
         edits_by_document
             .entry(source.document_id().clone())
             .or_default()
@@ -480,8 +479,9 @@ fn rename_target<'a>(
         if declaration.span.source != source_id || !declaration.span.contains(offset) {
             continue;
         }
-        if token_text(text, token.range) == Some(declaration.name.as_str())
-            && can_rename_declaration_target(declaration)
+        if span_text_range(declaration.name_span).is_some_and(|name_range| {
+            name_range.start <= token.range.start && token.range.end <= name_range.end
+        }) && can_rename_declaration_target(declaration)
         {
             return Some(RenameTarget::Declaration(DeclarationRenameTarget {
                 declaration,

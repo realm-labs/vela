@@ -6,7 +6,7 @@ use vela_syntax::ast::{
     SyntaxStructItem, SyntaxTraitItem, SyntaxTraitMethod, SyntaxTypeHint, SyntaxUseItem,
     Visibility,
 };
-use vela_syntax::{Parse as SyntaxParse, SyntaxKind, TextRange};
+use vela_syntax::{Parse as SyntaxParse, SyntaxKind, SyntaxToken, TextRange};
 
 use crate::attributes::HirAttribute;
 use crate::ids::HirNodeId;
@@ -90,14 +90,17 @@ impl SyntaxModuleSummary {
         &self,
         index: usize,
         kind: DeclarationKind,
-    ) -> Option<(String, Visibility, Span)> {
+    ) -> Option<(String, Visibility, Span, Span)> {
         match self.item_headers.get(index) {
             Some(SyntaxItemHeader::Declaration {
                 kind: header_kind,
                 name,
                 visibility,
+                name_span,
                 span,
-            }) if *header_kind == kind => Some((name.clone(), visibility.clone(), *span)),
+            }) if *header_kind == kind => {
+                Some((name.clone(), visibility.clone(), *name_span, *span))
+            }
             _ => None,
         }
     }
@@ -236,6 +239,7 @@ enum SyntaxItemHeader {
         kind: DeclarationKind,
         name: String,
         visibility: Visibility,
+        name_span: Span,
         span: Span,
     },
 }
@@ -260,7 +264,7 @@ impl SyntaxItemHeader {
                     source,
                     item.syntax().text_range(),
                     DeclarationKind::Const,
-                    item.name_text(),
+                    item.name_token(),
                     item.is_public(),
                 )
             }
@@ -270,7 +274,7 @@ impl SyntaxItemHeader {
                     source,
                     item.syntax().text_range(),
                     DeclarationKind::Global,
-                    item.name_text(),
+                    item.name_token(),
                     item.is_public(),
                 )
             }
@@ -280,7 +284,7 @@ impl SyntaxItemHeader {
                     source,
                     item.syntax().text_range(),
                     DeclarationKind::Function,
-                    item.name_text(),
+                    item.name_token(),
                     item.is_public(),
                 )
             }
@@ -290,7 +294,7 @@ impl SyntaxItemHeader {
                     source,
                     item.syntax().text_range(),
                     DeclarationKind::Struct,
-                    item.name_text(),
+                    item.name_token(),
                     item.is_public(),
                 )
             }
@@ -300,7 +304,7 @@ impl SyntaxItemHeader {
                     source,
                     item.syntax().text_range(),
                     DeclarationKind::Enum,
-                    item.name_text(),
+                    item.name_token(),
                     item.is_public(),
                 )
             }
@@ -310,7 +314,7 @@ impl SyntaxItemHeader {
                     source,
                     item.syntax().text_range(),
                     DeclarationKind::Trait,
-                    item.name_text(),
+                    item.name_token(),
                     item.is_public(),
                 )
             }
@@ -327,6 +331,7 @@ impl SyntaxItemHeader {
                     kind: DeclarationKind::Impl,
                     name,
                     visibility: visibility(item.is_public()),
+                    name_span: span_for(source, item.syntax().text_range()),
                     span: span_for(source, item.syntax().text_range()),
                 })
             }
@@ -657,13 +662,15 @@ fn declaration_header(
     source: SourceId,
     range: TextRange,
     kind: DeclarationKind,
-    name: Option<String>,
+    name: Option<SyntaxToken>,
     is_public: bool,
 ) -> Option<SyntaxItemHeader> {
+    let name = name?;
     Some(SyntaxItemHeader::Declaration {
         kind,
-        name: name?,
+        name: name.text().to_owned(),
         visibility: visibility(is_public),
+        name_span: span_for(source, name.text_range()),
         span: span_for(source, range),
     })
 }

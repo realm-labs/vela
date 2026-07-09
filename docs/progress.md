@@ -190,7 +190,11 @@ HIR spans directly instead of scanning declaration text. Trait and impl method
 metadata now also carries exact name-token spans for duplicate diagnostics and
 language-service method declaration references, renames, hovers, call hierarchy,
 semantic tokens, definitions, and document symbols, deleting the method-name
-text scan helpers from those paths. Script
+text scan helpers from those paths. Top-level declaration metadata now carries
+exact declaration name spans as well, and declaration duplicate/import-conflict
+diagnostics plus language-service declaration definitions, references, renames,
+hovers, call hierarchy, semantic tokens, and symbol-target resolution project
+those HIR name spans directly instead of scanning broad item text. Script
 field reference and rename use scans now read
 source-scoped `HirField` facts from `ModuleGraph` instead of rebuilding member
 access sites from parsed syntax, and script method reference/rename use scans

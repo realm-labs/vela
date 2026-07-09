@@ -133,7 +133,9 @@ impl LanguageServiceDatabases {
                 continue;
             }
             if declaration.kind == DeclarationKind::Function
-                && token_text(source.text(), token.range) == Some(declaration.name.as_str())
+                && span_text_range(declaration.name_span).is_some_and(|name_range| {
+                    name_range.start <= token.range.start && token.range.end <= name_range.end
+                })
                 && let Some(item) = self.call_hierarchy_item_for_declaration(declaration)
             {
                 return vec![item];
@@ -420,10 +422,9 @@ impl LanguageServiceDatabases {
         &self,
         declaration: &Declaration,
     ) -> Option<CallHierarchyItem> {
-        let source = self.source_record_for_call_hierarchy(declaration.span.source)?;
+        let source = self.source_record_for_call_hierarchy(declaration.name_span.source)?;
         let span_range = span_text_range(declaration.span)?;
-        let name_range =
-            name_range_in_text(source.text(), span_range, &declaration.name).unwrap_or(span_range);
+        let name_range = span_text_range(declaration.name_span)?;
         Some(CallHierarchyItem::new(
             declaration.name.clone(),
             source.document_id().clone(),

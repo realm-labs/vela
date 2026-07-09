@@ -4,10 +4,7 @@ use crate::body::{HirBodyOwner, HirBodyRoot};
 #[test]
 fn lowers_type_hint_metadata_for_signatures_structs_and_locals() {
     let mut graph = ModuleGraph::new();
-    let module = graph.add_source(source(
-        1,
-        "game::reward",
-        r#"
+    let source_text = r#"
 fn grant(player: game::Player, amount: i64, bonuses: Array<Option<i64>>) -> Result<Map<String, i64>, String> {
     let reward: Reward = Reward { count: amount };
     let names: Set<String> = [];
@@ -17,12 +14,24 @@ fn grant(player: game::Player, amount: i64, bonuses: Array<Option<i64>>) -> Resu
 struct Reward {
     count: i64,
 }
-"#,
-    ));
+"#;
+    let module = graph.add_source(source(1, "game::reward", source_text));
     let declarations = graph.module(module).expect("module declarations");
     let grant = declarations.get("grant").expect("grant declaration");
     let reward = declarations.get("Reward").expect("Reward declaration");
     assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+    assert_eq!(
+        graph
+            .declaration(grant)
+            .map(|decl| span_text(source_text, decl.name_span)),
+        Some("grant")
+    );
+    assert_eq!(
+        graph
+            .declaration(reward)
+            .map(|decl| span_text(source_text, decl.name_span)),
+        Some("Reward")
+    );
     let signature = graph.function_signature(grant).expect("function signature");
     assert_eq!(signature.params[0].name, "player");
     assert_eq!(

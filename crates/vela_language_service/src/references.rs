@@ -213,7 +213,7 @@ impl LanguageServiceDatabases {
         let graph = self.hir_db().graph();
         let syntax_parse = self.parse_db().syntax_parse(document_id);
 
-        if let Some(target) = trait_declaration_target(graph, source_id, source.text(), &token) {
+        if let Some(target) = trait_declaration_target(graph, source_id, &token) {
             return self.trait_references(&target, include_declaration);
         }
         if let Some(target) = fields::script_field_declaration_target(graph, source_id, &token) {
@@ -350,9 +350,10 @@ impl LanguageServiceDatabases {
         }
 
         if let Some(declaration) = graph.declarations().find(|declaration| {
-            declaration.span.source == source_id
-                && declaration.span.contains(offset)
-                && token_text(source.text(), token.range) == Some(declaration.name.as_str())
+            declaration.name_span.source == source_id
+                && span_text_range(declaration.name_span).is_some_and(|name_range| {
+                    name_range.start <= token.range.start && token.range.end <= name_range.end
+                })
         }) {
             return self.declaration_references(declaration.id, include_declaration);
         }
@@ -583,10 +584,8 @@ impl LanguageServiceDatabases {
         declaration: &Declaration,
         kind: ReferenceKind,
     ) -> Option<Reference> {
-        let source = self.source_record_for_reference(declaration.span.source)?;
-        let span_range = span_text_range(declaration.span)?;
-        let name_range =
-            name_range_in_text(source.text(), span_range, &declaration.name).unwrap_or(span_range);
+        let source = self.source_record_for_reference(declaration.name_span.source)?;
+        let name_range = span_text_range(declaration.name_span)?;
         let range = diagnostic_range(source.text(), name_range);
         Some(Reference {
             document_id: source.document_id().clone(),
@@ -676,17 +675,16 @@ impl LanguageServiceDatabases {
 fn trait_declaration_target(
     graph: &ModuleGraph,
     source_id: SourceId,
-    text: &str,
     token: &ReferenceToken,
 ) -> Option<TraitReferenceTarget> {
-    let start = u32::try_from(token.range.start).ok()?;
     graph
         .declarations()
         .find(|declaration| {
             declaration.kind == DeclarationKind::Trait
-                && declaration.span.source == source_id
-                && declaration.span.contains(start)
-                && token_text(text, token.range) == Some(declaration.name.as_str())
+                && declaration.name_span.source == source_id
+                && span_text_range(declaration.name_span).is_some_and(|name_range| {
+                    name_range.start <= token.range.start && token.range.end <= name_range.end
+                })
         })
         .map(|declaration| TraitReferenceTarget {
             owner: declaration.id,

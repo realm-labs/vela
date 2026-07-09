@@ -61,6 +61,7 @@ pub struct Declaration {
     pub name: String,
     pub kind: DeclarationKind,
     pub visibility: Visibility,
+    pub name_span: Span,
     pub span: Span,
 }
 

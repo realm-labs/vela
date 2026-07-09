@@ -177,15 +177,8 @@ impl LanguageServiceDatabases {
     }
 
     fn definition_from_declaration(&self, declaration: &Declaration) -> Option<Definition> {
-        let source = self.source_record_for(declaration.span.source)?;
-        let start = usize::try_from(declaration.span.start).ok()?;
-        let end = usize::try_from(declaration.span.end).ok()?;
-        let range = name_range_in_text(
-            source.text(),
-            TextRange::new(start, end),
-            declaration.name.as_str(),
-        )
-        .unwrap_or(TextRange::new(start, end));
+        let source = self.source_record_for(declaration.name_span.source)?;
+        let range = text_range_for_span(declaration.name_span)?;
         Some(Definition {
             document_id: source.document_id().clone(),
             range: diagnostic_range(source.text(), range),
@@ -201,20 +194,7 @@ impl LanguageServiceDatabases {
         declaration: &Declaration,
         target: &SymbolTarget,
     ) -> bool {
-        let Some(source) = self.source_record_for(declaration.span.source) else {
-            return false;
-        };
-        let Ok(start) = usize::try_from(declaration.span.start) else {
-            return false;
-        };
-        let Ok(end) = usize::try_from(declaration.span.end) else {
-            return false;
-        };
-        let Some(name_range) = name_range_in_text(
-            source.text(),
-            TextRange::new(start, end),
-            declaration.name.as_str(),
-        ) else {
+        let Some(name_range) = text_range_for_span(declaration.name_span) else {
             return false;
         };
         name_range.start <= target.range().start && target.range().end <= name_range.end

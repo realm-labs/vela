@@ -196,8 +196,8 @@ fn symbol_ref_for_source_declaration(
         .declarations()
         .find(|declaration| {
             declaration.name == text
-                && declaration.span.source == source_id
-                && declaration_name_range(databases, declaration)
+                && declaration.name_span.source == source_id
+                && declaration_name_range(declaration)
                     .is_some_and(|name_range| contains_range(name_range, range))
         })
         .map(|declaration| source_symbol_for_declaration(graph, declaration))
@@ -348,17 +348,8 @@ fn local_symbol_for_binding(
     SymbolRef::local_for_binding(binding, source.document_id().clone())
 }
 
-fn declaration_name_range(
-    databases: &LanguageServiceDatabases,
-    declaration: &Declaration,
-) -> Option<TextRange> {
-    let source = databases
-        .source_db()
-        .records()
-        .values()
-        .find(|source| source.source_id() == declaration.span.source)?;
-    let span_range = span_text_range(declaration.span)?;
-    name_range_in_text(source.text(), span_range, &declaration.name)
+fn declaration_name_range(declaration: &Declaration) -> Option<TextRange> {
+    span_text_range(declaration.name_span)
 }
 
 fn fact_symbol_ref_for(
@@ -386,13 +377,6 @@ fn span_text_range(span: Span) -> Option<TextRange> {
     let start = usize::try_from(span.start).ok()?;
     let end = usize::try_from(span.end).ok()?;
     Some(TextRange::new(start, end))
-}
-
-fn name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRange> {
-    let slice = text.get(range.start..range.end)?;
-    let relative = slice.find(name)?;
-    let start = range.start + relative;
-    Some(TextRange::new(start, start + name.len()))
 }
 
 fn contains_range(container: TextRange, contained: TextRange) -> bool {

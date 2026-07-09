@@ -159,7 +159,7 @@ impl ModuleGraph {
                     });
                 }
                 SyntaxKind::ConstItem => {
-                    let Some((name, visibility, span)) =
+                    let Some((name, visibility, name_span, span)) =
                         syntax_summary.declaration(item_index, DeclarationKind::Const)
                     else {
                         continue;
@@ -169,6 +169,7 @@ impl ModuleGraph {
                         name,
                         DeclarationKind::Const,
                         visibility,
+                        name_span,
                         span,
                     );
                     self.const_metadata.insert(
@@ -192,7 +193,7 @@ impl ModuleGraph {
                     }
                 }
                 SyntaxKind::GlobalItem => {
-                    let Some((name, visibility, span)) =
+                    let Some((name, visibility, name_span, span)) =
                         syntax_summary.declaration(item_index, DeclarationKind::Global)
                     else {
                         continue;
@@ -202,6 +203,7 @@ impl ModuleGraph {
                         name,
                         DeclarationKind::Global,
                         visibility,
+                        name_span,
                         span,
                     );
                     if let Some(metadata) =
@@ -215,7 +217,7 @@ impl ModuleGraph {
                     );
                 }
                 SyntaxKind::FunctionItem => {
-                    let Some((name, visibility, span)) =
+                    let Some((name, visibility, name_span, span)) =
                         syntax_summary.declaration(item_index, DeclarationKind::Function)
                     else {
                         continue;
@@ -225,6 +227,7 @@ impl ModuleGraph {
                         name,
                         DeclarationKind::Function,
                         visibility,
+                        name_span,
                         span,
                     );
                     let signature =
@@ -244,7 +247,7 @@ impl ModuleGraph {
                     }
                 }
                 SyntaxKind::StructItem => {
-                    let Some((name, visibility, span)) =
+                    let Some((name, visibility, name_span, span)) =
                         syntax_summary.declaration(item_index, DeclarationKind::Struct)
                     else {
                         continue;
@@ -254,6 +257,7 @@ impl ModuleGraph {
                         name,
                         DeclarationKind::Struct,
                         visibility,
+                        name_span,
                         span,
                     );
                     let shape = syntax_metadata::struct_shape(&syntax_summary, item_index);
@@ -265,7 +269,7 @@ impl ModuleGraph {
                     );
                 }
                 SyntaxKind::EnumItem => {
-                    let Some((name, visibility, span)) =
+                    let Some((name, visibility, name_span, span)) =
                         syntax_summary.declaration(item_index, DeclarationKind::Enum)
                     else {
                         continue;
@@ -275,6 +279,7 @@ impl ModuleGraph {
                         name,
                         DeclarationKind::Enum,
                         visibility,
+                        name_span,
                         span,
                     );
                     let shape = syntax_metadata::enum_shape(&syntax_summary, item_index);
@@ -286,7 +291,7 @@ impl ModuleGraph {
                     );
                 }
                 SyntaxKind::TraitItem => {
-                    let Some((name, visibility, span)) =
+                    let Some((name, visibility, name_span, span)) =
                         syntax_summary.declaration(item_index, DeclarationKind::Trait)
                     else {
                         continue;
@@ -296,6 +301,7 @@ impl ModuleGraph {
                         name,
                         DeclarationKind::Trait,
                         visibility,
+                        name_span,
                         span,
                     );
                     let default_method_bodies =
@@ -339,7 +345,7 @@ impl ModuleGraph {
                     self.trait_shapes.insert(declaration, shape);
                 }
                 SyntaxKind::ImplItem => {
-                    let Some((name, visibility, span)) =
+                    let Some((name, visibility, name_span, span)) =
                         syntax_summary.declaration(item_index, DeclarationKind::Impl)
                     else {
                         continue;
@@ -349,6 +355,7 @@ impl ModuleGraph {
                         name,
                         DeclarationKind::Impl,
                         visibility,
+                        name_span,
                         span,
                     );
                     let method_bodies = syntax_summary.impl_method_body_sources(item_index);
@@ -799,6 +806,7 @@ impl ModuleGraph {
         name: String,
         kind: DeclarationKind,
         visibility: Visibility,
+        name_span: Span,
         span: Span,
     ) -> HirDeclId {
         let id = self.next_decl_id();
@@ -810,6 +818,7 @@ impl ModuleGraph {
             name: name.clone(),
             kind,
             visibility,
+            name_span,
             span,
         };
 
@@ -819,9 +828,9 @@ impl ModuleGraph {
             self.diagnostics.push(
                 Diagnostic::error(format!("duplicate declaration `{name}`"))
                     .with_code("hir::duplicate_declaration")
-                    .with_span(span)
-                    .with_label(previous.span, "previous declaration is here")
-                    .with_label(span, "duplicate declaration is here"),
+                    .with_span(name_span)
+                    .with_label(previous.name_span, "previous declaration is here")
+                    .with_label(name_span, "duplicate declaration is here"),
             );
         }
 

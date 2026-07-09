@@ -685,8 +685,8 @@ impl LanguageServiceDatabases {
         graph
             .declarations()
             .find(|declaration| {
-                declaration.span.source == source_id
-                    && declaration.span.contains(span.start)
+                declaration.name_span.source == source_id
+                    && span_contains_range(declaration.name_span, range)
                     && declaration.name == name
                     && token_text(text, range) == Some(name)
             })

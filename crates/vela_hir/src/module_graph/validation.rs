@@ -34,7 +34,7 @@ impl ModuleGraph {
                     ))
                     .with_code("hir::import_conflict")
                     .with_span(import.span)
-                    .with_label(declaration.span, "local declaration is here")
+                    .with_label(declaration.name_span, "local declaration is here")
                     .with_label(import.span, "conflicting import is here"),
                 );
             }
