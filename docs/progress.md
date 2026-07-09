@@ -216,7 +216,10 @@ use those HIR paths instead of syntax path reconstruction. Non-method call
 lowering now reads HIR call-callee path facts instead of reconstructing callee
 paths from syntax in `syntax_calls`. Control-flow i64 conditional fast paths,
 numeric path/literal operator fast paths, and range operands now also read HIR
-value-path facts instead of syntax path reconstruction.
+value-path facts instead of syntax path reconstruction. Nested record-field
+assignment target lowering now composes HIR value paths and root expression
+spans from HIR field receiver facts, and the old field-chain syntax path helper
+has been deleted.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

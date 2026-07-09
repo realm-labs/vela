@@ -273,6 +273,33 @@ impl Compiler<'_, '_> {
         self.hir_value_path_for_expression(expression)
     }
 
+    pub(in crate::compiler) fn hir_value_path_root_span_for_span(
+        &self,
+        span: Span,
+    ) -> Option<Span> {
+        let expression = self.expression_at_span(span)?;
+        let root = self.hir_value_path_root_expression(expression)?;
+        self.expression_span(root)
+    }
+
+    fn hir_value_path_root_expression(&self, expression: HirExprId) -> Option<HirExprId> {
+        if let Some(field) = self
+            .hir_bodies
+            .iter()
+            .find_map(|body| body.fields.get(&expression))
+        {
+            return self.hir_value_path_root_expression(field.receiver);
+        }
+        if self
+            .hir_value_path(expression)
+            .is_some_and(|path| !path.is_empty())
+            || self.local_for_expression(expression).is_some()
+        {
+            return Some(expression);
+        }
+        None
+    }
+
     fn hir_value_path_for_expression(&self, expression: HirExprId) -> Option<Vec<String>> {
         if let Some(path) = self.hir_value_path(expression)
             && !path.is_empty()

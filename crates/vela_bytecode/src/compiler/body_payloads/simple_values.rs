@@ -14,26 +14,6 @@ pub(in crate::compiler) fn expression_syntax_path_or_self(
     }
 }
 
-pub(in crate::compiler) fn expression_syntax_path_field(
-    expression: &SyntaxExpression,
-) -> Option<Vec<String>> {
-    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
-        return expression_syntax_path_field(&inner);
-    }
-    let field = expression.as_field()?;
-    let receiver = field.receiver()?;
-    let mut path = expression_syntax_path_or_self(&receiver)
-        .or_else(|| expression_syntax_path_field(&receiver))?;
-    path.push(field.name_text()?);
-    Some(path)
-}
-
-pub(in crate::compiler) fn expression_syntax_path_or_field(
-    expression: &SyntaxExpression,
-) -> Option<Vec<String>> {
-    expression_syntax_path_or_self(expression).or_else(|| expression_syntax_path_field(expression))
-}
-
 pub(in crate::compiler) fn expression_syntax_literal(
     expression: &SyntaxExpression,
 ) -> Option<Literal> {

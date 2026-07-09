@@ -1,9 +1,7 @@
 use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_syntax::ast::{AssignOp, Literal, SyntaxExpression};
 
-use crate::compiler::body_payloads::{
-    expression_syntax_literal, expression_syntax_path_or_field, expression_syntax_path_or_self,
-};
+use crate::compiler::body_payloads::expression_syntax_literal;
 use crate::compiler::const_eval::compile_literal_constant_for_type;
 use crate::compiler::expected_exprs::guard_location_and_name;
 use crate::compiler::operators::{
@@ -231,14 +229,16 @@ impl Compiler<'_, '_> {
         source: SourceId,
         target_expression: &SyntaxExpression,
     ) -> Option<SyntaxNestedRecordFieldAssignmentTarget> {
-        let path = expression_syntax_path_or_field(target_expression)?;
+        let target_span = syntax_expression_span(source, target_expression);
+        let path = self.hir_value_path_for_span(target_span)?;
         if path.len() <= 2 {
             return None;
         }
         let root = path.first()?.clone();
         let fields = path[1..].to_vec();
-        let root_span = syntax_path_root_span(source, target_expression)
-            .unwrap_or_else(|| syntax_expression_span(source, target_expression));
+        let root_span = self
+            .hir_value_path_root_span_for_span(target_span)
+            .unwrap_or(target_span);
         let root_type = self.script_type_for_path_root(root_span, &root);
         let shape = self
             .record_shape_for_path_root(root_span, &root)
@@ -702,13 +702,4 @@ fn syntax_indexed_record_field_parts(
     let (collection, index, mut fields) = syntax_indexed_record_field_parts(receiver)?;
     fields.push(field_name);
     Some((collection, index, fields))
-}
-
-fn syntax_path_root_span(source: SourceId, expression: &SyntaxExpression) -> Option<Span> {
-    if expression_syntax_path_or_self(expression).is_some() {
-        return Some(syntax_expression_span(source, expression));
-    }
-    let field = expression.as_field()?;
-    let receiver = field.receiver()?;
-    syntax_path_root_span(source, &receiver)
 }

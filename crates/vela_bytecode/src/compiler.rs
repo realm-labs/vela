@@ -1023,6 +1023,13 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             .find_map(|expression| (expression.origin.span == span).then_some(expression.id))
     }
 
+    pub(in crate::compiler) fn expression_span(&self, expression: HirExprId) -> Option<Span> {
+        self.hir_bodies
+            .iter()
+            .find_map(|body| body.expressions.get(&expression))
+            .map(|expression| expression.origin.span)
+    }
+
     pub(in crate::compiler) fn binding_resolution_for_expression(
         &self,
         expression: HirExprId,
