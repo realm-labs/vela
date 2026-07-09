@@ -212,15 +212,15 @@ fn main(ctx: Context, player: Player) {
         && reflect::has_method(result_type, "to_error_option")
         && option_map.params[0].name == "callback"
         && option_map.params[0].type.unwrap_or("") == "Function"
-        && reflect::returns(option_map).unwrap_or("") == "Option"
+        && reflect::returns(option_map).unwrap_or("") == "Option<Any>"
         && reflect::attr(option_map, "stdlib").unwrap_or("") == "option"
         && option_ok_or.params[0].name == "error"
-        && reflect::returns(option_ok_or).unwrap_or("") == "Result"
+        && reflect::returns(option_ok_or).unwrap_or("") == "Result<Any, Any>"
         && result_map_err.params[0].name == "callback"
         && result_map_err.params[0].type.unwrap_or("") == "Function"
-        && reflect::returns(result_map_err).unwrap_or("") == "Result"
+        && reflect::returns(result_map_err).unwrap_or("") == "Result<Any, Any>"
         && reflect::attr(result_map_err, "stdlib").unwrap_or("") == "result"
-        && reflect::returns(result_to_error).unwrap_or("") == "Option"
+        && reflect::returns(result_to_error).unwrap_or("") == "Option<Any>"
         && reflect::has_method(string_type, "trim")
         && reflect::has_method(array_type, "map")
         && reflect::has_method(map_type, "get")
@@ -243,7 +243,7 @@ fn main(ctx: Context, player: Player) {
         && reflect::attr(array_map, "stdlib").unwrap_or("") == "array"
         && map_get.params[0].name == "key"
         && map_get.params[0].type.unwrap_or("") == "Any"
-        && reflect::returns(map_get).unwrap_or("") == "Option"
+        && reflect::returns(map_get).unwrap_or("") == "Option<Any>"
         && reflect::attr(map_get, "stdlib").unwrap_or("") == "map"
         && set_union.params[0].type.unwrap_or("") == "Set"
         && reflect::returns(set_union).unwrap_or("") == "Set"
@@ -549,7 +549,7 @@ fn main(ctx: Context, player: Player) {
         && reflect::kind(bytes_from_hex) == "function"
         && reflect::origin(bytes_from_hex) == "host"
         && reflect::attr(bytes_from_hex, "stdlib").unwrap_or("") == "bytes"
-        && reflect::returns(bytes_from_hex).unwrap_or("") == "Result"
+        && reflect::returns(bytes_from_hex).unwrap_or("") == "Result<Bytes, String>"
         && bytes_from_hex_params.len() == 1
         && bytes_from_hex_params[0].name == "text"
         && bytes_from_hex_params[0].type.unwrap_or("") == "String"
@@ -571,12 +571,12 @@ fn main(ctx: Context, player: Player) {
         && i64_from_i32_params[0].type.unwrap_or("") == "i32"
         && reflect::name(i16_try_from_i64) == "i16::try_from_i64"
         && reflect::attr(i16_try_from_i64, "stdlib").unwrap_or("") == "i16"
-        && reflect::returns(i16_try_from_i64).unwrap_or("") == "Result"
+        && reflect::returns(i16_try_from_i64).unwrap_or("") == "Result<i16, String>"
         && i16_try_from_i64_params.len() == 1
         && i16_try_from_i64_params[0].type.unwrap_or("") == "i64"
         && reflect::name(u16_try_from_u64) == "u16::try_from_u64"
         && reflect::attr(u16_try_from_u64, "stdlib").unwrap_or("") == "u16"
-        && reflect::returns(u16_try_from_u64).unwrap_or("") == "Result"
+        && reflect::returns(u16_try_from_u64).unwrap_or("") == "Result<u16, String>"
         && u16_try_from_u64_params.len() == 1
         && u16_try_from_u64_params[0].type.unwrap_or("") == "u64"
         && reflect::name(u8_wrapping_add) == "u8::wrapping_add"

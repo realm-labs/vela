@@ -568,7 +568,9 @@ Focused validation:
   receiver-derived payload facts at call sites. Fallible standard free
   functions such as `bytes::from_hex` and primitive narrowing helpers now
   expose structured `Result<T, String>` descriptor contracts instead of bare
-  `Result`.
+  `Result`. Opt-in IO helpers now expose structured `Result<(), IoError>` or
+  `Result<String, IoError>` descriptor contracts, and `IoError` is registered
+  as a reflected record type when the IO extension is enabled.
 - [x] Change Rust `Option<T>` conversion to script `Option<T>`. Embedding and
   serde owned/runtime conversions now use `Option::Some` and `Option::None`
   enum values; `()` and raw payload values are rejected for Rust

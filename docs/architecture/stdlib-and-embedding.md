@@ -319,10 +319,10 @@ let engine = Engine::builder()
 The minimal I/O surface is:
 
 ```text
-io::print(value)                -> Result::Ok(()) | Result::Err(IoError)
-io::println(value)              -> Result::Ok(()) | Result::Err(IoError)
-fs::read_to_string(path)        -> Result::Ok(string) | Result::Err(IoError)
-fs::write_string(path, text)    -> Result::Ok(()) | Result::Err(IoError)
+io::print(value)                -> Result<(), IoError>
+io::println(value)              -> Result<(), IoError>
+fs::read_to_string(path)        -> Result<String, IoError>
+fs::write_string(path, text)    -> Result<(), IoError>
 ```
 
 `fs::*` paths are resolved relative to the configured sandbox root. Absolute

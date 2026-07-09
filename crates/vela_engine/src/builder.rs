@@ -310,6 +310,9 @@ impl EngineBuilder {
 
     pub fn build(self) -> EngineResult<Engine> {
         let mut types = self.types;
+        if self.stdio || self.fs_io {
+            types.push(crate::io::io_error_type_desc());
+        }
         metadata::inject_host_method_metadata(
             &mut types,
             &self.host_method_metadata,

@@ -170,16 +170,18 @@ and uncached stdlib paths. Statically known string lookup/parse APIs and
 metadata where the payload type is independent of receiver facts. Fallible
 standard free functions such as `bytes::from_hex` and primitive narrowing
 helpers now expose structured `Result<T, String>` stdlib manifest and
-reflection metadata instead of bare Result contracts. Result tuple payload
-fixtures now cover typed `?`/destructuring propagation and linked parameter
-guards. Reflected descriptor type-hint strings now parse into structured tuple
-facts for analysis and schema artifact export, and reflection metadata records
-now expose copied `ReflectTypeHint` descriptors for field, parameter, and
-return hints, including unit, tuple, Option, and Result nesting, with missing
-descriptor data represented as `Option::None`. `reflect::type_of` and analysis
-facts for optional reflection metadata now use `Option<T>` instead of unit
-placeholders. Tuple Map/Set keys are rejected by source type-hint validation and
-runtime `ValueKey` keyability. The active null audit now classifies all
+reflection metadata instead of bare Result contracts, and opt-in IO helpers now
+expose `Result<(), IoError>` or `Result<String, IoError>` metadata with a
+reflected `IoError` record type. Result tuple payload fixtures now cover typed
+`?`/destructuring propagation and linked parameter guards. Reflected descriptor
+type-hint strings now parse into structured tuple facts for analysis and schema
+artifact export, and reflection metadata records now expose copied
+`ReflectTypeHint` descriptors for field, parameter, and return hints, including
+unit, tuple, Option, and Result nesting, with missing descriptor data
+represented as `Option::None`. `reflect::type_of` and analysis facts for
+optional reflection metadata now use `Option<T>` instead of unit placeholders.
+Tuple Map/Set keys are rejected by source type-hint validation and runtime
+`ValueKey` keyability. The active null audit now classifies all
 surviving `null` strings as intentional removed-source diagnostics/no-completion
 tests, external JSON-RPC protocol data, external C ABI pointer terminology, or
 historical/planning text rather than Vela language values. Tree-sitter editor

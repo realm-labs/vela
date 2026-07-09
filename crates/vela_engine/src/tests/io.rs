@@ -4,6 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use vela_bytecode::UnlinkedProgram;
 use vela_common::SourceId;
+use vela_reflect::registry::TypeKind;
 use vela_vm::error::{VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
 
@@ -161,63 +162,41 @@ fn io_stdlib_registers_metadata() {
         .build()
         .expect("engine should build");
     let registry = engine.registry();
+    let print = registry
+        .function_by_name("io::print")
+        .expect("print metadata");
+    let println = registry
+        .function_by_name("io::println")
+        .expect("println metadata");
+    let read = registry
+        .function_by_name("fs::read_to_string")
+        .expect("read metadata");
+    let write = registry
+        .function_by_name("fs::write_string")
+        .expect("write metadata");
 
-    assert_eq!(
-        registry
-            .function_by_name("io::print")
-            .expect("print metadata")
-            .id,
-        IO_PRINT_FUNCTION_ID
-    );
-    assert_eq!(
-        registry
-            .function_by_name("io::println")
-            .expect("println metadata")
-            .id,
-        IO_PRINTLN_FUNCTION_ID
-    );
-    assert_eq!(
-        registry
-            .function_by_name("fs::read_to_string")
-            .expect("read metadata")
-            .id,
-        FS_READ_TO_STRING_FUNCTION_ID
-    );
-    assert_eq!(
-        registry
-            .function_by_name("fs::write_string")
-            .expect("write metadata")
-            .id,
-        FS_WRITE_STRING_FUNCTION_ID
-    );
-    assert!(
-        registry
-            .function_by_name("io::print")
-            .expect("print metadata")
-            .effects
-            .writes_io
-    );
-    assert!(
-        registry
-            .function_by_name("io::println")
-            .expect("println metadata")
-            .effects
-            .writes_io
-    );
-    assert!(
-        registry
-            .function_by_name("fs::read_to_string")
-            .expect("read metadata")
-            .effects
-            .reads_io
-    );
-    assert!(
-        registry
-            .function_by_name("fs::write_string")
-            .expect("write metadata")
-            .effects
-            .writes_io
-    );
+    assert_eq!(print.id, IO_PRINT_FUNCTION_ID);
+    assert_eq!(println.id, IO_PRINTLN_FUNCTION_ID);
+    assert_eq!(read.id, FS_READ_TO_STRING_FUNCTION_ID);
+    assert_eq!(write.id, FS_WRITE_STRING_FUNCTION_ID);
+    assert_eq!(print.return_type.as_deref(), Some("Result<(), IoError>"));
+    assert_eq!(println.return_type.as_deref(), Some("Result<(), IoError>"));
+    assert_eq!(read.return_type.as_deref(), Some("Result<String, IoError>"));
+    assert_eq!(write.return_type.as_deref(), Some("Result<(), IoError>"));
+    assert!(print.effects.writes_io);
+    assert!(println.effects.writes_io);
+    assert!(read.effects.reads_io);
+    assert!(write.effects.writes_io);
+
+    let io_error = registry.type_by_name("IoError").expect("IoError metadata");
+    assert_eq!(io_error.kind, TypeKind::ScriptStruct);
+    assert_eq!(io_error.fields.len(), 3);
+    assert_eq!(io_error.fields[0].name, "kind");
+    assert_eq!(io_error.fields[0].type_hint.as_deref(), Some("String"));
+    assert_eq!(io_error.fields[1].name, "path");
+    assert_eq!(io_error.fields[1].type_hint.as_deref(), Some("String"));
+    assert_eq!(io_error.fields[2].name, "message");
+    assert_eq!(io_error.fields[2].type_hint.as_deref(), Some("String"));
 }
 
 struct TestDir(PathBuf);

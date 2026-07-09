@@ -2,8 +2,9 @@ use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 
 use vela_common::stable_id;
-use vela_def::FunctionId;
-use vela_reflect::modules::ModuleDesc;
+use vela_def::{FieldId, FunctionId, TypeId};
+use vela_reflect::modules::{DeclOrigin, ModuleDesc};
+use vela_reflect::registry::{FieldDesc, SchemaHash, TypeDesc, TypeKey, TypeKind};
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
 
@@ -19,6 +20,13 @@ pub const FS_READ_TO_STRING_FUNCTION_ID: NativeFunctionId =
     FunctionId::new(stable_id("std_function", "fs", "read_to_string") as u128);
 pub const FS_WRITE_STRING_FUNCTION_ID: NativeFunctionId =
     FunctionId::new(stable_id("std_function", "fs", "write_string") as u128);
+pub const IO_ERROR_TYPE_ID: TypeId = TypeId::new(stable_id("std_type", "", "IoError") as u128);
+pub const IO_ERROR_KIND_FIELD_ID: FieldId =
+    FieldId::new(stable_id("std_field", "IoError", "kind") as u128);
+pub const IO_ERROR_PATH_FIELD_ID: FieldId =
+    FieldId::new(stable_id("std_field", "IoError", "path") as u128);
+pub const IO_ERROR_MESSAGE_FIELD_ID: FieldId =
+    FieldId::new(stable_id("std_field", "IoError", "message") as u128);
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FsSandbox {
@@ -82,12 +90,37 @@ pub(crate) fn fs_module_desc() -> ModuleDesc {
         .attr("domain", "io")
 }
 
+pub(crate) fn io_error_type_desc() -> TypeDesc {
+    TypeDesc::new(io_error_type_key())
+        .kind(TypeKind::ScriptStruct)
+        .schema_hash(SchemaHash::new(stable_id("std_schema", "", "IoError")))
+        .origin(DeclOrigin::Host)
+        .docs("Recoverable I/O error payload returned by opt-in I/O helpers.")
+        .attr("stdlib", "io")
+        .attr("domain", "io")
+        .field(
+            FieldDesc::new(IO_ERROR_KIND_FIELD_ID, "kind")
+                .type_hint("String")
+                .docs("Short I/O error category."),
+        )
+        .field(
+            FieldDesc::new(IO_ERROR_PATH_FIELD_ID, "path")
+                .type_hint("String")
+                .docs("Path or stream associated with the I/O failure."),
+        )
+        .field(
+            FieldDesc::new(IO_ERROR_MESSAGE_FIELD_ID, "message")
+                .type_hint("String")
+                .docs("Human-readable I/O failure detail."),
+        )
+}
+
 pub(crate) fn stdio_functions() -> [NativeFunctionEntry; 2] {
     [
         NativeFunctionEntry::new(
             NativeFunctionDesc::new("io::print", IO_PRINT_FUNCTION_ID)
                 .param("value", TypeHint::Any)
-                .returns(TypeHint::Any)
+                .returns(io_result(TypeHint::unit()))
                 .effects(EffectSet::io_write())
                 .access(FunctionAccess::public().reflect_callable(true))
                 .attr("stdlib", "io")
@@ -98,7 +131,7 @@ pub(crate) fn stdio_functions() -> [NativeFunctionEntry; 2] {
         NativeFunctionEntry::new(
             NativeFunctionDesc::new("io::println", IO_PRINTLN_FUNCTION_ID)
                 .param("value", TypeHint::Any)
-                .returns(TypeHint::Any)
+                .returns(io_result(TypeHint::unit()))
                 .effects(EffectSet::io_write())
                 .access(FunctionAccess::public().reflect_callable(true))
                 .attr("stdlib", "io")
@@ -116,7 +149,7 @@ pub(crate) fn fs_functions(sandbox: FsSandbox) -> [NativeFunctionEntry; 2] {
         NativeFunctionEntry::new(
             NativeFunctionDesc::new("fs::read_to_string", FS_READ_TO_STRING_FUNCTION_ID)
                 .param("path", TypeHint::string())
-                .returns(TypeHint::Any)
+                .returns(io_result(TypeHint::string()))
                 .effects(EffectSet::io_read())
                 .access(FunctionAccess::public().reflect_callable(true))
                 .attr("stdlib", "fs")
@@ -128,7 +161,7 @@ pub(crate) fn fs_functions(sandbox: FsSandbox) -> [NativeFunctionEntry; 2] {
             NativeFunctionDesc::new("fs::write_string", FS_WRITE_STRING_FUNCTION_ID)
                 .param("path", TypeHint::string())
                 .param("text", TypeHint::string())
-                .returns(TypeHint::Any)
+                .returns(io_result(TypeHint::unit()))
                 .effects(EffectSet::io_write())
                 .access(FunctionAccess::public().reflect_callable(true))
                 .attr("stdlib", "fs")
@@ -137,6 +170,14 @@ pub(crate) fn fs_functions(sandbox: FsSandbox) -> [NativeFunctionEntry; 2] {
             move |args| fs_write_string(args, &write_sandbox),
         ),
     ]
+}
+
+fn io_result(ok: TypeHint) -> TypeHint {
+    TypeHint::result_of(ok, TypeHint::Record(io_error_type_key()))
+}
+
+fn io_error_type_key() -> TypeKey {
+    TypeKey::new(IO_ERROR_TYPE_ID, "IoError")
 }
 
 fn io_print(args: &[OwnedValue]) -> VmResult<OwnedValue> {
