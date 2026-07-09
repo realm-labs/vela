@@ -16,7 +16,7 @@ use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{BinaryLiteralSide, Constant, Register, UnlinkedInstructionKind};
 
 impl Compiler<'_, '_> {
-    pub(in crate::compiler::control_flow) fn compile_syntax_binary_expression(
+    pub(super) fn compile_syntax_binary_expression(
         &mut self,
         source: SourceId,
         expression: &SyntaxExpression,
@@ -121,7 +121,7 @@ impl Compiler<'_, '_> {
         Ok(Some(dst))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_unary(
+    pub(super) fn compile_syntax_unary(
         &mut self,
         source: SourceId,
         expression: &SyntaxExpression,

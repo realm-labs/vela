@@ -16,7 +16,7 @@ impl Compiler<'_, '_> {
         Ok(false)
     }
 
-    pub(in crate::compiler::control_flow) fn compile_body_payload_statements(
+    pub(super) fn compile_body_payload_statements(
         &mut self,
         body: &CompilerBodyPayload<'_>,
     ) -> CompileResult<bool> {
@@ -27,7 +27,7 @@ impl Compiler<'_, '_> {
         self.compile_statement_payloads(&statements)
     }
 
-    pub(in crate::compiler::control_flow) fn compile_statement_payload(
+    pub(super) fn compile_statement_payload(
         &mut self,
         stmt: &CompilerStatementPayload<'_>,
     ) -> CompileResult<bool> {

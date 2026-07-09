@@ -60,7 +60,7 @@ impl LoopContext {
 }
 
 impl crate::compiler::Compiler<'_, '_> {
-    pub(in crate::compiler::control_flow) fn compile_syntax_for_statement(
+    pub(super) fn compile_syntax_for_statement(
         &mut self,
         source: SourceId,
         statement: &SyntaxForStmt,

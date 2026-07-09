@@ -38,7 +38,7 @@ use crate::{
 use super::classification::merge_type_hint_and_value_fact;
 
 impl Compiler<'_, '_> {
-    pub(in crate::compiler::control_flow) fn compile_let_syntax_expression(
+    pub(super) fn compile_let_syntax_expression(
         &mut self,
         source: SourceId,
         name: String,
@@ -107,7 +107,7 @@ impl Compiler<'_, '_> {
         );
     }
 
-    pub(in crate::compiler::control_flow) fn compile_return_syntax_expression(
+    pub(super) fn compile_return_syntax_expression(
         &mut self,
         source: SourceId,
         expression: &SyntaxExpression,
@@ -119,7 +119,7 @@ impl Compiler<'_, '_> {
         Ok(Some(true))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_value_expr_statement(
+    pub(super) fn compile_syntax_value_expr_statement(
         &mut self,
         source: SourceId,
         expression: &SyntaxExpression,
@@ -130,7 +130,7 @@ impl Compiler<'_, '_> {
         Ok(Some(false))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_if_statement(
+    pub(super) fn compile_syntax_if_statement(
         &mut self,
         source: SourceId,
         if_expr: &SyntaxIfExpr,
@@ -233,7 +233,7 @@ impl Compiler<'_, '_> {
         Ok(Some(offset))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_value_expr_to(
+    pub(super) fn compile_syntax_value_expr_to(
         &mut self,
         source: SourceId,
         expression: &SyntaxExpression,
@@ -1152,7 +1152,7 @@ impl Compiler<'_, '_> {
         Ok(Some(dst))
     }
 
-    pub(in crate::compiler::control_flow) fn reject_invalid_syntax_host_index_read(
+    pub(super) fn reject_invalid_syntax_host_index_read(
         &self,
         source: SourceId,
         expression: &SyntaxExpression,
@@ -1609,10 +1609,7 @@ fn syntax_path_root_span(source: SourceId, expression: &SyntaxExpression) -> Opt
     syntax_path_root_span(source, &receiver)
 }
 
-pub(in crate::compiler::control_flow) fn syntax_expression_span(
-    source: SourceId,
-    expression: &SyntaxExpression,
-) -> Span {
+pub(super) fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {
     let range = expression.syntax().text_range();
     Span::new(source, range.start().into(), range.end().into())
 }

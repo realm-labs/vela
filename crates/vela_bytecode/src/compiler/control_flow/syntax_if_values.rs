@@ -6,7 +6,7 @@ use crate::compiler::{CompileResult, Compiler};
 use crate::{Constant, Register};
 
 impl Compiler<'_, '_> {
-    pub(in crate::compiler::control_flow) fn compile_syntax_if_value(
+    pub(super) fn compile_syntax_if_value(
         &mut self,
         source: SourceId,
         expression: &SyntaxExpression,

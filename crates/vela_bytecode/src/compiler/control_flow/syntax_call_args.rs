@@ -38,7 +38,7 @@ struct SyntaxMethodArgument<'a> {
 }
 
 impl Compiler<'_, '_> {
-    pub(in crate::compiler::control_flow) fn compile_syntax_call_arguments(
+    pub(super) fn compile_syntax_call_arguments(
         &mut self,
         source: SourceId,
         arguments: &[SyntaxArgument],
@@ -54,7 +54,7 @@ impl Compiler<'_, '_> {
             .collect::<CompileResult<Option<Vec<_>>>>()
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_native_call_arguments(
+    pub(super) fn compile_syntax_native_call_arguments(
         &mut self,
         source: SourceId,
         name: &str,
@@ -130,7 +130,7 @@ impl Compiler<'_, '_> {
         Ok(Some(registers))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_value_method_call_arguments(
+    pub(super) fn compile_syntax_value_method_call_arguments(
         &mut self,
         source: SourceId,
         receiver_shape: Option<&ValueShape>,
@@ -271,7 +271,7 @@ impl Compiler<'_, '_> {
         )
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_script_function_call_arguments(
+    pub(super) fn compile_syntax_script_function_call_arguments(
         &mut self,
         source: SourceId,
         declaration: HirDeclId,
@@ -314,7 +314,7 @@ impl Compiler<'_, '_> {
         Ok(Some(ScriptCallArgs { args, mode }))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_script_method_call_arguments(
+    pub(super) fn compile_syntax_script_method_call_arguments(
         &mut self,
         source: SourceId,
         receiver_type: &str,
@@ -415,7 +415,7 @@ impl Compiler<'_, '_> {
         Ok(Some((register, requires_guard)))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_host_method_call_arguments(
+    pub(super) fn compile_syntax_host_method_call_arguments(
         &mut self,
         source: SourceId,
         method: HostMethodId,
@@ -469,7 +469,7 @@ impl Compiler<'_, '_> {
         Ok(Some(registers))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_dynamic_call_arguments(
+    pub(super) fn compile_syntax_dynamic_call_arguments(
         &mut self,
         source: SourceId,
         arguments: &[SyntaxArgument],

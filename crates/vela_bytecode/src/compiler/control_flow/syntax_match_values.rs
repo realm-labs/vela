@@ -11,7 +11,7 @@ use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{Constant, Register, UnlinkedInstructionKind};
 
 impl Compiler<'_, '_> {
-    pub(in crate::compiler::control_flow) fn compile_syntax_match_value(
+    pub(super) fn compile_syntax_match_value(
         &mut self,
         source: SourceId,
         expression: &SyntaxExpression,
@@ -27,7 +27,7 @@ impl Compiler<'_, '_> {
         Ok(Some(dst))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_match_statement(
+    pub(super) fn compile_syntax_match_statement(
         &mut self,
         source: SourceId,
         match_expr: &SyntaxMatchExpr,
@@ -167,7 +167,7 @@ impl Compiler<'_, '_> {
         Ok(false)
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_match_pattern(
+    pub(super) fn compile_syntax_match_pattern(
         &mut self,
         source: SourceId,
         scrutinee: Register,

@@ -20,7 +20,7 @@ use crate::{Constant, UnlinkedInstructionKind};
 use super::static_type_runtime_fact;
 
 impl Compiler<'_, '_> {
-    pub(in crate::compiler::control_flow) fn compile_let_literal(
+    pub(super) fn compile_let_literal(
         &mut self,
         name: String,
         span: Span,
@@ -101,7 +101,7 @@ impl Compiler<'_, '_> {
         Ok(false)
     }
 
-    pub(in crate::compiler::control_flow) fn compile_let_syntax_constant(
+    pub(super) fn compile_let_syntax_constant(
         &mut self,
         source: SourceId,
         name: String,
@@ -185,7 +185,7 @@ impl Compiler<'_, '_> {
         Ok(Some(false))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_let_negated_literal(
+    pub(super) fn compile_let_negated_literal(
         &mut self,
         name: String,
         span: Span,
@@ -265,7 +265,7 @@ impl Compiler<'_, '_> {
         Ok(false)
     }
 
-    pub(in crate::compiler::control_flow) fn compile_return_literal(
+    pub(super) fn compile_return_literal(
         &mut self,
         literal: Literal,
         span: Span,
@@ -301,7 +301,7 @@ impl Compiler<'_, '_> {
         Ok(true)
     }
 
-    pub(in crate::compiler::control_flow) fn compile_return_negated_literal(
+    pub(super) fn compile_return_negated_literal(
         &mut self,
         literal: Literal,
         span: Span,
@@ -337,7 +337,7 @@ impl Compiler<'_, '_> {
         Ok(true)
     }
 
-    pub(in crate::compiler::control_flow) fn compile_return_syntax_constant(
+    pub(super) fn compile_return_syntax_constant(
         &mut self,
         source: SourceId,
         expression: &SyntaxExpression,
@@ -376,7 +376,7 @@ impl Compiler<'_, '_> {
         Ok(Some(true))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_constant_expr_statement(
+    pub(super) fn compile_syntax_constant_expr_statement(
         &mut self,
         source: SourceId,
         expression: &SyntaxExpression,
@@ -392,7 +392,7 @@ impl Compiler<'_, '_> {
         Ok(Some(false))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_constant_expr_to(
+    pub(super) fn compile_syntax_constant_expr_to(
         &mut self,
         source: SourceId,
         expression: &SyntaxExpression,

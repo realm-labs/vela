@@ -10,7 +10,7 @@ use crate::compiler::value_types::{
 use crate::compiler::{CompileResult, Compiler, frame_slot_kind};
 
 impl Compiler<'_, '_> {
-    pub(in crate::compiler::control_flow) fn compile_let_without_initializer(
+    pub(super) fn compile_let_without_initializer(
         &mut self,
         name: String,
         span: Span,
@@ -59,10 +59,7 @@ impl Compiler<'_, '_> {
         Ok(false)
     }
 
-    pub(in crate::compiler::control_flow) fn compile_empty_return(
-        &mut self,
-        span: Span,
-    ) -> CompileResult<bool> {
+    pub(super) fn compile_empty_return(&mut self, span: Span) -> CompileResult<bool> {
         if let Some(expected) = self.return_type.clone() {
             check_expected_type(
                 StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Null)),

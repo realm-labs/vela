@@ -9,7 +9,7 @@ use super::syntax_statement_values::syntax_expression_span;
 use crate::compiler::host_paths::HostIndexAccessKind;
 
 impl Compiler<'_, '_> {
-    pub(in crate::compiler::control_flow) fn compile_syntax_host_index_assignment(
+    pub(super) fn compile_syntax_host_index_assignment(
         &mut self,
         source: SourceId,
         expression: &SyntaxExpression,
@@ -56,7 +56,7 @@ impl Compiler<'_, '_> {
         }
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_host_field_assignment(
+    pub(super) fn compile_syntax_host_field_assignment(
         &mut self,
         source: SourceId,
         expression: &SyntaxExpression,
@@ -131,7 +131,7 @@ impl Compiler<'_, '_> {
         Ok(Some(value))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_host_index(
+    pub(super) fn compile_syntax_host_index(
         &mut self,
         source: SourceId,
         expression: &SyntaxExpression,
@@ -149,7 +149,7 @@ impl Compiler<'_, '_> {
         Ok(Some(dst))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_host_field_read(
+    pub(super) fn compile_syntax_host_field_read(
         &mut self,
         source: SourceId,
         expression: &SyntaxExpression,
@@ -167,7 +167,7 @@ impl Compiler<'_, '_> {
         Ok(Some(dst))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_host_index_remove_call(
+    pub(super) fn compile_syntax_host_index_remove_call(
         &mut self,
         source: SourceId,
         receiver_expression: &SyntaxExpression,
@@ -194,7 +194,7 @@ impl Compiler<'_, '_> {
         Ok(Some(dst))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_host_path_push_call(
+    pub(super) fn compile_syntax_host_path_push_call(
         &mut self,
         source: SourceId,
         receiver_expression: &SyntaxExpression,
@@ -243,7 +243,7 @@ impl Compiler<'_, '_> {
         Ok(Some(dst))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_host_method_call(
+    pub(super) fn compile_syntax_host_method_call(
         &mut self,
         source: SourceId,
         receiver_expression: &SyntaxExpression,

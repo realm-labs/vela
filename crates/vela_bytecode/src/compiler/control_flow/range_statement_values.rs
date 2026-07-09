@@ -19,7 +19,7 @@ use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler, f
 use crate::{Register, UnlinkedInstructionKind};
 
 impl Compiler<'_, '_> {
-    pub(in crate::compiler::control_flow) fn compile_let_syntax_range(
+    pub(super) fn compile_let_syntax_range(
         &mut self,
         name: String,
         span: Span,
@@ -84,7 +84,7 @@ impl Compiler<'_, '_> {
         Ok(Some(false))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_return_syntax_range(
+    pub(super) fn compile_return_syntax_range(
         &mut self,
         source: vela_common::SourceId,
         expression: &SyntaxExpression,
@@ -106,7 +106,7 @@ impl Compiler<'_, '_> {
         Ok(Some(true))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_range_expr_statement(
+    pub(super) fn compile_syntax_range_expr_statement(
         &mut self,
         source: vela_common::SourceId,
         expression: &SyntaxExpression,
@@ -118,7 +118,7 @@ impl Compiler<'_, '_> {
         Ok(Some(false))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_range_expr_to(
+    pub(super) fn compile_syntax_range_expr_to(
         &mut self,
         source: vela_common::SourceId,
         expression: &SyntaxExpression,
@@ -134,7 +134,7 @@ impl Compiler<'_, '_> {
         Ok(Some(false))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_range_value(
+    pub(super) fn compile_syntax_range_value(
         &mut self,
         source: vela_common::SourceId,
         lhs: &SyntaxExpression,

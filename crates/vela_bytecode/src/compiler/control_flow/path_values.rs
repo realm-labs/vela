@@ -20,7 +20,7 @@ use super::{
 };
 
 impl Compiler<'_, '_> {
-    pub(in crate::compiler::control_flow) fn compile_let_path(
+    pub(super) fn compile_let_path(
         &mut self,
         name: String,
         span: Span,
@@ -100,7 +100,7 @@ impl Compiler<'_, '_> {
         Ok(false)
     }
 
-    pub(in crate::compiler::control_flow) fn compile_return_path(
+    pub(super) fn compile_return_path(
         &mut self,
         path: Vec<String>,
         path_span: Span,
@@ -115,7 +115,7 @@ impl Compiler<'_, '_> {
         Ok(true)
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_path_expr_statement(
+    pub(super) fn compile_syntax_path_expr_statement(
         &mut self,
         source: vela_common::SourceId,
         expression: &SyntaxExpression,
@@ -127,7 +127,7 @@ impl Compiler<'_, '_> {
         Ok(Some(false))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_path_expr_to(
+    pub(super) fn compile_syntax_path_expr_to(
         &mut self,
         source: vela_common::SourceId,
         expression: &SyntaxExpression,
@@ -189,7 +189,7 @@ impl Compiler<'_, '_> {
             .unwrap_or(StaticExprType::Dynamic)
     }
 
-    pub(in crate::compiler::control_flow) fn value_type_for_path(
+    pub(super) fn value_type_for_path(
         &self,
         span: Span,
         path: &[String],
@@ -202,7 +202,7 @@ impl Compiler<'_, '_> {
             .or_else(|| self.value_types.name(name))
     }
 
-    pub(in crate::compiler::control_flow) fn script_fact_for_path(
+    pub(super) fn script_fact_for_path(
         &self,
         span: Span,
         path: &[String],

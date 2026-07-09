@@ -19,7 +19,7 @@ impl Compiler<'_, '_> {
         self.compile_block_payload_value_to(&body, dst).map(Some)
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_block_expr_statement(
+    pub(super) fn compile_syntax_block_expr_statement(
         &mut self,
         source: SourceId,
         expression: &SyntaxExpression,

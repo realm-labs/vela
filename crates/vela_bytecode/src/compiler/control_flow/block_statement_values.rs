@@ -18,7 +18,7 @@ use crate::compiler::{
 };
 
 impl Compiler<'_, '_> {
-    pub(in crate::compiler::control_flow) fn compile_let_syntax_block_value(
+    pub(super) fn compile_let_syntax_block_value(
         &mut self,
         name: String,
         span: Span,
@@ -99,7 +99,7 @@ impl Compiler<'_, '_> {
         Ok(returned)
     }
 
-    pub(in crate::compiler::control_flow) fn compile_return_syntax_block_value(
+    pub(super) fn compile_return_syntax_block_value(
         &mut self,
         span: Span,
         source: SourceId,
@@ -127,7 +127,7 @@ impl Compiler<'_, '_> {
         Ok(true)
     }
 
-    pub(in crate::compiler::control_flow) fn emit_dynamic_contract_guard(
+    pub(super) fn emit_dynamic_contract_guard(
         &mut self,
         register: Register,
         span: Span,
