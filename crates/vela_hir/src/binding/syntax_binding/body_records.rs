@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use vela_common::Span;
 
 use super::{ActiveScope, SyntaxBindingLowerer};
-use crate::binding::{BindingResolution, ExprInfo};
+use crate::binding::BindingResolution;
 use crate::body::{
     HirBlock, HirBody, HirBodyOwner, HirCapture, HirExpr, HirExprKind, HirParam, HirPattern,
     HirPatternKind, HirScope, HirScopeKind, HirSourceOrigin, HirStmt, HirStmtKind,
@@ -110,7 +110,6 @@ impl<'a> SyntaxBindingLowerer<'a> {
     pub(super) fn next_expr(&mut self, span: Span, kind: HirExprKind) -> HirExprId {
         let id = HirExprId::new(*self.next_expr_id);
         *self.next_expr_id = self.next_expr_id.saturating_add(1);
-        self.expressions.insert(id, ExprInfo { id, span });
         let body = self.current_body();
         let source = self.source;
         self.body_mut(body).expressions.insert(

@@ -1,7 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-use vela_common::{PrimitiveTag, Span};
-use vela_hir::binding::{BindingMap, BindingResolution};
+use vela_common::PrimitiveTag;
 use vela_hir::ids::HirLocalId;
 
 use super::record_reflection_shapes;
@@ -50,13 +49,6 @@ struct RecordFieldShape {
 }
 
 impl ValueShapeFlow {
-    pub(super) fn local_at_span(&self, bindings: &BindingMap, span: Span) -> Option<ValueShape> {
-        let BindingResolution::Local(local) = bindings.resolution_at_span(span)? else {
-            return None;
-        };
-        self.local(*local)
-    }
-
     pub(super) fn local(&self, local: HirLocalId) -> Option<ValueShape> {
         self.locals.get(&local).cloned()
     }

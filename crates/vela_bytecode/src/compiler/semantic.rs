@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::SourceId;
 use vela_hir::binding::BindingMap;
+use vela_hir::body::HirBody;
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{
     DeclarationKind, ImportResolution, ModuleGraph, ModulePath, ModuleSource,
@@ -54,14 +55,19 @@ impl SemanticSource {
     pub(super) fn function(
         &self,
         name: &str,
-    ) -> Option<(FunctionBodyPayload<'_>, &FunctionSignature, &BindingMap)> {
+    ) -> Option<(
+        FunctionBodyPayload<'_>,
+        &FunctionSignature,
+        &BindingMap,
+        Vec<&HirBody>,
+    )> {
         let declaration = self.function_declaration(name)?;
         let metadata = self.graph.declaration(declaration)?;
         let signature = self.graph.function_signature(declaration)?;
         let bindings = self.graph.bindings(declaration)?;
         let payload =
             function_body_payload(self.source, &self.syntax, metadata.name.as_str(), signature)?;
-        Some((payload, signature, bindings))
+        Some((payload, signature, bindings, self.graph.bodies().collect()))
     }
 
     pub(super) fn script_function_names(&self) -> BTreeSet<String> {
@@ -218,14 +224,19 @@ impl SemanticModules {
     pub(super) fn function(
         &self,
         declaration: HirDeclId,
-    ) -> Option<(FunctionBodyPayload<'_>, &FunctionSignature, &BindingMap)> {
+    ) -> Option<(
+        FunctionBodyPayload<'_>,
+        &FunctionSignature,
+        &BindingMap,
+        Vec<&HirBody>,
+    )> {
         let metadata = self.graph.declaration(declaration)?;
         let signature = self.graph.function_signature(declaration)?;
         let bindings = self.graph.bindings(declaration)?;
         let syntax = self.syntax.get(&metadata.module)?;
         let source = self.source_ids.get(&metadata.module).copied()?;
         let payload = function_body_payload(source, syntax, metadata.name.as_str(), signature)?;
-        Some((payload, signature, bindings))
+        Some((payload, signature, bindings, self.graph.bodies().collect()))
     }
 
     pub(super) fn script_function_declarations(&self) -> BTreeSet<HirDeclId> {

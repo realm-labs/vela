@@ -146,10 +146,15 @@ symbol-target queries now share the same HIR expression-to-resolution lookup
 instead of each reconstructing the narrowest binding expression from spans.
 Reference, rename, and call-hierarchy use-site ranges now read source origins
 from `ModuleGraph` HIR expressions, leaving no language-service callers of the
-old binding-local expression span table.
-Heavy HIR will next move resolution tables, body
-facts, language-service queries, and bytecode lowering away from body-level
-syntax reconstruction. MIR will then add an internal `vela_mir`
+old binding-local expression span table. `BindingMap` no longer carries a
+parallel expression span table or span-resolution API; expression source
+origins are owned by `HirBody`/`ModuleGraph`, while binding maps retain
+`HirExprId`-keyed resolution facts. The bytecode compiler now receives HIR body
+origins for its current syntax payloads and resolves local/declaration facts
+through HIR expression identity rather than `BindingMap` span scans.
+Heavy HIR will next move remaining body facts, language-service queries, and
+bytecode lowering away from body-level syntax reconstruction. MIR will then add
+an internal `vela_mir`
 execution-shape layer for CFG, typed operations, guards, liveness, bytecode
 lowering, and future M22 Cranelift input. M20 cache-family audit and measured
 close-out may continue in parallel, but new broad lowering architecture work

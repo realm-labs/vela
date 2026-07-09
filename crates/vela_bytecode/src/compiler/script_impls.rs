@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use vela_def::MethodId;
 use vela_hir::binding::BindingMap;
+use vela_hir::body::HirBody;
 use vela_hir::ids::ModuleId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
 use vela_hir::type_hint::{FunctionSignature, ImplMetadata, ImplMetadataKind, TraitShape};
@@ -21,6 +22,7 @@ pub(super) struct ScriptImplMethod<'ast> {
     pub(super) body: CompilerBodyPayload<'ast>,
     pub(super) signature: &'ast FunctionSignature,
     pub(super) bindings: &'ast BindingMap,
+    pub(super) hir_bodies: Vec<&'ast HirBody>,
 }
 
 struct MethodBodyPayload<'ast> {
@@ -176,6 +178,7 @@ fn collect_methods<'ast>(
                 body: payload.body.clone(),
                 signature: &method_metadata.signature,
                 bindings,
+                hir_bodies: graph.bodies().collect(),
             })
         })
         .collect::<Vec<_>>();
@@ -228,6 +231,7 @@ fn collect_default_methods<'ast>(
                 body: payload.body.clone(),
                 signature: &method_metadata.signature,
                 bindings,
+                hir_bodies: graph.bodies().collect(),
             })
         })
         .collect()

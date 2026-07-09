@@ -165,7 +165,9 @@ fn core_language_fixture_resolves() {
     );
     let main_bindings = graph.bindings(main.id).expect("main bindings should exist");
     assert!(
-        main_bindings.expression_count() > 40,
+        graph
+            .body(main_bindings.body())
+            .is_some_and(|body| body.expressions.len() > 40),
         "fixture should resolve a meaningful expression surface"
     );
 }

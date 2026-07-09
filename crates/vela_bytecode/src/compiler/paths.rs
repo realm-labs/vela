@@ -26,13 +26,13 @@ impl Compiler<'_, '_> {
         span: Span,
         name: &str,
     ) -> CompileResult<Register> {
-        if let Some(BindingResolution::Local(local)) = self.bindings.resolution_at_span(span)
+        if let Some(BindingResolution::Local(local)) = self.binding_resolution_at_span(span)
             && let Some(register) = self.hir_locals.get(local).copied()
         {
             return Ok(register);
         }
         if let Some(BindingResolution::Declaration(declaration)) =
-            self.bindings.resolution_at_span(span)
+            self.binding_resolution_at_span(span)
             && let Some(global) = self.facts.global_symbols.get(declaration).cloned()
         {
             let dst = self.alloc_register()?;
@@ -54,7 +54,7 @@ impl Compiler<'_, '_> {
     }
 
     pub(super) fn const_value_at_span(&self, span: Span) -> Option<Constant> {
-        let BindingResolution::Declaration(declaration) = self.bindings.resolution_at_span(span)?
+        let BindingResolution::Declaration(declaration) = self.binding_resolution_at_span(span)?
         else {
             return None;
         };
@@ -72,7 +72,7 @@ impl Compiler<'_, '_> {
     }
 
     pub(super) fn script_type_for_path_root(&self, span: Span, root: &str) -> Option<String> {
-        match self.bindings.resolution_at_span(span) {
+        match self.binding_resolution_at_span(span) {
             Some(BindingResolution::Local(local)) => self.script_types.local(*local),
             Some(BindingResolution::Declaration(declaration)) => {
                 self.facts.global_type_symbols.get(declaration).cloned()
@@ -190,7 +190,7 @@ impl Compiler<'_, '_> {
         root: &str,
         field: &str,
     ) -> Option<usize> {
-        let fact = match self.bindings.resolution_at_span(span) {
+        let fact = match self.binding_resolution_at_span(span) {
             Some(BindingResolution::Local(local)) => self.script_types.local_fact(*local),
             _ => self.script_types.name_fact(root),
         }?;

@@ -1,6 +1,15 @@
 use super::*;
 use crate::body::{HirBodyOwner, HirBodyRoot, HirScopeKind};
 
+fn hir_resolution_for_span<'a>(
+    graph: &ModuleGraph,
+    bindings: &'a BindingMap,
+    span: Span,
+) -> Option<&'a BindingResolution> {
+    let expression = graph.expression_at_span(span)?;
+    bindings.resolution(expression)
+}
+
 #[test]
 fn function_bindings_resolve_params_and_locals_with_expression_ids() {
     let mut graph = ModuleGraph::new();
@@ -34,7 +43,11 @@ fn main(player) {
         bindings.local(*next).map(|local| local.kind),
         Some(LocalBindingKind::Let)
     );
-    assert!(bindings.expression_count() >= 2);
+    assert!(
+        graph
+            .function_body(main)
+            .is_some_and(|body| body.expressions.len() >= 2)
+    );
     assert!(
         bindings
             .resolutions()
@@ -141,19 +154,27 @@ fn main(player) {
     let even_start = text.find("{ even }").expect("even capture") + "{ ".len();
     let player_start = text.find("{ player.level }").expect("player capture") + "{ ".len();
     assert_eq!(
-        bindings.resolution_at_span(Span::new(
-            SourceId::new(1),
-            even_start as u32,
-            (even_start + "even".len()) as u32
-        )),
+        hir_resolution_for_span(
+            &graph,
+            bindings,
+            Span::new(
+                SourceId::new(1),
+                even_start as u32,
+                (even_start + "even".len()) as u32
+            )
+        ),
         Some(&BindingResolution::Local(*even))
     );
     assert_eq!(
-        bindings.resolution_at_span(Span::new(
-            SourceId::new(1),
-            player_start as u32,
-            (player_start + "player".len()) as u32
-        )),
+        hir_resolution_for_span(
+            &graph,
+            bindings,
+            Span::new(
+                SourceId::new(1),
+                player_start as u32,
+                (player_start + "player".len()) as u32
+            )
+        ),
         Some(&BindingResolution::Local(*player))
     );
 }
@@ -216,19 +237,27 @@ fn main() {
         Some(*odd)
     );
     assert_eq!(
-        bindings.resolution_at_span(Span::new(
-            SourceId::new(1),
-            even_capture_start as u32,
-            (even_capture_start + "even".len()) as u32
-        )),
+        hir_resolution_for_span(
+            &graph,
+            bindings,
+            Span::new(
+                SourceId::new(1),
+                even_capture_start as u32,
+                (even_capture_start + "even".len()) as u32
+            )
+        ),
         Some(&BindingResolution::Local(*even))
     );
     assert_eq!(
-        bindings.resolution_at_span(Span::new(
-            SourceId::new(1),
-            odd_capture_start as u32,
-            (odd_capture_start + "odd".len()) as u32
-        )),
+        hir_resolution_for_span(
+            &graph,
+            bindings,
+            Span::new(
+                SourceId::new(1),
+                odd_capture_start as u32,
+                (odd_capture_start + "odd".len()) as u32
+            )
+        ),
         Some(&BindingResolution::Local(*odd))
     );
 }
@@ -286,11 +315,15 @@ fn main() {
     );
     let reward_capture_start = text.find("reward.score()").expect("reward capture");
     assert_eq!(
-        bindings.resolution_at_span(Span::new(
-            SourceId::new(1),
-            reward_capture_start as u32,
-            (reward_capture_start + "reward".len()) as u32
-        )),
+        hir_resolution_for_span(
+            &graph,
+            bindings,
+            Span::new(
+                SourceId::new(1),
+                reward_capture_start as u32,
+                (reward_capture_start + "reward".len()) as u32
+            )
+        ),
         Some(&BindingResolution::Local(*reward))
     );
 }
@@ -332,19 +365,27 @@ fn binding_resolves_core_conformance_block_capture_at_vm_span() {
         Some(*reward)
     );
     assert_eq!(
-        bindings.resolution_at_span(Span::new(
-            SourceId::new(1),
-            reward_capture_start as u32,
-            (reward_capture_start + "reward".len()) as u32
-        )),
+        hir_resolution_for_span(
+            &graph,
+            bindings,
+            Span::new(
+                SourceId::new(1),
+                reward_capture_start as u32,
+                (reward_capture_start + "reward".len()) as u32
+            )
+        ),
         Some(&BindingResolution::Local(*reward))
     );
     assert_eq!(
-        bindings.resolution_at_span(Span::new(
-            SourceId::new(1),
-            lambda_capture_start as u32,
-            (lambda_capture_start + "reward".len()) as u32
-        )),
+        hir_resolution_for_span(
+            &graph,
+            bindings,
+            Span::new(
+                SourceId::new(1),
+                lambda_capture_start as u32,
+                (lambda_capture_start + "reward".len()) as u32
+            )
+        ),
         Some(&BindingResolution::Local(*reward))
     );
 }
@@ -393,19 +434,27 @@ fn main() {
     let expect_i64_start = text.find("expect_i64(default_integer)").expect("i64 call");
     let expect_i8_start = text.find("expect_i8(contextual)").expect("i8 call");
     assert_eq!(
-        bindings.resolution_at_span(Span::new(
-            SourceId::new(1),
-            expect_i64_start as u32,
-            (expect_i64_start + "expect_i64".len()) as u32
-        )),
+        hir_resolution_for_span(
+            &graph,
+            bindings,
+            Span::new(
+                SourceId::new(1),
+                expect_i64_start as u32,
+                (expect_i64_start + "expect_i64".len()) as u32
+            )
+        ),
         Some(&BindingResolution::Declaration(expect_i64))
     );
     assert_eq!(
-        bindings.resolution_at_span(Span::new(
-            SourceId::new(1),
-            expect_i8_start as u32,
-            (expect_i8_start + "expect_i8".len()) as u32
-        )),
+        hir_resolution_for_span(
+            &graph,
+            bindings,
+            Span::new(
+                SourceId::new(1),
+                expect_i8_start as u32,
+                (expect_i8_start + "expect_i8".len()) as u32
+            )
+        ),
         Some(&BindingResolution::Declaration(expect_i8))
     );
 }

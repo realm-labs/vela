@@ -10,8 +10,8 @@ impl Compiler<'_, '_> {
         span: Span,
         root: &str,
     ) -> Option<RecordShape> {
-        self.value_shapes
-            .local_at_span(self.bindings, span)
+        self.local_at_span(span)
+            .and_then(|local| self.value_shapes.local(local))
             .or_else(|| self.value_shapes.name(root))
             .and_then(|shape| shape.as_record().cloned())
             .or_else(|| {

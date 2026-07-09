@@ -10,8 +10,7 @@ use vela_syntax::ast::{
 
 use crate::binding::name_candidates::{NameCandidate, closest_name_candidate};
 use crate::binding::{
-    BindingMap, BindingResolution, ExprInfo, ImportBinding, LocalBinding, LocalBindingKind,
-    PathUsage,
+    BindingMap, BindingResolution, ImportBinding, LocalBinding, LocalBindingKind, PathUsage,
 };
 use crate::body::{
     HirBody, HirBodyOwner, HirBodyRoot, HirExprKind, HirScope, HirScopeKind, HirSourceOrigin,
@@ -99,7 +98,6 @@ struct SyntaxBindingLowerer<'a> {
     locals: BTreeMap<HirLocalId, LocalBinding>,
     locals_by_name: BTreeMap<String, Vec<HirLocalId>>,
     local_bodies: BTreeMap<HirLocalId, HirBodyId>,
-    expressions: BTreeMap<HirExprId, ExprInfo>,
     resolutions: BTreeMap<HirExprId, BindingResolution>,
     pattern_resolutions: BTreeMap<Vec<String>, BindingResolution>,
     bodies: BTreeMap<HirBodyId, HirBody>,
@@ -165,7 +163,6 @@ impl<'a> SyntaxBindingLowerer<'a> {
             locals: BTreeMap::new(),
             locals_by_name: BTreeMap::new(),
             local_bodies: BTreeMap::new(),
-            expressions: BTreeMap::new(),
             resolutions: BTreeMap::new(),
             pattern_resolutions: BTreeMap::new(),
             bodies: BTreeMap::from([(input.body_id, root_body)]),
@@ -273,7 +270,6 @@ impl<'a> SyntaxBindingLowerer<'a> {
             locals: BTreeMap::new(),
             locals_by_name: BTreeMap::new(),
             local_bodies: BTreeMap::new(),
-            expressions: BTreeMap::new(),
             resolutions: BTreeMap::new(),
             pattern_resolutions: BTreeMap::new(),
             bodies: BTreeMap::from([(input.body_id, root_body)]),
@@ -292,7 +288,6 @@ impl<'a> SyntaxBindingLowerer<'a> {
                 body: self.root_body,
                 locals: self.locals,
                 locals_by_name: self.locals_by_name,
-                expressions: self.expressions,
                 resolutions: self.resolutions,
                 pattern_resolutions: self.pattern_resolutions,
             },

@@ -35,7 +35,8 @@ use vela_common::{GlobalSlot, HostMethodId, HostTypeId, SourceId, Span};
 use vela_def::{DefPath, FieldId, MethodId, TypeId};
 use vela_hir::attributes::derived_traits;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBindingKind};
-use vela_hir::ids::{HirDeclId, HirLocalId};
+use vela_hir::body::HirBody;
+use vela_hir::ids::{HirDeclId, HirExprId, HirLocalId};
 #[cfg(test)]
 use vela_hir::module_graph::ModulePath;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModuleSource};
@@ -171,9 +172,10 @@ fn compile_function_source_inner<'registry>(
         options: options.clone(),
         registry,
     };
-    let (payload, signature, bindings) = semantic.function(function_name).ok_or_else(|| {
-        CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
-    })?;
+    let (payload, signature, bindings, hir_bodies) =
+        semantic.function(function_name).ok_or_else(|| {
+            CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
+        })?;
 
     verify_code_object(
         Compiler::new_with_param_defaults(
@@ -181,7 +183,10 @@ fn compile_function_source_inner<'registry>(
             payload.body,
             payload.param_defaults,
             signature,
-            bindings,
+            CompilerHirContext {
+                bindings,
+                bodies: hir_bodies,
+            },
             facts,
         )?
         .compile()?,
@@ -264,7 +269,7 @@ fn compile_program_source_inner<'registry>(
     program.set_global_layout(global_names(&facts.global_symbols));
 
     for name in &script_functions {
-        let (payload, signature, bindings) = semantic
+        let (payload, signature, bindings, hir_bodies) = semantic
             .function(name)
             .expect("HIR function declarations come from parsed function items");
         program.insert_function(
@@ -273,7 +278,10 @@ fn compile_program_source_inner<'registry>(
                 payload.body,
                 payload.param_defaults,
                 signature,
-                bindings,
+                CompilerHirContext {
+                    bindings,
+                    bodies: hir_bodies,
+                },
                 facts.clone(),
             )?
             .compile()?,
@@ -352,7 +360,7 @@ fn compile_module_sources_inner<'registry>(
     program.set_global_layout(global_names(&facts.global_symbols));
 
     for declaration in script_functions {
-        let (payload, signature, bindings) = semantic
+        let (payload, signature, bindings, hir_bodies) = semantic
             .function(declaration)
             .expect("HIR function declaration comes from parsed function item");
         let code_name = facts
@@ -366,7 +374,10 @@ fn compile_module_sources_inner<'registry>(
                 payload.body,
                 payload.param_defaults,
                 signature,
-                bindings,
+                CompilerHirContext {
+                    bindings,
+                    bodies: hir_bodies,
+                },
                 facts.clone(),
             )?
             .compile()?,
@@ -451,7 +462,10 @@ fn insert_script_impl_methods(
                 method.default_values.clone(),
                 method.signature,
                 method.body,
-                method.bindings,
+                CompilerHirContext {
+                    bindings: method.bindings,
+                    bodies: method.hir_bodies,
+                },
                 &method.target_type,
                 facts.clone(),
             )?
@@ -709,12 +723,18 @@ struct Compiler<'ast, 'registry> {
     value_types: ValueTypeFlow,
     value_shapes: ValueShapeFlow,
     bindings: &'ast BindingMap,
+    hir_bodies: Vec<&'ast HirBody>,
     next_register: u16,
     param_defaults: Vec<Option<ParamDefaultValue>>,
     return_type: Option<RuntimeTypeFact>,
     body: CompilerBodyPayload<'ast>,
     facts: CompilerFacts<'registry>,
     loop_stack: Vec<LoopContext>,
+}
+
+struct CompilerHirContext<'ast> {
+    bindings: &'ast BindingMap,
+    bodies: Vec<&'ast HirBody>,
 }
 
 impl<'ast, 'registry> Compiler<'ast, 'registry> {
@@ -736,10 +756,10 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         body: CompilerBodyPayload<'ast>,
         param_defaults: Vec<Option<ParamDefaultValue>>,
         signature: &FunctionSignature,
-        bindings: &'ast BindingMap,
+        hir: CompilerHirContext<'ast>,
         facts: CompilerFacts<'registry>,
     ) -> CompileResult<Self> {
-        Self::new_body(code_name, param_defaults, signature, body, bindings, facts)
+        Self::new_body(code_name, param_defaults, signature, body, hir, facts)
     }
 
     fn new_body(
@@ -747,9 +767,10 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         param_defaults: Vec<Option<ParamDefaultValue>>,
         signature: &FunctionSignature,
         body: CompilerBodyPayload<'ast>,
-        bindings: &'ast BindingMap,
+        hir: CompilerHirContext<'ast>,
         facts: CompilerFacts<'registry>,
     ) -> CompileResult<Self> {
+        let bindings = hir.bindings;
         let param_count = u16::try_from(signature.params.len())
             .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;
         let param_names = signature
@@ -833,6 +854,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             value_types,
             value_shapes,
             bindings,
+            hir_bodies: hir.bodies,
             next_register: param_count,
             param_defaults,
             return_type,
@@ -847,12 +869,11 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         param_defaults: Vec<Option<ParamDefaultValue>>,
         signature: &FunctionSignature,
         body: CompilerBodyPayload<'ast>,
-        bindings: &'ast BindingMap,
+        hir: CompilerHirContext<'ast>,
         receiver_type: &str,
         facts: CompilerFacts<'registry>,
     ) -> CompileResult<Self> {
-        let mut compiler =
-            Self::new_body(code_name, param_defaults, signature, body, bindings, facts)?;
+        let mut compiler = Self::new_body(code_name, param_defaults, signature, body, hir, facts)?;
         compiler
             .script_types
             .set_name("self", Some(receiver_type.to_owned()));
@@ -865,9 +886,10 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         params: &[LambdaParam],
         body: CompilerBodyPayload<'ast>,
         captures: &[LambdaCapture],
-        bindings: &'ast BindingMap,
+        hir: CompilerHirContext<'ast>,
         facts: CompilerFacts<'registry>,
     ) -> CompileResult<Self> {
+        let bindings = hir.bindings;
         let capture_count = u16::try_from(captures.len())
             .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;
         let param_count = u16::try_from(params.len())
@@ -974,6 +996,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             value_types,
             value_shapes,
             bindings,
+            hir_bodies: hir.bodies,
             next_register: capture_count
                 .checked_add(param_count)
                 .ok_or_else(|| CompileError::new(CompileErrorKind::RegisterOverflow))?,
@@ -995,6 +1018,28 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         }
         self.code.register_count = self.next_register;
         Ok(self.code)
+    }
+
+    fn expression_at_span(&self, span: Span) -> Option<HirExprId> {
+        self.hir_bodies
+            .iter()
+            .flat_map(|body| body.expressions.values())
+            .find_map(|expression| (expression.origin.span == span).then_some(expression.id))
+    }
+
+    pub(in crate::compiler) fn binding_resolution_at_span(
+        &self,
+        span: Span,
+    ) -> Option<&BindingResolution> {
+        let expression = self.expression_at_span(span)?;
+        self.bindings.resolution(expression)
+    }
+
+    pub(in crate::compiler) fn local_at_span(&self, span: Span) -> Option<HirLocalId> {
+        let BindingResolution::Local(local) = self.binding_resolution_at_span(span)? else {
+            return None;
+        };
+        Some(*local)
     }
 
     fn compile_param_defaults(&mut self) -> CompileResult<()> {
@@ -1024,7 +1069,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn script_function_call_at_span(&self, callee_span: Span) -> Option<(HirDeclId, String)> {
         let Some(BindingResolution::Declaration(declaration)) =
-            self.bindings.resolution_at_span(callee_span)
+            self.binding_resolution_at_span(callee_span)
         else {
             return None;
         };
@@ -1036,7 +1081,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
     }
 
     fn local_callee_at_span(&self, callee_span: Span) -> Option<HirLocalId> {
-        let Some(BindingResolution::Local(local)) = self.bindings.resolution_at_span(callee_span)
+        let Some(BindingResolution::Local(local)) = self.binding_resolution_at_span(callee_span)
         else {
             return None;
         };
@@ -1045,7 +1090,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn type_symbol_at_span(&self, span: Span) -> Option<String> {
         let Some(BindingResolution::Declaration(declaration)) =
-            self.bindings.resolution_at_span(span)
+            self.binding_resolution_at_span(span)
         else {
             return None;
         };
@@ -1054,7 +1099,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn global_type_at_span(&self, span: Span) -> Option<String> {
         let Some(BindingResolution::Declaration(declaration)) =
-            self.bindings.resolution_at_span(span)
+            self.binding_resolution_at_span(span)
         else {
             return None;
         };

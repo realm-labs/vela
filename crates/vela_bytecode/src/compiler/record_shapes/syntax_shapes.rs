@@ -202,18 +202,27 @@ impl Compiler<'_, '_> {
         let path = expression.as_path()?;
         let local_shape = source
             .map(|source| syntax_expression_span(source, expression))
-            .and_then(|span| self.value_shapes.local_at_span(self.bindings, span))
+            .and_then(|span| {
+                self.local_at_span(span)
+                    .and_then(|local| self.value_shapes.local(local))
+            })
             .or_else(|| {
                 source
                     .map(|source| syntax_expression_span(source, expression))
-                    .and_then(|span| self.script_types.local_at_span(self.bindings, span))
+                    .and_then(|span| {
+                        self.local_at_span(span)
+                            .and_then(|local| self.script_types.local(local))
+                    })
                     .and_then(|type_name| self.record_shape_for_type(&type_name))
                     .map(ValueShape::Record)
             })
             .or_else(|| {
                 source
                     .map(|source| syntax_expression_span(source, expression))
-                    .and_then(|span| self.value_types.local_at_span(self.bindings, span))
+                    .and_then(|span| {
+                        self.local_at_span(span)
+                            .and_then(|local| self.value_types.local(local))
+                    })
                     .map(ValueShape::from_runtime_type)
             });
         if path.is_self() {

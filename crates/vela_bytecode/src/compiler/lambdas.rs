@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution};
+use vela_hir::body::HirBody;
 use vela_hir::ids::HirLocalId;
 use vela_syntax::ast::{
     AstNode, SyntaxBlock, SyntaxElseBranch, SyntaxExpression, SyntaxExpressionKind,
@@ -12,7 +13,7 @@ use crate::{Register, UnlinkedCodeObject, UnlinkedInstructionKind};
 
 use super::body_payloads::CompilerBodyPayload;
 use super::record_shapes::ValueShape;
-use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
+use super::{CompileError, CompileErrorKind, CompileResult, Compiler, CompilerHirContext};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct LambdaCapture {
@@ -60,11 +61,19 @@ impl Compiler<'_, '_> {
         let mut captures = BTreeMap::new();
         match &body {
             SyntaxLambdaBody::Expression(body) => {
-                collect_syntax_expr(self.bindings, &self.hir_locals, source, body, &mut captures);
+                collect_syntax_expr(
+                    self.bindings,
+                    &self.hir_bodies,
+                    &self.hir_locals,
+                    source,
+                    body,
+                    &mut captures,
+                );
             }
             SyntaxLambdaBody::Block(block) => {
                 collect_syntax_block(
                     self.bindings,
+                    &self.hir_bodies,
                     &self.hir_locals,
                     source,
                     block,
@@ -84,7 +93,10 @@ impl Compiler<'_, '_> {
             &params,
             self.body.clone(),
             &captures,
-            self.bindings,
+            CompilerHirContext {
+                bindings: self.bindings,
+                bodies: self.hir_bodies.clone(),
+            },
             self.facts.clone(),
         )?;
         for capture in &captures {
@@ -182,6 +194,7 @@ impl Compiler<'_, '_> {
 
 fn collect_syntax_expr(
     bindings: &BindingMap,
+    hir_bodies: &[&HirBody],
     available: &HashMap<HirLocalId, Register>,
     source: SourceId,
     expr: &SyntaxExpression,
@@ -189,39 +202,39 @@ fn collect_syntax_expr(
 ) {
     match expr.expression_kind() {
         SyntaxExpressionKind::Path => {
-            collect_syntax_path(bindings, available, source, expr, captures)
+            collect_syntax_path(bindings, hir_bodies, available, source, expr, captures)
         }
         SyntaxExpressionKind::Paren => {
             if let Some(paren) = expr.as_paren()
                 && let Some(inner) = paren.expression()
             {
-                collect_syntax_expr(bindings, available, source, &inner, captures);
+                collect_syntax_expr(bindings, hir_bodies, available, source, &inner, captures);
             }
         }
         SyntaxExpressionKind::Unary => {
             if let Some(unary) = expr.as_unary()
                 && let Some(operand) = unary.expression()
             {
-                collect_syntax_expr(bindings, available, source, &operand, captures);
+                collect_syntax_expr(bindings, hir_bodies, available, source, &operand, captures);
             }
         }
         SyntaxExpressionKind::Binary => {
             if let Some(binary) = expr.as_binary() {
                 if let Some(left) = binary.lhs() {
-                    collect_syntax_expr(bindings, available, source, &left, captures);
+                    collect_syntax_expr(bindings, hir_bodies, available, source, &left, captures);
                 }
                 if let Some(right) = binary.rhs() {
-                    collect_syntax_expr(bindings, available, source, &right, captures);
+                    collect_syntax_expr(bindings, hir_bodies, available, source, &right, captures);
                 }
             }
         }
         SyntaxExpressionKind::Assign => {
             if let Some(assign) = expr.as_assign() {
                 if let Some(target) = assign.target() {
-                    collect_syntax_expr(bindings, available, source, &target, captures);
+                    collect_syntax_expr(bindings, hir_bodies, available, source, &target, captures);
                 }
                 if let Some(value) = assign.value() {
-                    collect_syntax_expr(bindings, available, source, &value, captures);
+                    collect_syntax_expr(bindings, hir_bodies, available, source, &value, captures);
                 }
             }
         }
@@ -229,17 +242,19 @@ fn collect_syntax_expr(
             if let Some(field) = expr.as_field()
                 && let Some(receiver) = field.receiver()
             {
-                collect_syntax_expr(bindings, available, source, &receiver, captures);
+                collect_syntax_expr(bindings, hir_bodies, available, source, &receiver, captures);
             }
         }
         SyntaxExpressionKind::Call => {
             if let Some(call) = expr.as_call() {
                 if let Some(callee) = call.callee() {
-                    collect_syntax_expr(bindings, available, source, &callee, captures);
+                    collect_syntax_expr(bindings, hir_bodies, available, source, &callee, captures);
                 }
                 for argument in call.arguments() {
                     if let Some(value) = argument.expression() {
-                        collect_syntax_expr(bindings, available, source, &value, captures);
+                        collect_syntax_expr(
+                            bindings, hir_bodies, available, source, &value, captures,
+                        );
                     }
                 }
             }
@@ -247,10 +262,12 @@ fn collect_syntax_expr(
         SyntaxExpressionKind::Index => {
             if let Some(index) = expr.as_index() {
                 if let Some(receiver) = index.receiver() {
-                    collect_syntax_expr(bindings, available, source, &receiver, captures);
+                    collect_syntax_expr(
+                        bindings, hir_bodies, available, source, &receiver, captures,
+                    );
                 }
                 if let Some(value) = index.index() {
-                    collect_syntax_expr(bindings, available, source, &value, captures);
+                    collect_syntax_expr(bindings, hir_bodies, available, source, &value, captures);
                 }
             }
         }
@@ -258,20 +275,20 @@ fn collect_syntax_expr(
             if let Some(try_expr) = expr.as_try()
                 && let Some(operand) = try_expr.expression()
             {
-                collect_syntax_expr(bindings, available, source, &operand, captures);
+                collect_syntax_expr(bindings, hir_bodies, available, source, &operand, captures);
             }
         }
         SyntaxExpressionKind::Array => {
             if let Some(array) = expr.as_array() {
                 for item in array.expressions() {
-                    collect_syntax_expr(bindings, available, source, &item, captures);
+                    collect_syntax_expr(bindings, hir_bodies, available, source, &item, captures);
                 }
             }
         }
         SyntaxExpressionKind::Tuple => {
             if let Some(tuple) = expr.as_tuple() {
                 for item in tuple.expressions() {
-                    collect_syntax_expr(bindings, available, source, &item, captures);
+                    collect_syntax_expr(bindings, hir_bodies, available, source, &item, captures);
                 }
             }
         }
@@ -279,10 +296,14 @@ fn collect_syntax_expr(
             if let Some(map) = expr.as_map() {
                 for entry in map.entries() {
                     if let Some(key) = entry.key() {
-                        collect_syntax_expr(bindings, available, source, &key, captures);
+                        collect_syntax_expr(
+                            bindings, hir_bodies, available, source, &key, captures,
+                        );
                     }
                     if let Some(value) = entry.value() {
-                        collect_syntax_expr(bindings, available, source, &value, captures);
+                        collect_syntax_expr(
+                            bindings, hir_bodies, available, source, &value, captures,
+                        );
                     }
                 }
             }
@@ -291,7 +312,9 @@ fn collect_syntax_expr(
             if let Some(record) = expr.as_record() {
                 for field in record.fields() {
                     if let Some(value) = field.expression() {
-                        collect_syntax_expr(bindings, available, source, &value, captures);
+                        collect_syntax_expr(
+                            bindings, hir_bodies, available, source, &value, captures,
+                        );
                     }
                 }
             }
@@ -302,26 +325,39 @@ fn collect_syntax_expr(
             {
                 match body {
                     vela_syntax::ast::SyntaxLambdaBody::Expression(body) => {
-                        collect_syntax_expr(bindings, available, source, &body, captures);
+                        collect_syntax_expr(
+                            bindings, hir_bodies, available, source, &body, captures,
+                        );
                     }
                     vela_syntax::ast::SyntaxLambdaBody::Block(block) => {
-                        collect_syntax_block(bindings, available, source, &block, captures);
+                        collect_syntax_block(
+                            bindings, hir_bodies, available, source, &block, captures,
+                        );
                     }
                 }
             }
         }
         SyntaxExpressionKind::Block => {
             if let Some(block) = expr.as_block() {
-                collect_syntax_block(bindings, available, source, &block, captures);
+                collect_syntax_block(bindings, hir_bodies, available, source, &block, captures);
             }
         }
         SyntaxExpressionKind::If => {
             if let Some(if_expr) = expr.as_if() {
                 if let Some(condition) = if_expr.condition() {
-                    collect_syntax_expr(bindings, available, source, &condition, captures);
+                    collect_syntax_expr(
+                        bindings, hir_bodies, available, source, &condition, captures,
+                    );
                 }
                 if let Some(then_block) = if_expr.then_block() {
-                    collect_syntax_block(bindings, available, source, &then_block, captures);
+                    collect_syntax_block(
+                        bindings,
+                        hir_bodies,
+                        available,
+                        source,
+                        &then_block,
+                        captures,
+                    );
                 }
                 match if_expr.else_branch() {
                     Some(SyntaxElseBranch::If(else_if)) => {
@@ -329,6 +365,7 @@ fn collect_syntax_expr(
                         {
                             collect_syntax_expr(
                                 bindings,
+                                hir_bodies,
                                 available,
                                 source,
                                 &else_if_expr,
@@ -337,7 +374,9 @@ fn collect_syntax_expr(
                         }
                     }
                     Some(SyntaxElseBranch::Block(block)) => {
-                        collect_syntax_block(bindings, available, source, &block, captures);
+                        collect_syntax_block(
+                            bindings, hir_bodies, available, source, &block, captures,
+                        );
                     }
                     None => {}
                 }
@@ -346,14 +385,20 @@ fn collect_syntax_expr(
         SyntaxExpressionKind::Match => {
             if let Some(match_expr) = expr.as_match() {
                 if let Some(scrutinee) = match_expr.scrutinee() {
-                    collect_syntax_expr(bindings, available, source, &scrutinee, captures);
+                    collect_syntax_expr(
+                        bindings, hir_bodies, available, source, &scrutinee, captures,
+                    );
                 }
                 for arm in match_expr.arms() {
                     if let Some(guard) = arm.guard() {
-                        collect_syntax_expr(bindings, available, source, &guard, captures);
+                        collect_syntax_expr(
+                            bindings, hir_bodies, available, source, &guard, captures,
+                        );
                     }
                     if let Some(body) = arm.body_as_expression() {
-                        collect_syntax_expr(bindings, available, source, &body, captures);
+                        collect_syntax_expr(
+                            bindings, hir_bodies, available, source, &body, captures,
+                        );
                     }
                 }
             }
@@ -364,13 +409,16 @@ fn collect_syntax_expr(
 
 fn collect_syntax_path(
     bindings: &BindingMap,
+    hir_bodies: &[&HirBody],
     available: &HashMap<HirLocalId, Register>,
     source: SourceId,
     expr: &SyntaxExpression,
     captures: &mut BTreeMap<HirLocalId, LambdaCapture>,
 ) {
     let span = syntax_expr_span(source, expr);
-    let Some(BindingResolution::Local(local)) = bindings.resolution_at_span(span) else {
+    let Some(BindingResolution::Local(local)) =
+        binding_resolution_at_span(bindings, hir_bodies, span)
+    else {
         return;
     };
     let Some(register) = available.get(local).copied() else {
@@ -392,6 +440,7 @@ fn collect_syntax_path(
 
 fn collect_syntax_block(
     bindings: &BindingMap,
+    hir_bodies: &[&HirBody],
     available: &HashMap<HirLocalId, Register>,
     source: SourceId,
     block: &SyntaxBlock,
@@ -401,44 +450,74 @@ fn collect_syntax_block(
         match statement.statement_kind() {
             SyntaxStatementKind::Let => {
                 if let Some(value) = statement.as_let().and_then(|stmt| stmt.initializer()) {
-                    collect_syntax_expr(bindings, available, source, &value, captures);
+                    collect_syntax_expr(bindings, hir_bodies, available, source, &value, captures);
                 }
             }
             SyntaxStatementKind::Return => {
                 if let Some(value) = statement.as_return().and_then(|stmt| stmt.expression()) {
-                    collect_syntax_expr(bindings, available, source, &value, captures);
+                    collect_syntax_expr(bindings, hir_bodies, available, source, &value, captures);
                 }
             }
             SyntaxStatementKind::For => {
                 if let Some(for_stmt) = statement.as_for() {
                     if let Some(iterable) = for_stmt.iterable() {
-                        collect_syntax_expr(bindings, available, source, &iterable, captures);
+                        collect_syntax_expr(
+                            bindings, hir_bodies, available, source, &iterable, captures,
+                        );
                     }
                     if let Some(body) = for_stmt.body() {
-                        collect_syntax_block(bindings, available, source, &body, captures);
+                        collect_syntax_block(
+                            bindings, hir_bodies, available, source, &body, captures,
+                        );
                     }
                 }
             }
             SyntaxStatementKind::If | SyntaxStatementKind::Match => {
                 if let Some(expression) = SyntaxExpression::cast(statement.syntax().clone()) {
-                    collect_syntax_expr(bindings, available, source, &expression, captures);
+                    collect_syntax_expr(
+                        bindings,
+                        hir_bodies,
+                        available,
+                        source,
+                        &expression,
+                        captures,
+                    );
                 }
             }
             SyntaxStatementKind::Block => {
                 if let Some(block) = statement.as_block() {
-                    collect_syntax_block(bindings, available, source, &block, captures);
+                    collect_syntax_block(bindings, hir_bodies, available, source, &block, captures);
                 }
             }
             SyntaxStatementKind::Expr => {
                 if let Some(expr_stmt) = statement.as_expr()
                     && let Some(expression) = expr_stmt.expression()
                 {
-                    collect_syntax_expr(bindings, available, source, &expression, captures);
+                    collect_syntax_expr(
+                        bindings,
+                        hir_bodies,
+                        available,
+                        source,
+                        &expression,
+                        captures,
+                    );
                 }
             }
             SyntaxStatementKind::Break | SyntaxStatementKind::Continue => {}
         }
     }
+}
+
+fn binding_resolution_at_span<'a>(
+    bindings: &'a BindingMap,
+    hir_bodies: &[&HirBody],
+    span: Span,
+) -> Option<&'a BindingResolution> {
+    let expression = hir_bodies
+        .iter()
+        .flat_map(|body| body.expressions.values())
+        .find_map(|expression| (expression.origin.span == span).then_some(expression.id))?;
+    bindings.resolution(expression)
 }
 
 fn syntax_expr_span(source: SourceId, expression: &SyntaxExpression) -> Span {

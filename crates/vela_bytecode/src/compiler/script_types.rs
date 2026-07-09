@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use vela_common::{SourceId, Span};
-use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::HirLocalId;
 use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::SyntaxExpression;
@@ -38,22 +37,6 @@ impl ScriptTypeFact {
 }
 
 impl ScriptTypeFlow {
-    pub(super) fn local_at_span(&self, bindings: &BindingMap, span: Span) -> Option<String> {
-        self.local_fact_at_span(bindings, span)
-            .map(|fact| fact.type_name)
-    }
-
-    pub(super) fn local_fact_at_span(
-        &self,
-        bindings: &BindingMap,
-        span: Span,
-    ) -> Option<ScriptTypeFact> {
-        let BindingResolution::Local(local) = bindings.resolution_at_span(span)? else {
-            return None;
-        };
-        self.local_fact(*local)
-    }
-
     pub(super) fn local(&self, local: HirLocalId) -> Option<String> {
         self.local_fact(local).map(|fact| fact.type_name)
     }
@@ -195,8 +178,8 @@ impl super::Compiler<'_, '_> {
             &payload,
             &|span| self.type_symbol_at_span(span),
             &|span| {
-                self.script_types
-                    .local_fact_at_span(self.bindings, span)
+                self.local_at_span(span)
+                    .and_then(|local| self.script_types.local_fact(local))
                     .or_else(|| self.global_type_at_span(span).map(ScriptTypeFact::new))
             },
             &|name| {

@@ -195,10 +195,12 @@ impl Compiler<'_, '_> {
         path: &[String],
     ) -> Option<RuntimeTypeFact> {
         let [name] = path else {
-            return self.value_types.local_at_span(self.bindings, span);
+            return self
+                .local_at_span(span)
+                .and_then(|local| self.value_types.local(local));
         };
-        self.value_types
-            .local_at_span(self.bindings, span)
+        self.local_at_span(span)
+            .and_then(|local| self.value_types.local(local))
             .or_else(|| self.value_types.name(name))
     }
 
@@ -208,20 +210,24 @@ impl Compiler<'_, '_> {
         path: &[String],
     ) -> Option<ScriptTypeFact> {
         let [name] = path else {
-            return self.script_types.local_fact_at_span(self.bindings, span);
+            return self
+                .local_at_span(span)
+                .and_then(|local| self.script_types.local_fact(local));
         };
-        self.script_types
-            .local_fact_at_span(self.bindings, span)
+        self.local_at_span(span)
+            .and_then(|local| self.script_types.local_fact(local))
             .or_else(|| self.script_types.name_fact(name))
             .or_else(|| self.global_type_named(name).map(ScriptTypeFact::new))
     }
 
     fn value_shape_for_path(&self, span: Span, path: &[String]) -> Option<ValueShape> {
         let [name] = path else {
-            return self.value_shapes.local_at_span(self.bindings, span);
+            return self
+                .local_at_span(span)
+                .and_then(|local| self.value_shapes.local(local));
         };
-        self.value_shapes
-            .local_at_span(self.bindings, span)
+        self.local_at_span(span)
+            .and_then(|local| self.value_shapes.local(local))
             .or_else(|| self.value_shapes.name(name))
             .or_else(|| {
                 self.script_types

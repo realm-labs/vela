@@ -857,7 +857,11 @@ impl Damageable for Player {
             .as_deref(),
         Some("i64")
     );
-    assert!(bindings.expression_count() >= 3);
+    assert!(
+        graph
+            .body(bindings.body())
+            .is_some_and(|body| body.expressions.len() >= 3)
+    );
 }
 
 fn span_text(source: &str, span: Span) -> &str {

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use vela_common::{PrimitiveTag, SourceId, Span};
-use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::HirLocalId;
 use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::SyntaxKind;
@@ -222,17 +221,6 @@ pub(super) struct ValueTypeFlow {
 }
 
 impl ValueTypeFlow {
-    pub(super) fn local_at_span(
-        &self,
-        bindings: &BindingMap,
-        span: Span,
-    ) -> Option<RuntimeTypeFact> {
-        let BindingResolution::Local(local) = bindings.resolution_at_span(span)? else {
-            return None;
-        };
-        self.local(*local)
-    }
-
     pub(super) fn local(&self, local: HirLocalId) -> Option<RuntimeTypeFact> {
         self.locals.get(&local).cloned()
     }
@@ -892,7 +880,10 @@ impl super::Compiler<'_, '_> {
         static_syntax_expr_type(
             expression,
             source,
-            &|span| self.value_types.local_at_span(self.bindings, span),
+            &|span| {
+                self.local_at_span(span)
+                    .and_then(|local| self.value_types.local(local))
+            },
             &|name| self.value_types.name(name),
         )
         .unwrap_or(StaticExprType::Dynamic)
@@ -906,7 +897,10 @@ impl super::Compiler<'_, '_> {
         syntax_expression_value_type(
             expression,
             source,
-            &|span| self.value_types.local_at_span(self.bindings, span),
+            &|span| {
+                self.local_at_span(span)
+                    .and_then(|local| self.value_types.local(local))
+            },
             &|name| self.value_types.name(name),
         )
     }

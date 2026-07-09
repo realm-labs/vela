@@ -35,12 +35,6 @@ pub enum LocalBindingKind {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ExprInfo {
-    pub id: HirExprId,
-    pub span: Span,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum BindingResolution {
     Local(HirLocalId),
     Declaration(HirDeclId),
@@ -60,7 +54,6 @@ pub struct BindingMap {
     body: HirBodyId,
     pub(crate) locals: BTreeMap<HirLocalId, LocalBinding>,
     pub(crate) locals_by_name: BTreeMap<String, Vec<HirLocalId>>,
-    pub(crate) expressions: BTreeMap<HirExprId, ExprInfo>,
     pub(crate) resolutions: BTreeMap<HirExprId, BindingResolution>,
     pub(crate) pattern_resolutions: BTreeMap<Vec<String>, BindingResolution>,
 }
@@ -103,16 +96,6 @@ impl BindingMap {
     }
 
     #[must_use]
-    pub fn expression(&self, expression: HirExprId) -> Option<&ExprInfo> {
-        self.expressions.get(&expression)
-    }
-
-    #[must_use]
-    pub fn expression_count(&self) -> usize {
-        self.expressions.len()
-    }
-
-    #[must_use]
     pub fn resolution(&self, expression: HirExprId) -> Option<&BindingResolution> {
         self.resolutions.get(&expression)
     }
@@ -121,15 +104,6 @@ impl BindingMap {
         self.resolutions
             .iter()
             .map(|(expression, resolution)| (*expression, resolution))
-    }
-
-    #[must_use]
-    pub fn resolution_at_span(&self, span: Span) -> Option<&BindingResolution> {
-        let expression = self
-            .expressions
-            .iter()
-            .find_map(|(id, expression)| (expression.span == span).then_some(*id))?;
-        self.resolution(expression)
     }
 
     #[must_use]
