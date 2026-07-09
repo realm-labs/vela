@@ -18,6 +18,16 @@ use super::spans::syntax_expression_span;
 
 use super::syntax_expression_dispatch::syntax_block_expression;
 
+struct SyntaxLetBindingRecord<'a> {
+    name: String,
+    span: Span,
+    register: Register,
+    script_fact: Option<ScriptTypeFact>,
+    value_type: Option<RuntimeTypeFact>,
+    value_shape: Option<crate::compiler::record_shapes::ValueShape>,
+    hir_patterns: &'a [HirPatternId],
+}
+
 impl Compiler<'_, '_> {
     pub(super) fn compile_let_syntax_expression(
         &mut self,
@@ -25,12 +35,21 @@ impl Compiler<'_, '_> {
         name: String,
         span: Span,
         expression: &SyntaxExpression,
+        hir_patterns: &[HirPatternId],
     ) -> CompileResult<Option<bool>> {
         if let Some(block) = syntax_block_expression(expression) {
             let register = self.alloc_register()?;
             let body = self.hir_block_body_payload(source, block)?;
             let returned = self.compile_block_payload_value_to(&body, register)?;
-            self.record_syntax_let_binding(name, span, register, None, None, None);
+            self.record_syntax_let_binding(SyntaxLetBindingRecord {
+                name,
+                span,
+                register,
+                script_fact: None,
+                value_type: None,
+                value_shape: None,
+                hir_patterns,
+            });
             return Ok(Some(returned));
         }
         let Some(register) = self.compile_syntax_expression(source, expression)? else {
@@ -41,7 +60,15 @@ impl Compiler<'_, '_> {
         let value_type = self
             .syntax_value_type_for_expression(Some(source), expression)
             .or_else(|| value_shape.as_ref().and_then(|shape| shape.value_type()));
-        self.record_syntax_let_binding(name, span, register, script_fact, value_type, value_shape);
+        self.record_syntax_let_binding(SyntaxLetBindingRecord {
+            name,
+            span,
+            register,
+            script_fact,
+            value_type,
+            value_shape,
+            hir_patterns,
+        });
         Ok(Some(false))
     }
 
@@ -82,17 +109,18 @@ impl Compiler<'_, '_> {
         Ok(false)
     }
 
-    fn record_syntax_let_binding(
-        &mut self,
-        name: String,
-        span: Span,
-        register: Register,
-        script_fact: Option<ScriptTypeFact>,
-        value_type: Option<RuntimeTypeFact>,
-        value_shape: Option<crate::compiler::record_shapes::ValueShape>,
-    ) {
+    fn record_syntax_let_binding(&mut self, record: SyntaxLetBindingRecord<'_>) {
+        let SyntaxLetBindingRecord {
+            name,
+            span,
+            register,
+            script_fact,
+            value_type,
+            value_shape,
+            hir_patterns,
+        } = record;
         self.locals.insert(name.clone(), register);
-        let local_binding = self.let_local_binding_at_statement_span(&name, span);
+        let local_binding = self.let_local_binding_for_patterns(hir_patterns);
         let hir_type_hint = local_binding.as_ref().and_then(|(_, hint)| hint.as_ref());
         let hinted_script_fact = hir_type_hint.and_then(|hint| {
             let known_type_names = self.facts.known_type_names();

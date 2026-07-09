@@ -43,7 +43,7 @@ impl Compiler<'_, '_> {
                     )));
                 };
                 let span = stmt.statement_span();
-                return self.compile_let_without_initializer(name, span);
+                return self.compile_let_without_initializer(name, span, stmt.hir_patterns());
             }
             HirStmtKind::Let => {
                 let span = stmt.statement_span();
@@ -66,7 +66,13 @@ impl Compiler<'_, '_> {
                             "missing let binding name",
                         )));
                     };
-                    return self.compile_let_literal(name, span, literal, literal_span);
+                    return self.compile_let_literal(
+                        name,
+                        span,
+                        literal,
+                        literal_span,
+                        stmt.hir_patterns(),
+                    );
                 }
                 if let Some((literal, literal_span)) =
                     stmt.let_initializer_syntax_negated_literal_and_span()
@@ -76,21 +82,37 @@ impl Compiler<'_, '_> {
                             "missing let binding name",
                         )));
                     };
-                    return self.compile_let_negated_literal(name, span, literal, literal_span);
+                    return self.compile_let_negated_literal(
+                        name,
+                        span,
+                        literal,
+                        literal_span,
+                        stmt.hir_patterns(),
+                    );
                 }
                 if let Some((source, expression, _)) =
                     stmt.let_initializer_syntax_expression_and_span()
                     && let Some(name) = stmt.let_name_text()
-                    && let Some(compiled) =
-                        self.compile_let_syntax_range(name.clone(), span, source, &expression)?
+                    && let Some(compiled) = self.compile_let_syntax_range(
+                        name.clone(),
+                        span,
+                        source,
+                        &expression,
+                        stmt.hir_patterns(),
+                    )?
                 {
                     return Ok(compiled);
                 }
                 if let Some((source, expression, _)) =
                     stmt.let_initializer_syntax_expression_and_span()
                     && let Some(name) = stmt.let_name_text()
-                    && let Some(compiled) =
-                        self.compile_let_syntax_constant(source, name, span, &expression)?
+                    && let Some(compiled) = self.compile_let_syntax_constant(
+                        source,
+                        name,
+                        span,
+                        &expression,
+                        stmt.hir_patterns(),
+                    )?
                 {
                     return Ok(compiled);
                 }
@@ -102,7 +124,7 @@ impl Compiler<'_, '_> {
                             "missing let binding name",
                         )));
                     };
-                    return self.compile_let_path(name, span, path, path_span);
+                    return self.compile_let_path(name, span, path, path_span, stmt.hir_patterns());
                 }
                 if stmt.stored_let_initializer_kind() == Some(SyntaxExpressionKind::Block) {
                     let Some(name) = stmt.let_name_text() else {
@@ -117,13 +139,24 @@ impl Compiler<'_, '_> {
                             "missing let initializer block body",
                         )));
                     };
-                    return self.compile_let_syntax_block_value(name, span, source, &expression);
+                    return self.compile_let_syntax_block_value(
+                        name,
+                        span,
+                        source,
+                        &expression,
+                        stmt.hir_patterns(),
+                    );
                 }
                 if let Some((source, expression, _)) =
                     stmt.let_initializer_syntax_expression_and_span()
                     && let Some(name) = stmt.let_name_text()
-                    && let Some(compiled) =
-                        self.compile_let_syntax_expression(source, name, span, &expression)?
+                    && let Some(compiled) = self.compile_let_syntax_expression(
+                        source,
+                        name,
+                        span,
+                        &expression,
+                        stmt.hir_patterns(),
+                    )?
                 {
                     return Ok(compiled);
                 }

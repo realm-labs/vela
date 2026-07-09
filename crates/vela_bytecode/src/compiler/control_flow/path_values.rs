@@ -1,6 +1,6 @@
 use vela_common::Span;
 use vela_hir::binding::LocalBindingKind;
-use vela_hir::ids::HirExprId;
+use vela_hir::ids::{HirExprId, HirPatternId};
 use vela_syntax::ast::SyntaxExpression;
 
 use crate::{
@@ -27,8 +27,9 @@ impl Compiler<'_, '_> {
         span: Span,
         path: Vec<String>,
         path_span: Span,
+        hir_patterns: &[HirPatternId],
     ) -> CompileResult<bool> {
-        let local_binding = self.let_local_binding_at_statement_span(&name, span);
+        let local_binding = self.let_local_binding_for_patterns(hir_patterns);
         let hir_type_hint = local_binding.as_ref().and_then(|(_, hint)| hint.as_ref());
         let hinted_script_fact = hir_type_hint.and_then(|hint| {
             let known_type_names = self.facts.known_type_names();

@@ -1095,6 +1095,17 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         None
     }
 
+    pub(in crate::compiler) fn let_local_binding_for_patterns(
+        &self,
+        patterns: &[HirPatternId],
+    ) -> Option<(HirLocalId, Option<HirTypeHint>)> {
+        patterns.iter().copied().find_map(|pattern_id| {
+            let local = self.local_for_pattern(pattern_id, LocalBindingKind::Let)?;
+            let binding = self.bindings.local(local)?;
+            Some((local, binding.type_hint.clone()))
+        })
+    }
+
     pub(in crate::compiler) fn pattern_at_span(&self, span: Span) -> Option<HirPatternId> {
         for body in &self.hir_bodies {
             for pattern in body.patterns.values() {

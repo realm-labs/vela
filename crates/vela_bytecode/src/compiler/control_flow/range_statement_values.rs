@@ -1,5 +1,6 @@
 use vela_common::{SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
+use vela_hir::ids::HirPatternId;
 use vela_syntax::ast::{Literal, SyntaxExpression};
 
 use crate::compiler::body_payloads::{
@@ -32,11 +33,12 @@ impl Compiler<'_, '_> {
         span: Span,
         source: SourceId,
         expression: &SyntaxExpression,
+        hir_patterns: &[HirPatternId],
     ) -> CompileResult<Option<bool>> {
         let Some(parts) = range_parts(expression) else {
             return Ok(None);
         };
-        let local_binding = self.let_local_binding_at_statement_span(&name, span);
+        let local_binding = self.let_local_binding_for_patterns(hir_patterns);
         let hir_type_hint = local_binding.as_ref().and_then(|(_, hint)| hint.as_ref());
         let hinted_script_fact = hir_type_hint.and_then(|hint| {
             let known_type_names = self.facts.known_type_names();
