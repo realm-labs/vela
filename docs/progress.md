@@ -131,8 +131,9 @@ parameter defaults while preserving current binding/compiler behavior. Body HIR
 now also records root, block, loop, lambda, and match-arm scopes with owned
 locals, child-scope links, explicit method `self` bindings, and lambda captures
 plus body-owned unresolved-reference facts, and binding maps now carry their
-root `HirBodyId` while preserving existing binding, analysis, and
-language-service behavior.
+root `HirBodyId`. Language-service query contexts now expose the active
+`HirBody` through that root body identity while preserving existing binding,
+analysis, and language-service behavior.
 Heavy HIR will next move resolution tables, body
 facts, language-service queries, and bytecode lowering away from body-level
 syntax reconstruction. MIR will then add an internal `vela_mir`

@@ -14,6 +14,7 @@ use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
+use vela_hir::body::HirBody;
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
 use vela_hir::type_hint::HirTypeHint;
@@ -97,6 +98,7 @@ pub struct QueryContext<'a> {
     source: QuerySource<'a>,
     syntax_parse: Option<&'a SyntaxParse<SyntaxSourceFile>>,
     bindings: Option<&'a BindingMap>,
+    body: Option<&'a HirBody>,
     cursor: CursorContext,
 }
 
@@ -116,6 +118,7 @@ impl<'a> QueryContext<'a> {
             source: QuerySource::Snapshot(document),
             syntax_parse: None,
             bindings: None,
+            body: None,
             cursor,
         })
     }
@@ -130,6 +133,7 @@ impl<'a> QueryContext<'a> {
         let syntax_parse = databases.parse_db().syntax_parse(document_id);
         let cursor = cursor_context_at(source.text(), position, syntax_parse);
         let bindings = query_bindings(databases, source, cursor.replace_range().end);
+        let body = bindings.and_then(|bindings| databases.hir_db().graph().body(bindings.body()));
         Some(Self {
             document_id: document_id.clone(),
             position,
@@ -137,6 +141,7 @@ impl<'a> QueryContext<'a> {
             source: QuerySource::Database(source),
             syntax_parse,
             bindings,
+            body,
             cursor,
         })
     }
@@ -192,6 +197,11 @@ impl<'a> QueryContext<'a> {
     #[must_use]
     pub const fn bindings(&self) -> Option<&BindingMap> {
         self.bindings
+    }
+
+    #[must_use]
+    pub const fn body(&self) -> Option<&HirBody> {
+        self.body
     }
 
     pub fn local_bindings_before_cursor(&self) -> impl Iterator<Item = &LocalBinding> + '_ {
@@ -534,6 +544,7 @@ mod tests {
         assert!(context.source_record().is_none());
         assert!(context.syntax_parse().is_none());
         assert!(context.bindings().is_none());
+        assert!(context.body().is_none());
     }
 
     #[test]
@@ -568,13 +579,10 @@ mod tests {
         assert_eq!(context.identifier_text(), Some("le"));
         assert_eq!(context.source_id(), Some(SourceId::new(1)));
         assert!(context.syntax_parse().is_some());
-        assert!(
-            context
-                .bindings()
-                .expect("bindings")
-                .locals()
-                .any(|local| local.name == "player")
-        );
+        let bindings = context.bindings().expect("bindings");
+        let body = context.body().expect("hir body");
+        assert_eq!(body.id, bindings.body());
+        assert!(bindings.locals().any(|local| local.name == "player"));
         let visible_locals = context
             .local_bindings_before_cursor()
             .map(|local| local.name.as_str())
