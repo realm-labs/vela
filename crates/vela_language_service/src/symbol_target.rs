@@ -11,7 +11,7 @@ use vela_hir::{
 };
 
 use crate::{
-    LanguageServiceDatabases, QueryContext, SymbolRef, TextRange, path_calls,
+    LanguageServiceDatabases, QueryContext, SymbolRef, TextRange, hir_path_sites,
     query_context::binding_resolution_for_source_range,
     symbol_ref::{
         builtin_member_symbol, builtin_symbol, schema_member_symbol, schema_symbol,
@@ -93,8 +93,13 @@ impl SymbolTarget {
         query: &QueryContext<'_>,
     ) -> Option<(Span, SymbolRef)> {
         let source = query.source_record()?;
-        let parsed = databases.parse_db().syntax_parse(source.document_id())?;
-        for site in path_calls::path_expression_sites(parsed) {
+        for site in databases
+            .hir_db()
+            .graph()
+            .paths_in_source(source.source_id())
+            .filter(|path| hir_path_sites::is_expression_path(path.kind))
+            .filter_map(hir_path_sites::site)
+        {
             if site.segment_range != self.range {
                 continue;
             }

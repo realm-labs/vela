@@ -6,8 +6,8 @@ use super::{ActiveScope, SyntaxBindingLowerer};
 use crate::binding::BindingResolution;
 use crate::body::{
     HirBlock, HirBody, HirBodyOwner, HirCall, HirCapture, HirExpr, HirExprKind, HirField, HirParam,
-    HirPattern, HirPatternKind, HirScope, HirScopeKind, HirSourceOrigin, HirStmt, HirStmtKind,
-    HirUnresolvedReference,
+    HirPath, HirPathKind, HirPathOwner, HirPattern, HirPatternKind, HirScope, HirScopeKind,
+    HirSourceOrigin, HirStmt, HirStmtKind, HirUnresolvedReference,
 };
 use crate::ids::{
     HirBlockId, HirBodyId, HirCaptureId, HirExprId, HirLocalId, HirParamId, HirPatternId,
@@ -154,6 +154,31 @@ impl<'a> SyntaxBindingLowerer<'a> {
         );
     }
 
+    pub(super) fn record_expression_path(
+        &mut self,
+        expression: HirExprId,
+        kind: HirPathKind,
+        path: Vec<String>,
+        origin_span: Span,
+        segment_span: Span,
+    ) {
+        let body = self.current_body();
+        let source = self.source;
+        self.body_mut(body).paths.push(HirPath {
+            owner: HirPathOwner::Expression(expression),
+            kind,
+            path,
+            origin: HirSourceOrigin {
+                source,
+                span: origin_span,
+            },
+            segment_origin: HirSourceOrigin {
+                source,
+                span: segment_span,
+            },
+        });
+    }
+
     pub(super) fn next_pattern(&mut self, span: Span, kind: HirPatternKind) -> HirPatternId {
         let id = HirPatternId::new(*self.next_pattern_id);
         *self.next_pattern_id = self.next_pattern_id.saturating_add(1);
@@ -174,6 +199,30 @@ impl<'a> SyntaxBindingLowerer<'a> {
             statement.patterns.push(id);
         }
         id
+    }
+
+    pub(super) fn record_pattern_path(
+        &mut self,
+        pattern: HirPatternId,
+        path: Vec<String>,
+        origin_span: Span,
+        segment_span: Span,
+    ) {
+        let body = self.current_body();
+        let source = self.source;
+        self.body_mut(body).paths.push(HirPath {
+            owner: HirPathOwner::Pattern(pattern),
+            kind: HirPathKind::Pattern,
+            path,
+            origin: HirSourceOrigin {
+                source,
+                span: origin_span,
+            },
+            segment_origin: HirSourceOrigin {
+                source,
+                span: segment_span,
+            },
+        });
     }
 
     pub(super) fn next_param(&mut self, local: HirLocalId, span: Span) -> HirParamId {

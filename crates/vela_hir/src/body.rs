@@ -51,6 +51,7 @@ pub struct HirBody {
     pub expressions: BTreeMap<HirExprId, HirExpr>,
     pub calls: BTreeMap<HirExprId, HirCall>,
     pub fields: BTreeMap<HirExprId, HirField>,
+    pub paths: Vec<HirPath>,
     pub patterns: BTreeMap<HirPatternId, HirPattern>,
     pub locals: Vec<HirLocalId>,
     pub self_binding: Option<HirLocalId>,
@@ -75,6 +76,7 @@ impl HirBody {
             expressions: BTreeMap::new(),
             calls: BTreeMap::new(),
             fields: BTreeMap::new(),
+            paths: Vec::new(),
             patterns: BTreeMap::new(),
             locals: Vec::new(),
             self_binding: None,
@@ -168,6 +170,29 @@ pub struct HirField {
     pub receiver: HirExprId,
     pub name: String,
     pub member_origin: HirSourceOrigin,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct HirPath {
+    pub owner: HirPathOwner,
+    pub kind: HirPathKind,
+    pub path: Vec<String>,
+    pub origin: HirSourceOrigin,
+    pub segment_origin: HirSourceOrigin,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum HirPathOwner {
+    Expression(HirExprId),
+    Pattern(HirPatternId),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum HirPathKind {
+    Value,
+    Callee,
+    Constructor,
+    Pattern,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

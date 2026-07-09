@@ -1,13 +1,14 @@
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
+use vela_hir::body::HirPathKind;
 use vela_hir::module_graph::{Declaration, DeclarationKind, ImportResolution, ModuleGraph};
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
     SymbolRef, TextRange,
     callable_context::callable_facts,
-    path_calls,
+    hir_path_sites,
     query_context::binding_resolution_for_source_range,
     symbol_ref::{
         qualified_source_declaration_name, source_enum_variant_symbol,
@@ -253,9 +254,12 @@ impl LanguageServiceDatabases {
         query: &QueryContext<'_>,
         target: &SymbolTarget,
     ) -> Option<Definition> {
-        let parsed = query.syntax_parse()?;
-        let call_site = path_calls::path_call_sites(parsed)
-            .into_iter()
+        let source = query.source_id()?;
+        let call_site = self
+            .hir_db()
+            .graph()
+            .paths_in_source_by_kind(source, HirPathKind::Callee)
+            .filter_map(hir_path_sites::site)
             .find(|site| site.segment_range == target.range())?;
         let callee = call_site.path.join("::");
         callable_facts(self, &callee)

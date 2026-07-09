@@ -2,13 +2,13 @@ use std::collections::BTreeMap;
 
 use vela_common::SourceId;
 use vela_hir::binding::{BindingMap, BindingResolution};
+use vela_hir::body::HirPathKind;
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
-use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::{SyntaxSourceFile, Visibility};
+use vela_syntax::ast::Visibility;
 
 use crate::{
-    DocumentId, LanguageServiceDatabases, TextRange, path_calls,
+    DocumentId, LanguageServiceDatabases, TextRange, hir_path_sites,
     query_context::binding_resolution_for_source_range,
 };
 
@@ -29,6 +29,7 @@ struct EnumVariantUseEditSite<'a> {
     text: &'a str,
     path: &'a [String],
     range: TextRange,
+    is_pattern: bool,
 }
 
 pub(super) fn rename_enum_variant(
@@ -82,23 +83,27 @@ pub(super) fn enum_variant_declaration_target(
 pub(super) fn enum_variant_use_target(
     graph: &ModuleGraph,
     bindings: &BindingMap,
-    parsed: Option<&SyntaxParse<SyntaxSourceFile>>,
+    source_id: SourceId,
     _text: &str,
     token: &RenameToken,
 ) -> Option<EnumVariantRenameTarget> {
-    if let Some(parsed) = parsed {
-        for site in path_calls::path_expression_sites(parsed) {
-            if site.segment_range == token.range {
-                return enum_variant_use_target_for_path(graph, bindings, &site.path, token);
-            }
-        }
-        for site in path_calls::pattern_path_sites(parsed) {
-            if site.segment_range == token.range {
-                return enum_variant_use_target_for_path(graph, bindings, &site.path, token);
-            }
-        }
-    }
-    None
+    graph
+        .paths_in_source(source_id)
+        .filter(|path| {
+            hir_path_sites::is_expression_path(path.kind) || path.kind == HirPathKind::Pattern
+        })
+        .find_map(|path| {
+            let site = hir_path_sites::site(path)?;
+            (site.segment_range == token.range).then(|| {
+                enum_variant_use_target_for_path(
+                    graph,
+                    bindings,
+                    site.path,
+                    token,
+                    path.kind == HirPathKind::Pattern,
+                )
+            })?
+        })
 }
 
 fn enum_variant_use_target_for_path(
@@ -106,9 +111,11 @@ fn enum_variant_use_target_for_path(
     bindings: &BindingMap,
     path: &[String],
     token: &RenameToken,
+    is_pattern: bool,
 ) -> Option<EnumVariantRenameTarget> {
     let variant = path.last()?;
-    if let Some(BindingResolution::Declaration(owner)) = bindings.pattern_resolution(path)
+    if is_pattern
+        && let Some(BindingResolution::Declaration(owner)) = bindings.pattern_resolution(path)
         && can_rename_enum_variant(graph, *owner, variant)
     {
         return Some(EnumVariantRenameTarget {
@@ -168,51 +175,34 @@ fn push_enum_variant_use_edits(
     let graph = databases.hir_db().graph();
     for source in databases.source_db().records().values() {
         let text = source.text();
-        if let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) {
-            for site in path_calls::path_expression_sites(parsed) {
-                if site
-                    .path
-                    .last()
-                    .is_none_or(|segment| segment != &target.variant)
-                {
-                    continue;
-                }
-                push_enum_variant_use_edit_for_path(
-                    graph,
-                    EnumVariantUseEditSite {
-                        source,
-                        text,
-                        path: &site.path,
-                        range: site.segment_range,
-                    },
-                    target,
-                    new_name,
-                    edits_by_document,
-                );
+        for path in graph.paths_in_source(source.source_id()) {
+            if !(hir_path_sites::is_expression_path(path.kind) || path.kind == HirPathKind::Pattern)
+            {
+                continue;
             }
-        }
-        if let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) {
-            for site in path_calls::pattern_path_sites(parsed) {
-                if site
-                    .path
-                    .last()
-                    .is_none_or(|segment| segment != &target.variant)
-                {
-                    continue;
-                }
-                push_enum_variant_use_edit_for_path(
-                    graph,
-                    EnumVariantUseEditSite {
-                        source,
-                        text,
-                        path: &site.path,
-                        range: site.segment_range,
-                    },
-                    target,
-                    new_name,
-                    edits_by_document,
-                );
+            let Some(site) = hir_path_sites::site(path) else {
+                continue;
+            };
+            if site
+                .path
+                .last()
+                .is_none_or(|segment| segment != &target.variant)
+            {
+                continue;
             }
+            push_enum_variant_use_edit_for_path(
+                graph,
+                EnumVariantUseEditSite {
+                    source,
+                    text,
+                    path: site.path,
+                    range: site.segment_range,
+                    is_pattern: path.kind == HirPathKind::Pattern,
+                },
+                target,
+                new_name,
+                edits_by_document,
+            );
         }
     }
 }
@@ -239,6 +229,7 @@ fn push_enum_variant_use_edit_for_path(
             bindings,
             site.path,
             &RenameToken { range: site.range },
+            site.is_pattern,
         )
         .is_some_and(|found| found.owner == target.owner && found.variant == target.variant)
         {

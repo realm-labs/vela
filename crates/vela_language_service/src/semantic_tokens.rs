@@ -428,7 +428,7 @@ struct SemanticTokenClassification {
 struct SemanticClassificationContext<'a> {
     facts: &'a AnalysisFacts,
     receiver_facts: &'a BTreeMap<(usize, usize), TypeFact>,
-    path_calls: &'a BTreeMap<(usize, usize), Vec<String>>,
+    call_paths: &'a BTreeMap<(usize, usize), Vec<String>>,
     path_expressions: &'a BTreeMap<(usize, usize), Vec<String>>,
     pattern_paths: &'a BTreeMap<(usize, usize), Vec<String>>,
     inferred_local_facts: &'a BTreeMap<HirLocalId, TypeFact>,
@@ -440,7 +440,7 @@ struct SemanticClassificationInput<'a> {
     text: &'a str,
     tokens: &'a [Token],
     receiver_facts: &'a BTreeMap<(usize, usize), TypeFact>,
-    path_calls: &'a BTreeMap<(usize, usize), Vec<String>>,
+    call_paths: &'a BTreeMap<(usize, usize), Vec<String>>,
     path_expressions: &'a BTreeMap<(usize, usize), Vec<String>>,
     pattern_paths: &'a BTreeMap<(usize, usize), Vec<String>>,
     inferred_local_facts: &'a BTreeMap<HirLocalId, TypeFact>,
@@ -470,11 +470,7 @@ impl LanguageServiceDatabases {
                 expression_facts::collect(self.hir_db().graph(), parsed, self.schema_db().facts())
             })
             .unwrap_or_default();
-        let path_sites = self
-            .parse_db()
-            .syntax_parse(document_id)
-            .map(path_sites::collect)
-            .unwrap_or_default();
+        let path_sites = path_sites::collect(self.hir_db().graph(), source.source_id());
         let inferred_local_facts = self
             .parse_db()
             .syntax_parse(document_id)
@@ -487,7 +483,7 @@ impl LanguageServiceDatabases {
             text: source.text(),
             tokens: &lexed.tokens,
             receiver_facts: &receiver_facts,
-            path_calls: &path_sites.calls,
+            call_paths: &path_sites.calls,
             path_expressions: &path_sites.expressions,
             pattern_paths: &path_sites.patterns,
             inferred_local_facts: &inferred_local_facts,
@@ -575,7 +571,7 @@ impl LanguageServiceDatabases {
         let context = SemanticClassificationContext {
             facts: &facts,
             receiver_facts: input.receiver_facts,
-            path_calls: input.path_calls,
+            call_paths: input.call_paths,
             path_expressions: input.path_expressions,
             pattern_paths: input.pattern_paths,
             inferred_local_facts: input.inferred_local_facts,
@@ -665,7 +661,7 @@ impl LanguageServiceDatabases {
                     return Some(classification);
                 }
                 if let Some(classification) =
-                    function_call_classification(schema, context.path_calls, range)
+                    function_call_classification(schema, context.call_paths, range)
                 {
                     return Some(classification);
                 }
@@ -728,10 +724,10 @@ fn resolved_identifier_classification(
 
 fn function_call_classification(
     schema: &RegistryFacts,
-    path_calls: &BTreeMap<(usize, usize), Vec<String>>,
+    call_paths: &BTreeMap<(usize, usize), Vec<String>>,
     range: TextRange,
 ) -> Option<SemanticTokenClassification> {
-    let path = path_calls.get(&(range.start, range.end))?;
+    let path = call_paths.get(&(range.start, range.end))?;
     let qualified = path.join("::");
     if schema.function_fact(&qualified).is_some() {
         return Some(SemanticTokenClassification::new(

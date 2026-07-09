@@ -3,11 +3,12 @@ use std::collections::BTreeMap;
 use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::{SourceId, Span};
 use vela_hir::body::HirField;
+use vela_hir::body::HirPathKind;
 use vela_hir::module_graph::{Declaration, ModuleGraph};
 use vela_hir::type_hint::HirTypeHint;
 
 use crate::{
-    DocumentId, LanguageServiceDatabases, QueryContext, TextRange, path_calls, query_context,
+    DocumentId, LanguageServiceDatabases, QueryContext, TextRange, hir_path_sites, query_context,
 };
 
 use super::{
@@ -317,22 +318,19 @@ pub(super) fn schema_function_use_target(
     _text: &str,
     token: &RenameToken,
 ) -> Option<SchemaFunctionRenameTarget> {
-    if let Some(source) = query.source_record()
-        && let Some(parsed) = databases.parse_db().syntax_parse(source.document_id())
-    {
-        for site in path_calls::path_call_sites(parsed) {
-            if site.segment_range != token.range {
-                continue;
-            }
-            let callee = site.path.join("::");
-            let target = schema_function_target_for_name(databases, &callee)?;
-            return source_backed_schema_function_target(databases, target).map(|mut target| {
-                target.token = token.clone();
-                target
-            });
-        }
-    }
-    None
+    let source = query.source_record()?;
+    databases
+        .hir_db()
+        .graph()
+        .paths_in_source_by_kind(source.source_id(), HirPathKind::Callee)
+        .filter_map(hir_path_sites::site)
+        .find(|site| site.segment_range == token.range)
+        .and_then(|site| schema_function_target_for_name(databases, &site.path.join("::")))
+        .and_then(|target| source_backed_schema_function_target(databases, target))
+        .map(|mut target| {
+            target.token = token.clone();
+            target
+        })
 }
 
 pub(super) fn schema_variant_use_target(
@@ -341,21 +339,20 @@ pub(super) fn schema_variant_use_target(
     _text: &str,
     token: &RenameToken,
 ) -> Option<SchemaVariantRenameTarget> {
-    if let Some(source) = query.source_record()
-        && let Some(parsed) = databases.parse_db().syntax_parse(source.document_id())
-    {
-        for site in path_calls::path_expression_sites(parsed) {
-            if site.segment_range != token.range {
-                continue;
-            }
-            let target = schema_variant_target_for_path(databases, &site.path)?;
-            return source_backed_schema_variant_target(databases, target).map(|mut target| {
-                target.token = token.clone();
-                target
-            });
-        }
-    }
-    None
+    let source = query.source_record()?;
+    databases
+        .hir_db()
+        .graph()
+        .paths_in_source(source.source_id())
+        .filter(|path| hir_path_sites::is_expression_path(path.kind))
+        .filter_map(hir_path_sites::site)
+        .find(|site| site.segment_range == token.range)
+        .and_then(|site| schema_variant_target_for_path(databases, site.path))
+        .and_then(|target| source_backed_schema_variant_target(databases, target))
+        .map(|mut target| {
+            target.token = token.clone();
+            target
+        })
 }
 
 pub(super) fn schema_member_target_for_receiver_fact(
@@ -494,12 +491,13 @@ fn push_schema_function_use_edits(
     edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
 ) {
     let target_segment = schema_function_segment(&target.name);
+    let graph = databases.hir_db().graph();
     for source in databases.source_db().records().values() {
         let text = source.text();
-        let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) else {
-            continue;
-        };
-        for site in path_calls::path_call_sites(parsed) {
+        for site in graph
+            .paths_in_source_by_kind(source.source_id(), HirPathKind::Callee)
+            .filter_map(hir_path_sites::site)
+        {
             if site
                 .path
                 .last()
@@ -530,51 +528,36 @@ fn push_schema_variant_use_edits(
 ) {
     for source in databases.source_db().records().values() {
         let text = source.text();
-        if let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) {
-            for site in path_calls::path_expression_sites(parsed) {
-                if site
-                    .path
-                    .last()
-                    .is_none_or(|segment| segment != &target.variant)
-                {
-                    continue;
-                }
-                push_schema_variant_use_edit_for_path(
-                    databases,
-                    SchemaVariantUseEditSite {
-                        source,
-                        text,
-                        path: &site.path,
-                        range: site.segment_range,
-                    },
-                    target,
-                    new_name,
-                    edits_by_document,
-                );
+        for path in databases
+            .hir_db()
+            .graph()
+            .paths_in_source(source.source_id())
+            .filter(|path| {
+                hir_path_sites::is_expression_path(path.kind) || path.kind == HirPathKind::Pattern
+            })
+        {
+            let Some(site) = hir_path_sites::site(path) else {
+                continue;
+            };
+            if site
+                .path
+                .last()
+                .is_none_or(|segment| segment != &target.variant)
+            {
+                continue;
             }
-        }
-        if let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) {
-            for site in path_calls::pattern_path_sites(parsed) {
-                if site
-                    .path
-                    .last()
-                    .is_none_or(|segment| segment != &target.variant)
-                {
-                    continue;
-                }
-                push_schema_variant_use_edit_for_path(
-                    databases,
-                    SchemaVariantUseEditSite {
-                        source,
-                        text,
-                        path: &site.path,
-                        range: site.segment_range,
-                    },
-                    target,
-                    new_name,
-                    edits_by_document,
-                );
-            }
+            push_schema_variant_use_edit_for_path(
+                databases,
+                SchemaVariantUseEditSite {
+                    source,
+                    text,
+                    path: site.path,
+                    range: site.segment_range,
+                },
+                target,
+                new_name,
+                edits_by_document,
+            );
         }
     }
 }

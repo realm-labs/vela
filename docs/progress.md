@@ -178,7 +178,11 @@ and member-call return type-definition queries resolve receiver/member ranges
 from HIR call facts. Source-backed schema field and method reference/rename
 use scans also read HIR field/member-call facts instead of parsed member-access
 sites. Unknown field and method diagnostics now use HIR field/member-call
-facts, and the old parsed member-access site helper has been removed.
+facts, and the old parsed member-access site helper has been removed. HIR
+bodies now also own path facts for expression paths, call callees, record
+constructors, and pattern paths; language-service definition, references,
+rename, and semantic-token variant/function path queries use those facts
+instead of the deleted parsed path-call helper.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

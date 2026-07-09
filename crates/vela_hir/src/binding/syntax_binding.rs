@@ -1,23 +1,24 @@
 use std::collections::BTreeMap;
 
 use vela_common::{Diagnostic, SourceId, Span};
-use vela_syntax::TextRange;
 use vela_syntax::ast::{
     AstNode, SyntaxArgument, SyntaxBlock, SyntaxElseBranch, SyntaxExpression, SyntaxExpressionKind,
     SyntaxMapEntry, SyntaxParam, SyntaxPattern, SyntaxPatternKind, SyntaxRecordExprField,
     SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind, SyntaxTypeHint,
 };
+use vela_syntax::{SyntaxKind, SyntaxToken, TextRange};
 
 use crate::binding::name_candidates::{NameCandidate, closest_name_candidate};
 use crate::binding::{
     BindingMap, BindingResolution, ImportBinding, LocalBinding, LocalBindingKind, PathUsage,
 };
 use crate::body::{
-    HirBody, HirBodyOwner, HirBodyRoot, HirExprKind, HirPatternKind, HirScope, HirScopeKind,
-    HirSourceOrigin,
+    HirBody, HirBodyOwner, HirBodyRoot, HirExprKind, HirPathKind, HirPatternKind, HirScope,
+    HirScopeKind, HirSourceOrigin,
 };
 use crate::ids::{
-    HirBlockId, HirBodyId, HirCaptureId, HirDeclId, HirExprId, HirLocalId, HirScopeId, HirStmtId,
+    HirBlockId, HirBodyId, HirCaptureId, HirDeclId, HirExprId, HirLocalId, HirPatternId,
+    HirScopeId, HirStmtId,
 };
 use crate::type_hint::{HirTypeHint, ParamHint};
 
@@ -444,9 +445,19 @@ impl<'a> SyntaxBindingLowerer<'a> {
                     self.bind_self_path(id);
                     return id;
                 }
+                let path_segments = path.path_segments();
+                if let Some(segment_span) = last_segment_span(self.source, path.path_tokens()) {
+                    self.record_expression_path(
+                        id,
+                        hir_path_kind_for_usage(usage),
+                        path_segments.clone(),
+                        span_for(self.source, path.syntax().text_range()),
+                        segment_span,
+                    );
+                }
                 self.bind_path(
                     id,
-                    &path.path_segments(),
+                    &path_segments,
                     span_for(self.source, path.syntax().text_range()),
                     usage,
                 );
@@ -545,7 +556,17 @@ impl<'a> SyntaxBindingLowerer<'a> {
             }
             SyntaxExpressionKind::Record => {
                 if let Some(expr) = expr.as_record() {
-                    self.bind_constructor_path(id, &expr.path_segments());
+                    let path_segments = expr.path_segments();
+                    if let Some(segment_span) = last_segment_span(self.source, expr.path_tokens()) {
+                        self.record_expression_path(
+                            id,
+                            HirPathKind::Constructor,
+                            path_segments.clone(),
+                            span_for(self.source, expr.syntax().text_range()),
+                            segment_span,
+                        );
+                    }
+                    self.bind_constructor_path(id, &path_segments);
                     for field in expr.fields() {
                         self.bind_record_field(&field);
                     }
@@ -742,6 +763,12 @@ impl<'a> SyntaxBindingLowerer<'a> {
                 let Some(pattern) = pattern.as_tuple_variant() else {
                     return;
                 };
+                self.record_pattern_path_from_tokens(
+                    pattern_id,
+                    pattern.path_segments(),
+                    span_for(self.source, pattern.syntax().text_range()),
+                    pattern.path_tokens(),
+                );
                 self.bind_pattern_path(&pattern.path_segments());
                 for field in pattern.patterns() {
                     self.bind_pattern(&field, span, kind);
@@ -751,13 +778,26 @@ impl<'a> SyntaxBindingLowerer<'a> {
                 let Some(pattern) = pattern.as_record_variant() else {
                     return;
                 };
+                self.record_pattern_path_from_tokens(
+                    pattern_id,
+                    pattern.path_segments(),
+                    span_for(self.source, pattern.syntax().text_range()),
+                    pattern.path_tokens(),
+                );
                 self.bind_pattern_path(&pattern.path_segments());
                 for field in pattern.fields() {
                     self.bind_record_pattern_field(&field, span, kind);
                 }
             }
             Some(SyntaxPatternKind::Path) => {
-                self.bind_pattern_path(&pattern.path_segments());
+                let path_segments = pattern.path_segments();
+                self.record_pattern_path_from_tokens(
+                    pattern_id,
+                    path_segments.clone(),
+                    span_for(self.source, pattern.syntax().text_range()),
+                    pattern.path_tokens(),
+                );
+                self.bind_pattern_path(&path_segments);
             }
             Some(SyntaxPatternKind::Wildcard | SyntaxPatternKind::Literal) | None => {}
         }
@@ -854,6 +894,21 @@ impl<'a> SyntaxBindingLowerer<'a> {
     fn bind_pattern_path(&mut self, path: &[String]) {
         if let Some(resolution) = self.resolve_constructor_path(path) {
             self.pattern_resolutions.insert(path.to_vec(), resolution);
+        }
+    }
+
+    fn record_pattern_path_from_tokens(
+        &mut self,
+        pattern: HirPatternId,
+        path: Vec<String>,
+        origin_span: Span,
+        tokens: Vec<SyntaxToken>,
+    ) {
+        if path.is_empty() {
+            return;
+        }
+        if let Some(segment_span) = last_segment_span(self.source, tokens) {
+            self.record_pattern_path(pattern, path, origin_span, segment_span);
         }
     }
 
@@ -1145,4 +1200,19 @@ fn hir_type_hint(source: SourceId, hint: &SyntaxTypeHint) -> HirTypeHint {
 
 fn span_for(source: SourceId, range: TextRange) -> Span {
     Span::new(source, range.start().into(), range.end().into())
+}
+
+fn last_segment_span(source: SourceId, tokens: Vec<SyntaxToken>) -> Option<Span> {
+    tokens
+        .into_iter()
+        .rev()
+        .find(|token| token.kind() == SyntaxKind::Ident)
+        .map(|token| span_for(source, token.text_range()))
+}
+
+const fn hir_path_kind_for_usage(usage: PathUsage) -> HirPathKind {
+    match usage {
+        PathUsage::Callee => HirPathKind::Callee,
+        PathUsage::Value | PathUsage::FieldBase | PathUsage::AssignmentTarget => HirPathKind::Value,
+    }
 }

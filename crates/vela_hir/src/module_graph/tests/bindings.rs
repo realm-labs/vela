@@ -1,5 +1,5 @@
 use super::*;
-use crate::body::{HirBodyOwner, HirBodyRoot, HirExprKind, HirScopeKind, HirStmtKind};
+use crate::body::{HirBodyOwner, HirBodyRoot, HirExprKind, HirPathKind, HirScopeKind, HirStmtKind};
 
 fn hir_resolution_for_span<'a>(
     graph: &ModuleGraph,
@@ -1069,6 +1069,65 @@ fn main(player) {
             (source_text.find("player.level").expect("receiver") + "player".len()) as u32,
         ))
     );
+}
+
+#[test]
+fn function_bodies_record_source_path_facts() {
+    let mut graph = ModuleGraph::new();
+    let source_text = r#"
+enum QuestState {
+    Active { count: i64 }
+    Done
+}
+fn grant_reward() { return 1; }
+fn main(states) {
+    grant_reward()
+    let next = QuestState::Active { count: 1 }
+    match next {
+        QuestState::Active { count } => count
+        QuestState::Done => 0
+    }
+}
+"#;
+    graph.add_source(source(1, "game::main", source_text));
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+
+    let path_facts = graph
+        .paths_in_source(SourceId::new(1))
+        .map(|path| {
+            (
+                path.kind,
+                path.path.clone(),
+                path.segment_origin.span.start,
+                path.segment_origin.span.end,
+            )
+        })
+        .collect::<Vec<_>>();
+
+    assert!(path_facts.iter().any(|(kind, path, start, end)| {
+        *kind == HirPathKind::Callee
+            && path == &["grant_reward"]
+            && source_text.get(
+                usize::try_from(*start).expect("path start fits usize")
+                    ..usize::try_from(*end).expect("path end fits usize"),
+            ) == Some("grant_reward")
+    }));
+    assert!(path_facts.iter().any(|(kind, path, start, end)| {
+        *kind == HirPathKind::Constructor
+            && path == &["QuestState", "Active"]
+            && source_text.get(
+                usize::try_from(*start).expect("path start fits usize")
+                    ..usize::try_from(*end).expect("path end fits usize"),
+            ) == Some("Active")
+    }));
+    assert!(path_facts.iter().any(|(kind, path, start, end)| {
+        *kind == HirPathKind::Pattern
+            && path == &["QuestState", "Done"]
+            && source_text.get(
+                usize::try_from(*start).expect("path start fits usize")
+                    ..usize::try_from(*end).expect("path end fits usize"),
+            ) == Some("Done")
+    }));
 }
 
 #[test]

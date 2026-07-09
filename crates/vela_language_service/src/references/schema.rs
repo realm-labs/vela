@@ -1,10 +1,11 @@
 use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::SourceId;
+use vela_hir::body::HirPathKind;
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::SyntaxSourceFile;
 
 use crate::{
-    LanguageServiceDatabases, SymbolRef, TextRange, path_calls, query_context,
+    LanguageServiceDatabases, SymbolRef, TextRange, hir_path_sites, query_context,
     symbol_ref::{
         schema_member_symbol as shared_schema_member_symbol,
         schema_variant_symbol as shared_schema_variant_symbol,
@@ -239,22 +240,20 @@ pub(super) fn schema_field_declaration_target(
 
 pub(super) fn schema_variant_use_target(
     databases: &LanguageServiceDatabases,
-    parsed: Option<&SyntaxParse<SyntaxSourceFile>>,
+    source_id: SourceId,
     _text: &str,
     token: &ReferenceToken,
 ) -> Option<SchemaVariantReferenceTarget> {
-    let parsed = parsed?;
-    for site in path_calls::path_expression_sites(parsed) {
-        if site.segment_range == token.range {
-            return schema_variant_target_for_path(databases.schema_db().facts(), &site.path);
-        }
-    }
-    for site in path_calls::pattern_path_sites(parsed) {
-        if site.segment_range == token.range {
-            return schema_variant_target_for_path(databases.schema_db().facts(), &site.path);
-        }
-    }
-    None
+    databases
+        .hir_db()
+        .graph()
+        .paths_in_source(source_id)
+        .filter(|path| {
+            hir_path_sites::is_expression_path(path.kind) || path.kind == HirPathKind::Pattern
+        })
+        .filter_map(hir_path_sites::site)
+        .find(|site| site.segment_range == token.range)
+        .and_then(|site| schema_variant_target_for_path(databases.schema_db().facts(), site.path))
 }
 
 pub(super) fn schema_record_field_use_target(
@@ -510,47 +509,33 @@ fn schema_variant_use_references_for_source(
 ) -> Vec<Reference> {
     let mut references = Vec::new();
     let text = source.text();
-    if let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) {
-        for site in path_calls::path_expression_sites(parsed) {
-            if site
-                .path
-                .last()
-                .is_none_or(|segment| segment != &target.variant)
-            {
-                continue;
-            }
-            if schema_variant_target_for_path(schema, &site.path).as_ref() != Some(target) {
-                continue;
-            }
-            let range = site.segment_range;
-            references.push(Reference {
-                document_id: source.document_id().clone(),
-                range: diagnostic_range(text, range),
-                kind: schema_variant_reference_kind(text, range),
-                symbol: schema_variant_symbol(target),
-            });
+    for path in databases
+        .hir_db()
+        .graph()
+        .paths_in_source(source.source_id())
+        .filter(|path| {
+            hir_path_sites::is_expression_path(path.kind) || path.kind == HirPathKind::Pattern
+        })
+    {
+        let Some(site) = hir_path_sites::site(path) else {
+            continue;
+        };
+        if site
+            .path
+            .last()
+            .is_none_or(|segment| segment != &target.variant)
+        {
+            continue;
         }
-    }
-    if let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) {
-        for site in path_calls::pattern_path_sites(parsed) {
-            if site
-                .path
-                .last()
-                .is_none_or(|segment| segment != &target.variant)
-            {
-                continue;
-            }
-            if schema_variant_target_for_path(schema, &site.path).as_ref() != Some(target) {
-                continue;
-            }
-            let range = site.segment_range;
-            references.push(Reference {
-                document_id: source.document_id().clone(),
-                range: diagnostic_range(text, range),
-                kind: schema_variant_reference_kind(text, range),
-                symbol: schema_variant_symbol(target),
-            });
+        if schema_variant_target_for_path(schema, site.path).as_ref() != Some(target) {
+            continue;
         }
+        references.push(Reference {
+            document_id: source.document_id().clone(),
+            range: diagnostic_range(text, site.segment_range),
+            kind: schema_variant_reference_kind(text, site.segment_range),
+            symbol: schema_variant_symbol(target),
+        });
     }
     references
 }

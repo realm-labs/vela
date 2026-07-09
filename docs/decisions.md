@@ -44,6 +44,15 @@ decision history lives in
 
 ## Active Architecture Decisions
 
+### Heavy HIR Path Facts
+
+Body-owned HIR path facts are the semantic source for expression paths, call
+callee paths, record constructor paths, and pattern paths. Language-service,
+analysis, bytecode, and future MIR work should consume those HIR facts instead
+of reconstructing path sites from parsed body syntax. Syntax may still provide
+source origins during HIR lowering and editor cursor recovery, but feature
+producers should not keep parallel parsed path-site helpers.
+
 ### Tuple, Unit, And Null Direction
 
 Future breaking value-model cleanup should add Rust-like tuple syntax and

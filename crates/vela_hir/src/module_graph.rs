@@ -22,7 +22,7 @@ use names::{closest_name, import_binding_name};
 use self::body_binding::FunctionBodySource;
 use crate::attributes::HirAttribute;
 use crate::binding::BindingMap;
-use crate::body::{HirBody, HirField};
+use crate::body::{HirBody, HirField, HirPath, HirPathKind};
 use crate::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId, ModuleId};
 #[cfg(test)]
 use crate::type_hint::HirTypeHint;
@@ -543,6 +543,22 @@ impl ModuleGraph {
                     .filter(|field| field.member_origin.source == source)
             })
         })
+    }
+
+    pub fn paths_in_source(&self, source: SourceId) -> impl Iterator<Item = &HirPath> + '_ {
+        self.bodies
+            .values()
+            .flat_map(|body| body.paths.iter())
+            .filter(move |path| path.segment_origin.source == source)
+    }
+
+    pub fn paths_in_source_by_kind(
+        &self,
+        source: SourceId,
+        kind: HirPathKind,
+    ) -> impl Iterator<Item = &HirPath> + '_ {
+        self.paths_in_source(source)
+            .filter(move |path| path.kind == kind)
     }
 
     #[must_use]
