@@ -268,7 +268,10 @@ payloads. Ordinary let-pattern lowering now consumes the HIR pattern IDs owned
 by the statement payload for local registration instead of re-identifying those
 locals from binding-token spans. Parameter-default payload construction now
 uses each `HirParam::default_body` to select the default expression, deleting
-the old function-signature default-span matching helper.
+the old function-signature default-span matching helper. Simple ordinary lets
+now pass statement-owned `HirPatternId`s through every bytecode fast path, and
+parameter-default block lets resolve through HIR pattern origins instead of the
+deleted name-plus-statement-span binding helper.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

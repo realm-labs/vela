@@ -35,7 +35,7 @@ use vela_common::{GlobalSlot, HostMethodId, HostTypeId, SourceId, Span};
 use vela_def::{DefPath, FieldId, MethodId, TypeId};
 use vela_hir::attributes::derived_traits;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBindingKind};
-use vela_hir::body::{HirBody, HirPatternKind, HirStmtKind};
+use vela_hir::body::{HirBody, HirPatternKind};
 use vela_hir::ids::{HirDeclId, HirExprId, HirLocalId, HirPatternId};
 #[cfg(test)]
 use vela_hir::module_graph::ModulePath;
@@ -1068,33 +1068,6 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         Some(*local)
     }
 
-    pub(in crate::compiler) fn let_local_binding_at_statement_span(
-        &self,
-        name: &str,
-        span: Span,
-    ) -> Option<(HirLocalId, Option<HirTypeHint>)> {
-        for body in &self.hir_bodies {
-            for statement in body.statements.values() {
-                if statement.kind != HirStmtKind::Let || statement.origin.span != span {
-                    continue;
-                }
-                for pattern in &statement.patterns {
-                    let Some(local) = body.patterns.get(pattern).and_then(|pattern| pattern.local)
-                    else {
-                        continue;
-                    };
-                    let Some(binding) = self.bindings.local(local) else {
-                        continue;
-                    };
-                    if binding.kind == LocalBindingKind::Let && binding.name == name {
-                        return Some((local, binding.type_hint.clone()));
-                    }
-                }
-            }
-        }
-        None
-    }
-
     pub(in crate::compiler) fn let_local_binding_for_patterns(
         &self,
         patterns: &[HirPatternId],
@@ -1104,6 +1077,16 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             let binding = self.bindings.local(local)?;
             Some((local, binding.type_hint.clone()))
         })
+    }
+
+    pub(in crate::compiler) fn let_local_binding_for_pattern_span(
+        &self,
+        span: Span,
+    ) -> Option<(HirLocalId, Option<HirTypeHint>)> {
+        let pattern = self.pattern_at_span(span)?;
+        let local = self.local_for_pattern(pattern, LocalBindingKind::Let)?;
+        let binding = self.bindings.local(local)?;
+        Some((local, binding.type_hint.clone()))
     }
 
     pub(in crate::compiler) fn pattern_at_span(&self, span: Span) -> Option<HirPatternId> {
