@@ -13,10 +13,11 @@ use crate::binding::{
     BindingMap, BindingResolution, ImportBinding, LocalBinding, LocalBindingKind, PathUsage,
 };
 use crate::body::{
-    HirBody, HirBodyOwner, HirBodyRoot, HirExprKind, HirScope, HirScopeKind, HirSourceOrigin,
+    HirBody, HirBodyOwner, HirBodyRoot, HirExprKind, HirPatternKind, HirScope, HirScopeKind,
+    HirSourceOrigin,
 };
 use crate::ids::{
-    HirBlockId, HirBodyId, HirCaptureId, HirDeclId, HirExprId, HirLocalId, HirScopeId,
+    HirBlockId, HirBodyId, HirCaptureId, HirDeclId, HirExprId, HirLocalId, HirScopeId, HirStmtId,
 };
 use crate::type_hint::{HirTypeHint, ParamHint};
 
@@ -95,6 +96,7 @@ struct SyntaxBindingLowerer<'a> {
     scopes: Vec<ActiveScope>,
     body_stack: Vec<HirBodyId>,
     block_stack: Vec<HirBlockId>,
+    pattern_statement_stack: Vec<HirStmtId>,
     locals: BTreeMap<HirLocalId, LocalBinding>,
     locals_by_name: BTreeMap<String, Vec<HirLocalId>>,
     local_bodies: BTreeMap<HirLocalId, HirBodyId>,
@@ -160,6 +162,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
             }],
             body_stack: vec![input.body_id],
             block_stack: Vec::new(),
+            pattern_statement_stack: Vec::new(),
             locals: BTreeMap::new(),
             locals_by_name: BTreeMap::new(),
             local_bodies: BTreeMap::new(),
@@ -267,6 +270,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
             }],
             body_stack: vec![input.body_id],
             block_stack: Vec::new(),
+            pattern_statement_stack: Vec::new(),
             locals: BTreeMap::new(),
             locals_by_name: BTreeMap::new(),
             local_bodies: BTreeMap::new(),
@@ -315,10 +319,14 @@ impl<'a> SyntaxBindingLowerer<'a> {
     }
 
     fn bind_statement(&mut self, statement: &SyntaxStatement) {
-        self.next_stmt(
+        let statement_id = self.next_stmt(
             span_for(self.source, statement.syntax().text_range()),
             statement.statement_kind().into(),
         );
+        self.bind_statement_inner(statement, statement_id);
+    }
+
+    fn bind_statement_inner(&mut self, statement: &SyntaxStatement, statement_id: HirStmtId) {
         match statement.statement_kind() {
             SyntaxStatementKind::Let => {
                 let Some(statement) = statement.as_let() else {
@@ -328,21 +336,37 @@ impl<'a> SyntaxBindingLowerer<'a> {
                     self.bind_expr(&value, PathUsage::Value);
                 }
                 if let Some(pattern) = statement.pattern() {
+                    self.pattern_statement_stack.push(statement_id);
                     self.bind_pattern(
                         &pattern,
                         span_for(self.source, statement.syntax().text_range()),
                         LocalBindingKind::Let,
                     );
-                } else if let Some(name) = statement.name_text() {
-                    self.declare_local(
-                        name,
+                    self.pattern_statement_stack.pop();
+                } else if let Some(name_token) = statement.name_token() {
+                    self.pattern_statement_stack.push(statement_id);
+                    let pattern_id = self.next_pattern(
+                        span_for(self.source, name_token.text_range()),
+                        HirPatternKind::Binding,
+                    );
+                    self.pattern_statement_stack.pop();
+                    let local = self.declare_local_with_scope(
+                        name_token.text().to_owned(),
                         LocalBindingKind::Let,
                         statement
                             .type_hint()
                             .as_ref()
                             .map(|hint| hir_type_hint(self.source, hint)),
-                        span_for(self.source, statement.syntax().text_range()),
+                        span_for(self.source, name_token.text_range()),
+                        Some(span_for(self.source, statement.syntax().text_range())),
                     );
+                    if let Some(pattern) = self
+                        .body_mut(self.current_body())
+                        .patterns
+                        .get_mut(&pattern_id)
+                    {
+                        pattern.local = Some(local);
+                    }
                 }
             }
             SyntaxStatementKind::Return => {
@@ -363,6 +387,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
                 let span = span_for(self.source, statement.syntax().text_range());
                 self.push_scope(HirScopeKind::For, span);
                 let patterns = statement.patterns().collect::<Vec<_>>();
+                self.pattern_statement_stack.push(statement_id);
                 if let [pattern] = patterns.as_slice() {
                     self.bind_pattern(pattern, span, LocalBindingKind::For);
                 } else {
@@ -373,6 +398,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
                         self.bind_pattern(pattern, span, LocalBindingKind::For);
                     }
                 }
+                self.pattern_statement_stack.pop();
                 if let Some(body) = statement.body() {
                     self.bind_block_without_new_scope(&body);
                 }
@@ -736,12 +762,23 @@ impl<'a> SyntaxBindingLowerer<'a> {
         if let Some(pattern) = field.pattern() {
             self.bind_pattern(&pattern, span, kind);
         } else if let Some(name_token) = field.shorthand_binding_name_token() {
-            self.declare_pattern_local(
+            let pattern_id = self.next_pattern(
+                span_for(self.source, name_token.text_range()),
+                HirPatternKind::Binding,
+            );
+            let local = self.declare_pattern_local(
                 name_token.text().to_owned(),
                 kind,
                 span_for(self.source, name_token.text_range()),
                 span,
             );
+            if let Some(pattern) = self
+                .body_mut(self.current_body())
+                .patterns
+                .get_mut(&pattern_id)
+            {
+                pattern.local = Some(local);
+            }
         }
     }
 

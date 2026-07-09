@@ -37,14 +37,7 @@ impl Compiler<'_, '_> {
         let Some(parts) = range_parts(expression) else {
             return Ok(None);
         };
-        let local_binding = self
-            .bindings
-            .local_named_at(&name, LocalBindingKind::Let, span)
-            .and_then(|local| {
-                self.bindings
-                    .local(local)
-                    .map(|binding| (local, binding.type_hint.clone()))
-            });
+        let local_binding = self.let_local_binding_at_statement_span(&name, span);
         let hir_type_hint = local_binding.as_ref().and_then(|(_, hint)| hint.as_ref());
         let hinted_script_fact = hir_type_hint.and_then(|hint| {
             let known_type_names = self.facts.known_type_names();

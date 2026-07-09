@@ -93,19 +93,16 @@ impl Compiler<'_, '_> {
         value_shape: Option<crate::compiler::record_shapes::ValueShape>,
     ) {
         self.locals.insert(name.clone(), register);
-        let local_binding = self
-            .bindings
-            .local_named_at(&name, LocalBindingKind::Let, span);
-        let hir_type_hint = local_binding
-            .and_then(|local| self.bindings.local(local))
-            .and_then(|binding| binding.type_hint.as_ref());
+        let local_binding = self.let_local_binding_at_statement_span(&name, span);
+        let hir_type_hint = local_binding.as_ref().and_then(|(_, hint)| hint.as_ref());
         let hinted_script_fact = hir_type_hint.and_then(|hint| {
             let known_type_names = self.facts.known_type_names();
             type_hint_script_type(hint, known_type_names.iter()).map(ScriptTypeFact::new)
         });
         let script_fact = merge_type_hint_and_value_fact(hinted_script_fact, script_fact);
         let value_type = hir_type_hint.and_then(type_hint_value_type).or(value_type);
-        if let Some(local) = local_binding {
+        let local = local_binding.as_ref().map(|(local, _)| *local);
+        if let Some(local) = local {
             self.hir_locals.insert(local, register);
             self.script_types
                 .set_local_fact(local, name.clone(), script_fact);
@@ -121,7 +118,7 @@ impl Compiler<'_, '_> {
             name,
             register,
             frame_slot_kind(LocalBindingKind::Let),
-            local_binding,
+            local,
             Some(span),
         );
     }

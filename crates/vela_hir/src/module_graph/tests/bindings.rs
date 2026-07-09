@@ -1,5 +1,5 @@
 use super::*;
-use crate::body::{HirBodyOwner, HirBodyRoot, HirScopeKind};
+use crate::body::{HirBodyOwner, HirBodyRoot, HirScopeKind, HirStmtKind};
 
 fn hir_resolution_for_span<'a>(
     graph: &ModuleGraph,
@@ -551,6 +551,9 @@ fn grant(amount = BASE, bonus = amount + 1) {
     assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
 
     let bindings = graph.bindings(grant).expect("grant bindings");
+    let [total] = bindings.locals_named("total") else {
+        panic!("expected total local");
+    };
     let body = graph.function_body(grant).expect("grant body");
     assert_eq!(bindings.body(), body.id);
     assert_eq!(body.owner, HirBodyOwner::Declaration(grant));
@@ -559,6 +562,16 @@ fn grant(amount = BASE, bonus = amount + 1) {
     assert!(body.params.iter().all(|param| param.default_body.is_some()));
     assert_eq!(body.statements.len(), 2);
     assert!(body.expressions.len() >= 4);
+    let let_statement = body
+        .statements
+        .values()
+        .find(|statement| statement.kind == HirStmtKind::Let)
+        .expect("let statement");
+    assert!(let_statement.patterns.iter().any(|pattern| {
+        body.patterns
+            .get(pattern)
+            .is_some_and(|pattern| pattern.local == Some(*total))
+    }));
 
     for default_body in body.params.iter().filter_map(|param| param.default_body) {
         let default_body = graph.body(default_body).expect("default body");

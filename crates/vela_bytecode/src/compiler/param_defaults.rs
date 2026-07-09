@@ -316,12 +316,8 @@ impl Compiler<'_, '_> {
             return Err(param_default_block_unsupported(source, block));
         };
         let span = span_for_range(source, let_stmt.syntax().text_range());
-        let local = self
-            .bindings
-            .local_named_at(&name, LocalBindingKind::Let, span);
-        let hir_type_hint = local
-            .and_then(|local| self.bindings.local(local))
-            .and_then(|binding| binding.type_hint.as_ref());
+        let local_binding = self.let_local_binding_at_statement_span(&name, span);
+        let hir_type_hint = local_binding.as_ref().and_then(|(_, hint)| hint.as_ref());
         let hinted_value_type = hir_type_hint.and_then(type_hint_value_type);
         let register = if let Some(initializer) = let_stmt.initializer() {
             let outcome = hinted_value_type
@@ -362,6 +358,7 @@ impl Compiler<'_, '_> {
         let script_type =
             hir_type_hint.and_then(|hint| type_hint_script_type(hint, known_type_names.iter()));
         self.locals.insert(name.clone(), register);
+        let local = local_binding.as_ref().map(|(local, _)| *local);
         if let Some(local) = local {
             self.hir_locals.insert(local, register);
             self.script_types.set_local(local, &name, script_type);

@@ -97,6 +97,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
                 id,
                 origin: HirSourceOrigin { source, span },
                 kind,
+                patterns: Vec::new(),
             },
         );
         if let Some(block) = self.block_stack.last().copied()
@@ -137,6 +138,11 @@ impl<'a> SyntaxBindingLowerer<'a> {
                 local: None,
             },
         );
+        if let Some(statement) = self.pattern_statement_stack.last().copied()
+            && let Some(statement) = self.body_mut(body).statements.get_mut(&statement)
+        {
+            statement.patterns.push(id);
+        }
         id
     }
 

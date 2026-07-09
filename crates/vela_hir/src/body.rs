@@ -112,6 +112,7 @@ pub struct HirStmt {
     pub id: HirStmtId,
     pub origin: HirSourceOrigin,
     pub kind: HirStmtKind,
+    pub patterns: Vec<HirPatternId>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

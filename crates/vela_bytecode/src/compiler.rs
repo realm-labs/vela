@@ -35,7 +35,7 @@ use vela_common::{GlobalSlot, HostMethodId, HostTypeId, SourceId, Span};
 use vela_def::{DefPath, FieldId, MethodId, TypeId};
 use vela_hir::attributes::derived_traits;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBindingKind};
-use vela_hir::body::HirBody;
+use vela_hir::body::{HirBody, HirStmtKind};
 use vela_hir::ids::{HirDeclId, HirExprId, HirLocalId};
 #[cfg(test)]
 use vela_hir::module_graph::ModulePath;
@@ -1036,6 +1036,33 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             return None;
         };
         Some(*local)
+    }
+
+    pub(in crate::compiler) fn let_local_binding_at_statement_span(
+        &self,
+        name: &str,
+        span: Span,
+    ) -> Option<(HirLocalId, Option<HirTypeHint>)> {
+        for body in &self.hir_bodies {
+            for statement in body.statements.values() {
+                if statement.kind != HirStmtKind::Let || statement.origin.span != span {
+                    continue;
+                }
+                for pattern in &statement.patterns {
+                    let Some(local) = body.patterns.get(pattern).and_then(|pattern| pattern.local)
+                    else {
+                        continue;
+                    };
+                    let Some(binding) = self.bindings.local(local) else {
+                        continue;
+                    };
+                    if binding.kind == LocalBindingKind::Let && binding.name == name {
+                        return Some((local, binding.type_hint.clone()));
+                    }
+                }
+            }
+        }
+        None
     }
 
     fn compile_param_defaults(&mut self) -> CompileResult<()> {

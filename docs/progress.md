@@ -155,7 +155,10 @@ through HIR expression identity rather than `BindingMap` span scans. HIR lambda
 bodies now record transitive capture chains for nested lambdas, and bytecode
 lambda capture and parameter setup reads `HirBody::captures` and
 `HirBody::params` instead of walking lambda body syntax or re-finding
-parameter locals by name/span.
+parameter locals by name/span. HIR statements now own their binding pattern IDs
+for simple lets and shorthand pattern bindings, and bytecode ordinary-let local
+setup resolves locals through `HirStmt::patterns` instead of `BindingMap`
+name/span scans.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`
