@@ -15,11 +15,11 @@ use crate::binding::{
 };
 use crate::body::{
     HirBlock, HirBody, HirBodyOwner, HirBodyRoot, HirCapture, HirExpr, HirExprKind, HirParam,
-    HirPattern, HirPatternKind, HirSourceOrigin, HirStmt, HirStmtKind,
+    HirPattern, HirPatternKind, HirScope, HirScopeKind, HirSourceOrigin, HirStmt, HirStmtKind,
 };
 use crate::ids::{
     HirBlockId, HirBodyId, HirCaptureId, HirDeclId, HirExprId, HirLocalId, HirParamId,
-    HirPatternId, HirStmtId,
+    HirPatternId, HirScopeId, HirStmtId,
 };
 use crate::type_hint::{HirTypeHint, ParamHint};
 
@@ -38,6 +38,7 @@ pub(crate) struct SyntaxFunctionBindingInput<'a> {
     pub next_local_id: &'a mut u32,
     pub next_body_id: &'a mut u32,
     pub next_block_id: &'a mut u32,
+    pub next_scope_id: &'a mut u32,
     pub next_stmt_id: &'a mut u32,
     pub next_pattern_id: &'a mut u32,
     pub next_param_id: &'a mut u32,
@@ -60,11 +61,12 @@ struct SyntaxBindingLowerer<'a> {
     next_local_id: &'a mut u32,
     next_body_id: &'a mut u32,
     next_block_id: &'a mut u32,
+    next_scope_id: &'a mut u32,
     next_stmt_id: &'a mut u32,
     next_pattern_id: &'a mut u32,
     next_param_id: &'a mut u32,
     next_capture_id: &'a mut u32,
-    scopes: Vec<BTreeMap<String, HirLocalId>>,
+    scopes: Vec<ActiveScope>,
     body_stack: Vec<HirBodyId>,
     block_stack: Vec<HirBlockId>,
     locals: BTreeMap<HirLocalId, LocalBinding>,
@@ -78,9 +80,39 @@ struct SyntaxBindingLowerer<'a> {
     diagnostics: Vec<Diagnostic>,
 }
 
+struct ActiveScope {
+    id: HirScopeId,
+    locals: BTreeMap<String, HirLocalId>,
+}
+
 impl<'a> SyntaxBindingLowerer<'a> {
     fn new(input: SyntaxFunctionBindingInput<'a>) -> Self {
         let body_span = span_for(input.source, input.body.syntax().text_range());
+        let root_scope = HirScopeId::new(*input.next_scope_id);
+        *input.next_scope_id = input.next_scope_id.saturating_add(1);
+        let mut root_body = HirBody::new(
+            input.body_id,
+            input.owner,
+            HirSourceOrigin {
+                source: input.source,
+                span: body_span,
+            },
+        );
+        root_body.root_scope = Some(root_scope);
+        root_body.scopes.insert(
+            root_scope,
+            HirScope {
+                id: root_scope,
+                parent: None,
+                origin: HirSourceOrigin {
+                    source: input.source,
+                    span: body_span,
+                },
+                kind: HirScopeKind::Body,
+                locals: Vec::new(),
+                children: Vec::new(),
+            },
+        );
         let mut lowerer = Self {
             source: input.source,
             declaration: input.declaration,
@@ -91,11 +123,15 @@ impl<'a> SyntaxBindingLowerer<'a> {
             next_local_id: input.next_local_id,
             next_body_id: input.next_body_id,
             next_block_id: input.next_block_id,
+            next_scope_id: input.next_scope_id,
             next_stmt_id: input.next_stmt_id,
             next_pattern_id: input.next_pattern_id,
             next_param_id: input.next_param_id,
             next_capture_id: input.next_capture_id,
-            scopes: vec![BTreeMap::new()],
+            scopes: vec![ActiveScope {
+                id: root_scope,
+                locals: BTreeMap::new(),
+            }],
             body_stack: vec![input.body_id],
             block_stack: Vec::new(),
             locals: BTreeMap::new(),
@@ -104,17 +140,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
             expressions: BTreeMap::new(),
             resolutions: BTreeMap::new(),
             pattern_resolutions: BTreeMap::new(),
-            bodies: BTreeMap::from([(
-                input.body_id,
-                HirBody::new(
-                    input.body_id,
-                    input.owner,
-                    HirSourceOrigin {
-                        source: input.source,
-                        span: body_span,
-                    },
-                ),
-            )]),
+            bodies: BTreeMap::from([(input.body_id, root_body)]),
             capture_keys: BTreeMap::new(),
             diagnostics: Vec::new(),
         };
@@ -183,7 +209,10 @@ impl<'a> SyntaxBindingLowerer<'a> {
     }
 
     fn bind_block(&mut self, block: &SyntaxBlock) {
-        self.push_scope();
+        self.push_scope(
+            HirScopeKind::Block,
+            span_for(self.source, block.syntax().text_range()),
+        );
         let block_id = self.next_block(span_for(self.source, block.syntax().text_range()));
         self.block_stack.push(block_id);
         self.bind_block_without_new_scope(block);
@@ -243,8 +272,8 @@ impl<'a> SyntaxBindingLowerer<'a> {
                 if let Some(iterable) = statement.iterable() {
                     self.bind_expr(&iterable, PathUsage::Value);
                 }
-                self.push_scope();
                 let span = span_for(self.source, statement.syntax().text_range());
+                self.push_scope(HirScopeKind::For, span);
                 let patterns = statement.patterns().collect::<Vec<_>>();
                 if let [pattern] = patterns.as_slice() {
                     self.bind_pattern(pattern, span, LocalBindingKind::For);
@@ -407,7 +436,6 @@ impl<'a> SyntaxBindingLowerer<'a> {
                         },
                         span_for(self.source, expr.syntax().text_range()),
                     );
-                    self.push_scope();
                     self.with_body(lambda_body, |lowerer| {
                         if let Some(params) = expr.param_list() {
                             for param in params.params() {
@@ -444,7 +472,6 @@ impl<'a> SyntaxBindingLowerer<'a> {
                             }
                         }
                     });
-                    self.pop_scope();
                 }
             }
             SyntaxExpressionKind::Block => {
@@ -523,7 +550,10 @@ impl<'a> SyntaxBindingLowerer<'a> {
             self.bind_expr(&scrutinee, PathUsage::Value);
         }
         for arm in match_expr.arms() {
-            self.push_scope();
+            self.push_scope(
+                HirScopeKind::MatchArm,
+                span_for(self.source, arm.syntax().text_range()),
+            );
             if let Some(pattern) = arm.pattern() {
                 let span = arm
                     .body()
@@ -694,7 +724,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
 
     fn resolve_name(&self, name: &str) -> Option<BindingResolution> {
         for scope in self.scopes.iter().rev() {
-            if let Some(local) = scope.get(name) {
+            if let Some(local) = scope.locals.get(name) {
                 return Some(BindingResolution::Local(*local));
             }
         }
@@ -765,7 +795,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
             .iter()
             .rev()
             .flat_map(|scope| {
-                scope.iter().filter_map(|(name, local)| {
+                scope.locals.iter().filter_map(|(name, local)| {
                     self.locals
                         .get(local)
                         .map(|binding| NameCandidate::new(name.clone(), Some(binding.span)))
@@ -820,6 +850,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
         self.scopes
             .last_mut()
             .expect("function binding always has a scope")
+            .locals
             .insert(name.clone(), id);
         self.locals_by_name
             .entry(name.clone())
@@ -837,8 +868,16 @@ impl<'a> SyntaxBindingLowerer<'a> {
             },
         );
         let body = self.current_body();
+        let scope = self
+            .scopes
+            .last()
+            .expect("function binding always has a scope")
+            .id;
         self.local_bodies.insert(id, body);
         self.body_mut(body).locals.push(id);
+        if let Some(scope) = self.body_mut(body).scopes.get_mut(&scope) {
+            scope.locals.push(id);
+        }
         id
     }
 
@@ -852,7 +891,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
         if let Some(previous) = self
             .scopes
             .last()
-            .and_then(|scope| scope.get(&name))
+            .and_then(|scope| scope.locals.get(&name))
             .and_then(|local| self.locals.get(local))
         {
             self.diagnostics.push(
@@ -868,8 +907,32 @@ impl<'a> SyntaxBindingLowerer<'a> {
         local
     }
 
-    fn push_scope(&mut self) {
-        self.scopes.push(BTreeMap::new());
+    fn push_scope(&mut self, kind: HirScopeKind, span: Span) {
+        let id = HirScopeId::new(*self.next_scope_id);
+        *self.next_scope_id = self.next_scope_id.saturating_add(1);
+        let body = self.current_body();
+        let parent = self.scopes.last().map(|scope| scope.id);
+        let source = self.source;
+        self.body_mut(body).scopes.insert(
+            id,
+            HirScope {
+                id,
+                parent,
+                origin: HirSourceOrigin { source, span },
+                kind,
+                locals: Vec::new(),
+                children: Vec::new(),
+            },
+        );
+        if let Some(parent) = parent
+            && let Some(parent_scope) = self.body_mut(body).scopes.get_mut(&parent)
+        {
+            parent_scope.children.push(id);
+        }
+        self.scopes.push(ActiveScope {
+            id,
+            locals: BTreeMap::new(),
+        });
     }
 
     fn pop_scope(&mut self) {
@@ -914,24 +977,43 @@ impl<'a> SyntaxBindingLowerer<'a> {
 
     fn with_body(&mut self, body: HirBodyId, f: impl FnOnce(&mut Self)) {
         self.body_stack.push(body);
+        if let Some(root_scope) = self.body_mut(body).root_scope {
+            self.scopes.push(ActiveScope {
+                id: root_scope,
+                locals: BTreeMap::new(),
+            });
+        }
         f(self);
+        if self.body_mut(body).root_scope.is_some_and(|root_scope| {
+            self.scopes
+                .last()
+                .is_some_and(|scope| scope.id == root_scope)
+        }) {
+            self.scopes.pop();
+        }
         self.body_stack.pop();
     }
 
     fn next_body(&mut self, owner: HirBodyOwner, span: Span) -> HirBodyId {
         let id = HirBodyId::new(*self.next_body_id);
         *self.next_body_id = self.next_body_id.saturating_add(1);
-        self.bodies.insert(
-            id,
-            HirBody::new(
-                id,
-                owner,
-                HirSourceOrigin {
-                    source: self.source,
-                    span,
-                },
-            ),
+        let root_scope = HirScopeId::new(*self.next_scope_id);
+        *self.next_scope_id = self.next_scope_id.saturating_add(1);
+        let source = self.source;
+        let mut body = HirBody::new(id, owner, HirSourceOrigin { source, span });
+        body.root_scope = Some(root_scope);
+        body.scopes.insert(
+            root_scope,
+            HirScope {
+                id: root_scope,
+                parent: None,
+                origin: HirSourceOrigin { source, span },
+                kind: HirScopeKind::Body,
+                locals: Vec::new(),
+                children: Vec::new(),
+            },
         );
+        self.bodies.insert(id, body);
         id
     }
 

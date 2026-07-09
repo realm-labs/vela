@@ -1,5 +1,5 @@
 use super::*;
-use crate::body::{HirBodyOwner, HirBodyRoot};
+use crate::body::{HirBodyOwner, HirBodyRoot, HirScopeKind};
 
 #[test]
 fn function_bindings_resolve_params_and_locals_with_expression_ids() {
@@ -557,6 +557,71 @@ fn main(player) {
             .iter()
             .any(|capture| capture.local == *base)
     );
+    assert!(lambda_body.root_scope.is_some());
+    assert!(lambda_body.scopes.values().any(|scope| {
+        scope.kind == HirScopeKind::Body
+            && scope
+                .locals
+                .iter()
+                .any(|local| lambda_body.params.iter().any(|param| param.local == *local))
+    }));
+}
+
+#[test]
+fn body_hir_tracks_lexical_scopes_for_blocks_loops_and_match_arms() {
+    let mut graph = ModuleGraph::new();
+    let module = graph.add_source(source(
+        1,
+        "game::reward",
+        r#"
+fn main(values, state) {
+    let total = 0;
+    if total == 0 {
+        let branch = total;
+    }
+    for (index, value) in values {
+        let nested = value;
+    }
+    match state {
+        Reward::Grant { amount } => amount,
+        _ => total,
+    }
+}
+"#,
+    ));
+    let main = graph
+        .module(module)
+        .and_then(|module| module.get("main"))
+        .expect("main declaration");
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+    let bindings = graph.bindings(main).expect("main bindings");
+    let body = graph.function_body(main).expect("main body");
+
+    assert!(body.root_scope.is_some());
+    assert!(
+        body.scopes
+            .values()
+            .any(|scope| scope.kind == HirScopeKind::For)
+    );
+    assert!(
+        body.scopes
+            .values()
+            .any(|scope| scope.kind == HirScopeKind::Block)
+    );
+    assert!(
+        body.scopes
+            .values()
+            .filter(|scope| scope.kind == HirScopeKind::MatchArm)
+            .count()
+            >= 2
+    );
+
+    let [amount] = bindings.locals_named("amount") else {
+        panic!("expected amount pattern local");
+    };
+    assert!(body.scopes.values().any(|scope| {
+        scope.kind == HirScopeKind::MatchArm && scope.locals.iter().any(|local| local == amount)
+    }));
 }
 
 #[test]

@@ -156,8 +156,10 @@ Heavy HIR body ownership uses stable `HirBodyId` records with explicit owners:
 declarations, trait default methods, impl methods, lambdas, and parameter
 defaults. Nested executable regions such as lambdas and parameter defaults are
 separate bodies with source origins and parent links, not syntax payloads hidden
-inside downstream compiler or tooling callers. Const/global initializer body
-ownership must join this same model when those executable forms are migrated.
+inside downstream compiler or tooling callers. Lexical scope facts belong in
+the owning body as `HirScopeId` records with parent/child links and owned local
+IDs. Const/global initializer body ownership must join this same model when
+those executable forms are migrated.
 
 ### Native-First LSP Boundary
 

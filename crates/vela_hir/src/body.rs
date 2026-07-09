@@ -5,7 +5,7 @@ use vela_syntax::ast::{SyntaxExpressionKind, SyntaxPatternKind, SyntaxStatementK
 
 use crate::ids::{
     HirBlockId, HirBodyId, HirCaptureId, HirDeclId, HirExprId, HirLocalId, HirNodeId, HirParamId,
-    HirPatternId, HirStmtId,
+    HirPatternId, HirScopeId, HirStmtId,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -42,6 +42,8 @@ pub struct HirBody {
     pub owner: HirBodyOwner,
     pub origin: HirSourceOrigin,
     pub root: HirBodyRoot,
+    pub root_scope: Option<HirScopeId>,
+    pub scopes: BTreeMap<HirScopeId, HirScope>,
     pub params: Vec<HirParam>,
     pub blocks: BTreeMap<HirBlockId, HirBlock>,
     pub statements: BTreeMap<HirStmtId, HirStmt>,
@@ -59,6 +61,8 @@ impl HirBody {
             owner,
             origin,
             root: HirBodyRoot::Empty,
+            root_scope: None,
+            scopes: BTreeMap::new(),
             params: Vec::new(),
             blocks: BTreeMap::new(),
             statements: BTreeMap::new(),
@@ -68,6 +72,25 @@ impl HirBody {
             captures: Vec::new(),
         }
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct HirScope {
+    pub id: HirScopeId,
+    pub parent: Option<HirScopeId>,
+    pub origin: HirSourceOrigin,
+    pub kind: HirScopeKind,
+    pub locals: Vec<HirLocalId>,
+    pub children: Vec<HirScopeId>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum HirScopeKind {
+    Body,
+    Block,
+    For,
+    Lambda,
+    MatchArm,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

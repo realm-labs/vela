@@ -111,6 +111,7 @@ impl ModuleGraph {
             next_local_id: &mut self.next_local_id,
             next_body_id: &mut self.next_body_id,
             next_block_id: &mut self.next_block_id,
+            next_scope_id: &mut self.next_scope_id,
             next_stmt_id: &mut self.next_stmt_id,
             next_pattern_id: &mut self.next_pattern_id,
             next_param_id: &mut self.next_param_id,

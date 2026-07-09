@@ -127,9 +127,12 @@ internal execution/lowering architecture track, and Heavy HIR implementation
 has started in `vela_hir`. The first body-core slice adds stable body, block,
 statement, pattern, parameter, and capture IDs plus `HirBody` records for
 functions, trait defaults, impl methods, lambdas, and parameter defaults while
-preserving current binding/compiler behavior. Heavy HIR will next move scopes,
-bindings, body facts, language-service queries, and bytecode lowering away from
-body-level syntax reconstruction. MIR will then add an internal `vela_mir`
+preserving current binding/compiler behavior. Body HIR now also records root,
+block, loop, lambda, and match-arm scopes with owned locals and child-scope
+links while preserving existing binding, analysis, and language-service
+behavior. Heavy HIR will next move resolution tables, body facts,
+language-service queries, and bytecode lowering away from body-level syntax
+reconstruction. MIR will then add an internal `vela_mir`
 execution-shape layer for CFG, typed operations, guards, liveness, bytecode
 lowering, and future M22 Cranelift input. M20 cache-family audit and measured
 close-out may continue in parallel, but new broad lowering architecture work

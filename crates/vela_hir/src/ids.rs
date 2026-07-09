@@ -22,6 +22,7 @@ hir_id!(ModuleId);
 hir_id!(HirNodeId);
 hir_id!(HirBodyId);
 hir_id!(HirBlockId);
+hir_id!(HirScopeId);
 hir_id!(HirStmtId);
 hir_id!(HirExprId);
 hir_id!(HirPatternId);

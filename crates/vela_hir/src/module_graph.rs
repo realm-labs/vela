@@ -72,6 +72,7 @@ pub struct ModuleGraph {
     next_decl_id: u32,
     next_body_id: u32,
     next_block_id: u32,
+    next_scope_id: u32,
     next_stmt_id: u32,
     next_expr_id: u32,
     next_pattern_id: u32,

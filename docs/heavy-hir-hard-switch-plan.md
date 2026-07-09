@@ -210,14 +210,14 @@ cargo test -p vela_hir module_graph
 
 Purpose: make all lexical and binding facts body-HIR-owned.
 
-- [ ] Replace body-local binding scans with HIR body scopes and resolution
+- [~] Replace body-local binding scans with HIR body scopes and resolution
   tables.
-- [ ] Represent pattern locals for `let`, `match`, and `for` bindings with
+- [x] Represent pattern locals for `let`, `match`, and `for` bindings with
   token spans and binding scope spans.
-- [ ] Represent lambda captures and `self` bindings explicitly.
+- [~] Represent lambda captures and `self` bindings explicitly.
 - [ ] Represent imports, declaration references, shadowing, and unresolved
   references through HIR resolution records.
-- [ ] Preserve current diagnostics for unresolved names, duplicate bindings,
+- [x] Preserve current diagnostics for unresolved names, duplicate bindings,
   and invalid pattern use.
 
 Validation:
