@@ -5,7 +5,6 @@ use vela_syntax::ast::{
     SyntaxPatternKind,
 };
 
-use crate::compiler::body_payloads::CompilerBodyPayload;
 use crate::compiler::patterns::PatternBindingFacts;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{Constant, Register, UnlinkedInstructionKind};
@@ -294,7 +293,7 @@ impl Compiler<'_, '_> {
                 Ok(())
             }
             Some(SyntaxMatchArmBody::Block(block)) => {
-                let body = CompilerBodyPayload::nested_syntax(source, block);
+                let body = self.hir_block_body_payload(source, block)?;
                 self.compile_block_payload_value_to(&body, dst)?;
                 Ok(())
             }
@@ -315,7 +314,7 @@ impl Compiler<'_, '_> {
                 Ok(false)
             }
             Some(SyntaxMatchArmBody::Block(block)) => {
-                let body = CompilerBodyPayload::nested_syntax(source, block);
+                let body = self.hir_block_body_payload(source, block)?;
                 self.compile_body_payload_statements(&body)
             }
             None => Err(syntax_match_error(source, arm.syntax().text_range())),

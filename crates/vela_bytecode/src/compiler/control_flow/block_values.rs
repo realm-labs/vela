@@ -15,7 +15,7 @@ impl Compiler<'_, '_> {
         let Some(block) = expression.as_block() else {
             return Ok(None);
         };
-        let body = CompilerBodyPayload::nested_syntax(source, block);
+        let body = self.hir_block_body_payload(source, block)?;
         self.compile_block_payload_value_to(&body, dst).map(Some)
     }
 

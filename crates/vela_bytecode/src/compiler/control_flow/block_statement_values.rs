@@ -6,7 +6,6 @@ use crate::{
     GuardKind, Register, UnlinkedGuardContext, UnlinkedInstructionKind, UnlinkedTypeGuard,
 };
 
-use crate::compiler::body_payloads::CompilerBodyPayload;
 use crate::compiler::expected_exprs::guard_location_and_name;
 use crate::compiler::script_types::{ScriptTypeFact, type_hint_script_type};
 use crate::compiler::value_types::{
@@ -40,7 +39,7 @@ impl Compiler<'_, '_> {
         });
         let hinted_value_type = hir_type_hint.and_then(type_hint_value_type);
         let register = self.alloc_register()?;
-        let body = CompilerBodyPayload::nested_syntax(source, block);
+        let body = self.hir_block_body_payload(source, block)?;
         let returned = self.compile_block_payload_value_to(&body, register)?;
         if let Some(expected) = hinted_value_type.as_ref() {
             self.emit_dynamic_contract_guard(
@@ -104,7 +103,7 @@ impl Compiler<'_, '_> {
             ));
         };
         let register = self.alloc_register()?;
-        let body = CompilerBodyPayload::nested_syntax(source, block);
+        let body = self.hir_block_body_payload(source, block)?;
         let returned = self.compile_block_payload_value_to(&body, register)?;
         if let Some(expected) = self.return_type.clone().as_ref() {
             self.emit_dynamic_contract_guard(

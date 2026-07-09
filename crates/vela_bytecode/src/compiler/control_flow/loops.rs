@@ -4,7 +4,6 @@ use vela_syntax::ast::{AstNode, BinaryOp, SyntaxExpression, SyntaxForStmt};
 
 use crate::Register;
 
-use crate::compiler::body_payloads::CompilerBodyPayload;
 use crate::compiler::patterns::PatternBindingFacts;
 
 use super::classification::{i64_pattern_facts, iterable_item_shape};
@@ -206,7 +205,7 @@ impl crate::compiler::Compiler<'_, '_> {
         )?;
 
         self.loop_stack.push(LoopContext::new(loop_start));
-        let body_payload = CompilerBodyPayload::nested_syntax(source, body);
+        let body_payload = self.hir_block_body_payload(source, body)?;
         let body_returned = self.compile_body_payload_statements(&body_payload)?;
         let loop_context = self
             .loop_stack

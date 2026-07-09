@@ -5,7 +5,7 @@ use vela_syntax::ast::{
 };
 
 use crate::Constant;
-use crate::compiler::body_payloads::{CompilerBodyPayload, expression_syntax_literal};
+use crate::compiler::body_payloads::expression_syntax_literal;
 use crate::compiler::const_eval::compile_literal_constant_for_type;
 use crate::compiler::script_types::{ScriptTypeFact, type_hint_script_type};
 use crate::compiler::value_types::{RuntimeTypeFact, type_hint_value_type};
@@ -27,7 +27,7 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<Option<bool>> {
         if let Some(block) = syntax_block_expression(expression) {
             let register = self.alloc_register()?;
-            let body = CompilerBodyPayload::nested_syntax(source, block);
+            let body = self.hir_block_body_payload(source, block)?;
             let returned = self.compile_block_payload_value_to(&body, register)?;
             self.record_syntax_let_binding(name, span, register, None, None, None);
             return Ok(Some(returned));
@@ -153,7 +153,7 @@ impl Compiler<'_, '_> {
         let Some(then_block) = if_expr.then_block() else {
             return Ok(None);
         };
-        let then_body = CompilerBodyPayload::nested_syntax(source, then_block);
+        let then_body = self.hir_block_body_payload(source, then_block)?;
 
         let jump_to_else = if let Some(jump) =
             self.try_emit_syntax_i64_immediate_jump_if_false(source, &condition_expression)?
@@ -182,7 +182,7 @@ impl Compiler<'_, '_> {
                 returned
             }
             Some(SyntaxElseBranch::Block(block)) => {
-                let else_body = CompilerBodyPayload::nested_syntax(source, block);
+                let else_body = self.hir_block_body_payload(source, block)?;
                 self.compile_body_payload_statements(&else_body)?
             }
             None => false,

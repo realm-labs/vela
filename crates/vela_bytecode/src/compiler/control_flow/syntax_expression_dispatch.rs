@@ -3,7 +3,7 @@ use vela_syntax::SyntaxKind;
 use vela_syntax::ast::{SyntaxExpression, SyntaxExpressionKind, SyntaxLiteral};
 use vela_syntax::token::{InterpolatedStringTokenPart, TokenKind};
 
-use crate::compiler::body_payloads::{CompilerBodyPayload, expression_syntax_literal};
+use crate::compiler::body_payloads::expression_syntax_literal;
 use crate::compiler::patterns::enum_variant_path;
 use crate::compiler::{CompileResult, Compiler};
 use crate::{Constant, FormatStringPart};
@@ -97,7 +97,7 @@ impl Compiler<'_, '_> {
             return Ok(None);
         };
         let dst = self.alloc_register()?;
-        let body = CompilerBodyPayload::nested_syntax(source, block);
+        let body = self.hir_block_body_payload(source, block)?;
         self.compile_block_payload_value_to(&body, dst)?;
         Ok(Some(dst))
     }

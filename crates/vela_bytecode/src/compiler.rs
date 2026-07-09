@@ -762,6 +762,14 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         Self::new_body(code_name, param_defaults, signature, body, hir, facts)
     }
 
+    fn hir_block_body_payload(
+        &self,
+        source: SourceId,
+        block: vela_syntax::ast::SyntaxBlock,
+    ) -> CompileResult<CompilerBodyPayload<'ast>> {
+        CompilerBodyPayload::hir_block(source, block, &self.hir_bodies)
+    }
+
     fn new_body(
         code_name: String,
         param_defaults: Vec<Option<ParamDefaultValue>>,

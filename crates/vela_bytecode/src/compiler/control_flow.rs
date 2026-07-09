@@ -37,11 +37,12 @@ impl Compiler<'_, '_> {
         &mut self,
         stmt: &CompilerStatementPayload<'_>,
     ) -> CompileResult<bool> {
-        let Some(body) = stmt.block_body_payload() else {
+        let Some((source, block)) = stmt.block_syntax_body() else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing block statement body",
             )));
         };
+        let body = self.hir_block_body_payload(source, block)?;
         self.compile_body_payload_statements(&body)
     }
 

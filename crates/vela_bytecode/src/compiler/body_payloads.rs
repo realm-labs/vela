@@ -2,6 +2,7 @@ use std::marker::PhantomData;
 
 use vela_common::{SourceId, Span};
 use vela_hir::body::{HirBody, HirBodyRoot, HirStmt, HirStmtKind};
+use vela_hir::ids::HirBlockId;
 use vela_syntax::ast::{
     AstNode, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxForStmt, SyntaxIfExpr,
     SyntaxMatchExpr, SyntaxPattern, SyntaxStatement, SyntaxStatementKind,
@@ -29,7 +30,8 @@ pub(super) struct SyntaxBodyPayload {
 #[derive(Clone)]
 pub(super) struct CompilerBodyPayload<'ast> {
     syntax: SyntaxBodyPayload,
-    hir_body: Option<&'ast HirBody>,
+    hir_body: &'ast HirBody,
+    hir_block: Option<HirBlockId>,
     _ast: PhantomData<&'ast ()>,
 }
 
@@ -50,39 +52,55 @@ pub(super) enum CompilerBlockValue<'payload, 'ast> {
 }
 
 impl<'ast> CompilerBodyPayload<'ast> {
-    pub(super) fn nested_syntax(source: SourceId, body: SyntaxBlock) -> Self {
-        Self {
-            syntax: SyntaxBodyPayload { source, body },
-            hir_body: None,
-            _ast: PhantomData,
-        }
-    }
-
     pub(super) fn hir_body(source: SourceId, body: SyntaxBlock, hir_body: &'ast HirBody) -> Self {
         Self {
             syntax: SyntaxBodyPayload { source, body },
-            hir_body: Some(hir_body),
+            hir_body,
+            hir_block: None,
             _ast: PhantomData,
         }
     }
 
+    pub(super) fn hir_block(
+        source: SourceId,
+        body: SyntaxBlock,
+        hir_bodies: &[&'ast HirBody],
+    ) -> CompileResult<Self> {
+        let span = syntax_block_span(source, &body);
+        let (hir_body, hir_block) = hir_bodies
+            .iter()
+            .find_map(|hir_body| {
+                hir_body
+                    .blocks
+                    .values()
+                    .find(|block| block.origin.span == span)
+                    .map(|block| (*hir_body, block.id))
+            })
+            .ok_or_else(|| {
+                CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "HIR block source origin",
+                ))
+                .with_span(span)
+            })?;
+        Ok(Self {
+            syntax: SyntaxBodyPayload { source, body },
+            hir_body,
+            hir_block: Some(hir_block),
+            _ast: PhantomData,
+        })
+    }
+
     pub(super) fn statement_payloads(&self) -> CompileResult<Vec<CompilerStatementPayload<'ast>>> {
-        if let Some(hir_body) = self.hir_body {
-            return hir_body_statements(hir_body, self.syntax.source, &self.syntax.body);
-        }
-        Ok(syntax_body_statements(&self.syntax.body)
-            .into_iter()
-            .map(|syntax| CompilerStatementPayload::new_syntax(self.syntax.source, syntax))
-            .collect())
+        hir_body_statements(
+            self.hir_body,
+            self.hir_block,
+            self.syntax.source,
+            &self.syntax.body,
+        )
     }
 
     pub(super) fn syntax_statements_are_empty(&self) -> bool {
-        if let Some(hir_body) = self.hir_body
-            && let Some(statement_ids) = hir_body_root_statement_ids(hir_body)
-        {
-            return statement_ids.is_empty();
-        }
-        syntax_body_statements(&self.syntax.body).is_empty()
+        hir_body_statement_ids(self.hir_body, self.hir_block).is_none_or(<[_]>::is_empty)
     }
 
     pub(super) fn block_value<'payload>(
@@ -105,15 +123,13 @@ impl<'ast> CompilerBodyPayload<'ast> {
 
 fn hir_body_statements<'ast>(
     hir_body: &'ast HirBody,
+    hir_block: Option<HirBlockId>,
     source: SourceId,
     body: &SyntaxBlock,
 ) -> CompileResult<Vec<CompilerStatementPayload<'ast>>> {
     let syntax_statements = syntax_body_statements(body);
-    let statement_ids = hir_body_root_statement_ids(hir_body).ok_or_else(|| {
-        CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            "HIR function body root block",
-        ))
-    })?;
+    let statement_ids = hir_body_statement_ids(hir_body, hir_block)
+        .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("HIR block")))?;
     statement_ids
         .iter()
         .map(|statement| {
@@ -134,7 +150,13 @@ fn hir_body_statements<'ast>(
         .collect()
 }
 
-fn hir_body_root_statement_ids(hir_body: &HirBody) -> Option<&[vela_hir::ids::HirStmtId]> {
+fn hir_body_statement_ids(
+    hir_body: &HirBody,
+    hir_block: Option<HirBlockId>,
+) -> Option<&[vela_hir::ids::HirStmtId]> {
+    if let Some(block) = hir_block {
+        return Some(hir_body.blocks.get(&block)?.statements.as_slice());
+    }
     let HirBodyRoot::Block(block) = hir_body.root else {
         return None;
     };
@@ -154,6 +176,11 @@ fn syntax_statement_for_hir(
 
 fn syntax_statement_span(source: SourceId, statement: &SyntaxStatement) -> Span {
     let range = statement.syntax().text_range();
+    Span::new(source, u32::from(range.start()), u32::from(range.end()))
+}
+
+fn syntax_block_span(source: SourceId, block: &SyntaxBlock) -> Span {
+    let range = block.syntax().text_range();
     Span::new(source, u32::from(range.start()), u32::from(range.end()))
 }
 
@@ -206,15 +233,6 @@ fn syntax_statement_starts_with_infix_continuation(statement: &SyntaxStatement) 
 }
 
 impl<'ast> CompilerStatementPayload<'ast> {
-    fn new_syntax(source: SourceId, syntax: SyntaxStatement) -> Self {
-        Self {
-            source: Some(source),
-            syntax: Some(syntax),
-            hir_kind: None,
-            _ast: PhantomData,
-        }
-    }
-
     fn new_hir_syntax(source: SourceId, syntax: SyntaxStatement, statement: &HirStmt) -> Self {
         Self {
             source: Some(source),
@@ -374,9 +392,8 @@ impl<'ast> CompilerStatementPayload<'ast> {
                 .is_some_and(|statement| statement.expression().is_none())
     }
 
-    pub(super) fn block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
-        let body = self.syntax.as_ref()?.as_block()?;
-        Some(CompilerBodyPayload::nested_syntax(self.source?, body))
+    pub(super) fn block_syntax_body(&self) -> Option<(SourceId, SyntaxBlock)> {
+        Some((self.source?, self.syntax.as_ref()?.as_block()?))
     }
 
     fn expression(&self) -> Option<SyntaxExpression> {
