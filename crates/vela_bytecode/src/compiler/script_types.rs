@@ -100,24 +100,13 @@ impl ScriptTypeFlow {
 
 fn expression_script_fact_from_payload_syntax(
     payload: &CompilerExpressionPayload<'_>,
-    type_symbol_at_span: &impl Fn(Span) -> Option<String>,
     local_fact_at_span: &impl Fn(Span) -> Option<ScriptTypeFact>,
     local_fact_named: &impl Fn(&str) -> Option<ScriptTypeFact>,
+    hir_constructor_fact_at_span: &impl Fn(Span) -> Option<ScriptTypeFact>,
     hir_call_fact_at_span: &impl Fn(Span) -> Option<ScriptTypeFact>,
 ) -> Option<ScriptTypeFact> {
-    if let Some(path) = payload.syntax_record_path_segments() {
-        if let Some((enum_path, variant)) = enum_variant_path(&path) {
-            let type_name = payload
-                .syntax_span()
-                .and_then(type_symbol_at_span)
-                .unwrap_or(enum_path);
-            return Some(ScriptTypeFact::enum_variant(type_name, variant));
-        }
-        let type_name = payload
-            .syntax_span()
-            .and_then(type_symbol_at_span)
-            .unwrap_or_else(|| path.join("::"));
-        return Some(ScriptTypeFact::new(type_name));
+    if let Some(fact) = payload.syntax_span().and_then(hir_constructor_fact_at_span) {
+        return Some(fact);
     }
 
     if let Some(fact) = payload.syntax_span().and_then(hir_call_fact_at_span) {
@@ -191,6 +180,23 @@ impl super::Compiler<'_, '_> {
             .map(|path| path.path.as_slice())
     }
 
+    pub(in crate::compiler) fn script_fact_for_hir_constructor(
+        &self,
+        expression: HirExprId,
+    ) -> Option<ScriptTypeFact> {
+        let path = self.hir_constructor_path(expression)?;
+        if let Some((enum_path, variant)) = enum_variant_path(path) {
+            let type_name = self
+                .type_symbol_for_expression(expression)
+                .unwrap_or(enum_path);
+            return Some(ScriptTypeFact::enum_variant(type_name, variant));
+        }
+        let type_name = self
+            .type_symbol_for_expression(expression)
+            .unwrap_or_else(|| path.join("::"));
+        Some(ScriptTypeFact::new(type_name))
+    }
+
     pub(in crate::compiler) fn script_fact_for_hir_call(
         &self,
         call: HirExprId,
@@ -217,7 +223,6 @@ impl super::Compiler<'_, '_> {
             CompilerExpressionPayload::from_syntax(Some(source), Some(expression.clone()));
         expression_script_fact_from_payload_syntax(
             &payload,
-            &|span| self.type_symbol_at_span(span),
             &|span| {
                 self.local_at_span(span)
                     .and_then(|local| self.script_types.local_fact(local))
@@ -227,6 +232,10 @@ impl super::Compiler<'_, '_> {
                 self.script_types
                     .name_fact(name)
                     .or_else(|| self.global_type_named(name).map(ScriptTypeFact::new))
+            },
+            &|span| {
+                let expression = self.expression_at_span(span)?;
+                self.script_fact_for_hir_constructor(expression)
             },
             &|span| {
                 let call = self.expression_at_span(span)?;

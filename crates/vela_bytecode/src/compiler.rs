@@ -1146,15 +1146,6 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         Some(*local)
     }
 
-    fn type_symbol_at_span(&self, span: Span) -> Option<String> {
-        let Some(BindingResolution::Declaration(declaration)) =
-            self.binding_resolution_at_span(span)
-        else {
-            return None;
-        };
-        self.facts.type_symbols.get(declaration).cloned()
-    }
-
     fn global_type_at_span(&self, span: Span) -> Option<String> {
         let Some(BindingResolution::Declaration(declaration)) =
             self.binding_resolution_at_span(span)

@@ -193,7 +193,9 @@ binding facts instead of re-resolving constructor type symbols from the record
 syntax span, and ordinary bytecode record/enum constructor lowering uses the
 same HIR-backed constructor identity path. Immediate enum field-slot reads from
 record literals also use HIR constructor identity instead of syntax path
-reconstruction.
+reconstruction. Record constructor script-type facts now also come from HIR
+constructor facts, and the old compiler payload record-path helper plus
+type-symbol-at-span helper have been removed.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

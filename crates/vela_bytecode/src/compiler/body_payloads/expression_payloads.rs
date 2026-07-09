@@ -34,12 +34,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             .and_then(SyntaxExpression::as_path)
             .is_some_and(|path| path.is_self())
     }
-
-    pub(in crate::compiler) fn syntax_record_path_segments(&self) -> Option<Vec<String>> {
-        self.source?;
-        let segments = self.syntax.as_ref()?.as_record()?.path_segments();
-        (!segments.is_empty()).then_some(segments)
-    }
 }
 
 fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {
