@@ -2,7 +2,8 @@
 
 Track: syntax foundation, parser, formatter, and downstream analysis migration
 
-Document status: Codex execution plan
+Document status: close-out complete for the Rowan hard-switch; one bytecode
+module-size cleanup remains as a follow-up architecture item
 
 Compatibility policy: this is an intentionally breaking pre-release syntax
 infrastructure refactor. Old owned AST structs, the old non-lossless parser API,
@@ -398,7 +399,7 @@ cargo test -p vela_syntax parser
 
 ### Phase 3: Build rowan parser and typed AST wrappers
 
-- [ ] Task: Delete the old parser/owned-AST feature boundary and leave rowan CST
+- [x] Task: Delete the old parser/owned-AST feature boundary and leave rowan CST
       as the only syntax model.
 
 Checkpoint checklist:
@@ -450,16 +451,16 @@ Checkpoint checklist:
   legacy body parser and remove the obsolete attribute normalizer.
 - [x] Delete old owned lambda parameter default-value fallback storage; CST/HIR
   parameter-default payloads are the remaining default source.
-- [ ] Delete the `legacy-body-parser` feature, `legacy_body_parser` module,
+- [x] Delete the `legacy-body-parser` feature, `legacy_body_parser` module,
   `body_parser_support` re-export, and `parse_owned_body_blocks_for_tests`
   entrypoint before downstream cleanup.
-- [ ] Delete old owned `Expr`, `ExprKind`, `Stmt`, `StmtKind`, `Block`,
+- [x] Delete old owned `Expr`, `ExprKind`, `Stmt`, `StmtKind`, `Block`,
   `Argument`, `RecordField`, `Pattern`, `MatchExpr`, and related old parser
   body structs, then fix downstream compile errors against CST/HIR directly.
-- [ ] Remove the dev-dependency feature path that keeps old parser structs alive
+- [x] Remove the dev-dependency feature path that keeps old parser structs alive
   for bytecode tests.
-- [ ] Ensure no production parser path returns the old owned AST.
-- [ ] Ensure no test-only parser path returns the old owned AST or constructs
+- [x] Ensure no production parser path returns the old owned AST.
+- [x] Ensure no test-only parser path returns the old owned AST or constructs
   owned AST bodies for fallback assertions.
 
 Expected behavior:
@@ -496,7 +497,7 @@ cargo check -p vela_bytecode --lib
 
 ### Phase 4: Migrate HIR and module graph lowering
 
-- [ ] Task: Move HIR/module graph construction from owned AST to typed CST wrappers.
+- [x] Task: Move HIR/module graph construction from owned AST to typed CST wrappers.
 
 Checkpoint checklist:
 
@@ -516,7 +517,7 @@ Checkpoint checklist:
 - [x] Stop reparsing module graph sources through the old owned `SourceFile`
   API.
 - [x] Audit remaining HIR-facing tests and helpers for direct old-parser usage.
-- [ ] Resolve HIR compile errors from the hard switch by consuming CST/HIR
+- [x] Resolve HIR compile errors from the hard switch by consuming CST/HIR
   directly; do not restore old AST conversion helpers.
 
 Expected behavior:
@@ -542,7 +543,7 @@ cargo test -p vela_language_service module
 
 ### Phase 5: Hard-switch compiler and analysis callers
 
-- [ ] Task: Delete bytecode fallback payload scaffolding and make compiler
+- [x] Task: Delete bytecode fallback payload scaffolding and make compiler
       tests/production consume CST/HIR-only syntax inputs.
 
 Checkpoint checklist:
@@ -559,7 +560,7 @@ Checkpoint checklist:
   from rowan parameter lists.
 - [x] Introduce a shared compiler body payload carrying rowan CST bodies plus
   a temporary legacy fallback.
-- [ ] Delete old-AST fallback sides from `CompilerBodyPayload`,
+- [x] Delete old-AST fallback sides from `CompilerBodyPayload`,
   `CompilerStatementPayload`, `CompilerExpressionPayload`, and child payload
   structs instead of leaving them as test-only fixtures.
 - [x] Route top-level statement dispatch through rowan statement categories
@@ -582,40 +583,40 @@ Checkpoint checklist:
   record.
 - [x] Remove `crates/vela_bytecode/src/compiler/legacy_payloads.rs`.
 - [x] Remove runtime default-expression fallback.
-- [ ] Remove temporary old-AST body fallback helpers, `.fallback()` accessors,
+- [x] Remove temporary old-AST body fallback helpers, `.fallback()` accessors,
   paired payload constructors, and source-less legacy assertion paths.
-- [ ] Remove all imports and type signatures for old `Expr`, `ExprKind`,
+- [x] Remove all imports and type signatures for old `Expr`, `ExprKind`,
   `Stmt`, `StmtKind`, `Block`, `Argument`, `RecordField`, `ItemKind`, and
   `SourceFile` from `vela_bytecode`.
 - [x] Remove production imports of old expression AST types from
   `vela_analysis`.
-- [ ] Replace tests whose only purpose is "does not use legacy fallback" with
+- [x] Replace tests whose only purpose is "does not use legacy fallback" with
   source-driven bytecode, runtime, or diagnostic behavior tests; delete tests
   that have no behavior value after the old fallback path is gone.
-- [ ] Rename bytecode-facing `cst_*`, `*Cst*`, and `CST ... payload` helper,
+- [x] Rename bytecode-facing `cst_*`, `*Cst*`, and `CST ... payload` helper,
   test, and internal diagnostic names that only existed to contrast the new
   syntax path with old AST fallback inputs. Keep behavior-oriented names such
   as `param_default_lowering_*`, `body_payload`, `syntax_payload`, or more
   specific compiler-domain names.
-- [ ] Clean bytecode compiler hard-switch residue, not just names:
+- [x] Clean bytecode compiler hard-switch residue, not just names:
   `UnsupportedSyntax("missing CST ...")`, `UnsupportedSyntax("unsupported CST
   ...")`, `is_syntax_only`, `syntax_only`, `*_cst_lowering_covers`, and
   `cst_payload` helpers/tests are migration-era scaffolding unless the code is
   directly implementing concrete syntax tree behavior. Replace them with
   semantic compiler concepts such as missing statement data, unsupported
   expression form, syntax payload, lowering support, or behavior tests.
-- [ ] Treat `CompileErrorKind::UnsupportedSyntax` messages as potentially
+- [x] Treat `CompileErrorKind::UnsupportedSyntax` messages as potentially
   user-visible because CLI rendering may fall back to debug output when no
   diagnostic is available. Remove CST/internal payload terminology from those
   messages or convert the path into a proper source-spanned diagnostic.
-- [ ] Refactor hard-switch readability debt introduced by incremental CST
+- [x] Refactor hard-switch readability debt introduced by incremental CST
   migration. Replace long probe-and-return chains such as "try one syntax
   shape, return `Ok(Some(...))`, otherwise return `Ok(None)`" with a stable
   dispatch structure based on `SyntaxExpressionKind`, `SyntaxStatementKind`, or
   a small typed classifier. Prefer `match` expressions, table-like dispatch,
   or focused helpers over accumulated `if let` ladders when the branch key is
   already an enum or can be classified once.
-- [ ] Refactor boolean coverage predicates such as
+- [x] Refactor boolean coverage predicates such as
   `param_default_cst_lowering_covers` into final semantic support checks.
   Avoid sequences of `if !condition { return false; }` when the same logic can
   be expressed as a match, `Option`/iterator combinators, or named helper
@@ -627,14 +628,14 @@ Checkpoint checklist:
   interleaved. Split by expression family, statement family, assignment/host
   path lowering, container literals, calls, or parameter-default support, as
   appropriate for ownership and tests.
-- [ ] Remove "fallback-shaped" control flow after the fallback is gone. Branches
+- [x] Remove "fallback-shaped" control flow after the fallback is gone. Branches
   that repeatedly return `Ok(None)`, `return false`, or generic unsupported
   errors should either be a deliberate optional fast path with a clear caller
   contract, a source-spanned unsupported-language diagnostic, or a match arm in
   the canonical lowering dispatch.
-- [ ] Close any remaining pattern and control-flow expression lowering gaps
+- [x] Close any remaining pattern and control-flow expression lowering gaps
   exposed by deleting the old AST, using typed CST wrappers or HIR facts only.
-- [ ] Prove compile-dir and checked examples pass with CST/HIR-only syntax
+- [x] Prove compile-dir and checked examples pass with CST/HIR-only syntax
   inputs.
 
 Expected behavior:
@@ -712,7 +713,8 @@ Code review findings to close in the next bytecode slice:
   matters.
   Evidence:
   - `crates/vela_bytecode/src/compiler/control_flow/syntax_statement_values.rs:255`
-- [ ] `control_flow/syntax_statement_values.rs` is over 2200 lines and mixes
+- [ ] `control_flow/syntax_statement_values.rs` is still over the ordinary
+  1200-line guideline and mixes
   expression lowering, assignment lowering, host path lowering, calls,
   container literals, logical chains, numeric special cases, and shape/type
   probes. Split by ownership after removing the fallback-shaped probes; do not
@@ -735,7 +737,7 @@ Code review findings to close in the next bytecode slice:
   Evidence:
   - `crates/vela_bytecode/src/compiler/param_defaults/tests.rs:7`
   - `crates/vela_bytecode/src/compiler/param_defaults/tests.rs:49`
-- [ ] `docs/progress.md` is stale relative to the code: it still describes the
+- [x] `docs/progress.md` is stale relative to the code: it still describes the
   rowan refactor as "started" and contains legacy fallback/body-parser status
   that is no longer true after the hard-switch deletions. Close-out must update
   progress to current state; otherwise goal mode can claim code completion
@@ -747,7 +749,7 @@ Code review findings to close in the next bytecode slice:
 
 ### Phase 6: Migrate language service features
 
-- [ ] Task: Make editor features use CST, typed AST wrappers, HIR, and analysis facts.
+- [x] Task: Make editor features use CST, typed AST wrappers, HIR, and analysis facts.
 
 Checkpoint checklist:
 
@@ -764,12 +766,12 @@ Checkpoint checklist:
 - [x] Use syntax pointers/typed wrappers for map-key and record-field
   completion contexts where already migrated.
 - [x] Use syntax parse records for formatting range selection.
-- [ ] Audit completion, hover, definition, references, rename, semantic
+- [x] Audit completion, hover, definition, references, rename, semantic
   tokens, inlay hints, selection range, folding range, document symbols, and
   code actions after old AST deletion.
-- [ ] Remove remaining editor test/helper usage of the old parser when it is
+- [x] Remove remaining editor test/helper usage of the old parser when it is
   not intentionally testing the legacy removal boundary.
-- [ ] Prove native LSP protocol behavior remains unchanged after old AST
+- [x] Prove native LSP protocol behavior remains unchanged after old AST
   deletion.
 
 Expected behavior:
@@ -797,7 +799,7 @@ cargo test -p vela_lsp_server completion semantic_tokens lifecycle
 
 ### Phase 7: Replace formatter with CST layout rules
 
-- [ ] Task: Delete the token-state formatter and build formatting from the
+- [x] Task: Delete the token-state formatter and build formatting from the
       CST/typed-AST layout model.
 
 Checkpoint checklist:
@@ -816,17 +818,17 @@ Checkpoint checklist:
   selected impl/trait methods.
 - [x] Serve on-type reflow for top-level items, impl/trait methods, and enum
   record variants.
-- [ ] Replace the remaining token/layout state machine with CST/typed-AST
+- [x] Replace the remaining token/layout state machine with CST/typed-AST
   layout rules in this refactor plan, not a later track.
-- [ ] Delete obsolete `extract_format_elements`, token-gap `Formatter`, token
+- [x] Delete obsolete `extract_format_elements`, token-gap `Formatter`, token
   adjacency state, delimiter-stack layout inference, and related production
   paths.
-- [ ] Add CST-rule coverage for item, statement, expression, pattern, type,
+- [x] Add CST-rule coverage for item, statement, expression, pattern, type,
   trivia, and error-recovery formatting decisions.
-- [ ] Prove full-document, range, and on-type formatting are all CST-rule
+- [x] Prove full-document, range, and on-type formatting are all CST-rule
   backed.
-- [ ] Prove formatting diagnostics and skipped-error behavior are explicit.
-- [ ] Delete formatter tests that only lock in old token-gap implementation
+- [x] Prove formatting diagnostics and skipped-error behavior are explicit.
+- [x] Delete formatter tests that only lock in old token-gap implementation
   details, replacing them with idempotent behavior fixtures where needed.
 
 Expected behavior:
@@ -866,28 +868,28 @@ rg -n "extract_format_elements|struct Formatter|token-gap|delimiter_stack|previo
 
 Checkpoint checklist:
 
-- [ ] Prove old owned AST structs, old parser feature gates, and old body parser
+- [x] Prove old owned AST structs, old parser feature gates, and old body parser
   test support are deleted from production and tests.
-- [ ] Prove the old non-lossless parser API and any test-only old parser entry
+- [x] Prove the old non-lossless parser API and any test-only old parser entry
   points are deleted.
-- [ ] Delete transitional CST-to-owned fallback helpers and paired CST/owned
+- [x] Delete transitional CST-to-owned fallback helpers and paired CST/owned
   payload fixtures.
-- [ ] Delete or rename migration-only identifiers such as `legacy_*`,
+- [x] Delete or rename migration-only identifiers such as `legacy_*`,
   `parse_syntax_*`, `*_fallback*`, and verbose new-vs-old disambiguation names.
-- [ ] Rename the final CST API to concise canonical names after old fallbacks
+- [x] Rename the final CST API to concise canonical names after old fallbacks
   are gone.
-- [ ] Audit all remaining `cst`, `Cst`, and `CST` names. Keep them only in
+- [x] Audit all remaining `cst`, `Cst`, and `CST` names. Keep them only in
   concrete-syntax-tree implementation boundaries such as `vela_syntax`
   parser/tree construction modules, syntax tree-shape tests, and architecture
   documentation. Rename downstream compiler/HIR/analysis/language-service/LSP
   helpers, tests, APIs, and user-visible messages to canonical syntax/domain
   names.
-- [ ] Delete the token-gap formatter production path.
-- [ ] Delete transitional tests that exist only to prove old fallback paths are
+- [x] Delete the token-gap formatter production path.
+- [x] Delete transitional tests that exist only to prove old fallback paths are
   ignored; preserve or rewrite behavior tests that still matter.
-- [ ] Audit public `vela_syntax` exports and remove re-exports that are not a
+- [x] Audit public `vela_syntax` exports and remove re-exports that are not a
   deliberate scoped public API.
-- [ ] Audit import paths touched by this track for the "no more than one
+- [x] Audit import paths touched by this track for the "no more than one
   `super`" rule.
 - [ ] Audit touched active source/test files for the 1200-line rule and split
   by ownership when needed.
@@ -896,14 +898,33 @@ Checkpoint checklist:
   typed classifiers, or focused helper modules when that makes branch ownership
   clearer. Record any intentionally retained large file or guard-heavy
   function with a short rationale near the module or in the close-out notes.
-- [ ] Update `docs/architecture.md` and subsystem architecture docs only for
+- [x] Update `docs/architecture.md` and subsystem architecture docs only for
   durable architecture changes.
-- [ ] Update `docs/progress.md` when milestone state changes.
-- [ ] Update `docs/decisions.md` for durable syntax architecture decisions.
-- [ ] Run focused syntax/downstream validation.
-- [ ] Run final zero-result legacy audit searches before declaring the plan
+- [x] Update `docs/progress.md` when milestone state changes.
+- [x] Update `docs/decisions.md` for durable syntax architecture decisions.
+- [x] Run focused syntax/downstream validation.
+- [x] Run final zero-result legacy audit searches before declaring the plan
   complete.
-- [ ] Run full formatting, clippy, and workspace tests when practical.
+- [x] Run full formatting, clippy, and workspace tests when practical.
+
+Close-out notes:
+
+- Rowan hard-switch and legacy cleanup audits are complete. The final forbidden
+  legacy/parser/fallback formatter searches return zero hits for the Rowan
+  track.
+- Downstream `cst` naming audit is complete. Remaining CST terminology is
+  limited to `vela_syntax` concrete-syntax-tree parser/tree implementation,
+  syntax tree-shape tests, and architecture documentation.
+- Public `vela_syntax` re-exports are the deliberate syntax facade for typed
+  AST wrappers, parse records, rowan text types, syntax kinds, syntax nodes,
+  lexer, token, and formatting APIs.
+- No multi-level `super::super` imports remain in the touched syntax,
+  bytecode, HIR, analysis, language-service, or LSP crates.
+- The remaining close-out architecture item is module size: after the hard
+  switch, `crates/vela_bytecode/src/compiler/control_flow/syntax_statement_values.rs`
+  is 1629 lines. It no longer carries Rowan fallback scaffolding, but future
+  bytecode compiler work should split it by lowering responsibility instead of
+  adding new expression or statement families to that file.
 
 Expected behavior:
 
