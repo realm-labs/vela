@@ -250,7 +250,9 @@ callee-path facts for record literal names, path expression shapes, and native
 call result shapes, deleting the old root-name shape fallback. Script impl
 method payload lookup now uses HIR impl declaration spans instead of matching
 syntax trait/target path segments, leaving the bytecode direct path-segment
-reconstruction audit clean.
+reconstruction audit clean. Script impl and trait default method body payloads
+now require their owning `HirBody` and read method statement order from HIR
+instead of the old method-level `nested_syntax` path.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

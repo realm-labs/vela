@@ -48,12 +48,13 @@ pub(super) fn source_methods<'ast>(
                 return Vec::new();
             };
             let method_payloads =
-                impl_method_payloads(syntax, source, declaration.span, impl_metadata);
+                impl_method_payloads(syntax, source, declaration.span, graph, impl_metadata);
             let target_type = local_target_name(&impl_metadata.target_path);
             let trait_item = impl_metadata.trait_path().and_then(|trait_path| {
                 let declaration = trait_declaration(graph, declaration.module, trait_path)?;
                 let shape = graph.trait_shape(declaration)?;
-                let payloads = trait_default_method_payloads(syntax, source, trait_path, shape);
+                let payloads =
+                    trait_default_method_payloads(syntax, source, trait_path, graph, shape);
                 Some((shape, payloads))
             });
             collect_methods(
@@ -87,8 +88,13 @@ pub(super) fn module_methods<'ast>(
             let Some(source_id) = source_ids.get(&declaration.module).copied() else {
                 return Vec::new();
             };
-            let method_payloads =
-                impl_method_payloads(syntax_source, source_id, declaration.span, impl_metadata);
+            let method_payloads = impl_method_payloads(
+                syntax_source,
+                source_id,
+                declaration.span,
+                graph,
+                impl_metadata,
+            );
             let target_type = module_target_name(module_path, &impl_metadata.target_path);
             let Some(trait_path) = impl_metadata.trait_path() else {
                 return collect_methods(
@@ -128,7 +134,9 @@ pub(super) fn module_methods<'ast>(
                     graph.trait_shape(trait_declaration).map(|shape| {
                         (
                             shape,
-                            trait_default_method_payloads(syntax, source_id, trait_path, shape),
+                            trait_default_method_payloads(
+                                syntax, source_id, trait_path, graph, shape,
+                            ),
                         )
                     })
                 });
@@ -245,6 +253,7 @@ fn impl_method_payloads<'ast>(
     syntax: &SyntaxParse<SyntaxSourceFile>,
     source: SourceId,
     impl_span: Span,
+    graph: &'ast ModuleGraph,
     metadata: &ImplMetadata,
 ) -> BTreeMap<String, MethodBodyPayload<'ast>> {
     let Some(syntax_item) = syntax_impl_item(syntax, source, impl_span) else {
@@ -257,7 +266,8 @@ fn impl_method_payloads<'ast>(
             let syntax_method = syntax_item.methods().find(|syntax_method| {
                 syntax_method.name_text().as_deref() == Some(method_metadata.name.as_str())
             })?;
-            let body = CompilerBodyPayload::nested_syntax(source, syntax_method.body()?);
+            let hir_body = graph.impl_method_body(method_metadata.node)?;
+            let body = CompilerBodyPayload::hir_body(source, syntax_method.body()?, hir_body);
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
@@ -277,6 +287,7 @@ fn trait_default_method_payloads<'ast>(
     syntax: &SyntaxParse<SyntaxSourceFile>,
     source: SourceId,
     path: &[String],
+    graph: &'ast ModuleGraph,
     shape: &TraitShape,
 ) -> BTreeMap<String, MethodBodyPayload<'ast>> {
     let Some(syntax_item) = syntax_trait_item(syntax, path) else {
@@ -286,11 +297,12 @@ fn trait_default_method_payloads<'ast>(
         .methods
         .iter()
         .filter_map(|method_metadata| {
-            method_metadata.default_body_span?;
+            let default_node = method_metadata.default_body_node?;
             let syntax_method = syntax_item.methods().find(|syntax_method| {
                 syntax_method.name_text().as_deref() == Some(method_metadata.name.as_str())
             })?;
-            let body = CompilerBodyPayload::nested_syntax(source, syntax_method.body()?);
+            let hir_body = graph.trait_default_method_body(default_node)?;
+            let body = CompilerBodyPayload::hir_body(source, syntax_method.body()?, hir_body);
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
