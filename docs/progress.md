@@ -195,6 +195,8 @@ projection lowering reads the numeric member from HIR field facts while keeping
 tuple members out of composed value paths.
 Bytecode host-path, record field read, and record field assignment lowering now
 read member names from HIR field facts instead of syntax field tokens.
+Bytecode script, value, dynamic, and host method-call lowering now also reads
+the method member from HIR field facts instead of callee field syntax.
 Incremental language-service updates now rebuild Heavy HIR for body-only source
 edits so HIR-owned call/member/path/body facts stay current while
 declaration/import indexes remain reusable. Semantic-token local record facts

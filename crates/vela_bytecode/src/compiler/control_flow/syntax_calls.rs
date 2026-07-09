@@ -27,7 +27,7 @@ impl Compiler<'_, '_> {
             let Some(receiver_expression) = field.receiver() else {
                 return Ok(None);
             };
-            let Some(method) = field.name_text() else {
+            let Some(method) = self.hir_field_name_for_span(callee_span).map(str::to_owned) else {
                 return Ok(None);
             };
             if let Some(register) = self.compile_syntax_host_index_remove_call(
