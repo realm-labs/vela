@@ -7,7 +7,7 @@ use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
     SymbolRef, TextRange,
     callable_context::callable_facts,
-    member_access, path_calls,
+    path_calls,
     query_context::binding_resolution_for_source_range,
     symbol_ref::{
         qualified_source_declaration_name, source_enum_variant_symbol,
@@ -268,18 +268,22 @@ impl LanguageServiceDatabases {
         query: &QueryContext<'_>,
         target: &SymbolTarget,
     ) -> Option<Definition> {
-        let parsed = query.syntax_parse()?;
-        let call_site = member_access::member_call_sites(parsed)
-            .into_iter()
-            .find(|site| site.member_range == target.range())?;
+        let source_id = query.source_id()?;
+        let target_span = Span::new(
+            source_id,
+            u32::try_from(target.range().start).ok()?,
+            u32::try_from(target.range().end).ok()?,
+        );
+        let graph = self.hir_db().graph();
+        let call_field = graph
+            .member_calls_in_source(source_id)
+            .find(|field| field.member_origin.span == target_span)?;
+        let receiver_range = graph
+            .expression_span(call_field.receiver)
+            .and_then(text_range_for_span)?;
         let args_prefix = query.call_args_prefix_text().unwrap_or("");
         query
-            .member_callable_facts(
-                self,
-                call_site.receiver_range,
-                &call_site.member,
-                args_prefix,
-            )
+            .member_callable_facts(self, receiver_range, &call_field.name, args_prefix)
             .iter()
             .find_map(|callable| self.type_definition_for_fact(callable.returns()))
     }
@@ -479,6 +483,13 @@ fn diagnostic_range(text: &str, range: TextRange) -> DiagnosticRange {
         line_index.position(range.start),
         line_index.position(range.end),
     )
+}
+
+fn text_range_for_span(span: Span) -> Option<TextRange> {
+    Some(TextRange::new(
+        usize::try_from(span.start).ok()?,
+        usize::try_from(span.end).ok()?,
+    ))
 }
 
 fn name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRange> {

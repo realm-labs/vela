@@ -173,7 +173,9 @@ source-scoped `HirField` facts from `ModuleGraph` instead of rebuilding member
 access sites from parsed syntax, and script method reference/rename use scans
 now read HIR member-call field callee facts instead of parsed member-call
 sites. Call hierarchy method-call range resolution also reads those HIR
-member-call facts while keeping declaration-call resolution on binding facts.
+member-call facts while keeping declaration-call resolution on binding facts,
+and member-call return type-definition queries resolve receiver/member ranges
+from HIR call facts.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`
