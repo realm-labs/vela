@@ -21,7 +21,7 @@ use vela_syntax::ast::{
 };
 use vela_syntax::{Parse as SyntaxParse, TextRange as SyntaxTextRange};
 
-use crate::{TextRange, expression_facts, member_access};
+use crate::{TextRange, expression_facts};
 
 pub(super) fn source_diagnostics(
     parsed: &SyntaxParse<SyntaxSourceFile>,
@@ -31,40 +31,60 @@ pub(super) fn source_diagnostics(
     facts: &RegistryFacts,
 ) -> Vec<Diagnostic> {
     let expression_facts = expression_facts::collect(graph, parsed, facts);
-    let method_sites = member_access::member_call_sites(parsed);
+    let method_sites = graph
+        .member_calls_in_source(source)
+        .filter_map(|field| {
+            Some((
+                graph
+                    .expression_span(field.receiver)
+                    .and_then(text_range_for_span)?,
+                text_range_for_span(field.member_origin.span)?,
+                field.name.as_str(),
+            ))
+        })
+        .collect::<Vec<_>>();
     let method_ranges = method_sites
         .iter()
-        .map(|site| (site.member_range.start, site.member_range.end))
+        .map(|(_, member_range, _)| (member_range.start, member_range.end))
         .collect::<BTreeSet<_>>();
     let mut diagnostics = method_sites
         .iter()
-        .filter_map(|site| {
+        .filter_map(|(receiver_range, member_range, member)| {
             member_site_diagnostic(
                 source,
                 facts,
                 &expression_facts,
-                site.receiver_range,
-                site.member_range,
-                &site.member,
+                *receiver_range,
+                *member_range,
+                member,
                 AnalysisCompletionKind::Method,
             )
         })
         .collect::<Vec<_>>();
 
     diagnostics.extend(
-        member_access::member_access_sites(parsed)
-            .into_iter()
-            .filter(|site| {
-                !method_ranges.contains(&(site.member_range.start, site.member_range.end))
+        graph
+            .fields_in_source(source)
+            .filter_map(|field| {
+                Some((
+                    graph
+                        .expression_span(field.receiver)
+                        .and_then(text_range_for_span)?,
+                    text_range_for_span(field.member_origin.span)?,
+                    field.name.as_str(),
+                ))
             })
-            .filter_map(|site| {
+            .filter(|(_, member_range, _)| {
+                !method_ranges.contains(&(member_range.start, member_range.end))
+            })
+            .filter_map(|(receiver_range, member_range, member)| {
                 member_site_diagnostic(
                     source,
                     facts,
                     &expression_facts,
-                    site.receiver_range,
-                    site.member_range,
-                    &site.member,
+                    receiver_range,
+                    member_range,
+                    member,
                     AnalysisCompletionKind::Field,
                 )
             }),
@@ -597,6 +617,13 @@ fn text_range_key(range: SyntaxTextRange) -> (usize, usize) {
         u32::from(range.start()) as usize,
         u32::from(range.end()) as usize,
     )
+}
+
+fn text_range_for_span(span: Span) -> Option<TextRange> {
+    Some(TextRange::new(
+        usize::try_from(span.start).ok()?,
+        usize::try_from(span.end).ok()?,
+    ))
 }
 
 fn member_site_diagnostic(
