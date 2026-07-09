@@ -376,6 +376,27 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_script_calls_inside_parameter_defaults() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn helper() {
+    return 4;
+}
+fn grant(amount = helper()) {
+    return amount;
+}
+"#,
+    )
+    .expect("script call in parameter default should compile through HIR call facts");
+    let grant = program.function("grant").expect("grant function");
+    assert!(grant.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::CallFunction { name, .. } if name == "helper"
+    )));
+}
+
+#[test]
 fn compiler_lowers_named_native_args_from_registry() {
     let native_id = vela_def::FunctionId::new(77);
     let mut registry = vela_registry::DefinitionRegistry::new();

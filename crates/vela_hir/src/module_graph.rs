@@ -513,6 +513,14 @@ impl ModuleGraph {
     }
 
     #[must_use]
+    pub fn call_callee(&self, expression: HirExprId) -> Option<HirExprId> {
+        self.bodies
+            .values()
+            .find_map(|body| body.calls.get(&expression))
+            .map(|call| call.callee)
+    }
+
+    #[must_use]
     pub fn expression_containing_span(&self, span: Span) -> Option<HirExprId> {
         self.bodies
             .values()

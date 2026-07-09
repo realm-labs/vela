@@ -1031,6 +1031,18 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         self.bindings.resolution(expression)
     }
 
+    fn call_callee_expression(&self, call: HirExprId) -> Option<HirExprId> {
+        self.hir_bodies
+            .iter()
+            .find_map(|body| body.calls.get(&call))
+            .map(|call| call.callee)
+    }
+
+    fn call_callee_resolution(&self, call: HirExprId) -> Option<&BindingResolution> {
+        let callee = self.call_callee_expression(call)?;
+        self.bindings.resolution(callee)
+    }
+
     pub(in crate::compiler) fn local_at_span(&self, span: Span) -> Option<HirLocalId> {
         let BindingResolution::Local(local) = self.binding_resolution_at_span(span)? else {
             return None;
@@ -1115,9 +1127,8 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         Ok(())
     }
 
-    fn script_function_call_at_span(&self, callee_span: Span) -> Option<(HirDeclId, String)> {
-        let Some(BindingResolution::Declaration(declaration)) =
-            self.binding_resolution_at_span(callee_span)
+    fn script_function_call(&self, call: HirExprId) -> Option<(HirDeclId, String)> {
+        let Some(BindingResolution::Declaration(declaration)) = self.call_callee_resolution(call)
         else {
             return None;
         };
@@ -1128,9 +1139,8 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             .map(|name| (*declaration, name))
     }
 
-    fn local_callee_at_span(&self, callee_span: Span) -> Option<HirLocalId> {
-        let Some(BindingResolution::Local(local)) = self.binding_resolution_at_span(callee_span)
-        else {
+    fn local_call_callee(&self, call: HirExprId) -> Option<HirLocalId> {
+        let Some(BindingResolution::Local(local)) = self.call_callee_resolution(call) else {
             return None;
         };
         Some(*local)

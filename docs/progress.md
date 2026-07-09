@@ -161,6 +161,9 @@ setup resolves locals through `HirStmt::patterns` instead of `BindingMap`
 name/span scans. Bytecode match, tuple destructuring, for-pattern, and
 parameter-default match pattern local setup now resolves local identity through
 HIR binding-pattern source origins instead of `BindingMap` name/span scans.
+HIR bodies now record call-to-callee expression facts keyed by `HirExprId`, and
+bytecode script/local call lowering, including parameter-default script calls,
+uses those HIR call facts instead of callee-span semantic reconstruction.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

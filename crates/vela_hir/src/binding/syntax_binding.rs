@@ -497,7 +497,8 @@ impl<'a> SyntaxBindingLowerer<'a> {
             SyntaxExpressionKind::Call => {
                 if let Some(expr) = expr.as_call() {
                     if let Some(callee) = expr.callee() {
-                        self.bind_expr(&callee, PathUsage::Callee);
+                        let callee = self.bind_expr(&callee, PathUsage::Callee);
+                        self.record_call(id, callee);
                     }
                     for argument in expr.arguments() {
                         self.bind_argument(&argument);

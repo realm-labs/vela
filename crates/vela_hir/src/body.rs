@@ -49,6 +49,7 @@ pub struct HirBody {
     pub blocks: BTreeMap<HirBlockId, HirBlock>,
     pub statements: BTreeMap<HirStmtId, HirStmt>,
     pub expressions: BTreeMap<HirExprId, HirExpr>,
+    pub calls: BTreeMap<HirExprId, HirCall>,
     pub patterns: BTreeMap<HirPatternId, HirPattern>,
     pub locals: Vec<HirLocalId>,
     pub self_binding: Option<HirLocalId>,
@@ -71,6 +72,7 @@ impl HirBody {
             blocks: BTreeMap::new(),
             statements: BTreeMap::new(),
             expressions: BTreeMap::new(),
+            calls: BTreeMap::new(),
             patterns: BTreeMap::new(),
             locals: Vec::new(),
             self_binding: None,
@@ -150,6 +152,12 @@ pub struct HirExpr {
     pub id: HirExprId,
     pub origin: HirSourceOrigin,
     pub kind: HirExprKind,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct HirCall {
+    pub expression: HirExprId,
+    pub callee: HirExprId,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

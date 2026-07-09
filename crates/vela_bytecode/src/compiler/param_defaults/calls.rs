@@ -40,7 +40,10 @@ impl Compiler<'_, '_> {
         let args = syntax_call_arguments(source, call)?;
         let dst = self.alloc_register()?;
 
-        if let Some((declaration, name)) = self.script_function_call_at_span(callee_span) {
+        if let Some((declaration, name)) = self
+            .expression_at_span(call_span)
+            .and_then(|call| self.script_function_call(call))
+        {
             let call_args =
                 self.compile_param_default_script_call_args(source, declaration, &args, call_span)?;
             self.emit_spanned(

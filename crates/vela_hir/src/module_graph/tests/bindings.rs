@@ -1,5 +1,5 @@
 use super::*;
-use crate::body::{HirBodyOwner, HirBodyRoot, HirScopeKind, HirStmtKind};
+use crate::body::{HirBodyOwner, HirBodyRoot, HirExprKind, HirScopeKind, HirStmtKind};
 
 fn hir_resolution_for_span<'a>(
     graph: &ModuleGraph,
@@ -960,6 +960,48 @@ fn main() { return grant; }
         bindings
             .resolutions()
             .any(|(_, resolution)| { resolution == &BindingResolution::Declaration(grant) })
+    );
+}
+
+#[test]
+fn function_bodies_record_call_callee_expression_ids() {
+    let mut graph = ModuleGraph::new();
+    let module = graph.add_source(source(
+        1,
+        "game::main",
+        r#"
+fn helper() { return 1; }
+fn main() { return helper(); }
+"#,
+    ));
+    let main = graph
+        .module(module)
+        .and_then(|module| module.get("main"))
+        .expect("main declaration");
+    let helper = graph
+        .module(module)
+        .and_then(|module| module.get("helper"))
+        .expect("helper declaration");
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+
+    let body = graph.function_body(main).expect("main body");
+    let call = body
+        .calls
+        .values()
+        .find(|call| {
+            body.expressions
+                .get(&call.expression)
+                .is_some_and(|expression| expression.kind == HirExprKind::Call)
+        })
+        .expect("call record");
+    let callee = graph
+        .call_callee(call.expression)
+        .expect("callee expression id");
+    assert_eq!(callee, call.callee);
+    let bindings = graph.bindings(main).expect("main bindings");
+    assert_eq!(
+        bindings.resolution(callee),
+        Some(&BindingResolution::Declaration(helper))
     );
 }
 #[test]

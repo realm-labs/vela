@@ -197,7 +197,10 @@ impl Compiler<'_, '_> {
             return Ok(None);
         }
         let dst = self.alloc_register()?;
-        if let Some((declaration, name)) = self.script_function_call_at_span(callee_span) {
+        let call_expression = self.expression_at_span(call_span);
+        if let Some((declaration, name)) =
+            call_expression.and_then(|call| self.script_function_call(call))
+        {
             let Some(call_args) = self.compile_syntax_script_function_call_arguments(
                 source,
                 declaration,
@@ -220,7 +223,10 @@ impl Compiler<'_, '_> {
             return Ok(Some(dst));
         }
 
-        if self.local_callee_at_span(callee_span).is_some() {
+        if call_expression
+            .and_then(|call| self.local_call_callee(call))
+            .is_some()
+        {
             if arguments
                 .iter()
                 .any(|argument| argument.name_text().is_some())
