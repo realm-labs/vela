@@ -23,7 +23,7 @@ FieldNotFound:
 Copied reflection records for script-defined modules, functions, types, traits,
 fields, methods, trait methods, and variants include `source_span: { source,
 start, end }` when the registry knows the declaration location. Host-provided
-descriptors may leave this field as `null`. Unknown reflection lookups carry
+descriptors may leave this field as `()`. Unknown reflection lookups carry
 ranked related candidates with the same optional source spans where descriptors
 have source locations, so admin/debug tooling can jump from a misspelled lookup
 to nearby schema declarations without parsing human-readable messages.
@@ -33,7 +33,7 @@ variant exists in the registry, unknown-field diagnostics use the registered
 field metadata and related source spans rather than treating the value as an
 anonymous record.
 Field reflection records also expose the declared `type` hint when one is
-known, or `null` for unhinted/dynamic fields. These are copied documentation and
+known, or `()` for unhinted/dynamic fields. These are copied documentation and
 tooling hints, not generic script types or static enforcement.
 Field access records expose copied `required_permissions` so admin/debug tools
 can explain why a field is hidden or denied under the active reflection policy.

@@ -425,7 +425,7 @@ impl Compiler<'_, '_> {
 
 fn runtime_type_for_constant(value: &Constant) -> Option<RuntimeTypeFact> {
     match value {
-        Constant::Null => Some(RuntimeTypeFact::primitive(PrimitiveTag::Null)),
+        Constant::Unit => Some(RuntimeTypeFact::primitive(PrimitiveTag::Unit)),
         Constant::Bool(_) => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bool)),
         Constant::Char(_) => Some(RuntimeTypeFact::primitive(PrimitiveTag::Char)),
         Constant::Scalar(value) => Some(RuntimeTypeFact::primitive(value.primitive_tag())),

@@ -178,7 +178,7 @@ fn method_descriptor_return_abi_changes_are_rejected() {
             EffectAbi::host_write(),
             AccessAbi::public(),
         )
-        .return_type("null")
+        .return_type("()")
         .source_span(span),
     );
     let initial = compile_initial_with_abi(SourceId::new(1), "fn main() { return 1; }", old_abi)
@@ -197,7 +197,7 @@ fn method_descriptor_return_abi_changes_are_rejected() {
             type_name: "Player".to_owned(),
             method: "grant_exp".to_owned(),
             old: Some("i64".to_owned()),
-            new: Some("null".to_owned()),
+            new: Some("()".to_owned()),
             source_span: Some(Box::new(span)),
         }
     );
@@ -207,7 +207,7 @@ fn method_descriptor_return_abi_changes_are_rejected() {
         report.errors[0].detail,
         Some(HotReloadDiagnosticDetail::MethodReturnAbi {
             old: Some("i64".to_owned()),
-            new: Some("null".to_owned()),
+            new: Some("()".to_owned()),
         })
     );
     assert_eq!(report.errors[0].source_span, Some(span));
@@ -215,6 +215,6 @@ fn method_descriptor_return_abi_changes_are_rejected() {
         report
             .render_lines()
             .iter()
-            .any(|line| line.text == "method return ABI: old=i64 new=null")
+            .any(|line| line.text == "method return ABI: old=i64 new=()")
     );
 }

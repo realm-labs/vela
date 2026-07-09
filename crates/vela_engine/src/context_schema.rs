@@ -47,7 +47,7 @@ pub fn context_host_type_desc() -> TypeDesc {
                         .type_hint("Any")
                         .defaulted(true),
                 )
-                .return_type("null")
+                .return_type("()")
                 .effects(MethodEffectSet::event_emit())
                 .access(MethodAccess::new().reflect_callable(true))
                 .docs("Records an event emission patch for the host safe point.")
@@ -63,7 +63,7 @@ pub fn context_host_type_desc() -> TypeDesc {
                         .type_hint("Any")
                         .defaulted(true),
                 )
-                .return_type("null")
+                .return_type("()")
                 .effects(MethodEffectSet::event_emit())
                 .access(MethodAccess::new().reflect_callable(true))
                 .docs("Records a log patch for the host safe point.")

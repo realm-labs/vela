@@ -511,8 +511,8 @@ fn type_guard_plan_for_hint_inner(
     };
     match name.as_str() {
         "Any" => None,
-        "null" => Some(UnlinkedTypeGuardPlan::Primitive(
-            vela_common::PrimitiveTag::Null,
+        "()" => Some(UnlinkedTypeGuardPlan::Primitive(
+            vela_common::PrimitiveTag::Unit,
         )),
         "bool" => Some(UnlinkedTypeGuardPlan::Primitive(
             vela_common::PrimitiveTag::Bool,
@@ -964,8 +964,8 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         let statements = self.body.statement_payloads();
         let returned = self.compile_statement_payloads(&statements)?;
         if !returned {
-            let null = self.emit_constant(Constant::Null)?;
-            self.emit(UnlinkedInstructionKind::Return { src: null });
+            let unit = self.emit_constant(Constant::Unit)?;
+            self.emit(UnlinkedInstructionKind::Return { src: unit });
         }
         self.code.register_count = self.next_register;
         Ok(self.code)

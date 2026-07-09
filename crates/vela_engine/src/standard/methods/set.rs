@@ -35,10 +35,10 @@ const SET_METHODS: &[MethodSpec] = &[
     MethodSpec::new(
         "extend",
         &[ParamSpec::new("values", "set")],
-        "null",
+        "()",
         "Adds all values from another set::",
     ),
-    MethodSpec::new("clear", &[], "null", "Removes all values."),
+    MethodSpec::new("clear", &[], "()", "Removes all values."),
     MethodSpec::new(
         "values",
         &[],

@@ -282,7 +282,7 @@ impl StdFieldSpec {
 }
 
 pub const STD_TYPES: &[StdTypeSpec] = &[
-    StdTypeSpec::primitive("Null", PrimitiveTag::Null),
+    StdTypeSpec::primitive("Unit", PrimitiveTag::Unit),
     StdTypeSpec::primitive("Bool", PrimitiveTag::Bool),
     StdTypeSpec::primitive("Char", PrimitiveTag::Char),
     StdTypeSpec::primitive("I8", PrimitiveTag::I8),
@@ -935,7 +935,7 @@ mod tests {
         assert_eq!(
             primitive_types,
             BTreeSet::from([
-                ("Null", PrimitiveTag::Null),
+                ("Unit", PrimitiveTag::Unit),
                 ("Bool", PrimitiveTag::Bool),
                 ("Char", PrimitiveTag::Char),
                 ("I8", PrimitiveTag::I8),

@@ -1500,7 +1500,7 @@ macro_rules! define_runtime_type_helpers {
             heap: Option<&HeapExecution<'_>>,
         ) -> Option<PrimitiveTag> {
             match value {
-                Value::Null => Some(PrimitiveTag::Null),
+                Value::Unit => Some(PrimitiveTag::Unit),
                 Value::Bool(_) => Some(PrimitiveTag::Bool),
                 Value::Char(_) => Some(PrimitiveTag::Char),
                 $(
@@ -1521,7 +1521,7 @@ macro_rules! define_runtime_type_helpers {
         ) -> &'a str {
             match value {
                 Value::Missing => "missing",
-                Value::Null => primitive_type_name(PrimitiveTag::Null),
+                Value::Unit => primitive_type_name(PrimitiveTag::Unit),
                 Value::Bool(_) => primitive_type_name(PrimitiveTag::Bool),
                 Value::Char(_) => primitive_type_name(PrimitiveTag::Char),
                 $(

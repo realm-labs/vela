@@ -9,7 +9,7 @@ model. Source type names `int` and `float` are removed; they are not aliases.
 Vela is dynamic by default, but primitive values use explicit concrete names:
 
 ```text
-null
+()
 bool
 char
 i8 i16 i32 i64
@@ -61,7 +61,7 @@ The shared low-level vocabulary is:
 
 ```rust
 pub enum PrimitiveTag {
-    Null,
+    Unit,
     Bool,
     Char,
     I8,

@@ -4,7 +4,7 @@ use vela_host::path::HostRef;
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub(crate) enum ValueKey {
-    Null,
+    Unit,
     Bool(bool),
     Char(char),
     I8(i8),
@@ -31,7 +31,7 @@ impl ValueKey {
     ) -> VmResult<Self> {
         match value {
             Value::Missing => type_error(operation),
-            Value::Null => Ok(Self::Null),
+            Value::Unit => Ok(Self::Unit),
             Value::Bool(value) => Ok(Self::Bool(*value)),
             Value::Char(value) => Ok(Self::Char(*value)),
             Value::I8(value) => Ok(Self::I8(*value)),
@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     fn value_key_accepts_leaf_values_by_exact_value() {
-        assert_eq!(key(&Value::Null), ValueKey::Null);
+        assert_eq!(key(&Value::Unit), ValueKey::Unit);
         assert_eq!(key(&Value::Bool(true)), ValueKey::Bool(true));
         assert_eq!(key(&Value::Char('v')), ValueKey::Char('v'));
         assert_eq!(key(&Value::I8(-1)), ValueKey::I8(-1));

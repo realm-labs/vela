@@ -17,7 +17,7 @@ const ARRAY_METHODS: &[MethodSpec] = &[
     MethodSpec::new(
         "push",
         &[ParamSpec::new("value", "any")],
-        "null",
+        "()",
         "Appends a value to the array.",
     ),
     MethodSpec::new("pop", &[], "Option", "Removes and returns the last value."),
@@ -27,16 +27,16 @@ const ARRAY_METHODS: &[MethodSpec] = &[
             ParamSpec::new("index", "i64"),
             ParamSpec::new("value", "any"),
         ],
-        "null",
+        "()",
         "Inserts a value at an index.",
     ),
     MethodSpec::new(
         "extend",
         &[ParamSpec::new("values", "array")],
-        "null",
+        "()",
         "Appends all values from another array.",
     ),
-    MethodSpec::new("clear", &[], "null", "Removes all values."),
+    MethodSpec::new("clear", &[], "()", "Removes all values."),
     MethodSpec::new("first", &[], "Option", "Returns the first value."),
     MethodSpec::new("last", &[], "Option", "Returns the last value."),
     MethodSpec::new(

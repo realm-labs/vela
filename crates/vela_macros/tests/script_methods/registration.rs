@@ -35,7 +35,7 @@ fn script_macros_feed_engine_builder_registration() {
     let engine = Engine::builder()
         .register_host_type::<Player>()
         .capability(Capability::HostWrite)
-        .register_native_method_fn(desc, |_, _, _| Ok(OwnedValue::Null))
+        .register_native_method_fn(desc, |_, _, _| Ok(OwnedValue::Unit))
         .build()
         .expect("engine should build from macro metadata");
 
@@ -289,10 +289,10 @@ fn script_methods_generate_callable_option_native_registration() {
         engine.call_native_method(
             method_id("preview_bonus"),
             &HostPath::new(player),
-            &[OwnedValue::Null],
+            &[OwnedValue::Unit],
             &mut host,
         ),
-        Ok(OwnedValue::Null),
+        Ok(OwnedValue::Unit),
     );
     assert_eq!(
         engine.call_native_method(

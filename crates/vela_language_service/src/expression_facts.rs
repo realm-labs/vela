@@ -856,7 +856,7 @@ impl ExpressionFactCollector<'_> {
                     .map(|block| self.block_fact(&block, scope)),
                 _ => None,
             })
-            .unwrap_or(TypeFact::NULL)
+            .unwrap_or(TypeFact::UNIT)
     }
 
     fn if_expr_fact(&self, if_expr: &SyntaxIfExpr, scope: &ExprFactScope) -> TypeFact {
@@ -864,7 +864,7 @@ impl ExpressionFactCollector<'_> {
         if let Some(then_branch) = if_expr.then_block() {
             branch_facts.push(self.block_fact(&then_branch, scope));
         }
-        branch_facts.push(if_expr.else_branch().map_or(TypeFact::NULL, |else_branch| {
+        branch_facts.push(if_expr.else_branch().map_or(TypeFact::UNIT, |else_branch| {
             match else_branch {
                 vela_syntax::ast::SyntaxElseBranch::If(if_expr) => {
                     self.if_expr_fact(&if_expr, scope)
@@ -901,7 +901,6 @@ impl ExpressionFactCollector<'_> {
 
 fn literal_fact(literal: Literal) -> TypeFact {
     match literal {
-        Literal::Null => TypeFact::NULL,
         Literal::Bool(_) => TypeFact::BOOL,
         Literal::Char(_) => TypeFact::CHAR,
         Literal::Integer(_) => TypeFact::I64,

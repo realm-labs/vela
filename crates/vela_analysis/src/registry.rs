@@ -952,7 +952,7 @@ fn type_desc_fact(desc: &TypeDesc) -> TypeFact {
     }
 
     match desc.kind {
-        TypeKind::Null => TypeFact::NULL,
+        TypeKind::Unit => TypeFact::UNIT,
         TypeKind::Bool => TypeFact::BOOL,
         TypeKind::I8 => TypeFact::I8,
         TypeKind::I16 => TypeFact::I16,
@@ -1307,7 +1307,7 @@ mod tests {
     fn registry_facts_cover_builtin_type_kinds_without_generics() {
         let mut registry = TypeRegistry::new();
         for (id, name, kind) in [
-            (10, "null", TypeKind::Null),
+            (10, "()", TypeKind::Unit),
             (11, "bool", TypeKind::Bool),
             (12, "i64", TypeKind::I64),
             (13, "f64", TypeKind::F64),
@@ -1324,7 +1324,7 @@ mod tests {
 
         let facts = RegistryFacts::from_registry(&registry);
 
-        assert_eq!(facts.type_fact("null"), Some(&TypeFact::NULL));
+        assert_eq!(facts.type_fact("()"), Some(&TypeFact::UNIT));
         assert_eq!(facts.type_fact("bool"), Some(&TypeFact::BOOL));
         assert_eq!(facts.type_fact("i64"), Some(&TypeFact::I64));
         assert_eq!(facts.type_fact("f64"), Some(&TypeFact::F64));

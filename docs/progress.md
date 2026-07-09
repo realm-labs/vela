@@ -148,6 +148,16 @@ now contains statement-level syntax lowering only, while expression dispatch,
 assignment lowering, call lowering, index lowering, and array/map container
 lowering live in focused sibling modules under the ordinary 1200-line
 guideline.
+
+The tuple/unit/null hard switch is now active. Source-level `null` has been
+removed from the ordinary syntax/tooling surface, and the core no-value model
+uses Unit across runtime values, owned/host values, bytecode constants,
+primitive tags, reflection type kinds, hot-reload schema ABI, C API value kind,
+standard/native no-result metadata, and control-flow defaults. Remaining
+follow-up work includes tuple runtime payloads and destructuring behavior,
+Rust `Option<T>` conversion to script `Option<T>`, tuple arity 2..=4 host
+conversion, and replacing reflection metadata gaps with structured Option or
+omitted fields instead of unit placeholders.
 ## Milestone Snapshot
 
 | Milestone | Status | Current note |

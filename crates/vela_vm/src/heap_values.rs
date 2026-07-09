@@ -22,7 +22,7 @@ pub(crate) fn value_from_constant(
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     match constant {
-        Constant::Null => Ok(Value::Null),
+        Constant::Unit => Ok(Value::Unit),
         Constant::Bool(value) => Ok(Value::Bool(*value)),
         Constant::Char(value) => Ok(Value::Char(*value)),
         Constant::Scalar(value) => Ok(Value::from_scalar(*value)),
@@ -169,7 +169,7 @@ pub(crate) fn owned_to_value(
 ) -> VmResult<Value> {
     match value {
         OwnedValue::Missing => Ok(Value::Missing),
-        OwnedValue::Null => Ok(Value::Null),
+        OwnedValue::Unit => Ok(Value::Unit),
         OwnedValue::Bool(value) => Ok(Value::Bool(value)),
         OwnedValue::Char(value) => Ok(Value::Char(value)),
         OwnedValue::Scalar(value) => Ok(Value::from_scalar(value)),
@@ -290,7 +290,7 @@ pub(crate) fn value_to_owned(
     }
     match value {
         Value::Missing => Ok(OwnedValue::Missing),
-        Value::Null => Ok(OwnedValue::Null),
+        Value::Unit => Ok(OwnedValue::Unit),
         Value::Bool(value) => Ok(OwnedValue::Bool(*value)),
         Value::Char(value) => Ok(OwnedValue::Char(*value)),
         Value::Range(value) => Ok(OwnedValue::Range(*value)),
@@ -391,7 +391,7 @@ pub(crate) fn host_to_value(
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     match value {
-        HostValue::Null => Ok(Value::Null),
+        HostValue::Unit => Ok(Value::Unit),
         HostValue::Bool(value) => Ok(Value::Bool(value)),
         HostValue::Char(value) => Ok(Value::Char(value)),
         HostValue::Scalar(value) => Ok(Value::from_scalar(value)),
@@ -411,7 +411,7 @@ pub(crate) fn value_to_host(
         return Ok(HostValue::Scalar(value));
     }
     match value {
-        Value::Null => Ok(HostValue::Null),
+        Value::Unit => Ok(HostValue::Unit),
         Value::Bool(value) => Ok(HostValue::Bool(*value)),
         Value::Char(value) => Ok(HostValue::Char(*value)),
         Value::HostRef(value) => Ok(HostValue::HostRef(*value)),
@@ -454,7 +454,7 @@ fn store_value_in_heap(
 ) -> VmResult<Value> {
     match value {
         Value::Missing => Err(type_error("missing value")),
-        Value::Null
+        Value::Unit
         | Value::Bool(_)
         | Value::Char(_)
         | Value::I8(_)

@@ -311,7 +311,7 @@ fn engine_context_host_schema_registers_metadata() {
     assert!(emit.access.reflect_callable);
     assert_eq!(emit.params[0].name, "event");
     assert_eq!(emit.params[0].type_hint.as_deref(), Some("String"));
-    assert_eq!(emit.return_type.as_deref(), Some("null"));
+    assert_eq!(emit.return_type.as_deref(), Some("()"));
     assert_eq!(emit.attrs.get("stdlib"), Some("context"));
     assert_eq!(emit.attrs.get("domain"), Some("context"));
 
@@ -325,7 +325,7 @@ fn engine_context_host_schema_registers_metadata() {
     assert!(log.access.reflect_callable);
     assert_eq!(log.params[0].name, "level");
     assert_eq!(log.params[1].name, "message");
-    assert_eq!(log.return_type.as_deref(), Some("null"));
+    assert_eq!(log.return_type.as_deref(), Some("()"));
     assert_eq!(log.attrs.get("stdlib"), Some("context"));
     assert_eq!(log.attrs.get("domain"), Some("context"));
 }
@@ -412,8 +412,8 @@ fn main(ctx: Context) {
         HostPath::new(ctx).field(CONTEXT_TICK_FIELD_ID),
         HostValue::Scalar(vela_common::ScalarValue::I64(42)),
     );
-    adapter.insert_method_return(CONTEXT_EMIT_METHOD_ID, HostValue::Null);
-    adapter.insert_method_return(CONTEXT_LOG_METHOD_ID, HostValue::Null);
+    adapter.insert_method_return(CONTEXT_EMIT_METHOD_ID, HostValue::Unit);
+    adapter.insert_method_return(CONTEXT_LOG_METHOD_ID, HostValue::Unit);
     let mut tx = HostAccess::new();
     let mut host = HostExecution {
         adapter: &mut adapter,

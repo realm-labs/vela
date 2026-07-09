@@ -252,7 +252,7 @@ impl IntoScriptArg for &PathProxy {
 
 impl IntoScriptArg for () {
     fn into_script_arg(self) -> OwnedValue {
-        OwnedValue::Null
+        OwnedValue::Unit
     }
 }
 
@@ -356,7 +356,7 @@ where
     fn into_script_arg(self) -> OwnedValue {
         match self {
             Some(value) => value.into_script_arg(),
-            None => OwnedValue::Null,
+            None => OwnedValue::Unit,
         }
     }
 }
@@ -369,7 +369,7 @@ where
 
     fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
         match value {
-            OwnedValue::Null => Ok(None),
+            OwnedValue::Unit => Ok(None),
             OwnedValue::Enum {
                 enum_name,
                 variant,

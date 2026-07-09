@@ -15,7 +15,6 @@ use super::{CompileError, CompileErrorKind, CompileResult};
 
 pub(super) fn compile_literal_constant(literal: &Literal) -> CompileResult<Constant> {
     Ok(match literal {
-        Literal::Null => Constant::Null,
         Literal::Bool(value) => Constant::Bool(*value),
         Literal::Char(value) => Constant::Char(*value),
         Literal::Integer(value) => Constant::Scalar(parse_i64eger_scalar(value)?),
@@ -217,7 +216,7 @@ fn evaluate_syntax_const_block(
                     return Ok(None);
                 };
                 let Some(value) = statement.expression() else {
-                    return Ok(Some(Constant::Null));
+                    return Ok(Some(Constant::Unit));
                 };
                 return evaluate_syntax_const_expr(source, &value, &local_values);
             }
@@ -412,7 +411,7 @@ fn evaluate_equality_const(left: &Constant, right: &Constant) -> Option<bool> {
         (Constant::Array(_) | Constant::Map(_), _) | (_, Constant::Array(_) | Constant::Map(_)) => {
             None
         }
-        (Constant::Null, Constant::Null) => Some(true),
+        (Constant::Unit, Constant::Unit) => Some(true),
         (Constant::Bool(left), Constant::Bool(right)) => Some(left == right),
         (Constant::Char(left), Constant::Char(right)) => Some(left == right),
         (Constant::Scalar(left), Constant::Scalar(right)) => Some(left == right),

@@ -63,7 +63,7 @@ impl Compiler<'_, '_> {
                 self.compile_block_payload_value_to(&else_body, dst)?
             }
             None => {
-                self.emit_constant_to(dst, Constant::Null);
+                self.emit_constant_to(dst, Constant::Unit);
                 false
             }
         };

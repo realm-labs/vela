@@ -355,7 +355,7 @@ impl ScriptStateAdapter for MockStateAdapter {
             .method_returns
             .get(&method)
             .cloned()
-            .unwrap_or(HostValue::Null);
+            .unwrap_or(HostValue::Unit);
         self.ensure_object(key.root);
         self.method_calls.push(MockMethodCall {
             target: key,

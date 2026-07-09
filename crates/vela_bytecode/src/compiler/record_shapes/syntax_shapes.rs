@@ -312,7 +312,7 @@ impl Compiler<'_, '_> {
             }),
             ("fs", "write_string") | ("io", "print") | ("io", "println") => {
                 Some(ValueShape::Result {
-                    ok: Some(Box::new(ValueShape::Scalar("null".to_owned()))),
+                    ok: Some(Box::new(ValueShape::Scalar("()".to_owned()))),
                     err: Some(Box::new(io_error_shape())),
                 })
             }
@@ -919,7 +919,6 @@ fn left_float_or_right_float(left: NumericLiteralKind, right: NumericLiteralKind
 
 fn literal_type(literal: Literal) -> RuntimeTypeFact {
     match literal {
-        Literal::Null => RuntimeTypeFact::primitive(PrimitiveTag::Null),
         Literal::Bool(_) => RuntimeTypeFact::primitive(PrimitiveTag::Bool),
         Literal::Char(_) => RuntimeTypeFact::primitive(PrimitiveTag::Char),
         Literal::Integer(value) => RuntimeTypeFact::primitive(match value.suffix {

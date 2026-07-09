@@ -632,7 +632,7 @@ fn runtime_stages_dir_method_return_rejection_until_safe_point() {
     let kind = dir_method_rejection_kind(
         "runtime_stage_dir_method_return",
         MethodDesc::new(HostMethodId::new(9), "grant_exp").return_type("i64"),
-        MethodDesc::new(HostMethodId::new(9), "grant_exp").return_type("null"),
+        MethodDesc::new(HostMethodId::new(9), "grant_exp").return_type("()"),
         "reload.method.return_abi_changed",
     );
 
@@ -649,7 +649,7 @@ fn runtime_stages_dir_method_return_rejection_until_safe_point() {
     assert_eq!(type_name, "Player");
     assert_eq!(method, "grant_exp");
     assert_eq!(old.as_deref(), Some("i64"));
-    assert_eq!(new.as_deref(), Some("null"));
+    assert_eq!(new.as_deref(), Some("()"));
     assert!(source_span.is_none());
 }
 

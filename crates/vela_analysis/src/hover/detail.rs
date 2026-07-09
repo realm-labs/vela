@@ -6,7 +6,7 @@ use vela_reflect::registry::{
 
 pub(super) fn type_detail(kind: TypeKind) -> String {
     match kind {
-        TypeKind::Null => "kind: null".to_owned(),
+        TypeKind::Unit => "kind: unit".to_owned(),
         TypeKind::Bool => "kind: bool".to_owned(),
         TypeKind::I8 => "kind: i8".to_owned(),
         TypeKind::I16 => "kind: i16".to_owned(),

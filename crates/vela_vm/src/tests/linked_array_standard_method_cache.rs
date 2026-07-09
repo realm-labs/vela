@@ -65,7 +65,7 @@ fn linked_standard_value_method_caches_array_push_target() {
     assert_array_owned_cache(
         linked_array_push_cache_program(),
         StandardMethodInlineCacheTarget::Push,
-        OwnedValue::Null,
+        OwnedValue::Unit,
     );
 }
 
@@ -83,7 +83,7 @@ fn linked_standard_value_method_caches_array_insert_target() {
     assert_array_owned_cache(
         linked_array_insert_cache_program(),
         StandardMethodInlineCacheTarget::Insert,
-        OwnedValue::Null,
+        OwnedValue::Unit,
     );
 }
 
@@ -101,7 +101,7 @@ fn linked_standard_value_method_caches_array_clear_target() {
     assert_array_owned_cache(
         linked_array_clear_cache_program(),
         StandardMethodInlineCacheTarget::Clear,
-        OwnedValue::Null,
+        OwnedValue::Unit,
     );
 }
 
@@ -110,7 +110,7 @@ fn linked_standard_value_method_caches_array_extend_target() {
     assert_array_owned_cache(
         linked_array_extend_cache_program(),
         StandardMethodInlineCacheTarget::Extend,
-        OwnedValue::Null,
+        OwnedValue::Unit,
     );
 }
 

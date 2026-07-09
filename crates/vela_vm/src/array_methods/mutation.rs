@@ -20,7 +20,7 @@ pub(crate) fn push(
             };
             let slot = store_runtime_value(&args[0], heap, budget.as_deref_mut())?;
             collection_mutation::push_array_slot(heap, *reference, slot, budget, "method push")?;
-            Ok(Value::Null)
+            Ok(Value::Unit)
         }
         _ => type_error("method push"),
     }
@@ -119,7 +119,7 @@ pub(crate) fn insert(
                 budget,
                 "method insert",
             )?;
-            Ok(Value::Null)
+            Ok(Value::Unit)
         }
         _ => type_error("method insert"),
     }
@@ -149,7 +149,7 @@ pub(crate) fn extend(
                 budget,
                 "method extend",
             )?;
-            Ok(Value::Null)
+            Ok(Value::Unit)
         }
         _ => type_error("method extend"),
     }
@@ -167,7 +167,7 @@ pub(crate) fn clear(
                 return type_error("method clear");
             };
             collection_mutation::clear_array(heap, *reference, None, "method clear")?;
-            Ok(Value::Null)
+            Ok(Value::Unit)
         }
         _ => type_error("method clear"),
     }

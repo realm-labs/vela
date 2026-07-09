@@ -247,7 +247,7 @@ impl Compiler<'_, '_> {
                     src: else_value,
                 });
             }
-            None => self.emit_constant_to(dst, crate::Constant::Null),
+            None => self.emit_constant_to(dst, crate::Constant::Unit),
         }
         self.patch_jump(jump_to_end, self.current_offset())?;
 
@@ -261,7 +261,7 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<Register> {
         let statements = block.statements().collect::<Vec<_>>();
         match statements.as_slice() {
-            [] => self.emit_constant(crate::Constant::Null),
+            [] => self.emit_constant(crate::Constant::Unit),
             [statements @ .., tail] => {
                 for statement in statements {
                     if let Some(let_stmt) = statement.as_let() {
@@ -281,7 +281,7 @@ impl Compiler<'_, '_> {
 
                 if let Some(let_stmt) = tail.as_let() {
                     self.compile_param_default_let(source, block, &let_stmt)?;
-                    return self.emit_constant(crate::Constant::Null);
+                    return self.emit_constant(crate::Constant::Unit);
                 }
                 let Some(expr_stmt) = tail.as_expr() else {
                     return Err(param_default_block_unsupported(source, block));
@@ -291,7 +291,7 @@ impl Compiler<'_, '_> {
                 };
                 let value = self.compile_param_default_expression(source, &expression)?;
                 if expr_stmt.semicolon_token().is_some() {
-                    self.emit_constant(crate::Constant::Null)
+                    self.emit_constant(crate::Constant::Unit)
                 } else {
                     Ok(value)
                 }
@@ -352,7 +352,7 @@ impl Compiler<'_, '_> {
             }
             register
         } else {
-            self.emit_constant(crate::Constant::Null)?
+            self.emit_constant(crate::Constant::Unit)?
         };
         let known_type_names = self.facts.known_type_names();
         let script_type =
@@ -830,7 +830,6 @@ fn param_default_let_supported(let_stmt: &SyntaxLetStmt) -> bool {
 
 fn syntax_literal_static_type(literal: Literal) -> StaticExprType {
     match literal {
-        Literal::Null => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Null)),
         Literal::Bool(_) => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Bool)),
         Literal::Char(_) => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Char)),
         Literal::String(_) => {
@@ -878,7 +877,7 @@ fn syntax_literal_static_type(literal: Literal) -> StaticExprType {
 
 fn constant_static_type(constant: &crate::Constant) -> Option<RuntimeTypeFact> {
     match constant {
-        crate::Constant::Null => Some(RuntimeTypeFact::primitive(PrimitiveTag::Null)),
+        crate::Constant::Unit => Some(RuntimeTypeFact::primitive(PrimitiveTag::Unit)),
         crate::Constant::Bool(_) => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bool)),
         crate::Constant::Char(_) => Some(RuntimeTypeFact::primitive(PrimitiveTag::Char)),
         crate::Constant::String(_) => Some(RuntimeTypeFact::primitive(PrimitiveTag::String)),

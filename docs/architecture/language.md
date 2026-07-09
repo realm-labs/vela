@@ -153,7 +153,7 @@ same-scope overload resolution.
 Supported value categories:
 
 ```text
-null
+unit / ()
 bool
 i8 / i16 / i32 / i64
 u8 / u16 / u32 / u64
@@ -245,20 +245,21 @@ enum Result {
 }
 ```
 
-`null`, `Option`, `Result`, and runtime errors have separate responsibilities:
+`()`, `Option`, `Result`, and runtime errors have separate responsibilities:
 
 ```text
-null        no meaningful value, void-like results, host nullable boundaries, or missing metadata
+()          no meaningful value and void-like results
 Option::None expected absence in business or lookup logic
 Result::Err  recoverable failure with a script-visible reason
 VM error    unrecoverable trap, script bug, contract violation, budget failure, or sandbox denial
 ```
 
 Script and standard-library APIs should prefer `Option` for expected missing
-data and `Result` for expected recoverable failure. They should not use `null`
-as the normal "not found" or "failed" result:: `null` remains the value for
-statement-only blocks, no-result native calls, reflection metadata gaps, and
-host/Rust nullable interop.
+data and `Result` for expected recoverable failure. They should not use `()`
+as the normal "not found" or "failed" result. Statement-only blocks,
+no-result native calls, and explicit `return;` produce `()`. Reflection
+metadata gaps and host/Rust nullable interop should use `Option::None` once
+that structured boundary is available.
 
 ### Strings
 
@@ -273,8 +274,8 @@ format-string bytecode instruction rather than numeric `+`, so it does not
 change the meaning of the addition operator.
 
 Control-flow expressions produce values. Empty or statement-only blocks
-evaluate to `null`, and expression-valued `if` without an `else` evaluates to
-`null` on the untaken branch.
+evaluate to `()`, and expression-valued `if` without an `else` evaluates to
+`()` on the untaken branch.
 
 ### Dynamic Traits / Protocols
 

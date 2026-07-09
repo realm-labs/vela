@@ -172,13 +172,13 @@ fn math_set_and_time_functions_expose_return_facts() {
         stdlib_function_fact("io::print", &[TypeFact::STRING])
             .expect("io::print fact")
             .returns,
-        TypeFact::result(TypeFact::NULL, TypeFact::record("IoError"))
+        TypeFact::result(TypeFact::UNIT, TypeFact::record("IoError"))
     );
     assert_eq!(
         stdlib_function_fact("io::println", &[TypeFact::STRING])
             .expect("io::println fact")
             .returns,
-        TypeFact::result(TypeFact::NULL, TypeFact::record("IoError"))
+        TypeFact::result(TypeFact::UNIT, TypeFact::record("IoError"))
     );
 }
 
@@ -303,12 +303,12 @@ fn function_completion_facts_enumerate_global_api_surface() {
     assert!(facts.iter().any(|fact| {
         fact.name == "io::print"
             && fact.params == [TypeFact::Any]
-            && fact.returns == TypeFact::result(TypeFact::NULL, TypeFact::record("IoError"))
+            && fact.returns == TypeFact::result(TypeFact::UNIT, TypeFact::record("IoError"))
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "io::println"
             && fact.params == [TypeFact::Any]
-            && fact.returns == TypeFact::result(TypeFact::NULL, TypeFact::record("IoError"))
+            && fact.returns == TypeFact::result(TypeFact::UNIT, TypeFact::record("IoError"))
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "reflect::types"

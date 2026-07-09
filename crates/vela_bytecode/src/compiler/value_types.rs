@@ -107,7 +107,7 @@ impl RuntimeTypeFact {
 
     pub(super) const fn std_type_name(&self) -> &'static str {
         match self {
-            Self::Primitive(PrimitiveTag::Null) => "Null",
+            Self::Primitive(PrimitiveTag::Unit) => "Unit",
             Self::Primitive(PrimitiveTag::Bool) => "Bool",
             Self::Primitive(PrimitiveTag::Char) => "Char",
             Self::Primitive(PrimitiveTag::I8) => "I8",
@@ -142,7 +142,7 @@ impl RuntimeTypeFact {
 
     pub(super) const fn source_type_name(&self) -> &'static str {
         match self {
-            Self::Primitive(PrimitiveTag::Null) => "null",
+            Self::Primitive(PrimitiveTag::Unit) => "()",
             Self::Primitive(PrimitiveTag::Bool) => "bool",
             Self::Primitive(PrimitiveTag::Char) => "char",
             Self::Primitive(PrimitiveTag::I8) => "i8",
@@ -373,7 +373,7 @@ fn static_syntax_expr_type(
                 Some(SyntaxElseBranch::Block(block)) => {
                     static_syntax_block_type(&block, source, local_type_at_span, local_type_named)
                 }
-                None => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Null)),
+                None => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Unit)),
             };
             Some(merge_branch_static_type(then_type, else_type))
         }
@@ -426,13 +426,13 @@ fn static_syntax_block_type(
     local_type_named: &dyn Fn(&str) -> Option<RuntimeTypeFact>,
 ) -> StaticExprType {
     let Some(tail) = block.statements().last() else {
-        return StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Null));
+        return StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Unit));
     };
     let Some(expr_stmt) = tail.as_expr() else {
         return StaticExprType::Dynamic;
     };
     if expr_stmt.semicolon_token().is_some() {
-        return StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Null));
+        return StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Unit));
     }
     expr_stmt
         .expression()
@@ -495,7 +495,6 @@ pub(super) fn static_literal_type(literal: &Literal) -> StaticExprType {
             StaticExprType::UnsuffixedIntegerLiteral
         }
         Literal::Float(value) if value.suffix.is_none() => StaticExprType::UnsuffixedFloatLiteral,
-        Literal::Null => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Null)),
         Literal::Bool(_) => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Bool)),
         Literal::Char(_) => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Char)),
         Literal::Integer(value) => {
@@ -547,7 +546,7 @@ pub(super) fn type_hint_value_type(hint: &HirTypeHint) -> Option<RuntimeTypeFact
         return None;
     };
     match name.as_str() {
-        "null" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Null)),
+        "()" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Unit)),
         "bool" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bool)),
         "char" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Char)),
         "i8" => Some(RuntimeTypeFact::primitive(PrimitiveTag::I8)),

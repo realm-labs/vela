@@ -239,7 +239,7 @@ fn main(player: Player) {
         ),
     )
     .expect("compile host map write source");
-    let mut adapter = host_adapter(host_ref, HostValue::Null);
+    let mut adapter = host_adapter(host_ref, HostValue::Unit);
     let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
@@ -268,7 +268,7 @@ fn main(player: Player) {
     );
     assert_eq!(
         adapter.read_diagnostic_path(&level_path(host_ref)),
-        Ok(HostValue::Null)
+        Ok(HostValue::Unit)
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
@@ -296,7 +296,7 @@ fn main(player: Player) {
         ),
     )
     .expect("compile host record write source");
-    let mut adapter = host_adapter(host_ref, HostValue::Null);
+    let mut adapter = host_adapter(host_ref, HostValue::Unit);
     let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
@@ -325,7 +325,7 @@ fn main(player: Player) {
     );
     assert_eq!(
         adapter.read_diagnostic_path(&level_path(host_ref)),
-        Ok(HostValue::Null)
+        Ok(HostValue::Unit)
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
@@ -348,7 +348,7 @@ fn main(player: Player) {
         ),
     )
     .expect("compile host enum write source");
-    let mut adapter = host_adapter(host_ref, HostValue::Null);
+    let mut adapter = host_adapter(host_ref, HostValue::Unit);
     let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
@@ -377,7 +377,7 @@ fn main(player: Player) {
     );
     assert_eq!(
         adapter.read_diagnostic_path(&level_path(host_ref)),
-        Ok(HostValue::Null)
+        Ok(HostValue::Unit)
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
@@ -401,7 +401,7 @@ fn main(player: Player, target) {
         ),
     )
     .expect("compile host ref write source");
-    let mut adapter = host_adapter(host_ref, HostValue::Null);
+    let mut adapter = host_adapter(host_ref, HostValue::Unit);
     let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 

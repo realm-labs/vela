@@ -112,7 +112,7 @@ pub const BASE: i64 = 10;
                     OwnedValue::Scalar(vela_common::ScalarValue::I64(amount)),
                 ] = args
                 else {
-                    return Ok(OwnedValue::Null);
+                    return Ok(OwnedValue::Unit);
                 };
                 Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(
                     base + amount,
@@ -203,7 +203,7 @@ fn prelude_imports_cover_source_and_reload_results() {
     accepts_update_result(Err(reload_error));
     accepts_safe_point_report(None);
     accepts_event_safe_point_report(EventCallSafePointReport {
-        value: OwnedValue::Null,
+        value: OwnedValue::Unit,
         reload: None,
     });
     accepts_vela_function(None);

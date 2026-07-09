@@ -184,10 +184,10 @@ fn engine_exposes_registry_hot_reload_abi() {
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .param("player", TypeHint::Host(player_key))
-                .returns(TypeHint::null())
+                .returns(TypeHint::unit())
                 .effects(EffectSet::event_emit())
                 .access(FunctionAccess::public().reflect_callable(true)),
-            |_| Ok(OwnedValue::Null),
+            |_| Ok(OwnedValue::Unit),
         )
         .build()
         .expect("engine should build");

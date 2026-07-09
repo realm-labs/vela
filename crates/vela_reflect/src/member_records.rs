@@ -5,8 +5,8 @@ use vela_host::value::HostValue;
 use crate::{
     access::MethodEffectSet,
     metadata::{
-        array, attrs_value, bool_value, docs_value, host, int_value, null_value, record,
-        span_value, string,
+        array, attrs_value, bool_value, docs_value, host, int_value, record, span_value, string,
+        unit_value,
     },
     modules::DeclOrigin,
     registry::{FieldDesc, MethodDesc, TraitDesc, TraitMethodDesc, VariantDesc},
@@ -198,7 +198,7 @@ fn field_record_fields(field: &FieldDesc) -> ReflectFields {
             .type_hint
             .as_ref()
             .filter(|hint| !hint.is_empty())
-            .map_or_else(null_value, string),
+            .map_or_else(unit_value, string),
     );
     fields.insert("writable".to_owned(), bool_value(field.writable));
     fields.insert("defaulted".to_owned(), bool_value(field.has_default));
@@ -274,5 +274,5 @@ fn string_array(values: &[String]) -> ReflectValue {
 }
 
 fn optional_string(value: Option<&String>) -> ReflectValue {
-    value.map_or_else(null_value, |value| host(HostValue::String(value.clone())))
+    value.map_or_else(unit_value, |value| host(HostValue::String(value.clone())))
 }

@@ -65,7 +65,6 @@ pub enum Visibility {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Literal {
-    Null,
     Bool(bool),
     Integer(IntegerLiteral),
     Float(FloatLiteral),

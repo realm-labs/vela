@@ -203,7 +203,7 @@ fn main(player: Player) {
         item_path.clone(),
         HostValue::Scalar(vela_common::ScalarValue::I64(0)),
     );
-    adapter.insert_method_return(method, HostValue::Null);
+    adapter.insert_method_return(method, HostValue::Unit);
     let mut tx = HostAccess::new();
 
     let result = {
@@ -333,7 +333,7 @@ fn heap_execution_converts_heap_string_for_host_method_call() {
         host_ref,
         HostValue::Scalar(vela_common::ScalarValue::I64(9)),
     );
-    adapter.insert_method_return(method, HostValue::Null);
+    adapter.insert_method_return(method, HostValue::Unit);
     let mut tx = HostAccess::new();
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
@@ -355,7 +355,7 @@ fn heap_execution_converts_heap_string_for_host_method_call() {
         )
     };
 
-    assert_eq!(result, Ok(RuntimeValue::Null));
+    assert_eq!(result, Ok(RuntimeValue::Unit));
 }
 
 #[test]

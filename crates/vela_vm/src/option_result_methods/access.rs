@@ -119,7 +119,7 @@ pub(super) fn expect_enum_kind(
 }
 
 pub(super) fn is_truthy(value: &Value) -> bool {
-    !matches!(value, Value::Missing | Value::Null | Value::Bool(false))
+    !matches!(value, Value::Missing | Value::Unit | Value::Bool(false))
 }
 
 pub(super) fn type_error<T>(operation: &'static str) -> VmResult<T> {

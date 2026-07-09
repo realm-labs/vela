@@ -41,7 +41,7 @@ fn engine_reflect_call_invokes_reflect_callable_native_functions() {
                     OwnedValue::Scalar(vela_common::ScalarValue::I64(rhs)),
                 ] = args
                 else {
-                    return Ok(OwnedValue::Null);
+                    return Ok(OwnedValue::Unit);
                 };
                 Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(lhs + rhs)))
             },
@@ -248,7 +248,7 @@ fn engine_reflect_call_invokes_host_native_functions_through_host_access() {
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
                 .param("level", TypeHint::i64())
-                .returns(TypeHint::null())
+                .returns(TypeHint::unit())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public().reflect_callable(true)),
             |args, host| {
@@ -257,7 +257,7 @@ fn engine_reflect_call_invokes_host_native_functions_through_host_access() {
                     OwnedValue::Scalar(vela_common::ScalarValue::I64(level)),
                 ] = args
                 else {
-                    return Ok(OwnedValue::Null);
+                    return Ok(OwnedValue::Unit);
                 };
                 host.access.write_diagnostic_path(
                     host.adapter,
@@ -265,7 +265,7 @@ fn engine_reflect_call_invokes_host_native_functions_through_host_access() {
                     HostValue::Scalar(vela_common::ScalarValue::I64(*level)),
                     None,
                 )?;
-                Ok(OwnedValue::Null)
+                Ok(OwnedValue::Unit)
             },
         )
         .reflection_permissions(ReflectPermissionSet::all())
@@ -314,7 +314,7 @@ fn engine_reflect_call_denies_effectful_native_functions_without_effect_permissi
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
                 .param("level", TypeHint::i64())
-                .returns(TypeHint::null())
+                .returns(TypeHint::unit())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public().reflect_callable(true)),
             |args, host| {
@@ -323,7 +323,7 @@ fn engine_reflect_call_denies_effectful_native_functions_without_effect_permissi
                     OwnedValue::Scalar(vela_common::ScalarValue::I64(level)),
                 ] = args
                 else {
-                    return Ok(OwnedValue::Null);
+                    return Ok(OwnedValue::Unit);
                 };
                 host.access.write_diagnostic_path(
                     host.adapter,
@@ -331,7 +331,7 @@ fn engine_reflect_call_denies_effectful_native_functions_without_effect_permissi
                     HostValue::Scalar(vela_common::ScalarValue::I64(*level)),
                     None,
                 )?;
-                Ok(OwnedValue::Null)
+                Ok(OwnedValue::Unit)
             },
         )
         .reflection_permissions(

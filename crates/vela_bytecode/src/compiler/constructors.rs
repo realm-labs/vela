@@ -112,7 +112,7 @@ fn static_type_for_constant(value: &crate::Constant) -> StaticExprType {
 
 fn runtime_type_for_constant(value: &crate::Constant) -> Option<RuntimeTypeFact> {
     match value {
-        crate::Constant::Null => Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::Null)),
+        crate::Constant::Unit => Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::Unit)),
         crate::Constant::Bool(_) => {
             Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::Bool))
         }

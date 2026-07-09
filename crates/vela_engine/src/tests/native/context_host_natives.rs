@@ -37,7 +37,7 @@ fn engine_installs_registered_host_native_functions_into_vm() {
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
                 .param("level", TypeHint::i64())
-                .returns(TypeHint::null())
+                .returns(TypeHint::unit())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, host| {
@@ -46,7 +46,7 @@ fn engine_installs_registered_host_native_functions_into_vm() {
                     OwnedValue::Scalar(vela_common::ScalarValue::I64(level)),
                 ] = args
                 else {
-                    return Ok(OwnedValue::Null);
+                    return Ok(OwnedValue::Unit);
                 };
                 host.access.write_diagnostic_path(
                     host.adapter,
@@ -54,7 +54,7 @@ fn engine_installs_registered_host_native_functions_into_vm() {
                     HostValue::Scalar(vela_common::ScalarValue::I64(*level)),
                     None,
                 )?;
-                Ok(OwnedValue::Null)
+                Ok(OwnedValue::Unit)
             },
         )
         .build()
@@ -202,7 +202,7 @@ fn context_host_native_read_path_observes_write_through_state() {
                     HostValue::Scalar(vela_common::ScalarValue::I64(value)) => {
                         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(value)))
                     }
-                    _ => Ok(OwnedValue::Null),
+                    _ => Ok(OwnedValue::Unit),
                 }
             },
         )
@@ -268,7 +268,7 @@ fn context_host_native_returns_immediate_method_result() {
                 let result = ctx.call_method(inventory, method, method_args, None)?;
                 match result {
                     HostValue::String(value) => Ok(OwnedValue::String(value)),
-                    _ => Ok(OwnedValue::Null),
+                    _ => Ok(OwnedValue::Unit),
                 }
             },
         )
@@ -324,7 +324,7 @@ fn context_host_native_can_charge_execution_budget_before_host_access() {
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
                 .param("level", TypeHint::i64())
-                .returns(TypeHint::null())
+                .returns(TypeHint::unit())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, ctx| {
@@ -336,7 +336,7 @@ fn context_host_native_can_charge_execution_budget_before_host_access() {
                     HostValue::Scalar(vela_common::ScalarValue::I64(level)),
                     None,
                 )?;
-                Ok(OwnedValue::Null)
+                Ok(OwnedValue::Unit)
             },
         )
         .build()
@@ -387,7 +387,7 @@ fn context_host_native_can_charge_memory_budget_before_host_access() {
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
                 .param("level", TypeHint::i64())
-                .returns(TypeHint::null())
+                .returns(TypeHint::unit())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, ctx| {
@@ -399,7 +399,7 @@ fn context_host_native_can_charge_memory_budget_before_host_access() {
                     HostValue::Scalar(vela_common::ScalarValue::I64(level)),
                     None,
                 )?;
-                Ok(OwnedValue::Null)
+                Ok(OwnedValue::Unit)
             },
         )
         .build()
@@ -455,7 +455,7 @@ fn context_host_native_set_path_writes_through() {
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
                 .param("level", TypeHint::i64())
-                .returns(TypeHint::null())
+                .returns(TypeHint::unit())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, ctx| {
@@ -466,7 +466,7 @@ fn context_host_native_set_path_writes_through() {
                     HostValue::Scalar(vela_common::ScalarValue::I64(level)),
                     None,
                 )?;
-                Ok(OwnedValue::Null)
+                Ok(OwnedValue::Unit)
             },
         )
         .build()
@@ -514,7 +514,7 @@ fn context_host_native_patch_helpers_write_through() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .returns(TypeHint::null())
+                .returns(TypeHint::unit())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             move |args, ctx| {
@@ -554,7 +554,7 @@ fn context_host_native_patch_helpers_write_through() {
                     vec![HostValue::Scalar(vela_common::ScalarValue::I64(4))],
                     None,
                 )?;
-                Ok(OwnedValue::Null)
+                Ok(OwnedValue::Unit)
             },
         )
         .build()
@@ -613,7 +613,7 @@ fn context_host_native_repeated_writes_write_through() {
                     "player",
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
-                .returns(TypeHint::null())
+                .returns(TypeHint::unit())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, ctx| {
@@ -629,7 +629,7 @@ fn context_host_native_repeated_writes_write_through() {
                     HostValue::Scalar(vela_common::ScalarValue::I64(13)),
                     None,
                 )?;
-                Ok(OwnedValue::Null)
+                Ok(OwnedValue::Unit)
             },
         )
         .build()

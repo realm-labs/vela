@@ -622,8 +622,8 @@ fn main(ctx: Ctx) {
         HostPath::new(ctx_ref).field(tick_field),
         HostValue::Scalar(vela_common::ScalarValue::I64(42)),
     );
-    adapter.insert_method_return(emit_method, HostValue::Null);
-    adapter.insert_method_return(log_method, HostValue::Null);
+    adapter.insert_method_return(emit_method, HostValue::Unit);
+    adapter.insert_method_return(log_method, HostValue::Unit);
     let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::new(10_000, 1024 * 1024, 64);
 

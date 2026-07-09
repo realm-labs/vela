@@ -534,7 +534,7 @@ pub enum FrameSlotKind {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Constant {
-    Null,
+    Unit,
     Bool(bool),
     Char(char),
     Scalar(vela_common::ScalarValue),

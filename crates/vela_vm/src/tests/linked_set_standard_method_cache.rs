@@ -52,7 +52,7 @@ fn linked_standard_value_method_caches_set_clear_target() {
     assert_set_owned_cache(
         linked_set_no_arg_cache_program("clear", &[2, 4]),
         StandardMethodInlineCacheTarget::Clear,
-        OwnedValue::Null,
+        OwnedValue::Unit,
     );
 }
 
@@ -61,7 +61,7 @@ fn linked_standard_value_method_caches_set_extend_target() {
     assert_set_owned_cache(
         linked_set_combination_cache_program("extend", &[2], &[4, 6]),
         StandardMethodInlineCacheTarget::Extend,
-        OwnedValue::Null,
+        OwnedValue::Unit,
     );
 }
 

@@ -21,8 +21,8 @@ pub(crate) fn int_value(value: i64) -> ReflectValue {
     host(HostValue::Scalar(vela_common::ScalarValue::I64(value)))
 }
 
-pub(crate) fn null_value() -> ReflectValue {
-    host(HostValue::Null)
+pub(crate) fn unit_value() -> ReflectValue {
+    host(HostValue::Unit)
 }
 
 pub(crate) fn array(values: impl IntoIterator<Item = ReflectValue>) -> ReflectValue {
@@ -49,11 +49,11 @@ pub(crate) fn attrs_value(attrs: &AttrMap) -> ReflectValue {
 }
 
 pub(crate) fn docs_value(docs: Option<&str>) -> ReflectValue {
-    docs.map_or_else(null_value, string)
+    docs.map_or_else(unit_value, string)
 }
 
 pub(crate) fn span_value(span: Option<Span>) -> ReflectValue {
-    span.map_or_else(null_value, |span| {
+    span.map_or_else(unit_value, |span| {
         record(
             "ReflectSourceSpan",
             BTreeMap::from([

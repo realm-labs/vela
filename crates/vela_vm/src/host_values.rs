@@ -5,7 +5,7 @@ use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
 pub(crate) fn value_from_host(value: HostValue) -> Value {
     match value {
-        HostValue::Null => Value::Null,
+        HostValue::Unit => Value::Unit,
         HostValue::Bool(value) => Value::Bool(value),
         HostValue::Char(value) => Value::Char(value),
         HostValue::Scalar(value) => Value::from_scalar(value),
@@ -23,7 +23,7 @@ pub(crate) fn value_to_host(
         return Ok(HostValue::Scalar(value));
     }
     match value {
-        Value::Null => Ok(HostValue::Null),
+        Value::Unit => Ok(HostValue::Unit),
         Value::Bool(value) => Ok(HostValue::Bool(*value)),
         Value::Char(value) => Ok(HostValue::Char(*value)),
         Value::HostRef(value) => Ok(HostValue::HostRef(*value)),

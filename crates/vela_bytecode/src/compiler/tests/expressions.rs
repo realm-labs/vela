@@ -273,7 +273,7 @@ fn main() {
     );
 }
 #[test]
-fn compiler_lowers_if_expression_without_else_to_null() {
+fn compiler_lowers_if_expression_without_else_to_unit() {
     let code = compile_function_source(
         SourceId::new(1),
         r#"
@@ -287,7 +287,7 @@ fn main() {
         "main",
     )
     .expect("if expression without else should compile");
-    assert!(code.constants.contains(&Constant::Null));
+    assert!(code.constants.contains(&Constant::Unit));
 }
 #[test]
 fn compiler_lowers_returning_block_initializers() {

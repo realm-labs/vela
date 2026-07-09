@@ -469,59 +469,59 @@ follow-up.
 
 ### Phase 0: Lock Hard-Switch Baseline
 
-- [ ] Update `docs/decisions.md` with the selected strict source-null removal
+- [x] Update `docs/decisions.md` with the selected strict source-null removal
   policy and first-slice tuple limits.
-- [ ] Add baseline tests or audit notes that name current `null` behavior to be
+- [x] Add baseline tests or audit notes that name current `null` behavior to be
   deleted.
-- [ ] Confirm protocol JSON nulls are out of language-value scope and will be
+- [x] Confirm protocol JSON nulls are out of language-value scope and will be
   audited separately.
 
 Exit criteria:
 
-- [ ] No open design decision blocks implementation.
-- [ ] Goal-mode can start deleting without asking whether `null` survives.
+- [x] No open design decision blocks implementation.
+- [x] Goal-mode can start deleting without asking whether `null` survives.
 
 ### Phase 1: Syntax And Grammar Hard Switch
 
-- [ ] Add `()` expression/type syntax.
-- [ ] Add tuple expression/type/destructuring syntax for arities 2+.
-- [ ] Reject `(x,)` and `(T,)` with source-spanned diagnostics.
-- [ ] Remove global `null` literal and type-hint syntax.
-- [ ] Remove `NullKw`, `Literal::Null`, null literal patterns, and null syntax
+- [x] Add `()` expression/type syntax.
+- [x] Add tuple expression/type/destructuring syntax for arities 2+.
+- [x] Reject `(x,)` and `(T,)` with source-spanned diagnostics.
+- [x] Remove global `null` literal and type-hint syntax.
+- [x] Remove `NullKw`, `Literal::Null`, null literal patterns, and null syntax
   extraction.
-- [ ] Update `docs/grammar.ebnf`, tree-sitter grammar, syntax tests,
+- [x] Update `docs/grammar.ebnf`, tree-sitter grammar, syntax tests,
   formatter lexical handling, semantic-token lexical categories, snippets, and
   code actions that insert `null`.
 
 Focused validation:
 
-- [ ] `cargo test -p vela_syntax`
-- [ ] `cargo test -p vela_language_service semantic_tokens code_action formatting`
+- [x] `cargo test -p vela_syntax`
+- [x] `cargo test -p vela_language_service semantic_tokens code_action formatting`
 - [ ] editor grammar validation for checked-in `.vela` fixtures
 
 ### Phase 2: Core Value Model Hard Switch
 
-- [ ] Add unit and tuple value representations across runtime, owned, host,
+- [~] Add unit and tuple value representations across runtime, owned, host,
   bytecode constants, type facts, guards, equality, display, verifier, and
   heap conversion.
-- [ ] Delete `Value::Null`, `OwnedValue::Null`, `HostValue::Null`,
+- [x] Delete `Value::Null`, `OwnedValue::Null`, `HostValue::Null`,
   `Constant::Null`, `PrimitiveTag::Null`, `TypeKind::Null`, `TypeHint::null`,
   null keying, null truthiness, null equality, null register defaults, and null
   type guards.
-- [ ] Replace default registers/no-result constants with unit.
+- [x] Replace default registers/no-result constants with unit.
 - [ ] Ensure Missing remains an internal sentinel only if still required; it
   must not become public null by another name.
 
 Focused validation:
 
-- [ ] `cargo test -p vela_bytecode --no-fail-fast`
-- [ ] `cargo test -p vela_vm`
-- [ ] `cargo test -p vela_host`
-- [ ] `cargo test -p vela_reflect`
+- [x] `cargo test -p vela_bytecode --no-fail-fast`
+- [x] `cargo test -p vela_vm`
+- [x] `cargo test -p vela_host`
+- [x] `cargo test -p vela_reflect`
 
 ### Phase 3: Compiler, Control Flow, And Runtime Semantics
 
-- [ ] Make empty blocks, statement-only blocks, expression branches with no
+- [x] Make empty blocks, statement-only blocks, expression branches with no
   meaningful value, loop bodies, no-return functions, and `return;` produce
   unit.
 - [ ] Lower tuple construction and destructuring directly.
@@ -535,28 +535,28 @@ Focused validation:
 
 Focused validation:
 
-- [ ] `cargo test -p vela_bytecode`
+- [x] `cargo test -p vela_bytecode`
 - [ ] `cargo test -p vela_vm control_flow program_execution`
-- [ ] `cargo test -p vela_engine`
+- [x] `cargo test -p vela_engine`
 
 ### Phase 4: Stdlib, Host, Reflection, And Embedding
 
-- [ ] Change stdlib no-result signatures from `"null"` to `"()"`.
-- [ ] Change mutation helpers and no-result native calls to return unit.
+- [x] Change stdlib no-result signatures from `"null"` to `"()"`.
+- [x] Change mutation helpers and no-result native calls to return unit.
 - [ ] Change lookup/search/split APIs to `Option<T>` and tuple payloads where
   useful.
 - [ ] Change Rust `Option<T>` conversion to script `Option<T>`.
 - [ ] Add Rust `()` conversion and Rust tuple arity 2..=4 conversion.
-- [ ] Remove reflection missing-metadata nulls in favor of `Option`, omitted
+- [~] Remove reflection missing-metadata nulls in favor of `Option`, omitted
   fields, or explicit structured absence.
-- [ ] Remove engine/native/context schema descriptors that advertise `"null"`.
+- [x] Remove engine/native/context schema descriptors that advertise `"null"`.
 
 Focused validation:
 
-- [ ] `cargo test -p vela_stdlib`
-- [ ] `cargo test -p vela_engine`
-- [ ] `cargo test -p vela_reflect`
-- [ ] `cargo test --manifest-path examples/Cargo.toml`
+- [x] `cargo test -p vela_stdlib`
+- [x] `cargo test -p vela_engine`
+- [x] `cargo test -p vela_reflect`
+- [x] `cargo test --manifest-path examples/Cargo.toml`
 
 ### Phase 5: Tuple Payloads, ABI, And Contracts
 

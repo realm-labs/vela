@@ -394,7 +394,7 @@ impl_script_host_object_via_field!(String);
 
 impl HostValueInto for () {
     fn into_host_value(self) -> HostResult<HostValue> {
-        Ok(HostValue::Null)
+        Ok(HostValue::Unit)
     }
 }
 

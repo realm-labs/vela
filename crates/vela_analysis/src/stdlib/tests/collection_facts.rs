@@ -161,14 +161,14 @@ fn scalar_collection_methods_return_non_generic_facts() {
         stdlib_method_fact(&map, "clear", None)
             .expect("map clear fact")
             .returns,
-        TypeFact::NULL
+        TypeFact::UNIT
     );
     let map_extend = stdlib_method_fact(&map, "extend", None).expect("map extend fact");
     assert_eq!(
         map_extend.params,
         vec![TypeFact::map(TypeFact::STRING, TypeFact::I64)]
     );
-    assert_eq!(map_extend.returns, TypeFact::NULL);
+    assert_eq!(map_extend.returns, TypeFact::UNIT);
     assert_eq!(
         stdlib_method_fact(&array, "sum", None)
             .expect("sum fact")
@@ -198,15 +198,15 @@ fn scalar_collection_methods_return_non_generic_facts() {
     assert_eq!(remove_at.returns, TypeFact::option(TypeFact::F64));
     let insert = stdlib_method_fact(&array, "insert", None).expect("insert fact");
     assert_eq!(insert.params, vec![TypeFact::I64, TypeFact::F64]);
-    assert_eq!(insert.returns, TypeFact::NULL);
+    assert_eq!(insert.returns, TypeFact::UNIT);
     let extend = stdlib_method_fact(&array, "extend", None).expect("extend fact");
     assert_eq!(extend.params, vec![TypeFact::array(TypeFact::F64)]);
-    assert_eq!(extend.returns, TypeFact::NULL);
+    assert_eq!(extend.returns, TypeFact::UNIT);
     assert_eq!(
         stdlib_method_fact(&array, "clear", None)
             .expect("array clear fact")
             .returns,
-        TypeFact::NULL
+        TypeFact::UNIT
     );
     let join = stdlib_method_fact(&array, "join", None).expect("join fact");
     assert_eq!(join.params, vec![TypeFact::STRING]);
@@ -278,11 +278,11 @@ fn scalar_collection_methods_return_non_generic_facts() {
         stdlib_method_fact(&set, "clear", None)
             .expect("set clear fact")
             .returns,
-        TypeFact::NULL
+        TypeFact::UNIT
     );
     let set_extend = stdlib_method_fact(&set, "extend", None).expect("set extend fact");
     assert_eq!(set_extend.params, vec![TypeFact::set(TypeFact::STRING)]);
-    assert_eq!(set_extend.returns, TypeFact::NULL);
+    assert_eq!(set_extend.returns, TypeFact::UNIT);
     let set_map = stdlib_method_fact(&set, "map", Some(&TypeFact::I64)).expect("set map fact");
     assert_eq!(
         set_map.params,

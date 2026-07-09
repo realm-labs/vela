@@ -165,7 +165,7 @@ fn linked_standard_value_method_caches_map_clear_target() {
     assert_map_owned_cache(
         linked_map_no_arg_cache_program("clear"),
         StandardMethodInlineCacheTarget::Clear,
-        OwnedValue::Null,
+        OwnedValue::Unit,
     );
 }
 
@@ -174,7 +174,7 @@ fn linked_standard_value_method_caches_map_extend_target() {
     assert_map_owned_cache(
         linked_map_extend_cache_program(),
         StandardMethodInlineCacheTarget::Extend,
-        OwnedValue::Null,
+        OwnedValue::Unit,
     );
 }
 

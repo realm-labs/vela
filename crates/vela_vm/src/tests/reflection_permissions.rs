@@ -162,7 +162,7 @@ fn main(player) {
         host_ref,
         HostValue::Scalar(vela_common::ScalarValue::I64(9)),
     );
-    adapter.insert_method_return(HostMethodId::new(5), HostValue::Null);
+    adapter.insert_method_return(HostMethodId::new(5), HostValue::Unit);
     let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(

@@ -118,7 +118,7 @@ fn script_arg_conversions_support_optional_values() {
         fields: [].into(),
     };
 
-    assert_eq!(Option::<i64>::from_script_arg(&OwnedValue::Null), Ok(None));
+    assert_eq!(Option::<i64>::from_script_arg(&OwnedValue::Unit), Ok(None));
     assert_eq!(
         Option::<i64>::from_script_arg(&OwnedValue::Scalar(vela_common::ScalarValue::I64(3))),
         Ok(Some(3))
@@ -129,12 +129,12 @@ fn script_arg_conversions_support_optional_values() {
         Some("reward").into_script_arg(),
         OwnedValue::String("reward".to_owned())
     );
-    assert_eq!(Option::<i64>::None.into_script_arg(), OwnedValue::Null);
+    assert_eq!(Option::<i64>::None.into_script_arg(), OwnedValue::Unit);
     assert_eq!(
         vela_engine::args![Some(2_i64), Option::<i64>::None],
         vec![
             OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
-            OwnedValue::Null
+            OwnedValue::Unit
         ],
     );
     assert!(matches!(
@@ -294,7 +294,7 @@ fn args_macro_converts_rust_values_and_host_refs() {
     assert_eq!(
         args,
         vec![
-            OwnedValue::Null,
+            OwnedValue::Unit,
             OwnedValue::Bool(true),
             OwnedValue::Scalar(vela_common::ScalarValue::I64(5)),
             OwnedValue::Scalar(vela_common::ScalarValue::F64(2.5)),

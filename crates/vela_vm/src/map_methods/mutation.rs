@@ -69,7 +69,7 @@ pub(crate) fn clear(
                 return type_error("method clear");
             };
             collection_mutation::clear_map(heap, *reference, None, "method clear")?;
-            Ok(Value::Null)
+            Ok(Value::Unit)
         }
         _ => type_error("method clear"),
     }
@@ -102,7 +102,7 @@ pub(crate) fn extend(
                 budget,
                 "method extend",
             )?;
-            Ok(Value::Null)
+            Ok(Value::Unit)
         }
         _ => type_error("method extend"),
     }

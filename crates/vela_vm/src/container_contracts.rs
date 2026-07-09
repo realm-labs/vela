@@ -229,7 +229,7 @@ impl ShallowTypeKey {
 
     pub(crate) fn from_value(value: &Value, heap: &ScriptHeap) -> Option<Self> {
         match value {
-            Value::Null => Some(Self::Primitive(PrimitiveTag::Null)),
+            Value::Unit => Some(Self::Primitive(PrimitiveTag::Unit)),
             Value::Bool(_) => Some(Self::Primitive(PrimitiveTag::Bool)),
             Value::Char(_) => Some(Self::Primitive(PrimitiveTag::Char)),
             Value::I8(_) => Some(Self::Primitive(PrimitiveTag::I8)),

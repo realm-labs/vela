@@ -70,7 +70,7 @@ pub(crate) fn value_to_reflect(
         OwnedValue::Missing | OwnedValue::PathProxy(_) | OwnedValue::Iterator(_) => {
             Err(type_error(operation))
         }
-        OwnedValue::Null | OwnedValue::Bool(_) | OwnedValue::Scalar(_) | OwnedValue::String(_) => {
+        OwnedValue::Unit | OwnedValue::Bool(_) | OwnedValue::Scalar(_) | OwnedValue::String(_) => {
             Ok(reflect::value::ReflectValue::Host(owned_to_host(
                 value, operation,
             )?))
@@ -91,7 +91,7 @@ pub(crate) fn runtime_value_to_reflect(
     }
     match value {
         Value::Missing => Err(type_error(operation)),
-        Value::Null => Ok(reflect::value::ReflectValue::Host(HostValue::Null)),
+        Value::Unit => Ok(reflect::value::ReflectValue::Host(HostValue::Unit)),
         Value::Bool(value) => Ok(reflect::value::ReflectValue::Host(HostValue::Bool(*value))),
         Value::Char(value) => Ok(reflect::value::ReflectValue::Host(HostValue::Char(*value))),
         Value::Range(_) => Ok(reflect::value::ReflectValue::Range),
@@ -237,7 +237,7 @@ pub(crate) fn value_from_reflect(value: reflect::value::ReflectValue) -> VmResul
 
 fn owned_to_host(value: &OwnedValue, operation: &'static str) -> VmResult<HostValue> {
     match value {
-        OwnedValue::Null => Ok(HostValue::Null),
+        OwnedValue::Unit => Ok(HostValue::Unit),
         OwnedValue::Bool(value) => Ok(HostValue::Bool(*value)),
         OwnedValue::Char(value) => Ok(HostValue::Char(*value)),
         OwnedValue::Scalar(value) => Ok(HostValue::Scalar(*value)),
@@ -259,7 +259,7 @@ fn owned_to_host(value: &OwnedValue, operation: &'static str) -> VmResult<HostVa
 
 fn host_to_owned(value: HostValue) -> OwnedValue {
     match value {
-        HostValue::Null => OwnedValue::Null,
+        HostValue::Unit => OwnedValue::Unit,
         HostValue::Bool(value) => OwnedValue::Bool(value),
         HostValue::Char(value) => OwnedValue::Char(value),
         HostValue::Scalar(value) => OwnedValue::Scalar(value),

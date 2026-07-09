@@ -145,7 +145,7 @@ impl ValueShape {
 
     pub(super) fn from_runtime_type(fact: RuntimeTypeFact) -> Self {
         let type_name = match fact {
-            RuntimeTypeFact::Primitive(PrimitiveTag::Null) => "null",
+            RuntimeTypeFact::Primitive(PrimitiveTag::Unit) => "()",
             RuntimeTypeFact::Primitive(PrimitiveTag::Bool) => "bool",
             RuntimeTypeFact::Primitive(PrimitiveTag::Char) => "char",
             RuntimeTypeFact::Primitive(PrimitiveTag::I8) => "i8",
@@ -250,7 +250,7 @@ impl ValueShape {
 
 fn scalar_shape_type_fact(type_name: &str) -> Option<RuntimeTypeFact> {
     match type_name {
-        "Null" | "null" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Null)),
+        "Unit" | "()" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Unit)),
         "Bool" | "bool" => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bool)),
         "I8" | "i8" => Some(RuntimeTypeFact::primitive(PrimitiveTag::I8)),
         "I16" | "i16" => Some(RuntimeTypeFact::primitive(PrimitiveTag::I16)),

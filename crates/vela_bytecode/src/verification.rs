@@ -919,7 +919,7 @@ fn verify_string_constant(
 
 fn constant_kind(constant: &crate::Constant) -> &'static str {
     match constant {
-        crate::Constant::Null => "null",
+        crate::Constant::Unit => "()",
         crate::Constant::Bool(_) => "bool",
         crate::Constant::Char(_) => "char",
         crate::Constant::Scalar(_) => "scalar",

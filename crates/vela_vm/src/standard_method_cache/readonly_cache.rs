@@ -456,7 +456,7 @@ fn type_error<T>(operation: &'static str) -> VmResult<T> {
 fn cached_set_contains_immediate(values: &[Value], candidate: &Value) -> Option<bool> {
     for value in values {
         match (candidate, value) {
-            (Value::Null, Value::Null) => return Some(true),
+            (Value::Unit, Value::Unit) => return Some(true),
             (Value::Bool(lhs), Value::Bool(rhs)) if lhs == rhs => return Some(true),
             (Value::I64(lhs), Value::I64(rhs)) if lhs == rhs => {
                 return Some(true);
@@ -467,12 +467,12 @@ fn cached_set_contains_immediate(values: &[Value], candidate: &Value) -> Option<
                 return Some(true);
             }
             (
-                Value::Null | Value::Bool(_) | Value::I64(_),
-                Value::Null | Value::Bool(_) | Value::I64(_),
+                Value::Unit | Value::Bool(_) | Value::I64(_),
+                Value::Unit | Value::Bool(_) | Value::I64(_),
             ) => {}
-            (Value::Null | Value::Bool(_) | Value::I64(_), Value::F64(value))
+            (Value::Unit | Value::Bool(_) | Value::I64(_), Value::F64(value))
                 if value.is_finite() => {}
-            (Value::F64(candidate), Value::Null | Value::Bool(_) | Value::I64(_))
+            (Value::F64(candidate), Value::Unit | Value::Bool(_) | Value::I64(_))
                 if candidate.is_finite() => {}
             (Value::F64(candidate), Value::F64(value))
                 if candidate.is_finite() && value.is_finite() => {}

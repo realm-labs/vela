@@ -157,7 +157,7 @@ fn write_stdout(value: &OwnedValue, newline: bool) -> VmResult<OwnedValue> {
         write!(stdout, "{}", value.display_text())
     };
     match result {
-        Ok(()) => Ok(result_ok(OwnedValue::Null)),
+        Ok(()) => Ok(result_ok(OwnedValue::Unit)),
         Err(error) => Ok(result_err(io_error("write", "stdout", error.to_string()))),
     }
 }
@@ -180,7 +180,7 @@ fn fs_write_string(args: &[OwnedValue], sandbox: &FsSandbox) -> VmResult<OwnedVa
     let text = expect_string("fs::write_string", &args[1])?;
     match sandbox.resolve_write(path) {
         Ok(resolved) => match std::fs::write(&resolved, text) {
-            Ok(()) => Ok(result_ok(OwnedValue::Null)),
+            Ok(()) => Ok(result_ok(OwnedValue::Unit)),
             Err(error) => Ok(result_err(io_error("write", path, error.to_string()))),
         },
         Err(error) => Ok(result_err(error)),

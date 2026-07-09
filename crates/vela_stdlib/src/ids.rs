@@ -51,8 +51,8 @@ mod tests {
     fn id_lookups_return_manifest_ids() {
         assert_eq!(std_function_id("math", "max"), Some(STD_FUNCTIONS[0].id()));
         assert_eq!(std_method_id("String", "len"), Some(STD_METHODS[0].id()));
-        assert_eq!(std_type_id("Null"), Some(STD_TYPES[0].id()));
-        assert_eq!(std_type_id("null"), Some(STD_TYPES[0].id()));
+        assert_eq!(std_type_id("Unit"), Some(STD_TYPES[0].id()));
+        assert_eq!(std_type_id("()"), Some(STD_TYPES[0].id()));
         assert_eq!(std_type_id("i64"), Some(STD_TYPES[6].id()));
         assert_eq!(std_type_id("f64"), Some(STD_TYPES[12].id()));
         assert_eq!(std_type_id("Bytes"), Some(STD_TYPES[14].id()));

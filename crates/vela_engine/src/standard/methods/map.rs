@@ -50,10 +50,10 @@ const MAP_METHODS: &[MethodSpec] = &[
     MethodSpec::new(
         "extend",
         &[ParamSpec::new("values", "map")],
-        "null",
+        "()",
         "Inserts entries from another map.",
     ),
-    MethodSpec::new("clear", &[], "null", "Removes all entries."),
+    MethodSpec::new("clear", &[], "()", "Removes all entries."),
     MethodSpec::new("keys", &[], "iterator", "Returns keys in sorted order."),
     MethodSpec::new("values", &[], "iterator", "Returns values in key order."),
     MethodSpec::new("entries", &[], "iterator", "Returns key/value records."),

@@ -271,7 +271,7 @@ fn engine_standard_natives_register_reflection_metadata() {
         .find(|method| method.name == "push")
         .expect("array.push method metadata");
     assert_eq!(array_push.params[0].type_hint.as_deref(), Some("Any"));
-    assert_eq!(array_push.return_type.as_deref(), Some("null"));
+    assert_eq!(array_push.return_type.as_deref(), Some("()"));
     let array_map = array_type
         .methods
         .iter()
@@ -805,7 +805,7 @@ fn main() {
         && reflect::has_method(result_type, "to_error_option")
         && array_push.params[0].name == "value"
         && array_push.params[0].type == "Any"
-        && reflect::returns(array_push) == "null"
+        && reflect::returns(array_push) == "()"
         && array_map.params[0].type == "Function"
         && reflect::returns(array_map) == "Array"
         && map_get.params[0].name == "key"

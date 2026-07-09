@@ -78,7 +78,7 @@ pub(crate) fn expect_arity<T>(name: &str, args: &[T], expected: usize) -> VmResu
 
 #[inline]
 pub(crate) fn is_truthy(value: &Value) -> bool {
-    !matches!(value, Value::Missing | Value::Null | Value::Bool(false))
+    !matches!(value, Value::Missing | Value::Unit | Value::Bool(false))
 }
 
 pub(crate) fn validate_jump(code: &UnlinkedCodeObject, offset: usize) -> VmResult<()> {

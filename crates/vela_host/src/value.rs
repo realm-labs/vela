@@ -4,7 +4,7 @@ use crate::path::HostRef;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum HostValue {
-    Null,
+    Unit,
     Bool(bool),
     Char(char),
     Scalar(ScalarValue),

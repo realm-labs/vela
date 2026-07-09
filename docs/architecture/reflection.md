@@ -91,7 +91,7 @@ pub struct TypeDesc {
 }
 
 pub enum TypeKind {
-    Null,
+    Unit,
     Bool,
     I8,
     I16,
@@ -191,7 +191,7 @@ pub enum TypeHint {
 ```
 
 `TypeHint` is public metadata and syntax-facing documentation. Primitive hints
-use the shared `PrimitiveTag` set: `null`, `bool`, `i8`, `i16`, `i32`, `i64`,
+use the shared `PrimitiveTag` set: `()`, `bool`, `i8`, `i16`, `i32`, `i64`,
 `u8`, `u16`, `u32`, `u64`, `f32`, `f64`, `char`, `string`, and `bytes`. Script-local
 parameter, local, field, and return annotations are contracts, not conversions:
 statically known mismatches are compile errors, and dynamic or externally
@@ -327,7 +327,7 @@ resolve imports and module exports
 resolve local bindings, function parameters, fields, methods, variants, traits
 track source spans for declarations and references
 infer expression facts when cheap and deterministic
-apply flow narrowing for if/match and null checks
+apply flow narrowing for if/match and unit checks
 report unresolved names with candidate suggestions
 report field and method errors when receiver facts are known
 degrade to Any at dynamic boundaries

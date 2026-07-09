@@ -7,7 +7,7 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .effects(EffectSet::host_read()),
-            |_| Ok(OwnedValue::Null),
+            |_| Ok(OwnedValue::Unit),
         )
         .build()
         .expect("old engine should build");
@@ -17,7 +17,7 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .effects(EffectSet::host_write()),
-            |_| Ok(OwnedValue::Null),
+            |_| Ok(OwnedValue::Unit),
         )
         .build()
         .expect("new engine should build");
@@ -68,7 +68,7 @@ fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .access(FunctionAccess::public().reflect_callable(true)),
-            |_| Ok(OwnedValue::Null),
+            |_| Ok(OwnedValue::Unit),
         )
         .build()
         .expect("old engine should build");
@@ -78,7 +78,7 @@ fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .access(FunctionAccess::public().reflect_callable(false)),
-            |_| Ok(OwnedValue::Null),
+            |_| Ok(OwnedValue::Unit),
         )
         .build()
         .expect("new engine should build");
@@ -127,7 +127,7 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .param("amount", TypeHint::i64()),
-            |_| Ok(OwnedValue::Null),
+            |_| Ok(OwnedValue::Unit),
         )
         .build()
         .expect("old engine should build");
@@ -137,7 +137,7 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .param("amount", TypeHint::f64()),
-            |_| Ok(OwnedValue::Null),
+            |_| Ok(OwnedValue::Unit),
         )
         .build()
         .expect("new engine should build");
@@ -193,7 +193,7 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .returns(TypeHint::i64()),
-            |_| Ok(OwnedValue::Null),
+            |_| Ok(OwnedValue::Unit),
         )
         .build()
         .expect("old engine should build");
@@ -203,7 +203,7 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .returns(TypeHint::f64()),
-            |_| Ok(OwnedValue::Null),
+            |_| Ok(OwnedValue::Unit),
         )
         .build()
         .expect("new engine should build");
@@ -252,7 +252,7 @@ fn runtime_stages_source_file_removed_native_function_rejection_until_safe_point
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .effects(EffectSet::host_read()),
-            |_| Ok(OwnedValue::Null),
+            |_| Ok(OwnedValue::Unit),
         )
         .build()
         .expect("old engine should build");
@@ -306,7 +306,7 @@ fn runtime_stages_source_file_native_stable_id_churn_rejection_until_safe_point(
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
                 .effects(EffectSet::host_read()),
-            |_| Ok(OwnedValue::Null),
+            |_| Ok(OwnedValue::Unit),
         )
         .build()
         .expect("old engine should build");
@@ -316,7 +316,7 @@ fn runtime_stages_source_file_native_stable_id_churn_rejection_until_safe_point(
         .register_native_fn(
             NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(23))
                 .effects(EffectSet::host_read()),
-            |_| Ok(OwnedValue::Null),
+            |_| Ok(OwnedValue::Unit),
         )
         .build()
         .expect("new engine should build");
@@ -850,7 +850,7 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
         .register_type(
             TypeDesc::new(player_key)
                 .host_type(HostTypeId::new(1))
-                .method(MethodDesc::new(HostMethodId::new(9), "grant_exp").return_type("null")),
+                .method(MethodDesc::new(HostMethodId::new(9), "grant_exp").return_type("()")),
         )
         .build()
         .expect("new engine should build");
@@ -886,7 +886,7 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
     assert_eq!(type_name, "Player");
     assert_eq!(method, "grant_exp");
     assert_eq!(old.as_deref(), Some("i64"));
-    assert_eq!(new.as_deref(), Some("null"));
+    assert_eq!(new.as_deref(), Some("()"));
     assert!(source_span.is_none());
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),

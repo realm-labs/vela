@@ -330,7 +330,7 @@ fn has_callable_native_boundary(method: &ImplItemFn) -> bool {
 
 fn return_hint(output: &ReturnType) -> HintKind {
     match output {
-        ReturnType::Default => HintKind::Primitive(PrimitiveTag::Null),
+        ReturnType::Default => HintKind::Primitive(PrimitiveTag::Unit),
         ReturnType::Type(_, ty) => {
             if wrapper_inner_type(ty, &["Option"]).is_some() {
                 HintKind::Any
@@ -347,7 +347,7 @@ fn return_wrapper_inner_hint(ty: &Type) -> Option<HintKind> {
 
 fn hint_for_type(ty: &Type) -> HintKind {
     if is_unit_tuple(ty) {
-        return HintKind::Primitive(PrimitiveTag::Null);
+        return HintKind::Primitive(PrimitiveTag::Unit);
     }
     if let Type::Array(array) = ty {
         return HintKind::ArrayOf(Box::new(hint_for_type(&array.elem)));

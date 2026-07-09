@@ -744,8 +744,8 @@ fn is_valid_type_hint_def(hint: &vela_registry::TypeHintDef) -> bool {
         ("Result", [ok, err]) => is_valid_type_hint_def(ok) && is_valid_type_hint_def(err),
         (
             "Array" | "Set" | "Map" | "Range" | "Iterator" | "Function" | "Closure" | "Option"
-            | "Result" | "Any" | "String" | "Bytes" | "null" | "bool" | "char" | "i8" | "i16"
-            | "i32" | "i64" | "u8" | "u16" | "u32" | "u64" | "f32" | "f64",
+            | "Result" | "Any" | "String" | "Bytes" | "()" | "bool" | "char" | "i8" | "i16" | "i32"
+            | "i64" | "u8" | "u16" | "u32" | "u64" | "f32" | "f64",
             [],
         ) => true,
         (_, []) => true,

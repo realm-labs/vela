@@ -111,7 +111,7 @@ fn reflect_set_read_only_host_field_fails_without_patch() {
 fn reflect_call_host_ref_writes_through_and_updates_adapter() {
     let registry = registry();
     let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
-    adapter.insert_method_return(HostMethodId::new(5), HostValue::Null);
+    adapter.insert_method_return(HostMethodId::new(5), HostValue::Unit);
     let mut tx = HostAccess::new();
     {
         let mut ctx = ReflectContext {
@@ -130,7 +130,7 @@ fn reflect_call_host_ref_writes_through_and_updates_adapter() {
         )
         .expect("reflect call");
 
-        assert_eq!(value, ReflectValue::Host(HostValue::Null));
+        assert_eq!(value, ReflectValue::Host(HostValue::Unit));
     }
     let calls = adapter.method_calls();
     assert_eq!(calls.len(), 1);

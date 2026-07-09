@@ -84,7 +84,7 @@ impl Compiler<'_, '_> {
         }
 
         if !has_catch_all {
-            self.emit_constant_to(dst, Constant::Null);
+            self.emit_constant_to(dst, Constant::Unit);
         }
         for jump in end_jumps {
             self.patch_jump(jump, self.current_offset())?;

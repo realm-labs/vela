@@ -279,7 +279,7 @@ impl ScriptHostObject for DirectPlayer {
             }
             [HostPathPart::Field(field)] if *field == FieldId::new(2) => {
                 require_direct_field(access, 1)?;
-                Ok(HostValue::Null)
+                Ok(HostValue::Unit)
             }
             [HostPathPart::Field(field), key_part] if *field == FieldId::new(2) => {
                 require_direct_field(access, 1)?;
@@ -353,7 +353,7 @@ impl ScriptHostObject for DirectPlayer {
             ) if *field == FieldId::new(2) && method == HostMethodId::new(11) => {
                 require_direct_method(access, 1)?;
                 *self.inventory.entry(key.clone()).or_insert(0) += amount;
-                Ok(HostValue::Null)
+                Ok(HostValue::Unit)
             }
             _ => Err(HostError {
                 kind: HostErrorKind::UnsupportedMethod { method },

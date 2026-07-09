@@ -90,7 +90,7 @@ pub fn type_of<'a>(registry: &'a TypeRegistry, value: &ReflectValue) -> Option<&
 
 fn type_of_host_value<'a>(registry: &'a TypeRegistry, value: &HostValue) -> Option<&'a TypeDesc> {
     match value {
-        HostValue::Null => registry.type_by_name("null"),
+        HostValue::Unit => registry.type_by_name("()"),
         HostValue::Bool(_) => registry.type_by_name("bool"),
         HostValue::Char(_) => registry.type_by_name("char"),
         HostValue::Scalar(value) => registry.type_by_name(value.type_name()),
@@ -290,7 +290,7 @@ fn set_impl(
             ctx.access
                 .write(ctx.adapter, target, value, None)
                 .map_err(|error| ReflectError::new(ReflectErrorKind::Host(error.to_string())))?;
-            Ok(ReflectValue::Host(HostValue::Null))
+            Ok(ReflectValue::Host(HostValue::Unit))
         }
         ReflectValue::Record(fields) => Ok(ReflectValue::Record(set_record_field(
             field,

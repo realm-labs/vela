@@ -429,11 +429,11 @@ fn engine_rejects_duplicate_native_method_ids() {
         .register_type(player_type(player_key.id, HostTypeId::new(1)))
         .register_native_method_fn(
             NativeMethodDesc::new(player_key.clone(), HostMethodId::new(44), "grant_exp"),
-            |_, _, _| Ok(OwnedValue::Null),
+            |_, _, _| Ok(OwnedValue::Unit),
         )
         .register_native_method_fn(
             NativeMethodDesc::new(player_key, HostMethodId::new(44), "heal"),
-            |_, _, _| Ok(OwnedValue::Null),
+            |_, _, _| Ok(OwnedValue::Unit),
         )
         .build();
 

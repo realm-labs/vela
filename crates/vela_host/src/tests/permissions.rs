@@ -112,7 +112,7 @@ fn call_denied_path_fails_before_method_call() {
         path.clone(),
         HostValue::Scalar(vela_common::ScalarValue::I64(9)),
     );
-    adapter.insert_method_return(method, HostValue::Null);
+    adapter.insert_method_return(method, HostValue::Unit);
     adapter.deny_diagnostic_path_call(path.clone());
     let mut tx = HostAccess::new();
 

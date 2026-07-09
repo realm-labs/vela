@@ -132,7 +132,7 @@ fn run_workload(workload: &Workload, params: BenchParams) -> Result<BenchResult,
 fn register_bench_natives(vm: &mut Vm) {
     vm.register_borrowed_native("bench::mix4", |args, _heap, _budget| {
         let [Value::I64(a), Value::I64(b), Value::I64(c), Value::I64(d)] = args else {
-            return Ok(OwnedValue::Null);
+            return Ok(OwnedValue::Unit);
         };
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(
             *a * 3 + *b * 2 - *c + *d,
@@ -140,7 +140,7 @@ fn register_bench_natives(vm: &mut Vm) {
     });
     vm.register_borrowed_native("bench::scores", |args, _heap, _budget| {
         if !args.is_empty() {
-            return Ok(OwnedValue::Null);
+            return Ok(OwnedValue::Unit);
         }
         Ok(OwnedValue::iterator([2_i64, 3, 5, 8, 13]))
     });
@@ -790,7 +790,7 @@ fn run_host_access(
             .field(ITEM_COUNT_FIELD),
         HostValue::Scalar(vela_common::ScalarValue::I64(7)),
     );
-    adapter.insert_method_return(ADD_REWARD_METHOD, HostValue::Null);
+    adapter.insert_method_return(ADD_REWARD_METHOD, HostValue::Unit);
     let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::unbounded();
     let mut host = HostExecution {
@@ -965,8 +965,8 @@ fn run_gameplay_monster_kill(
         HostPath::new(monster).field(ID_FIELD),
         HostValue::Scalar(vela_common::ScalarValue::I64(11)),
     );
-    adapter.insert_method_return(EMIT_METHOD, HostValue::Null);
-    adapter.insert_method_return(ADD_REWARD_METHOD, HostValue::Null);
+    adapter.insert_method_return(EMIT_METHOD, HostValue::Unit);
+    adapter.insert_method_return(ADD_REWARD_METHOD, HostValue::Unit);
 
     let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::unbounded();
@@ -1050,7 +1050,7 @@ fn percentile_ns(samples: &[Duration], percentile: usize) -> u128 {
 fn value_checksum(value: &OwnedValue) -> u64 {
     match value {
         OwnedValue::Missing => 0x01,
-        OwnedValue::Null => 0x02,
+        OwnedValue::Unit => 0x02,
         OwnedValue::Bool(value) => u64::from(*value) ^ 0x03,
         OwnedValue::Char(value) => u64::from(*value as u32) ^ 0x04,
         OwnedValue::Scalar(value) => scalar_checksum(*value),
@@ -1092,7 +1092,7 @@ fn runtime_value_checksum(value: &Value) -> u64 {
     }
     match value {
         Value::Missing => 0x01,
-        Value::Null => 0x02,
+        Value::Unit => 0x02,
         Value::Bool(value) => u64::from(*value) ^ 0x03,
         Value::Char(value) => u64::from(*value as u32) ^ 0x04,
         Value::Range(_) => 0x09,

@@ -75,7 +75,7 @@ fn call_cached_set_clear(
         return type_error("method clear");
     };
     collection_mutation::clear_set(heap, reference, None, "method clear")?;
-    Ok(Value::Null)
+    Ok(Value::Unit)
 }
 
 fn call_cached_set_extend(
@@ -92,12 +92,12 @@ fn call_cached_set_extend(
     let extension_reference = set_reference(&args[0], "method extend")?;
     if reference == extension_reference {
         set_slots(heap, reference, "method extend")?;
-        return Ok(Value::Null);
+        return Ok(Value::Unit);
     }
     match set_slot_entry(heap, extension_reference, "method extend")? {
         SetSlotEntry::Empty => {
             set_slots(heap, reference, "method extend")?;
-            return Ok(Value::Null);
+            return Ok(Value::Unit);
         }
         SetSlotEntry::Single(slot) => {
             extend_set_slots(
@@ -107,7 +107,7 @@ fn call_cached_set_extend(
                 budget.as_deref_mut(),
                 "method extend",
             )?;
-            return Ok(Value::Null);
+            return Ok(Value::Unit);
         }
         SetSlotEntry::Pair(first, second) => {
             extend_set_slots(
@@ -117,7 +117,7 @@ fn call_cached_set_extend(
                 budget.as_deref_mut(),
                 "method extend",
             )?;
-            return Ok(Value::Null);
+            return Ok(Value::Unit);
         }
         SetSlotEntry::Many => {}
     }
@@ -129,7 +129,7 @@ fn call_cached_set_extend(
         budget.as_deref_mut(),
         "method extend",
     )?;
-    Ok(Value::Null)
+    Ok(Value::Unit)
 }
 
 enum SetSlotEntry {

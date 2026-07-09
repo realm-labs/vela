@@ -495,7 +495,7 @@ fn main(player) {
         ),
     )
     .expect("dynamic host method source should compile");
-    let mut adapter = host_adapter(host_ref, HostValue::Null);
+    let mut adapter = host_adapter(host_ref, HostValue::Unit);
     adapter.insert_method_return(method, HostValue::Scalar(vela_common::ScalarValue::I64(1)));
     let mut tx = HostAccess::new();
     let vm = Vm::new().with_type_registry(Arc::new(reflection_registry()));
@@ -554,7 +554,7 @@ fn main(player) {
     let caches = RecordingMethodCaches::new(linked_cache_len(&linked));
     let vm = Vm::new().with_type_registry(Arc::new(reflection_registry()));
     let mut budget = ExecutionBudget::unbounded();
-    let mut adapter = host_adapter(host_ref, HostValue::Null);
+    let mut adapter = host_adapter(host_ref, HostValue::Unit);
     adapter.insert_method_return(method, HostValue::i64(1));
     adapter.set_schema_epoch(vela_host::resolved::HostSchemaEpoch::new(1));
     let mut tx = HostAccess::new();
@@ -645,7 +645,7 @@ fn main(player) {
     )
     .expect("missing dynamic host method source should compile");
     let vm = Vm::new().with_type_registry(Arc::new(reflection_registry()));
-    let mut adapter = host_adapter(host_ref, HostValue::Null);
+    let mut adapter = host_adapter(host_ref, HostValue::Unit);
     let mut tx = HostAccess::new();
     let error = {
         let mut host = HostExecution {
@@ -678,7 +678,7 @@ fn main(player) {
         registry,
     )
     .expect("dynamic host method source should compile");
-    let mut denied_adapter = host_adapter(host_ref, HostValue::Null);
+    let mut denied_adapter = host_adapter(host_ref, HostValue::Unit);
     denied_adapter.deny_diagnostic_path_call(HostPath::new(host_ref));
     let mut tx = HostAccess::new();
     let error = {
@@ -700,7 +700,7 @@ fn main(player) {
     assert!(error.source_span.is_some());
 
     let stale_ref = player_ref(4);
-    let mut stale_adapter = host_adapter(host_ref, HostValue::Null);
+    let mut stale_adapter = host_adapter(host_ref, HostValue::Unit);
     let mut tx = HostAccess::new();
     let error = {
         let mut host = HostExecution {

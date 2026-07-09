@@ -25,7 +25,7 @@ pub(crate) fn standard_native_function_descs() -> Vec<NativeFunctionDesc> {
 fn type_hint(hint: &str) -> TypeHint {
     match hint {
         "any" => TypeHint::Any,
-        "null" => TypeHint::null(),
+        "()" => TypeHint::unit(),
         "bool" => TypeHint::boolean(),
         "char" => TypeHint::char(),
         "i8" => TypeHint::i8(),

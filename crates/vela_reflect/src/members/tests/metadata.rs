@@ -125,7 +125,7 @@ fn name_kind_and_field_queries_return_copied_metadata() {
     assert!(has_attr(&registry, &field_metadata, "unit").expect("field has attr"));
     assert_eq!(
         attr(&registry, &field_metadata, "missing").expect("missing field attr"),
-        ReflectValue::Host(HostValue::Null)
+        ReflectValue::Host(HostValue::Unit)
     );
     assert!(!has_attr(&registry, &field_metadata, "missing").expect("missing field attr"));
     let ReflectValue::Array(all_fields) = all_fields(&registry) else {

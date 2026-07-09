@@ -700,7 +700,7 @@ fn is_builtin_type_hint(path: &[String]) -> bool {
     matches!(
         name.as_str(),
         "Any"
-            | "null"
+            | "()"
             | "bool"
             | "i8"
             | "i16"

@@ -63,7 +63,7 @@ pub enum TypeFact {
 }
 
 impl TypeFact {
-    pub const NULL: Self = Self::Primitive(PrimitiveTag::Null);
+    pub const UNIT: Self = Self::Primitive(PrimitiveTag::Unit);
     pub const BOOL: Self = Self::Primitive(PrimitiveTag::Bool);
     pub const CHAR: Self = Self::Primitive(PrimitiveTag::Char);
     pub const I8: Self = Self::Primitive(PrimitiveTag::I8);
@@ -191,13 +191,13 @@ impl TypeFact {
         }
     }
 
-    pub fn without_null(&self) -> Self {
+    pub fn without_unit(&self) -> Self {
         match self {
-            Self::Primitive(PrimitiveTag::Null) => Self::Never,
+            Self::Primitive(PrimitiveTag::Unit) => Self::Never,
             Self::Union(facts) => {
                 let narrowed = facts
                     .iter()
-                    .filter(|fact| !matches!(fact, Self::Primitive(PrimitiveTag::Null)))
+                    .filter(|fact| !matches!(fact, Self::Primitive(PrimitiveTag::Unit)))
                     .cloned()
                     .collect::<Vec<_>>();
                 if narrowed.is_empty() {
@@ -210,15 +210,15 @@ impl TypeFact {
         }
     }
 
-    pub fn only_null(&self) -> Self {
+    pub fn only_unit(&self) -> Self {
         match self {
-            Self::Primitive(PrimitiveTag::Null) | Self::Unknown | Self::Any => Self::NULL,
+            Self::Primitive(PrimitiveTag::Unit) | Self::Unknown | Self::Any => Self::UNIT,
             Self::Union(facts)
                 if facts
                     .iter()
-                    .any(|fact| matches!(fact, Self::Primitive(PrimitiveTag::Null))) =>
+                    .any(|fact| matches!(fact, Self::Primitive(PrimitiveTag::Unit))) =>
             {
-                Self::NULL
+                Self::UNIT
             }
             _ => Self::Never,
         }
@@ -325,13 +325,13 @@ mod tests {
     }
 
     #[test]
-    fn null_narrowing_removes_or_selects_null_from_unions() {
-        let fact = TypeFact::Union(vec![TypeFact::NULL, TypeFact::host("Player")]);
+    fn unit_narrowing_removes_or_selects_unit_from_unions() {
+        let fact = TypeFact::Union(vec![TypeFact::UNIT, TypeFact::host("Player")]);
 
-        assert_eq!(fact.without_null(), TypeFact::host("Player"));
-        assert_eq!(fact.only_null(), TypeFact::NULL);
-        assert_eq!(TypeFact::NULL.without_null(), TypeFact::Never);
-        assert_eq!(TypeFact::I64.only_null(), TypeFact::Never);
+        assert_eq!(fact.without_unit(), TypeFact::host("Player"));
+        assert_eq!(fact.only_unit(), TypeFact::UNIT);
+        assert_eq!(TypeFact::UNIT.without_unit(), TypeFact::Never);
+        assert_eq!(TypeFact::I64.only_unit(), TypeFact::Never);
     }
 
     #[test]

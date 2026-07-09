@@ -29,7 +29,7 @@ pub(crate) fn owner(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
 }
 
 pub(crate) fn origin(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
-    scalar_field(target, "origin", is_null_or_string)
+    scalar_field(target, "origin", is_unit_or_string)
 }
 
 pub(crate) fn attrs(target: &ReflectValue) -> ReflectResult<Option<ReflectValue>> {
@@ -44,7 +44,7 @@ pub(crate) fn attr(target: &ReflectValue, name: &str) -> ReflectResult<Option<Ho
         return Ok(None);
     };
     let Some(value) = attr_value(&attrs, name)? else {
-        return Ok(Some(HostValue::Null));
+        return Ok(Some(HostValue::Unit));
     };
     scalar(value, is_string).map(Some)
 }
@@ -57,7 +57,7 @@ pub(crate) fn has_attr(target: &ReflectValue, name: &str) -> ReflectResult<Optio
 }
 
 pub(crate) fn docs(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
-    scalar_field(target, "docs", is_null_or_string)
+    scalar_field(target, "docs", is_unit_or_string)
 }
 
 pub(crate) fn source_span(target: &ReflectValue) -> ReflectResult<Option<ReflectValue>> {
@@ -109,7 +109,7 @@ pub(crate) fn params(target: &ReflectValue) -> ReflectResult<Option<ReflectValue
 
 pub(crate) fn returns(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
     if let Some(returns) = field(target, "returns").or_else(|| field(target, "return")) {
-        return scalar(returns, is_null_or_string).map(Some);
+        return scalar(returns, is_unit_or_string).map(Some);
     }
     Ok(None)
 }
@@ -290,7 +290,7 @@ fn param_record(value: &ReflectValue) -> ReflectResult<()> {
 
 fn source_span_value(value: &ReflectValue) -> ReflectResult<ReflectValue> {
     match value {
-        ReflectValue::Host(HostValue::Null) => Ok(value.clone()),
+        ReflectValue::Host(HostValue::Unit) => Ok(value.clone()),
         ReflectValue::ScriptRecord { type_name, fields } if type_name == "ReflectSourceSpan" => {
             for value in fields.values() {
                 scalar(value, is_int)?;
@@ -312,8 +312,8 @@ fn scalar(value: &ReflectValue, accepts: fn(&HostValue) -> bool) -> ReflectResul
     }
 }
 
-fn is_null_or_string(value: &HostValue) -> bool {
-    matches!(value, HostValue::Null | HostValue::String(_))
+fn is_unit_or_string(value: &HostValue) -> bool {
+    matches!(value, HostValue::Unit | HostValue::String(_))
 }
 
 fn is_string(value: &HostValue) -> bool {

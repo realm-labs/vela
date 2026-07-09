@@ -29,7 +29,7 @@ impl Compiler<'_, '_> {
             type_hint_script_type(hint, known_type_names.iter()).map(ScriptTypeFact::new)
         });
         let value_type = hir_type_hint.and_then(type_hint_value_type);
-        let register = self.emit_constant(Constant::Null)?;
+        let register = self.emit_constant(Constant::Unit)?;
         self.locals.insert(name.clone(), register);
         if let Some((local, _)) = local_binding {
             self.hir_locals.insert(local, register);
@@ -62,13 +62,13 @@ impl Compiler<'_, '_> {
     pub(super) fn compile_empty_return(&mut self, span: Span) -> CompileResult<bool> {
         if let Some(expected) = self.return_type.clone() {
             check_expected_type(
-                StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Null)),
+                StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Unit)),
                 expected,
                 span,
                 TypeContractContext::Return,
             )?;
         }
-        let register = self.emit_constant(Constant::Null)?;
+        let register = self.emit_constant(Constant::Unit)?;
         self.emit(UnlinkedInstructionKind::Return { src: register });
         Ok(true)
     }

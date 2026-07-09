@@ -340,7 +340,7 @@ fn engine_registers_callable_native_methods_for_host_paths() {
         .register_native_method_fn(
             NativeMethodDesc::new(owner, method, "grant_exp")
                 .param("amount", TypeHint::i64())
-                .returns(TypeHint::null())
+                .returns(TypeHint::unit())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public())
                 .docs("Grant player experience.")
@@ -348,7 +348,7 @@ fn engine_registers_callable_native_methods_for_host_paths() {
                 .attr("effect", "reward"),
             move |receiver, args, host| {
                 let [OwnedValue::Scalar(vela_common::ScalarValue::I64(amount))] = args else {
-                    return Ok(OwnedValue::Null);
+                    return Ok(OwnedValue::Unit);
                 };
                 host.access.call_diagnostic_path_method(
                     host.adapter,
@@ -357,7 +357,7 @@ fn engine_registers_callable_native_methods_for_host_paths() {
                     vec![HostValue::Scalar(vela_common::ScalarValue::I64(*amount))],
                     None,
                 )?;
-                Ok(OwnedValue::Null)
+                Ok(OwnedValue::Unit)
             },
         )
         .build()
@@ -378,7 +378,7 @@ fn engine_registers_callable_native_methods_for_host_paths() {
     assert_eq!(reflected_method.params.len(), 1);
     assert_eq!(reflected_method.params[0].name, "amount");
     assert_eq!(reflected_method.params[0].type_hint.as_deref(), Some("i64"));
-    assert_eq!(reflected_method.return_type.as_deref(), Some("null"));
+    assert_eq!(reflected_method.return_type.as_deref(), Some("()"));
     assert_eq!(reflected_method.attrs.get("domain"), Some("gameplay"));
     assert_eq!(reflected_method.attrs.get("effect"), Some("reward"));
     let program = engine
@@ -408,7 +408,7 @@ fn main(player: Player) {
             &[OwnedValue::Scalar(vela_common::ScalarValue::I64(10))],
             &mut host,
         ),
-        Ok(OwnedValue::Null)
+        Ok(OwnedValue::Unit)
     );
 
     let mut adapter = MockStateAdapter::new();
@@ -553,12 +553,12 @@ fn callable_native_method_error_retains_written_mutation() {
         .register_native_method_fn(
             NativeMethodDesc::new(owner, method, "failing_method")
                 .param("amount", TypeHint::i64())
-                .returns(TypeHint::null())
+                .returns(TypeHint::unit())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             move |receiver, args, host| {
                 let [OwnedValue::Scalar(vela_common::ScalarValue::I64(amount))] = args else {
-                    return Ok(OwnedValue::Null);
+                    return Ok(OwnedValue::Unit);
                 };
                 host.access.call_diagnostic_path_method(
                     host.adapter,
@@ -622,7 +622,7 @@ fn engine_registers_unified_host_type_spec_with_native_method_and_index_metadata
         NativeMethodDesc::new(owner, method, "set")
             .param("key", TypeHint::i64())
             .param("value", TypeHint::i64())
-            .returns(TypeHint::null())
+            .returns(TypeHint::unit())
             .effects(EffectSet::host_write())
             .access(FunctionAccess::public()),
         move |receiver, args, host| {
@@ -631,7 +631,7 @@ fn engine_registers_unified_host_type_spec_with_native_method_and_index_metadata
                 OwnedValue::Scalar(vela_common::ScalarValue::I64(value)),
             ] = args
             else {
-                return Ok(OwnedValue::Null);
+                return Ok(OwnedValue::Unit);
             };
             host.access.write_diagnostic_path(
                 host.adapter,
@@ -639,7 +639,7 @@ fn engine_registers_unified_host_type_spec_with_native_method_and_index_metadata
                 HostValue::Scalar(vela_common::ScalarValue::I64(*value)),
                 None,
             )?;
-            Ok(OwnedValue::Null)
+            Ok(OwnedValue::Unit)
         },
     );
     let engine = Engine::builder()
@@ -686,7 +686,7 @@ fn engine_registers_unified_host_type_spec_with_native_method_and_index_metadata
             ],
             &mut host,
         ),
-        Ok(OwnedValue::Null)
+        Ok(OwnedValue::Unit)
     );
     assert_eq!(
         adapter.read_diagnostic_path(&HostPath::new(host_ref).key("7")),
@@ -708,7 +708,7 @@ fn typed_callable_native_method_accepts_typed_host_path_arguments() {
             NativeMethodDesc::new(owner, method, "transfer_to")
                 .param("target", TypeHint::PathProxy)
                 .param("amount", TypeHint::i64())
-                .returns(TypeHint::null())
+                .returns(TypeHint::unit())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             typed_transfer_to,
@@ -738,7 +738,7 @@ fn typed_callable_native_method_accepts_typed_host_path_arguments() {
             ],
             &mut host,
         ),
-        Ok(OwnedValue::Null)
+        Ok(OwnedValue::Unit)
     );
     assert_eq!(
         adapter.read_diagnostic_path(&amount_path),
@@ -756,7 +756,7 @@ fn typed_host_argument_rejects_mismatched_host_type() {
         .register_typed_native_method_fn::<(TypedHostRef<InventoryArg>,), _>(
             NativeMethodDesc::new(owner, method, "inspect_inventory")
                 .param("target", TypeHint::PathProxy)
-                .returns(TypeHint::null())
+                .returns(TypeHint::unit())
                 .effects(EffectSet::host_read())
                 .access(FunctionAccess::public()),
             typed_inspect_inventory,

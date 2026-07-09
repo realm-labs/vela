@@ -106,7 +106,7 @@ writes, and method calls to the adapter immediately.
 Host handles are call-scope references to Rust-owned state. Complex Rust
 objects stay behind `HostRef` roots and compiled `HostTargetPlan` shapes; child
 field access extends the target plan instead of cloning parent structures. Host
-field reads and writes use scalar `HostValue` conversion at the boundary: null,
+field reads and writes use scalar `HostValue` conversion at the boundary: unit,
 bool, char, explicit scalar primitives such as `i64`, `u32`, `f32`, and `f64`,
 string, bytes, and handles. Complex script-owned records, arrays, maps, and
 enums cross via the explicit owned-value serialization path, not the
@@ -503,7 +503,7 @@ let engine = Engine::builder()
     .register_native_fn(
         NativeFunctionDesc::new("audit::log", NativeFunctionId(10_001))
             .param("message", TypeHint::String)
-            .returns(TypeHint::Null)
+            .returns(TypeHint::unit())
             .effects(EffectSet::pure_host_log())
             .docs("Writes to the host audit log."),
         audit_log,

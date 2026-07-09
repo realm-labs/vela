@@ -746,6 +746,13 @@ structured absence. Expected absence should use `Option::None`, recoverable
 business failure should use `Result::Err`, and unrecoverable script/runtime
 failures should use VM diagnostics rather than `Result::Err`.
 
+The core implementation names the no-value runtime concept `Unit` across
+`Value`, `OwnedValue`, `HostValue`, bytecode `Constant`, `PrimitiveTag`,
+reflection `TypeKind`, C API value kind, type facts, verifier names, hot-reload
+schema ABI, and standard metadata. Public script and type-hint spelling is
+`()`. Active protocol JSON `null` values remain allowed only as external
+JSON-RPC/LSP encoding, not as a Vela language value.
+
 Array, map, set, string, range, math, context, random, and other
 domain-neutral helpers are deterministic unless an Engine-installed
 capability-gated native explicitly provides controlled nondeterminism.

@@ -45,7 +45,7 @@ impl SchemaHash {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TypeKind {
-    Null,
+    Unit,
     Bool,
     I8,
     I16,

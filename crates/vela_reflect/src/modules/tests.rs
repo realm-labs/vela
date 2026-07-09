@@ -28,7 +28,7 @@ pub fn grant(player: Player, amount: i64 = 1) -> bool {
 #[doc("Helper docs.")]
 #[event("reward.helper")]
 fn helper() {
-    return null;
+    return ();
 }
 "#,
     ));

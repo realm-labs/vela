@@ -317,10 +317,10 @@ let engine = Engine::builder()
 The minimal I/O surface is:
 
 ```text
-io::print(value)                -> Result::Ok(null) | Result::Err(IoError)
-io::println(value)              -> Result::Ok(null) | Result::Err(IoError)
+io::print(value)                -> Result::Ok(()) | Result::Err(IoError)
+io::println(value)              -> Result::Ok(()) | Result::Err(IoError)
 fs::read_to_string(path)        -> Result::Ok(string) | Result::Err(IoError)
-fs::write_string(path, text)    -> Result::Ok(null) | Result::Err(IoError)
+fs::write_string(path, text)    -> Result::Ok(()) | Result::Err(IoError)
 ```
 
 `fs::*` paths are resolved relative to the configured sandbox root. Absolute
@@ -342,7 +342,7 @@ let engine = Engine::builder()
     .register_typed_native_fn::<(String,), _>(
         NativeFunctionDesc::new("audit::log", NativeFunctionId::new(10_001))
             .param("message", TypeHint::String)
-            .returns(TypeHint::Null)
+            .returns(TypeHint::unit())
             .effects(EffectSet::pure()),
         audit_log,
     )

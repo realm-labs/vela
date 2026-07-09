@@ -152,9 +152,9 @@ impl GameHostFixture {
             HostPath::new(monster).field(ids::player_id_field()),
             HostValue::Scalar(vela_common::ScalarValue::I64(11)),
         );
-        adapter.insert_method_return(ids::emit_method(), HostValue::Null);
-        adapter.insert_method_return(ids::add_reward_method(), HostValue::Null);
-        adapter.insert_method_return(ids::log_method(), HostValue::Null);
+        adapter.insert_method_return(ids::emit_method(), HostValue::Unit);
+        adapter.insert_method_return(ids::add_reward_method(), HostValue::Unit);
+        adapter.insert_method_return(ids::log_method(), HostValue::Unit);
         if options.deny_player_level_read {
             adapter.deny_diagnostic_path_read(level_path.clone());
         }

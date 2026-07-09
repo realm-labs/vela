@@ -86,7 +86,7 @@ fn removed_native_descriptor_rejection_kind(
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .effects(EffectSet::host_read()),
-            |_| Ok(OwnedValue::Null),
+            |_| Ok(OwnedValue::Unit),
         )
         .build()
         .expect("old engine should build");
@@ -167,7 +167,7 @@ fn native_stable_id_churn_rejection_kind(
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .effects(EffectSet::host_read()),
-            |_| Ok(OwnedValue::Null),
+            |_| Ok(OwnedValue::Unit),
         )
         .build()
         .expect("old engine should build");
@@ -178,7 +178,7 @@ fn native_stable_id_churn_rejection_kind(
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(23))
                 .effects(EffectSet::host_read()),
-            |_| Ok(OwnedValue::Null),
+            |_| Ok(OwnedValue::Unit),
         )
         .build()
         .expect("new engine should build");
@@ -254,14 +254,14 @@ fn dir_native_rejection_kind(
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
     let old_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
-        .register_native_fn(old_desc, |_| Ok(OwnedValue::Null))
+        .register_native_fn(old_desc, |_| Ok(OwnedValue::Unit))
         .build()
         .expect("old engine should build");
     let initial = old_engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
     let new_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
-        .register_native_fn(new_desc, |_| Ok(OwnedValue::Null))
+        .register_native_fn(new_desc, |_| Ok(OwnedValue::Unit))
         .build()
         .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);

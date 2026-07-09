@@ -58,7 +58,7 @@ pub fn kind(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<Ref
     match target_type(registry, target) {
         Ok(desc) => Ok(ReflectValue::Host(HostValue::String(
             match desc.kind {
-                TypeKind::Null => "null",
+                TypeKind::Unit => "()",
                 TypeKind::Bool => "bool",
                 TypeKind::I8 => "i8",
                 TypeKind::I16 => "i16",
@@ -99,7 +99,7 @@ pub fn owner(_registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<R
 
 pub fn origin(_registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     Ok(ReflectValue::Host(
-        metadata_records::origin(target)?.unwrap_or(HostValue::Null),
+        metadata_records::origin(target)?.unwrap_or(HostValue::Unit),
     ))
 }
 
@@ -119,7 +119,7 @@ pub fn attr(
         Ok(desc) => Ok(ReflectValue::Host(
             desc.attrs
                 .get(name)
-                .map_or(HostValue::Null, |value| HostValue::String(value.to_owned())),
+                .map_or(HostValue::Unit, |value| HostValue::String(value.to_owned())),
         )),
         Err(error) => metadata_records::attr(target, name)?
             .map(ReflectValue::Host)

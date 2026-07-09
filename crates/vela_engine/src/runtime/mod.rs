@@ -804,7 +804,7 @@ fn global_contract_type(image: &ProgramImage, name: &str) -> Option<String> {
 
 fn owned_value_matches_contract(value: &OwnedValue, expected: &str) -> bool {
     match value {
-        OwnedValue::Null => expected == "null",
+        OwnedValue::Unit => expected == "()",
         OwnedValue::Bool(_) => expected == "bool",
         OwnedValue::Char(_) => expected == "char",
         OwnedValue::Scalar(value) => value.primitive_tag().name() == expected,
@@ -825,7 +825,7 @@ fn owned_value_matches_contract(value: &OwnedValue, expected: &str) -> bool {
 fn owned_value_contract_type_name(value: &OwnedValue) -> String {
     match value {
         OwnedValue::Missing => "missing".to_owned(),
-        OwnedValue::Null => "null".to_owned(),
+        OwnedValue::Unit => "()".to_owned(),
         OwnedValue::Bool(_) => "bool".to_owned(),
         OwnedValue::Char(_) => "char".to_owned(),
         OwnedValue::Scalar(value) => value.primitive_tag().name().to_owned(),

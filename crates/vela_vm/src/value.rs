@@ -11,7 +11,7 @@ use crate::small_storage::SmallStorage;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Value {
     Missing,
-    Null,
+    Unit,
     Bool(bool),
     Char(char),
     I8(i8),

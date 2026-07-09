@@ -11,10 +11,10 @@ use super::methods::{
 pub(crate) fn standard_type_descs() -> Vec<TypeDesc> {
     let mut descs = vec![
         builtin_type(
-            "null",
-            required_std_type_id("Null"),
-            TypeKind::Null,
-            "Null value type.",
+            "()",
+            required_std_type_id("Unit"),
+            TypeKind::Unit,
+            "Unit value type.",
         ),
         builtin_type(
             "bool",

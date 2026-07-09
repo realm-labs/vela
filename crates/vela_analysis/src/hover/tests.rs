@@ -109,7 +109,7 @@ fn hovers_functions_traits_and_modules() {
         trait_method_hover(&registry, "Damageable", "damage").expect("trait method hover");
     assert_eq!(
         trait_method_info.fact,
-        TypeFact::function(vec![TypeFact::I64], TypeFact::NULL)
+        TypeFact::function(vec![TypeFact::I64], TypeFact::UNIT)
     );
     assert_eq!(trait_method_info.detail.as_deref(), Some("defaulted: true"));
 
@@ -164,7 +164,7 @@ fn hover_registry() -> TypeRegistry {
                 TraitMethodDesc::new(vela_def::MethodId::new(1), "damage")
                     .defaulted(true)
                     .param(MethodParamDesc::new("amount").type_hint("i64"))
-                    .return_type("null"),
+                    .return_type("()"),
             ),
     );
     registry.register_module(ModuleDesc::new("game::rewards").source_span(Span::new(

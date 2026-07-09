@@ -227,7 +227,7 @@ fn playground_span(span: Span) -> PlaygroundSpan {
 fn owned_value_to_json(value: &OwnedValue) -> JsonValue {
     match value {
         OwnedValue::Missing => json!({ "kind": "missing" }),
-        OwnedValue::Null => JsonValue::Null,
+        OwnedValue::Unit => JsonValue::String("()".to_owned()),
         OwnedValue::Bool(value) => JsonValue::Bool(*value),
         OwnedValue::Scalar(vela_common::ScalarValue::I8(value)) => json!(value),
         OwnedValue::Scalar(vela_common::ScalarValue::I16(value)) => json!(value),

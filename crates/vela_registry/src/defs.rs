@@ -73,6 +73,7 @@ impl From<String> for TypeHintDef {
 
 fn canonical_type_hint_path(name: String) -> Vec<String> {
     match name.as_str() {
+        "()" => vec!["()".to_owned()],
         "any" => vec!["Any".to_owned()],
         "string" => vec!["String".to_owned()],
         "bytes" => vec!["Bytes".to_owned()],
@@ -107,6 +108,13 @@ impl<'a> TypeHintParser<'a> {
 
     fn parse_hint(&mut self) -> Option<TypeHintDef> {
         self.skip_ws();
+        if self.remaining().starts_with("()") {
+            self.position += 2;
+            return Some(TypeHintDef {
+                path: vec!["()".to_owned()],
+                args: Vec::new(),
+            });
+        }
         let path = self.parse_path()?;
         let args = if self.consume('<') {
             let mut args = Vec::new();

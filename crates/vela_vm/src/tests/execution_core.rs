@@ -216,7 +216,7 @@ fn calls_registered_native_functions() {
     let native_id = function_id_for_native_name("log");
     vm.register_native("log", |args| {
         assert_eq!(args, [OwnedValue::String("level up".into())]);
-        Ok(OwnedValue::Null)
+        Ok(OwnedValue::Unit)
     });
 
     let mut code = UnlinkedCodeObject::new("native", 2);
@@ -246,7 +246,7 @@ fn calls_registered_native_functions() {
             code,
             Linker::new().with_native_implementation(native_id)
         ),
-        Ok(OwnedValue::Null)
+        Ok(OwnedValue::Unit)
     );
 }
 

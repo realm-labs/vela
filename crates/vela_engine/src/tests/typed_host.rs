@@ -50,7 +50,7 @@ fn engine_registers_typed_host_native_functions() {
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
                 .param("level", TypeHint::i64())
-                .returns(TypeHint::null())
+                .returns(TypeHint::unit())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             typed_host_set_level,

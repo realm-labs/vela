@@ -65,7 +65,7 @@ LOAD_CONST      r0, const#10
 GET_HOST_FIELD  r1, account, FieldId(balance)
 ADD             r2, r1, r0
 SET_HOST_FIELD  account, FieldId(balance), r2
-RETURN          null
+RETURN          ()
 ```
 
 Benefits:
@@ -121,7 +121,7 @@ pub enum ScalarValue {
 
 pub enum Value {
     Missing,
-    Null,
+    Unit,
     Bool(bool),
     Scalar(ScalarValue),
     Range(RangeValue),

@@ -50,7 +50,7 @@ fn host_native_error_retains_written_mutations() {
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
                 .param("level", TypeHint::i64())
-                .returns(TypeHint::null())
+                .returns(TypeHint::unit())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, host| {
@@ -59,7 +59,7 @@ fn host_native_error_retains_written_mutations() {
                     OwnedValue::Scalar(vela_common::ScalarValue::I64(level)),
                 ] = args
                 else {
-                    return Ok(OwnedValue::Null);
+                    return Ok(OwnedValue::Unit);
                 };
                 host.access.write_diagnostic_path(
                     host.adapter,
@@ -124,7 +124,7 @@ fn host_native_error_retains_mutations_without_call_options() {
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
                 .param("level", TypeHint::i64())
-                .returns(TypeHint::null())
+                .returns(TypeHint::unit())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, host| {
@@ -133,7 +133,7 @@ fn host_native_error_retains_mutations_without_call_options() {
                     OwnedValue::Scalar(vela_common::ScalarValue::I64(level)),
                 ] = args
                 else {
-                    return Ok(OwnedValue::Null);
+                    return Ok(OwnedValue::Unit);
                 };
                 host.access.write_diagnostic_path(
                     host.adapter,
@@ -325,7 +325,7 @@ fn engine_denies_host_native_before_host_access() {
                     TypeHint::Host(TypeKey::new(TypeId::new(1), "Player")),
                 )
                 .param("level", TypeHint::i64())
-                .returns(TypeHint::null())
+                .returns(TypeHint::unit())
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, host| {
@@ -334,7 +334,7 @@ fn engine_denies_host_native_before_host_access() {
                     OwnedValue::Scalar(vela_common::ScalarValue::I64(level)),
                 ] = args
                 else {
-                    return Ok(OwnedValue::Null);
+                    return Ok(OwnedValue::Unit);
                 };
                 host.access.write_diagnostic_path(
                     host.adapter,
@@ -342,7 +342,7 @@ fn engine_denies_host_native_before_host_access() {
                     HostValue::Scalar(vela_common::ScalarValue::I64(*level)),
                     None,
                 )?;
-                Ok(OwnedValue::Null)
+                Ok(OwnedValue::Unit)
             },
         )
         .build()

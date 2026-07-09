@@ -5,7 +5,7 @@ use vela_host::value::HostValue;
 use crate::{
     candidates::{candidate_names, ranked_candidates},
     error::{ReflectError, ReflectErrorKind, ReflectResult},
-    metadata::{attrs_value, docs_value, int_value, null_value, record, span_value, string},
+    metadata::{attrs_value, docs_value, int_value, record, span_value, string, unit_value},
     modules::DeclOrigin,
     registry::{TypeDesc, TypeKind, TypeRegistry},
     value::ReflectValue,
@@ -35,7 +35,7 @@ pub fn type_by_name(registry: &TypeRegistry, name: &str) -> ReflectResult<Reflec
 pub fn type_of_value(registry: &TypeRegistry, target: &ReflectValue) -> ReflectValue {
     crate::value::type_of(registry, target)
         .map(type_record)
-        .unwrap_or_else(|| ReflectValue::Host(HostValue::Null))
+        .unwrap_or_else(|| ReflectValue::Host(HostValue::Unit))
 }
 
 pub fn has_type(registry: &TypeRegistry, name: &str) -> bool {
@@ -57,7 +57,7 @@ fn type_record(desc: &TypeDesc) -> ReflectValue {
     fields.insert("origin".to_owned(), origin_value(desc.origin));
     fields.insert(
         "schema_hash".to_owned(),
-        desc.schema_hash.map_or_else(null_value, |hash| {
+        desc.schema_hash.map_or_else(unit_value, |hash| {
             // TODO(reflect): stable IDs are u64, but reflection currently exposes IDs
             // through signed script ints. Replace this lossy saturation with a deliberate
             // unsigned/ID value surface before treating reflect::id() as a stable public
@@ -93,7 +93,7 @@ fn origin_value(origin: DeclOrigin) -> ReflectValue {
 
 fn kind_name(kind: TypeKind) -> String {
     match kind {
-        TypeKind::Null => "null",
+        TypeKind::Unit => "()",
         TypeKind::Bool => "bool",
         TypeKind::I8 => "i8",
         TypeKind::I16 => "i16",

@@ -34,7 +34,7 @@ fn value_method_registry(specs: &[(&str, &str, &[&str])]) -> vela_registry::Defi
 
 fn primitive_for_std_type_name(type_name: &str) -> Option<vela_common::PrimitiveTag> {
     match type_name {
-        "Null" => Some(vela_common::PrimitiveTag::Null),
+        "Unit" => Some(vela_common::PrimitiveTag::Unit),
         "Bool" => Some(vela_common::PrimitiveTag::Bool),
         "I8" => Some(vela_common::PrimitiveTag::I8),
         "I16" => Some(vela_common::PrimitiveTag::I16),

@@ -2,7 +2,7 @@ use std::fmt;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum PrimitiveTag {
-    Null,
+    Unit,
     Bool,
     Char,
     I8,
@@ -23,7 +23,7 @@ impl PrimitiveTag {
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
-            PrimitiveTag::Null => "null",
+            PrimitiveTag::Unit => "()",
             PrimitiveTag::Bool => "bool",
             PrimitiveTag::Char => "char",
             PrimitiveTag::I8 => "i8",
@@ -54,7 +54,7 @@ impl PrimitiveTag {
             PrimitiveTag::U64 => Some(NumericTag::U64),
             PrimitiveTag::F32 => Some(NumericTag::F32),
             PrimitiveTag::F64 => Some(NumericTag::F64),
-            PrimitiveTag::Null
+            PrimitiveTag::Unit
             | PrimitiveTag::Bool
             | PrimitiveTag::Char
             | PrimitiveTag::String
@@ -65,7 +65,7 @@ impl PrimitiveTag {
     #[must_use]
     pub const fn from_name(name: &str) -> Option<Self> {
         match name.as_bytes() {
-            b"null" => Some(PrimitiveTag::Null),
+            b"()" => Some(PrimitiveTag::Unit),
             b"bool" => Some(PrimitiveTag::Bool),
             b"char" => Some(PrimitiveTag::Char),
             b"i8" => Some(PrimitiveTag::I8),
@@ -249,7 +249,7 @@ mod tests {
     use super::*;
 
     const PRIMITIVE_NAMES: &[(PrimitiveTag, &str)] = &[
-        (PrimitiveTag::Null, "null"),
+        (PrimitiveTag::Unit, "()"),
         (PrimitiveTag::Bool, "bool"),
         (PrimitiveTag::I8, "i8"),
         (PrimitiveTag::I16, "i16"),
@@ -287,6 +287,7 @@ mod tests {
         }
         assert_eq!(PrimitiveTag::from_name("int"), None);
         assert_eq!(PrimitiveTag::from_name("float"), None);
+        assert_eq!(PrimitiveTag::from_name("null"), None);
     }
 
     #[test]
@@ -298,7 +299,7 @@ mod tests {
             assert_eq!(tag.primitive_tag().numeric_tag(), Some(*tag));
         }
 
-        assert_eq!(PrimitiveTag::Null.numeric_tag(), None);
+        assert_eq!(PrimitiveTag::Unit.numeric_tag(), None);
         assert_eq!(PrimitiveTag::Bool.numeric_tag(), None);
         assert_eq!(PrimitiveTag::String.numeric_tag(), None);
         assert_eq!(PrimitiveTag::Bytes.numeric_tag(), None);

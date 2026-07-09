@@ -181,7 +181,7 @@ fn reflect_call_with_policy_denies_effectful_methods_without_effect_permission()
     )
     .expect("effect permission should allow method call");
 
-    assert_eq!(value, ReflectValue::Host(HostValue::Null));
+    assert_eq!(value, ReflectValue::Host(HostValue::Unit));
 }
 
 #[test]
@@ -273,7 +273,7 @@ fn reflect_call_with_policy_allows_private_methods_with_permission() {
     )
     .expect("private method call");
 
-    assert_eq!(value, ReflectValue::Host(HostValue::Null));
+    assert_eq!(value, ReflectValue::Host(HostValue::Unit));
 }
 
 #[test]

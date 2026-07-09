@@ -78,7 +78,7 @@ fn engine_reflect_call_denies_native_methods_without_effect_permission() {
             NativeMethodDesc::new(owner, method, "grant_exp")
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public().reflect_callable(true)),
-            |_, _, _| Ok(OwnedValue::Null),
+            |_, _, _| Ok(OwnedValue::Unit),
         )
         .reflection_permissions(
             ReflectPermissionSet::new()
@@ -133,7 +133,7 @@ fn engine_reflect_call_records_approved_native_methods() {
             NativeMethodDesc::new(owner, method, "grant_exp")
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public().reflect_callable(true)),
-            |_, _, _| Ok(OwnedValue::Null),
+            |_, _, _| Ok(OwnedValue::Unit),
         )
         .reflection_permissions(ReflectPermissionSet::all())
         .build()

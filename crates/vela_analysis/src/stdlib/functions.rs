@@ -151,12 +151,12 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
         StdlibFunctionFact::new(
             "io::print",
             vec![TypeFact::Any],
-            TypeFact::result(TypeFact::NULL, TypeFact::record("IoError")),
+            TypeFact::result(TypeFact::UNIT, TypeFact::record("IoError")),
         ),
         StdlibFunctionFact::new(
             "io::println",
             vec![TypeFact::Any],
-            TypeFact::result(TypeFact::NULL, TypeFact::record("IoError")),
+            TypeFact::result(TypeFact::UNIT, TypeFact::record("IoError")),
         ),
         StdlibFunctionFact::new(
             "fs::read_to_string",
@@ -166,7 +166,7 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
         StdlibFunctionFact::new(
             "fs::write_string",
             vec![TypeFact::STRING, TypeFact::STRING],
-            TypeFact::result(TypeFact::NULL, TypeFact::record("IoError")),
+            TypeFact::result(TypeFact::UNIT, TypeFact::record("IoError")),
         ),
         StdlibFunctionFact::new(
             "set::from_array",
@@ -464,7 +464,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 canonical_function_name(name)?,
                 args.to_vec(),
-                TypeFact::result(TypeFact::NULL, TypeFact::record("IoError")),
+                TypeFact::result(TypeFact::UNIT, TypeFact::record("IoError")),
             ))
         }
         "fs::read_to_string" => {
@@ -480,7 +480,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 "fs::write_string",
                 args.to_vec(),
-                TypeFact::result(TypeFact::NULL, TypeFact::record("IoError")),
+                TypeFact::result(TypeFact::UNIT, TypeFact::record("IoError")),
             ))
         }
         "set::from_array" => {

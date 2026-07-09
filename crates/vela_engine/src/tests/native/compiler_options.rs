@@ -41,7 +41,7 @@ fn engine_installs_registered_native_functions_into_vm() {
                     OwnedValue::Scalar(vela_common::ScalarValue::I64(rhs)),
                 ] = args
                 else {
-                    return Ok(OwnedValue::Null);
+                    return Ok(OwnedValue::Unit);
                 };
                 Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(lhs + rhs)))
             },
@@ -81,7 +81,7 @@ fn engine_compiler_options_lower_named_registered_native_arguments() {
                     OwnedValue::Scalar(vela_common::ScalarValue::I64(rhs)),
                 ] = args
                 else {
-                    return Ok(OwnedValue::Null);
+                    return Ok(OwnedValue::Unit);
                 };
                 Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(lhs - rhs)))
             },

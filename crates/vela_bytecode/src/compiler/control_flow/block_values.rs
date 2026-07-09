@@ -47,12 +47,12 @@ impl Compiler<'_, '_> {
         statements: &[crate::compiler::body_payloads::CompilerStatementPayload<'_>],
     ) -> CompileResult<bool> {
         if body.syntax_statements_are_empty() {
-            self.emit_constant_to(dst, Constant::Null);
+            self.emit_constant_to(dst, Constant::Unit);
             return Ok(false);
         }
         match body.block_value(statements) {
             CompilerBlockValue::Empty => {
-                self.emit_constant_to(dst, Constant::Null);
+                self.emit_constant_to(dst, Constant::Unit);
                 Ok(false)
             }
             CompilerBlockValue::TailExpression { prefix, tail } => {
@@ -105,7 +105,7 @@ impl Compiler<'_, '_> {
             CompilerBlockValue::Statements(statements) => {
                 let returned = self.compile_statement_payloads(statements)?;
                 if !returned {
-                    self.emit_constant_to(dst, Constant::Null);
+                    self.emit_constant_to(dst, Constant::Unit);
                 }
                 Ok(returned)
             }

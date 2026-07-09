@@ -637,7 +637,7 @@ fn leaf_values_partial_cmp(
 fn immediate_leaf_values_equal(lhs: &Value, rhs: &Value) -> Option<bool> {
     match (lhs, rhs) {
         (Value::Missing, _) | (_, Value::Missing) => None,
-        (Value::Null, Value::Null) => Some(true),
+        (Value::Unit, Value::Unit) => Some(true),
         (Value::Bool(lhs), Value::Bool(rhs)) => Some(lhs == rhs),
         (Value::Char(lhs), Value::Char(rhs)) => Some(lhs == rhs),
         (Value::Range(lhs), Value::Range(rhs)) => Some(lhs == rhs),
@@ -693,7 +693,7 @@ fn is_immediate_comparable_leaf(lhs: &Value, rhs: &Value) -> bool {
 fn is_immediate_leaf(value: &Value) -> bool {
     matches!(
         value,
-        Value::Null
+        Value::Unit
             | Value::Bool(_)
             | Value::Char(_)
             | Value::I8(_)
@@ -739,7 +739,7 @@ fn identity_key(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<Ide
         Value::HeapRef(reference) => heap_identity_key(*reference, heap),
         Value::HostRef(reference) => Ok(IdentityKey::Host(*reference)),
         Value::Missing => non_comparable("identity equal"),
-        Value::Null
+        Value::Unit
         | Value::Bool(_)
         | Value::Char(_)
         | Value::I8(_)
@@ -810,7 +810,7 @@ mod tests {
 
     #[test]
     fn semantic_equality_is_tag_exact_for_leaf_values() {
-        assert_eq!(equal(Value::Null, Value::Null), Ok(true));
+        assert_eq!(equal(Value::Unit, Value::Unit), Ok(true));
         assert_eq!(equal(Value::Bool(true), Value::Bool(false)), Ok(false));
         assert_eq!(equal(Value::Char('v'), Value::Char('v')), Ok(true));
         assert_eq!(equal(Value::I64(1), Value::I64(1)), Ok(true));

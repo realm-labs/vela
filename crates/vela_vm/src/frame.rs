@@ -17,7 +17,7 @@ pub(crate) struct CallFrame {
 impl CallFrame {
     pub(crate) fn new(register_count: u16) -> Self {
         Self {
-            registers: vec![Value::Null; usize::from(register_count)],
+            registers: vec![Value::Unit; usize::from(register_count)],
         }
     }
 

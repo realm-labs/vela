@@ -10,7 +10,7 @@ fn script_methods_generates_native_method_metadata() {
         descs[0],
         NativeMethodDesc::new(owner.clone(), method_id("grant_exp"), "grant_exp")
             .param("amount", TypeHint::i64())
-            .returns(TypeHint::null())
+            .returns(TypeHint::unit())
             .effects(EffectSet::host_write())
             .access(FunctionAccess::public().reflect_callable(true),)
             .attr("domain", "player")

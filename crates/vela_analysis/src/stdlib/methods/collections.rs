@@ -10,7 +10,7 @@ pub(super) fn array_method_fact(
         "len" => Some(StdlibMethodFact::new(receiver, "len", TypeFact::I64)),
         "is_empty" => Some(StdlibMethodFact::new(receiver, "is_empty", TypeFact::BOOL)),
         "push" => Some(
-            StdlibMethodFact::new(receiver, "push", TypeFact::NULL)
+            StdlibMethodFact::new(receiver, "push", TypeFact::UNIT)
                 .with_params(vec![element.clone()]),
         ),
         "pop" => Some(StdlibMethodFact::new(
@@ -19,14 +19,14 @@ pub(super) fn array_method_fact(
             TypeFact::option(element.clone()),
         )),
         "insert" => Some(
-            StdlibMethodFact::new(receiver, "insert", TypeFact::NULL)
+            StdlibMethodFact::new(receiver, "insert", TypeFact::UNIT)
                 .with_params(vec![TypeFact::I64, element.clone()]),
         ),
         "extend" => Some(
-            StdlibMethodFact::new(receiver, "extend", TypeFact::NULL)
+            StdlibMethodFact::new(receiver, "extend", TypeFact::UNIT)
                 .with_params(vec![TypeFact::array(element.clone())]),
         ),
-        "clear" => Some(StdlibMethodFact::new(receiver, "clear", TypeFact::NULL)),
+        "clear" => Some(StdlibMethodFact::new(receiver, "clear", TypeFact::UNIT)),
         "first" => Some(StdlibMethodFact::new(
             receiver,
             "first",
@@ -176,10 +176,10 @@ pub(super) fn map_method_fact(
                 .with_params(vec![key.clone()]),
         ),
         "extend" => Some(
-            StdlibMethodFact::new(receiver, "extend", TypeFact::NULL)
+            StdlibMethodFact::new(receiver, "extend", TypeFact::UNIT)
                 .with_params(vec![TypeFact::map(key.clone(), value.clone())]),
         ),
-        "clear" => Some(StdlibMethodFact::new(receiver, "clear", TypeFact::NULL)),
+        "clear" => Some(StdlibMethodFact::new(receiver, "clear", TypeFact::UNIT)),
         "keys" => Some(StdlibMethodFact::new(
             receiver,
             "keys",
@@ -294,10 +294,10 @@ pub(super) fn set_method_fact(
                 .with_params(vec![element.clone()]),
         ),
         "extend" => Some(
-            StdlibMethodFact::new(receiver, "extend", TypeFact::NULL)
+            StdlibMethodFact::new(receiver, "extend", TypeFact::UNIT)
                 .with_params(vec![TypeFact::set(element.clone())]),
         ),
-        "clear" => Some(StdlibMethodFact::new(receiver, "clear", TypeFact::NULL)),
+        "clear" => Some(StdlibMethodFact::new(receiver, "clear", TypeFact::UNIT)),
         "values" => Some(StdlibMethodFact::new(
             receiver,
             "values",

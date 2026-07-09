@@ -340,8 +340,8 @@ impl TypeHint {
     }
 
     #[must_use]
-    pub const fn null() -> Self {
-        Self::Primitive(PrimitiveTag::Null)
+    pub const fn unit() -> Self {
+        Self::Primitive(PrimitiveTag::Unit)
     }
 
     #[must_use]

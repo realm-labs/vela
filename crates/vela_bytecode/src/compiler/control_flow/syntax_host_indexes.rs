@@ -190,7 +190,7 @@ impl Compiler<'_, '_> {
         let root = self.compile_host_path_root(&path.root)?;
         self.emit_host_remove(root, path, call_span)?;
         let dst = self.alloc_register()?;
-        self.emit_constant_to(dst, Constant::Null);
+        self.emit_constant_to(dst, Constant::Unit);
         Ok(Some(dst))
     }
 
@@ -239,7 +239,7 @@ impl Compiler<'_, '_> {
         let root = self.compile_host_path_root(&path.root)?;
         self.emit_host_mutate(root, path, HostMutationOp::Push, value, call_span)?;
         let dst = self.alloc_register()?;
-        self.emit_constant_to(dst, Constant::Null);
+        self.emit_constant_to(dst, Constant::Unit);
         Ok(Some(dst))
     }
 

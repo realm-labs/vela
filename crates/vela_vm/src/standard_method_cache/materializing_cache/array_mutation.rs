@@ -55,7 +55,7 @@ fn call_cached_array_push(
         budget.as_deref_mut(),
         "method push",
     )?;
-    Ok(Value::Null)
+    Ok(Value::Unit)
 }
 
 fn call_cached_array_pop(
@@ -99,7 +99,7 @@ fn call_cached_array_insert(
         budget.as_deref_mut(),
         "method insert",
     )?;
-    Ok(Value::Null)
+    Ok(Value::Unit)
 }
 
 fn call_cached_array_remove_at(
@@ -138,7 +138,7 @@ fn call_cached_array_clear(
         return type_error("method clear");
     };
     collection_mutation::clear_array(heap, reference, None, "method clear")?;
-    Ok(Value::Null)
+    Ok(Value::Unit)
 }
 
 fn call_cached_array_extend(
@@ -156,7 +156,7 @@ fn call_cached_array_extend(
     match array_slot_entry(heap, extension_reference, "method extend")? {
         ArraySlotEntry::Empty => {
             array_slots(heap, reference, "method extend")?;
-            return Ok(Value::Null);
+            return Ok(Value::Unit);
         }
         ArraySlotEntry::Single(slot) => {
             collection_mutation::push_array_slot(
@@ -166,7 +166,7 @@ fn call_cached_array_extend(
                 budget.as_deref_mut(),
                 "method extend",
             )?;
-            return Ok(Value::Null);
+            return Ok(Value::Unit);
         }
         ArraySlotEntry::Pair(first, second) => {
             collection_mutation::extend_array_slots(
@@ -176,7 +176,7 @@ fn call_cached_array_extend(
                 budget.as_deref_mut(),
                 "method extend",
             )?;
-            return Ok(Value::Null);
+            return Ok(Value::Unit);
         }
         ArraySlotEntry::Many => {}
     }
@@ -188,7 +188,7 @@ fn call_cached_array_extend(
         budget.as_deref_mut(),
         "method extend",
     )?;
-    Ok(Value::Null)
+    Ok(Value::Unit)
 }
 
 enum ArraySlotEntry {

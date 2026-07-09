@@ -85,7 +85,7 @@ fn call_cached_map_clear(
         return type_error("method clear");
     };
     collection_mutation::clear_map(heap, reference, None, "method clear")?;
-    Ok(Value::Null)
+    Ok(Value::Unit)
 }
 
 fn call_cached_map_extend(
@@ -102,12 +102,12 @@ fn call_cached_map_extend(
     let extension_reference = map_reference(&args[0], "method extend")?;
     if reference == extension_reference {
         map_slots(receiver, Some(&*heap), "method extend")?;
-        return Ok(Value::Null);
+        return Ok(Value::Unit);
     }
     match map_slot_entry(heap, extension_reference, "method extend")? {
         MapSlotEntry::Empty => {
             map_slots_by_reference(heap, reference, "method extend")?;
-            return Ok(Value::Null);
+            return Ok(Value::Unit);
         }
         MapSlotEntry::Single(key, value) => {
             collection_mutation::insert_map_slot(
@@ -118,7 +118,7 @@ fn call_cached_map_extend(
                 budget.as_deref_mut(),
                 "method extend",
             )?;
-            return Ok(Value::Null);
+            return Ok(Value::Unit);
         }
         MapSlotEntry::Many => {}
     }
@@ -130,7 +130,7 @@ fn call_cached_map_extend(
         budget.as_deref_mut(),
         "method extend",
     )?;
-    Ok(Value::Null)
+    Ok(Value::Unit)
 }
 
 enum MapSlotEntry {

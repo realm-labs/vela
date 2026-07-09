@@ -10,7 +10,7 @@ pub(crate) fn dispatch_load_const(
     constant: &Constant,
 ) -> VmResult<()> {
     let value = match constant {
-        Constant::Null => Value::Null,
+        Constant::Unit => Value::Unit,
         Constant::Bool(value) => Value::Bool(*value),
         Constant::Char(value) => Value::Char(*value),
         Constant::Scalar(value) => Value::from_scalar(*value),
@@ -94,7 +94,7 @@ mod tests {
         );
         assert_eq!(loaded_string_constant(Some(&tick), "tick", None), None);
         assert_eq!(
-            loaded_string_constant(Some(&Value::Null), "tick", Some(&heap)),
+            loaded_string_constant(Some(&Value::Unit), "tick", Some(&heap)),
             None
         );
     }
@@ -121,7 +121,7 @@ mod tests {
         );
         assert_eq!(loaded_bytes_constant(Some(&bytes), &[1, 2, 3], None), None);
         assert_eq!(
-            loaded_bytes_constant(Some(&Value::Null), &[1, 2, 3], Some(&heap)),
+            loaded_bytes_constant(Some(&Value::Unit), &[1, 2, 3], Some(&heap)),
             None
         );
     }

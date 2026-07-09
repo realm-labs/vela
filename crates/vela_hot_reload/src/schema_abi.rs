@@ -139,7 +139,7 @@ impl SchemaTraitImplAbi {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SchemaKindAbi {
-    Null,
+    Unit,
     Bool,
     I8,
     I16,
@@ -169,7 +169,7 @@ impl SchemaKindAbi {
     #[must_use]
     pub const fn from_type_kind(kind: TypeKind) -> Self {
         match kind {
-            TypeKind::Null => Self::Null,
+            TypeKind::Unit => Self::Unit,
             TypeKind::Bool => Self::Bool,
             TypeKind::I8 => Self::I8,
             TypeKind::I16 => Self::I16,
@@ -199,7 +199,7 @@ impl SchemaKindAbi {
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
-            Self::Null => "null",
+            Self::Unit => "()",
             Self::Bool => "bool",
             Self::I8 => "i8",
             Self::I16 => "i16",

@@ -41,7 +41,7 @@ pub enum VelaStatus {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum VelaCValueKind {
     Missing = 0,
-    Null = 1,
+    Unit = 1,
     Bool = 2,
     I8 = 3,
     I16 = 4,
@@ -340,8 +340,8 @@ fn call_runtime(
 fn value_to_c(value: OwnedValue) -> Result<VelaCValue, (VelaStatus, String)> {
     match value {
         OwnedValue::Missing => Ok(VelaCValue::missing()),
-        OwnedValue::Null => Ok(VelaCValue {
-            kind: VelaCValueKind::Null,
+        OwnedValue::Unit => Ok(VelaCValue {
+            kind: VelaCValueKind::Unit,
             ..VelaCValue::missing()
         }),
         OwnedValue::Bool(value) => Ok(VelaCValue {
@@ -444,7 +444,7 @@ fn c_args(
 fn c_value_to_owned(value: &VelaCValue) -> Result<OwnedValue, (VelaStatus, String)> {
     match value.kind {
         VelaCValueKind::Missing => Ok(OwnedValue::Missing),
-        VelaCValueKind::Null => Ok(OwnedValue::Null),
+        VelaCValueKind::Unit => Ok(OwnedValue::Unit),
         VelaCValueKind::Bool => Ok(OwnedValue::Bool(value.bool_value != 0)),
         VelaCValueKind::Char => {
             let Some(value) = char::from_u32(value.char_value) else {

@@ -363,7 +363,7 @@ fn reflect_get_and_set_with_policy_require_field_permission() {
             &policy,
         )
         .expect("field write permission"),
-        ReflectValue::Host(HostValue::Null)
+        ReflectValue::Host(HostValue::Unit)
     );
 }
 
