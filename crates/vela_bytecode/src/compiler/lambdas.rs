@@ -18,6 +18,7 @@ pub(crate) struct LambdaCapture {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct LambdaParam {
+    pub local: HirLocalId,
     pub name: String,
     pub span: Span,
 }
@@ -32,28 +33,12 @@ impl Compiler<'_, '_> {
         let Some(lambda) = expression.as_lambda() else {
             return Ok(None);
         };
-        let Some(param_list) = lambda.param_list() else {
-            return Ok(None);
-        };
         let Some(body) = lambda.body() else {
             return Ok(None);
         };
-        let params = param_list
-            .params()
-            .map(|param| {
-                let name = param.name_text().ok_or_else(|| {
-                    CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing lambda parameter name",
-                    ))
-                })?;
-                Ok(LambdaParam {
-                    name,
-                    span: syntax_param_span(source, &param),
-                })
-            })
-            .collect::<CompileResult<Vec<_>>>()?;
         let lambda_span = syntax_expr_span(source, expression);
         let hir_body = self.hir_lambda_body(lambda_span)?;
+        let params = self.lambda_params_from_hir(hir_body)?;
         let captures = self.lambda_captures_from_hir(hir_body)?;
         let capture_registers = captures
             .iter()
@@ -101,25 +86,12 @@ impl Compiler<'_, '_> {
             let Some(param) = params.get(index) else {
                 continue;
             };
-            if let Some(local) = self.bindings.local_named_at(
-                &param.name,
-                vela_hir::binding::LocalBindingKind::LambdaParameter,
-                param.span,
-            ) {
-                lambda_compiler
-                    .value_types
-                    .set_local(local, &param.name, shape.value_type());
-                lambda_compiler
-                    .value_shapes
-                    .set_local(local, &param.name, Some(shape.clone()));
-            } else {
-                lambda_compiler
-                    .value_types
-                    .set_name(&param.name, shape.value_type());
-                lambda_compiler
-                    .value_shapes
-                    .set_name(&param.name, Some(shape.clone()));
-            }
+            lambda_compiler
+                .value_types
+                .set_local(param.local, &param.name, shape.value_type());
+            lambda_compiler
+                .value_shapes
+                .set_local(param.local, &param.name, Some(shape.clone()));
         }
         let code = lambda_compiler.compile_syntax_lambda_body(source, body)?;
         let function = self.code.push_nested_function(code);
@@ -153,6 +125,25 @@ impl Compiler<'_, '_> {
                 CompileError::new(CompileErrorKind::UnsupportedSyntax("lambda HIR body"))
                     .with_span(lambda_span)
             })
+    }
+
+    fn lambda_params_from_hir(&self, body: &HirBody) -> CompileResult<Vec<LambdaParam>> {
+        body.params
+            .iter()
+            .map(|param| {
+                let local = self.bindings.local(param.local).ok_or_else(|| {
+                    CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "lambda parameter local",
+                    ))
+                    .with_span(param.origin.span)
+                })?;
+                Ok(LambdaParam {
+                    local: param.local,
+                    name: local.name.clone(),
+                    span: param.origin.span,
+                })
+            })
+            .collect()
     }
 
     fn lambda_captures_from_hir(&self, body: &HirBody) -> CompileResult<Vec<LambdaCapture>> {
@@ -216,12 +207,5 @@ impl Compiler<'_, '_> {
 
 fn syntax_expr_span(source: SourceId, expression: &SyntaxExpression) -> Span {
     let range = expression.syntax().text_range();
-    Span::new(source, range.start().into(), range.end().into())
-}
-
-fn syntax_param_span(source: SourceId, param: &vela_syntax::ast::SyntaxParam) -> Span {
-    let range = param
-        .name_token()
-        .map_or_else(|| param.syntax().text_range(), |token| token.text_range());
     Span::new(source, range.start().into(), range.end().into())
 }

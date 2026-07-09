@@ -153,8 +153,9 @@ origins are owned by `HirBody`/`ModuleGraph`, while binding maps retain
 origins for its current syntax payloads and resolves local/declaration facts
 through HIR expression identity rather than `BindingMap` span scans. HIR lambda
 bodies now record transitive capture chains for nested lambdas, and bytecode
-lambda capture setup reads `HirBody::captures` instead of walking lambda body
-syntax to reconstruct captures.
+lambda capture and parameter setup reads `HirBody::captures` and
+`HirBody::params` instead of walking lambda body syntax or re-finding
+parameter locals by name/span.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

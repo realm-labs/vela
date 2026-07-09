@@ -928,12 +928,8 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         let known_type_names = facts.known_type_names();
         for (index, param) in params.iter().enumerate() {
             let local_binding = bindings
-                .local_named_at(&param.name, LocalBindingKind::LambdaParameter, param.span)
-                .and_then(|local| {
-                    bindings
-                        .local(local)
-                        .map(|binding| (local, binding.type_hint.clone()))
-                });
+                .local(param.local)
+                .map(|binding| (param.local, binding.type_hint.clone()));
             let hir_type_hint = local_binding.as_ref().and_then(|(_, hint)| hint.as_ref());
             let register = Register(
                 capture_count
