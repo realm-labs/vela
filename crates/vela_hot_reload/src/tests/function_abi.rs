@@ -393,6 +393,60 @@ fn function_descriptor_type_hints_compare_canonical_structures() {
 }
 
 #[test]
+fn function_descriptor_tuple_type_hints_compare_structurally() {
+    let old_abi = HotReloadAbi::empty().function(
+        FunctionAbi::new(
+            "game::reward::split_name",
+            EffectAbi::host_read(),
+            AccessAbi::public(),
+        )
+        .param(ParamAbi::new("parts").type_hint("(String, String)"))
+        .return_type("Result<Option<(String, String)>, ()>"),
+    );
+    let equivalent_formatting = HotReloadAbi::empty().function(
+        FunctionAbi::new(
+            "game::reward::split_name",
+            EffectAbi::host_read(),
+            AccessAbi::public(),
+        )
+        .param(ParamAbi::new("parts").type_hint("( String , String )"))
+        .return_type("Result< Option< (String, String) >, () >"),
+    );
+
+    old_abi
+        .ensure_compatible_update(&equivalent_formatting)
+        .expect("equivalent tuple type hints should be compatible");
+
+    let changed_arity = HotReloadAbi::empty().function(
+        FunctionAbi::new(
+            "game::reward::split_name",
+            EffectAbi::host_read(),
+            AccessAbi::public(),
+        )
+        .param(ParamAbi::new("parts").type_hint("(String, String, String)"))
+        .return_type("Result<Option<(String, String)>, ()>"),
+    );
+    let error = old_abi
+        .ensure_compatible_update(&changed_arity)
+        .expect_err("changed tuple arity should fail");
+    assert_eq!(error.code(), "reload.function.parameter_abi_changed");
+
+    let changed_return_element = HotReloadAbi::empty().function(
+        FunctionAbi::new(
+            "game::reward::split_name",
+            EffectAbi::host_read(),
+            AccessAbi::public(),
+        )
+        .param(ParamAbi::new("parts").type_hint("(String, String)"))
+        .return_type("Result<Option<(String, i64)>, ()>"),
+    );
+    let error = old_abi
+        .ensure_compatible_update(&changed_return_element)
+        .expect_err("changed tuple payload element should fail");
+    assert_eq!(error.code(), "reload.function.return_abi_changed");
+}
+
+#[test]
 fn function_descriptor_return_abi_changes_are_rejected() {
     let span = Span::new(SourceId::new(13), 15, 35);
     let old_abi = HotReloadAbi::empty().function(

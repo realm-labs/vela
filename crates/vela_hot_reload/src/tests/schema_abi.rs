@@ -287,6 +287,49 @@ fn registry_schema_abi_rejects_primitive_field_changes_by_tag() {
 }
 
 #[test]
+fn registry_schema_abi_compares_tuple_field_hints_structurally() {
+    let mut old_registry = TypeRegistry::new();
+    old_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
+            .kind(TypeKind::ScriptStruct)
+            .schema_hash(SchemaHash::new(0x1111))
+            .field(FieldDesc::new(FieldId::new(1), "payload").type_hint("Option<(String, i64)>")),
+    );
+
+    let mut equivalent_registry = TypeRegistry::new();
+    equivalent_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
+            .kind(TypeKind::ScriptStruct)
+            .schema_hash(SchemaHash::new(0x2222))
+            .field(
+                FieldDesc::new(FieldId::new(1), "payload").type_hint("Option< ( String , i64 ) >"),
+            ),
+    );
+
+    HotReloadAbi::from_registry(&old_registry)
+        .ensure_compatible_update(&HotReloadAbi::from_registry(&equivalent_registry))
+        .expect("formatting-equivalent tuple field hint should be compatible");
+
+    let span = Span::new(SourceId::new(95), 20, 80);
+    let mut changed_registry = TypeRegistry::new();
+    changed_registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
+            .kind(TypeKind::ScriptStruct)
+            .schema_hash(SchemaHash::new(0x3333))
+            .field(
+                FieldDesc::new(FieldId::new(1), "payload").type_hint("Option<(String, i64, bool)>"),
+            )
+            .source_span(span),
+    );
+
+    let error = HotReloadAbi::from_registry(&old_registry)
+        .ensure_compatible_update(&HotReloadAbi::from_registry(&changed_registry))
+        .expect_err("changed tuple field arity should fail schema ABI");
+    assert_eq!(error.code(), "reload.schema.abi_changed");
+    assert_eq!(error.source_span(), Some(span));
+}
+
+#[test]
 fn registry_schema_abi_tracks_trait_impls_even_with_stable_hashes() {
     let mut old_registry = TypeRegistry::new();
     old_registry.register(

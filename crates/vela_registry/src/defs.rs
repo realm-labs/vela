@@ -26,6 +26,16 @@ impl TypeHintDef {
     }
 
     #[must_use]
+    pub fn unit() -> Self {
+        Self::new(["()"])
+    }
+
+    #[must_use]
+    pub fn tuple(elements: impl IntoIterator<Item = TypeHintDef>) -> Self {
+        Self::unit().with_args(elements)
+    }
+
+    #[must_use]
     pub fn with_args(mut self, args: impl IntoIterator<Item = TypeHintDef>) -> Self {
         self.args = args.into_iter().collect();
         self
@@ -33,6 +43,15 @@ impl TypeHintDef {
 
     #[must_use]
     pub fn display(&self) -> String {
+        if self.path.as_slice() == ["()"] && !self.args.is_empty() {
+            let args = self
+                .args
+                .iter()
+                .map(Self::display)
+                .collect::<Vec<_>>()
+                .join(", ");
+            return format!("({args})");
+        }
         let path = self.path.join("::");
         if self.args.is_empty() {
             path
@@ -56,6 +75,41 @@ impl TypeHintDef {
 impl fmt::Display for TypeHintDef {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(&self.display())
+    }
+}
+
+#[cfg(test)]
+mod type_hint_tests {
+    use super::TypeHintDef;
+
+    #[test]
+    fn type_hint_parser_preserves_unit_and_parenthesized_hints() {
+        assert_eq!(TypeHintDef::parse("()").expect("unit").display(), "()");
+        assert_eq!(
+            TypeHintDef::parse("( i64 )")
+                .expect("parenthesized hint")
+                .display(),
+            "i64"
+        );
+    }
+
+    #[test]
+    fn type_hint_parser_preserves_structural_tuples() {
+        let hint = TypeHintDef::parse("(String, i64)").expect("tuple hint");
+        assert_eq!(hint, TypeHintDef::tuple(["String".into(), "i64".into()]));
+        assert_eq!(hint.display(), "(String, i64)");
+    }
+
+    #[test]
+    fn type_hint_parser_preserves_nested_option_result_tuple_payloads() {
+        let hint =
+            TypeHintDef::parse("Result<Option<(String, i64)>, ()>").expect("nested tuple payload");
+        assert_eq!(hint.display(), "Result<Option<(String, i64)>, ()>");
+    }
+
+    #[test]
+    fn type_hint_parser_rejects_one_element_tuple_spelling() {
+        assert!(TypeHintDef::parse("(i64,)").is_none());
     }
 }
 
@@ -108,12 +162,8 @@ impl<'a> TypeHintParser<'a> {
 
     fn parse_hint(&mut self) -> Option<TypeHintDef> {
         self.skip_ws();
-        if self.remaining().starts_with("()") {
-            self.position += 2;
-            return Some(TypeHintDef {
-                path: vec!["()".to_owned()],
-                args: Vec::new(),
-            });
+        if self.consume('(') {
+            return self.parse_parenthesized_hint();
         }
         let path = self.parse_path()?;
         let args = if self.consume('<') {
@@ -137,6 +187,40 @@ impl<'a> TypeHintParser<'a> {
             path: canonical_type_hint_path(path.join("::")),
             args,
         })
+    }
+
+    fn parse_parenthesized_hint(&mut self) -> Option<TypeHintDef> {
+        self.skip_ws();
+        if self.consume(')') {
+            return Some(TypeHintDef::unit());
+        }
+
+        let first = self.parse_hint()?;
+        self.skip_ws();
+        if self.consume(')') {
+            return Some(first);
+        }
+        if !self.consume(',') {
+            return None;
+        }
+
+        let mut elements = vec![first, self.parse_hint()?];
+        loop {
+            self.skip_ws();
+            if self.consume(')') {
+                break;
+            }
+            if !self.consume(',') {
+                return None;
+            }
+            self.skip_ws();
+            if self.peek() == Some(')') {
+                self.position += 1;
+                break;
+            }
+            elements.push(self.parse_hint()?);
+        }
+        Some(TypeHintDef::tuple(elements))
     }
 
     fn parse_path(&mut self) -> Option<Vec<String>> {

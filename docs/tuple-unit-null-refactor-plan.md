@@ -567,9 +567,11 @@ Focused validation:
   guard plans, reflection descriptors, schema artifacts, and hot-reload ABI.
 - [x] Add tuple `OwnedValue` conversion and tuple serde behavior that does not
   use raw null.
-- [ ] Reject tuple Map/Set keys in the first slice with precise diagnostics.
-- [ ] Add hot-reload rejection for exported unit/tuple signature changes,
-  tuple arity changes, and tuple element contract changes.
+- [x] Reject tuple Map/Set keys in the first slice with precise diagnostics.
+- [~] Add hot-reload rejection for exported unit/tuple signature changes,
+  tuple arity changes, and tuple element contract changes. Descriptor and
+  schema ABI comparisons now parse unit and tuple type hints structurally;
+  real source-reload tuple signature fixtures remain open.
 - [ ] Add focused benchmark rows for common tuple-return stdlib paths if they
   are introduced.
 
