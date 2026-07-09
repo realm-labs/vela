@@ -1,11 +1,10 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use vela_common::{SourceId, Span};
 use vela_hir::ids::ModuleId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
-use vela_hir::type_hint::EnumVariantFieldsHint;
 use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::{SyntaxExpression, SyntaxSourceFile};
+use vela_syntax::ast::{AstNode, SyntaxExpression, SyntaxSourceFile};
 
 use super::schema_defaults::{SchemaDefaultPayloads, SchemaDefaultValue};
 
@@ -32,87 +31,68 @@ pub(super) fn schema_default_payloads(
     module: ModuleId,
 ) -> SchemaDefaultPayloads {
     let mut payloads = SchemaDefaultPayloads::default();
+    let targets = schema_default_targets(graph, module);
     for item in syntax.tree().structs() {
-        let Some(type_name) = item.name_text() else {
-            continue;
-        };
         let Some(fields) = item.field_list() else {
             continue;
         };
         for field in fields.fields() {
-            let Some(field_name) = field.name_text() else {
-                continue;
-            };
             let Some(value) = field.default_value() else {
                 continue;
             };
-            let Some(_default_span) =
-                graph_struct_field_default_span(graph, module, &type_name, &field_name)
+            let Some((type_name, field_name)) = targets
+                .struct_fields
+                .get(&syntax_expression_span(source, &value))
             else {
                 continue;
             };
             payloads.insert_struct_field(
                 type_name.clone(),
-                field_name,
+                field_name.clone(),
                 SchemaDefaultValue::new(source, value),
             );
         }
     }
 
     for item in syntax.tree().enums() {
-        let Some(type_name) = item.name_text() else {
-            continue;
-        };
         let Some(variants) = item.variant_list() else {
             continue;
         };
         for variant in variants.variants() {
-            let Some(variant_name) = variant.name_text() else {
-                continue;
-            };
             if let Some(fields) = variant.tuple_field_list() {
-                for (index, field) in fields.params().enumerate() {
+                for field in fields.params() {
                     let Some(value) = field.default_value() else {
                         continue;
                     };
-                    let Some(_default_span) = graph_enum_tuple_field_default_span(
-                        graph,
-                        module,
-                        &type_name,
-                        &variant_name,
-                        index,
-                    ) else {
+                    let Some((type_name, variant_name, target_index)) = targets
+                        .enum_tuple_fields
+                        .get(&syntax_expression_span(source, &value))
+                    else {
                         continue;
                     };
                     payloads.insert_enum_tuple_field(
                         type_name.clone(),
                         variant_name.clone(),
-                        index,
+                        *target_index,
                         SchemaDefaultValue::new(source, value),
                     );
                 }
             }
             if let Some(fields) = variant.record_field_list() {
                 for field in fields.fields() {
-                    let Some(field_name) = field.name_text() else {
-                        continue;
-                    };
                     let Some(value) = field.default_value() else {
                         continue;
                     };
-                    let Some(_default_span) = graph_enum_record_field_default_span(
-                        graph,
-                        module,
-                        &type_name,
-                        &variant_name,
-                        &field_name,
-                    ) else {
+                    let Some((type_name, variant_name, field_name)) = targets
+                        .enum_record_fields
+                        .get(&syntax_expression_span(source, &value))
+                    else {
                         continue;
                     };
                     payloads.insert_enum_record_field(
                         type_name.clone(),
                         variant_name.clone(),
-                        field_name,
+                        field_name.clone(),
                         SchemaDefaultValue::new(source, value),
                     );
                 }
@@ -123,72 +103,68 @@ pub(super) fn schema_default_payloads(
     payloads
 }
 
-fn graph_struct_field_default_span(
-    graph: &ModuleGraph,
-    module: ModuleId,
-    type_name: &str,
-    field_name: &str,
-) -> Option<Span> {
-    let declaration = graph_schema_declaration(graph, module, type_name, DeclarationKind::Struct)?;
-    let shape = graph.struct_shape(declaration)?;
-    let field = shape.fields.iter().find(|field| field.name == field_name)?;
-    field.default_value_span
+#[derive(Default)]
+struct SchemaDefaultTargets {
+    struct_fields: HashMap<Span, (String, String)>,
+    enum_tuple_fields: HashMap<Span, (String, String, usize)>,
+    enum_record_fields: HashMap<Span, (String, String, String)>,
 }
 
-fn graph_enum_tuple_field_default_span(
-    graph: &ModuleGraph,
-    module: ModuleId,
-    type_name: &str,
-    variant_name: &str,
-    index: usize,
-) -> Option<Span> {
-    let fields = graph_enum_variant_fields(graph, module, type_name, variant_name)?;
-    let EnumVariantFieldsHint::Tuple(fields) = fields else {
-        return None;
-    };
-    let field = fields.get(index)?;
-    field.default_value_span
+fn schema_default_targets(graph: &ModuleGraph, module: ModuleId) -> SchemaDefaultTargets {
+    let mut targets = SchemaDefaultTargets::default();
+    for declaration in graph.declarations_in_module(module) {
+        match declaration.kind {
+            DeclarationKind::Struct => {
+                if let Some(shape) = graph.struct_shape(declaration.id) {
+                    for field in &shape.fields {
+                        if let Some(span) = field.default_value_span {
+                            targets
+                                .struct_fields
+                                .insert(span, (declaration.name.clone(), field.name.clone()));
+                        }
+                    }
+                }
+            }
+            DeclarationKind::Enum => {
+                if let Some(shape) = graph.enum_shape(declaration.id) {
+                    for variant in &shape.variants {
+                        match &variant.fields {
+                            vela_hir::type_hint::EnumVariantFieldsHint::Tuple(fields) => {
+                                for (index, field) in fields.iter().enumerate() {
+                                    if let Some(span) = field.default_value_span {
+                                        targets.enum_tuple_fields.insert(
+                                            span,
+                                            (declaration.name.clone(), variant.name.clone(), index),
+                                        );
+                                    }
+                                }
+                            }
+                            vela_hir::type_hint::EnumVariantFieldsHint::Record(fields) => {
+                                for field in fields {
+                                    if let Some(span) = field.default_value_span {
+                                        targets.enum_record_fields.insert(
+                                            span,
+                                            (
+                                                declaration.name.clone(),
+                                                variant.name.clone(),
+                                                field.name.clone(),
+                                            ),
+                                        );
+                                    }
+                                }
+                            }
+                            vela_hir::type_hint::EnumVariantFieldsHint::Unit => {}
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    targets
 }
 
-fn graph_enum_record_field_default_span(
-    graph: &ModuleGraph,
-    module: ModuleId,
-    type_name: &str,
-    variant_name: &str,
-    field_name: &str,
-) -> Option<Span> {
-    let fields = graph_enum_variant_fields(graph, module, type_name, variant_name)?;
-    let EnumVariantFieldsHint::Record(fields) = fields else {
-        return None;
-    };
-    let field = fields.iter().find(|field| field.name == field_name)?;
-    field.default_value_span
-}
-
-fn graph_enum_variant_fields<'graph>(
-    graph: &'graph ModuleGraph,
-    module: ModuleId,
-    type_name: &str,
-    variant_name: &str,
-) -> Option<&'graph EnumVariantFieldsHint> {
-    let declaration = graph_schema_declaration(graph, module, type_name, DeclarationKind::Enum)?;
-    let shape = graph.enum_shape(declaration)?;
-    shape
-        .variants
-        .iter()
-        .find(|variant| variant.name == variant_name)
-        .map(|variant| &variant.fields)
-}
-
-fn graph_schema_declaration(
-    graph: &ModuleGraph,
-    module: ModuleId,
-    type_name: &str,
-    kind: DeclarationKind,
-) -> Option<vela_hir::ids::HirDeclId> {
-    graph
-        .declarations_in_module(module)
-        .into_iter()
-        .find(|declaration| declaration.name == type_name && declaration.kind == kind)
-        .map(|declaration| declaration.id)
+fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {
+    let range = expression.syntax().text_range();
+    Span::new(source, range.start().into(), range.end().into())
 }

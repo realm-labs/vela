@@ -201,6 +201,9 @@ Bytecode parameter-default field lowering now reads record/host field names
 from HIR field facts instead of field-expression syntax.
 Bytecode record-shape inference now reads field and method member names from
 HIR field facts for direct and lambda-local shape queries.
+Bytecode schema-default payload collection now keys default expressions to
+struct and enum field identity through HIR metadata spans instead of parsed
+type, variant, and field names.
 Incremental language-service updates now rebuild Heavy HIR for body-only source
 edits so HIR-owned call/member/path/body facts stay current while
 declaration/import indexes remain reusable. Semantic-token local record facts
