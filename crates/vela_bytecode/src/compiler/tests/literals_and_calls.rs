@@ -406,6 +406,26 @@ fn grant(config = { SMALL: 10, "large": 20 }) {
 }
 
 #[test]
+fn compiler_lowers_parameter_default_index_reads_through_hir() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn grant(values = [2, 4, 8], amount = values[1]) {
+    return amount;
+}
+"#,
+    )
+    .expect("index parameter default should compile through HIR index facts");
+    let grant = program.function("grant").expect("grant function");
+    assert!(
+        grant.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::GetIndex { .. }
+        ))
+    );
+}
+
+#[test]
 fn compiler_lowers_script_calls_inside_parameter_defaults() {
     let program = compile_program_source(
         SourceId::new(1),

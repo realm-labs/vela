@@ -63,6 +63,21 @@ fn syntax_default_expression_for_span(
         .find(|expression| span_for_range(span.source, expression.syntax().text_range()) == span)
 }
 
+fn syntax_param_default_expression_at_span(
+    source: SourceId,
+    expression: &SyntaxExpression,
+    span: Span,
+) -> Option<SyntaxExpression> {
+    if span.source != source {
+        return None;
+    }
+    expression
+        .syntax()
+        .descendants()
+        .filter_map(SyntaxExpression::cast)
+        .find(|child| span_for(source, child) == span)
+}
+
 impl Compiler<'_, '_> {
     pub(super) fn compile_param_default_value(
         &mut self,
@@ -183,13 +198,27 @@ impl Compiler<'_, '_> {
                 self.compile_param_default_if(source, expression, &if_expr)
             }
             SyntaxExpressionKind::Index => {
-                let Some(index) = expression.as_index() else {
+                if expression.as_index().is_none() {
+                    return Err(param_default_unsupported(source, expression));
+                }
+                let span = span_for(source, expression);
+                let Some(index) = self.hir_index_for_span(span) else {
                     return Err(param_default_unsupported(source, expression));
                 };
-                let Some(receiver) = index.receiver() else {
+                let Some(receiver_span) = self.expression_span(index.receiver) else {
                     return Err(param_default_unsupported(source, expression));
                 };
-                let Some(index) = index.index() else {
+                let Some(index_span) = self.expression_span(index.index) else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                let Some(receiver) =
+                    syntax_param_default_expression_at_span(source, expression, receiver_span)
+                else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                let Some(index) =
+                    syntax_param_default_expression_at_span(source, expression, index_span)
+                else {
                     return Err(param_default_unsupported(source, expression));
                 };
                 let base = self.compile_param_default_expression(source, &receiver)?;

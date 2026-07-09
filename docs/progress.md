@@ -1696,6 +1696,8 @@ callable parameter facts, stable `TypeFact`s, `Any`/unknown suppression, and
   reconstructing receiver/index operands from index syntax. Bytecode
   record-shape inference now uses the same HIR index operand facts for direct
   and lambda-local index shapes instead of asking index syntax for receivers.
+  Parameter-default index expression lowering now also reads receiver and
+  subscript operands from HIR index facts instead of index syntax.
 
 ### Remaining Gaps
 
