@@ -75,6 +75,33 @@ fn runs_compiled_array_literal_source() {
 }
 
 #[test]
+fn runs_compiled_unit_expression_source() {
+    let code = compile_function_source(SourceId::new(1), "fn main() { return (); }", "main")
+        .expect("compile unit expression source");
+
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Unit));
+}
+
+#[test]
+fn runs_compiled_tuple_expression_source() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        "fn main() { return (1, 2 + 3, \"gold\"); }",
+        "main",
+    )
+    .expect("compile tuple expression source");
+
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Tuple(vec![
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(1)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(5)),
+            OwnedValue::String("gold".into())
+        ]))
+    );
+}
+
+#[test]
 fn heap_execution_allocates_array_and_string_literals() {
     let code = compile_function_source(
         SourceId::new(1),

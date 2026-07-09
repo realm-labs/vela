@@ -26,6 +26,23 @@ pub(crate) fn make_array(
     frame.write(dst, value)
 }
 
+pub(crate) fn make_tuple(
+    frame: &mut CallFrame,
+    heap: Option<&mut HeapExecution<'_>>,
+    mut budget: Option<&mut ExecutionBudget>,
+    dst: Register,
+    elements: &[Register],
+) -> VmResult<()> {
+    let Some(heap) = heap else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "tuple heap",
+        }));
+    };
+    let slots = runtime_values_from_registers(frame, elements, heap, budget_ref(&mut budget))?;
+    let value = allocate_heap_value(HeapValue::Tuple(slots), heap, budget_ref(&mut budget))?;
+    frame.write(dst, value)
+}
+
 pub(crate) fn make_map(
     frame: &mut CallFrame,
     heap: Option<&mut HeapExecution<'_>>,

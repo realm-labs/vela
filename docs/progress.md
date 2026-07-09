@@ -157,10 +157,11 @@ standard/native no-result metadata, control-flow defaults, and Rust
 `Option<T>` embedding conversion to script `Option<T>` enums. Runtime-owned
 tuple payloads now materialize through the VM heap and owned boundary, Rust
 `()` converts at the script-argument boundary, Rust tuple conversion supports
-arities 2 through 4, and serde tuple conversion uses tuple values rather than
-raw null or array aliases. Remaining follow-up work includes tuple expression
-lowering and destructuring behavior, tuple type facts/guards/ABI descriptors,
-and replacing reflection metadata gaps with structured Option or omitted fields
+arities 2 through 4, serde tuple conversion uses tuple values rather than raw
+null or array aliases, and ordinary tuple expressions now lower through a
+first-class `MakeTuple` bytecode instruction. Remaining follow-up work includes
+tuple destructuring behavior, tuple type facts/guards/ABI descriptors, and
+replacing reflection metadata gaps with structured Option or omitted fields
 instead of unit placeholders.
 ## Milestone Snapshot
 

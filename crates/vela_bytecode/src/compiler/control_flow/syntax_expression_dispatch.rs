@@ -43,13 +43,14 @@ impl Compiler<'_, '_> {
             SyntaxExpressionKind::Try => self.compile_syntax_try(source, expression),
             SyntaxExpressionKind::Array
             | SyntaxExpressionKind::Map
-            | SyntaxExpressionKind::Record => self.compile_syntax_container(source, expression),
+            | SyntaxExpressionKind::Record
+            | SyntaxExpressionKind::Tuple => self.compile_syntax_container(source, expression),
             SyntaxExpressionKind::If => self.compile_syntax_if_value(source, expression),
             SyntaxExpressionKind::Match => self.compile_syntax_match_value(source, expression),
             SyntaxExpressionKind::Binary => {
                 self.compile_syntax_binary_expression(source, expression)
             }
-            SyntaxExpressionKind::Unit | SyntaxExpressionKind::Tuple => Ok(None),
+            SyntaxExpressionKind::Unit => self.emit_constant(Constant::Unit).map(Some),
         }
     }
 

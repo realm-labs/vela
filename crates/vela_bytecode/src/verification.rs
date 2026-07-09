@@ -510,6 +510,10 @@ fn verify_instruction(
             verify_register(function, instruction_index, code, *dst)?;
             verify_registers(function, instruction_index, code, elements)
         }
+        UnlinkedInstructionKind::MakeTuple { dst, elements } => {
+            verify_register(function, instruction_index, code, *dst)?;
+            verify_registers(function, instruction_index, code, elements)
+        }
         UnlinkedInstructionKind::MakeSetFromArray { dst, src } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_register(function, instruction_index, code, *src)

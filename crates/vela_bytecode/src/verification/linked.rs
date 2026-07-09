@@ -328,6 +328,10 @@ fn verify_linked_instruction(
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_registers(function, instruction_index, code, elements)
         }
+        InstructionKind::MakeTuple { dst, elements } => {
+            verify_linked_register(function, instruction_index, code, *dst)?;
+            verify_linked_registers(function, instruction_index, code, elements)
+        }
         InstructionKind::MakeSetFromArray { dst, src } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_register(function, instruction_index, code, *src)

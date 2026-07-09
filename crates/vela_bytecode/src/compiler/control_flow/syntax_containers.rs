@@ -23,6 +23,18 @@ impl Compiler<'_, '_> {
             self.emit(UnlinkedInstructionKind::MakeArray { dst, elements });
             return Ok(Some(dst));
         }
+        if let Some(tuple) = expression.as_tuple() {
+            let elements = tuple
+                .expressions()
+                .map(|element| self.compile_syntax_expression(source, &element))
+                .collect::<CompileResult<Option<Vec<_>>>>()?;
+            let Some(elements) = elements else {
+                return Ok(None);
+            };
+            let dst = self.alloc_register()?;
+            self.emit(UnlinkedInstructionKind::MakeTuple { dst, elements });
+            return Ok(Some(dst));
+        }
         if let Some(map) = expression.as_map() {
             let entries = map
                 .entries()

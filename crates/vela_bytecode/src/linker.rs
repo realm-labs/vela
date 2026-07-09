@@ -625,6 +625,10 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 dst: *dst,
                 elements: elements.clone(),
             },
+            UnlinkedInstructionKind::MakeTuple { dst, elements } => InstructionKind::MakeTuple {
+                dst: *dst,
+                elements: elements.clone(),
+            },
             UnlinkedInstructionKind::MakeSetFromArray { dst, src } => {
                 InstructionKind::MakeSetFromArray {
                     dst: *dst,

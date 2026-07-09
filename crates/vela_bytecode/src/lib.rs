@@ -950,6 +950,10 @@ pub enum UnlinkedInstructionKind {
         dst: Register,
         elements: Vec<Register>,
     },
+    MakeTuple {
+        dst: Register,
+        elements: Vec<Register>,
+    },
     MakeSetFromArray {
         dst: Register,
         src: Register,

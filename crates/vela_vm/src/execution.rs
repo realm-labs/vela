@@ -636,6 +636,15 @@ impl Vm {
                         elements,
                     )?;
                 }
+                UnlinkedInstructionKind::MakeTuple { dst, elements } => {
+                    script_aggregate_construction::make_tuple(
+                        &mut frame,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                        *dst,
+                        elements,
+                    )?;
+                }
                 UnlinkedInstructionKind::MakeSetFromArray { dst, src } => {
                     script_aggregate_construction::make_set_from_array(
                         &mut frame,

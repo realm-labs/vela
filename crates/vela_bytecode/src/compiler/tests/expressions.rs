@@ -583,6 +583,31 @@ fn main() {
             >= 2
     );
 }
+
+#[test]
+fn compiler_lowers_unit_and_tuple_expressions() {
+    let unit = compile_function_source(
+        SourceId::new(1),
+        "fn unit_value() { return (); }",
+        "unit_value",
+    )
+    .expect("unit expression should compile");
+    assert!(unit.constants.contains(&Constant::Unit));
+
+    let tuple = compile_function_source(
+        SourceId::new(1),
+        r#"fn pair() { return (1, "xp"); }"#,
+        "pair",
+    )
+    .expect("tuple expression should compile");
+    assert!(
+        tuple.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::MakeTuple { .. }
+        ))
+    );
+}
+
 #[test]
 fn compiler_lowers_local_assignment_operators() {
     let code = compile_function_source(
