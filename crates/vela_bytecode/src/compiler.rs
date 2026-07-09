@@ -36,7 +36,7 @@ use vela_def::{DefPath, FieldId, MethodId, TypeId};
 use vela_hir::attributes::derived_traits;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBindingKind};
 use vela_hir::body::{HirBody, HirPatternKind, HirStmtKind};
-use vela_hir::ids::{HirDeclId, HirExprId, HirLocalId};
+use vela_hir::ids::{HirDeclId, HirExprId, HirLocalId, HirPatternId};
 #[cfg(test)]
 use vela_hir::module_graph::ModulePath;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModuleSource};
@@ -1080,26 +1080,33 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         None
     }
 
-    pub(in crate::compiler) fn pattern_local_at_span(
-        &self,
-        name: &str,
-        kind: LocalBindingKind,
-        span: Span,
-    ) -> Option<HirLocalId> {
+    pub(in crate::compiler) fn pattern_at_span(&self, span: Span) -> Option<HirPatternId> {
         for body in &self.hir_bodies {
             for pattern in body.patterns.values() {
-                if pattern.kind != HirPatternKind::Binding || pattern.origin.span != span {
-                    continue;
+                if pattern.origin.span == span {
+                    return Some(pattern.id);
                 }
-                let Some(local) = pattern.local else {
-                    continue;
-                };
-                let Some(binding) = self.bindings.local(local) else {
-                    continue;
-                };
-                if binding.kind == kind && binding.name == name {
-                    return Some(local);
-                }
+            }
+        }
+        None
+    }
+
+    pub(in crate::compiler) fn local_for_pattern(
+        &self,
+        pattern_id: HirPatternId,
+        kind: LocalBindingKind,
+    ) -> Option<HirLocalId> {
+        for body in &self.hir_bodies {
+            let Some(pattern) = body.patterns.get(&pattern_id) else {
+                continue;
+            };
+            if pattern.kind != HirPatternKind::Binding {
+                return None;
+            }
+            let local = pattern.local?;
+            let binding = self.bindings.local(local)?;
+            if binding.kind == kind {
+                return Some(local);
             }
         }
         None

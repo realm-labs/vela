@@ -227,7 +227,10 @@ impl Compiler<'_, '_> {
         kind: LocalBindingKind,
     ) {
         self.locals.insert(binding.to_owned(), register);
-        if let Some(local) = self.pattern_local_at_span(binding, kind, binding_span) {
+        if let Some(local) = self
+            .pattern_at_span(binding_span)
+            .and_then(|pattern| self.local_for_pattern(pattern, kind))
+        {
             self.hir_locals.insert(local, register);
             self.record_frame_slot(
                 binding.to_owned(),

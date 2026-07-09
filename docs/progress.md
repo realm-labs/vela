@@ -203,8 +203,9 @@ deleted. Path value flow now resolves local script/value/shape facts through
 `HirExprId` binding records instead of `local_at_span` lookups in
 `path_values`. Compiler path, host-root, parameter-default static type, and
 value/record shape queries now share HIR expression local/global fact helpers,
-and the old generic span-resolution helpers have been deleted; only
-pattern-local span lookup remains for the next binding-pattern slice.
+and the old generic span-resolution helpers have been deleted. Pattern local
+binding setup now maps syntax origins to stable `HirPatternId` records before
+reading HIR local facts, deleting the old name/span pattern-local scan.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

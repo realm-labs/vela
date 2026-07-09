@@ -316,8 +316,9 @@ impl Compiler<'_, '_> {
         facts: PatternBindingFacts,
     ) {
         self.locals.insert(name.to_owned(), register);
-        if let Some(local) =
-            self.pattern_local_at_span(name, LocalBindingKind::Pattern, binding_span)
+        if let Some(local) = self
+            .pattern_at_span(binding_span)
+            .and_then(|pattern| self.local_for_pattern(pattern, LocalBindingKind::Pattern))
         {
             self.hir_locals.insert(local, register);
             self.record_frame_slot(
