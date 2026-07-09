@@ -232,7 +232,11 @@ impl Compiler<'_, '_> {
             .or_else(|| self.global_type_named(name).map(ScriptTypeFact::new))
     }
 
-    fn value_shape_for_path(&self, span: Span, path: &[String]) -> Option<ValueShape> {
+    pub(in crate::compiler) fn value_shape_for_path(
+        &self,
+        span: Span,
+        path: &[String],
+    ) -> Option<ValueShape> {
         let expression = self.expression_at_span(span)?;
         self.value_shape_for_path_expression(expression, path)
     }

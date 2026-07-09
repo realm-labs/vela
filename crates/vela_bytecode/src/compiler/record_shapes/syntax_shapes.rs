@@ -149,11 +149,10 @@ impl Compiler<'_, '_> {
         expression: &SyntaxExpression,
     ) -> Option<ValueShape> {
         let record = expression.as_record()?;
-        let path = record.path_segments();
-        if path.len() > 1 {
+        if self.is_enum_variant_record_literal(source, expression) {
             return None;
         }
-        let type_name = path.first().cloned();
+        let type_name = self.record_literal_type_name(source, expression);
         let fields = record.fields();
         let mut field_names = fields
             .iter()
@@ -199,34 +198,10 @@ impl Compiler<'_, '_> {
         source: Option<SourceId>,
         expression: &SyntaxExpression,
     ) -> Option<ValueShape> {
-        let path = expression.as_path()?;
-        let expression_id = source
-            .map(|source| syntax_expression_span(source, expression))
-            .and_then(|span| self.expression_at_span(span));
-        let local_shape = expression_id
-            .and_then(|expression| self.local_for_expression(expression))
-            .and_then(|local| self.value_shapes.local(local))
-            .or_else(|| {
-                expression_id
-                    .and_then(|expression| self.local_for_expression(expression))
-                    .and_then(|local| self.script_types.local(local))
-                    .and_then(|type_name| self.record_shape_for_type(&type_name))
-                    .map(ValueShape::Record)
-            })
-            .or_else(|| {
-                expression_id
-                    .and_then(|expression| self.local_for_expression(expression))
-                    .and_then(|local| self.value_types.local(local))
-                    .map(ValueShape::from_runtime_type)
-            });
-        if path.is_self() {
-            return local_shape.or_else(|| self.shape_named("self"));
-        }
-        let path = path.path_segments();
-        let [root] = path.as_slice() else {
-            return local_shape;
-        };
-        local_shape.or_else(|| self.shape_named(root))
+        let source = source?;
+        let span = syntax_expression_span(source, expression);
+        let path = self.hir_value_path_for_span(span)?;
+        self.value_shape_for_path(span, &path)
     }
 
     fn field_shape(
@@ -303,11 +278,14 @@ impl Compiler<'_, '_> {
         expression: &SyntaxExpression,
     ) -> Option<ValueShape> {
         let call = expression.as_call()?;
-        let callee = call.callee()?;
         let args = call.arguments();
-        if let Some(path) = callee.as_path().map(|path| path.path_segments()) {
-            return self.native_call_shape(source, &path, &args);
+        if let Some(path) = source
+            .and_then(|source| self.expression_at_span(syntax_expression_span(source, expression)))
+            .and_then(|call| self.hir_callee_path(call))
+        {
+            return self.native_call_shape(source, path, &args);
         }
+        let callee = call.callee()?;
         self.method_call_shape(source, &callee, &args)
     }
 
@@ -768,11 +746,10 @@ impl Compiler<'_, '_> {
         local_shapes: &BTreeMap<String, ValueShape>,
     ) -> Option<ValueShape> {
         let record = expression.as_record()?;
-        let path = record.path_segments();
-        if path.len() > 1 {
+        if self.is_enum_variant_record_literal(source, expression) {
             return None;
         }
-        let type_name = path.first().cloned();
+        let type_name = self.record_literal_type_name(source, expression);
         let fields = record.fields();
         let mut field_names = fields
             .iter()
@@ -895,21 +872,34 @@ impl Compiler<'_, '_> {
             .value_type()
     }
 
-    fn shape_named(&self, name: &str) -> Option<ValueShape> {
-        self.value_shapes
-            .name(name)
-            .or_else(|| {
-                self.script_types
-                    .name(name)
-                    .or_else(|| self.global_type_named(name))
-                    .and_then(|type_name| self.record_shape_for_type(&type_name))
-                    .map(ValueShape::Record)
-            })
-            .or_else(|| {
-                self.value_types
-                    .name(name)
-                    .map(ValueShape::from_runtime_type)
-            })
+    fn record_literal_type_name(
+        &self,
+        source: Option<SourceId>,
+        expression: &SyntaxExpression,
+    ) -> Option<String> {
+        let source = source?;
+        let expression = self.expression_at_span(syntax_expression_span(source, expression))?;
+        self.type_symbol_for_expression(expression).or_else(|| {
+            self.hir_constructor_path(expression)
+                .filter(|path| !path.is_empty())
+                .map(|path| path.join("::"))
+        })
+    }
+
+    fn is_enum_variant_record_literal(
+        &self,
+        source: Option<SourceId>,
+        expression: &SyntaxExpression,
+    ) -> bool {
+        let Some(source) = source else {
+            return false;
+        };
+        let Some(expression) = self.expression_at_span(syntax_expression_span(source, expression))
+        else {
+            return false;
+        };
+        self.hir_constructor_path(expression)
+            .is_some_and(|path| crate::compiler::patterns::enum_variant_path(path).is_some())
     }
 }
 

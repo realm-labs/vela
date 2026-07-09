@@ -224,7 +224,10 @@ HIR value-path facts, leaving syntax in that path only for structural index
 expressions that carry dynamic host path arguments, and the old simple syntax
 path helper has been deleted. Parameter-default path values, path calls, and
 host field reads now lower from HIR value/callee path facts, deleting the
-parameter-default host field syntax path reconstruction helper.
+parameter-default host field syntax path reconstruction helper. Bytecode
+record/value shape inference now uses HIR constructor, value-path, and
+callee-path facts for record literal names, path expression shapes, and native
+call result shapes, deleting the old root-name shape fallback.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`
