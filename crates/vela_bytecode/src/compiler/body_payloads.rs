@@ -39,6 +39,7 @@ pub(super) struct CompilerStatementPayload<'ast> {
     source: SourceId,
     syntax: SyntaxStatement,
     hir_kind: HirStmtKind,
+    span: Span,
     _ast: PhantomData<&'ast ()>,
 }
 
@@ -238,6 +239,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
             source,
             syntax,
             hir_kind: statement.kind,
+            span: statement.origin.span,
             _ast: PhantomData,
         }
     }
@@ -281,9 +283,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let statement = self.syntax.as_let()?;
         let pattern = statement.pattern()?;
         let expression = statement.initializer()?;
-        let range = statement.syntax().text_range();
-        let span = Span::new(source, range.start().into(), range.end().into());
-        Some((source, pattern, expression, span))
+        Some((source, pattern, expression, self.span))
     }
 
     pub(in crate::compiler) fn let_initializer_syntax_literal_and_span(
@@ -369,10 +369,8 @@ impl<'ast> CompilerStatementPayload<'ast> {
         Some((source, expression, span))
     }
 
-    pub(super) fn syntax_statement_span(&self) -> Option<Span> {
-        let source = self.source;
-        let range = self.syntax.syntax().text_range();
-        Some(Span::new(source, range.start().into(), range.end().into()))
+    pub(super) fn statement_span(&self) -> Span {
+        self.span
     }
 
     pub(super) fn return_value_missing_in_syntax(&self) -> bool {

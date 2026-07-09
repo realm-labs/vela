@@ -42,14 +42,11 @@ impl Compiler<'_, '_> {
                         "missing let binding name",
                     )));
                 };
-                let Some(span) = stmt.syntax_statement_span() else {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing statement",
-                    )));
-                };
+                let span = stmt.statement_span();
                 return self.compile_let_without_initializer(name, span);
             }
             HirStmtKind::Let => {
+                let span = stmt.statement_span();
                 if let Some((source, pattern, expression, span)) =
                     stmt.let_pattern_initializer_syntax_expression_and_span()
                 {
@@ -63,11 +60,6 @@ impl Compiler<'_, '_> {
                             "missing let binding name",
                         )));
                     };
-                    let Some(span) = stmt.syntax_statement_span() else {
-                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "missing statement",
-                        )));
-                    };
                     return self.compile_let_literal(name, span, literal, literal_span);
                 }
                 if let Some((literal, literal_span)) =
@@ -78,17 +70,11 @@ impl Compiler<'_, '_> {
                             "missing let binding name",
                         )));
                     };
-                    let Some(span) = stmt.syntax_statement_span() else {
-                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "missing statement",
-                        )));
-                    };
                     return self.compile_let_negated_literal(name, span, literal, literal_span);
                 }
                 if let Some((source, expression, _)) =
                     stmt.let_initializer_syntax_expression_and_span()
                     && let Some(name) = stmt.let_name_text()
-                    && let Some(span) = stmt.syntax_statement_span()
                     && let Some(compiled) =
                         self.compile_let_syntax_range(name.clone(), span, source, &expression)?
                 {
@@ -97,7 +83,6 @@ impl Compiler<'_, '_> {
                 if let Some((source, expression, _)) =
                     stmt.let_initializer_syntax_expression_and_span()
                     && let Some(name) = stmt.let_name_text()
-                    && let Some(span) = stmt.syntax_statement_span()
                     && let Some(compiled) =
                         self.compile_let_syntax_constant(source, name, span, &expression)?
                 {
@@ -111,24 +96,12 @@ impl Compiler<'_, '_> {
                             "missing let binding name",
                         )));
                     };
-                    let Some(span) = stmt.syntax_statement_span() else {
-                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "missing statement",
-                        )));
-                    };
                     return self.compile_let_path(name, span, path, path_span);
                 }
-                if stmt.stored_let_initializer_kind() == Some(SyntaxExpressionKind::Block)
-                    && stmt.syntax_statement_span().is_some()
-                {
+                if stmt.stored_let_initializer_kind() == Some(SyntaxExpressionKind::Block) {
                     let Some(name) = stmt.let_name_text() else {
                         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                             "missing let binding name",
-                        )));
-                    };
-                    let Some(span) = stmt.syntax_statement_span() else {
-                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "missing statement",
                         )));
                     };
                     let Some((source, expression, _)) =
@@ -143,7 +116,6 @@ impl Compiler<'_, '_> {
                 if let Some((source, expression, _)) =
                     stmt.let_initializer_syntax_expression_and_span()
                     && let Some(name) = stmt.let_name_text()
-                    && let Some(span) = stmt.syntax_statement_span()
                     && let Some(compiled) =
                         self.compile_let_syntax_expression(source, name, span, &expression)?
                 {
@@ -151,14 +123,11 @@ impl Compiler<'_, '_> {
                 }
             }
             HirStmtKind::Return if stmt.return_value_missing_in_syntax() => {
-                let Some(span) = stmt.syntax_statement_span() else {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing statement",
-                    )));
-                };
+                let span = stmt.statement_span();
                 return self.compile_empty_return(span);
             }
             HirStmtKind::Return => {
+                let span = stmt.statement_span();
                 if let Some((literal, span)) = stmt.return_value_syntax_literal_and_span() {
                     return self.compile_return_literal(literal, span);
                 }
@@ -184,14 +153,7 @@ impl Compiler<'_, '_> {
                 {
                     return self.compile_return_path(path, span);
                 }
-                if stmt.stored_return_value_kind() == Some(SyntaxExpressionKind::Block)
-                    && stmt.syntax_statement_span().is_some()
-                {
-                    let Some(span) = stmt.syntax_statement_span() else {
-                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "missing statement",
-                        )));
-                    };
+                if stmt.stored_return_value_kind() == Some(SyntaxExpressionKind::Block) {
                     let Some((source, expression, _)) =
                         stmt.return_value_syntax_expression_and_span()
                     else {
@@ -241,9 +203,7 @@ impl Compiler<'_, '_> {
         let _ = hir_kind;
         let mut error =
             CompileError::new(CompileErrorKind::UnsupportedSyntax("unsupported statement"));
-        if let Some(span) = stmt.syntax_statement_span() {
-            error = error.with_span(span);
-        }
+        error = error.with_span(stmt.statement_span());
         Err(error)
     }
 }

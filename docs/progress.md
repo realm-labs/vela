@@ -261,7 +261,8 @@ match arms, and parameter-default block lowering now require a matching
 statement enumeration path. Statement payloads now carry concrete HIR statement
 kind facts, and bytecode statement/control-flow dispatch branches on
 `HirStmtKind` instead of converting HIR statements back to syntax statement
-kinds.
+kinds. Statement payload diagnostics and let-pattern setup now use HIR
+statement source spans instead of recomputing statement spans from syntax.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`
