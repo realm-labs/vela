@@ -23,7 +23,7 @@ use self::body_binding::FunctionBodySource;
 use crate::attributes::HirAttribute;
 use crate::binding::BindingMap;
 use crate::body::{HirBody, HirField, HirPath, HirPathKind};
-use crate::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId, ModuleId};
+use crate::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId, HirPatternId, ModuleId};
 #[cfg(test)]
 use crate::type_hint::HirTypeHint;
 use crate::type_hint::{
@@ -502,6 +502,14 @@ impl ModuleGraph {
             .values()
             .flat_map(|body| body.expressions.values())
             .find_map(|expression| (expression.origin.span == span).then_some(expression.id))
+    }
+
+    #[must_use]
+    pub fn pattern_at_span(&self, span: Span) -> Option<HirPatternId> {
+        self.bodies
+            .values()
+            .flat_map(|body| body.patterns.values())
+            .find_map(|pattern| (pattern.origin.span == span).then_some(pattern.id))
     }
 
     #[must_use]

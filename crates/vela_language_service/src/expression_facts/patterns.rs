@@ -1,7 +1,8 @@
 use vela_analysis::{fact_scope::ExprFactScope, type_fact::TypeFact};
+use vela_common::Span;
 use vela_syntax::ast::SyntaxPattern;
 
-use super::{ExpressionFactCollector, syntax_range_key};
+use super::ExpressionFactCollector;
 
 impl ExpressionFactCollector<'_> {
     pub(super) fn insert_pattern_facts(
@@ -11,8 +12,14 @@ impl ExpressionFactCollector<'_> {
         fact: &TypeFact,
     ) {
         if let Some(name_token) = pattern.binding_name_token() {
-            self.facts
-                .insert(syntax_range_key(name_token.text_range()), fact.clone());
+            let span = Span::new(
+                self.source,
+                u32::from(name_token.text_range().start()),
+                u32::from(name_token.text_range().end()),
+            );
+            if let Some(pattern) = self.graph.pattern_at_span(span) {
+                self.pattern_facts.insert(pattern, fact.clone());
+            }
             scope.insert_path([name_token.text().to_owned()], fact.clone());
             return;
         }

@@ -152,7 +152,10 @@ origins are owned by `HirBody`/`ModuleGraph`, while binding maps retain
 `HirExprId`-keyed resolution facts. Language-service expression fact collection
 now receives source IDs and reads HIR value, constructor, and callee path facts
 for path expression, record constructor, and path-call facts instead of
-rebuilding those paths from syntax. The bytecode compiler now receives HIR body
+rebuilding those paths from syntax. Language-service expression facts are now
+stored by `HirExprId` and `HirPatternId`, with range queries projecting
+through HIR expression/pattern source lookup instead of owning a parallel
+range-keyed fact map. The bytecode compiler now receives HIR body
 origins for its current syntax payloads and resolves local/declaration facts
 through HIR expression identity rather than `BindingMap` span scans. HIR lambda
 bodies now record transitive capture chains for nested lambdas, and bytecode

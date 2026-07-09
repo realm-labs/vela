@@ -14,7 +14,7 @@ use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange,
-    expression_facts,
+    expression_facts::{self, ExpressionFacts},
 };
 
 use self::result_id::{semantic_token_count_from_result_id, semantic_tokens_result_id};
@@ -427,7 +427,7 @@ struct SemanticTokenClassification {
 
 struct SemanticClassificationContext<'a> {
     facts: &'a AnalysisFacts,
-    receiver_facts: &'a BTreeMap<(usize, usize), TypeFact>,
+    receiver_facts: &'a ExpressionFacts,
     call_paths: &'a BTreeMap<(usize, usize), Vec<String>>,
     path_expressions: &'a BTreeMap<(usize, usize), Vec<String>>,
     pattern_paths: &'a BTreeMap<(usize, usize), Vec<String>>,
@@ -439,7 +439,7 @@ struct SemanticClassificationInput<'a> {
     source_id: SourceId,
     text: &'a str,
     tokens: &'a [Token],
-    receiver_facts: &'a BTreeMap<(usize, usize), TypeFact>,
+    receiver_facts: &'a ExpressionFacts,
     call_paths: &'a BTreeMap<(usize, usize), Vec<String>>,
     path_expressions: &'a BTreeMap<(usize, usize), Vec<String>>,
     pattern_paths: &'a BTreeMap<(usize, usize), Vec<String>>,

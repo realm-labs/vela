@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 use vela_analysis::{
     completion::{
@@ -21,7 +21,17 @@ use vela_syntax::ast::{
 };
 use vela_syntax::{Parse as SyntaxParse, TextRange as SyntaxTextRange};
 
-use crate::{TextRange, expression_facts};
+use crate::{
+    TextRange,
+    expression_facts::{self, ExpressionFacts},
+};
+
+struct MemberSiteDiagnosticContext<'a> {
+    source: SourceId,
+    graph: &'a ModuleGraph,
+    facts: &'a RegistryFacts,
+    expression_facts: &'a ExpressionFacts,
+}
 
 pub(super) fn source_diagnostics(
     parsed: &SyntaxParse<SyntaxSourceFile>,
@@ -31,6 +41,12 @@ pub(super) fn source_diagnostics(
     facts: &RegistryFacts,
 ) -> Vec<Diagnostic> {
     let expression_facts = expression_facts::collect(graph, parsed, source, facts);
+    let member_context = MemberSiteDiagnosticContext {
+        source,
+        graph,
+        facts,
+        expression_facts: &expression_facts,
+    };
     let method_sites = graph
         .member_calls_in_source(source)
         .filter_map(|field| {
@@ -51,9 +67,7 @@ pub(super) fn source_diagnostics(
         .iter()
         .filter_map(|(receiver_range, member_range, member)| {
             member_site_diagnostic(
-                source,
-                facts,
-                &expression_facts,
+                &member_context,
                 *receiver_range,
                 *member_range,
                 member,
@@ -79,9 +93,7 @@ pub(super) fn source_diagnostics(
             })
             .filter_map(|(receiver_range, member_range, member)| {
                 member_site_diagnostic(
-                    source,
-                    facts,
-                    &expression_facts,
+                    &member_context,
                     receiver_range,
                     member_range,
                     member,
@@ -92,18 +104,21 @@ pub(super) fn source_diagnostics(
     diagnostics.extend(match_exhaustiveness_diagnostics(
         parsed,
         source,
+        graph,
         &expression_facts,
         facts,
     ));
     diagnostics.extend(match_pattern_diagnostics(
         parsed,
         source,
+        graph,
         &expression_facts,
         facts,
     ));
     diagnostics.extend(tuple_destructuring_diagnostics(
         parsed,
         source,
+        graph,
         &expression_facts,
     ));
     if let Some(module) = module {
@@ -117,14 +132,17 @@ pub(super) fn source_diagnostics(
 fn tuple_destructuring_diagnostics(
     parsed: &SyntaxParse<SyntaxSourceFile>,
     source: SourceId,
-    expression_facts: &BTreeMap<(usize, usize), TypeFact>,
+    graph: &ModuleGraph,
+    expression_facts: &ExpressionFacts,
 ) -> Vec<Diagnostic> {
     let mut diagnostics = parsed
         .tree()
         .syntax()
         .descendants()
         .filter_map(SyntaxLetStmt::cast)
-        .filter_map(|statement| diagnose_tuple_destructuring(source, &statement, expression_facts))
+        .filter_map(|statement| {
+            diagnose_tuple_destructuring(source, graph, &statement, expression_facts)
+        })
         .collect::<Vec<_>>();
     diagnostics.extend(
         parsed
@@ -132,7 +150,7 @@ fn tuple_destructuring_diagnostics(
             .syntax()
             .descendants()
             .filter_map(SyntaxMatchExpr::cast)
-            .flat_map(|expr| diagnose_tuple_match_patterns(source, &expr, expression_facts)),
+            .flat_map(|expr| diagnose_tuple_match_patterns(source, graph, &expr, expression_facts)),
     );
     diagnostics.extend(
         parsed
@@ -141,7 +159,7 @@ fn tuple_destructuring_diagnostics(
             .descendants()
             .filter_map(SyntaxForStmt::cast)
             .filter_map(|statement| {
-                diagnose_tuple_for_pattern(source, &statement, expression_facts)
+                diagnose_tuple_for_pattern(source, graph, &statement, expression_facts)
             }),
     );
     diagnostics
@@ -149,8 +167,9 @@ fn tuple_destructuring_diagnostics(
 
 fn diagnose_tuple_destructuring(
     source: SourceId,
+    graph: &ModuleGraph,
     statement: &SyntaxLetStmt,
-    expression_facts: &BTreeMap<(usize, usize), TypeFact>,
+    expression_facts: &ExpressionFacts,
 ) -> Option<Diagnostic> {
     let pattern = statement.pattern()?;
     let tuple = pattern.tuple_pattern()?;
@@ -158,8 +177,8 @@ fn diagnose_tuple_destructuring(
         return None;
     }
     let initializer = statement.initializer()?;
-    let initializer_range = text_range_key(initializer.syntax().text_range());
-    let initializer_fact = expression_facts.get(&initializer_range)?;
+    let initializer_range = text_range_for_syntax(initializer.syntax().text_range());
+    let initializer_fact = expression_facts.fact_for_range(graph, source, initializer_range)?;
     let TypeFact::Tuple { elements } = initializer_fact else {
         let non_tuple = definite_non_tuple_fact(initializer_fact)?;
         return Some(tuple_type_mismatch_diagnostic(
@@ -185,14 +204,16 @@ fn diagnose_tuple_destructuring(
 
 fn diagnose_tuple_match_patterns(
     source: SourceId,
+    graph: &ModuleGraph,
     expr: &SyntaxMatchExpr,
-    expression_facts: &BTreeMap<(usize, usize), TypeFact>,
+    expression_facts: &ExpressionFacts,
 ) -> Vec<Diagnostic> {
     let Some(scrutinee) = expr.scrutinee() else {
         return Vec::new();
     };
-    let scrutinee_range = text_range_key(scrutinee.syntax().text_range());
-    let Some(scrutinee_fact) = expression_facts.get(&scrutinee_range) else {
+    let scrutinee_range = text_range_for_syntax(scrutinee.syntax().text_range());
+    let Some(scrutinee_fact) = expression_facts.fact_for_range(graph, source, scrutinee_range)
+    else {
         return Vec::new();
     };
     let TypeFact::Tuple { elements } = scrutinee_fact else {
@@ -238,8 +259,9 @@ fn diagnose_tuple_match_patterns(
 
 fn diagnose_tuple_for_pattern(
     source: SourceId,
+    graph: &ModuleGraph,
     statement: &SyntaxForStmt,
-    expression_facts: &BTreeMap<(usize, usize), TypeFact>,
+    expression_facts: &ExpressionFacts,
 ) -> Option<Diagnostic> {
     let pattern = statement.value_pattern()?;
     let tuple = pattern.tuple_pattern()?;
@@ -247,9 +269,9 @@ fn diagnose_tuple_for_pattern(
         return None;
     }
     let iterable = statement.iterable()?;
-    let iterable_range = text_range_key(iterable.syntax().text_range());
+    let iterable_range = text_range_for_syntax(iterable.syntax().text_range());
     let item = expression_facts
-        .get(&iterable_range)
+        .fact_for_range(graph, source, iterable_range)
         .and_then(iterable_item_fact)?;
     let TypeFact::Tuple { elements } = item else {
         let non_tuple = definite_non_tuple_fact(item)?;
@@ -413,7 +435,8 @@ fn missing_field_diagnostic(type_name: &str, field: &str, span: Span) -> Diagnos
 fn match_exhaustiveness_diagnostics(
     parsed: &SyntaxParse<SyntaxSourceFile>,
     source: SourceId,
-    expression_facts: &BTreeMap<(usize, usize), TypeFact>,
+    graph: &ModuleGraph,
+    expression_facts: &ExpressionFacts,
     facts: &RegistryFacts,
 ) -> Vec<Diagnostic> {
     parsed
@@ -423,8 +446,11 @@ fn match_exhaustiveness_diagnostics(
         .filter_map(SyntaxMatchExpr::cast)
         .filter_map(|expr| {
             let scrutinee = expr.scrutinee()?;
-            let scrutinee_range = text_range_key(scrutinee.syntax().text_range());
-            let enum_shape = enum_shape(expression_facts.get(&scrutinee_range)?, facts)?;
+            let scrutinee_range = text_range_for_syntax(scrutinee.syntax().text_range());
+            let enum_shape = enum_shape(
+                expression_facts.fact_for_range(graph, source, scrutinee_range)?,
+                facts,
+            )?;
             if enum_shape.variants.is_empty() || match_has_catch_all(&expr) {
                 return None;
             }
@@ -469,7 +495,8 @@ fn match_exhaustiveness_diagnostics(
 fn match_pattern_diagnostics(
     parsed: &SyntaxParse<SyntaxSourceFile>,
     source: SourceId,
-    expression_facts: &BTreeMap<(usize, usize), TypeFact>,
+    graph: &ModuleGraph,
+    expression_facts: &ExpressionFacts,
     facts: &RegistryFacts,
 ) -> Vec<Diagnostic> {
     parsed
@@ -481,9 +508,9 @@ fn match_pattern_diagnostics(
             let Some(scrutinee) = expr.scrutinee() else {
                 return Vec::new();
             };
-            let scrutinee_range = text_range_key(scrutinee.syntax().text_range());
+            let scrutinee_range = text_range_for_syntax(scrutinee.syntax().text_range());
             let Some(enum_shape) = expression_facts
-                .get(&scrutinee_range)
+                .fact_for_range(graph, source, scrutinee_range)
                 .and_then(|fact| enum_shape(fact, facts))
             else {
                 return Vec::new();
@@ -612,8 +639,8 @@ fn syntax_span(source: SourceId, range: SyntaxTextRange) -> Span {
     Span::new(source, u32::from(range.start()), u32::from(range.end()))
 }
 
-fn text_range_key(range: SyntaxTextRange) -> (usize, usize) {
-    (
+fn text_range_for_syntax(range: SyntaxTextRange) -> TextRange {
+    TextRange::new(
         u32::from(range.start()) as usize,
         u32::from(range.end()) as usize,
     )
@@ -627,27 +654,34 @@ fn text_range_for_span(span: Span) -> Option<TextRange> {
 }
 
 fn member_site_diagnostic(
-    source: SourceId,
-    facts: &RegistryFacts,
-    expression_facts: &BTreeMap<(usize, usize), TypeFact>,
+    context: &MemberSiteDiagnosticContext<'_>,
     receiver_range: TextRange,
     member_range: TextRange,
     member: &str,
     kind: AnalysisCompletionKind,
 ) -> Option<Diagnostic> {
-    let receiver = expression_facts.get(&(receiver_range.start, receiver_range.end))?;
-    if !is_precise_receiver(facts, receiver) || member_exists(facts, receiver, member, kind) {
+    let receiver =
+        context
+            .expression_facts
+            .fact_for_range(context.graph, context.source, receiver_range)?;
+    if !is_precise_receiver(context.facts, receiver)
+        || member_exists(context.facts, receiver, member, kind)
+    {
         return None;
     }
 
-    let span = Span::new(source, member_range.start as u32, member_range.end as u32);
-    let candidates = ranked_member_candidates(facts, receiver, member, kind);
+    let span = Span::new(
+        context.source,
+        member_range.start as u32,
+        member_range.end as u32,
+    );
+    let candidates = ranked_member_candidates(context.facts, receiver, member, kind);
     let extra_labels = match kind {
         AnalysisCompletionKind::Field => {
-            field_candidate_access_labels(facts, receiver, &candidates)
+            field_candidate_access_labels(context.facts, receiver, &candidates)
         }
         AnalysisCompletionKind::Method => {
-            method_candidate_access_labels(facts, receiver, &candidates)
+            method_candidate_access_labels(context.facts, receiver, &candidates)
         }
         _ => Vec::new(),
     };

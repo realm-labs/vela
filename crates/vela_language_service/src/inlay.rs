@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 mod pattern_hints;
 mod type_facts;
 
@@ -7,6 +5,7 @@ use vela_analysis::{
     registry::RegistryFacts, stdlib::stdlib_method_fact_with_lambda_arity, type_fact::TypeFact,
 };
 use vela_common::SourceId;
+use vela_hir::module_graph::ModuleGraph;
 use vela_syntax::ast::{
     AstNode, SyntaxBlock, SyntaxCallExpr, SyntaxConstItem, SyntaxElseBranch, SyntaxExpression,
     SyntaxExpressionKind, SyntaxFunctionItem, SyntaxImplItem, SyntaxImplMethod, SyntaxLambdaBody,
@@ -18,7 +17,7 @@ use vela_syntax::{Parse as SyntaxParse, TextRange as SyntaxTextRange, TextSize};
 use crate::callable_context::{
     CallableFacts, CallableParameterFacts, callable_facts, member_callable_facts,
 };
-use crate::expression_facts;
+use crate::expression_facts::{self, ExpressionFacts};
 use crate::symbol_ref::{builtin_member_symbol, schema_member_symbol, source_child_symbol};
 use crate::{
     DiagnosticRange, DisplayParts, DocumentId, LanguageServiceDatabases, LineIndex, Position,
@@ -98,28 +97,36 @@ struct TypeHintCollector<'a, 'hints> {
     line_index: &'a LineIndex,
     range: DiagnosticRangeOffsets,
     context: TypeHintContext<'a>,
-    expression_facts: &'a BTreeMap<(usize, usize), TypeFact>,
+    graph: &'a ModuleGraph,
+    source_id: SourceId,
+    expression_facts: &'a ExpressionFacts,
     hints: &'hints mut Vec<InlayHint>,
 }
 
 impl<'a, 'hints> TypeHintCollector<'a, 'hints> {
-    fn new(
-        document_id: &'a DocumentId,
-        line_index: &'a LineIndex,
-        range: DiagnosticRangeOffsets,
-        context: TypeHintContext<'a>,
-        expression_facts: &'a BTreeMap<(usize, usize), TypeFact>,
-        hints: &'hints mut Vec<InlayHint>,
-    ) -> Self {
+    fn from_input(input: TypeHintCollectorInput<'a, 'hints>) -> Self {
         Self {
-            document_id,
-            line_index,
-            range,
-            context,
-            expression_facts,
-            hints,
+            document_id: input.document_id,
+            line_index: input.line_index,
+            range: input.range,
+            context: input.context,
+            graph: input.graph,
+            source_id: input.source_id,
+            expression_facts: input.expression_facts,
+            hints: input.hints,
         }
     }
+}
+
+struct TypeHintCollectorInput<'a, 'hints> {
+    document_id: &'a DocumentId,
+    line_index: &'a LineIndex,
+    range: DiagnosticRangeOffsets,
+    context: TypeHintContext<'a>,
+    graph: &'a ModuleGraph,
+    source_id: SourceId,
+    expression_facts: &'a ExpressionFacts,
+    hints: &'hints mut Vec<InlayHint>,
 }
 
 impl InlayHint {
@@ -176,14 +183,16 @@ impl LanguageServiceDatabases {
         let schema = self.schema_db().facts();
         let expression_facts =
             expression_facts::collect(graph, syntax_parse, source.source_id(), schema);
-        let mut type_collector = TypeHintCollector::new(
+        let mut type_collector = TypeHintCollector::from_input(TypeHintCollectorInput {
             document_id,
-            &line_index,
-            range_offsets,
-            TypeHintContext::new(schema),
-            &expression_facts,
-            &mut hints,
-        );
+            line_index: &line_index,
+            range: range_offsets,
+            context: TypeHintContext::new(schema),
+            graph,
+            source_id: source.source_id(),
+            expression_facts: &expression_facts,
+            hints: &mut hints,
+        });
         type_collector.collect_source_file(syntax_parse);
 
         hints.sort_by_key(|hint| (hint.position.line, hint.position.character));
@@ -1108,8 +1117,9 @@ impl TypeHintCollector<'_, '_> {
     }
 
     fn expression_fact(&self, expr: &SyntaxExpression) -> Option<TypeFact> {
+        let range = text_range_for_syntax(expr.syntax().text_range());
         self.expression_facts
-            .get(&syntax_range_key(expr.syntax().text_range()))
+            .fact_for_range(self.graph, self.source_id, range)
             .cloned()
     }
 }
@@ -1173,8 +1183,8 @@ fn is_stable_type_fact(fact: &TypeFact) -> bool {
     }
 }
 
-fn syntax_range_key(range: SyntaxTextRange) -> (usize, usize) {
-    (
+fn text_range_for_syntax(range: vela_syntax::TextRange) -> TextRange {
+    TextRange::new(
         text_size_to_usize(range.start()),
         text_size_to_usize(range.end()),
     )

@@ -16,17 +16,17 @@ use vela_analysis::{
 use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_hir::{
     body::{HirPathKind, HirPathOwner},
-    ids::HirExprId,
+    ids::{HirExprId, HirPatternId},
     module_graph::{DeclarationKind, ModuleGraph},
     type_hint::ImplMetadataKind,
 };
+use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::{
     AstNode, BinaryOp, Literal, SyntaxArgument, SyntaxBlock, SyntaxConstItem, SyntaxExpression,
     SyntaxExpressionKind, SyntaxFunctionItem, SyntaxIfExpr, SyntaxImplItem, SyntaxLambdaBody,
     SyntaxMatchArmBody, SyntaxParam, SyntaxSourceFile, SyntaxStatement, SyntaxStatementKind,
     SyntaxTraitItem, SyntaxTypeHint, UnaryOp,
 };
-use vela_syntax::{Parse as SyntaxParse, TextRange as SyntaxTextRange};
 
 use crate::callable_context::query_type_fact_from_hint;
 use crate::{LanguageServiceDatabases, TextRange};
@@ -43,16 +43,20 @@ pub(crate) fn collect(
     parsed: &SyntaxParse<SyntaxSourceFile>,
     source: SourceId,
     schema: &RegistryFacts,
-) -> BTreeMap<(usize, usize), TypeFact> {
+) -> ExpressionFacts {
     let mut collector = ExpressionFactCollector {
         graph,
         source,
         schema,
         declarations: declaration_scope(graph),
-        facts: BTreeMap::new(),
+        expression_facts: BTreeMap::new(),
+        pattern_facts: BTreeMap::new(),
     };
     collector.collect_source_file(parsed);
-    collector.facts
+    ExpressionFacts {
+        by_expression: collector.expression_facts,
+        by_pattern: collector.pattern_facts,
+    }
 }
 
 pub(crate) fn fact_for_range(
@@ -75,8 +79,46 @@ pub(crate) fn fact_for_range(
         source_id,
         databases.schema_db().facts(),
     )
-    .get(&text_range_key(range))
+    .fact_for_range(databases.hir_db().graph(), source_id, range)
     .cloned()
+}
+
+#[derive(Clone, Debug, Default)]
+pub(crate) struct ExpressionFacts {
+    by_expression: BTreeMap<HirExprId, TypeFact>,
+    by_pattern: BTreeMap<HirPatternId, TypeFact>,
+}
+
+impl ExpressionFacts {
+    #[must_use]
+    pub(crate) fn get(&self, expression: HirExprId) -> Option<&TypeFact> {
+        self.by_expression.get(&expression)
+    }
+
+    #[must_use]
+    pub(crate) fn pattern(&self, pattern: HirPatternId) -> Option<&TypeFact> {
+        self.by_pattern.get(&pattern)
+    }
+
+    #[must_use]
+    pub(crate) fn fact_for_range(
+        &self,
+        graph: &ModuleGraph,
+        source: SourceId,
+        range: TextRange,
+    ) -> Option<&TypeFact> {
+        let start = u32::try_from(range.start).ok()?;
+        let end = u32::try_from(range.end).ok()?;
+        let span = Span::new(source, start, end);
+        graph
+            .expression_at_span(span)
+            .and_then(|expression| self.get(expression))
+            .or_else(|| {
+                graph
+                    .pattern_at_span(span)
+                    .and_then(|pattern| self.pattern(pattern))
+            })
+    }
 }
 
 struct ExpressionFactCollector<'a> {
@@ -84,7 +126,8 @@ struct ExpressionFactCollector<'a> {
     source: SourceId,
     schema: &'a RegistryFacts,
     declarations: ExprFactScope,
-    facts: BTreeMap<(usize, usize), TypeFact>,
+    expression_facts: BTreeMap<HirExprId, TypeFact>,
+    pattern_facts: BTreeMap<HirPatternId, TypeFact>,
 }
 
 impl ExpressionFactCollector<'_> {
@@ -448,9 +491,10 @@ impl ExpressionFactCollector<'_> {
         }
 
         let fact = self.type_fact_for_expr(expr, scope);
-        if !matches!(fact, TypeFact::Unknown) {
-            self.facts
-                .insert(syntax_range_key(expr.syntax().text_range()), fact);
+        if !matches!(fact, TypeFact::Unknown)
+            && let Some(expression) = self.hir_expression(expr)
+        {
+            self.expression_facts.insert(expression, fact);
         }
     }
 
@@ -1205,15 +1249,4 @@ fn syntax_params(param_list: Option<vela_syntax::ast::SyntaxParamList>) -> Vec<S
     param_list
         .map(|params| params.params().collect())
         .unwrap_or_default()
-}
-
-fn text_range_key(range: TextRange) -> (usize, usize) {
-    (range.start, range.end)
-}
-
-fn syntax_range_key(range: SyntaxTextRange) -> (usize, usize) {
-    (
-        u32::from(range.start()) as usize,
-        u32::from(range.end()) as usize,
-    )
 }

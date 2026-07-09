@@ -10,7 +10,7 @@ use vela_hir::{
     type_hint::{HirTypeHint, ImplMetadata, ImplMetadataKind},
 };
 
-use crate::TextRange;
+use crate::{TextRange, expression_facts::ExpressionFacts};
 
 use super::{
     SemanticTokenClassification, SemanticTokenModifiers, SemanticTokenType, next_non_whitespace,
@@ -23,7 +23,7 @@ pub(super) struct MemberUseContext<'a> {
     pub(super) facts: &'a AnalysisFacts,
     pub(super) schema: &'a RegistryFacts,
     pub(super) text: &'a str,
-    pub(super) receiver_facts: &'a BTreeMap<(usize, usize), TypeFact>,
+    pub(super) receiver_facts: &'a ExpressionFacts,
     pub(super) inferred_local_facts: &'a BTreeMap<HirLocalId, TypeFact>,
 }
 
@@ -42,11 +42,9 @@ pub(super) fn classify(
     if field.name != name {
         return None;
     }
-    let receiver_span = context.graph.expression_span(field.receiver)?;
-    let receiver_range = text_range_for_span(receiver_span)?;
     let receiver = context
         .receiver_facts
-        .get(&(receiver_range.start, receiver_range.end))
+        .get(field.receiver)
         .cloned()
         .or_else(|| {
             context
@@ -83,13 +81,6 @@ pub(super) fn classify(
                 )
             })
     })
-}
-
-fn text_range_for_span(span: vela_common::Span) -> Option<TextRange> {
-    Some(TextRange::new(
-        usize::try_from(span.start).ok()?,
-        usize::try_from(span.end).ok()?,
-    ))
 }
 
 fn method_use_classification(
