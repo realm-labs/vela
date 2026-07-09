@@ -180,7 +180,10 @@ binding scope spans so let bindings are not visible inside their own
 initializers. Database-backed query contexts now refine complete member-access
 and call-argument receiver/callee ranges from HIR field and call facts, while
 the lower-level cursor scanner keeps only lexical recovery for incomplete
-edits; the old CST call/member cursor helper modules have been deleted.
+edits; the old CST call/member cursor helper modules have been deleted. Inlay
+parameter hints now resolve complete call targets from HIR call, callee-path,
+and member-field facts instead of reconstructing callable labels from callee
+syntax.
 Incremental language-service updates now rebuild Heavy HIR for body-only source
 edits so HIR-owned call/member/path/body facts stay current while
 declaration/import indexes remain reusable. Semantic-token local record facts

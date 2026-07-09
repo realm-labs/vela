@@ -205,6 +205,49 @@ pub fn main(player: Player) { player.grant(1, 2) }"#;
 }
 
 #[test]
+fn inlay_hints_show_source_method_parameter_names_for_hir_receiver_call() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"struct Player { level: i64 }
+impl Player {
+    fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
+}
+fn current_player() -> Player { return Player { level: 1 } }
+pub fn main() { current_player().grant(1, 2) }"#;
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+    let main_line = text.lines().nth(5).expect("main line should exist");
+
+    let hints = databases.inlay_hints(
+        &document,
+        DiagnosticRange::new(Position::new(0, 0), Position::new(5, main_line.len())),
+    );
+
+    assert_eq!(
+        hint_labels(&hints),
+        vec![
+            (
+                Position::new(5, main_line.find("1,").expect("first arg")),
+                "amount:".to_owned(),
+            ),
+            (
+                Position::new(5, main_line.find("2)").expect("second arg")),
+                "bonus:".to_owned(),
+            )
+        ]
+    );
+    assert_eq!(
+        hint_symbols(&hints),
+        vec![
+            Some(SymbolRef::Source(
+                "game::main::Player.grant.amount".to_owned()
+            )),
+            Some(SymbolRef::Source(
+                "game::main::Player.grant.bonus".to_owned()
+            ))
+        ]
+    );
+}
+
+#[test]
 fn inlay_hints_show_stable_local_typefacts() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"const BONUS: i64 = 10

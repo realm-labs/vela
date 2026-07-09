@@ -4,7 +4,8 @@ mod type_facts;
 use vela_analysis::{
     registry::RegistryFacts, stdlib::stdlib_method_fact_with_lambda_arity, type_fact::TypeFact,
 };
-use vela_common::SourceId;
+use vela_common::{SourceId, Span};
+use vela_hir::body::{HirPathKind, HirPathOwner};
 use vela_hir::module_graph::ModuleGraph;
 use vela_syntax::ast::{
     AstNode, SyntaxBlock, SyntaxCallExpr, SyntaxConstItem, SyntaxElseBranch, SyntaxExpression,
@@ -568,12 +569,12 @@ impl LanguageServiceDatabases {
         context: ParameterHintContext<'_>,
         hints: &mut Vec<InlayHint>,
     ) {
-        let Some(callee) = call.callee() else {
+        if call.callee().is_none() {
             return;
-        };
+        }
         let args = call.arguments();
         let Some(callable) = self
-            .syntax_call_callable_candidates(&callee, call, &args, context)
+            .hir_call_callable_candidates(call, &args, context)
             .into_iter()
             .next()
         else {
@@ -609,37 +610,67 @@ impl LanguageServiceDatabases {
         }
     }
 
-    fn syntax_call_callable_candidates(
+    fn hir_call_callable_candidates(
         &self,
-        callee: &SyntaxExpression,
         call: &SyntaxCallExpr,
         args: &[vela_syntax::ast::SyntaxArgument],
         context: ParameterHintContext<'_>,
     ) -> Vec<CallableFacts> {
-        if let Some((method, receiver_range)) = syntax_member_method_and_receiver_range(callee) {
+        let Some(call_expression) =
+            hir_expression_for_call(self.hir_db().graph(), context.source_id, call)
+        else {
+            return Vec::new();
+        };
+        let Some(callee) = self.hir_db().graph().call_callee(call_expression) else {
+            return Vec::new();
+        };
+
+        if let Some(field) = self
+            .hir_db()
+            .graph()
+            .fields_in_source(context.source_id)
+            .find(|field| field.expression == callee)
+        {
+            let Some(receiver_span) = self.hir_db().graph().expression_span(field.receiver) else {
+                return Vec::new();
+            };
             return member_callable_facts(
                 self,
                 context.source_id,
-                receiver_range,
-                &method,
+                span_text_range(receiver_span),
+                &field.name,
                 &syntax_args_prefix(call, args, context.source_text),
             );
         }
 
-        let Some(callee) = syntax_callee_label(callee) else {
+        let Some(callee_path) =
+            hir_callee_path_for_expression(self.hir_db().graph(), context.source_id, callee)
+        else {
             return Vec::new();
         };
-        callable_facts(self, &callee)
+        callable_facts(self, &callee_path.join("::"))
     }
 }
 
-fn syntax_member_method_and_receiver_range(
-    callee: &SyntaxExpression,
-) -> Option<(String, TextRange)> {
-    let field = callee.as_field()?;
-    let method = field.name_text()?;
-    let receiver = field.receiver()?;
-    Some((method, syntax_text_range(receiver.syntax().text_range())))
+fn hir_expression_for_call(
+    graph: &ModuleGraph,
+    source_id: SourceId,
+    call: &SyntaxCallExpr,
+) -> Option<vela_hir::ids::HirExprId> {
+    graph.expression_at_span(syntax_node_span(source_id, call.syntax().text_range()))
+}
+
+fn hir_callee_path_for_expression(
+    graph: &ModuleGraph,
+    source_id: SourceId,
+    callee: vela_hir::ids::HirExprId,
+) -> Option<&[String]> {
+    graph
+        .paths_in_source_by_kind(source_id, HirPathKind::Callee)
+        .find_map(|path| match path.owner {
+            HirPathOwner::Expression(owner) if owner == callee => Some(path.path.as_slice()),
+            HirPathOwner::Expression(_) | HirPathOwner::Pattern(_) => None,
+        })
 }
 
 fn syntax_args_prefix(
@@ -666,18 +697,12 @@ fn syntax_args_prefix(
         .to_owned()
 }
 
-fn syntax_callee_label(callee: &SyntaxExpression) -> Option<String> {
-    callee
-        .as_path()
-        .and_then(|path| path.path_text())
-        .or_else(|| callee.as_field().and_then(|field| field.name_text()))
+fn syntax_node_span(source_id: SourceId, range: SyntaxTextRange) -> Span {
+    Span::new(source_id, u32::from(range.start()), u32::from(range.end()))
 }
 
-fn syntax_text_range(range: SyntaxTextRange) -> TextRange {
-    TextRange::new(
-        text_size_to_usize(range.start()),
-        text_size_to_usize(range.end()),
-    )
+fn span_text_range(span: Span) -> TextRange {
+    TextRange::new(span.start as usize, span.end as usize)
 }
 
 fn text_size_to_usize(size: TextSize) -> usize {
