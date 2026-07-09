@@ -1124,10 +1124,13 @@ impl TypeHintCollector<'_, '_> {
     }
 
     fn lambda_parameter_facts(&self, call: &SyntaxCallExpr) -> Option<Vec<TypeFact>> {
-        let callee = call.callee()?;
-        let field = callee.as_field()?;
-        let method = field.name_text()?;
-        let receiver = self.expression_fact(&field.receiver()?)?;
+        let call_expression = hir_expression_for_call(self.graph, self.source_id, call)?;
+        let callee = self.graph.call_callee(call_expression)?;
+        let field = self
+            .graph
+            .fields_in_source(self.source_id)
+            .find(|field| field.expression == callee)?;
+        let receiver = self.expression_facts.get(field.receiver)?;
         let param_count = call.arguments().iter().find_map(|arg| {
             let lambda = arg.expression()?.as_lambda()?;
             Some(
@@ -1137,7 +1140,7 @@ impl TypeHintCollector<'_, '_> {
                     .unwrap_or_default(),
             )
         })?;
-        stdlib_method_fact_with_lambda_arity(&receiver, &method, None, Some(param_count))
+        stdlib_method_fact_with_lambda_arity(receiver, &field.name, None, Some(param_count))
             .and_then(|fact| fact.lambda.map(|lambda| lambda.params))
     }
 

@@ -384,6 +384,40 @@ fn inlay_hints_show_lambda_parameter_facts() {
 }
 
 #[test]
+fn inlay_hints_show_lambda_parameter_facts_for_hir_receiver_call() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"fn current_rewards() -> Map<String, i64> { return {"gold": 1} }
+pub fn main() {
+    let filtered: Map<String, i64> = current_rewards().filter(|key, value| key.len() > value);
+}"#;
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+    let call_line = text.lines().nth(2).expect("call line should exist");
+
+    let hints = databases.inlay_hints(
+        &document,
+        DiagnosticRange::new(Position::new(0, 0), Position::new(4, 0)),
+    );
+
+    assert_eq!(
+        hint_labels(&hints),
+        vec![
+            (
+                Position::new(2, call_line.find("key").expect("key param") + "key".len()),
+                ": String".to_owned()
+            ),
+            (
+                Position::new(
+                    2,
+                    call_line.find("value").expect("value param") + "value".len()
+                ),
+                ": i64".to_owned()
+            )
+        ]
+    );
+    assert!(hints.iter().all(|hint| hint.kind() == InlayHintKind::Type));
+}
+
+#[test]
 fn inlay_hints_show_host_path_typefacts() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"pub fn main(player: Player) {
