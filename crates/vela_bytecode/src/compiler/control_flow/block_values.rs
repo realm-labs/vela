@@ -44,7 +44,7 @@ impl Compiler<'_, '_> {
         &mut self,
         body: &CompilerBodyPayload<'_>,
         dst: Register,
-        statements: &[crate::compiler::body_payloads::CompilerStatementPayload<'_>],
+        statements: &[crate::compiler::body_payloads::CompilerStatementPayload],
     ) -> CompileResult<bool> {
         if body.syntax_statements_are_empty() {
             self.emit_constant_to(dst, Constant::Unit);

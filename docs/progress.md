@@ -262,7 +262,9 @@ statement enumeration path. Statement payloads now carry concrete HIR statement
 kind facts, and bytecode statement/control-flow dispatch branches on
 `HirStmtKind` instead of converting HIR statements back to syntax statement
 kinds. Statement payload diagnostics and let-pattern setup now use HIR
-statement source spans instead of recomputing statement spans from syntax.
+statement source spans instead of recomputing statement spans from syntax, and
+obsolete lifetime/`PhantomData` scaffolding has been removed from statement
+payloads.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

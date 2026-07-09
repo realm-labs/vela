@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use vela_common::{SourceId, Span};
 use vela_hir::body::{HirBody, HirBodyRoot, HirStmt, HirStmtKind};
 use vela_hir::ids::HirBlockId;
@@ -32,24 +30,22 @@ pub(super) struct CompilerBodyPayload<'ast> {
     syntax: SyntaxBodyPayload,
     hir_body: &'ast HirBody,
     hir_block: Option<HirBlockId>,
-    _ast: PhantomData<&'ast ()>,
 }
 
-pub(super) struct CompilerStatementPayload<'ast> {
+pub(super) struct CompilerStatementPayload {
     source: SourceId,
     syntax: SyntaxStatement,
     hir_kind: HirStmtKind,
     span: Span,
-    _ast: PhantomData<&'ast ()>,
 }
 
-pub(super) enum CompilerBlockValue<'payload, 'ast> {
+pub(super) enum CompilerBlockValue<'payload> {
     Empty,
     TailExpression {
-        prefix: &'payload [CompilerStatementPayload<'ast>],
-        tail: &'payload CompilerStatementPayload<'ast>,
+        prefix: &'payload [CompilerStatementPayload],
+        tail: &'payload CompilerStatementPayload,
     },
-    Statements(&'payload [CompilerStatementPayload<'ast>]),
+    Statements(&'payload [CompilerStatementPayload]),
 }
 
 impl<'ast> CompilerBodyPayload<'ast> {
@@ -58,7 +54,6 @@ impl<'ast> CompilerBodyPayload<'ast> {
             syntax: SyntaxBodyPayload { source, body },
             hir_body,
             hir_block: None,
-            _ast: PhantomData,
         }
     }
 
@@ -87,11 +82,10 @@ impl<'ast> CompilerBodyPayload<'ast> {
             syntax: SyntaxBodyPayload { source, body },
             hir_body,
             hir_block: Some(hir_block),
-            _ast: PhantomData,
         })
     }
 
-    pub(super) fn statement_payloads(&self) -> CompileResult<Vec<CompilerStatementPayload<'ast>>> {
+    pub(super) fn statement_payloads(&self) -> CompileResult<Vec<CompilerStatementPayload>> {
         hir_body_statements(
             self.hir_body,
             self.hir_block,
@@ -106,8 +100,8 @@ impl<'ast> CompilerBodyPayload<'ast> {
 
     pub(super) fn block_value<'payload>(
         &self,
-        statements: &'payload [CompilerStatementPayload<'ast>],
-    ) -> CompilerBlockValue<'payload, 'ast> {
+        statements: &'payload [CompilerStatementPayload],
+    ) -> CompilerBlockValue<'payload> {
         let Some((tail, prefix)) = statements.split_last() else {
             return CompilerBlockValue::Empty;
         };
@@ -122,12 +116,12 @@ impl<'ast> CompilerBodyPayload<'ast> {
     }
 }
 
-fn hir_body_statements<'ast>(
-    hir_body: &'ast HirBody,
+fn hir_body_statements(
+    hir_body: &HirBody,
     hir_block: Option<HirBlockId>,
     source: SourceId,
     body: &SyntaxBlock,
-) -> CompileResult<Vec<CompilerStatementPayload<'ast>>> {
+) -> CompileResult<Vec<CompilerStatementPayload>> {
     let syntax_statements = syntax_body_statements(body);
     let statement_ids = hir_body_statement_ids(hir_body, hir_block)
         .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("HIR block")))?;
@@ -233,14 +227,13 @@ fn syntax_statement_starts_with_infix_continuation(statement: &SyntaxStatement) 
     )
 }
 
-impl<'ast> CompilerStatementPayload<'ast> {
+impl CompilerStatementPayload {
     fn new_hir_syntax(source: SourceId, syntax: SyntaxStatement, statement: &HirStmt) -> Self {
         Self {
             source,
             syntax,
             hir_kind: statement.kind,
             span: statement.origin.span,
-            _ast: PhantomData,
         }
     }
 

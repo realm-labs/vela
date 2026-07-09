@@ -7,7 +7,7 @@ use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 impl Compiler<'_, '_> {
     pub(in crate::compiler) fn compile_statement_payloads(
         &mut self,
-        statements: &[CompilerStatementPayload<'_>],
+        statements: &[CompilerStatementPayload],
     ) -> CompileResult<bool> {
         for stmt in statements {
             if self.compile_statement_payload(stmt)? {
@@ -30,7 +30,7 @@ impl Compiler<'_, '_> {
 
     pub(super) fn compile_statement_payload(
         &mut self,
-        stmt: &CompilerStatementPayload<'_>,
+        stmt: &CompilerStatementPayload,
     ) -> CompileResult<bool> {
         let hir_kind = stmt.hir_statement_kind();
         match hir_kind {

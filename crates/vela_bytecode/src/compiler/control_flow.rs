@@ -35,7 +35,7 @@ pub(super) use loops::LoopContext;
 impl Compiler<'_, '_> {
     fn compile_block_statement_payload(
         &mut self,
-        stmt: &CompilerStatementPayload<'_>,
+        stmt: &CompilerStatementPayload,
     ) -> CompileResult<bool> {
         let Some((source, block)) = stmt.block_syntax_body() else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -48,7 +48,7 @@ impl Compiler<'_, '_> {
 
     fn compile_expr_statement_payload(
         &mut self,
-        stmt: &CompilerStatementPayload<'_>,
+        stmt: &CompilerStatementPayload,
     ) -> CompileResult<bool> {
         let Some(kind) = stmt.stored_expression_kind() else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
