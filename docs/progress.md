@@ -187,7 +187,10 @@ uses HIR call-callee path facts for enum-variant call expressions instead of
 compiler payload call-callee syntax reconstruction, and the old syntax-callee
 payload helpers have been removed. Tuple-style enum constructor call lowering
 also derives the enum type and variant from those HIR call facts instead of
-re-resolving the callee syntax span.
+re-resolving the callee syntax span. Bytecode parameter-default record and enum
+constructor lowering now reads HIR constructor path facts plus HIR expression
+binding facts instead of re-resolving constructor type symbols from the record
+syntax span.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

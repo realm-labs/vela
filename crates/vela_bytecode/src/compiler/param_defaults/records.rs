@@ -32,16 +32,19 @@ impl Compiler<'_, '_> {
         expression: &SyntaxExpression,
         record: &SyntaxRecordExpr,
     ) -> CompileResult<Register> {
-        let path = record.path_segments();
-        if path.is_empty() {
-            return Err(param_default_unsupported(source, expression));
-        }
         let span = span_for(source, expression);
+        let Some(expression_id) = self.expression_at_span(span) else {
+            return Err(param_default_unsupported(source, expression));
+        };
+        let Some(path) = self.hir_constructor_path(expression_id) else {
+            return Err(param_default_unsupported(source, expression));
+        };
+        let path = path.to_vec();
         let fields = record_fields(source, record)?;
         let dst = self.alloc_register()?;
 
         if let Some((enum_name, variant)) = enum_variant_path(&path) {
-            let resolved_enum_name = self.type_symbol_at_span(span);
+            let resolved_enum_name = self.type_symbol_for_expression(expression_id);
             let enum_name = resolved_enum_name.clone().unwrap_or(enum_name);
             if resolved_enum_name.is_some()
                 && !self.enum_constructor_variant_exists(&enum_name, &variant)
@@ -69,7 +72,7 @@ impl Compiler<'_, '_> {
             })
         } else {
             let type_name = self
-                .type_symbol_at_span(span)
+                .type_symbol_for_expression(expression_id)
                 .unwrap_or_else(|| path.join("::"));
             let shape = self.record_constructor_shape(&type_name);
             self.compile_param_default_record_fields(

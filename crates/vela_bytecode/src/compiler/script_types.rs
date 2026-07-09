@@ -165,13 +165,30 @@ pub(super) fn type_hint_script_type<'a>(
 }
 
 impl super::Compiler<'_, '_> {
-    fn type_symbol_for_expression(&self, expression: HirExprId) -> Option<String> {
+    pub(in crate::compiler) fn type_symbol_for_expression(
+        &self,
+        expression: HirExprId,
+    ) -> Option<String> {
         let Some(vela_hir::binding::BindingResolution::Declaration(declaration)) =
             self.bindings.resolution(expression)
         else {
             return None;
         };
         self.facts.type_symbols.get(declaration).cloned()
+    }
+
+    pub(in crate::compiler) fn hir_constructor_path(
+        &self,
+        expression: HirExprId,
+    ) -> Option<&[String]> {
+        self.hir_bodies
+            .iter()
+            .flat_map(|body| body.paths.iter())
+            .find(|path| {
+                path.kind == HirPathKind::Constructor
+                    && path.owner == HirPathOwner::Expression(expression)
+            })
+            .map(|path| path.path.as_slice())
     }
 
     pub(in crate::compiler) fn script_fact_for_hir_call(
