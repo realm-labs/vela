@@ -245,9 +245,11 @@ impl Compiler<'_, '_> {
         field_name: &str,
     ) -> Option<usize> {
         let record = expression.as_record()?;
-        let (enum_name, variant) = enum_variant_path(&record.path_segments())?;
+        let expression_id = self.expression_at_span(syntax_expression_span(source, expression))?;
+        let path = self.hir_constructor_path(expression_id)?;
+        let (enum_name, variant) = enum_variant_path(path)?;
         let type_name = self
-            .type_symbol_at_span(syntax_expression_span(source, expression))
+            .type_symbol_for_expression(expression_id)
             .unwrap_or(enum_name);
         self.facts
             .script_field_slots
