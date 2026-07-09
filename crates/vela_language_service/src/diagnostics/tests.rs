@@ -659,6 +659,53 @@ pub fn main() {
 }
 
 #[test]
+fn analysis_diagnostics_report_tuple_for_arity_mismatch() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let mut db = LanguageServiceDatabases::new();
+    db.update(&project(&[file(
+        document.as_str(),
+        "\
+pub fn main(pairs: Array<(String, i64)>, iter_pairs: Iterator<(String, i64)>) {
+    for (name, score, extra) in pairs {
+        score
+    }
+    for (name, score) in iter_pairs {
+        score
+    }
+}",
+    )]));
+
+    let diagnostics = db.diagnostics_for_document(&document);
+
+    assert!(
+        diagnostics.diagnostics().iter().any(|diagnostic| {
+            diagnostic.code() == Some("analysis::tuple_arity_mismatch")
+                && diagnostic
+                    .message()
+                    .contains("tuple pattern expects 3 values but expression has 2")
+                && diagnostic.range().is_some()
+                && diagnostic.labels().iter().any(|label| {
+                    label
+                        .message()
+                        .contains("tuple for pattern arity does not match iterable item")
+                })
+        }),
+        "{:?}",
+        diagnostics.diagnostics()
+    );
+    assert_eq!(
+        diagnostics
+            .diagnostics()
+            .iter()
+            .filter(|diagnostic| diagnostic.code() == Some("analysis::tuple_arity_mismatch"))
+            .count(),
+        1,
+        "{:?}",
+        diagnostics.diagnostics()
+    );
+}
+
+#[test]
 fn missing_schema_keeps_syntax_diagnostics_available() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let mut db = LanguageServiceDatabases::new();

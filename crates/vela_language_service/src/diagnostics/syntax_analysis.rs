@@ -16,8 +16,8 @@ use vela_hir::{
     module_graph::{Declaration, DeclarationKind, ModuleGraph},
 };
 use vela_syntax::ast::{
-    AstNode, SyntaxLetStmt, SyntaxMatchExpr, SyntaxPattern, SyntaxPatternKind, SyntaxRecordExpr,
-    SyntaxSourceFile,
+    AstNode, SyntaxForStmt, SyntaxLetStmt, SyntaxMatchExpr, SyntaxPattern, SyntaxPatternKind,
+    SyntaxRecordExpr, SyntaxSourceFile,
 };
 use vela_syntax::{Parse as SyntaxParse, TextRange as SyntaxTextRange};
 
@@ -114,6 +114,16 @@ fn tuple_destructuring_diagnostics(
             .filter_map(SyntaxMatchExpr::cast)
             .flat_map(|expr| diagnose_tuple_match_patterns(source, &expr, expression_facts)),
     );
+    diagnostics.extend(
+        parsed
+            .tree()
+            .syntax()
+            .descendants()
+            .filter_map(SyntaxForStmt::cast)
+            .filter_map(|statement| {
+                diagnose_tuple_for_pattern(source, &statement, expression_facts)
+            }),
+    );
     diagnostics
 }
 
@@ -175,6 +185,42 @@ fn diagnose_tuple_match_patterns(
             ))
         })
         .collect()
+}
+
+fn diagnose_tuple_for_pattern(
+    source: SourceId,
+    statement: &SyntaxForStmt,
+    expression_facts: &BTreeMap<(usize, usize), TypeFact>,
+) -> Option<Diagnostic> {
+    let pattern = statement.value_pattern()?;
+    let tuple = pattern.tuple_pattern()?;
+    if tuple.path_text().is_some() {
+        return None;
+    }
+    let iterable = statement.iterable()?;
+    let iterable_range = text_range_key(iterable.syntax().text_range());
+    let item = expression_facts
+        .get(&iterable_range)
+        .and_then(iterable_item_fact)?;
+    let TypeFact::Tuple { elements } = item else {
+        return None;
+    };
+    if tuple.patterns().count() == elements.len() {
+        return None;
+    }
+    Some(tuple_arity_mismatch_diagnostic(
+        source,
+        &pattern,
+        elements.len(),
+        "tuple for pattern arity does not match iterable item",
+    ))
+}
+
+fn iterable_item_fact(fact: &TypeFact) -> Option<&TypeFact> {
+    match fact {
+        TypeFact::Array { element } | TypeFact::Iterator { item: element } => Some(element),
+        _ => None,
+    }
 }
 
 fn tuple_arity_mismatch_diagnostic(
