@@ -39,7 +39,9 @@ impl Compiler<'_, '_> {
             SyntaxExpressionKind::Paren => self.paren_shape(source, expression),
             SyntaxExpressionKind::Binary => self.binary_shape(expression),
             SyntaxExpressionKind::Try => self.try_shape(source, expression),
-            SyntaxExpressionKind::Unary
+            SyntaxExpressionKind::Unit
+            | SyntaxExpressionKind::Tuple
+            | SyntaxExpressionKind::Unary
             | SyntaxExpressionKind::Assign
             | SyntaxExpressionKind::Lambda
             | SyntaxExpressionKind::Block
@@ -631,7 +633,9 @@ impl Compiler<'_, '_> {
             SyntaxExpressionKind::Call => {
                 self.call_shape_with_locals(source, expression, local_shapes)
             }
-            SyntaxExpressionKind::Unary
+            SyntaxExpressionKind::Unit
+            | SyntaxExpressionKind::Tuple
+            | SyntaxExpressionKind::Unary
             | SyntaxExpressionKind::Assign
             | SyntaxExpressionKind::Lambda
             | SyntaxExpressionKind::Block

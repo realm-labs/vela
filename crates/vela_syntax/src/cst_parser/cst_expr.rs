@@ -21,6 +21,8 @@ impl CstParser<'_, '_> {
                 self.assignment_expression_body(expression_start, expression_end);
             }
             SyntaxKind::ParenExpr => self.paren_expression_body(expression_start, expression_end),
+            SyntaxKind::UnitExpr => self.unit_expression_body(expression_start, expression_end),
+            SyntaxKind::TupleExpr => self.tuple_expression_body(expression_start, expression_end),
             SyntaxKind::BinaryExpr => self.binary_expression_body(expression_start, expression_end),
             SyntaxKind::UnaryExpr => self.unary_expression_body(expression_start, expression_end),
             SyntaxKind::FieldExpr => self.field_expression_body(expression_start, expression_end),
@@ -87,6 +89,17 @@ impl CstParser<'_, '_> {
         let close = end.saturating_sub(1);
         let value_start = self.skip_trivia(start + 1);
         self.expression_range(value_start, close);
+        self.emit_until(end);
+    }
+
+    fn unit_expression_body(&mut self, _start: usize, end: usize) {
+        self.emit_until(end);
+    }
+
+    fn tuple_expression_body(&mut self, start: usize, end: usize) {
+        let close = end.saturating_sub(1);
+        self.emit_until(start + 1);
+        self.comma_separated_expressions(close);
         self.emit_until(end);
     }
 
@@ -624,7 +637,7 @@ impl CstParser<'_, '_> {
             && self.find_matching_delimiter_end(start, SyntaxKind::LParen, SyntaxKind::RParen)
                 == Some(end)
         {
-            return SyntaxKind::ParenExpr;
+            return self.parenthesized_expression_kind(start, end);
         }
         if self.can_start_record_expression(start)
             && self
@@ -642,11 +655,25 @@ impl CstParser<'_, '_> {
                 | SyntaxKind::InterpolatedString
                 | SyntaxKind::Bytes
                 | SyntaxKind::TrueKw
-                | SyntaxKind::FalseKw
-                | SyntaxKind::NullKw,
+                | SyntaxKind::FalseKw,
             ) if self.single_significant_token(start, end) => SyntaxKind::Literal,
             _ => SyntaxKind::PathExpr,
         }
+    }
+
+    fn parenthesized_expression_kind(&self, start: usize, end: usize) -> SyntaxKind {
+        let close = end.saturating_sub(1);
+        let first = self.skip_trivia(start + 1);
+        if first >= close {
+            return SyntaxKind::UnitExpr;
+        }
+        if self
+            .find_root_kind_before(SyntaxKind::Comma, first, close)
+            .is_some()
+        {
+            return SyntaxKind::TupleExpr;
+        }
+        SyntaxKind::ParenExpr
     }
 
     fn braced_expression_kind(&self, start: usize, end: usize) -> SyntaxKind {
@@ -873,7 +900,6 @@ impl CstParser<'_, '_> {
                 SyntaxKind::Ident
                     | SyntaxKind::TrueKw
                     | SyntaxKind::FalseKw
-                    | SyntaxKind::NullKw
                     | SyntaxKind::String
                     | SyntaxKind::Char
                     | SyntaxKind::Bytes
@@ -992,7 +1018,6 @@ impl CstParser<'_, '_> {
                 | SyntaxKind::Bytes
                 | SyntaxKind::TrueKw
                 | SyntaxKind::FalseKw
-                | SyntaxKind::NullKw
                 | SyntaxKind::RParen
                 | SyntaxKind::RBracket
                 | SyntaxKind::RBrace

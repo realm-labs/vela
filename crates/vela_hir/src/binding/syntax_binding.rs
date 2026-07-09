@@ -216,6 +216,14 @@ impl<'a> SyntaxBindingLowerer<'a> {
                     self.bind_expr(&expr, PathUsage::Value);
                 }
             }
+            SyntaxExpressionKind::Unit => {}
+            SyntaxExpressionKind::Tuple => {
+                if let Some(expr) = expr.as_tuple() {
+                    for value in expr.expressions() {
+                        self.bind_expr(&value, PathUsage::Value);
+                    }
+                }
+            }
             SyntaxExpressionKind::Unary => {
                 if let Some(expr) = expr.as_unary().and_then(|expr| expr.expression()) {
                     self.bind_expr(&expr, PathUsage::Value);

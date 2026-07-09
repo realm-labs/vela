@@ -200,9 +200,10 @@ impl Compiler<'_, '_> {
                 };
                 self.compile_param_default_match(source, expression, &match_expr)
             }
-            SyntaxExpressionKind::Assign | SyntaxExpressionKind::Lambda => {
-                Err(param_default_unsupported(source, expression))
-            }
+            SyntaxExpressionKind::Unit
+            | SyntaxExpressionKind::Tuple
+            | SyntaxExpressionKind::Assign
+            | SyntaxExpressionKind::Lambda => Err(param_default_unsupported(source, expression)),
         }
     }
 
@@ -739,7 +740,10 @@ fn param_default_expression_supported(expression: &SyntaxExpression) -> bool {
         SyntaxExpressionKind::Record => records::param_default_record_supported(expression),
         SyntaxExpressionKind::Field => fields::param_default_field_supported(expression),
         SyntaxExpressionKind::Match => matches::param_default_match_supported(expression),
-        SyntaxExpressionKind::Assign | SyntaxExpressionKind::Lambda => false,
+        SyntaxExpressionKind::Unit
+        | SyntaxExpressionKind::Tuple
+        | SyntaxExpressionKind::Assign
+        | SyntaxExpressionKind::Lambda => false,
     }
 }
 

@@ -358,11 +358,20 @@ fn collect_expr_ranges(
             }
         }
         SyntaxExpressionKind::Path => {}
+        SyntaxExpressionKind::Unit => {}
         SyntaxExpressionKind::Paren => {
             if let Some(paren) = expr.as_paren()
                 && let Some(value) = paren.expression()
             {
                 collect_expr_ranges(&value, source, line_index, ranges);
+            }
+        }
+        SyntaxExpressionKind::Tuple => {
+            push_multiline_expression(expr, source, line_index, ranges);
+            if let Some(tuple) = expr.as_tuple() {
+                for value in tuple.expressions() {
+                    collect_expr_ranges(&value, source, line_index, ranges);
+                }
             }
         }
         SyntaxExpressionKind::Unary => {

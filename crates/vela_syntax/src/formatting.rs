@@ -444,7 +444,6 @@ impl CstLayoutWriter {
             | SyntaxKind::AsKw
             | SyntaxKind::TrueKw
             | SyntaxKind::FalseKw
-            | SyntaxKind::NullKw
             | SyntaxKind::SelfKw => {}
             _ => {}
         }
@@ -511,7 +510,6 @@ fn is_word_like(token: SyntaxKind) -> bool {
             | SyntaxKind::ContinueKw
             | SyntaxKind::TrueKw
             | SyntaxKind::FalseKw
-            | SyntaxKind::NullKw
             | SyntaxKind::SelfKw
             | SyntaxKind::InKw
             | SyntaxKind::AsKw
@@ -531,7 +529,6 @@ fn preceding_significant_can_end_declaration_member(previous: Option<SyntaxKind>
                 | SyntaxKind::Bytes
                 | SyntaxKind::TrueKw
                 | SyntaxKind::FalseKw
-                | SyntaxKind::NullKw
                 | SyntaxKind::RParen
                 | SyntaxKind::RBrace
                 | SyntaxKind::RBracket

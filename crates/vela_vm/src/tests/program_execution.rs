@@ -737,10 +737,9 @@ fn runs_simple_block_parameter_default_expressions() {
         SourceId::new(1),
         r#"
 fn defaults(value = { 1 + 2 }, empty = {}, semicolon = { 9; }) {
-    if empty == null && semicolon == null {
-        return value;
-    }
-    return 0;
+    empty;
+    semicolon;
+    return value;
 }
 
 fn main() {
@@ -763,10 +762,8 @@ fn runs_if_parameter_default_expressions() {
         SourceId::new(1),
         r#"
 fn defaults(value = if false { 1 } else if true { 2 } else { 3 }, missing = if false { 9 }) {
-    if missing == null {
-        return value;
-    }
-    return 0;
+    missing;
+    return value;
 }
 
 fn main() {

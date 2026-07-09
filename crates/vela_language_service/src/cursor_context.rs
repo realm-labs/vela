@@ -574,9 +574,7 @@ fn is_receiver_leaf_token(token: &Token) -> bool {
             | TokenKind::Char(_)
             | TokenKind::String(_)
             | TokenKind::Bytes(_)
-            | TokenKind::Keyword(
-                Keyword::SelfValue | Keyword::True | Keyword::False | Keyword::Null
-            )
+            | TokenKind::Keyword(Keyword::SelfValue | Keyword::True | Keyword::False)
     )
 }
 

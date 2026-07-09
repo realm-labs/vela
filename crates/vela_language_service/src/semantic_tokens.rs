@@ -184,7 +184,6 @@ pub enum SemanticTokenType {
     Method,
     Module,
     NegationOperator,
-    Null,
     Number,
     Operator,
     Parameter,
@@ -202,7 +201,7 @@ pub enum SemanticTokenType {
 }
 
 impl SemanticTokenType {
-    pub const LEGEND: [Self; 43] = [
+    pub const LEGEND: [Self; 42] = [
         Self::Module,
         Self::Function,
         Self::Method,
@@ -227,7 +226,6 @@ impl SemanticTokenType {
         Self::Const,
         Self::Global,
         Self::Boolean,
-        Self::Null,
         Self::BuiltinType,
         Self::Label,
         Self::UnresolvedReference,
@@ -275,7 +273,6 @@ impl SemanticTokenType {
             Self::Const => "const",
             Self::Global => "global",
             Self::Boolean => "boolean",
-            Self::Null => "null",
             Self::BuiltinType => "builtinType",
             Self::Label => "label",
             Self::UnresolvedReference => "unresolvedReference",
@@ -322,7 +319,7 @@ impl SemanticTokenType {
             Self::Bytes => "string",
             Self::TypeAlias | Self::BuiltinType => "type",
             Self::Const | Self::Global | Self::Label | Self::UnresolvedReference => "variable",
-            Self::Boolean | Self::Null => "keyword",
+            Self::Boolean => "keyword",
             Self::ArithmeticOperator
             | Self::AssignmentOperator
             | Self::BitwiseOperator
@@ -975,7 +972,6 @@ fn token_type(kind: &TokenKind) -> Option<SemanticTokenType> {
 fn keyword_token_type(keyword: Keyword) -> SemanticTokenType {
     match keyword {
         Keyword::True | Keyword::False => SemanticTokenType::Boolean,
-        Keyword::Null => SemanticTokenType::Null,
         _ => SemanticTokenType::Keyword,
     }
 }

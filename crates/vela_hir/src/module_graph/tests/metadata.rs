@@ -100,7 +100,7 @@ fn unknown_schema_type_hints_report_ranked_related_candidates() {
         r#"
 struct Player { hp: i64 }
 fn grant(player: Plyer) {
-    return null;
+    return;
 }
 "#,
     ));
@@ -476,7 +476,7 @@ fn lowers_attribute_metadata_for_declarations_and_members() {
         r#"
 #[event("monster.kill")]
 pub fn grant(player: Player) {
-    return null;
+    return;
 }
 #[doc("Reward metadata")]
 #[domain("gameplay")]

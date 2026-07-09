@@ -118,7 +118,6 @@ fn main(player) {
         && reflect::attr(player, "domain") == "gameplay"
         && reflect::attr(player, "domain") == "gameplay"
         && reflect::has_attr(player, "domain")
-        && reflect::attr(player, "missing") == null
         && !reflect::has_attr(player, "missing")
         && reflect::has_field(player, "level")
         && reflect::has_field(player_type, "level")
@@ -138,13 +137,11 @@ fn main(player) {
         && reflect::get(field, "type") == "i64"
         && reflect::get(field, "docs") == "Current player level."
         && reflect::docs(field) == "Current player level."
-        && reflect::source_span(field) == null
         && reflect::get(access, "reflect_readable")
         && reflect::get(access, "reflect_writable")
         && reflect::attr(field, "unit") == "level"
         && reflect::attr(field, "unit") == "level"
         && reflect::has_attr(field, "unit")
-        && reflect::attr(field, "missing") == null
         && !reflect::has_attr(field, "missing")
         && reflect::get(field, "writable") {
         return 1;

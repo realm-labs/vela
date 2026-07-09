@@ -410,7 +410,7 @@ fn main() {
         let maybe = if false {
             9;
         };
-        if maybe == null { 6 } else { 0 }
+        if maybe != 9 { 6 } else { 0 }
     };
     let imported_reward: ConfigReward = ConfigReward { item: "gem" };
     let imported_bonus: i64 = reward_bonus(imported_reward.count) + REWARD_BASE;

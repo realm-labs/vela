@@ -101,6 +101,14 @@ impl SyntaxConstInitializerValidator {
                     }
                 }
             }
+            SyntaxExpressionKind::Unit => {}
+            SyntaxExpressionKind::Tuple => {
+                if let Some(tuple) = expr.as_tuple() {
+                    for value in tuple.expressions() {
+                        self.visit_expr(&value);
+                    }
+                }
+            }
             SyntaxExpressionKind::Map => {
                 if let Some(map) = expr.as_map() {
                     for entry in map.entries() {

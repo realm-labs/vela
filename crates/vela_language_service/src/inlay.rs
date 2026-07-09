@@ -362,6 +362,14 @@ impl LanguageServiceDatabases {
                     self.collect_syntax_expr_parameter_hints(&expr, context, hints);
                 }
             }
+            SyntaxExpressionKind::Unit => {}
+            SyntaxExpressionKind::Tuple => {
+                if let Some(expr) = expr.as_tuple() {
+                    for value in expr.expressions() {
+                        self.collect_syntax_expr_parameter_hints(&value, context, hints);
+                    }
+                }
+            }
             SyntaxExpressionKind::Unary => {
                 if let Some(expr) = expr.as_unary().and_then(|expr| expr.expression()) {
                     self.collect_syntax_expr_parameter_hints(&expr, context, hints);
@@ -834,6 +842,14 @@ impl TypeHintCollector<'_, '_> {
             SyntaxExpressionKind::Paren => {
                 if let Some(expr) = expr.as_paren().and_then(|expr| expr.expression()) {
                     self.collect_expr(&expr);
+                }
+            }
+            SyntaxExpressionKind::Unit => {}
+            SyntaxExpressionKind::Tuple => {
+                if let Some(expr) = expr.as_tuple() {
+                    for value in expr.expressions() {
+                        self.collect_expr(&value);
+                    }
                 }
             }
             SyntaxExpressionKind::Unary => {

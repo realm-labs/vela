@@ -184,9 +184,9 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
     assert_token_at(
         &tokens,
         38,
-        line(HIGHLIGHTING_SHOWCASE, 38).find("null").expect("null"),
-        "null".len(),
-        SemanticTokenType::Null,
+        line(HIGHLIGHTING_SHOWCASE, 38).find("()").expect("unit"),
+        "(".len(),
+        SemanticTokenType::Parenthesis,
         SemanticTokenModifiers::NONE,
     );
     assert_token_at(

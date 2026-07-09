@@ -17,7 +17,25 @@ pub(crate) fn validate_source(source: SourceId, tree: &SyntaxSourceFile) -> Vec<
             .filter_map(SyntaxUsePath::cast)
             .flat_map(|path| validate_use_path(source, &path)),
     );
+    diagnostics.extend(validate_removed_null(source, tree));
     diagnostics
+}
+
+fn validate_removed_null(source: SourceId, tree: &SyntaxSourceFile) -> Vec<Diagnostic> {
+    tree.syntax()
+        .descendants_with_tokens()
+        .filter_map(|element| element.into_token())
+        .filter(|token| token.kind() == SyntaxKind::Ident && token.text() == "null")
+        .map(|token| {
+            let span = span_for(source, token.text_range());
+            Diagnostic::error(
+                "`null` was removed from Vela; use `()`, `Option::None`, or `Result::Err` explicitly",
+            )
+            .with_code("syntax::removed_null")
+            .with_span(span)
+            .with_label(span, "`null` is not an ordinary Vela value")
+        })
+        .collect()
 }
 
 fn validate_use_path(source: SourceId, path: &SyntaxUsePath) -> Vec<Diagnostic> {
@@ -34,8 +52,9 @@ fn validate_use_path(source: SourceId, path: &SyntaxUsePath) -> Vec<Diagnostic> 
 }
 
 fn validate_type_hint(source: SourceId, hint: &SyntaxTypeHint) -> Vec<Diagnostic> {
+    let mut diagnostics = validate_tuple_type_hint(source, hint);
     let Some(args) = hint.type_arg_list() else {
-        return Vec::new();
+        return diagnostics;
     };
     let path = hint.path_segments();
     let arg_hints = args.type_hints().collect::<Vec<_>>();
@@ -44,7 +63,7 @@ fn validate_type_hint(source: SourceId, hint: &SyntaxTypeHint) -> Vec<Diagnostic
             || span_for(source, args.syntax().text_range()),
             |token| span_for(source, token.text_range()),
         );
-        return vec![
+        diagnostics.push(
             Diagnostic::error(
                 "only builtin container, Option, and Result type hints support type arguments",
             )
@@ -54,13 +73,14 @@ fn validate_type_hint(source: SourceId, hint: &SyntaxTypeHint) -> Vec<Diagnostic
                 span,
                 "use a builtin parameterized type hint or remove these type arguments",
             ),
-        ];
+        );
+        return diagnostics;
     };
 
     let expected = contract.arity();
     if arg_hints.len() != expected {
         let span = span_for(source, args.syntax().text_range());
-        return vec![
+        diagnostics.push(
             Diagnostic::error(format!(
                 "`{}` expects {expected} type argument{}",
                 path.join("::"),
@@ -69,12 +89,13 @@ fn validate_type_hint(source: SourceId, hint: &SyntaxTypeHint) -> Vec<Diagnostic
             .with_code("syntax::type_argument_arity")
             .with_span(span)
             .with_label(span, "wrong number of type arguments"),
-        ];
+        );
+        return diagnostics;
     }
 
     if matches!(contract, TypeArgumentContract::KeyedMap) && !is_keyable_type_hint(&arg_hints[0]) {
         let span = span_for(source, arg_hints[0].syntax().text_range());
-        return vec![
+        diagnostics.push(
             Diagnostic::error("`Map` key type hints require a keyable type")
                 .with_code("syntax::map_key_type_argument")
                 .with_span(span)
@@ -82,12 +103,13 @@ fn validate_type_hint(source: SourceId, hint: &SyntaxTypeHint) -> Vec<Diagnostic
                     span,
                     "use a ValueKey-supported key type or an unparameterized Map",
                 ),
-        ];
+        );
+        return diagnostics;
     }
 
     if matches!(contract, TypeArgumentContract::KeyedSet) && !is_keyable_type_hint(&arg_hints[0]) {
         let span = span_for(source, arg_hints[0].syntax().text_range());
-        return vec![
+        diagnostics.push(
             Diagnostic::error("`Set` type hints require a keyable element type")
                 .with_code("syntax::set_element_type_argument")
                 .with_span(span)
@@ -95,10 +117,32 @@ fn validate_type_hint(source: SourceId, hint: &SyntaxTypeHint) -> Vec<Diagnostic
                     span,
                     "use a ValueKey-supported element type or an unparameterized Set",
                 ),
-        ];
+        );
+        return diagnostics;
     }
 
-    Vec::new()
+    diagnostics
+}
+
+fn validate_tuple_type_hint(source: SourceId, hint: &SyntaxTypeHint) -> Vec<Diagnostic> {
+    if hint.l_paren_token().is_none() {
+        return Vec::new();
+    }
+    let element_count = hint.tuple_element_hints().count();
+    if element_count != 1 {
+        return Vec::new();
+    }
+
+    let span = span_for(source, hint.syntax().text_range());
+    vec![
+        Diagnostic::error("one-element tuple type hints are not supported")
+            .with_code("syntax::one_element_tuple_type")
+            .with_span(span)
+            .with_label(
+                span,
+                "use the element type directly or add another tuple element",
+            ),
+    ]
 }
 
 #[derive(Clone, Copy)]
@@ -131,6 +175,9 @@ fn type_argument_contract(path: &[String]) -> Option<TypeArgumentContract> {
 }
 
 fn is_keyable_type_hint(hint: &SyntaxTypeHint) -> bool {
+    if hint.is_tuple() {
+        return false;
+    }
     match hint.path_segments().as_slice() {
         [name]
             if matches!(

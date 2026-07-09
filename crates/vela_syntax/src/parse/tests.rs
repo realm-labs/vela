@@ -941,7 +941,7 @@ fn parser_parse_source_structures_match_expression_and_pattern_nodes() {
         Quest::Active { quest_id: id, count } => {
             id
         },
-        null => "empty",
+        Option::None => "empty",
         _ => "none",
     };
 }
@@ -1038,10 +1038,10 @@ fn parser_parse_source_structures_match_expression_and_pattern_nodes() {
     assert_eq!(
         arms[2]
             .pattern()
-            .expect("literal pattern")
-            .literal_text()
+            .expect("path pattern")
+            .path_text()
             .as_deref(),
-        Some("null")
+        Some("Option::None")
     );
     assert_eq!(
         arms[2]
@@ -1247,6 +1247,18 @@ fn parser_parse_source_reports_restricted_type_hint_arguments() {
             "fn bad(xs: Result<String>) { return xs; }",
             "syntax::type_argument_arity",
         ),
+        (
+            "fn bad(xs: (String,)) { return xs; }",
+            "syntax::one_element_tuple_type",
+        ),
+        (
+            "fn bad(xs: Map<(String, i64), String>) { return xs; }",
+            "syntax::map_key_type_argument",
+        ),
+        (
+            "fn bad(xs: Set<(String, i64)>) { return xs; }",
+            "syntax::set_element_type_argument",
+        ),
     ] {
         let parse = parse_source_with_id(SourceId::new(30), source);
         assert!(
@@ -1258,4 +1270,19 @@ fn parser_parse_source_reports_restricted_type_hint_arguments() {
             parse.diagnostics()
         );
     }
+}
+
+#[test]
+fn parser_parse_source_reports_removed_null_literal() {
+    let parse = parse_source_with_id(SourceId::new(31), "fn bad() { return null; }");
+
+    assert!(
+        parse.diagnostics().iter().any(|diagnostic| {
+            diagnostic.code.as_deref() == Some("syntax::removed_null")
+                && diagnostic.message
+                    == "`null` was removed from Vela; use `()`, `Option::None`, or `Result::Err` explicitly"
+        }),
+        "{:?}",
+        parse.diagnostics()
+    );
 }

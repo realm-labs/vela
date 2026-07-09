@@ -12,7 +12,7 @@ mod paren;
 
 pub use literals::{SyntaxInterpolation, SyntaxLiteral};
 pub use operators::{SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxUnaryExpr};
-pub use paren::SyntaxParenExpr;
+pub use paren::{SyntaxParenExpr, SyntaxTupleExpr, SyntaxUnitExpr};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SyntaxExpression {
@@ -40,6 +40,8 @@ impl SyntaxExpression {
             SyntaxKind::Literal => SyntaxExpressionKind::Literal,
             SyntaxKind::PathExpr => SyntaxExpressionKind::Path,
             SyntaxKind::ParenExpr => SyntaxExpressionKind::Paren,
+            SyntaxKind::UnitExpr => SyntaxExpressionKind::Unit,
+            SyntaxKind::TupleExpr => SyntaxExpressionKind::Tuple,
             SyntaxKind::UnaryExpr => SyntaxExpressionKind::Unary,
             SyntaxKind::BinaryExpr => SyntaxExpressionKind::Binary,
             SyntaxKind::AssignExpr => SyntaxExpressionKind::Assign,
@@ -71,6 +73,16 @@ impl SyntaxExpression {
     #[must_use]
     pub fn as_paren(&self) -> Option<SyntaxParenExpr> {
         SyntaxParenExpr::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_unit(&self) -> Option<SyntaxUnitExpr> {
+        SyntaxUnitExpr::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_tuple(&self) -> Option<SyntaxTupleExpr> {
+        SyntaxTupleExpr::cast(self.syntax.clone())
     }
 
     #[must_use]
@@ -149,6 +161,8 @@ pub enum SyntaxExpressionKind {
     Literal,
     Path,
     Paren,
+    Unit,
+    Tuple,
     Unary,
     Binary,
     Assign,
@@ -874,6 +888,8 @@ fn expression_kind(kind: SyntaxKind) -> bool {
         SyntaxKind::Literal
             | SyntaxKind::PathExpr
             | SyntaxKind::ParenExpr
+            | SyntaxKind::UnitExpr
+            | SyntaxKind::TupleExpr
             | SyntaxKind::UnaryExpr
             | SyntaxKind::BinaryExpr
             | SyntaxKind::AssignExpr

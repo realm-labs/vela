@@ -91,13 +91,6 @@
     "vscodeScope": "constant.language.boolean.vela"
   },
   {
-    "concept": "null literal",
-    "semanticTokenType": "null",
-    "semanticTokenModifiers": [],
-    "zedCapture": "@constant.builtin",
-    "vscodeScope": "constant.language.null.vela"
-  },
-  {
     "concept": "bytes literal",
     "semanticTokenType": "bytes",
     "semanticTokenModifiers": [],

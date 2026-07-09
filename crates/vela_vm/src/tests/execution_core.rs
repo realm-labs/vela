@@ -529,8 +529,6 @@ fn main() {
         && 7 == 7
         && 7 != 8
         && 7 != 7.0
-        && null == null
-        && null != false
     {
         return 1;
     }

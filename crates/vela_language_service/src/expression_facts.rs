@@ -251,6 +251,14 @@ impl ExpressionFactCollector<'_> {
                     self.collect_expr(&expr, scope);
                 }
             }
+            SyntaxExpressionKind::Unit => {}
+            SyntaxExpressionKind::Tuple => {
+                if let Some(expr) = expr.as_tuple() {
+                    for value in expr.expressions() {
+                        self.collect_expr(&value, scope);
+                    }
+                }
+            }
             SyntaxExpressionKind::Unary => {
                 if let Some(expr) = expr.as_unary().and_then(|expr| expr.expression()) {
                     self.collect_expr(&expr, scope);
@@ -463,6 +471,7 @@ impl ExpressionFactCollector<'_> {
                 .map_or(TypeFact::Unknown, |expr| {
                     self.type_fact_from_expr(&expr, scope)
                 }),
+            SyntaxExpressionKind::Unit | SyntaxExpressionKind::Tuple => TypeFact::Unknown,
             SyntaxExpressionKind::Unary => expr
                 .as_unary()
                 .and_then(|expr| {

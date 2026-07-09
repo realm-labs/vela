@@ -408,6 +408,8 @@ fn static_syntax_expr_type(
             })
         }
         SyntaxExpressionKind::Paren
+        | SyntaxExpressionKind::Unit
+        | SyntaxExpressionKind::Tuple
         | SyntaxExpressionKind::Unary
         | SyntaxExpressionKind::Assign
         | SyntaxExpressionKind::Field

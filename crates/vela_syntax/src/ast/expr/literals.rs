@@ -104,7 +104,6 @@ fn literal_token_kind(kind: SyntaxKind) -> bool {
         kind,
         SyntaxKind::TrueKw
             | SyntaxKind::FalseKw
-            | SyntaxKind::NullKw
             | SyntaxKind::Int
             | SyntaxKind::Float
             | SyntaxKind::Char
@@ -138,7 +137,6 @@ mod tests {
         let source = r#"fn literals(name) {
     let truthy = true;
     let falsey = false;
-    let empty = null;
     let count = 42;
     let hex = 0x2a;
     let typed_int = 12i8;
@@ -183,7 +181,6 @@ mod tests {
             vec![
                 (Some(SyntaxKind::TrueKw), Some("true".to_owned())),
                 (Some(SyntaxKind::FalseKw), Some("false".to_owned())),
-                (Some(SyntaxKind::NullKw), Some("null".to_owned())),
                 (Some(SyntaxKind::Int), Some("42".to_owned())),
                 (Some(SyntaxKind::Int), Some("0x2a".to_owned())),
                 (Some(SyntaxKind::Int), Some("12i8".to_owned())),
@@ -198,37 +195,31 @@ mod tests {
                 ),
             ]
         );
-        assert_eq!(
-            semantic_literals[0..4],
-            [
-                Some(Literal::Bool(true)),
-                Some(Literal::Bool(false)),
-                Some(Literal::Null),
-                Some(Literal::integer("42")),
-            ]
-        );
+        assert_eq!(semantic_literals[0], Some(Literal::Bool(true)));
+        assert_eq!(semantic_literals[1], Some(Literal::Bool(false)));
+        assert_eq!(semantic_literals[2], Some(Literal::integer("42")));
         assert!(matches!(
-            &semantic_literals[4],
+            &semantic_literals[3],
             Some(Literal::Integer(value))
                 if value.source_text() == "0x2a"
                     && value.radix == IntRadix::Hex
                     && value.suffix.is_none()
         ));
         assert!(matches!(
-            &semantic_literals[5],
+            &semantic_literals[4],
             Some(Literal::Integer(value))
                 if value.source_text() == "12"
                     && value.radix == IntRadix::Decimal
                     && value.suffix == Some(IntegerSuffix::I8)
         ));
-        assert_eq!(semantic_literals[6], Some(Literal::float("3.5")));
+        assert_eq!(semantic_literals[5], Some(Literal::float("3.5")));
         assert!(matches!(
-            &semantic_literals[7],
+            &semantic_literals[6],
             Some(Literal::Float(value))
                 if value.source_text() == "12.0" && value.suffix == Some(FloatSuffix::F32)
         ));
         assert_eq!(
-            semantic_literals[8..],
+            semantic_literals[7..],
             [
                 Some(Literal::String("gold".to_owned())),
                 Some(Literal::Char('x')),

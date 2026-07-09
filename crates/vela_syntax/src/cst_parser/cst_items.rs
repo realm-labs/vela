@@ -1,4 +1,4 @@
-use super::CstParser;
+use super::{CstParser, DelimiterDepth};
 use crate::SyntaxKind;
 
 impl CstParser<'_, '_> {
@@ -519,12 +519,62 @@ impl CstParser<'_, '_> {
 
     pub(super) fn type_hint_range(&mut self, start: usize, end: usize) {
         self.builder.start_node(SyntaxKind::TypeHint);
-        if let Some(args_start) = self.find_root_kind_before(SyntaxKind::Less, start, end) {
+        let hint_start = self.skip_trivia(start);
+        let hint_end = self.trim_trailing_trivia(hint_start, end);
+        if self.at_kind(hint_start, SyntaxKind::LParen)
+            && self.find_matching_delimiter_end(hint_start, SyntaxKind::LParen, SyntaxKind::RParen)
+                == Some(hint_end)
+        {
+            self.type_tuple_hint_body(hint_start, hint_end);
+        } else if let Some(args_start) = self.find_root_kind_before(SyntaxKind::Less, start, end) {
             self.emit_until(args_start);
             self.type_arg_list(args_start, end);
         }
         self.emit_until(end);
         self.builder.finish_node();
+    }
+
+    fn type_tuple_hint_body(&mut self, start: usize, end: usize) {
+        self.emit_until(start + 1);
+        let close = end.saturating_sub(1);
+        while self.pos < close {
+            let element_start = self.skip_trivia(self.pos);
+            self.emit_until(element_start);
+            if element_start >= close {
+                break;
+            }
+            if self.at_kind(element_start, SyntaxKind::Comma) {
+                self.emit_current_token();
+                continue;
+            }
+
+            let element_end = self.find_type_tuple_element_end(element_start, close);
+            self.type_hint_range(element_start, element_end);
+            if self.pos < close && self.at_kind(self.pos, SyntaxKind::Comma) {
+                self.emit_current_token();
+            }
+        }
+        self.emit_until(end);
+    }
+
+    fn find_type_tuple_element_end(&self, start: usize, end: usize) -> usize {
+        let mut depth = DelimiterDepth::default();
+        let mut angle = 0_u32;
+        for cursor in start..end {
+            let Some(current) = self.kind_at(cursor) else {
+                break;
+            };
+            if depth.is_root() {
+                match current {
+                    SyntaxKind::Less => angle = angle.saturating_add(1),
+                    SyntaxKind::Greater => angle = angle.saturating_sub(1),
+                    SyntaxKind::Comma if angle == 0 => return cursor,
+                    _ => {}
+                }
+            }
+            depth.bump(current);
+        }
+        end
     }
 
     fn type_arg_list(&mut self, start: usize, end: usize) {

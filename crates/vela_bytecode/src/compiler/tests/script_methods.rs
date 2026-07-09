@@ -399,7 +399,7 @@ impl BonusSource for Player {
 fn main() {
     let player = Player { level: 7 };
     let bonus = |ignored| player.bonus(5);
-    return bonus(null);
+    return bonus(true);
 }
 "#,
     )

@@ -37,7 +37,7 @@ pub use expr::{
     SyntaxCallExpr, SyntaxExpression, SyntaxExpressionKind, SyntaxFieldExpr, SyntaxIndexExpr,
     SyntaxInterpolation, SyntaxLambdaBody, SyntaxLambdaExpr, SyntaxLiteral, SyntaxMapEntry,
     SyntaxMapExpr, SyntaxParenExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxRecordExprField,
-    SyntaxRecordExprFieldList, SyntaxTryExpr, SyntaxUnaryExpr,
+    SyntaxRecordExprFieldList, SyntaxTryExpr, SyntaxTupleExpr, SyntaxUnaryExpr, SyntaxUnitExpr,
 };
 pub use items::{
     SyntaxConstItem, SyntaxEnumItem, SyntaxEnumVariant, SyntaxEnumVariantList, SyntaxFunctionItem,

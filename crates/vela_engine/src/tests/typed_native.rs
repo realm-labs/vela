@@ -404,7 +404,7 @@ fn typed_native_functions_accept_optional_values() {
             SourceId::new(1),
             r#"
 fn main() {
-    return game::option_bonus(null)
+    return game::option_bonus(option::none())
         + game::option_bonus(5)
         + game::option_bonus(option::none())
         + game::option_bonus(option::some(9));

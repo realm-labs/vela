@@ -181,10 +181,6 @@
         {
           "name": "constant.language.boolean.vela",
           "match": "\\b(?:true|false)\\b"
-        },
-        {
-          "name": "constant.language.null.vela",
-          "match": "\\bnull\\b"
         }
       ]
     },
@@ -244,7 +240,7 @@
       "patterns": [
         {
           "name": "support.type.builtin.vela",
-          "match": "\\b(?:Any|null|bool|char|i8|i16|i32|i64|u8|u16|u32|u64|f32|f64|String|Bytes|Array|Map|Set|Range|Iterator|Function|Closure|Option|Result)\\b"
+          "match": "\\b(?:Any|bool|char|i8|i16|i32|i64|u8|u16|u32|u64|f32|f64|String|Bytes|Array|Map|Set|Range|Iterator|Function|Closure|Option|Result)\\b"
         },
         {
           "name": "entity.name.type.vela",

@@ -23,7 +23,6 @@
 (visibility) @keyword
 
 (boolean_literal) @boolean
-(null_literal) @constant.builtin
 
 ; Variables
 (let_statement name: (identifier) @variable)

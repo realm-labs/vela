@@ -118,6 +118,8 @@ fn syntax_host_field_path(
             Some((root, span, fields))
         }
         SyntaxExpressionKind::Literal
+        | SyntaxExpressionKind::Unit
+        | SyntaxExpressionKind::Tuple
         | SyntaxExpressionKind::Unary
         | SyntaxExpressionKind::Binary
         | SyntaxExpressionKind::Array

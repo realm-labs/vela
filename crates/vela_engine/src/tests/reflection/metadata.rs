@@ -575,7 +575,6 @@ fn main() {
     let array_type = reflect::type_info("array");
     let option_type = reflect::type_info("Option");
     let result_type = reflect::type_info("Result");
-    let null_value_type = reflect::type_of(null);
     let bool_value_type = reflect::type_of(true);
     let i8_type = reflect::type_info("i8");
     let i16_type = reflect::type_info("i16");
@@ -653,9 +652,7 @@ fn main() {
     let result_exports = reflect::exports(result_module);
     let set_exports = reflect::exports(set_module);
     let bytes_exports = reflect::exports(bytes_module);
-    let type_of_checks = reflect::name(null_value_type) == "null"
-        && reflect::kind(null_value_type) == "null"
-        && reflect::name(bool_value_type) == "bool"
+    let type_of_checks = reflect::name(bool_value_type) == "bool"
         && reflect::kind(bool_value_type) == "bool"
         && reflect::name(i8_type) == "i8"
         && reflect::kind(i8_type) == "i8"

@@ -983,7 +983,6 @@ fn semantic_token_taxonomy_declares_custom_fallbacks() {
     assert_eq!(SemanticTokenType::Global.standard_fallback(), "variable");
     assert_eq!(SemanticTokenType::Label.standard_fallback(), "variable");
     assert_eq!(SemanticTokenType::Boolean.standard_fallback(), "keyword");
-    assert_eq!(SemanticTokenType::Null.standard_fallback(), "keyword");
     assert_eq!(
         SemanticTokenType::UnresolvedReference.standard_fallback(),
         "variable"
@@ -1039,7 +1038,6 @@ fn semantic_token_taxonomy_declares_custom_fallbacks() {
         "const",
         "global",
         "boolean",
-        "null",
         "builtinType",
         "label",
         "unresolvedReference",

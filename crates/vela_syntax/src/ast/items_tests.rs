@@ -389,7 +389,7 @@ fn ast_function_signature_exposes_type_hint_children() {
 fn ast_type_hints_expose_path_and_argument_delimiters() {
     let parse = parse_source(
         r#"fn typed(items: Map<String, Result<i64, String>>) -> game::Reward {
-    return null;
+    return ();
 }
 
 struct Bag {
@@ -494,6 +494,61 @@ struct Bag {
             .map(|hint| hint.path_text().expect("type arg path"))
             .collect::<Vec<_>>(),
         vec!["String", "i64"]
+    );
+}
+
+#[test]
+fn ast_type_hints_expose_unit_and_tuple_elements() {
+    let parse = parse_source(
+        r#"fn typed(unit: (), pair: (i64, String), maybe: Option<(i64, String)>) {
+    return ();
+}
+"#,
+    );
+    let tree = parse.tree();
+    let function = tree.functions().next().expect("function item");
+    let params = function
+        .param_list()
+        .expect("function params")
+        .params()
+        .collect::<Vec<_>>();
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+
+    let unit = params[0].type_hint().expect("unit type hint");
+    assert!(unit.is_unit());
+    assert!(!unit.is_tuple());
+    assert_eq!(unit.path_text(), None);
+    assert!(unit.tuple_element_hints().next().is_none());
+    assert_eq!(unit.l_paren_token().expect("unit open").text(), "(");
+    assert_eq!(unit.r_paren_token().expect("unit close").text(), ")");
+
+    let pair = params[1].type_hint().expect("tuple type hint");
+    assert!(!pair.is_unit());
+    assert!(pair.is_tuple());
+    assert_eq!(pair.path_text(), None);
+    assert_eq!(pair.separator_tokens().len(), 1);
+    assert_eq!(
+        pair.tuple_element_hints()
+            .map(|hint| hint.syntax().text().to_string())
+            .collect::<Vec<_>>(),
+        vec!["i64", "String"]
+    );
+
+    let maybe = params[2].type_hint().expect("option tuple type hint");
+    let tuple_arg = maybe
+        .type_arg_list()
+        .expect("option args")
+        .type_hints()
+        .next()
+        .expect("option tuple arg");
+    assert!(tuple_arg.is_tuple());
+    assert_eq!(
+        tuple_arg
+            .tuple_element_hints()
+            .map(|hint| hint.path_text().expect("tuple element path"))
+            .collect::<Vec<_>>(),
+        vec!["i64", "String"]
     );
 }
 

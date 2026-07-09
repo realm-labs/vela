@@ -304,7 +304,7 @@ fn fill_match_arm_actions(
         edit_text.push_str(enum_name);
         edit_text.push_str("::");
         edit_text.push_str(variant);
-        edit_text.push_str(" => null,\n");
+        edit_text.push_str(" => (),\n");
     }
     edit_text.push_str(&closing_indent);
 
@@ -361,9 +361,9 @@ fn record_field_insertion(
 
     if !constructor.contains('\n') {
         let edit_text = if has_fields {
-            format!(", {field}: null")
+            format!(", {field}: ()")
         } else {
-            format!(" {field}: null ")
+            format!(" {field}: () ")
         };
         let position = line_index.position(close);
         return Some((DiagnosticRange::new(position, position), edit_text));
@@ -374,7 +374,7 @@ fn record_field_insertion(
         let position = line_index.position(close);
         return Some((
             DiagnosticRange::new(position, position),
-            format!("\n{field_indent}{field}: null,\n"),
+            format!("\n{field_indent}{field}: (),\n"),
         ));
     }
 
@@ -385,9 +385,9 @@ fn record_field_insertion(
         .find(|(_, ch)| !ch.is_whitespace())?;
     let replace_start = last_offset + last_char.len_utf8();
     let replacement = if last_char == ',' {
-        format!("\n{field_indent}{field}: null,\n")
+        format!("\n{field_indent}{field}: (),\n")
     } else {
-        format!(",\n{field_indent}{field}: null,\n")
+        format!(",\n{field_indent}{field}: (),\n")
     };
     Some((
         DiagnosticRange::new(
@@ -654,7 +654,7 @@ pub fn main(maybe_name: Option<String>) {
         let edit = &action.edit().document_edits()[0].edits()[0];
         assert_eq!(edit.range().start(), Position::new(3, 4));
         assert_eq!(edit.range().end(), Position::new(3, 4));
-        assert_eq!(edit.new_text(), "    Option::None => null,\n    ");
+        assert_eq!(edit.new_text(), "    Option::None => (),\n    ");
     }
 
     #[test]
@@ -714,7 +714,7 @@ pub fn main() {
             .expect("record constructor close");
         assert_eq!(edit.range().start(), index.position(close));
         assert_eq!(edit.range().end(), index.position(close));
-        assert_eq!(edit.new_text(), ", amount: null");
+        assert_eq!(edit.new_text(), ", amount: ()");
     }
 
     #[test]
@@ -807,7 +807,7 @@ pub fn main() {
             "record field fixes require a constructor range with braces"
         );
 
-        let match_text = "pub fn state() { return match state { State::Idle => null } }";
+        let match_text = "pub fn state() { return match state { State::Idle => () } }";
         let match_index = LineIndex::new(match_text);
         let match_range =
             DiagnosticRange::new(Position::new(0, 0), match_index.position(match_text.len()));

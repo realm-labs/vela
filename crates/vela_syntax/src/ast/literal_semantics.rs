@@ -9,7 +9,6 @@ pub(crate) fn literal_from_token(kind: SyntaxKind, text: &str) -> Option<Literal
     match kind {
         SyntaxKind::TrueKw => Some(Literal::Bool(true)),
         SyntaxKind::FalseKw => Some(Literal::Bool(false)),
-        SyntaxKind::NullKw => Some(Literal::Null),
         SyntaxKind::Int
         | SyntaxKind::Float
         | SyntaxKind::Char

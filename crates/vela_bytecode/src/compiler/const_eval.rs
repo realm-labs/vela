@@ -173,6 +173,8 @@ pub(super) fn evaluate_syntax_const_expr(
             evaluate_syntax_const_block(source, &block, values_by_name)
         }
         SyntaxExpressionKind::Assign
+        | SyntaxExpressionKind::Unit
+        | SyntaxExpressionKind::Tuple
         | SyntaxExpressionKind::Field
         | SyntaxExpressionKind::Call
         | SyntaxExpressionKind::Index

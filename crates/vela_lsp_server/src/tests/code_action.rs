@@ -272,7 +272,7 @@ pub fn main(maybe_name: Option<String>) {
     assert_eq!(edit["range"]["start"]["character"], 4);
     assert_eq!(edit["range"]["end"]["line"], 3);
     assert_eq!(edit["range"]["end"]["character"], 4);
-    assert_eq!(edit["newText"], "    Option::None => null,\n    ");
+    assert_eq!(edit["newText"], "    Option::None => (),\n    ");
 }
 
 #[test]
@@ -338,7 +338,7 @@ pub fn main() {
     assert_eq!(edit["range"]["start"]["character"], 36);
     assert_eq!(edit["range"]["end"]["line"], 6);
     assert_eq!(edit["range"]["end"]["character"], 36);
-    assert_eq!(edit["newText"], ", amount: null");
+    assert_eq!(edit["newText"], ", amount: ()");
 }
 
 #[test]

@@ -268,6 +268,13 @@ fn collect_syntax_expr(
                 }
             }
         }
+        SyntaxExpressionKind::Tuple => {
+            if let Some(tuple) = expr.as_tuple() {
+                for item in tuple.expressions() {
+                    collect_syntax_expr(bindings, available, source, &item, captures);
+                }
+            }
+        }
         SyntaxExpressionKind::Map => {
             if let Some(map) = expr.as_map() {
                 for entry in map.entries() {
@@ -351,7 +358,7 @@ fn collect_syntax_expr(
                 }
             }
         }
-        SyntaxExpressionKind::Literal => {}
+        SyntaxExpressionKind::Unit | SyntaxExpressionKind::Literal => {}
     }
 }
 

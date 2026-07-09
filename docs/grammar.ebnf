@@ -74,7 +74,7 @@ unicode_escape  = "u", "{", HEX_DIGIT, { HEX_DIGIT }, "}" ;
 keyword         = "use" | "pub" | "const" | "global" | "let" | "fn" | "struct"
                 | "enum" | "trait" | "impl" | "for" | "if" | "else"
                 | "match" | "return" | "break" | "continue" | "true"
-                | "false" | "null" | "self" | "in" | "as" ;
+                | "false" | "self" | "in" | "as" ;
 
 (* ========================================================================= *)
 (* Module items                                                              *)
@@ -154,9 +154,11 @@ item_term       = ws, ( ";" | newline ), line_ws ;
 
 type_annotation = ":", ws, type_hint ;
 
-type_hint       = type_path, [ type_arguments ] ;
+type_hint       = unit_type | tuple_type | type_path, [ type_arguments ] ;
+unit_type       = "(", ws, ")" ;
+tuple_type      = "(", ws, type_hint, ws, ",", ws, type_hint,
+                  { ws, ",", ws, type_hint }, [ ws, "," ], ws, ")" ;
 type_path       = "Any"
-                | "null"
                 | "bool"
                 | "char"
                 | "i8" | "i16" | "i32" | "i64"
@@ -260,7 +262,13 @@ primary         = literal
                 | if_expr
                 | match_expr
                 | block_expr
+                | unit_expr
+                | tuple_expr
                 | "(", ws, expr, ws, ")" ;
+
+unit_expr       = "(", ws, ")" ;
+tuple_expr      = "(", ws, expr, ws, ",", ws, expr,
+                  { ws, ",", ws, expr }, [ ws, "," ], ws, ")" ;
 
 path_or_record_expr
                 = path, ws, [ record_literal_body ] ;
@@ -293,7 +301,7 @@ arm_term        = ws, ( "," | ";" | newline ), ws ;
 
 block_expr      = block ;
 
-literal         = "true" | "false" | "null" | INT | FLOAT | STRING | CHAR ;
+literal         = "true" | "false" | INT | FLOAT | STRING | CHAR ;
 
 (* ========================================================================= *)
 (* Patterns                                                                  *)
@@ -303,14 +311,17 @@ pattern         = wildcard_pattern
                 | literal_pattern
                 | binding_pattern
                 | path_pattern
+                | tuple_pattern
                 | tuple_variant_pattern
                 | record_variant_pattern ;
 
 wildcard_pattern
                 = "_" ;
-literal_pattern = "true" | "false" | "null" | INT | FLOAT | STRING | CHAR ;
+literal_pattern = "true" | "false" | INT | FLOAT | STRING | CHAR ;
 binding_pattern = IDENT ;
 path_pattern    = path ;
+tuple_pattern   = "(", ws, pattern, ws, ",", ws, pattern,
+                  { ws, ",", ws, pattern }, [ ws, "," ], ws, ")" ;
 
 tuple_variant_pattern
                 = path, ws, "(", ws, [ pattern,

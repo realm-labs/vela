@@ -49,6 +49,7 @@ impl Compiler<'_, '_> {
             SyntaxExpressionKind::Binary => {
                 self.compile_syntax_binary_expression(source, expression)
             }
+            SyntaxExpressionKind::Unit | SyntaxExpressionKind::Tuple => Ok(None),
         }
     }
 

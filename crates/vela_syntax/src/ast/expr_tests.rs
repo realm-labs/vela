@@ -3,7 +3,8 @@ use crate::ast::{
     AssignOp, AstNode, BinaryOp, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxBlock,
     SyntaxCallExpr, SyntaxExprStmt, SyntaxExpressionKind, SyntaxFieldExpr, SyntaxIndexExpr,
     SyntaxLambdaBody, SyntaxLambdaExpr, SyntaxMapExpr, SyntaxMatchArmBody, SyntaxMatchExpr,
-    SyntaxParenExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxTryExpr, SyntaxUnaryExpr, UnaryOp,
+    SyntaxParenExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxTryExpr, SyntaxTupleExpr,
+    SyntaxUnaryExpr, SyntaxUnitExpr, UnaryOp,
 };
 use crate::parse::parse_source;
 
@@ -58,6 +59,8 @@ fn ast_expression_exposes_typed_variant_helpers() {
     let literal = 1;
     let path = value;
     let paren = (value);
+    let unit = ();
+    let tuple = (value, 1);
     let unary = -value;
     let binary = value + 1;
     let assign = value = 1;
@@ -97,6 +100,8 @@ fn ast_expression_exposes_typed_variant_helpers() {
             SyntaxExpressionKind::Literal,
             SyntaxExpressionKind::Path,
             SyntaxExpressionKind::Paren,
+            SyntaxExpressionKind::Unit,
+            SyntaxExpressionKind::Tuple,
             SyntaxExpressionKind::Unary,
             SyntaxExpressionKind::Binary,
             SyntaxExpressionKind::Assign,
@@ -116,20 +121,28 @@ fn ast_expression_exposes_typed_variant_helpers() {
     assert!(expressions[0].as_literal().is_some());
     assert!(expressions[1].as_path().is_some());
     assert!(expressions[2].as_paren().is_some());
-    assert!(expressions[3].as_unary().is_some());
-    assert!(expressions[4].as_binary().is_some());
-    assert!(expressions[5].as_assign().is_some());
-    assert!(expressions[6].as_field().is_some());
-    assert!(expressions[7].as_call().is_some());
-    assert!(expressions[8].as_index().is_some());
-    assert!(expressions[9].as_try().is_some());
-    assert!(expressions[10].as_array().is_some());
-    assert!(expressions[11].as_map().is_some());
-    assert!(expressions[12].as_record().is_some());
-    assert!(expressions[13].as_lambda().is_some());
-    assert!(expressions[14].as_block().is_some());
-    assert!(expressions[15].as_if().is_some());
-    assert!(expressions[16].as_match().is_some());
+    let unit = SyntaxUnitExpr::cast(expressions[3].syntax().clone()).expect("unit expr");
+    assert_eq!(unit.l_paren_token().expect("unit open").text(), "(");
+    assert_eq!(unit.r_paren_token().expect("unit close").text(), ")");
+    let tuple = SyntaxTupleExpr::cast(expressions[4].syntax().clone()).expect("tuple expr");
+    assert_eq!(tuple.expressions().count(), 2);
+    assert_eq!(tuple.separator_tokens().len(), 1);
+    assert!(expressions[3].as_unit().is_some());
+    assert!(expressions[4].as_tuple().is_some());
+    assert!(expressions[5].as_unary().is_some());
+    assert!(expressions[6].as_binary().is_some());
+    assert!(expressions[7].as_assign().is_some());
+    assert!(expressions[8].as_field().is_some());
+    assert!(expressions[9].as_call().is_some());
+    assert!(expressions[10].as_index().is_some());
+    assert!(expressions[11].as_try().is_some());
+    assert!(expressions[12].as_array().is_some());
+    assert!(expressions[13].as_map().is_some());
+    assert!(expressions[14].as_record().is_some());
+    assert!(expressions[15].as_lambda().is_some());
+    assert!(expressions[16].as_block().is_some());
+    assert!(expressions[17].as_if().is_some());
+    assert!(expressions[18].as_match().is_some());
     assert!(expressions[0].as_match().is_none());
 }
 

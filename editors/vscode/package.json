@@ -77,11 +77,6 @@
         "description": "Vela boolean literal."
       },
       {
-        "id": "null",
-        "superType": "keyword",
-        "description": "Vela null literal."
-      },
-      {
         "id": "builtinType",
         "superType": "type",
         "description": "Vela builtin type-hint contract."
@@ -253,9 +248,6 @@
           ],
           "boolean": [
             "constant.language.boolean.vela"
-          ],
-          "null": [
-            "constant.language.null.vela"
           ],
           "unresolvedReference": [
             "invalid.illegal.unresolved.vela"

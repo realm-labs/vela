@@ -55,7 +55,7 @@ fn main() {
     if reflect::get(module, "name") == "game::reward"
         && reflect::name(module) == "game::reward"
         && reflect::kind(module) == "module"
-        && reflect::source_span(module) != null
+        && reflect::kind(reflect::source_span(module)) == "source_span"
         && reflect::has_module("game::reward")
         && !reflect::has_module("game::missing")
         && reflect::has_function("game::reward::grant")

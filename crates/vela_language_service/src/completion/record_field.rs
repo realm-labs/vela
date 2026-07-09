@@ -181,11 +181,18 @@ fn record_constructor_for_expr(
                 current_module: Vec::new(),
             })
         }
-        SyntaxExpressionKind::Literal | SyntaxExpressionKind::Path => None,
+        SyntaxExpressionKind::Literal | SyntaxExpressionKind::Path | SyntaxExpressionKind::Unit => {
+            None
+        }
         SyntaxExpressionKind::Paren => expr
             .as_paren()
             .and_then(|paren| paren.expression())
             .and_then(|value| record_constructor_for_expr(&value, offset)),
+        SyntaxExpressionKind::Tuple => expr.as_tuple().and_then(|tuple| {
+            tuple
+                .expressions()
+                .find_map(|value| record_constructor_for_expr(&value, offset))
+        }),
         SyntaxExpressionKind::Unary => expr
             .as_unary()
             .and_then(|unary| unary.expression())

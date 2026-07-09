@@ -14,7 +14,6 @@ fn main(ctx: Context, player: Player) {
     let array_type = reflect::type_info("array");
     let option_type = reflect::type_info("Option");
     let result_type = reflect::type_info("Result");
-    let null_value_type = reflect::type_of(null);
     let bool_value_type = reflect::type_of(true);
     let int_value_type = reflect::type_of(42);
     let float_value_type = reflect::type_of(1.5);
@@ -179,8 +178,6 @@ fn main(ctx: Context, player: Player) {
         && reflect::kind(range_type) == "range"
         && reflect::kind(option_type) == "script_enum"
         && reflect::kind(result_type) == "script_enum"
-        && reflect::name(null_value_type) == "null"
-        && reflect::kind(null_value_type) == "null"
         && reflect::name(bool_value_type) == "bool"
         && reflect::kind(bool_value_type) == "bool"
         && reflect::name(int_value_type) == "i64"
@@ -475,9 +472,7 @@ fn main(ctx: Context, player: Player) {
         && reflect::name(main_function) == "main"
         && reflect::kind(main_function) == "function"
         && reflect::origin(main_function) == "script"
-        && main_function.module == null
         && !main_function.public
-        && main_source_span != null
         && reflect::kind(main_source_span) == "source_span"
         && main_source_span.start < main_source_span.end
         && main_params.len() == 2

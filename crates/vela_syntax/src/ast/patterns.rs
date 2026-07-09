@@ -504,7 +504,6 @@ const fn literal_token_kind(kind: SyntaxKind) -> bool {
         kind,
         SyntaxKind::TrueKw
             | SyntaxKind::FalseKw
-            | SyntaxKind::NullKw
             | SyntaxKind::Int
             | SyntaxKind::Float
             | SyntaxKind::Char
@@ -528,7 +527,7 @@ mod tests {
     let value = match state {
         Option::None => 0,
         binding => 1,
-        null => 2,
+        true => 2,
         _ => 3,
     };
 }
@@ -888,7 +887,6 @@ mod tests {
     let value = match state {
         true => 0,
         false => 1,
-        null => 2,
         42 => 3,
         0x2a => 4,
         12i8 => 5,
@@ -927,7 +925,6 @@ mod tests {
             vec![
                 Some(SyntaxKind::TrueKw),
                 Some(SyntaxKind::FalseKw),
-                Some(SyntaxKind::NullKw),
                 Some(SyntaxKind::Int),
                 Some(SyntaxKind::Int),
                 Some(SyntaxKind::Int),
@@ -938,37 +935,31 @@ mod tests {
                 Some(SyntaxKind::Bytes),
             ]
         );
-        assert_eq!(
-            literals[0..4],
-            [
-                Some(Literal::Bool(true)),
-                Some(Literal::Bool(false)),
-                Some(Literal::Null),
-                Some(Literal::integer("42")),
-            ]
-        );
+        assert_eq!(literals[0], Some(Literal::Bool(true)));
+        assert_eq!(literals[1], Some(Literal::Bool(false)));
+        assert_eq!(literals[2], Some(Literal::integer("42")));
         assert!(matches!(
-            &literals[4],
+            &literals[3],
             Some(Literal::Integer(value))
                 if value.source_text() == "0x2a"
                     && value.radix == IntRadix::Hex
                     && value.suffix.is_none()
         ));
         assert!(matches!(
-            &literals[5],
+            &literals[4],
             Some(Literal::Integer(value))
                 if value.source_text() == "12"
                     && value.radix == IntRadix::Decimal
                     && value.suffix == Some(IntegerSuffix::I8)
         ));
-        assert_eq!(literals[6], Some(Literal::float("3.5")));
+        assert_eq!(literals[5], Some(Literal::float("3.5")));
         assert!(matches!(
-            &literals[7],
+            &literals[6],
             Some(Literal::Float(value))
                 if value.source_text() == "12.0" && value.suffix == Some(FloatSuffix::F32)
         ));
         assert_eq!(
-            literals[8..],
+            literals[7..],
             [
                 Some(Literal::String("ready".to_owned())),
                 Some(Literal::Char('x')),

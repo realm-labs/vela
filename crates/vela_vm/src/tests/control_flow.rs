@@ -68,7 +68,7 @@ fn main() {
 }
 
 #[test]
-fn runs_compiled_if_expression_without_else_as_null() {
+fn runs_compiled_if_expression_without_else_can_be_discarded() {
     let code = compile_function_source(
         SourceId::new(1),
         r#"
@@ -79,10 +79,8 @@ fn main() {
     let value = if true {
         7;
     };
-    if missing == null {
-        return value;
-    }
-    return 0;
+    missing;
+    return value;
 }
 "#,
         "main",
@@ -96,7 +94,7 @@ fn main() {
 }
 
 #[test]
-fn runs_compiled_if_expression_without_else_false_branch_as_null() {
+fn runs_compiled_if_expression_without_else_false_branch_can_be_discarded() {
     let code = compile_function_source(
         SourceId::new(1),
         r#"
@@ -104,10 +102,8 @@ fn main() {
     let value = if false {
         7;
     };
-    if value == null {
-        return 1;
-    }
-    return 0;
+    value;
+    return 1;
 }
 "#,
         "main",

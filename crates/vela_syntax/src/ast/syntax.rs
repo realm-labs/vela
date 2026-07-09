@@ -124,7 +124,7 @@ impl SyntaxTypeHint {
         self.syntax
             .children_with_tokens()
             .filter_map(|element| element.into_token())
-            .filter(|token| !token.kind().is_trivia())
+            .filter(|token| matches!(token.kind(), SyntaxKind::Ident | SyntaxKind::ColonColon))
             .collect()
     }
 
@@ -150,6 +150,36 @@ impl SyntaxTypeHint {
     #[must_use]
     pub fn type_arg_list(&self) -> Option<SyntaxTypeArgList> {
         child(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::LParen)
+    }
+
+    #[must_use]
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::RParen)
+    }
+
+    #[must_use]
+    pub fn is_unit(&self) -> bool {
+        self.l_paren_token().is_some() && self.tuple_element_hints().next().is_none()
+    }
+
+    #[must_use]
+    pub fn is_tuple(&self) -> bool {
+        self.l_paren_token().is_some() && !self.separator_tokens().is_empty()
+    }
+
+    #[must_use]
+    pub fn tuple_element_hints(&self) -> AstChildren<SyntaxTypeHint> {
+        AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn separator_tokens(&self) -> Vec<SyntaxToken> {
+        separator_tokens(&self.syntax, SyntaxKind::Comma)
     }
 }
 

@@ -173,12 +173,11 @@ module.exports = grammar({
 
     type_annotation: ($) => seq(":", $._type_hint),
 
-    _type_hint: ($) => $.type_path,
+    _type_hint: ($) => choice($.unit_type, $.tuple_type, $.type_path),
 
     builtin_type: (_) =>
       choice(
         "Any",
-        "null",
         "bool",
         "char",
         "i8",
@@ -207,6 +206,10 @@ module.exports = grammar({
     type_path: ($) => seq(choice($.builtin_type, $.path), optional($.type_arguments)),
 
     type_arguments: ($) => seq("<", commaSep1($._type_hint), ">"),
+
+    unit_type: (_) => seq("(", ")"),
+
+    tuple_type: ($) => seq("(", $._type_hint, ",", commaSep1($._type_hint), optional(","), ")"),
 
     block: ($) => seq("{", repeat($._statement), "}"),
 
@@ -269,6 +272,8 @@ module.exports = grammar({
         $.match_expression,
         $.block,
         $.parenthesized_expression,
+        $.unit_expression,
+        $.tuple_expression,
         $.literal,
       ),
 
@@ -323,6 +328,10 @@ module.exports = grammar({
 
     parenthesized_expression: ($) => seq("(", $._expression, ")"),
 
+    unit_expression: (_) => seq("(", ")"),
+
+    tuple_expression: ($) => seq("(", $._expression, ",", commaSep1($._expression), optional(","), ")"),
+
     array_literal: ($) => seq("[", commaSep($._expression), "]"),
 
     map_literal: ($) => seq("{", commaSep($.map_entry), "}"),
@@ -376,7 +385,6 @@ module.exports = grammar({
     literal: ($) =>
       choice(
         $.boolean_literal,
-        $.null_literal,
         $.integer_literal,
         $.float_literal,
         $.string_literal,
@@ -386,8 +394,6 @@ module.exports = grammar({
       ),
 
     boolean_literal: (_) => choice("true", "false"),
-
-    null_literal: (_) => "null",
 
     integer_literal: (_) =>
       token(choice(/0x[0-9a-fA-F_]+([iu](8|16|32|64))?/, /0b[01_]+([iu](8|16|32|64))?/, /[0-9][0-9_]*([iu](8|16|32|64))?/)),
@@ -425,13 +431,17 @@ module.exports = grammar({
     wildcard_pattern: (_) => "_",
 
     literal_pattern: ($) =>
-      choice($.boolean_literal, $.null_literal, $.integer_literal, $.float_literal, $.string_literal, $.char_literal),
+      choice($.boolean_literal, $.integer_literal, $.float_literal, $.string_literal, $.char_literal),
 
     binding_pattern: ($) => prec(1, $.identifier),
 
     path_pattern: ($) => $.path,
 
-    tuple_pattern: ($) => seq(field("variant", $.path), "(", commaSep($._pattern), ")"),
+    tuple_pattern: ($) =>
+      choice(
+        seq(field("variant", $.path), "(", commaSep($._pattern), ")"),
+        seq("(", $._pattern, ",", commaSep1($._pattern), optional(","), ")"),
+      ),
 
     record_pattern: ($) => seq(field("variant", $.path), "{", commaSep($.record_pattern_field), "}"),
 
