@@ -178,14 +178,13 @@ impl Compiler<'_, '_> {
 
 pub(super) fn param_default_record_supported(expression: &SyntaxExpression) -> bool {
     expression.as_record().is_some_and(|record| {
-        !record.path_segments().is_empty()
-            && record.fields().into_iter().all(|field| {
-                field.label_text().is_some()
-                    && match field.expression() {
-                        Some(value) => param_default_expression_supported(&value),
-                        None => field.is_shorthand(),
-                    }
-            })
+        record.fields().into_iter().all(|field| {
+            field.label_text().is_some()
+                && match field.expression() {
+                    Some(value) => param_default_expression_supported(&value),
+                    None => field.is_shorthand(),
+                }
+        })
     })
 }
 

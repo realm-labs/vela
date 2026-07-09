@@ -254,9 +254,7 @@ impl Compiler<'_, '_> {
 
 pub(super) fn param_default_call_supported(expression: &SyntaxExpression) -> bool {
     expression.as_call().is_some_and(|call| {
-        call.callee()
-            .and_then(|callee| callee.as_path())
-            .is_some_and(|path| !path.path_segments().is_empty())
+        call.callee().and_then(|callee| callee.as_path()).is_some()
             && call.arguments().into_iter().all(|arg| {
                 arg.expression()
                     .is_some_and(|value| param_default_expression_supported(&value))

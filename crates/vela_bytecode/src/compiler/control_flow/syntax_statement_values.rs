@@ -64,9 +64,7 @@ impl Compiler<'_, '_> {
                 "let pattern",
             )));
         }
-        if let Some(tuple) = pattern.tuple_pattern()
-            && !tuple.path_segments().is_empty()
-        {
+        if self.hir_pattern_path(source, pattern).is_some() {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "let tuple variant pattern",
             )));
