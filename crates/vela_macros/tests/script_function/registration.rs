@@ -288,8 +288,9 @@ fn script_function_registers_typed_option_native_with_engine() {
         engine,
         r#"
 fn main() {
-    game::optional_bonus(option::none());
-    return game::optional_bonus(option::some(8)) == 9;
+    let absent = game::optional_bonus(option::none());
+    let present = game::optional_bonus(option::some(8));
+    return absent.unwrap_or(0) == 0 && present.unwrap_or(0) == 9;
 }
 "#,
         "source should compile with macro registered option native"

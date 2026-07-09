@@ -289,19 +289,43 @@ fn script_methods_generate_callable_option_native_registration() {
         engine.call_native_method(
             method_id("preview_bonus"),
             &HostPath::new(player),
-            &[OwnedValue::Unit],
+            &[OwnedValue::Enum {
+                enum_name: "Option".to_owned(),
+                variant: "None".to_owned(),
+                fields: [].into(),
+            }],
             &mut host,
         ),
-        Ok(OwnedValue::Unit),
+        Ok(OwnedValue::Enum {
+            enum_name: "Option".to_owned(),
+            variant: "None".to_owned(),
+            fields: [].into(),
+        }),
     );
     assert_eq!(
         engine.call_native_method(
             method_id("preview_bonus"),
             &HostPath::new(player),
-            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(4))],
+            &[OwnedValue::Enum {
+                enum_name: "Option".to_owned(),
+                variant: "Some".to_owned(),
+                fields: [(
+                    "0".to_owned(),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(4))
+                )]
+                .into(),
+            }],
             &mut host,
         ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5))),
+        Ok(OwnedValue::Enum {
+            enum_name: "Option".to_owned(),
+            variant: "Some".to_owned(),
+            fields: [(
+                "0".to_owned(),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(5))
+            )]
+            .into(),
+        }),
     );
 }
 

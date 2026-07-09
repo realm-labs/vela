@@ -355,8 +355,8 @@ where
 {
     fn into_script_arg(self) -> OwnedValue {
         match self {
-            Some(value) => value.into_script_arg(),
-            None => OwnedValue::Unit,
+            Some(value) => enum_payload("Option", "Some", value.into_script_arg()),
+            None => enum_empty("Option", "None"),
         }
     }
 }
@@ -369,7 +369,6 @@ where
 
     fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
         match value {
-            OwnedValue::Unit => Ok(None),
             OwnedValue::Enum {
                 enum_name,
                 variant,
@@ -385,7 +384,7 @@ where
                     _ => Err(type_mismatch(Self::TYPE_NAME)),
                 }
             }
-            value => T::from_script_arg(value).map(Some),
+            _ => Err(type_mismatch(Self::TYPE_NAME)),
         }
     }
 }
@@ -676,6 +675,14 @@ fn enum_payload(enum_name: &str, variant: &str, payload: OwnedValue) -> OwnedVal
         enum_name: enum_name.to_owned(),
         variant: variant.to_owned(),
         fields: [("0".to_owned(), payload)].into(),
+    }
+}
+
+fn enum_empty(enum_name: &str, variant: &str) -> OwnedValue {
+    OwnedValue::Enum {
+        enum_name: enum_name.to_owned(),
+        variant: variant.to_owned(),
+        fields: [].into(),
     }
 }
 

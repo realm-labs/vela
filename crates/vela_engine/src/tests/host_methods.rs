@@ -439,7 +439,7 @@ fn engine_registers_typed_callable_native_methods_for_host_paths() {
         .register_typed_native_method_fn::<(i64,), _>(
             NativeMethodDesc::new(owner, method, "typed_grant_exp")
                 .param("amount", TypeHint::i64())
-                .returns(TypeHint::i64())
+                .returns(TypeHint::option_of(TypeHint::i64()))
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             typed_grant_exp,
@@ -462,7 +462,15 @@ fn engine_registers_typed_callable_native_methods_for_host_paths() {
             &[OwnedValue::Scalar(vela_common::ScalarValue::I64(15))],
             &mut host,
         ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(15)))
+        Ok(OwnedValue::Enum {
+            enum_name: "Option".to_owned(),
+            variant: "Some".to_owned(),
+            fields: [(
+                "0".to_owned(),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(15))
+            )]
+            .into(),
+        })
     );
 }
 

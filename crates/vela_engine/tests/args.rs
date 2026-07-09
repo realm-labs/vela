@@ -118,28 +118,54 @@ fn script_arg_conversions_support_optional_values() {
         fields: [].into(),
     };
 
-    assert_eq!(Option::<i64>::from_script_arg(&OwnedValue::Unit), Ok(None));
-    assert_eq!(
-        Option::<i64>::from_script_arg(&OwnedValue::Scalar(vela_common::ScalarValue::I64(3))),
-        Ok(Some(3))
-    );
     assert_eq!(Option::<i64>::from_script_arg(&some_value), Ok(Some(3)));
     assert_eq!(Option::<i64>::from_script_arg(&none_value), Ok(None));
     assert_eq!(
         Some("reward").into_script_arg(),
-        OwnedValue::String("reward".to_owned())
+        OwnedValue::Enum {
+            enum_name: "Option".to_owned(),
+            variant: "Some".to_owned(),
+            fields: [("0".to_owned(), OwnedValue::String("reward".to_owned()))].into(),
+        }
     );
-    assert_eq!(Option::<i64>::None.into_script_arg(), OwnedValue::Unit);
+    assert_eq!(
+        Option::<i64>::None.into_script_arg(),
+        OwnedValue::Enum {
+            enum_name: "Option".to_owned(),
+            variant: "None".to_owned(),
+            fields: [].into(),
+        }
+    );
     assert_eq!(
         vela_engine::args![Some(2_i64), Option::<i64>::None],
         vec![
-            OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
-            OwnedValue::Unit
+            OwnedValue::Enum {
+                enum_name: "Option".to_owned(),
+                variant: "Some".to_owned(),
+                fields: [(
+                    "0".to_owned(),
+                    OwnedValue::Scalar(vela_common::ScalarValue::I64(2))
+                )]
+                .into(),
+            },
+            OwnedValue::Enum {
+                enum_name: "Option".to_owned(),
+                variant: "None".to_owned(),
+                fields: [].into(),
+            }
         ],
     );
     assert!(matches!(
         Option::<i64>::from_script_arg(&OwnedValue::String("bad".to_owned())),
-        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "i64" })
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "option" })
+    ));
+    assert!(matches!(
+        Option::<i64>::from_script_arg(&OwnedValue::Unit),
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "option" })
+    ));
+    assert!(matches!(
+        Option::<i64>::from_script_arg(&OwnedValue::Scalar(vela_common::ScalarValue::I64(3))),
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "option" })
     ));
     assert!(matches!(
         Option::<i64>::from_script_arg(&OwnedValue::Enum {

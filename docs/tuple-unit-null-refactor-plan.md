@@ -545,7 +545,7 @@ Focused validation:
 - [x] Change mutation helpers and no-result native calls to return unit.
 - [ ] Change lookup/search/split APIs to `Option<T>` and tuple payloads where
   useful.
-- [ ] Change Rust `Option<T>` conversion to script `Option<T>`.
+- [x] Change Rust `Option<T>` conversion to script `Option<T>`.
 - [ ] Add Rust `()` conversion and Rust tuple arity 2..=4 conversion.
 - [~] Remove reflection missing-metadata nulls in favor of `Option`, omitted
   fields, or explicit structured absence.
