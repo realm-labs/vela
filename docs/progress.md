@@ -185,7 +185,9 @@ rename, and semantic-token variant/function path queries use those facts
 instead of the deleted parsed path-call helper. Bytecode script-type flow now
 uses HIR call-callee path facts for enum-variant call expressions instead of
 compiler payload call-callee syntax reconstruction, and the old syntax-callee
-payload helpers have been removed.
+payload helpers have been removed. Tuple-style enum constructor call lowering
+also derives the enum type and variant from those HIR call facts instead of
+re-resolving the callee syntax span.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

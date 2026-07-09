@@ -174,7 +174,10 @@ impl super::Compiler<'_, '_> {
         self.facts.type_symbols.get(declaration).cloned()
     }
 
-    fn script_fact_for_hir_call(&self, call: HirExprId) -> Option<ScriptTypeFact> {
+    pub(in crate::compiler) fn script_fact_for_hir_call(
+        &self,
+        call: HirExprId,
+    ) -> Option<ScriptTypeFact> {
         let callee = self.call_callee_expression(call)?;
         let path = self
             .hir_bodies

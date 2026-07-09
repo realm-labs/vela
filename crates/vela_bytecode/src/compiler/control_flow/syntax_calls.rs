@@ -3,7 +3,6 @@ use vela_syntax::ast::SyntaxExpression;
 
 use crate::compiler::body_payloads::expression_syntax_path_or_self;
 use crate::compiler::calls::metadata::unresolved_static_method_error;
-use crate::compiler::patterns::enum_variant_path;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{Register, UnlinkedInstructionKind};
 
@@ -246,13 +245,13 @@ impl Compiler<'_, '_> {
             return Ok(Some(dst));
         }
 
-        if let Some((_enum_path, variant)) = enum_variant_path(&path)
-            && let Some(enum_name) = self.type_symbol_at_span(callee_span)
+        if let Some(fact) = call_expression.and_then(|call| self.script_fact_for_hir_call(call))
+            && let Some(variant) = fact.enum_variant
         {
             let Some(fields) = self.compile_syntax_tuple_variant_fields(
                 source,
                 callee_span,
-                &enum_name,
+                &fact.type_name,
                 &variant,
                 &arguments,
             )?
@@ -261,7 +260,7 @@ impl Compiler<'_, '_> {
             };
             self.emit(UnlinkedInstructionKind::MakeEnum {
                 dst,
-                enum_name,
+                enum_name: fact.type_name,
                 variant,
                 fields,
             });
