@@ -58,12 +58,14 @@ impl Compiler<'_, '_> {
             let previous_script_types = self.script_types.clone();
             let previous_value_types = self.value_types.clone();
             let previous_value_shapes = self.value_shapes.clone();
-            self.bind_syntax_pattern_locals(
+            let hir_patterns = self.hir_pattern_ids_for_syntax_pattern(source, &pattern)?;
+            self.bind_syntax_pattern_locals_from_hir_patterns(
                 scrutinee,
                 &pattern,
                 syntax_match_arm_body_span(source, &arm),
                 scrutinee_facts.clone(),
                 LocalBindingKind::Pattern,
+                &hir_patterns,
             )?;
             if let Some(guard) = arm.guard() {
                 let Some(condition) = self.compile_syntax_expression(source, &guard)? else {
@@ -128,12 +130,14 @@ impl Compiler<'_, '_> {
             let previous_script_types = self.script_types.clone();
             let previous_value_types = self.value_types.clone();
             let previous_value_shapes = self.value_shapes.clone();
-            self.bind_syntax_pattern_locals(
+            let hir_patterns = self.hir_pattern_ids_for_syntax_pattern(source, &pattern)?;
+            self.bind_syntax_pattern_locals_from_hir_patterns(
                 scrutinee,
                 &pattern,
                 syntax_match_arm_body_span(source, &arm),
                 scrutinee_facts.clone(),
                 LocalBindingKind::Pattern,
+                &hir_patterns,
             )?;
             if let Some(guard) = arm.guard() {
                 let Some(condition) = self.compile_syntax_expression(source, &guard)? else {

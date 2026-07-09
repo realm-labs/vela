@@ -274,6 +274,9 @@ parameter-default block lets resolve through HIR pattern origins instead of the
 deleted name-plus-statement-span binding helper. For-loop pattern local setup
 now consumes the statement-owned HIR pattern sequence with a shared cursor for
 indexed and value patterns instead of re-finding for-pattern locals by span.
+Match statement and match expression local setup now collects the HIR pattern
+ID sequence for each arm and uses the same HIR cursor path, deleting the shared
+non-HIR pattern-local binding fallback.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

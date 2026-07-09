@@ -74,11 +74,10 @@ impl PatternBindingFacts {
 struct PatternLocalBinding<'a> {
     binding: &'a str,
     register: Register,
-    binding_span: Span,
     scope_span: Span,
     facts: PatternBindingFacts,
     kind: LocalBindingKind,
-    hir_pattern: Option<HirPatternId>,
+    hir_pattern: HirPatternId,
 }
 
 impl Compiler<'_, '_> {
@@ -103,17 +102,6 @@ impl Compiler<'_, '_> {
         Ok(vec![self.emit_jump_if_false(condition)])
     }
 
-    pub(in crate::compiler) fn bind_syntax_pattern_locals(
-        &mut self,
-        scrutinee: Register,
-        pattern: &SyntaxPattern,
-        body_span: Span,
-        facts: PatternBindingFacts,
-        kind: LocalBindingKind,
-    ) -> CompileResult<()> {
-        self.bind_syntax_pattern_locals_inner(scrutinee, pattern, body_span, facts, kind, None)
-    }
-
     pub(in crate::compiler) fn bind_syntax_pattern_locals_from_hir_patterns(
         &mut self,
         scrutinee: Register,
@@ -124,13 +112,13 @@ impl Compiler<'_, '_> {
         patterns: &[HirPatternId],
     ) -> CompileResult<()> {
         let mut cursor = HirPatternCursor::new(patterns);
-        self.bind_syntax_pattern_locals_inner(
+        self.bind_syntax_pattern_locals_from_hir_cursor(
             scrutinee,
             pattern,
             body_span,
             facts,
             kind,
-            Some(&mut cursor),
+            &mut cursor,
         )
     }
 
@@ -143,14 +131,67 @@ impl Compiler<'_, '_> {
         kind: LocalBindingKind,
         cursor: &mut HirPatternCursor<'_>,
     ) -> CompileResult<()> {
-        self.bind_syntax_pattern_locals_inner(
-            scrutinee,
-            pattern,
-            body_span,
-            facts,
-            kind,
-            Some(cursor),
-        )
+        self.bind_syntax_pattern_locals_inner(scrutinee, pattern, body_span, facts, kind, cursor)
+    }
+
+    pub(in crate::compiler) fn hir_pattern_ids_for_syntax_pattern(
+        &self,
+        source: SourceId,
+        pattern: &SyntaxPattern,
+    ) -> CompileResult<Vec<HirPatternId>> {
+        let mut patterns = Vec::new();
+        self.collect_hir_pattern_ids_for_syntax_pattern(source, pattern, &mut patterns)?;
+        Ok(patterns)
+    }
+
+    fn collect_hir_pattern_ids_for_syntax_pattern(
+        &self,
+        source: SourceId,
+        pattern: &SyntaxPattern,
+        patterns: &mut Vec<HirPatternId>,
+    ) -> CompileResult<()> {
+        patterns.push(
+            self.required_pattern_at_span(span_for_range(source, pattern.syntax().text_range()))?,
+        );
+        match pattern.pattern_kind() {
+            Some(SyntaxPatternKind::RecordVariant) => {
+                let Some(record) = pattern.record_pattern() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "record pattern",
+                    )));
+                };
+                for field in record.fields() {
+                    if let Some(pattern) = field.pattern() {
+                        self.collect_hir_pattern_ids_for_syntax_pattern(
+                            source, &pattern, patterns,
+                        )?;
+                    } else if let Some(binding) = field.shorthand_binding_name_token() {
+                        patterns.push(self.required_pattern_at_span(span_for_range(
+                            source,
+                            binding.text_range(),
+                        ))?);
+                    }
+                }
+            }
+            Some(SyntaxPatternKind::TupleVariant) => {
+                let Some(tuple) = pattern.tuple_pattern() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "tuple pattern",
+                    )));
+                };
+                for field in tuple.patterns() {
+                    self.collect_hir_pattern_ids_for_syntax_pattern(source, &field, patterns)?;
+                }
+            }
+            Some(
+                SyntaxPatternKind::Binding
+                | SyntaxPatternKind::Path
+                | SyntaxPatternKind::Wildcard
+                | SyntaxPatternKind::Literal,
+            )
+            | None => {}
+        }
+        Ok(())
     }
 
     fn bind_syntax_pattern_locals_inner(
@@ -160,9 +201,9 @@ impl Compiler<'_, '_> {
         body_span: Span,
         facts: PatternBindingFacts,
         kind: LocalBindingKind,
-        mut cursor: Option<&mut HirPatternCursor<'_>>,
+        cursor: &mut HirPatternCursor<'_>,
     ) -> CompileResult<()> {
-        let hir_pattern = next_hir_pattern(cursor.as_deref_mut(), body_span)?;
+        let hir_pattern = cursor.next(body_span)?;
         let pattern_kind = pattern.pattern_kind().ok_or_else(|| {
             CompileError::new(CompileErrorKind::UnsupportedSyntax("match pattern"))
         })?;
@@ -172,7 +213,6 @@ impl Compiler<'_, '_> {
                     CompileError::new(CompileErrorKind::UnsupportedSyntax("binding pattern"))
                 })?;
                 let binding = binding_token.text().to_owned();
-                let binding_span = span_for_range(body_span.source, binding_token.text_range());
                 let dst = self.alloc_register()?;
                 self.emit(UnlinkedInstructionKind::Move {
                     dst,
@@ -181,7 +221,6 @@ impl Compiler<'_, '_> {
                 self.bind_pattern_local(PatternLocalBinding {
                     binding: &binding,
                     register: dst,
-                    binding_span,
                     scope_span: body_span,
                     facts,
                     kind,
@@ -218,16 +257,13 @@ impl Compiler<'_, '_> {
                             body_span,
                             field_facts,
                             kind,
-                            cursor.as_deref_mut(),
+                            cursor,
                         )?;
-                    } else if let Some(binding_token) = field.shorthand_binding_name_token() {
-                        let binding_span =
-                            span_for_range(body_span.source, binding_token.text_range());
-                        let hir_pattern = next_hir_pattern(cursor.as_deref_mut(), body_span)?;
+                    } else if field.shorthand_binding_name_token().is_some() {
+                        let hir_pattern = cursor.next(body_span)?;
                         self.bind_pattern_local(PatternLocalBinding {
                             binding: &field_name,
                             register: dst,
-                            binding_span,
                             scope_span: body_span,
                             facts: field_facts,
                             kind,
@@ -259,7 +295,7 @@ impl Compiler<'_, '_> {
                             body_span,
                             PatternBindingFacts::default(),
                             kind,
-                            cursor.as_deref_mut(),
+                            cursor,
                         )?;
                     }
                     return Ok(());
@@ -282,7 +318,7 @@ impl Compiler<'_, '_> {
                         body_span,
                         field_facts,
                         kind,
-                        cursor.as_deref_mut(),
+                        cursor,
                     )?;
                 }
                 Ok(())
@@ -295,12 +331,7 @@ impl Compiler<'_, '_> {
 
     fn bind_pattern_local(&mut self, local: PatternLocalBinding<'_>) {
         self.locals.insert(local.binding.to_owned(), local.register);
-        let pattern = local
-            .hir_pattern
-            .or_else(|| self.pattern_at_span(local.binding_span));
-        if let Some(hir_local) =
-            pattern.and_then(|pattern| self.local_for_pattern(pattern, local.kind))
-        {
+        if let Some(hir_local) = self.local_for_pattern(local.hir_pattern, local.kind) {
             self.hir_locals.insert(hir_local, local.register);
             self.record_frame_slot(
                 local.binding.to_owned(),
@@ -328,6 +359,12 @@ impl Compiler<'_, '_> {
             self.value_shapes
                 .set_name(local.binding, local.facts.value_shape);
         }
+    }
+
+    fn required_pattern_at_span(&self, span: Span) -> CompileResult<HirPatternId> {
+        self.pattern_at_span(span).ok_or_else(|| {
+            CompileError::new(CompileErrorKind::UnsupportedSyntax("HIR pattern")).with_span(span)
+        })
     }
 
     pub(in crate::compiler) fn enum_variant_field_fact(
@@ -457,13 +494,6 @@ impl<'a> HirPatternCursor<'a> {
         self.index = self.index.saturating_add(1);
         Ok(pattern)
     }
-}
-
-fn next_hir_pattern(
-    cursor: Option<&mut HirPatternCursor<'_>>,
-    span: Span,
-) -> CompileResult<Option<HirPatternId>> {
-    cursor.map(|cursor| cursor.next(span)).transpose()
 }
 
 fn required_syntax_pattern_kind(
