@@ -45,3 +45,76 @@ fn expression_facts_include_unit_and_tuple_literals() {
         Some(TypeFact::tuple([TypeFact::STRING, TypeFact::I64]))
     );
 }
+
+#[test]
+fn expression_facts_include_tuple_destructuring_bindings() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let source = r#"pub fn main(pairs: Array<(String, i64)>) {
+            let (let_name, let_score) = ("Ada", 1)
+            let_name
+            let_score
+            for (for_name, for_score) in pairs {
+                for_name
+                for_score
+            }
+            match ("Grace", 2) {
+                (match_name, match_score) => {
+                    match_name
+                    match_score
+                },
+            }
+        }"#;
+    let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project);
+    let source_id = databases
+        .source_db()
+        .records()
+        .get(&document)
+        .expect("document source record should exist")
+        .source_id();
+
+    assert_eq!(
+        fact_for_range(&databases, source_id, range_for_nth(source, "let_name", 2)),
+        Some(TypeFact::STRING)
+    );
+    assert_eq!(
+        fact_for_range(&databases, source_id, range_for_nth(source, "let_score", 2)),
+        Some(TypeFact::I64)
+    );
+    assert_eq!(
+        fact_for_range(&databases, source_id, range_for_nth(source, "for_name", 2)),
+        Some(TypeFact::STRING)
+    );
+    assert_eq!(
+        fact_for_range(&databases, source_id, range_for_nth(source, "for_score", 2)),
+        Some(TypeFact::I64)
+    );
+    assert_eq!(
+        fact_for_range(
+            &databases,
+            source_id,
+            range_for_nth(source, "match_name", 2)
+        ),
+        Some(TypeFact::STRING)
+    );
+    assert_eq!(
+        fact_for_range(
+            &databases,
+            source_id,
+            range_for_nth(source, "match_score", 2)
+        ),
+        Some(TypeFact::I64)
+    );
+}
+
+fn range_for_nth(source: &str, needle: &str, occurrence: usize) -> TextRange {
+    let start = source
+        .match_indices(needle)
+        .nth(occurrence - 1)
+        .map(|(start, _)| start)
+        .unwrap_or_else(|| panic!("{needle} occurrence {occurrence} should exist"));
+    TextRange::new(start, start + needle.len())
+}

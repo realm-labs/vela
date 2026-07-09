@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 mod owners;
+mod type_hints;
 
 #[cfg(test)]
 mod tests;
@@ -19,8 +20,8 @@ use vela_hir::{
 use vela_syntax::ast::{
     AstNode, BinaryOp, Literal, SyntaxArgument, SyntaxBlock, SyntaxConstItem, SyntaxExpression,
     SyntaxExpressionKind, SyntaxFunctionItem, SyntaxIfExpr, SyntaxImplItem, SyntaxLambdaBody,
-    SyntaxMatchArmBody, SyntaxParam, SyntaxSourceFile, SyntaxStatement, SyntaxStatementKind,
-    SyntaxTraitItem, SyntaxTypeHint, UnaryOp,
+    SyntaxMatchArmBody, SyntaxParam, SyntaxPattern, SyntaxSourceFile, SyntaxStatement,
+    SyntaxStatementKind, SyntaxTraitItem, SyntaxTypeHint, UnaryOp,
 };
 use vela_syntax::{Parse as SyntaxParse, TextRange as SyntaxTextRange};
 
@@ -31,6 +32,7 @@ use self::owners::{
     declaration_name_matches, declaration_scope, impl_target_matches, record_owner_names,
     trait_declaration_for_path, trait_owner_names,
 };
+use self::type_hints::type_fact_from_syntax_hint;
 
 pub(crate) fn collect(
     graph: &ModuleGraph,
@@ -173,15 +175,20 @@ impl ExpressionFactCollector<'_> {
                 if let Some(value) = statement.initializer() {
                     self.collect_expr(&value, scope);
                     let fact = self.type_fact_for_expr(&value, scope);
-                    if !matches!(fact, TypeFact::Unknown)
-                        && let Some(name) = statement.name_text()
-                    {
-                        scope.insert_path([name], fact);
+                    if !matches!(fact, TypeFact::Unknown) {
+                        if let Some(name) = statement.name_text() {
+                            scope.insert_path([name], fact);
+                        } else if let Some(pattern) = statement.pattern() {
+                            insert_pattern_facts(scope, &pattern, &fact);
+                        }
                     }
-                } else if let Some(type_hint) = statement.type_hint()
-                    && let Some(name) = statement.name_text()
-                {
-                    scope.insert_path([name], self.type_fact_from_hint(&type_hint));
+                } else if let Some(type_hint) = statement.type_hint() {
+                    let fact = self.type_fact_from_hint(&type_hint);
+                    if let Some(name) = statement.name_text() {
+                        scope.insert_path([name], fact);
+                    } else if let Some(pattern) = statement.pattern() {
+                        insert_pattern_facts(scope, &pattern, &fact);
+                    }
                 }
             }
             SyntaxStatementKind::Return => {
@@ -194,11 +201,19 @@ impl ExpressionFactCollector<'_> {
             }
             SyntaxStatementKind::For => {
                 if let Some(statement) = statement.as_for() {
-                    if let Some(iterable) = statement.iterable() {
+                    let item_fact = if let Some(iterable) = statement.iterable() {
                         self.collect_expr(&iterable, scope);
-                    }
+                        iterable_item_fact(&self.type_fact_for_expr(&iterable, scope))
+                    } else {
+                        None
+                    };
                     if let Some(body) = statement.body() {
                         let mut body_scope = scope.clone();
+                        if let (Some(pattern), Some(fact)) =
+                            (statement.value_pattern(), item_fact.as_ref())
+                        {
+                            insert_pattern_facts(&mut body_scope, &pattern, fact);
+                        }
                         self.collect_block(&body, &mut body_scope);
                     }
                 }
@@ -224,11 +239,19 @@ impl ExpressionFactCollector<'_> {
             }
             SyntaxStatementKind::Match => {
                 if let Some(match_expr) = statement.as_match() {
-                    if let Some(scrutinee) = match_expr.scrutinee() {
+                    let scrutinee_fact = if let Some(scrutinee) = match_expr.scrutinee() {
                         self.collect_expr(&scrutinee, scope);
-                    }
+                        Some(self.type_fact_for_expr(&scrutinee, scope))
+                    } else {
+                        None
+                    };
                     for arm in match_expr.arms() {
                         let mut arm_scope = scope.clone();
+                        if let (Some(pattern), Some(fact)) =
+                            (arm.pattern(), scrutinee_fact.as_ref())
+                        {
+                            insert_pattern_facts(&mut arm_scope, &pattern, fact);
+                        }
                         if let Some(guard) = arm.guard() {
                             self.collect_expr(&guard, &mut arm_scope);
                         }
@@ -372,11 +395,19 @@ impl ExpressionFactCollector<'_> {
             }
             SyntaxExpressionKind::Match => {
                 if let Some(match_expr) = expr.as_match() {
-                    if let Some(scrutinee) = match_expr.scrutinee() {
+                    let scrutinee_fact = if let Some(scrutinee) = match_expr.scrutinee() {
                         self.collect_expr(&scrutinee, scope);
-                    }
+                        Some(self.type_fact_for_expr(&scrutinee, scope))
+                    } else {
+                        None
+                    };
                     for arm in match_expr.arms() {
                         let mut arm_scope = scope.clone();
+                        if let (Some(pattern), Some(fact)) =
+                            (arm.pattern(), scrutinee_fact.as_ref())
+                        {
+                            insert_pattern_facts(&mut arm_scope, &pattern, fact);
+                        }
                         if let Some(guard) = arm.guard() {
                             self.collect_expr(&guard, &mut arm_scope);
                         }
@@ -573,8 +604,14 @@ impl ExpressionFactCollector<'_> {
                 self.if_expr_fact(&if_expr, scope)
             }),
             SyntaxExpressionKind::Match => expr.as_match().map_or(TypeFact::Unknown, |expr| {
+                let scrutinee_fact = expr
+                    .scrutinee()
+                    .map(|scrutinee| self.type_fact_from_expr(&scrutinee, scope));
                 TypeFact::union(expr.arms().into_iter().filter_map(|arm| {
-                    let arm_scope = scope.clone();
+                    let mut arm_scope = scope.clone();
+                    if let (Some(pattern), Some(fact)) = (arm.pattern(), scrutinee_fact.as_ref()) {
+                        insert_pattern_facts(&mut arm_scope, &pattern, fact);
+                    }
                     match arm.body() {
                         Some(SyntaxMatchArmBody::Expression(body)) => {
                             Some(self.type_fact_from_expr(&body, &arm_scope))
@@ -979,6 +1016,43 @@ fn try_fact(value: TypeFact) -> TypeFact {
     }
 }
 
+fn insert_pattern_facts(scope: &mut ExprFactScope, pattern: &SyntaxPattern, fact: &TypeFact) {
+    if let Some(name) = pattern.binding_name() {
+        scope.insert_path([name], fact.clone());
+        return;
+    }
+
+    let Some(tuple) = pattern.tuple_pattern() else {
+        return;
+    };
+    if tuple.path_text().is_some() {
+        return;
+    }
+    let TypeFact::Tuple { elements } = fact else {
+        return;
+    };
+    let patterns = tuple.patterns().collect::<Vec<_>>();
+    if patterns.len() != elements.len() {
+        return;
+    }
+    for (pattern, element) in patterns.iter().zip(elements) {
+        insert_pattern_facts(scope, pattern, element);
+    }
+}
+
+fn iterable_item_fact(fact: &TypeFact) -> Option<TypeFact> {
+    match fact {
+        TypeFact::Array { element } | TypeFact::Iterator { item: element } => {
+            Some((**element).clone())
+        }
+        TypeFact::Union(facts) => {
+            let item = TypeFact::union(facts.iter().filter_map(iterable_item_fact));
+            (!matches!(item, TypeFact::Unknown)).then_some(item)
+        }
+        _ => None,
+    }
+}
+
 fn registry_method_return_fact(
     receiver: &TypeFact,
     method: &str,
@@ -1097,69 +1171,6 @@ fn syntax_params(param_list: Option<vela_syntax::ast::SyntaxParamList>) -> Vec<S
     param_list
         .map(|params| params.params().collect())
         .unwrap_or_default()
-}
-
-fn type_fact_from_syntax_hint(hint: &SyntaxTypeHint) -> TypeFact {
-    if hint.is_unit() {
-        return TypeFact::UNIT;
-    }
-    let tuple_elements = hint.tuple_element_hints().collect::<Vec<_>>();
-    if hint.is_tuple() {
-        return TypeFact::tuple(tuple_elements.iter().map(type_fact_from_syntax_hint));
-    }
-    if hint.l_paren_token().is_some() && tuple_elements.len() == 1 {
-        return type_fact_from_syntax_hint(&tuple_elements[0]);
-    }
-    let args = hint
-        .type_arg_list()
-        .map(|args| args.type_hints().collect::<Vec<_>>())
-        .unwrap_or_default();
-    match hint.path_segments().as_slice() {
-        [name] => {
-            if name == "Array" && args.len() == 1 {
-                return TypeFact::array(type_fact_from_syntax_hint(&args[0]));
-            }
-            if name == "Map" && args.len() == 2 {
-                return TypeFact::map(
-                    type_fact_from_syntax_hint(&args[0]),
-                    type_fact_from_syntax_hint(&args[1]),
-                );
-            }
-            if name == "Set" && args.len() == 1 {
-                return TypeFact::set(type_fact_from_syntax_hint(&args[0]));
-            }
-            if name == "Iterator" && args.len() == 1 {
-                return TypeFact::iterator(type_fact_from_syntax_hint(&args[0]));
-            }
-            if name == "Option" && args.len() == 1 {
-                return TypeFact::option(type_fact_from_syntax_hint(&args[0]));
-            }
-            if name == "Result" && args.len() == 2 {
-                return TypeFact::result(
-                    type_fact_from_syntax_hint(&args[0]),
-                    type_fact_from_syntax_hint(&args[1]),
-                );
-            }
-            if let Some(tag) = PrimitiveTag::from_name(name) {
-                return TypeFact::primitive(tag);
-            }
-
-            match name.as_str() {
-                "Any" => TypeFact::Any,
-                "String" => TypeFact::primitive(PrimitiveTag::String),
-                "Bytes" => TypeFact::primitive(PrimitiveTag::Bytes),
-                "Array" => TypeFact::array(TypeFact::Unknown),
-                "Map" => TypeFact::map(TypeFact::Unknown, TypeFact::Unknown),
-                "Set" => TypeFact::set(TypeFact::Unknown),
-                "Iterator" => TypeFact::iterator(TypeFact::Unknown),
-                "Function" => TypeFact::function(Vec::new(), TypeFact::Unknown),
-                "Option" => TypeFact::option(TypeFact::Unknown),
-                "Result" => TypeFact::result(TypeFact::Unknown, TypeFact::Unknown),
-                name => TypeFact::record(name),
-            }
-        }
-        path => TypeFact::record(path.join("::")),
-    }
 }
 
 fn text_range_key(range: TextRange) -> (usize, usize) {

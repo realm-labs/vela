@@ -631,7 +631,9 @@ Focused validation:
   now also cover precise stdlib `Option<T>` returns for string parse/split and
   array lookup methods. Unannotated unit and tuple expressions now also
   produce language-service expression facts for downstream hover, inlay,
-  completion, and diagnostic queries.
+  completion, and diagnostic queries. Tuple destructuring bindings introduced
+  by `let`, `for`, and `match` now inherit element facts for the same
+  downstream tooling queries.
 - [x] Replace user-facing null placeholders with `()`, `Option::None`, or
   typed fixits. Active docs, examples, editor grammar, and website audits no
   longer show Vela-language null placeholders. The surviving active
