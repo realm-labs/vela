@@ -244,8 +244,9 @@ assignment target lowering now composes HIR value paths and root expression
 spans from HIR field receiver facts, and nested assignment root register
 resolution now requires that HIR expression identity; the old field-chain syntax
 path helper has been deleted. HostPath root and field-only target construction now reads
-HIR value-path facts, leaving syntax in that path only for structural index
-expressions that carry dynamic host path arguments, and the old simple syntax
+HIR value-path facts and carries the HIR root expression span through root
+register resolution, leaving syntax in that path only for structural index
+expressions that carry dynamic host path arguments; the old simple syntax
 path helper has been deleted. Parameter-default path values, path calls, and
 host field reads now lower from HIR value/callee path facts, deleting the
 parameter-default host field syntax path reconstruction helper. Bytecode

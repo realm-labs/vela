@@ -46,7 +46,8 @@ impl Compiler<'_, '_> {
             return None;
         }
         let root = path.first()?;
-        let mut current_type = self.host_local_type_name(root, span);
+        let root_span = self.hir_value_path_root_span_for_span(span).unwrap_or(span);
+        let mut current_type = self.host_local_type_name(root, root_span);
         let mut segments = Vec::with_capacity(path.len() - 1);
         for segment in &path[1..] {
             let field = self.host_path_field_part(current_type.as_deref(), segment)?;
@@ -55,7 +56,10 @@ impl Compiler<'_, '_> {
         }
         Some(ResolvedHostPath {
             path: HostPath {
-                root: HostPathRoot::LocalPath { name: root, span },
+                root: HostPathRoot::LocalPath {
+                    name: root,
+                    span: root_span,
+                },
                 segments,
             },
             type_name: current_type,
@@ -70,7 +74,8 @@ impl Compiler<'_, '_> {
             return None;
         }
         let root = path.first()?.clone();
-        let mut current_type = self.host_local_type_name(&root, span);
+        let root_span = self.hir_value_path_root_span_for_span(span).unwrap_or(span);
+        let mut current_type = self.host_local_type_name(&root, root_span);
         let mut segments = Vec::with_capacity(path.len() - 1);
         for segment in &path[1..] {
             let field = self.host_path_field_part(current_type.as_deref(), segment)?;
@@ -79,7 +84,10 @@ impl Compiler<'_, '_> {
         }
         Some(ResolvedHostPath {
             path: HostPath {
-                root: HostPathRoot::OwnedLocalPath { name: root, span },
+                root: HostPathRoot::OwnedLocalPath {
+                    name: root,
+                    span: root_span,
+                },
                 segments,
             },
             type_name: current_type,
@@ -226,8 +234,12 @@ impl Compiler<'_, '_> {
         root: &HostPathRoot<'expr>,
     ) -> CompileResult<Register> {
         match root {
-            HostPathRoot::LocalPath { name, span } => self.local_register_at_span(*span, name),
-            HostPathRoot::OwnedLocalPath { name, span } => self.local_register_at_span(*span, name),
+            HostPathRoot::LocalPath { name, span } => {
+                self.required_local_register_at_hir_expression_span(*span, name)
+            }
+            HostPathRoot::OwnedLocalPath { name, span } => {
+                self.required_local_register_at_hir_expression_span(*span, name)
+            }
         }
     }
     fn compile_host_target<'expr>(
