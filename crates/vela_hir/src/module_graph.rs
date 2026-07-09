@@ -140,6 +140,7 @@ impl ModuleGraph {
         };
 
         let mut const_initializers = Vec::new();
+        let mut schema_field_defaults = Vec::new();
         let mut function_declarations = Vec::new();
         let mut trait_default_method_declarations = Vec::new();
         let mut impl_method_declarations = Vec::new();
@@ -265,6 +266,14 @@ impl ModuleGraph {
                     let shape = syntax_metadata::struct_shape(&syntax_summary, item_index);
                     self.validate_struct_shape(&shape);
                     self.struct_shapes.insert(declaration, shape);
+                    schema_field_defaults.extend(
+                        syntax_summary
+                            .struct_field_default_sources(item_index)
+                            .into_iter()
+                            .map(|source| {
+                                body_binding::ExpressionBodySource::new(declaration, source)
+                            }),
+                    );
                     self.declaration_attrs.insert(
                         declaration,
                         syntax_metadata::attrs(&syntax_summary, item_index),
@@ -287,6 +296,14 @@ impl ModuleGraph {
                     let shape = syntax_metadata::enum_shape(&syntax_summary, item_index);
                     self.validate_enum_shape(&shape);
                     self.enum_shapes.insert(declaration, shape);
+                    schema_field_defaults.extend(
+                        syntax_summary
+                            .enum_field_default_sources(item_index)
+                            .into_iter()
+                            .map(|source| {
+                                body_binding::ExpressionBodySource::new(declaration, source)
+                            }),
+                    );
                     self.declaration_attrs.insert(
                         declaration,
                         syntax_metadata::attrs(&syntax_summary, item_index),
@@ -400,6 +417,9 @@ impl ModuleGraph {
 
         for source in const_initializers {
             self.bind_const_initializer_body(&hir_module, source);
+        }
+        for source in schema_field_defaults {
+            self.bind_schema_field_default_body(&hir_module, source);
         }
         for source in function_declarations {
             self.bind_function_body(&hir_module, source);

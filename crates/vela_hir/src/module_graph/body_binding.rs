@@ -71,6 +71,22 @@ impl ModuleGraph {
         self.diagnostics.extend(diagnostics);
     }
 
+    pub(super) fn bind_schema_field_default_body(
+        &mut self,
+        module: &HirModule,
+        source: ExpressionBodySource,
+    ) {
+        let declaration = source.declaration;
+        let body = self.next_body_id();
+        let (_bindings, diagnostics) = self.bind_expression_body(
+            module,
+            source,
+            body,
+            HirBodyOwner::SchemaFieldDefault(declaration),
+        );
+        self.diagnostics.extend(diagnostics);
+    }
+
     pub(super) fn bind_function_body(&mut self, module: &HirModule, source: FunctionBodySource) {
         let declaration = source.declaration;
         let body = self.next_body_id();

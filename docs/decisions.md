@@ -1185,6 +1185,15 @@ sentinels only. Public boundaries must not expose a Missing value or kind:
 reflection records, and user-visible no-result paths use `()`, `Option`,
 `Result`, or typed structured data instead.
 
+### HIR Default Expression Ownership
+
+Schema field defaults are HIR expression bodies owned by
+`HirBodyOwner::SchemaFieldDefault`, so path facts inside struct and enum field
+defaults are resolved by HIR rather than compiler-local source scans.
+Interpolated string placeholders are also lowered as child HIR expressions.
+Tuple projection members are HIR field facts, but numeric tuple members do not
+participate in composed value paths.
+
 ### LSP On-Type Formatting Scope
 
 Native on-type formatting is conservative: it may respond to closing brace and

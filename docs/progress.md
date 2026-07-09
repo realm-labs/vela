@@ -189,7 +189,10 @@ read receiver, member name, and member span from HIR field facts instead of
 field syntax reconstruction. HIR field facts now also cover tuple projection
 members, and language-service expression facts resolve field access plus
 member-call return targets from HIR field/call facts instead of field-callee
-syntax reconstruction.
+syntax reconstruction. Interpolated string placeholders and schema field
+defaults now lower into HIR expression bodies/path facts, and bytecode tuple
+projection lowering reads the numeric member from HIR field facts while keeping
+tuple members out of composed value paths.
 Incremental language-service updates now rebuild Heavy HIR for body-only source
 edits so HIR-owned call/member/path/body facts stay current while
 declaration/import indexes remain reusable. Semantic-token local record facts

@@ -1,4 +1,5 @@
 use vela_common::SourceId;
+use vela_hir::body::HirField;
 use vela_syntax::SyntaxKind;
 use vela_syntax::ast::{SyntaxExpression, SyntaxExpressionKind, SyntaxLiteral};
 use vela_syntax::token::{InterpolatedStringTokenPart, TokenKind};
@@ -160,7 +161,7 @@ impl Compiler<'_, '_> {
         let Some(receiver_expression) = field.receiver() else {
             return Ok(None);
         };
-        if let Some(index) = field.tuple_index() {
+        if let Some(index) = self.hir_tuple_projection_index(source, expression) {
             let Some(value) = self.compile_syntax_expression(source, &receiver_expression)? else {
                 return Ok(None);
             };
@@ -233,6 +234,28 @@ impl Compiler<'_, '_> {
             });
         }
         Ok(Some(dst))
+    }
+
+    fn hir_tuple_projection_index(
+        &self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> Option<usize> {
+        self.hir_field_for_syntax_expression(source, expression)?
+            .name
+            .parse()
+            .ok()
+    }
+
+    fn hir_field_for_syntax_expression(
+        &self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> Option<&HirField> {
+        let expression = self.expression_at_span(syntax_expression_span(source, expression))?;
+        self.hir_bodies
+            .iter()
+            .find_map(|body| body.fields.get(&expression))
     }
 
     fn syntax_record_enum_slot(

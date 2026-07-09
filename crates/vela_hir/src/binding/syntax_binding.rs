@@ -444,7 +444,13 @@ impl<'a> SyntaxBindingLowerer<'a> {
             expr.expression_kind().into(),
         );
         match expr.expression_kind() {
-            SyntaxExpressionKind::Literal => {}
+            SyntaxExpressionKind::Literal => {
+                if let Some(literal) = expr.as_literal() {
+                    for interpolation in literal.interpolation_expressions() {
+                        self.bind_expr(&interpolation, PathUsage::Value);
+                    }
+                }
+            }
             SyntaxExpressionKind::Path => {
                 let Some(path) = expr.as_path() else {
                     return id;

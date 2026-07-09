@@ -320,6 +320,9 @@ impl Compiler<'_, '_> {
             .hir_bodies
             .iter()
             .find_map(|body| body.fields.get(&expression))?;
+        if field.name.parse::<usize>().is_ok() {
+            return None;
+        }
         let mut path = self.hir_value_path_for_expression(field.receiver)?;
         path.push(field.name.clone());
         Some(path)

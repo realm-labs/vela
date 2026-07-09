@@ -1143,6 +1143,77 @@ fn main(pair) {
 }
 
 #[test]
+fn function_bodies_record_interpolated_string_path_facts() {
+    let mut graph = ModuleGraph::new();
+    let source_text = r#"
+fn main(name, amount) {
+    return f"reward {name}: {amount}";
+}
+"#;
+    graph.add_source(source(1, "game::main", source_text));
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+
+    let path_facts = graph
+        .paths_in_source_by_kind(SourceId::new(1), HirPathKind::Value)
+        .map(|path| {
+            (
+                path.path.clone(),
+                path.origin.span.start,
+                path.origin.span.end,
+            )
+        })
+        .collect::<Vec<_>>();
+
+    assert!(path_facts.iter().any(|(path, start, end)| {
+        path == &["name"]
+            && source_text.get(
+                usize::try_from(*start).expect("path start fits usize")
+                    ..usize::try_from(*end).expect("path end fits usize"),
+            ) == Some("name")
+    }));
+    assert!(path_facts.iter().any(|(path, start, end)| {
+        path == &["amount"]
+            && source_text.get(
+                usize::try_from(*start).expect("path start fits usize")
+                    ..usize::try_from(*end).expect("path end fits usize"),
+            ) == Some("amount")
+    }));
+}
+
+#[test]
+fn schema_field_defaults_record_value_path_facts() {
+    let mut graph = ModuleGraph::new();
+    let source_text = r#"
+const BASE_COUNT: i64 = 2
+
+struct Reward {
+    count: i64 = BASE_COUNT + 3,
+}
+"#;
+    graph.add_source(source(1, "game::main", source_text));
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+
+    let path_facts = graph
+        .paths_in_source_by_kind(SourceId::new(1), HirPathKind::Value)
+        .map(|path| {
+            (
+                path.path.clone(),
+                path.origin.span.start,
+                path.origin.span.end,
+            )
+        })
+        .collect::<Vec<_>>();
+
+    assert!(path_facts.iter().any(|(path, start, end)| {
+        path == &["BASE_COUNT"]
+            && source_text.get(
+                usize::try_from(*start).expect("path start fits usize")
+                    ..usize::try_from(*end).expect("path end fits usize"),
+            ) == Some("BASE_COUNT")
+    }));
+}
+
+#[test]
 fn function_bodies_record_source_path_facts() {
     let mut graph = ModuleGraph::new();
     let source_text = r#"

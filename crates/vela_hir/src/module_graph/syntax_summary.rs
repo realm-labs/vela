@@ -183,10 +183,58 @@ impl SyntaxModuleSummary {
             .map_or(fallback, |item| struct_shape(self.source, &item))
     }
 
+    pub(super) fn struct_field_default_sources(
+        &self,
+        index: usize,
+    ) -> Vec<SyntaxExpressionSourcePart> {
+        self.item(index, SyntaxKind::StructItem)
+            .and_then(|item| SyntaxStructItem::cast(item.syntax().clone()))
+            .and_then(|item| item.field_list())
+            .map(|fields| {
+                fields
+                    .fields()
+                    .filter_map(|field| field.default_value())
+                    .map(|expression| SyntaxExpressionSourcePart { expression })
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     pub(super) fn enum_shape_or(&self, index: usize, fallback: EnumShape) -> EnumShape {
         self.item(index, SyntaxKind::EnumItem)
             .and_then(|item| SyntaxEnumItem::cast(item.syntax().clone()))
             .map_or(fallback, |item| enum_shape(self.source, &item))
+    }
+
+    pub(super) fn enum_field_default_sources(
+        &self,
+        index: usize,
+    ) -> Vec<SyntaxExpressionSourcePart> {
+        self.item(index, SyntaxKind::EnumItem)
+            .and_then(|item| SyntaxEnumItem::cast(item.syntax().clone()))
+            .and_then(|item| item.variant_list())
+            .map(|variants| {
+                variants
+                    .variants()
+                    .flat_map(|variant| {
+                        let tuple_defaults = variant
+                            .tuple_field_list()
+                            .into_iter()
+                            .flat_map(|fields| fields.params())
+                            .filter_map(|param| param.default_value());
+                        let record_defaults = variant
+                            .record_field_list()
+                            .into_iter()
+                            .flat_map(|fields| fields.fields())
+                            .filter_map(|field| field.default_value());
+                        tuple_defaults
+                            .chain(record_defaults)
+                            .map(|expression| SyntaxExpressionSourcePart { expression })
+                            .collect::<Vec<_>>()
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     pub(super) fn trait_shape_or(
