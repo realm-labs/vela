@@ -163,7 +163,8 @@ sentinel or array aliases, ordinary tuple expressions now lower through a
 first-class `MakeTuple` bytecode instruction, and tuple destructuring patterns
 now lower for `let`, `match`, and `for` bindings through tuple arity guards and
 field reads. Tuple type facts, runtime/shape guard plans, tuple type-hint
-validation, and `String.split_once -> Option<(String, String)>` now exist
+validation, language-service tuple arity and known non-tuple type diagnostics,
+and `String.split_once -> Option<(String, String)>` now exist
 across analysis, bytecode, VM, reflection metadata, examples, docs, and cached
 and uncached stdlib paths. Statically known string lookup/parse APIs and
 `Array.index_of` now expose precise `Option<T>` stdlib manifest and reflection

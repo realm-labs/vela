@@ -706,6 +706,85 @@ pub fn main(pairs: Array<(String, i64)>, iter_pairs: Iterator<(String, i64)>) {
 }
 
 #[test]
+fn analysis_diagnostics_report_tuple_destructuring_type_mismatch() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let mut db = LanguageServiceDatabases::new();
+    db.update(&project(&[file(
+        document.as_str(),
+        "\
+pub fn main(values: Array<i64>) {
+    let (name, score) = 1
+    match true {
+        (left, right) => 1,
+        _ => 0,
+    }
+    for (left, right) in values {
+        left
+    }
+}",
+    )]));
+
+    let diagnostics = db.diagnostics_for_document(&document);
+    let tuple_type_diagnostics = diagnostics
+        .diagnostics()
+        .iter()
+        .filter(|diagnostic| diagnostic.code() == Some("analysis::tuple_type_mismatch"))
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        tuple_type_diagnostics.len(),
+        3,
+        "{:?}",
+        diagnostics.diagnostics()
+    );
+    for diagnostic in &tuple_type_diagnostics {
+        assert!(
+            diagnostic
+                .message()
+                .contains("tuple pattern expects a tuple but expression has"),
+            "{diagnostic:?}"
+        );
+        assert!(diagnostic.range().is_some(), "{diagnostic:?}");
+    }
+    assert!(
+        tuple_type_diagnostics.iter().any(|diagnostic| {
+            diagnostic.message().contains("i64")
+                && diagnostic.labels().iter().any(|label| {
+                    label
+                        .message()
+                        .contains("tuple destructuring initializer is not a tuple")
+                })
+        }),
+        "{:?}",
+        diagnostics.diagnostics()
+    );
+    assert!(
+        tuple_type_diagnostics.iter().any(|diagnostic| {
+            diagnostic.message().contains("bool")
+                && diagnostic.labels().iter().any(|label| {
+                    label
+                        .message()
+                        .contains("tuple match pattern scrutinee is not a tuple")
+                })
+        }),
+        "{:?}",
+        diagnostics.diagnostics()
+    );
+    assert!(
+        tuple_type_diagnostics.iter().any(|diagnostic| {
+            diagnostic.message().contains("i64")
+                && diagnostic.labels().iter().any(|label| {
+                    label
+                        .message()
+                        .contains("tuple for pattern iterable item is not a tuple")
+                })
+        }),
+        "{:?}",
+        diagnostics.diagnostics()
+    );
+}
+
+#[test]
 fn missing_schema_keeps_syntax_diagnostics_available() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let mut db = LanguageServiceDatabases::new();

@@ -527,12 +527,14 @@ Focused validation:
 - [~] Lower tuple construction and destructuring directly. Ordinary tuple
   expressions now lower through a first-class `MakeTuple` bytecode instruction,
   and tuple destructuring now lowers for `let`, `match`, and `for` patterns.
-- [~] Add tuple arity/type mismatch diagnostics for destructuring and dynamic
+- [x] Add tuple arity/type mismatch diagnostics for destructuring and dynamic
   boundary guards. Runtime arity guards now exist for tuple destructuring;
   typed dynamic-boundary tuple guards now cover Option and Result tuple
   payloads. Language-service diagnostics now report precise `let`, `match`,
   and typed `for` tuple-pattern arity mismatches when the source expression or
-  iterable item has a tuple fact. Broader diagnostic polish remains open.
+  iterable item has a tuple fact, and they now report known non-tuple
+  initializer, scrutinee, and iterable-item type mismatches without guessing for
+  unknown or dynamic facts.
 - [x] Keep `?` Rust-aligned and reject cross-family `Option`/`Result`
   propagation without explicit helpers. `TryPropagate` bytecode now carries the
   enclosing typed return family when known, so both continue and short-circuit

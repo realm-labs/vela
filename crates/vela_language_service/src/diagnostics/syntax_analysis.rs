@@ -139,8 +139,15 @@ fn diagnose_tuple_destructuring(
     }
     let initializer = statement.initializer()?;
     let initializer_range = text_range_key(initializer.syntax().text_range());
-    let TypeFact::Tuple { elements } = expression_facts.get(&initializer_range)? else {
-        return None;
+    let initializer_fact = expression_facts.get(&initializer_range)?;
+    let TypeFact::Tuple { elements } = initializer_fact else {
+        let non_tuple = definite_non_tuple_fact(initializer_fact)?;
+        return Some(tuple_type_mismatch_diagnostic(
+            source,
+            &pattern,
+            non_tuple,
+            "tuple destructuring initializer is not a tuple",
+        ));
     };
     let expected = tuple.patterns().count();
     let actual = elements.len();
@@ -165,8 +172,30 @@ fn diagnose_tuple_match_patterns(
         return Vec::new();
     };
     let scrutinee_range = text_range_key(scrutinee.syntax().text_range());
-    let Some(TypeFact::Tuple { elements }) = expression_facts.get(&scrutinee_range) else {
+    let Some(scrutinee_fact) = expression_facts.get(&scrutinee_range) else {
         return Vec::new();
+    };
+    let TypeFact::Tuple { elements } = scrutinee_fact else {
+        let Some(non_tuple) = definite_non_tuple_fact(scrutinee_fact) else {
+            return Vec::new();
+        };
+        return expr
+            .arms()
+            .into_iter()
+            .filter_map(|arm| {
+                let pattern = arm.pattern()?;
+                let tuple = pattern.tuple_pattern()?;
+                if tuple.path_text().is_some() {
+                    return None;
+                }
+                Some(tuple_type_mismatch_diagnostic(
+                    source,
+                    &pattern,
+                    non_tuple,
+                    "tuple match pattern scrutinee is not a tuple",
+                ))
+            })
+            .collect();
     };
     let actual = elements.len();
     expr.arms()
@@ -203,7 +232,13 @@ fn diagnose_tuple_for_pattern(
         .get(&iterable_range)
         .and_then(iterable_item_fact)?;
     let TypeFact::Tuple { elements } = item else {
-        return None;
+        let non_tuple = definite_non_tuple_fact(item)?;
+        return Some(tuple_type_mismatch_diagnostic(
+            source,
+            &pattern,
+            non_tuple,
+            "tuple for pattern iterable item is not a tuple",
+        ));
     };
     if tuple.patterns().count() == elements.len() {
         return None;
@@ -223,6 +258,17 @@ fn iterable_item_fact(fact: &TypeFact) -> Option<&TypeFact> {
     }
 }
 
+fn definite_non_tuple_fact(fact: &TypeFact) -> Option<&TypeFact> {
+    match fact {
+        TypeFact::Unknown | TypeFact::Never | TypeFact::Any | TypeFact::Tuple { .. } => None,
+        TypeFact::Union(facts) => facts
+            .iter()
+            .all(|fact| definite_non_tuple_fact(fact).is_some())
+            .then_some(fact),
+        fact => Some(fact),
+    }
+}
+
 fn tuple_arity_mismatch_diagnostic(
     source: SourceId,
     pattern: &SyntaxPattern,
@@ -238,6 +284,25 @@ fn tuple_arity_mismatch_diagnostic(
         "tuple pattern expects {expected} values but expression has {actual}"
     ))
     .with_code("analysis::tuple_arity_mismatch")
+    .with_span(span)
+    .with_label(span, label)
+}
+
+fn tuple_type_mismatch_diagnostic(
+    source: SourceId,
+    pattern: &SyntaxPattern,
+    actual: &TypeFact,
+    label: &'static str,
+) -> Diagnostic {
+    let tuple = pattern
+        .tuple_pattern()
+        .expect("tuple type diagnostics require tuple patterns");
+    let span = syntax_span(source, tuple.syntax().text_range());
+    Diagnostic::error(format!(
+        "tuple pattern expects a tuple but expression has {}",
+        actual.display_name()
+    ))
+    .with_code("analysis::tuple_type_mismatch")
     .with_span(span)
     .with_label(span, label)
 }
