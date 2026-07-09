@@ -165,8 +165,29 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
     {
         match self.value {
             Value::Missing => Err(Error::custom("missing value is internal")),
-            Value::Unit => visitor.visit_none(),
-            _ => visitor.visit_some(self),
+            Value::HeapRef(_) => match self.heap_value()? {
+                HeapValue::Enum {
+                    enum_name,
+                    variant,
+                    fields,
+                    ..
+                } if is_option_enum(enum_name) => match variant.as_str() {
+                    "None" if fields.is_empty() => visitor.visit_none(),
+                    "Some" if fields.len() == 1 => fields
+                        .get("0")
+                        .ok_or_else(|| Error::custom("expected Option::Some payload field `0`"))
+                        .and_then(|payload| {
+                            visitor.visit_some(RuntimeValueDeserializer {
+                                value: payload,
+                                heap: self.heap,
+                            })
+                        }),
+                    "Some" => Err(Error::custom("expected Option::Some payload field `0`")),
+                    _ => Err(Error::custom("expected Option::Some or Option::None")),
+                },
+                _ => Err(Error::custom("expected Option enum value")),
+            },
+            _ => Err(Error::custom("expected Option enum value")),
         }
     }
 
@@ -495,6 +516,10 @@ impl<'de> VariantAccess<'de> for RuntimeVariantAccess<'de> {
     {
         visitor.visit_map(RuntimeMapAccess::from_fields(self.fields, self.heap))
     }
+}
+
+fn is_option_enum(enum_name: &str) -> bool {
+    enum_name == "Option" || enum_name.rsplit("::").next() == Some("Option")
 }
 
 struct RuntimeTupleVariantSeqAccess<'de> {

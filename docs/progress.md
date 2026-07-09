@@ -154,7 +154,8 @@ removed from the ordinary syntax/tooling surface, and the core no-value model
 uses Unit across runtime values, owned/host values, bytecode constants,
 primitive tags, reflection type kinds, hot-reload schema ABI, C API value kind,
 standard/native no-result metadata, control-flow defaults, and Rust
-`Option<T>` embedding conversion to script `Option<T>` enums. Runtime-owned
+`Option<T>` embedding and serde conversion to script `Option<T>` enums rather
+than unit sentinels. Runtime-owned
 tuple payloads now materialize through the VM heap and owned boundary, Rust
 `()` converts at the script-argument boundary, Rust tuple conversion supports
 arities 2 through 4, serde tuple conversion uses tuple values rather than

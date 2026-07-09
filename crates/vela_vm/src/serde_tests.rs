@@ -5,8 +5,10 @@ use ::serde::de::{SeqAccess, Visitor};
 use ::serde::{Deserialize, Deserializer, Serialize, Serializer};
 use vela_common::ScalarValue;
 
+use crate::heap::HeapValue;
 use crate::heap::ScriptHeap;
 use crate::owned_value::OwnedValue;
+use crate::script_object::ScriptFields;
 use crate::serde::{from_owned_value, from_runtime_value, to_owned_value};
 use crate::value::Value;
 
@@ -256,6 +258,32 @@ fn serde_preserves_tuple_values_as_tuples_not_arrays() {
 }
 
 #[test]
+fn serde_maps_rust_option_to_script_option_enum() {
+    let some = to_owned_value(&Some(7_i64)).expect("serialize Some");
+    assert_eq!(
+        some,
+        OwnedValue::enum_variant("Option", "Some", [("0", OwnedValue::i64(7))])
+    );
+    assert_eq!(
+        from_owned_value::<Option<i64>>(&some).expect("deserialize Some"),
+        Some(7)
+    );
+
+    let none = to_owned_value(&Option::<i64>::None).expect("serialize None");
+    assert_eq!(
+        none,
+        OwnedValue::enum_variant("Option", "None", Vec::<(&str, OwnedValue)>::new())
+    );
+    assert_eq!(
+        from_owned_value::<Option<i64>>(&none).expect("deserialize None"),
+        None
+    );
+
+    assert!(from_owned_value::<Option<i64>>(&OwnedValue::Unit).is_err());
+    assert!(from_owned_value::<Option<i64>>(&OwnedValue::i64(7)).is_err());
+}
+
+#[test]
 fn serde_rejects_implicit_numeric_conversions() {
     assert!(from_owned_value::<u64>(&OwnedValue::Scalar(ScalarValue::I64(7))).is_err());
     assert!(from_owned_value::<i64>(&OwnedValue::Scalar(ScalarValue::U64(7))).is_err());
@@ -268,12 +296,38 @@ fn runtime_serde_rejects_internal_missing_sentinel() {
     let heap = ScriptHeap::default();
 
     from_runtime_value::<()>(&Value::Unit, &heap).expect("unit deserializes as unit");
-    let option =
-        from_runtime_value::<Option<i64>>(&Value::Unit, &heap).expect("unit deserializes as none");
-    assert_eq!(option, None);
+    assert!(from_runtime_value::<Option<i64>>(&Value::Unit, &heap).is_err());
 
     assert!(from_runtime_value::<()>(&Value::Missing, &heap).is_err());
     assert!(from_runtime_value::<Option<i64>>(&Value::Missing, &heap).is_err());
+}
+
+#[test]
+fn runtime_serde_maps_script_option_enum_to_rust_option() {
+    let mut heap = ScriptHeap::default();
+    let some_ref = heap.allocate(HeapValue::Enum {
+        enum_name: "Option".to_owned(),
+        variant: "Some".to_owned(),
+        identity: None,
+        fields: ScriptFields::single("Option::Some", "0", Value::I64(7)),
+    });
+    let none_ref = heap.allocate(HeapValue::Enum {
+        enum_name: "Option".to_owned(),
+        variant: "None".to_owned(),
+        identity: None,
+        fields: ScriptFields::empty("Option::None"),
+    });
+
+    assert_eq!(
+        from_runtime_value::<Option<i64>>(&Value::HeapRef(some_ref), &heap)
+            .expect("deserialize runtime Some"),
+        Some(7)
+    );
+    assert_eq!(
+        from_runtime_value::<Option<i64>>(&Value::HeapRef(none_ref), &heap)
+            .expect("deserialize runtime None"),
+        None
+    );
 }
 
 #[test]

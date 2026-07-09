@@ -951,6 +951,11 @@ Rust `Vec<u8>` and byte slices cross embedding and host boundaries as the
 expects `OwnedValue::Bytes`/`HostValue::Bytes` instead of accepting an array of
 `u8` scalars as an implicit conversion.
 
+Rust `Option<T>` crosses embedding and serde owned/runtime value boundaries as
+script `Option::Some(value)` or `Option::None`. Unit `()` is not accepted as an
+`Option::None` sentinel, and raw payload values are not accepted as implicit
+`Option::Some` values.
+
 Serde owned-value conversion preserves primitive tags exactly. Rust `i8`,
 `u32`, `u64`, `f32`, and the other scalar primitives become matching
 `ScalarValue` variants, and deserialization expects the same concrete tag

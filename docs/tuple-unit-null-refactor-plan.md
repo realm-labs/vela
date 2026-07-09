@@ -555,7 +555,10 @@ Focused validation:
   useful. `String.split_once` now returns `Option<(String, String)>` through
   analysis facts, stdlib metadata, VM execution, cached materialization,
   reflection metadata, examples, and docs.
-- [x] Change Rust `Option<T>` conversion to script `Option<T>`.
+- [x] Change Rust `Option<T>` conversion to script `Option<T>`. Embedding and
+  serde owned/runtime conversions now use `Option::Some` and `Option::None`
+  enum values; `()` and raw payload values are rejected for Rust
+  `Option<T>`.
 - [x] Add Rust `()` conversion and Rust tuple arity 2..=4 conversion.
 - [~] Remove reflection missing-metadata nulls in favor of `Option`, omitted
   fields, or explicit structured absence. Field, parameter, and return hints

@@ -153,14 +153,22 @@ impl ser::Serializer for OwnedValueSerializer {
     }
 
     fn serialize_none(self) -> Result<Self::Ok> {
-        Ok(OwnedValue::Unit)
+        Ok(OwnedValue::enum_variant(
+            "Option",
+            "None",
+            Vec::<(String, OwnedValue)>::new(),
+        ))
     }
 
     fn serialize_some<T>(self, value: &T) -> Result<Self::Ok>
     where
         T: Serialize + ?Sized,
     {
-        value.serialize(self)
+        Ok(OwnedValue::enum_variant(
+            "Option",
+            "Some",
+            [("0".to_owned(), value.serialize(OwnedValueSerializer)?)],
+        ))
     }
 
     fn serialize_unit(self) -> Result<Self::Ok> {
@@ -678,8 +686,21 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
         V: Visitor<'de>,
     {
         match self {
-            OwnedValue::Unit => visitor.visit_none(),
-            _ => visitor.visit_some(self),
+            OwnedValue::Enum {
+                enum_name,
+                variant,
+                fields,
+                ..
+            } if is_option_enum(enum_name) => match variant.as_str() {
+                "None" if fields.is_empty() => visitor.visit_none(),
+                "Some" if fields.len() == 1 => fields
+                    .get("0")
+                    .ok_or_else(|| Error::custom("expected Option::Some payload field `0`"))
+                    .and_then(|payload| visitor.visit_some(payload)),
+                "Some" => Err(Error::custom("expected Option::Some payload field `0`")),
+                _ => Err(Error::custom("expected Option::Some or Option::None")),
+            },
+            _ => Err(Error::custom("expected Option enum value")),
         }
     }
 
@@ -969,6 +990,10 @@ impl<'de> VariantAccess<'de> for ValueVariantAccess<'de> {
     {
         visitor.visit_map(ValueMapAccess::from_fields(self.fields))
     }
+}
+
+fn is_option_enum(enum_name: &str) -> bool {
+    enum_name == "Option" || enum_name.rsplit("::").next() == Some("Option")
 }
 
 struct TupleVariantSeqAccess<'de> {
