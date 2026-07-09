@@ -103,7 +103,7 @@ fn function_body_edit_does_not_invalidate_unrelated_modules() {
         before_project_rebuild_count
     );
     assert_eq!(report.metrics().project_rebuild_count(), 0);
-    assert_eq!(report.metrics().hir_rebuild_count(), 0);
+    assert_eq!(report.metrics().hir_rebuild_count(), 1);
 }
 
 #[test]
@@ -451,7 +451,7 @@ fn open_file_recomputation_is_scheduled_before_workspace_work() {
 }
 
 #[test]
-fn scale_fixture_avoids_full_rebuild_per_edit() {
+fn scale_fixture_reparses_single_body_edit_and_refreshes_hir() {
     let mut files = (0..128)
         .map(|index| {
             file(
@@ -477,7 +477,7 @@ fn scale_fixture_avoids_full_rebuild_per_edit() {
     assert_eq!(report.metrics().source_count(), 128);
     assert_eq!(report.metrics().parsed_document_count(), 128);
     assert_eq!(report.metrics().reparsed_document_count(), 1);
-    assert_eq!(report.metrics().hir_rebuild_count(), 0);
+    assert_eq!(report.metrics().hir_rebuild_count(), 1);
     assert!(report.metrics().total_lines() >= 128);
     assert!(report.metrics().total_bytes() > 0);
 }
@@ -508,14 +508,14 @@ fn larger_synthetic_workspace_reports_indexing_metrics() {
     assert_eq!(report.metrics().source_count(), MODULES);
     assert_eq!(report.metrics().parsed_document_count(), MODULES);
     assert_eq!(report.metrics().reparsed_document_count(), 1);
-    assert_eq!(report.metrics().hir_rebuild_count(), 0);
+    assert_eq!(report.metrics().hir_rebuild_count(), 1);
     assert_eq!(report.reparsed_documents().len(), 1);
     assert_eq!(report.hir_invalidated_modules().len(), 1);
 }
 
 #[test]
 #[ignore = "explicit Phase 18 scale checkpoint for roughly one million lines"]
-fn million_line_synthetic_workspace_checkpoint_avoids_full_rebuild_per_edit() {
+fn million_line_synthetic_workspace_checkpoint_refreshes_hir_for_body_edit() {
     const MODULES: usize = 2_048;
     const LINES_PER_MODULE: usize = 512;
 
@@ -539,7 +539,7 @@ fn million_line_synthetic_workspace_checkpoint_avoids_full_rebuild_per_edit() {
     assert_eq!(report.metrics().source_count(), MODULES);
     assert_eq!(report.metrics().parsed_document_count(), MODULES);
     assert_eq!(report.metrics().reparsed_document_count(), 1);
-    assert_eq!(report.metrics().hir_rebuild_count(), 0);
+    assert_eq!(report.metrics().hir_rebuild_count(), 1);
     assert_eq!(report.reparsed_documents().len(), 1);
     assert_eq!(report.hir_invalidated_modules().len(), 1);
     assert!(report.metrics().total_lines() >= 1_000_000);

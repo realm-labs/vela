@@ -17,6 +17,9 @@ use vela_hir::body::HirBody;
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
 
+mod hir_cursor;
+use hir_cursor::refine_cursor_with_hir;
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct CallArgumentFacts<'a> {
     callee_range: TextRange,
@@ -129,7 +132,13 @@ impl<'a> QueryContext<'a> {
     ) -> Option<Self> {
         let source = databases.source_db().records().get(document_id)?;
         let syntax_parse = databases.parse_db().syntax_parse(document_id);
-        let cursor = cursor_context_at(source.text(), position, syntax_parse);
+        let mut cursor = cursor_context_at(source.text(), position, syntax_parse);
+        refine_cursor_with_hir(
+            databases.hir_db().graph(),
+            source.source_id(),
+            cursor.replace_range().end,
+            &mut cursor,
+        );
         let bindings = query_bindings(databases, source, cursor.replace_range().end);
         let body = bindings.and_then(|bindings| databases.hir_db().graph().body(bindings.body()));
         Some(Self {

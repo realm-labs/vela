@@ -8,14 +8,10 @@ use vela_common::SourceId;
 
 use crate::{LineIndex, Position, TextRange};
 
-mod call_callee;
-mod member_receiver;
 mod pattern;
 mod record_expression_field;
 mod record_type_field;
 mod statement_boundary;
-use call_callee::call_callee_for_source;
-use member_receiver::member_receiver_for_source;
 use pattern::is_pattern_context;
 use record_expression_field::is_record_expression_field_context;
 use record_type_field::is_record_type_field_context;
@@ -111,6 +107,19 @@ impl CursorContext {
     pub const fn lambda_parameters(&self) -> Option<TextRange> {
         self.lambda_parameters
     }
+
+    pub(crate) fn refine_member_receiver(&mut self, receiver: TextRange) {
+        self.member_receiver = Some(receiver);
+    }
+
+    pub(crate) fn refine_call_ranges(
+        &mut self,
+        callee: TextRange,
+        member_receiver: Option<TextRange>,
+    ) {
+        self.call_callee = Some(callee);
+        self.call_member_receiver = member_receiver;
+    }
 }
 
 #[must_use]
@@ -198,20 +207,6 @@ pub fn cursor_context_at(
         );
     }
 
-    if let Some(receiver) = syntax_parse
-        .as_ref()
-        .and_then(|parse| member_receiver_for_source(&parse.tree(), prefix_start))
-    {
-        let mut cursor = context(
-            CursorContextKind::MemberAccess,
-            prefix_start,
-            prefix,
-            identifier_range,
-        );
-        cursor.member_receiver = Some(receiver);
-        return cursor;
-    }
-
     if let Some(receiver) = recovered_member_receiver_before_dot(text, prefix_start) {
         let mut cursor = context(
             CursorContextKind::MemberAccess,
@@ -251,22 +246,6 @@ pub fn cursor_context_at(
             prefix,
             identifier_range,
         );
-    }
-
-    if let Some(call) = syntax_parse
-        .as_ref()
-        .and_then(|parse| call_callee_for_source(&parse.tree(), prefix_start))
-    {
-        let mut cursor = context(
-            CursorContextKind::CallArgument,
-            prefix_start,
-            prefix,
-            identifier_range,
-        );
-        cursor.call_open = active_call_open(text, offset);
-        cursor.call_callee = Some(call.callee);
-        cursor.call_member_receiver = call.member_receiver;
-        return cursor;
     }
 
     if let Some(open) = active_call_open(text, offset) {

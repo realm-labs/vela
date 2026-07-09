@@ -193,15 +193,12 @@ fn cursor_context_exposes_call_member_receiver() {
 }
 
 #[test]
-fn cursor_context_exposes_complex_call_member_receiver_from_syntax() {
+fn cursor_context_leaves_complex_call_member_receiver_to_hir_query_context() {
     let text = "pub fn main() { current_player().grant(value) }";
     let cursor = classify(text, "value");
-    let receiver = cursor
-        .call_member_receiver()
-        .expect("call member receiver range");
 
     assert_eq!(cursor.kind(), CursorContextKind::CallArgument);
-    assert_eq!(&text[receiver.start..receiver.end], "current_player()");
+    assert_eq!(cursor.call_member_receiver(), None);
 }
 
 #[test]

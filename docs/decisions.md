@@ -53,6 +53,14 @@ of reconstructing path sites from parsed body syntax. Syntax may still provide
 source origins during HIR lowering and editor cursor recovery, but feature
 producers should not keep parallel parsed path-site helpers.
 
+### Heavy HIR Body Edit Invalidation
+
+Body-only source edits must refresh Heavy HIR body facts, including call,
+member, path, scope, binding, and source-origin records, even when declaration
+and import fingerprints are unchanged. Incremental language-service updates may
+reuse declaration/import indexes for those edits, but must not keep stale HIR
+graphs once editor features consume body-owned HIR semantics.
+
 ### Tuple, Unit, And Null Direction
 
 Future breaking value-model cleanup should add Rust-like tuple syntax and

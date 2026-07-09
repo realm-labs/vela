@@ -816,7 +816,7 @@ impl LanguageServiceDatabases {
         self.analysis_db
             .invalidate(self.generation, analysis_invalidated_modules.clone());
 
-        if !dependency_roots.is_empty() {
+        if !hir_invalidated_modules.is_empty() {
             self.hir_db.rebuild(project.sources());
         }
         let scheduled_modules = schedule_modules(&hir_invalidated_modules, project, open_documents);

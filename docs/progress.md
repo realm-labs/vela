@@ -177,10 +177,17 @@ HIR bodies now also record field/member receiver expression facts keyed by
 `HirExprId`, semantic-token member classification reads those HIR member facts
 instead of a syntax-built receiver map, and query-context visible locals now use
 binding scope spans so let bindings are not visible inside their own
-initializers. Semantic-token local record facts now identify let locals through
-HIR statement-owned binding pattern IDs instead of `BindingMap` name/span
-lookup, HIR let statements now carry their initializer `HirExprId`, and local
-record semantic-token facts use that initializer plus HIR constructor path facts
+initializers. Database-backed query contexts now refine complete member-access
+and call-argument receiver/callee ranges from HIR field and call facts, while
+the lower-level cursor scanner keeps only lexical recovery for incomplete
+edits; the old CST call/member cursor helper modules have been deleted.
+Incremental language-service updates now rebuild Heavy HIR for body-only source
+edits so HIR-owned call/member/path/body facts stay current while
+declaration/import indexes remain reusable. Semantic-token local record facts
+now identify let locals through HIR
+statement-owned binding pattern IDs instead of `BindingMap` name/span lookup,
+HIR let statements now carry their initializer `HirExprId`, and local record
+semantic-token facts use that initializer plus HIR constructor path facts
 instead of scanning CST let statements. The old `local_named_at` binding helper
 has been removed. Function
 and lambda parameter locals now carry exact name-token source spans, and

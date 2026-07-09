@@ -1,7 +1,7 @@
 use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
 
 #[test]
-fn lsp_did_change_body_edit_avoids_project_and_hir_rebuild() {
+fn lsp_did_change_body_edit_preserves_project_and_rebuilds_hir() {
     let mut server = LspServer::new();
     let _ = response_value(handle_request(
         &mut server,
@@ -58,8 +58,8 @@ fn lsp_did_change_body_edit_avoids_project_and_hir_rebuild() {
     );
     assert_eq!(
         server.databases.hir_db().rebuild_count(),
-        before_hir_rebuild_count,
-        "body-only didChange must not force a HIR graph rebuild"
+        before_hir_rebuild_count + 1,
+        "body-only didChange must rebuild Heavy HIR body facts"
     );
 }
 
