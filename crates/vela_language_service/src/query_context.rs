@@ -14,7 +14,7 @@ use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, LocalBinding};
 use vela_hir::body::HirBody;
-use vela_hir::ids::{HirDeclId, HirExprId};
+use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -388,17 +388,11 @@ pub(crate) fn type_fact_for_source_range(
     let span = Span::new(source_id, start, end);
     let graph = databases.hir_db().graph();
     let facts = AnalysisFacts::from_module_graph_and_schema(graph, databases.schema_db().facts());
-    hir_expression_at_span(graph, span)
+    graph
+        .expression_at_span(span)
         .and_then(|expression| facts.expression(expression).cloned())
         .filter(|fact| !matches!(fact, TypeFact::Unknown))
         .or_else(|| expression_facts::fact_for_range(databases, source_id, range))
-}
-
-fn hir_expression_at_span(graph: &ModuleGraph, span: Span) -> Option<HirExprId> {
-    graph
-        .bodies()
-        .flat_map(|body| body.expressions.values())
-        .find_map(|expression| (expression.origin.span == span).then_some(expression.id))
 }
 
 fn query_bindings<'a>(

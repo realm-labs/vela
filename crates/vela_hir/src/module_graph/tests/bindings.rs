@@ -753,6 +753,7 @@ fn main(value) {
             .expect("unresolved reference");
         assert_eq!(unresolved.origin.span, span);
         assert!(body.expressions.contains_key(&unresolved.expression));
+        assert_eq!(graph.expression_at_span(span), Some(unresolved.expression));
     }
 }
 

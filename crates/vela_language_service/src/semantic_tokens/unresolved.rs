@@ -13,14 +13,18 @@ use super::{SemanticTokenClassification, SemanticTokenModifiers, SemanticTokenTy
 pub(super) type IdentifierRanges = BTreeSet<(usize, usize)>;
 
 pub(super) fn classification(
+    graph: &ModuleGraph,
     bindings: &BindingMap,
     span: Span,
     unresolved_identifiers: &IdentifierRanges,
     range: TextRange,
 ) -> Option<SemanticTokenClassification> {
+    let resolution = graph
+        .expression_at_span(span)
+        .and_then(|expression| bindings.resolution(expression));
     if unresolved_identifiers.contains(&(range.start, range.end))
         || matches!(
-            bindings.resolution_at_span(span),
+            resolution,
             Some(BindingResolution::Import(_) | BindingResolution::QualifiedPath(_))
         )
     {

@@ -47,9 +47,10 @@ pub(super) fn classify(
         .get(&(receiver_range.start, receiver_range.end))
         .cloned()
         .or_else(|| {
+            let expression = context.graph.expression_at_span(receiver_span)?;
             context
                 .bindings
-                .resolution_at_span(receiver_span)
+                .resolution(expression)
                 .and_then(|resolution| {
                     type_fact_for_resolution(
                         resolution,

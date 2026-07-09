@@ -670,7 +670,7 @@ impl LanguageServiceDatabases {
                     return Some(classification);
                 }
                 if let Some(classification) =
-                    resolved_identifier_classification(bindings, span, self)
+                    resolved_identifier_classification(graph, bindings, span, self)
                 {
                     return Some(classification);
                 }
@@ -680,6 +680,7 @@ impl LanguageServiceDatabases {
                     return Some(classification);
                 }
                 if let Some(classification) = unresolved::classification(
+                    graph,
                     bindings,
                     span,
                     context.unresolved_identifiers,
@@ -718,11 +719,12 @@ fn local_declaration_classification(
 }
 
 fn resolved_identifier_classification(
+    graph: &ModuleGraph,
     bindings: &BindingMap,
     span: Span,
     databases: &LanguageServiceDatabases,
 ) -> Option<SemanticTokenClassification> {
-    let resolution = bindings.resolution_at_span(span)?;
+    let resolution = bindings.resolution(graph.expression_at_span(span)?)?;
     match resolution {
         BindingResolution::Local(local) => bindings.local(*local).map(local_use_classification),
         BindingResolution::Declaration(declaration) => databases

@@ -23,7 +23,7 @@ use self::body_binding::FunctionBodySource;
 use crate::attributes::HirAttribute;
 use crate::binding::BindingMap;
 use crate::body::HirBody;
-use crate::ids::{HirBodyId, HirDeclId, HirNodeId, ModuleId};
+use crate::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId, ModuleId};
 #[cfg(test)]
 use crate::type_hint::HirTypeHint;
 use crate::type_hint::{
@@ -494,6 +494,14 @@ impl ModuleGraph {
 
     pub fn bodies(&self) -> impl Iterator<Item = &HirBody> {
         self.bodies.values()
+    }
+
+    #[must_use]
+    pub fn expression_at_span(&self, span: Span) -> Option<HirExprId> {
+        self.bodies
+            .values()
+            .flat_map(|body| body.expressions.values())
+            .find_map(|expression| (expression.origin.span == span).then_some(expression.id))
     }
 
     #[must_use]
