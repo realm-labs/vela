@@ -554,7 +554,13 @@ Focused validation:
 - [~] Change lookup/search/split APIs to `Option<T>` and tuple payloads where
   useful. `String.split_once` now returns `Option<(String, String)>` through
   analysis facts, stdlib metadata, VM execution, cached materialization,
-  reflection metadata, examples, and docs.
+  reflection metadata, examples, and docs. Statically known scalar/string
+  lookup and parse returns such as `String.find -> Option<i64>`,
+  `String.strip_prefix`/`strip_suffix -> Option<String>`, string primitive
+  parsers, and `Array.index_of -> Option<i64>` now expose precise stdlib
+  manifest and reflection metadata. Receiver-dependent collection payloads
+  such as `Array.pop`, `Map.get`, and `Iterator.next` remain erased in the
+  descriptor surface until descriptor metadata can carry receiver type facts.
 - [x] Change Rust `Option<T>` conversion to script `Option<T>`. Embedding and
   serde owned/runtime conversions now use `Option::Some` and `Option::None`
   enum values; `()` and raw payload values are rejected for Rust

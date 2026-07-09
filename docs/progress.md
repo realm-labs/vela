@@ -165,7 +165,10 @@ now lower for `let`, `match`, and `for` bindings through tuple arity guards and
 field reads. Tuple type facts, runtime/shape guard plans, tuple type-hint
 validation, and `String.split_once -> Option<(String, String)>` now exist
 across analysis, bytecode, VM, reflection metadata, examples, docs, and cached
-and uncached stdlib paths. Result tuple payload fixtures now cover typed
+and uncached stdlib paths. Statically known string lookup/parse APIs and
+`Array.index_of` now expose precise `Option<T>` stdlib manifest and reflection
+metadata where the payload type is independent of receiver facts. Result tuple
+payload fixtures now cover typed
 `?`/destructuring propagation and linked parameter guards. Reflected descriptor
 type-hint strings now parse into structured tuple facts for analysis and schema
 artifact export, and reflection metadata records now expose copied

@@ -60,7 +60,7 @@ const ARRAY_METHODS: &[MethodSpec] = &[
     MethodSpec::new(
         "index_of",
         &[ParamSpec::new("value", "any")],
-        "Option",
+        "Option<i64>",
         "Returns the first index of a value, or Option::None.",
     ),
     MethodSpec::new("distinct", &[], "array", "Returns unique values."),

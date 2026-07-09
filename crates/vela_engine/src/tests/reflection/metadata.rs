@@ -319,13 +319,13 @@ fn engine_standard_natives_register_reflection_metadata() {
         .iter()
         .find(|method| method.name == "parse_i64")
         .expect("string.parse_i64 method metadata");
-    assert_eq!(parse_i64.return_type.as_deref(), Some("Option"));
+    assert_eq!(parse_i64.return_type.as_deref(), Some("Option<i64>"));
     let parse_char = string_type
         .methods
         .iter()
         .find(|method| method.name == "parse_char")
         .expect("string.parse_char method metadata");
-    assert_eq!(parse_char.return_type.as_deref(), Some("Option"));
+    assert_eq!(parse_char.return_type.as_deref(), Some("Option<char>"));
 
     let array_type = registry.type_by_name("array").expect("array type");
     assert_eq!(array_type.kind, vela_reflect::registry::TypeKind::Array);
@@ -344,6 +344,12 @@ fn engine_standard_natives_register_reflection_metadata() {
         .expect("array.map method metadata");
     assert_eq!(array_map.params[0].type_hint.as_deref(), Some("Function"));
     assert_eq!(array_map.return_type.as_deref(), Some("Array"));
+    let array_index_of = array_type
+        .methods
+        .iter()
+        .find(|method| method.name == "index_of")
+        .expect("array.index_of method metadata");
+    assert_eq!(array_index_of.return_type.as_deref(), Some("Option<i64>"));
 
     let map_type = registry.type_by_name("map").expect("map type");
     assert_eq!(map_type.kind, vela_reflect::registry::TypeKind::Map);
@@ -687,6 +693,7 @@ fn main() {
     let char_is_ascii_digit = reflect::method(char_type, "is_ascii_digit");
     let array_push = reflect::method(array_type, "push");
     let array_map = reflect::method(array_type, "map");
+    let array_index_of = reflect::method(array_type, "index_of");
     let map_get = reflect::method(map_type, "get");
     let set_union = reflect::method(set_type, "union");
     let range_len = reflect::method(range_type, "len");
@@ -827,8 +834,8 @@ fn main() {
         && split_once.params[0].name == "separator"
         && split_once.params[0].type.unwrap_or("") == "String"
         && reflect::returns(split_once).unwrap_or("") == "Option<(String, String)>"
-        && reflect::returns(parse_i64).unwrap_or("") == "Option"
-        && reflect::returns(parse_char).unwrap_or("") == "Option"
+        && reflect::returns(parse_i64).unwrap_or("") == "Option<i64>"
+        && reflect::returns(parse_char).unwrap_or("") == "Option<char>"
         && bytes_read_u32_le.params[0].type.unwrap_or("") == "i64"
         && reflect::returns(bytes_read_u32_le).unwrap_or("") == "u32"
         && reflect::attr(bytes_read_u32_le, "stdlib").unwrap_or("") == "bytes"
@@ -847,6 +854,7 @@ fn main() {
         && result_methods.len() >= 10
         && reflect::has_method(array_type, "push")
         && reflect::has_method(array_type, "map")
+        && reflect::has_method(array_type, "index_of")
         && reflect::has_method(map_type, "get")
         && reflect::has_method(map_type, "map_values")
         && reflect::has_method(set_type, "union")
@@ -874,6 +882,7 @@ fn main() {
         && reflect::returns(array_push).unwrap_or("") == "()"
         && array_map.params[0].type.unwrap_or("") == "Function"
         && reflect::returns(array_map).unwrap_or("") == "Array"
+        && reflect::returns(array_index_of).unwrap_or("") == "Option<i64>"
         && map_get.params[0].name == "key"
         && reflect::returns(map_get).unwrap_or("") == "Option"
         && set_union.params[0].type.unwrap_or("") == "Set"
