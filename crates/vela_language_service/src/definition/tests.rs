@@ -801,7 +801,7 @@ fn definition_follows_schema_variant_source_span() {
             "types": [
                 {
                     "name": "QuestState",
-                    "fact": { "kind": "enum", "name": "QuestState", "variant": null }
+                    "fact": { "kind": "enum", "name": "QuestState" }
                 }
             ],
             "variants": [
@@ -869,11 +869,11 @@ fn definition_follows_qualified_schema_variant_when_name_is_not_unique() {
             "types": [
                 {
                     "name": "QuestState",
-                    "fact": { "kind": "enum", "name": "QuestState", "variant": null }
+                    "fact": { "kind": "enum", "name": "QuestState" }
                 },
                 {
                     "name": "OtherState",
-                    "fact": { "kind": "enum", "name": "OtherState", "variant": null }
+                    "fact": { "kind": "enum", "name": "OtherState" }
                 }
             ],
             "variants": [
@@ -1074,7 +1074,7 @@ fn type_definition_returns_none_for_schema_variant_without_owner_type_span() {
                 "types": [
                     {
                         "name": "QuestState",
-                        "fact": { "kind": "enum", "name": "QuestState", "variant": null }
+                        "fact": { "kind": "enum", "name": "QuestState" }
                     }
                 ],
                 "variants": [

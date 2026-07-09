@@ -663,7 +663,7 @@ fn assert_schema_variant_source_navigation(request_method: &str) {
                 "types": [
                     {
                         "name": "QuestState",
-                        "fact": { "kind": "enum", "name": "QuestState", "variant": null }
+                        "fact": { "kind": "enum", "name": "QuestState" }
                     }
                 ],
                 "variants": [
@@ -787,7 +787,7 @@ fn assert_schema_variant_type_definition_null() {
                 "types": [
                     {
                         "name": "QuestState",
-                        "fact": { "kind": "enum", "name": "QuestState", "variant": null }
+                        "fact": { "kind": "enum", "name": "QuestState" }
                     }
                 ],
                 "variants": [

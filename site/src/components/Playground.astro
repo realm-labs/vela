@@ -216,7 +216,7 @@ const examplesJson = JSON.stringify(PLAYGROUND_EXAMPLES);
         : wasm.run_script(sourceEditor.value, entryInput.value || 'main');
       const response = JSON.parse(responseText) as { ok: boolean; value?: unknown; diagnostics?: [] };
       runtimeStatus.textContent = response.ok ? 'ok' : 'error';
-      outputView.textContent = response.ok ? JSON.stringify(response.value, null, 2) : 'No value returned.';
+      outputView.textContent = response.ok ? JSON.stringify(response.value, undefined, 2) : 'No value returned.';
       renderDiagnostics(response.diagnostics || []);
     }
 

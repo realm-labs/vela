@@ -100,7 +100,7 @@ fn lsp_workspace_symbols_include_script_and_schema_symbols() {
                     },
                     {
                         "name": "QuestState",
-                        "fact": { "kind": "enum", "name": "QuestState", "variant": null }
+                        "fact": { "kind": "enum", "name": "QuestState" }
                     }
                 ],
                 "fields": [

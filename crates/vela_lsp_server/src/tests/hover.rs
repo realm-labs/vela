@@ -902,7 +902,7 @@ fn schema_with_quest_state_variant() -> &'static str {
             "types": [
                 {
                     "name": "QuestState",
-                    "fact": { "kind": "enum", "name": "QuestState", "variant": null }
+                    "fact": { "kind": "enum", "name": "QuestState" }
                 }
             ],
             "variants": [

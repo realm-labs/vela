@@ -494,7 +494,7 @@ fn lsp_references_find_schema_variant_constructors_and_patterns() {
                 "types": [
                     {
                         "name": "QuestState",
-                        "fact": { "kind": "enum", "name": "QuestState", "variant": null }
+                        "fact": { "kind": "enum", "name": "QuestState" }
                     }
                 ],
                 "variants": [

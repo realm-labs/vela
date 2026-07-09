@@ -498,7 +498,7 @@ fn lsp_semantic_tokens_classify_schema_enum_variant_uses() {
                 "types": [
                     {
                         "name": "QuestState",
-                        "fact": { "kind": "enum", "name": "QuestState", "variant": null }
+                        "fact": { "kind": "enum", "name": "QuestState" }
                     }
                 ],
                 "variants": [

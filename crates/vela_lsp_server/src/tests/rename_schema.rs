@@ -186,7 +186,7 @@ fn lsp_source_backed_schema_variant_rename_updates_constructors_and_patterns() {
                 "types": [
                     {
                         "name": "QuestState",
-                        "fact": { "kind": "enum", "name": "QuestState", "variant": null }
+                        "fact": { "kind": "enum", "name": "QuestState" }
                     }
                 ],
                 "variants": [

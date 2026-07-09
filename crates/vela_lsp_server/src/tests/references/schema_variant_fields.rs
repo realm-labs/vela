@@ -38,7 +38,7 @@ fn lsp_references_find_schema_record_variant_field_labels_and_patterns() {
                 "types": [
                     {
                         "name": "QuestState",
-                        "fact": { "kind": "enum", "name": "QuestState", "variant": null }
+                        "fact": { "kind": "enum", "name": "QuestState" }
                     }
                 ],
                 "variants": [
