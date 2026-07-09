@@ -622,12 +622,7 @@ impl LanguageServiceDatabases {
         let Some(source) = self.source_record_for_reference(binding.span.source) else {
             return SymbolRef::local(binding.name.clone());
         };
-        SymbolRef::local_from_span(
-            binding.name.clone(),
-            source.document_id().clone(),
-            source.text(),
-            binding.span,
-        )
+        SymbolRef::local_for_binding(binding, source.document_id().clone())
     }
 
     fn reference_for_import(

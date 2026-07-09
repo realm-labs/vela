@@ -868,12 +868,7 @@ fn local_symbol_for_binding(
     else {
         return SymbolRef::local(binding.name.clone());
     };
-    SymbolRef::local_from_span(
-        binding.name.clone(),
-        source.document_id().clone(),
-        source.text(),
-        binding.span,
-    )
+    SymbolRef::local_for_binding(binding, source.document_id().clone())
 }
 
 fn source_type_hint_hover(

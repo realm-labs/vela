@@ -592,15 +592,15 @@ impl<'a> SyntaxBindingLowerer<'a> {
                     self.with_body(lambda_body, |lowerer| {
                         if let Some(params) = expr.param_list() {
                             for param in params.params() {
-                                if let Some(name) = param.name_text() {
+                                if let Some(name_token) = param.name_token() {
                                     lowerer.declare_parameter(
-                                        name,
+                                        name_token.text().to_owned(),
                                         LocalBindingKind::LambdaParameter,
                                         param
                                             .type_hint()
                                             .as_ref()
                                             .map(|hint| hir_type_hint(lowerer.source, hint)),
-                                        span_for(lowerer.source, param.syntax().text_range()),
+                                        span_for(lowerer.source, name_token.text_range()),
                                     );
                                 }
                             }

@@ -1,4 +1,5 @@
 use vela_common::Span;
+use vela_hir::binding::LocalBinding;
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{Declaration, ModuleGraph, ModulePath};
 use vela_hir::type_hint::ImplMetadataKind;
@@ -25,20 +26,11 @@ impl SymbolRef {
     }
 
     #[must_use]
-    pub fn local_from_span(
-        name: impl Into<String>,
-        document_id: DocumentId,
-        source_text: &str,
-        span: Span,
-    ) -> Self {
-        let name = name.into();
-        let Some(span_range) = span_text_range(span) else {
-            return Self::local(name);
+    pub fn local_for_binding(binding: &LocalBinding, document_id: DocumentId) -> Self {
+        let Some(range) = span_text_range(binding.span) else {
+            return Self::local(binding.name.clone());
         };
-        let Some(name_range) = name_range_in_text(source_text, span_range, &name) else {
-            return Self::local(name);
-        };
-        Self::local_at(name, document_id, name_range)
+        Self::local_at(binding.name.clone(), document_id, range)
     }
 }
 
@@ -92,13 +84,6 @@ fn span_text_range(span: Span) -> Option<TextRange> {
     let start = usize::try_from(span.start).ok()?;
     let end = usize::try_from(span.end).ok()?;
     Some(TextRange::new(start, end))
-}
-
-fn name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRange> {
-    let slice = text.get(range.start..range.end)?;
-    let relative = slice.find(name)?;
-    let start = range.start + relative;
-    Some(TextRange::new(start, start + name.len()))
 }
 
 pub(crate) fn qualified_source_declaration_path(

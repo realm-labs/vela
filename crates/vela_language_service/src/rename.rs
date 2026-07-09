@@ -425,12 +425,7 @@ fn local_symbol_for_target(
     else {
         return SymbolRef::local(binding.name.clone());
     };
-    SymbolRef::local_from_span(
-        binding.name.clone(),
-        source.document_id().clone(),
-        source.text(),
-        binding.span,
-    )
+    SymbolRef::local_for_binding(binding, source.document_id().clone())
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

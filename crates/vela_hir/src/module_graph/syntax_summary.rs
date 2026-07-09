@@ -527,9 +527,10 @@ fn struct_field_hint(source: SourceId, field: &SyntaxStructField) -> Option<Stru
 }
 
 fn param_hint(source: SourceId, param: &SyntaxParam) -> Option<ParamHint> {
+    let name = param.name_token()?;
     Some(ParamHint {
-        name: param.name_text()?,
-        span: span_for(source, param.syntax().text_range()),
+        name: name.text().to_owned(),
+        span: span_for(source, name.text_range()),
         type_hint: param
             .type_hint()
             .as_ref()

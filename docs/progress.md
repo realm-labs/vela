@@ -179,7 +179,10 @@ instead of a syntax-built receiver map, and query-context visible locals now use
 binding scope spans so let bindings are not visible inside their own
 initializers. Semantic-token local record facts now identify let locals through
 HIR statement-owned binding pattern IDs instead of `BindingMap` name/span
-lookup, and the old `local_named_at` binding helper has been removed. Script
+lookup, and the old `local_named_at` binding helper has been removed. Function
+and lambda parameter locals now carry exact name-token source spans, and
+language-service local symbol projection uses those HIR local spans directly
+instead of scanning source text inside broad parameter spans. Script
 field reference and rename use scans now read
 source-scoped `HirField` facts from `ModuleGraph` instead of rebuilding member
 access sites from parsed syntax, and script method reference/rename use scans
