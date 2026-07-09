@@ -1,5 +1,5 @@
 use vela_common::SourceId;
-use vela_syntax::ast::{SyntaxExpression, SyntaxFieldExpr};
+use vela_syntax::ast::{AstNode, SyntaxExpression};
 
 use crate::{Register, UnlinkedInstructionKind};
 
@@ -13,17 +13,22 @@ impl Compiler<'_, '_> {
         &mut self,
         source: SourceId,
         expression: &SyntaxExpression,
-        field: &SyntaxFieldExpr,
     ) -> CompileResult<Register> {
         if !param_default_field_supported(expression) {
             return Err(param_default_unsupported(source, expression));
         }
-        let Some(receiver) = field.receiver() else {
+        let expression_span = span_for(source, expression);
+        let Some(name) = self
+            .hir_field_name_for_span(expression_span)
+            .map(str::to_owned)
+        else {
             return Err(param_default_unsupported(source, expression));
         };
-        let Some(name) = self
-            .hir_field_name_for_span(span_for(source, expression))
-            .map(str::to_owned)
+        let Some(receiver_span) = self.hir_field_receiver_span_for_span(expression_span) else {
+            return Err(param_default_unsupported(source, expression));
+        };
+        let Some(receiver) =
+            syntax_param_default_expression_at_span(source, expression, receiver_span)
         else {
             return Err(param_default_unsupported(source, expression));
         };
@@ -31,7 +36,7 @@ impl Compiler<'_, '_> {
         if let Some(path) = self.param_default_host_field_path(source, expression) {
             let root = self.compile_host_path_root(&path.root)?;
             let dst = self.alloc_register()?;
-            self.emit_host_read(dst, root, path, span_for(source, expression))?;
+            self.emit_host_read(dst, root, path, expression_span)?;
             return Ok(dst);
         }
 
@@ -83,4 +88,19 @@ pub(super) fn param_default_field_supported(expression: &SyntaxExpression) -> bo
                 .receiver()
                 .is_some_and(|receiver| param_default_expression_supported(&receiver))
     })
+}
+
+fn syntax_param_default_expression_at_span(
+    source: SourceId,
+    expression: &SyntaxExpression,
+    span: vela_common::Span,
+) -> Option<SyntaxExpression> {
+    if span.source != source {
+        return None;
+    }
+    expression
+        .syntax()
+        .descendants()
+        .filter_map(SyntaxExpression::cast)
+        .find(|child| span_for(source, child) == span)
 }

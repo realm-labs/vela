@@ -210,12 +210,7 @@ impl Compiler<'_, '_> {
                 };
                 self.compile_param_default_record(source, expression, &record)
             }
-            SyntaxExpressionKind::Field => {
-                let Some(field) = expression.as_field() else {
-                    return Err(param_default_unsupported(source, expression));
-                };
-                self.compile_param_default_field(source, expression, &field)
-            }
+            SyntaxExpressionKind::Field => self.compile_param_default_field(source, expression),
             SyntaxExpressionKind::Match => {
                 let Some(match_expr) = expression.as_match() else {
                     return Err(param_default_unsupported(source, expression));

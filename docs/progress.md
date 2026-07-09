@@ -201,7 +201,8 @@ receiver expression.
 Bytecode script, value, dynamic, and host method-call lowering now also reads
 the method member from HIR field facts instead of callee field syntax.
 Bytecode parameter-default field lowering now reads record/host field names
-from HIR field facts instead of field-expression syntax.
+and receiver expressions from HIR field facts instead of field-expression
+syntax.
 Bytecode record-shape inference now reads field and method member names from
 HIR field facts for direct and lambda-local shape queries.
 Bytecode schema-default payload collection now keys default expressions to

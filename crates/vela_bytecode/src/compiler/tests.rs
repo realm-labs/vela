@@ -314,6 +314,51 @@ fn item_count(player: IndexedPlayer, item_id: String) {
     );
 }
 
+#[test]
+fn compiler_resolves_param_default_field_receiver_from_hir() {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty(
+                "host",
+                std::iter::empty::<&str>(),
+                "DefaultPlayer",
+            ))
+            .host_runtime_id(31),
+        )
+        .expect("DefaultPlayer type should register");
+    registry
+        .register_field(
+            vela_registry::FieldDef::new(
+                DefPath::field("host", std::iter::empty::<&str>(), "DefaultPlayer", "level"),
+                player,
+            )
+            .type_hint(Some("i64"))
+            .host_runtime_id(32),
+        )
+        .expect("DefaultPlayer::level field should register");
+
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn sample(player: DefaultPlayer, level = player.level) {
+    return level;
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("parameter-default host field should compile");
+    let function = program.function("sample").expect("sample should exist");
+    assert!(
+        function
+            .cache_sites
+            .sites()
+            .iter()
+            .any(|site| site.kind == CacheSiteKind::HostPathRead),
+        "parameter-default field access should lower through HostAccess"
+    );
+}
+
 mod call_diagnostics;
 mod closures_and_bindings;
 mod diagnostics;
