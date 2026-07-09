@@ -258,8 +258,8 @@ Script and standard-library APIs should prefer `Option` for expected missing
 data and `Result` for expected recoverable failure. They should not use `()`
 as the normal "not found" or "failed" result. Statement-only blocks,
 no-result native calls, and explicit `return;` produce `()`. Reflection
-metadata gaps and host/Rust nullable interop should use `Option::None` once
-that structured boundary is available.
+metadata gaps and Rust `Option<T>` host interop should use `Option::None`
+once that structured boundary is available.
 
 ### Strings
 

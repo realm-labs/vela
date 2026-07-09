@@ -220,7 +220,7 @@ bytes.read_u32_be(index)
 bytes.to_hex()
 bytes.iter()   // Iterator over u8 values
 bytes.values() // Iterator over u8 values
-bytes::from_hex(text)
+bytes::from_hex(text) -> Result<Bytes, String>
 ```
 
 Bytes are repeatable byte sequences. Direct `for byte in bytes`,
@@ -235,13 +235,15 @@ operators do not widen, narrow, or change float width implicitly.
 i64::from_i32(value: i32) -> i64
 u64::from_u32(value: u32) -> u64
 f64::from_f32(value: f32) -> f64
-i8::try_from_i64(value: i64) -> Result
-u8::try_from_u64(value: u64) -> Result
-f32::try_from_f64(value: f64) -> Result
+i16::try_from_i64(value: i64) -> Result<i16, String>
+i8::try_from_i64(value: i64) -> Result<i8, String>
+u16::try_from_u64(value: u64) -> Result<u16, String>
+u8::try_from_u64(value: u64) -> Result<u8, String>
+f32::try_from_f64(value: f64) -> Result<f32, String>
 ```
 
 The widening helpers are infallible. Narrowing helpers return `Result::Ok`
-with the narrowed scalar or `Result::Err(string)` when the value is out of
+with the narrowed scalar or `Result::Err(String)` when the value is out of
 range. `f32::try_from_f64` accepts finite values representable in the finite
 `f32` range and rounds to `f32`; non-finite or out-of-range values return
 `Result::Err`.

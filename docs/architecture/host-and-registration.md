@@ -546,7 +546,7 @@ Native functions should use narrow conversion rules:
 ```text
 Rust bool/char/i8..i64/u8..u64/f32/f64/String/Vec<u8>
                                      <-> Vela bool/char/scalars/string/bytes
-Option<T> in Rust API             <-> nullable argument or return value
+Option<T> in Rust API             <-> Vela Option::Some(value) or Option::None
 Vec<T> / HashMap<K, V> copies      <-> script array/map values
 HostRef<T>                         <-> host object reference
 &mut NativeCallContext             -> explicit host service and HostAccess access
