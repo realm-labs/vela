@@ -1,4 +1,5 @@
 use super::*;
+use crate::body::{HirBodyOwner, HirBodyRoot};
 
 #[test]
 fn lowers_type_hint_metadata_for_signatures_structs_and_locals() {
@@ -714,6 +715,15 @@ impl Damageable for Player {
         .trait_default_method_bindings(default_node)
         .expect("trait default method bindings");
     assert_eq!(default_bindings.locals_named("self").len(), 1);
+    let default_body = graph
+        .trait_default_method_body(default_node)
+        .expect("trait default method body");
+    assert_eq!(
+        default_body.owner,
+        HirBodyOwner::TraitDefaultMethod(default_node)
+    );
+    assert!(matches!(default_body.root, HirBodyRoot::Block(_)));
+    assert_eq!(default_body.params.len(), 1);
     assert_eq!(
         graph.declaration(impl_decl).map(|decl| decl.kind),
         Some(DeclarationKind::Impl)
@@ -751,6 +761,13 @@ impl Damageable for Player {
     let bindings = graph
         .impl_method_bindings(method.node)
         .expect("impl method bindings");
+    let body = graph
+        .impl_method_body(method.node)
+        .expect("impl method body");
+    assert_eq!(body.owner, HirBodyOwner::ImplMethod(method.node));
+    assert!(matches!(body.root, HirBodyRoot::Block(_)));
+    assert_eq!(body.params.len(), 2);
+    assert_eq!(body.statements.len(), 2);
     let [remaining] = bindings.locals_named("remaining") else {
         panic!("expected remaining binding");
     };

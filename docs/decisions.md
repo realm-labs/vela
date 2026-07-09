@@ -152,6 +152,13 @@ analysis facts only; it must not parse source or repair missing semantic facts.
 The execution plans are [heavy-hir-hard-switch-plan.md](heavy-hir-hard-switch-plan.md)
 and [mir-lowering-jit-foundation-plan.md](mir-lowering-jit-foundation-plan.md).
 
+Heavy HIR body ownership uses stable `HirBodyId` records with explicit owners:
+declarations, trait default methods, impl methods, lambdas, and parameter
+defaults. Nested executable regions such as lambdas and parameter defaults are
+separate bodies with source origins and parent links, not syntax payloads hidden
+inside downstream compiler or tooling callers. Const/global initializer body
+ownership must join this same model when those executable forms are migrated.
+
 ### Native-First LSP Boundary
 
 Vela's full native LSP capability track is allowed before the MVP and may

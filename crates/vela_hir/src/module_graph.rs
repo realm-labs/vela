@@ -22,7 +22,8 @@ use names::{closest_name, import_binding_name};
 use self::body_binding::FunctionBodySource;
 use crate::attributes::HirAttribute;
 use crate::binding::BindingMap;
-use crate::ids::{HirDeclId, HirNodeId, ModuleId};
+use crate::body::HirBody;
+use crate::ids::{HirBodyId, HirDeclId, HirNodeId, ModuleId};
 #[cfg(test)]
 use crate::type_hint::HirTypeHint;
 use crate::type_hint::{
@@ -53,6 +54,10 @@ pub struct ModuleGraph {
     declaration_attrs: BTreeMap<HirDeclId, Vec<HirAttribute>>,
     const_metadata: BTreeMap<HirDeclId, ConstMetadata>,
     global_metadata: BTreeMap<HirDeclId, GlobalMetadata>,
+    bodies: BTreeMap<HirBodyId, HirBody>,
+    function_bodies: BTreeMap<HirDeclId, HirBodyId>,
+    trait_default_method_bodies: BTreeMap<HirNodeId, HirBodyId>,
+    impl_method_bodies: BTreeMap<HirNodeId, HirBodyId>,
     bindings: BTreeMap<HirDeclId, BindingMap>,
     function_signatures: BTreeMap<HirDeclId, FunctionSignature>,
     struct_shapes: BTreeMap<HirDeclId, StructShape>,
@@ -65,8 +70,14 @@ pub struct ModuleGraph {
     schema_references_validated: bool,
     next_node_id: u32,
     next_decl_id: u32,
+    next_body_id: u32,
+    next_block_id: u32,
+    next_stmt_id: u32,
     next_expr_id: u32,
+    next_pattern_id: u32,
     next_local_id: u32,
+    next_param_id: u32,
+    next_capture_id: u32,
 }
 
 impl ModuleGraph {
@@ -456,6 +467,36 @@ impl ModuleGraph {
     #[must_use]
     pub fn bindings(&self, declaration: HirDeclId) -> Option<&BindingMap> {
         self.bindings.get(&declaration)
+    }
+
+    #[must_use]
+    pub fn body(&self, body: HirBodyId) -> Option<&HirBody> {
+        self.bodies.get(&body)
+    }
+
+    pub fn bodies(&self) -> impl Iterator<Item = &HirBody> {
+        self.bodies.values()
+    }
+
+    #[must_use]
+    pub fn function_body(&self, declaration: HirDeclId) -> Option<&HirBody> {
+        self.function_bodies
+            .get(&declaration)
+            .and_then(|body| self.body(*body))
+    }
+
+    #[must_use]
+    pub fn trait_default_method_body(&self, method: HirNodeId) -> Option<&HirBody> {
+        self.trait_default_method_bodies
+            .get(&method)
+            .and_then(|body| self.body(*body))
+    }
+
+    #[must_use]
+    pub fn impl_method_body(&self, method: HirNodeId) -> Option<&HirBody> {
+        self.impl_method_bodies
+            .get(&method)
+            .and_then(|body| self.body(*body))
     }
 
     #[must_use]
@@ -963,6 +1004,12 @@ impl ModuleGraph {
     fn next_decl_id(&mut self) -> HirDeclId {
         let id = HirDeclId::new(self.next_decl_id);
         self.next_decl_id = self.next_decl_id.saturating_add(1);
+        id
+    }
+
+    fn next_body_id(&mut self) -> HirBodyId {
+        let id = HirBodyId::new(self.next_body_id);
+        self.next_body_id = self.next_body_id.saturating_add(1);
         id
     }
 }

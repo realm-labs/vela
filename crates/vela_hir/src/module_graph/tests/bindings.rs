@@ -1,4 +1,5 @@
 use super::*;
+use crate::body::{HirBodyOwner, HirBodyRoot};
 
 #[test]
 fn function_bindings_resolve_params_and_locals_with_expression_ids() {
@@ -477,6 +478,84 @@ fn main(rewards) {
     assert_eq!(
         bindings.local(amount_bindings[0]).map(|local| local.kind),
         Some(LocalBindingKind::For)
+    );
+}
+
+#[test]
+fn body_hir_tracks_function_parameters_statements_and_defaults() {
+    let mut graph = ModuleGraph::new();
+    let module = graph.add_source(source(
+        1,
+        "game::reward",
+        r#"
+const BASE = 10
+fn grant(amount = BASE, bonus = amount + 1) {
+    let total = amount + bonus;
+    return total;
+}
+"#,
+    ));
+    let grant = graph
+        .module(module)
+        .and_then(|module| module.get("grant"))
+        .expect("grant declaration");
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+
+    let body = graph.function_body(grant).expect("grant body");
+    assert_eq!(body.owner, HirBodyOwner::Declaration(grant));
+    assert!(matches!(body.root, HirBodyRoot::Block(_)));
+    assert_eq!(body.params.len(), 2);
+    assert!(body.params.iter().all(|param| param.default_body.is_some()));
+    assert_eq!(body.statements.len(), 2);
+    assert!(body.expressions.len() >= 4);
+
+    for default_body in body.params.iter().filter_map(|param| param.default_body) {
+        let default_body = graph.body(default_body).expect("default body");
+        assert!(matches!(
+            default_body.owner,
+            HirBodyOwner::ParameterDefault { parent, .. } if parent == body.id
+        ));
+        assert!(matches!(default_body.root, HirBodyRoot::Expr(_)));
+        assert!(!default_body.expressions.is_empty());
+    }
+}
+
+#[test]
+fn body_hir_tracks_lambda_bodies_and_captures() {
+    let mut graph = ModuleGraph::new();
+    let module = graph.add_source(source(
+        1,
+        "game::reward",
+        r#"
+fn main(player) {
+    let base = player.level;
+    let mapper = |amount| amount + base;
+    return mapper;
+}
+"#,
+    ));
+    let main = graph
+        .module(module)
+        .and_then(|module| module.get("main"))
+        .expect("main declaration");
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+    let bindings = graph.bindings(main).expect("main bindings");
+    let [base] = bindings.locals_named("base") else {
+        panic!("expected base local");
+    };
+
+    let function_body = graph.function_body(main).expect("main body");
+    let lambda_body = graph
+        .bodies()
+        .find(|body| matches!(body.owner, HirBodyOwner::Lambda { parent, .. } if parent == function_body.id))
+        .expect("lambda body");
+    assert_eq!(lambda_body.params.len(), 1);
+    assert!(matches!(lambda_body.root, HirBodyRoot::Expr(_)));
+    assert!(
+        lambda_body
+            .captures
+            .iter()
+            .any(|capture| capture.local == *base)
     );
 }
 

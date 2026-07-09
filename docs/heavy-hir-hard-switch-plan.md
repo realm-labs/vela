@@ -146,12 +146,31 @@ focused tests and validation command pass.
 Purpose: identify every body-level semantic decision currently made outside
 Heavy HIR before deleting old caller-local logic.
 
-- [ ] Audit bytecode compiler syntax/payload/body lowering decisions.
-- [ ] Audit language-service query helpers that infer call/member/type facts.
-- [ ] Audit analysis facts keyed by unstable syntax ranges or duplicated IDs.
-- [ ] Audit parameter defaults, lambdas, pattern locals, host paths, calls,
+- [x] Audit bytecode compiler syntax/payload/body lowering decisions.
+- [x] Audit language-service query helpers that infer call/member/type facts.
+- [x] Audit analysis facts keyed by unstable syntax ranges or duplicated IDs.
+- [x] Audit parameter defaults, lambdas, pattern locals, host paths, calls,
   field/index access, operators, match arms, and control-flow values.
-- [ ] Record the migration order in this document before implementation begins.
+- [x] Record the migration order in this document before implementation begins.
+
+Migration order recorded by the Phase 1 audit:
+
+```text
+1. Add `vela_hir` body ownership and stable body/statement/pattern/block/
+   parameter/capture IDs while preserving existing binding and compiler
+   behavior.
+2. Move scope, binding, pattern-local, capture, and source-origin queries onto
+   `HirBody` records before analysis or tooling callers switch.
+3. Re-key analysis expression/member/call/control-flow facts to Heavy HIR IDs
+   and expose shared display/format helpers.
+4. Switch language-service query context and feature producers to HIR bodies
+   plus analysis facts, leaving LSP projection unchanged.
+5. Switch bytecode lowering from `CompilerBodyPayload` and body-level syntax
+   reconstruction to HIR body IDs plus analysis/compiler facts, deleting old
+   payload scaffolding by subsystem.
+6. Run cleanup audits and keep MIR work blocked until the old syntax-semantic
+   body path is gone for migrated subsystems.
+```
 
 Validation:
 
@@ -167,15 +186,15 @@ cargo test -p vela_analysis
 
 Purpose: add executable body ownership without changing behavior.
 
-- [ ] Add `HirBodyId`, `HirStmtId`, `HirPatternId`, and any missing body-local
+- [x] Add `HirBodyId`, `HirStmtId`, `HirPatternId`, and any missing body-local
   IDs required beside existing `HirExprId` and `HirLocalId`.
-- [ ] Add `HirBody` with owner metadata, source origin, statements,
+- [x] Add `HirBody` with owner metadata, source origin, statements,
   expressions, patterns, blocks, parameters, locals, and captures.
-- [ ] Lower function, method, trait default, lambda, const/global initializer,
+- [~] Lower function, method, trait default, lambda, const/global initializer,
   and parameter-default bodies into `HirBody`.
-- [ ] Preserve source spans and syntax origins for diagnostics, navigation, and
+- [x] Preserve source spans and syntax origins for diagnostics, navigation, and
   bytecode frame metadata.
-- [ ] Keep existing public behavior and existing compiler entrypoints working
+- [x] Keep existing public behavior and existing compiler entrypoints working
   until downstream consumers switch.
 
 Validation:

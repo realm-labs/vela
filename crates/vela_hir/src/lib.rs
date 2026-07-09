@@ -2,6 +2,7 @@
 
 pub mod attributes;
 pub mod binding;
+pub mod body;
 pub mod ids;
 pub mod module_graph;
 mod top_level;

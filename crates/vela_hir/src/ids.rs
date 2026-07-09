@@ -20,6 +20,12 @@ macro_rules! hir_id {
 
 hir_id!(ModuleId);
 hir_id!(HirNodeId);
+hir_id!(HirBodyId);
+hir_id!(HirBlockId);
+hir_id!(HirStmtId);
 hir_id!(HirExprId);
+hir_id!(HirPatternId);
 hir_id!(HirDeclId);
 hir_id!(HirLocalId);
+hir_id!(HirParamId);
+hir_id!(HirCaptureId);

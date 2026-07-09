@@ -123,13 +123,17 @@ runtime semantic changes, and no custom IDE product. Debugger/DAP and Cranelift
 JIT remain separate roadmap tracks.
 
 The Heavy HIR and MIR architecture plans are now established as the next
-internal execution/lowering architecture track, but implementation has not
-started. Heavy HIR will first upgrade `vela_hir` into the body/expression/
-pattern semantic truth layer for analysis, language-service, bytecode, and
-later MIR. MIR will then add an internal `vela_mir` execution-shape layer for
-CFG, typed operations, guards, liveness, bytecode lowering, and future M22
-Cranelift input. M20 cache-family audit and measured close-out may continue in
-parallel, but new broad lowering architecture work should follow
+internal execution/lowering architecture track, and Heavy HIR implementation
+has started in `vela_hir`. The first body-core slice adds stable body, block,
+statement, pattern, parameter, and capture IDs plus `HirBody` records for
+functions, trait defaults, impl methods, lambdas, and parameter defaults while
+preserving current binding/compiler behavior. Heavy HIR will next move scopes,
+bindings, body facts, language-service queries, and bytecode lowering away from
+body-level syntax reconstruction. MIR will then add an internal `vela_mir`
+execution-shape layer for CFG, typed operations, guards, liveness, bytecode
+lowering, and future M22 Cranelift input. M20 cache-family audit and measured
+close-out may continue in parallel, but new broad lowering architecture work
+should follow
 [heavy-hir-hard-switch-plan.md](heavy-hir-hard-switch-plan.md) before
 [mir-lowering-jit-foundation-plan.md](mir-lowering-jit-foundation-plan.md).
 

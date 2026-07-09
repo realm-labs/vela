@@ -13,7 +13,14 @@ use crate::binding::{
     BindingMap, BindingResolution, ExprInfo, ImportBinding, LocalBinding, LocalBindingKind,
     PathUsage,
 };
-use crate::ids::{HirDeclId, HirExprId, HirLocalId};
+use crate::body::{
+    HirBlock, HirBody, HirBodyOwner, HirBodyRoot, HirCapture, HirExpr, HirExprKind, HirParam,
+    HirPattern, HirPatternKind, HirSourceOrigin, HirStmt, HirStmtKind,
+};
+use crate::ids::{
+    HirBlockId, HirBodyId, HirCaptureId, HirDeclId, HirExprId, HirLocalId, HirParamId,
+    HirPatternId, HirStmtId,
+};
 use crate::type_hint::{HirTypeHint, ParamHint};
 
 pub(crate) struct SyntaxFunctionBindingInput<'a> {
@@ -25,13 +32,21 @@ pub(crate) struct SyntaxFunctionBindingInput<'a> {
     pub module_declarations: Vec<(String, HirDeclId)>,
     pub qualified_declarations: Vec<(Vec<String>, HirDeclId)>,
     pub imports: Vec<ImportBinding>,
+    pub body_id: HirBodyId,
+    pub owner: HirBodyOwner,
     pub next_expr_id: &'a mut u32,
     pub next_local_id: &'a mut u32,
+    pub next_body_id: &'a mut u32,
+    pub next_block_id: &'a mut u32,
+    pub next_stmt_id: &'a mut u32,
+    pub next_pattern_id: &'a mut u32,
+    pub next_param_id: &'a mut u32,
+    pub next_capture_id: &'a mut u32,
 }
 
 pub(crate) fn bind_syntax_function(
     input: SyntaxFunctionBindingInput<'_>,
-) -> (BindingMap, Vec<Diagnostic>) {
+) -> (BindingMap, Vec<HirBody>, Vec<Diagnostic>) {
     SyntaxBindingLowerer::new(input).lower()
 }
 
@@ -43,17 +58,29 @@ struct SyntaxBindingLowerer<'a> {
     imports: Vec<ImportBinding>,
     next_expr_id: &'a mut u32,
     next_local_id: &'a mut u32,
+    next_body_id: &'a mut u32,
+    next_block_id: &'a mut u32,
+    next_stmt_id: &'a mut u32,
+    next_pattern_id: &'a mut u32,
+    next_param_id: &'a mut u32,
+    next_capture_id: &'a mut u32,
     scopes: Vec<BTreeMap<String, HirLocalId>>,
+    body_stack: Vec<HirBodyId>,
+    block_stack: Vec<HirBlockId>,
     locals: BTreeMap<HirLocalId, LocalBinding>,
     locals_by_name: BTreeMap<String, Vec<HirLocalId>>,
+    local_bodies: BTreeMap<HirLocalId, HirBodyId>,
     expressions: BTreeMap<HirExprId, ExprInfo>,
     resolutions: BTreeMap<HirExprId, BindingResolution>,
     pattern_resolutions: BTreeMap<Vec<String>, BindingResolution>,
+    bodies: BTreeMap<HirBodyId, HirBody>,
+    capture_keys: BTreeMap<(HirBodyId, HirLocalId), HirCaptureId>,
     diagnostics: Vec<Diagnostic>,
 }
 
 impl<'a> SyntaxBindingLowerer<'a> {
     fn new(input: SyntaxFunctionBindingInput<'a>) -> Self {
+        let body_span = span_for(input.source, input.body.syntax().text_range());
         let mut lowerer = Self {
             source: input.source,
             declaration: input.declaration,
@@ -62,12 +89,33 @@ impl<'a> SyntaxBindingLowerer<'a> {
             imports: input.imports,
             next_expr_id: input.next_expr_id,
             next_local_id: input.next_local_id,
+            next_body_id: input.next_body_id,
+            next_block_id: input.next_block_id,
+            next_stmt_id: input.next_stmt_id,
+            next_pattern_id: input.next_pattern_id,
+            next_param_id: input.next_param_id,
+            next_capture_id: input.next_capture_id,
             scopes: vec![BTreeMap::new()],
+            body_stack: vec![input.body_id],
+            block_stack: Vec::new(),
             locals: BTreeMap::new(),
             locals_by_name: BTreeMap::new(),
+            local_bodies: BTreeMap::new(),
             expressions: BTreeMap::new(),
             resolutions: BTreeMap::new(),
             pattern_resolutions: BTreeMap::new(),
+            bodies: BTreeMap::from([(
+                input.body_id,
+                HirBody::new(
+                    input.body_id,
+                    input.owner,
+                    HirSourceOrigin {
+                        source: input.source,
+                        span: body_span,
+                    },
+                ),
+            )]),
+            capture_keys: BTreeMap::new(),
             diagnostics: Vec::new(),
         };
 
@@ -79,16 +127,47 @@ impl<'a> SyntaxBindingLowerer<'a> {
                 param.span,
             );
         }
-        for param in input.default_params {
+        for (param_index, param) in input.default_params.into_iter().enumerate() {
             if let Some(default_value) = param.default_value() {
-                lowerer.bind_expr(&default_value, PathUsage::Value);
+                let Some(parameter) = lowerer
+                    .body_mut(input.body_id)
+                    .params
+                    .get(param_index)
+                    .map(|param| param.id)
+                else {
+                    continue;
+                };
+                let default_body = lowerer.next_body(
+                    HirBodyOwner::ParameterDefault {
+                        parent: input.body_id,
+                        parameter,
+                    },
+                    span_for(input.source, default_value.syntax().text_range()),
+                );
+                lowerer.with_body(default_body, |lowerer| {
+                    let value = lowerer.bind_expr(&default_value, PathUsage::Value);
+                    lowerer.body_mut(default_body).root = HirBodyRoot::Expr(value);
+                });
+                if let Some(param) = lowerer
+                    .body_mut(input.body_id)
+                    .params
+                    .iter_mut()
+                    .find(|param| param.id == parameter)
+                {
+                    param.default_body = Some(default_body);
+                }
             }
         }
+        let root_block =
+            lowerer.next_block(span_for(input.source, input.body.syntax().text_range()));
+        lowerer.body_mut(input.body_id).root = HirBodyRoot::Block(root_block);
+        lowerer.block_stack.push(root_block);
         lowerer.bind_block_without_new_scope(&input.body);
+        lowerer.block_stack.pop();
         lowerer
     }
 
-    fn lower(self) -> (BindingMap, Vec<Diagnostic>) {
+    fn lower(self) -> (BindingMap, Vec<HirBody>, Vec<Diagnostic>) {
         (
             BindingMap {
                 declaration: self.declaration,
@@ -98,13 +177,17 @@ impl<'a> SyntaxBindingLowerer<'a> {
                 resolutions: self.resolutions,
                 pattern_resolutions: self.pattern_resolutions,
             },
+            self.bodies.into_values().collect(),
             self.diagnostics,
         )
     }
 
     fn bind_block(&mut self, block: &SyntaxBlock) {
         self.push_scope();
+        let block_id = self.next_block(span_for(self.source, block.syntax().text_range()));
+        self.block_stack.push(block_id);
         self.bind_block_without_new_scope(block);
+        self.block_stack.pop();
         self.pop_scope();
     }
 
@@ -115,6 +198,10 @@ impl<'a> SyntaxBindingLowerer<'a> {
     }
 
     fn bind_statement(&mut self, statement: &SyntaxStatement) {
+        self.next_stmt(
+            span_for(self.source, statement.syntax().text_range()),
+            statement.statement_kind().into(),
+        );
         match statement.statement_kind() {
             SyntaxStatementKind::Let => {
                 let Some(statement) = statement.as_let() else {
@@ -200,7 +287,10 @@ impl<'a> SyntaxBindingLowerer<'a> {
     }
 
     fn bind_expr(&mut self, expr: &SyntaxExpression, usage: PathUsage) -> HirExprId {
-        let id = self.next_expr(span_for(self.source, expr.syntax().text_range()));
+        let id = self.next_expr(
+            span_for(self.source, expr.syntax().text_range()),
+            expr.expression_kind().into(),
+        );
         match expr.expression_kind() {
             SyntaxExpressionKind::Literal => {}
             SyntaxExpressionKind::Path => {
@@ -309,32 +399,51 @@ impl<'a> SyntaxBindingLowerer<'a> {
             }
             SyntaxExpressionKind::Lambda => {
                 if let Some(expr) = expr.as_lambda() {
+                    let parent_body = self.current_body();
+                    let lambda_body = self.next_body(
+                        HirBodyOwner::Lambda {
+                            parent: parent_body,
+                            expression: id,
+                        },
+                        span_for(self.source, expr.syntax().text_range()),
+                    );
                     self.push_scope();
-                    if let Some(params) = expr.param_list() {
-                        for param in params.params() {
-                            if let Some(name) = param.name_text() {
-                                self.declare_parameter(
-                                    name,
-                                    LocalBindingKind::LambdaParameter,
-                                    param
-                                        .type_hint()
-                                        .as_ref()
-                                        .map(|hint| hir_type_hint(self.source, hint)),
-                                    span_for(self.source, param.syntax().text_range()),
-                                );
+                    self.with_body(lambda_body, |lowerer| {
+                        if let Some(params) = expr.param_list() {
+                            for param in params.params() {
+                                if let Some(name) = param.name_text() {
+                                    lowerer.declare_parameter(
+                                        name,
+                                        LocalBindingKind::LambdaParameter,
+                                        param
+                                            .type_hint()
+                                            .as_ref()
+                                            .map(|hint| hir_type_hint(lowerer.source, hint)),
+                                        span_for(lowerer.source, param.syntax().text_range()),
+                                    );
+                                }
                             }
                         }
-                    }
-                    if let Some(body) = expr.body() {
-                        match body {
-                            vela_syntax::ast::SyntaxLambdaBody::Expression(expr) => {
-                                self.bind_expr(&expr, PathUsage::Value);
-                            }
-                            vela_syntax::ast::SyntaxLambdaBody::Block(block) => {
-                                self.bind_block(&block);
+                        if let Some(body) = expr.body() {
+                            match body {
+                                vela_syntax::ast::SyntaxLambdaBody::Expression(expr) => {
+                                    let value = lowerer.bind_expr(&expr, PathUsage::Value);
+                                    lowerer.body_mut(lambda_body).root = HirBodyRoot::Expr(value);
+                                }
+                                vela_syntax::ast::SyntaxLambdaBody::Block(block) => {
+                                    let root_block = lowerer.next_block(span_for(
+                                        lowerer.source,
+                                        block.syntax().text_range(),
+                                    ));
+                                    lowerer.body_mut(lambda_body).root =
+                                        HirBodyRoot::Block(root_block);
+                                    lowerer.block_stack.push(root_block);
+                                    lowerer.bind_block_without_new_scope(&block);
+                                    lowerer.block_stack.pop();
+                                }
                             }
                         }
-                    }
+                    });
                     self.pop_scope();
                 }
             }
@@ -386,7 +495,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
             .label_token()
             .map(|token| span_for(self.source, token.text_range()))
             .unwrap_or_else(|| span_for(self.source, field.syntax().text_range()));
-        let id = self.next_expr(span);
+        let id = self.next_expr(span, HirExprKind::Path);
         if let Some(resolution) = self.resolve_name(&name) {
             self.resolutions.insert(id, resolution);
         } else {
@@ -452,15 +561,26 @@ impl<'a> SyntaxBindingLowerer<'a> {
     }
 
     fn bind_pattern(&mut self, pattern: &SyntaxPattern, span: Span, kind: LocalBindingKind) {
+        let pattern_id = self.next_pattern(
+            span_for(self.source, pattern.syntax().text_range()),
+            pattern.pattern_kind().into(),
+        );
         match pattern.pattern_kind() {
             Some(SyntaxPatternKind::Binding) => {
                 if let Some(name_token) = pattern.binding_name_token() {
-                    self.declare_pattern_local(
+                    let local = self.declare_pattern_local(
                         name_token.text().to_owned(),
                         kind,
                         span_for(self.source, name_token.text_range()),
                         span,
                     );
+                    if let Some(pattern) = self
+                        .body_mut(self.current_body())
+                        .patterns
+                        .get_mut(&pattern_id)
+                    {
+                        pattern.local = Some(local);
+                    }
                 }
             }
             Some(SyntaxPatternKind::TupleVariant) => {
@@ -511,6 +631,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
             && matches!(usage, PathUsage::Callee)
             && let Some(resolution) = self.resolve_constructor_path(path)
         {
+            self.record_capture_for_resolution(id, &resolution);
             self.resolutions.insert(id, resolution);
             return;
         }
@@ -519,14 +640,18 @@ impl<'a> SyntaxBindingLowerer<'a> {
             if let Some(name) = path.first()
                 && let Some(BindingResolution::Local(local)) = self.resolve_name(name)
             {
-                self.resolutions.insert(id, BindingResolution::Local(local));
+                let resolution = BindingResolution::Local(local);
+                self.record_capture_for_resolution(id, &resolution);
+                self.resolutions.insert(id, resolution);
             } else if let Some(resolution) = self.resolve_declaration_path(path) {
+                self.record_capture_for_resolution(id, &resolution);
                 self.resolutions.insert(id, resolution);
             }
             return;
         };
 
         if let Some(resolution) = self.resolve_name(name) {
+            self.record_capture_for_resolution(id, &resolution);
             self.resolutions.insert(id, resolution);
             return;
         }
@@ -539,6 +664,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
 
     fn bind_constructor_path(&mut self, id: HirExprId, path: &[String]) {
         if let Some(resolution) = self.resolve_constructor_path(path) {
+            self.record_capture_for_resolution(id, &resolution);
             self.resolutions.insert(id, resolution);
         }
     }
@@ -710,6 +836,9 @@ impl<'a> SyntaxBindingLowerer<'a> {
                 scope_span,
             },
         );
+        let body = self.current_body();
+        self.local_bodies.insert(id, body);
+        self.body_mut(body).locals.push(id);
         id
     }
 
@@ -734,7 +863,9 @@ impl<'a> SyntaxBindingLowerer<'a> {
                     .with_label(span, "duplicate parameter is here"),
             );
         }
-        self.declare_local(name, kind, type_hint, span)
+        let local = self.declare_local(name, kind, type_hint, span);
+        self.next_param(local, span);
+        local
     }
 
     fn push_scope(&mut self) {
@@ -745,10 +876,20 @@ impl<'a> SyntaxBindingLowerer<'a> {
         self.scopes.pop();
     }
 
-    fn next_expr(&mut self, span: Span) -> HirExprId {
+    fn next_expr(&mut self, span: Span, kind: HirExprKind) -> HirExprId {
         let id = HirExprId::new(*self.next_expr_id);
         *self.next_expr_id = self.next_expr_id.saturating_add(1);
         self.expressions.insert(id, ExprInfo { id, span });
+        let body = self.current_body();
+        let source = self.source;
+        self.body_mut(body).expressions.insert(
+            id,
+            HirExpr {
+                id,
+                origin: HirSourceOrigin { source, span },
+                kind,
+            },
+        );
         id
     }
 
@@ -756,6 +897,139 @@ impl<'a> SyntaxBindingLowerer<'a> {
         let id = HirLocalId::new(*self.next_local_id);
         *self.next_local_id = self.next_local_id.saturating_add(1);
         id
+    }
+
+    fn current_body(&self) -> HirBodyId {
+        *self
+            .body_stack
+            .last()
+            .expect("body lowering always has an active body")
+    }
+
+    fn body_mut(&mut self, body: HirBodyId) -> &mut HirBody {
+        self.bodies
+            .get_mut(&body)
+            .expect("allocated HIR body should be stored")
+    }
+
+    fn with_body(&mut self, body: HirBodyId, f: impl FnOnce(&mut Self)) {
+        self.body_stack.push(body);
+        f(self);
+        self.body_stack.pop();
+    }
+
+    fn next_body(&mut self, owner: HirBodyOwner, span: Span) -> HirBodyId {
+        let id = HirBodyId::new(*self.next_body_id);
+        *self.next_body_id = self.next_body_id.saturating_add(1);
+        self.bodies.insert(
+            id,
+            HirBody::new(
+                id,
+                owner,
+                HirSourceOrigin {
+                    source: self.source,
+                    span,
+                },
+            ),
+        );
+        id
+    }
+
+    fn next_block(&mut self, span: Span) -> HirBlockId {
+        let id = HirBlockId::new(*self.next_block_id);
+        *self.next_block_id = self.next_block_id.saturating_add(1);
+        let body = self.current_body();
+        let source = self.source;
+        self.body_mut(body).blocks.insert(
+            id,
+            HirBlock {
+                id,
+                origin: HirSourceOrigin { source, span },
+                statements: Vec::new(),
+            },
+        );
+        id
+    }
+
+    fn next_stmt(&mut self, span: Span, kind: HirStmtKind) -> HirStmtId {
+        let id = HirStmtId::new(*self.next_stmt_id);
+        *self.next_stmt_id = self.next_stmt_id.saturating_add(1);
+        let body = self.current_body();
+        let source = self.source;
+        self.body_mut(body).statements.insert(
+            id,
+            HirStmt {
+                id,
+                origin: HirSourceOrigin { source, span },
+                kind,
+            },
+        );
+        if let Some(block) = self.block_stack.last().copied()
+            && let Some(block) = self.body_mut(body).blocks.get_mut(&block)
+        {
+            block.statements.push(id);
+        }
+        id
+    }
+
+    fn next_pattern(&mut self, span: Span, kind: HirPatternKind) -> HirPatternId {
+        let id = HirPatternId::new(*self.next_pattern_id);
+        *self.next_pattern_id = self.next_pattern_id.saturating_add(1);
+        let body = self.current_body();
+        let source = self.source;
+        self.body_mut(body).patterns.insert(
+            id,
+            HirPattern {
+                id,
+                origin: HirSourceOrigin { source, span },
+                kind,
+                local: None,
+            },
+        );
+        id
+    }
+
+    fn next_param(&mut self, local: HirLocalId, span: Span) -> HirParamId {
+        let id = HirParamId::new(*self.next_param_id);
+        *self.next_param_id = self.next_param_id.saturating_add(1);
+        let body = self.current_body();
+        let source = self.source;
+        self.body_mut(body).params.push(HirParam {
+            id,
+            local,
+            origin: HirSourceOrigin { source, span },
+            default_body: None,
+        });
+        id
+    }
+
+    fn next_capture(&mut self, owner: HirBodyId, local: HirLocalId, use_expression: HirExprId) {
+        if self.capture_keys.contains_key(&(owner, local)) {
+            return;
+        }
+        let id = HirCaptureId::new(*self.next_capture_id);
+        *self.next_capture_id = self.next_capture_id.saturating_add(1);
+        self.capture_keys.insert((owner, local), id);
+        self.body_mut(owner).captures.push(HirCapture {
+            id,
+            local,
+            use_expression,
+            owner,
+        });
+    }
+
+    fn record_capture_for_resolution(
+        &mut self,
+        expression: HirExprId,
+        resolution: &BindingResolution,
+    ) {
+        let BindingResolution::Local(local) = resolution else {
+            return;
+        };
+        let current_body = self.current_body();
+        if self.local_bodies.get(local).copied() != Some(current_body) {
+            self.next_capture(current_body, *local, expression);
+        }
     }
 }
 
