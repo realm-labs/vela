@@ -151,7 +151,10 @@ parallel expression span table or span-resolution API; expression source
 origins are owned by `HirBody`/`ModuleGraph`, while binding maps retain
 `HirExprId`-keyed resolution facts. The bytecode compiler now receives HIR body
 origins for its current syntax payloads and resolves local/declaration facts
-through HIR expression identity rather than `BindingMap` span scans.
+through HIR expression identity rather than `BindingMap` span scans. HIR lambda
+bodies now record transitive capture chains for nested lambdas, and bytecode
+lambda capture setup reads `HirBody::captures` instead of walking lambda body
+syntax to reconstruct captures.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

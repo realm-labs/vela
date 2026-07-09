@@ -182,9 +182,19 @@ impl<'a> SyntaxBindingLowerer<'a> {
         let BindingResolution::Local(local) = resolution else {
             return;
         };
-        let current_body = self.current_body();
-        if self.local_bodies.get(local).copied() != Some(current_body) {
-            self.next_capture(current_body, *local, expression);
+        let declaring_body = self.local_bodies.get(local).copied();
+        let body_stack = self.body_stack.clone();
+        for body in body_stack.into_iter().rev() {
+            if declaring_body == Some(body) {
+                break;
+            }
+            if self
+                .bodies
+                .get(&body)
+                .is_some_and(|body| matches!(body.owner, HirBodyOwner::Lambda { .. }))
+            {
+                self.next_capture(body, *local, expression);
+            }
         }
     }
 

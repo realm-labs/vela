@@ -619,6 +619,67 @@ fn main(player) {
 }
 
 #[test]
+fn body_hir_tracks_transitive_lambda_captures() {
+    let mut graph = ModuleGraph::new();
+    let module = graph.add_source(source(
+        1,
+        "game::reward",
+        r#"
+fn main(base) {
+    let outer = |amount| {
+        return |bonus| base + amount + bonus;
+    };
+    return outer;
+}
+"#,
+    ));
+    let main = graph
+        .module(module)
+        .and_then(|module| module.get("main"))
+        .expect("main declaration");
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+    let bindings = graph.bindings(main).expect("main bindings");
+    let [base] = bindings.locals_named("base") else {
+        panic!("expected base local");
+    };
+    let [amount] = bindings.locals_named("amount") else {
+        panic!("expected amount local");
+    };
+
+    let function_body = graph.function_body(main).expect("main body");
+    let outer_body = graph
+        .bodies()
+        .find(|body| matches!(body.owner, HirBodyOwner::Lambda { parent, .. } if parent == function_body.id))
+        .expect("outer lambda body");
+    let inner_body = graph
+        .bodies()
+        .find(|body| matches!(body.owner, HirBodyOwner::Lambda { parent, .. } if parent == outer_body.id))
+        .expect("inner lambda body");
+
+    assert!(
+        outer_body
+            .captures
+            .iter()
+            .any(|capture| capture.local == *base),
+        "outer lambda should capture base for the nested lambda"
+    );
+    assert!(
+        inner_body
+            .captures
+            .iter()
+            .any(|capture| capture.local == *base),
+        "inner lambda should capture base"
+    );
+    assert!(
+        inner_body
+            .captures
+            .iter()
+            .any(|capture| capture.local == *amount),
+        "inner lambda should capture amount"
+    );
+}
+
+#[test]
 fn body_hir_tracks_lexical_scopes_for_blocks_loops_and_match_arms() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
