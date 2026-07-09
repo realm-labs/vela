@@ -179,7 +179,10 @@ instead of a syntax-built receiver map, and query-context visible locals now use
 binding scope spans so let bindings are not visible inside their own
 initializers. Semantic-token local record facts now identify let locals through
 HIR statement-owned binding pattern IDs instead of `BindingMap` name/span
-lookup, and the old `local_named_at` binding helper has been removed. Function
+lookup, HIR let statements now carry their initializer `HirExprId`, and local
+record semantic-token facts use that initializer plus HIR constructor path facts
+instead of scanning CST let statements. The old `local_named_at` binding helper
+has been removed. Function
 and lambda parameter locals now carry exact name-token source spans, and
 language-service local symbol, definition, reference, rename, and symbol-target
 range projection uses those HIR local spans directly instead of scanning source

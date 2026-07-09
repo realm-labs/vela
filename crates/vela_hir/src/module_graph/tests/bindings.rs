@@ -1,6 +1,7 @@
 use super::*;
 use crate::body::{
-    HirBodyOwner, HirBodyRoot, HirExprKind, HirPathKind, HirPatternKind, HirScopeKind, HirStmtKind,
+    HirBodyOwner, HirBodyRoot, HirExprKind, HirPathKind, HirPathOwner, HirPatternKind,
+    HirScopeKind, HirStmtKind,
 };
 
 fn hir_resolution_for_span<'a>(
@@ -1172,6 +1173,45 @@ fn main(states) {
                 usize::try_from(*start).expect("path start fits usize")
                     ..usize::try_from(*end).expect("path end fits usize"),
             ) == Some("Done")
+    }));
+}
+
+#[test]
+fn let_statements_record_initializer_expression_ids() {
+    let mut graph = ModuleGraph::new();
+    let module = graph.add_source(source(
+        1,
+        "game::main",
+        r#"
+struct Reward { count: i64 }
+fn main() {
+    let reward = Reward { count: 2 }
+    return reward
+}
+"#,
+    ));
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+    let main = graph
+        .module(module)
+        .and_then(|module| module.get("main"))
+        .expect("main declaration");
+    let body = graph.function_body(main).expect("main body");
+    let statement = body
+        .statements
+        .values()
+        .find(|statement| statement.kind == HirStmtKind::Let)
+        .expect("let statement");
+    let initializer = statement.initializer.expect("let initializer expression");
+    assert!(body.expressions.contains_key(&initializer));
+    assert!(body.paths.iter().any(|path| {
+        path.kind == HirPathKind::Constructor
+            && path.owner == HirPathOwner::Expression(initializer)
+            && path.path.iter().map(String::as_str).eq(["Reward"])
+    }));
+    assert!(statement.patterns.iter().any(|pattern| {
+        body.patterns.get(pattern).is_some_and(|pattern| {
+            pattern.kind == HirPatternKind::Binding && pattern.local.is_some()
+        })
     }));
 }
 

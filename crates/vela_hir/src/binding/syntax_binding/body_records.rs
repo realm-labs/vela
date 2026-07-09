@@ -98,6 +98,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
                 origin: HirSourceOrigin { source, span },
                 kind,
                 patterns: Vec::new(),
+                initializer: None,
             },
         );
         if let Some(block) = self.block_stack.last().copied()
@@ -106,6 +107,17 @@ impl<'a> SyntaxBindingLowerer<'a> {
             block.statements.push(id);
         }
         id
+    }
+
+    pub(super) fn record_statement_initializer(
+        &mut self,
+        statement: HirStmtId,
+        initializer: HirExprId,
+    ) {
+        let body = self.current_body();
+        if let Some(statement) = self.body_mut(body).statements.get_mut(&statement) {
+            statement.initializer = Some(initializer);
+        }
     }
 
     pub(super) fn next_expr(&mut self, span: Span, kind: HirExprKind) -> HirExprId {

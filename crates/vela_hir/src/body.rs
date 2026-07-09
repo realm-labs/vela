@@ -119,6 +119,7 @@ pub struct HirStmt {
     pub origin: HirSourceOrigin,
     pub kind: HirStmtKind,
     pub patterns: Vec<HirPatternId>,
+    pub initializer: Option<HirExprId>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

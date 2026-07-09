@@ -341,7 +341,8 @@ impl<'a> SyntaxBindingLowerer<'a> {
                     return;
                 };
                 if let Some(value) = statement.initializer() {
-                    self.bind_expr(&value, PathUsage::Value);
+                    let initializer = self.bind_expr(&value, PathUsage::Value);
+                    self.record_statement_initializer(statement_id, initializer);
                 }
                 if let Some(pattern) = statement.pattern() {
                     self.pattern_statement_stack.push(statement_id);
