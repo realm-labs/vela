@@ -703,7 +703,7 @@ Code review findings to close in the next bytecode slice:
   - `crates/vela_bytecode/src/compiler/body_payloads.rs:57`
   - `crates/vela_bytecode/src/compiler/body_payloads.rs:154`
   - `crates/vela_bytecode/src/compiler/control_flow/statements.rs:86`
-- [ ] `compile_syntax_expression` is an ordered probe chain over syntax shapes,
+- [x] `compile_syntax_expression` is an ordered probe chain over syntax shapes,
   returning `Ok(Some(_))` for the first matching helper and `Ok(None)` when no
   helper accepts the expression. This reads like a remaining fallback search
   rather than a canonical lowering dispatch. Refactor toward a

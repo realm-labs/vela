@@ -2,8 +2,8 @@ use vela_common::{Diagnostic, PrimitiveTag, SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
 use vela_syntax::SyntaxKind;
 use vela_syntax::ast::{
-    AssignOp, AstNode, BinaryOp, Literal, SyntaxElseBranch, SyntaxExpression, SyntaxIfExpr,
-    SyntaxLiteral, UnaryOp,
+    AssignOp, AstNode, BinaryOp, Literal, SyntaxElseBranch, SyntaxExpression, SyntaxExpressionKind,
+    SyntaxIfExpr, SyntaxLiteral, UnaryOp,
 };
 use vela_syntax::token::{InterpolatedStringTokenPart, TokenKind};
 
@@ -257,65 +257,95 @@ impl Compiler<'_, '_> {
         source: SourceId,
         expression: &SyntaxExpression,
     ) -> CompileResult<Option<Register>> {
-        if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
-            return self.compile_syntax_expression(source, &inner);
+        match expression.expression_kind() {
+            SyntaxExpressionKind::Paren => {
+                let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) else {
+                    return Ok(None);
+                };
+                self.compile_syntax_expression(source, &inner)
+            }
+            SyntaxExpressionKind::Literal => {
+                self.compile_syntax_literal_expression(source, expression)
+            }
+            SyntaxExpressionKind::Path => self.compile_syntax_path_expression(source, expression),
+            SyntaxExpressionKind::Field => self.compile_syntax_field_expression(source, expression),
+            SyntaxExpressionKind::Unary => self.compile_syntax_unary(source, expression),
+            SyntaxExpressionKind::Lambda => {
+                self.compile_syntax_lambda_with_callback_shapes(source, expression, &[])
+            }
+            SyntaxExpressionKind::Block => self.compile_syntax_block_expression(source, expression),
+            SyntaxExpressionKind::Index => self.compile_syntax_index(source, expression),
+            SyntaxExpressionKind::Assign => self.compile_syntax_assignment(source, expression),
+            SyntaxExpressionKind::Call => self.compile_syntax_call(source, expression),
+            SyntaxExpressionKind::Try => self.compile_syntax_try(source, expression),
+            SyntaxExpressionKind::Array
+            | SyntaxExpressionKind::Map
+            | SyntaxExpressionKind::Record => self.compile_syntax_container(source, expression),
+            SyntaxExpressionKind::If => self.compile_syntax_if_value(source, expression),
+            SyntaxExpressionKind::Match => self.compile_syntax_match_value(source, expression),
+            SyntaxExpressionKind::Binary => {
+                self.compile_syntax_binary_expression(source, expression)
+            }
         }
+    }
+
+    fn compile_syntax_literal_expression(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Option<Register>> {
         if let Some(literal) = expression_syntax_literal(expression) {
             return self
                 .compile_literal(Some(syntax_expression_span(source, expression)), &literal)
                 .map(Some);
         }
-        if let Some(register) = self.compile_syntax_interpolated_string(source, expression)? {
-            return Ok(Some(register));
-        }
-        if let Some(path) = expression_syntax_path_or_self(expression) {
-            return self
-                .compile_path_expr(syntax_expression_span(source, expression), &path)
-                .map(Some);
-        }
+        self.compile_syntax_interpolated_string(source, expression)
+    }
+
+    fn compile_syntax_path_expression(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Option<Register>> {
+        let Some(path) = expression_syntax_path_or_self(expression) else {
+            return Ok(None);
+        };
+        self.compile_path_expr(syntax_expression_span(source, expression), &path)
+            .map(Some)
+    }
+
+    fn compile_syntax_field_expression(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Option<Register>> {
         if let Some(path) = expression_syntax_path_field(expression) {
             return self
                 .compile_path_expr(syntax_expression_span(source, expression), &path)
                 .map(Some);
         }
-        if let Some(register) = self.compile_syntax_field_read(source, expression)? {
-            return Ok(Some(register));
-        }
-        if let Some(register) = self.compile_syntax_unary(source, expression)? {
-            return Ok(Some(register));
-        }
-        if let Some(register) =
-            self.compile_syntax_lambda_with_callback_shapes(source, expression, &[])?
-        {
-            return Ok(Some(register));
-        }
-        if let Some(block) = expression.as_block() {
-            let dst = self.alloc_register()?;
-            let body = CompilerBodyPayload::nested_syntax(source, block);
-            self.compile_block_payload_value_to(&body, dst)?;
-            return Ok(Some(dst));
-        }
-        if let Some(register) = self.compile_syntax_index(source, expression)? {
-            return Ok(Some(register));
-        }
-        if let Some(register) = self.compile_syntax_assignment(source, expression)? {
-            return Ok(Some(register));
-        }
-        if let Some(register) = self.compile_syntax_call(source, expression)? {
-            return Ok(Some(register));
-        }
-        if let Some(register) = self.compile_syntax_try(source, expression)? {
-            return Ok(Some(register));
-        }
-        if let Some(register) = self.compile_syntax_container(source, expression)? {
-            return Ok(Some(register));
-        }
-        if let Some(register) = self.compile_syntax_if_value(source, expression)? {
-            return Ok(Some(register));
-        }
-        if let Some(register) = self.compile_syntax_match_value(source, expression)? {
-            return Ok(Some(register));
-        }
+        self.compile_syntax_field_read(source, expression)
+    }
+
+    fn compile_syntax_block_expression(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Option<Register>> {
+        let Some(block) = expression.as_block() else {
+            return Ok(None);
+        };
+        let dst = self.alloc_register()?;
+        let body = CompilerBodyPayload::nested_syntax(source, block);
+        self.compile_block_payload_value_to(&body, dst)?;
+        Ok(Some(dst))
+    }
+
+    fn compile_syntax_binary_expression(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Option<Register>> {
         let Some(binary) = expression.as_binary() else {
             return Ok(None);
         };
@@ -1862,9 +1892,6 @@ impl Compiler<'_, '_> {
         source: SourceId,
         expression: &SyntaxExpression,
     ) -> CompileResult<Option<Register>> {
-        if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
-            return self.compile_syntax_container(source, &inner);
-        }
         if let Some(array) = expression.as_array() {
             let elements = array
                 .expressions()
