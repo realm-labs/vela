@@ -13,8 +13,10 @@ use vela_analysis::{
     stdlib::{stdlib_function_fact, stdlib_method_fact_with_lambda_arity},
     type_fact::TypeFact,
 };
-use vela_common::{PrimitiveTag, SourceId};
+use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_hir::{
+    body::{HirPathKind, HirPathOwner},
+    ids::HirExprId,
     module_graph::{DeclarationKind, ModuleGraph},
     type_hint::ImplMetadataKind,
 };
@@ -39,10 +41,12 @@ use self::type_hints::type_fact_from_syntax_hint;
 pub(crate) fn collect(
     graph: &ModuleGraph,
     parsed: &SyntaxParse<SyntaxSourceFile>,
+    source: SourceId,
     schema: &RegistryFacts,
 ) -> BTreeMap<(usize, usize), TypeFact> {
     let mut collector = ExpressionFactCollector {
         graph,
+        source,
         schema,
         declarations: declaration_scope(graph),
         facts: BTreeMap::new(),
@@ -68,6 +72,7 @@ pub(crate) fn fact_for_range(
     collect(
         databases.hir_db().graph(),
         parsed,
+        source_id,
         databases.schema_db().facts(),
     )
     .get(&text_range_key(range))
@@ -76,6 +81,7 @@ pub(crate) fn fact_for_range(
 
 struct ExpressionFactCollector<'a> {
     graph: &'a ModuleGraph,
+    source: SourceId,
     schema: &'a RegistryFacts,
     declarations: ExprFactScope,
     facts: BTreeMap<(usize, usize), TypeFact>,
@@ -489,17 +495,13 @@ impl ExpressionFactCollector<'_> {
                 .as_literal()
                 .and_then(|literal| literal.literal())
                 .map_or(TypeFact::Unknown, literal_fact),
-            SyntaxExpressionKind::Path => expr
-                .as_path()
-                .and_then(|path| {
-                    if path.is_self() {
-                        return scope.path_fact(&["self".to_owned()]).cloned();
-                    }
-                    let segments = path.path_segments();
+            SyntaxExpressionKind::Path => self
+                .hir_path_for_expr(expr, HirPathKind::Value)
+                .and_then(|segments| {
                     scope
-                        .path_fact(&segments)
+                        .path_fact(segments)
                         .cloned()
-                        .or_else(|| path_field_fact(&segments, scope, self.schema))
+                        .or_else(|| path_field_fact(segments, scope, self.schema))
                 })
                 .unwrap_or(TypeFact::Unknown),
             SyntaxExpressionKind::Paren => expr
@@ -574,7 +576,7 @@ impl ExpressionFactCollector<'_> {
                 .unwrap_or(TypeFact::Unknown),
             SyntaxExpressionKind::Call => expr
                 .as_call()
-                .map_or(TypeFact::Unknown, |call| self.call_fact(&call, scope)),
+                .map_or(TypeFact::Unknown, |call| self.call_fact(expr, &call, scope)),
             SyntaxExpressionKind::Array => expr.as_array().map_or(TypeFact::Unknown, |expr| {
                 TypeFact::array(collection_fact(
                     expr.expressions()
@@ -595,9 +597,10 @@ impl ExpressionFactCollector<'_> {
                 }));
                 TypeFact::map(key, value)
             }),
-            SyntaxExpressionKind::Record => expr
-                .as_record()
-                .map(|expr| TypeFact::record(expr.path_segments().join("::")))
+            SyntaxExpressionKind::Record => self
+                .hir_path_for_expr(expr, HirPathKind::Constructor)
+                .filter(|path| !path.is_empty())
+                .map(|path| TypeFact::record(path.join("::")))
                 .unwrap_or(TypeFact::Unknown),
             SyntaxExpressionKind::Lambda => expr.as_lambda().map_or(TypeFact::Unknown, |expr| {
                 self.lambda_fact(syntax_params(expr.param_list()), expr.body(), scope, None)
@@ -633,6 +636,7 @@ impl ExpressionFactCollector<'_> {
 
     fn call_fact(
         &self,
+        call_expr: &SyntaxExpression,
         call: &vela_syntax::ast::SyntaxCallExpr,
         scope: &ExprFactScope,
     ) -> TypeFact {
@@ -642,10 +646,9 @@ impl ExpressionFactCollector<'_> {
         let args = call.arguments();
         match callee.expression_kind() {
             SyntaxExpressionKind::Path => {
-                let Some(path) = callee.as_path() else {
+                let Some(segments) = self.hir_callee_path_for_call(call_expr) else {
                     return TypeFact::Unknown;
                 };
-                let segments = path.path_segments();
                 let arg_facts = args
                     .iter()
                     .filter_map(|arg| {
@@ -663,7 +666,7 @@ impl ExpressionFactCollector<'_> {
                 {
                     return fact;
                 }
-                if let Some(fact) = scope.path_fact(&segments).and_then(function_return_fact) {
+                if let Some(fact) = scope.path_fact(segments).and_then(function_return_fact) {
                     return fact;
                 }
 
@@ -945,6 +948,45 @@ impl ExpressionFactCollector<'_> {
         } else {
             type_fact_from_syntax_hint(hint)
         }
+    }
+
+    fn hir_path_for_expr(&self, expr: &SyntaxExpression, kind: HirPathKind) -> Option<&[String]> {
+        let expression = self.hir_expression(expr)?;
+        self.hir_path_for_expression(expression, kind)
+    }
+
+    fn hir_callee_path_for_call(&self, call: &SyntaxExpression) -> Option<&[String]> {
+        let call = self.hir_expression(call)?;
+        let callee = self.graph.call_callee(call)?;
+        self.hir_path_for_expression(callee, HirPathKind::Callee)
+    }
+
+    fn hir_path_for_expression(
+        &self,
+        expression: HirExprId,
+        kind: HirPathKind,
+    ) -> Option<&[String]> {
+        self.graph
+            .paths_in_source_by_kind(self.source, kind)
+            .find_map(|path| match path.owner {
+                HirPathOwner::Expression(owner) if owner == expression => {
+                    Some(path.path.as_slice())
+                }
+                HirPathOwner::Expression(_) | HirPathOwner::Pattern(_) => None,
+            })
+    }
+
+    fn hir_expression(&self, expr: &SyntaxExpression) -> Option<HirExprId> {
+        self.graph.expression_at_span(self.syntax_expr_span(expr)?)
+    }
+
+    fn syntax_expr_span(&self, expr: &SyntaxExpression) -> Option<Span> {
+        let range = expr.syntax().text_range();
+        Some(Span::new(
+            self.source,
+            u32::from(range.start()),
+            u32::from(range.end()),
+        ))
     }
 }
 

@@ -174,7 +174,8 @@ impl LanguageServiceDatabases {
 
         let graph = self.hir_db().graph();
         let schema = self.schema_db().facts();
-        let expression_facts = expression_facts::collect(graph, syntax_parse, schema);
+        let expression_facts =
+            expression_facts::collect(graph, syntax_parse, source.source_id(), schema);
         let mut type_collector = TypeHintCollector::new(
             document_id,
             &line_index,

@@ -30,7 +30,7 @@ pub(super) fn source_diagnostics(
     module: Option<ModuleId>,
     facts: &RegistryFacts,
 ) -> Vec<Diagnostic> {
-    let expression_facts = expression_facts::collect(graph, parsed, facts);
+    let expression_facts = expression_facts::collect(graph, parsed, source, facts);
     let method_sites = graph
         .member_calls_in_source(source)
         .filter_map(|field| {

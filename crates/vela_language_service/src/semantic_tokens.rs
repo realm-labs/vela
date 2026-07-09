@@ -467,7 +467,12 @@ impl LanguageServiceDatabases {
             .parse_db()
             .syntax_parse(document_id)
             .map(|parsed| {
-                expression_facts::collect(self.hir_db().graph(), parsed, self.schema_db().facts())
+                expression_facts::collect(
+                    self.hir_db().graph(),
+                    parsed,
+                    source.source_id(),
+                    self.schema_db().facts(),
+                )
             })
             .unwrap_or_default();
         let path_sites = path_sites::collect(self.hir_db().graph(), source.source_id());
