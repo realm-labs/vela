@@ -6,7 +6,7 @@ use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 
 use crate::{
-    DocumentId, LanguageServiceDatabases, member_access, query_context,
+    DocumentId, LanguageServiceDatabases, query_context,
     symbol_ref::qualified_source_declaration_path,
 };
 
@@ -118,14 +118,20 @@ fn push_script_field_use_edits(
     for source in databases.source_db().records().values() {
         let source_id = source.source_id();
         let text = source.text();
-        let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) else {
-            continue;
-        };
-        for site in member_access::member_access_sites(parsed) {
-            if site.member != target.field {
+        for field in graph.fields_in_source(source_id) {
+            if field.name != target.field {
                 continue;
             }
-            if query_context::type_fact_for_source_range(databases, source_id, site.receiver_range)
+            let Some(receiver_range) = graph
+                .expression_span(field.receiver)
+                .and_then(span_text_range)
+            else {
+                continue;
+            };
+            let Some(member_range) = span_text_range(field.member_origin.span) else {
+                continue;
+            };
+            if query_context::type_fact_for_source_range(databases, source_id, receiver_range)
                 .and_then(|receiver| script_field_target(graph, &receiver, &target.field))
                 .is_some_and(|found| found.owner == target.owner && found.field == target.field)
             {
@@ -133,7 +139,7 @@ fn push_script_field_use_edits(
                     .entry(source.document_id().clone())
                     .or_default()
                     .push(TextEdit {
-                        range: diagnostic_range(text, site.member_range),
+                        range: diagnostic_range(text, member_range),
                         new_text: new_name.to_owned(),
                     });
             }

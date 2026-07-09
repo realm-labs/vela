@@ -1030,6 +1030,13 @@ fn main(player) {
         .field_at_member_span(member_span)
         .expect("field member fact");
     assert_eq!(field.name, "level");
+    assert_eq!(
+        graph
+            .fields_in_source(SourceId::new(1))
+            .map(|field| field.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["level"]
+    );
     let body = graph.function_body(main).expect("main body");
     assert!(
         body.expressions

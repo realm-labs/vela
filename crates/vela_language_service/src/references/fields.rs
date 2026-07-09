@@ -5,7 +5,7 @@ use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::SyntaxSourceFile;
 
-use crate::{LanguageServiceDatabases, member_access, query_context};
+use crate::{LanguageServiceDatabases, query_context};
 
 use super::{
     Reference, ReferenceKind, ReferenceToken, declaration_name_matches, diagnostic_range,
@@ -149,14 +149,20 @@ fn script_field_use_references_for_source(
     let mut references = Vec::new();
     let source_id = source.source_id();
     let text = source.text();
-    let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) else {
-        return references;
-    };
-    for site in member_access::member_access_sites(parsed) {
-        if site.member != target.field {
+    for field in graph.fields_in_source(source_id) {
+        if field.name != target.field {
             continue;
         }
-        if query_context::type_fact_for_source_range(databases, source_id, site.receiver_range)
+        let Some(receiver_range) = graph
+            .expression_span(field.receiver)
+            .and_then(span_text_range)
+        else {
+            continue;
+        };
+        let Some(member_range) = span_text_range(field.member_origin.span) else {
+            continue;
+        };
+        if query_context::type_fact_for_source_range(databases, source_id, receiver_range)
             .and_then(|receiver| {
                 script_field_target_for_receiver_fact(graph, &receiver, &target.field)
             })
@@ -165,8 +171,8 @@ fn script_field_use_references_for_source(
         {
             references.push(Reference {
                 document_id: source.document_id().clone(),
-                range: diagnostic_range(text, site.member_range),
-                kind: resolved_use_reference_kind(text, site.member_range),
+                range: diagnostic_range(text, member_range),
+                kind: resolved_use_reference_kind(text, member_range),
                 symbol: source_member_symbol(graph, target.owner, &target.field)
                     .expect("field target should have a source symbol"),
             });

@@ -528,6 +528,13 @@ impl ModuleGraph {
             .find(|field| field.member_origin.span == span)
     }
 
+    pub fn fields_in_source(&self, source: SourceId) -> impl Iterator<Item = &HirField> + '_ {
+        self.bodies
+            .values()
+            .flat_map(|body| body.fields.values())
+            .filter(move |field| field.member_origin.source == source)
+    }
+
     #[must_use]
     pub fn expression_containing_span(&self, span: Span) -> Option<HirExprId> {
         self.bodies
