@@ -1,5 +1,5 @@
 use super::{
-    JsonRpcResult, LspServer, handle_notification, handle_request, notification_value,
+    LspServer, assert_no_messages, handle_notification, handle_request, notification_value,
     response_value,
 };
 use std::fs;
@@ -37,16 +37,13 @@ fn lsp_did_close_restores_disk_snapshot_completion_queries() {
             "capabilities": {}
         }),
     ));
-    assert_eq!(
-        handle_notification(
-            &mut server,
-            "workspace/didChangeWatchedFiles",
-            serde_json::json!({
-                "changes": [{ "uri": source_uri, "type": 1 }]
-            }),
-        ),
-        JsonRpcResult::None
-    );
+    assert_no_messages(handle_notification(
+        &mut server,
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": source_uri, "type": 1 }]
+        }),
+    ));
     let _ = notification_value(handle_notification(
         &mut server,
         "textDocument/didOpen",
@@ -146,16 +143,13 @@ pub fn main() -> i64 {
         }),
     ));
     let function = semantic_token_type_index(&initialize, "function");
-    assert_eq!(
-        handle_notification(
-            &mut server,
-            "workspace/didChangeWatchedFiles",
-            serde_json::json!({
-                "changes": [{ "uri": source_uri, "type": 1 }]
-            }),
-        ),
-        JsonRpcResult::None
-    );
+    assert_no_messages(handle_notification(
+        &mut server,
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": source_uri, "type": 1 }]
+        }),
+    ));
     let _ = notification_value(handle_notification(
         &mut server,
         "textDocument/didOpen",
@@ -230,16 +224,13 @@ pub fn main() -> String {
             "capabilities": {}
         }),
     ));
-    assert_eq!(
-        handle_notification(
-            &mut server,
-            "workspace/didChangeWatchedFiles",
-            serde_json::json!({
-                "changes": [{ "uri": source_uri, "type": 1 }]
-            }),
-        ),
-        JsonRpcResult::None
-    );
+    assert_no_messages(handle_notification(
+        &mut server,
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": source_uri, "type": 1 }]
+        }),
+    ));
     let _ = notification_value(handle_notification(
         &mut server,
         "textDocument/didOpen",
@@ -324,16 +315,13 @@ fn main(player: Player) {
             "capabilities": {}
         }),
     ));
-    assert_eq!(
-        handle_notification(
-            &mut server,
-            "workspace/didChangeWatchedFiles",
-            serde_json::json!({
-                "changes": [{ "uri": source_uri, "type": 1 }]
-            }),
-        ),
-        JsonRpcResult::None
-    );
+    assert_no_messages(handle_notification(
+        &mut server,
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": source_uri, "type": 1 }]
+        }),
+    ));
     let _ = notification_value(handle_notification(
         &mut server,
         "textDocument/didOpen",
@@ -406,16 +394,13 @@ pub fn main() -> i64 {
             "capabilities": {}
         }),
     ));
-    assert_eq!(
-        handle_notification(
-            &mut server,
-            "workspace/didChangeWatchedFiles",
-            serde_json::json!({
-                "changes": [{ "uri": source_uri, "type": 1 }]
-            }),
-        ),
-        JsonRpcResult::None
-    );
+    assert_no_messages(handle_notification(
+        &mut server,
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": source_uri, "type": 1 }]
+        }),
+    ));
     let _ = notification_value(handle_notification(
         &mut server,
         "textDocument/didOpen",
@@ -496,16 +481,13 @@ pub fn main() -> i64 {
             "capabilities": {}
         }),
     ));
-    assert_eq!(
-        handle_notification(
-            &mut server,
-            "workspace/didChangeWatchedFiles",
-            serde_json::json!({
-                "changes": [{ "uri": source_uri, "type": 1 }]
-            }),
-        ),
-        JsonRpcResult::None
-    );
+    assert_no_messages(handle_notification(
+        &mut server,
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": source_uri, "type": 1 }]
+        }),
+    ));
     let _ = notification_value(handle_notification(
         &mut server,
         "textDocument/didOpen",
@@ -576,16 +558,13 @@ pub fn main() -> i64 {
             "capabilities": {}
         }),
     ));
-    assert_eq!(
-        handle_notification(
-            &mut server,
-            "workspace/didChangeWatchedFiles",
-            serde_json::json!({
-                "changes": [{ "uri": source_uri, "type": 1 }]
-            }),
-        ),
-        JsonRpcResult::None
-    );
+    assert_no_messages(handle_notification(
+        &mut server,
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": source_uri, "type": 1 }]
+        }),
+    ));
     let _ = notification_value(handle_notification(
         &mut server,
         "textDocument/didOpen",

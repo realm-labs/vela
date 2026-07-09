@@ -1,5 +1,5 @@
 use super::{
-    JsonRpcResult, JsonValue, LspServer, assert_workspace_progress, handle_notification,
+    JsonValue, LspServer, assert_no_messages, assert_workspace_progress, handle_notification,
     handle_request, notification_value, notification_values, publish_diagnostics_notifications,
     response_value,
 };
@@ -41,7 +41,7 @@ fn workspace_folder_removal_clears_disk_facts_but_keeps_open_overlay() {
             "changes": [{ "uri": file_uri(&helper_path), "type": 1 }]
         }),
     );
-    assert_eq!(watched, JsonRpcResult::None);
+    assert_no_messages(watched);
 
     let main = open_main(&mut server, &root, "game::helper");
     assert_no_unresolved_imports(&main);

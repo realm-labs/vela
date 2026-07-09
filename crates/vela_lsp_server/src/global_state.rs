@@ -41,9 +41,6 @@ use crate::{
     watching, with_work_done_progress_messages,
 };
 
-#[cfg(test)]
-use crate::JsonRpcResult;
-
 pub(crate) struct GlobalState {
     sender: Sender<Message>,
     launch_configuration: LaunchConfiguration,
@@ -885,37 +882,16 @@ impl GlobalState {
         }
     }
 
-    pub(crate) fn handle_message(
-        &mut self,
-        message: &Message,
-        input: &str,
-    ) -> anyhow::Result<Vec<Message>> {
+    pub(crate) fn handle_message(&mut self, message: &Message) -> anyhow::Result<Vec<Message>> {
         let request_id = RequestQueue::request_id(message);
         if let Some(id) = request_id.as_ref() {
             self.request_queue.start(id.clone());
         }
-        let messages = dispatch::dispatch_message(self, message, input);
+        let messages = dispatch::dispatch_message(self, message);
         if let Some(id) = request_id {
             self.request_queue.finish(&id);
         }
         Ok(messages)
-    }
-
-    #[cfg(test)]
-    pub(crate) fn handle_message_result(
-        &mut self,
-        message: &Message,
-        input: &str,
-    ) -> JsonRpcResult {
-        let request_id = RequestQueue::request_id(message);
-        if let Some(id) = request_id.as_ref() {
-            self.request_queue.start(id.clone());
-        }
-        let result = dispatch::dispatch_message_result(self, message, input);
-        if let Some(id) = request_id {
-            self.request_queue.finish(&id);
-        }
-        result
     }
 
     pub(crate) fn send_messages(&self, messages: Vec<Message>) -> anyhow::Result<ResultSummary> {
@@ -1852,25 +1828,29 @@ mod tests {
         state.server.initialized = true;
         let document = DocumentId::from("file:///workspace/scripts/main.vela");
 
-        let result = state.handle_message_result(
-            &lsp_server::Message::Notification(lsp_server::Notification {
-                method: "textDocument/didOpen".to_owned(),
-                params: serde_json::json!({
-                    "textDocument": {
-                        "uri": document.as_str(),
-                        "languageId": "vela",
-                        "version": 1,
-                        "text": "fn main() {}"
-                    }
-                }),
-            }),
-            "textDocument/didOpen",
-        );
+        let result = state
+            .handle_message(&lsp_server::Message::Notification(
+                lsp_server::Notification {
+                    method: "textDocument/didOpen".to_owned(),
+                    params: serde_json::json!({
+                        "textDocument": {
+                            "uri": document.as_str(),
+                            "languageId": "vela",
+                            "version": 1,
+                            "text": "fn main() {}"
+                        }
+                    }),
+                },
+            ))
+            .expect("message should dispatch");
 
-        assert!(matches!(
-            result,
-            JsonRpcResult::Notification(_) | JsonRpcResult::Notifications(_)
-        ));
+        assert_has_messages(&result);
+        assert!(
+            result
+                .iter()
+                .all(|message| matches!(message, Message::Notification(_))),
+            "{result:?}"
+        );
         assert!(state.open_documents.contains(&document));
         assert_eq!(state.open_documents, state.server.open_documents);
     }
@@ -1904,15 +1884,14 @@ mod tests {
 
         let (sender, _receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        let result = state.handle_message_result(
-            &lsp_server::Message::Request(lsp_server::Request {
+        let result = state
+            .handle_message(&lsp_server::Message::Request(lsp_server::Request {
                 id: lsp_server::RequestId::from(3),
                 method: "exit".to_owned(),
                 params: serde_json::Value::Null,
-            }),
-            "exit",
-        );
-        assert!(result.into_response_message().is_some());
+            }))
+            .expect("message should dispatch");
+        let _response = response_message(result, "exit request should return a response");
         assert!(state.is_exited());
     }
 
@@ -1934,9 +1913,11 @@ mod tests {
             .expect("completion item should serialize"),
         });
 
-        let result = state.handle_message_result(&request, "");
+        let result = state
+            .handle_message(&request)
+            .expect("message should dispatch");
 
-        assert_eq!(result, JsonRpcResult::None);
+        assert_no_messages(result);
         let task = state
             .task_scheduler()
             .latency_results()
@@ -2001,11 +1982,11 @@ mod tests {
             .expect("hover params should serialize"),
         });
 
-        let result = state.handle_message_result(&request, "");
+        let result = state
+            .handle_message(&request)
+            .expect("message should dispatch");
 
-        let response = result
-            .into_response_message()
-            .expect("typed hover should return a response");
+        let response = response_message(result, "typed hover should return a response");
         let response: serde_json::Value = response_json(response);
         assert_eq!(response["id"], 8);
         assert_eq!(response["result"]["contents"]["kind"], "markdown");
@@ -2057,11 +2038,11 @@ mod tests {
             .expect("signatureHelp params should serialize"),
         });
 
-        let result = state.handle_message_result(&request, "");
+        let result = state
+            .handle_message(&request)
+            .expect("message should dispatch");
 
-        let response = result
-            .into_response_message()
-            .expect("typed signatureHelp should return a response");
+        let response = response_message(result, "typed signatureHelp should return a response");
         let response: serde_json::Value = response_json(response);
         assert_eq!(response["id"], 9);
         assert_eq!(response["result"]["activeSignature"], 0);
@@ -2574,8 +2555,8 @@ pub fn main(player: Player) -> i64 {
         state.sync_from_legacy_server();
         let request_id = RequestId::from(30);
 
-        let result = state.handle_message_result(
-            &Message::Request(lsp_server::Request {
+        let result = state
+            .handle_message(&Message::Request(lsp_server::Request {
                 id: lsp_server::RequestId::from(30),
                 method: "textDocument/formatting".to_owned(),
                 params: serde_json::to_value(lsp_types::DocumentFormattingParams {
@@ -2587,11 +2568,10 @@ pub fn main(player: Player) -> i64 {
                     work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
                 })
                 .expect("formatting params should serialize"),
-            }),
-            "",
-        );
+            }))
+            .expect("message should dispatch");
 
-        assert_eq!(result, JsonRpcResult::None);
+        assert_no_messages(result);
         assert!(state.request_queue.in_flight.contains_key(&request_id));
         let task = state
             .task_scheduler()
@@ -2632,8 +2612,8 @@ pub fn main(player: Player) -> i64 {
         state.sync_from_legacy_server();
         let request_id = RequestId::from(31);
 
-        let result = state.handle_message_result(
-            &Message::Request(lsp_server::Request {
+        let result = state
+            .handle_message(&Message::Request(lsp_server::Request {
                 id: lsp_server::RequestId::from(31),
                 method: "textDocument/formatting".to_owned(),
                 params: serde_json::to_value(lsp_types::DocumentFormattingParams {
@@ -2645,11 +2625,10 @@ pub fn main(player: Player) -> i64 {
                     work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
                 })
                 .expect("formatting params should serialize"),
-            }),
-            "",
-        );
+            }))
+            .expect("message should dispatch");
 
-        assert_eq!(result, JsonRpcResult::None);
+        assert_no_messages(result);
         assert!(state.request_queue.in_flight.contains_key(&request_id));
         let task = state
             .task_scheduler()
@@ -2700,8 +2679,8 @@ pub fn main(player: Player) -> i64 {
         state.sync_from_legacy_server();
         let request_id = RequestId::from(33);
 
-        let result = state.handle_message_result(
-            &Message::Request(lsp_server::Request {
+        let result = state
+            .handle_message(&Message::Request(lsp_server::Request {
                 id: lsp_server::RequestId::from(33),
                 method: "textDocument/formatting".to_owned(),
                 params: serde_json::to_value(lsp_types::DocumentFormattingParams {
@@ -2713,11 +2692,10 @@ pub fn main(player: Player) -> i64 {
                     work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
                 })
                 .expect("formatting params should serialize"),
-            }),
-            "",
-        );
+            }))
+            .expect("message should dispatch");
 
-        assert_eq!(result, JsonRpcResult::None);
+        assert_no_messages(result);
         assert!(state.request_queue.in_flight.contains_key(&request_id));
         let task = state
             .task_scheduler()
@@ -2774,8 +2752,8 @@ pub fn main(player: Player) -> i64 {
         state.sync_from_legacy_server();
         let request_id = RequestId::from(32);
 
-        let result = state.handle_message_result(
-            &Message::Request(lsp_server::Request {
+        let result = state
+            .handle_message(&Message::Request(lsp_server::Request {
                 id: lsp_server::RequestId::from(32),
                 method: "textDocument/completion".to_owned(),
                 params: serde_json::to_value(lsp_types::CompletionParams {
@@ -2794,11 +2772,10 @@ pub fn main(player: Player) -> i64 {
                     context: None,
                 })
                 .expect("completion params should serialize"),
-            }),
-            "",
-        );
+            }))
+            .expect("message should dispatch");
 
-        assert_eq!(result, JsonRpcResult::None);
+        assert_no_messages(result);
         assert!(state.request_queue.in_flight.contains_key(&request_id));
         let stale_task = state
             .task_scheduler()
@@ -3143,10 +3120,10 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("goto params should serialize"),
         });
-        let result = state.handle_message_result(&request, "");
-        let response = result
-            .into_response_message()
-            .expect("typed navigation should return a response");
+        let result = state
+            .handle_message(&request)
+            .expect("message should dispatch");
+        let response = response_message(result, "typed navigation should return a response");
         response_json(response)
     }
 
@@ -3175,10 +3152,13 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("prepareCallHierarchy params should serialize"),
         });
-        let result = state.handle_message_result(&request, "");
-        let response = result
-            .into_response_message()
-            .expect("typed prepareCallHierarchy should return a response");
+        let result = state
+            .handle_message(&request)
+            .expect("message should dispatch");
+        let response = response_message(
+            result,
+            "typed prepareCallHierarchy should return a response",
+        );
         response_json(response)
     }
 
@@ -3197,10 +3177,10 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("incomingCalls params should serialize"),
         });
-        let result = state.handle_message_result(&request, "");
-        let response = result
-            .into_response_message()
-            .expect("typed incomingCalls should return a response");
+        let result = state
+            .handle_message(&request)
+            .expect("message should dispatch");
+        let response = response_message(result, "typed incomingCalls should return a response");
         response_json(response)
     }
 
@@ -3219,10 +3199,10 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("outgoingCalls params should serialize"),
         });
-        let result = state.handle_message_result(&request, "");
-        let response = result
-            .into_response_message()
-            .expect("typed outgoingCalls should return a response");
+        let result = state
+            .handle_message(&request)
+            .expect("message should dispatch");
+        let response = response_message(result, "typed outgoingCalls should return a response");
         response_json(response)
     }
 
@@ -3253,10 +3233,10 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("rename params should serialize"),
         });
-        let result = state.handle_message_result(&request, "");
-        let response = result
-            .into_response_message()
-            .expect("typed rename should return a response");
+        let result = state
+            .handle_message(&request)
+            .expect("message should dispatch");
+        let response = response_message(result, "typed rename should return a response");
         response_json(response)
     }
 
@@ -3282,10 +3262,10 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("prepareRename params should serialize"),
         });
-        let result = state.handle_message_result(&request, "");
-        let response = result
-            .into_response_message()
-            .expect("typed prepareRename should return a response");
+        let result = state
+            .handle_message(&request)
+            .expect("message should dispatch");
+        let response = response_message(result, "typed prepareRename should return a response");
         response_json(response)
     }
 
@@ -3319,10 +3299,10 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("reference params should serialize"),
         });
-        let result = state.handle_message_result(&request, "");
-        let response = result
-            .into_response_message()
-            .expect("typed references should return a response");
+        let result = state
+            .handle_message(&request)
+            .expect("message should dispatch");
+        let response = response_message(result, "typed references should return a response");
         response_json(response)
     }
 
@@ -3352,10 +3332,10 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("documentHighlight params should serialize"),
         });
-        let result = state.handle_message_result(&request, "");
-        let response = result
-            .into_response_message()
-            .expect("typed documentHighlight should return a response");
+        let result = state
+            .handle_message(&request)
+            .expect("message should dispatch");
+        let response = response_message(result, "typed documentHighlight should return a response");
         response_json(response)
     }
 
@@ -3366,8 +3346,10 @@ pub fn main(amount: i64) -> i64 {
         lane: TaskLane,
         label: &str,
     ) -> serde_json::Value {
-        let result = state.handle_message_result(&request, "");
-        assert_eq!(result, JsonRpcResult::None);
+        let result = state
+            .handle_message(&request)
+            .expect("message should dispatch");
+        assert_no_messages(result);
         let task = match lane {
             TaskLane::Latency => state.task_scheduler().latency_results(),
             TaskLane::Worker => state.task_scheduler().worker_results(),
@@ -3493,10 +3475,10 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("selectionRange params should serialize"),
         });
-        let result = state.handle_message_result(&request, "");
-        let response = result
-            .into_response_message()
-            .expect("typed selectionRange should return a response");
+        let result = state
+            .handle_message(&request)
+            .expect("message should dispatch");
+        let response = response_message(result, "typed selectionRange should return a response");
         response_json(response)
     }
 
@@ -3548,10 +3530,13 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("semanticTokens/full/delta params should serialize"),
         });
-        let result = state.handle_message_result(&request, "");
-        let response = result
-            .into_response_message()
-            .expect("typed semanticTokens/full/delta should return a response");
+        let result = state
+            .handle_message(&request)
+            .expect("message should dispatch");
+        let response = response_message(
+            result,
+            "typed semanticTokens/full/delta should return a response",
+        );
         response_json(response)
     }
 
@@ -3577,10 +3562,13 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("semanticTokens/range params should serialize"),
         });
-        let result = state.handle_message_result(&request, "");
-        let response = result
-            .into_response_message()
-            .expect("typed semanticTokens/range should return a response");
+        let result = state
+            .handle_message(&request)
+            .expect("message should dispatch");
+        let response = response_message(
+            result,
+            "typed semanticTokens/range should return a response",
+        );
         response_json(response)
     }
 
@@ -3609,10 +3597,10 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("codeAction params should serialize"),
         });
-        let result = state.handle_message_result(&request, "");
-        let response = result
-            .into_response_message()
-            .expect("typed codeAction should return a response");
+        let result = state
+            .handle_message(&request)
+            .expect("message should dispatch");
+        let response = response_message(result, "typed codeAction should return a response");
         response_json(response)
     }
 
@@ -3637,10 +3625,10 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("inlayHint params should serialize"),
         });
-        let result = state.handle_message_result(&request, "");
-        let response = result
-            .into_response_message()
-            .expect("typed inlayHint should return a response");
+        let result = state
+            .handle_message(&request)
+            .expect("message should dispatch");
+        let response = response_message(result, "typed inlayHint should return a response");
         response_json(response)
     }
 
@@ -3672,7 +3660,9 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("formatting params should serialize"),
         });
-        let result = state.handle_message_result(&request, "");
+        let result = state
+            .handle_message(&request)
+            .expect("message should dispatch");
         let response =
             formatting_task_response(state, result, "typed formatting should return a response");
         response_string_json(&response)
@@ -3700,7 +3690,9 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("rangeFormatting params should serialize"),
         });
-        let result = state.handle_message_result(&request, "");
+        let result = state
+            .handle_message(&request)
+            .expect("message should dispatch");
         let response = formatting_task_response(
             state,
             result,
@@ -3730,7 +3722,9 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("onTypeFormatting params should serialize"),
         });
-        let result = state.handle_message_result(&request, "");
+        let result = state
+            .handle_message(&request)
+            .expect("message should dispatch");
         let response = formatting_task_response(
             state,
             result,
@@ -3741,10 +3735,10 @@ pub fn main(amount: i64) -> i64 {
 
     fn formatting_task_response(
         state: &mut GlobalState,
-        result: JsonRpcResult,
+        result: Vec<Message>,
         expected: &str,
     ) -> String {
-        if let Some(response) = result.into_response_message() {
+        if let Some(response) = response_message_opt(result, expected) {
             return crate::rpc::serialize_message(&Message::Response(response));
         }
         let task = state
@@ -3758,6 +3752,18 @@ pub fn main(amount: i64) -> i64 {
             panic!("{expected}");
         };
         crate::rpc::serialize_message(message)
+    }
+
+    fn response_message(messages: Vec<Message>, expected: &str) -> Response {
+        response_message_opt(messages, expected).expect(expected)
+    }
+
+    fn response_message_opt(messages: Vec<Message>, expected: &str) -> Option<Response> {
+        match messages.as_slice() {
+            [] => None,
+            [Message::Response(response)] => Some(response.clone()),
+            _ => panic!("{expected}: {messages:?}"),
+        }
     }
 
     fn response_json(response: Response) -> serde_json::Value {

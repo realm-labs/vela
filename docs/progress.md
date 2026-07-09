@@ -248,9 +248,11 @@ queued requests plus unknown and already-completed request IDs as no-response
 no-ops that do not poison later requests.
 
 M20.5 main-loop cleanup update: the rust-analyzer-style cleanup has removed
-the remaining test-only `LspServer::handle_json` compatibility harness plus
-raw JSON-RPC parser helpers; feature and lifecycle fixtures now enter through
-typed `lsp_server::Message` helpers.
+the remaining test-only `LspServer::handle_json` compatibility harness, raw
+JSON-RPC parser helpers, `legacy_rpc` / `JsonRpcResult` response wrapper,
+`dispatch_message_result`, and `handle_message_result`; feature, lifecycle,
+and global-state fixtures now enter through typed `lsp_server::Message`
+helpers.
 
 M20.5 main-loop close-out: the rust-analyzer-style LSP main-loop refactor
 execution plan is fully checked off, including Section 7 acceptance. Focused

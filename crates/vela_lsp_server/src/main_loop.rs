@@ -41,7 +41,7 @@ pub fn run(connection: Connection, configuration: LaunchConfiguration) -> anyhow
                 trace.message_received(sequence, &metadata, input_bytes)?;
 
                 let handle_start = Instant::now();
-                let messages = state.handle_message(&message, &input)?;
+                let messages = state.handle_message(&message)?;
                 let handle_ms = elapsed_ms(handle_start);
 
                 let write_start = Instant::now();

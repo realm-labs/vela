@@ -2,13 +2,13 @@ use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 #[cfg(test)]
-use lsp_server::RequestId;
+use lsp_server::{Message, RequestId};
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
 use vela_language_service::{SchemaConfig, WorkspaceConfig, WorkspaceRoot};
 
 #[cfg(test)]
-use crate::{ErrorCode, JsonRpcResult, publish_diagnostics_notification};
+use crate::{ErrorCode, error_response_messages, publish_diagnostics_notification};
 use crate::{
     LspServer,
     config_change::{ConfigChange, WorkspaceConfigChange},
@@ -251,9 +251,9 @@ impl LspServer {
         &mut self,
         id: Option<RequestId>,
         params: JsonValue,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         if let Some(id) = id {
-            return JsonRpcResult::error(
+            return error_response_messages(
                 Some(id),
                 ErrorCode::InvalidRequest,
                 "`workspace/didChangeConfiguration` must be sent as a notification",
@@ -263,21 +263,21 @@ impl LspServer {
         let params = match serde_json::from_value::<DidChangeConfigurationParams>(params) {
             Ok(params) => params,
             Err(error) => {
-                return JsonRpcResult::Notification(publish_diagnostics_notification(
+                return vec![publish_diagnostics_notification(
                     "",
                     Vec::new(),
                     Some(format!("invalid didChangeConfiguration params: {error}")),
-                ));
+                )];
             }
         };
         let editor_config = match EditorConfiguration::from_settings(params.settings) {
             Ok(config) => config,
             Err(error) => {
-                return JsonRpcResult::Notification(publish_diagnostics_notification(
+                return vec![publish_diagnostics_notification(
                     "",
                     Vec::new(),
                     Some(format!("invalid didChangeConfiguration settings: {error}")),
-                ));
+                )];
             }
         };
 

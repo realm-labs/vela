@@ -1,4 +1,4 @@
-use crate::{JsonRpcResult, LspServer};
+use crate::LspServer;
 use lsp_server::{Message, Notification, Request, RequestId};
 use serde_json::Value as JsonValue;
 
@@ -7,7 +7,7 @@ fn handle_request(
     id: i32,
     method: &str,
     params: JsonValue,
-) -> JsonRpcResult {
+) -> Vec<Message> {
     server.handle_message(Message::Request(Request {
         id: RequestId::from(id),
         method: method.to_owned(),
@@ -15,32 +15,48 @@ fn handle_request(
     }))
 }
 
-fn handle_notification(server: &mut LspServer, method: &str, params: JsonValue) -> JsonRpcResult {
+fn handle_notification(server: &mut LspServer, method: &str, params: JsonValue) -> Vec<Message> {
     server.handle_message(Message::Notification(Notification {
         method: method.to_owned(),
         params,
     }))
 }
 
-fn response_value(result: JsonRpcResult) -> JsonValue {
-    let Some(response) = result.into_response_message() else {
+fn response_value(messages: Vec<Message>) -> JsonValue {
+    let [Message::Response(response)] = messages.as_slice() else {
         panic!("request should return a JSON-RPC response");
     };
-    message_value(&Message::Response(response))
+    message_value(&Message::Response(response.clone()))
 }
 
-fn notification_value(result: JsonRpcResult) -> JsonValue {
-    let Some(notification) = result.into_notification_message() else {
+fn notification_value(mut messages: Vec<Message>) -> JsonValue {
+    if messages.len() != 1 {
+        panic!("notification should return a JSON-RPC notification");
+    }
+    let Some(notification) = messages.pop() else {
         panic!("notification should return a JSON-RPC notification");
     };
+    if !matches!(notification, Message::Notification(_)) {
+        panic!("notification should return a JSON-RPC notification");
+    }
     message_value(&notification)
 }
 
-fn notification_values(result: JsonRpcResult) -> Vec<JsonValue> {
-    let Some(notifications) = result.into_notification_messages() else {
+fn notification_values(messages: Vec<Message>) -> Vec<JsonValue> {
+    if messages
+        .iter()
+        .any(|message| !matches!(message, Message::Notification(_)))
+    {
         panic!("result should contain JSON-RPC notifications");
-    };
-    notifications.iter().map(message_value).collect()
+    }
+    messages.iter().map(message_value).collect()
+}
+
+fn assert_no_messages(messages: Vec<Message>) {
+    assert!(
+        messages.is_empty(),
+        "expected no LSP messages: {messages:?}"
+    );
 }
 
 fn message_value(message: &Message) -> JsonValue {
@@ -100,7 +116,8 @@ mod document_sync {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::{
-        LspServer, handle_notification, handle_request, notification_value, response_value,
+        LspServer, assert_no_messages, handle_notification, handle_request, notification_value,
+        response_value,
     };
 
     fn temp_workspace() -> PathBuf {
@@ -348,16 +365,13 @@ mod document_sync {
                 "capabilities": {}
             }),
         ));
-        assert_eq!(
-            handle_notification(
-                &mut server,
-                "workspace/didChangeWatchedFiles",
-                serde_json::json!({
-                    "changes": [{ "uri": source_uri, "type": 1 }]
-                }),
-            ),
-            super::JsonRpcResult::None
-        );
+        assert_no_messages(handle_notification(
+            &mut server,
+            "workspace/didChangeWatchedFiles",
+            serde_json::json!({
+                "changes": [{ "uri": source_uri, "type": 1 }]
+            }),
+        ));
         let open = notification_value(handle_notification(
             &mut server,
             "textDocument/didOpen",
@@ -424,16 +438,13 @@ fn main(cell: OverlayCell) {
                 "capabilities": {}
             }),
         ));
-        assert_eq!(
-            handle_notification(
-                &mut server,
-                "workspace/didChangeWatchedFiles",
-                serde_json::json!({
-                    "changes": [{ "uri": source_uri, "type": 1 }]
-                }),
-            ),
-            super::JsonRpcResult::None
-        );
+        assert_no_messages(handle_notification(
+            &mut server,
+            "workspace/didChangeWatchedFiles",
+            serde_json::json!({
+                "changes": [{ "uri": source_uri, "type": 1 }]
+            }),
+        ));
         let _ = notification_value(handle_notification(
             &mut server,
             "textDocument/didOpen",
@@ -611,7 +622,7 @@ mod file_watching {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::{
-        JsonRpcResult, JsonValue, LspServer, assert_workspace_progress, handle_notification,
+        JsonValue, LspServer, assert_no_messages, assert_workspace_progress, handle_notification,
         handle_request, notification_value, notification_values, publish_diagnostics_notifications,
         response_value,
     };
@@ -691,7 +702,7 @@ mod file_watching {
                 ]
             }),
         );
-        assert_eq!(watched, JsonRpcResult::None);
+        assert_no_messages(watched);
         server
     }
     fn open_main(server: &mut LspServer, root: &Path, import_module: &str) -> JsonValue {
@@ -1090,7 +1101,7 @@ mod file_watching {
                 "changes": [{ "uri": file_uri(&helper_path), "type": 1 }]
             }),
         );
-        assert_eq!(watched, JsonRpcResult::None);
+        assert_no_messages(watched);
         let main = open_main(&mut server, &root, "game::helper");
         assert_has_unresolved_import(&main);
 

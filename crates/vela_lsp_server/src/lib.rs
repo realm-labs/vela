@@ -10,8 +10,6 @@ mod config;
 mod config_change;
 mod global_state;
 mod handlers;
-#[cfg(test)]
-mod legacy_rpc;
 mod lifecycle;
 mod line_index;
 mod lsp;
@@ -31,9 +29,9 @@ mod watching;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-#[cfg(test)]
-use lsp_server::RequestId;
 use lsp_server::{Message, Notification};
+#[cfg(test)]
+use lsp_server::{RequestId, Response, ResponseError};
 use protocol::{LspPosition, LspRange};
 use serde::Deserialize;
 use serde_json::{Value as JsonValue, json};
@@ -47,8 +45,6 @@ use vela_language_service::{
 use crate::client::WorkspaceFolder;
 use crate::config::EditorConfiguration;
 use crate::config_change::ConfigChange;
-#[cfg(test)]
-pub use crate::legacy_rpc::JsonRpcResult;
 use crate::lsp::to_proto;
 pub(crate) use crate::rpc::ErrorCode;
 use crate::semantic_tokens::SemanticTokenProjection;
@@ -108,31 +104,27 @@ impl LspServer {
     }
 
     #[cfg(test)]
-    fn handle_message(&mut self, message: Message) -> JsonRpcResult {
+    fn handle_message(&mut self, message: Message) -> Vec<Message> {
         if self.exited {
-            return JsonRpcResult::None;
+            return Vec::new();
         }
 
         let (id, method, params) = match message {
             Message::Request(request) => (Some(request.id), request.method, request.params),
             Message::Notification(notification) => (None, notification.method, notification.params),
-            Message::Response(_) => return JsonRpcResult::None,
+            Message::Response(_) => return Vec::new(),
         };
 
         if self.shutdown_requested && method != "exit" {
-            return id.map_or(JsonRpcResult::None, |id| {
-                JsonRpcResult::error(Some(id), ErrorCode::InvalidRequest, "server has shut down")
-            });
+            return error_response_messages(id, ErrorCode::InvalidRequest, "server has shut down");
         }
 
         if !self.initialized && !lifecycle::is_pre_initialize_method(&method) {
-            return id.map_or(JsonRpcResult::None, |id| {
-                JsonRpcResult::error(
-                    Some(id),
-                    ErrorCode::ServerNotInitialized,
-                    "server has not been initialized",
-                )
-            });
+            return error_response_messages(
+                id,
+                ErrorCode::ServerNotInitialized,
+                "server has not been initialized",
+            );
         }
 
         match method.as_str() {
@@ -178,9 +170,9 @@ impl LspServer {
     }
 
     #[cfg(test)]
-    fn did_open(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
+    fn did_open(&mut self, id: Option<RequestId>, params: JsonValue) -> Vec<Message> {
         if let Some(id) = id {
-            return JsonRpcResult::error(
+            return error_response_messages(
                 Some(id),
                 ErrorCode::InvalidRequest,
                 "`textDocument/didOpen` must be sent as a notification",
@@ -190,11 +182,11 @@ impl LspServer {
         let params = match serde_json::from_value::<DidOpenTextDocumentParams>(params) {
             Ok(params) => params,
             Err(error) => {
-                return JsonRpcResult::Notification(publish_diagnostics_notification(
+                return vec![publish_diagnostics_notification(
                     "",
                     Vec::new(),
                     Some(format!("invalid didOpen params: {error}")),
-                ));
+                )];
             }
         };
 
@@ -209,9 +201,9 @@ impl LspServer {
     }
 
     #[cfg(test)]
-    fn did_change(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
+    fn did_change(&mut self, id: Option<RequestId>, params: JsonValue) -> Vec<Message> {
         if let Some(id) = id {
-            return JsonRpcResult::error(
+            return error_response_messages(
                 Some(id),
                 ErrorCode::InvalidRequest,
                 "`textDocument/didChange` must be sent as a notification",
@@ -221,20 +213,20 @@ impl LspServer {
         let params = match serde_json::from_value::<DidChangeTextDocumentParams>(params) {
             Ok(params) => params,
             Err(error) => {
-                return JsonRpcResult::Notification(publish_diagnostics_notification(
+                return vec![publish_diagnostics_notification(
                     "",
                     Vec::new(),
                     Some(format!("invalid didChange params: {error}")),
-                ));
+                )];
             }
         };
 
         if params.content_changes.is_empty() {
-            return JsonRpcResult::Notification(publish_diagnostics_notification(
+            return vec![publish_diagnostics_notification(
                 &params.text_document.uri,
                 Vec::new(),
                 Some("didChange requires at least one content change".to_owned()),
-            ));
+            )];
         }
 
         let uri = params.text_document.uri;
@@ -247,11 +239,11 @@ impl LspServer {
         let text = match apply_document_changes(current_text.as_deref(), params.content_changes) {
             Ok(text) => text,
             Err(error) => {
-                return JsonRpcResult::Notification(publish_diagnostics_notification(
+                return vec![publish_diagnostics_notification(
                     &uri,
                     Vec::new(),
                     Some(error),
-                ));
+                )];
             }
         };
 
@@ -263,9 +255,9 @@ impl LspServer {
     }
 
     #[cfg(test)]
-    fn did_close(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
+    fn did_close(&mut self, id: Option<RequestId>, params: JsonValue) -> Vec<Message> {
         if let Some(id) = id {
-            return JsonRpcResult::error(
+            return error_response_messages(
                 Some(id),
                 ErrorCode::InvalidRequest,
                 "`textDocument/didClose` must be sent as a notification",
@@ -275,11 +267,11 @@ impl LspServer {
         let params = match serde_json::from_value::<DidCloseTextDocumentParams>(params) {
             Ok(params) => params,
             Err(error) => {
-                return JsonRpcResult::Notification(publish_diagnostics_notification(
+                return vec![publish_diagnostics_notification(
                     "",
                     Vec::new(),
                     Some(format!("invalid didClose params: {error}")),
-                ));
+                )];
             }
         };
 
@@ -291,7 +283,7 @@ impl LspServer {
         if self.disk_sources.contains_key(&document_id) {
             self.publish_current_diagnostics(&uri, &document_id)
         } else {
-            JsonRpcResult::Notification(publish_diagnostics_notification(&uri, Vec::new(), None))
+            vec![publish_diagnostics_notification(&uri, Vec::new(), None)]
         }
     }
 
@@ -300,9 +292,9 @@ impl LspServer {
         &mut self,
         id: Option<RequestId>,
         params: JsonValue,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         if let Some(id) = id {
-            return JsonRpcResult::error(
+            return error_response_messages(
                 Some(id),
                 ErrorCode::InvalidRequest,
                 "`workspace/didChangeWatchedFiles` must be sent as a notification",
@@ -312,11 +304,11 @@ impl LspServer {
         let params = match serde_json::from_value::<DidChangeWatchedFilesParams>(params) {
             Ok(params) => params,
             Err(error) => {
-                return JsonRpcResult::Notification(publish_diagnostics_notification(
+                return vec![publish_diagnostics_notification(
                     "",
                     Vec::new(),
                     Some(format!("invalid didChangeWatchedFiles params: {error}")),
-                ));
+                )];
             }
         };
 
@@ -345,9 +337,9 @@ impl LspServer {
         &mut self,
         id: Option<RequestId>,
         params: JsonValue,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         if let Some(id) = id {
-            return JsonRpcResult::error(
+            return error_response_messages(
                 Some(id),
                 ErrorCode::InvalidRequest,
                 "`workspace/didChangeWorkspaceFolders` must be sent as a notification",
@@ -357,11 +349,11 @@ impl LspServer {
         let params = match serde_json::from_value::<DidChangeWorkspaceFoldersParams>(params) {
             Ok(params) => params,
             Err(error) => {
-                return JsonRpcResult::Notification(publish_diagnostics_notification(
+                return vec![publish_diagnostics_notification(
                     "",
                     Vec::new(),
                     Some(format!("invalid didChangeWorkspaceFolders params: {error}")),
-                ));
+                )];
             }
         };
 
@@ -515,13 +507,8 @@ impl LspServer {
     }
 
     #[cfg(test)]
-    pub(crate) fn publish_open_diagnostics(&mut self) -> JsonRpcResult {
-        let notifications = self.publish_open_diagnostics_messages();
-        if notifications.is_empty() {
-            JsonRpcResult::None
-        } else {
-            JsonRpcResult::Notifications(notifications)
-        }
+    pub(crate) fn publish_open_diagnostics(&mut self) -> Vec<Message> {
+        self.publish_open_diagnostics_messages()
     }
 
     pub(crate) fn publish_current_diagnostics_message(
@@ -550,8 +537,8 @@ impl LspServer {
         &mut self,
         uri: &str,
         document_id: &DocumentId,
-    ) -> JsonRpcResult {
-        JsonRpcResult::Notification(self.publish_current_diagnostics_message(uri, document_id))
+    ) -> Vec<Message> {
+        vec![self.publish_current_diagnostics_message(uri, document_id)]
     }
 
     #[cfg(test)]
@@ -842,6 +829,35 @@ fn project_diagnostics(project: &ProjectSources) -> Vec<ProjectDiagnostic> {
     diagnostics
 }
 
+#[cfg(test)]
+pub(crate) fn ok_response_messages(id: RequestId, result: JsonValue) -> Vec<Message> {
+    vec![Message::Response(Response {
+        id,
+        result: Some(result),
+        error: None,
+    })]
+}
+
+#[cfg(test)]
+pub(crate) fn error_response_messages(
+    id: Option<RequestId>,
+    code: ErrorCode,
+    message: impl Into<String>,
+) -> Vec<Message> {
+    let Some(id) = id else {
+        return Vec::new();
+    };
+    vec![Message::Response(Response {
+        id,
+        result: None,
+        error: Some(ResponseError {
+            code: code.value(),
+            message: message.into(),
+            data: None,
+        }),
+    })]
+}
+
 fn publish_diagnostics_notification(
     uri: &str,
     diagnostics: Vec<lsp_types::Diagnostic>,
@@ -893,20 +909,14 @@ pub(crate) fn with_work_done_progress_messages(
 }
 
 #[cfg(test)]
-pub(crate) fn with_work_done_progress(result: JsonRpcResult, title: &str) -> JsonRpcResult {
-    let notifications = match result {
-        JsonRpcResult::Notification(notification) => vec![notification],
-        JsonRpcResult::Notifications(notifications) => notifications,
-        other @ (JsonRpcResult::Response(_) | JsonRpcResult::None) => {
-            return other;
-        }
-    };
-    let messages = with_work_done_progress_messages(notifications, title);
-    if messages.is_empty() {
-        JsonRpcResult::None
-    } else {
-        JsonRpcResult::Notifications(messages)
+pub(crate) fn with_work_done_progress(result: Vec<Message>, title: &str) -> Vec<Message> {
+    if result
+        .iter()
+        .any(|message| !matches!(message, Message::Notification(_)))
+    {
+        return result;
     }
+    with_work_done_progress_messages(result, title)
 }
 
 fn work_done_progress_notification(value: JsonValue) -> Message {

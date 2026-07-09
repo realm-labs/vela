@@ -27,14 +27,7 @@ use crate::{
     transport::document_uri,
 };
 
-#[cfg(test)]
-use crate::JsonRpcResult;
-
-pub(crate) fn dispatch_message(
-    global_state: &mut GlobalState,
-    message: &Message,
-    _legacy_input: &str,
-) -> Vec<Message> {
+pub(crate) fn dispatch_message(global_state: &mut GlobalState, message: &Message) -> Vec<Message> {
     match message {
         Message::Request(request) => dispatch_request(global_state, request.clone()),
         Message::Notification(notification) => {
@@ -42,15 +35,6 @@ pub(crate) fn dispatch_message(
         }
         Message::Response(_) => Vec::new(),
     }
-}
-
-#[cfg(test)]
-pub(crate) fn dispatch_message_result(
-    global_state: &mut GlobalState,
-    message: &Message,
-    legacy_input: &str,
-) -> JsonRpcResult {
-    crate::legacy_rpc::result_from_messages(dispatch_message(global_state, message, legacy_input))
 }
 
 fn dispatch_request(global_state: &mut GlobalState, request: Request) -> Vec<Message> {

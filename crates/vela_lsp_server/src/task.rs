@@ -8,9 +8,6 @@ use lsp_types::{
 };
 use vela_language_service::GenerationToken;
 
-#[cfg(test)]
-use crate::JsonRpcResult;
-
 type TaskJob = Box<dyn FnOnce() -> TaskResult + Send + 'static>;
 
 #[derive(Debug, Clone)]
@@ -623,29 +620,22 @@ impl Default for TaskScheduler {
 
 impl TaskResult {
     #[cfg(test)]
-    pub(crate) fn response(result: JsonRpcResult) -> Self {
-        Self::lane_response(TaskLane::Main, result)
+    pub(crate) fn response(messages: Vec<Message>) -> Self {
+        Self::lane_response(TaskLane::Main, messages)
     }
 
     #[cfg(test)]
-    pub(crate) fn lane_response(lane: TaskLane, result: JsonRpcResult) -> Self {
-        Self::lane_method_response(lane, None, result)
+    pub(crate) fn lane_response(lane: TaskLane, messages: Vec<Message>) -> Self {
+        Self::lane_method_response(lane, None, messages)
     }
 
     #[cfg(test)]
     pub(crate) fn lane_method_response(
         lane: TaskLane,
         method: Option<String>,
-        result: JsonRpcResult,
+        messages: Vec<Message>,
     ) -> Self {
-        Self::lane_method_request_generation_messages(
-            lane,
-            method,
-            None,
-            None,
-            None,
-            crate::legacy_rpc::typed_messages(result),
-        )
+        Self::lane_method_request_generation_messages(lane, method, None, None, None, messages)
     }
 
     #[cfg(test)]
@@ -782,7 +772,7 @@ mod tests {
 
     #[test]
     fn task_result_stores_typed_messages() {
-        let result = JsonRpcResult::Response(test_response("main"));
+        let result = vec![Message::Response(test_response("main"))];
 
         let task_result = TaskResult::response(result.clone());
 

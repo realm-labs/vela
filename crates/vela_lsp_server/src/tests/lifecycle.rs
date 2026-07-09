@@ -1,9 +1,21 @@
 use crate::LaunchConfiguration;
 
 use super::{
-    JsonRpcResult, JsonValue, LspServer, handle_notification, handle_request, notification_value,
-    response_value,
+    JsonValue, LspServer, assert_no_messages, handle_notification, handle_request,
+    notification_value, response_value,
 };
+
+fn message_by_method(messages: Vec<lsp_server::Message>, method: &str) -> JsonValue {
+    messages
+        .iter()
+        .map(|message| {
+            serde_json::from_str::<JsonValue>(&crate::rpc::serialize_message(message))
+                .expect("message should serialize as JSON")
+        })
+        .into_iter()
+        .find(|notification| notification["method"] == method)
+        .unwrap_or_else(|| panic!("expected {method} message"))
+}
 
 #[test]
 fn lsp_initialize_reports_capabilities() {
@@ -236,11 +248,10 @@ fn lsp_rejects_repeated_initialize_without_resetting_state() {
             "capabilities": {}
         }),
     ));
-    let registration = notification_value(handle_notification(
-        &mut server,
-        "initialized",
-        serde_json::json!({}),
-    ));
+    let registration = message_by_method(
+        handle_notification(&mut server, "initialized", serde_json::json!({})),
+        "client/registerCapability",
+    );
     let watchers = registration["params"]["registrations"][0]["registerOptions"]["watchers"]
         .as_array()
         .expect("watcher registration should include watchers");
@@ -329,7 +340,7 @@ fn lsp_initialize_notification_does_not_initialize() {
         }),
     ));
 
-    assert_eq!(notification_result, JsonRpcResult::None);
+    assert_no_messages(notification_result);
     assert_eq!(early_hover["id"], 1);
     assert_eq!(early_hover["error"]["code"], -32002);
     assert_eq!(
@@ -359,7 +370,7 @@ fn lsp_initialized_notification_has_no_response() {
     let result = handle_notification(&mut server, "initialized", serde_json::json!({}));
 
     assert!(server.is_initialized());
-    assert_eq!(result, JsonRpcResult::None);
+    assert_no_messages(result);
 }
 
 #[test]
@@ -399,7 +410,7 @@ fn lsp_initialized_notification_before_initialize_does_not_unlock_requests() {
         }),
     ));
 
-    assert_eq!(initialized, JsonRpcResult::None);
+    assert_no_messages(initialized);
     assert!(!server.is_initialized());
     assert_eq!(response["id"], 1);
     assert_eq!(response["error"]["code"], -32002);
@@ -435,7 +446,7 @@ fn lsp_did_save_is_not_advertised_and_has_no_response() {
         }),
     );
 
-    assert_eq!(result, JsonRpcResult::None);
+    assert_no_messages(result);
 }
 
 #[test]
@@ -463,11 +474,10 @@ fn lsp_initialized_registers_watched_files_when_supported() {
         }),
     ));
 
-    let registration = notification_value(handle_notification(
-        &mut server,
-        "initialized",
-        serde_json::json!({}),
-    ));
+    let registration = message_by_method(
+        handle_notification(&mut server, "initialized", serde_json::json!({})),
+        "client/registerCapability",
+    );
 
     assert_eq!(registration["jsonrpc"], "2.0");
     assert_eq!(registration["method"], "client/registerCapability");
@@ -493,7 +503,7 @@ fn lsp_initialized_registers_watched_files_when_supported() {
     }));
 
     let repeated = handle_notification(&mut server, "initialized", serde_json::json!({}));
-    assert_eq!(repeated, JsonRpcResult::None);
+    assert_no_messages(repeated);
 }
 
 #[test]
@@ -520,7 +530,7 @@ fn lsp_initialized_skips_watched_files_when_disabled() {
 
     let result = handle_notification(&mut server, "initialized", serde_json::json!({}));
 
-    assert_eq!(result, JsonRpcResult::None);
+    assert_no_messages(result);
 }
 
 #[test]
@@ -548,11 +558,10 @@ fn lsp_initialized_ignores_empty_host_schema_setting() {
         }),
     ));
 
-    let registration = notification_value(handle_notification(
-        &mut server,
-        "initialized",
-        serde_json::json!({}),
-    ));
+    let registration = message_by_method(
+        handle_notification(&mut server, "initialized", serde_json::json!({})),
+        "client/registerCapability",
+    );
     let watchers = registration["params"]["registrations"][0]["registerOptions"]["watchers"]
         .as_array()
         .expect("watcher registration should include watchers");
@@ -627,7 +636,7 @@ fn lsp_ignores_client_response_to_server_request() {
         error: None,
     }));
 
-    assert_eq!(result, JsonRpcResult::None);
+    assert_no_messages(result);
 }
 
 #[test]
@@ -690,7 +699,7 @@ fn lsp_implementation_request_is_not_advertised_or_supported() {
     assert_eq!(implementation["error"]["code"], -32601);
     assert_eq!(document_link["id"], 3);
     assert_eq!(document_link["error"]["code"], -32601);
-    assert_eq!(unsupported_notification, JsonRpcResult::None);
+    assert_no_messages(unsupported_notification);
     assert_eq!(hover["id"], 4);
     assert!(hover["result"].is_null());
 }
@@ -703,7 +712,7 @@ fn lsp_cancellation_before_request_does_not_poison_request_id() {
         "$/cancelRequest",
         serde_json::json!({ "id": 7 }),
     );
-    assert_eq!(cancel, JsonRpcResult::None);
+    assert_no_messages(cancel);
 
     let response = response_value(handle_request(
         &mut server,
@@ -738,7 +747,7 @@ fn lsp_cancellation_ignores_unknown_request_id() {
         }),
     ));
 
-    assert_eq!(cancel, JsonRpcResult::None);
+    assert_no_messages(cancel);
     assert!(server.is_initialized());
     assert_eq!(response["id"], 1);
     assert_eq!(response["result"]["serverInfo"]["name"], "vela_lsp_server");
@@ -795,7 +804,7 @@ fn lsp_cancellation_ignores_malformed_params() {
         }),
     ));
 
-    assert_eq!(cancel, JsonRpcResult::None);
+    assert_no_messages(cancel);
     assert_eq!(initialize["id"], 7);
     assert_eq!(
         initialize["result"]["serverInfo"]["name"],
@@ -832,7 +841,7 @@ fn lsp_cancellation_ignores_completed_request_id() {
     ));
 
     assert_eq!(initialize["id"], 1);
-    assert_eq!(cancel, JsonRpcResult::None);
+    assert_no_messages(cancel);
     assert_eq!(hover["id"], 2);
     assert!(hover["result"].is_null());
 }
@@ -855,7 +864,7 @@ fn lsp_shutdown_exits_without_background_tasks() {
     assert_eq!(response["result"], JsonValue::Null);
     assert!(server.is_shutdown_requested());
     assert!(server.is_exited());
-    assert_eq!(exit, JsonRpcResult::None);
+    assert_no_messages(exit);
 }
 
 #[test]
@@ -890,7 +899,7 @@ fn lsp_rejects_requests_after_shutdown_until_exit() {
 
     let exit = handle_notification(&mut server, "exit", JsonValue::Null);
     assert!(server.is_exited());
-    assert_eq!(exit, JsonRpcResult::None);
+    assert_no_messages(exit);
 }
 
 #[test]
@@ -906,7 +915,7 @@ fn lsp_shutdown_notification_does_not_shutdown() {
         }),
     ));
     let notification_result = handle_notification(&mut server, "shutdown", JsonValue::Null);
-    assert_eq!(notification_result, JsonRpcResult::None);
+    assert_no_messages(notification_result);
     assert!(!server.is_shutdown_requested());
 
     let hover = response_value(handle_request(
@@ -986,7 +995,7 @@ fn lsp_exit_request_reports_invalid_request_and_exits() {
         "`exit` must be sent as a notification"
     );
     assert!(server.is_exited());
-    assert_eq!(hover, JsonRpcResult::None);
+    assert_no_messages(hover);
 }
 
 #[test]
@@ -1025,7 +1034,7 @@ fn lsp_ignores_messages_after_exit() {
         }),
     );
     assert!(server.is_exited());
-    assert_eq!(exit, JsonRpcResult::None);
-    assert_eq!(hover, JsonRpcResult::None);
-    assert_eq!(did_open, JsonRpcResult::None);
+    assert_no_messages(exit);
+    assert_no_messages(hover);
+    assert_no_messages(did_open);
 }
