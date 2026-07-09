@@ -209,7 +209,10 @@ reading HIR local facts, deleting the old name/span pattern-local scan. Path
 expression statement and tail-value lowering now reads HIR value-path facts
 instead of rebuilding path segments from syntax in `path_values`, and let/return
 statement path extraction has moved out of `CompilerStatementPayload` onto that
-same HIR value-path query.
+same HIR value-path query. Expression-dispatch path and field-chain reads now
+compose HIR value paths from path, local/self binding, and HIR field receiver
+facts, and direct local assignment plus direct record field slot/type queries
+use those HIR paths instead of syntax path reconstruction.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

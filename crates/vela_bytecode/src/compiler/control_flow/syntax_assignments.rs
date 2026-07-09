@@ -39,11 +39,10 @@ impl Compiler<'_, '_> {
             return Ok(None);
         };
         let value_type = self.syntax_value_type_for_expression(Some(source), &value_expression);
-        if let Some(target_path) = expression_syntax_path_or_self(&target_expression) {
-            let [target_name] = target_path.as_slice() else {
-                return Ok(None);
-            };
-            let target_span = syntax_expression_span(source, &target_expression);
+        let target_span = syntax_expression_span(source, &target_expression);
+        if let Some(target_path) = self.hir_value_path_for_span(target_span)
+            && let [target_name] = target_path.as_slice()
+        {
             let target_type = self.value_type_for_path(target_span, &target_path);
             let assigned_type = syntax_assignment_value_type(op, target_type, value_type);
             let target = self.local_register_at_span(target_span, target_name)?;
@@ -131,7 +130,8 @@ impl Compiler<'_, '_> {
             );
         }
         let receiver_span = syntax_expression_span(source, &receiver_expression);
-        let field_slot = expression_syntax_path_or_self(&receiver_expression)
+        let field_slot = self
+            .hir_value_path_for_span(receiver_span)
             .and_then(|path| {
                 let [root] = path.as_slice() else {
                     return None;
@@ -214,14 +214,14 @@ impl Compiler<'_, '_> {
         target_expression: &SyntaxExpression,
         receiver_expression: &SyntaxExpression,
     ) -> Option<RuntimeTypeFact> {
-        let path = expression_syntax_path_or_field(target_expression)?;
+        let target_span = syntax_expression_span(source, target_expression);
+        let path = self.hir_value_path_for_span(target_span)?;
         let (root, fields) = path.split_first()?;
-        let root_span = expression_syntax_path_or_self(receiver_expression)
+        let receiver_span = syntax_expression_span(source, receiver_expression);
+        let root_span = self
+            .hir_value_path_for_span(receiver_span)
             .filter(|receiver| receiver.as_slice() == [root.as_str()])
-            .map_or_else(
-                || syntax_expression_span(source, target_expression),
-                |_| syntax_expression_span(source, receiver_expression),
-            );
+            .map_or(target_span, |_| receiver_span);
         let root_type = self.script_type_for_path_root(root_span, root)?;
         self.schema_record_field_value_type(Some(root_type.as_str()), fields)
     }

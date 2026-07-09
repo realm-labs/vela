@@ -270,7 +270,26 @@ impl Compiler<'_, '_> {
 
     pub(in crate::compiler) fn hir_value_path_for_span(&self, span: Span) -> Option<Vec<String>> {
         let expression = self.expression_at_span(span)?;
-        let path = self.hir_value_path(expression)?;
-        (!path.is_empty()).then(|| path.to_vec())
+        self.hir_value_path_for_expression(expression)
+    }
+
+    fn hir_value_path_for_expression(&self, expression: HirExprId) -> Option<Vec<String>> {
+        if let Some(path) = self.hir_value_path(expression)
+            && !path.is_empty()
+        {
+            return Some(path.to_vec());
+        }
+        if let Some(local) = self.local_for_expression(expression)
+            && let Some(binding) = self.bindings.local(local)
+        {
+            return Some(vec![binding.name.clone()]);
+        }
+        let field = self
+            .hir_bodies
+            .iter()
+            .find_map(|body| body.fields.get(&expression))?;
+        let mut path = self.hir_value_path_for_expression(field.receiver)?;
+        path.push(field.name.clone());
+        Some(path)
     }
 }

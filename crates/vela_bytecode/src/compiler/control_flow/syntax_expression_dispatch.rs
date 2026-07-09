@@ -3,10 +3,7 @@ use vela_syntax::SyntaxKind;
 use vela_syntax::ast::{SyntaxExpression, SyntaxExpressionKind, SyntaxLiteral};
 use vela_syntax::token::{InterpolatedStringTokenPart, TokenKind};
 
-use crate::compiler::body_payloads::{
-    CompilerBodyPayload, expression_syntax_literal, expression_syntax_path_field,
-    expression_syntax_path_or_self,
-};
+use crate::compiler::body_payloads::{CompilerBodyPayload, expression_syntax_literal};
 use crate::compiler::patterns::enum_variant_path;
 use crate::compiler::{CompileResult, Compiler};
 use crate::{Constant, FormatStringPart};
@@ -72,11 +69,11 @@ impl Compiler<'_, '_> {
         source: SourceId,
         expression: &SyntaxExpression,
     ) -> CompileResult<Option<Register>> {
-        let Some(path) = expression_syntax_path_or_self(expression) else {
+        let span = syntax_expression_span(source, expression);
+        let Some(path) = self.hir_value_path_for_span(span) else {
             return Ok(None);
         };
-        self.compile_path_expr(syntax_expression_span(source, expression), &path)
-            .map(Some)
+        self.compile_path_expr(span, &path).map(Some)
     }
 
     fn compile_syntax_field_expression(
@@ -84,10 +81,9 @@ impl Compiler<'_, '_> {
         source: SourceId,
         expression: &SyntaxExpression,
     ) -> CompileResult<Option<Register>> {
-        if let Some(path) = expression_syntax_path_field(expression) {
-            return self
-                .compile_path_expr(syntax_expression_span(source, expression), &path)
-                .map(Some);
+        let span = syntax_expression_span(source, expression);
+        if let Some(path) = self.hir_value_path_for_span(span) {
+            return self.compile_path_expr(span, &path).map(Some);
         }
         self.compile_syntax_field_read(source, expression)
     }
@@ -176,7 +172,8 @@ impl Compiler<'_, '_> {
             return Ok(None);
         };
         let receiver_span = syntax_expression_span(source, &receiver_expression);
-        let record_slot = expression_syntax_path_or_self(&receiver_expression)
+        let record_slot = self
+            .hir_value_path_for_span(receiver_span)
             .and_then(|path| {
                 let [root] = path.as_slice() else {
                     return None;

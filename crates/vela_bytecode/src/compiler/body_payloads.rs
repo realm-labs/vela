@@ -14,7 +14,7 @@ mod simple_values;
 
 pub(super) use simple_values::{
     expression_syntax_literal, expression_syntax_negated_number_literal,
-    expression_syntax_path_field, expression_syntax_path_or_field, expression_syntax_path_or_self,
+    expression_syntax_path_or_field, expression_syntax_path_or_self,
     expression_syntax_range_operands,
 };
 
