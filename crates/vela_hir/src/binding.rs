@@ -10,7 +10,10 @@ use crate::{
 mod name_candidates;
 mod syntax_binding;
 
-pub(crate) use syntax_binding::{SyntaxFunctionBindingInput, bind_syntax_function};
+pub(crate) use syntax_binding::{
+    SyntaxExpressionBindingInput, SyntaxFunctionBindingInput, bind_syntax_expression_body,
+    bind_syntax_function,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LocalBinding {

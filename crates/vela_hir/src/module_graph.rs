@@ -55,10 +55,12 @@ pub struct ModuleGraph {
     const_metadata: BTreeMap<HirDeclId, ConstMetadata>,
     global_metadata: BTreeMap<HirDeclId, GlobalMetadata>,
     bodies: BTreeMap<HirBodyId, HirBody>,
+    const_initializer_bodies: BTreeMap<HirDeclId, HirBodyId>,
     function_bodies: BTreeMap<HirDeclId, HirBodyId>,
     trait_default_method_bodies: BTreeMap<HirNodeId, HirBodyId>,
     impl_method_bodies: BTreeMap<HirNodeId, HirBodyId>,
     bindings: BTreeMap<HirDeclId, BindingMap>,
+    const_initializer_bindings: BTreeMap<HirDeclId, BindingMap>,
     function_signatures: BTreeMap<HirDeclId, FunctionSignature>,
     struct_shapes: BTreeMap<HirDeclId, StructShape>,
     enum_shapes: BTreeMap<HirDeclId, EnumShape>,
@@ -137,6 +139,7 @@ impl ModuleGraph {
             imports: Vec::new(),
         };
 
+        let mut const_initializers = Vec::new();
         let mut function_declarations = Vec::new();
         let mut trait_default_method_declarations = Vec::new();
         let mut impl_method_declarations = Vec::new();
@@ -181,6 +184,12 @@ impl ModuleGraph {
                             &syntax_summary,
                             item_index,
                         ));
+                    if let Some(initializer) = syntax_summary.const_initializer_source(item_index) {
+                        const_initializers.push(body_binding::ExpressionBodySource::new(
+                            declaration,
+                            initializer,
+                        ));
+                    }
                 }
                 SyntaxKind::GlobalItem => {
                     let Some((name, visibility, span)) =
@@ -380,6 +389,9 @@ impl ModuleGraph {
 
         self.validate_import_bindings(&hir_module);
 
+        for source in const_initializers {
+            self.bind_const_initializer_body(&hir_module, source);
+        }
         for source in function_declarations {
             self.bind_function_body(&hir_module, source);
         }
@@ -471,6 +483,11 @@ impl ModuleGraph {
     }
 
     #[must_use]
+    pub fn const_initializer_bindings(&self, declaration: HirDeclId) -> Option<&BindingMap> {
+        self.const_initializer_bindings.get(&declaration)
+    }
+
+    #[must_use]
     pub fn body(&self, body: HirBodyId) -> Option<&HirBody> {
         self.bodies.get(&body)
     }
@@ -482,6 +499,13 @@ impl ModuleGraph {
     #[must_use]
     pub fn function_body(&self, declaration: HirDeclId) -> Option<&HirBody> {
         self.function_bodies
+            .get(&declaration)
+            .and_then(|body| self.body(*body))
+    }
+
+    #[must_use]
+    pub fn const_initializer_body(&self, declaration: HirDeclId) -> Option<&HirBody> {
+        self.const_initializer_bodies
             .get(&declaration)
             .and_then(|body| self.body(*body))
     }
@@ -796,6 +820,21 @@ impl ModuleGraph {
             }
         }
 
+        let const_initializer_bindings = self
+            .const_initializer_bindings
+            .keys()
+            .filter_map(|declaration| {
+                let module = self.declarations.get(declaration)?.module;
+                let imports = imports_by_module.get(&module)?.clone();
+                Some((*declaration, imports))
+            })
+            .collect::<Vec<_>>();
+        for (declaration, imports) in const_initializer_bindings {
+            if let Some(bindings) = self.const_initializer_bindings.get_mut(&declaration) {
+                bindings.resolve_import_declarations(&imports);
+            }
+        }
+
         let trait_default_method_bindings = self
             .trait_default_method_bindings
             .iter()
@@ -841,6 +880,21 @@ impl ModuleGraph {
             .collect::<Vec<_>>();
         for (declaration, declarations) in function_bindings {
             if let Some(bindings) = self.bindings.get_mut(&declaration) {
+                bindings.resolve_qualified_declarations(&declarations);
+            }
+        }
+
+        let const_initializer_bindings = self
+            .const_initializer_bindings
+            .keys()
+            .filter_map(|declaration| {
+                let module = self.declarations.get(declaration)?.module;
+                let declarations = self.qualified_declarations_for(module);
+                Some((*declaration, declarations))
+            })
+            .collect::<Vec<_>>();
+        for (declaration, declarations) in const_initializer_bindings {
+            if let Some(bindings) = self.const_initializer_bindings.get_mut(&declaration) {
                 bindings.resolve_qualified_declarations(&declarations);
             }
         }

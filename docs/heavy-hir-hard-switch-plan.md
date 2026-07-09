@@ -190,7 +190,7 @@ Purpose: add executable body ownership without changing behavior.
   IDs required beside existing `HirExprId` and `HirLocalId`.
 - [x] Add `HirBody` with owner metadata, source origin, statements,
   expressions, patterns, blocks, parameters, locals, and captures.
-- [~] Lower function, method, trait default, lambda, const/global initializer,
+- [x] Lower function, method, trait default, lambda, const/global initializer,
   and parameter-default bodies into `HirBody`.
 - [x] Preserve source spans and syntax origins for diagnostics, navigation, and
   bytecode frame metadata.

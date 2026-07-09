@@ -17,6 +17,7 @@ pub struct HirSourceOrigin {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum HirBodyOwner {
     Declaration(HirDeclId),
+    ConstInitializer(HirDeclId),
     TraitDefaultMethod(HirNodeId),
     ImplMethod(HirNodeId),
     Lambda {

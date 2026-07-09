@@ -429,6 +429,55 @@ fn grant(amount = BASE, bonus = amount + 1) {
 }
 
 #[test]
+fn lowers_const_initializer_bodies_and_refreshes_imports() {
+    let mut graph = ModuleGraph::new();
+    let main = graph.add_source(source(
+        1,
+        "game::main",
+        r#"
+use game::config::BASE
+const BONUS = BASE + 1
+"#,
+    ));
+    let config = graph.add_source(source(2, "game::config", "pub const BASE = 10"));
+
+    let bonus = graph
+        .module(main)
+        .and_then(|module| module.get("BONUS"))
+        .expect("BONUS declaration");
+    let base = graph
+        .module(config)
+        .and_then(|module| module.get("BASE"))
+        .expect("BASE declaration");
+
+    let body = graph
+        .const_initializer_body(bonus)
+        .expect("const initializer body");
+    assert_eq!(body.owner, HirBodyOwner::ConstInitializer(bonus));
+    assert!(matches!(body.root, HirBodyRoot::Expr(_)));
+    assert!(body.root_scope.is_some());
+    assert!(body.params.is_empty());
+    assert!(body.expressions.len() >= 3);
+
+    assert!(
+        graph
+            .const_initializer_bindings(bonus)
+            .expect("const initializer bindings")
+            .resolutions()
+            .any(|(_, resolution)| resolution == &BindingResolution::Import("BASE".to_owned()))
+    );
+    graph.resolve_imports();
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+    assert!(
+        graph
+            .const_initializer_bindings(bonus)
+            .expect("const initializer bindings")
+            .resolutions()
+            .any(|(_, resolution)| resolution == &BindingResolution::Declaration(base))
+    );
+}
+
+#[test]
 fn malformed_items_do_not_shift_following_metadata() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(

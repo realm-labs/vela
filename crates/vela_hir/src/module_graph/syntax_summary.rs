@@ -1,9 +1,10 @@
 use vela_common::{Diagnostic, SourceId, Span};
 use vela_syntax::ast::{
     AstChildren, AstNode, SyntaxAttribute, SyntaxConstItem, SyntaxEnumItem, SyntaxEnumVariant,
-    SyntaxFunctionItem, SyntaxGlobalItem, SyntaxImplItem, SyntaxImplMethod, SyntaxItem,
-    SyntaxParam, SyntaxParamList, SyntaxSourceFile, SyntaxStructField, SyntaxStructItem,
-    SyntaxTraitItem, SyntaxTraitMethod, SyntaxTypeHint, SyntaxUseItem, Visibility,
+    SyntaxExpression, SyntaxFunctionItem, SyntaxGlobalItem, SyntaxImplItem, SyntaxImplMethod,
+    SyntaxItem, SyntaxParam, SyntaxParamList, SyntaxSourceFile, SyntaxStructField,
+    SyntaxStructItem, SyntaxTraitItem, SyntaxTraitMethod, SyntaxTypeHint, SyntaxUseItem,
+    Visibility,
 };
 use vela_syntax::{Parse as SyntaxParse, SyntaxKind, TextRange};
 
@@ -37,6 +38,11 @@ impl SyntaxBodySourceParts {
     pub(super) fn body_span(&self, source: SourceId) -> Span {
         span_for(source, self.body.syntax().text_range())
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct SyntaxExpressionSourcePart {
+    pub(super) expression: SyntaxExpression,
 }
 
 impl SyntaxModuleSummary {
@@ -113,6 +119,16 @@ impl SyntaxModuleSummary {
         self.item(index, SyntaxKind::ConstItem)
             .and_then(|item| SyntaxConstItem::cast(item.syntax().clone()))
             .map(|item| validate_syntax_const_initializer(self.source, &item))
+    }
+
+    pub(super) fn const_initializer_source(
+        &self,
+        index: usize,
+    ) -> Option<SyntaxExpressionSourcePart> {
+        self.item(index, SyntaxKind::ConstItem)
+            .and_then(|item| SyntaxConstItem::cast(item.syntax().clone()))
+            .and_then(|item| item.value())
+            .map(|expression| SyntaxExpressionSourcePart { expression })
     }
 
     pub(super) fn global_metadata(&self, index: usize) -> Option<GlobalMetadata> {

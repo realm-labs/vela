@@ -158,8 +158,9 @@ defaults. Nested executable regions such as lambdas and parameter defaults are
 separate bodies with source origins and parent links, not syntax payloads hidden
 inside downstream compiler or tooling callers. Lexical scope facts belong in
 the owning body as `HirScopeId` records with parent/child links and owned local
-IDs. Const/global initializer body ownership must join this same model when
-those executable forms are migrated.
+IDs. Const initializer expressions use the same body model. Script global
+declarations remain ABI metadata and do not introduce executable initializer
+bodies unless the language later adds such a form.
 
 ### Native-First LSP Boundary
 
