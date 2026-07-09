@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use vela_common::{SourceId, Span};
-use vela_hir::ids::HirLocalId;
+use vela_hir::body::{HirPathKind, HirPathOwner};
+use vela_hir::ids::{HirExprId, HirLocalId};
 use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::SyntaxExpression;
 
@@ -102,6 +103,7 @@ fn expression_script_fact_from_payload_syntax(
     type_symbol_at_span: &impl Fn(Span) -> Option<String>,
     local_fact_at_span: &impl Fn(Span) -> Option<ScriptTypeFact>,
     local_fact_named: &impl Fn(&str) -> Option<ScriptTypeFact>,
+    hir_call_fact_at_span: &impl Fn(Span) -> Option<ScriptTypeFact>,
 ) -> Option<ScriptTypeFact> {
     if let Some(path) = payload.syntax_record_path_segments() {
         if let Some((enum_path, variant)) = enum_variant_path(&path) {
@@ -118,12 +120,8 @@ fn expression_script_fact_from_payload_syntax(
         return Some(ScriptTypeFact::new(type_name));
     }
 
-    if let Some(path) = payload.syntax_call_callee_path_segments() {
-        let (_, variant) = enum_variant_path(&path)?;
-        let type_name = payload
-            .syntax_call_callee_span()
-            .and_then(type_symbol_at_span)?;
-        return Some(ScriptTypeFact::enum_variant(type_name, variant));
+    if let Some(fact) = payload.syntax_span().and_then(hir_call_fact_at_span) {
+        return Some(fact);
     }
 
     if payload.syntax_is_self() {
@@ -167,6 +165,29 @@ pub(super) fn type_hint_script_type<'a>(
 }
 
 impl super::Compiler<'_, '_> {
+    fn type_symbol_for_expression(&self, expression: HirExprId) -> Option<String> {
+        let Some(vela_hir::binding::BindingResolution::Declaration(declaration)) =
+            self.bindings.resolution(expression)
+        else {
+            return None;
+        };
+        self.facts.type_symbols.get(declaration).cloned()
+    }
+
+    fn script_fact_for_hir_call(&self, call: HirExprId) -> Option<ScriptTypeFact> {
+        let callee = self.call_callee_expression(call)?;
+        let path = self
+            .hir_bodies
+            .iter()
+            .flat_map(|body| body.paths.iter())
+            .find(|path| {
+                path.kind == HirPathKind::Callee && path.owner == HirPathOwner::Expression(callee)
+            })?;
+        let (_, variant) = enum_variant_path(&path.path)?;
+        let type_name = self.type_symbol_for_expression(callee)?;
+        Some(ScriptTypeFact::enum_variant(type_name, variant))
+    }
+
     pub(super) fn script_fact_for_syntax_expression(
         &self,
         source: SourceId,
@@ -186,6 +207,10 @@ impl super::Compiler<'_, '_> {
                 self.script_types
                     .name_fact(name)
                     .or_else(|| self.global_type_named(name).map(ScriptTypeFact::new))
+            },
+            &|span| {
+                let call = self.expression_at_span(span)?;
+                self.script_fact_for_hir_call(call)
             },
         )
     }

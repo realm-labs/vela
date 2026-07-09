@@ -40,20 +40,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         let segments = self.syntax.as_ref()?.as_record()?.path_segments();
         (!segments.is_empty()).then_some(segments)
     }
-
-    pub(in crate::compiler) fn syntax_call_callee_path_segments(&self) -> Option<Vec<String>> {
-        self.source?;
-        let callee = self.syntax.as_ref()?.as_call()?.callee()?;
-        let segments = callee.as_path()?.path_segments();
-        (!segments.is_empty()).then_some(segments)
-    }
-
-    pub(in crate::compiler) fn syntax_call_callee_span(&self) -> Option<Span> {
-        Some(syntax_expression_span(
-            self.source?,
-            &self.syntax.as_ref()?.as_call()?.callee()?,
-        ))
-    }
 }
 
 fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {

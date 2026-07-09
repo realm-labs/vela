@@ -182,7 +182,10 @@ facts, and the old parsed member-access site helper has been removed. HIR
 bodies now also own path facts for expression paths, call callees, record
 constructors, and pattern paths; language-service definition, references,
 rename, and semantic-token variant/function path queries use those facts
-instead of the deleted parsed path-call helper.
+instead of the deleted parsed path-call helper. Bytecode script-type flow now
+uses HIR call-callee path facts for enum-variant call expressions instead of
+compiler payload call-callee syntax reconstruction, and the old syntax-callee
+payload helpers have been removed.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`
