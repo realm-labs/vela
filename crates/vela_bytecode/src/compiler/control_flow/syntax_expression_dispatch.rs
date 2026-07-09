@@ -1,6 +1,6 @@
 use vela_common::SourceId;
 use vela_syntax::SyntaxKind;
-use vela_syntax::ast::{SyntaxExpression, SyntaxExpressionKind, SyntaxLiteral};
+use vela_syntax::ast::{AstNode, SyntaxExpression, SyntaxExpressionKind, SyntaxLiteral};
 use vela_syntax::token::{InterpolatedStringTokenPart, TokenKind};
 
 use crate::compiler::body_payloads::expression_syntax_literal;
@@ -151,16 +151,22 @@ impl Compiler<'_, '_> {
         source: SourceId,
         expression: &SyntaxExpression,
     ) -> CompileResult<Option<Register>> {
-        let Some(field) = expression.as_field() else {
-            return Ok(None);
-        };
+        let span = syntax_expression_span(source, expression);
         if let Some(register) = self.compile_syntax_host_field_read(source, expression)? {
             return Ok(Some(register));
         }
-        let Some(receiver_expression) = field.receiver() else {
+        let Some((receiver_span, field_name)) = self
+            .hir_field_for_span(span)
+            .and_then(|field| Some((self.expression_span(field.receiver)?, field.name.clone())))
+        else {
             return Ok(None);
         };
-        if let Some(index) = self.hir_tuple_projection_index(source, expression) {
+        let Some(receiver_expression) =
+            syntax_field_read_expression_at_span(source, expression, receiver_span)
+        else {
+            return Ok(None);
+        };
+        if let Ok(index) = field_name.parse() {
             let Some(value) = self.compile_syntax_expression(source, &receiver_expression)? else {
                 return Ok(None);
             };
@@ -168,11 +174,6 @@ impl Compiler<'_, '_> {
             self.emit(UnlinkedInstructionKind::GetTupleField { dst, value, index });
             return Ok(Some(dst));
         }
-        let span = syntax_expression_span(source, expression);
-        let Some(field_name) = self.hir_field_name_for_span(span).map(str::to_owned) else {
-            return Ok(None);
-        };
-        let receiver_span = syntax_expression_span(source, &receiver_expression);
         let record_slot = self
             .hir_value_path_for_span(receiver_span)
             .and_then(|path| {
@@ -234,17 +235,6 @@ impl Compiler<'_, '_> {
             });
         }
         Ok(Some(dst))
-    }
-
-    fn hir_tuple_projection_index(
-        &self,
-        source: SourceId,
-        expression: &SyntaxExpression,
-    ) -> Option<usize> {
-        self.hir_field_for_span(syntax_expression_span(source, expression))?
-            .name
-            .parse()
-            .ok()
     }
 
     fn syntax_record_enum_slot(
@@ -313,6 +303,21 @@ pub(super) fn syntax_block_expression(
         return syntax_block_expression(&inner);
     }
     expression.as_block()
+}
+
+fn syntax_field_read_expression_at_span(
+    source: SourceId,
+    expression: &SyntaxExpression,
+    span: vela_common::Span,
+) -> Option<SyntaxExpression> {
+    if span.source != source {
+        return None;
+    }
+    expression
+        .syntax()
+        .descendants()
+        .filter_map(SyntaxExpression::cast)
+        .find(|child| syntax_expression_span(source, child) == span)
 }
 
 fn interpolated_string_parts(literal: &SyntaxLiteral) -> Option<Vec<InterpolatedStringTokenPart>> {

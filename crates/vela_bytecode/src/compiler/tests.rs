@@ -390,6 +390,31 @@ fn sample(counter: Counter) {
     );
 }
 
+#[test]
+fn compiler_resolves_record_field_read_receiver_from_hir() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Counter {
+    value: i64,
+}
+
+fn sample(counter: Counter) {
+    return counter.value;
+}
+"#,
+    )
+    .expect("record field read should compile");
+    let function = program.function("sample").expect("sample should exist");
+    assert!(
+        function.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::GetRecordSlot { .. }
+        )),
+        "typed record field read should lower to a resolved slot"
+    );
+}
+
 mod call_diagnostics;
 mod closures_and_bindings;
 mod diagnostics;
