@@ -180,7 +180,9 @@ historical/planning text rather than Vela language values. Tree-sitter editor
 grammar validation now parses the checked-in site, LSP highlighting,
 conformance, and example `.vela` fixtures with tuple destructuring, and the
 `string_splitting` benchmark row records the `String.split_once` tuple-return
-path across interpreter, profile-only, and cache-enabled modes.
+path across interpreter, profile-only, and cache-enabled modes. Final
+acceptance validation passed with workspace formatting, clippy, workspace
+tests, runnable example tests, and the website build.
 
 ## Milestone Snapshot
 

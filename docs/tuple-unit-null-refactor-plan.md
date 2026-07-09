@@ -535,9 +535,11 @@ Focused validation:
   propagation without explicit helpers. `TryPropagate` bytecode now carries the
   enclosing typed return family when known, so both continue and short-circuit
   paths reject `Option`/`Result` family mismatches.
-- [ ] Remove tests that assert null as void, null equality, null control-flow
+- [x] Remove tests that assert null as void, null equality, null control-flow
   defaults, or null literal matching; replace with behavior tests for unit,
-  Option, Result, and tuple payloads.
+  Option, Result, and tuple payloads. Active null test coverage now only
+  proves source `null` rejection, absent `null` completions, and `"null"` not
+  mapping to a primitive tag.
 
 Focused validation:
 
@@ -642,12 +644,12 @@ Focused validation:
 - [x] Confirm touched active source/test files stay under the ordinary
   1200-line guideline or have a documented exception. The edited source
   grammar is under the guideline; generated tree-sitter artifacts are exempt.
-- [~] Run zero-result language-null audits and classify protocol/data nulls.
+- [x] Run zero-result language-null audits and classify protocol/data nulls.
   Symbolic Vela-language null forms are gone. Intentional source-string
   survivors remain for the removed-`null` diagnostic/test and no-completion
-  tests; protocol/data survivors are classified below and must be rechecked at
-  final acceptance.
-- [ ] Run full workspace validation.
+  tests; protocol/data survivors are classified below and were rechecked in the
+  final acceptance audit.
+- [x] Run full workspace validation.
 
 Final validation:
 
@@ -659,8 +661,12 @@ cargo test --manifest-path examples/Cargo.toml
 npm --prefix site run build
 ```
 
-If a command is unavailable in the current environment, record the reason and
-the closest focused substitute in the checkpoint notes.
+All listed commands passed in the final acceptance checkpoint. The runnable
+example suite also passed with `cargo test --manifest-path examples/Cargo.toml`.
+Editor grammar fixture validation passed with `tree-sitter parse` over the
+checked-in site, LSP highlighting, conformance, and example `.vela` fixtures.
+The `string_splitting` benchmark was run after the tuple-return stdlib update
+and recorded cache, uncached, and profile-only rows.
 
 ## Current Surviving Null Classification
 
