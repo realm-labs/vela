@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
-use vela_common::Span;
+use vela_common::{SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
-use vela_syntax::ast::{AstNode, Literal, SyntaxExpression};
+use vela_syntax::ast::{Literal, SyntaxExpression};
 
 use crate::compiler::body_payloads::{
     expression_syntax_negated_number_literal, expression_syntax_path_or_field,
@@ -18,15 +18,23 @@ use crate::compiler::value_types::{
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
 use crate::{Register, UnlinkedInstructionKind};
 
+use super::spans::syntax_expression_span;
+
+struct RangeParts {
+    lhs: SyntaxExpression,
+    rhs: SyntaxExpression,
+    inclusive: bool,
+}
+
 impl Compiler<'_, '_> {
     pub(super) fn compile_let_syntax_range(
         &mut self,
         name: String,
         span: Span,
-        source: vela_common::SourceId,
+        source: SourceId,
         expression: &SyntaxExpression,
     ) -> CompileResult<Option<bool>> {
-        let Some((lhs, rhs, inclusive)) = expression_syntax_range_operands(expression) else {
+        let Some(parts) = range_parts(expression) else {
             return Ok(None);
         };
         let local_binding = self
@@ -51,7 +59,8 @@ impl Compiler<'_, '_> {
                 TypeContractContext::TypedLet { name: name.clone() },
             )?;
         }
-        let register = self.compile_syntax_range_value(source, &lhs, &rhs, inclusive)?;
+        let register =
+            self.compile_syntax_range_value(source, &parts.lhs, &parts.rhs, parts.inclusive)?;
         self.locals.insert(name.clone(), register);
         let value_type = hinted_value_type.or_else(|| Some(range_type_fact()));
         let value_shape = Some(ValueShape::Scalar("Range".to_owned()));
@@ -86,11 +95,11 @@ impl Compiler<'_, '_> {
 
     pub(super) fn compile_return_syntax_range(
         &mut self,
-        source: vela_common::SourceId,
+        source: SourceId,
         expression: &SyntaxExpression,
         span: Span,
     ) -> CompileResult<Option<bool>> {
-        let Some((lhs, rhs, inclusive)) = expression_syntax_range_operands(expression) else {
+        let Some(parts) = range_parts(expression) else {
             return Ok(None);
         };
         if let Some(expected) = self.return_type.clone() {
@@ -101,33 +110,35 @@ impl Compiler<'_, '_> {
                 TypeContractContext::Return,
             )?;
         }
-        let register = self.compile_syntax_range_value(source, &lhs, &rhs, inclusive)?;
+        let register =
+            self.compile_syntax_range_value(source, &parts.lhs, &parts.rhs, parts.inclusive)?;
         self.emit(UnlinkedInstructionKind::Return { src: register });
         Ok(Some(true))
     }
 
     pub(super) fn compile_syntax_range_expr_statement(
         &mut self,
-        source: vela_common::SourceId,
+        source: SourceId,
         expression: &SyntaxExpression,
     ) -> CompileResult<Option<bool>> {
-        let Some((lhs, rhs, inclusive)) = expression_syntax_range_operands(expression) else {
+        let Some(parts) = range_parts(expression) else {
             return Ok(None);
         };
-        self.compile_syntax_range_value(source, &lhs, &rhs, inclusive)?;
+        self.compile_syntax_range_value(source, &parts.lhs, &parts.rhs, parts.inclusive)?;
         Ok(Some(false))
     }
 
     pub(super) fn compile_syntax_range_expr_to(
         &mut self,
-        source: vela_common::SourceId,
+        source: SourceId,
         expression: &SyntaxExpression,
         dst: Register,
     ) -> CompileResult<Option<bool>> {
-        let Some((lhs, rhs, inclusive)) = expression_syntax_range_operands(expression) else {
+        let Some(parts) = range_parts(expression) else {
             return Ok(None);
         };
-        let value = self.compile_syntax_range_value(source, &lhs, &rhs, inclusive)?;
+        let value =
+            self.compile_syntax_range_value(source, &parts.lhs, &parts.rhs, parts.inclusive)?;
         if value != dst {
             self.emit(UnlinkedInstructionKind::Move { dst, src: value });
         }
@@ -136,7 +147,7 @@ impl Compiler<'_, '_> {
 
     pub(super) fn compile_syntax_range_value(
         &mut self,
-        source: vela_common::SourceId,
+        source: SourceId,
         lhs: &SyntaxExpression,
         rhs: &SyntaxExpression,
         inclusive: bool,
@@ -155,7 +166,7 @@ impl Compiler<'_, '_> {
 
     fn compile_syntax_range_operand(
         &mut self,
-        source: vela_common::SourceId,
+        source: SourceId,
         expression: &SyntaxExpression,
     ) -> CompileResult<Register> {
         if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
@@ -196,11 +207,15 @@ impl Compiler<'_, '_> {
     }
 }
 
-fn range_type_fact() -> RuntimeTypeFact {
-    RuntimeTypeFact::standard(StandardRuntimeType::Range)
+fn range_parts(expression: &SyntaxExpression) -> Option<RangeParts> {
+    let (lhs, rhs, inclusive) = expression_syntax_range_operands(expression)?;
+    Some(RangeParts {
+        lhs,
+        rhs,
+        inclusive,
+    })
 }
 
-fn syntax_expression_span(source: vela_common::SourceId, expression: &SyntaxExpression) -> Span {
-    let range = expression.syntax().text_range();
-    Span::new(source, range.start().into(), range.end().into())
+fn range_type_fact() -> RuntimeTypeFact {
+    RuntimeTypeFact::standard(StandardRuntimeType::Range)
 }

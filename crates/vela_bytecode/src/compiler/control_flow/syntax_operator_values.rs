@@ -1,11 +1,11 @@
 use vela_common::{Diagnostic, PrimitiveTag, SourceId, Span};
 use vela_syntax::ast::{BinaryOp, Literal, SyntaxExpression, UnaryOp};
 
+use super::spans::syntax_expression_span;
 use crate::compiler::body_payloads::{expression_syntax_literal, expression_syntax_path_or_field};
 use crate::compiler::const_eval::{
     compile_literal_constant_for_type, compile_negated_literal_constant,
 };
-use crate::compiler::control_flow::syntax_statement_values::syntax_expression_span;
 use crate::compiler::operators::{
     binary_literal_op, i64_binary_instruction, i64_immediate_instruction,
     i64_immediate_op_supported, non_logical_binary_instruction,

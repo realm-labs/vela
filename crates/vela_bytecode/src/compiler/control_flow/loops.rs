@@ -5,9 +5,10 @@ use vela_syntax::ast::{AstNode, BinaryOp, SyntaxExpression, SyntaxForStmt};
 use crate::Register;
 
 use crate::compiler::body_payloads::CompilerBodyPayload;
-use crate::compiler::control_flow::classification::{i64_pattern_facts, iterable_item_shape};
-use crate::compiler::control_flow::syntax_statement_values::syntax_expression_span;
 use crate::compiler::patterns::PatternBindingFacts;
+
+use super::classification::{i64_pattern_facts, iterable_item_shape};
+use super::spans::syntax_expression_span;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(in crate::compiler) struct LoopContext {

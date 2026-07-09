@@ -24,7 +24,7 @@ use crate::{
     UnlinkedGuardContext, UnlinkedInstructionKind, UnlinkedTypeGuard,
 };
 
-use super::syntax_statement_values::syntax_expression_span;
+use super::spans::syntax_expression_span;
 
 struct SyntaxMethodArgument<'a> {
     source: SourceId,

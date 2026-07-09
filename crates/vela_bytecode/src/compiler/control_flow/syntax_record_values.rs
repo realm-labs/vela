@@ -3,10 +3,10 @@ use std::collections::BTreeSet;
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{AstNode, SyntaxExpression, SyntaxRecordExpr, SyntaxRecordExprField};
 
+use super::spans::syntax_expression_span;
 use crate::compiler::body_payloads::expression_syntax_literal;
 use crate::compiler::const_eval::compile_literal_constant_for_type;
 use crate::compiler::constructors::schema_default_fields;
-use crate::compiler::control_flow::syntax_statement_values::syntax_expression_span;
 use crate::compiler::expected_exprs::guard_location_and_name;
 use crate::compiler::patterns::enum_variant_path;
 use crate::compiler::schema_defaults::{
@@ -21,7 +21,7 @@ use crate::{
 };
 
 impl Compiler<'_, '_> {
-    pub(in crate::compiler) fn compile_syntax_record_literal(
+    pub(super) fn compile_syntax_record_literal(
         &mut self,
         source: SourceId,
         expression: &SyntaxExpression,

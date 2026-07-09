@@ -3,11 +3,11 @@ use std::collections::BTreeSet;
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{SyntaxArgument, SyntaxExpression};
 
+use super::spans::syntax_expression_span;
 use crate::compiler::body_payloads::expression_syntax_literal;
 use crate::compiler::call_args::SyntaxCallArgument;
 use crate::compiler::const_eval::compile_literal_constant_for_type;
 use crate::compiler::constructors::schema_default_fields;
-use crate::compiler::control_flow::syntax_statement_values::syntax_expression_span;
 use crate::compiler::expected_exprs::guard_location_and_name;
 use crate::compiler::patterns::tuple_variant_field_name;
 use crate::compiler::schema_defaults::{
@@ -23,7 +23,7 @@ use crate::{
 };
 
 impl Compiler<'_, '_> {
-    pub(in crate::compiler) fn compile_syntax_tuple_variant_fields(
+    pub(super) fn compile_syntax_tuple_variant_fields(
         &mut self,
         source: SourceId,
         constructor_span: Span,

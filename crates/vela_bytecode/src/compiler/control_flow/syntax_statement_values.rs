@@ -2,8 +2,8 @@ use vela_common::{Diagnostic, PrimitiveTag, SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
 use vela_syntax::SyntaxKind;
 use vela_syntax::ast::{
-    AssignOp, AstNode, Literal, SyntaxElseBranch, SyntaxExpression, SyntaxExpressionKind,
-    SyntaxIfExpr, SyntaxLiteral,
+    AssignOp, Literal, SyntaxElseBranch, SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr,
+    SyntaxLiteral,
 };
 use vela_syntax::token::{InterpolatedStringTokenPart, TokenKind};
 
@@ -36,6 +36,7 @@ use crate::{
 };
 
 use super::classification::merge_type_hint_and_value_fact;
+use super::spans::syntax_expression_span;
 
 impl Compiler<'_, '_> {
     pub(super) fn compile_let_syntax_expression(
@@ -1607,11 +1608,6 @@ fn syntax_path_root_span(source: SourceId, expression: &SyntaxExpression) -> Opt
     let field = expression.as_field()?;
     let receiver = field.receiver()?;
     syntax_path_root_span(source, &receiver)
-}
-
-pub(super) fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {
-    let range = expression.syntax().text_range();
-    Span::new(source, range.start().into(), range.end().into())
 }
 
 fn syntax_block_expression(expression: &SyntaxExpression) -> Option<vela_syntax::ast::SyntaxBlock> {

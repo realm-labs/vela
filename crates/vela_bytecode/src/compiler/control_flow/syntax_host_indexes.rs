@@ -5,7 +5,7 @@ use vela_syntax::ast::{AssignOp, SyntaxExpression};
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{Constant, Register};
 
-use super::syntax_statement_values::syntax_expression_span;
+use super::spans::syntax_expression_span;
 use crate::compiler::host_paths::HostIndexAccessKind;
 
 impl Compiler<'_, '_> {
@@ -320,7 +320,7 @@ impl Compiler<'_, '_> {
         Some((receiver_type, field))
     }
 
-    pub(in crate::compiler) fn reject_invalid_syntax_host_index_access(
+    pub(super) fn reject_invalid_syntax_host_index_access(
         &self,
         source: SourceId,
         expression: &SyntaxExpression,

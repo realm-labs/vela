@@ -6,6 +6,7 @@ mod loops;
 mod null_values;
 mod path_values;
 mod range_statement_values;
+mod spans;
 mod statements;
 mod syntax_call_args;
 mod syntax_constructors;
