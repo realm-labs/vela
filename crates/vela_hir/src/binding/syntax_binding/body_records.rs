@@ -5,9 +5,9 @@ use vela_common::Span;
 use super::{ActiveScope, SyntaxBindingLowerer};
 use crate::binding::BindingResolution;
 use crate::body::{
-    HirBlock, HirBody, HirBodyOwner, HirCall, HirCapture, HirExpr, HirExprKind, HirField, HirParam,
-    HirPath, HirPathKind, HirPathOwner, HirPattern, HirPatternKind, HirScope, HirScopeKind,
-    HirSourceOrigin, HirStmt, HirStmtKind, HirUnresolvedReference,
+    HirBlock, HirBody, HirBodyOwner, HirCall, HirCapture, HirExpr, HirExprKind, HirField, HirIndex,
+    HirParam, HirPath, HirPathKind, HirPathOwner, HirPattern, HirPatternKind, HirScope,
+    HirScopeKind, HirSourceOrigin, HirStmt, HirStmtKind, HirUnresolvedReference,
 };
 use crate::ids::{
     HirBlockId, HirBodyId, HirCaptureId, HirExprId, HirLocalId, HirParamId, HirPatternId,
@@ -162,6 +162,23 @@ impl<'a> SyntaxBindingLowerer<'a> {
                     source,
                     span: member_span,
                 },
+            },
+        );
+    }
+
+    pub(super) fn record_index(
+        &mut self,
+        expression: HirExprId,
+        receiver: HirExprId,
+        index: HirExprId,
+    ) {
+        let body = self.current_body();
+        self.body_mut(body).indexes.insert(
+            expression,
+            HirIndex {
+                expression,
+                receiver,
+                index,
             },
         );
     }

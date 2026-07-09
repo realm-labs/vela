@@ -541,11 +541,14 @@ impl<'a> SyntaxBindingLowerer<'a> {
             }
             SyntaxExpressionKind::Index => {
                 if let Some(expr) = expr.as_index() {
-                    if let Some(base) = expr.receiver() {
-                        self.bind_expr(&base, PathUsage::Value);
-                    }
-                    if let Some(index) = expr.index() {
-                        self.bind_expr(&index, PathUsage::Value);
+                    let receiver = expr
+                        .receiver()
+                        .map(|base| self.bind_expr(&base, PathUsage::Value));
+                    let index = expr
+                        .index()
+                        .map(|index| self.bind_expr(&index, PathUsage::Value));
+                    if let (Some(receiver), Some(index)) = (receiver, index) {
+                        self.record_index(id, receiver, index);
                     }
                 }
             }

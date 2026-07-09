@@ -22,7 +22,7 @@ use names::{closest_name, import_binding_name};
 use self::body_binding::FunctionBodySource;
 use crate::attributes::HirAttribute;
 use crate::binding::BindingMap;
-use crate::body::{HirBody, HirField, HirPath, HirPathKind};
+use crate::body::{HirBody, HirField, HirIndex, HirPath, HirPathKind};
 use crate::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId, HirPatternId, ModuleId};
 #[cfg(test)]
 use crate::type_hint::HirTypeHint;
@@ -561,6 +561,13 @@ impl ModuleGraph {
             .values()
             .find_map(|body| body.calls.get(&expression))
             .map(|call| call.callee)
+    }
+
+    #[must_use]
+    pub fn index_for_expression(&self, expression: HirExprId) -> Option<&HirIndex> {
+        self.bodies
+            .values()
+            .find_map(|body| body.indexes.get(&expression))
     }
 
     #[must_use]

@@ -1109,6 +1109,54 @@ fn main(player) {
 }
 
 #[test]
+fn function_bodies_record_index_operand_expression_ids() {
+    let mut graph = ModuleGraph::new();
+    let source_text = r#"
+fn main(values, key) {
+    return values[key];
+}
+"#;
+    let module = graph.add_source(source(1, "game::main", source_text));
+    let main = graph
+        .module(module)
+        .and_then(|module| module.get("main"))
+        .expect("main declaration");
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+
+    let body = graph.function_body(main).expect("main body");
+    let index = body
+        .indexes
+        .values()
+        .find(|index| {
+            body.expressions
+                .get(&index.expression)
+                .is_some_and(|expression| expression.kind == HirExprKind::Index)
+        })
+        .expect("index fact");
+    assert_eq!(
+        graph.index_for_expression(index.expression),
+        Some(index),
+        "module graph should expose the HIR index fact"
+    );
+    assert_eq!(
+        graph.expression_span(index.receiver),
+        Some(Span::new(
+            SourceId::new(1),
+            source_text.find("values[key]").expect("receiver") as u32,
+            (source_text.find("values[key]").expect("receiver") + "values".len()) as u32,
+        ))
+    );
+    assert_eq!(
+        graph.expression_span(index.index),
+        Some(Span::new(
+            SourceId::new(1),
+            source_text.find("key]").expect("index") as u32,
+            (source_text.find("key]").expect("index") + "key".len()) as u32,
+        ))
+    );
+}
+
+#[test]
 fn function_bodies_record_tuple_projection_field_facts() {
     let mut graph = ModuleGraph::new();
     let source_text = r#"

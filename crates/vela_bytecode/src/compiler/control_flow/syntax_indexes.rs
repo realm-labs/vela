@@ -1,10 +1,12 @@
 use vela_common::SourceId;
-use vela_syntax::ast::{Literal, SyntaxExpression};
+use vela_syntax::ast::{AstNode, Literal, SyntaxExpression};
 
 use crate::compiler::body_payloads::expression_syntax_literal;
 use crate::compiler::host_paths::HostIndexAccessKind;
 use crate::compiler::{CompileResult, Compiler};
 use crate::{Register, UnlinkedInstructionKind};
+
+use super::spans::syntax_expression_span;
 
 impl Compiler<'_, '_> {
     pub(super) fn compile_syntax_index(
@@ -12,16 +14,30 @@ impl Compiler<'_, '_> {
         source: SourceId,
         expression: &SyntaxExpression,
     ) -> CompileResult<Option<Register>> {
-        let Some(index) = expression.as_index() else {
+        if expression.as_index().is_none() {
             return Ok(None);
-        };
+        }
         if let Some(register) = self.compile_syntax_host_index(source, expression)? {
             return Ok(Some(register));
         }
-        let Some(receiver_expression) = index.receiver() else {
+        let span = syntax_expression_span(source, expression);
+        let Some(index) = self.hir_index_for_span(span) else {
             return Ok(None);
         };
-        let Some(index_expression) = index.index() else {
+        let Some(receiver_span) = self.expression_span(index.receiver) else {
+            return Ok(None);
+        };
+        let Some(index_span) = self.expression_span(index.index) else {
+            return Ok(None);
+        };
+        let Some(receiver_expression) =
+            syntax_index_expression_at_span(source, expression, receiver_span)
+        else {
+            return Ok(None);
+        };
+        let Some(index_expression) =
+            syntax_index_expression_at_span(source, expression, index_span)
+        else {
             return Ok(None);
         };
         self.reject_invalid_syntax_host_index_read(source, expression)?;
@@ -53,4 +69,19 @@ impl Compiler<'_, '_> {
             HostIndexAccessKind::Read,
         )
     }
+}
+
+fn syntax_index_expression_at_span(
+    source: SourceId,
+    expression: &SyntaxExpression,
+    span: vela_common::Span,
+) -> Option<SyntaxExpression> {
+    if span.source != source {
+        return None;
+    }
+    expression
+        .syntax()
+        .descendants()
+        .filter_map(SyntaxExpression::cast)
+        .find(|child| syntax_expression_span(source, child) == span)
 }

@@ -52,6 +52,7 @@ pub struct HirBody {
     pub expressions: BTreeMap<HirExprId, HirExpr>,
     pub calls: BTreeMap<HirExprId, HirCall>,
     pub fields: BTreeMap<HirExprId, HirField>,
+    pub indexes: BTreeMap<HirExprId, HirIndex>,
     pub paths: Vec<HirPath>,
     pub patterns: BTreeMap<HirPatternId, HirPattern>,
     pub locals: Vec<HirLocalId>,
@@ -77,6 +78,7 @@ impl HirBody {
             expressions: BTreeMap::new(),
             calls: BTreeMap::new(),
             fields: BTreeMap::new(),
+            indexes: BTreeMap::new(),
             paths: Vec::new(),
             patterns: BTreeMap::new(),
             locals: Vec::new(),
@@ -172,6 +174,13 @@ pub struct HirField {
     pub receiver: HirExprId,
     pub name: String,
     pub member_origin: HirSourceOrigin,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct HirIndex {
+    pub expression: HirExprId,
+    pub receiver: HirExprId,
+    pub index: HirExprId,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

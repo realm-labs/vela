@@ -1690,7 +1690,10 @@ callable parameter facts, stable `TypeFact`s, `Any`/unknown suppression, and
   are covered, and final validation passes. Root host receiver index reads,
   writes, compound mutations, and removals lower for typed roots with
   configured host index capabilities, and numeric key contracts emit dynamic
-  index target parts for cache-ready host access plans.
+  index target parts for cache-ready host access plans. HIR bodies now also
+  record index receiver and subscript operand facts keyed by `HirExprId`, and
+  ordinary bytecode index-read lowering consumes those facts instead of
+  reconstructing receiver/index operands from index syntax.
 
 ### Remaining Gaps
 

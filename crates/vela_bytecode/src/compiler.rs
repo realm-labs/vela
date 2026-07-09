@@ -35,7 +35,7 @@ use vela_common::{GlobalSlot, HostMethodId, HostTypeId, SourceId, Span};
 use vela_def::{DefPath, FieldId, MethodId, TypeId};
 use vela_hir::attributes::derived_traits;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBindingKind};
-use vela_hir::body::{HirBody, HirField, HirPatternKind};
+use vela_hir::body::{HirBody, HirField, HirIndex, HirPatternKind};
 use vela_hir::ids::{HirDeclId, HirExprId, HirLocalId, HirPatternId};
 #[cfg(test)]
 use vela_hir::module_graph::ModulePath;
@@ -1050,6 +1050,20 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
     pub(in crate::compiler) fn hir_field_for_span(&self, span: Span) -> Option<&HirField> {
         let expression = self.expression_at_span(span)?;
         self.hir_field_for_expression(expression)
+    }
+
+    pub(in crate::compiler) fn hir_index_for_expression(
+        &self,
+        expression: HirExprId,
+    ) -> Option<&HirIndex> {
+        self.hir_bodies
+            .iter()
+            .find_map(|body| body.indexes.get(&expression))
+    }
+
+    pub(in crate::compiler) fn hir_index_for_span(&self, span: Span) -> Option<&HirIndex> {
+        let expression = self.expression_at_span(span)?;
+        self.hir_index_for_expression(expression)
     }
 
     pub(in crate::compiler) fn hir_field_name_for_span(&self, span: Span) -> Option<&str> {

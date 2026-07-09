@@ -747,6 +747,29 @@ fn main() {
         UnlinkedInstructionKind::GetStringKeyIndex { .. }
     )));
 }
+
+#[test]
+fn compiler_resolves_index_read_operands_from_hir() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let values = [2, 4, 8];
+    let index = 1;
+    return values[index];
+}
+"#,
+        "main",
+    )
+    .expect("HIR-backed index read should compile");
+    assert!(
+        code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::GetIndex { .. }
+        ))
+    );
+}
+
 #[test]
 fn compiler_keeps_call_result_index_reads_off_host_paths() {
     let code = compile_function_source(
