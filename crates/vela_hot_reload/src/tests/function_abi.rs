@@ -447,6 +447,63 @@ fn function_descriptor_tuple_type_hints_compare_structurally() {
 }
 
 #[test]
+fn function_descriptor_unit_return_abi_changes_are_rejected() {
+    let span = Span::new(SourceId::new(21), 9, 22);
+    let old_abi = HotReloadAbi::empty().function(
+        FunctionAbi::new(
+            "game::reward::tick",
+            EffectAbi::host_read(),
+            AccessAbi::public(),
+        )
+        .return_type("()"),
+    );
+    let changed_return = HotReloadAbi::empty().function(
+        FunctionAbi::new(
+            "game::reward::tick",
+            EffectAbi::host_read(),
+            AccessAbi::public(),
+        )
+        .return_type("i64")
+        .source_span(span),
+    );
+    let initial = compile_initial_with_abi(SourceId::new(1), "fn main() { return (); }", old_abi)
+        .expect("initial");
+
+    let error = compile_update_with_abi(
+        &initial,
+        SourceId::new(2),
+        "fn main() { return 1; }",
+        changed_return,
+    )
+    .expect_err("unit return ABI change should fail");
+
+    assert_eq!(
+        error.kind,
+        HotReloadErrorKind::ChangedFunctionReturnAbi {
+            function: "game::reward::tick".to_owned(),
+            old: Some("()".to_owned()),
+            new: Some("i64".to_owned()),
+            source_span: Some(Box::new(span)),
+        }
+    );
+    let report = HotReloadReport::rejected(ProgramVersionId(21), error);
+    assert_eq!(report.errors[0].code, "reload.function.return_abi_changed");
+    assert_eq!(
+        report.errors[0].detail,
+        Some(HotReloadDiagnosticDetail::FunctionReturnAbi {
+            old: Some("()".to_owned()),
+            new: Some("i64".to_owned()),
+        })
+    );
+    assert!(
+        report
+            .render_lines()
+            .iter()
+            .any(|line| line.text == "function return ABI: old=() new=i64")
+    );
+}
+
+#[test]
 fn function_descriptor_return_abi_changes_are_rejected() {
     let span = Span::new(SourceId::new(13), 15, 35);
     let old_abi = HotReloadAbi::empty().function(

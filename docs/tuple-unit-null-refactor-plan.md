@@ -605,12 +605,14 @@ Focused validation:
 - [x] Add tuple `OwnedValue` conversion and tuple serde behavior that does not
   use raw null.
 - [x] Reject tuple Map/Set keys in the first slice with precise diagnostics.
-- [~] Add hot-reload rejection for exported unit/tuple signature changes,
+- [x] Add hot-reload rejection for exported unit/tuple signature changes,
   tuple arity changes, and tuple element contract changes. Descriptor and
   schema ABI comparisons now parse unit and tuple type hints structurally, and
   source-reload tuple signature fixtures cover equivalent formatting plus
-  tuple arity rejection. Typed dynamic-boundary tuple guard plans now cover
-  Option and Result tuple payloads in linked VM parameter guards.
+  tuple arity rejection. Function descriptor tests now explicitly reject unit
+  return ABI changes and tuple arity/element contract changes. Typed
+  dynamic-boundary tuple guard plans now cover Option and Result tuple payloads
+  in linked VM parameter guards.
 - [x] Add focused benchmark rows for common tuple-return stdlib paths if they
   are introduced. The `string_splitting` baseline workload exercises
   `String.split_once -> Option<(String, String)>` across interpreter,

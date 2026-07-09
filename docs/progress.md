@@ -180,6 +180,9 @@ artifact export, and reflection metadata records now expose copied
 unit, tuple, Option, and Result nesting, with missing descriptor data
 represented as `Option::None`. `reflect::type_of` and analysis facts for
 optional reflection metadata now use `Option<T>` instead of unit placeholders.
+Hot-reload ABI tests now explicitly reject exported unit return signature
+changes, tuple arity changes, and tuple element contract changes while accepting
+formatting-equivalent tuple contracts.
 Tuple Map/Set keys are rejected by source type-hint validation and runtime
 `ValueKey` keyability. The active null audit now classifies all
 surviving `null` strings as intentional removed-source diagnostics/no-completion
