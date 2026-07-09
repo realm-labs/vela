@@ -24,6 +24,19 @@ project compiling during the switch. The final state must not contain the
 legacy parser, owned AST bodies, fallback payloads, migration-only names,
 transitional tests, or token-gap formatter production paths.
 
+Canonical naming policy: CST is a valid implementation term only where the code
+is explicitly about the concrete syntax tree itself, such as the lossless parser,
+syntax tree construction, trivia/token preservation, tree-shape tests, and
+architecture documentation. Downstream crates should not need to care whether a
+payload came from a CST once the old owned AST is gone. After the hard switch,
+rename migration-era `cst_*`, `*Cst*`, and `CST ... payload` names in compiler,
+HIR, analysis, language-service, LSP, runtime-facing diagnostics, and behavior
+tests to canonical syntax/domain names such as `syntax`, `body`, `statement`,
+`expression`, `param_default`, or a more specific semantic term. Do not require
+global `cst` zero results: internal `vela_syntax` parser modules such as
+`cst_parser`, `CstParser`, and tests that directly assert concrete tree shape
+may keep CST in their names.
+
 Commit policy: prefer large subsystem checkpoints. A valid checkpoint removes
 an entire obsolete subsystem class, such as the legacy syntax feature, old
 bytecode expression inputs, transitional fallback tests, or token-state
@@ -50,8 +63,10 @@ remaining references to legacy-body-parser, legacy_body_parser,
 parse_owned_body_blocks_for_tests, parse_body_blocks_at_spans, old parser
 entrypoints, old owned AST structs, Expr, ExprKind, Stmt, StmtKind, Block,
 Argument, RecordField, SourceFile, ItemKind, `.fallback()`, token-gap
-formatting paths, CST-to-owned adapters, and migration-only names. Work with
-any existing user changes and do not revert them.
+formatting paths, CST-to-owned adapters, migration-only names, and downstream
+or user-visible `cst_*`/`*Cst*` naming that only exists to distinguish the new
+syntax path from the deleted old AST path. Work with any existing user changes
+and do not revert them.
 
 Use a hard-switch strategy with large subsystem slices. Delete the obsolete
 fallback/API at the start of a slice, then use compiler errors and focused
@@ -87,11 +102,16 @@ Current execution order:
 6. Rename surviving syntax APIs to concise canonical names only after old
    fallbacks are gone; do not keep long migration names like parse_syntax_* or
    names that only existed to distinguish old/new stacks unless they are still
-   the best final API.
+   the best final API. Keep CST terminology only in syntax-tree implementation
+   boundaries, parser/tree-shape tests, and architecture docs; rename compiler,
+   HIR, analysis, language-service, LSP, and user-visible diagnostics to
+   syntax/domain terminology.
 7. Before final acceptance, run zero-result audits for legacy-body-parser,
    legacy_body_parser, parse_owned_body_blocks_for_tests, old owned AST types,
    `.fallback()`, CST-to-owned helpers, token-gap formatter paths, and
-   migration-only names.
+   migration-only names. Separately audit surviving `cst` names and classify
+   each one as either syntax-tree implementation terminology or a naming bug to
+   remove before close-out.
 8. Update docs/progress.md, docs/decisions.md, and this checklist only when
    milestone state, final architecture, or remaining gaps materially change.
 
@@ -565,6 +585,11 @@ Checkpoint checklist:
 - [ ] Replace tests whose only purpose is "does not use legacy fallback" with
   source-driven bytecode, runtime, or diagnostic behavior tests; delete tests
   that have no behavior value after the old fallback path is gone.
+- [ ] Rename bytecode-facing `cst_*`, `*Cst*`, and `CST ... payload` helper,
+  test, and internal diagnostic names that only existed to contrast the new
+  syntax path with old AST fallback inputs. Keep behavior-oriented names such
+  as `param_default_lowering_*`, `body_payload`, `syntax_payload`, or more
+  specific compiler-domain names.
 - [ ] Close any remaining pattern and control-flow expression lowering gaps
   exposed by deleting the old AST, using typed CST wrappers or HIR facts only.
 - [ ] Prove compile-dir and checked examples pass with CST/HIR-only syntax
@@ -587,6 +612,8 @@ Do not change:
 - Do not add fallback lowering paths only to preserve old owned-AST behavior.
 - Do not keep transitional cst_payload tests, helpers, or names after they no
   longer test user-visible behavior.
+- Do not expose `CST` in compiler diagnostics or error messages that can reach
+  users; report the missing or unsupported language construct instead.
 
 Validation:
 
@@ -730,6 +757,12 @@ Checkpoint checklist:
   `parse_syntax_*`, `*_fallback*`, and verbose new-vs-old disambiguation names.
 - [ ] Rename the final CST API to concise canonical names after old fallbacks
   are gone.
+- [ ] Audit all remaining `cst`, `Cst`, and `CST` names. Keep them only in
+  concrete-syntax-tree implementation boundaries such as `vela_syntax`
+  parser/tree construction modules, syntax tree-shape tests, and architecture
+  documentation. Rename downstream compiler/HIR/analysis/language-service/LSP
+  helpers, tests, APIs, and user-visible messages to canonical syntax/domain
+  names.
 - [ ] Delete the token-gap formatter production path.
 - [ ] Delete transitional tests that exist only to prove old fallback paths are
   ignored; preserve or rewrite behavior tests that still matter.
@@ -757,6 +790,10 @@ Expected behavior:
   only to distinguish the new CST path from the old fallback path.
 - Final syntax structures and functions use concise canonical names appropriate
   for a single production syntax stack.
+- Remaining CST terminology is intentional and local to concrete syntax tree
+  implementation, syntax tree-shape tests, or architecture docs. Downstream
+  compiler, HIR, analysis, language-service, LSP, runtime-facing diagnostics,
+  and behavior tests use syntax/domain names rather than CST migration names.
 - Public `vela_syntax` API exposes a deliberate scoped syntax facade.
 - Module layout follows the file-size, scope, `super`, and re-export constraints
   from the Codex goal.
@@ -776,6 +813,7 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 rg -n "legacy-body-parser|legacy_body_parser|parse_owned_body_blocks_for_tests|\\.fallback\\(|\\bExprKind\\b|\\bStmtKind\\b|vela_syntax::ast::(Expr|Stmt|Block|Argument|RecordField)|vela_syntax::ast::\\{[^}]*\\b(Expr|Stmt|Block|Argument|RecordField)\\b|parse_syntax_|fallback payload|token-gap|extract_format_elements|struct Formatter" crates examples editors
+rg -n "\\bcst\\b|Cst|CST|cst_" crates/vela_bytecode crates/vela_hir crates/vela_analysis crates/vela_language_service crates/vela_lsp_server
 ```
 
 ## 7. Acceptance Criteria
@@ -797,6 +835,10 @@ rg -n "legacy-body-parser|legacy_body_parser|parse_owned_body_blocks_for_tests|\
   syntax API.
 - Formatting is CST/typed-AST based and no production or test path depends on
   the old token-gap formatter.
+- CST naming is not globally forbidden. It is allowed where the code directly
+  implements or verifies the concrete syntax tree. It is not allowed as a
+  migration label in downstream compiler, HIR, analysis, language-service, LSP,
+  behavior-test, or user-facing diagnostic names after the old AST path is gone.
 - Vela language semantics, VM behavior, HostAccess boundaries, reflection
   mutation rules, and hot reload behavior remain unchanged.
 - Active source and test files touched by this track stay below 1200 lines unless
@@ -835,6 +877,17 @@ Final legacy audit validation:
 rg -n "legacy-body-parser|legacy_body_parser|parse_owned_body_blocks_for_tests|\\.fallback\\(|\\bExprKind\\b|\\bStmtKind\\b|vela_syntax::ast::(Expr|Stmt|Block|Argument|RecordField)|vela_syntax::ast::\\{[^}]*\\b(Expr|Stmt|Block|Argument|RecordField)\\b" crates/vela_bytecode crates/vela_syntax
 rg -n "extract_format_elements|struct Formatter|token-gap|delimiter_stack|previous_token" crates/vela_syntax crates/vela_language_service crates/vela_lsp_server
 ```
+
+Final canonical naming audit:
+
+```bash
+rg -n "\\bcst\\b|Cst|CST|cst_" crates/vela_bytecode crates/vela_hir crates/vela_analysis crates/vela_language_service crates/vela_lsp_server
+```
+
+This audit is not a global zero-result rule. Every remaining hit outside
+`vela_syntax` must be reviewed and either renamed to syntax/domain terminology
+or justified as directly handling concrete syntax tree representation. User
+visible diagnostics must not mention CST.
 
 Full close-out:
 
