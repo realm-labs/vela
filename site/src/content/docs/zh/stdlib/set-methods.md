@@ -3,7 +3,7 @@ title: "Set 方法"
 description: "Vela Set 方法文档。"
 ---
 
-Set 通过和 Map key 相同的 `ValueKey` 策略存储唯一脚本值。`null`、bool、
+Set 通过和 Map key 相同的 `ValueKey` 策略存储唯一脚本值。unit、bool、
 有限数字、char、string 和 bytes 等不可变叶子值按值比较；脚本堆对象和
 host ref 按身份比较；`PathProxy` 等临时值会在修改前被拒绝。
 
@@ -47,7 +47,7 @@ fn main() {
 }
 ```
 
-`clear` 移除所有值并返回 `null`。
+`clear` 移除所有值并返回 `()`。
 
 ## Set 代数
 

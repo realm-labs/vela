@@ -7,7 +7,7 @@ Vela is dynamically typed, but primitive values use explicit concrete runtime ta
 
 ## Primitive Set
 
-The primitive value categories are `null`, `bool`, `char`, signed integers `i8` through `i64`, unsigned integers `u8` through `u64`, floats `f32` and `f64`, `string`, and `bytes`.
+The primitive value categories are `()`, `bool`, `char`, signed integers `i8` through `i64`, unsigned integers `u8` through `u64`, floats `f32` and `f64`, `String`, and `Bytes`.
 
 ```vela
 let enabled = true
@@ -32,16 +32,16 @@ fn main() -> i32 {
 }
 ```
 
-## Null
+## Unit
 
-`null` means no meaningful value, a statement-only block result, or nullable host/metadata interop. Prefer `Option` for expected absence and `Result` for recoverable failure so APIs do not overload `null` with too many meanings.
+`()` is the unit value. It means there is no meaningful result, such as an empty block, a statement-only block, or an effect-only mutation helper. Use `Option` for expected absence and `Result` for recoverable failure.
 
 ```vela
-fn maybe_message(enabled: bool) {
+fn mark_checked(enabled: bool) -> () {
     if enabled {
-        return "enabled"
+        ()
     }
-    return null
+    return
 }
 ```
 

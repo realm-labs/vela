@@ -514,11 +514,12 @@ method name instead of the lowered method body span.
 
 M20.5 Phase 8 update: service and native LSP definition, declaration, and
 type-definition fixtures now cover source functions returning `Any` used as
-member receivers, returning null instead of inventing member navigation facts.
+member receivers, returning protocol no-result responses instead of inventing
+member navigation facts.
 
 M20.5 Phase 8 update: service and native LSP type-definition fixtures now pin
-dynamic receiver-member boundaries, returning null for `Any` member targets
-instead of fabricating a type location.
+dynamic receiver-member boundaries, returning protocol no-result responses for
+`Any` member targets instead of fabricating a type location.
 
 M20.5 clean LSP architecture Phase 6 update: references now have a
 `reference_query()` result model that distinguishes source-owned, schema-owned,
@@ -1001,7 +1002,7 @@ now resolve through type facts instead of sharing definition fallback behavior.
 Local source values plus source/schema field member expressions jump to
 source/schema type declarations when source-backed, while primitive fields,
 schema methods, schema trait methods, and schema variants without owner type
-spans return null for `textDocument/typeDefinition`.
+spans return a protocol no-result for `textDocument/typeDefinition`.
 
 M20.5 Phase 15 update: language-service and native LSP inlay fixtures now
 cover schema-backed method and trait-method calls where the receiver is
@@ -1040,7 +1041,7 @@ path, including docs where the HIR metadata carries them.
 navigation queries, and `vela_lsp_server` advertises and serves
 `textDocument/declaration` plus `textDocument/typeDefinition`; declaration
 uses source/schema-backed definition spans, while type definition uses explicit
-type-fact targets and null degradation for non-type values.
+type-fact targets and protocol no-result degradation for non-type values.
 
 M20.5 highlighting completion update: semantic highlighting now has a
 service-owned Vela token taxonomy, native LSP full/delta/range projection with
@@ -1095,9 +1096,10 @@ M20.5 Phase 11 update: imported module path segments now participate in
 language-service and native LSP references across workspace imports, and
 document highlights mark matching module segments in the active document.
 
-M20.5 Phase 13 update: the conditional null-check to Option/Result guard
-rewrite is intentionally deferred until a structured diagnostic or syntax
-pattern can prove the rewrite is local, source-owned, and
+M20.5 Phase 13 update: old conditional null-check to Option/Result guard
+rewrite plans are superseded by the source-level null removal; future
+Option/Result guard rewrites still need a structured diagnostic or syntax
+pattern proving the rewrite is local, source-owned, and
 semantics-preserving. Current code actions remain diagnostic-backed and keep
 ambiguous/dynamic fixes rejected rather than offering speculative semantic
 rewrites.

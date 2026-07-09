@@ -305,12 +305,12 @@ coverage complete based only on the older capability phases.
   - Current signature-help fixtures cover script, imported defaulted
     functions, script/source trait/schema/schema-trait/stdlib calls, callback
     methods, source/schema methods on function-return receivers, enum variant
-    calls, active parameters, incomplete calls, and dynamic or unresolved null
-    results including source functions returning `Any` as receivers.
+    calls, active parameters, incomplete calls, and dynamic or unresolved
+    no-result responses including source functions returning `Any` as receivers.
   - Current hover fixtures cover source, cross-file, schema, stdlib, trait,
     method, field, enum variant, global, parameter, imported module path,
     docs/effects/permissions, parser-recovery, missing-schema `Any`
-    degradation, and dynamic or unresolved null results.
+    degradation, and dynamic or unresolved no-result responses.
 - [x] Audit navigation protocols.
   - Cover `definition`, `declaration`, `typeDefinition`, and negative
     `implementation` behavior for locals, globals, imported functions, source
@@ -328,8 +328,8 @@ coverage complete based only on the older capability phases.
     imported functions, imported const/global declarations, source fields,
     source methods through return type queries, source enum variants,
     schema type/member/variant source spans, stdlib-call adjacency, builtin
-    primitive and container types returning null, dynamic facts returning
-    null, unresolved bare names returning null, and unsupported
+    primitive and container types returning no type-definition target, dynamic
+    facts returning no target, unresolved bare names returning no target, and unsupported
     `textDocument/implementation` not being advertised or served.
 - [x] Audit references, document highlights, and call hierarchy.
   - Cover same-document and cross-file references for functions,
@@ -881,7 +881,7 @@ Purpose: expose semantic facts and navigation.
     traits and trait type hints, source-owned enum variants, schema-backed host
     members and trait receiver methods, schema-backed traits and enum variants,
     stdlib functions, stdlib receiver methods, imported module path segments,
-    missing-schema type-hint degradation, and null results for unresolved names
+    missing-schema type-hint degradation, and no-result responses for unresolved names
     plus dynamic receiver members including source functions returning `Any`.
 - [x] Include docs, type facts, effects, permissions, origins, and source spans
   where known.
@@ -906,7 +906,7 @@ Purpose: expose semantic facts and navigation.
     through the same source/schema-backed navigation spans as definition.
   - `textDocument/typeDefinition` now resolves through type facts for local
     values plus source/schema field member expressions, jumps to source/schema
-    type declarations when source-backed, and returns null for primitive,
+    type declarations when source-backed, and returns a protocol no-result for primitive,
     method, variant, dynamic, or unknown targets instead of falling back to an
     enclosing declaration, including member targets on source functions
     returning `Any`.
@@ -1691,10 +1691,11 @@ Purpose: turn structured diagnostics into safe edits.
 - [x] Add remove-unused-import action after unused diagnostics exist.
 - [x] Add fill missing match arms when enum facts are known.
 - [x] Add missing record fields for known constructors.
-- [x] Defer simple `if` null-check to Option/Result guard rewrites until
-  syntax ownership is unambiguous.
-  - No action is offered until a structured diagnostic or syntax pattern can
-    prove the rewrite is local, source-owned, and semantics-preserving.
+- [x] Drop old simple `if` null-check rewrite plans after source-level null
+  removal.
+  - Future Option/Result guard rewrites still need a structured diagnostic or
+    syntax pattern proving the edit is local, source-owned, and
+    semantics-preserving.
   - Current coverage keeps code actions diagnostic-backed and rejects
     ambiguous/dynamic fixes rather than offering speculative semantic rewrites.
 - [x] Add quick-fix tests for range stability under open overlays.

@@ -25,7 +25,7 @@ fn reward_table() {
 
 ## 更新
 
-常见 map 方法包括插入、移除、包含检查、`get` 和 `get_or`。预期缺失的 lookup API 应优先返回 `Option`，而不是用 `null` 表示。
+常见 map 方法包括插入、移除、包含检查、`get` 和 `get_or`。预期缺失的 lookup API 返回 `Option`。
 
 ```vela
 fn add_reward(rewards, code: String, amount: i64) {

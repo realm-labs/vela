@@ -91,9 +91,8 @@ implementations.
 - [ ] Const/global declarations collapse into `variable` with `readonly`; this
   is serviceable but less expressive than a dedicated `const` or `static`
   custom token with a standard `variable` fallback.
-- [ ] `true`, `false`, and `null` are keyword tokens. Booleans should be able to
-  style as `boolean` with a standard fallback; `null` should have an explicit
-  policy.
+- [ ] `true` and `false` are keyword tokens. Booleans should be able to style
+  as `boolean` with a standard fallback; source-level `null` has been removed.
 - [ ] Operators and punctuation are too coarse. Arithmetic, comparison,
   logical, negation, path/dot, comma, colon, semicolon, brace, bracket, and
   parenthesis classes cannot be styled separately.
@@ -190,7 +189,6 @@ SemanticTokenType:
     modifier, comment, string, number, regexp, operator, decorator
   Vela custom types with standard fallbacks:
     boolean -> keyword or number policy to decide
-    null -> keyword
     bytes -> string
     builtinType -> type
     typeAlias -> type
@@ -260,7 +258,7 @@ before changing implementation.
   includes functions, methods, structs, enums, enum variants, traits, impl
   methods, fields, properties, modules/imports, const/global declarations,
   locals, parameters, attributes, comments, strings, bytes, numbers, booleans,
-  null, control-flow keywords, operators, punctuation, unresolved names, stdlib
+  control-flow keywords, operators, punctuation, unresolved names, stdlib
   calls, schema-backed host calls, and builtin type hints.
 - [x] Add service-level semantic token snapshot coverage for the fixture in
   `crates/vela_language_service` or `crates/vela_lsp_server`, whichever keeps
@@ -277,7 +275,7 @@ Phase 1 notes:
 - Shared fixture: `tests/fixtures/lsp_highlighting/showcase.vela`.
 - Baseline service/LSP tests pin current behavior without changing taxonomy.
 - Current visible collapse points include source structs/enums/traits all using
-  `type`, const/global declarations using `variable`, booleans/null using
+  `type`, const/global declarations using `variable`, booleans using
   `keyword`, broad punctuation/operators using `operator`, and unresolved
   showcase identifiers remaining plain `variable`.
 - Zed and VS Code validators now check the shared fixture and fallback
@@ -301,7 +299,7 @@ highlighting and stable enough for editor packages.
 
 - [x] Expand `SemanticTokenType` with distinct source-level type-family tokens
   for structs, enums, traits/interfaces, type aliases, enum variants, builtin
-  types, constants/statics/globals, booleans/null policy, labels, unresolved
+  types, constants/statics/globals, boolean policy, labels, unresolved
   references, bytes/string escape policy if supported, operator families, and
   punctuation families.
 - [x] Expand `SemanticTokenModifiers` with a deliberate provenance and behavior
@@ -320,7 +318,7 @@ highlighting and stable enough for editor packages.
 Phase 2 notes:
 
 - `SemanticTokenType` now includes distinct source type-family, builtin type,
-  const/global, boolean/null, unresolved-reference, operator-family, and
+  const/global, boolean, unresolved-reference, operator-family, and
   punctuation-family tokens, with existing legend entries kept first.
 - `SemanticTokenModifiers` now has explicit source/schema/host/provenance and
   behavior modifier names plus a modifier fallback table.
@@ -351,7 +349,7 @@ syntax and semantic facts instead of editor-specific heuristics.
 - [x] Distinguish source-owned, schema/host-owned, and stdlib/default-library
   symbols through modifiers without changing runtime semantics.
 - [x] Classify builtin type hints separately from source and schema type hints.
-- [x] Classify literals: strings, bytes, numbers, booleans, null, and comments.
+- [x] Classify literals: strings, bytes, numbers, booleans, and comments.
   If escape sequences or format specifiers are not yet represented in syntax,
   record that as a later syntax-token enhancement instead of faking it.
 - [x] Classify control-flow keywords and operators with `controlFlow` where the

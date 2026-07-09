@@ -23,7 +23,7 @@ fn main() {
 }
 ```
 
-修改方法会原地更新数组，并根据操作返回 `null`、`bool` 或 `Option`。
+修改方法会原地更新数组，并根据操作返回 `()`、`bool` 或 `Option`。
 
 ```vela
 fn main() {

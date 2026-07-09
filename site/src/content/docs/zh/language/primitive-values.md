@@ -7,7 +7,7 @@ Vela 是动态语言，但基础值有明确的运行时标签。这样宿主转
 
 ## 基础类型集合
 
-基础值包括 `null`、`bool`、`char`、有符号整数 `i8` 到 `i64`、无符号整数 `u8` 到 `u64`、浮点数 `f32` 和 `f64`、`string`、`bytes`。
+基础值包括 `()`、`bool`、`char`、有符号整数 `i8` 到 `i64`、无符号整数 `u8` 到 `u64`、浮点数 `f32` 和 `f64`、`String`、`Bytes`。
 
 ```vela
 let enabled = true
@@ -32,16 +32,16 @@ fn main() -> i32 {
 }
 ```
 
-## Null
+## Unit
 
-`null` 表示没有有意义的值、只有语句的块结果，或宿主/元数据边界上的 nullable 互操作。预期缺失应优先使用 `Option`，可恢复失败应使用 `Result`，不要把所有“没有结果”都塞进 `null`。
+`()` 是 unit 值，表示没有有意义的结果，例如空块、只有语句的块，或只产生副作用的修改 helper。预期缺失使用 `Option`，可恢复失败使用 `Result`。
 
 ```vela
-fn maybe_message(enabled: bool) {
+fn mark_checked(enabled: bool) -> () {
     if enabled {
-        return "enabled"
+        ()
     }
-    return null
+    return
 }
 ```
 

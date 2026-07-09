@@ -27,7 +27,7 @@ fn reward_table() {
 
 ## Updates
 
-Common map methods include insertion, removal, containment checks, `get`, and `get_or`. Missing lookup APIs should prefer `Option` rather than `null` when absence is expected.
+Common map methods include insertion, removal, containment checks, `get`, and `get_or`. Missing lookup APIs return `Option` when absence is expected.
 
 ```vela
 fn add_reward(rewards, code: String, amount: i64) {

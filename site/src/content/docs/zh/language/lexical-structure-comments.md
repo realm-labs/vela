@@ -7,7 +7,7 @@ Vela 源文件是 UTF-8 文本文件，扩展名为 `.vela`。简单声明和语
 
 ## 源文件结构
 
-标识符以 `_` 或 ASCII 字母开头，后续可以包含 ASCII 字母、数字和 `_`。`fn`、`struct`、`match`、`self`、`true`、`false`、`null` 等关键字是保留词，不能作为普通名称。
+标识符以 `_` 或 ASCII 字母开头，后续可以包含 ASCII 字母、数字和 `_`。`fn`、`struct`、`match`、`self`、`true`、`false` 等关键字是保留词，不能作为普通名称。
 
 ```vela
 #!/usr/bin/env vela

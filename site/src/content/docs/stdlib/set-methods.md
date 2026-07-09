@@ -4,7 +4,7 @@ description: "Set method documentation for Vela."
 ---
 
 Sets store unique script values through the same `ValueKey` policy used by map
-keys. Immutable leaf values such as `null`, booleans, finite numbers, chars,
+keys. Immutable leaf values such as unit, booleans, finite numbers, chars,
 strings, and bytes compare by value. Script heap objects and host refs compare
 by identity, while transient values such as `PathProxy` are rejected before
 mutation.
@@ -50,7 +50,7 @@ fn main() {
 }
 ```
 
-`clear` removes all values and returns `null`.
+`clear` removes all values and returns `()`.
 
 ## Set Algebra
 

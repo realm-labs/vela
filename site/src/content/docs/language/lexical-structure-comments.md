@@ -7,7 +7,7 @@ Vela source files are UTF-8 text files with the `.vela` extension. The syntax is
 
 ## Source Shape
 
-Identifiers begin with `_` or an ASCII letter and continue with ASCII letters, digits, or `_`. Keywords such as `fn`, `struct`, `match`, `self`, `true`, `false`, and `null` are reserved and cannot be used as ordinary names.
+Identifiers begin with `_` or an ASCII letter and continue with ASCII letters, digits, or `_`. Keywords such as `fn`, `struct`, `match`, `self`, `true`, and `false` are reserved and cannot be used as ordinary names.
 
 ```vela
 #!/usr/bin/env vela

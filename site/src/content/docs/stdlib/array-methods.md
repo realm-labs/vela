@@ -25,7 +25,7 @@ fn main() {
 }
 ```
 
-Mutation methods update the array value in place and return either `null`,
+Mutation methods update the array value in place and return either `()`,
 `bool`, or an `Option` depending on the operation.
 
 ```vela

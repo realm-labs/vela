@@ -7,7 +7,7 @@ Control flow is expression-oriented where useful, but stays bounded by the VM ex
 
 ## If And Blocks
 
-`if` can be used as a statement or expression. If an expression-valued `if` has no `else`, the untaken branch evaluates to `null`. Empty or statement-only blocks also evaluate to `null`.
+`if` can be used as a statement or expression. If an expression-valued `if` has no `else`, the untaken branch evaluates to `()`. Empty or statement-only blocks also evaluate to `()`.
 
 ```vela
 fn label(score: i64) -> String {

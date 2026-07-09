@@ -29,7 +29,7 @@ that method for values of the type. Use `===` and `!==` when you need
 reference identity for script objects or `HostRef` values. These identity
 operators do not read host state and do not use Map/Set key equivalence.
 
-Builtin leaf values such as `null`, booleans, chars, exact scalar tags,
+Builtin leaf values such as unit, booleans, chars, exact scalar tags,
 strings, bytes, and ranges compare by value. Numeric equality is tag-exact, so
 `1i64 == 1u64` is false. Integer arithmetic is checked. Overflow, unsigned
 underflow, and division by zero are errors.

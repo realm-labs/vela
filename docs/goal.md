@@ -540,7 +540,7 @@ diagnostics with primary span, related labels, call stack, candidates, hints
 semantic diagnostics for unresolved names, fields, methods, variants, effects
 runtime diagnostics mapped back to source spans and function stack frames
 frame metadata for parameters, locals, captures, bytecode offsets, and roots
-TypeFact inference for locals, host refs, arrays, maps, enums, and null checks
+TypeFact inference for locals, host refs, arrays, maps, enums, and Option/Result checks
 diagnostic/debug shared data for future debugger and DAP integration
 flow narrowing for if, match, and Option/Result-style checks
 completion data for bindings, modules, fields, methods, variants, stdlib APIs
