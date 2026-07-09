@@ -12,7 +12,7 @@ use crate::{
 use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
-use vela_hir::binding::{BindingMap, LocalBinding};
+use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::body::HirBody;
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
@@ -393,6 +393,18 @@ pub(crate) fn type_fact_for_source_range(
         .and_then(|expression| facts.expression(expression).cloned())
         .filter(|fact| !matches!(fact, TypeFact::Unknown))
         .or_else(|| expression_facts::fact_for_range(databases, source_id, range))
+}
+
+pub(crate) fn binding_resolution_for_source_range<'a>(
+    graph: &ModuleGraph,
+    bindings: &'a BindingMap,
+    range: TextRange,
+) -> Option<&'a BindingResolution> {
+    let source = graph.declaration(bindings.declaration)?.span.source;
+    let start = u32::try_from(range.start).ok()?;
+    let end = u32::try_from(range.end).ok()?;
+    let expression = graph.expression_containing_span(Span::new(source, start, end))?;
+    bindings.resolution(expression)
 }
 
 fn query_bindings<'a>(

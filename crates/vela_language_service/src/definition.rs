@@ -8,6 +8,7 @@ use crate::{
     SymbolRef, TextRange,
     callable_context::callable_facts,
     member_access, path_calls,
+    query_context::binding_resolution_for_source_range,
     symbol_ref::{
         qualified_source_declaration_name, source_enum_variant_symbol,
         source_symbol_for_declaration,
@@ -424,17 +425,7 @@ fn definition_from_resolution_at_target(
     databases: &LanguageServiceDatabases,
 ) -> Option<Definition> {
     let graph = databases.hir_db().graph();
-    let resolution = bindings
-        .resolutions()
-        .filter_map(|(expression, resolution)| {
-            let expression = bindings.expression(expression)?;
-            let start = usize::try_from(expression.span.start).ok()?;
-            let end = usize::try_from(expression.span.end).ok()?;
-            (start <= target.range().start && target.range().end <= end)
-                .then_some((end.saturating_sub(start), resolution))
-        })
-        .min_by_key(|(len, _)| *len)?
-        .1;
+    let resolution = binding_resolution_for_source_range(graph, bindings, target.range())?;
 
     match resolution {
         BindingResolution::Local(local) => {

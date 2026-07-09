@@ -20,6 +20,7 @@ use vela_hir::type_hint::{
 use crate::{
     DiagnosticRange, DisplayPartKind, DisplayParts, DocumentId, LanguageServiceDatabases,
     LineIndex, Position, QueryContext, SymbolRef, TextRange,
+    query_context::binding_resolution_for_source_range,
     symbol_ref::{
         builtin_member_symbol, builtin_symbol, qualified_source_declaration_name,
         source_enum_variant_symbol, source_impl_method_symbol, source_member_symbol,
@@ -349,17 +350,7 @@ fn hover_from_resolution_at_target(
     databases: &LanguageServiceDatabases,
 ) -> Option<Hover> {
     let graph = databases.hir_db().graph();
-    let resolution = bindings
-        .resolutions()
-        .find_map(|(expression, resolution)| {
-            let expression = bindings.expression(expression)?;
-            let start = usize::try_from(expression.span.start).ok()?;
-            let end = usize::try_from(expression.span.end).ok()?;
-            (expression.span.source == graph.declaration(bindings.declaration)?.span.source
-                && start <= target.range().start
-                && target.range().end <= end)
-                .then_some(resolution)
-        })?;
+    let resolution = binding_resolution_for_source_range(graph, bindings, target.range())?;
     match resolution {
         BindingResolution::Local(local) => {
             let binding = bindings.local(*local)?;

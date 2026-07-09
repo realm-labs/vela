@@ -12,6 +12,7 @@ use vela_hir::{
 
 use crate::{
     LanguageServiceDatabases, QueryContext, SymbolRef, TextRange, path_calls,
+    query_context::binding_resolution_for_source_range,
     symbol_ref::{
         builtin_member_symbol, builtin_symbol, schema_member_symbol, schema_symbol,
         schema_variant_symbol, source_enum_variant_symbol, source_impl_method_symbol,
@@ -149,17 +150,7 @@ fn symbol_ref_from_resolution(
     range: TextRange,
 ) -> Option<SymbolRef> {
     let graph = databases.hir_db().graph();
-    let resolution = bindings
-        .resolutions()
-        .filter_map(|(expression, resolution)| {
-            let expression = bindings.expression(expression)?;
-            let start = usize::try_from(expression.span.start).ok()?;
-            let end = usize::try_from(expression.span.end).ok()?;
-            (start <= range.start && range.end <= end)
-                .then_some((end.saturating_sub(start), resolution))
-        })
-        .min_by_key(|(len, _)| *len)?
-        .1;
+    let resolution = binding_resolution_for_source_range(graph, bindings, range)?;
     match resolution {
         BindingResolution::Local(local) => {
             let binding = bindings.local(*local)?;
