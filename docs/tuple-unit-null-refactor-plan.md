@@ -1,42 +1,126 @@
-# Tuple, Unit, And Null Removal Implementation Plan
+# Tuple, Unit, And Null Removal Hard-Switch Plan
 
 > **Track:** breaking language-value-model cleanup, M20/M23 adjacent
-> **Document status:** Codex execution plan
+> **Document status:** Codex goal-mode execution plan
 > **Compatibility policy:** breaking pre-release syntax, bytecode, VM value,
 > stdlib, host conversion, reflection, serialization, tooling, diagnostics, and
-> tests are allowed. Do not preserve `null` as a normal script no-value result
-> for compatibility. Preserve product contracts: no general script-language
+> tests are allowed. Preserve product contracts: no general script-language
 > generics, no Rust `&mut` exposure, HostAccess safety, GC roots,
 > source-spanned diagnostics, execution budgets, reflection permissioning, and
 > hot-reload ABI/schema checks.
 
----
+Hard-switch policy: this plan is intended to be run by goal-mode loops using
+large deletion-first slices, not one-`null`-site micro-commits. At the start of
+each slice, delete the obsolete `null` surface for that subsystem first, then
+use compiler errors, audit searches, and focused failing tests as the migration
+queue. It is acceptable for the working tree to be temporarily uncompilable
+while a hard-switch slice is in progress, but every committed checkpoint must
+compile and pass the relevant focused validation. Do not add compatibility
+aliases, fallback conversions, `null`-to-unit coercions, migration helper names,
+dual `null`/unit result APIs, or temporary tests that only prove both models
+still work.
+
+Checkpoint policy: prefer large subsystem checkpoints. A valid checkpoint
+removes a whole obsolete surface such as source `null`, VM/bytecode `Null`,
+host/owned `Null`, stdlib `null` return contracts, or LSP/editor `null`
+language behavior. Do not commit one call-site replacement at a time unless it
+is the last blocker for one of those subsystem checkpoints.
+
+Final-state policy: ordinary Vela code must not contain source-level `null`,
+`Value::Null`, `OwnedValue::Null`, `HostValue::Null`, `Constant::Null`,
+`PrimitiveTag::Null`, `Literal::Null`, `NullKw`, `TypeHint::null`, `null`
+stdlib contracts, `null` completions, or tests that preserve old null behavior.
+JSON-RPC protocol nulls, serde JSON fixture nulls, and editor protocol
+`processId: null` values are outside the Vela language value model, but they
+must be classified explicitly in final audits instead of hidden by broad ignore
+patterns.
 
 ## 0. Codex Goal
 
-```text
-/goal Implement Vela's breaking tuple, unit, and null cleanup from
-docs/tuple-unit-null-refactor-plan.md. Treat docs/goal.md as the product
-roadmap, docs/architecture.md and docs/architecture/*.md as the architecture
-contract, and docs/progress.md as the current milestone state. Add Rust-like
-tuple syntax and contracts using `(T1, T2)`, `(value1, value2)`, and
-destructuring patterns, with `()` as the unit type and unit value. Replace
-void-like and no-meaningful-value uses of `null` with `()`. Keep expected
-absence in `Option<T>` and recoverable failure in `Result<T, E>`. Remove
-`null` from ordinary script APIs; if external data formats need to preserve
-raw null, represent that explicitly at the serde/JSON boundary rather than
-overloading the VM no-value result. Prefer clean replacement over compatibility
-aliases or migration shims. Validate each checkpoint with parser, HIR,
-analysis, compiler, VM, stdlib, host conversion, reflection, hot-reload ABI,
-LSP, formatter, diagnostics, and conformance tests, plus focused benchmark
-captures for tuple/unit fast paths.
-```
+Use this prompt to execute the full refactor:
 
----
+```text
+/goal Execute the breaking tuple, unit, and null hard switch from
+docs/tuple-unit-null-refactor-plan.md. Treat docs/goal.md,
+docs/architecture.md, docs/architecture/*.md, docs/progress.md,
+docs/decisions.md, docs/grammar.ebnf, and this plan as required context.
+This is a breaking pre-release language value-model refactor: the priority is
+to delete ordinary `null` semantics and finish the `()` / tuple / Option /
+Result architecture, not to preserve compatibility with old no-value behavior.
+
+At the start of each execution turn, inspect the current git diff, then inspect
+remaining references to source `null`, NullKw, Literal::Null, Value::Null,
+OwnedValue::Null, HostValue::Null, Constant::Null, PrimitiveTag::Null,
+TypeKind::Null, TypeHint::null, StdTypeSpec::primitive("Null"), stdlib/native
+return type strings "null", null completions/snippets/semantic tokens,
+reflection metadata nulls, hot-reload null ABI rows, and tests/examples that
+expect null as void, absence, missing metadata, or host no-result. Separately
+classify protocol JSON nulls in LSP/server/schema fixtures; they are not Vela
+language nulls.
+
+Use a hard-switch strategy with large subsystem slices. Delete the obsolete
+surface at the start of a slice, then use compiler errors and focused failing
+tests as the migration queue. It is acceptable for the working tree to be
+temporarily uncompilable during a turn, but do not commit until the changed
+slice has focused tests passing. Do not add `null` aliases for unit,
+Option::None, or Result errors. Do not add compatibility wrappers, migration
+helpers, dual return APIs, external-null fallbacks, or temporary tests that keep
+old and new semantics alive.
+
+Current execution order:
+1. Lock hard decisions and baselines: strict source-level null removal, no
+   one-element tuples in the first slice, destructuring-only tuple access,
+   tuple Map/Set keys rejected initially, and host Rust tuple conversion
+   limited to arities 2 through 4 until measured need expands it.
+2. Hard-switch syntax and tooling grammar. Add unit expression/type syntax,
+   tuple expression/type/destructuring syntax, and source-spanned diagnostics
+   for removed `null`. Delete `NullKw`, Literal::Null extraction, global null
+   literal parsing, grammar docs, editor grammar entries, null completions,
+   null semantic-token classifications, and quick fixes that insert `null`.
+3. Hard-switch the core value model. Add Unit and tuple runtime/owned/host
+   representations, then delete Value::Null, OwnedValue::Null, HostValue::Null,
+   Constant::Null, PrimitiveTag::Null, null type facts, null keying/equality,
+   null guard plans, null verifier names, and null register initialization.
+   Replace no-result defaults with unit and use compile errors as the queue.
+4. Hard-switch compiler, VM, stdlib, host, reflection, engine, and hot reload.
+   No-result blocks, `return;`, native callbacks, mutation helpers, IO helpers,
+   reflection metadata gaps, and host methods return unit or structured
+   Option/Result. Expected absence uses Option::None. Recoverable failures use
+   Result::Err. Hot-reload/schema ABI compares unit, tuple arity, and tuple
+   element contracts structurally.
+5. Add tuple payload behavior after the core null deletion is underway:
+   Option<(A, B)> and Result<(A, B), E> facts, guards, bytecode lowering,
+   destructuring, host arity 2..=4 conversion, reflection descriptors,
+   OwnedValue tuple conversion, and stdlib APIs such as split_once.
+6. Audit LSP, language service, formatter, examples, docs, and website. Replace
+   user-facing null placeholders with `()`, Option::None, or typed fixits.
+   Keep protocol JSON nulls only where the protocol or serde fixture requires
+   them and document that classification in close-out notes.
+7. Before final acceptance, run zero-result audits for Vela-language null
+   symbols and separately review all surviving `null` strings. Every survivor
+   must be protocol JSON, historical archive, or an explicit external-data
+   wrapper introduced by a documented future plan. No temporary helper,
+   compatibility wrapper, migration-only name, or transitional null test may
+   remain.
+8. Update docs/progress.md, docs/decisions.md, architecture docs, grammar docs,
+   and this checklist only when milestone state, final architecture, or
+   remaining gaps materially change.
+
+For each checkpoint, choose the largest deletion-first subsystem slice that can
+be restored to focused green validation in one execution turn. Validate with
+the narrowest relevant tests first, usually cargo test -p vela_syntax,
+cargo test -p vela_bytecode --no-fail-fast, cargo test -p vela_vm,
+cargo test -p vela_engine, cargo test -p vela_reflect, cargo test -p
+vela_language_service, and cargo test -p vela_lsp_server as the touched surface
+expands. Close out with cargo fmt --all -- --check,
+cargo clippy --workspace --all-targets -- -D warnings, cargo test --workspace,
+and the examples test suite when practical. Commit large coherent Conventional
+Commit checkpoints.
+```
 
 ## 1. Purpose
 
-Vela currently uses `null` for several unrelated concepts:
+The current implementation uses `null` for unrelated concepts:
 
 ```text
 no meaningful value / void-like result
@@ -44,26 +128,25 @@ expected absence
 host nullable data
 reflection metadata gaps
 external serialized null
+register/default initialization
 ```
 
-This is convenient during early implementation, but it weakens the language
-contract. Vela already has `Option` and `Result` for ordinary script absence
-and recoverable failure, and it needs a clear no-value result for statement-only
-blocks, callbacks, and no-result native calls.
+This weakens the language contract and keeps APIs ambiguous. Vela already has
+`Option` for expected absence and `Result` for recoverable failure. It should
+use `()` for no meaningful result and tuples for temporary product values.
 
-The target language model is:
+The target model is:
 
 ```text
 ()             no meaningful value / unit
 Option<T>      expected absence
 Result<T, E>   recoverable failure
 VM error       contract violation, permission denial, budget failure, script bug
-external null  explicit serde/JSON boundary value, not ordinary script no-value
+external null  future explicit serde/JSON data wrapper, not ordinary script value
 ```
 
-At the same time, Vela needs ergonomic multiple-return and destructuring syntax.
-Tuple syntax should look like Rust source syntax rather than exposing a
-dedicated `Tuple` generic:
+Tuple syntax should look like Rust source syntax without adding general
+script-language generics:
 
 ```vela
 fn split_name(full: String) -> Option<(String, String)> {
@@ -78,70 +161,62 @@ fn main() -> Result<(), Error> {
 }
 ```
 
-The implementation may use a dedicated internal tuple value, heap object, type
-fact, and bytecode representation, but source users should write tuple syntax,
-not `Tuple<String, String>`.
+## 2. Selected Hard Decisions
 
----
+These decisions are part of the plan and should not remain open during
+implementation:
 
-## 2. Goals
+- Source-level `null` is removed from ordinary Vela. The first implementation
+  does not keep a global `null` literal or `null` type hint.
+- Raw external JSON/serde null is not modeled by `Value::Null`. If it is needed
+  later, it must live inside an explicit external-data wrapper such as a future
+  `Json::Null` or `SerdeValue::Null`.
+- `()` is the only ordinary no-meaningful-result value.
+- Rust `Option<T>` maps to script `Option<T>`, not to `null`.
+- One-element tuples are deferred. `(x)` and `(T)` stay parenthesized
+  expression/type syntax; `(x,)` and `(T,)` should be rejected with a clear
+  diagnostic until a concrete first-class use case exists.
+- Tuple direct field access is deferred. First-slice tuple use is through
+  construction, return values, destructuring, pattern matching, reflection, and
+  host conversion only.
+- Tuple Map/Set keys are rejected in the first slice even when all elements
+  are individually keyable. This avoids expanding `ValueKey` before tuple
+  equality and ordering semantics are fully measured.
+- Host Rust tuple conversion supports arities 2 through 4 in the first slice.
+  Expanding the limit later requires focused tests and no broad macro magic.
+- `?` remains Rust-aligned: `Option` propagates through Option-returning
+  functions, `Result` through Result-returning functions, and cross-family
+  conversion requires explicit helpers such as `ok_or`.
 
-- Add `()` as the unit type and unit literal.
-- Make empty blocks, statement-only blocks, no-result native calls, callbacks
-  with no meaningful result, and `return;` produce unit.
-- Add tuple type syntax: `(A, B)`, `(A, B, C)`, and `(A,)` for a one-element
-  tuple if one-element tuples are supported.
-- Keep `(A)` as parenthesized type syntax, not a one-element tuple.
-- Add tuple expression syntax: `(a, b)`, `(a, b, c)`, and `(a,)` if one-element
-  tuples are supported.
-- Keep `(a)` as parenthesized expression syntax, not a one-element tuple.
-- Add tuple destructuring patterns at least for `let` bindings and `match`
-  patterns.
-- Add tuple TypeFacts and runtime contracts so typed tuple values can use
-  fast paths and precise diagnostics.
-- Make `?` work cleanly with tuple payloads inside `Option<(...)>` and
-  `Result<(...), E>` without making tuples a general generic feature.
-- Keep `?` propagation aligned with Rust: `Option` propagates through
-  `Option`-returning functions, `Result` propagates through
-  `Result`-returning functions, and cross-family conversion requires explicit
-  helpers such as `ok_or` or `ok_or_else`.
-- Move ordinary script absence to `Option::None`.
-- Move ordinary recoverable failure to `Result::Err`.
-- Remove `null` from ordinary script no-value semantics.
-- Decide and implement one explicit external-null boundary:
-  either remove the script `null` literal entirely or keep raw external null
-  only inside explicit data wrappers such as `Json::Null` or `SerdeValue::Null`.
-- Update host conversion so Rust `Option<T>` maps to script `Option<T>` rather
-  than `null`.
-- Update reflection so missing optional metadata is represented as
-  `Option::None` or omitted structured fields, not untyped `null`.
-- Preserve hot-reload ABI/schema checking with tuple and unit contract changes.
-- Update docs, website, grammar, LSP semantic tokens, formatting, hover,
-  completions, diagnostics, and snippets to the new model.
+## 3. Current Codebase Audit Notes
 
----
+The current code has broad `null` surface area. Goal-mode turns should use
+these as concrete deletion targets:
 
-## 3. Non-Goals
-
-This pass must not:
-
-- Add general user-defined generics.
-- Add named tuple fields.
-- Add variadic generics, tuple trait impl expansion, or arbitrary tuple arity
-  metaprogramming.
-- Use tuples as a replacement for records when fields need durable names.
-- Add Python-style multiple assignment unrelated to tuple destructuring.
-- Add implicit conversion between `()` and `Option::None`.
-- Add implicit conversion between external raw null and `Option::None` at
-  untyped script boundaries.
-- Add implicit `?` conversion from `Option::None` to `Result::Err`, or from
-  `Result::Err` to `Option::None`.
-- Preserve `null` as a synonym for `()` or `Option::None`.
-- Keep old APIs returning `null` behind compatibility wrappers.
-- Weaken HostAccess, execution budgets, GC roots, reflection permissions, or
-  hot-reload ABI/schema checks.
-
----
+- Syntax and grammar: `NullKw`, `Literal::Null`, literal patterns, formatter
+  keyword handling, parser grammar, docs grammar, and tree-sitter grammar.
+- Compiler and bytecode: `Constant::Null`, null default returns, null if/block
+  branch defaults, null type facts, null guards, null verifier names, and
+  `null_values` lowering helpers.
+- VM runtime: `Value::Null`, null register initialization, null equality,
+  null keying, null truthiness, null runtime guards, null serde unit/none
+  decoding, and null standard method mutation returns.
+- Owned and host boundaries: `OwnedValue::Null`, `HostValue::Null`, Rust
+  `Option<T>` conversion through null, host method no-result returns, and
+  reflection conversion through null.
+- Stdlib and embedding metadata: `PrimitiveTag::Null`, `"Null"` std type
+  entries, `"null"` return contract strings, `TypeHint::null`, IO helpers
+  returning `Result::Ok(null)`, and context/native method descriptors.
+- Reflection and hot reload: missing metadata as null, reflected type/kind
+  names for null, schema/ABI null primitive rows, and tests that compare
+  null signature changes.
+- Language service and editor packages: null completions, semantic-token
+  null classification, quick fixes that insert `null`, snippets/placeholders,
+  formatter examples, tree-sitter null literals, docs, examples, and website
+  examples.
+- Protocol fixtures: LSP JSON-RPC `null` values and schema JSON nulls must be
+  separated from Vela-language null during audits; they are allowed only as
+  protocol/serde data, not as script semantics.
 
 ## 4. Target Semantics
 
@@ -155,11 +230,12 @@ Unit-producing cases:
 ```text
 empty block
 statement-only block
-expression-valued if branch whose body has no meaningful result
+expression-valued branch with no meaningful result
 loop bodies without meaningful values
 native functions registered as no-result callbacks
 script functions with no return value
-explicit `return;`
+explicit return;
+mutation helpers whose contract is effect-only
 ```
 
 Examples:
@@ -172,11 +248,6 @@ fn log_level(level: i64) -> () {
 fn update(player: Player) -> () {
     player.level += 1;
     return;
-}
-
-fn main() -> Result<(), Error> {
-    update(ctx.player);
-    return Result::Ok(());
 }
 ```
 
@@ -210,42 +281,12 @@ fn charge(account: Account, amount: i64) -> Result<(), ChargeError> {
 ```
 
 The `?` operator should propagate `Option::None` and `Result::Err` without
-special tuple behavior. Tuple payloads are ordinary payload values:
-
-```vela
-fn split_name(full: String) -> Option<(String, String)> {
-    let parts = full.split_once(" ")?;
-    return Option::Some((parts.left, parts.right));
-}
-```
-
-Propagation should stay Rust-aligned. `Option ?` is valid in an
-`Option`-returning function, and `Result ?` is valid in a `Result`-returning
-function. Crossing from `Option` to `Result` requires an explicit conversion
-that provides the error value:
-
-```vela
-fn main() -> Result<(), Error> {
-    let (first, last) = split_name("Ada Lovelace")
-        .ok_or(Error::InvalidName)?;
-    return Result::Ok(());
-}
-```
-
-This is intentionally rejected because `Option::None` does not contain an
-error value:
-
-```vela
-fn main() -> Result<(), Error> {
-    let (first, last) = split_name("Ada Lovelace")?;
-    return Result::Ok(());
-}
-```
+special tuple behavior. Tuple payloads are ordinary payload values.
 
 ### 4.3 Tuples
 
-Tuples are ordered, fixed-size product values. They are for temporary grouping,
-multiple return values, and destructuring, not for durable business records.
+Tuples are ordered, fixed-size product values for temporary grouping, multiple
+return values, and destructuring. They are not durable business records.
 
 Tuple type syntax:
 
@@ -253,8 +294,8 @@ Tuple type syntax:
 ()                  unit
 (String, String)    two-element tuple
 (i64, bool, String) three-element tuple
-(i64,)              optional one-element tuple spelling
 (i64)               parenthesized i64 type
+(i64,)              rejected in the first slice
 ```
 
 Tuple expression syntax:
@@ -262,8 +303,8 @@ Tuple expression syntax:
 ```text
 ()                  unit literal
 (first, last)       two-element tuple literal
-(value,)            optional one-element tuple literal
 (value)             parenthesized expression
+(value,)            rejected in the first slice
 ```
 
 Destructuring should reject arity mismatches:
@@ -273,70 +314,36 @@ let (first, last) = split_name("Ada Lovelace")?;
 let (x, y, z) = point; // rejected if point is a 2-tuple
 ```
 
-Tuple fields are positional. The first pass may expose positional accessors
-only through destructuring. If direct access is added, prefer a syntax that does
-not conflict with numeric field names or record fields.
-
 ### 4.4 External Null
 
-Raw external null should not be the language's no-value result.
-
-There are two acceptable final designs. The implementation plan should choose
-one before code changes start:
-
-```text
-strict removal:
-  remove script `null` literal and Value::Null from ordinary VM values
-  map typed nullable host data to Option<T>
-  preserve raw JSON/serde null only in explicit external data wrappers
-
-explicit external null:
-  keep a raw null value only inside explicit external data domains
-  ordinary script APIs still cannot return null for absence or no-value
-  type hints do not use `null` as a normal contract
-```
-
-The strict removal model is cleaner for the core language. The explicit
-external-null model is easier for untyped JSON-like data. Either way, ordinary
-script code should not use `null` for void, missing data, or recoverable
-failure.
-
----
+External null is not part of the ordinary script value model in this hard
+switch. JSON-RPC and serde fixtures may still contain JSON null, but those
+values must remain at protocol/data boundaries. Do not route them through
+`Value::Null`, `OwnedValue::Null`, or `HostValue::Null`.
 
 ## 5. Architecture Impact
 
 ### 5.1 Syntax And Parser
 
-Update grammar and parser support for:
+Add syntax support for:
 
 ```text
 unit literal
 unit type
 tuple type
 tuple expression
-tuple pattern
+tuple destructuring pattern
 return; as unit return
+source-spanned null-removal diagnostics
 ```
 
-Parser ambiguity rules:
-
-```text
-()      unit expression or unit type depending on context
-(x)     parenthesized expression
-(T)     parenthesized type
-(x,)    one-element tuple expression if supported
-(T,)    one-element tuple type if supported
-(x, y)  tuple expression
-(A, B)  tuple type
-```
-
-Remove `null` from literal grammar if strict removal is selected. If explicit
-external-null is selected, keep raw null only under the explicit data syntax or
-constructor, not as a global literal used by normal expression typing.
+Remove global `null` literal and `null` type-hint parsing. If a future explicit
+external-data wrapper is added, it must be ordinary named syntax such as
+`Json::Null`, not a resurrected global literal.
 
 ### 5.2 HIR, Analysis, And TypeFacts
 
-Add focused HIR forms:
+Add focused forms:
 
 ```text
 ExprKind::Unit
@@ -345,36 +352,38 @@ PatternKind::Unit
 PatternKind::Tuple(Vec<PatternId>)
 TypeHintKind::Unit
 TypeHintKind::Tuple(Vec<TypeHint>)
-```
-
-Analysis should produce:
-
-```text
 TypeFact::Unit
 TypeFact::Tuple(Vec<TypeFact>)
 ```
 
-Tuple facts are trustworthy only when they come from verified contracts,
-literal construction, or guarded dynamic boundaries. A tuple type hint alone
-must not let the compiler skip guards for an unverified dynamic value.
+Tuple facts are trustworthy only when they come from construction, verified
+contracts, or runtime guards. A tuple type hint alone must not let the compiler
+skip guards for an unverified dynamic value.
 
 ### 5.3 Bytecode And VM Value Model
 
-Add an internal representation for unit and tuples:
+Add:
 
-```rust
+```text
 Value::Unit
-Value::TupleInline(...) or HeapValue::Tuple(Vec<Value>)
+OwnedValue::Unit
+HostValue::Unit or an equivalent no-result host contract
+tuple runtime representation
+tuple owned representation
+tuple reflection/runtime type facts
 ```
 
-The exact layout is an implementation decision:
+Then delete:
 
-- Small inline tuples are faster for common two-value returns.
-- Heap tuples reduce enum size churn and are simpler for arbitrary arity.
-- A hybrid layout may be added only if measurements justify the complexity.
-
-Remove or isolate `Value::Null` according to the selected external-null policy.
-Do not keep `Value::Null` as the ordinary no-result value.
+```text
+Value::Null
+OwnedValue::Null
+HostValue::Null
+Constant::Null
+PrimitiveTag::Null
+null register defaults
+null equality/keying/truthiness/guard behavior
+```
 
 The compiler should lower tuple construction and destructuring directly rather
 than routing through generic array creation.
@@ -388,7 +397,7 @@ functions with no meaningful result -> ()
 lookup/search/split APIs -> Option<T>
 fallible APIs -> Result<T, E>
 callbacks with effect-only behavior -> () return
-raw JSON/serde null -> explicit external value if needed
+raw JSON/serde null -> future explicit external value if needed
 ```
 
 Potential examples:
@@ -403,74 +412,38 @@ Set.add(value) -> bool or () depending on final API semantics
 
 ### 5.5 Host Conversion And Embedding
 
-Host conversion rules should become explicit:
+Host conversion rules:
 
 ```text
 Rust ()                <-> Vela ()
 Rust Option<T>::None   <-> Vela Option::None
 Rust Option<T>::Some   <-> Vela Option::Some(value)
 Rust Result<T, E>      <-> Vela Result<T, E> where registered
-Rust tuples            <-> Vela tuples for supported arities
-JSON/serde null        <-> explicit external null wrapper or typed Option::None
+Rust (A, B)..(A, B, C, D) <-> Vela tuples
+JSON/serde null        <-> explicit external data wrapper or typed Option::None
 ```
 
 No host adapter should rely on `null` as a catch-all missing value. Untyped
-host nullable data must choose between typed `Option<T>` and explicit raw data
-wrappers.
+host nullable data must choose between typed `Option<T>` and an explicit raw
+data wrapper.
 
-### 5.6 Reflection And Metadata
+### 5.6 Reflection, Metadata, And Hot Reload
 
 Reflection metadata should model optional fields with `Option`, omitted fields,
 or structured absence flags. It should not encode missing metadata as ordinary
 script `null`.
 
-Reflection must expose tuple and unit type descriptors:
+Reflection and schema contracts must expose:
 
 ```text
 TypeDesc::Unit
 TypeDesc::Tuple { elements: Vec<TypeDesc> }
 ```
 
-Hot reload and schema compatibility must compare tuple arity and element
-contracts structurally.
-
-### 5.7 Serialization And OwnedValue
-
-`OwnedValue` should distinguish:
+Hot reload and schema compatibility must treat these as incompatible:
 
 ```text
-Unit
-Tuple(Vec<OwnedValue>)
-Option / Result enum-shaped values
-ExternalNull only if explicit external-null is selected
-```
-
-If strict null removal is selected, raw JSON null cannot silently round-trip as
-ordinary `OwnedValue::Null`; it must use an external data wrapper or typed
-`Option::None`.
-
-### 5.8 Equality, Ordering, Map, And Set
-
-Unit is equality-keyable by a single stable key.
-
-Tuple equality should follow the object equality plan:
-
-- Builtin leaf tuple equality may be allowed only when all elements are
-  comparable under the ordinary `PartialEq` rules.
-- Tuple ordering should require all elements to satisfy the relevant ordering
-  contract.
-- Map/Set keyability for tuples should be a deliberate policy decision:
-  either allow tuples only when all elements are `ValueKey` keyable, or reject
-  tuple keys in the first slice to keep the key model small.
-
-Do not make tuple Map/Set key behavior call user comparison traits.
-
-### 5.9 Hot Reload ABI
-
-Hot reload ABI checks must treat the following as incompatible:
-
-```text
-null no-result -> () when visible in exported function/native signatures
+null no-result -> () when visible in exported/native signatures
 T -> (T, U)
 tuple arity changes
 tuple element contract changes
@@ -479,27 +452,6 @@ Result<T, E> payload tuple element changes
 external raw null policy changes in host schema
 ```
 
-Internal-only functions may change according to normal module recompilation
-rules, but exported ABI and service-provider contracts must remain strict.
-
-### 5.10 Tooling
-
-Update:
-
-```text
-grammar docs
-formatter spacing for tuple types, tuple expressions, and tuple patterns
-semantic tokens for unit, tuple punctuation, Option/Result payloads
-hover and completion display for tuple contracts
-signature help for tuple return values
-inlay hints around destructuring when useful
-rename/reference behavior inside tuple patterns
-diagnostics for arity mismatch, ambiguous one-element tuples, and null removal
-website docs and playground examples
-```
-
----
-
 ## 6. Implementation Phases
 
 Tracking rules:
@@ -507,161 +459,201 @@ Tracking rules:
 ```text
 [ ] task not started
 [~] task in progress or partially implemented
-[x] task implemented and covered by the named tests/validation
+[x] task implemented and covered by named tests/validation
 ```
 
-Do not mark a phase task `[x]` only because code compiles. A checkable task is
-complete when the implementation, focused tests, diagnostics/docs impact, and
-the phase validation note are all updated. If a task is intentionally deferred,
-leave it unchecked and add a short note naming the follow-up plan.
+Do not mark a task `[x]` only because code compiles. A task is complete when
+implementation, focused tests, docs/diagnostic impact, and validation notes are
+updated. If a task is intentionally deferred, leave it unchecked and name the
+follow-up.
 
-### Phase 1: Decide External Null Policy
+### Phase 0: Lock Hard-Switch Baseline
 
-- [ ] Choose strict null removal or explicit external-null wrapper.
-- [ ] Update `docs/decisions.md`.
-- [ ] Update architecture docs to distinguish current implementation from target
-  semantics if implementation will be incremental.
-- [ ] Add parser and VM tests that assert the old `null` behavior is no longer
-  the target.
+- [ ] Update `docs/decisions.md` with the selected strict source-null removal
+  policy and first-slice tuple limits.
+- [ ] Add baseline tests or audit notes that name current `null` behavior to be
+  deleted.
+- [ ] Confirm protocol JSON nulls are out of language-value scope and will be
+  audited separately.
 
 Exit criteria:
 
-- [ ] Durable decision recorded.
-- [ ] Tests name the selected null policy.
-- [ ] No runtime changes are required for this decision checkpoint.
+- [ ] No open design decision blocks implementation.
+- [ ] Goal-mode can start deleting without asking whether `null` survives.
 
-### Phase 2: Add Unit
+### Phase 1: Syntax And Grammar Hard Switch
 
-- [ ] Add `()` parsing in expression and type contexts.
-- [ ] Add unit HIR/type facts.
-- [ ] Add `Value::Unit` or equivalent runtime representation.
-- [ ] Make empty/statement-only blocks produce unit.
-- [ ] Make no-result functions and `return;` produce unit.
-- [ ] Update host conversion for Rust `()`.
-- [ ] Update diagnostics to print unit clearly.
+- [ ] Add `()` expression/type syntax.
+- [ ] Add tuple expression/type/destructuring syntax for arities 2+.
+- [ ] Reject `(x,)` and `(T,)` with source-spanned diagnostics.
+- [ ] Remove global `null` literal and type-hint syntax.
+- [ ] Remove `NullKw`, `Literal::Null`, null literal patterns, and null syntax
+  extraction.
+- [ ] Update `docs/grammar.ebnf`, tree-sitter grammar, syntax tests,
+  formatter lexical handling, semantic-token lexical categories, snippets, and
+  code actions that insert `null`.
 
-Tests:
+Focused validation:
 
-- [ ] Parser accepts unit expression and type.
-- [ ] Compiler lowers empty block and `return;`.
-- [ ] VM returns unit for effect-only functions.
-- [ ] Host native `()` returns unit.
-- [ ] Diagnostics render unit in type mismatch messages.
+- [ ] `cargo test -p vela_syntax`
+- [ ] `cargo test -p vela_language_service semantic_tokens code_action formatting`
+- [ ] editor grammar validation for checked-in `.vela` fixtures
 
-### Phase 3: Move Absence To Option
+### Phase 2: Core Value Model Hard Switch
 
-- [ ] Update stdlib and native APIs that returned `null` for expected absence.
-- [ ] Update Rust `Option<T>` conversion to use dynamic Option values.
-- [ ] Update `?` tests for `Option<T>` paths.
-- [ ] Update docs and examples.
+- [ ] Add unit and tuple value representations across runtime, owned, host,
+  bytecode constants, type facts, guards, equality, display, verifier, and
+  heap conversion.
+- [ ] Delete `Value::Null`, `OwnedValue::Null`, `HostValue::Null`,
+  `Constant::Null`, `PrimitiveTag::Null`, `TypeKind::Null`, `TypeHint::null`,
+  null keying, null truthiness, null equality, null register defaults, and null
+  type guards.
+- [ ] Replace default registers/no-result constants with unit.
+- [ ] Ensure Missing remains an internal sentinel only if still required; it
+  must not become public null by another name.
 
-Tests:
+Focused validation:
 
-- [ ] Lookup APIs return `Option::None`.
-- [ ] Split/search APIs return `Option::None`.
-- [ ] Typed Rust `Option<T>` round-trips through script `Option`.
-- [ ] Old null-as-not-found behavior is rejected or absent.
+- [ ] `cargo test -p vela_bytecode --no-fail-fast`
+- [ ] `cargo test -p vela_vm`
+- [ ] `cargo test -p vela_host`
+- [ ] `cargo test -p vela_reflect`
 
-### Phase 4: Add Tuple Syntax And Runtime Values
+### Phase 3: Compiler, Control Flow, And Runtime Semantics
 
-- [ ] Add tuple expressions, types, and patterns.
-- [ ] Add tuple construction bytecode.
-- [ ] Add tuple destructuring lowering.
-- [ ] Add runtime tuple guards.
-- [ ] Add tuple `OwnedValue` and reflection descriptors.
-- [ ] Add host conversion for selected Rust tuple arities.
+- [ ] Make empty blocks, statement-only blocks, expression branches with no
+  meaningful value, loop bodies, no-return functions, and `return;` produce
+  unit.
+- [ ] Lower tuple construction and destructuring directly.
+- [ ] Add tuple arity/type mismatch diagnostics for destructuring and dynamic
+  boundary guards.
+- [ ] Keep `?` Rust-aligned and reject cross-family `Option`/`Result`
+  propagation without explicit helpers.
+- [ ] Remove tests that assert null as void, null equality, null control-flow
+  defaults, or null literal matching; replace with behavior tests for unit,
+  Option, Result, and tuple payloads.
 
-Tests:
+Focused validation:
 
-- [ ] Tuple literals evaluate to fixed-size tuples.
-- [ ] Tuple destructuring binds values in order.
-- [ ] Arity mismatch is a source-spanned diagnostic.
-- [ ] Tuple type hints guard dynamic values.
-- [ ] Host Rust tuple arities convert correctly.
-- [ ] Reflection reports tuple element descriptors.
+- [ ] `cargo test -p vela_bytecode`
+- [ ] `cargo test -p vela_vm control_flow program_execution`
+- [ ] `cargo test -p vela_engine`
 
-### Phase 5: Integrate Option/Result With Tuple Payloads
+### Phase 4: Stdlib, Host, Reflection, And Embedding
 
-- [ ] Make `Option<(A, B)>` and `Result<(A, B), E>` precise in type facts.
-- [ ] Ensure `?` propagation preserves tuple payloads.
-- [ ] Update stdlib APIs such as `split_once`.
-- [ ] Add benchmark rows for tuple-return hot paths if they become common in
-  standard library code.
+- [ ] Change stdlib no-result signatures from `"null"` to `"()"`.
+- [ ] Change mutation helpers and no-result native calls to return unit.
+- [ ] Change lookup/search/split APIs to `Option<T>` and tuple payloads where
+  useful.
+- [ ] Change Rust `Option<T>` conversion to script `Option<T>`.
+- [ ] Add Rust `()` conversion and Rust tuple arity 2..=4 conversion.
+- [ ] Remove reflection missing-metadata nulls in favor of `Option`, omitted
+  fields, or explicit structured absence.
+- [ ] Remove engine/native/context schema descriptors that advertise `"null"`.
 
-Tests:
+Focused validation:
 
-- [ ] `Option` tuple payload unwraps through `?`.
-- [ ] `Result` tuple payload unwraps through `?`.
-- [ ] `Option ?` inside `Result`-returning function is rejected without
-  explicit `ok_or`.
-- [ ] `Result ?` inside `Option`-returning function is rejected without
-  explicit mapping.
-- [ ] `split_once`-style APIs return `Option` tuple payloads.
-- [ ] Tuple payload type mismatches fail at guarded boundaries.
+- [ ] `cargo test -p vela_stdlib`
+- [ ] `cargo test -p vela_engine`
+- [ ] `cargo test -p vela_reflect`
+- [ ] `cargo test --manifest-path examples/Cargo.toml`
 
-### Phase 6: Remove Or Isolate Null
+### Phase 5: Tuple Payloads, ABI, And Contracts
 
-- [ ] Remove global `null` literal and `null` type hint if strict removal is
-  selected.
-- [ ] Or move raw null behind explicit external data wrappers if that policy is
-  selected.
-- [ ] Remove ordinary `Value::Null` usage from compiler, VM, stdlib, host
-  bridge, reflection, and tests.
-- [ ] Update documentation and diagnostics.
+- [ ] Make `Option<(A, B)>` and `Result<(A, B), E>` precise in type facts,
+  guard plans, reflection descriptors, schema artifacts, and hot-reload ABI.
+- [ ] Add tuple `OwnedValue` conversion and tuple serde behavior that does not
+  use raw null.
+- [ ] Reject tuple Map/Set keys in the first slice with precise diagnostics.
+- [ ] Add hot-reload rejection for exported unit/tuple signature changes,
+  tuple arity changes, and tuple element contract changes.
+- [ ] Add focused benchmark rows for common tuple-return stdlib paths if they
+  are introduced.
 
-Tests:
+Focused validation:
 
-- [ ] Source-level null is rejected under strict removal.
-- [ ] Ordinary APIs do not return null.
-- [ ] External raw null wrapper preserves JSON/serde null if selected.
-- [ ] Missing reflection metadata no longer appears as null.
+- [ ] `cargo test -p vela_hot_reload`
+- [ ] `cargo test -p vela_bytecode type_contract`
+- [ ] `cargo test -p vela_vm option_result`
+- [ ] focused benchmark command recorded if tuple hot paths are added
 
-### Phase 7: Hot Reload, LSP, Formatter, And Website
+### Phase 6: Tooling, Docs, Examples, And Website
 
-- [ ] Update ABI comparison for unit and tuples.
-- [ ] Update schema artifacts.
-- [ ] Update LSP parsing, semantic tokens, completion, hover, signature help,
-  formatting, references, rename, and diagnostics.
-- [ ] Update website docs and playground examples.
-- [ ] Update conformance fixtures.
+- [ ] Update architecture docs, grammar docs, examples, conformance fixtures,
+  playground/site examples, and user-facing diagnostics.
+- [ ] Update LSP hover, completion, signature help, semantic tokens, rename,
+  references, code actions, formatting, inlay hints, and diagnostics for unit
+  and tuples.
+- [ ] Replace user-facing null placeholders with `()`, `Option::None`, or
+  typed fixits.
+- [ ] Classify surviving JSON nulls as protocol/serde fixture data rather than
+  Vela language values.
 
-Tests:
+Focused validation:
 
-- [ ] Hot reload rejects exported unit/tuple signature changes.
-- [ ] Schema artifact round-trips unit and tuple descriptors.
-- [ ] Formatter preserves tuple syntax.
-- [ ] LSP hover/completion/signature help render tuple/unit contracts.
-- [ ] Website builds with updated examples.
+- [ ] `cargo test -p vela_language_service`
+- [ ] `cargo test -p vela_lsp_server`
+- [ ] `npm --prefix site run build`
 
-### Phase 8: Performance And Cleanup
+### Phase 7: Final Audit And Cleanup
 
-- [ ] Add focused tuple/unit benchmark rows.
-- [ ] Profile common tuple-return stdlib paths.
-- [ ] Remove obsolete null compatibility helpers, tests, docs, and diagnostic
-  wording.
-- [ ] Validate full workspace.
+- [ ] Remove obsolete null compatibility helpers, tests, docs, diagnostics, and
+  migration-only names.
+- [ ] Confirm no temporary external-null wrapper was added only to keep old
+  behavior alive.
+- [ ] Confirm touched active source/test files stay under the ordinary
+  1200-line guideline or have a documented exception.
+- [ ] Run zero-result language-null audits and classify protocol/data nulls.
+- [ ] Run full workspace validation.
 
-Validation:
+Final validation:
 
-- [ ] `cargo fmt --all -- --check`
-- [ ] `cargo clippy --workspace --all-targets -- -D warnings`
-- [ ] `cargo test --workspace`
-- [ ] `cargo bench -p vela_vm --bench external_compare -- --quick tuple`
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+cargo test --manifest-path examples/Cargo.toml
+npm --prefix site run build
+```
 
-The benchmark row may be added during implementation. If it does not exist yet,
-record the focused VM/std-lib benchmark command that replaces it.
+If a command is unavailable in the current environment, record the reason and
+the closest focused substitute in the checkpoint notes.
 
----
+## 7. Audit Commands
 
-## 7. Test Plan
+Primary Vela-language null audit, expected zero hits at close-out:
+
+```bash
+rg -n "\bNullKw\b|Literal::Null|Value::Null|OwnedValue::Null|HostValue::Null|Constant::Null|PrimitiveTag::Null|TypeKind::Null|TypeHint::null|StdTypeSpec::primitive\(\"Null\"|\"null\"|return null|=> null" crates/vela_syntax crates/vela_hir crates/vela_analysis crates/vela_bytecode crates/vela_vm crates/vela_engine crates/vela_host crates/vela_reflect crates/vela_stdlib crates/vela_hot_reload crates/vela_language_service examples docs/architecture docs/grammar.ebnf editors/tree-sitter-vela
+```
+
+Protocol/data null classification audit, expected reviewed survivors only:
+
+```bash
+rg -n "\bnull\b|Value::Null|JsonValue::Null|serde_json::Value::Null" crates/vela_lsp_server crates/vela_language_service crates/vela_vm/src/serde.rs crates/vela_vm/src/serde docs examples
+```
+
+Tuple/unit implementation audit:
+
+```bash
+rg -n "Tuple|Unit|\(\)" crates/vela_syntax crates/vela_bytecode crates/vela_vm crates/vela_engine crates/vela_host crates/vela_reflect crates/vela_stdlib crates/vela_hot_reload crates/vela_language_service docs/architecture docs/grammar.ebnf
+```
+
+Architecture hygiene audit:
+
+```bash
+rg -n "legacy_null|null_compat|null_or_unit|null_to_unit|unit_or_null|temporary null|TODO.*null|FIXME.*null" crates examples docs
+```
+
+## 8. Test Plan
 
 Parser and grammar:
 
 ```text
 unit literal/type
 tuple expression/type/pattern
-parentheses vs one-element tuple ambiguity
-null rejection or explicit external-null syntax
+parentheses vs rejected one-element tuple diagnostics
+source-level null rejection
 ```
 
 HIR and analysis:
@@ -690,10 +682,10 @@ Host, reflection, and serde:
 ```text
 Rust () conversion
 Rust Option<T> conversion
-selected Rust tuple arity conversion
+Rust tuple arities 2..=4 conversion
 TypeDesc::Unit and TypeDesc::Tuple
-OwnedValue unit/tuple/external-null policy
-JSON/serde null behavior under selected policy
+OwnedValue unit/tuple conversion
+JSON/serde null kept outside ordinary Vela values
 ```
 
 Hot reload:
@@ -716,21 +708,11 @@ website build
 playground examples
 ```
 
-Validation:
+## 9. Design Rules For Implementation
 
-```bash
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
-npm --prefix site run build
-```
-
----
-
-## 8. Design Rules For Implementation
-
-- Keep unit, tuple, Option, Result, and external null as separate concepts.
-- Do not implement `null` aliases for `()` or `Option::None`.
+- Keep unit, tuple, Option, Result, Missing, and external-data null as separate
+  concepts.
+- Do not implement `null` aliases for `()`, `Option::None`, or `Result::Err`.
 - Keep `?` propagation Rust-aligned. Cross-family `Option`/`Result`
   propagation must use explicit conversion helpers.
 - Do not trust tuple type hints until values are proven by construction,
@@ -740,22 +722,6 @@ npm --prefix site run build
 - Keep tuple arity limits explicit in host conversions and ABI metadata.
 - Keep `Option<T>` and `Result<T, E>` as restricted builtin type-hint
   parameterization, not general script-language generics.
-- Keep raw external null out of ordinary script control flow.
+- Keep raw external null out of ordinary script control flow and VM values.
 - Prefer source-spanned breaking diagnostics over compatibility coercions.
-
----
-
-## 9. Open Decisions
-
-These should be resolved before implementation starts:
-
-1. Should source-level `null` be removed completely, or should raw null remain
-   only through an explicit external data wrapper?
-2. Should one-element tuples be supported in the first slice with `(T,)` and
-   `(value,)`, or deferred until a concrete use case appears?
-3. Should tuples be allowed as Map keys and Set elements in the first slice
-   when all elements are `ValueKey` keyable?
-4. Should tuple direct field access exist, or should first-slice tuple use be
-   destructuring-only?
-5. What maximum tuple arity should host conversion support without additional
-   boilerplate?
+- Delete temporary helpers and migration names before final acceptance.

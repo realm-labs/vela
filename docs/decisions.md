@@ -53,9 +53,14 @@ use `Result`. Ordinary script APIs should not use `null` for no-value,
 not-found, or failed results. `?` propagation should stay Rust-aligned:
 `Option` propagates through `Option`-returning functions, `Result` propagates
 through `Result`-returning functions, and cross-family conversion requires
-explicit helpers such as `ok_or`. Raw external null, if retained, must be
-explicit at the serde/JSON boundary rather than overloaded as the VM no-value
-result. The implementation plan lives in
+explicit helpers such as `ok_or`. The selected hard-switch policy removes
+source-level `null` from ordinary Vela rather than keeping a compatibility
+literal or type hint. Raw external null, if needed later, must be explicit at
+the serde/JSON boundary, for example through a dedicated external-data wrapper,
+and must not be overloaded as the VM no-value result. The first tuple slice
+defers one-element tuples, direct tuple field access, and tuple Map/Set keys;
+host Rust tuple conversion starts with arities 2 through 4. The implementation
+plan lives in
 [tuple-unit-null-refactor-plan.md](tuple-unit-null-refactor-plan.md).
 
 ### Source And Artifact Naming
@@ -283,13 +288,14 @@ and nested `Option`/`Result` hints.
 Semantic highlighting uses an editor-neutral Vela taxonomy in
 `vela_language_service` with standard LSP names where they exist and explicit
 fallback names for custom token types. Custom tokens such as `builtinType`,
-`const`, `global`, `boolean`, `null`, operator families, punctuation families,
-and unresolved references keep their Vela-specific names in the primary
-legend. `vela_lsp_server` owns client-specific fallback projection: clients
-that declare limited semantic-token support receive standard fallback token
-names and supported modifier fallbacks in the server legend without changing
-service classification. Editor packages may contribute fallback scope metadata,
-but must not compute semantic classifications.
+`const`, `global`, `boolean`, operator families, punctuation families, and
+unresolved references keep their Vela-specific names in the primary legend.
+The pre-hard-switch `null` token classification is removed when source-level
+`null` is deleted. `vela_lsp_server` owns client-specific fallback projection:
+clients that declare limited semantic-token support receive standard fallback
+token names and supported modifier fallbacks in the server legend without
+changing service classification. Editor packages may contribute fallback scope
+metadata, but must not compute semantic classifications.
 
 ### Function Identity
 
@@ -342,13 +348,13 @@ known metadata prefix until the registry has first-class optional/variadic
 metadata.
 
 Macro-generated descriptors for Rust `Option<T>` parameters and returns use
-`TypeHint::Any` for now. The script-visible value is `null` or the dynamic
-standard `Option` enum. This is a macro bridge limitation, not a language
-type-hint limitation: source and explicit metadata may express `Option<T>` as a
-builtin contract, but the current generated native wrapper keeps Rust
-`Option<T>` payload metadata erased until conversion semantics are tightened.
-Typed native conversion still decodes the `Option<T>` value at the Rust
-boundary.
+`TypeHint::Any` for now. The tuple/unit/null hard switch changes the
+script-visible value to the dynamic standard `Option` enum rather than `null`.
+This is a macro bridge limitation, not a language type-hint limitation: source
+and explicit metadata may express `Option<T>` as a builtin contract, but the
+current generated native wrapper keeps Rust `Option<T>` payload metadata erased
+until conversion semantics are tightened. Typed native conversion still decodes
+the `Option<T>` value at the Rust boundary.
 
 Embedding float conversions are exact: Rust `f32` maps to Vela `f32`, Rust
 `f64` maps to Vela `f64`, and the embedding layer does not silently convert
@@ -733,8 +739,10 @@ host, native, or schema boundary explicitly performs conversion or validation.
 Function return annotations are optional and have the same metadata-first
 semantics.
 
-`null` is retained for no-value, void-like results, host nullable boundaries,
-and missing metadata. Expected absence should use `Option::None`, recoverable
+The tuple/unit/null hard switch replaces no-value and void-like results with
+`()`, host nullable boundaries with typed `Option<T>` or an explicit future
+external-data wrapper, and missing metadata with `Option`, omitted fields, or
+structured absence. Expected absence should use `Option::None`, recoverable
 business failure should use `Result::Err`, and unrecoverable script/runtime
 failures should use VM diagnostics rather than `Result::Err`.
 
@@ -756,10 +764,10 @@ permissions, or effect-specific call permissions.
 
 ### Analysis And Tooling
 
-TypeFacts, completions, hover, match exhaustiveness, effect diagnostics, null
-narrowing, Option/Result predicate narrowing, and pattern diagnostics are
-analysis/tooling data. They should not change VM semantics unless a separate
-compiler/runtime decision says so.
+TypeFacts, completions, hover, match exhaustiveness, effect diagnostics,
+unit/tuple facts, Option/Result predicate narrowing, and pattern diagnostics
+are analysis/tooling data. They should not change VM semantics unless a
+separate compiler/runtime decision says so.
 
 ### Indexed For-In
 
@@ -1077,10 +1085,10 @@ while later growth does not extend the iterator.
 ### Public Type Hint Spelling
 
 Public script type hints use lowercase only for scalar/literal primitive
-contracts such as `null`, `bool`, `char`, `i64`, and `f64`. Erased dynamic,
-text/binary, collection, callable, and Option/Result contracts use capitalized
-names: `Any`, `String`, `Bytes`, `Array`, `Map`, `Set`, `Range`, `Iterator`,
-`Function`, `Closure`, `Option`, and `Result`.
+contracts such as `bool`, `char`, `i64`, and `f64`. Unit uses `()` syntax.
+Erased dynamic, text/binary, collection, callable, and Option/Result contracts
+use capitalized names: `Any`, `String`, `Bytes`, `Array`, `Map`, `Set`,
+`Range`, `Iterator`, `Function`, `Closure`, `Option`, and `Result`.
 
 Only builtin type-hint contracts may be parameterized:
 `Array<T>`, `Set<T>`, `Map<K, V>`, `Iterator<T>`, `Option<T>`, and
