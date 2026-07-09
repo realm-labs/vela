@@ -27,45 +27,48 @@ impl Compiler<'_, '_> {
         expression: &SyntaxExpression,
         record: &SyntaxRecordExpr,
     ) -> CompileResult<Option<Register>> {
-        let path = record.path_segments();
-        if path.is_empty() {
-            return Ok(None);
-        }
         let span = syntax_expression_span(source, expression);
+        let Some(expression_id) = self.expression_at_span(span) else {
+            return Ok(None);
+        };
+        let Some(path) = self.hir_constructor_path(expression_id) else {
+            return Ok(None);
+        };
+        let path = path.to_vec();
         let syntax_fields = record.fields();
         let field_uses = syntax_record_field_uses(source, &syntax_fields)?;
-        let (enum_constructor, shape) = if let Some((enum_name, variant)) = enum_variant_path(&path)
-        {
-            let resolved_enum_name = self.type_symbol_at_span(span);
-            let enum_name = resolved_enum_name.clone().unwrap_or(enum_name);
-            if resolved_enum_name.is_some()
-                && !self.enum_constructor_variant_exists(&enum_name, &variant)
-            {
-                return Err(self.constructor_diagnostics_error(vec![
-                    unknown_enum_variant_diagnostic(&enum_name, &variant, span),
-                ]));
-            }
-            let shape = self.enum_constructor_shape(&enum_name, &variant);
-            self.reject_constructor_diagnostics(record_constructor_field_diagnostics(
-                &format!("{enum_name}::{variant}"),
-                shape.as_ref(),
-                &field_uses,
-                span,
-            ))?;
-            (Some((enum_name, variant)), shape)
-        } else {
-            let type_name = self
-                .type_symbol_at_span(span)
-                .unwrap_or_else(|| path.join("::"));
-            let shape = self.record_constructor_shape(&type_name);
-            self.reject_constructor_diagnostics(record_constructor_field_diagnostics(
-                &type_name,
-                shape.as_ref(),
-                &field_uses,
-                span,
-            ))?;
-            (None, shape)
-        };
+        let (enum_constructor, record_type_name, shape) =
+            if let Some((enum_name, variant)) = enum_variant_path(&path) {
+                let resolved_enum_name = self.type_symbol_for_expression(expression_id);
+                let enum_name = resolved_enum_name.clone().unwrap_or(enum_name);
+                if resolved_enum_name.is_some()
+                    && !self.enum_constructor_variant_exists(&enum_name, &variant)
+                {
+                    return Err(self.constructor_diagnostics_error(vec![
+                        unknown_enum_variant_diagnostic(&enum_name, &variant, span),
+                    ]));
+                }
+                let shape = self.enum_constructor_shape(&enum_name, &variant);
+                self.reject_constructor_diagnostics(record_constructor_field_diagnostics(
+                    &format!("{enum_name}::{variant}"),
+                    shape.as_ref(),
+                    &field_uses,
+                    span,
+                ))?;
+                (Some((enum_name, variant)), None, shape)
+            } else {
+                let type_name = self
+                    .type_symbol_for_expression(expression_id)
+                    .unwrap_or_else(|| path.join("::"));
+                let shape = self.record_constructor_shape(&type_name);
+                self.reject_constructor_diagnostics(record_constructor_field_diagnostics(
+                    &type_name,
+                    shape.as_ref(),
+                    &field_uses,
+                    span,
+                ))?;
+                (None, Some(type_name), shape)
+            };
         let mut fields = Vec::new();
         let mut explicit_names = BTreeSet::new();
         for field in &syntax_fields {
@@ -109,9 +112,8 @@ impl Compiler<'_, '_> {
                 fields,
             });
         } else {
-            let type_name = self
-                .type_symbol_at_span(span)
-                .unwrap_or_else(|| path.join("::"));
+            let type_name =
+                record_type_name.expect("record constructor branch should carry type name");
             self.compile_schema_default_fields(
                 &mut fields,
                 &explicit_names,

@@ -190,7 +190,8 @@ also derives the enum type and variant from those HIR call facts instead of
 re-resolving the callee syntax span. Bytecode parameter-default record and enum
 constructor lowering now reads HIR constructor path facts plus HIR expression
 binding facts instead of re-resolving constructor type symbols from the record
-syntax span.
+syntax span, and ordinary bytecode record/enum constructor lowering uses the
+same HIR-backed constructor identity path.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`
