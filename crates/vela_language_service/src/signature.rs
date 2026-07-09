@@ -1050,6 +1050,39 @@ pub fn main() { source_any().grant(1, 2) }"#;
     }
 
     #[test]
+    fn signature_help_resolves_precise_stdlib_option_method_returns() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+            pub fn main() {
+                "Ada Lovelace".split_once(" ")
+            }
+        "#;
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let call_line = text.lines().nth(2).expect("call line should exist");
+        let position = Position::new(
+            2,
+            call_line
+                .find("\" \")")
+                .expect("split_once argument should exist"),
+        );
+        let help = databases
+            .signature_help(&document, position)
+            .expect("signature help should resolve split_once");
+
+        assert_eq!(help.active_parameter(), 0);
+        assert_eq!(
+            help.signatures()[0].label(),
+            "String.split_once(arg0: String) -> Option((String, String))"
+        );
+        assert_eq!(help.signatures()[0].parameters()[0].label(), "arg0: String");
+    }
+
+    #[test]
     fn signature_help_resolves_stdlib_function_call() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
         let text = r#"

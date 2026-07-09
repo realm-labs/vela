@@ -625,7 +625,9 @@ Focused validation:
   references, code actions, formatting, inlay hints, and diagnostics for unit
   and tuples. Unit type-hint completion and tuple/unit hover and signature
   display now preserve structural type facts through the language-service
-  query layer and LSP-focused validation.
+  query layer and LSP-focused validation. LSP hover and signature-help tests
+  now also cover precise stdlib `Option<T>` returns for string parse/split and
+  array lookup methods.
 - [x] Replace user-facing null placeholders with `()`, `Option::None`, or
   typed fixits. Active docs, examples, editor grammar, and website audits no
   longer show Vela-language null placeholders. The surviving active

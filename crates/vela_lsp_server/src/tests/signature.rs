@@ -1000,6 +1000,61 @@ fn lsp_signature_help_resolves_stdlib_function_call() {
     );
 }
 
+#[test]
+fn lsp_signature_help_reports_precise_stdlib_option_method_return() {
+    let mut server = LspServer::new();
+    let _ = response_value(handle_request(
+        &mut server,
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    ));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = "pub fn main() { \"Ada Lovelace\".split_once(\" \") }";
+    let _ = notification_value(handle_notification(
+        &mut server,
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    ));
+
+    let response = response_value(handle_request(
+        &mut server,
+        2,
+        "textDocument/signatureHelp",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 0,
+                "character": text.find("\" \")").unwrap_or_else(|| {
+                    panic!("signature fixture should contain split_once argument")
+                })
+            }
+        }),
+    ));
+
+    assert_eq!(response["result"]["activeSignature"], 0);
+    assert_eq!(response["result"]["activeParameter"], 0);
+    assert_eq!(
+        response["result"]["signatures"][0]["label"],
+        "String.split_once(arg0: String) -> Option((String, String))"
+    );
+    assert_eq!(
+        response["result"]["signatures"][0]["parameters"][0]["label"],
+        "arg0: String"
+    );
+}
+
 fn temp_workspace() -> PathBuf {
     let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
         Ok(duration) => duration.as_nanos(),

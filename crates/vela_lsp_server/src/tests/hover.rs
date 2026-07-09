@@ -268,6 +268,67 @@ fn lsp_hover_reports_stdlib_method_fact() {
 }
 
 #[test]
+fn lsp_hover_reports_precise_stdlib_option_method_returns() {
+    let mut server = LspServer::new();
+    let _ = initialize_default(&mut server);
+    let text = r#"pub fn main(scores: Array<i64>) {
+        "123".parse_i64()
+        scores.index_of(2)
+    }"#;
+    open_document(
+        &mut server,
+        "file:///workspace/scripts/game/main.vela",
+        text,
+    );
+
+    let parse_response = response_value(handle_request(
+        &mut server,
+        2,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
+            "position": {
+                "line": 1,
+                "character": text.lines().nth(1).unwrap_or("").find("parse_i64").unwrap_or_else(|| {
+                    panic!("hover fixture should contain parse_i64")
+                })
+            }
+        }),
+    ));
+    let parse_value = parse_response["result"]["contents"]["value"]
+        .as_str()
+        .expect("hover contents should be markdown");
+    assert!(parse_value.contains("String.parse_i64"), "{parse_value}");
+    assert!(
+        parse_value.contains("_method_: Function() -> Option(i64)"),
+        "{parse_value}"
+    );
+
+    let index_response = response_value(handle_request(
+        &mut server,
+        3,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
+            "position": {
+                "line": 2,
+                "character": text.lines().nth(2).unwrap_or("").find("index_of").unwrap_or_else(|| {
+                    panic!("hover fixture should contain index_of")
+                })
+            }
+        }),
+    ));
+    let index_value = index_response["result"]["contents"]["value"]
+        .as_str()
+        .expect("hover contents should be markdown");
+    assert!(index_value.contains("Array(i64).index_of"), "{index_value}");
+    assert!(
+        index_value.contains("_method_: Function(i64) -> Option(i64)"),
+        "{index_value}"
+    );
+}
+
+#[test]
 fn lsp_hover_reports_imported_module_path_fact() {
     let mut server = LspServer::new();
     let _ = initialize_default(&mut server);
