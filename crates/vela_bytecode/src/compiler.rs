@@ -1057,6 +1057,11 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             .map(|field| field.name.as_str())
     }
 
+    pub(in crate::compiler) fn hir_field_receiver_span_for_span(&self, span: Span) -> Option<Span> {
+        let field = self.hir_field_for_span(span)?;
+        self.expression_span(field.receiver)
+    }
+
     pub(in crate::compiler) fn binding_resolution_for_expression(
         &self,
         expression: HirExprId,

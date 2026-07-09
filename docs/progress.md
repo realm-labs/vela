@@ -195,6 +195,9 @@ projection lowering reads the numeric member from HIR field facts while keeping
 tuple members out of composed value paths.
 Bytecode host-path, record field read, and record field assignment lowering now
 read member names from HIR field facts instead of syntax field tokens.
+Bytecode host-path fallback resolution now also reads field receiver spans from
+HIR field facts for dynamic-index paths instead of asking field syntax for the
+receiver expression.
 Bytecode script, value, dynamic, and host method-call lowering now also reads
 the method member from HIR field facts instead of callee field syntax.
 Bytecode parameter-default field lowering now reads record/host field names

@@ -377,9 +377,9 @@ impl Compiler<'_, '_> {
         if let Some(resolved) = self.hir_host_value_path(span) {
             return Some(resolved);
         }
-        let field = expression.as_field()?;
-        let receiver = field.receiver()?;
         let name = self.hir_field_name_for_span(span)?.to_owned();
+        let receiver_span = self.hir_field_receiver_span_for_span(span)?;
+        let receiver = syntax_expression_child_at_span(source, expression, receiver_span)?;
         let mut resolved = self.syntax_host_path(source, &receiver)?;
         let field = self.host_path_field_part(resolved.type_name.as_deref(), &name)?;
         resolved.path.segments.push(field.part);
@@ -488,4 +488,19 @@ fn dynamic_host_path_part(key_type: &str) -> DynamicHostPathPart {
 fn syntax_host_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {
     let range = expression.syntax().text_range();
     Span::new(source, range.start().into(), range.end().into())
+}
+
+fn syntax_expression_child_at_span(
+    source: SourceId,
+    expression: &SyntaxExpression,
+    span: Span,
+) -> Option<SyntaxExpression> {
+    if span.source != source {
+        return None;
+    }
+    expression
+        .syntax()
+        .descendants()
+        .filter_map(SyntaxExpression::cast)
+        .find(|child| syntax_host_expression_span(source, child) == span)
 }

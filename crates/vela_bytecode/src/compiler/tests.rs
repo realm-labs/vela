@@ -222,6 +222,98 @@ fn main() {
     .expect("schema default block let should compile as a constant");
 }
 
+#[test]
+fn compiler_resolves_host_field_after_dynamic_index_from_hir_receiver() {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty(
+                "host",
+                std::iter::empty::<&str>(),
+                "IndexedPlayer",
+            ))
+            .host_runtime_id(11),
+        )
+        .expect("IndexedPlayer type should register");
+    let _inventory = registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty(
+                "host",
+                std::iter::empty::<&str>(),
+                "IndexedInventory",
+            ))
+            .host_runtime_id(12),
+        )
+        .expect("IndexedInventory type should register");
+    let item = registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty(
+                "host",
+                std::iter::empty::<&str>(),
+                "IndexedItem",
+            ))
+            .host_runtime_id(13),
+        )
+        .expect("IndexedItem type should register");
+    registry
+        .register_field(
+            vela_registry::FieldDef::new(
+                DefPath::field(
+                    "host",
+                    std::iter::empty::<&str>(),
+                    "IndexedPlayer",
+                    "inventory",
+                ),
+                player,
+            )
+            .type_hint(Some("IndexedInventory"))
+            .host_runtime_id(20),
+        )
+        .expect("IndexedPlayer::inventory field should register");
+    registry
+        .register_field(
+            vela_registry::FieldDef::new(
+                DefPath::field("host", std::iter::empty::<&str>(), "IndexedItem", "count"),
+                item,
+            )
+            .type_hint(Some("i64"))
+            .host_runtime_id(21),
+        )
+        .expect("IndexedItem::count field should register");
+    let options = options::CompilerOptions::new().with_host_index_capability(
+        "IndexedInventory",
+        options::HostIndexCapabilityInfo {
+            readable: true,
+            key_type: Some("String".to_owned()),
+            value_type: Some("IndexedItem".to_owned()),
+            ..Default::default()
+        },
+    );
+
+    let program = compile_program_source_with_options_and_registry(
+        SourceId::new(1),
+        r#"
+fn item_count(player: IndexedPlayer, item_id: String) {
+    return player.inventory[item_id].count;
+}
+"#,
+        &options,
+        registry.compile_view(),
+    )
+    .expect("host field after dynamic index should compile");
+    let function = program
+        .function("item_count")
+        .expect("item_count should exist");
+    assert!(
+        function
+            .cache_sites
+            .sites()
+            .iter()
+            .any(|site| site.kind == CacheSiteKind::HostPathRead),
+        "host field after dynamic index should lower to a host path read"
+    );
+}
+
 mod call_diagnostics;
 mod closures_and_bindings;
 mod diagnostics;
