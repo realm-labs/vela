@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 
 use crate::{
     metadata::{
-        array, attrs_value, bool_value, docs_value, int_value, record, span_value, string,
-        unit_value,
+        array, attrs_value, bool_value, docs_value, int_value, optional_string, record, span_value,
+        string,
     },
     value::ReflectValue,
 };
@@ -44,17 +44,14 @@ pub(super) fn function_record(desc: &FunctionDesc) -> ReflectValue {
                 int_value(i64::try_from(desc.id.get()).unwrap_or(i64::MAX)),
             ),
             ("name".to_owned(), string(desc.name.clone())),
-            (
-                "module".to_owned(),
-                desc.module.as_ref().map_or_else(unit_value, string),
-            ),
+            ("module".to_owned(), optional_string(desc.module.as_deref())),
             ("public".to_owned(), bool_value(desc.public)),
             ("effects".to_owned(), function_effects_record(desc)),
             ("access".to_owned(), function_access_record(desc)),
             ("origin".to_owned(), origin_value(desc.origin)),
             (
                 "return".to_owned(),
-                desc.return_type.as_ref().map_or_else(unit_value, string),
+                optional_string(desc.return_type.as_deref()),
             ),
             (
                 "params".to_owned(),
@@ -140,7 +137,7 @@ fn param_record(param: &FunctionParamDesc) -> ReflectValue {
             ("name".to_owned(), string(param.name.clone())),
             (
                 "type".to_owned(),
-                param.type_hint.as_ref().map_or_else(unit_value, string),
+                optional_string(param.type_hint.as_deref()),
             ),
             ("defaulted".to_owned(), bool_value(param.has_default)),
         ]),

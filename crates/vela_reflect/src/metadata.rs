@@ -21,8 +21,24 @@ pub(crate) fn int_value(value: i64) -> ReflectValue {
     host(HostValue::Scalar(vela_common::ScalarValue::I64(value)))
 }
 
-pub(crate) fn unit_value() -> ReflectValue {
-    host(HostValue::Unit)
+pub(crate) fn option_some(value: ReflectValue) -> ReflectValue {
+    ReflectValue::ScriptEnum {
+        enum_name: "Option".to_owned(),
+        variant: "Some".to_owned(),
+        fields: BTreeMap::from([("0".to_owned(), value)]),
+    }
+}
+
+pub(crate) fn option_none() -> ReflectValue {
+    ReflectValue::ScriptEnum {
+        enum_name: "Option".to_owned(),
+        variant: "None".to_owned(),
+        fields: BTreeMap::new(),
+    }
+}
+
+pub(crate) fn optional_string(value: Option<&str>) -> ReflectValue {
+    value.map_or_else(option_none, |value| option_some(string(value)))
 }
 
 pub(crate) fn array(values: impl IntoIterator<Item = ReflectValue>) -> ReflectValue {
@@ -49,18 +65,18 @@ pub(crate) fn attrs_value(attrs: &AttrMap) -> ReflectValue {
 }
 
 pub(crate) fn docs_value(docs: Option<&str>) -> ReflectValue {
-    docs.map_or_else(unit_value, string)
+    optional_string(docs)
 }
 
 pub(crate) fn span_value(span: Option<Span>) -> ReflectValue {
-    span.map_or_else(unit_value, |span| {
-        record(
+    span.map_or_else(option_none, |span| {
+        option_some(record(
             "ReflectSourceSpan",
             BTreeMap::from([
                 ("source".to_owned(), int_value(i64::from(span.source.get()))),
                 ("start".to_owned(), int_value(i64::from(span.start))),
                 ("end".to_owned(), int_value(i64::from(span.end))),
             ]),
-        )
+        ))
     })
 }

@@ -119,9 +119,9 @@ fn main() {
         && exports[0] == "game::reward::grant"
         && reflect::name(function) == "game::reward::grant"
         && reflect::origin(function) == "script"
-        && reflect::docs(function) == "Grant reward."
-        && reflect::attr(function, "event") == "reward"
-        && reflect::returns(function) == "bool"
+        && reflect::docs(function).unwrap_or("") == "Grant reward."
+        && reflect::attr(function, "event").unwrap_or("") == "reward"
+        && reflect::returns(function).unwrap_or("") == "bool"
         && reflect::has_function("game::reward::grant") {
         return 1;
     }

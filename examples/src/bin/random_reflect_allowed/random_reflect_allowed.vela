@@ -16,15 +16,15 @@ fn main() {
         && reflect::name(random) == "math::random"
         && reflect::kind(random) == "function"
         && reflect::origin(random) == "host"
-        && reflect::docs(random) == "Returns a deterministic seeded integer in the inclusive range."
-        && reflect::attr(random, "stdlib") == "math"
-        && reflect::returns(random) == "i64"
-        && random.module == "math"
+        && reflect::docs(random).unwrap_or("") == "Returns a deterministic seeded integer in the inclusive range."
+        && reflect::attr(random, "stdlib").unwrap_or("") == "math"
+        && reflect::returns(random).unwrap_or("") == "i64"
+        && random.module.unwrap_or("") == "math"
         && params.len() == 2
         && params[0].name == "min"
-        && params[0].type == "i64"
+        && params[0].type.unwrap_or("") == "i64"
         && params[1].name == "max"
-        && params[1].type == "i64"
+        && params[1].type.unwrap_or("") == "i64"
         && access.reflect_visible
         && access.reflect_callable
         && access.required_permissions.len() == 0

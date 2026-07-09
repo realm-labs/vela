@@ -1,5 +1,9 @@
 use super::*;
 
+fn option_string(value: &str) -> ReflectValue {
+    crate::metadata::option_some(ReflectValue::Host(HostValue::String(value.to_owned())))
+}
+
 #[test]
 fn unknown_variants_include_candidate_hints() {
     let registry = registry();
@@ -125,14 +129,8 @@ fn trait_query_returns_metadata_and_unknown_trait_candidates() {
         kind(&registry, &trait_method_value).expect("trait method kind metadata"),
         ReflectValue::Host(HostValue::String("trait_method".to_owned()))
     );
-    assert_eq!(
-        method_fields.get("return"),
-        Some(&ReflectValue::Host(HostValue::String("i64".to_owned())))
-    );
-    assert_eq!(
-        method_fields.get("returns"),
-        Some(&ReflectValue::Host(HostValue::String("i64".to_owned())))
-    );
+    assert_eq!(method_fields.get("return"), Some(&option_string("i64")));
+    assert_eq!(method_fields.get("returns"), Some(&option_string("i64")));
     let Some(ReflectValue::Array(params)) = method_fields.get("params") else {
         panic!("trait method params should be an array");
     };

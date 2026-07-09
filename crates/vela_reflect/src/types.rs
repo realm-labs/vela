@@ -5,7 +5,9 @@ use vela_host::value::HostValue;
 use crate::{
     candidates::{candidate_names, ranked_candidates},
     error::{ReflectError, ReflectErrorKind, ReflectResult},
-    metadata::{attrs_value, docs_value, int_value, record, span_value, string, unit_value},
+    metadata::{
+        attrs_value, docs_value, int_value, option_none, option_some, record, span_value, string,
+    },
     modules::DeclOrigin,
     registry::{TypeDesc, TypeKind, TypeRegistry},
     value::ReflectValue,
@@ -57,12 +59,12 @@ fn type_record(desc: &TypeDesc) -> ReflectValue {
     fields.insert("origin".to_owned(), origin_value(desc.origin));
     fields.insert(
         "schema_hash".to_owned(),
-        desc.schema_hash.map_or_else(unit_value, |hash| {
+        desc.schema_hash.map_or_else(option_none, |hash| {
             // TODO(reflect): stable IDs are u64, but reflection currently exposes IDs
             // through signed script ints. Replace this lossy saturation with a deliberate
             // unsigned/ID value surface before treating reflect::id() as a stable public
             // identity API.
-            int_value(i64::try_from(hash.get()).unwrap_or(i64::MAX))
+            option_some(int_value(i64::try_from(hash.get()).unwrap_or(i64::MAX)))
         }),
     );
     fields.insert(
@@ -211,13 +213,13 @@ mod tests {
         );
         assert_eq!(
             fields.get("docs"),
-            Some(&ReflectValue::Host(HostValue::String(
-                "A host player.".to_owned()
+            Some(&crate::metadata::option_some(ReflectValue::Host(
+                HostValue::String("A host player.".to_owned())
             )))
         );
         assert_eq!(
             fields.get("source_span"),
-            Some(&ReflectValue::ScriptRecord {
+            Some(&crate::metadata::option_some(ReflectValue::ScriptRecord {
                 type_name: "ReflectSourceSpan".to_owned(),
                 fields: BTreeMap::from([
                     (
@@ -233,7 +235,7 @@ mod tests {
                         ReflectValue::Host(HostValue::Scalar(vela_common::ScalarValue::I64(20)))
                     ),
                 ])
-            })
+            }))
         );
 
         let error = type_by_name(&registry, "Plyer").expect_err("unknown type");

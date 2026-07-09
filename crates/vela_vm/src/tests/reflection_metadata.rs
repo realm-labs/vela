@@ -114,9 +114,9 @@ fn main(player) {
     if reflect::name(player) == "Player"
         && reflect::id(player) == 100
         && reflect::kind(player) == "host"
-        && reflect::docs(player) == "A player host object."
-        && reflect::attr(player, "domain") == "gameplay"
-        && reflect::attr(player, "domain") == "gameplay"
+        && reflect::docs(player).unwrap_or("") == "A player host object."
+        && reflect::attr(player, "domain").unwrap_or("") == "gameplay"
+        && reflect::attr(player, "domain").unwrap_or("") == "gameplay"
         && reflect::has_attr(player, "domain")
         && !reflect::has_attr(player, "missing")
         && reflect::has_field(player, "level")
@@ -134,13 +134,13 @@ fn main(player) {
         && reflect::origin(field) == "host"
         && reflect::id(field) == 2
         && reflect::kind(field) == "field"
-        && reflect::get(field, "type") == "i64"
-        && reflect::get(field, "docs") == "Current player level."
-        && reflect::docs(field) == "Current player level."
+        && reflect::get(field, "type").unwrap_or("") == "i64"
+        && reflect::get(field, "docs").unwrap_or("") == "Current player level."
+        && reflect::docs(field).unwrap_or("") == "Current player level."
         && reflect::get(access, "reflect_readable")
         && reflect::get(access, "reflect_writable")
-        && reflect::attr(field, "unit") == "level"
-        && reflect::attr(field, "unit") == "level"
+        && reflect::attr(field, "unit").unwrap_or("") == "level"
+        && reflect::attr(field, "unit").unwrap_or("") == "level"
         && reflect::has_attr(field, "unit")
         && !reflect::has_attr(field, "missing")
         && reflect::get(field, "writable") {
@@ -271,11 +271,11 @@ fn main() {
     let params = reflect::params(function);
     let direct = reflect::params(reflect::get(function, "params"));
     return reflect::get(params[0], "name") == "player"
-        && reflect::get(params[0], "type") == "Player"
+        && reflect::get(params[0], "type").unwrap_or("") == "Player"
         && reflect::get(params[1], "name") == "amount"
         && reflect::get(params[1], "defaulted")
         && reflect::get(direct[1], "name") == "amount"
-        && reflect::returns(function) == "bool";
+        && reflect::returns(function).unwrap_or("") == "bool";
 }
 "#,
     )
@@ -382,10 +382,10 @@ fn main(player) {
         && reflect::get(method, "owner") == "Player"
         && reflect::owner(method) == "Player"
         && reflect::origin(method) == "host"
-        && reflect::attr(method, "effect") == "write"
-        && reflect::get(methods[0], "return") == "bool"
+        && reflect::attr(method, "effect").unwrap_or("") == "write"
+        && reflect::get(methods[0], "return").unwrap_or("") == "bool"
         && reflect::get(reflect::get(methods[0], "params")[0], "name") == "amount"
-        && reflect::get(reflect::get(methods[0], "params")[0], "type") == "i64"
+        && reflect::get(reflect::get(methods[0], "params")[0], "type").unwrap_or("") == "i64"
         && reflect::get(reflect::get(method, "params")[0], "name") == "amount"
         && reflect::get(player_type, "trait_count") == 1
         && reflect::get(quest_type, "variant_count") == 2
@@ -537,7 +537,7 @@ fn compiled_source_reflects_type_source_span_metadata() {
         r#"
 fn main() {
     let player = reflect::type_info("Player");
-    let span = reflect::get(player, "source_span");
+    let span = reflect::get(player, "source_span").unwrap_or(());
     if reflect::get(span, "source") == 7
         && reflect::get(span, "start") == 20
         && reflect::get(span, "end") == 42 {

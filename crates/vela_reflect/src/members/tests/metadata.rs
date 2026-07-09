@@ -1,5 +1,9 @@
 use super::*;
 
+fn option_string(value: &str) -> ReflectValue {
+    crate::metadata::option_some(ReflectValue::Host(HostValue::String(value.to_owned())))
+}
+
 #[test]
 fn name_kind_and_field_queries_return_copied_metadata() {
     let registry = registry();
@@ -15,7 +19,7 @@ fn name_kind_and_field_queries_return_copied_metadata() {
     );
     assert_eq!(
         docs(&registry, &target).expect("docs"),
-        ReflectValue::Host(HostValue::String("A player host object.".to_owned()))
+        option_string("A player host object.")
     );
     assert_eq!(
         attrs(&registry, &target).expect("attrs"),
@@ -38,10 +42,7 @@ fn name_kind_and_field_queries_return_copied_metadata() {
         fields.get("writable"),
         Some(&ReflectValue::Host(HostValue::Bool(true)))
     );
-    assert_eq!(
-        fields.get("type"),
-        Some(&ReflectValue::Host(HostValue::String("i64".to_owned())))
-    );
+    assert_eq!(fields.get("type"), Some(&option_string("i64")));
     assert_eq!(
         fields.get("access"),
         Some(&ReflectValue::ScriptRecord {
@@ -70,12 +71,7 @@ fn name_kind_and_field_queries_return_copied_metadata() {
             ]),
         })
     );
-    assert_eq!(
-        fields.get("docs"),
-        Some(&ReflectValue::Host(HostValue::String(
-            "Current level.".to_owned()
-        )))
-    );
+    assert_eq!(fields.get("docs"), Some(&option_string("Current level.")));
     assert_eq!(
         fields.get("attrs"),
         Some(&ReflectValue::Record(BTreeMap::from([(
@@ -93,7 +89,7 @@ fn name_kind_and_field_queries_return_copied_metadata() {
     );
     assert_eq!(
         docs(&registry, &field_metadata).expect("field docs"),
-        ReflectValue::Host(HostValue::String("Current level.".to_owned()))
+        option_string("Current level.")
     );
     assert_eq!(
         name(&registry, &field_metadata).expect("field metadata name"),
@@ -120,12 +116,12 @@ fn name_kind_and_field_queries_return_copied_metadata() {
     );
     assert_eq!(
         attr(&registry, &field_metadata, "unit").expect("field attr"),
-        ReflectValue::Host(HostValue::String("level".to_owned()))
+        option_string("level")
     );
     assert!(has_attr(&registry, &field_metadata, "unit").expect("field has attr"));
     assert_eq!(
         attr(&registry, &field_metadata, "missing").expect("missing field attr"),
-        ReflectValue::Host(HostValue::Unit)
+        crate::metadata::option_none()
     );
     assert!(!has_attr(&registry, &field_metadata, "missing").expect("missing field attr"));
     let ReflectValue::Array(all_fields) = all_fields(&registry) else {
@@ -207,14 +203,8 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
     let ReflectValue::ScriptRecord { fields, .. } = &method_records[0] else {
         panic!("method metadata should be a record");
     };
-    assert_eq!(
-        fields.get("return"),
-        Some(&ReflectValue::Host(HostValue::String("bool".to_owned())))
-    );
-    assert_eq!(
-        fields.get("returns"),
-        Some(&ReflectValue::Host(HostValue::String("bool".to_owned())))
-    );
+    assert_eq!(fields.get("return"), Some(&option_string("bool")));
+    assert_eq!(fields.get("returns"), Some(&option_string("bool")));
     let Some(ReflectValue::Array(raw_params)) = fields.get("params") else {
         panic!("method params should be an array");
     };
@@ -230,10 +220,7 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
         param_fields.get("name"),
         Some(&ReflectValue::Host(HostValue::String("amount".to_owned())))
     );
-    assert_eq!(
-        param_fields.get("type"),
-        Some(&ReflectValue::Host(HostValue::String("i64".to_owned())))
-    );
+    assert_eq!(param_fields.get("type"), Some(&option_string("i64")));
     let Some(ReflectValue::ScriptRecord {
         fields: effect_fields,
         ..
@@ -378,7 +365,7 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
     );
     assert_eq!(
         returns(&registry, &single_method_value).expect("method returns metadata"),
-        ReflectValue::Host(HostValue::String("bool".to_owned()))
+        option_string("bool")
     );
     let ReflectValue::ScriptRecord {
         fields: helper_access,

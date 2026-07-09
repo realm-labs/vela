@@ -345,27 +345,27 @@ fn main() {
     let methods = reflect::methods(context);
     let emit = reflect::method(context, "emit");
     let log = reflect::method(context, "log");
-    return reflect::docs(context) == "Standard host context object for deterministic time, events, and logging."
-        && reflect::attr(context, "stdlib") == "context"
-        && reflect::attr(context, "domain") == "context"
+    return reflect::docs(context).unwrap_or("") == "Standard host context object for deterministic time, events, and logging."
+        && reflect::attr(context, "stdlib").unwrap_or("") == "context"
+        && reflect::attr(context, "domain").unwrap_or("") == "context"
         && fields.len() == 2
         && fields[0].name == "now"
-        && reflect::docs(fields[0]) == "Current deterministic context timestamp."
-        && reflect::attr(fields[0], "stdlib") == "context"
-        && reflect::attr(fields[0], "domain") == "context"
+        && reflect::docs(fields[0]).unwrap_or("") == "Current deterministic context timestamp."
+        && reflect::attr(fields[0], "stdlib").unwrap_or("") == "context"
+        && reflect::attr(fields[0], "domain").unwrap_or("") == "context"
         && fields[1].name == "tick"
-        && reflect::docs(fields[1]) == "Current deterministic context tick."
-        && reflect::attr(fields[1], "stdlib") == "context"
-        && reflect::attr(fields[1], "domain") == "context"
+        && reflect::docs(fields[1]).unwrap_or("") == "Current deterministic context tick."
+        && reflect::attr(fields[1], "stdlib").unwrap_or("") == "context"
+        && reflect::attr(fields[1], "domain").unwrap_or("") == "context"
         && methods.len() == 2
         && emit.owner == "Context"
-        && reflect::docs(emit) == "Records an event emission patch for the host safe point."
-        && reflect::attr(emit, "stdlib") == "context"
-        && reflect::attr(emit, "domain") == "context"
+        && reflect::docs(emit).unwrap_or("") == "Records an event emission patch for the host safe point."
+        && reflect::attr(emit, "stdlib").unwrap_or("") == "context"
+        && reflect::attr(emit, "domain").unwrap_or("") == "context"
         && log.owner == "Context"
-        && reflect::docs(log) == "Records a log patch for the host safe point."
-        && reflect::attr(log, "stdlib") == "context"
-        && reflect::attr(log, "domain") == "context";
+        && reflect::docs(log).unwrap_or("") == "Records a log patch for the host safe point."
+        && reflect::attr(log, "stdlib").unwrap_or("") == "context"
+        && reflect::attr(log, "domain").unwrap_or("") == "context";
 }
 "#)
     .expect("program should compile");

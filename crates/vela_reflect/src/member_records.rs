@@ -1,12 +1,10 @@
 use std::collections::BTreeMap;
 
-use vela_host::value::HostValue;
-
 use crate::{
     access::MethodEffectSet,
     metadata::{
-        array, attrs_value, bool_value, docs_value, host, int_value, record, span_value, string,
-        unit_value,
+        array, attrs_value, bool_value, docs_value, int_value, optional_string, record, span_value,
+        string,
     },
     modules::DeclOrigin,
     registry::{FieldDesc, MethodDesc, TraitDesc, TraitMethodDesc, VariantDesc},
@@ -33,11 +31,11 @@ fn method_record_fields(method: &MethodDesc) -> ReflectFields {
     );
     fields.insert(
         "return".to_owned(),
-        optional_string(method.return_type.as_ref()),
+        optional_string(method.return_type.as_deref()),
     );
     fields.insert(
         "returns".to_owned(),
-        optional_string(method.return_type.as_ref()),
+        optional_string(method.return_type.as_deref()),
     );
     fields.insert("effects".to_owned(), method_effects_record(method));
     fields.insert("access".to_owned(), method_access_record(method));
@@ -56,7 +54,10 @@ fn method_param_record(param: &crate::registry::MethodParamDesc) -> ReflectValue
         "ReflectParam",
         BTreeMap::from([
             ("name".to_owned(), string(param.name.clone())),
-            ("type".to_owned(), optional_string(param.type_hint.as_ref())),
+            (
+                "type".to_owned(),
+                optional_string(param.type_hint.as_deref()),
+            ),
             ("defaulted".to_owned(), bool_value(param.has_default)),
         ]),
     )
@@ -124,11 +125,11 @@ fn trait_method_record(owner: &str, method: &TraitMethodDesc) -> ReflectValue {
             ),
             (
                 "return".to_owned(),
-                optional_string(method.return_type.as_ref()),
+                optional_string(method.return_type.as_deref()),
             ),
             (
                 "returns".to_owned(),
-                optional_string(method.return_type.as_ref()),
+                optional_string(method.return_type.as_deref()),
             ),
             ("defaulted".to_owned(), bool_value(method.has_default)),
             ("docs".to_owned(), docs_value(method.docs.as_deref())),
@@ -194,11 +195,7 @@ fn field_record_fields(field: &FieldDesc) -> ReflectFields {
     fields.insert("origin".to_owned(), origin_value(field.origin));
     fields.insert(
         "type".to_owned(),
-        field
-            .type_hint
-            .as_ref()
-            .filter(|hint| !hint.is_empty())
-            .map_or_else(unit_value, string),
+        optional_string(field.type_hint.as_deref().filter(|hint| !hint.is_empty())),
     );
     fields.insert("writable".to_owned(), bool_value(field.writable));
     fields.insert("defaulted".to_owned(), bool_value(field.has_default));
@@ -271,8 +268,4 @@ fn effect_set_record(effects: &MethodEffectSet) -> ReflectValue {
 
 fn string_array(values: &[String]) -> ReflectValue {
     array(values.iter().map(|value| string(value.clone())))
-}
-
-fn optional_string(value: Option<&String>) -> ReflectValue {
-    value.map_or_else(unit_value, |value| host(HostValue::String(value.clone())))
 }

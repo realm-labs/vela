@@ -14,6 +14,10 @@ use crate::value::ReflectValue;
 
 use super::*;
 
+fn option_string(value: &str) -> ReflectValue {
+    crate::metadata::option_some(ReflectValue::Host(HostValue::String(value.to_owned())))
+}
+
 #[test]
 fn registers_script_module_functions_and_exports() {
     let mut graph = ModuleGraph::new();
@@ -155,13 +159,11 @@ fn module_function_queries_return_records_and_candidates() {
             }
         )
         .expect("module docs helper"),
-        ReflectValue::Host(HostValue::String("Reward module.".to_owned()))
+        option_string("Reward module.")
     );
     assert_eq!(
         module_metadata.get("docs"),
-        Some(&ReflectValue::Host(HostValue::String(
-            "Reward module.".to_owned()
-        )))
+        Some(&option_string("Reward module."))
     );
     assert_eq!(
         module_metadata.get("attrs"),
@@ -248,7 +250,7 @@ fn module_function_queries_return_records_and_candidates() {
     );
     assert_eq!(
         function_metadata.get("return"),
-        Some(&ReflectValue::Host(HostValue::String("bool".into())))
+        Some(&option_string("bool"))
     );
     assert_eq!(
         function_metadata.get("origin"),
@@ -334,9 +336,7 @@ fn module_function_queries_return_records_and_candidates() {
     );
     assert_eq!(
         function_metadata.get("docs"),
-        Some(&ReflectValue::Host(HostValue::String(
-            "Grant reward.".into()
-        )))
+        Some(&option_string("Grant reward."))
     );
     assert_eq!(
         function_metadata.get("attrs"),

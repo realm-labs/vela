@@ -63,6 +63,12 @@ host Rust tuple conversion starts with arities 2 through 4. The implementation
 plan lives in
 [tuple-unit-null-refactor-plan.md](tuple-unit-null-refactor-plan.md).
 
+Reflection metadata must not use unit as a missing-data sentinel. Optional
+copied metadata such as docs, attributes, source spans, schema hashes, module
+owners, type hints, and return hints is script-visible as `Option::Some(...)`
+or `Option::None`. A real unit return contract remains the type string `"()"`;
+absence of a return hint is `Option::None`.
+
 ### Source And Artifact Naming
 
 Vela source files use `.vela`. Future precompiled bytecode-only artifacts use

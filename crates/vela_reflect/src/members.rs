@@ -9,7 +9,7 @@ use crate::{
     candidates::{candidate_names, ranked_candidates},
     descriptor_targets,
     error::{ReflectError, ReflectErrorKind, ReflectResult},
-    metadata::{attrs_value, docs_value, span_value},
+    metadata::{attrs_value, docs_value, option_none, option_some, span_value, string},
     metadata_records,
     permissions::ReflectPolicy,
     registry::{MethodDesc, TypeDesc, TypeKind, TypeRegistry},
@@ -98,9 +98,9 @@ pub fn owner(_registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<R
 }
 
 pub fn origin(_registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
-    Ok(ReflectValue::Host(
-        metadata_records::origin(target)?.unwrap_or(HostValue::Unit),
-    ))
+    metadata_records::origin(target)?
+        .map(ReflectValue::Host)
+        .ok_or_else(|| ReflectError::new(ReflectErrorKind::InvalidTarget))
 }
 
 pub fn attrs(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
@@ -116,14 +116,11 @@ pub fn attr(
     name: &str,
 ) -> ReflectResult<ReflectValue> {
     match target_type(registry, target) {
-        Ok(desc) => Ok(ReflectValue::Host(
-            desc.attrs
-                .get(name)
-                .map_or(HostValue::Unit, |value| HostValue::String(value.to_owned())),
-        )),
-        Err(error) => metadata_records::attr(target, name)?
-            .map(ReflectValue::Host)
-            .ok_or(error),
+        Ok(desc) => Ok(desc
+            .attrs
+            .get(name)
+            .map_or_else(option_none, |value| option_some(string(value.to_owned())))),
+        Err(error) => metadata_records::attr(target, name)?.ok_or(error),
     }
 }
 
@@ -137,9 +134,7 @@ pub fn has_attr(registry: &TypeRegistry, target: &ReflectValue, name: &str) -> R
 pub fn docs(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     match target_type(registry, target) {
         Ok(desc) => Ok(docs_value(desc.docs.as_deref())),
-        Err(error) => metadata_records::docs(target)?
-            .map(ReflectValue::Host)
-            .ok_or(error),
+        Err(error) => metadata_records::docs(target)?.ok_or(error),
     }
 }
 
@@ -177,7 +172,6 @@ pub fn params(_registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<
 
 pub fn returns(_registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<ReflectValue> {
     metadata_records::returns(target)?
-        .map(ReflectValue::Host)
         .ok_or_else(|| ReflectError::new(ReflectErrorKind::InvalidTarget))
 }
 

@@ -183,8 +183,8 @@ fn main() {
     return math_exports.len() == 15
         && math_exports.contains("math::max")
         && math_exports.contains("math::random")
-        && reflect::docs(max) == "Returns the larger numeric value."
-        && reflect::docs(random) == "Returns a deterministic seeded integer in the inclusive range."
+        && reflect::docs(max).unwrap_or("") == "Returns the larger numeric value."
+        && reflect::docs(random).unwrap_or("") == "Returns a deterministic seeded integer in the inclusive range."
         && required.len() == 0
         && !effects.reads_host
         && !effects.writes_host

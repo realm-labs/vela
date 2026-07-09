@@ -55,7 +55,7 @@ fn main() {
     if reflect::get(module, "name") == "game::reward"
         && reflect::name(module) == "game::reward"
         && reflect::kind(module) == "module"
-        && reflect::kind(reflect::source_span(module)) == "source_span"
+        && reflect::kind(reflect::source_span(module).unwrap_or(())) == "source_span"
         && reflect::has_module("game::reward")
         && !reflect::has_module("game::missing")
         && reflect::has_function("game::reward::grant")
@@ -72,12 +72,12 @@ fn main() {
         && reflect::id(function) == reflect::get(function, "id")
         && reflect::kind(function) == "function"
         && reflect::get(function, "id") > 0
-        && reflect::docs(function) == "Grant reward."
+        && reflect::docs(function).unwrap_or("") == "Grant reward."
         && reflect::origin(function) == "script"
         && reflect::origin(module) == "script"
-        && reflect::attr(function, "event") == "reward"
-        && reflect::get(reflect::source_span(function), "source") == 1
-        && reflect::get(function, "return") == "bool" {
+        && reflect::attr(function, "event").unwrap_or("") == "reward"
+        && reflect::get(reflect::source_span(function).unwrap_or(()), "source") == 1
+        && reflect::get(function, "return").unwrap_or("") == "bool" {
         return 2;
     }
     return 0;

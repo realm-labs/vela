@@ -126,7 +126,7 @@ fn main(ctx: Context, player: Player) {
     let time_elapsed_effects = reflect::effects(time_elapsed);
     let reflected_now = reflect::call(time_now);
     let reflected_elapsed = reflect::call(time_elapsed, 1699999990);
-    let main_source_span = reflect::source_span(main_function);
+    let main_source_span = reflect::source_span(main_function).unwrap_or(());
     let ctx_methods = reflect::methods(ctx);
     let ctx_fields = reflect::fields(context_type);
     let ctx_emit = reflect::method(ctx, "emit");
@@ -200,74 +200,74 @@ fn main(ctx: Context, player: Player) {
         && reflect::kind(closure_value_type) == "closure"
         && reflect::name(range_value_type) == "range"
         && reflect::kind(range_value_type) == "range"
-        && reflect::attr(string_type, "stdlib") == "builtin"
-        && reflect::attr(bytes_type, "stdlib") == "builtin"
-        && reflect::attr(array_type, "stdlib") == "builtin"
-        && reflect::attr(option_type, "stdlib") == "option"
-        && reflect::attr(result_type, "stdlib") == "result"
+        && reflect::attr(string_type, "stdlib").unwrap_or("") == "builtin"
+        && reflect::attr(bytes_type, "stdlib").unwrap_or("") == "builtin"
+        && reflect::attr(array_type, "stdlib").unwrap_or("") == "builtin"
+        && reflect::attr(option_type, "stdlib").unwrap_or("") == "option"
+        && reflect::attr(result_type, "stdlib").unwrap_or("") == "result"
         && reflect::has_method(option_type, "map")
         && reflect::has_method(option_type, "ok_or")
         && reflect::has_method(result_type, "map_err")
         && reflect::has_method(result_type, "to_error_option")
         && option_map.params[0].name == "callback"
-        && option_map.params[0].type == "Function"
-        && reflect::returns(option_map) == "Option"
-        && reflect::attr(option_map, "stdlib") == "option"
+        && option_map.params[0].type.unwrap_or("") == "Function"
+        && reflect::returns(option_map).unwrap_or("") == "Option"
+        && reflect::attr(option_map, "stdlib").unwrap_or("") == "option"
         && option_ok_or.params[0].name == "error"
-        && reflect::returns(option_ok_or) == "Result"
+        && reflect::returns(option_ok_or).unwrap_or("") == "Result"
         && result_map_err.params[0].name == "callback"
-        && result_map_err.params[0].type == "Function"
-        && reflect::returns(result_map_err) == "Result"
-        && reflect::attr(result_map_err, "stdlib") == "result"
-        && reflect::returns(result_to_error) == "Option"
+        && result_map_err.params[0].type.unwrap_or("") == "Function"
+        && reflect::returns(result_map_err).unwrap_or("") == "Result"
+        && reflect::attr(result_map_err, "stdlib").unwrap_or("") == "result"
+        && reflect::returns(result_to_error).unwrap_or("") == "Option"
         && reflect::has_method(string_type, "trim")
         && reflect::has_method(array_type, "map")
         && reflect::has_method(map_type, "get")
         && reflect::has_method(set_type, "union")
         && reflect::has_method(range_type, "len")
         && reflect::has_method(range_type, "is_empty")
-        && reflect::returns(string_trim) == "String"
-        && reflect::attr(string_trim, "stdlib") == "string"
+        && reflect::returns(string_trim).unwrap_or("") == "String"
+        && reflect::attr(string_trim, "stdlib").unwrap_or("") == "string"
         && string_trim.owner == "string"
         && reflect::has_method(bytes_type, "read_u32_le")
         && reflect::has_method(bytes_type, "to_hex")
         && bytes_read_u32_le.params[0].name == "index"
-        && bytes_read_u32_le.params[0].type == "i64"
-        && reflect::returns(bytes_read_u32_le) == "u32"
-        && reflect::attr(bytes_read_u32_le, "stdlib") == "bytes"
-        && reflect::returns(bytes_to_hex) == "String"
-        && reflect::attr(bytes_to_hex, "stdlib") == "bytes"
-        && array_map.params[0].type == "Function"
-        && reflect::returns(array_map) == "Array"
-        && reflect::attr(array_map, "stdlib") == "array"
+        && bytes_read_u32_le.params[0].type.unwrap_or("") == "i64"
+        && reflect::returns(bytes_read_u32_le).unwrap_or("") == "u32"
+        && reflect::attr(bytes_read_u32_le, "stdlib").unwrap_or("") == "bytes"
+        && reflect::returns(bytes_to_hex).unwrap_or("") == "String"
+        && reflect::attr(bytes_to_hex, "stdlib").unwrap_or("") == "bytes"
+        && array_map.params[0].type.unwrap_or("") == "Function"
+        && reflect::returns(array_map).unwrap_or("") == "Array"
+        && reflect::attr(array_map, "stdlib").unwrap_or("") == "array"
         && map_get.params[0].name == "key"
-        && map_get.params[0].type == "Any"
-        && reflect::returns(map_get) == "Option"
-        && reflect::attr(map_get, "stdlib") == "map"
-        && set_union.params[0].type == "Set"
-        && reflect::returns(set_union) == "Set"
-        && reflect::attr(set_union, "stdlib") == "set"
+        && map_get.params[0].type.unwrap_or("") == "Any"
+        && reflect::returns(map_get).unwrap_or("") == "Option"
+        && reflect::attr(map_get, "stdlib").unwrap_or("") == "map"
+        && set_union.params[0].type.unwrap_or("") == "Set"
+        && reflect::returns(set_union).unwrap_or("") == "Set"
+        && reflect::attr(set_union, "stdlib").unwrap_or("") == "set"
         && range_len.params.is_empty()
-        && reflect::returns(range_len) == "i64"
-        && reflect::attr(range_len, "stdlib") == "range"
+        && reflect::returns(range_len).unwrap_or("") == "i64"
+        && reflect::attr(range_len, "stdlib").unwrap_or("") == "range"
         && range_is_empty.params.is_empty()
-        && reflect::returns(range_is_empty) == "bool"
+        && reflect::returns(range_is_empty).unwrap_or("") == "bool"
         && reflect::has_field(config_type, "kill_rewards")
-        && reflect::field(config_type, "exp_to_next_level").type == "i64"
+        && reflect::field(config_type, "exp_to_next_level").type.unwrap_or("") == "i64"
         && reflect::has_type("Inventory")
         && reflect::kind(inventory_type) == "host"
         && reflect::id(inventory_type) > 0
         && inventory_fields.len() == 1
         && inventory_fields[0].owner == "Inventory"
         && inventory_fields[0].name == "items"
-        && inventory_fields[0].type == "StringItemMap"
+        && inventory_fields[0].type.unwrap_or("") == "StringItemMap"
         && reflect::has_type("ItemStack")
         && reflect::kind(item_stack_type) == "host"
         && reflect::id(item_stack_type) > 0
         && item_stack_fields.len() == 1
         && item_stack_fields[0].owner == "ItemStack"
         && item_stack_fields[0].name == "count"
-        && item_stack_fields[0].type == "i64"
+        && item_stack_fields[0].type.unwrap_or("") == "i64"
         && item_count.owner == "ItemStack"
         && item_count.name == "count"
         && item_count.writable
@@ -276,7 +276,7 @@ fn main(ctx: Context, player: Player) {
         && reflect::kind(quest_type) == "script_enum"
         && reflect::kind(host_quest_type) == "host"
         && reflect::has_field(player_type, "quest_progress")
-        && reflect::field(player_type, "quest_progress").type == "HostQuestProgress"
+        && reflect::field(player_type, "quest_progress").type.unwrap_or("") == "HostQuestProgress"
         && quest_type.variant_count == 2
         && host_quest_type.variant_count == 1
         && quest_variants.len() == 2
@@ -285,17 +285,17 @@ fn main(ctx: Context, player: Player) {
         && option_variants[0].name == "Some"
         && option_variants[0].fields[0].name == "0"
         && option_variants[0].fields[0].owner == "Option::Some"
-        && option_variants[0].fields[0].type == "Any"
+        && option_variants[0].fields[0].type.unwrap_or("") == "Any"
         && option_variants[1].name == "None"
         && result_variants.len() == 2
         && result_variants[0].name == "Ok"
         && result_variants[0].fields[0].name == "0"
         && result_variants[0].fields[0].owner == "Result::Ok"
-        && result_variants[0].fields[0].type == "Any"
+        && result_variants[0].fields[0].type.unwrap_or("") == "Any"
         && result_variants[1].name == "Err"
         && result_variants[1].fields[0].name == "0"
         && result_variants[1].fields[0].owner == "Result::Err"
-        && result_variants[1].fields[0].type == "Any"
+        && result_variants[1].fields[0].type.unwrap_or("") == "Any"
         && reflected_variants.len() == 7
         && reflect::name(active_variant) == "Active"
         && reflect::owner(active_variant) == "QuestProgress"
@@ -357,64 +357,64 @@ fn main(ctx: Context, player: Player) {
         && reflect::name(reward_module) == "game::reward"
         && reflect::kind(reward_module) == "module"
         && reflect::origin(reward_module) == "host"
-        && reflect::docs(reward_module) == "Demo reward helper module."
-        && reflect::attr(reward_module, "domain") == "gameplay"
+        && reflect::docs(reward_module).unwrap_or("") == "Demo reward helper module."
+        && reflect::attr(reward_module, "domain").unwrap_or("") == "gameplay"
         && reflect::has_attr(reward_module, "domain")
         && !reflect::has_attr(reward_module, "missing")
         && reward_attrs["domain"] == "gameplay"
         && reflect::name(time_module) == "time"
         && reflect::kind(time_module) == "module"
-        && reflect::docs(time_module) == "Deterministic time helpers."
-        && reflect::attr(time_module, "stdlib") == "time"
-        && reflect::attr(time_module, "domain") == "time"
+        && reflect::docs(time_module).unwrap_or("") == "Deterministic time helpers."
+        && reflect::attr(time_module, "stdlib").unwrap_or("") == "time"
+        && reflect::attr(time_module, "domain").unwrap_or("") == "time"
         && reflect::name(math_module) == "math"
         && reflect::kind(math_module) == "module"
-        && reflect::docs(math_module) == "Deterministic math standard-library helpers."
-        && reflect::attr(math_module, "stdlib") == "math"
+        && reflect::docs(math_module).unwrap_or("") == "Deterministic math standard-library helpers."
+        && reflect::attr(math_module, "stdlib").unwrap_or("") == "math"
         && reflect::name(option_module) == "option"
         && reflect::kind(option_module) == "module"
-        && reflect::docs(option_module) == "Option standard-library propagation helpers."
-        && reflect::attr(option_module, "stdlib") == "option"
+        && reflect::docs(option_module).unwrap_or("") == "Option standard-library propagation helpers."
+        && reflect::attr(option_module, "stdlib").unwrap_or("") == "option"
         && reflect::name(result_module) == "result"
         && reflect::kind(result_module) == "module"
-        && reflect::docs(result_module) == "Result standard-library propagation helpers."
-        && reflect::attr(result_module, "stdlib") == "result"
+        && reflect::docs(result_module).unwrap_or("") == "Result standard-library propagation helpers."
+        && reflect::attr(result_module, "stdlib").unwrap_or("") == "result"
         && reflect::name(set_module) == "set"
         && reflect::kind(set_module) == "module"
-        && reflect::docs(set_module) == "Set standard-library construction helpers."
-        && reflect::attr(set_module, "stdlib") == "set"
+        && reflect::docs(set_module).unwrap_or("") == "Set standard-library construction helpers."
+        && reflect::attr(set_module, "stdlib").unwrap_or("") == "set"
         && reflect::name(bytes_module) == "bytes"
         && reflect::kind(bytes_module) == "module"
-        && reflect::docs(bytes_module) == "Bytes standard-library conversion helpers."
-        && reflect::attr(bytes_module, "stdlib") == "bytes"
+        && reflect::docs(bytes_module).unwrap_or("") == "Bytes standard-library conversion helpers."
+        && reflect::attr(bytes_module, "stdlib").unwrap_or("") == "bytes"
         && reflect::name(i32_module) == "i32"
         && reflect::kind(i32_module) == "module"
-        && reflect::docs(i32_module) == "i32 primitive conversion helpers."
-        && reflect::attr(i32_module, "stdlib") == "i32"
+        && reflect::docs(i32_module).unwrap_or("") == "i32 primitive conversion helpers."
+        && reflect::attr(i32_module, "stdlib").unwrap_or("") == "i32"
         && reflect::name(i64_module) == "i64"
         && reflect::kind(i64_module) == "module"
-        && reflect::docs(i64_module) == "i64 primitive conversion helpers."
-        && reflect::attr(i64_module, "stdlib") == "i64"
+        && reflect::docs(i64_module).unwrap_or("") == "i64 primitive conversion helpers."
+        && reflect::attr(i64_module, "stdlib").unwrap_or("") == "i64"
         && reflect::name(i16_module) == "i16"
         && reflect::kind(i16_module) == "module"
-        && reflect::docs(i16_module) == "i16 primitive conversion helpers."
-        && reflect::attr(i16_module, "stdlib") == "i16"
+        && reflect::docs(i16_module).unwrap_or("") == "i16 primitive conversion helpers."
+        && reflect::attr(i16_module, "stdlib").unwrap_or("") == "i16"
         && reflect::name(u16_module) == "u16"
         && reflect::kind(u16_module) == "module"
-        && reflect::docs(u16_module) == "u16 primitive conversion helpers."
-        && reflect::attr(u16_module, "stdlib") == "u16"
+        && reflect::docs(u16_module).unwrap_or("") == "u16 primitive conversion helpers."
+        && reflect::attr(u16_module, "stdlib").unwrap_or("") == "u16"
         && reflect::name(u8_module) == "u8"
         && reflect::kind(u8_module) == "module"
-        && reflect::docs(u8_module) == "u8 primitive conversion helpers."
-        && reflect::attr(u8_module, "stdlib") == "u8"
+        && reflect::docs(u8_module).unwrap_or("") == "u8 primitive conversion helpers."
+        && reflect::attr(u8_module, "stdlib").unwrap_or("") == "u8"
         && reflect::name(u32_module) == "u32"
         && reflect::kind(u32_module) == "module"
-        && reflect::docs(u32_module) == "u32 primitive conversion helpers."
-        && reflect::attr(u32_module, "stdlib") == "u32"
+        && reflect::docs(u32_module).unwrap_or("") == "u32 primitive conversion helpers."
+        && reflect::attr(u32_module, "stdlib").unwrap_or("") == "u32"
         && reflect::name(i8_module) == "i8"
         && reflect::kind(i8_module) == "module"
-        && reflect::docs(i8_module) == "i8 primitive conversion helpers."
-        && reflect::attr(i8_module, "stdlib") == "i8"
+        && reflect::docs(i8_module).unwrap_or("") == "i8 primitive conversion helpers."
+        && reflect::attr(i8_module, "stdlib").unwrap_or("") == "i8"
         && modules.len() == 17
         && reflect::has_function("game::reward::grant")
         && reflect::has_function("main")
@@ -440,10 +440,10 @@ fn main(ctx: Context, player: Player) {
         && reflect::kind(reward_function) == "function"
         && reflect::id(reward_function) > 0
         && reflect::origin(reward_function) == "host"
-        && reflect::docs(reward_function) == "Grant reward."
-        && reflect::attr(reward_function, "event") == "reward"
-        && reflect::returns(reward_function) == "bool"
-        && reward_function.module == "game::reward"
+        && reflect::docs(reward_function).unwrap_or("") == "Grant reward."
+        && reflect::attr(reward_function, "event").unwrap_or("") == "reward"
+        && reflect::returns(reward_function).unwrap_or("") == "bool"
+        && reward_function.module.unwrap_or("") == "game::reward"
         && reward_function.effects.writes_host == false
         && reward_effects.writes_host == false
         && reward_access.reflect_visible
@@ -451,15 +451,15 @@ fn main(ctx: Context, player: Player) {
         && reward_access.required_permissions.is_empty()
         && reward_params.len() == 2
         && reward_params[0].name == "player"
-        && reward_params[0].type == "Player"
+        && reward_params[0].type.unwrap_or("") == "Player"
         && reward_params[1].name == "item_id"
-        && reward_params[1].type == "String"
+        && reward_params[1].type.unwrap_or("") == "String"
         && reflect::name(math_max) == "math::max"
         && reflect::kind(math_max) == "function"
         && reflect::origin(math_max) == "host"
-        && reflect::attr(math_max, "stdlib") == "math"
-        && reflect::returns(math_max) == "Any"
-        && reflect::returns(math_sqrt) == "f64"
+        && reflect::attr(math_max, "stdlib").unwrap_or("") == "math"
+        && reflect::returns(math_max).unwrap_or("") == "Any"
+        && reflect::returns(math_sqrt).unwrap_or("") == "f64"
         && !math_max_effects.reads_host
         && !math_max_effects.writes_host
         && !math_max_effects.emits_events
@@ -522,8 +522,8 @@ fn main(ctx: Context, player: Player) {
         && reflect::name(option_some) == "option::some"
         && reflect::kind(option_some) == "function"
         && reflect::origin(option_some) == "host"
-        && reflect::attr(option_some, "stdlib") == "option"
-        && reflect::returns(option_some) == "Any"
+        && reflect::attr(option_some, "stdlib").unwrap_or("") == "option"
+        && reflect::returns(option_some).unwrap_or("") == "Any"
         && option_some_params.len() == 1
         && option_some_params[0].name == "value"
         && !option_some_effects.reads_host
@@ -532,85 +532,85 @@ fn main(ctx: Context, player: Player) {
         && reflect::name(result_ok) == "result::ok"
         && reflect::kind(result_ok) == "function"
         && reflect::origin(result_ok) == "host"
-        && reflect::attr(result_ok, "stdlib") == "result"
-        && reflect::returns(result_ok) == "Any"
+        && reflect::attr(result_ok, "stdlib").unwrap_or("") == "result"
+        && reflect::returns(result_ok).unwrap_or("") == "Any"
         && result_ok_params.len() == 1
         && result_ok_params[0].name == "value"
         && reflect::name(set_from_array) == "set::from_array"
         && reflect::kind(set_from_array) == "function"
         && reflect::origin(set_from_array) == "host"
-        && reflect::attr(set_from_array, "stdlib") == "set"
-        && reflect::returns(set_from_array) == "Set"
+        && reflect::attr(set_from_array, "stdlib").unwrap_or("") == "set"
+        && reflect::returns(set_from_array).unwrap_or("") == "Set"
         && set_from_array_params.len() == 1
         && set_from_array_params[0].name == "values"
-        && set_from_array_params[0].type == "Array"
+        && set_from_array_params[0].type.unwrap_or("") == "Array"
         && reflect::name(bytes_from_hex) == "bytes::from_hex"
         && reflect::kind(bytes_from_hex) == "function"
         && reflect::origin(bytes_from_hex) == "host"
-        && reflect::attr(bytes_from_hex, "stdlib") == "bytes"
-        && reflect::returns(bytes_from_hex) == "Result"
+        && reflect::attr(bytes_from_hex, "stdlib").unwrap_or("") == "bytes"
+        && reflect::returns(bytes_from_hex).unwrap_or("") == "Result"
         && bytes_from_hex_params.len() == 1
         && bytes_from_hex_params[0].name == "text"
-        && bytes_from_hex_params[0].type == "String"
+        && bytes_from_hex_params[0].type.unwrap_or("") == "String"
         && reflect::name(i32_from_i16) == "i32::from_i16"
         && reflect::kind(i32_from_i16) == "function"
         && reflect::origin(i32_from_i16) == "host"
-        && reflect::attr(i32_from_i16, "stdlib") == "i32"
-        && reflect::returns(i32_from_i16) == "i32"
+        && reflect::attr(i32_from_i16, "stdlib").unwrap_or("") == "i32"
+        && reflect::returns(i32_from_i16).unwrap_or("") == "i32"
         && i32_from_i16_params.len() == 1
         && i32_from_i16_params[0].name == "value"
-        && i32_from_i16_params[0].type == "i16"
+        && i32_from_i16_params[0].type.unwrap_or("") == "i16"
         && reflect::name(i64_from_i32) == "i64::from_i32"
         && reflect::kind(i64_from_i32) == "function"
         && reflect::origin(i64_from_i32) == "host"
-        && reflect::attr(i64_from_i32, "stdlib") == "i64"
-        && reflect::returns(i64_from_i32) == "i64"
+        && reflect::attr(i64_from_i32, "stdlib").unwrap_or("") == "i64"
+        && reflect::returns(i64_from_i32).unwrap_or("") == "i64"
         && i64_from_i32_params.len() == 1
         && i64_from_i32_params[0].name == "value"
-        && i64_from_i32_params[0].type == "i32"
+        && i64_from_i32_params[0].type.unwrap_or("") == "i32"
         && reflect::name(i16_try_from_i64) == "i16::try_from_i64"
-        && reflect::attr(i16_try_from_i64, "stdlib") == "i16"
-        && reflect::returns(i16_try_from_i64) == "Result"
+        && reflect::attr(i16_try_from_i64, "stdlib").unwrap_or("") == "i16"
+        && reflect::returns(i16_try_from_i64).unwrap_or("") == "Result"
         && i16_try_from_i64_params.len() == 1
-        && i16_try_from_i64_params[0].type == "i64"
+        && i16_try_from_i64_params[0].type.unwrap_or("") == "i64"
         && reflect::name(u16_try_from_u64) == "u16::try_from_u64"
-        && reflect::attr(u16_try_from_u64, "stdlib") == "u16"
-        && reflect::returns(u16_try_from_u64) == "Result"
+        && reflect::attr(u16_try_from_u64, "stdlib").unwrap_or("") == "u16"
+        && reflect::returns(u16_try_from_u64).unwrap_or("") == "Result"
         && u16_try_from_u64_params.len() == 1
-        && u16_try_from_u64_params[0].type == "u64"
+        && u16_try_from_u64_params[0].type.unwrap_or("") == "u64"
         && reflect::name(u8_wrapping_add) == "u8::wrapping_add"
         && reflect::kind(u8_wrapping_add) == "function"
         && reflect::origin(u8_wrapping_add) == "host"
-        && reflect::attr(u8_wrapping_add, "stdlib") == "u8"
-        && reflect::returns(u8_wrapping_add) == "u8"
+        && reflect::attr(u8_wrapping_add, "stdlib").unwrap_or("") == "u8"
+        && reflect::returns(u8_wrapping_add).unwrap_or("") == "u8"
         && u8_wrapping_add_params.len() == 2
         && u8_wrapping_add_params[0].name == "lhs"
-        && u8_wrapping_add_params[0].type == "u8"
+        && u8_wrapping_add_params[0].type.unwrap_or("") == "u8"
         && u8_wrapping_add_params[1].name == "rhs"
-        && u8_wrapping_add_params[1].type == "u8"
-        && reflect::returns(u8_shift_left) == "u8"
+        && u8_wrapping_add_params[1].type.unwrap_or("") == "u8"
+        && reflect::returns(u8_shift_left).unwrap_or("") == "u8"
         && u8_shift_left_params.len() == 2
-        && u8_shift_left_params[0].type == "u8"
+        && u8_shift_left_params[0].type.unwrap_or("") == "u8"
         && u8_shift_left_params[1].name == "bits"
-        && u8_shift_left_params[1].type == "u32"
+        && u8_shift_left_params[1].type.unwrap_or("") == "u32"
         && reflect::name(u32_wrapping_mul) == "u32::wrapping_mul"
-        && reflect::attr(u32_wrapping_mul, "stdlib") == "u32"
-        && reflect::returns(u32_wrapping_mul) == "u32"
+        && reflect::attr(u32_wrapping_mul, "stdlib").unwrap_or("") == "u32"
+        && reflect::returns(u32_wrapping_mul).unwrap_or("") == "u32"
         && u32_wrapping_mul_params.len() == 2
-        && u32_wrapping_mul_params[0].type == "u32"
-        && u32_wrapping_mul_params[1].type == "u32"
+        && u32_wrapping_mul_params[0].type.unwrap_or("") == "u32"
+        && u32_wrapping_mul_params[1].type.unwrap_or("") == "u32"
         && reflect::name(i8_wrapping_add) == "i8::wrapping_add"
-        && reflect::attr(i8_wrapping_add, "stdlib") == "i8"
-        && reflect::returns(i8_wrapping_add) == "i8"
+        && reflect::attr(i8_wrapping_add, "stdlib").unwrap_or("") == "i8"
+        && reflect::returns(i8_wrapping_add).unwrap_or("") == "i8"
         && i8_wrapping_add_params.len() == 2
-        && i8_wrapping_add_params[0].type == "i8"
-        && i8_wrapping_add_params[1].type == "i8"
+        && i8_wrapping_add_params[0].type.unwrap_or("") == "i8"
+        && i8_wrapping_add_params[1].type.unwrap_or("") == "i8"
         && reflect::name(time_now) == "time::now"
         && reflect::name(time_tick) == "time::tick"
         && reflect::name(time_elapsed) == "time::elapsed_since"
-        && reflect::returns(time_now) == "i64"
-        && reflect::returns(time_tick) == "i64"
-        && reflect::returns(time_elapsed) == "i64"
+        && reflect::returns(time_now).unwrap_or("") == "i64"
+        && reflect::returns(time_tick).unwrap_or("") == "i64"
+        && reflect::returns(time_elapsed).unwrap_or("") == "i64"
         && time_now_access.required_permissions.len() == 0
         && time_now_permissions.len() == 0
         && time_now_effects.reads_time
@@ -621,18 +621,18 @@ fn main(ctx: Context, player: Player) {
         && reflected_elapsed == 10
         && time_elapsed_params.len() == 1
         && time_elapsed_params[0].name == "start"
-        && time_elapsed_params[0].type == "i64"
+        && time_elapsed_params[0].type.unwrap_or("") == "i64"
         && ctx_methods.len() == 2
         && ctx_fields.len() == 3
-        && reflect::docs(context_type) == "Standard host context object for deterministic time, events, and logging."
-        && reflect::attr(context_type, "stdlib") == "context"
-        && reflect::attr(context_type, "domain") == "context"
-        && reflect::docs(ctx_fields[0]) == "Current deterministic context timestamp."
-        && reflect::attr(ctx_fields[0], "stdlib") == "context"
-        && reflect::attr(ctx_fields[0], "domain") == "context"
-        && reflect::docs(ctx_fields[1]) == "Current deterministic context tick."
-        && reflect::attr(ctx_fields[1], "stdlib") == "context"
-        && reflect::attr(ctx_fields[1], "domain") == "context"
+        && reflect::docs(context_type).unwrap_or("") == "Standard host context object for deterministic time, events, and logging."
+        && reflect::attr(context_type, "stdlib").unwrap_or("") == "context"
+        && reflect::attr(context_type, "domain").unwrap_or("") == "context"
+        && reflect::docs(ctx_fields[0]).unwrap_or("") == "Current deterministic context timestamp."
+        && reflect::attr(ctx_fields[0], "stdlib").unwrap_or("") == "context"
+        && reflect::attr(ctx_fields[0], "domain").unwrap_or("") == "context"
+        && reflect::docs(ctx_fields[1]).unwrap_or("") == "Current deterministic context tick."
+        && reflect::attr(ctx_fields[1], "stdlib").unwrap_or("") == "context"
+        && reflect::attr(ctx_fields[1], "domain").unwrap_or("") == "context"
         && ctx_fields[2].name == "config"
         && reflect::has_method(ctx, "emit")
         && reflect::has_method(ctx, "log")
@@ -640,10 +640,10 @@ fn main(ctx: Context, player: Player) {
         && reflect::name(ctx_log) == "log"
         && ctx_emit.owner == "Context"
         && ctx_log.owner == "Context"
-        && reflect::attr(ctx_emit, "stdlib") == "context"
-        && reflect::attr(ctx_emit, "domain") == "context"
-        && reflect::attr(ctx_log, "stdlib") == "context"
-        && reflect::attr(ctx_log, "domain") == "context"
+        && reflect::attr(ctx_emit, "stdlib").unwrap_or("") == "context"
+        && reflect::attr(ctx_emit, "domain").unwrap_or("") == "context"
+        && reflect::attr(ctx_log, "stdlib").unwrap_or("") == "context"
+        && reflect::attr(ctx_log, "domain").unwrap_or("") == "context"
         && ctx_emit.effects.emits_events
         && ctx_log.effects.emits_events
         && method_effects.writes_host
@@ -652,7 +652,7 @@ fn main(ctx: Context, player: Player) {
         && ctx_log_access.reflect_callable
         && ctx_emit_params.len() == 2
         && ctx_emit_params[0].name == "event"
-        && ctx_emit_params[0].type == "String"
+        && ctx_emit_params[0].type.unwrap_or("") == "String"
         && ctx_emit_params[1].defaulted
         && ctx_log_params.len() == 3
         && ctx_log_params[0].name == "level"
@@ -663,33 +663,33 @@ fn main(ctx: Context, player: Player) {
         && functions.any(|function| reflect::name(function) == "main"
             && reflect::origin(function) == "script")
         && functions.any(|function| reflect::name(function) == "time::now"
-            && reflect::returns(function) == "i64")
+            && reflect::returns(function).unwrap_or("") == "i64")
         && functions.any(|function| reflect::name(function) == "time::elapsed_since"
-            && reflect::returns(function) == "i64")
+            && reflect::returns(function).unwrap_or("") == "i64")
         && functions.any(|function| reflect::name(function) == "math::max"
-            && reflect::attr(function, "stdlib") == "math")
+            && reflect::attr(function, "stdlib").unwrap_or("") == "math")
         && functions.any(|function| reflect::name(function) == "option::some"
-            && reflect::attr(function, "stdlib") == "option")
+            && reflect::attr(function, "stdlib").unwrap_or("") == "option")
         && functions.any(|function| reflect::name(function) == "result::ok"
-            && reflect::attr(function, "stdlib") == "result")
+            && reflect::attr(function, "stdlib").unwrap_or("") == "result")
         && functions.any(|function| reflect::name(function) == "set::from_array"
-            && reflect::attr(function, "stdlib") == "set")
+            && reflect::attr(function, "stdlib").unwrap_or("") == "set")
         && functions.any(|function| reflect::name(function) == "bytes::from_hex"
-            && reflect::attr(function, "stdlib") == "bytes")
+            && reflect::attr(function, "stdlib").unwrap_or("") == "bytes")
         && functions.any(|function| reflect::name(function) == "i32::from_i16"
-            && reflect::attr(function, "stdlib") == "i32")
+            && reflect::attr(function, "stdlib").unwrap_or("") == "i32")
         && functions.any(|function| reflect::name(function) == "i64::from_i32"
-            && reflect::attr(function, "stdlib") == "i64")
+            && reflect::attr(function, "stdlib").unwrap_or("") == "i64")
         && functions.any(|function| reflect::name(function) == "i16::try_from_i64"
-            && reflect::attr(function, "stdlib") == "i16")
+            && reflect::attr(function, "stdlib").unwrap_or("") == "i16")
         && functions.any(|function| reflect::name(function) == "u16::try_from_u64"
-            && reflect::attr(function, "stdlib") == "u16")
+            && reflect::attr(function, "stdlib").unwrap_or("") == "u16")
         && functions.any(|function| reflect::name(function) == "u8::wrapping_add"
-            && reflect::attr(function, "stdlib") == "u8")
+            && reflect::attr(function, "stdlib").unwrap_or("") == "u8")
         && functions.any(|function| reflect::name(function) == "u32::wrapping_mul"
-            && reflect::attr(function, "stdlib") == "u32")
+            && reflect::attr(function, "stdlib").unwrap_or("") == "u32")
         && functions.any(|function| reflect::name(function) == "i8::wrapping_add"
-            && reflect::attr(function, "stdlib") == "i8") {
+            && reflect::attr(function, "stdlib").unwrap_or("") == "i8") {
         reflect::set(player, "level", 12);
         reflect::call(ctx, "emit", "reflect::player", reflect::get(player, "level"), fields.len());
         let metadata_score = reflect::get(player, "level") + fields.len() + reward_params.len();

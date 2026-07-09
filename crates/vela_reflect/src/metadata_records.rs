@@ -29,7 +29,7 @@ pub(crate) fn owner(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
 }
 
 pub(crate) fn origin(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
-    scalar_field(target, "origin", is_unit_or_string)
+    scalar_field(target, "origin", is_string)
 }
 
 pub(crate) fn attrs(target: &ReflectValue) -> ReflectResult<Option<ReflectValue>> {
@@ -39,14 +39,15 @@ pub(crate) fn attrs(target: &ReflectValue) -> ReflectResult<Option<ReflectValue>
     attrs_record(attrs).map(Some)
 }
 
-pub(crate) fn attr(target: &ReflectValue, name: &str) -> ReflectResult<Option<HostValue>> {
+pub(crate) fn attr(target: &ReflectValue, name: &str) -> ReflectResult<Option<ReflectValue>> {
     let Some(attrs) = attrs(target)? else {
         return Ok(None);
     };
     let Some(value) = attr_value(&attrs, name)? else {
-        return Ok(Some(HostValue::Unit));
+        return Ok(Some(crate::metadata::option_none()));
     };
-    scalar(value, is_string).map(Some)
+    scalar(value, is_string)?;
+    Ok(Some(crate::metadata::option_some(value.clone())))
 }
 
 pub(crate) fn has_attr(target: &ReflectValue, name: &str) -> ReflectResult<Option<bool>> {
@@ -56,8 +57,11 @@ pub(crate) fn has_attr(target: &ReflectValue, name: &str) -> ReflectResult<Optio
     Ok(Some(attr_value(&attrs, name)?.is_some()))
 }
 
-pub(crate) fn docs(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
-    scalar_field(target, "docs", is_unit_or_string)
+pub(crate) fn docs(target: &ReflectValue) -> ReflectResult<Option<ReflectValue>> {
+    let Some(docs) = field(target, "docs") else {
+        return Ok(None);
+    };
+    option_string(docs).map(Some)
 }
 
 pub(crate) fn source_span(target: &ReflectValue) -> ReflectResult<Option<ReflectValue>> {
@@ -107,9 +111,9 @@ pub(crate) fn params(target: &ReflectValue) -> ReflectResult<Option<ReflectValue
     Ok(None)
 }
 
-pub(crate) fn returns(target: &ReflectValue) -> ReflectResult<Option<HostValue>> {
+pub(crate) fn returns(target: &ReflectValue) -> ReflectResult<Option<ReflectValue>> {
     if let Some(returns) = field(target, "returns").or_else(|| field(target, "return")) {
-        return scalar(returns, is_unit_or_string).map(Some);
+        return option_string(returns).map(Some);
     }
     Ok(None)
 }
@@ -289,13 +293,48 @@ fn param_record(value: &ReflectValue) -> ReflectResult<()> {
 }
 
 fn source_span_value(value: &ReflectValue) -> ReflectResult<ReflectValue> {
-    match value {
-        ReflectValue::Host(HostValue::Unit) => Ok(value.clone()),
+    option_value(value, |value| match value {
         ReflectValue::ScriptRecord { type_name, fields } if type_name == "ReflectSourceSpan" => {
             for value in fields.values() {
                 scalar(value, is_int)?;
             }
-            Ok(value.clone())
+            Ok(())
+        }
+        _ => Err(invalid_target()),
+    })?;
+    Ok(value.clone())
+}
+
+fn option_string(value: &ReflectValue) -> ReflectResult<ReflectValue> {
+    option_value(value, |value| {
+        scalar(value, is_string)?;
+        Ok(())
+    })?;
+    Ok(value.clone())
+}
+
+fn option_value(
+    value: &ReflectValue,
+    accepts_some: impl FnOnce(&ReflectValue) -> ReflectResult<()>,
+) -> ReflectResult<()> {
+    let ReflectValue::ScriptEnum {
+        enum_name,
+        variant,
+        fields,
+    } = value
+    else {
+        return Err(invalid_target());
+    };
+    if enum_name.rsplit("::").next() != Some("Option") {
+        return Err(invalid_target());
+    }
+    match variant.as_str() {
+        "None" if fields.is_empty() => Ok(()),
+        "Some" => {
+            let Some(payload) = fields.get("0") else {
+                return Err(invalid_target());
+            };
+            accepts_some(payload)
         }
         _ => Err(invalid_target()),
     }
@@ -310,10 +349,6 @@ fn scalar(value: &ReflectValue, accepts: fn(&HostValue) -> bool) -> ReflectResul
     } else {
         Err(invalid_target())
     }
-}
-
-fn is_unit_or_string(value: &HostValue) -> bool {
-    matches!(value, HostValue::Unit | HostValue::String(_))
 }
 
 fn is_string(value: &HostValue) -> bool {
