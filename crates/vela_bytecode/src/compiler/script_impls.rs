@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+use vela_common::{SourceId, Span};
 use vela_def::MethodId;
 use vela_hir::binding::BindingMap;
 use vela_hir::body::HirBody;
@@ -7,7 +8,8 @@ use vela_hir::ids::ModuleId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
 use vela_hir::type_hint::{FunctionSignature, ImplMetadata, ImplMetadataKind, TraitShape};
 use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::{SyntaxImplItem, SyntaxSourceFile, SyntaxTraitItem};
+use vela_syntax::TextRange;
+use vela_syntax::ast::{AstNode, SyntaxImplItem, SyntaxSourceFile, SyntaxTraitItem};
 
 use super::body_payloads::CompilerBodyPayload;
 use super::param_defaults::{ParamDefaultValue, param_default_values};
@@ -45,7 +47,8 @@ pub(super) fn source_methods<'ast>(
             let Some(impl_metadata) = graph.impl_metadata(declaration.id) else {
                 return Vec::new();
             };
-            let method_payloads = impl_method_payloads(syntax, source, impl_metadata);
+            let method_payloads =
+                impl_method_payloads(syntax, source, declaration.span, impl_metadata);
             let target_type = local_target_name(&impl_metadata.target_path);
             let trait_item = impl_metadata.trait_path().and_then(|trait_path| {
                 let declaration = trait_declaration(graph, declaration.module, trait_path)?;
@@ -84,7 +87,8 @@ pub(super) fn module_methods<'ast>(
             let Some(source_id) = source_ids.get(&declaration.module).copied() else {
                 return Vec::new();
             };
-            let method_payloads = impl_method_payloads(syntax_source, source_id, impl_metadata);
+            let method_payloads =
+                impl_method_payloads(syntax_source, source_id, declaration.span, impl_metadata);
             let target_type = module_target_name(module_path, &impl_metadata.target_path);
             let Some(trait_path) = impl_metadata.trait_path() else {
                 return collect_methods(
@@ -239,10 +243,11 @@ fn collect_default_methods<'ast>(
 
 fn impl_method_payloads<'ast>(
     syntax: &SyntaxParse<SyntaxSourceFile>,
-    source: vela_common::SourceId,
+    source: SourceId,
+    impl_span: Span,
     metadata: &ImplMetadata,
 ) -> BTreeMap<String, MethodBodyPayload<'ast>> {
-    let Some(syntax_item) = syntax_impl_item(syntax, metadata) else {
+    let Some(syntax_item) = syntax_impl_item(syntax, source, impl_span) else {
         return BTreeMap::new();
     };
     metadata
@@ -270,7 +275,7 @@ fn impl_method_payloads<'ast>(
 
 fn trait_default_method_payloads<'ast>(
     syntax: &SyntaxParse<SyntaxSourceFile>,
-    source: vela_common::SourceId,
+    source: SourceId,
     path: &[String],
     shape: &TraitShape,
 ) -> BTreeMap<String, MethodBodyPayload<'ast>> {
@@ -303,19 +308,13 @@ fn trait_default_method_payloads<'ast>(
 
 fn syntax_impl_item(
     parsed: &SyntaxParse<SyntaxSourceFile>,
-    metadata: &ImplMetadata,
+    source: SourceId,
+    span: Span,
 ) -> Option<SyntaxImplItem> {
-    parsed.tree().impls().find(|item| {
-        impl_kind_matches_syntax(&item.trait_path_segments(), &metadata.kind)
-            && item.target_path_segments() == metadata.target_path
-    })
-}
-
-fn impl_kind_matches_syntax(item_trait: &[String], metadata: &ImplMetadataKind) -> bool {
-    match metadata {
-        ImplMetadataKind::Inherent => item_trait.is_empty(),
-        ImplMetadataKind::Trait { trait_path } => item_trait == trait_path,
-    }
+    parsed
+        .tree()
+        .impls()
+        .find(|item| span_for(source, item.syntax().text_range()) == span)
 }
 
 fn syntax_trait_item(
@@ -327,6 +326,10 @@ fn syntax_trait_item(
         .tree()
         .traits()
         .find(|item| item.name_text().as_deref() == Some(name.as_str()))
+}
+
+fn span_for(source: SourceId, range: TextRange) -> Span {
+    Span::new(source, range.start().into(), range.end().into())
 }
 
 fn trait_declaration(
