@@ -57,14 +57,6 @@ impl PatternBindingFacts {
         }
     }
 
-    pub(super) fn value_type(&self) -> Option<RuntimeTypeFact> {
-        self.value_type.clone()
-    }
-
-    pub(super) fn value_shape_fact(&self) -> Option<ValueShape> {
-        self.value_shape.clone()
-    }
-
     pub(super) fn with_script(mut self, script: Option<ScriptTypeFact>) -> Self {
         self.script = script;
         self

@@ -1,6 +1,5 @@
 use vela_common::{SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
-use vela_syntax::TextRange;
 use vela_syntax::ast::{
     AstNode, SyntaxExpression, SyntaxMatchArm, SyntaxMatchArmBody, SyntaxMatchExpr, SyntaxPattern,
     SyntaxPatternKind,
@@ -11,7 +10,7 @@ use crate::{Constant, Register, UnlinkedInstructionKind};
 use crate::compiler::const_eval::compile_literal_constant;
 use crate::compiler::patterns::{PatternBindingFacts, tuple_variant_field_name};
 use crate::compiler::value_types::StaticExprType;
-use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
+use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 use super::{
     param_default_expression_supported, param_default_unsupported, span_for, span_for_range,
@@ -55,12 +54,14 @@ impl Compiler<'_, '_> {
             let previous_value_types = self.value_types.clone();
             let previous_value_shapes = self.value_shapes.clone();
 
-            self.bind_param_default_match_pattern_locals(
-                source,
+            let hir_patterns = self.hir_pattern_ids_for_syntax_pattern(source, &pattern)?;
+            self.bind_syntax_pattern_locals_from_hir_patterns(
                 scrutinee,
                 &pattern,
-                &arm,
+                param_default_match_arm_body_span(source, &arm),
                 scrutinee_facts.clone(),
+                LocalBindingKind::Pattern,
+                &hir_patterns,
             )?;
             if let Some(guard) = arm.guard() {
                 let condition = self.compile_param_default_expression(source, &guard)?;
@@ -180,162 +181,6 @@ impl Compiler<'_, '_> {
         }
     }
 
-    fn bind_param_default_match_pattern_locals(
-        &mut self,
-        source: SourceId,
-        scrutinee: Register,
-        pattern: &SyntaxPattern,
-        arm: &SyntaxMatchArm,
-        facts: PatternBindingFacts,
-    ) -> CompileResult<()> {
-        let span = arm
-            .body_as_expression()
-            .map(|body| span_for(source, &body))
-            .or_else(|| {
-                arm.body_block()
-                    .map(|block| span_for_range(source, block.syntax().text_range()))
-            })
-            .unwrap_or_else(|| span_for_range(source, arm.syntax().text_range()));
-        self.bind_param_default_match_pattern_locals_at_span(
-            source, scrutinee, pattern, span, facts,
-        )
-    }
-
-    fn bind_param_default_match_pattern_locals_at_span(
-        &mut self,
-        source: SourceId,
-        scrutinee: Register,
-        pattern: &SyntaxPattern,
-        span: Span,
-        facts: PatternBindingFacts,
-    ) -> CompileResult<()> {
-        match pattern.pattern_kind() {
-            Some(SyntaxPatternKind::Binding) => {
-                let Some(binding_token) = pattern.binding_name_token() else {
-                    return Ok(());
-                };
-                let name = binding_token.text().to_owned();
-                let binding_span = span_for_text_range(source, binding_token.text_range());
-                let dst = self.alloc_register()?;
-                self.emit(UnlinkedInstructionKind::Move {
-                    dst,
-                    src: scrutinee,
-                });
-                self.bind_param_default_pattern_local(&name, dst, binding_span, span, facts);
-            }
-            Some(SyntaxPatternKind::TupleVariant) => {
-                let Some(tuple) = pattern.as_tuple_variant() else {
-                    return Err(param_default_pattern_unsupported(source, pattern));
-                };
-                let path = self.required_hir_pattern_path(source, pattern)?;
-                for (index, field_pattern) in tuple.patterns().enumerate() {
-                    if !param_default_pattern_declares_locals(&field_pattern) {
-                        continue;
-                    }
-                    let field_name = tuple_variant_field_name(index);
-                    let field_value =
-                        self.emit_enum_pattern_field_read(scrutinee, &path, field_name.clone())?;
-                    let field_facts = PatternBindingFacts::value(
-                        self.enum_variant_field_value_type(&path, &field_name),
-                    )
-                    .with_script(self.enum_variant_field_fact(&path, &field_name));
-                    self.bind_param_default_match_pattern_locals_at_span(
-                        source,
-                        field_value,
-                        &field_pattern,
-                        span,
-                        field_facts,
-                    )?;
-                }
-            }
-            Some(SyntaxPatternKind::RecordVariant) => {
-                let Some(record) = pattern.as_record_variant() else {
-                    return Err(param_default_pattern_unsupported(source, pattern));
-                };
-                let path = self.required_hir_pattern_path(source, pattern)?;
-                for field in record.fields() {
-                    let Some(field_name) = field.label_text() else {
-                        return Err(param_default_pattern_unsupported(source, pattern));
-                    };
-                    let nested_pattern = field.pattern();
-                    if nested_pattern
-                        .as_ref()
-                        .is_some_and(|pattern| !param_default_pattern_declares_locals(pattern))
-                    {
-                        continue;
-                    }
-                    let field_value =
-                        self.emit_enum_pattern_field_read(scrutinee, &path, field_name.clone())?;
-                    let field_facts = PatternBindingFacts::value(
-                        self.enum_variant_field_value_type(&path, &field_name),
-                    )
-                    .with_script(self.enum_variant_field_fact(&path, &field_name));
-                    if let Some(nested_pattern) = nested_pattern {
-                        self.bind_param_default_match_pattern_locals_at_span(
-                            source,
-                            field_value,
-                            &nested_pattern,
-                            span,
-                            field_facts,
-                        )?;
-                    } else if let Some(binding_token) = field.shorthand_binding_name_token() {
-                        let binding_span = span_for_text_range(source, binding_token.text_range());
-                        self.bind_param_default_pattern_local(
-                            &field_name,
-                            field_value,
-                            binding_span,
-                            span,
-                            field_facts,
-                        );
-                    }
-                }
-            }
-            Some(
-                SyntaxPatternKind::Wildcard | SyntaxPatternKind::Literal | SyntaxPatternKind::Path,
-            )
-            | None => {}
-        }
-        Ok(())
-    }
-
-    fn bind_param_default_pattern_local(
-        &mut self,
-        name: &str,
-        register: Register,
-        binding_span: Span,
-        scope_span: Span,
-        facts: PatternBindingFacts,
-    ) {
-        self.locals.insert(name.to_owned(), register);
-        if let Some(local) = self
-            .pattern_at_span(binding_span)
-            .and_then(|pattern| self.local_for_pattern(pattern, LocalBindingKind::Pattern))
-        {
-            self.hir_locals.insert(local, register);
-            self.record_frame_slot(
-                name.to_owned(),
-                register,
-                frame_slot_kind(LocalBindingKind::Pattern),
-                Some(local),
-                Some(scope_span),
-            );
-            self.script_types.set_local_fact(local, name, None);
-            self.value_types.set_local(local, name, facts.value_type());
-            self.value_shapes
-                .set_local(local, name, facts.value_shape_fact());
-        } else {
-            self.record_frame_slot(
-                name.to_owned(),
-                register,
-                frame_slot_kind(LocalBindingKind::Pattern),
-                None,
-                Some(scope_span),
-            );
-            self.value_types.set_name(name, facts.value_type());
-            self.value_shapes.set_name(name, facts.value_shape_fact());
-        }
-    }
-
     fn compile_param_default_match_arm(
         &mut self,
         source: SourceId,
@@ -405,28 +250,14 @@ fn param_default_pattern_supported(pattern: &SyntaxPattern) -> bool {
     }
 }
 
-fn param_default_pattern_declares_locals(pattern: &SyntaxPattern) -> bool {
-    match pattern.pattern_kind() {
-        Some(SyntaxPatternKind::Binding) => true,
-        Some(SyntaxPatternKind::TupleVariant) => pattern.as_tuple_variant().is_some_and(|tuple| {
-            tuple
-                .patterns()
-                .any(|pattern| param_default_pattern_declares_locals(&pattern))
-        }),
-        Some(SyntaxPatternKind::RecordVariant) => {
-            pattern.as_record_variant().is_some_and(|record| {
-                record.fields().any(|field| {
-                    field
-                        .pattern()
-                        .is_none_or(|pattern| param_default_pattern_declares_locals(&pattern))
-                })
-            })
-        }
-        Some(
-            SyntaxPatternKind::Wildcard | SyntaxPatternKind::Literal | SyntaxPatternKind::Path,
-        )
-        | None => false,
-    }
+fn param_default_match_arm_body_span(source: SourceId, arm: &SyntaxMatchArm) -> Span {
+    arm.body_as_expression()
+        .map(|body| span_for(source, &body))
+        .or_else(|| {
+            arm.body_block()
+                .map(|block| span_for_range(source, block.syntax().text_range()))
+        })
+        .unwrap_or_else(|| span_for_range(source, arm.syntax().text_range()))
 }
 
 fn param_default_pattern_unsupported(source: SourceId, pattern: &SyntaxPattern) -> CompileError {
@@ -434,8 +265,4 @@ fn param_default_pattern_unsupported(source: SourceId, pattern: &SyntaxPattern) 
         "parameter default match pattern",
     ))
     .with_span(span_for_range(source, pattern.syntax().text_range()))
-}
-
-fn span_for_text_range(source: SourceId, range: TextRange) -> Span {
-    Span::new(source, range.start().into(), range.end().into())
 }

@@ -277,6 +277,8 @@ indexed and value patterns instead of re-finding for-pattern locals by span.
 Match statement and match expression local setup now collects the HIR pattern
 ID sequence for each arm and uses the same HIR cursor path, deleting the shared
 non-HIR pattern-local binding fallback.
+Parameter-default match pattern local setup now uses that same HIR pattern
+sequence binder, removing its custom span-based recursive local binder.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`
