@@ -212,7 +212,9 @@ statement path extraction has moved out of `CompilerStatementPayload` onto that
 same HIR value-path query. Expression-dispatch path and field-chain reads now
 compose HIR value paths from path, local/self binding, and HIR field receiver
 facts, and direct local assignment plus direct record field slot/type queries
-use those HIR paths instead of syntax path reconstruction.
+use those HIR paths instead of syntax path reconstruction. Non-method call
+lowering now reads HIR call-callee path facts instead of reconstructing callee
+paths from syntax in `syntax_calls`.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

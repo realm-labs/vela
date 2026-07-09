@@ -144,6 +144,17 @@ impl super::Compiler<'_, '_> {
             .map(|path| path.path.as_slice())
     }
 
+    pub(in crate::compiler) fn hir_callee_path(&self, call: HirExprId) -> Option<&[String]> {
+        let callee = self.call_callee_expression(call)?;
+        self.hir_bodies
+            .iter()
+            .flat_map(|body| body.paths.iter())
+            .find(|path| {
+                path.kind == HirPathKind::Callee && path.owner == HirPathOwner::Expression(callee)
+            })
+            .map(|path| path.path.as_slice())
+    }
+
     pub(in crate::compiler) fn hir_value_path(&self, expression: HirExprId) -> Option<&[String]> {
         self.hir_bodies
             .iter()

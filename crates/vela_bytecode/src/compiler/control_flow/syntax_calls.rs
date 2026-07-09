@@ -1,7 +1,6 @@
 use vela_common::{Diagnostic, SourceId};
 use vela_syntax::ast::SyntaxExpression;
 
-use crate::compiler::body_payloads::expression_syntax_path_or_self;
 use crate::compiler::calls::metadata::unresolved_static_method_error;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{Register, UnlinkedInstructionKind};
@@ -170,7 +169,10 @@ impl Compiler<'_, '_> {
             return Ok(Some(dst));
         }
 
-        let Some(path) = expression_syntax_path_or_self(&callee) else {
+        let call_expression = self.expression_at_span(call_span);
+        let Some(path) =
+            call_expression.and_then(|call| self.hir_callee_path(call).map(<[String]>::to_vec))
+        else {
             if arguments
                 .iter()
                 .any(|argument| argument.name_text().is_some())
@@ -196,7 +198,6 @@ impl Compiler<'_, '_> {
             return Ok(None);
         }
         let dst = self.alloc_register()?;
-        let call_expression = self.expression_at_span(call_span);
         if let Some((declaration, name)) =
             call_expression.and_then(|call| self.script_function_call(call))
         {
