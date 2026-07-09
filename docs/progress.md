@@ -219,7 +219,10 @@ numeric path/literal operator fast paths, and range operands now also read HIR
 value-path facts instead of syntax path reconstruction. Nested record-field
 assignment target lowering now composes HIR value paths and root expression
 spans from HIR field receiver facts, and the old field-chain syntax path helper
-has been deleted.
+has been deleted. HostPath root and field-only target construction now reads
+HIR value-path facts, leaving syntax in that path only for structural index
+expressions that carry dynamic host path arguments, and the old simple syntax
+path helper has been deleted.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

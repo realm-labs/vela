@@ -1,4 +1,3 @@
-use super::body_payloads::expression_syntax_path_or_self;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{CacheSiteId, HostTargetPlanId, Register, UnlinkedInstructionKind};
 use vela_common::HostTypeId;
@@ -362,20 +361,9 @@ impl Compiler<'_, '_> {
         if expression.as_index().is_some() {
             return self.syntax_host_index_path(source, expression);
         }
-        if let Some(path) = expression_syntax_path_or_self(expression) {
-            let span = syntax_host_expression_span(source, expression);
-            if path.len() == 1 {
-                let name = path.into_iter().next()?;
-                let type_name = self.host_local_type_name(&name, span);
-                return Some(ResolvedHostPath {
-                    path: HostPath {
-                        root: HostPathRoot::OwnedLocalPath { name, span },
-                        segments: Vec::new(),
-                    },
-                    type_name,
-                });
-            }
-            return self.owned_host_field_path_parts(span, &path);
+        let span = syntax_host_expression_span(source, expression);
+        if let Some(resolved) = self.hir_host_value_path(span) {
+            return Some(resolved);
         }
         let field = expression.as_field()?;
         let receiver = field.receiver()?;
@@ -385,6 +373,26 @@ impl Compiler<'_, '_> {
         resolved.path.segments.push(field.part);
         resolved.type_name = field.type_hint;
         Some(resolved)
+    }
+    fn hir_host_value_path(&self, span: Span) -> Option<ResolvedHostPath<'static>> {
+        let path = self.hir_value_path_for_span(span)?;
+        if path.len() == 1 {
+            let name = path.into_iter().next()?;
+            let root_span = self.hir_value_path_root_span_for_span(span).unwrap_or(span);
+            let type_name = self.host_local_type_name(&name, root_span);
+            return Some(ResolvedHostPath {
+                path: HostPath {
+                    root: HostPathRoot::OwnedLocalPath {
+                        name,
+                        span: root_span,
+                    },
+                    segments: Vec::new(),
+                },
+                type_name,
+            });
+        }
+        let root_span = self.hir_value_path_root_span_for_span(span).unwrap_or(span);
+        self.owned_host_field_path_parts(root_span, &path)
     }
     pub(in crate::compiler) fn syntax_host_field_path(
         &self,

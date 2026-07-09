@@ -1,19 +1,5 @@
 use vela_syntax::ast::{BinaryOp, IntegerSuffix, Literal, SyntaxExpression, UnaryOp};
 
-pub(in crate::compiler) fn expression_syntax_path_or_self(
-    expression: &SyntaxExpression,
-) -> Option<Vec<String>> {
-    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
-        return expression_syntax_path_or_self(&inner);
-    }
-    let path = expression.as_path()?;
-    if path.is_self() {
-        Some(vec!["self".to_owned()])
-    } else {
-        Some(path.path_segments())
-    }
-}
-
 pub(in crate::compiler) fn expression_syntax_literal(
     expression: &SyntaxExpression,
 ) -> Option<Literal> {
