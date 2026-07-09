@@ -141,6 +141,11 @@ impl SyntaxLetStmt {
     }
 
     #[must_use]
+    pub fn pattern(&self) -> Option<SyntaxPattern> {
+        child(&self.syntax)
+    }
+
+    #[must_use]
     pub fn type_hint(&self) -> Option<SyntaxTypeHint> {
         child(&self.syntax)
     }

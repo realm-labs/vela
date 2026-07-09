@@ -546,6 +546,12 @@ fn verify_instruction(
         | UnlinkedInstructionKind::GetEnumSlot {
             dst, value: record, ..
         }
+        | UnlinkedInstructionKind::TupleArityEqual {
+            dst, value: record, ..
+        }
+        | UnlinkedInstructionKind::GetTupleField {
+            dst, value: record, ..
+        }
         | UnlinkedInstructionKind::GetIndex {
             dst, base: record, ..
         }
@@ -561,6 +567,9 @@ fn verify_instruction(
                 verify_string_constant(function, instruction_index, code, *key)?;
             }
             Ok(())
+        }
+        UnlinkedInstructionKind::GuardTupleArity { value, .. } => {
+            verify_register(function, instruction_index, code, *value)
         }
         UnlinkedInstructionKind::SetRecordField { record, src, .. }
         | UnlinkedInstructionKind::SetRecordSlot { record, src, .. } => {

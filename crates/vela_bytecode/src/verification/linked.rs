@@ -444,6 +444,17 @@ fn verify_linked_instruction(
             verify_linked_register(function, instruction_index, code, *value)?;
             verify_linked_debug_name(function, instruction_index, context, *debug_name)
         }
+        InstructionKind::TupleArityEqual { dst, value, .. } => {
+            verify_linked_register(function, instruction_index, code, *dst)?;
+            verify_linked_register(function, instruction_index, code, *value)
+        }
+        InstructionKind::GuardTupleArity { value, .. } => {
+            verify_linked_register(function, instruction_index, code, *value)
+        }
+        InstructionKind::GetTupleField { dst, value, .. } => {
+            verify_linked_register(function, instruction_index, code, *dst)?;
+            verify_linked_register(function, instruction_index, code, *value)
+        }
         InstructionKind::GetIndex { dst, base, index } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_register(function, instruction_index, code, *base)?;

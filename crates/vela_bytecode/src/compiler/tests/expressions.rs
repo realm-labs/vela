@@ -609,6 +609,48 @@ fn compiler_lowers_unit_and_tuple_expressions() {
 }
 
 #[test]
+fn compiler_lowers_tuple_destructuring_patterns() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let (amount, label) = (3, "xp");
+    return amount;
+}
+"#,
+        "main",
+    )
+    .expect("tuple let destructuring should compile");
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::GuardTupleArity { arity: 2, .. }
+    )));
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::GetTupleField { index: 0, .. }
+    )));
+
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let pair = (2, 5);
+    return match pair {
+        (left, right) => left + right,
+        _ => 0,
+    };
+}
+"#,
+        "main",
+    )
+    .expect("tuple match destructuring should compile");
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::TupleArityEqual { arity: 2, .. }
+    )));
+}
+
+#[test]
 fn compiler_lowers_local_assignment_operators() {
     let code = compile_function_source(
         SourceId::new(1),

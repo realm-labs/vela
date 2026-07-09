@@ -1,7 +1,7 @@
 use vela_common::{Diagnostic, SourceId, Span};
 
 use crate::TextRange;
-use crate::ast::{AstNode, SyntaxSourceFile, SyntaxTypeHint, SyntaxUsePath};
+use crate::ast::{AstNode, SyntaxSourceFile, SyntaxTuplePattern, SyntaxTypeHint, SyntaxUsePath};
 use crate::syntax_kind::SyntaxKind;
 
 pub(crate) fn validate_source(source: SourceId, tree: &SyntaxSourceFile) -> Vec<Diagnostic> {
@@ -16,6 +16,12 @@ pub(crate) fn validate_source(source: SourceId, tree: &SyntaxSourceFile) -> Vec<
             .descendants()
             .filter_map(SyntaxUsePath::cast)
             .flat_map(|path| validate_use_path(source, &path)),
+    );
+    diagnostics.extend(
+        tree.syntax()
+            .descendants()
+            .filter_map(SyntaxTuplePattern::cast)
+            .flat_map(|pattern| validate_tuple_pattern(source, &pattern)),
     );
     diagnostics.extend(validate_removed_null(source, tree));
     diagnostics
@@ -141,6 +147,27 @@ fn validate_tuple_type_hint(source: SourceId, hint: &SyntaxTypeHint) -> Vec<Diag
             .with_label(
                 span,
                 "use the element type directly or add another tuple element",
+            ),
+    ]
+}
+
+fn validate_tuple_pattern(source: SourceId, pattern: &SyntaxTuplePattern) -> Vec<Diagnostic> {
+    if !pattern.path_segments().is_empty() {
+        return Vec::new();
+    }
+    let element_count = pattern.patterns().count();
+    if element_count != 1 {
+        return Vec::new();
+    }
+
+    let span = span_for(source, pattern.syntax().text_range());
+    vec![
+        Diagnostic::error("one-element tuple patterns are not supported")
+            .with_code("syntax::one_element_tuple_pattern")
+            .with_span(span)
+            .with_label(
+                span,
+                "use the element pattern directly or add another tuple element",
             ),
     ]
 }

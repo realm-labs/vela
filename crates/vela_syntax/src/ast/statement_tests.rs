@@ -738,3 +738,35 @@ fn ast_statements_expose_keyword_and_binding_tokens() {
         ";"
     );
 }
+
+#[test]
+fn ast_let_statement_exposes_tuple_pattern_binding() {
+    let parse = parse_source(
+        r#"fn update() {
+    let (amount, label) = (3, "xp");
+}
+"#,
+    );
+    let body = parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function item")
+        .body()
+        .expect("function body");
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+
+    let let_stmt = body.let_statements().next().expect("let statement");
+    assert!(let_stmt.name_text().is_none());
+    let pattern = let_stmt.pattern().expect("let tuple pattern");
+    let tuple = pattern.tuple_pattern().expect("tuple pattern");
+    assert!(tuple.path_segments().is_empty());
+    assert_eq!(
+        tuple
+            .patterns()
+            .filter_map(|pattern| pattern.binding_name())
+            .collect::<Vec<_>>(),
+        ["amount", "label"]
+    );
+}

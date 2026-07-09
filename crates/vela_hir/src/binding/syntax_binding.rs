@@ -123,7 +123,13 @@ impl<'a> SyntaxBindingLowerer<'a> {
                 if let Some(value) = statement.initializer() {
                     self.bind_expr(&value, PathUsage::Value);
                 }
-                if let Some(name) = statement.name_text() {
+                if let Some(pattern) = statement.pattern() {
+                    self.bind_pattern(
+                        &pattern,
+                        span_for(self.source, statement.syntax().text_range()),
+                        LocalBindingKind::Let,
+                    );
+                } else if let Some(name) = statement.name_text() {
                     self.declare_local(
                         name,
                         LocalBindingKind::Let,

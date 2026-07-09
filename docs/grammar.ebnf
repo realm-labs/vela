@@ -201,7 +201,7 @@ statement_kind  = let_stmt
                 | block
                 | expr_stmt ;
 
-let_stmt        = "let", ws, IDENT, ws, [ type_annotation, ws ],
+let_stmt        = "let", ws, pattern, ws, [ type_annotation, ws ],
                   [ "=", ws, expr ], stmt_term ;
 return_stmt     = "return", [ ws, expr ], stmt_term ;
 break_stmt      = "break", stmt_term ;

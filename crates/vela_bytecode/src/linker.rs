@@ -769,6 +769,26 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 field: FieldSlot::new(*slot),
                 debug_name: self.linked.intern_debug_name(field.clone()),
             },
+            UnlinkedInstructionKind::TupleArityEqual { dst, value, arity } => {
+                InstructionKind::TupleArityEqual {
+                    dst: *dst,
+                    value: *value,
+                    arity: *arity,
+                }
+            }
+            UnlinkedInstructionKind::GuardTupleArity { value, arity } => {
+                InstructionKind::GuardTupleArity {
+                    value: *value,
+                    arity: *arity,
+                }
+            }
+            UnlinkedInstructionKind::GetTupleField { dst, value, index } => {
+                InstructionKind::GetTupleField {
+                    dst: *dst,
+                    value: *value,
+                    index: *index,
+                }
+            }
             UnlinkedInstructionKind::GetIndex { dst, base, index } => InstructionKind::GetIndex {
                 dst: *dst,
                 base: *base,

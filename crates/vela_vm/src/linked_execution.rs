@@ -933,6 +933,25 @@ impl Vm {
                         *debug_name,
                     )?;
                 }
+                InstructionKind::TupleArityEqual { dst, value, arity } => {
+                    let matched = tuple_fields::tuple_arity_equal(
+                        &frame.read(*value)?,
+                        heap.as_deref(),
+                        *arity,
+                    )?;
+                    frame.write(*dst, Value::Bool(matched))?;
+                }
+                InstructionKind::GuardTupleArity { value, arity } => {
+                    tuple_fields::guard_tuple_arity(&frame.read(*value)?, heap.as_deref(), *arity)?;
+                }
+                InstructionKind::GetTupleField { dst, value, index } => {
+                    let field = tuple_fields::get_tuple_field(
+                        &frame.read(*value)?,
+                        heap.as_deref(),
+                        *index,
+                    )?;
+                    frame.write(*dst, field)?;
+                }
                 InstructionKind::GetIndex { dst, base, index } => {
                     indexing::dispatch_get_index(&mut frame, heap.as_deref(), *dst, *base, *index)?;
                 }

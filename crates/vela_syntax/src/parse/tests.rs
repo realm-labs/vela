@@ -1252,6 +1252,10 @@ fn parser_parse_source_reports_restricted_type_hint_arguments() {
             "syntax::one_element_tuple_type",
         ),
         (
+            "fn bad(value) { return match value { (x) => x, _ => 0 }; }",
+            "syntax::one_element_tuple_pattern",
+        ),
+        (
             "fn bad(xs: Map<(String, i64), String>) { return xs; }",
             "syntax::map_key_type_argument",
         ),

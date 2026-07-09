@@ -102,6 +102,64 @@ fn runs_compiled_tuple_expression_source() {
 }
 
 #[test]
+fn runs_compiled_tuple_let_destructuring_source() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let (amount, label) = (2 + 3, "gold");
+    return amount;
+}
+"#,
+        "main",
+    )
+    .expect("compile tuple let destructuring source");
+
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::i64(5)));
+}
+
+#[test]
+fn runs_compiled_tuple_match_destructuring_source() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let pair = (2, 5);
+    return match pair {
+        (left, right) => left + right,
+        _ => 0,
+    };
+}
+"#,
+        "main",
+    )
+    .expect("compile tuple match destructuring source");
+
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::i64(7)));
+}
+
+#[test]
+fn runs_compiled_tuple_for_destructuring_source() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let total = 0;
+    let rewards = [(2, "xp"), (5, "gold")];
+    for (amount, label) in rewards {
+        total += amount;
+    }
+    return total;
+}
+"#,
+        "main",
+    )
+    .expect("compile tuple for destructuring source");
+
+    assert_eq!(run_linked_test_code(code), Ok(OwnedValue::i64(7)));
+}
+
+#[test]
 fn heap_execution_allocates_array_and_string_literals() {
     let code = compile_function_source(
         SourceId::new(1),

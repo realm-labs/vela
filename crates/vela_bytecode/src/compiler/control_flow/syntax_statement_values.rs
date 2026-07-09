@@ -1,6 +1,8 @@
 use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
-use vela_syntax::ast::{Literal, SyntaxElseBranch, SyntaxExpression, SyntaxIfExpr};
+use vela_syntax::ast::{
+    Literal, SyntaxElseBranch, SyntaxExpression, SyntaxIfExpr, SyntaxPattern, SyntaxPatternKind,
+};
 
 use crate::Constant;
 use crate::compiler::body_payloads::{
@@ -9,7 +11,7 @@ use crate::compiler::body_payloads::{
 use crate::compiler::const_eval::compile_literal_constant_for_type;
 use crate::compiler::script_types::{ScriptTypeFact, type_hint_script_type};
 use crate::compiler::value_types::{RuntimeTypeFact, type_hint_value_type};
-use crate::compiler::{CompileResult, Compiler, frame_slot_kind};
+use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
 use crate::{Register, UnlinkedInstructionKind};
 
 use super::classification::merge_type_hint_and_value_fact;
@@ -42,6 +44,43 @@ impl Compiler<'_, '_> {
             .or_else(|| value_shape.as_ref().and_then(|shape| shape.value_type()));
         self.record_syntax_let_binding(name, span, register, script_fact, value_type, value_shape);
         Ok(Some(false))
+    }
+
+    pub(super) fn compile_let_syntax_pattern(
+        &mut self,
+        source: SourceId,
+        pattern: &SyntaxPattern,
+        span: Span,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<bool> {
+        let Some(value) = self.compile_syntax_expression(source, expression)? else {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "let pattern initializer",
+            )));
+        };
+        if !matches!(
+            pattern.pattern_kind(),
+            Some(SyntaxPatternKind::TupleVariant | SyntaxPatternKind::Wildcard)
+        ) {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "let pattern",
+            )));
+        }
+        if let Some(tuple) = pattern.tuple_pattern()
+            && !tuple.path_segments().is_empty()
+        {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "let tuple variant pattern",
+            )));
+        }
+        self.bind_syntax_pattern_locals(
+            value,
+            pattern,
+            span,
+            crate::compiler::patterns::PatternBindingFacts::default(),
+            LocalBindingKind::Let,
+        )?;
+        Ok(false)
     }
 
     fn record_syntax_let_binding(

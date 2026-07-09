@@ -1016,6 +1016,20 @@ pub enum UnlinkedInstructionKind {
         field: String,
         slot: usize,
     },
+    TupleArityEqual {
+        dst: Register,
+        value: Register,
+        arity: usize,
+    },
+    GuardTupleArity {
+        value: Register,
+        arity: usize,
+    },
+    GetTupleField {
+        dst: Register,
+        value: Register,
+        index: usize,
+    },
     GetIndex {
         dst: Register,
         base: Register,

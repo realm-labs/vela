@@ -61,6 +61,7 @@ mod stdlib;
 mod string_method_dispatch;
 mod string_methods;
 mod try_propagation;
+mod tuple_fields;
 pub mod value;
 mod value_key;
 

@@ -53,6 +53,11 @@ impl Compiler<'_, '_> {
                 return self.compile_let_without_initializer(name, span);
             }
             SyntaxStatementKind::Let => {
+                if let Some((source, pattern, expression, span)) =
+                    stmt.let_pattern_initializer_syntax_expression_and_span()
+                {
+                    return self.compile_let_syntax_pattern(source, &pattern, span, &expression);
+                }
                 if let Some((literal, literal_span)) =
                     stmt.let_initializer_syntax_literal_and_span()
                 {

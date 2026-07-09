@@ -525,10 +525,11 @@ Focused validation:
   meaningful value, loop bodies, no-return functions, and `return;` produce
   unit.
 - [~] Lower tuple construction and destructuring directly. Ordinary tuple
-  expressions now lower through a first-class `MakeTuple` bytecode instruction;
-  tuple destructuring remains open.
-- [ ] Add tuple arity/type mismatch diagnostics for destructuring and dynamic
-  boundary guards.
+  expressions now lower through a first-class `MakeTuple` bytecode instruction,
+  and tuple destructuring now lowers for `let`, `match`, and `for` patterns.
+- [~] Add tuple arity/type mismatch diagnostics for destructuring and dynamic
+  boundary guards. Runtime arity guards now exist for tuple destructuring;
+  typed dynamic-boundary tuple guard plans remain open.
 - [ ] Keep `?` Rust-aligned and reject cross-family `Option`/`Result`
   propagation without explicit helpers.
 - [ ] Remove tests that assert null as void, null equality, null control-flow

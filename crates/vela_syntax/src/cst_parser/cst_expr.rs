@@ -469,7 +469,12 @@ impl CstParser<'_, '_> {
     }
 
     fn tuple_pattern_body(&mut self, start: usize, end: usize) {
-        let Some(fields_start) = self.find_outer_call_arg_list_start(start, end) else {
+        let fields_start = if self.at_kind(start, SyntaxKind::LParen) {
+            Some(start)
+        } else {
+            self.find_outer_call_arg_list_start(start, end)
+        };
+        let Some(fields_start) = fields_start else {
             self.emit_until(end);
             return;
         };
@@ -845,7 +850,9 @@ impl CstParser<'_, '_> {
     }
 
     fn pattern_kind(&self, start: usize, end: usize) -> SyntaxKind {
-        if self.find_outer_call_arg_list_start(start, end).is_some() {
+        if self.at_kind(start, SyntaxKind::LParen)
+            || self.find_outer_call_arg_list_start(start, end).is_some()
+        {
             SyntaxKind::TuplePattern
         } else if self
             .find_outer_record_field_list_start(start, end)

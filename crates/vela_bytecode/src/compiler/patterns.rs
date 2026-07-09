@@ -151,10 +151,32 @@ impl Compiler<'_, '_> {
                 Ok(())
             }
             SyntaxPatternKind::TupleVariant => {
-                let path = syntax_pattern_path_segments(pattern)?;
                 let tuple = pattern.tuple_pattern().ok_or_else(|| {
                     CompileError::new(CompileErrorKind::UnsupportedSyntax("match pattern"))
                 })?;
+                let path = tuple.path_segments();
+                if path.is_empty() {
+                    self.emit(UnlinkedInstructionKind::GuardTupleArity {
+                        value: scrutinee,
+                        arity: tuple.patterns().count(),
+                    });
+                    for (index, field) in tuple.patterns().enumerate() {
+                        let field_kind =
+                            required_syntax_pattern_kind(&field, "tuple pattern field")?;
+                        if !pattern_kind_declares_locals(field_kind) {
+                            continue;
+                        }
+                        let field_value = self.emit_tuple_pattern_field_read(scrutinee, index)?;
+                        self.bind_syntax_pattern_locals(
+                            field_value,
+                            &field,
+                            body_span,
+                            PatternBindingFacts::default(),
+                            kind,
+                        )?;
+                    }
+                    return Ok(());
+                }
                 for (index, field) in tuple.patterns().enumerate() {
                     let field_kind = required_syntax_pattern_kind(&field, "tuple pattern field")?;
                     if !pattern_kind_declares_locals(field_kind) {
@@ -264,6 +286,20 @@ impl Compiler<'_, '_> {
                 field,
             });
         }
+        Ok(dst)
+    }
+
+    pub(in crate::compiler) fn emit_tuple_pattern_field_read(
+        &mut self,
+        scrutinee: Register,
+        index: usize,
+    ) -> CompileResult<Register> {
+        let dst = self.alloc_register()?;
+        self.emit(UnlinkedInstructionKind::GetTupleField {
+            dst,
+            value: scrutinee,
+            index,
+        });
         Ok(dst)
     }
 

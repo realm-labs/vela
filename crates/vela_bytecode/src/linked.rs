@@ -891,6 +891,20 @@ pub enum InstructionKind {
         field: FieldSlot,
         debug_name: DebugNameId,
     },
+    TupleArityEqual {
+        dst: Register,
+        value: Register,
+        arity: usize,
+    },
+    GuardTupleArity {
+        value: Register,
+        arity: usize,
+    },
+    GetTupleField {
+        dst: Register,
+        value: Register,
+        index: usize,
+    },
     GetIndex {
         dst: Register,
         base: Register,

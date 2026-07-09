@@ -197,11 +197,35 @@ impl Compiler<'_, '_> {
                 }
             }
             SyntaxPatternKind::TupleVariant => {
-                let path = syntax_pattern_path_segments(source, pattern)?;
-                let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
                 let tuple = pattern
                     .tuple_pattern()
                     .ok_or_else(|| syntax_match_error(source, pattern.syntax().text_range()))?;
+                let path = tuple.path_segments();
+                if path.is_empty() {
+                    let condition = self.alloc_register()?;
+                    self.emit(UnlinkedInstructionKind::TupleArityEqual {
+                        dst: condition,
+                        value: scrutinee,
+                        arity: tuple.patterns().count(),
+                    });
+                    let mut jumps = vec![self.emit_jump_if_false(condition)];
+                    for (index, field) in tuple.patterns().enumerate() {
+                        let Some(kind) = field.pattern_kind() else {
+                            return Err(syntax_match_error(source, field.syntax().text_range()));
+                        };
+                        if !syntax_pattern_kind_needs_match_check(kind) {
+                            continue;
+                        }
+                        let field_value = self.emit_tuple_pattern_field_read(scrutinee, index)?;
+                        jumps.extend(self.compile_syntax_match_pattern(
+                            source,
+                            field_value,
+                            &field,
+                        )?);
+                    }
+                    return Ok(jumps);
+                }
+                let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
                 for (index, field) in tuple.patterns().enumerate() {
                     let Some(kind) = field.pattern_kind() else {
                         return Err(syntax_match_error(source, field.syntax().text_range()));

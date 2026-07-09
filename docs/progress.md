@@ -158,11 +158,12 @@ standard/native no-result metadata, control-flow defaults, and Rust
 tuple payloads now materialize through the VM heap and owned boundary, Rust
 `()` converts at the script-argument boundary, Rust tuple conversion supports
 arities 2 through 4, serde tuple conversion uses tuple values rather than raw
-null or array aliases, and ordinary tuple expressions now lower through a
-first-class `MakeTuple` bytecode instruction. Remaining follow-up work includes
-tuple destructuring behavior, tuple type facts/guards/ABI descriptors, and
-replacing reflection metadata gaps with structured Option or omitted fields
-instead of unit placeholders.
+null or array aliases, ordinary tuple expressions now lower through a
+first-class `MakeTuple` bytecode instruction, and tuple destructuring patterns
+now lower for `let`, `match`, and `for` bindings through tuple arity guards and
+field reads. Remaining follow-up work includes tuple type facts/guards/ABI
+descriptors, tuple key rejection, and replacing reflection metadata gaps with
+structured Option or omitted fields instead of unit placeholders.
 ## Milestone Snapshot
 
 | Milestone | Status | Current note |

@@ -109,6 +109,22 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
 
     fn let_statement_body(&mut self, start: usize, end: usize) {
         let initializer = self.find_root_kind_before(SyntaxKind::Equal, start, end);
+        let let_kw = self.find_root_kind_before(SyntaxKind::LetKw, start, end);
+        let binding_end = self
+            .find_root_kind_before(SyntaxKind::Colon, start, end)
+            .or(initializer)
+            .unwrap_or(end);
+        if let Some(let_kw) = let_kw {
+            let binding_start = self.skip_trivia(let_kw + 1);
+            let binding_end = self.trim_trailing_trivia(binding_start, binding_end);
+            if binding_start < binding_end
+                && !matches!(self.kind_at(binding_start), Some(SyntaxKind::Ident))
+            {
+                self.emit_until(binding_start);
+                self.pattern_range(binding_start, binding_end);
+            }
+        }
+
         if let Some(colon) = self.find_root_kind_before(SyntaxKind::Colon, start, end) {
             let value_end = initializer.unwrap_or(end);
             let type_start = self.skip_trivia(colon + 1);

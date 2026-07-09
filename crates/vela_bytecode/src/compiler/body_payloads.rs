@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
     AstNode, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxForStmt, SyntaxIfExpr,
-    SyntaxMatchExpr, SyntaxStatement, SyntaxStatementKind,
+    SyntaxMatchExpr, SyntaxPattern, SyntaxStatement, SyntaxStatementKind,
 };
 
 mod expression_payloads;
@@ -182,6 +182,18 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(super) fn let_name_text(&self) -> Option<String> {
         self.source?;
         self.syntax.as_ref()?.as_let()?.name_text()
+    }
+
+    pub(super) fn let_pattern_initializer_syntax_expression_and_span(
+        &self,
+    ) -> Option<(SourceId, SyntaxPattern, SyntaxExpression, Span)> {
+        let source = self.source?;
+        let statement = self.syntax.as_ref()?.as_let()?;
+        let pattern = statement.pattern()?;
+        let expression = statement.initializer()?;
+        let range = statement.syntax().text_range();
+        let span = Span::new(source, range.start().into(), range.end().into());
+        Some((source, pattern, expression, span))
     }
 
     pub(in crate::compiler) fn let_initializer_syntax_literal_and_span(
