@@ -325,7 +325,8 @@ impl Compiler<'_, '_> {
         value_expression: &SyntaxExpression,
         value: Register,
     ) -> CompileResult<Option<Register>> {
-        let root = self.local_register_at_span(target.root_span, &target.root)?;
+        let root =
+            self.required_local_register_at_hir_expression_span(target.root_span, &target.root)?;
         let assigned = self.compile_syntax_nested_record_field_assignment_at_root(
             source,
             op,
