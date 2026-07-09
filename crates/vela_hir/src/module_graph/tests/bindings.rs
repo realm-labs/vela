@@ -1109,6 +1109,40 @@ fn main(player) {
 }
 
 #[test]
+fn function_bodies_record_tuple_projection_field_facts() {
+    let mut graph = ModuleGraph::new();
+    let source_text = r#"
+fn main(pair) {
+    return pair.0;
+}
+"#;
+    graph.add_source(source(1, "game::main", source_text));
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+
+    let member_start = source_text.find('0').expect("tuple projection member") as u32;
+    let member_span = Span::new(SourceId::new(1), member_start, member_start + 1);
+    let field = graph
+        .field_at_member_span(member_span)
+        .expect("tuple projection field fact");
+    assert_eq!(field.name, "0");
+    assert_eq!(
+        graph
+            .fields_in_source(SourceId::new(1))
+            .map(|field| field.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["0"]
+    );
+    assert_eq!(
+        graph.expression_span(field.receiver),
+        Some(Span::new(
+            SourceId::new(1),
+            source_text.find("pair.0").expect("receiver") as u32,
+            (source_text.find("pair.0").expect("receiver") + "pair".len()) as u32,
+        ))
+    );
+}
+
+#[test]
 fn function_bodies_record_source_path_facts() {
     let mut graph = ModuleGraph::new();
     let source_text = r#"

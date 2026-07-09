@@ -527,10 +527,7 @@ impl ExpressionFactCollector<'_> {
         let Some(call) = expr.as_call() else {
             return fact;
         };
-        let Some(callee) = call.callee() else {
-            return fact;
-        };
-        self.source_call_return_fact(&callee, scope).unwrap_or(fact)
+        self.call_fact(expr, &call, scope)
     }
 
     fn type_fact_from_expr(&self, expr: &SyntaxExpression, scope: &ExprFactScope) -> TypeFact {
@@ -596,14 +593,17 @@ impl ExpressionFactCollector<'_> {
                 }),
             SyntaxExpressionKind::Field => expr
                 .as_field()
-                .and_then(|expr| {
-                    let base = expr.receiver()?;
-                    let receiver = self.type_fact_from_expr(&base, scope);
-                    if let Some(index) = expr.tuple_index() {
+                .and_then(|_| {
+                    let field = self.hir_field_for_expression(expr)?;
+                    let receiver = self
+                        .expression_facts
+                        .get(&field.receiver)
+                        .cloned()
+                        .unwrap_or(TypeFact::Unknown);
+                    if let Ok(index) = field.name.parse::<usize>() {
                         return Some(tuple_projection_fact(receiver, index));
                     }
-                    let name = expr.name_text()?;
-                    Some(field_access_fact(receiver, &name, self.schema))
+                    Some(field_access_fact(receiver, &field.name, self.schema))
                 })
                 .unwrap_or(TypeFact::Unknown),
             SyntaxExpressionKind::Index => expr
@@ -684,96 +684,80 @@ impl ExpressionFactCollector<'_> {
         call: &vela_syntax::ast::SyntaxCallExpr,
         scope: &ExprFactScope,
     ) -> TypeFact {
-        let Some(callee) = call.callee() else {
+        let args = call.arguments();
+        let Some(callee) = self.hir_callee_for_call(call_expr) else {
             return TypeFact::Unknown;
         };
-        let args = call.arguments();
-        match callee.expression_kind() {
-            SyntaxExpressionKind::Path => {
-                let Some(segments) = self.hir_callee_path_for_call(call_expr) else {
-                    return TypeFact::Unknown;
-                };
-                let arg_facts = args
-                    .iter()
-                    .filter_map(|arg| {
-                        arg.expression()
-                            .map(|expr| self.type_fact_from_expr(&expr, scope))
-                    })
-                    .collect::<Vec<_>>();
-                if let Some(fact) = stdlib_function_fact(&segments.join("::"), &arg_facts) {
-                    return fact.returns;
-                }
-                if let Some(fact) = self
-                    .schema
-                    .function_fact(&segments.join("::"))
-                    .and_then(function_return_fact)
-                {
-                    return fact;
-                }
-                if let Some(fact) = scope.path_fact(segments).and_then(function_return_fact) {
-                    return fact;
-                }
-
-                let Some((method, receiver_path)) = segments.split_last() else {
-                    return TypeFact::Unknown;
-                };
-                let receiver = scope
-                    .path_fact(receiver_path)
-                    .cloned()
-                    .unwrap_or(TypeFact::Unknown);
-                if let Some(fact) = registry_method_return_fact(&receiver, method, self.schema) {
-                    return fact;
-                }
-                let lambda_return = args.first().and_then(|arg| {
-                    arg.expression()
-                        .and_then(|expr| self.lambda_return_fact(&receiver, method, &expr, scope))
-                });
-                stdlib_method_fact_with_lambda_arity(
-                    &receiver,
-                    method,
-                    lambda_return.as_ref(),
-                    first_lambda_param_count(&args),
-                )
-                .map_or(TypeFact::Unknown, |fact| fact.returns)
+        if let Some(field) = self.hir_field(callee) {
+            let receiver = self
+                .expression_facts
+                .get(&field.receiver)
+                .cloned()
+                .unwrap_or(TypeFact::Unknown);
+            if let Some(fact) = registry_method_return_fact(&receiver, &field.name, self.schema) {
+                return fact;
             }
-            SyntaxExpressionKind::Field => {
-                let Some(field) = callee.as_field() else {
-                    return TypeFact::Unknown;
-                };
-                let Some(base) = field.receiver() else {
-                    return TypeFact::Unknown;
-                };
-                let Some(name) = field.name_text() else {
-                    return TypeFact::Unknown;
-                };
-                let receiver = self.type_fact_from_expr(&base, scope);
-                if let Some(fact) = registry_method_return_fact(&receiver, &name, self.schema) {
-                    return fact;
-                }
-                let lambda_return = args.first().and_then(|arg| {
-                    arg.expression()
-                        .and_then(|expr| self.lambda_return_fact(&receiver, &name, &expr, scope))
-                });
-                stdlib_method_fact_with_lambda_arity(
-                    &receiver,
-                    &name,
-                    lambda_return.as_ref(),
-                    first_lambda_param_count(&args),
-                )
-                .map_or(TypeFact::Unknown, |fact| fact.returns)
+            if let Some(fact) = self.source_method_return_fact(&receiver, &field.name) {
+                return fact;
             }
-            _ => TypeFact::Unknown,
+            let lambda_return = args.first().and_then(|arg| {
+                arg.expression()
+                    .and_then(|expr| self.lambda_return_fact(&receiver, &field.name, &expr, scope))
+            });
+            return stdlib_method_fact_with_lambda_arity(
+                &receiver,
+                &field.name,
+                lambda_return.as_ref(),
+                first_lambda_param_count(&args),
+            )
+            .map_or(TypeFact::Unknown, |fact| fact.returns);
         }
-    }
 
-    fn source_call_return_fact(
-        &self,
-        callee: &SyntaxExpression,
-        scope: &ExprFactScope,
-    ) -> Option<TypeFact> {
-        let field = callee.as_field()?;
-        let receiver = self.type_fact_from_expr(&field.receiver()?, scope);
-        self.source_method_return_fact(&receiver, &field.name_text()?)
+        let Some(segments) = self.hir_path_for_expression(callee, HirPathKind::Callee) else {
+            return TypeFact::Unknown;
+        };
+        let arg_facts = args
+            .iter()
+            .filter_map(|arg| {
+                arg.expression()
+                    .map(|expr| self.type_fact_from_expr(&expr, scope))
+            })
+            .collect::<Vec<_>>();
+        if let Some(fact) = stdlib_function_fact(&segments.join("::"), &arg_facts) {
+            return fact.returns;
+        }
+        if let Some(fact) = self
+            .schema
+            .function_fact(&segments.join("::"))
+            .and_then(function_return_fact)
+        {
+            return fact;
+        }
+        if let Some(fact) = scope.path_fact(segments).and_then(function_return_fact) {
+            return fact;
+        }
+
+        let Some((method, receiver_path)) = segments.split_last() else {
+            return TypeFact::Unknown;
+        };
+        let receiver = scope
+            .path_fact(receiver_path)
+            .cloned()
+            .unwrap_or(TypeFact::Unknown);
+        if let Some(fact) = registry_method_return_fact(&receiver, method, self.schema) {
+            return fact;
+        }
+        let lambda_return = args.first().and_then(|arg| {
+            arg.expression()
+                .and_then(|expr| self.lambda_return_fact(&receiver, method, &expr, scope))
+        });
+        stdlib_method_fact_with_lambda_arity(
+            &receiver,
+            method,
+            lambda_return.as_ref(),
+            first_lambda_param_count(&args),
+        )
+        .map_or(TypeFact::Unknown, |fact| fact.returns)
     }
 
     fn source_method_return_fact(&self, receiver: &TypeFact, method: &str) -> Option<TypeFact> {
@@ -999,10 +983,23 @@ impl ExpressionFactCollector<'_> {
         self.hir_path_for_expression(expression, kind)
     }
 
-    fn hir_callee_path_for_call(&self, call: &SyntaxExpression) -> Option<&[String]> {
+    fn hir_callee_for_call(&self, call: &SyntaxExpression) -> Option<HirExprId> {
         let call = self.hir_expression(call)?;
-        let callee = self.graph.call_callee(call)?;
-        self.hir_path_for_expression(callee, HirPathKind::Callee)
+        self.graph.call_callee(call)
+    }
+
+    fn hir_field_for_expression(
+        &self,
+        expr: &SyntaxExpression,
+    ) -> Option<&vela_hir::body::HirField> {
+        let expression = self.hir_expression(expr)?;
+        self.hir_field(expression)
+    }
+
+    fn hir_field(&self, expression: HirExprId) -> Option<&vela_hir::body::HirField> {
+        self.graph
+            .fields_in_source(self.source)
+            .find(|field| field.expression == expression)
     }
 
     fn hir_path_for_expression(

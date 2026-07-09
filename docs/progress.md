@@ -186,7 +186,10 @@ and member-field facts instead of reconstructing callable labels from callee
 syntax, and stdlib lambda-parameter type hints use the same HIR member-call
 facts for method receiver and target identity. Host field type inlay hints now
 read receiver, member name, and member span from HIR field facts instead of
-field syntax reconstruction.
+field syntax reconstruction. HIR field facts now also cover tuple projection
+members, and language-service expression facts resolve field access plus
+member-call return targets from HIR field/call facts instead of field-callee
+syntax reconstruction.
 Incremental language-service updates now rebuild Heavy HIR for body-only source
 edits so HIR-owned call/member/path/body facts stay current while
 declaration/import indexes remain reusable. Semantic-token local record facts

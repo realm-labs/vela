@@ -513,11 +513,11 @@ impl<'a> SyntaxBindingLowerer<'a> {
                     && let Some(base) = field.receiver()
                 {
                     let receiver = self.bind_expr(&base, PathUsage::FieldBase);
-                    if let Some(name) = field.name_text() {
-                        let member_span = field
-                            .name_token()
-                            .map(|token| span_for(self.source, token.text_range()))
-                            .unwrap_or_else(|| span_for(self.source, field.syntax().text_range()));
+                    if let Some(member_token) =
+                        field.name_token().or_else(|| field.tuple_index_token())
+                    {
+                        let name = member_token.text().to_owned();
+                        let member_span = span_for(self.source, member_token.text_range());
                         self.record_field(id, receiver, name, member_span);
                     }
                 }
