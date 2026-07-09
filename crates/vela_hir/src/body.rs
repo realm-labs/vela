@@ -53,6 +53,7 @@ pub struct HirBody {
     pub locals: Vec<HirLocalId>,
     pub self_binding: Option<HirLocalId>,
     pub self_uses: Vec<HirExprId>,
+    pub unresolved_references: Vec<HirUnresolvedReference>,
     pub captures: Vec<HirCapture>,
 }
 
@@ -74,6 +75,7 @@ impl HirBody {
             locals: Vec::new(),
             self_binding: None,
             self_uses: Vec::new(),
+            unresolved_references: Vec::new(),
             captures: Vec::new(),
         }
     }
@@ -246,4 +248,11 @@ pub struct HirCapture {
     pub local: HirLocalId,
     pub use_expression: HirExprId,
     pub owner: HirBodyId,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct HirUnresolvedReference {
+    pub expression: HirExprId,
+    pub name: String,
+    pub origin: HirSourceOrigin,
 }

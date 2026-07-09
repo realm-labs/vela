@@ -695,6 +695,43 @@ fn main(value) {
 }
 
 #[test]
+fn body_hir_records_unresolved_references() {
+    let text = r#"
+fn main(value) {
+    let total = value + missing_symbol;
+    return total;
+}
+"#;
+    let mut graph = ModuleGraph::new();
+    let module = graph.add_source(source(1, "game::reward", text));
+    let main = graph
+        .module(module)
+        .and_then(|module| module.get("main"))
+        .expect("main declaration");
+    let body = graph.function_body(main).expect("main body");
+    let missing_start = text.find("missing_symbol").expect("missing symbol");
+    let missing_span = Span::new(
+        SourceId::new(1),
+        missing_start as u32,
+        (missing_start + "missing_symbol".len()) as u32,
+    );
+
+    assert!(
+        graph
+            .diagnostics()
+            .iter()
+            .any(|diagnostic| diagnostic.message == "unresolved name `missing_symbol`"),
+        "{:?}",
+        graph.diagnostics()
+    );
+    assert_eq!(body.unresolved_references.len(), 1);
+    let unresolved = &body.unresolved_references[0];
+    assert_eq!(unresolved.name, "missing_symbol");
+    assert_eq!(unresolved.origin.span, missing_span);
+    assert!(body.expressions.contains_key(&unresolved.expression));
+}
+
+#[test]
 fn duplicate_lambda_parameters_report_both_spans() {
     let mut graph = ModuleGraph::new();
     graph.add_source(source(

@@ -7,6 +7,7 @@ use crate::binding::{BindingResolution, ExprInfo};
 use crate::body::{
     HirBlock, HirBody, HirBodyOwner, HirCapture, HirExpr, HirExprKind, HirParam, HirPattern,
     HirPatternKind, HirScope, HirScopeKind, HirSourceOrigin, HirStmt, HirStmtKind,
+    HirUnresolvedReference,
 };
 use crate::ids::{
     HirBlockId, HirBodyId, HirCaptureId, HirExprId, HirLocalId, HirParamId, HirPatternId,
@@ -200,5 +201,22 @@ impl<'a> SyntaxBindingLowerer<'a> {
         if self.body_mut(body).self_binding == Some(*local) {
             self.body_mut(body).self_uses.push(expression);
         }
+    }
+
+    pub(super) fn record_unresolved_reference(
+        &mut self,
+        expression: HirExprId,
+        name: String,
+        span: Span,
+    ) {
+        let body = self.current_body();
+        let source = self.source;
+        self.body_mut(body)
+            .unresolved_references
+            .push(HirUnresolvedReference {
+                expression,
+                name,
+                origin: HirSourceOrigin { source, span },
+            });
     }
 }

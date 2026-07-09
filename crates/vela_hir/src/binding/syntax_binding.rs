@@ -777,6 +777,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
         }
 
         if matches!(usage, PathUsage::Value | PathUsage::AssignmentTarget) {
+            self.record_unresolved_reference(id, name.clone(), span);
             self.diagnostics
                 .push(self.unresolved_name_diagnostic(name, span));
         }
