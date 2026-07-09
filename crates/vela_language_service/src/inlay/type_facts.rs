@@ -6,6 +6,20 @@ pub(super) fn syntax_type_fact_from_hint(
     hint: &SyntaxTypeHint,
     schema: &RegistryFacts,
 ) -> TypeFact {
+    if hint.is_unit() {
+        return TypeFact::UNIT;
+    }
+    let tuple_elements = hint.tuple_element_hints().collect::<Vec<_>>();
+    if hint.is_tuple() {
+        return TypeFact::tuple(
+            tuple_elements
+                .iter()
+                .map(|element| syntax_type_fact_from_hint(element, schema)),
+        );
+    }
+    if hint.l_paren_token().is_some() && tuple_elements.len() == 1 {
+        return syntax_type_fact_from_hint(&tuple_elements[0], schema);
+    }
     let args = hint
         .type_arg_list()
         .map(|args| args.type_hints().collect::<Vec<_>>())

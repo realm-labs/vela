@@ -55,6 +55,12 @@ fn builtin_type_fact_from_hir_hint(
         return None;
     };
     match name.as_str() {
+        HirTypeHint::UNIT_PATH if hint.args.is_empty() => Some(TypeFact::UNIT),
+        HirTypeHint::UNIT_PATH if hint.args.len() >= 2 => Some(TypeFact::tuple(
+            hint.args
+                .iter()
+                .map(|arg| type_fact_from_arg(graph, module, arg)),
+        )),
         "Array" if hint.args.len() == 1 => Some(TypeFact::array(type_fact_from_arg(
             graph,
             module,
@@ -132,6 +138,7 @@ fn builtin_type_fact(name: &str) -> Option<TypeFact> {
     }
 
     match name {
+        HirTypeHint::UNIT_PATH => Some(TypeFact::UNIT),
         "Any" => Some(TypeFact::Any),
         "String" => Some(TypeFact::primitive(PrimitiveTag::String)),
         "Bytes" => Some(TypeFact::primitive(PrimitiveTag::Bytes)),
@@ -235,6 +242,10 @@ mod tests {
             type_fact_from_path(&graph, &["Option".to_owned()]),
             TypeFact::option(TypeFact::Unknown)
         );
+        assert_eq!(
+            type_fact_from_path(&graph, &[HirTypeHint::UNIT_PATH.to_owned()]),
+            TypeFact::UNIT
+        );
     }
 
     #[test]
@@ -302,6 +313,33 @@ mod tests {
                 &hint(&["Set"], vec![hint(&["String"], Vec::new())]),
             ),
             TypeFact::set(TypeFact::STRING)
+        );
+    }
+
+    #[test]
+    fn unit_and_tuple_hints_map_to_structural_facts() {
+        let graph = graph("");
+        let unit = hint(&[HirTypeHint::UNIT_PATH], Vec::new());
+        let tuple = hint(
+            &[HirTypeHint::UNIT_PATH],
+            vec![hint(&["String"], Vec::new()), hint(&["i64"], Vec::new())],
+        );
+        let nested = hint(
+            &["Option"],
+            vec![hint(
+                &[HirTypeHint::UNIT_PATH],
+                vec![hint(&["String"], Vec::new()), hint(&["i64"], Vec::new())],
+            )],
+        );
+
+        assert_eq!(type_fact_from_hint(&graph, &unit), TypeFact::UNIT);
+        assert_eq!(
+            type_fact_from_hint(&graph, &tuple),
+            TypeFact::tuple([TypeFact::STRING, TypeFact::I64])
+        );
+        assert_eq!(
+            type_fact_from_hint(&graph, &nested),
+            TypeFact::option(TypeFact::tuple([TypeFact::STRING, TypeFact::I64]))
         );
     }
 

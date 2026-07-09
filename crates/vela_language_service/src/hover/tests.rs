@@ -404,6 +404,40 @@ fn hover_reports_script_parameter_fact() {
 }
 
 #[test]
+fn hover_reports_tuple_and_unit_parameter_facts() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main(parts: (String, i64), marker: ()) -> () {\n    let copy = parts\n    return marker\n}";
+    let databases = databases_for(&document, text, RegistryFacts::default());
+    let parts_line = text.lines().nth(1).expect("parts use line");
+    let marker_line = text.lines().nth(2).expect("marker use line");
+
+    let parts_hover = databases
+        .hover(
+            &document,
+            Position::new(1, parts_line.find("parts").expect("parts use")),
+        )
+        .expect("hover should resolve tuple parameter use");
+    assert_eq!(parts_hover.kind(), HoverKind::Parameter);
+    assert_eq!(parts_hover.label(), "parts");
+    assert_eq!(parts_hover.detail(), "(String, i64)");
+    assert_eq!(
+        parts_hover.detail_parts(),
+        &DisplayParts::type_name("(String, i64)")
+    );
+
+    let marker_hover = databases
+        .hover(
+            &document,
+            Position::new(2, marker_line.find("marker").expect("marker use")),
+        )
+        .expect("hover should resolve unit parameter use");
+    assert_eq!(marker_hover.kind(), HoverKind::Parameter);
+    assert_eq!(marker_hover.label(), "marker");
+    assert_eq!(marker_hover.detail(), "()");
+    assert_eq!(marker_hover.detail_parts(), &DisplayParts::type_name("()"));
+}
+
+#[test]
 fn hover_recovers_parameter_fact_after_body_parse_error() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\

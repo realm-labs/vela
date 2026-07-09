@@ -594,8 +594,8 @@ Focused validation:
 
 Focused validation:
 
-- [ ] `cargo test -p vela_hot_reload`
-- [ ] `cargo test -p vela_bytecode type_contract`
+- [x] `cargo test -p vela_hot_reload`
+- [x] `cargo test -p vela_bytecode type_contract`
 - [x] `cargo test -p vela_analysis`
 - [x] `cargo test -p vela_language_service schema`
 - [x] `cargo test -p vela_vm option_result`
@@ -608,9 +608,11 @@ Focused validation:
   playground/site examples, and user-facing diagnostics. The split_once tuple
   payload is documented in architecture and website stdlib docs, and the
   gameplay helper example uses tuple destructuring.
-- [ ] Update LSP hover, completion, signature help, semantic tokens, rename,
+- [~] Update LSP hover, completion, signature help, semantic tokens, rename,
   references, code actions, formatting, inlay hints, and diagnostics for unit
-  and tuples.
+  and tuples. Unit type-hint completion and tuple/unit hover and signature
+  display now preserve structural type facts through the language-service
+  query layer and LSP-focused validation.
 - [ ] Replace user-facing null placeholders with `()`, `Option::None`, or
   typed fixits.
 - [ ] Classify surviving JSON nulls as protocol/serde fixture data rather than
@@ -618,9 +620,9 @@ Focused validation:
 
 Focused validation:
 
-- [ ] `cargo test -p vela_language_service`
-- [ ] `cargo test -p vela_lsp_server`
-- [ ] `npm --prefix site run build`
+- [x] `cargo test -p vela_language_service`
+- [x] `cargo test -p vela_lsp_server`
+- [x] `npm --prefix site run build`
 
 ### Phase 7: Final Audit And Cleanup
 

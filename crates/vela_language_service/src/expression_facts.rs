@@ -1090,6 +1090,16 @@ fn syntax_params(param_list: Option<vela_syntax::ast::SyntaxParamList>) -> Vec<S
 }
 
 fn type_fact_from_syntax_hint(hint: &SyntaxTypeHint) -> TypeFact {
+    if hint.is_unit() {
+        return TypeFact::UNIT;
+    }
+    let tuple_elements = hint.tuple_element_hints().collect::<Vec<_>>();
+    if hint.is_tuple() {
+        return TypeFact::tuple(tuple_elements.iter().map(type_fact_from_syntax_hint));
+    }
+    if hint.l_paren_token().is_some() && tuple_elements.len() == 1 {
+        return type_fact_from_syntax_hint(&tuple_elements[0]);
+    }
     let args = hint
         .type_arg_list()
         .map(|args| args.type_hints().collect::<Vec<_>>())

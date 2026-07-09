@@ -365,6 +365,39 @@ pub fn reward_bonus(amount: i64, scale: i64 = 1) -> i64 {
     }
 
     #[test]
+    fn signature_help_displays_tuple_and_unit_contracts() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+            pub fn pair(value: (String, i64), marker: ()) -> Option<(String, i64)> {
+                return Option::Some(value)
+            }
+            pub fn main(value: (String, i64)) { pair(value, ()) }
+        "#;
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let main_line = text.lines().nth(4).expect("main line should exist");
+        let position = Position::new(4, main_line.find("())").expect("unit argument"));
+        let help = databases
+            .signature_help(&document, position)
+            .expect("signature help should resolve tuple/unit source function");
+
+        assert_eq!(help.active_parameter(), 1);
+        assert_eq!(
+            help.signatures()[0].label(),
+            "pair(value: (String, i64), marker: ()) -> Option((String, i64))"
+        );
+        assert_eq!(
+            help.signatures()[0].parameters()[0].label(),
+            "value: (String, i64)"
+        );
+        assert_eq!(help.signatures()[0].parameters()[1].label(), "marker: ()");
+    }
+
+    #[test]
     fn signature_help_returns_none_for_unknown_call() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
         let text = "pub fn main() { missing(1, 2) }";

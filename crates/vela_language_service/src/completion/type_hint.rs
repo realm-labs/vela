@@ -151,6 +151,7 @@ fn is_type_position_analysis_item(item: &AnalysisCompletionItem) -> bool {
 
 fn builtin_type_hint_completions() -> Vec<CompletionItem> {
     [
+        ("()", TypeFact::UNIT),
         ("bool", TypeFact::BOOL),
         ("char", TypeFact::CHAR),
         ("i8", TypeFact::I8),
@@ -284,6 +285,26 @@ mod tests {
             CompletionContextKind::TypeHint
         );
         assert_completion(&completions, "i64", CompletionKind::Type);
+    }
+
+    #[test]
+    fn type_hint_completion_suggests_unit_and_not_null() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "pub fn main(value: ) { return value }";
+        let databases = databases_for(document.clone(), text);
+        let completions = databases.completion_items(
+            &document,
+            Position::new(0, text.find(": )").expect("empty type hint") + ": ".len()),
+        );
+
+        assert_eq!(
+            completions.context().kind(),
+            CompletionContextKind::TypeHint
+        );
+        let unit = completion(&completions, "()");
+        assert_eq!(unit.kind(), CompletionKind::Type);
+        assert_eq!(unit.detail(), "()");
+        assert_no_completion(&completions, "null");
     }
 
     #[test]
