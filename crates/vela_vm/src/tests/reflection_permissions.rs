@@ -55,7 +55,8 @@ fn compiled_source_uses_reflection_natives_for_host_state() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    let player_type = reflect::type_of(player);
+    let missing_type = ReflectType { name: "", kind: "missing" };
+    let player_type = reflect::type_of(player).unwrap_or(missing_type);
     if reflect::name(player_type) == "Player" && reflect::kind(player_type) == "host" {
         if reflect::implements(player, "Damageable") {
             reflect::set(player, "level", 10);
@@ -853,7 +854,8 @@ fn heap_execution_uses_reflection_natives_for_host_state() {
         SourceId::new(1),
         r#"
 fn main(player) {
-    let player_type = reflect::type_of(player);
+    let missing_type = ReflectType { name: "", kind: "missing" };
+    let player_type = reflect::type_of(player).unwrap_or(missing_type);
     if reflect::name(player_type) == "Player" && reflect::kind(player_type) == "host" {
         if reflect::implements(player, "Damageable") {
             reflect::set(player, "level", 10);

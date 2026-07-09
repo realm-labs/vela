@@ -6,7 +6,7 @@ fn reflection_functions_expose_metadata_facts() {
         stdlib_function_fact("reflect::type_of", &[TypeFact::host("Player")])
             .expect("reflect::type_of fact")
             .returns,
-        TypeFact::union([TypeFact::record("ReflectType"), TypeFact::UNIT])
+        TypeFact::option(TypeFact::record("ReflectType"))
     );
     assert_eq!(
         stdlib_function_fact("reflect::types", &[])
@@ -30,13 +30,13 @@ fn reflection_functions_expose_metadata_facts() {
         stdlib_function_fact("reflect::source_span", &[TypeFact::host("Player")])
             .expect("reflect::source_span fact")
             .returns,
-        TypeFact::union([TypeFact::record("ReflectSourceSpan"), TypeFact::UNIT])
+        TypeFact::option(TypeFact::record("ReflectSourceSpan"))
     );
     assert_eq!(
         stdlib_function_fact("reflect::origin", &[TypeFact::record("ReflectFunction")])
             .expect("reflect::origin fact")
             .returns,
-        TypeFact::union([TypeFact::STRING, TypeFact::UNIT])
+        TypeFact::option(TypeFact::STRING)
     );
     assert_eq!(
         stdlib_function_fact(
@@ -79,7 +79,7 @@ fn reflection_functions_expose_metadata_facts() {
         stdlib_function_fact("reflect::returns", &[TypeFact::record("ReflectFunction")])
             .expect("reflect::returns fact")
             .returns,
-        TypeFact::union([TypeFact::STRING, TypeFact::UNIT])
+        TypeFact::option(TypeFact::STRING)
     );
     assert_eq!(
         stdlib_function_fact(
@@ -88,7 +88,7 @@ fn reflection_functions_expose_metadata_facts() {
         )
         .expect("reflect::attr fact")
         .returns,
-        TypeFact::union([TypeFact::STRING, TypeFact::UNIT])
+        TypeFact::option(TypeFact::STRING)
     );
     assert_eq!(
         stdlib_function_fact(

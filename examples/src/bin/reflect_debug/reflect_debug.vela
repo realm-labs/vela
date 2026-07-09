@@ -14,17 +14,18 @@ fn main(ctx: Context, player: Player) {
     let array_type = reflect::type_info("array");
     let option_type = reflect::type_info("Option");
     let result_type = reflect::type_info("Result");
-    let bool_value_type = reflect::type_of(true);
-    let int_value_type = reflect::type_of(42);
-    let float_value_type = reflect::type_of(1.5);
-    let string_value_type = reflect::type_of("quest");
-    let array_value_type = reflect::type_of(["quest"]);
-    let map_value_type = reflect::type_of({"quest": 1});
-    let set_value_type = reflect::type_of(set::from_array(["quest"]));
-    let option_value_type = reflect::type_of(option::some(1));
-    let result_value_type = reflect::type_of(result::ok(1));
-    let closure_value_type = reflect::type_of(|value| value);
-    let range_value_type = reflect::type_of(1..3);
+    let missing_type = ReflectType { name: "", kind: "missing" };
+    let bool_value_type = reflect::type_of(true).unwrap_or(missing_type);
+    let int_value_type = reflect::type_of(42).unwrap_or(missing_type);
+    let float_value_type = reflect::type_of(1.5).unwrap_or(missing_type);
+    let string_value_type = reflect::type_of("quest").unwrap_or(missing_type);
+    let array_value_type = reflect::type_of(["quest"]).unwrap_or(missing_type);
+    let map_value_type = reflect::type_of({"quest": 1}).unwrap_or(missing_type);
+    let set_value_type = reflect::type_of(set::from_array(["quest"])).unwrap_or(missing_type);
+    let option_value_type = reflect::type_of(option::some(1)).unwrap_or(missing_type);
+    let result_value_type = reflect::type_of(result::ok(1)).unwrap_or(missing_type);
+    let closure_value_type = reflect::type_of(|value| value).unwrap_or(missing_type);
+    let range_value_type = reflect::type_of(1..3).unwrap_or(missing_type);
     let quest_type = reflect::type_info("QuestProgress");
     let host_quest_type = reflect::type_info("HostQuestProgress");
     let damageable = reflect::trait_info("Damageable");
@@ -148,7 +149,7 @@ fn main(ctx: Context, player: Player) {
     let bytes_exports = reflect::exports(bytes_module);
     let i64_exports = reflect::exports(i64_module);
     let permissions = reflect::permissions();
-    let player_type_of = reflect::type_of(player);
+    let player_type_of = reflect::type_of(player).unwrap_or(missing_type);
 
     if reflect::name(player_type_of) == "Player"
         && reflect::kind(player_type_of) == "host"

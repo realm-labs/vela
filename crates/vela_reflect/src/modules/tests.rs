@@ -257,7 +257,15 @@ fn module_function_queries_return_records_and_candidates() {
         Some(&option_string("bool"))
     );
     assert_eq!(
+        function_metadata.get("returns"),
+        Some(&option_string("bool"))
+    );
+    assert_eq!(
         function_metadata.get("return_desc"),
+        Some(&option_type_desc("bool"))
+    );
+    assert_eq!(
+        function_metadata.get("returns_desc"),
         Some(&option_type_desc("bool"))
     );
     assert_eq!(

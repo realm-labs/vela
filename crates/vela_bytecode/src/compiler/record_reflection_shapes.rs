@@ -20,10 +20,11 @@ pub(super) fn native_call_shape(
         "method" => Some(method_record_shape()),
         "methods" => Some(ValueShape::Array(Box::new(method_record_shape()))),
         "params" => Some(ValueShape::Array(Box::new(param_record_shape()))),
-        "source_span" => Some(source_span_record_shape()),
+        "source_span" => Some(ValueShape::Option(Box::new(source_span_record_shape()))),
         "trait_info" => Some(trait_record_shape()),
         "traits" => Some(ValueShape::Array(Box::new(trait_record_shape()))),
-        "type_info" | "type_of" => Some(type_record_shape()),
+        "type_info" => Some(type_record_shape()),
+        "type_of" => Some(ValueShape::Option(Box::new(type_record_shape()))),
         "types" => Some(ValueShape::Array(Box::new(type_record_shape()))),
         "variant_info" => Some(variant_record_shape()),
         "variants" => Some(ValueShape::Array(Box::new(variant_record_shape()))),
@@ -96,6 +97,7 @@ fn field_record_shape() -> ValueShape {
         ("owner".to_owned(), string_shape()),
         ("source_span".to_owned(), ValueShape::Unknown),
         ("type".to_owned(), ValueShape::Unknown),
+        ("type_desc".to_owned(), ValueShape::Unknown),
         ("writable".to_owned(), bool_shape()),
     ]))
 }
@@ -129,7 +131,9 @@ fn function_record_shape() -> ValueShape {
         ),
         ("public".to_owned(), bool_shape()),
         ("return".to_owned(), ValueShape::Unknown),
+        ("return_desc".to_owned(), ValueShape::Unknown),
         ("returns".to_owned(), ValueShape::Unknown),
+        ("returns_desc".to_owned(), ValueShape::Unknown),
         ("source_span".to_owned(), ValueShape::Unknown),
     ]))
 }
@@ -161,7 +165,9 @@ fn method_record_shape() -> ValueShape {
             ValueShape::Array(Box::new(param_record_shape())),
         ),
         ("return".to_owned(), ValueShape::Unknown),
+        ("return_desc".to_owned(), ValueShape::Unknown),
         ("returns".to_owned(), ValueShape::Unknown),
+        ("returns_desc".to_owned(), ValueShape::Unknown),
         ("source_span".to_owned(), ValueShape::Unknown),
     ]))
 }
@@ -182,6 +188,7 @@ fn param_record_shape() -> ValueShape {
         ("defaulted".to_owned(), bool_shape()),
         ("name".to_owned(), string_shape()),
         ("type".to_owned(), ValueShape::Unknown),
+        ("type_desc".to_owned(), ValueShape::Unknown),
     ]))
 }
 

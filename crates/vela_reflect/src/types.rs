@@ -1,7 +1,5 @@
 use std::collections::BTreeMap;
 
-use vela_host::value::HostValue;
-
 use crate::{
     candidates::{candidate_names, ranked_candidates},
     error::{ReflectError, ReflectErrorKind, ReflectResult},
@@ -37,7 +35,7 @@ pub fn type_by_name(registry: &TypeRegistry, name: &str) -> ReflectResult<Reflec
 pub fn type_of_value(registry: &TypeRegistry, target: &ReflectValue) -> ReflectValue {
     crate::value::type_of(registry, target)
         .map(type_record)
-        .unwrap_or_else(|| ReflectValue::Host(HostValue::Unit))
+        .map_or_else(option_none, option_some)
 }
 
 pub fn has_type(registry: &TypeRegistry, name: &str) -> bool {
@@ -128,6 +126,7 @@ mod tests {
     use vela_common::{HostObjectId, HostTypeId, SourceId, Span};
     use vela_def::{FieldId, TypeId, VariantId};
     use vela_host::path::HostRef;
+    use vela_host::value::HostValue;
 
     use super::*;
     use crate::members::{kind, origin};
@@ -196,7 +195,14 @@ mod tests {
             &registry,
             &ReflectValue::HostRef(HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 0)),
         );
-        assert_eq!(type_of_metadata, metadata);
+        assert_eq!(type_of_metadata, option_some(metadata.clone()));
+        assert_eq!(
+            type_of_value(
+                &registry,
+                &ReflectValue::HostRef(HostRef::new(HostTypeId::new(999), HostObjectId::new(7), 0))
+            ),
+            option_none()
+        );
         assert_eq!(
             kind(&registry, &metadata).expect("metadata kind"),
             ReflectValue::Host(HostValue::String("host".to_owned()))

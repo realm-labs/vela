@@ -1125,6 +1125,9 @@ are `display`, `kind`, `name`, and `args`; tuple descriptors use
 while unit uses `kind == "unit"` and `name == Option::Some("()")`. Missing,
 empty, or unparsable hint descriptors are represented as `Option::None`, not
 unit or a null-like sentinel.
+`reflect::type_of(value)` follows the same absence rule: values with registered
+reflected type metadata return `Option::Some(ReflectType)`, and values without
+registered metadata return `Option::None`.
 
 ### LSP On-Type Formatting Scope
 

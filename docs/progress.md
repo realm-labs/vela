@@ -170,10 +170,10 @@ type-hint strings now parse into structured tuple facts for analysis and schema
 artifact export, and reflection metadata records now expose copied
 `ReflectTypeHint` descriptors for field, parameter, and return hints,
 including unit, tuple, Option, and Result nesting, with missing descriptor data
-represented as `Option::None`. Remaining follow-up work includes replacing any
-other reflection metadata gaps that still use unit placeholders with structured
-Option or omitted fields. Tuple Map/Set keys are rejected by source type-hint
-validation and runtime `ValueKey` keyability.
+represented as `Option::None`. `reflect::type_of` and analysis facts for
+optional reflection metadata now use `Option<T>` instead of unit placeholders.
+Tuple Map/Set keys are rejected by source type-hint validation and runtime
+`ValueKey` keyability.
 ## Milestone Snapshot
 
 | Milestone | Status | Current note |

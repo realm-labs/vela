@@ -557,6 +557,8 @@ Focused validation:
   fields, or explicit structured absence. Field, parameter, and return hints
   now expose optional copied `ReflectTypeHint` descriptors alongside their raw
   strings; invalid or missing descriptors are `Option::None`, not unit.
+  `reflect::type_of` now returns `Option<ReflectType>`, and analysis facts for
+  optional reflection metadata use `Option<T>` instead of unit placeholders.
 - [x] Remove engine/native/context schema descriptors that advertise `"null"`.
 
 Focused validation:

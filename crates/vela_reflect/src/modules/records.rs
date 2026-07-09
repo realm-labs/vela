@@ -58,6 +58,14 @@ pub(super) fn function_record(desc: &FunctionDesc) -> ReflectValue {
                 optional_type_hint_desc(desc.return_type.as_deref()),
             ),
             (
+                "returns".to_owned(),
+                optional_string(desc.return_type.as_deref()),
+            ),
+            (
+                "returns_desc".to_owned(),
+                optional_type_hint_desc(desc.return_type.as_deref()),
+            ),
+            (
                 "params".to_owned(),
                 array(desc.params.iter().map(param_record)),
             ),

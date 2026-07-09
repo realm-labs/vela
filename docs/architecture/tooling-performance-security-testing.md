@@ -37,6 +37,9 @@ Field and parameter reflection records expose declared `type` hints as
 `Option::Some("TypeName")` when known, or `Option::None` for unhinted/dynamic
 metadata. Method, trait-method, and function `return`/`returns` metadata uses
 the same optional string shape; a real unit return remains the string `"()"`.
+`reflect::type_of(value)` returns `Option::Some(ReflectType)` for values with
+registered reflected type metadata and `Option::None` when no such metadata is
+available.
 These are copied documentation and tooling hints, not generic script types or
 static enforcement.
 Field access records expose copied `required_permissions` so admin/debug tools

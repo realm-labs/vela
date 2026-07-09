@@ -467,11 +467,12 @@ pub fn on_invoice_paid(ctx, account, invoice) {
 First-version API:
 
 ```rust
-reflect::type_of(value)
+reflect::type_of(value) -> Option<ReflectType>
 reflect::types()
 reflect::type_info(name)
 reflect::has_type(name)
-// type queries return copied ReflectType descriptor records
+// type queries return copied ReflectType descriptor records; type_of returns
+// Option::None when a value has no registered reflected type.
 reflect::name(type)
 reflect::kind(type)
 reflect::owner(descriptor)

@@ -300,15 +300,15 @@ fn access() -> TypeFact {
 }
 
 fn maybe_string() -> TypeFact {
-    TypeFact::union([TypeFact::STRING, TypeFact::UNIT])
+    TypeFact::option(TypeFact::STRING)
 }
 
 fn maybe_reflect_type() -> TypeFact {
-    TypeFact::union([record("ReflectType"), TypeFact::UNIT])
+    TypeFact::option(record("ReflectType"))
 }
 
 fn maybe_source_span() -> TypeFact {
-    TypeFact::union([record("ReflectSourceSpan"), TypeFact::UNIT])
+    TypeFact::option(record("ReflectSourceSpan"))
 }
 
 fn module_target() -> TypeFact {

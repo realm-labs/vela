@@ -141,7 +141,9 @@ struct Player { level: i64 }
 fn main() {
     let player = Player { level: 7 };
     let fields = reflect::fields(player);
-    if reflect::name(reflect::type_of(player)) == "Player" && reflect::implements(player, "Damageable") {
+    let missing_type = ReflectType { name: "", kind: "missing" };
+    let player_type = reflect::type_of(player).unwrap_or(missing_type);
+    if reflect::name(player_type) == "Player" && reflect::implements(player, "Damageable") {
         if reflect::get(fields[0], "name") == "level" {
             return reflect::get(player, "level") + 1;
         }
@@ -173,7 +175,9 @@ fn linked_reflect_type_of_classifies_closure_without_owned_materialization() {
         SourceId::new(1),
         r#"
 fn main() {
-    return reflect::name(reflect::type_of(|value| value)) == "closure";
+    let missing_type = ReflectType { name: "", kind: "missing" };
+    let closure_type = reflect::type_of(|value| value).unwrap_or(missing_type);
+    return reflect::name(closure_type) == "closure";
 }
 "#,
     )
@@ -402,7 +406,9 @@ struct Player { level: i64 }
 fn main() {
     let player = Player { level: 7 };
     let fields = reflect::fields(player);
-    if reflect::name(reflect::type_of(player)) == "Player" && reflect::implements(player, "Damageable") {
+    let missing_type = ReflectType { name: "", kind: "missing" };
+    let player_type = reflect::type_of(player).unwrap_or(missing_type);
+    if reflect::name(player_type) == "Player" && reflect::implements(player, "Damageable") {
         if reflect::get(fields[0], "name") == "level" {
             return reflect::get(player, "level") + 1;
         }
@@ -457,7 +463,9 @@ impl Damageable for Player {}
 pub fn main() {
     let player = Player { level: 7 };
     let fields = reflect::fields(player);
-    if reflect::name(reflect::type_of(player)) == "game::Player" && reflect::implements(player, "game::Damageable") {
+    let missing_type = ReflectType { name: "", kind: "missing" };
+    let player_type = reflect::type_of(player).unwrap_or(missing_type);
+    if reflect::name(player_type) == "game::Player" && reflect::implements(player, "game::Damageable") {
         if reflect::get(fields[0], "name") == "level" {
             return player.damage() + 1;
         }
