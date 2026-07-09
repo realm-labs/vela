@@ -25,24 +25,26 @@ impl Compiler<'_, '_> {
         expression: &SyntaxExpression,
         call: &SyntaxCallExpr,
     ) -> CompileResult<Register> {
-        let Some(callee) = call.callee() else {
+        let call_span = span_for(source, expression);
+        let Some(call_expression) = self.expression_at_span(call_span) else {
             return Err(param_default_unsupported(source, expression));
         };
-        let call_span = span_for(source, expression);
+        let Some(callee) = self.call_callee_expression(call_expression) else {
+            return Err(param_default_unsupported(source, expression));
+        };
+        let Some(callee_span) = self.expression_span(callee) else {
+            return Err(param_default_unsupported(source, expression));
+        };
         let Some(path) = self
-            .expression_at_span(call_span)
-            .and_then(|call| self.hir_callee_path(call).map(<[String]>::to_vec))
+            .hir_callee_path(call_expression)
+            .map(<[String]>::to_vec)
         else {
             return Err(param_default_unsupported(source, expression));
         };
-        let callee_span = span_for(source, &callee);
         let args = syntax_call_arguments(source, call)?;
         let dst = self.alloc_register()?;
 
-        if let Some((declaration, name)) = self
-            .expression_at_span(call_span)
-            .and_then(|call| self.script_function_call(call))
-        {
+        if let Some((declaration, name)) = self.script_function_call(call_expression) {
             let call_args =
                 self.compile_param_default_script_call_args(source, declaration, &args, call_span)?;
             self.emit_spanned(
@@ -254,11 +256,10 @@ impl Compiler<'_, '_> {
 
 pub(super) fn param_default_call_supported(expression: &SyntaxExpression) -> bool {
     expression.as_call().is_some_and(|call| {
-        call.callee().and_then(|callee| callee.as_path()).is_some()
-            && call.arguments().into_iter().all(|arg| {
-                arg.expression()
-                    .is_some_and(|value| param_default_expression_supported(&value))
-            })
+        call.arguments().into_iter().all(|arg| {
+            arg.expression()
+                .is_some_and(|value| param_default_expression_supported(&value))
+        })
     })
 }
 
