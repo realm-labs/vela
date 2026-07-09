@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 
 use crate::{
     metadata::{
-        array, attrs_value, bool_value, docs_value, int_value, optional_string, record, span_value,
-        string,
+        array, attrs_value, bool_value, docs_value, int_value, optional_string,
+        optional_type_hint_desc, record, span_value, string,
     },
     value::ReflectValue,
 };
@@ -52,6 +52,10 @@ pub(super) fn function_record(desc: &FunctionDesc) -> ReflectValue {
             (
                 "return".to_owned(),
                 optional_string(desc.return_type.as_deref()),
+            ),
+            (
+                "return_desc".to_owned(),
+                optional_type_hint_desc(desc.return_type.as_deref()),
             ),
             (
                 "params".to_owned(),
@@ -138,6 +142,10 @@ fn param_record(param: &FunctionParamDesc) -> ReflectValue {
             (
                 "type".to_owned(),
                 optional_string(param.type_hint.as_deref()),
+            ),
+            (
+                "type_desc".to_owned(),
+                optional_type_hint_desc(param.type_hint.as_deref()),
             ),
             ("defaulted".to_owned(), bool_value(param.has_default)),
         ]),

@@ -4,6 +4,10 @@ fn option_string(value: &str) -> ReflectValue {
     crate::metadata::option_some(ReflectValue::Host(HostValue::String(value.to_owned())))
 }
 
+fn option_type_desc(value: &str) -> ReflectValue {
+    crate::metadata::optional_type_hint_desc(Some(value))
+}
+
 #[test]
 fn name_kind_and_field_queries_return_copied_metadata() {
     let registry = registry();
@@ -43,6 +47,7 @@ fn name_kind_and_field_queries_return_copied_metadata() {
         Some(&ReflectValue::Host(HostValue::Bool(true)))
     );
     assert_eq!(fields.get("type"), Some(&option_string("i64")));
+    assert_eq!(fields.get("type_desc"), Some(&option_type_desc("i64")));
     assert_eq!(
         fields.get("access"),
         Some(&ReflectValue::ScriptRecord {
@@ -143,6 +148,10 @@ fn name_kind_and_field_queries_return_copied_metadata() {
         field_list_item.get("name"),
         Some(&ReflectValue::Host(HostValue::String("level".to_owned())))
     );
+    assert_eq!(
+        field_list_item.get("type_desc"),
+        Some(&option_type_desc("i64"))
+    );
     let ReflectValue::ScriptRecord {
         fields: variant_field_list_item,
         ..
@@ -159,6 +168,10 @@ fn name_kind_and_field_queries_return_copied_metadata() {
     assert_eq!(
         variant_field_list_item.get("name"),
         Some(&ReflectValue::Host(HostValue::String("count".to_owned())))
+    );
+    assert_eq!(
+        variant_field_list_item.get("type_desc"),
+        Some(&crate::metadata::option_none())
     );
 
     let error = field(&registry, &target, "levle").expect_err("unknown field");
@@ -205,6 +218,8 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
     };
     assert_eq!(fields.get("return"), Some(&option_string("bool")));
     assert_eq!(fields.get("returns"), Some(&option_string("bool")));
+    assert_eq!(fields.get("return_desc"), Some(&option_type_desc("bool")));
+    assert_eq!(fields.get("returns_desc"), Some(&option_type_desc("bool")));
     let Some(ReflectValue::Array(raw_params)) = fields.get("params") else {
         panic!("method params should be an array");
     };
@@ -221,6 +236,10 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
         Some(&ReflectValue::Host(HostValue::String("amount".to_owned())))
     );
     assert_eq!(param_fields.get("type"), Some(&option_string("i64")));
+    assert_eq!(
+        param_fields.get("type_desc"),
+        Some(&option_type_desc("i64"))
+    );
     let Some(ReflectValue::ScriptRecord {
         fields: effect_fields,
         ..

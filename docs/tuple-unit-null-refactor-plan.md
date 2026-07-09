@@ -554,7 +554,9 @@ Focused validation:
 - [x] Change Rust `Option<T>` conversion to script `Option<T>`.
 - [x] Add Rust `()` conversion and Rust tuple arity 2..=4 conversion.
 - [~] Remove reflection missing-metadata nulls in favor of `Option`, omitted
-  fields, or explicit structured absence.
+  fields, or explicit structured absence. Field, parameter, and return hints
+  now expose optional copied `ReflectTypeHint` descriptors alongside their raw
+  strings; invalid or missing descriptors are `Option::None`, not unit.
 - [x] Remove engine/native/context schema descriptors that advertise `"null"`.
 
 Focused validation:
@@ -572,8 +574,9 @@ Focused validation:
   descriptor validation, and `split_once` reflection metadata are implemented;
   Result tuple payload fixtures now cover VM `?`/destructuring propagation and
   linked parameter guards. Reflected descriptor type-hint strings now parse into
-  structured tuple facts for analysis and schema artifact export. Broader
-  reflection tuple descriptors remain open.
+  structured tuple facts for analysis and schema artifact export, and reflected
+  metadata records expose nested `ReflectTypeHint` descriptors for unit, tuple,
+  Option, and Result hint strings.
 - [x] Add tuple `OwnedValue` conversion and tuple serde behavior that does not
   use raw null.
 - [x] Reject tuple Map/Set keys in the first slice with precise diagnostics.

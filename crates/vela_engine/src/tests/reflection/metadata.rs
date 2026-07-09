@@ -223,6 +223,68 @@ fn main() {
 }
 
 #[test]
+fn engine_reflection_type_descriptors_expose_tuple_payloads() {
+    let engine = Engine::builder()
+        .with_standard_natives()
+        .reflection_permissions(ReflectPermissionSet::new().with(ReflectPermission::ReadTypeInfo))
+        .build()
+        .expect("engine should build with standard natives");
+
+    let program = engine
+        .compile_source_with_id(
+            SourceId::new(1),
+            r#"
+fn main() {
+    let missing_desc = ReflectTypeHint {
+        display: "",
+        kind: "missing",
+        name: option::none(),
+        args: [],
+    };
+    let string_type = reflect::type_info("string");
+    let split_once = reflect::method(string_type, "split_once");
+    let return_desc = split_once.return_desc.unwrap_or(missing_desc);
+    let tuple_desc = return_desc.args[0];
+    let separator_desc = split_once.params[0].type_desc.unwrap_or(missing_desc);
+    let array_type = reflect::type_info("array");
+    let push = reflect::method(array_type, "push");
+    let unit_desc = push.return_desc.unwrap_or(missing_desc);
+    return return_desc.display == "Option<(String, String)>"
+        && return_desc.kind == "enum"
+        && return_desc.name.unwrap_or("") == "Option"
+        && return_desc.args.len() == 1
+        && tuple_desc.display == "(String, String)"
+        && tuple_desc.kind == "tuple"
+        && option::is_none(tuple_desc.name)
+        && tuple_desc.args.len() == 2
+        && tuple_desc.args[0].display == "String"
+        && tuple_desc.args[0].kind == "primitive"
+        && tuple_desc.args[0].name.unwrap_or("") == "String"
+        && tuple_desc.args[1].display == "String"
+        && separator_desc.display == "String"
+        && separator_desc.kind == "primitive"
+        && unit_desc.display == "()"
+        && unit_desc.kind == "unit"
+        && unit_desc.name.unwrap_or("") == "()";
+}
+"#,
+        )
+        .expect("program should compile");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = HostAccess::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        access: &mut tx,
+        script_globals: None,
+    };
+
+    assert_eq!(
+        run_linked_program_with_host(&engine, &program, &[], &mut host),
+        Ok(OwnedValue::Bool(true))
+    );
+}
+
+#[test]
 fn engine_standard_natives_register_reflection_metadata() {
     let engine = Engine::builder()
         .with_standard_natives()

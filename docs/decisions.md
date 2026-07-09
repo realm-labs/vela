@@ -1116,6 +1116,16 @@ parameterization such as `String<T>`, and callable signature syntax such as
 `Function<T>` remain rejected. Unparameterized `Array`, `Map`, `Set`,
 `Iterator`, `Option`, and `Result` remain valid erased contracts.
 
+### Reflection Type Hint Descriptors
+
+Reflection records expose raw type-hint strings for display plus optional copied
+`ReflectTypeHint` descriptors for structured inspection. The descriptor fields
+are `display`, `kind`, `name`, and `args`; tuple descriptors use
+`kind == "tuple"` with element descriptors in `args` and `name == Option::None`,
+while unit uses `kind == "unit"` and `name == Option::Some("()")`. Missing,
+empty, or unparsable hint descriptors are represented as `Option::None`, not
+unit or a null-like sentinel.
+
 ### LSP On-Type Formatting Scope
 
 Native on-type formatting is conservative: it may respond to closing brace and

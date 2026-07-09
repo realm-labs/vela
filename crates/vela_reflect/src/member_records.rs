@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use crate::{
     access::MethodEffectSet,
     metadata::{
-        array, attrs_value, bool_value, docs_value, int_value, optional_string, record, span_value,
-        string,
+        array, attrs_value, bool_value, docs_value, int_value, optional_string,
+        optional_type_hint_desc, record, span_value, string,
     },
     modules::DeclOrigin,
     registry::{FieldDesc, MethodDesc, TraitDesc, TraitMethodDesc, VariantDesc},
@@ -37,6 +37,14 @@ fn method_record_fields(method: &MethodDesc) -> ReflectFields {
         "returns".to_owned(),
         optional_string(method.return_type.as_deref()),
     );
+    fields.insert(
+        "return_desc".to_owned(),
+        optional_type_hint_desc(method.return_type.as_deref()),
+    );
+    fields.insert(
+        "returns_desc".to_owned(),
+        optional_type_hint_desc(method.return_type.as_deref()),
+    );
     fields.insert("effects".to_owned(), method_effects_record(method));
     fields.insert("access".to_owned(), method_access_record(method));
     fields.insert("docs".to_owned(), docs_value(method.docs.as_deref()));
@@ -57,6 +65,10 @@ fn method_param_record(param: &crate::registry::MethodParamDesc) -> ReflectValue
             (
                 "type".to_owned(),
                 optional_string(param.type_hint.as_deref()),
+            ),
+            (
+                "type_desc".to_owned(),
+                optional_type_hint_desc(param.type_hint.as_deref()),
             ),
             ("defaulted".to_owned(), bool_value(param.has_default)),
         ]),
@@ -131,6 +143,14 @@ fn trait_method_record(owner: &str, method: &TraitMethodDesc) -> ReflectValue {
                 "returns".to_owned(),
                 optional_string(method.return_type.as_deref()),
             ),
+            (
+                "return_desc".to_owned(),
+                optional_type_hint_desc(method.return_type.as_deref()),
+            ),
+            (
+                "returns_desc".to_owned(),
+                optional_type_hint_desc(method.return_type.as_deref()),
+            ),
             ("defaulted".to_owned(), bool_value(method.has_default)),
             ("docs".to_owned(), docs_value(method.docs.as_deref())),
             ("attrs".to_owned(), attrs_value(&method.attrs)),
@@ -196,6 +216,10 @@ fn field_record_fields(field: &FieldDesc) -> ReflectFields {
     fields.insert(
         "type".to_owned(),
         optional_string(field.type_hint.as_deref().filter(|hint| !hint.is_empty())),
+    );
+    fields.insert(
+        "type_desc".to_owned(),
+        optional_type_hint_desc(field.type_hint.as_deref()),
     );
     fields.insert("writable".to_owned(), bool_value(field.writable));
     fields.insert("defaulted".to_owned(), bool_value(field.has_default));

@@ -18,6 +18,10 @@ fn option_string(value: &str) -> ReflectValue {
     crate::metadata::option_some(ReflectValue::Host(HostValue::String(value.to_owned())))
 }
 
+fn option_type_desc(value: &str) -> ReflectValue {
+    crate::metadata::optional_type_hint_desc(Some(value))
+}
+
 #[test]
 fn registers_script_module_functions_and_exports() {
     let mut graph = ModuleGraph::new();
@@ -253,6 +257,10 @@ fn module_function_queries_return_records_and_candidates() {
         Some(&option_string("bool"))
     );
     assert_eq!(
+        function_metadata.get("return_desc"),
+        Some(&option_type_desc("bool"))
+    );
+    assert_eq!(
         function_metadata.get("origin"),
         Some(&ReflectValue::Host(HostValue::String("script".into())))
     );
@@ -344,6 +352,20 @@ fn module_function_queries_return_records_and_candidates() {
             "event".to_owned(),
             ReflectValue::Host(HostValue::String("reward".to_owned()))
         )])))
+    );
+    let Some(ReflectValue::Array(params)) = function_metadata.get("params") else {
+        panic!("function params should be an array");
+    };
+    let ReflectValue::ScriptRecord {
+        fields: amount_param,
+        ..
+    } = &params[0]
+    else {
+        panic!("function param should be a record");
+    };
+    assert_eq!(
+        amount_param.get("type_desc"),
+        Some(&option_type_desc("i64"))
     );
 
     let error = module(&registry, "game::rewards").expect_err("unknown module");
