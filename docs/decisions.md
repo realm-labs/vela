@@ -1116,6 +1116,16 @@ parameterization such as `String<T>`, and callable signature syntax such as
 `Function<T>` remain rejected. Unparameterized `Array`, `Map`, `Set`,
 `Iterator`, `Option`, and `Result` remain valid erased contracts.
 
+### Try Propagation Families
+
+Typed `?` propagation is family-preserving. An `Option`-returning function may
+propagate `Option` values, and a `Result`-returning function may propagate
+`Result` values. `TryPropagate` bytecode carries the expected family from the
+enclosing typed return contract when known, and the VM rejects cross-family
+`Option`/`Result` operands before either continuing with payloads or
+short-circuiting with absence/error values. Explicit helper methods are the only
+allowed bridge between `Option` and `Result`.
+
 ### Reflection Type Hint Descriptors
 
 Reflection records expose raw type-hint strings for display plus optional copied

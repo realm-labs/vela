@@ -1059,6 +1059,64 @@ fn err_case() {
 }
 
 #[test]
+fn typed_try_propagation_rejects_cross_family_option_result_values() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+enum Option {
+    Some(value),
+    None,
+}
+
+enum Result {
+    Ok(value),
+    Err(message),
+}
+
+fn result_ok_in_option() -> Option<i64> {
+    let value = Result::Ok(1)?;
+    return Option::Some(value);
+}
+
+fn result_err_in_option() -> Option<i64> {
+    let value = Result::Err("bad")?;
+    return Option::Some(value);
+}
+
+fn option_some_in_result() -> Result<i64, String> {
+    let value = Option::Some(1)?;
+    return Result::Ok(value);
+}
+
+fn option_none_in_result() -> Result<i64, String> {
+    let value = Option::None {}?;
+    return Result::Ok(value);
+}
+"#,
+    )
+    .expect("compile cross-family propagation fixture");
+
+    for entry in [
+        "result_ok_in_option",
+        "result_err_in_option",
+        "option_some_in_result",
+        "option_none_in_result",
+    ] {
+        let mut budget = ExecutionBudget::unbounded();
+        let error =
+            run_linked_test_program_with_budget(&Vm::new(), &program, entry, &[], &mut budget)
+                .expect_err("typed cross-family try propagation should fail");
+        assert_eq!(
+            error.kind(),
+            VmErrorKind::TypeMismatch {
+                operation: "try propagation",
+            },
+            "{entry} should reject the wrong try family",
+        );
+    }
+}
+
+#[test]
 fn managed_heap_execution_runs_string_parameter_defaults() {
     let program = compile_program_source(
         SourceId::new(1),

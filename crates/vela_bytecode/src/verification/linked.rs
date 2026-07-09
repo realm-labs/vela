@@ -176,7 +176,7 @@ fn verify_linked_instruction(
         | InstructionKind::Not { dst, src }
         | InstructionKind::Truthy { dst, src }
         | InstructionKind::Negate { dst, src }
-        | InstructionKind::TryPropagate { dst, src } => {
+        | InstructionKind::TryPropagate { dst, src, .. } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_register(function, instruction_index, code, *src)
         }

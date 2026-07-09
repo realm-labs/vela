@@ -145,7 +145,11 @@ impl Compiler<'_, '_> {
                 };
                 let src = self.compile_param_default_expression(source, &operand)?;
                 let dst = self.alloc_register()?;
-                self.emit(UnlinkedInstructionKind::TryPropagate { dst, src });
+                self.emit(UnlinkedInstructionKind::TryPropagate {
+                    dst,
+                    src,
+                    expected: None,
+                });
                 Ok(dst)
             }
             SyntaxExpressionKind::Block => {

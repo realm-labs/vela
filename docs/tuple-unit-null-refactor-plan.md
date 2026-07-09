@@ -531,8 +531,10 @@ Focused validation:
   boundary guards. Runtime arity guards now exist for tuple destructuring;
   typed dynamic-boundary tuple guards now cover Option and Result tuple
   payloads. Broader diagnostic polish remains open.
-- [ ] Keep `?` Rust-aligned and reject cross-family `Option`/`Result`
-  propagation without explicit helpers.
+- [x] Keep `?` Rust-aligned and reject cross-family `Option`/`Result`
+  propagation without explicit helpers. `TryPropagate` bytecode now carries the
+  enclosing typed return family when known, so both continue and short-circuit
+  paths reject `Option`/`Result` family mismatches.
 - [ ] Remove tests that assert null as void, null equality, null control-flow
   defaults, or null literal matching; replace with behavior tests for unit,
   Option, Result, and tuple payloads.
@@ -540,7 +542,7 @@ Focused validation:
 Focused validation:
 
 - [x] `cargo test -p vela_bytecode`
-- [ ] `cargo test -p vela_vm control_flow program_execution`
+- [x] `cargo test -p vela_vm try_propagation --no-fail-fast`
 - [x] `cargo test -p vela_engine`
 
 ### Phase 4: Stdlib, Host, Reflection, And Embedding

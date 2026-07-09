@@ -617,10 +617,13 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     args: args.clone(),
                 }
             }
-            UnlinkedInstructionKind::TryPropagate { dst, src } => InstructionKind::TryPropagate {
-                dst: *dst,
-                src: *src,
-            },
+            UnlinkedInstructionKind::TryPropagate { dst, src, expected } => {
+                InstructionKind::TryPropagate {
+                    dst: *dst,
+                    src: *src,
+                    expected: *expected,
+                }
+            }
             UnlinkedInstructionKind::MakeArray { dst, elements } => InstructionKind::MakeArray {
                 dst: *dst,
                 elements: elements.clone(),

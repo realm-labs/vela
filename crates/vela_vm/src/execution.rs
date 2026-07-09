@@ -613,12 +613,13 @@ impl Vm {
                         },
                     )?;
                 }
-                UnlinkedInstructionKind::TryPropagate { dst, src } => {
+                UnlinkedInstructionKind::TryPropagate { dst, src, expected } => {
                     if let Some(value) = try_propagation::dispatch_try_propagate(
                         &mut frame,
                         heap.as_deref(),
                         *dst,
                         *src,
+                        *expected,
                     )? {
                         let mut guard_context = runtime_type_guards::GuardExecutionContext::new(
                             heap.as_deref_mut(),

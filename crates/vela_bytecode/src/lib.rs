@@ -948,6 +948,7 @@ pub enum UnlinkedInstructionKind {
     TryPropagate {
         dst: Register,
         src: Register,
+        expected: Option<TryPropagateFamily>,
     },
     MakeArray {
         dst: Register,
@@ -1130,6 +1131,12 @@ pub enum UnlinkedInstructionKind {
     Return {
         src: Register,
     },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TryPropagateFamily {
+    Option,
+    Result,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

@@ -821,6 +821,7 @@ pub enum InstructionKind {
     TryPropagate {
         dst: Register,
         src: Register,
+        expected: Option<crate::TryPropagateFamily>,
     },
     MakeArray {
         dst: Register,

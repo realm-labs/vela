@@ -1,7 +1,7 @@
 use crate::option_result::{StdEnumKind, StdEnumVariant, std_enum_tag};
 use crate::stored_runtime_value;
 use crate::{CallFrame, HeapExecution, HeapValue, Value, VmError, VmErrorKind, VmResult};
-use vela_bytecode::Register;
+use vela_bytecode::{Register, TryPropagateFamily};
 
 pub(crate) enum TryPropagation {
     Continue(Value),
@@ -13,8 +13,9 @@ pub(crate) fn dispatch_try_propagate(
     heap: Option<&HeapExecution<'_>>,
     dst: Register,
     src: Register,
+    expected: Option<TryPropagateFamily>,
 ) -> VmResult<Option<Value>> {
-    match try_propagate_value(&frame.read(src)?, heap)? {
+    match try_propagate_value(&frame.read(src)?, heap, expected)? {
         TryPropagation::Continue(value) => {
             frame.write(dst, value)?;
             Ok(None)
@@ -26,6 +27,7 @@ pub(crate) fn dispatch_try_propagate(
 pub(crate) fn try_propagate_value(
     value: &Value,
     heap: Option<&HeapExecution<'_>>,
+    expected: Option<TryPropagateFamily>,
 ) -> VmResult<TryPropagation> {
     let Value::HeapRef(reference) = value else {
         return type_error();
@@ -39,22 +41,38 @@ pub(crate) fn try_propagate_value(
         return type_error();
     };
 
-    match std_enum_tag(*identity) {
-        Some((StdEnumKind::Option, StdEnumVariant::Some))
-        | Some((StdEnumKind::Result, StdEnumVariant::Ok)) => fields
-            .get_slot(0, "0")
-            .map(stored_runtime_value)
-            .map(TryPropagation::Continue)
-            .ok_or_else(|| {
-                VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "try propagation",
+    let Some((kind, variant)) = std_enum_tag(*identity) else {
+        return type_error();
+    };
+    if let Some(expected) = expected
+        && expected != try_family(kind)
+    {
+        return type_error();
+    }
+
+    match (kind, variant) {
+        (StdEnumKind::Option, StdEnumVariant::Some) | (StdEnumKind::Result, StdEnumVariant::Ok) => {
+            fields
+                .get_slot(0, "0")
+                .map(stored_runtime_value)
+                .map(TryPropagation::Continue)
+                .ok_or_else(|| {
+                    VmError::new(VmErrorKind::TypeMismatch {
+                        operation: "try propagation",
+                    })
                 })
-            }),
-        Some((StdEnumKind::Option, StdEnumVariant::None))
-        | Some((StdEnumKind::Result, StdEnumVariant::Err)) => Ok(TryPropagation::Return(*value)),
-        None => type_error(),
-        Some((StdEnumKind::Option, StdEnumVariant::Ok | StdEnumVariant::Err))
-        | Some((StdEnumKind::Result, StdEnumVariant::Some | StdEnumVariant::None)) => type_error(),
+        }
+        (StdEnumKind::Option, StdEnumVariant::None)
+        | (StdEnumKind::Result, StdEnumVariant::Err) => Ok(TryPropagation::Return(*value)),
+        (StdEnumKind::Option, StdEnumVariant::Ok | StdEnumVariant::Err)
+        | (StdEnumKind::Result, StdEnumVariant::Some | StdEnumVariant::None) => type_error(),
+    }
+}
+
+const fn try_family(kind: StdEnumKind) -> TryPropagateFamily {
+    match kind {
+        StdEnumKind::Option => TryPropagateFamily::Option,
+        StdEnumKind::Result => TryPropagateFamily::Result,
     }
 }
 
@@ -82,7 +100,7 @@ mod tests {
         });
         let execution = HeapExecution::new(&mut heap);
 
-        match try_propagate_value(&Value::HeapRef(reference), Some(&execution))
+        match try_propagate_value(&Value::HeapRef(reference), Some(&execution), None)
             .expect("typed try propagation")
         {
             TryPropagation::Continue(value) => {
@@ -103,6 +121,6 @@ mod tests {
         });
         let execution = HeapExecution::new(&mut heap);
 
-        assert!(try_propagate_value(&Value::HeapRef(reference), Some(&execution)).is_err());
+        assert!(try_propagate_value(&Value::HeapRef(reference), Some(&execution), None).is_err());
     }
 }

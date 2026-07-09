@@ -44,8 +44,8 @@ use vela_registry::RegistryCompileView;
 
 use crate::{
     Constant, FrameSlotInfo, FrameSlotKind, GuardKind, GuardLocation, InstructionOffset, Register,
-    UnlinkedCodeObject, UnlinkedGuardContext, UnlinkedInstruction, UnlinkedInstructionKind,
-    UnlinkedProgram, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
+    TryPropagateFamily, UnlinkedCodeObject, UnlinkedGuardContext, UnlinkedInstruction,
+    UnlinkedInstructionKind, UnlinkedProgram, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
 };
 use body_payloads::CompilerBodyPayload;
 use cache_sites::{attach_cache_site, cache_site_kind};
@@ -718,6 +718,19 @@ struct Compiler<'ast, 'registry> {
 }
 
 impl<'ast, 'registry> Compiler<'ast, 'registry> {
+    fn expected_try_propagation_family(&self) -> Option<TryPropagateFamily> {
+        match self.return_type.as_ref()? {
+            RuntimeTypeFact::Option(_) | RuntimeTypeFact::Standard(StandardRuntimeType::Option) => {
+                Some(TryPropagateFamily::Option)
+            }
+            RuntimeTypeFact::Result { .. }
+            | RuntimeTypeFact::Standard(StandardRuntimeType::Result) => {
+                Some(TryPropagateFamily::Result)
+            }
+            _ => None,
+        }
+    }
+
     fn new_with_param_defaults(
         code_name: String,
         body: CompilerBodyPayload<'ast>,

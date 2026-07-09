@@ -276,7 +276,11 @@ impl Compiler<'_, '_> {
         };
         let dst = self.alloc_register()?;
         self.emit_spanned(
-            UnlinkedInstructionKind::TryPropagate { dst, src },
+            UnlinkedInstructionKind::TryPropagate {
+                dst,
+                src,
+                expected: self.expected_try_propagation_family(),
+            },
             syntax_expression_span(source, expression),
         );
         Ok(Some(dst))
