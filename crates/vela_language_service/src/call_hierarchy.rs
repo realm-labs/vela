@@ -7,7 +7,8 @@ use vela_hir::type_hint::ImplMetadataKind;
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
-    TextRange, member_access, query_context::binding_resolution_for_source_range,
+    TextRange,
+    query_context::{binding_resolution_for_source_range, type_fact_for_source_range},
     references::schema as reference_schema,
 };
 
@@ -311,25 +312,25 @@ impl LanguageServiceDatabases {
             return Vec::new();
         };
         let graph = self.hir_db().graph();
-        let Some(parsed) = self.parse_db().syntax_parse(source.document_id()) else {
-            return Vec::new();
-        };
-        member_access::member_call_sites(parsed)
-            .into_iter()
-            .filter(|site| span_contains_range(scope_span, site.member_range))
-            .filter_map(|site| {
-                let receiver = crate::query_context::type_fact_for_source_range(
-                    self,
-                    source.source_id(),
-                    site.receiver_range,
-                )?;
+        graph
+            .member_calls_in_source(source.source_id())
+            .filter_map(|field| {
+                let member_range = span_text_range(field.member_origin.span)?;
+                if !span_contains_range(scope_span, member_range) {
+                    return None;
+                }
+                let receiver_range = graph
+                    .expression_span(field.receiver)
+                    .and_then(span_text_range)?;
+                let receiver =
+                    type_fact_for_source_range(self, source.source_id(), receiver_range)?;
                 method_target_for_receiver_fact(
                     graph,
                     self.schema_db().facts(),
                     &receiver,
-                    &site.member,
+                    &field.name,
                 )
-                .map(|target| (target, diagnostic_range(source.text(), site.member_range)))
+                .map(|target| (target, diagnostic_range(source.text(), member_range)))
             })
             .collect()
     }
