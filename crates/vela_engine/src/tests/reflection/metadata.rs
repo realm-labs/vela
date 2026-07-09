@@ -350,6 +350,12 @@ fn engine_standard_natives_register_reflection_metadata() {
         .find(|method| method.name == "index_of")
         .expect("array.index_of method metadata");
     assert_eq!(array_index_of.return_type.as_deref(), Some("Option<i64>"));
+    let array_pop = array_type
+        .methods
+        .iter()
+        .find(|method| method.name == "pop")
+        .expect("array.pop method metadata");
+    assert_eq!(array_pop.return_type.as_deref(), Some("Option<Any>"));
 
     let map_type = registry.type_by_name("map").expect("map type");
     assert_eq!(map_type.kind, vela_reflect::registry::TypeKind::Map);
@@ -359,7 +365,7 @@ fn engine_standard_natives_register_reflection_metadata() {
         .find(|method| method.name == "get")
         .expect("map.get method metadata");
     assert_eq!(map_get.params[0].name, "key");
-    assert_eq!(map_get.return_type.as_deref(), Some("Option"));
+    assert_eq!(map_get.return_type.as_deref(), Some("Option<Any>"));
 
     let set_type = registry.type_by_name("set").expect("set type");
     assert_eq!(set_type.kind, vela_reflect::registry::TypeKind::Set);
@@ -387,6 +393,14 @@ fn engine_standard_natives_register_reflection_metadata() {
         .find(|method| method.name == "is_empty")
         .expect("range.is_empty method metadata");
     assert_eq!(range_is_empty.return_type.as_deref(), Some("bool"));
+
+    let iterator_type = registry.type_by_name("iterator").expect("iterator type");
+    let iterator_next = iterator_type
+        .methods
+        .iter()
+        .find(|method| method.name == "next")
+        .expect("iterator.next method metadata");
+    assert_eq!(iterator_next.return_type.as_deref(), Some("Option<Any>"));
 
     let option_type = registry.type_by_name("Option").expect("Option type");
     assert_eq!(
@@ -427,7 +441,7 @@ fn engine_standard_natives_register_reflection_metadata() {
         .expect("Option.map method metadata");
     assert_eq!(option_map.params[0].name, "callback");
     assert_eq!(option_map.params[0].type_hint.as_deref(), Some("Function"));
-    assert_eq!(option_map.return_type.as_deref(), Some("Option"));
+    assert_eq!(option_map.return_type.as_deref(), Some("Option<Any>"));
     assert_eq!(option_map.attrs.get("stdlib"), Some("option"));
     let option_ok_or = option_type
         .methods
@@ -435,7 +449,10 @@ fn engine_standard_natives_register_reflection_metadata() {
         .find(|method| method.name == "ok_or")
         .expect("Option.ok_or method metadata");
     assert_eq!(option_ok_or.params[0].name, "error");
-    assert_eq!(option_ok_or.return_type.as_deref(), Some("Result"));
+    assert_eq!(
+        option_ok_or.return_type.as_deref(),
+        Some("Result<Any, Any>")
+    );
 
     let result_type = registry.type_by_name("Result").expect("Result type");
     assert_eq!(
@@ -492,14 +509,17 @@ fn engine_standard_natives_register_reflection_metadata() {
         result_map_err.params[0].type_hint.as_deref(),
         Some("Function")
     );
-    assert_eq!(result_map_err.return_type.as_deref(), Some("Result"));
+    assert_eq!(
+        result_map_err.return_type.as_deref(),
+        Some("Result<Any, Any>")
+    );
     assert_eq!(result_map_err.attrs.get("stdlib"), Some("result"));
     let result_to_error = result_type
         .methods
         .iter()
         .find(|method| method.name == "to_error_option")
         .expect("Result.to_error_option method metadata");
-    assert_eq!(result_to_error.return_type.as_deref(), Some("Option"));
+    assert_eq!(result_to_error.return_type.as_deref(), Some("Option<Any>"));
 
     let math = registry.module_by_name("math").expect("math module");
     assert_eq!(
@@ -884,7 +904,7 @@ fn main() {
         && reflect::returns(array_map).unwrap_or("") == "Array"
         && reflect::returns(array_index_of).unwrap_or("") == "Option<i64>"
         && map_get.params[0].name == "key"
-        && reflect::returns(map_get).unwrap_or("") == "Option"
+        && reflect::returns(map_get).unwrap_or("") == "Option<Any>"
         && set_union.params[0].type.unwrap_or("") == "Set"
         && reflect::returns(set_union).unwrap_or("") == "Set"
         && range_len.params.is_empty()
@@ -895,7 +915,7 @@ fn main() {
         && range_iter.params.is_empty()
         && reflect::returns(range_iter).unwrap_or("") == "Iterator"
         && iterator_next.params.is_empty()
-        && reflect::returns(iterator_next).unwrap_or("") == "Option"
+        && reflect::returns(iterator_next).unwrap_or("") == "Option<Any>"
         && iterator_map.params[0].name == "callback"
         && iterator_map.params[0].type.unwrap_or("") == "Function"
         && reflect::returns(iterator_map).unwrap_or("") == "Iterator"
@@ -910,15 +930,15 @@ fn main() {
         && reflect::returns(iterator_collect_map).unwrap_or("") == "Map"
         && option_map.params[0].name == "callback"
         && option_map.params[0].type.unwrap_or("") == "Function"
-        && reflect::returns(option_map).unwrap_or("") == "Option"
+        && reflect::returns(option_map).unwrap_or("") == "Option<Any>"
         && reflect::attr(option_map, "stdlib").unwrap_or("") == "option"
         && option_ok_or.params[0].name == "error"
-        && reflect::returns(option_ok_or).unwrap_or("") == "Result"
+        && reflect::returns(option_ok_or).unwrap_or("") == "Result<Any, Any>"
         && result_map_err.params[0].name == "callback"
         && result_map_err.params[0].type.unwrap_or("") == "Function"
-        && reflect::returns(result_map_err).unwrap_or("") == "Result"
+        && reflect::returns(result_map_err).unwrap_or("") == "Result<Any, Any>"
         && reflect::attr(result_map_err, "stdlib").unwrap_or("") == "result"
-        && reflect::returns(result_to_error).unwrap_or("") == "Option"
+        && reflect::returns(result_to_error).unwrap_or("") == "Option<Any>"
         && option_variants.len() == 2
         && option_variants[0].name == "Some"
         && reflect::docs(option_variants[0]).unwrap_or("") == "Carries a present Option payload."

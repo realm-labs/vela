@@ -60,7 +60,7 @@ const SET_METHODS: &[MethodSpec] = &[
     MethodSpec::new(
         "find",
         &[ParamSpec::new("callback", "function")],
-        "Option",
+        "Option<Any>",
         "Returns the first callback match, or Option::None.",
     ),
     MethodSpec::new(

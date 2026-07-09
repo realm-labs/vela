@@ -560,9 +560,12 @@ Focused validation:
   lookup and parse returns such as `String.find -> Option<i64>`,
   `String.strip_prefix`/`strip_suffix -> Option<String>`, string primitive
   parsers, and `Array.index_of -> Option<i64>` now expose precise stdlib
-  manifest and reflection metadata. Receiver-dependent collection payloads
-  such as `Array.pop`, `Map.get`, and `Iterator.next` remain erased in the
-  descriptor surface until descriptor metadata can carry receiver type facts.
+  manifest and reflection metadata. Receiver-dependent collection and dynamic
+  Option/Result methods such as `Array.pop`, `Map.get`, `Iterator.next`,
+  `Option.map`, and `Result.map_err` now expose structured erased
+  `Option<Any>` or `Result<Any, Any>` descriptor contracts in the stdlib
+  manifest and reflected metadata; analysis TypeFacts still carry the precise
+  receiver-derived payload facts at call sites.
 - [x] Change Rust `Option<T>` conversion to script `Option<T>`. Embedding and
   serde owned/runtime conversions now use `Option::Some` and `Option::None`
   enum values; `()` and raw payload values are rejected for Rust
@@ -601,7 +604,8 @@ Focused validation:
   tuple arity changes, and tuple element contract changes. Descriptor and
   schema ABI comparisons now parse unit and tuple type hints structurally, and
   source-reload tuple signature fixtures cover equivalent formatting plus
-  tuple arity rejection. Typed dynamic-boundary tuple guard plans remain open.
+  tuple arity rejection. Typed dynamic-boundary tuple guard plans now cover
+  Option and Result tuple payloads in linked VM parameter guards.
 - [x] Add focused benchmark rows for common tuple-return stdlib paths if they
   are introduced. The `string_splitting` baseline workload exercises
   `String.split_once -> Option<(String, String)>` across interpreter,

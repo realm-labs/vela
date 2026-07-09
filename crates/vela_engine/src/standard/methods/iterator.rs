@@ -10,7 +10,7 @@ const ITERATOR_METHODS: &[MethodSpec] = &[
     MethodSpec::new(
         "next",
         &[],
-        "Option",
+        "Option<Any>",
         "Advances the iterator and returns the next value.",
     ),
     MethodSpec::new(
@@ -34,7 +34,7 @@ const ITERATOR_METHODS: &[MethodSpec] = &[
     MethodSpec::new(
         "find",
         &[ParamSpec::new("callback", "function")],
-        "Option",
+        "Option<Any>",
         "Consumes the iterator until a callback returns true.",
     ),
     MethodSpec::new(

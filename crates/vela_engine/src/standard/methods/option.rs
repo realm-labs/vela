@@ -28,37 +28,37 @@ const OPTION_METHODS: &[MethodSpec] = &[
     MethodSpec::new(
         "ok_or",
         &[ParamSpec::new("error", "any")],
-        "Result",
+        "Result<Any, Any>",
         "Converts Option::None to Result::Err with an error value.",
     ),
     MethodSpec::new(
         "flatten",
         &[],
-        "Option",
+        "Option<Any>",
         "Flattens a nested dynamic Option value.",
     ),
     MethodSpec::new(
         "map",
         &[ParamSpec::new("callback", "function")],
-        "Option",
+        "Option<Any>",
         "Maps an Option::Some payload with a callback.",
     ),
     MethodSpec::new(
         "and_then",
         &[ParamSpec::new("callback", "function")],
-        "Option",
+        "Option<Any>",
         "Chains an Option::Some payload through an Option-returning callback.",
     ),
     MethodSpec::new(
         "or_else",
         &[ParamSpec::new("callback", "function")],
-        "Option",
+        "Option<Any>",
         "Calls a fallback callback when the option is empty.",
     ),
     MethodSpec::new(
         "filter",
         &[ParamSpec::new("predicate", "function")],
-        "Option",
+        "Option<Any>",
         "Keeps an Option::Some payload accepted by a predicate.",
     ),
 ];

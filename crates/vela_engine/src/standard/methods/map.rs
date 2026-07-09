@@ -23,7 +23,7 @@ const MAP_METHODS: &[MethodSpec] = &[
     MethodSpec::new(
         "get",
         &[ParamSpec::new("key", "any")],
-        "Option",
+        "Option<Any>",
         "Returns the value for a key, or Option::None.",
     ),
     MethodSpec::new(
@@ -44,7 +44,7 @@ const MAP_METHODS: &[MethodSpec] = &[
     MethodSpec::new(
         "remove",
         &[ParamSpec::new("key", "any")],
-        "Option",
+        "Option<Any>",
         "Removes and returns the value for a key.",
     ),
     MethodSpec::new(
@@ -78,7 +78,7 @@ const MAP_METHODS: &[MethodSpec] = &[
     MethodSpec::new(
         "find",
         &[ParamSpec::new("callback", "function")],
-        "Option",
+        "Option<Any>",
         "Returns the first matching entry, or Option::None.",
     ),
     MethodSpec::new(

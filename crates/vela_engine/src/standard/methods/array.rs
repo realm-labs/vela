@@ -20,7 +20,12 @@ const ARRAY_METHODS: &[MethodSpec] = &[
         "()",
         "Appends a value to the array.",
     ),
-    MethodSpec::new("pop", &[], "Option", "Removes and returns the last value."),
+    MethodSpec::new(
+        "pop",
+        &[],
+        "Option<Any>",
+        "Removes and returns the last value.",
+    ),
     MethodSpec::new(
         "insert",
         &[
@@ -37,12 +42,12 @@ const ARRAY_METHODS: &[MethodSpec] = &[
         "Appends all values from another array.",
     ),
     MethodSpec::new("clear", &[], "()", "Removes all values."),
-    MethodSpec::new("first", &[], "Option", "Returns the first value."),
-    MethodSpec::new("last", &[], "Option", "Returns the last value."),
+    MethodSpec::new("first", &[], "Option<Any>", "Returns the first value."),
+    MethodSpec::new("last", &[], "Option<Any>", "Returns the last value."),
     MethodSpec::new(
         "remove_at",
         &[ParamSpec::new("index", "i64")],
-        "Option",
+        "Option<Any>",
         "Removes and returns the value at an index.",
     ),
     MethodSpec::new(
@@ -86,7 +91,7 @@ const ARRAY_METHODS: &[MethodSpec] = &[
     MethodSpec::new(
         "find",
         &[ParamSpec::new("callback", "function")],
-        "Option",
+        "Option<Any>",
         "Returns the first callback match, or Option::None.",
     ),
     MethodSpec::new(
@@ -120,8 +125,8 @@ const ARRAY_METHODS: &[MethodSpec] = &[
         "Groups values by value-keyed callback keys.",
     ),
     MethodSpec::new("sort", &[], "array", "Returns sorted values."),
-    MethodSpec::new("min", &[], "Option", "Returns the minimum value."),
-    MethodSpec::new("max", &[], "Option", "Returns the maximum value."),
+    MethodSpec::new("min", &[], "Option<Any>", "Returns the minimum value."),
+    MethodSpec::new("max", &[], "Option<Any>", "Returns the maximum value."),
     MethodSpec::new(
         "sort_by",
         &[ParamSpec::new("callback", "function")],
