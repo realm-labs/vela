@@ -1,5 +1,6 @@
 use vela_common::Span;
 use vela_hir::binding::{BindingResolution, LocalBindingKind};
+use vela_syntax::TextRange;
 use vela_syntax::ast::{SyntaxPattern, SyntaxPatternKind, SyntaxRecordPatternField};
 
 use crate::{Register, UnlinkedInstructionKind};
@@ -103,15 +104,17 @@ impl Compiler<'_, '_> {
         })?;
         match pattern_kind {
             SyntaxPatternKind::Binding => {
-                let binding = pattern.binding_name().ok_or_else(|| {
+                let binding_token = pattern.binding_name_token().ok_or_else(|| {
                     CompileError::new(CompileErrorKind::UnsupportedSyntax("binding pattern"))
                 })?;
+                let binding = binding_token.text().to_owned();
+                let binding_span = span_for_range(body_span.source, binding_token.text_range());
                 let dst = self.alloc_register()?;
                 self.emit(UnlinkedInstructionKind::Move {
                     dst,
                     src: scrutinee,
                 });
-                self.bind_pattern_local(&binding, dst, body_span, facts, kind);
+                self.bind_pattern_local(&binding, dst, binding_span, body_span, facts, kind);
                 Ok(())
             }
             SyntaxPatternKind::RecordVariant => {
@@ -144,8 +147,17 @@ impl Compiler<'_, '_> {
                             field_facts,
                             kind,
                         )?;
-                    } else {
-                        self.bind_pattern_local(&field_name, dst, body_span, field_facts, kind);
+                    } else if let Some(binding_token) = field.shorthand_binding_name_token() {
+                        let binding_span =
+                            span_for_range(body_span.source, binding_token.text_range());
+                        self.bind_pattern_local(
+                            &field_name,
+                            dst,
+                            binding_span,
+                            body_span,
+                            field_facts,
+                            kind,
+                        );
                     }
                 }
                 Ok(())
@@ -209,19 +221,20 @@ impl Compiler<'_, '_> {
         &mut self,
         binding: &str,
         register: Register,
-        body_span: Span,
+        binding_span: Span,
+        scope_span: Span,
         facts: PatternBindingFacts,
         kind: LocalBindingKind,
     ) {
         self.locals.insert(binding.to_owned(), register);
-        if let Some(local) = self.bindings.local_named_at(binding, kind, body_span) {
+        if let Some(local) = self.pattern_local_at_span(binding, kind, binding_span) {
             self.hir_locals.insert(local, register);
             self.record_frame_slot(
                 binding.to_owned(),
                 register,
                 frame_slot_kind(kind),
                 Some(local),
-                Some(body_span),
+                Some(scope_span),
             );
             self.script_types
                 .set_local_fact(local, binding, facts.script);
@@ -234,7 +247,7 @@ impl Compiler<'_, '_> {
                 register,
                 frame_slot_kind(kind),
                 None,
-                Some(body_span),
+                Some(scope_span),
             );
             self.value_types.set_name(binding, facts.value_type);
             self.value_shapes.set_name(binding, facts.value_shape);
@@ -344,4 +357,8 @@ fn syntax_record_pattern_field_name(field: &SyntaxRecordPatternField) -> Compile
     field.label_text().ok_or_else(|| {
         CompileError::new(CompileErrorKind::UnsupportedSyntax("record pattern field"))
     })
+}
+
+fn span_for_range(source: vela_common::SourceId, range: TextRange) -> Span {
+    Span::new(source, range.start().into(), range.end().into())
 }

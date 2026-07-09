@@ -1,5 +1,6 @@
 use vela_common::{SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
+use vela_syntax::TextRange;
 use vela_syntax::ast::{
     AstNode, SyntaxExpression, SyntaxMatchArm, SyntaxMatchArmBody, SyntaxMatchExpr, SyntaxPattern,
     SyntaxPatternKind,
@@ -219,15 +220,17 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<()> {
         match pattern.pattern_kind() {
             Some(SyntaxPatternKind::Binding) => {
-                let Some(name) = pattern.binding_name() else {
+                let Some(binding_token) = pattern.binding_name_token() else {
                     return Ok(());
                 };
+                let name = binding_token.text().to_owned();
+                let binding_span = span_for_text_range(source, binding_token.text_range());
                 let dst = self.alloc_register()?;
                 self.emit(UnlinkedInstructionKind::Move {
                     dst,
                     src: scrutinee,
                 });
-                self.bind_param_default_pattern_local(&name, dst, span, facts);
+                self.bind_param_default_pattern_local(&name, dst, binding_span, span, facts);
             }
             Some(SyntaxPatternKind::TupleVariant) => {
                 let Some(tuple) = pattern.as_tuple_variant() else {
@@ -284,10 +287,12 @@ impl Compiler<'_, '_> {
                             span,
                             field_facts,
                         )?;
-                    } else {
+                    } else if let Some(binding_token) = field.shorthand_binding_name_token() {
+                        let binding_span = span_for_text_range(source, binding_token.text_range());
                         self.bind_param_default_pattern_local(
                             &field_name,
                             field_value,
+                            binding_span,
                             span,
                             field_facts,
                         );
@@ -306,13 +311,13 @@ impl Compiler<'_, '_> {
         &mut self,
         name: &str,
         register: Register,
-        body_span: Span,
+        binding_span: Span,
+        scope_span: Span,
         facts: PatternBindingFacts,
     ) {
         self.locals.insert(name.to_owned(), register);
         if let Some(local) =
-            self.bindings
-                .local_named_at(name, LocalBindingKind::Pattern, body_span)
+            self.pattern_local_at_span(name, LocalBindingKind::Pattern, binding_span)
         {
             self.hir_locals.insert(local, register);
             self.record_frame_slot(
@@ -320,7 +325,7 @@ impl Compiler<'_, '_> {
                 register,
                 frame_slot_kind(LocalBindingKind::Pattern),
                 Some(local),
-                Some(body_span),
+                Some(scope_span),
             );
             self.script_types.set_local_fact(local, name, None);
             self.value_types.set_local(local, name, facts.value_type());
@@ -332,7 +337,7 @@ impl Compiler<'_, '_> {
                 register,
                 frame_slot_kind(LocalBindingKind::Pattern),
                 None,
-                Some(body_span),
+                Some(scope_span),
             );
             self.value_types.set_name(name, facts.value_type());
             self.value_shapes.set_name(name, facts.value_shape_fact());
@@ -439,4 +444,8 @@ fn param_default_pattern_unsupported(source: SourceId, pattern: &SyntaxPattern) 
         "parameter default match pattern",
     ))
     .with_span(span_for_range(source, pattern.syntax().text_range()))
+}
+
+fn span_for_text_range(source: SourceId, range: TextRange) -> Span {
+    Span::new(source, range.start().into(), range.end().into())
 }

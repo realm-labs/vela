@@ -158,7 +158,9 @@ lambda capture and parameter setup reads `HirBody::captures` and
 parameter locals by name/span. HIR statements now own their binding pattern IDs
 for simple lets and shorthand pattern bindings, and bytecode ordinary-let local
 setup resolves locals through `HirStmt::patterns` instead of `BindingMap`
-name/span scans.
+name/span scans. Bytecode match, tuple destructuring, for-pattern, and
+parameter-default match pattern local setup now resolves local identity through
+HIR binding-pattern source origins instead of `BindingMap` name/span scans.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

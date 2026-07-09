@@ -35,7 +35,7 @@ use vela_common::{GlobalSlot, HostMethodId, HostTypeId, SourceId, Span};
 use vela_def::{DefPath, FieldId, MethodId, TypeId};
 use vela_hir::attributes::derived_traits;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBindingKind};
-use vela_hir::body::{HirBody, HirStmtKind};
+use vela_hir::body::{HirBody, HirPatternKind, HirStmtKind};
 use vela_hir::ids::{HirDeclId, HirExprId, HirLocalId};
 #[cfg(test)]
 use vela_hir::module_graph::ModulePath;
@@ -1059,6 +1059,31 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
                     if binding.kind == LocalBindingKind::Let && binding.name == name {
                         return Some((local, binding.type_hint.clone()));
                     }
+                }
+            }
+        }
+        None
+    }
+
+    pub(in crate::compiler) fn pattern_local_at_span(
+        &self,
+        name: &str,
+        kind: LocalBindingKind,
+        span: Span,
+    ) -> Option<HirLocalId> {
+        for body in &self.hir_bodies {
+            for pattern in body.patterns.values() {
+                if pattern.kind != HirPatternKind::Binding || pattern.origin.span != span {
+                    continue;
+                }
+                let Some(local) = pattern.local else {
+                    continue;
+                };
+                let Some(binding) = self.bindings.local(local) else {
+                    continue;
+                };
+                if binding.kind == kind && binding.name == name {
+                    return Some(local);
                 }
             }
         }
