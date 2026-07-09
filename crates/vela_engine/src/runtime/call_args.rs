@@ -225,20 +225,6 @@ impl<'a> CallArgs<'a> {
         self.entries.is_empty()
     }
 
-    pub(crate) fn resolve(
-        &self,
-        entry: &str,
-        params: &[String],
-        param_defaults: &[bool],
-    ) -> VmResult<Vec<OwnedValue>> {
-        match self.mode()? {
-            CallArgsMode::Empty | CallArgsMode::Positional => {
-                self.entries.iter().map(CallArg::owned_value).collect()
-            }
-            CallArgsMode::Named => self.resolve_named(entry, params, param_defaults),
-        }
-    }
-
     pub(crate) fn resolve_values(
         &self,
         entry: &str,
@@ -279,42 +265,6 @@ impl<'a> CallArgs<'a> {
                 "mixed positional and named call arguments",
             )),
         }
-    }
-
-    fn resolve_named(
-        &self,
-        entry: &str,
-        params: &[String],
-        param_defaults: &[bool],
-    ) -> VmResult<Vec<OwnedValue>> {
-        let mut values = BTreeMap::new();
-        for (index, arg) in self.entries.iter().enumerate() {
-            let Some(name) = arg.name() else {
-                continue;
-            };
-            if !params.iter().any(|param| param == name) {
-                return Err(call_args_type_error("unknown named call argument"));
-            }
-            if values.insert(name.to_owned(), index).is_some() {
-                return Err(call_args_type_error("duplicate named call argument"));
-            }
-        }
-
-        let mut resolved = Vec::with_capacity(params.len());
-        for (index, param) in params.iter().enumerate() {
-            if let Some(arg_index) = values.remove(param) {
-                resolved.push(self.entries[arg_index].owned_value()?);
-            } else if param_defaults.get(index).copied().unwrap_or(false) {
-                resolved.push(OwnedValue::Missing);
-            } else {
-                return Err(VmError::new(VmErrorKind::ArityMismatch {
-                    name: entry.to_owned(),
-                    expected: params.len(),
-                    actual: self.entries.len(),
-                }));
-            }
-        }
-        Ok(resolved)
     }
 
     fn resolve_named_values(
@@ -388,16 +338,6 @@ enum CallArg<'a> {
 }
 
 impl CallArg<'_> {
-    fn owned_value(&self) -> VmResult<OwnedValue> {
-        match self {
-            Self::Positional(value) | Self::Named { value, .. } => Ok(value.clone()),
-            Self::NamedHost { host_ref, .. } => Ok(OwnedValue::HostRef(*host_ref)),
-            Self::PositionalValue(_) | Self::NamedValue { .. } => Err(call_args_type_error(
-                "runtime VelaValue arguments require Runtime::call",
-            )),
-        }
-    }
-
     fn runtime_value(
         &self,
         runtime_id: u64,

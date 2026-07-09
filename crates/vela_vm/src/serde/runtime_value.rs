@@ -45,7 +45,8 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self.value {
-            Value::Missing | Value::Unit => visitor.visit_unit(),
+            Value::Missing => Err(Error::custom("missing value is internal")),
+            Value::Unit => visitor.visit_unit(),
             Value::Bool(value) => visitor.visit_bool(*value),
             Value::Char(value) => visitor.visit_char(*value),
             Value::I8(value) => visitor.visit_i8(*value),
@@ -163,7 +164,8 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self.value {
-            Value::Missing | Value::Unit => visitor.visit_none(),
+            Value::Missing => Err(Error::custom("missing value is internal")),
+            Value::Unit => visitor.visit_none(),
             _ => visitor.visit_some(self),
         }
     }
@@ -173,7 +175,8 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self.value {
-            Value::Missing | Value::Unit => visitor.visit_unit(),
+            Value::Missing => Err(Error::custom("missing value is internal")),
+            Value::Unit => visitor.visit_unit(),
             Value::HeapRef(_) => match self.heap_value()? {
                 HeapValue::Record { fields, .. } if fields.is_empty() => visitor.visit_unit(),
                 _ => Err(Error::custom("expected unit")),

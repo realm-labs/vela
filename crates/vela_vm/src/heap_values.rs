@@ -168,7 +168,6 @@ pub(crate) fn owned_to_value(
     mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     match value {
-        OwnedValue::Missing => Ok(Value::Missing),
         OwnedValue::Unit => Ok(Value::Unit),
         OwnedValue::Bool(value) => Ok(Value::Bool(value)),
         OwnedValue::Char(value) => Ok(Value::Char(value)),
@@ -296,7 +295,7 @@ pub(crate) fn value_to_owned(
         return Ok(OwnedValue::Scalar(value));
     }
     match value {
-        Value::Missing => Ok(OwnedValue::Missing),
+        Value::Missing => Err(type_error("missing value")),
         Value::Unit => Ok(OwnedValue::Unit),
         Value::Bool(value) => Ok(OwnedValue::Bool(*value)),
         Value::Char(value) => Ok(OwnedValue::Char(*value)),

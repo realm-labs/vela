@@ -5,7 +5,7 @@ use vela_common::ScalarValue;
 use vela_host::path::HostRef;
 use vela_host::proxy::PathProxy;
 
-use crate::error::VmResult;
+use crate::error::{VmError, VmErrorKind, VmResult};
 use crate::iteration::IteratorState;
 use crate::ranges::RangeValue;
 use crate::script_object::ScriptFields;
@@ -13,7 +13,6 @@ use crate::value::Value;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum OwnedValue {
-    Missing,
     Unit,
     Bool(bool),
     Char(char),
@@ -158,7 +157,6 @@ impl OwnedValue {
     #[must_use]
     pub fn display_text(&self) -> String {
         match self {
-            Self::Missing => "<missing>".to_owned(),
             Self::Unit => "()".to_owned(),
             Self::Bool(value) => value.to_string(),
             Self::Char(value) => value.to_string(),
@@ -467,7 +465,6 @@ impl From<HostRef> for OwnedValue {
 
 pub fn owned_to_value_detached(value: OwnedValue) -> Value {
     match value {
-        OwnedValue::Missing => Value::Missing,
         OwnedValue::Unit => Value::Unit,
         OwnedValue::Bool(value) => Value::Bool(value),
         OwnedValue::Char(value) => Value::Char(value),
@@ -490,7 +487,7 @@ pub fn owned_to_value_detached(value: OwnedValue) -> Value {
 
 pub fn value_to_owned_detached(value: &Value) -> VmResult<OwnedValue> {
     match value {
-        Value::Missing => Ok(OwnedValue::Missing),
+        Value::Missing => Err(boundary_type_error("missing value")),
         Value::Unit => Ok(OwnedValue::Unit),
         Value::Bool(value) => Ok(OwnedValue::Bool(*value)),
         Value::Char(value) => Ok(OwnedValue::Char(*value)),
@@ -506,8 +503,12 @@ pub fn value_to_owned_detached(value: &Value) -> VmResult<OwnedValue> {
         Value::F64(value) => Ok(OwnedValue::Scalar(ScalarValue::F64(*value))),
         Value::Range(value) => Ok(OwnedValue::Range(*value)),
         Value::HostRef(value) => Ok(OwnedValue::HostRef(*value)),
-        Value::HeapRef(_) => Ok(OwnedValue::Missing),
+        Value::HeapRef(_) => Err(boundary_type_error("detached heap value")),
     }
+}
+
+fn boundary_type_error(operation: &'static str) -> VmError {
+    VmError::new(VmErrorKind::TypeMismatch { operation })
 }
 
 impl PartialEq<Value> for OwnedValue {
@@ -524,7 +525,7 @@ impl PartialEq<OwnedValue> for Value {
 
 fn owned_value_eq_runtime(lhs: &OwnedValue, rhs: &Value) -> bool {
     match (lhs, rhs) {
-        (OwnedValue::Missing, Value::Missing) | (OwnedValue::Unit, Value::Unit) => true,
+        (OwnedValue::Unit, Value::Unit) => true,
         (OwnedValue::Bool(lhs), Value::Bool(rhs)) => lhs == rhs,
         (OwnedValue::Char(lhs), Value::Char(rhs)) => lhs == rhs,
         (OwnedValue::Scalar(lhs), rhs) => rhs.as_scalar().as_ref() == Some(lhs),

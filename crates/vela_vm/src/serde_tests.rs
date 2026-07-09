@@ -5,8 +5,10 @@ use ::serde::de::{SeqAccess, Visitor};
 use ::serde::{Deserialize, Deserializer, Serialize, Serializer};
 use vela_common::ScalarValue;
 
+use crate::heap::ScriptHeap;
 use crate::owned_value::OwnedValue;
-use crate::serde::{from_owned_value, to_owned_value};
+use crate::serde::{from_owned_value, from_runtime_value, to_owned_value};
+use crate::value::Value;
 
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
 struct PlayerSnapshot {
@@ -259,6 +261,19 @@ fn serde_rejects_implicit_numeric_conversions() {
     assert!(from_owned_value::<i64>(&OwnedValue::Scalar(ScalarValue::U64(7))).is_err());
     assert!(from_owned_value::<f64>(&OwnedValue::Scalar(ScalarValue::F32(1.5))).is_err());
     assert!(from_owned_value::<f32>(&OwnedValue::Scalar(ScalarValue::F64(1.5))).is_err());
+}
+
+#[test]
+fn runtime_serde_rejects_internal_missing_sentinel() {
+    let heap = ScriptHeap::default();
+
+    from_runtime_value::<()>(&Value::Unit, &heap).expect("unit deserializes as unit");
+    let option =
+        from_runtime_value::<Option<i64>>(&Value::Unit, &heap).expect("unit deserializes as none");
+    assert_eq!(option, None);
+
+    assert!(from_runtime_value::<()>(&Value::Missing, &heap).is_err());
+    assert!(from_runtime_value::<Option<i64>>(&Value::Missing, &heap).is_err());
 }
 
 #[test]

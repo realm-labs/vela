@@ -40,22 +40,21 @@ pub enum VelaStatus {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum VelaCValueKind {
-    Missing = 0,
-    Unit = 1,
-    Bool = 2,
-    I8 = 3,
-    I16 = 4,
-    I32 = 5,
-    I64 = 6,
-    U8 = 7,
-    U16 = 8,
-    U32 = 9,
-    U64 = 10,
-    F32 = 11,
-    F64 = 12,
-    String = 13,
-    Bytes = 14,
-    Char = 15,
+    Unit = 0,
+    Bool = 1,
+    I8 = 2,
+    I16 = 3,
+    I32 = 4,
+    I64 = 5,
+    U8 = 6,
+    U16 = 7,
+    U32 = 8,
+    U64 = 9,
+    F32 = 10,
+    F64 = 11,
+    String = 12,
+    Bytes = 13,
+    Char = 14,
 }
 
 #[repr(C)]
@@ -80,9 +79,9 @@ pub struct VelaCValue {
 }
 
 impl VelaCValue {
-    const fn missing() -> Self {
+    const fn unit() -> Self {
         Self {
-            kind: VelaCValueKind::Missing,
+            kind: VelaCValueKind::Unit,
             bool_value: 0,
             i8_value: 0,
             i16_value: 0,
@@ -104,7 +103,7 @@ impl VelaCValue {
 
 impl Default for VelaCValue {
     fn default() -> Self {
-        Self::missing()
+        Self::unit()
     }
 }
 
@@ -177,7 +176,7 @@ pub unsafe extern "C" fn vela_value_free(value: *mut VelaCValue) {
             VelaCValueKind::Bytes => vela_bytes_free(value.bytes_data, value.bytes_len),
             _ => {}
         }
-        *value = VelaCValue::missing();
+        *value = VelaCValue::unit();
     }
 }
 
@@ -339,75 +338,74 @@ fn call_runtime(
 
 fn value_to_c(value: OwnedValue) -> Result<VelaCValue, (VelaStatus, String)> {
     match value {
-        OwnedValue::Missing => Ok(VelaCValue::missing()),
         OwnedValue::Unit => Ok(VelaCValue {
             kind: VelaCValueKind::Unit,
-            ..VelaCValue::missing()
+            ..VelaCValue::unit()
         }),
         OwnedValue::Bool(value) => Ok(VelaCValue {
             kind: VelaCValueKind::Bool,
             bool_value: u8::from(value),
-            ..VelaCValue::missing()
+            ..VelaCValue::unit()
         }),
         OwnedValue::Char(value) => Ok(VelaCValue {
             kind: VelaCValueKind::Char,
             char_value: value as u32,
-            ..VelaCValue::missing()
+            ..VelaCValue::unit()
         }),
         OwnedValue::Scalar(ScalarValue::I8(value)) => Ok(VelaCValue {
             kind: VelaCValueKind::I8,
             i8_value: value,
-            ..VelaCValue::missing()
+            ..VelaCValue::unit()
         }),
         OwnedValue::Scalar(ScalarValue::I16(value)) => Ok(VelaCValue {
             kind: VelaCValueKind::I16,
             i16_value: value,
-            ..VelaCValue::missing()
+            ..VelaCValue::unit()
         }),
         OwnedValue::Scalar(ScalarValue::I32(value)) => Ok(VelaCValue {
             kind: VelaCValueKind::I32,
             i32_value: value,
-            ..VelaCValue::missing()
+            ..VelaCValue::unit()
         }),
         OwnedValue::Scalar(ScalarValue::I64(value)) => Ok(VelaCValue {
             kind: VelaCValueKind::I64,
             i64_value: value,
-            ..VelaCValue::missing()
+            ..VelaCValue::unit()
         }),
         OwnedValue::Scalar(ScalarValue::U8(value)) => Ok(VelaCValue {
             kind: VelaCValueKind::U8,
             u8_value: value,
-            ..VelaCValue::missing()
+            ..VelaCValue::unit()
         }),
         OwnedValue::Scalar(ScalarValue::U16(value)) => Ok(VelaCValue {
             kind: VelaCValueKind::U16,
             u16_value: value,
-            ..VelaCValue::missing()
+            ..VelaCValue::unit()
         }),
         OwnedValue::Scalar(ScalarValue::U32(value)) => Ok(VelaCValue {
             kind: VelaCValueKind::U32,
             u32_value: value,
-            ..VelaCValue::missing()
+            ..VelaCValue::unit()
         }),
         OwnedValue::Scalar(ScalarValue::U64(value)) => Ok(VelaCValue {
             kind: VelaCValueKind::U64,
             u64_value: value,
-            ..VelaCValue::missing()
+            ..VelaCValue::unit()
         }),
         OwnedValue::Scalar(ScalarValue::F32(value)) => Ok(VelaCValue {
             kind: VelaCValueKind::F32,
             f32_value: value,
-            ..VelaCValue::missing()
+            ..VelaCValue::unit()
         }),
         OwnedValue::Scalar(ScalarValue::F64(value)) => Ok(VelaCValue {
             kind: VelaCValueKind::F64,
             f64_value: value,
-            ..VelaCValue::missing()
+            ..VelaCValue::unit()
         }),
         OwnedValue::String(value) => Ok(VelaCValue {
             kind: VelaCValueKind::String,
             string_value: c_string_ptr(value),
-            ..VelaCValue::missing()
+            ..VelaCValue::unit()
         }),
         OwnedValue::Bytes(value) => {
             let (bytes_data, bytes_len) = c_bytes_ptr(value);
@@ -415,7 +413,7 @@ fn value_to_c(value: OwnedValue) -> Result<VelaCValue, (VelaStatus, String)> {
                 kind: VelaCValueKind::Bytes,
                 bytes_data,
                 bytes_len,
-                ..VelaCValue::missing()
+                ..VelaCValue::unit()
             })
         }
         _ => Err((
@@ -443,7 +441,6 @@ fn c_args(
 
 fn c_value_to_owned(value: &VelaCValue) -> Result<OwnedValue, (VelaStatus, String)> {
     match value.kind {
-        VelaCValueKind::Missing => Ok(OwnedValue::Missing),
         VelaCValueKind::Unit => Ok(OwnedValue::Unit),
         VelaCValueKind::Bool => Ok(OwnedValue::Bool(value.bool_value != 0)),
         VelaCValueKind::Char => {

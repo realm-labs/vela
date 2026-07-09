@@ -486,7 +486,7 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
         V: Visitor<'de>,
     {
         match self {
-            OwnedValue::Missing | OwnedValue::Unit => visitor.visit_unit(),
+            OwnedValue::Unit => visitor.visit_unit(),
             OwnedValue::Bool(value) => visitor.visit_bool(*value),
             OwnedValue::Char(value) => visitor.visit_char(*value),
             OwnedValue::Scalar(ScalarValue::I8(value)) => visitor.visit_i8(*value),
@@ -678,7 +678,7 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
         V: Visitor<'de>,
     {
         match self {
-            OwnedValue::Missing | OwnedValue::Unit => visitor.visit_none(),
+            OwnedValue::Unit => visitor.visit_none(),
             _ => visitor.visit_some(self),
         }
     }
@@ -688,7 +688,7 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
         V: Visitor<'de>,
     {
         match self {
-            OwnedValue::Missing | OwnedValue::Unit => visitor.visit_unit(),
+            OwnedValue::Unit => visitor.visit_unit(),
             OwnedValue::Record { fields, .. } if fields.is_empty() => visitor.visit_unit(),
             _ => Err(Error::custom("expected unit")),
         }

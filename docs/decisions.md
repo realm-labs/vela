@@ -1139,6 +1139,14 @@ unit or any sentinel value.
 reflected type metadata return `Option::Some(ReflectType)`, and values without
 registered metadata return `Option::None`.
 
+### Missing Sentinel Scope
+
+`Value::Missing` and `CallArgument::Missing` are VM-internal call/default
+sentinels only. Public boundaries must not expose a Missing value or kind:
+`OwnedValue`, `HostValue`, C ABI values, serde conversion, playground JSON,
+reflection records, and user-visible no-result paths use `()`, `Option`,
+`Result`, or typed structured data instead.
+
 ### LSP On-Type Formatting Scope
 
 Native on-type formatting is conservative: it may respond to closing brace and

@@ -68,9 +68,7 @@ pub(crate) fn value_to_reflect(
         }
         OwnedValue::Closure(_) => Ok(reflect::value::ReflectValue::Closure),
         OwnedValue::Range(_) => Ok(reflect::value::ReflectValue::Range),
-        OwnedValue::Missing | OwnedValue::PathProxy(_) | OwnedValue::Iterator(_) => {
-            Err(type_error(operation))
-        }
+        OwnedValue::PathProxy(_) | OwnedValue::Iterator(_) => Err(type_error(operation)),
         OwnedValue::Unit | OwnedValue::Bool(_) | OwnedValue::Scalar(_) | OwnedValue::String(_) => {
             Ok(reflect::value::ReflectValue::Host(owned_to_host(
                 value, operation,
@@ -246,8 +244,7 @@ fn owned_to_host(value: &OwnedValue, operation: &'static str) -> VmResult<HostVa
         OwnedValue::String(value) => Ok(HostValue::String(value.clone())),
         OwnedValue::Bytes(value) => Ok(HostValue::Bytes(value.clone())),
         OwnedValue::HostRef(value) => Ok(HostValue::HostRef(*value)),
-        OwnedValue::Missing
-        | OwnedValue::Tuple(_)
+        OwnedValue::Tuple(_)
         | OwnedValue::Array(_)
         | OwnedValue::Map(_)
         | OwnedValue::Set(_)

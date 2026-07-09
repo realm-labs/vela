@@ -509,7 +509,7 @@ Focused validation:
   null keying, null truthiness, null equality, null register defaults, and null
   type guards.
 - [x] Replace default registers/no-result constants with unit.
-- [ ] Ensure Missing remains an internal sentinel only if still required; it
+- [x] Ensure Missing remains an internal sentinel only if still required; it
   must not become public null by another name.
 
 Focused validation:
@@ -737,8 +737,8 @@ playground examples
 
 ## 9. Design Rules For Implementation
 
-- Keep unit, tuple, Option, Result, Missing, and external-data null as separate
-  concepts.
+- Keep unit, tuple, Option, Result, internal Missing sentinels, and
+  external-data null as separate concepts.
 - Do not implement `null` aliases for `()`, `Option::None`, or `Result::Err`.
 - Keep `?` propagation Rust-aligned. Cross-family `Option`/`Result`
   propagation must use explicit conversion helpers.

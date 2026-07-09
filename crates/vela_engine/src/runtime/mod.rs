@@ -619,9 +619,63 @@ where
         adapter: &mut dyn ScriptStateAdapter,
         access: &mut HostAccess,
     ) -> VmResult<OwnedValue> {
-        let resolved = self.resolve_call_args(entry, args)?;
+        let mut budget = options.budget();
+        let linked_program = self.image.linked_program();
+        let function = linked_program.entry_point_by_name(entry).ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownFunction {
+                name: entry.to_owned(),
+            })
+        })?;
+        let code = linked_program.function(function).ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownFunction {
+                name: entry.to_owned(),
+            })
+        })?;
+        let params = code
+            .params
+            .iter()
+            .map(|param| linked_program.debug_name(*param).to_owned())
+            .collect::<Vec<_>>();
+        let roots = self.state.script_globals.roots();
+        let resolved = args.resolve_values(
+            entry,
+            &params,
+            &code.param_defaults,
+            self.state.id,
+            &mut self.state.script_globals.heap,
+            &mut budget,
+        )?;
         let mut adapter = CallArgsAdapter::new(args, adapter);
-        self.call_raw(entry, &resolved, options, &mut adapter, access)
+        let mut adapter = GlobalStoreAdapter::new(&mut self.state.globals, &mut adapter);
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            access,
+            script_globals: Some(&self.state.script_globals.values),
+        };
+        let vm = if let Some(hot_reload) = self.hot_reload.as_ref() {
+            let current = hot_reload.current();
+            self.image
+                .engine()
+                .into_vm_for_program_image_with_abi(self.image.program_image(), current.abi())
+        } else {
+            self.image
+                .engine()
+                .into_vm_for_program_image(self.image.program_image())
+        };
+        let value = vm.run_linked_runtime_code_call(LinkedRuntimeCodeCall {
+            program: linked_program,
+            code,
+            args: &resolved,
+            host: &mut host,
+            persistent: PersistentHeapExecution {
+                heap: &mut self.state.script_globals.heap,
+                roots: &roots,
+            },
+            budget: &mut budget,
+            inline_caches: Some(&self.state.inline_caches),
+            bytecode_profiler: Some(&self.state.bytecode_profile),
+        })?;
+        persistent_value_to_owned(&value, &mut self.state.script_globals.heap)
     }
 
     fn call_runtime_args(call: RuntimeCallExecution<'_, '_, '_, '_, '_>) -> VmResult<VelaValue> {
@@ -683,19 +737,6 @@ where
         let value = self.call_args_raw(entry, args, options, adapter, access)?;
         let reload = self.check_optional_reload();
         Ok(EventCallSafePointReport { value, reload })
-    }
-
-    fn resolve_call_args(&self, entry: &str, args: &CallArgs<'_>) -> VmResult<Vec<OwnedValue>> {
-        let code = self
-            .image
-            .program_image()
-            .function_by_name(entry)
-            .ok_or_else(|| {
-                VmError::new(VmErrorKind::UnknownFunction {
-                    name: entry.to_owned(),
-                })
-            })?;
-        args.resolve(entry, &code.params, &code.param_defaults)
     }
 
     fn check_vela_value_runtime(&self, value: &VelaValue) -> VmResult<()> {
@@ -819,13 +860,12 @@ fn owned_value_matches_contract(value: &OwnedValue, expected: &str) -> bool {
         OwnedValue::Closure(_) => expected == "Closure",
         OwnedValue::Range(_) => expected == "Range",
         OwnedValue::Iterator(_) => expected == "Iterator",
-        OwnedValue::Missing | OwnedValue::HostRef(_) | OwnedValue::PathProxy(_) => false,
+        OwnedValue::HostRef(_) | OwnedValue::PathProxy(_) => false,
     }
 }
 
 fn owned_value_contract_type_name(value: &OwnedValue) -> String {
     match value {
-        OwnedValue::Missing => "missing".to_owned(),
         OwnedValue::Unit => "()".to_owned(),
         OwnedValue::Bool(_) => "bool".to_owned(),
         OwnedValue::Char(_) => "char".to_owned(),
