@@ -1082,6 +1082,7 @@ enum QuestState {
 fn grant_reward() { return 1; }
 fn main(states) {
     grant_reward()
+    let weights = { RewardKey::Small: 1 }
     let next = QuestState::Active { count: 1 }
     match next {
         QuestState::Active { count } => count
@@ -1119,6 +1120,14 @@ fn main(states) {
                 usize::try_from(*start).expect("path start fits usize")
                     ..usize::try_from(*end).expect("path end fits usize"),
             ) == Some("Active")
+    }));
+    assert!(path_facts.iter().any(|(kind, path, start, end)| {
+        *kind == HirPathKind::Value
+            && path == &["RewardKey", "Small"]
+            && source_text.get(
+                usize::try_from(*start).expect("path start fits usize")
+                    ..usize::try_from(*end).expect("path end fits usize"),
+            ) == Some("Small")
     }));
     assert!(path_facts.iter().any(|(kind, path, start, end)| {
         *kind == HirPathKind::Pattern

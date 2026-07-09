@@ -1,7 +1,6 @@
 use vela_common::SourceId;
 use vela_syntax::ast::SyntaxExpression;
 
-use crate::compiler::param_defaults::syntax_map_key_name;
 use crate::compiler::{CompileResult, Compiler};
 use crate::{Register, UnlinkedInstructionKind};
 
@@ -45,7 +44,7 @@ impl Compiler<'_, '_> {
                     let Some(value) = entry.value() else {
                         return Ok(None);
                     };
-                    let key = syntax_map_key_name(source, &key)?;
+                    let key = self.map_key_name(source, &key)?;
                     let Some(value) = self.compile_syntax_expression(source, &value)? else {
                         return Ok(None);
                     };

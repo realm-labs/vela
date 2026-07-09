@@ -665,9 +665,30 @@ impl Compiler<'_, '_> {
             ))
             .with_span(span_for_range(source, entry.syntax().text_range())));
         };
-        let key = syntax_map_key_name(source, &key)?;
+        let key = self.map_key_name(source, &key)?;
         let value = self.compile_param_default_expression(source, &value)?;
         Ok((key, value))
+    }
+
+    pub(in crate::compiler) fn map_key_name(
+        &self,
+        source: SourceId,
+        key: &SyntaxExpression,
+    ) -> CompileResult<String> {
+        match key.expression_kind() {
+            SyntaxExpressionKind::Literal => syntax_literal_map_key_name(source, key),
+            SyntaxExpressionKind::Path => {
+                let span = span_for(source, key);
+                self.hir_value_path_for_span(span)
+                    .map(|path| path.join("::"))
+                    .filter(|path| !path.is_empty())
+                    .ok_or_else(|| param_default_unsupported(source, key))
+            }
+            _ => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "parameter default map key",
+            ))
+            .with_span(span_for(source, key))),
+        }
     }
 }
 
@@ -945,38 +966,20 @@ pub(in crate::compiler) fn syntax_map_key_supported(key: &SyntaxExpression) -> b
                     Literal::String(_) | Literal::Char(_) | Literal::Integer(_) | Literal::Float(_)
                 )
             }),
-        SyntaxExpressionKind::Path => key
-            .as_path()
-            .is_some_and(|path| !path.path_segments().is_empty()),
+        SyntaxExpressionKind::Path => key.as_path().is_some(),
         _ => false,
     }
 }
 
-pub(in crate::compiler) fn syntax_map_key_name(
-    source: SourceId,
-    key: &SyntaxExpression,
-) -> CompileResult<String> {
-    match key.expression_kind() {
-        SyntaxExpressionKind::Literal => {
-            let Some(literal) = key.as_literal().and_then(|literal| literal.literal()) else {
-                return Err(param_default_unsupported(source, key));
-            };
-            match literal {
-                Literal::String(value) => Ok(value),
-                Literal::Char(value) => Ok(value.to_string()),
-                Literal::Integer(value) => Ok(value.source_text_with_suffix()),
-                Literal::Float(value) => Ok(value.source_text_with_suffix()),
-                _ => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                    "parameter default map key",
-                ))
-                .with_span(span_for(source, key))),
-            }
-        }
-        SyntaxExpressionKind::Path => key
-            .as_path()
-            .map(|path| path.path_segments().join("::"))
-            .filter(|path| !path.is_empty())
-            .ok_or_else(|| param_default_unsupported(source, key)),
+fn syntax_literal_map_key_name(source: SourceId, key: &SyntaxExpression) -> CompileResult<String> {
+    let Some(literal) = key.as_literal().and_then(|literal| literal.literal()) else {
+        return Err(param_default_unsupported(source, key));
+    };
+    match literal {
+        Literal::String(value) => Ok(value),
+        Literal::Char(value) => Ok(value.to_string()),
+        Literal::Integer(value) => Ok(value.source_text_with_suffix()),
+        Literal::Float(value) => Ok(value.source_text_with_suffix()),
         _ => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "parameter default map key",
         ))

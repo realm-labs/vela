@@ -376,6 +376,36 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_parameter_default_map_keys_through_hir_paths() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+const SMALL: i64 = 1;
+fn grant(config = { SMALL: 10, "large": 20 }) {
+    return config;
+}
+"#,
+    )
+    .expect("map parameter default should compile through HIR path facts");
+    let grant = program.function("grant").expect("grant function");
+    let map_keys = grant
+        .instructions
+        .iter()
+        .find_map(|instruction| match &instruction.kind {
+            UnlinkedInstructionKind::MakeMap { entries, .. } => Some(
+                entries
+                    .iter()
+                    .map(|(key, _)| key.as_str())
+                    .collect::<Vec<_>>(),
+            ),
+            _ => None,
+        })
+        .expect("parameter default should emit MakeMap");
+
+    assert_eq!(map_keys, ["SMALL", "large"]);
+}
+
+#[test]
 fn compiler_lowers_script_calls_inside_parameter_defaults() {
     let program = compile_program_source(
         SourceId::new(1),

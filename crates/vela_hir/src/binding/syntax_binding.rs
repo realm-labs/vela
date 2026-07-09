@@ -646,13 +646,35 @@ impl<'a> SyntaxBindingLowerer<'a> {
     }
 
     fn bind_map_entry(&mut self, entry: &SyntaxMapEntry) {
-        if let Some(key) = entry.key()
-            && !matches!(key.expression_kind(), SyntaxExpressionKind::Path)
-        {
-            self.bind_expr(&key, PathUsage::Value);
+        if let Some(key) = entry.key() {
+            if matches!(key.expression_kind(), SyntaxExpressionKind::Path) {
+                self.record_map_key_path(&key);
+            } else {
+                self.bind_expr(&key, PathUsage::Value);
+            }
         }
         if let Some(value) = entry.value() {
             self.bind_expr(&value, PathUsage::Value);
+        }
+    }
+
+    fn record_map_key_path(&mut self, key: &SyntaxExpression) {
+        let id = self.next_expr(
+            span_for(self.source, key.syntax().text_range()),
+            key.expression_kind().into(),
+        );
+        let Some(path) = key.as_path() else {
+            return;
+        };
+        let path_segments = path.path_segments();
+        if let Some(segment_span) = last_segment_span(self.source, path.path_tokens()) {
+            self.record_expression_path(
+                id,
+                HirPathKind::Value,
+                path_segments,
+                span_for(self.source, path.syntax().text_range()),
+                segment_span,
+            );
         }
     }
 
