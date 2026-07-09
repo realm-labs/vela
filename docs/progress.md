@@ -266,7 +266,9 @@ statement source spans instead of recomputing statement spans from syntax, and
 obsolete lifetime/`PhantomData` scaffolding has been removed from statement
 payloads. Ordinary let-pattern lowering now consumes the HIR pattern IDs owned
 by the statement payload for local registration instead of re-identifying those
-locals from binding-token spans.
+locals from binding-token spans. Parameter-default payload construction now
+uses each `HirParam::default_body` to select the default expression, deleting
+the old function-signature default-span matching helper.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

@@ -5,14 +5,15 @@ mod records;
 
 use vela_common::{PrimitiveTag, ScalarValue, SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
+use vela_hir::body::HirBody;
+use vela_hir::module_graph::ModuleGraph;
 use vela_syntax::ast::{
     AstNode, BinaryOp, FloatSuffix, IntegerSuffix, Literal, SyntaxBlock, SyntaxElseBranch,
     SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr, SyntaxLetStmt, SyntaxLiteral,
-    SyntaxMapEntry, UnaryOp,
+    SyntaxMapEntry, SyntaxParam, SyntaxParamList, UnaryOp,
 };
 use vela_syntax::token::{InterpolatedStringTokenPart, TokenKind};
 
-use crate::compiler::syntax_payloads::ParamDefaultExpression;
 use crate::{FormatStringPart, GuardLocation, Register, UnlinkedInstructionKind};
 
 use super::const_eval::{
@@ -32,18 +33,34 @@ pub(super) struct ParamDefaultValue {
 }
 
 pub(super) fn param_default_values(
-    syntax_defaults: &[Option<ParamDefaultExpression>],
+    source: SourceId,
+    params: Option<SyntaxParamList>,
+    graph: &ModuleGraph,
+    hir_body: &HirBody,
 ) -> Vec<Option<ParamDefaultValue>> {
-    syntax_defaults
+    let syntax_params = params
+        .map(|params| params.params().collect::<Vec<_>>())
+        .unwrap_or_default();
+    hir_body
+        .params
         .iter()
-        .map(|syntax_default| {
-            let syntax_default = syntax_default.clone()?;
-            Some(ParamDefaultValue {
-                source: syntax_default.source,
-                expression: syntax_default.expression,
-            })
+        .map(|param| {
+            let default_body = graph.body(param.default_body?)?;
+            let expression =
+                syntax_default_expression_for_span(&syntax_params, default_body.origin.span)?;
+            Some(ParamDefaultValue { source, expression })
         })
         .collect()
+}
+
+fn syntax_default_expression_for_span(
+    params: &[SyntaxParam],
+    span: Span,
+) -> Option<SyntaxExpression> {
+    params
+        .iter()
+        .filter_map(SyntaxParam::default_value)
+        .find(|expression| span_for_range(span.source, expression.syntax().text_range()) == span)
 }
 
 impl Compiler<'_, '_> {

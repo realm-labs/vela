@@ -13,7 +13,6 @@ use vela_syntax::ast::{AstNode, SyntaxImplItem, SyntaxSourceFile, SyntaxTraitIte
 
 use super::body_payloads::CompilerBodyPayload;
 use super::param_defaults::{ParamDefaultValue, param_default_values};
-use super::syntax_payloads::param_default_expressions;
 
 pub(super) struct ScriptImplMethod<'ast> {
     pub(super) target_type: String,
@@ -271,11 +270,12 @@ fn impl_method_payloads<'ast>(
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
-                    default_values: param_default_values(&param_default_expressions(
+                    default_values: param_default_values(
                         source,
                         syntax_method.param_list(),
-                        &method_metadata.signature,
-                    )),
+                        graph,
+                        hir_body,
+                    ),
                     body,
                 },
             ))
@@ -306,11 +306,12 @@ fn trait_default_method_payloads<'ast>(
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
-                    default_values: param_default_values(&param_default_expressions(
+                    default_values: param_default_values(
                         source,
                         syntax_method.param_list(),
-                        &method_metadata.signature,
-                    )),
+                        graph,
+                        hir_body,
+                    ),
                     body,
                 },
             ))

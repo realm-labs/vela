@@ -18,12 +18,10 @@ use super::const_eval::evaluate_const_expr;
 use super::error::{CompileError, CompileErrorKind, CompileResult};
 use super::field_slots::ScriptFieldSlots;
 use super::function_payloads::FunctionBodyPayload;
-use super::param_defaults::{ParamDefaultValue, param_default_values};
+use super::param_defaults::param_default_values;
 use super::schema_defaults::{ScriptSchemaDefaults, source_schema_defaults};
 use super::script_impls;
-use super::syntax_payloads::{
-    const_value_payloads, param_default_expressions, schema_default_payloads,
-};
+use super::syntax_payloads::{const_value_payloads, schema_default_payloads};
 
 pub(super) struct SemanticSource {
     source: SourceId,
@@ -69,8 +67,8 @@ impl SemanticSource {
         let payload = function_body_payload(
             self.source,
             &self.syntax,
+            &self.graph,
             metadata.name.as_str(),
-            signature,
             hir_body,
         )?;
         Some((payload, signature, bindings, self.graph.bodies().collect()))
@@ -244,8 +242,13 @@ impl SemanticModules {
         let syntax = self.syntax.get(&metadata.module)?;
         let source = self.source_ids.get(&metadata.module).copied()?;
         let hir_body = self.graph.function_body(declaration)?;
-        let payload =
-            function_body_payload(source, syntax, metadata.name.as_str(), signature, hir_body)?;
+        let payload = function_body_payload(
+            source,
+            syntax,
+            &self.graph,
+            metadata.name.as_str(),
+            hir_body,
+        )?;
         Some((payload, signature, bindings, self.graph.bodies().collect()))
     }
 
@@ -497,8 +500,8 @@ fn hir_value_path_for_span(graph: &ModuleGraph, span: Span) -> Option<Vec<String
 fn function_body_payload<'ast>(
     source: SourceId,
     syntax: &SyntaxParse<SyntaxSourceFile>,
+    graph: &ModuleGraph,
     name: &str,
-    signature: &FunctionSignature,
     hir_body: &'ast HirBody,
 ) -> Option<FunctionBodyPayload<'ast>> {
     let syntax_function = syntax
@@ -510,21 +513,13 @@ fn function_body_payload<'ast>(
         syntax_function.body()?,
         hir_body,
     );
-    let param_defaults = function_param_defaults(source, syntax_function.param_list(), signature);
+    let param_defaults =
+        param_default_values(source, syntax_function.param_list(), graph, hir_body);
     Some(FunctionBodyPayload {
         name: name.to_owned(),
         body,
         param_defaults,
     })
-}
-
-fn function_param_defaults(
-    source: SourceId,
-    params: Option<vela_syntax::ast::SyntaxParamList>,
-    signature: &FunctionSignature,
-) -> Vec<Option<ParamDefaultValue>> {
-    let syntax_defaults = param_default_expressions(source, params, signature);
-    param_default_values(&syntax_defaults)
 }
 
 pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResult<SemanticSource> {
