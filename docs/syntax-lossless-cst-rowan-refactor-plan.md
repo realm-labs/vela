@@ -65,8 +65,11 @@ entrypoints, old owned AST structs, Expr, ExprKind, Stmt, StmtKind, Block,
 Argument, RecordField, SourceFile, ItemKind, `.fallback()`, token-gap
 formatting paths, CST-to-owned adapters, migration-only names, and downstream
 or user-visible `cst_*`/`*Cst*` naming that only exists to distinguish the new
-syntax path from the deleted old AST path. Work with any existing user changes
-and do not revert them.
+syntax path from the deleted old AST path. In `vela_bytecode`, also inspect
+`missing CST`, `unsupported CST`, `CST ... payload`, `cst_payload`,
+`cst_lowering_covers`, `syntax_only`, and `is_syntax_only`; these are likely
+hard-switch residue, not final architecture names. Work with any existing user
+changes and do not revert them.
 
 Use a hard-switch strategy with large subsystem slices. Delete the obsolete
 fallback/API at the start of a slice, then use compiler errors and focused
@@ -88,7 +91,9 @@ Current execution order:
    Stmt, StmtKind, Block, Argument, and RecordField dependencies from compiler
    production and test helpers. Replace fallback payload tests with
    source-to-bytecode, source-to-runtime, or source-to-diagnostic behavior
-   tests.
+   tests. Then remove migration-era compiler scaffolding such as `syntax_only`,
+   `is_syntax_only`, `*_cst_lowering_covers`, `cst_payload`, and `missing CST`
+   or `unsupported CST` `UnsupportedSyntax` messages.
 3. Delete transitional fallback payload scaffolding: `.fallback()` accessors,
    paired old/CST payload constructors, source-less fallback fixtures, and
    tests whose only purpose is proving that legacy fallback is ignored.
@@ -111,7 +116,9 @@ Current execution order:
    `.fallback()`, CST-to-owned helpers, token-gap formatter paths, and
    migration-only names. Separately audit surviving `cst` names and classify
    each one as either syntax-tree implementation terminology or a naming bug to
-   remove before close-out.
+   remove before close-out. Treat bytecode `UnsupportedSyntax` messages as
+   potentially user-visible because CLI rendering can fall back to debug output
+   when no diagnostic exists.
 8. Update docs/progress.md, docs/decisions.md, and this checklist only when
    milestone state, final architecture, or remaining gaps materially change.
 
@@ -590,6 +597,17 @@ Checkpoint checklist:
   syntax path with old AST fallback inputs. Keep behavior-oriented names such
   as `param_default_lowering_*`, `body_payload`, `syntax_payload`, or more
   specific compiler-domain names.
+- [ ] Clean bytecode compiler hard-switch residue, not just names:
+  `UnsupportedSyntax("missing CST ...")`, `UnsupportedSyntax("unsupported CST
+  ...")`, `is_syntax_only`, `syntax_only`, `*_cst_lowering_covers`, and
+  `cst_payload` helpers/tests are migration-era scaffolding unless the code is
+  directly implementing concrete syntax tree behavior. Replace them with
+  semantic compiler concepts such as missing statement data, unsupported
+  expression form, syntax payload, lowering support, or behavior tests.
+- [ ] Treat `CompileErrorKind::UnsupportedSyntax` messages as potentially
+  user-visible because CLI rendering may fall back to debug output when no
+  diagnostic is available. Remove CST/internal payload terminology from those
+  messages or convert the path into a proper source-spanned diagnostic.
 - [ ] Close any remaining pattern and control-flow expression lowering gaps
   exposed by deleting the old AST, using typed CST wrappers or HIR facts only.
 - [ ] Prove compile-dir and checked examples pass with CST/HIR-only syntax
@@ -614,6 +632,10 @@ Do not change:
   longer test user-visible behavior.
 - Do not expose `CST` in compiler diagnostics or error messages that can reach
   users; report the missing or unsupported language construct instead.
+- Do not leave `syntax_only` or `cst_lowering_covers` as final architecture
+  concepts in `vela_bytecode`; after old AST deletion there is only the
+  production syntax path and the question is what language shapes the compiler
+  supports.
 
 Validation:
 
@@ -624,6 +646,7 @@ cargo test --manifest-path examples/Cargo.toml --test runnable_examples
 cargo run --manifest-path examples/Cargo.toml --bin level_up
 cargo run --manifest-path examples/Cargo.toml --bin modules
 rg -n "legacy-body-parser|legacy_body_parser|parse_owned_body_blocks_for_tests|\\.fallback\\(|\\bExprKind\\b|\\bStmtKind\\b|vela_syntax::ast::(Expr|Stmt|Block|Argument|RecordField)|vela_syntax::ast::\\{[^}]*\\b(Expr|Stmt|Block|Argument|RecordField)\\b" crates/vela_bytecode crates/vela_syntax
+rg -n "missing CST|unsupported CST|CST .*payload|cst_payload|cst_lowering_covers|syntax_only|is_syntax_only" crates/vela_bytecode
 ```
 
 ### Phase 6: Migrate language service features
@@ -882,12 +905,16 @@ Final canonical naming audit:
 
 ```bash
 rg -n "\\bcst\\b|Cst|CST|cst_" crates/vela_bytecode crates/vela_hir crates/vela_analysis crates/vela_language_service crates/vela_lsp_server
+rg -n "missing CST|unsupported CST|CST .*payload|cst_payload|cst_lowering_covers|syntax_only|is_syntax_only" crates/vela_bytecode
 ```
 
 This audit is not a global zero-result rule. Every remaining hit outside
 `vela_syntax` must be reviewed and either renamed to syntax/domain terminology
-or justified as directly handling concrete syntax tree representation. User
-visible diagnostics must not mention CST.
+or justified as directly handling concrete syntax tree representation. The
+bytecode hard-switch residue audit should be zero unless a remaining hit is
+documented as a concrete syntax tree implementation boundary, which is unusual
+outside `vela_syntax`. User-visible diagnostics and `UnsupportedSyntax` debug
+fallback output must not mention CST.
 
 Full close-out:
 
