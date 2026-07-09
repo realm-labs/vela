@@ -23,7 +23,7 @@ pub(crate) struct LambdaParam {
     pub span: Span,
 }
 
-impl Compiler<'_, '_> {
+impl<'ast> Compiler<'ast, '_> {
     pub(in crate::compiler) fn compile_syntax_lambda_with_callback_shapes(
         &mut self,
         source: SourceId,
@@ -93,7 +93,7 @@ impl Compiler<'_, '_> {
                 .value_shapes
                 .set_local(param.local, &param.name, Some(shape.clone()));
         }
-        let code = lambda_compiler.compile_syntax_lambda_body(source, body)?;
+        let code = lambda_compiler.compile_syntax_lambda_body(source, body, hir_body)?;
         let function = self.code.push_nested_function(code);
         let dst = self.alloc_register()?;
         self.emit(UnlinkedInstructionKind::MakeClosure {
@@ -177,6 +177,7 @@ impl Compiler<'_, '_> {
         mut self,
         source: SourceId,
         body: SyntaxLambdaBody,
+        hir_body: &'ast HirBody,
     ) -> CompileResult<UnlinkedCodeObject> {
         self.compile_param_defaults()?;
         match body {
@@ -193,7 +194,7 @@ impl Compiler<'_, '_> {
             }
             SyntaxLambdaBody::Block(block) => {
                 let dst = self.alloc_register()?;
-                let body = CompilerBodyPayload::nested_syntax(source, block);
+                let body = CompilerBodyPayload::hir_body(source, block, hir_body);
                 let returned = self.compile_block_payload_value_to(&body, dst)?;
                 if !returned {
                     self.emit(UnlinkedInstructionKind::Return { src: dst });
