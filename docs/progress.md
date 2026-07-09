@@ -234,8 +234,9 @@ statement path extraction has moved out of `CompilerStatementPayload` onto that
 same HIR value-path query. Expression-dispatch path and field-chain reads now
 compose HIR value paths from path, local/self binding, and HIR field receiver
 facts, and direct local assignment plus direct record field slot/type queries
-use those HIR paths instead of syntax path reconstruction. Non-method call
-lowering now reads HIR call-callee path facts instead of reconstructing callee
+use those HIR paths instead of syntax path reconstruction; direct assignment
+targets now require HIR expression resolution for their local register. Non-method
+call lowering now reads HIR call-callee path facts instead of reconstructing callee
 paths from syntax in `syntax_calls`. Control-flow i64 conditional fast paths,
 numeric path/literal operator fast paths, and range operands now also read HIR
 value-path facts instead of syntax path reconstruction. Nested record-field

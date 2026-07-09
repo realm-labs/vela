@@ -43,7 +43,8 @@ impl Compiler<'_, '_> {
         {
             let target_type = self.value_type_for_path(target_span, &target_path);
             let assigned_type = syntax_assignment_value_type(op, target_type, value_type);
-            let target = self.local_register_at_span(target_span, target_name)?;
+            let target =
+                self.required_local_register_at_hir_expression_span(target_span, target_name)?;
             let Some(value) = self.compile_syntax_expression(source, &value_expression)? else {
                 return Ok(None);
             };
