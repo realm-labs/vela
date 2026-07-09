@@ -257,7 +257,7 @@ fn main(player) { return player.level; }
 }
 
 #[test]
-fn compiler_reports_cst_parse_diagnostics_before_codegen() {
+fn compiler_reports_parse_diagnostics_before_codegen() {
     let error = compile_program_source(
         SourceId::new(1),
         r#"
@@ -265,7 +265,7 @@ fn () {}
 fn main() { return 1; }
 "#,
     )
-    .expect_err("missing function name should fail at the CST syntax gate");
+    .expect_err("missing function name should fail at the syntax gate");
     let CompileErrorKind::SyntaxDiagnostics(diagnostics) = error.kind else {
         panic!("expected syntax diagnostics");
     };

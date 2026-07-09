@@ -379,7 +379,7 @@ fn grant(amount = BASE, bonus = amount + 1) {
 }
 
 #[test]
-fn malformed_cst_items_do_not_shift_following_metadata() {
+fn malformed_items_do_not_shift_following_metadata() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
         1,

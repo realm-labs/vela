@@ -15,7 +15,7 @@ use crate::compiler::value_types::{
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 use super::{
-    param_default_cst_lowering_covers, param_default_unsupported, span_for, span_for_range,
+    param_default_expression_supported, param_default_unsupported, span_for, span_for_range,
 };
 
 impl Compiler<'_, '_> {
@@ -250,14 +250,14 @@ impl Compiler<'_, '_> {
     }
 }
 
-pub(super) fn param_default_call_cst_lowering_covers(expression: &SyntaxExpression) -> bool {
+pub(super) fn param_default_call_supported(expression: &SyntaxExpression) -> bool {
     expression.as_call().is_some_and(|call| {
         call.callee()
             .and_then(|callee| callee.as_path())
             .is_some_and(|path| !path.path_segments().is_empty())
             && call.arguments().into_iter().all(|arg| {
                 arg.expression()
-                    .is_some_and(|value| param_default_cst_lowering_covers(&value))
+                    .is_some_and(|value| param_default_expression_supported(&value))
             })
     })
 }

@@ -9,7 +9,7 @@ use vela_syntax::ast::{
 mod expression_payloads;
 mod simple_values;
 
-// Temporary 1200-line exception: this module owns the CST body payload boundary.
+// Temporary 1200-line exception: this module owns the syntax body payload boundary.
 // It is actively shrinking as the hard switch deletes the old payload pairing
 // code before the module is split by syntax child payload responsibility.
 
@@ -54,15 +54,11 @@ pub(super) enum CompilerBlockValue<'payload, 'ast> {
 }
 
 impl<'ast> CompilerBodyPayload<'ast> {
-    fn syntax_only(source: SourceId, body: SyntaxBlock) -> Self {
+    pub(super) fn nested_syntax(source: SourceId, body: SyntaxBlock) -> Self {
         Self {
             syntax: SyntaxBodyPayload { source, body },
             _ast: PhantomData,
         }
-    }
-
-    pub(super) fn nested_syntax(source: SourceId, body: SyntaxBlock) -> Self {
-        Self::syntax_only(source, body)
     }
 
     pub(super) fn statement_payloads(&self) -> Vec<CompilerStatementPayload<'ast>> {
@@ -149,10 +145,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
             syntax: Some(syntax),
             _ast: PhantomData,
         }
-    }
-
-    pub(super) fn is_syntax_only(&self) -> bool {
-        true
     }
 
     pub(super) fn stored_statement_kind(&self) -> Option<SyntaxStatementKind> {

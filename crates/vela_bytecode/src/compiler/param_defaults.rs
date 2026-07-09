@@ -445,7 +445,7 @@ impl Compiler<'_, '_> {
         expression: &SyntaxExpression,
         literal: &SyntaxLiteral,
     ) -> CompileResult<Register> {
-        if !param_default_interpolated_string_cst_lowering_covers(literal) {
+        if !param_default_interpolated_string_supported(literal) {
             return Err(param_default_unsupported(source, expression));
         }
         let Some(parts) = interpolated_string_parts(literal) else {
@@ -664,17 +664,16 @@ impl Compiler<'_, '_> {
     }
 }
 
-fn param_default_cst_lowering_covers(expression: &SyntaxExpression) -> bool {
+fn param_default_expression_supported(expression: &SyntaxExpression) -> bool {
     match expression.expression_kind() {
         SyntaxExpressionKind::Literal => expression.as_literal().is_some_and(|literal| {
-            literal.literal().is_some()
-                || param_default_interpolated_string_cst_lowering_covers(&literal)
+            literal.literal().is_some() || param_default_interpolated_string_supported(&literal)
         }),
         SyntaxExpressionKind::Path => true,
         SyntaxExpressionKind::Paren => expression
             .as_paren()
             .and_then(|paren| paren.expression())
-            .is_some_and(|inner| param_default_cst_lowering_covers(&inner)),
+            .is_some_and(|inner| param_default_expression_supported(&inner)),
         SyntaxExpressionKind::Unary => {
             let Some(unary) = expression.as_unary() else {
                 return false;
@@ -682,7 +681,7 @@ fn param_default_cst_lowering_covers(expression: &SyntaxExpression) -> bool {
             unary.operator().is_some()
                 && unary
                     .expression()
-                    .is_some_and(|operand| param_default_cst_lowering_covers(&operand))
+                    .is_some_and(|operand| param_default_expression_supported(&operand))
         }
         SyntaxExpressionKind::Binary => {
             let Some(binary) = expression.as_binary() else {
@@ -693,20 +692,20 @@ fn param_default_cst_lowering_covers(expression: &SyntaxExpression) -> bool {
             };
             if matches!(op, BinaryOp::Or | BinaryOp::And) {
                 return logical_chain_syntax_operands(expression, op).is_some_and(|operands| {
-                    operands.iter().all(param_default_cst_lowering_covers)
+                    operands.iter().all(param_default_expression_supported)
                 });
             }
             binary
                 .lhs()
-                .is_some_and(|left| param_default_cst_lowering_covers(&left))
+                .is_some_and(|left| param_default_expression_supported(&left))
                 && binary
                     .rhs()
-                    .is_some_and(|right| param_default_cst_lowering_covers(&right))
+                    .is_some_and(|right| param_default_expression_supported(&right))
         }
         SyntaxExpressionKind::Array => expression.as_array().is_some_and(|array| {
             array
                 .expressions()
-                .all(|element| param_default_cst_lowering_covers(&element))
+                .all(|element| param_default_expression_supported(&element))
         }),
         SyntaxExpressionKind::Map => expression.as_map().is_some_and(|map| {
             map.entries().all(|entry| {
@@ -715,42 +714,40 @@ fn param_default_cst_lowering_covers(expression: &SyntaxExpression) -> bool {
                     .is_some_and(|key| syntax_map_key_supported(&key))
                     && entry
                         .value()
-                        .is_some_and(|value| param_default_cst_lowering_covers(&value))
+                        .is_some_and(|value| param_default_expression_supported(&value))
             })
         }),
         SyntaxExpressionKind::Try => expression
             .as_try()
             .and_then(|try_expr| try_expr.expression())
-            .is_some_and(|operand| param_default_cst_lowering_covers(&operand)),
+            .is_some_and(|operand| param_default_expression_supported(&operand)),
         SyntaxExpressionKind::Block => expression
             .as_block()
-            .is_some_and(|block| param_default_block_cst_lowering_covers(&block)),
+            .is_some_and(|block| param_default_block_supported(&block)),
         SyntaxExpressionKind::If => expression
             .as_if()
-            .is_some_and(|if_expr| param_default_if_cst_lowering_covers(&if_expr)),
+            .is_some_and(|if_expr| param_default_if_supported(&if_expr)),
         SyntaxExpressionKind::Index => expression.as_index().is_some_and(|index| {
             index
                 .receiver()
-                .is_some_and(|receiver| param_default_cst_lowering_covers(&receiver))
+                .is_some_and(|receiver| param_default_expression_supported(&receiver))
                 && index
                     .index()
-                    .is_some_and(|index| param_default_cst_lowering_covers(&index))
+                    .is_some_and(|index| param_default_expression_supported(&index))
         }),
-        SyntaxExpressionKind::Call => calls::param_default_call_cst_lowering_covers(expression),
-        SyntaxExpressionKind::Record => {
-            records::param_default_record_cst_lowering_covers(expression)
-        }
-        SyntaxExpressionKind::Field => fields::param_default_field_cst_lowering_covers(expression),
-        SyntaxExpressionKind::Match => matches::param_default_match_cst_lowering_covers(expression),
+        SyntaxExpressionKind::Call => calls::param_default_call_supported(expression),
+        SyntaxExpressionKind::Record => records::param_default_record_supported(expression),
+        SyntaxExpressionKind::Field => fields::param_default_field_supported(expression),
+        SyntaxExpressionKind::Match => matches::param_default_match_supported(expression),
         SyntaxExpressionKind::Assign | SyntaxExpressionKind::Lambda => false,
     }
 }
 
-fn param_default_interpolated_string_cst_lowering_covers(literal: &SyntaxLiteral) -> bool {
+fn param_default_interpolated_string_supported(literal: &SyntaxLiteral) -> bool {
     literal.token_kind() == Some(vela_syntax::SyntaxKind::InterpolatedString)
         && literal
             .interpolation_expressions()
-            .all(|expression| param_default_cst_lowering_covers(&expression))
+            .all(|expression| param_default_expression_supported(&expression))
 }
 
 fn interpolated_string_parts(literal: &SyntaxLiteral) -> Option<Vec<InterpolatedStringTokenPart>> {
@@ -764,40 +761,40 @@ fn interpolated_string_parts(literal: &SyntaxLiteral) -> Option<Vec<Interpolated
         })
 }
 
-fn param_default_if_cst_lowering_covers(if_expr: &SyntaxIfExpr) -> bool {
+fn param_default_if_supported(if_expr: &SyntaxIfExpr) -> bool {
     if !if_expr
         .condition()
-        .is_some_and(|condition| param_default_cst_lowering_covers(&condition))
+        .is_some_and(|condition| param_default_expression_supported(&condition))
     {
         return false;
     }
     if !if_expr
         .then_block()
-        .is_some_and(|block| param_default_block_cst_lowering_covers(&block))
+        .is_some_and(|block| param_default_block_supported(&block))
     {
         return false;
     }
     match if_expr.else_branch() {
-        Some(SyntaxElseBranch::If(else_if)) => param_default_if_cst_lowering_covers(&else_if),
-        Some(SyntaxElseBranch::Block(block)) => param_default_block_cst_lowering_covers(&block),
+        Some(SyntaxElseBranch::If(else_if)) => param_default_if_supported(&else_if),
+        Some(SyntaxElseBranch::Block(block)) => param_default_block_supported(&block),
         None => true,
     }
 }
 
-fn param_default_block_cst_lowering_covers(block: &SyntaxBlock) -> bool {
+fn param_default_block_supported(block: &SyntaxBlock) -> bool {
     let statements = block.statements().collect::<Vec<_>>();
     match statements.as_slice() {
         [] => true,
         [statements @ .., tail] => {
             for statement in statements {
                 if let Some(let_stmt) = statement.as_let() {
-                    if !param_default_let_cst_lowering_covers(&let_stmt) {
+                    if !param_default_let_supported(&let_stmt) {
                         return false;
                     }
                 } else if let Some(expr_stmt) = statement.as_expr() {
                     if expr_stmt.semicolon_token().is_none()
                         || !expr_stmt.expression().is_some_and(|expression| {
-                            param_default_cst_lowering_covers(&expression)
+                            param_default_expression_supported(&expression)
                         })
                     {
                         return false;
@@ -808,23 +805,23 @@ fn param_default_block_cst_lowering_covers(block: &SyntaxBlock) -> bool {
             }
 
             if let Some(let_stmt) = tail.as_let() {
-                return param_default_let_cst_lowering_covers(&let_stmt);
+                return param_default_let_supported(&let_stmt);
             }
             tail.as_expr()
                 .and_then(|statement| statement.expression())
-                .is_some_and(|expression| param_default_cst_lowering_covers(&expression))
+                .is_some_and(|expression| param_default_expression_supported(&expression))
         }
     }
 }
 
-fn param_default_let_cst_lowering_covers(let_stmt: &SyntaxLetStmt) -> bool {
+fn param_default_let_supported(let_stmt: &SyntaxLetStmt) -> bool {
     if let_stmt.attributes().next().is_some() {
         return false;
     }
     let_stmt.name_token().is_some()
         && let_stmt
             .initializer()
-            .is_none_or(|initializer| param_default_cst_lowering_covers(&initializer))
+            .is_none_or(|initializer| param_default_expression_supported(&initializer))
 }
 
 fn syntax_literal_static_type(literal: Literal) -> StaticExprType {

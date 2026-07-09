@@ -6,7 +6,7 @@ use crate::{Register, UnlinkedInstructionKind};
 use crate::compiler::host_paths::{HostPath, HostPathPart, HostPathRoot};
 use crate::compiler::{CompileResult, Compiler};
 
-use super::{param_default_cst_lowering_covers, param_default_unsupported, span_for};
+use super::{param_default_expression_supported, param_default_unsupported, span_for};
 
 impl Compiler<'_, '_> {
     pub(super) fn compile_param_default_field(
@@ -15,7 +15,7 @@ impl Compiler<'_, '_> {
         expression: &SyntaxExpression,
         field: &SyntaxFieldExpr,
     ) -> CompileResult<Register> {
-        if !param_default_field_cst_lowering_covers(expression) {
+        if !param_default_field_supported(expression) {
             return Err(param_default_unsupported(source, expression));
         }
         let Some(receiver) = field.receiver() else {
@@ -84,12 +84,12 @@ impl Compiler<'_, '_> {
     }
 }
 
-pub(super) fn param_default_field_cst_lowering_covers(expression: &SyntaxExpression) -> bool {
+pub(super) fn param_default_field_supported(expression: &SyntaxExpression) -> bool {
     expression.as_field().is_some_and(|field| {
         field.name_token().is_some()
             && field
                 .receiver()
-                .is_some_and(|receiver| param_default_cst_lowering_covers(&receiver))
+                .is_some_and(|receiver| param_default_expression_supported(&receiver))
     })
 }
 

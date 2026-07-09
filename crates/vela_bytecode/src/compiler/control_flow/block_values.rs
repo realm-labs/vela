@@ -98,7 +98,7 @@ impl Compiler<'_, '_> {
                 }
                 Err(crate::compiler::CompileError::new(
                     crate::compiler::CompileErrorKind::UnsupportedSyntax(
-                        "unsupported CST block tail expression payload",
+                        "unsupported block tail expression",
                     ),
                 ))
             }

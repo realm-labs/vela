@@ -602,7 +602,7 @@ impl Compiler<'_, '_> {
             let Some(value) = self.compile_syntax_expression(source, operand)? else {
                 return Err(crate::compiler::CompileError::new(
                     crate::compiler::CompileErrorKind::UnsupportedSyntax(
-                        "unsupported CST logical operand",
+                        "unsupported logical operand",
                     ),
                 )
                 .with_span(syntax_expression_span(source, operand)));
@@ -612,9 +612,7 @@ impl Compiler<'_, '_> {
 
         let Some(last) = self.compile_syntax_expression(source, last)? else {
             return Err(crate::compiler::CompileError::new(
-                crate::compiler::CompileErrorKind::UnsupportedSyntax(
-                    "unsupported CST logical operand",
-                ),
+                crate::compiler::CompileErrorKind::UnsupportedSyntax("unsupported logical operand"),
             )
             .with_span(syntax_expression_span(source, last)));
         };
@@ -646,7 +644,7 @@ impl Compiler<'_, '_> {
             let Some(value) = self.compile_syntax_expression(source, operand)? else {
                 return Err(crate::compiler::CompileError::new(
                     crate::compiler::CompileErrorKind::UnsupportedSyntax(
-                        "unsupported CST logical operand",
+                        "unsupported logical operand",
                     ),
                 )
                 .with_span(syntax_expression_span(source, operand)));
@@ -659,9 +657,7 @@ impl Compiler<'_, '_> {
 
         let Some(last) = self.compile_syntax_expression(source, last)? else {
             return Err(crate::compiler::CompileError::new(
-                crate::compiler::CompileErrorKind::UnsupportedSyntax(
-                    "unsupported CST logical operand",
-                ),
+                crate::compiler::CompileErrorKind::UnsupportedSyntax("unsupported logical operand"),
             )
             .with_span(syntax_expression_span(source, last)));
         };

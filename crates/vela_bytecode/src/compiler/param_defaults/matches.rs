@@ -13,7 +13,7 @@ use crate::compiler::value_types::StaticExprType;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
 
 use super::{
-    param_default_cst_lowering_covers, param_default_unsupported, span_for, span_for_range,
+    param_default_expression_supported, param_default_unsupported, span_for, span_for_range,
 };
 
 impl Compiler<'_, '_> {
@@ -23,7 +23,7 @@ impl Compiler<'_, '_> {
         expression: &SyntaxExpression,
         match_expr: &SyntaxMatchExpr,
     ) -> CompileResult<Register> {
-        if !param_default_match_cst_lowering_covers(expression) {
+        if !param_default_match_supported(expression) {
             return Err(param_default_unsupported(source, expression));
         }
         let Some(scrutinee_expression) = match_expr.scrutinee() else {
@@ -360,31 +360,31 @@ impl Compiler<'_, '_> {
     }
 }
 
-pub(super) fn param_default_match_cst_lowering_covers(expression: &SyntaxExpression) -> bool {
+pub(super) fn param_default_match_supported(expression: &SyntaxExpression) -> bool {
     expression.as_match().is_some_and(|match_expr| {
         match_expr.attributes().next().is_none()
             && match_expr
                 .scrutinee()
-                .is_some_and(|scrutinee| param_default_cst_lowering_covers(&scrutinee))
+                .is_some_and(|scrutinee| param_default_expression_supported(&scrutinee))
             && match_expr.arms().into_iter().all(|arm| {
                 arm.pattern()
-                    .is_some_and(|pattern| param_default_pattern_cst_lowering_covers(&pattern))
+                    .is_some_and(|pattern| param_default_pattern_supported(&pattern))
                     && arm
                         .guard()
-                        .is_none_or(|guard| param_default_cst_lowering_covers(&guard))
+                        .is_none_or(|guard| param_default_expression_supported(&guard))
                     && arm.body().is_some_and(|body| match body {
                         SyntaxMatchArmBody::Expression(expression) => {
-                            param_default_cst_lowering_covers(&expression)
+                            param_default_expression_supported(&expression)
                         }
                         SyntaxMatchArmBody::Block(block) => {
-                            super::param_default_block_cst_lowering_covers(&block)
+                            super::param_default_block_supported(&block)
                         }
                     })
             })
     })
 }
 
-fn param_default_pattern_cst_lowering_covers(pattern: &SyntaxPattern) -> bool {
+fn param_default_pattern_supported(pattern: &SyntaxPattern) -> bool {
     match pattern.pattern_kind() {
         Some(SyntaxPatternKind::Wildcard | SyntaxPatternKind::Binding) => true,
         Some(SyntaxPatternKind::Literal) => pattern.literal().is_some(),
@@ -393,16 +393,16 @@ fn param_default_pattern_cst_lowering_covers(pattern: &SyntaxPattern) -> bool {
             enum_variant_path(&tuple.path_segments()).is_some()
                 && tuple
                     .patterns()
-                    .all(|pattern| param_default_pattern_cst_lowering_covers(&pattern))
+                    .all(|pattern| param_default_pattern_supported(&pattern))
         }),
         Some(SyntaxPatternKind::RecordVariant) => {
             pattern.as_record_variant().is_some_and(|record| {
                 enum_variant_path(&record.path_segments()).is_some()
                     && record.fields().all(|field| {
                         field.label_text().is_some()
-                            && field.pattern().is_none_or(|pattern| {
-                                param_default_pattern_cst_lowering_covers(&pattern)
-                            })
+                            && field
+                                .pattern()
+                                .is_none_or(|pattern| param_default_pattern_supported(&pattern))
                     })
             })
         }

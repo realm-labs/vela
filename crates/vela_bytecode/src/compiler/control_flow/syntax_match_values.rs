@@ -338,7 +338,7 @@ impl SyntaxMatchCoverage for SyntaxMatchExpr {
 }
 
 fn syntax_match_error(source: SourceId, range: vela_syntax::TextRange) -> CompileError {
-    CompileError::new(CompileErrorKind::UnsupportedSyntax("CST match value")).with_span(Span::new(
+    CompileError::new(CompileErrorKind::UnsupportedSyntax("match expression")).with_span(Span::new(
         source,
         range.start().into(),
         range.end().into(),

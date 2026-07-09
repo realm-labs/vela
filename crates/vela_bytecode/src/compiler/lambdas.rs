@@ -48,7 +48,7 @@ impl Compiler<'_, '_> {
             .map(|param| {
                 let name = param.name_text().ok_or_else(|| {
                     CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST lambda parameter name",
+                        "missing lambda parameter name",
                     ))
                 })?;
                 Ok(LambdaParam {
@@ -160,7 +160,7 @@ impl Compiler<'_, '_> {
                     .compile_syntax_expression(source, &expression)?
                     .ok_or_else(|| {
                         CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "unsupported CST lambda expression body",
+                            "unsupported lambda expression body",
                         ))
                         .with_span(syntax_expr_span(source, &expression))
                     })?;

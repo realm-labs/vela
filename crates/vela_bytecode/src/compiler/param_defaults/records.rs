@@ -22,7 +22,7 @@ use crate::compiler::{
 };
 
 use super::{
-    param_default_cst_lowering_covers, param_default_unsupported, span_for, span_for_range,
+    param_default_expression_supported, param_default_unsupported, span_for, span_for_range,
 };
 
 impl Compiler<'_, '_> {
@@ -173,13 +173,13 @@ impl Compiler<'_, '_> {
     }
 }
 
-pub(super) fn param_default_record_cst_lowering_covers(expression: &SyntaxExpression) -> bool {
+pub(super) fn param_default_record_supported(expression: &SyntaxExpression) -> bool {
     expression.as_record().is_some_and(|record| {
         !record.path_segments().is_empty()
             && record.fields().into_iter().all(|field| {
                 field.label_text().is_some()
                     && match field.expression() {
-                        Some(value) => param_default_cst_lowering_covers(&value),
+                        Some(value) => param_default_expression_supported(&value),
                         None => field.is_shorthand(),
                     }
             })

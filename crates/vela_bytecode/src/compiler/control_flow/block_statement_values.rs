@@ -28,7 +28,7 @@ impl Compiler<'_, '_> {
         let Some(block) = expression.as_block() else {
             return Err(crate::compiler::CompileError::new(
                 crate::compiler::CompileErrorKind::UnsupportedSyntax(
-                    "missing CST let initializer block body payload",
+                    "missing let initializer block body",
                 ),
             ));
         };
@@ -107,9 +107,7 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<bool> {
         let Some(block) = expression.as_block() else {
             return Err(crate::compiler::CompileError::new(
-                crate::compiler::CompileErrorKind::UnsupportedSyntax(
-                    "missing CST return block body payload",
-                ),
+                crate::compiler::CompileErrorKind::UnsupportedSyntax("missing return block body"),
             ));
         };
         let register = self.alloc_register()?;

@@ -682,7 +682,7 @@ rg -n "return Ok\\(None\\)|return Ok\\(Some|return false;|if let Some\\(|else if
 
 Code review findings to close in the next bytecode slice:
 
-- [ ] User-visible error leakage risk: `vela_cli` renders `CompileError` with
+- [x] User-visible error leakage risk: `vela_cli` renders `CompileError` with
   `format!("{error:?}")` when no diagnostic exists, while
   `CompileErrorKind::UnsupportedSyntax` intentionally returns no diagnostic.
   Any bytecode `UnsupportedSyntax("missing CST ...")` or
@@ -693,7 +693,7 @@ Code review findings to close in the next bytecode slice:
   - `crates/vela_cli/src/diagnostics.rs:25`
   - `crates/vela_bytecode/src/compiler/control_flow/statements.rs:36`
   - `crates/vela_bytecode/src/compiler/control_flow/syntax_statement_values.rs:605`
-- [ ] `CompilerBodyPayload` and `CompilerStatementPayload` still encode the
+- [x] `CompilerBodyPayload` and `CompilerStatementPayload` still encode the
   deleted old/new syntax distinction through `syntax_only` and
   `is_syntax_only()`. `is_syntax_only()` always returns `true`, so callers that
   branch on it are carrying hard-switch residue instead of final compiler
@@ -719,7 +719,7 @@ Code review findings to close in the next bytecode slice:
   accept this as the final architecture without a documented exception.
   Evidence:
   - `crates/vela_bytecode/src/compiler/control_flow/syntax_statement_values.rs:1`
-- [ ] Parameter-default lowering keeps a second support predicate tree named
+- [x] Parameter-default lowering keeps a second support predicate tree named
   `param_default_cst_lowering_covers` beside the real lowering functions. This
   duplicates shape knowledge and risks drift as language forms are added.
   Rename it to a semantic support predicate or fold support checking into the
@@ -728,7 +728,7 @@ Code review findings to close in the next bytecode slice:
   Evidence:
   - `crates/vela_bytecode/src/compiler/param_defaults.rs:57`
   - `crates/vela_bytecode/src/compiler/param_defaults.rs:667`
-- [ ] Parameter-default tests still assert CST payload/scaffolding concepts
+- [x] Parameter-default tests still assert CST payload/scaffolding concepts
   instead of behavior-oriented source-to-bytecode/source-to-diagnostic results.
   Rewrite names and assertions around supported defaults, unsupported defaults,
   diagnostics, and runtime behavior.

@@ -246,7 +246,7 @@ mod tests {
     fn param_defaults_match_hir_spans_not_indexes() {
         let source = SourceId::new(1);
         let text = r#"
-fn cst(first = 1) {
+fn sample(first = 1) {
     return first;
 }
 "#;
@@ -254,8 +254,8 @@ fn cst(first = 1) {
         let function = syntax
             .tree()
             .functions()
-            .find(|function| function.name_text().as_deref() == Some("cst"))
-            .expect("CST function");
+            .find(|function| function.name_text().as_deref() == Some("sample"))
+            .expect("function");
         let signature = FunctionSignature {
             params: vec![ParamHint {
                 name: "first".to_owned(),
@@ -271,7 +271,7 @@ fn cst(first = 1) {
         assert_eq!(defaults.len(), 1);
         assert!(
             defaults[0].is_none(),
-            "mismatched HIR default spans must not receive index-based CST params"
+            "mismatched HIR default spans must not receive index-based syntax params"
         );
     }
 }

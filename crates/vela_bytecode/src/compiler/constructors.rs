@@ -93,7 +93,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             return self.emit_constant(value);
         }
         Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            "non-constant CST schema default expression",
+            "non-constant schema default expression",
         ))
         .with_span(default.value.span()))
     }

@@ -32,7 +32,7 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<bool> {
         let Some(body) = stmt.block_body_payload() else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "missing CST block statement body payload",
+                "missing block statement body",
             )));
         };
         self.compile_body_payload_statements(&body)
@@ -44,7 +44,7 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<bool> {
         let Some(kind) = stmt.stored_expression_kind() else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "missing CST expression statement payload",
+                "missing expression statement",
             )));
         };
         if let Some((source, expression)) = stmt.expression_statement_syntax_expression()
@@ -67,8 +67,7 @@ impl Compiler<'_, '_> {
         {
             return Ok(done);
         }
-        if stmt.is_syntax_only()
-            && let Some((source, expression)) = stmt.expression_statement_syntax_expression()
+        if let Some((source, expression)) = stmt.expression_statement_syntax_expression()
             && let Some(done) = self.compile_syntax_value_expr_statement(source, &expression)?
         {
             return Ok(done);
@@ -76,7 +75,7 @@ impl Compiler<'_, '_> {
         {
             let _ = kind;
             Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "unsupported CST expression statement payload",
+                "unsupported expression statement",
             )))
         }
     }
