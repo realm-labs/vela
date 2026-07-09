@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use vela_analysis::registry::RegistryFacts;
+use vela_common::Span;
 use vela_hir::{
     binding::{BindingMap, BindingResolution},
     ids::HirDeclId,
@@ -51,7 +52,7 @@ fn source_variant_owner(
         return Some(*owner);
     }
 
-    match narrowest_resolution_at_range(bindings, range)? {
+    match narrowest_resolution_at_range(graph, bindings, range)? {
         BindingResolution::Declaration(owner) if enum_variant_exists(graph, *owner, variant) => {
             Some(*owner)
         }
@@ -62,21 +63,16 @@ fn source_variant_owner(
     }
 }
 
-fn narrowest_resolution_at_range(
-    bindings: &BindingMap,
+fn narrowest_resolution_at_range<'a>(
+    graph: &ModuleGraph,
+    bindings: &'a BindingMap,
     range: TextRange,
-) -> Option<&BindingResolution> {
-    bindings
-        .resolutions()
-        .filter_map(|(expression, resolution)| {
-            let expression = bindings.expression(expression)?;
-            let start = usize::try_from(expression.span.start).ok()?;
-            let end = usize::try_from(expression.span.end).ok()?;
-            (start <= range.start && range.end <= end)
-                .then_some((end.saturating_sub(start), resolution))
-        })
-        .min_by_key(|(len, _)| *len)
-        .map(|(_, resolution)| resolution)
+) -> Option<&'a BindingResolution> {
+    let source = graph.declaration(bindings.declaration)?.span.source;
+    let start = u32::try_from(range.start).ok()?;
+    let end = u32::try_from(range.end).ok()?;
+    let expression = graph.expression_containing_span(Span::new(source, start, end))?;
+    bindings.resolution(expression)
 }
 
 fn enum_variant_exists(graph: &ModuleGraph, owner: HirDeclId, variant: &str) -> bool {

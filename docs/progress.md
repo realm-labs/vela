@@ -139,9 +139,9 @@ sites. Analysis facts can now be built with registry schema facts for local
 type hints, and language-service range type queries use HIR expression source
 origins plus `HirExprId`-keyed analysis facts for resolved identifier facts
 instead of scanning binding resolutions by span. `ModuleGraph` now exposes
-source-span to `HirExprId` lookup, and semantic-token identifier/member/
-unresolved classification uses that HIR expression identity instead of
-body-local binding span scans.
+exact and containing source-span to `HirExprId` lookup, and semantic-token
+identifier/member/unresolved/variant classification uses that HIR expression
+identity instead of body-local binding span scans.
 Heavy HIR will next move resolution tables, body
 facts, language-service queries, and bytecode lowering away from body-level
 syntax reconstruction. MIR will then add an internal `vela_mir`

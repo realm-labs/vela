@@ -505,6 +505,26 @@ impl ModuleGraph {
     }
 
     #[must_use]
+    pub fn expression_containing_span(&self, span: Span) -> Option<HirExprId> {
+        self.bodies
+            .values()
+            .flat_map(|body| body.expressions.values())
+            .filter(|expression| {
+                expression.origin.span.source == span.source
+                    && expression.origin.span.start <= span.start
+                    && span.end <= expression.origin.span.end
+            })
+            .min_by_key(|expression| {
+                expression
+                    .origin
+                    .span
+                    .end
+                    .saturating_sub(expression.origin.span.start)
+            })
+            .map(|expression| expression.id)
+    }
+
+    #[must_use]
     pub fn function_body(&self, declaration: HirDeclId) -> Option<&HirBody> {
         self.function_bodies
             .get(&declaration)

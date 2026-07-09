@@ -758,6 +758,36 @@ fn main(value) {
 }
 
 #[test]
+fn body_hir_resolves_expression_containing_source_spans() {
+    let text = r#"
+enum Reward { Grant, Skip }
+fn main() {
+    return Reward::Grant;
+}
+"#;
+    let mut graph = ModuleGraph::new();
+    graph.add_source(source(1, "game::reward", text));
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+    let variant_start = text.find("Grant;").expect("variant segment");
+    let variant_span = Span::new(
+        SourceId::new(1),
+        variant_start as u32,
+        (variant_start + "Grant".len()) as u32,
+    );
+    let expression = graph
+        .expression_containing_span(variant_span)
+        .expect("qualified path expression");
+
+    let path_start = text.find("Reward::Grant").expect("qualified path");
+    let path_span = Span::new(
+        SourceId::new(1),
+        path_start as u32,
+        (path_start + "Reward::Grant".len()) as u32,
+    );
+    assert_eq!(graph.expression_at_span(path_span), Some(expression));
+}
+
+#[test]
 fn duplicate_lambda_parameters_report_both_spans() {
     let mut graph = ModuleGraph::new();
     graph.add_source(source(
