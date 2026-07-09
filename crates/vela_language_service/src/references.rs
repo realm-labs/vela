@@ -269,7 +269,7 @@ impl LanguageServiceDatabases {
             let Some(bindings) = graph.bindings(declaration.id) else {
                 continue;
             };
-            if let Some(local) = local_reference_target(graph, source.text(), bindings, &token) {
+            if let Some(local) = local_reference_target(graph, bindings, &token) {
                 return self.local_references(bindings, local, include_declaration);
             }
             if let Some(target) =
@@ -607,9 +607,7 @@ impl LanguageServiceDatabases {
 
     fn reference_for_local_binding(&self, binding: &LocalBinding) -> Option<Reference> {
         let source = self.source_record_for_reference(binding.span.source)?;
-        let span_range = span_text_range(binding.span)?;
-        let name_range =
-            name_range_in_text(source.text(), span_range, &binding.name).unwrap_or(span_range);
+        let name_range = span_text_range(binding.span)?;
         Some(Reference {
             document_id: source.document_id().clone(),
             range: diagnostic_range(source.text(), name_range),
@@ -1021,11 +1019,10 @@ fn declaration_reference_target(
 
 fn local_reference_target(
     graph: &ModuleGraph,
-    text: &str,
     bindings: &BindingMap,
     token: &ReferenceToken,
 ) -> Option<HirLocalId> {
-    if let Some(binding) = local_declaration_at_token(text, bindings, token) {
+    if let Some(binding) = local_declaration_at_token(bindings, token) {
         return Some(binding.id);
     }
 
@@ -1047,19 +1044,12 @@ fn narrowest_resolution_at_token<'a>(
 }
 
 fn local_declaration_at_token<'a>(
-    text: &str,
     bindings: &'a BindingMap,
     token: &ReferenceToken,
 ) -> Option<&'a LocalBinding> {
     bindings.locals().find(|binding| {
-        let Some(range) = span_text_range(binding.span)
-            .and_then(|range| name_range_in_text(text, range, &binding.name))
-        else {
-            return false;
-        };
-        let start = range.start;
-        let end = range.end;
-        start <= token.range.start && token.range.end <= end
+        span_text_range(binding.span)
+            .is_some_and(|range| range.start <= token.range.start && token.range.end <= range.end)
     })
 }
 

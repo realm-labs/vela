@@ -178,8 +178,8 @@ fn local_symbol_at_range(
         .locals()
         .find(|binding| {
             binding.name == text
-                && local_name_range(databases, binding)
-                    .is_some_and(|name_range| contains_range(name_range, range))
+                && span_text_range(binding.span)
+                    .is_some_and(|binding_range| contains_range(binding_range, range))
         })
         .map(|binding| local_symbol_for_binding(databases, binding))
 }
@@ -346,19 +346,6 @@ fn local_symbol_for_binding(
         return SymbolRef::local(binding.name.clone());
     };
     SymbolRef::local_for_binding(binding, source.document_id().clone())
-}
-
-fn local_name_range(
-    databases: &LanguageServiceDatabases,
-    binding: &LocalBinding,
-) -> Option<TextRange> {
-    let source = databases
-        .source_db()
-        .records()
-        .values()
-        .find(|source| source.source_id() == binding.span.source)?;
-    let span_range = span_text_range(binding.span)?;
-    name_range_in_text(source.text(), span_range, &binding.name)
 }
 
 fn declaration_name_range(

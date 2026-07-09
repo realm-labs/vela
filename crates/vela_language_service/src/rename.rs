@@ -144,7 +144,7 @@ impl LanguageServiceDatabases {
         let graph = self.hir_db().graph();
         let mut edits = Vec::new();
         if let Some(binding) = target.bindings.local(target.local)
-            && let Some(range) = local_binding_name_range(text, binding)
+            && let Some(range) = span_text_range(binding.span)
         {
             edits.push(TextEdit {
                 range: diagnostic_range(text, range),
@@ -493,7 +493,7 @@ fn rename_target<'a>(
         let Some(bindings) = graph.bindings(declaration.id) else {
             continue;
         };
-        if let Some(binding) = local_declaration_at_token(text, bindings, &token) {
+        if let Some(binding) = local_declaration_at_token(bindings, &token) {
             return Some(RenameTarget::Local(LocalRenameTarget {
                 bindings,
                 local: binding.id,
@@ -898,20 +898,13 @@ fn narrowest_resolution_at_token<'a>(
 }
 
 fn local_declaration_at_token<'a>(
-    text: &str,
     bindings: &'a BindingMap,
     token: &RenameToken,
 ) -> Option<&'a LocalBinding> {
     bindings.locals().find(|binding| {
-        let Some(range) = local_binding_name_range(text, binding) else {
-            return false;
-        };
-        range.start <= token.range.start && token.range.end <= range.end
+        span_text_range(binding.span)
+            .is_some_and(|range| range.start <= token.range.start && token.range.end <= range.end)
     })
-}
-
-fn local_binding_name_range(text: &str, binding: &LocalBinding) -> Option<TextRange> {
-    span_text_range(binding.span).and_then(|range| name_range_in_text(text, range, &binding.name))
 }
 
 fn local_name_conflicts(bindings: &BindingMap, local: HirLocalId, new_name: &str) -> bool {

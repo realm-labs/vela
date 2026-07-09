@@ -87,7 +87,7 @@ impl LanguageServiceDatabases {
             {
                 return Some(definition);
             }
-            if let Some(binding) = local_declaration_at_target(bindings, &target, self) {
+            if let Some(binding) = local_declaration_at_target(bindings, &target) {
                 return self.definition_from_span_with_symbol(
                     binding.span,
                     Some(
@@ -455,24 +455,11 @@ fn definition_from_resolution_at_target(
 fn local_declaration_at_target<'a>(
     bindings: &'a BindingMap,
     target: &SymbolTarget,
-    databases: &LanguageServiceDatabases,
 ) -> Option<&'a LocalBinding> {
     bindings.locals().find(|binding| {
-        let Ok(start) = usize::try_from(binding.span.start) else {
-            return false;
-        };
-        let Ok(end) = usize::try_from(binding.span.end) else {
-            return false;
-        };
-        let Some(source) = databases.source_record_for(binding.span.source) else {
-            return false;
-        };
-        let Some(name_range) =
-            name_range_in_text(source.text(), TextRange::new(start, end), &binding.name)
-        else {
-            return false;
-        };
-        name_range.start <= target.range().start && target.range().end <= name_range.end
+        text_range_for_span(binding.span).is_some_and(|range| {
+            range.start <= target.range().start && target.range().end <= range.end
+        })
     })
 }
 
