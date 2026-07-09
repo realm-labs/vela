@@ -546,7 +546,7 @@ Focused validation:
 - [ ] Change lookup/search/split APIs to `Option<T>` and tuple payloads where
   useful.
 - [x] Change Rust `Option<T>` conversion to script `Option<T>`.
-- [ ] Add Rust `()` conversion and Rust tuple arity 2..=4 conversion.
+- [x] Add Rust `()` conversion and Rust tuple arity 2..=4 conversion.
 - [~] Remove reflection missing-metadata nulls in favor of `Option`, omitted
   fields, or explicit structured absence.
 - [x] Remove engine/native/context schema descriptors that advertise `"null"`.
@@ -562,7 +562,7 @@ Focused validation:
 
 - [ ] Make `Option<(A, B)>` and `Result<(A, B), E>` precise in type facts,
   guard plans, reflection descriptors, schema artifacts, and hot-reload ABI.
-- [ ] Add tuple `OwnedValue` conversion and tuple serde behavior that does not
+- [x] Add tuple `OwnedValue` conversion and tuple serde behavior that does not
   use raw null.
 - [ ] Reject tuple Map/Set keys in the first slice with precise diagnostics.
 - [ ] Add hot-reload rejection for exported unit/tuple signature changes,

@@ -117,6 +117,64 @@ fn main() {
 }
 
 #[test]
+fn typed_native_functions_accept_and_return_tuple_values() {
+    let engine = Engine::builder()
+        .register_typed_native_fn::<((i64, i64),), _>(
+            NativeFunctionDesc::new("game::score_pair", NativeFunctionId::new(103))
+                .param("pair", TypeHint::Any)
+                .returns(TypeHint::i64()),
+            |pair: (i64, i64)| pair.0 + pair.1,
+        )
+        .register_typed_native_fn::<(), _>(
+            NativeFunctionDesc::new("game::make_pair", NativeFunctionId::new(104))
+                .returns(TypeHint::Any),
+            || (7_i64, "xp".to_owned()),
+        )
+        .build()
+        .expect("engine should build");
+
+    let score_program = engine
+        .compile_source_with_id(
+            SourceId::new(1),
+            r#"
+fn main(pair) {
+    return game::score_pair(pair);
+}
+"#,
+        )
+        .expect("score program should compile");
+    assert_eq!(
+        run_linked_program(
+            &engine,
+            &score_program,
+            &[OwnedValue::Tuple(vec![
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(5)),
+            ])],
+        ),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7))),
+    );
+
+    let return_program = engine
+        .compile_source_with_id(
+            SourceId::new(2),
+            r#"
+fn main() {
+    return game::make_pair();
+}
+"#,
+        )
+        .expect("return program should compile");
+    assert_eq!(
+        run_linked_program(&engine, &return_program, &[]),
+        Ok(OwnedValue::Tuple(vec![
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
+            OwnedValue::String("xp".to_owned()),
+        ])),
+    );
+}
+
+#[test]
 fn typed_native_functions_preserve_exact_primitive_scalars() {
     let engine = Engine::builder()
         .register_typed_native_fn::<(i8, i16, i32, i64), _>(

@@ -48,7 +48,7 @@ impl ValueKey {
             Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
                 Some(HeapValue::String(value)) => Ok(Self::String(value.clone())),
                 Some(HeapValue::Bytes(value)) => Ok(Self::Bytes(value.clone())),
-                Some(HeapValue::PathProxy(_)) | None => type_error(operation),
+                Some(HeapValue::Tuple(_) | HeapValue::PathProxy(_)) | None => type_error(operation),
                 Some(
                     HeapValue::Array(_)
                     | HeapValue::Map(_)

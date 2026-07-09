@@ -209,11 +209,11 @@ impl ser::Serializer for OwnedValueSerializer {
     }
 
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
-        Ok(SeqSerializer::new(len))
+        Ok(SeqSerializer::new(len, SeqKind::Array))
     }
 
     fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple> {
-        Ok(SeqSerializer::new(Some(len)))
+        Ok(SeqSerializer::new(Some(len), SeqKind::Tuple))
     }
 
     fn serialize_tuple_struct(
@@ -221,7 +221,7 @@ impl ser::Serializer for OwnedValueSerializer {
         _name: &'static str,
         len: usize,
     ) -> Result<Self::SerializeTupleStruct> {
-        Ok(SeqSerializer::new(Some(len)))
+        Ok(SeqSerializer::new(Some(len), SeqKind::Tuple))
     }
 
     fn serialize_tuple_variant(
@@ -270,12 +270,19 @@ impl ser::Serializer for OwnedValueSerializer {
 
 struct SeqSerializer {
     values: Vec<OwnedValue>,
+    kind: SeqKind,
+}
+
+enum SeqKind {
+    Array,
+    Tuple,
 }
 
 impl SeqSerializer {
-    fn new(len: Option<usize>) -> Self {
+    fn new(len: Option<usize>, kind: SeqKind) -> Self {
         Self {
             values: Vec::with_capacity(len.unwrap_or(0)),
+            kind,
         }
     }
 }
@@ -293,7 +300,10 @@ impl SerializeSeq for SeqSerializer {
     }
 
     fn end(self) -> Result<Self::Ok> {
-        Ok(OwnedValue::Array(self.values))
+        match self.kind {
+            SeqKind::Array => Ok(OwnedValue::Array(self.values)),
+            SeqKind::Tuple => Ok(OwnedValue::Tuple(self.values)),
+        }
     }
 }
 
@@ -491,7 +501,7 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
             OwnedValue::Scalar(ScalarValue::F64(value)) => visitor.visit_f64(*value),
             OwnedValue::String(value) => visitor.visit_str(value),
             OwnedValue::Bytes(value) => visitor.visit_bytes(value),
-            OwnedValue::Array(values) | OwnedValue::Set(values) => {
+            OwnedValue::Tuple(values) | OwnedValue::Array(values) | OwnedValue::Set(values) => {
                 visitor.visit_seq(ValueSeqAccess {
                     iter: values.iter(),
                 })
@@ -716,7 +726,12 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
     where
         V: Visitor<'de>,
     {
-        self.deserialize_seq(visitor)
+        match self {
+            OwnedValue::Tuple(values) => visitor.visit_seq(ValueSeqAccess {
+                iter: values.iter(),
+            }),
+            _ => Err(Error::custom("expected tuple")),
+        }
     }
 
     fn deserialize_tuple_struct<V>(
@@ -728,7 +743,7 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
     where
         V: Visitor<'de>,
     {
-        self.deserialize_seq(visitor)
+        self.deserialize_tuple(_len, visitor)
     }
 
     fn deserialize_map<V>(self, visitor: V) -> Result<V::Value>

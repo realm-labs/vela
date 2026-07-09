@@ -181,6 +181,13 @@ pub(crate) fn owned_to_value(
         OwnedValue::Bytes(value) => {
             allocate_heap_value(HeapValue::Bytes(value), heap, budget.as_deref_mut())
         }
+        OwnedValue::Tuple(values) => {
+            let values = values
+                .into_iter()
+                .map(|value| owned_to_value(value, heap, budget.as_deref_mut()))
+                .collect::<VmResult<Vec<_>>>()?;
+            allocate_heap_value(HeapValue::Tuple(values), heap, budget)
+        }
         OwnedValue::Array(values) => {
             let values = values
                 .into_iter()
@@ -313,6 +320,11 @@ fn heap_value_to_owned(
     match value {
         HeapValue::String(value) => Ok(OwnedValue::String(value.clone())),
         HeapValue::Bytes(value) => Ok(OwnedValue::Bytes(value.clone())),
+        HeapValue::Tuple(values) => values
+            .iter()
+            .map(|value| value_to_owned(value, heap))
+            .collect::<VmResult<Vec<_>>>()
+            .map(OwnedValue::Tuple),
         HeapValue::Array(values) => values
             .iter()
             .map(|value| value_to_owned(value, heap))
@@ -420,6 +432,7 @@ pub(crate) fn value_to_host(
             Some(HeapValue::Bytes(value)) => Ok(HostValue::Bytes(value.clone())),
             Some(
                 HeapValue::Array(_)
+                | HeapValue::Tuple(_)
                 | HeapValue::Map(_)
                 | HeapValue::Set(_)
                 | HeapValue::Record { .. }

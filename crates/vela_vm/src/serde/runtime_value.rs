@@ -61,6 +61,10 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
             Value::HeapRef(_) => match self.heap_value()? {
                 HeapValue::String(value) => visitor.visit_str(value),
                 HeapValue::Bytes(value) => visitor.visit_bytes(value),
+                HeapValue::Tuple(values) => visitor.visit_seq(RuntimeSeqAccess {
+                    iter: RuntimeSeqIter::Slice(values.iter()),
+                    heap: self.heap,
+                }),
                 HeapValue::Array(values) => visitor.visit_seq(RuntimeSeqAccess {
                     iter: RuntimeSeqIter::Slice(values.iter()),
                     heap: self.heap,
@@ -213,7 +217,13 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        self.deserialize_seq(visitor)
+        match self.heap_value()? {
+            HeapValue::Tuple(values) => visitor.visit_seq(RuntimeSeqAccess {
+                iter: RuntimeSeqIter::Slice(values.iter()),
+                heap: self.heap,
+            }),
+            _ => Err(Error::custom("expected tuple")),
+        }
     }
 
     fn deserialize_tuple_struct<V>(
@@ -225,7 +235,7 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        self.deserialize_seq(visitor)
+        self.deserialize_tuple(_len, visitor)
     }
 
     fn deserialize_map<V>(self, visitor: V) -> Result<V::Value>

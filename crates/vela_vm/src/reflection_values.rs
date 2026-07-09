@@ -15,6 +15,7 @@ pub(crate) fn value_to_reflect(
 ) -> VmResult<reflect::value::ReflectValue> {
     match value {
         OwnedValue::HostRef(host_ref) => Ok(reflect::value::ReflectValue::HostRef(*host_ref)),
+        OwnedValue::Tuple(_) => Err(type_error(operation)),
         OwnedValue::Array(values) => values
             .iter()
             .map(|value| value_to_reflect(value, operation))
@@ -103,6 +104,7 @@ pub(crate) fn runtime_value_to_reflect(
             Some(HeapValue::Bytes(value)) => Ok(reflect::value::ReflectValue::Host(
                 HostValue::Bytes(value.clone()),
             )),
+            Some(HeapValue::Tuple(_)) => Err(type_error(operation)),
             Some(HeapValue::Array(values)) => values
                 .iter()
                 .map(|value| runtime_value_to_reflect(value, heap, operation))
@@ -245,6 +247,7 @@ fn owned_to_host(value: &OwnedValue, operation: &'static str) -> VmResult<HostVa
         OwnedValue::Bytes(value) => Ok(HostValue::Bytes(value.clone())),
         OwnedValue::HostRef(value) => Ok(HostValue::HostRef(*value)),
         OwnedValue::Missing
+        | OwnedValue::Tuple(_)
         | OwnedValue::Array(_)
         | OwnedValue::Map(_)
         | OwnedValue::Set(_)

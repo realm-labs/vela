@@ -45,6 +45,7 @@ impl GcRef {
 pub enum HeapValue {
     String(String),
     Bytes(Vec<u8>),
+    Tuple(Vec<Value>),
     Array(Vec<Value>),
     Map(ScriptMap),
     Set(ScriptSet),
@@ -103,7 +104,7 @@ impl HeapValue {
     fn trace_refs(&self, refs: &mut Vec<GcRef>) {
         match self {
             Self::String(_) | Self::Bytes(_) | Self::PathProxy(_) => {}
-            Self::Array(values) => {
+            Self::Tuple(values) | Self::Array(values) => {
                 values.iter().for_each(|value| value.trace_refs(refs));
             }
             Self::Set(values) => {
@@ -133,7 +134,7 @@ impl HeapValue {
         match self {
             Self::String(value) => mem::size_of::<String>() + value.len(),
             Self::Bytes(value) => mem::size_of::<Vec<u8>>() + value.len(),
-            Self::Array(values) => {
+            Self::Tuple(values) | Self::Array(values) => {
                 mem::size_of::<Vec<Value>>() + values.len() * mem::size_of::<Value>()
             }
             Self::Set(values) => values.shallow_size_bytes(),

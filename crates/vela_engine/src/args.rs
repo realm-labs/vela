@@ -256,6 +256,17 @@ impl IntoScriptArg for () {
     }
 }
 
+impl FromScriptArg for () {
+    const TYPE_NAME: &'static str = "()";
+
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
+        match value {
+            OwnedValue::Unit => Ok(()),
+            _ => Err(type_mismatch(Self::TYPE_NAME)),
+        }
+    }
+}
+
 impl IntoScriptArg for bool {
     fn into_script_arg(self) -> OwnedValue {
         OwnedValue::Bool(self)
@@ -513,6 +524,117 @@ where
         converted
             .try_into()
             .map_err(|_| type_mismatch(Self::TYPE_NAME))
+    }
+}
+
+impl<A, B> IntoScriptArg for (A, B)
+where
+    A: IntoScriptArg,
+    B: IntoScriptArg,
+{
+    fn into_script_arg(self) -> OwnedValue {
+        let (a, b) = self;
+        OwnedValue::Tuple(vec![a.into_script_arg(), b.into_script_arg()])
+    }
+}
+
+impl<A, B> FromScriptArg for (A, B)
+where
+    A: FromScriptArg,
+    B: FromScriptArg,
+{
+    const TYPE_NAME: &'static str = "tuple";
+
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
+        let OwnedValue::Tuple(values) = value else {
+            return Err(type_mismatch(Self::TYPE_NAME));
+        };
+        let [a, b] = values.as_slice() else {
+            return Err(type_mismatch(Self::TYPE_NAME));
+        };
+        Ok((A::from_script_arg(a)?, B::from_script_arg(b)?))
+    }
+}
+
+impl<A, B, C> IntoScriptArg for (A, B, C)
+where
+    A: IntoScriptArg,
+    B: IntoScriptArg,
+    C: IntoScriptArg,
+{
+    fn into_script_arg(self) -> OwnedValue {
+        let (a, b, c) = self;
+        OwnedValue::Tuple(vec![
+            a.into_script_arg(),
+            b.into_script_arg(),
+            c.into_script_arg(),
+        ])
+    }
+}
+
+impl<A, B, C> FromScriptArg for (A, B, C)
+where
+    A: FromScriptArg,
+    B: FromScriptArg,
+    C: FromScriptArg,
+{
+    const TYPE_NAME: &'static str = "tuple";
+
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
+        let OwnedValue::Tuple(values) = value else {
+            return Err(type_mismatch(Self::TYPE_NAME));
+        };
+        let [a, b, c] = values.as_slice() else {
+            return Err(type_mismatch(Self::TYPE_NAME));
+        };
+        Ok((
+            A::from_script_arg(a)?,
+            B::from_script_arg(b)?,
+            C::from_script_arg(c)?,
+        ))
+    }
+}
+
+impl<A, B, C, D> IntoScriptArg for (A, B, C, D)
+where
+    A: IntoScriptArg,
+    B: IntoScriptArg,
+    C: IntoScriptArg,
+    D: IntoScriptArg,
+{
+    fn into_script_arg(self) -> OwnedValue {
+        let (a, b, c, d) = self;
+        OwnedValue::Tuple(vec![
+            a.into_script_arg(),
+            b.into_script_arg(),
+            c.into_script_arg(),
+            d.into_script_arg(),
+        ])
+    }
+}
+
+impl<A, B, C, D> FromScriptArg for (A, B, C, D)
+where
+    A: FromScriptArg,
+    B: FromScriptArg,
+    C: FromScriptArg,
+    D: FromScriptArg,
+{
+    const TYPE_NAME: &'static str = "tuple";
+
+    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
+        let OwnedValue::Tuple(values) = value else {
+            return Err(type_mismatch(Self::TYPE_NAME));
+        };
+        let [a, b, c, d] = values.as_slice() else {
+            return Err(type_mismatch(Self::TYPE_NAME));
+        };
+        Ok((
+            A::from_script_arg(a)?,
+            B::from_script_arg(b)?,
+            C::from_script_arg(c)?,
+            D::from_script_arg(d)?,
+        ))
     }
 }
 

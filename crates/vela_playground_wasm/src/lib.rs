@@ -242,6 +242,10 @@ fn owned_value_to_json(value: &OwnedValue) -> JsonValue {
         OwnedValue::Char(value) => json!({ "kind": "char", "value": value.to_string() }),
         OwnedValue::String(value) => json!(value),
         OwnedValue::Bytes(value) => json!({ "kind": "bytes", "values": value }),
+        OwnedValue::Tuple(values) => json!({
+            "kind": "tuple",
+            "values": values.iter().map(owned_value_to_json).collect::<Vec<_>>(),
+        }),
         OwnedValue::Array(values) => {
             JsonValue::Array(values.iter().map(owned_value_to_json).collect())
         }

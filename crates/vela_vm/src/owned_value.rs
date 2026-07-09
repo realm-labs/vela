@@ -20,6 +20,7 @@ pub enum OwnedValue {
     Scalar(ScalarValue),
     String(String),
     Bytes(Vec<u8>),
+    Tuple(Vec<OwnedValue>),
     Array(Vec<OwnedValue>),
     Map(Vec<OwnedMapEntry>),
     Set(Vec<OwnedValue>),
@@ -56,6 +57,14 @@ impl OwnedValue {
         T: Into<Self>,
     {
         Self::Array(values.into_iter().map(Into::into).collect())
+    }
+
+    #[must_use]
+    pub fn tuple<T>(values: impl IntoIterator<Item = T>) -> Self
+    where
+        T: Into<Self>,
+    {
+        Self::Tuple(values.into_iter().map(Into::into).collect())
     }
 
     #[must_use]
@@ -156,6 +165,10 @@ impl OwnedValue {
             Self::Scalar(value) => scalar_display_text(*value),
             Self::String(value) => value.clone(),
             Self::Bytes(value) => format!("{value:?}"),
+            Self::Tuple(values) => {
+                let values = values.iter().map(Self::display_text).collect::<Vec<_>>();
+                format!("({})", values.join(", "))
+            }
             Self::Array(values) => {
                 let values = values.iter().map(Self::display_text).collect::<Vec<_>>();
                 format!("[{}]", values.join(", "))
@@ -230,6 +243,15 @@ macro_rules! owned_array {
     [$($value:expr),* $(,)?] => {
         $crate::owned_value::OwnedValue::array([
             $($crate::owned_value::OwnedValue::from($value)),*
+        ])
+    };
+}
+
+#[macro_export]
+macro_rules! owned_tuple {
+    ($($value:expr),+ $(,)?) => {
+        $crate::owned_value::OwnedValue::tuple([
+            $($crate::owned_value::OwnedValue::from($value)),+
         ])
     };
 }
@@ -454,6 +476,7 @@ pub fn owned_to_value_detached(value: OwnedValue) -> Value {
         OwnedValue::HostRef(value) => Value::HostRef(value),
         OwnedValue::String(_)
         | OwnedValue::Bytes(_)
+        | OwnedValue::Tuple(_)
         | OwnedValue::Array(_)
         | OwnedValue::Map(_)
         | OwnedValue::Set(_)

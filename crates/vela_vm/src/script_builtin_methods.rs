@@ -325,9 +325,10 @@ pub(crate) fn len(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> VmResul
                 | HeapValue::Enum { fields: values, .. } => {
                     usize_to_i64(values.len(), "method len")
                 }
-                HeapValue::Closure(_) | HeapValue::Iterator(_) | HeapValue::PathProxy(_) => {
-                    type_error("method len")
-                }
+                HeapValue::Tuple(_)
+                | HeapValue::Closure(_)
+                | HeapValue::Iterator(_)
+                | HeapValue::PathProxy(_) => type_error("method len"),
             }
         }
         _ => type_error("method len"),
@@ -349,9 +350,10 @@ pub(crate) fn is_empty(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> Vm
                 HeapValue::Map(values) => Ok(values.is_empty()),
                 HeapValue::Record { fields: values, .. }
                 | HeapValue::Enum { fields: values, .. } => Ok(values.is_empty()),
-                HeapValue::Closure(_) | HeapValue::Iterator(_) | HeapValue::PathProxy(_) => {
-                    type_error("method is_empty")
-                }
+                HeapValue::Tuple(_)
+                | HeapValue::Closure(_)
+                | HeapValue::Iterator(_)
+                | HeapValue::PathProxy(_) => type_error("method is_empty"),
             }
         }
         _ => type_error("method is_empty"),

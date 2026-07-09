@@ -724,7 +724,8 @@ fn heap_leaf<'a>(
         HeapValue::String(value) => Ok(Some(HeapLeaf::String(value))),
         HeapValue::Bytes(value) => Ok(Some(HeapLeaf::Bytes(value))),
         HeapValue::PathProxy(_) => non_comparable("equal"),
-        HeapValue::Array(_)
+        HeapValue::Tuple(_)
+        | HeapValue::Array(_)
         | HeapValue::Map(_)
         | HeapValue::Set(_)
         | HeapValue::Record { .. }
@@ -768,9 +769,10 @@ fn heap_identity_key(reference: GcRef, heap: Option<&HeapExecution<'_>>) -> VmRe
         | HeapValue::Enum { .. }
         | HeapValue::Closure(_)
         | HeapValue::Iterator(_) => Ok(IdentityKey::Heap(reference)),
-        HeapValue::String(_) | HeapValue::Bytes(_) | HeapValue::PathProxy(_) => {
-            non_comparable("identity equal")
-        }
+        HeapValue::String(_)
+        | HeapValue::Bytes(_)
+        | HeapValue::Tuple(_)
+        | HeapValue::PathProxy(_) => non_comparable("identity equal"),
     }
 }
 

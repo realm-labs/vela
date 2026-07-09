@@ -1532,6 +1532,7 @@ macro_rules! define_runtime_type_helpers {
                 Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
                     Some(HeapValue::String(_)) => primitive_type_name(PrimitiveTag::String),
                     Some(HeapValue::Bytes(_)) => primitive_type_name(PrimitiveTag::Bytes),
+                    Some(HeapValue::Tuple(_)) => "tuple",
                     Some(HeapValue::Array(_)) => "Array",
                     Some(HeapValue::Map(_)) => "Map",
                     Some(HeapValue::Set(_)) => "Set",

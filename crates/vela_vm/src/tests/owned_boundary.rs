@@ -53,6 +53,31 @@ fn identity(value) {
 }
 
 #[test]
+fn public_program_entrypoint_roundtrips_owned_tuple_values() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn identity(value) {
+    return value;
+}
+"#,
+    )
+    .expect("compile identity program");
+    let value = OwnedValue::tuple([
+        OwnedValue::String("reward".to_owned()),
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
+        OwnedValue::Array(vec![OwnedValue::Bool(true)]),
+    ]);
+    let linked = link_test_program(&program);
+
+    let result = Vm::new()
+        .run_linked_program(&linked, "identity", std::slice::from_ref(&value))
+        .expect("run public owned tuple boundary");
+
+    assert_eq!(result, value);
+}
+
+#[test]
 fn public_program_entrypoint_rejects_owned_map_non_keyable_keys() {
     let program = compile_program_source(
         SourceId::new(1),

@@ -228,6 +228,32 @@ fn serde_preserves_non_string_map_keys_as_owned_values() {
 }
 
 #[test]
+fn serde_preserves_tuple_values_as_tuples_not_arrays() {
+    let source = (7_i64, "xp".to_owned(), true);
+
+    let value = to_owned_value(&source).expect("serialize tuple");
+    assert_eq!(
+        value,
+        OwnedValue::Tuple(vec![
+            OwnedValue::Scalar(ScalarValue::I64(7)),
+            OwnedValue::String("xp".to_owned()),
+            OwnedValue::Bool(true),
+        ])
+    );
+
+    let restored: (i64, String, bool) = from_owned_value(&value).expect("deserialize tuple");
+    assert_eq!(restored, source);
+    assert!(
+        from_owned_value::<(i64, String, bool)>(&OwnedValue::Array(vec![
+            OwnedValue::Scalar(ScalarValue::I64(7)),
+            OwnedValue::String("xp".to_owned()),
+            OwnedValue::Bool(true),
+        ]))
+        .is_err()
+    );
+}
+
+#[test]
 fn serde_rejects_implicit_numeric_conversions() {
     assert!(from_owned_value::<u64>(&OwnedValue::Scalar(ScalarValue::I64(7))).is_err());
     assert!(from_owned_value::<i64>(&OwnedValue::Scalar(ScalarValue::U64(7))).is_err());

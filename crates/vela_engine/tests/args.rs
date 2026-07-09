@@ -102,6 +102,82 @@ fn script_arg_conversions_round_trip_byte_buffers_as_bytes() {
 }
 
 #[test]
+fn script_arg_conversions_support_unit_and_tuple_values() {
+    assert_eq!(().into_script_arg(), OwnedValue::Unit);
+    assert_eq!(<()>::from_script_arg(&OwnedValue::Unit), Ok(()));
+    assert!(matches!(
+        <()>::from_script_arg(&OwnedValue::Bool(false)),
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "()" })
+    ));
+
+    assert_eq!(
+        ("reward", 3_i64).into_script_arg(),
+        OwnedValue::Tuple(vec![
+            OwnedValue::String("reward".to_owned()),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
+        ])
+    );
+    assert_eq!(
+        <(String, i64)>::from_script_arg(&OwnedValue::Tuple(vec![
+            OwnedValue::String("reward".to_owned()),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
+        ])),
+        Ok(("reward".to_owned(), 3))
+    );
+    assert_eq!(
+        <(i64, bool, String)>::from_script_arg(&OwnedValue::Tuple(vec![
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(4)),
+            OwnedValue::Bool(true),
+            OwnedValue::String("quest".to_owned()),
+        ])),
+        Ok((4, true, "quest".to_owned()))
+    );
+    assert_eq!(
+        <(i64, bool, String, char)>::from_script_arg(&OwnedValue::Tuple(vec![
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(5)),
+            OwnedValue::Bool(false),
+            OwnedValue::String("boss".to_owned()),
+            OwnedValue::Char('奖'),
+        ])),
+        Ok((5, false, "boss".to_owned(), '奖'))
+    );
+    assert_eq!(
+        vela_engine::args![(1_i64, "two"), (3_i64, false, "four"),],
+        vec![
+            OwnedValue::Tuple(vec![
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(1)),
+                OwnedValue::String("two".to_owned()),
+            ]),
+            OwnedValue::Tuple(vec![
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
+                OwnedValue::Bool(false),
+                OwnedValue::String("four".to_owned()),
+            ]),
+        ],
+    );
+    assert!(matches!(
+        <(i64, i64)>::from_script_arg(&OwnedValue::Array(vec![
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(1)),
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
+        ])),
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "tuple" })
+    ));
+    assert!(matches!(
+        <(i64, i64)>::from_script_arg(&OwnedValue::Tuple(vec![OwnedValue::Scalar(
+            vela_common::ScalarValue::I64(1)
+        )])),
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "tuple" })
+    ));
+    assert!(matches!(
+        <(i64, i64)>::from_script_arg(&OwnedValue::Tuple(vec![
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(1)),
+            OwnedValue::String("bad".to_owned()),
+        ])),
+        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "i64" })
+    ));
+}
+
+#[test]
 fn script_arg_conversions_support_optional_values() {
     let some_value = OwnedValue::Enum {
         enum_name: "Option".to_owned(),

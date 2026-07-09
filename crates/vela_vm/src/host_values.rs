@@ -32,6 +32,7 @@ pub(crate) fn value_to_host(
             Some(HeapValue::Bytes(value)) => Ok(HostValue::Bytes(value.clone())),
             Some(
                 HeapValue::Array(_)
+                | HeapValue::Tuple(_)
                 | HeapValue::Map(_)
                 | HeapValue::Set(_)
                 | HeapValue::Record { .. }

@@ -96,6 +96,7 @@ fn heap_iterable_source(reference: GcRef, value: &HeapValue) -> VmResult<Iterabl
         })),
         HeapValue::Record { .. }
         | HeapValue::Enum { .. }
+        | HeapValue::Tuple(_)
         | HeapValue::Closure(_)
         | HeapValue::PathProxy(_) => Err(not_iterable()),
     }

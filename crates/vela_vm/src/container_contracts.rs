@@ -251,6 +251,7 @@ impl ShallowTypeKey {
                 HeapValue::Set(_) => Some(Self::Standard(StandardTypeGuard::Set)),
                 HeapValue::Closure(_) => Some(Self::Standard(StandardTypeGuard::Closure)),
                 HeapValue::Iterator(_) => Some(Self::Standard(StandardTypeGuard::Iterator)),
+                HeapValue::Tuple(_) => None,
                 HeapValue::Record {
                     identity: Some(identity),
                     ..
