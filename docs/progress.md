@@ -176,7 +176,11 @@ Tuple Map/Set keys are rejected by source type-hint validation and runtime
 `ValueKey` keyability. The active null audit now classifies all surviving
 `null` strings as intentional removed-source diagnostics/no-completion tests,
 external JSON-RPC protocol data, external C ABI pointer terminology, or
-historical/planning text rather than Vela language values.
+historical/planning text rather than Vela language values. Tree-sitter editor
+grammar validation now parses the checked-in site, LSP highlighting,
+conformance, and example `.vela` fixtures with tuple destructuring, and the
+`string_splitting` benchmark row records the `String.split_once` tuple-return
+path across interpreter, profile-only, and cache-enabled modes.
 
 ## Milestone Snapshot
 

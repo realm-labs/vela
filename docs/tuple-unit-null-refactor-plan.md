@@ -497,7 +497,7 @@ Focused validation:
 
 - [x] `cargo test -p vela_syntax`
 - [x] `cargo test -p vela_language_service semantic_tokens code_action formatting`
-- [ ] editor grammar validation for checked-in `.vela` fixtures
+- [x] editor grammar validation for checked-in `.vela` fixtures
 
 ### Phase 2: Core Value Model Hard Switch
 
@@ -589,8 +589,10 @@ Focused validation:
   schema ABI comparisons now parse unit and tuple type hints structurally, and
   source-reload tuple signature fixtures cover equivalent formatting plus
   tuple arity rejection. Typed dynamic-boundary tuple guard plans remain open.
-- [ ] Add focused benchmark rows for common tuple-return stdlib paths if they
-  are introduced.
+- [x] Add focused benchmark rows for common tuple-return stdlib paths if they
+  are introduced. The `string_splitting` baseline workload exercises
+  `String.split_once -> Option<(String, String)>` across interpreter,
+  profile-only, and cache-enabled rows.
 
 Focused validation:
 
@@ -600,7 +602,7 @@ Focused validation:
 - [x] `cargo test -p vela_language_service schema`
 - [x] `cargo test -p vela_vm option_result`
 - [x] `cargo test -p vela_vm type_guards`
-- [ ] focused benchmark command recorded if tuple hot paths are added
+- [x] `cargo bench -p vela_vm --bench baseline -- --quick string_splitting`
 
 ### Phase 6: Tooling, Docs, Examples, And Website
 
@@ -630,13 +632,16 @@ Focused validation:
 
 ### Phase 7: Final Audit And Cleanup
 
-- [ ] Remove obsolete null compatibility helpers, tests, docs, diagnostics, and
-  migration-only names.
+- [x] Remove obsolete null compatibility helpers, tests, docs, diagnostics, and
+  migration-only names. Active survivors are rejection/no-completion coverage,
+  protocol/data nulls, external C ABI terminology, and historical/planning
+  text rather than compatibility behavior.
 - [x] Confirm no temporary external-null wrapper was added only to keep old
   behavior alive. Audits for legacy or compatibility null wrapper names have no
   active code hits.
-- [ ] Confirm touched active source/test files stay under the ordinary
-  1200-line guideline or have a documented exception.
+- [x] Confirm touched active source/test files stay under the ordinary
+  1200-line guideline or have a documented exception. The edited source
+  grammar is under the guideline; generated tree-sitter artifacts are exempt.
 - [~] Run zero-result language-null audits and classify protocol/data nulls.
   Symbolic Vela-language null forms are gone. Intentional source-string
   survivors remain for the removed-`null` diagnostic/test and no-completion
