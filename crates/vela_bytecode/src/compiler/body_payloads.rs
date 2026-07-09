@@ -271,10 +271,6 @@ impl CompilerStatementPayload {
             .is_some_and(|statement| statement.initializer().is_none())
     }
 
-    pub(super) fn let_name_text(&self) -> Option<String> {
-        self.syntax.as_let()?.name_text()
-    }
-
     pub(super) fn let_pattern_initializer_syntax_expression_and_span(
         &self,
     ) -> Option<(SourceId, SyntaxPattern, SyntaxExpression, Span)> {

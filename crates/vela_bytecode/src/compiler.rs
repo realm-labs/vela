@@ -1098,6 +1098,18 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         })
     }
 
+    pub(in crate::compiler) fn let_binding_name_for_patterns(
+        &self,
+        patterns: &[HirPatternId],
+    ) -> Option<String> {
+        patterns.iter().copied().find_map(|pattern_id| {
+            let local = self.local_for_pattern(pattern_id, LocalBindingKind::Let)?;
+            self.bindings
+                .local(local)
+                .map(|binding| binding.name.clone())
+        })
+    }
+
     pub(in crate::compiler) fn local_for_pattern(
         &self,
         pattern_id: HirPatternId,

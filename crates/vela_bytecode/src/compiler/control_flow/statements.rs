@@ -37,7 +37,7 @@ impl Compiler<'_, '_> {
             HirStmtKind::Break => return self.compile_break(),
             HirStmtKind::Continue => return self.compile_continue(),
             HirStmtKind::Let if stmt.let_initializer_missing_in_syntax() => {
-                let Some(name) = stmt.let_name_text() else {
+                let Some(name) = self.let_binding_name_for_patterns(stmt.hir_patterns()) else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing let binding name",
                     )));
@@ -61,7 +61,7 @@ impl Compiler<'_, '_> {
                 if let Some((literal, literal_span)) =
                     stmt.let_initializer_syntax_literal_and_span()
                 {
-                    let Some(name) = stmt.let_name_text() else {
+                    let Some(name) = self.let_binding_name_for_patterns(stmt.hir_patterns()) else {
                         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                             "missing let binding name",
                         )));
@@ -77,7 +77,7 @@ impl Compiler<'_, '_> {
                 if let Some((literal, literal_span)) =
                     stmt.let_initializer_syntax_negated_literal_and_span()
                 {
-                    let Some(name) = stmt.let_name_text() else {
+                    let Some(name) = self.let_binding_name_for_patterns(stmt.hir_patterns()) else {
                         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                             "missing let binding name",
                         )));
@@ -92,7 +92,7 @@ impl Compiler<'_, '_> {
                 }
                 if let Some((source, expression, _)) =
                     stmt.let_initializer_syntax_expression_and_span()
-                    && let Some(name) = stmt.let_name_text()
+                    && let Some(name) = self.let_binding_name_for_patterns(stmt.hir_patterns())
                     && let Some(compiled) = self.compile_let_syntax_range(
                         name.clone(),
                         span,
@@ -105,7 +105,7 @@ impl Compiler<'_, '_> {
                 }
                 if let Some((source, expression, _)) =
                     stmt.let_initializer_syntax_expression_and_span()
-                    && let Some(name) = stmt.let_name_text()
+                    && let Some(name) = self.let_binding_name_for_patterns(stmt.hir_patterns())
                     && let Some(compiled) = self.compile_let_syntax_constant(
                         source,
                         name,
@@ -119,7 +119,7 @@ impl Compiler<'_, '_> {
                 if let Some((_, _, path_span)) = stmt.let_initializer_syntax_expression_and_span()
                     && let Some(path) = self.hir_value_path_for_span(path_span)
                 {
-                    let Some(name) = stmt.let_name_text() else {
+                    let Some(name) = self.let_binding_name_for_patterns(stmt.hir_patterns()) else {
                         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                             "missing let binding name",
                         )));
@@ -127,7 +127,7 @@ impl Compiler<'_, '_> {
                     return self.compile_let_path(name, span, path, path_span, stmt.hir_patterns());
                 }
                 if stmt.stored_let_initializer_kind() == Some(SyntaxExpressionKind::Block) {
-                    let Some(name) = stmt.let_name_text() else {
+                    let Some(name) = self.let_binding_name_for_patterns(stmt.hir_patterns()) else {
                         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                             "missing let binding name",
                         )));
@@ -149,7 +149,7 @@ impl Compiler<'_, '_> {
                 }
                 if let Some((source, expression, _)) =
                     stmt.let_initializer_syntax_expression_and_span()
-                    && let Some(name) = stmt.let_name_text()
+                    && let Some(name) = self.let_binding_name_for_patterns(stmt.hir_patterns())
                     && let Some(compiled) = self.compile_let_syntax_expression(
                         source,
                         name,
