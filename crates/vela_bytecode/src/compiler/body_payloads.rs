@@ -1,6 +1,6 @@
 use vela_common::{SourceId, Span};
 use vela_hir::body::{HirBody, HirBodyRoot, HirStmt, HirStmtKind};
-use vela_hir::ids::HirBlockId;
+use vela_hir::ids::{HirBlockId, HirPatternId};
 use vela_syntax::ast::{
     AstNode, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxForStmt, SyntaxIfExpr,
     SyntaxMatchExpr, SyntaxPattern, SyntaxStatement, SyntaxStatementKind,
@@ -36,6 +36,7 @@ pub(super) struct CompilerStatementPayload {
     source: SourceId,
     syntax: SyntaxStatement,
     hir_kind: HirStmtKind,
+    patterns: Vec<HirPatternId>,
     span: Span,
 }
 
@@ -233,12 +234,17 @@ impl CompilerStatementPayload {
             source,
             syntax,
             hir_kind: statement.kind,
+            patterns: statement.patterns.clone(),
             span: statement.origin.span,
         }
     }
 
     pub(super) fn hir_statement_kind(&self) -> HirStmtKind {
         self.hir_kind
+    }
+
+    pub(super) fn hir_patterns(&self) -> &[HirPatternId] {
+        &self.patterns
     }
 
     pub(super) fn stored_expression_kind(&self) -> Option<SyntaxExpressionKind> {

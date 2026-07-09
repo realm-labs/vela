@@ -1,5 +1,6 @@
 use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
+use vela_hir::ids::HirPatternId;
 use vela_syntax::ast::{
     Literal, SyntaxElseBranch, SyntaxExpression, SyntaxIfExpr, SyntaxPattern, SyntaxPatternKind,
 };
@@ -50,6 +51,7 @@ impl Compiler<'_, '_> {
         pattern: &SyntaxPattern,
         span: Span,
         expression: &SyntaxExpression,
+        hir_patterns: &[HirPatternId],
     ) -> CompileResult<bool> {
         let Some(value) = self.compile_syntax_expression(source, expression)? else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -69,12 +71,13 @@ impl Compiler<'_, '_> {
                 "let tuple variant pattern",
             )));
         }
-        self.bind_syntax_pattern_locals(
+        self.bind_syntax_pattern_locals_from_hir_patterns(
             value,
             pattern,
             span,
             crate::compiler::patterns::PatternBindingFacts::default(),
             LocalBindingKind::Let,
+            hir_patterns,
         )?;
         Ok(false)
     }

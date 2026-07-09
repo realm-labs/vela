@@ -264,7 +264,9 @@ kind facts, and bytecode statement/control-flow dispatch branches on
 kinds. Statement payload diagnostics and let-pattern setup now use HIR
 statement source spans instead of recomputing statement spans from syntax, and
 obsolete lifetime/`PhantomData` scaffolding has been removed from statement
-payloads.
+payloads. Ordinary let-pattern lowering now consumes the HIR pattern IDs owned
+by the statement payload for local registration instead of re-identifying those
+locals from binding-token spans.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

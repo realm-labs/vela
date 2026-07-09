@@ -50,7 +50,13 @@ impl Compiler<'_, '_> {
                 if let Some((source, pattern, expression, span)) =
                     stmt.let_pattern_initializer_syntax_expression_and_span()
                 {
-                    return self.compile_let_syntax_pattern(source, &pattern, span, &expression);
+                    return self.compile_let_syntax_pattern(
+                        source,
+                        &pattern,
+                        span,
+                        &expression,
+                        stmt.hir_patterns(),
+                    );
                 }
                 if let Some((literal, literal_span)) =
                     stmt.let_initializer_syntax_literal_and_span()
