@@ -4,7 +4,7 @@ use vela_common::Diagnostic;
 
 use crate::Register;
 
-use super::const_eval::evaluate_syntax_const_expr;
+use super::const_eval::evaluate_const_expr;
 use super::schema_defaults::{ConstructorShape, SchemaFieldDefault};
 use super::value_types::{
     RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type,
@@ -75,10 +75,11 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         default: &SchemaFieldDefault,
         expected: Option<RuntimeTypeFact>,
     ) -> CompileResult<Register> {
-        if let Some(value) = evaluate_syntax_const_expr(
+        if let Some(value) = evaluate_const_expr(
             default.value.source(),
             default.value.syntax(),
             &default.constants,
+            &|span| default.path_for_span(span),
         )? {
             if let Some(expected) = expected {
                 check_expected_type(

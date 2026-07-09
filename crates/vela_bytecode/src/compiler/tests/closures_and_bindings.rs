@@ -304,6 +304,39 @@ pub const BASE: i64 = 4;
             .contains(&Constant::Scalar(vela_common::ScalarValue::I64(5)))
     );
 }
+
+#[test]
+fn compiler_evaluates_const_map_key_paths_through_hir_facts() {
+    let program = compile_module_sources(&[
+        ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_qualified("game::main"),
+            r#"
+use game::config::DEFAULTS
+fn main() {
+    return DEFAULTS;
+}
+"#,
+        ),
+        ModuleSource::new(
+            SourceId::new(2),
+            ModulePath::from_qualified("game::config"),
+            r#"
+enum RewardKey { Small }
+pub const DEFAULTS = { RewardKey::Small: 5 };
+"#,
+        ),
+    ])
+    .expect("const map key paths should compile through HIR path facts");
+    let main = program
+        .function("game::main::main")
+        .expect("qualified main function");
+    assert!(main.constants.contains(&Constant::Map(vec![(
+        "RewardKey::Small".to_owned(),
+        Constant::Scalar(vela_common::ScalarValue::I64(5)),
+    )])));
+}
+
 #[test]
 fn compiler_uses_hir_local_bindings_for_shadowed_registers() {
     let code = compile_function_source(

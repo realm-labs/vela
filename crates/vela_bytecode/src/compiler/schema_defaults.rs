@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::{Diagnostic, SourceId, Span};
+use vela_hir::body::HirPathKind;
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
@@ -135,6 +136,16 @@ pub(super) struct SchemaFieldDefault {
     pub(super) name: String,
     pub(super) value: SchemaDefaultValue,
     pub(super) constants: BTreeMap<String, Constant>,
+    path_facts: Vec<(Span, Vec<String>)>,
+}
+
+impl SchemaFieldDefault {
+    pub(super) fn path_for_span(&self, span: Span) -> Option<Vec<String>> {
+        self.path_facts
+            .iter()
+            .find(|(path_span, _)| *path_span == span)
+            .map(|(_, path)| path.clone())
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -197,7 +208,12 @@ pub(super) fn source_schema_defaults(
                                 default_payloads.struct_field(&metadata.name, &field.name)
                             })
                             .map(|value| {
-                                schema_field_default(field.name.clone(), value, constants.clone())
+                                schema_field_default(
+                                    field.name.clone(),
+                                    value,
+                                    constants.clone(),
+                                    graph,
+                                )
                             }),
                     })
                     .collect::<Vec<_>>();
@@ -224,6 +240,7 @@ pub(super) fn source_schema_defaults(
                         &variant.fields,
                         default_payloads,
                         constants.clone(),
+                        graph,
                     );
                     defaults.enum_shapes.insert(
                         (type_name.clone(), variant.name.clone()),
@@ -334,12 +351,22 @@ fn schema_field_default(
     name: String,
     value: SchemaDefaultValue,
     constants: BTreeMap<String, Constant>,
+    graph: &ModuleGraph,
 ) -> SchemaFieldDefault {
+    let path_facts = value_path_facts_for_source(graph, value.source());
     SchemaFieldDefault {
         name,
         value,
         constants,
+        path_facts,
     }
+}
+
+fn value_path_facts_for_source(graph: &ModuleGraph, source: SourceId) -> Vec<(Span, Vec<String>)> {
+    graph
+        .paths_in_source_by_kind(source, HirPathKind::Value)
+        .map(|path| (path.origin.span, path.path.clone()))
+        .collect()
 }
 
 pub(super) fn record_constructor_field_diagnostics(
@@ -576,6 +603,7 @@ fn enum_variant_fields(
     fields: &EnumVariantFieldsHint,
     default_payloads: &SchemaDefaultPayloads,
     constants: BTreeMap<String, Constant>,
+    graph: &ModuleGraph,
 ) -> Vec<ConstructorField> {
     match fields {
         EnumVariantFieldsHint::Unit => Vec::new(),
@@ -590,7 +618,9 @@ fn enum_variant_fields(
                     .default_value_span
                     .as_ref()
                     .and_then(|_| default_payloads.enum_tuple_field(enum_name, variant_name, index))
-                    .map(|value| schema_field_default(index.to_string(), value, constants.clone())),
+                    .map(|value| {
+                        schema_field_default(index.to_string(), value, constants.clone(), graph)
+                    }),
             })
             .collect(),
         EnumVariantFieldsHint::Record(fields) => fields
@@ -606,7 +636,7 @@ fn enum_variant_fields(
                         default_payloads.enum_record_field(enum_name, variant_name, &field.name)
                     })
                     .map(|value| {
-                        schema_field_default(field.name.clone(), value, constants.clone())
+                        schema_field_default(field.name.clone(), value, constants.clone(), graph)
                     }),
             })
             .collect(),

@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use vela_common::SourceId;
+use vela_common::{SourceId, Span};
 use vela_hir::binding::BindingMap;
-use vela_hir::body::HirBody;
+use vela_hir::body::{HirBody, HirPathKind};
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{
     DeclarationKind, ImportResolution, ModuleGraph, ModulePath, ModuleSource,
@@ -14,7 +14,7 @@ use vela_syntax::parse::parse_source_with_id;
 
 use crate::Constant;
 
-use super::const_eval::evaluate_syntax_const_expr;
+use super::const_eval::evaluate_const_expr;
 use super::error::{CompileError, CompileErrorKind, CompileResult};
 use super::field_slots::ScriptFieldSlots;
 use super::function_payloads::FunctionBodyPayload;
@@ -183,7 +183,9 @@ impl SemanticSource {
             let Some(expr) = payloads.get(&name) else {
                 continue;
             };
-            if let Some(value) = evaluate_syntax_const_expr(self.source, expr, &values_by_name)? {
+            if let Some(value) = evaluate_const_expr(self.source, expr, &values_by_name, &|span| {
+                hir_value_path_for_span(&self.graph, span)
+            })? {
                 values_by_declaration.insert(declaration, value.clone());
                 values_by_name.insert(name, value);
             }
@@ -393,7 +395,10 @@ impl SemanticModules {
                     let mut values_by_name =
                         self.imported_const_values(*module, &values_by_declaration);
                     values_by_name.extend(previous_values.clone());
-                    if let Some(value) = evaluate_syntax_const_expr(source, expr, &values_by_name)?
+                    if let Some(value) =
+                        evaluate_const_expr(source, expr, &values_by_name, &|span| {
+                            hir_value_path_for_span(&self.graph, span)
+                        })?
                     {
                         values_by_declaration.insert(declaration, value.clone());
                         previous_values.insert(name, value);
@@ -472,6 +477,13 @@ fn module_const_declarations(graph: &ModuleGraph, module: ModuleId) -> Vec<(HirD
         .collect::<Vec<_>>();
     consts.sort_by_key(|(declaration, _)| *declaration);
     consts
+}
+
+fn hir_value_path_for_span(graph: &ModuleGraph, span: Span) -> Option<Vec<String>> {
+    graph
+        .paths_in_source_by_kind(span.source, HirPathKind::Value)
+        .find(|path| path.origin.span == span)
+        .map(|path| path.path.clone())
 }
 
 fn function_body_payload<'ast>(

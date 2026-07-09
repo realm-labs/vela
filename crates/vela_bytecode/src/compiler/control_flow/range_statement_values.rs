@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use vela_common::{SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
 use vela_syntax::ast::{Literal, SyntaxExpression};
@@ -7,7 +5,9 @@ use vela_syntax::ast::{Literal, SyntaxExpression};
 use crate::compiler::body_payloads::{
     expression_syntax_negated_number_literal, expression_syntax_range_operands,
 };
-use crate::compiler::const_eval::{compile_negated_literal_constant, evaluate_syntax_const_expr};
+use crate::compiler::const_eval::{
+    compile_negated_literal_constant, evaluate_const_expr_without_paths,
+};
 use crate::compiler::record_shapes::ValueShape;
 use crate::compiler::script_types::{ScriptTypeFact, type_hint_script_type};
 use crate::compiler::value_types::{
@@ -177,7 +177,9 @@ impl Compiler<'_, '_> {
         if let Some(path) = self.hir_value_path_for_span(span) {
             return self.compile_path_expr(span, &path);
         }
-        if let Some(constant) = evaluate_syntax_const_expr(source, expression, &BTreeMap::new())? {
+        if let Some(constant) =
+            evaluate_const_expr_without_paths(source, expression, &Default::default())?
+        {
             return self.emit_constant(constant);
         }
         Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

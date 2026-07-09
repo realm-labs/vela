@@ -6,7 +6,7 @@ use vela_syntax::ast::{Literal, SyntaxExpression, SyntaxExpressionKind};
 
 use crate::compiler::const_eval::{
     compile_literal_constant_for_type, compile_negated_literal_constant,
-    compile_negated_literal_constant_for_type, evaluate_syntax_const_expr,
+    compile_negated_literal_constant_for_type, evaluate_const_expr_without_paths,
 };
 use crate::compiler::record_shapes::ValueShape;
 use crate::compiler::script_types::{ScriptTypeFact, type_hint_script_type};
@@ -104,7 +104,8 @@ impl Compiler<'_, '_> {
         if !syntax_constant_fast_path_allowed(expression) {
             return Ok(None);
         }
-        let Some(constant) = evaluate_syntax_const_expr(source, expression, &BTreeMap::new())?
+        let Some(constant) =
+            evaluate_const_expr_without_paths(source, expression, &BTreeMap::new())?
         else {
             return Ok(None);
         };
@@ -325,7 +326,8 @@ impl Compiler<'_, '_> {
         if !syntax_constant_fast_path_allowed(expression) {
             return Ok(None);
         }
-        let Some(constant) = evaluate_syntax_const_expr(source, expression, &BTreeMap::new())?
+        let Some(constant) =
+            evaluate_const_expr_without_paths(source, expression, &BTreeMap::new())?
         else {
             return Ok(None);
         };
@@ -363,7 +365,8 @@ impl Compiler<'_, '_> {
         if !syntax_constant_fast_path_allowed(expression) {
             return Ok(None);
         }
-        let Some(constant) = evaluate_syntax_const_expr(source, expression, &BTreeMap::new())?
+        let Some(constant) =
+            evaluate_const_expr_without_paths(source, expression, &BTreeMap::new())?
         else {
             return Ok(None);
         };
@@ -380,7 +383,8 @@ impl Compiler<'_, '_> {
         if !syntax_constant_fast_path_allowed(expression) {
             return Ok(None);
         }
-        let Some(constant) = evaluate_syntax_const_expr(source, expression, &BTreeMap::new())?
+        let Some(constant) =
+            evaluate_const_expr_without_paths(source, expression, &BTreeMap::new())?
         else {
             return Ok(None);
         };

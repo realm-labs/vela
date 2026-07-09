@@ -70,10 +70,11 @@ pub(super) fn compile_negated_literal_constant_for_type(
     }
 }
 
-pub(super) fn evaluate_syntax_const_expr(
+pub(super) fn evaluate_const_expr(
     source: SourceId,
     expr: &SyntaxExpression,
     values_by_name: &BTreeMap<String, Constant>,
+    path_resolver: &dyn Fn(Span) -> Option<Vec<String>>,
 ) -> CompileResult<Option<Constant>> {
     match expr.expression_kind() {
         SyntaxExpressionKind::Literal => {
@@ -85,10 +86,10 @@ pub(super) fn evaluate_syntax_const_expr(
                 .map_err(|error| error.with_span(span_for(source, expr.syntax().text_range())))
         }
         SyntaxExpressionKind::Path => {
-            let Some(path) = expr.as_path() else {
+            let span = span_for(source, expr.syntax().text_range());
+            let Some(segments) = path_resolver(span) else {
                 return Ok(None);
             };
-            let segments = path.path_segments();
             let [name] = segments.as_slice() else {
                 return Ok(None);
             };
@@ -98,7 +99,7 @@ pub(super) fn evaluate_syntax_const_expr(
             let Some(inner) = expr.as_paren().and_then(|paren| paren.expression()) else {
                 return Ok(None);
             };
-            evaluate_syntax_const_expr(source, &inner, values_by_name)
+            evaluate_const_expr(source, &inner, values_by_name, path_resolver)
         }
         SyntaxExpressionKind::Unary => {
             let Some(unary) = expr.as_unary() else {
@@ -119,7 +120,8 @@ pub(super) fn evaluate_syntax_const_expr(
             {
                 return Ok(Some(value));
             }
-            let Some(value) = evaluate_syntax_const_expr(source, &inner, values_by_name)? else {
+            let Some(value) = evaluate_const_expr(source, &inner, values_by_name, path_resolver)?
+            else {
                 return Ok(None);
             };
             Ok(evaluate_unary_const(op, value))
@@ -137,10 +139,13 @@ pub(super) fn evaluate_syntax_const_expr(
             let Some(right_expr) = binary.rhs() else {
                 return Ok(None);
             };
-            let Some(left) = evaluate_syntax_const_expr(source, &left_expr, values_by_name)? else {
+            let Some(left) =
+                evaluate_const_expr(source, &left_expr, values_by_name, path_resolver)?
+            else {
                 return Ok(None);
             };
-            let Some(right) = evaluate_syntax_const_expr(source, &right_expr, values_by_name)?
+            let Some(right) =
+                evaluate_const_expr(source, &right_expr, values_by_name, path_resolver)?
             else {
                 return Ok(None);
             };
@@ -152,7 +157,7 @@ pub(super) fn evaluate_syntax_const_expr(
             };
             array
                 .expressions()
-                .map(|value| evaluate_syntax_const_expr(source, &value, values_by_name))
+                .map(|value| evaluate_const_expr(source, &value, values_by_name, path_resolver))
                 .collect::<CompileResult<Option<Vec<_>>>>()
                 .map(|values| values.map(Constant::Array))
         }
@@ -161,7 +166,9 @@ pub(super) fn evaluate_syntax_const_expr(
                 return Ok(None);
             };
             map.entries()
-                .map(|entry| evaluate_syntax_map_entry(source, &entry, values_by_name))
+                .map(|entry| {
+                    evaluate_const_map_entry(source, &entry, values_by_name, path_resolver)
+                })
                 .collect::<CompileResult<Option<Vec<_>>>>()
                 .map(|entries| entries.map(Constant::Map))
         }
@@ -169,7 +176,7 @@ pub(super) fn evaluate_syntax_const_expr(
             let Some(block) = expr.as_block() else {
                 return Ok(None);
             };
-            evaluate_syntax_const_block(source, &block, values_by_name)
+            evaluate_const_block(source, &block, values_by_name, path_resolver)
         }
         SyntaxExpressionKind::Assign
         | SyntaxExpressionKind::Unit
@@ -185,10 +192,19 @@ pub(super) fn evaluate_syntax_const_expr(
     }
 }
 
-fn evaluate_syntax_const_block(
+pub(super) fn evaluate_const_expr_without_paths(
+    source: SourceId,
+    expr: &SyntaxExpression,
+    values_by_name: &BTreeMap<String, Constant>,
+) -> CompileResult<Option<Constant>> {
+    evaluate_const_expr(source, expr, values_by_name, &|_| None)
+}
+
+fn evaluate_const_block(
     source: SourceId,
     block: &SyntaxBlock,
     values_by_name: &BTreeMap<String, Constant>,
+    path_resolver: &dyn Fn(Span) -> Option<Vec<String>>,
 ) -> CompileResult<Option<Constant>> {
     let mut local_values = values_by_name.clone();
     let mut tail_value = None;
@@ -204,7 +220,8 @@ fn evaluate_syntax_const_block(
                 let Some(initializer) = statement.initializer() else {
                     return Ok(None);
                 };
-                let Some(value) = evaluate_syntax_const_expr(source, &initializer, &local_values)?
+                let Some(value) =
+                    evaluate_const_expr(source, &initializer, &local_values, path_resolver)?
                 else {
                     return Ok(None);
                 };
@@ -218,7 +235,7 @@ fn evaluate_syntax_const_block(
                 let Some(value) = statement.expression() else {
                     return Ok(Some(Constant::Unit));
                 };
-                return evaluate_syntax_const_expr(source, &value, &local_values);
+                return evaluate_const_expr(source, &value, &local_values, path_resolver);
             }
             SyntaxStatementKind::Expr => {
                 let Some(statement) = statement.as_expr() else {
@@ -230,14 +247,15 @@ fn evaluate_syntax_const_block(
                 tail_value = if statement.semicolon_token().is_some() {
                     None
                 } else {
-                    evaluate_syntax_const_expr(source, &value, &local_values)?
+                    evaluate_const_expr(source, &value, &local_values, path_resolver)?
                 };
             }
             SyntaxStatementKind::Block => {
                 let Some(statement) = statement.as_block() else {
                     return Ok(None);
                 };
-                tail_value = evaluate_syntax_const_block(source, &statement, &local_values)?;
+                tail_value =
+                    evaluate_const_block(source, &statement, &local_values, path_resolver)?;
             }
             SyntaxStatementKind::Break
             | SyntaxStatementKind::Continue
@@ -249,27 +267,33 @@ fn evaluate_syntax_const_block(
     Ok(tail_value)
 }
 
-fn evaluate_syntax_map_entry(
+fn evaluate_const_map_entry(
     source: SourceId,
     entry: &SyntaxMapEntry,
     values_by_name: &BTreeMap<String, Constant>,
+    path_resolver: &dyn Fn(Span) -> Option<Vec<String>>,
 ) -> CompileResult<Option<(String, Constant)>> {
     let Some(value_expr) = entry.value() else {
         return Ok(None);
     };
-    let Some(value) = evaluate_syntax_const_expr(source, &value_expr, values_by_name)? else {
+    let Some(value) = evaluate_const_expr(source, &value_expr, values_by_name, path_resolver)?
+    else {
         return Ok(None);
     };
     let Some(key_expr) = entry.key() else {
         return Ok(None);
     };
-    let Some(key) = syntax_const_map_key_name(&key_expr)? else {
+    let Some(key) = const_map_key_name(source, &key_expr, path_resolver)? else {
         return Ok(None);
     };
     Ok(Some((key, value)))
 }
 
-fn syntax_const_map_key_name(key: &SyntaxExpression) -> CompileResult<Option<String>> {
+fn const_map_key_name(
+    source: SourceId,
+    key: &SyntaxExpression,
+    path_resolver: &dyn Fn(Span) -> Option<Vec<String>>,
+) -> CompileResult<Option<String>> {
     match key.expression_kind() {
         SyntaxExpressionKind::Literal => {
             let Some(literal) = key.as_literal().and_then(|literal| literal.literal()) else {
@@ -282,10 +306,12 @@ fn syntax_const_map_key_name(key: &SyntaxExpression) -> CompileResult<Option<Str
                 _ => Ok(None),
             }
         }
-        SyntaxExpressionKind::Path => Ok(key
-            .as_path()
-            .map(|path| path.path_segments().join("::"))
-            .filter(|path| !path.is_empty())),
+        SyntaxExpressionKind::Path => {
+            let span = span_for(source, key.syntax().text_range());
+            Ok(path_resolver(span)
+                .map(|path| path.join("::"))
+                .filter(|path| !path.is_empty()))
+        }
         _ => Ok(None),
     }
 }
