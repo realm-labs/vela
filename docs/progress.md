@@ -222,7 +222,9 @@ spans from HIR field receiver facts, and the old field-chain syntax path helper
 has been deleted. HostPath root and field-only target construction now reads
 HIR value-path facts, leaving syntax in that path only for structural index
 expressions that carry dynamic host path arguments, and the old simple syntax
-path helper has been deleted.
+path helper has been deleted. Parameter-default path values, path calls, and
+host field reads now lower from HIR value/callee path facts, deleting the
+parameter-default host field syntax path reconstruction helper.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

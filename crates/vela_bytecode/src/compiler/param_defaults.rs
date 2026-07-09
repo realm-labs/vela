@@ -71,10 +71,11 @@ impl Compiler<'_, '_> {
                 }
             }
             SyntaxExpressionKind::Path => {
-                let Some(path) = expression.as_path() else {
+                let span = span_for(source, expression);
+                let Some(path) = self.hir_value_path_for_span(span) else {
                     return Err(param_default_unsupported(source, expression));
                 };
-                self.compile_path_expr(span_for(source, expression), &path.path_segments())
+                self.compile_path_expr(span, &path)
             }
             SyntaxExpressionKind::Paren => {
                 let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) else {

@@ -1,9 +1,9 @@
 use vela_common::SourceId;
-use vela_syntax::ast::{SyntaxExpression, SyntaxExpressionKind, SyntaxFieldExpr};
+use vela_syntax::ast::{SyntaxExpression, SyntaxFieldExpr};
 
 use crate::{Register, UnlinkedInstructionKind};
 
-use crate::compiler::host_paths::{HostPath, HostPathPart, HostPathRoot};
+use crate::compiler::host_paths::HostPath;
 use crate::compiler::{CompileResult, Compiler};
 
 use super::{param_default_expression_supported, param_default_unsupported, span_for};
@@ -57,30 +57,19 @@ impl Compiler<'_, '_> {
         Ok(dst)
     }
 
-    fn param_default_host_field_path<'ast>(
+    fn param_default_host_field_path(
         &self,
         source: SourceId,
-        expression: &'ast SyntaxExpression,
-    ) -> Option<HostPath<'ast>> {
-        let (root, span, fields) = syntax_host_field_path(source, expression)?;
-        let mut current_type = self.host_local_type_name(&root, span)?;
-        let mut segments = Vec::with_capacity(fields.len());
-        let last_index = fields.len().checked_sub(1)?;
-        for (index, field_name) in fields.into_iter().enumerate() {
-            let field = self.host_field_info(Some(&current_type), &field_name)?;
-            segments.push(if field.variant_field {
-                HostPathPart::VariantField(field.id)
-            } else {
-                HostPathPart::Field(field.id)
-            });
-            if index != last_index {
-                current_type = field.type_hint?;
-            }
+        expression: &SyntaxExpression,
+    ) -> Option<HostPath<'static>> {
+        let span = span_for(source, expression);
+        let path = self.hir_value_path_for_span(span)?;
+        if path.len() < 2 {
+            return None;
         }
-        Some(HostPath {
-            root: HostPathRoot::OwnedLocalPath { name: root, span },
-            segments,
-        })
+        let root_span = self.hir_value_path_root_span_for_span(span).unwrap_or(span);
+        self.owned_host_field_path_parts(root_span, &path)
+            .map(|resolved| resolved.path)
     }
 }
 
@@ -91,47 +80,4 @@ pub(super) fn param_default_field_supported(expression: &SyntaxExpression) -> bo
                 .receiver()
                 .is_some_and(|receiver| param_default_expression_supported(&receiver))
     })
-}
-
-fn syntax_host_field_path(
-    source: SourceId,
-    expression: &SyntaxExpression,
-) -> Option<(String, vela_common::Span, Vec<String>)> {
-    match expression.expression_kind() {
-        SyntaxExpressionKind::Path => {
-            let path = expression.as_path()?;
-            let mut segments = path.path_segments();
-            let root = segments.first()?.clone();
-            let fields = segments.split_off(1);
-            Some((root, span_for(source, expression), fields))
-        }
-        SyntaxExpressionKind::Paren => {
-            let inner = expression.as_paren()?.expression()?;
-            syntax_host_field_path(source, &inner)
-        }
-        SyntaxExpressionKind::Field => {
-            let field = expression.as_field()?;
-            let receiver = field.receiver()?;
-            let name = field.name_text()?;
-            let (root, span, mut fields) = syntax_host_field_path(source, &receiver)?;
-            fields.push(name);
-            Some((root, span, fields))
-        }
-        SyntaxExpressionKind::Literal
-        | SyntaxExpressionKind::Unit
-        | SyntaxExpressionKind::Tuple
-        | SyntaxExpressionKind::Unary
-        | SyntaxExpressionKind::Binary
-        | SyntaxExpressionKind::Array
-        | SyntaxExpressionKind::Map
-        | SyntaxExpressionKind::Record
-        | SyntaxExpressionKind::Try
-        | SyntaxExpressionKind::Block
-        | SyntaxExpressionKind::If
-        | SyntaxExpressionKind::Index
-        | SyntaxExpressionKind::Call
-        | SyntaxExpressionKind::Assign
-        | SyntaxExpressionKind::Lambda
-        | SyntaxExpressionKind::Match => None,
-    }
 }

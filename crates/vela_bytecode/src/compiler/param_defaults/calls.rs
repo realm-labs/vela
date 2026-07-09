@@ -28,14 +28,13 @@ impl Compiler<'_, '_> {
         let Some(callee) = call.callee() else {
             return Err(param_default_unsupported(source, expression));
         };
-        let Some(path) = callee.as_path() else {
+        let call_span = span_for(source, expression);
+        let Some(path) = self
+            .expression_at_span(call_span)
+            .and_then(|call| self.hir_callee_path(call).map(<[String]>::to_vec))
+        else {
             return Err(param_default_unsupported(source, expression));
         };
-        let path = path.path_segments();
-        if path.is_empty() {
-            return Err(param_default_unsupported(source, expression));
-        }
-        let call_span = span_for(source, expression);
         let callee_span = span_for(source, &callee);
         let args = syntax_call_arguments(source, call)?;
         let dst = self.alloc_register()?;
