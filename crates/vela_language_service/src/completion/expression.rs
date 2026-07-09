@@ -1,7 +1,7 @@
 use vela_analysis::registry::RegistryFacts;
 use vela_hir::module_graph::ModuleGraph;
 
-use crate::QueryContext;
+use crate::{LanguageServiceDatabases, QueryContext};
 
 use super::{
     CompletionContext, CompletionItem,
@@ -19,12 +19,13 @@ use super::{
 };
 
 pub(super) fn expression_completion_items(
+    databases: &LanguageServiceDatabases,
     graph: &ModuleGraph,
     schema: &RegistryFacts,
     query: &QueryContext<'_>,
     context: &CompletionContext,
 ) -> Vec<CompletionItem> {
-    let mut items = local_completion_items(graph, query, context);
+    let mut items = local_completion_items(databases, graph, query, context);
     items.extend(builtin_value_completion_items(context.prefix()));
     items.extend(schema_type_completion_items(
         schema,
@@ -69,10 +70,11 @@ pub(super) fn expression_completion_items(
 }
 
 pub(super) fn statement_expression_completion_items(
+    databases: &LanguageServiceDatabases,
     graph: &ModuleGraph,
     schema: &RegistryFacts,
     query: &QueryContext<'_>,
     context: &CompletionContext,
 ) -> Vec<CompletionItem> {
-    expression_completion_items(graph, schema, query, context)
+    expression_completion_items(databases, graph, schema, query, context)
 }

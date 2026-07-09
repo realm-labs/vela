@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 mod owners;
+mod patterns;
 mod type_hints;
 
 #[cfg(test)]
@@ -20,8 +21,8 @@ use vela_hir::{
 use vela_syntax::ast::{
     AstNode, BinaryOp, Literal, SyntaxArgument, SyntaxBlock, SyntaxConstItem, SyntaxExpression,
     SyntaxExpressionKind, SyntaxFunctionItem, SyntaxIfExpr, SyntaxImplItem, SyntaxLambdaBody,
-    SyntaxMatchArmBody, SyntaxParam, SyntaxPattern, SyntaxSourceFile, SyntaxStatement,
-    SyntaxStatementKind, SyntaxTraitItem, SyntaxTypeHint, UnaryOp,
+    SyntaxMatchArmBody, SyntaxParam, SyntaxSourceFile, SyntaxStatement, SyntaxStatementKind,
+    SyntaxTraitItem, SyntaxTypeHint, UnaryOp,
 };
 use vela_syntax::{Parse as SyntaxParse, TextRange as SyntaxTextRange};
 
@@ -32,6 +33,7 @@ use self::owners::{
     declaration_name_matches, declaration_scope, impl_target_matches, record_owner_names,
     trait_declaration_for_path, trait_owner_names,
 };
+use self::patterns::insert_pattern_scope_facts;
 use self::type_hints::type_fact_from_syntax_hint;
 
 pub(crate) fn collect(
@@ -179,7 +181,7 @@ impl ExpressionFactCollector<'_> {
                         if let Some(name) = statement.name_text() {
                             scope.insert_path([name], fact);
                         } else if let Some(pattern) = statement.pattern() {
-                            insert_pattern_facts(scope, &pattern, &fact);
+                            self.insert_pattern_facts(scope, &pattern, &fact);
                         }
                     }
                 } else if let Some(type_hint) = statement.type_hint() {
@@ -187,7 +189,7 @@ impl ExpressionFactCollector<'_> {
                     if let Some(name) = statement.name_text() {
                         scope.insert_path([name], fact);
                     } else if let Some(pattern) = statement.pattern() {
-                        insert_pattern_facts(scope, &pattern, &fact);
+                        self.insert_pattern_facts(scope, &pattern, &fact);
                     }
                 }
             }
@@ -212,7 +214,7 @@ impl ExpressionFactCollector<'_> {
                         if let (Some(pattern), Some(fact)) =
                             (statement.value_pattern(), item_fact.as_ref())
                         {
-                            insert_pattern_facts(&mut body_scope, &pattern, fact);
+                            self.insert_pattern_facts(&mut body_scope, &pattern, fact);
                         }
                         self.collect_block(&body, &mut body_scope);
                     }
@@ -250,7 +252,7 @@ impl ExpressionFactCollector<'_> {
                         if let (Some(pattern), Some(fact)) =
                             (arm.pattern(), scrutinee_fact.as_ref())
                         {
-                            insert_pattern_facts(&mut arm_scope, &pattern, fact);
+                            self.insert_pattern_facts(&mut arm_scope, &pattern, fact);
                         }
                         if let Some(guard) = arm.guard() {
                             self.collect_expr(&guard, &mut arm_scope);
@@ -406,7 +408,7 @@ impl ExpressionFactCollector<'_> {
                         if let (Some(pattern), Some(fact)) =
                             (arm.pattern(), scrutinee_fact.as_ref())
                         {
-                            insert_pattern_facts(&mut arm_scope, &pattern, fact);
+                            self.insert_pattern_facts(&mut arm_scope, &pattern, fact);
                         }
                         if let Some(guard) = arm.guard() {
                             self.collect_expr(&guard, &mut arm_scope);
@@ -610,7 +612,7 @@ impl ExpressionFactCollector<'_> {
                 TypeFact::union(expr.arms().into_iter().filter_map(|arm| {
                     let mut arm_scope = scope.clone();
                     if let (Some(pattern), Some(fact)) = (arm.pattern(), scrutinee_fact.as_ref()) {
-                        insert_pattern_facts(&mut arm_scope, &pattern, fact);
+                        insert_pattern_scope_facts(&mut arm_scope, &pattern, fact);
                     }
                     match arm.body() {
                         Some(SyntaxMatchArmBody::Expression(body)) => {
@@ -1013,30 +1015,6 @@ fn try_fact(value: TypeFact) -> TypeFact {
         TypeFact::ResultErr { .. } => TypeFact::Never,
         TypeFact::Union(facts) => TypeFact::union(facts.into_iter().map(try_fact)),
         _ => TypeFact::Unknown,
-    }
-}
-
-fn insert_pattern_facts(scope: &mut ExprFactScope, pattern: &SyntaxPattern, fact: &TypeFact) {
-    if let Some(name) = pattern.binding_name() {
-        scope.insert_path([name], fact.clone());
-        return;
-    }
-
-    let Some(tuple) = pattern.tuple_pattern() else {
-        return;
-    };
-    if tuple.path_text().is_some() {
-        return;
-    }
-    let TypeFact::Tuple { elements } = fact else {
-        return;
-    };
-    let patterns = tuple.patterns().collect::<Vec<_>>();
-    if patterns.len() != elements.len() {
-        return;
-    }
-    for (pattern, element) in patterns.iter().zip(elements) {
-        insert_pattern_facts(scope, pattern, element);
     }
 }
 

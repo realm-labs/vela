@@ -1060,3 +1060,5 @@ fn is_identifier_continue(ch: char) -> bool {
 mod source_return_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tuple_destructuring_tests;

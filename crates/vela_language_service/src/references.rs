@@ -1192,6 +1192,8 @@ mod source_return_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tuple_destructuring_tests;
+#[cfg(test)]
 mod value_tests;
 #[cfg(test)]
 mod variant_field_tests;

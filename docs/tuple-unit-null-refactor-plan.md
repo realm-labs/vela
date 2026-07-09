@@ -633,8 +633,9 @@ Focused validation:
   produce language-service expression facts for downstream hover, inlay,
   completion, and diagnostic queries. Tuple destructuring bindings introduced
   by `let`, `for`, and `match` now inherit element facts for the same
-  downstream tooling queries, and hover plus inlay type hints now surface
-  those element facts at user-facing binding uses.
+  downstream tooling queries. Completion, hover, inlay type hints, go to
+  definition, references, and rename now treat tuple destructuring bindings as
+  ordinary source-owned locals with element facts and declaration-token spans.
 - [x] Replace user-facing null placeholders with `()`, `Option::None`, or
   typed fixits. Active docs, examples, editor grammar, and website audits no
   longer show Vela-language null placeholders. The surviving active

@@ -35,6 +35,8 @@ mod stdlib_function;
 mod struct_field;
 #[cfg(test)]
 mod struct_field_tests;
+#[cfg(test)]
+mod tuple_destructuring_tests;
 mod type_display;
 mod type_hint;
 #[cfg(test)]
@@ -141,6 +143,7 @@ impl LanguageServiceDatabases {
         context: &CompletionContext,
     ) -> Vec<CompletionItem> {
         expression_context_completion_items(
+            self,
             self.hir_db().graph(),
             self.schema_db().facts(),
             query,
@@ -164,6 +167,7 @@ impl LanguageServiceDatabases {
     ) -> Vec<CompletionItem> {
         let mut items = statement_keyword_completions(context.prefix());
         items.extend(statement_expression_context_completion_items(
+            self,
             self.hir_db().graph(),
             self.schema_db().facts(),
             query,

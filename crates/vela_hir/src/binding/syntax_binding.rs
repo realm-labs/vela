@@ -454,8 +454,13 @@ impl<'a> SyntaxBindingLowerer<'a> {
     fn bind_pattern(&mut self, pattern: &SyntaxPattern, span: Span, kind: LocalBindingKind) {
         match pattern.pattern_kind() {
             Some(SyntaxPatternKind::Binding) => {
-                if let Some(name) = pattern.binding_name() {
-                    self.declare_local(name, kind, None, span);
+                if let Some(name_token) = pattern.binding_name_token() {
+                    self.declare_local(
+                        name_token.text().to_owned(),
+                        kind,
+                        None,
+                        span_for(self.source, name_token.text_range()),
+                    );
                 }
             }
             Some(SyntaxPatternKind::TupleVariant) => {
@@ -491,8 +496,13 @@ impl<'a> SyntaxBindingLowerer<'a> {
     ) {
         if let Some(pattern) = field.pattern() {
             self.bind_pattern(&pattern, span, kind);
-        } else if let Some(name) = field.label_text() {
-            self.declare_local(name, kind, None, span);
+        } else if let Some(name_token) = field.shorthand_binding_name_token() {
+            self.declare_local(
+                name_token.text().to_owned(),
+                kind,
+                None,
+                span_for(self.source, name_token.text_range()),
+            );
         }
     }
 

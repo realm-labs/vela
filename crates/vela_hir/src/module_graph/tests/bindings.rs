@@ -481,6 +481,51 @@ fn main(rewards) {
 }
 
 #[test]
+fn tuple_pattern_bindings_use_binding_token_spans() {
+    let text = r#"
+fn main(pairs) {
+    let (first_name, score_value) = ("Ada", 1);
+    for (loop_name, loop_score) in pairs {
+        loop_score;
+    }
+    match ("Grace", 2) {
+        (match_name, match_score) => match_name
+    }
+}
+"#;
+    let mut graph = ModuleGraph::new();
+    let module = graph.add_source(source(1, "game::reward", text));
+    let main = graph
+        .module(module)
+        .and_then(|module| module.get("main"))
+        .expect("main declaration");
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+    let bindings = graph.bindings(main).expect("main bindings");
+
+    for (name, kind) in [
+        ("first_name", LocalBindingKind::Let),
+        ("score_value", LocalBindingKind::Let),
+        ("loop_name", LocalBindingKind::For),
+        ("loop_score", LocalBindingKind::For),
+        ("match_name", LocalBindingKind::Pattern),
+        ("match_score", LocalBindingKind::Pattern),
+    ] {
+        let [local] = bindings.locals_named(name) else {
+            panic!("expected one {name} binding");
+        };
+        let start = text.find(name).expect("binding token should exist");
+        assert_eq!(
+            bindings.local(*local).map(|local| (local.kind, local.span)),
+            Some((
+                kind,
+                Span::new(SourceId::new(1), start as u32, (start + name.len()) as u32)
+            )),
+            "{name} binding should use token span"
+        );
+    }
+}
+
+#[test]
 fn binding_reports_unresolved_match_arm_body_paths() {
     let mut graph = ModuleGraph::new();
     graph.add_source(source(
