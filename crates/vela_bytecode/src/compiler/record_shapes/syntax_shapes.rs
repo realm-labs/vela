@@ -200,29 +200,23 @@ impl Compiler<'_, '_> {
         expression: &SyntaxExpression,
     ) -> Option<ValueShape> {
         let path = expression.as_path()?;
-        let local_shape = source
+        let expression_id = source
             .map(|source| syntax_expression_span(source, expression))
-            .and_then(|span| {
-                self.local_at_span(span)
-                    .and_then(|local| self.value_shapes.local(local))
-            })
+            .and_then(|span| self.expression_at_span(span));
+        let local_shape = expression_id
+            .and_then(|expression| self.local_for_expression(expression))
+            .and_then(|local| self.value_shapes.local(local))
             .or_else(|| {
-                source
-                    .map(|source| syntax_expression_span(source, expression))
-                    .and_then(|span| {
-                        self.local_at_span(span)
-                            .and_then(|local| self.script_types.local(local))
-                    })
+                expression_id
+                    .and_then(|expression| self.local_for_expression(expression))
+                    .and_then(|local| self.script_types.local(local))
                     .and_then(|type_name| self.record_shape_for_type(&type_name))
                     .map(ValueShape::Record)
             })
             .or_else(|| {
-                source
-                    .map(|source| syntax_expression_span(source, expression))
-                    .and_then(|span| {
-                        self.local_at_span(span)
-                            .and_then(|local| self.value_types.local(local))
-                    })
+                expression_id
+                    .and_then(|expression| self.local_for_expression(expression))
+                    .and_then(|local| self.value_types.local(local))
                     .map(ValueShape::from_runtime_type)
             });
         if path.is_self() {

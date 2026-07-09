@@ -201,7 +201,10 @@ path, local, and `self` receiver facts from HIR/binding records, so the old
 `CompilerExpressionPayload` type and expression-payload module have been
 deleted. Path value flow now resolves local script/value/shape facts through
 `HirExprId` binding records instead of `local_at_span` lookups in
-`path_values`.
+`path_values`. Compiler path, host-root, parameter-default static type, and
+value/record shape queries now share HIR expression local/global fact helpers,
+and the old generic span-resolution helpers have been deleted; only
+pattern-local span lookup remains for the next binding-pattern slice.
 Heavy HIR will next move remaining body facts, language-service queries, and
 bytecode lowering away from body-level syntax reconstruction. MIR will then add
 an internal `vela_mir`

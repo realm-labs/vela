@@ -881,7 +881,8 @@ impl super::Compiler<'_, '_> {
             expression,
             source,
             &|span| {
-                self.local_at_span(span)
+                self.expression_at_span(span)
+                    .and_then(|expression| self.local_for_expression(expression))
                     .and_then(|local| self.value_types.local(local))
             },
             &|name| self.value_types.name(name),
@@ -898,7 +899,8 @@ impl super::Compiler<'_, '_> {
             expression,
             source,
             &|span| {
-                self.local_at_span(span)
+                self.expression_at_span(span)
+                    .and_then(|expression| self.local_for_expression(expression))
                     .and_then(|local| self.value_types.local(local))
             },
             &|name| self.value_types.name(name),

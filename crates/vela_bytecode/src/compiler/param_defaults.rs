@@ -410,8 +410,9 @@ impl Compiler<'_, '_> {
                 .map_or(StaticExprType::Dynamic, syntax_literal_static_type),
             SyntaxExpressionKind::Path => {
                 let span = span_for(source, expression);
-                if let Some(fact) = self
-                    .local_at_span(span)
+                let expression_id = self.expression_at_span(span);
+                if let Some(fact) = expression_id
+                    .and_then(|expression| self.local_for_expression(expression))
                     .and_then(|local| self.value_types.local(local))
                 {
                     StaticExprType::Exact(fact)

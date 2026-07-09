@@ -1,6 +1,6 @@
 use vela_common::Span;
-use vela_hir::binding::{BindingResolution, LocalBindingKind};
-use vela_hir::ids::{HirExprId, HirLocalId};
+use vela_hir::binding::LocalBindingKind;
+use vela_hir::ids::HirExprId;
 use vela_syntax::ast::{AstNode, SyntaxExpression};
 
 use crate::{
@@ -257,13 +257,6 @@ impl Compiler<'_, '_> {
                     .and_then(|type_name| self.record_shape_for_type(&type_name))
                     .map(ValueShape::Record)
             })
-    }
-
-    fn local_for_expression(&self, expression: HirExprId) -> Option<HirLocalId> {
-        let BindingResolution::Local(local) = self.bindings.resolution(expression)? else {
-            return None;
-        };
-        Some(*local)
     }
 }
 

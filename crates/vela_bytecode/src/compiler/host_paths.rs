@@ -289,9 +289,13 @@ impl Compiler<'_, '_> {
         }
     }
     pub(super) fn host_local_type_name(&self, name: &str, span: Span) -> Option<String> {
-        self.local_at_span(span)
+        let expression = self.expression_at_span(span);
+        expression
+            .and_then(|expression| self.local_for_expression(expression))
             .and_then(|local| self.script_types.local(local))
-            .or_else(|| self.global_type_at_span(span))
+            .or_else(|| {
+                expression.and_then(|expression| self.global_type_for_expression(expression))
+            })
             .or_else(|| self.script_types.name(name))
             .or_else(|| self.global_type_named(name))
     }

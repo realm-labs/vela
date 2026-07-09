@@ -1023,11 +1023,10 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             .find_map(|expression| (expression.origin.span == span).then_some(expression.id))
     }
 
-    pub(in crate::compiler) fn binding_resolution_at_span(
+    pub(in crate::compiler) fn binding_resolution_for_expression(
         &self,
-        span: Span,
+        expression: HirExprId,
     ) -> Option<&BindingResolution> {
-        let expression = self.expression_at_span(span)?;
         self.bindings.resolution(expression)
     }
 
@@ -1043,8 +1042,12 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         self.bindings.resolution(callee)
     }
 
-    pub(in crate::compiler) fn local_at_span(&self, span: Span) -> Option<HirLocalId> {
-        let BindingResolution::Local(local) = self.binding_resolution_at_span(span)? else {
+    pub(in crate::compiler) fn local_for_expression(
+        &self,
+        expression: HirExprId,
+    ) -> Option<HirLocalId> {
+        let BindingResolution::Local(local) = self.binding_resolution_for_expression(expression)?
+        else {
             return None;
         };
         Some(*local)
@@ -1146,9 +1149,12 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         Some(*local)
     }
 
-    fn global_type_at_span(&self, span: Span) -> Option<String> {
+    pub(in crate::compiler) fn global_type_for_expression(
+        &self,
+        expression: HirExprId,
+    ) -> Option<String> {
         let Some(BindingResolution::Declaration(declaration)) =
-            self.binding_resolution_at_span(span)
+            self.binding_resolution_for_expression(expression)
         else {
             return None;
         };
