@@ -206,8 +206,9 @@ instead of callee/member syntax reconstruction.
 Bytecode parameter-default field lowering now reads record/host field names
 and receiver expressions from HIR field facts instead of field-expression
 syntax.
-Bytecode record-shape inference now reads field and method member names from
-HIR field facts for direct and lambda-local shape queries.
+Bytecode record-shape inference now reads field and method member names plus
+receiver expressions from HIR call/field facts for direct and lambda-local
+shape queries.
 Bytecode schema-default payload collection now keys default expressions to
 struct and enum field identity through HIR metadata spans instead of parsed
 type, variant, and field names.

@@ -8,6 +8,7 @@ use vela_syntax::ast::{
 
 use crate::compiler::Compiler;
 use crate::compiler::value_types::{RuntimeTypeFact, StandardRuntimeType};
+use vela_hir::ids::HirExprId;
 
 use super::{RecordFieldShape, RecordShape, ValueShape, common_shape, record_reflection_shapes};
 
@@ -209,15 +210,14 @@ impl Compiler<'_, '_> {
         source: Option<SourceId>,
         expression: &SyntaxExpression,
     ) -> Option<ValueShape> {
-        let field = expression.as_field()?;
-        let receiver = field.receiver()?;
         let source = source?;
-        let name = self
-            .hir_field_name_for_span(syntax_expression_span(source, expression))?
-            .to_owned();
+        let span = syntax_expression_span(source, expression);
+        let field = self.hir_field_for_span(span)?;
+        let receiver_span = self.expression_span(field.receiver)?;
+        let receiver = syntax_shape_expression_at_span(source, expression, receiver_span)?;
         self.value_shape_for_syntax_expression(Some(source), &receiver)?
             .as_record()?
-            .field_value_shape(&name)
+            .field_value_shape(&field.name)
             .cloned()
     }
 
@@ -282,14 +282,14 @@ impl Compiler<'_, '_> {
     ) -> Option<ValueShape> {
         let call = expression.as_call()?;
         let args = call.arguments();
-        if let Some(path) = source
-            .and_then(|source| self.expression_at_span(syntax_expression_span(source, expression)))
-            .and_then(|call| self.hir_callee_path(call))
-        {
-            return self.native_call_shape(source, path, &args);
+        let source = source?;
+        let call_expression =
+            self.expression_at_span(syntax_expression_span(source, expression))?;
+        if let Some(path) = self.hir_callee_path(call_expression) {
+            return self.native_call_shape(Some(source), path, &args);
         }
-        let callee = call.callee()?;
-        self.method_call_shape(source, &callee, &args)
+        let callee = self.call_callee_expression(call_expression)?;
+        self.method_call_shape(Some(source), expression, callee, &args)
     }
 
     fn native_call_shape(
@@ -358,16 +358,19 @@ impl Compiler<'_, '_> {
     fn method_call_shape(
         &self,
         source: Option<SourceId>,
-        callee: &SyntaxExpression,
+        call_expression: &SyntaxExpression,
+        callee: HirExprId,
         args: &[SyntaxArgument],
     ) -> Option<ValueShape> {
-        let field = callee.as_field()?;
-        let receiver = field.receiver()?;
-        let receiver = self.value_shape_for_syntax_expression(source, &receiver)?;
-        let method = self
-            .hir_field_name_for_span(syntax_expression_span(source?, callee))?
-            .to_owned();
-        match method.as_str() {
+        let source_id = source?;
+        let field = self.hir_field_for_expression(callee)?;
+        let receiver_span = self.expression_span(field.receiver)?;
+        let receiver_expression =
+            syntax_shape_expression_at_span(source_id, call_expression, receiver_span)?;
+        let source = Some(source_id);
+        let receiver = self.value_shape_for_syntax_expression(source, &receiver_expression)?;
+        let method = field.name.as_str();
+        match method {
             "to_upper" | "to_lower" | "trim" | "trim_start" | "trim_end" | "replace" | "repeat"
             | "join" => Some(string_shape()),
             "len" | "count" | "sum" => Some(ValueShape::Scalar("i64".to_owned())),
@@ -806,15 +809,14 @@ impl Compiler<'_, '_> {
         expression: &SyntaxExpression,
         local_shapes: &BTreeMap<String, ValueShape>,
     ) -> Option<ValueShape> {
-        let field = expression.as_field()?;
-        let receiver = field.receiver()?;
         let source = source?;
-        let name = self
-            .hir_field_name_for_span(syntax_expression_span(source, expression))?
-            .to_owned();
+        let span = syntax_expression_span(source, expression);
+        let field = self.hir_field_for_span(span)?;
+        let receiver_span = self.expression_span(field.receiver)?;
+        let receiver = syntax_shape_expression_at_span(source, expression, receiver_span)?;
         self.value_shape_for_syntax_expression_with_locals(Some(source), &receiver, local_shapes)?
             .as_record()?
-            .field_value_shape(&name)
+            .field_value_shape(&field.name)
             .cloned()
     }
 
@@ -839,16 +841,21 @@ impl Compiler<'_, '_> {
         expression: &SyntaxExpression,
         local_shapes: &BTreeMap<String, ValueShape>,
     ) -> Option<ValueShape> {
-        let call = expression.as_call()?;
-        let callee = call.callee()?;
-        let field = callee.as_field()?;
-        let receiver = field.receiver()?;
-        let receiver =
-            self.value_shape_for_syntax_expression_with_locals(source, &receiver, local_shapes)?;
-        let method = self
-            .hir_field_name_for_span(syntax_expression_span(source?, &callee))?
-            .to_owned();
-        match method.as_str() {
+        expression.as_call()?;
+        let source_id = source?;
+        let call_expression =
+            self.expression_at_span(syntax_expression_span(source_id, expression))?;
+        let callee = self.call_callee_expression(call_expression)?;
+        let field = self.hir_field_for_expression(callee)?;
+        let receiver_span = self.expression_span(field.receiver)?;
+        let receiver = syntax_shape_expression_at_span(source_id, expression, receiver_span)?;
+        let receiver = self.value_shape_for_syntax_expression_with_locals(
+            Some(source_id),
+            &receiver,
+            local_shapes,
+        )?;
+        let method = field.name.as_str();
+        match method {
             "to_upper" | "to_lower" | "trim" | "trim_start" | "trim_end" | "replace" | "repeat"
             | "join" => Some(string_shape()),
             "len" | "count" | "sum" => Some(ValueShape::Scalar("i64".to_owned())),
@@ -1000,4 +1007,19 @@ fn unwrap_try_shape(shape: ValueShape) -> Option<ValueShape> {
 fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {
     let range = expression.syntax().text_range();
     Span::new(source, range.start().into(), range.end().into())
+}
+
+fn syntax_shape_expression_at_span(
+    source: SourceId,
+    expression: &SyntaxExpression,
+    span: Span,
+) -> Option<SyntaxExpression> {
+    if span.source != source {
+        return None;
+    }
+    expression
+        .syntax()
+        .descendants()
+        .filter_map(SyntaxExpression::cast)
+        .find(|child| syntax_expression_span(source, child) == span)
 }

@@ -203,6 +203,42 @@ fn main() {
 }
 
 #[test]
+fn compiler_uses_hir_receivers_for_callback_field_method_shapes() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+struct Bag {
+    tags: Array<String>,
+}
+
+fn main() {
+    let bags = [Bag { tags: ["daily", "quest"] }];
+    return bags.map(|bag| bag.tags.join(",")).join("|");
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("callback field method shape should compile");
+    let main = program.function("main").expect("main function");
+    let unresolved = nested_method_names(main);
+    let methods = nested_method_id_names(main);
+
+    assert!(
+        unresolved.is_empty(),
+        "expected callback field method chain to lower method IDs, unresolved: {unresolved:?}"
+    );
+    assert!(methods.iter().any(|method| method == "map"));
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.as_str() == "join")
+            .count(),
+        2
+    );
+}
+
+#[test]
 fn compiler_lowers_value_method_ids_in_option_result_helper_chains() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     let program = compile_program_source_with_registry(
