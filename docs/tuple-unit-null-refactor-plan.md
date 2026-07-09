@@ -627,7 +627,9 @@ Focused validation:
   display now preserve structural type facts through the language-service
   query layer and LSP-focused validation. LSP hover and signature-help tests
   now also cover precise stdlib `Option<T>` returns for string parse/split and
-  array lookup methods.
+  array lookup methods. Unannotated unit and tuple expressions now also
+  produce language-service expression facts for downstream hover, inlay,
+  completion, and diagnostic queries.
 - [x] Replace user-facing null placeholders with `()`, `Option::None`, or
   typed fixits. Active docs, examples, editor grammar, and website audits no
   longer show Vela-language null placeholders. The surviving active

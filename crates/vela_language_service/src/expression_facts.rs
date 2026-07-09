@@ -2,6 +2,9 @@ use std::collections::BTreeMap;
 
 mod owners;
 
+#[cfg(test)]
+mod tests;
+
 use vela_analysis::{
     fact_scope::ExprFactScope,
     registry::RegistryFacts,
@@ -471,7 +474,13 @@ impl ExpressionFactCollector<'_> {
                 .map_or(TypeFact::Unknown, |expr| {
                     self.type_fact_from_expr(&expr, scope)
                 }),
-            SyntaxExpressionKind::Unit | SyntaxExpressionKind::Tuple => TypeFact::Unknown,
+            SyntaxExpressionKind::Unit => TypeFact::UNIT,
+            SyntaxExpressionKind::Tuple => expr.as_tuple().map_or(TypeFact::Unknown, |expr| {
+                TypeFact::tuple(
+                    expr.expressions()
+                        .map(|value| self.type_fact_from_expr(&value, scope)),
+                )
+            }),
             SyntaxExpressionKind::Unary => expr
                 .as_unary()
                 .and_then(|expr| {
