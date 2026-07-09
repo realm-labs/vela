@@ -929,9 +929,7 @@ impl TypeHintCollector<'_, '_> {
                     && let Some(base) = field.receiver()
                 {
                     self.collect_expr(&base);
-                    if let Some(name) = field.name_text() {
-                        self.collect_field_hint(expr, &base, &name);
-                    }
+                    self.collect_field_hint(expr);
                 }
             }
             SyntaxExpressionKind::Call => {
@@ -1040,29 +1038,35 @@ impl TypeHintCollector<'_, '_> {
         }
     }
 
-    fn collect_field_hint(&mut self, expr: &SyntaxExpression, base: &SyntaxExpression, name: &str) {
-        let Some(TypeFact::Host { name: owner }) = self.expression_fact(base) else {
+    fn collect_field_hint(&mut self, expr: &SyntaxExpression) {
+        let Some(expression) = self.hir_expression(expr) else {
             return;
         };
-        let Some(fact) = self.expression_fact(expr) else {
+        let Some(field) = self
+            .graph
+            .fields_in_source(self.source_id)
+            .find(|field| field.expression == expression)
+        else {
             return;
         };
-        let Some(label) = type_hint_label(&fact) else {
+        let Some(TypeFact::Host { name: owner }) = self.expression_facts.get(field.receiver) else {
             return;
         };
-        let Some(field) = expr.as_field() else {
+        let Some(fact) = self.expression_facts.get(expression) else {
             return;
         };
-        let Some(name_token) = field.name_token() else {
+        let Some(label) = type_hint_label(fact) else {
             return;
         };
-        let position_offset = text_size_to_usize(name_token.text_range().end());
+        let Ok(position_offset) = usize::try_from(field.member_origin.span.end) else {
+            return;
+        };
         if self.range.contains(position_offset) {
             self.hints.push(InlayHint {
                 position: self.line_index.position(position_offset),
                 label,
                 kind: InlayHintKind::Type,
-                symbol: Some(schema_member_symbol(&owner, name)),
+                symbol: Some(schema_member_symbol(owner, &field.name)),
             });
         }
     }
@@ -1142,6 +1146,11 @@ impl TypeHintCollector<'_, '_> {
         })?;
         stdlib_method_fact_with_lambda_arity(receiver, &field.name, None, Some(param_count))
             .and_then(|fact| fact.lambda.map(|lambda| lambda.params))
+    }
+
+    fn hir_expression(&self, expr: &SyntaxExpression) -> Option<vela_hir::ids::HirExprId> {
+        self.graph
+            .expression_at_span(syntax_node_span(self.source_id, expr.syntax().text_range()))
     }
 
     fn expression_fact(&self, expr: &SyntaxExpression) -> Option<TypeFact> {

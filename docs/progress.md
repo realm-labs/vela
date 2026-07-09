@@ -184,7 +184,9 @@ edits; the old CST call/member cursor helper modules have been deleted. Inlay
 parameter hints now resolve complete call targets from HIR call, callee-path,
 and member-field facts instead of reconstructing callable labels from callee
 syntax, and stdlib lambda-parameter type hints use the same HIR member-call
-facts for method receiver and target identity.
+facts for method receiver and target identity. Host field type inlay hints now
+read receiver, member name, and member span from HIR field facts instead of
+field syntax reconstruction.
 Incremental language-service updates now rebuild Heavy HIR for body-only source
 edits so HIR-owned call/member/path/body facts stay current while
 declaration/import indexes remain reusable. Semantic-token local record facts
