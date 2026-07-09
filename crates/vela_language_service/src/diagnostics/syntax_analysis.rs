@@ -16,7 +16,8 @@ use vela_hir::{
     module_graph::{Declaration, DeclarationKind, ModuleGraph},
 };
 use vela_syntax::ast::{
-    AstNode, SyntaxMatchExpr, SyntaxPattern, SyntaxPatternKind, SyntaxRecordExpr, SyntaxSourceFile,
+    AstNode, SyntaxLetStmt, SyntaxMatchExpr, SyntaxPattern, SyntaxPatternKind, SyntaxRecordExpr,
+    SyntaxSourceFile,
 };
 use vela_syntax::{Parse as SyntaxParse, TextRange as SyntaxTextRange};
 
@@ -80,12 +81,63 @@ pub(super) fn source_diagnostics(
         &expression_facts,
         facts,
     ));
+    diagnostics.extend(tuple_destructuring_diagnostics(
+        parsed,
+        source,
+        &expression_facts,
+    ));
     if let Some(module) = module {
         diagnostics.extend(record_constructor_diagnostics(
             parsed, source, graph, module,
         ));
     }
     diagnostics
+}
+
+fn tuple_destructuring_diagnostics(
+    parsed: &SyntaxParse<SyntaxSourceFile>,
+    source: SourceId,
+    expression_facts: &BTreeMap<(usize, usize), TypeFact>,
+) -> Vec<Diagnostic> {
+    parsed
+        .tree()
+        .syntax()
+        .descendants()
+        .filter_map(SyntaxLetStmt::cast)
+        .filter_map(|statement| diagnose_tuple_destructuring(source, &statement, expression_facts))
+        .collect()
+}
+
+fn diagnose_tuple_destructuring(
+    source: SourceId,
+    statement: &SyntaxLetStmt,
+    expression_facts: &BTreeMap<(usize, usize), TypeFact>,
+) -> Option<Diagnostic> {
+    let pattern = statement.pattern()?;
+    let tuple = pattern.tuple_pattern()?;
+    if tuple.path_text().is_some() {
+        return None;
+    }
+    let initializer = statement.initializer()?;
+    let initializer_range = text_range_key(initializer.syntax().text_range());
+    let TypeFact::Tuple { elements } = expression_facts.get(&initializer_range)? else {
+        return None;
+    };
+    let expected = tuple.patterns().count();
+    let actual = elements.len();
+    if expected == actual {
+        return None;
+    }
+
+    let span = syntax_span(source, tuple.syntax().text_range());
+    Some(
+        Diagnostic::error(format!(
+            "tuple pattern expects {expected} values but expression has {actual}"
+        ))
+        .with_code("analysis::tuple_arity_mismatch")
+        .with_span(span)
+        .with_label(span, "tuple destructuring arity does not match initializer"),
+    )
 }
 
 fn record_constructor_diagnostics(

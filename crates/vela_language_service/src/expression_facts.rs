@@ -170,16 +170,17 @@ impl ExpressionFactCollector<'_> {
                 let Some(statement) = statement.as_let() else {
                     return;
                 };
-                let Some(name) = statement.name_text() else {
-                    return;
-                };
                 if let Some(value) = statement.initializer() {
                     self.collect_expr(&value, scope);
                     let fact = self.type_fact_for_expr(&value, scope);
-                    if !matches!(fact, TypeFact::Unknown) {
+                    if !matches!(fact, TypeFact::Unknown)
+                        && let Some(name) = statement.name_text()
+                    {
                         scope.insert_path([name], fact);
                     }
-                } else if let Some(type_hint) = statement.type_hint() {
+                } else if let Some(type_hint) = statement.type_hint()
+                    && let Some(name) = statement.name_text()
+                {
                     scope.insert_path([name], self.type_fact_from_hint(&type_hint));
                 }
             }
