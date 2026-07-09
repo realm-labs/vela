@@ -99,13 +99,22 @@ fn tuple_destructuring_diagnostics(
     source: SourceId,
     expression_facts: &BTreeMap<(usize, usize), TypeFact>,
 ) -> Vec<Diagnostic> {
-    parsed
+    let mut diagnostics = parsed
         .tree()
         .syntax()
         .descendants()
         .filter_map(SyntaxLetStmt::cast)
         .filter_map(|statement| diagnose_tuple_destructuring(source, &statement, expression_facts))
-        .collect()
+        .collect::<Vec<_>>();
+    diagnostics.extend(
+        parsed
+            .tree()
+            .syntax()
+            .descendants()
+            .filter_map(SyntaxMatchExpr::cast)
+            .flat_map(|expr| diagnose_tuple_match_patterns(source, &expr, expression_facts)),
+    );
+    diagnostics
 }
 
 fn diagnose_tuple_destructuring(
@@ -129,15 +138,62 @@ fn diagnose_tuple_destructuring(
         return None;
     }
 
+    Some(tuple_arity_mismatch_diagnostic(
+        source,
+        &pattern,
+        actual,
+        "tuple destructuring arity does not match initializer",
+    ))
+}
+
+fn diagnose_tuple_match_patterns(
+    source: SourceId,
+    expr: &SyntaxMatchExpr,
+    expression_facts: &BTreeMap<(usize, usize), TypeFact>,
+) -> Vec<Diagnostic> {
+    let Some(scrutinee) = expr.scrutinee() else {
+        return Vec::new();
+    };
+    let scrutinee_range = text_range_key(scrutinee.syntax().text_range());
+    let Some(TypeFact::Tuple { elements }) = expression_facts.get(&scrutinee_range) else {
+        return Vec::new();
+    };
+    let actual = elements.len();
+    expr.arms()
+        .into_iter()
+        .filter_map(|arm| {
+            let pattern = arm.pattern()?;
+            let tuple = pattern.tuple_pattern()?;
+            if tuple.path_text().is_some() || tuple.patterns().count() == actual {
+                return None;
+            }
+            Some(tuple_arity_mismatch_diagnostic(
+                source,
+                &pattern,
+                actual,
+                "tuple match pattern arity does not match scrutinee",
+            ))
+        })
+        .collect()
+}
+
+fn tuple_arity_mismatch_diagnostic(
+    source: SourceId,
+    pattern: &SyntaxPattern,
+    actual: usize,
+    label: &'static str,
+) -> Diagnostic {
+    let tuple = pattern
+        .tuple_pattern()
+        .expect("tuple arity diagnostics require tuple patterns");
+    let expected = tuple.patterns().count();
     let span = syntax_span(source, tuple.syntax().text_range());
-    Some(
-        Diagnostic::error(format!(
-            "tuple pattern expects {expected} values but expression has {actual}"
-        ))
-        .with_code("analysis::tuple_arity_mismatch")
-        .with_span(span)
-        .with_label(span, "tuple destructuring arity does not match initializer"),
-    )
+    Diagnostic::error(format!(
+        "tuple pattern expects {expected} values but expression has {actual}"
+    ))
+    .with_code("analysis::tuple_arity_mismatch")
+    .with_span(span)
+    .with_label(span, label)
 }
 
 fn record_constructor_diagnostics(

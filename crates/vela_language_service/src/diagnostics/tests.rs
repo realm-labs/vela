@@ -614,6 +614,51 @@ pub fn main() {
 }
 
 #[test]
+fn analysis_diagnostics_report_tuple_match_arity_mismatch() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let mut db = LanguageServiceDatabases::new();
+    db.update(&project(&[file(
+        document.as_str(),
+        "\
+pub fn main() {
+    match (\"Ada\", 1) {
+        (first, last, extra) => 1,
+        (name, score) => 2,
+    }
+}",
+    )]));
+
+    let diagnostics = db.diagnostics_for_document(&document);
+
+    assert!(
+        diagnostics.diagnostics().iter().any(|diagnostic| {
+            diagnostic.code() == Some("analysis::tuple_arity_mismatch")
+                && diagnostic
+                    .message()
+                    .contains("tuple pattern expects 3 values but expression has 2")
+                && diagnostic.range().is_some()
+                && diagnostic.labels().iter().any(|label| {
+                    label
+                        .message()
+                        .contains("tuple match pattern arity does not match scrutinee")
+                })
+        }),
+        "{:?}",
+        diagnostics.diagnostics()
+    );
+    assert_eq!(
+        diagnostics
+            .diagnostics()
+            .iter()
+            .filter(|diagnostic| diagnostic.code() == Some("analysis::tuple_arity_mismatch"))
+            .count(),
+        1,
+        "{:?}",
+        diagnostics.diagnostics()
+    );
+}
+
+#[test]
 fn missing_schema_keeps_syntax_diagnostics_available() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let mut db = LanguageServiceDatabases::new();
