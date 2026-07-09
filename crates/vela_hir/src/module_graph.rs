@@ -505,6 +505,14 @@ impl ModuleGraph {
     }
 
     #[must_use]
+    pub fn expression_span(&self, expression: HirExprId) -> Option<Span> {
+        self.bodies
+            .values()
+            .find_map(|body| body.expressions.get(&expression))
+            .map(|expression| expression.origin.span)
+    }
+
+    #[must_use]
     pub fn expression_containing_span(&self, span: Span) -> Option<HirExprId> {
         self.bodies
             .values()

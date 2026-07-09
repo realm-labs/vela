@@ -10,6 +10,7 @@ use vela_syntax::ast::SyntaxSourceFile;
 use crate::{
     CursorContextKind, DiagnosticRange, DocumentId, LanguageServiceDatabases, Position,
     QueryContext, SymbolRef, TextRange, path_calls,
+    query_context::binding_resolution_for_source_range,
     symbol_ref::{
         qualified_source_declaration_name, source_enum_variant_symbol, source_impl_method_symbol,
         source_member_symbol, source_symbol_for_declaration, source_symbol_for_declaration_id,
@@ -270,7 +271,7 @@ impl LanguageServiceDatabases {
             let Some(bindings) = graph.bindings(declaration.id) else {
                 continue;
             };
-            if let Some(local) = local_reference_target(source.text(), bindings, &token) {
+            if let Some(local) = local_reference_target(graph, source.text(), bindings, &token) {
                 return self.local_references(bindings, local, include_declaration);
             }
             if let Some(target) =
@@ -306,7 +307,7 @@ impl LanguageServiceDatabases {
                     include_declaration,
                 );
             }
-            if let Some(declaration) = declaration_reference_target(bindings, &token) {
+            if let Some(declaration) = declaration_reference_target(graph, bindings, &token) {
                 return self.declaration_references(declaration, include_declaration);
             }
             let member_receiver = query
@@ -376,6 +377,7 @@ impl LanguageServiceDatabases {
         local: HirLocalId,
         include_declaration: bool,
     ) -> Vec<Reference> {
+        let graph = self.hir_db().graph();
         let mut references = Vec::new();
 
         if include_declaration
@@ -390,10 +392,10 @@ impl LanguageServiceDatabases {
                 .resolutions()
                 .filter_map(|(expression, resolution)| match resolution {
                     BindingResolution::Local(resolved) if *resolved == local => {
-                        let expression = bindings.expression(expression)?;
+                        let span = graph.expression_span(expression)?;
                         let binding = bindings.local(local)?;
                         self.reference_for_resolved_use_span(
-                            expression.span,
+                            span,
                             self.reference_local_symbol_for_binding(binding),
                         )
                     }
@@ -476,9 +478,8 @@ impl LanguageServiceDatabases {
                             BindingResolution::Declaration(resolved)
                                 if *resolved == declaration =>
                             {
-                                let expression = bindings.expression(expression)?;
                                 self.reference_for_resolved_use_span(
-                                    expression.span,
+                                    graph.expression_span(expression)?,
                                     symbol.clone(),
                                 )
                             }
@@ -900,7 +901,7 @@ fn enum_variant_use_target_for_path(
         });
     }
 
-    match narrowest_resolution_at_token(bindings, token)? {
+    match narrowest_resolution_at_token(graph, bindings, token)? {
         BindingResolution::Declaration(owner) if enum_variant_exists(graph, *owner, variant) => {
             Some(EnumVariantUseTarget {
                 target: EnumVariantReferenceTarget {
@@ -1021,10 +1022,11 @@ fn enum_variant_exists(graph: &ModuleGraph, owner: HirDeclId, variant: &str) -> 
 }
 
 fn declaration_reference_target(
+    graph: &ModuleGraph,
     bindings: &BindingMap,
     token: &ReferenceToken,
 ) -> Option<HirDeclId> {
-    let resolution = narrowest_resolution_at_token(bindings, token)?;
+    let resolution = narrowest_resolution_at_token(graph, bindings, token)?;
     match resolution {
         BindingResolution::Declaration(declaration) => Some(*declaration),
         BindingResolution::Local(_)
@@ -1034,6 +1036,7 @@ fn declaration_reference_target(
 }
 
 fn local_reference_target(
+    graph: &ModuleGraph,
     text: &str,
     bindings: &BindingMap,
     token: &ReferenceToken,
@@ -1042,7 +1045,7 @@ fn local_reference_target(
         return Some(binding.id);
     }
 
-    let resolution = narrowest_resolution_at_token(bindings, token)?;
+    let resolution = narrowest_resolution_at_token(graph, bindings, token)?;
     match resolution {
         BindingResolution::Local(local) => Some(*local),
         BindingResolution::Declaration(_)
@@ -1052,20 +1055,11 @@ fn local_reference_target(
 }
 
 fn narrowest_resolution_at_token<'a>(
+    graph: &ModuleGraph,
     bindings: &'a BindingMap,
     token: &ReferenceToken,
 ) -> Option<&'a BindingResolution> {
-    bindings
-        .resolutions()
-        .filter_map(|(expression, resolution)| {
-            let expression = bindings.expression(expression)?;
-            let start = usize::try_from(expression.span.start).ok()?;
-            let end = usize::try_from(expression.span.end).ok()?;
-            (start <= token.range.start && token.range.end <= end)
-                .then_some((end.saturating_sub(start), resolution))
-        })
-        .min_by_key(|(len, _)| *len)
-        .map(|(_, resolution)| resolution)
+    binding_resolution_for_source_range(graph, bindings, token.range)
 }
 
 fn local_declaration_at_token<'a>(

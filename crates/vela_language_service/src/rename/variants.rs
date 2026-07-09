@@ -7,7 +7,10 @@ use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::{SyntaxSourceFile, Visibility};
 
-use crate::{DocumentId, LanguageServiceDatabases, TextRange, path_calls};
+use crate::{
+    DocumentId, LanguageServiceDatabases, TextRange, path_calls,
+    query_context::binding_resolution_for_source_range,
+};
 
 use super::{
     RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, name_range_in_text, span_text_range,
@@ -114,7 +117,7 @@ fn enum_variant_use_target_for_path(
             token: token.clone(),
         });
     }
-    match narrowest_resolution_at_token(bindings, token)? {
+    match binding_resolution_for_source_range(graph, bindings, token.range)? {
         BindingResolution::Declaration(owner)
             if can_rename_enum_variant(graph, *owner, variant) =>
         {
@@ -274,21 +277,4 @@ fn enum_variant_name_conflicts(
             .iter()
             .any(|variant| variant.name == new_name && variant.name != target.variant)
     })
-}
-
-fn narrowest_resolution_at_token<'a>(
-    bindings: &'a BindingMap,
-    token: &RenameToken,
-) -> Option<&'a BindingResolution> {
-    bindings
-        .resolutions()
-        .filter_map(|(expression, resolution)| {
-            let expression = bindings.expression(expression)?;
-            let start = usize::try_from(expression.span.start).ok()?;
-            let end = usize::try_from(expression.span.end).ok()?;
-            (start <= token.range.start && token.range.end <= end)
-                .then_some((end.saturating_sub(start), resolution))
-        })
-        .min_by_key(|(len, _)| *len)
-        .map(|(_, resolution)| resolution)
 }

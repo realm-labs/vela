@@ -7,7 +7,8 @@ use vela_hir::type_hint::ImplMetadataKind;
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
-    TextRange, member_access, references::schema as reference_schema,
+    TextRange, member_access, query_context::binding_resolution_for_source_range,
+    references::schema as reference_schema,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -154,7 +155,7 @@ impl LanguageServiceDatabases {
             if scope.span.source != source_id || !scope.span.contains(offset) {
                 continue;
             }
-            if let Some(target) = declaration_call_target(scope.bindings, &token)
+            if let Some(target) = declaration_call_target(graph, scope.bindings, &token)
                 .and_then(|target| self.call_hierarchy_function_target(target))
                 && let Some(item) =
                     self.call_hierarchy_item_for_target(&CallHierarchyTarget::Function(target))
@@ -270,13 +271,14 @@ impl LanguageServiceDatabases {
         bindings: &BindingMap,
         scope_span: Span,
     ) -> Vec<(CallHierarchyTarget, DiagnosticRange)> {
+        let graph = self.hir_db().graph();
         let mut calls = bindings
             .resolutions()
             .filter_map(|(expression, resolution)| match resolution {
                 BindingResolution::Declaration(target) => {
-                    let expression = bindings.expression(expression)?;
+                    let span = graph.expression_span(expression)?;
                     let target = self.call_hierarchy_function_target(*target)?;
-                    self.call_range_for_expression(expression.span)
+                    self.call_range_for_expression(span)
                         .map(|range| (CallHierarchyTarget::Function(target), range))
                 }
                 BindingResolution::Local(_)
@@ -716,18 +718,12 @@ struct CallHierarchyToken {
     range: TextRange,
 }
 
-fn declaration_call_target(bindings: &BindingMap, token: &CallHierarchyToken) -> Option<HirDeclId> {
-    let resolution = bindings
-        .resolutions()
-        .filter_map(|(expression, resolution)| {
-            let expression = bindings.expression(expression)?;
-            let start = usize::try_from(expression.span.start).ok()?;
-            let end = usize::try_from(expression.span.end).ok()?;
-            (start <= token.range.start && token.range.end <= end)
-                .then_some((end.saturating_sub(start), resolution))
-        })
-        .min_by_key(|(len, _)| *len)?
-        .1;
+fn declaration_call_target(
+    graph: &ModuleGraph,
+    bindings: &BindingMap,
+    token: &CallHierarchyToken,
+) -> Option<HirDeclId> {
+    let resolution = binding_resolution_for_source_range(graph, bindings, token.range)?;
 
     match resolution {
         BindingResolution::Declaration(declaration) => Some(*declaration),

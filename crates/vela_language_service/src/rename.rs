@@ -12,6 +12,7 @@ use vela_syntax::token::Keyword;
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
     SymbolRef, TextRange,
+    query_context::binding_resolution_for_source_range,
     symbol_ref::{
         qualified_source_declaration_path, schema_member_symbol, schema_symbol,
         schema_variant_symbol, source_enum_variant_symbol, source_member_symbol,
@@ -140,6 +141,7 @@ impl LanguageServiceDatabases {
             return None;
         }
 
+        let graph = self.hir_db().graph();
         let mut edits = Vec::new();
         if let Some(binding) = target.bindings.local(target.local)
             && let Some(range) = local_binding_name_range(text, binding)
@@ -155,9 +157,9 @@ impl LanguageServiceDatabases {
                 .resolutions()
                 .filter_map(|(expression, resolution)| match resolution {
                     BindingResolution::Local(local) if *local == target.local => {
-                        let expression = target.bindings.expression(expression)?;
+                        let span = graph.expression_span(expression)?;
                         Some(TextEdit {
-                            range: diagnostic_range(text, span_text_range(expression.span)?),
+                            range: diagnostic_range(text, span_text_range(span)?),
                             new_text: new_name.to_owned(),
                         })
                     }
@@ -284,13 +286,13 @@ impl LanguageServiceDatabases {
                 if *resolved != declaration.id {
                     continue;
                 }
-                let Some(expression) = bindings.expression(expression) else {
+                let Some(span) = graph.expression_span(expression) else {
                     continue;
                 };
-                let Some(source) = self.source_record_for_rename(expression.span.source) else {
+                let Some(source) = self.source_record_for_rename(span.source) else {
                     continue;
                 };
-                let Some(range) = span_text_range(expression.span) else {
+                let Some(range) = span_text_range(span) else {
                     continue;
                 };
                 if token_text(source.text(), range) != Some(declaration.name.as_str()) {
@@ -507,7 +509,7 @@ fn rename_target<'a>(
                 placeholder: binding.name.clone(),
             }));
         }
-        if let Some(local) = local_use_at_token(bindings, &token)
+        if let Some(local) = local_use_at_token(graph, bindings, &token)
             && let Some(binding) = bindings.local(local)
         {
             return Some(RenameTarget::Local(LocalRenameTarget {
@@ -522,7 +524,7 @@ fn rename_target<'a>(
         {
             return Some(RenameTarget::EnumVariant(target));
         }
-        if let Some(declaration_id) = declaration_use_at_token(bindings, &token)
+        if let Some(declaration_id) = declaration_use_at_token(graph, bindings, &token)
             && let Some(target) = graph.declaration(declaration_id)
             && can_rename_declaration_target(target)
         {
@@ -867,8 +869,12 @@ pub(super) fn workspace_edit_for_rename(
     WorkspaceEdit::checked(document_edits, risks)
 }
 
-fn local_use_at_token(bindings: &BindingMap, token: &RenameToken) -> Option<HirLocalId> {
-    let resolution = narrowest_resolution_at_token(bindings, token)?;
+fn local_use_at_token(
+    graph: &ModuleGraph,
+    bindings: &BindingMap,
+    token: &RenameToken,
+) -> Option<HirLocalId> {
+    let resolution = narrowest_resolution_at_token(graph, bindings, token)?;
     match resolution {
         BindingResolution::Local(local) => Some(*local),
         BindingResolution::Declaration(_)
@@ -877,8 +883,12 @@ fn local_use_at_token(bindings: &BindingMap, token: &RenameToken) -> Option<HirL
     }
 }
 
-fn declaration_use_at_token(bindings: &BindingMap, token: &RenameToken) -> Option<HirDeclId> {
-    let resolution = narrowest_resolution_at_token(bindings, token)?;
+fn declaration_use_at_token(
+    graph: &ModuleGraph,
+    bindings: &BindingMap,
+    token: &RenameToken,
+) -> Option<HirDeclId> {
+    let resolution = narrowest_resolution_at_token(graph, bindings, token)?;
     match resolution {
         BindingResolution::Declaration(declaration) => Some(*declaration),
         BindingResolution::Local(_)
@@ -888,20 +898,11 @@ fn declaration_use_at_token(bindings: &BindingMap, token: &RenameToken) -> Optio
 }
 
 fn narrowest_resolution_at_token<'a>(
+    graph: &ModuleGraph,
     bindings: &'a BindingMap,
     token: &RenameToken,
 ) -> Option<&'a BindingResolution> {
-    bindings
-        .resolutions()
-        .filter_map(|(expression, resolution)| {
-            let expression = bindings.expression(expression)?;
-            let start = usize::try_from(expression.span.start).ok()?;
-            let end = usize::try_from(expression.span.end).ok()?;
-            (start <= token.range.start && token.range.end <= end)
-                .then_some((end.saturating_sub(start), resolution))
-        })
-        .min_by_key(|(len, _)| *len)
-        .map(|(_, resolution)| resolution)
+    binding_resolution_for_source_range(graph, bindings, token.range)
 }
 
 fn local_declaration_at_token<'a>(

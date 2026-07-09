@@ -144,6 +144,9 @@ identifier/member/unresolved/variant classification uses that HIR expression
 identity instead of body-local binding span scans. Definition, hover, and
 symbol-target queries now share the same HIR expression-to-resolution lookup
 instead of each reconstructing the narrowest binding expression from spans.
+Reference, rename, and call-hierarchy use-site ranges now read source origins
+from `ModuleGraph` HIR expressions, leaving no language-service callers of the
+old binding-local expression span table.
 Heavy HIR will next move resolution tables, body
 facts, language-service queries, and bytecode lowering away from body-level
 syntax reconstruction. MIR will then add an internal `vela_mir`

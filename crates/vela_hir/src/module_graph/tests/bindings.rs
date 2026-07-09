@@ -785,6 +785,7 @@ fn main() {
         (path_start + "Reward::Grant".len()) as u32,
     );
     assert_eq!(graph.expression_at_span(path_span), Some(expression));
+    assert_eq!(graph.expression_span(expression), Some(path_span));
 }
 
 #[test]
