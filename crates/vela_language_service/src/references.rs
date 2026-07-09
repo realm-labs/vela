@@ -29,8 +29,8 @@ mod variant_fields;
 
 use support::{
     declaration_name_matches, diagnostic_range, is_call_callee, is_identifier_boundary,
-    is_identifier_continue, last_name_range_in_text, name_range_in_text, record_owner_names,
-    resolved_use_reference_kind, span_text_range, token_text,
+    last_name_range_in_text, name_range_in_text, record_owner_names, resolved_use_reference_kind,
+    span_text_range, token_text,
 };
 
 #[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
@@ -234,9 +234,7 @@ impl LanguageServiceDatabases {
         if let Some(target) = schema::schema_variant_declaration_target(self, source_id, &token) {
             return schema::schema_variant_references(self, &target, include_declaration);
         }
-        if let Some(target) =
-            methods::script_method_declaration_target(graph, source_id, source.text(), &token)
-        {
+        if let Some(target) = methods::script_method_declaration_target(graph, source_id, &token) {
             return methods::script_method_references(self, &target, include_declaration);
         }
         if let Some(target) = schema::schema_method_declaration_target(self, source_id, &token) {

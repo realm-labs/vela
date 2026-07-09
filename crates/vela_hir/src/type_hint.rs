@@ -110,6 +110,7 @@ pub struct TraitShape {
 pub struct TraitMethodMetadata {
     pub attrs: Vec<HirAttribute>,
     pub name: String,
+    pub name_span: Span,
     pub span: Span,
     pub signature: FunctionSignature,
     pub has_default: bool,
@@ -134,6 +135,7 @@ pub enum ImplMetadataKind {
 pub struct ImplMethodMetadata {
     pub node: HirNodeId,
     pub name: String,
+    pub name_span: Span,
     pub signature: FunctionSignature,
     pub span: Span,
     pub body_span: Span,

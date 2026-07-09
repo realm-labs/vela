@@ -512,7 +512,7 @@ fn children_for_declaration(
             .filter_map(|method| {
                 symbol_from_span(
                     source,
-                    method.span,
+                    method.name_span,
                     DisplayParts::symbol(&method.name),
                     Some(signature_detail_parts(&method.signature)),
                     DocumentSymbolKind::Method,
@@ -528,7 +528,7 @@ fn children_for_declaration(
             .filter_map(|method| {
                 symbol_from_span(
                     source,
-                    method.span,
+                    method.name_span,
                     DisplayParts::symbol(&method.name),
                     Some(signature_detail_parts(&method.signature)),
                     DocumentSymbolKind::Method,

@@ -486,7 +486,7 @@ fn script_member_hover(
 
 fn script_method_hover_at_target(
     graph: &vela_hir::module_graph::ModuleGraph,
-    text: &str,
+    _text: &str,
     source_id: vela_common::SourceId,
     target: &SymbolTarget,
     range: DiagnosticRange,
@@ -501,11 +501,10 @@ fn script_method_hover_at_target(
                     .iter()
                     .find(|method| {
                         method.name == target.text()
-                            && method_name_range_in_text(text, declaration.span, &method.name)
-                                .is_some_and(|name_range| {
-                                    name_range.start <= target.range().start
-                                        && target.range().end <= name_range.end
-                                })
+                            && span_text_range(method.name_span).is_some_and(|name_range| {
+                                name_range.start <= target.range().start
+                                    && target.range().end <= name_range.end
+                            })
                     })
                     .map(|method| impl_method_hover(graph, declaration, metadata, method, range))
             }
@@ -516,11 +515,10 @@ fn script_method_hover_at_target(
                     .iter()
                     .find(|method| {
                         method.name == target.text()
-                            && method_name_range_in_text(text, declaration.span, &method.name)
-                                .is_some_and(|name_range| {
-                                    name_range.start <= target.range().start
-                                        && target.range().end <= name_range.end
-                                })
+                            && span_text_range(method.name_span).is_some_and(|name_range| {
+                                name_range.start <= target.range().start
+                                    && target.range().end <= name_range.end
+                            })
                     })
                     .map(|method| trait_method_hover(graph, declaration, method, range))
             }
@@ -1062,49 +1060,10 @@ fn qualified_module_member_label(
     }
 }
 
-fn method_name_range_in_text(text: &str, span: Span, name: &str) -> Option<TextRange> {
-    let range = span_text_range(span)?;
-    let slice = text.get(range.start..range.end)?;
-    slice.match_indices(name).find_map(|(offset, matched)| {
-        let start = range.start + offset;
-        let end = start + matched.len();
-        (is_identifier_boundary(text, start, end) && preceded_by_fn_keyword(text, start))
-            .then(|| TextRange::new(start, end))
-    })
-}
-
 fn span_text_range(span: Span) -> Option<TextRange> {
     let start = usize::try_from(span.start).ok()?;
     let end = usize::try_from(span.end).ok()?;
     Some(TextRange::new(start, end))
-}
-
-fn is_identifier_boundary(text: &str, start: usize, end: usize) -> bool {
-    let before = text
-        .get(..start)
-        .and_then(|prefix| prefix.chars().next_back());
-    let after = text.get(end..).and_then(|suffix| suffix.chars().next());
-    before.is_none_or(|ch| !is_identifier_continue(ch))
-        && after.is_none_or(|ch| !is_identifier_continue(ch))
-}
-
-fn preceded_by_fn_keyword(text: &str, start: usize) -> bool {
-    let Some(before_name) = text.get(..start).map(str::trim_end) else {
-        return false;
-    };
-    let end = before_name.len();
-    let word_start = before_name
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    if before_name.get(word_start..end) != Some("fn") {
-        return false;
-    }
-    before_name
-        .get(..word_start)
-        .and_then(|prefix| prefix.chars().next_back())
-        .is_none_or(|ch| !is_identifier_continue(ch))
 }
 
 fn stdlib_function_detail_parts(function: &StdlibFunctionFact) -> DisplayParts {
@@ -1150,10 +1109,6 @@ fn diagnostic_range(text: &str, range: TextRange) -> DiagnosticRange {
 
 fn starts_like_type_name(name: &str) -> bool {
     name.chars().next().is_some_and(char::is_uppercase)
-}
-
-fn is_identifier_continue(ch: char) -> bool {
-    ch == '_' || ch.is_ascii_alphanumeric()
 }
 
 #[cfg(test)]

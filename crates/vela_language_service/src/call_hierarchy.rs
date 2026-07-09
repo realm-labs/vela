@@ -138,14 +138,12 @@ impl LanguageServiceDatabases {
             {
                 return vec![item];
             }
-            if let Some(target) =
-                script_method_declaration_target(graph, source_id, source.text(), &token)
+            if let Some(target) = script_method_declaration_target(graph, source_id, &token)
                 && let Some(item) = self.call_hierarchy_item_for_target(&target)
             {
                 return vec![item];
             }
-            if let Some(target) =
-                trait_method_declaration_target(graph, source_id, source.text(), &token)
+            if let Some(target) = trait_method_declaration_target(graph, source_id, &token)
                 && let Some(item) = self.call_hierarchy_item_for_target(&target)
             {
                 return vec![item];
@@ -439,20 +437,17 @@ impl LanguageServiceDatabases {
         target: &ScriptMethodCallTarget,
     ) -> Option<CallHierarchyItem> {
         let graph = self.hir_db().graph();
-        let declaration = graph.declaration(target.owner)?;
         let metadata = graph.impl_metadata(target.owner)?;
         let method = metadata
             .methods
             .iter()
             .find(|method| method.node == target.method_node && method.name == target.method)?;
-        let source = self.source_record_for_call_hierarchy(declaration.span.source)?;
-        let span_range = span_text_range(declaration.span)?;
-        let name_range = method_name_range_in_text(source.text(), span_range, &method.name)
-            .unwrap_or(span_range);
+        let source = self.source_record_for_call_hierarchy(method.name_span.source)?;
+        let name_range = span_text_range(method.name_span)?;
         Some(CallHierarchyItem::new(
             method.name.clone(),
             source.document_id().clone(),
-            diagnostic_range(source.text(), span_range),
+            diagnostic_range(source.text(), name_range),
             diagnostic_range(source.text(), name_range),
         ))
     }
@@ -491,20 +486,17 @@ impl LanguageServiceDatabases {
         target: &TraitMethodCallTarget,
     ) -> Option<CallHierarchyItem> {
         let graph = self.hir_db().graph();
-        let declaration = graph.declaration(target.owner)?;
         let shape = graph.trait_shape(target.owner)?;
         let method = shape
             .methods
             .iter()
             .find(|method| method.name == target.method)?;
-        let source = self.source_record_for_call_hierarchy(declaration.span.source)?;
-        let span_range = span_text_range(declaration.span)?;
-        let name_range = method_name_range_in_text(source.text(), span_range, &method.name)
-            .unwrap_or(span_range);
+        let source = self.source_record_for_call_hierarchy(method.name_span.source)?;
+        let name_range = span_text_range(method.name_span)?;
         Some(CallHierarchyItem::new(
             method.name.clone(),
             source.document_id().clone(),
-            diagnostic_range(source.text(), span_range),
+            diagnostic_range(source.text(), name_range),
             diagnostic_range(source.text(), name_range),
         ))
     }
@@ -785,23 +777,15 @@ fn import_name_matches(
 fn script_method_declaration_target(
     graph: &ModuleGraph,
     source_id: SourceId,
-    text: &str,
     token: &CallHierarchyToken,
 ) -> Option<CallHierarchyTarget> {
-    let start = u32::try_from(token.range.start).ok()?;
     for declaration in graph.declarations() {
-        if declaration.kind != DeclarationKind::Impl
-            || declaration.span.source != source_id
-            || !declaration.span.contains(start)
-        {
+        if declaration.kind != DeclarationKind::Impl || declaration.span.source != source_id {
             continue;
         }
         let metadata = graph.impl_metadata(declaration.id)?;
-        let span_range = span_text_range(declaration.span)?;
         for method in &metadata.methods {
-            let Some(name_range) = method_name_range_in_text(text, span_range, &method.name) else {
-                continue;
-            };
+            let name_range = span_text_range(method.name_span)?;
             if name_range.start <= token.range.start && token.range.end <= name_range.end {
                 return Some(CallHierarchyTarget::Method(ScriptMethodCallTarget {
                     owner: declaration.id,
@@ -817,23 +801,15 @@ fn script_method_declaration_target(
 fn trait_method_declaration_target(
     graph: &ModuleGraph,
     source_id: SourceId,
-    text: &str,
     token: &CallHierarchyToken,
 ) -> Option<CallHierarchyTarget> {
-    let start = u32::try_from(token.range.start).ok()?;
     for declaration in graph.declarations() {
-        if declaration.kind != DeclarationKind::Trait
-            || declaration.span.source != source_id
-            || !declaration.span.contains(start)
-        {
+        if declaration.kind != DeclarationKind::Trait || declaration.span.source != source_id {
             continue;
         }
         let shape = graph.trait_shape(declaration.id)?;
-        let span_range = span_text_range(declaration.span)?;
         for method in &shape.methods {
-            let Some(name_range) = method_name_range_in_text(text, span_range, &method.name) else {
-                continue;
-            };
+            let name_range = span_text_range(method.name_span)?;
             if name_range.start <= token.range.start && token.range.end <= name_range.end {
                 return Some(CallHierarchyTarget::TraitMethod(TraitMethodCallTarget {
                     owner: declaration.id,
@@ -1125,35 +1101,6 @@ fn name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRa
         let end = start + matched.len();
         is_identifier_boundary(text, start, end).then(|| TextRange::new(start, end))
     })
-}
-
-fn method_name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRange> {
-    let slice = text.get(range.start..range.end)?;
-    slice.match_indices(name).find_map(|(offset, matched)| {
-        let start = range.start + offset;
-        let end = start + matched.len();
-        (is_identifier_boundary(text, start, end) && preceded_by_fn_keyword(text, start))
-            .then(|| TextRange::new(start, end))
-    })
-}
-
-fn preceded_by_fn_keyword(text: &str, start: usize) -> bool {
-    let Some(before_name) = text.get(..start).map(str::trim_end) else {
-        return false;
-    };
-    let end = before_name.len();
-    let word_start = before_name
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    if before_name.get(word_start..end) != Some("fn") {
-        return false;
-    }
-    before_name
-        .get(..word_start)
-        .and_then(|prefix| prefix.chars().next_back())
-        .is_none_or(|ch| !is_identifier_continue(ch))
 }
 
 fn is_identifier_boundary(text: &str, start: usize, end: usize) -> bool {

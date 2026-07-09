@@ -101,7 +101,7 @@ impl ModuleGraph {
     pub(super) fn validate_trait_shape(&mut self, shape: &TraitShape) {
         self.validate_member_names(
             &shape.methods,
-            |method| (&method.name, method.span),
+            |method| (&method.name, method.name_span),
             "trait method",
             "hir::duplicate_trait_method",
         );
@@ -118,7 +118,7 @@ impl ModuleGraph {
     pub(super) fn validate_impl_shape(&mut self, metadata: &ImplMetadata) {
         self.validate_member_names(
             &metadata.methods,
-            |method| (&method.name, method.span),
+            |method| (&method.name, method.name_span),
             "impl method",
             "hir::duplicate_impl_method",
         );

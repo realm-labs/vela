@@ -456,11 +456,13 @@ fn trait_method_metadata(
     method: &SyntaxTraitMethod,
     default_body: Option<(HirNodeId, Span)>,
 ) -> Option<TraitMethodMetadata> {
+    let name = method.name_token()?;
     let (default_body_node, default_body_span) =
         default_body.map_or((None, None), |(node, span)| (Some(node), Some(span)));
     Some(TraitMethodMetadata {
         attrs: attrs_from_cst(source, method.attributes()),
-        name: method.name_text()?,
+        name: name.text().to_owned(),
+        name_span: span_for(source, name.text_range()),
         span: span_for(source, method.syntax().text_range()),
         signature: function_signature(source, method.param_list(), method.return_type()),
         has_default: method.body().is_some(),
@@ -475,9 +477,11 @@ fn impl_method_metadata(
     node: HirNodeId,
     body_span: Span,
 ) -> Option<ImplMethodMetadata> {
+    let name = method.name_token()?;
     Some(ImplMethodMetadata {
         node,
-        name: method.name_text()?,
+        name: name.text().to_owned(),
+        name_span: span_for(source, name.text_range()),
         signature: function_signature(source, method.param_list(), method.return_type()),
         span: body_span,
         body_span,

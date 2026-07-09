@@ -186,7 +186,11 @@ range projection uses those HIR local spans directly instead of scanning source
 text inside broad parameter spans. Struct fields, enum record fields, and enum
 variants now also carry exact declaration name spans in HIR metadata, and
 language-service field/variant declaration references and renames project those
-HIR spans directly instead of scanning declaration text. Script
+HIR spans directly instead of scanning declaration text. Trait and impl method
+metadata now also carries exact name-token spans for duplicate diagnostics and
+language-service method declaration references, renames, hovers, call hierarchy,
+semantic tokens, definitions, and document symbols, deleting the method-name
+text scan helpers from those paths. Script
 field reference and rename use scans now read
 source-scoped `HirField` facts from `ModuleGraph` instead of rebuilding member
 access sites from parsed syntax, and script method reference/rename use scans

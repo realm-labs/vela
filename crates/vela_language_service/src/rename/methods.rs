@@ -9,8 +9,8 @@ use vela_hir::type_hint::ImplMetadataKind;
 use crate::{DocumentId, LanguageServiceDatabases, TextRange, query_context};
 
 use super::{
-    RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, is_identifier_boundary,
-    span_text_range, token_text, workspace_edit_for_rename,
+    RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, span_text_range, token_text,
+    workspace_edit_for_rename,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -47,21 +47,15 @@ pub(super) fn rename_script_method(
 pub(super) fn script_method_declaration_target(
     graph: &ModuleGraph,
     source_id: SourceId,
-    text: &str,
     token: &RenameToken,
 ) -> Option<ScriptMethodRenameTarget> {
-    let start = u32::try_from(token.range.start).ok()?;
     for declaration in graph.declarations() {
-        if declaration.kind != DeclarationKind::Impl
-            || declaration.span.source != source_id
-            || !declaration.span.contains(start)
-        {
+        if declaration.kind != DeclarationKind::Impl || declaration.span.source != source_id {
             continue;
         }
         let metadata = graph.impl_metadata(declaration.id)?;
         for method in &metadata.methods {
-            let span_range = span_text_range(declaration.span)?;
-            let name_range = method_name_range_in_text(text, span_range, &method.name)?;
+            let name_range = span_text_range(method.name_span)?;
             if name_range.start <= token.range.start && token.range.end <= name_range.end {
                 return Some(ScriptMethodRenameTarget {
                     owner: declaration.id,
@@ -113,26 +107,27 @@ fn push_script_method_declaration_edit(
     edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
 ) -> Option<()> {
     let graph = databases.hir_db().graph();
-    let method_name = match target.target_kind {
-        ScriptMethodRenameTargetKind::Impl => graph
-            .impl_metadata(target.owner)?
-            .methods
-            .iter()
-            .find(|method| method.name == target.method)?
-            .name
-            .as_str(),
-        ScriptMethodRenameTargetKind::Trait => graph
-            .trait_shape(target.owner)?
-            .methods
-            .iter()
-            .find(|method| method.name == target.method)?
-            .name
-            .as_str(),
+    let name_span = match target.target_kind {
+        ScriptMethodRenameTargetKind::Impl => {
+            graph
+                .impl_metadata(target.owner)?
+                .methods
+                .iter()
+                .find(|method| method.name == target.method)?
+                .name_span
+        }
+        ScriptMethodRenameTargetKind::Trait => {
+            graph
+                .trait_shape(target.owner)?
+                .methods
+                .iter()
+                .find(|method| method.name == target.method)?
+                .name_span
+        }
     };
     let declaration = graph.declaration(target.owner)?;
     let source = databases.source_record_for_rename(declaration.span.source)?;
-    let span_range = span_text_range(declaration.span)?;
-    let range = method_name_range_in_text(source.text(), span_range, method_name)?;
+    let range = span_text_range(name_span)?;
     edits_by_document
         .entry(source.document_id().clone())
         .or_default()
@@ -381,35 +376,6 @@ fn qualified_declaration_name(
         .unwrap_or_else(|| declaration.name.clone())
 }
 
-fn method_name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRange> {
-    let slice = text.get(range.start..range.end)?;
-    slice.match_indices(name).find_map(|(offset, matched)| {
-        let start = range.start + offset;
-        let end = start + matched.len();
-        (is_identifier_boundary(text, start, end) && preceded_by_fn_keyword(text, start))
-            .then(|| TextRange::new(start, end))
-    })
-}
-
-fn preceded_by_fn_keyword(text: &str, start: usize) -> bool {
-    let Some(before_name) = text.get(..start).map(str::trim_end) else {
-        return false;
-    };
-    let end = before_name.len();
-    let word_start = before_name
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    if before_name.get(word_start..end) != Some("fn") {
-        return false;
-    }
-    before_name
-        .get(..word_start)
-        .and_then(|prefix| prefix.chars().next_back())
-        .is_none_or(|ch| !is_identifier_continue(ch))
-}
-
 fn record_owner_names(receiver: &TypeFact) -> Vec<String> {
     let mut owners = Vec::new();
     collect_record_owner_names(receiver, &mut owners);
@@ -459,8 +425,4 @@ fn push_owner_name(owners: &mut Vec<String>, name: &str) {
     if !owners.iter().any(|owner| owner == name) {
         owners.push(name.to_owned());
     }
-}
-
-fn is_identifier_continue(ch: char) -> bool {
-    ch == '_' || ch.is_ascii_alphanumeric()
 }

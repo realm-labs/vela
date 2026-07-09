@@ -853,9 +853,8 @@ fn member_declaration_classification(
                 .iter()
                 .find(|method| {
                     method.name == name
-                        && span_contains_range(method.span, range)
+                        && span_contains_range(method.name_span, range)
                         && token_text(text, range) == Some(name)
-                        && preceded_by_fn_keyword(text, range)
                 })
                 .map(|_| member_declaration_token_classification(SemanticTokenType::Method))
         }),
@@ -865,10 +864,8 @@ fn member_declaration_classification(
                 .iter()
                 .find(|method| {
                     method.name == name
-                        && span_contains_range(declaration.span, range)
+                        && span_contains_range(method.name_span, range)
                         && token_text(text, range) == Some(name)
-                        && range_ends_before_span_start(range, method.span)
-                        && preceded_by_fn_keyword(text, range)
                 })
                 .map(|_| member_declaration_token_classification(SemanticTokenType::Method))
         }),
@@ -895,28 +892,6 @@ fn member_name_matches(
     range: TextRange,
 ) -> bool {
     expected == name && span_contains_range(span, range) && token_text(text, range) == Some(name)
-}
-
-fn range_ends_before_span_start(range: TextRange, span: Span) -> bool {
-    usize::try_from(span.start).is_ok_and(|start| range.end <= start)
-}
-
-fn preceded_by_fn_keyword(text: &str, range: TextRange) -> bool {
-    let Some(prefix) = text.get(..range.start) else {
-        return false;
-    };
-    let trimmed = prefix.trim_end();
-    let Some(before_fn) = trimmed.strip_suffix("fn") else {
-        return false;
-    };
-    before_fn
-        .chars()
-        .last()
-        .is_none_or(|ch| !is_identifier_continue(ch))
-}
-
-fn is_identifier_continue(ch: char) -> bool {
-    ch == '_' || ch.is_ascii_alphanumeric()
 }
 
 fn span_contains_range(span: Span, range: TextRange) -> bool {

@@ -39,16 +39,16 @@ fn duplicate_script_method_diagnostics(graph: &ModuleGraph) -> Vec<Diagnostic> {
         let receiver = qualified_path_name(graph, declaration, &metadata.target_path);
         for method in &metadata.methods {
             let key = (receiver.clone(), method.name.clone());
-            if let Some(previous_span) = methods.insert(key, method.span) {
+            if let Some(previous_span) = methods.insert(key, method.name_span) {
                 diagnostics.push(
                     Diagnostic::error(format!(
                         "duplicate script method `{}.{}`",
                         receiver, method.name
                     ))
                     .with_code("hir::duplicate_script_method")
-                    .with_span(method.span)
+                    .with_span(method.name_span)
                     .with_label(previous_span, "previous method is here")
-                    .with_label(method.span, "duplicate method is here"),
+                    .with_label(method.name_span, "duplicate method is here"),
                 );
             }
         }

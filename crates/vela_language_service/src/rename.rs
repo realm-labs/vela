@@ -457,8 +457,7 @@ fn rename_target<'a>(
     if let Some(target) = fields::script_field_declaration_target(graph, source_id, &token) {
         return Some(RenameTarget::ScriptField(target));
     }
-    if let Some(target) = methods::script_method_declaration_target(graph, source_id, text, &token)
-    {
+    if let Some(target) = methods::script_method_declaration_target(graph, source_id, &token) {
         return Some(RenameTarget::ScriptMethod(target));
     }
     if let Some(target) = variants::enum_variant_declaration_target(graph, source_id, &token) {

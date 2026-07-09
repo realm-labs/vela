@@ -756,8 +756,16 @@ impl Damageable for Player {
     let trait_shape = graph.trait_shape(trait_decl).expect("trait shape");
     assert_eq!(trait_shape.methods.len(), 2);
     assert_eq!(trait_shape.methods[0].name, "damage");
+    assert_eq!(
+        span_text(source_text, trait_shape.methods[0].name_span),
+        "damage"
+    );
     assert!(!trait_shape.methods[0].has_default);
     assert_eq!(trait_shape.methods[1].name, "alive");
+    assert_eq!(
+        span_text(source_text, trait_shape.methods[1].name_span),
+        "alive"
+    );
     assert!(trait_shape.methods[1].has_default);
     let default_node = trait_shape.methods[1]
         .default_body_node
@@ -792,6 +800,7 @@ impl Damageable for Player {
     assert_eq!(metadata.methods.len(), 1);
     let method = &metadata.methods[0];
     assert_eq!(method.name, "damage");
+    assert_eq!(span_text(source_text, method.name_span), "damage");
     assert_eq!(method.span, method.body_span);
     assert!(span_text(source_text, method.body_span).starts_with("{\n        let"));
     assert_eq!(
