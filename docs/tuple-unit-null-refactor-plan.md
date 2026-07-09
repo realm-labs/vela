@@ -565,7 +565,10 @@ Focused validation:
   `Option.map`, and `Result.map_err` now expose structured erased
   `Option<Any>` or `Result<Any, Any>` descriptor contracts in the stdlib
   manifest and reflected metadata; analysis TypeFacts still carry the precise
-  receiver-derived payload facts at call sites.
+  receiver-derived payload facts at call sites. Fallible standard free
+  functions such as `bytes::from_hex` and primitive narrowing helpers now
+  expose structured `Result<T, String>` descriptor contracts instead of bare
+  `Result`.
 - [x] Change Rust `Option<T>` conversion to script `Option<T>`. Embedding and
   serde owned/runtime conversions now use `Option::Some` and `Option::None`
   enum values; `()` and raw payload values are rejected for Rust
@@ -640,6 +643,8 @@ Focused validation:
   downstream tooling queries. Completion, hover, inlay type hints, go to
   definition, references, and rename now treat tuple destructuring bindings as
   ordinary source-owned locals with element facts and declaration-token spans.
+  HIR pattern locals retain those token spans for tooling while also recording
+  binding scope spans for bytecode local and fact lookup.
 - [x] Replace user-facing null placeholders with `()`, `Option::None`, or
   typed fixits. Active docs, examples, editor grammar, and website audits no
   longer show Vela-language null placeholders. The surviving active

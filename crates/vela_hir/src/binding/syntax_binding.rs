@@ -455,11 +455,11 @@ impl<'a> SyntaxBindingLowerer<'a> {
         match pattern.pattern_kind() {
             Some(SyntaxPatternKind::Binding) => {
                 if let Some(name_token) = pattern.binding_name_token() {
-                    self.declare_local(
+                    self.declare_pattern_local(
                         name_token.text().to_owned(),
                         kind,
-                        None,
                         span_for(self.source, name_token.text_range()),
+                        span,
                     );
                 }
             }
@@ -497,11 +497,11 @@ impl<'a> SyntaxBindingLowerer<'a> {
         if let Some(pattern) = field.pattern() {
             self.bind_pattern(&pattern, span, kind);
         } else if let Some(name_token) = field.shorthand_binding_name_token() {
-            self.declare_local(
+            self.declare_pattern_local(
                 name_token.text().to_owned(),
                 kind,
-                None,
                 span_for(self.source, name_token.text_range()),
+                span,
             );
         }
     }
@@ -669,6 +669,27 @@ impl<'a> SyntaxBindingLowerer<'a> {
         type_hint: Option<HirTypeHint>,
         span: Span,
     ) -> HirLocalId {
+        self.declare_local_with_scope(name, kind, type_hint, span, None)
+    }
+
+    fn declare_pattern_local(
+        &mut self,
+        name: String,
+        kind: LocalBindingKind,
+        span: Span,
+        scope_span: Span,
+    ) -> HirLocalId {
+        self.declare_local_with_scope(name, kind, None, span, Some(scope_span))
+    }
+
+    fn declare_local_with_scope(
+        &mut self,
+        name: String,
+        kind: LocalBindingKind,
+        type_hint: Option<HirTypeHint>,
+        span: Span,
+        scope_span: Option<Span>,
+    ) -> HirLocalId {
         let id = self.next_local();
         self.scopes
             .last_mut()
@@ -686,6 +707,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
                 kind,
                 type_hint,
                 span,
+                scope_span,
             },
         );
         id

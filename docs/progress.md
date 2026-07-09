@@ -167,22 +167,26 @@ validation, and `String.split_once -> Option<(String, String)>` now exist
 across analysis, bytecode, VM, reflection metadata, examples, docs, and cached
 and uncached stdlib paths. Statically known string lookup/parse APIs and
 `Array.index_of` now expose precise `Option<T>` stdlib manifest and reflection
-metadata where the payload type is independent of receiver facts. Result tuple
-payload fixtures now cover typed
-`?`/destructuring propagation and linked parameter guards. Reflected descriptor
-type-hint strings now parse into structured tuple facts for analysis and schema
-artifact export, and reflection metadata records now expose copied
-`ReflectTypeHint` descriptors for field, parameter, and return hints,
-including unit, tuple, Option, and Result nesting, with missing descriptor data
-represented as `Option::None`. `reflect::type_of` and analysis facts for
-optional reflection metadata now use `Option<T>` instead of unit placeholders.
-Tuple Map/Set keys are rejected by source type-hint validation and runtime
-`ValueKey` keyability. The active null audit now classifies all surviving
-`null` strings as intentional removed-source diagnostics/no-completion tests,
-external JSON-RPC protocol data, external C ABI pointer terminology, or
+metadata where the payload type is independent of receiver facts. Fallible
+standard free functions such as `bytes::from_hex` and primitive narrowing
+helpers now expose structured `Result<T, String>` stdlib manifest and
+reflection metadata instead of bare Result contracts. Result tuple payload
+fixtures now cover typed `?`/destructuring propagation and linked parameter
+guards. Reflected descriptor type-hint strings now parse into structured tuple
+facts for analysis and schema artifact export, and reflection metadata records
+now expose copied `ReflectTypeHint` descriptors for field, parameter, and
+return hints, including unit, tuple, Option, and Result nesting, with missing
+descriptor data represented as `Option::None`. `reflect::type_of` and analysis
+facts for optional reflection metadata now use `Option<T>` instead of unit
+placeholders. Tuple Map/Set keys are rejected by source type-hint validation and
+runtime `ValueKey` keyability. The active null audit now classifies all
+surviving `null` strings as intentional removed-source diagnostics/no-completion
+tests, external JSON-RPC protocol data, external C ABI pointer terminology, or
 historical/planning text rather than Vela language values. Tree-sitter editor
 grammar validation now parses the checked-in site, LSP highlighting,
 conformance, and example `.vela` fixtures with tuple destructuring, and the
+HIR binding map now keeps token spans for pattern locals while also exposing
+binding scope spans for bytecode frame metadata and local fact lookup. The
 `string_splitting` benchmark row records the `String.split_once` tuple-return
 path across interpreter, profile-only, and cache-enabled modes. Final
 acceptance validation passed with workspace formatting, clippy, workspace

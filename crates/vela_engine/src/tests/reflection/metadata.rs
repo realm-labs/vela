@@ -648,7 +648,10 @@ fn engine_standard_natives_register_reflection_metadata() {
         bytes_from_hex.params[0].type_hint.as_deref(),
         Some("String")
     );
-    assert_eq!(bytes_from_hex.return_type.as_deref(), Some("Result"));
+    assert_eq!(
+        bytes_from_hex.return_type.as_deref(),
+        Some("Result<Bytes, String>")
+    );
     assert_eq!(bytes_from_hex.attrs.get("stdlib"), Some("bytes"));
 
     let program = engine
@@ -993,7 +996,7 @@ fn main() {
         && reflect::returns(some).unwrap_or("") == "Any"
         && reflect::returns(ok).unwrap_or("") == "Any"
         && reflect::returns(set_from_array).unwrap_or("") == "Set"
-        && reflect::returns(bytes_from_hex).unwrap_or("") == "Result"
+        && reflect::returns(bytes_from_hex).unwrap_or("") == "Result<Bytes, String>"
         && params.len() == 2
         && params[0].name == "left"
         && params[1].name == "right"

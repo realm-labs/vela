@@ -19,6 +19,7 @@ pub struct LocalBinding {
     pub kind: LocalBindingKind,
     pub type_hint: Option<HirTypeHint>,
     pub span: Span,
+    pub scope_span: Option<Span>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -86,8 +87,9 @@ impl BindingMap {
         span: Span,
     ) -> Option<HirLocalId> {
         self.locals_named(name).iter().copied().find(|local| {
-            self.local(*local)
-                .is_some_and(|binding| binding.kind == kind && binding.span == span)
+            self.local(*local).is_some_and(|binding| {
+                binding.kind == kind && (binding.span == span || binding.scope_span == Some(span))
+            })
         })
     }
 
