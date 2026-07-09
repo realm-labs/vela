@@ -379,7 +379,7 @@ impl Compiler<'_, '_> {
         }
         let field = expression.as_field()?;
         let receiver = field.receiver()?;
-        let name = field.name_text()?;
+        let name = self.hir_field_name_for_span(span)?.to_owned();
         let mut resolved = self.syntax_host_path(source, &receiver)?;
         let field = self.host_path_field_part(resolved.type_name.as_deref(), &name)?;
         resolved.path.segments.push(field.part);

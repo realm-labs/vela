@@ -103,7 +103,8 @@ impl Compiler<'_, '_> {
         let Some(receiver_expression) = field.receiver() else {
             return Ok(None);
         };
-        let Some(field_name) = field.name_text() else {
+        let target_span = syntax_expression_span(source, target_expression);
+        let Some(field_name) = self.hir_field_name_for_span(target_span).map(str::to_owned) else {
             return Ok(None);
         };
         if let Some(target) =
@@ -264,7 +265,7 @@ impl Compiler<'_, '_> {
         target_expression: &SyntaxExpression,
     ) -> Option<SyntaxIndexedRecordFieldAssignmentTarget> {
         let (collection, index, fields) =
-            syntax_indexed_record_field_parts(target_expression.clone())?;
+            self.syntax_indexed_record_field_parts(source, target_expression.clone())?;
         let element_shape = self
             .value_shape_for_syntax_expression(Some(source), &collection)?
             .array_element_record()
@@ -649,6 +650,27 @@ impl Compiler<'_, '_> {
         });
         Ok(Some(assigned))
     }
+
+    fn syntax_indexed_record_field_parts(
+        &self,
+        source: SourceId,
+        expression: SyntaxExpression,
+    ) -> Option<(SyntaxExpression, SyntaxExpression, Vec<String>)> {
+        let field = expression.as_field()?;
+        let receiver = field.receiver()?;
+        let field_name = self
+            .hir_field_name_for_span(syntax_expression_span(source, &expression))?
+            .to_owned();
+        if let Some(index) = receiver.as_index() {
+            let collection = index.receiver()?;
+            let index = index.index()?;
+            return Some((collection, index, vec![field_name]));
+        }
+        let (collection, index, mut fields) =
+            self.syntax_indexed_record_field_parts(source, receiver)?;
+        fields.push(field_name);
+        Some((collection, index, fields))
+    }
 }
 
 fn syntax_assignment_value_type(
@@ -688,20 +710,4 @@ struct SyntaxNestedRecordFieldAssignmentRoot {
     fields: Vec<String>,
     shape: Option<RecordShape>,
     value_type: Option<RuntimeTypeFact>,
-}
-
-fn syntax_indexed_record_field_parts(
-    expression: SyntaxExpression,
-) -> Option<(SyntaxExpression, SyntaxExpression, Vec<String>)> {
-    let field = expression.as_field()?;
-    let receiver = field.receiver()?;
-    let field_name = field.name_text()?;
-    if let Some(index) = receiver.as_index() {
-        let collection = index.receiver()?;
-        let index = index.index()?;
-        return Some((collection, index, vec![field_name]));
-    }
-    let (collection, index, mut fields) = syntax_indexed_record_field_parts(receiver)?;
-    fields.push(field_name);
-    Some((collection, index, fields))
 }

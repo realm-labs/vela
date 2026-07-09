@@ -309,7 +309,8 @@ impl Compiler<'_, '_> {
     ) -> Option<(String, String)> {
         let field = target_expression.as_field()?;
         let receiver = field.receiver()?;
-        let field = field.name_text()?;
+        let field =
+            self.hir_field_name_for_span(syntax_expression_span(source, target_expression))?;
         let receiver_type = self
             .script_fact_for_syntax_expression(source, &receiver)
             .map(|fact| fact.type_name)
@@ -317,7 +318,7 @@ impl Compiler<'_, '_> {
                 self.syntax_host_field_path(source, &receiver)
                     .and_then(|resolved| resolved.type_name)
             })?;
-        Some((receiver_type, field))
+        Some((receiver_type, field.to_owned()))
     }
 
     pub(super) fn reject_invalid_syntax_host_index_access(

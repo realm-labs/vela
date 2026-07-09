@@ -1,5 +1,4 @@
 use vela_common::SourceId;
-use vela_hir::body::HirField;
 use vela_syntax::SyntaxKind;
 use vela_syntax::ast::{SyntaxExpression, SyntaxExpressionKind, SyntaxLiteral};
 use vela_syntax::token::{InterpolatedStringTokenPart, TokenKind};
@@ -169,7 +168,8 @@ impl Compiler<'_, '_> {
             self.emit(UnlinkedInstructionKind::GetTupleField { dst, value, index });
             return Ok(Some(dst));
         }
-        let Some(field_name) = field.name_text() else {
+        let span = syntax_expression_span(source, expression);
+        let Some(field_name) = self.hir_field_name_for_span(span).map(str::to_owned) else {
             return Ok(None);
         };
         let receiver_span = syntax_expression_span(source, &receiver_expression);
@@ -241,21 +241,10 @@ impl Compiler<'_, '_> {
         source: SourceId,
         expression: &SyntaxExpression,
     ) -> Option<usize> {
-        self.hir_field_for_syntax_expression(source, expression)?
+        self.hir_field_for_span(syntax_expression_span(source, expression))?
             .name
             .parse()
             .ok()
-    }
-
-    fn hir_field_for_syntax_expression(
-        &self,
-        source: SourceId,
-        expression: &SyntaxExpression,
-    ) -> Option<&HirField> {
-        let expression = self.expression_at_span(syntax_expression_span(source, expression))?;
-        self.hir_bodies
-            .iter()
-            .find_map(|body| body.fields.get(&expression))
     }
 
     fn syntax_record_enum_slot(
