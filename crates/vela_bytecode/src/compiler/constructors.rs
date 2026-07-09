@@ -80,6 +80,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             default.value.syntax(),
             &default.constants,
             &|span| default.path_for_span(span),
+            &|span| default.local_name_for_span(span),
         )? {
             if let Some(expected) = expected {
                 check_expected_type(

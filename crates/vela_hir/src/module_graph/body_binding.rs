@@ -78,12 +78,13 @@ impl ModuleGraph {
     ) {
         let declaration = source.declaration;
         let body = self.next_body_id();
-        let (_bindings, diagnostics) = self.bind_expression_body(
+        let (bindings, diagnostics) = self.bind_expression_body(
             module,
             source,
             body,
             HirBodyOwner::SchemaFieldDefault(declaration),
         );
+        self.schema_field_default_bindings.insert(body, bindings);
         self.diagnostics.extend(diagnostics);
     }
 

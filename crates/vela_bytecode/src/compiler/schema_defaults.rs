@@ -1,7 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::{Diagnostic, SourceId, Span};
-use vela_hir::body::HirPathKind;
+use vela_hir::binding::{BindingMap, LocalBindingKind};
+use vela_hir::body::{HirBodyOwner, HirPathKind};
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
@@ -137,6 +138,7 @@ pub(super) struct SchemaFieldDefault {
     pub(super) value: SchemaDefaultValue,
     pub(super) constants: BTreeMap<String, Constant>,
     path_facts: Vec<(Span, Vec<String>)>,
+    local_facts: Vec<(Span, String)>,
 }
 
 impl SchemaFieldDefault {
@@ -145,6 +147,13 @@ impl SchemaFieldDefault {
             .iter()
             .find(|(path_span, _)| *path_span == span)
             .map(|(_, path)| path.clone())
+    }
+
+    pub(super) fn local_name_for_span(&self, span: Span) -> Option<String> {
+        self.local_facts
+            .iter()
+            .find(|(local_span, _)| *local_span == span)
+            .map(|(_, name)| name.clone())
     }
 }
 
@@ -354,11 +363,13 @@ fn schema_field_default(
     graph: &ModuleGraph,
 ) -> SchemaFieldDefault {
     let path_facts = value_path_facts_for_source(graph, value.source());
+    let local_facts = schema_default_local_facts(graph, value.span());
     SchemaFieldDefault {
         name,
         value,
         constants,
         path_facts,
+        local_facts,
     }
 }
 
@@ -366,6 +377,26 @@ fn value_path_facts_for_source(graph: &ModuleGraph, source: SourceId) -> Vec<(Sp
     graph
         .paths_in_source_by_kind(source, HirPathKind::Value)
         .map(|path| (path.origin.span, path.path.clone()))
+        .collect()
+}
+
+fn schema_default_local_facts(graph: &ModuleGraph, span: Span) -> Vec<(Span, String)> {
+    let Some(body) = graph.bodies().find(|body| {
+        body.origin.span == span && matches!(body.owner, HirBodyOwner::SchemaFieldDefault(_))
+    }) else {
+        return Vec::new();
+    };
+    let Some(bindings) = graph.schema_field_default_bindings(body.id) else {
+        return Vec::new();
+    };
+    local_facts(bindings)
+}
+
+fn local_facts(bindings: &BindingMap) -> Vec<(Span, String)> {
+    bindings
+        .locals()
+        .filter(|local| local.kind == LocalBindingKind::Let)
+        .map(|local| (local.span, local.name.clone()))
         .collect()
 }
 

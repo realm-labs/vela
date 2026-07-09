@@ -1,4 +1,5 @@
 use super::*;
+use crate::binding::LocalBindingKind;
 use crate::body::{HirBodyOwner, HirBodyRoot};
 
 #[test]
@@ -743,6 +744,45 @@ enum QuestProgress {
     assert!(fields[0].default_value_span.is_none());
     assert!(fields[1].default_value_span.is_some());
 }
+
+#[test]
+fn lowers_schema_field_default_bindings() {
+    let mut graph = ModuleGraph::new();
+    let module = graph.add_source(source(
+        1,
+        "game::quest",
+        r#"
+struct Reward {
+    count: i64 = { let base = 1; base + 1 },
+}
+"#,
+    ));
+    let declarations = graph.module(module).expect("module declarations");
+    let reward = declarations.get("Reward").expect("Reward declaration");
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+    let reward_shape = graph.struct_shape(reward).expect("Reward shape");
+    let span = reward_shape.fields[0]
+        .default_value_span
+        .expect("field default span");
+    let body = graph
+        .bodies()
+        .find(|body| {
+            body.owner == HirBodyOwner::SchemaFieldDefault(reward) && body.origin.span == span
+        })
+        .expect("schema default body");
+    let bindings = graph
+        .schema_field_default_bindings(body.id)
+        .expect("schema default bindings");
+    let [base] = bindings.locals_named("base") else {
+        panic!("base local should exist");
+    };
+    assert_eq!(
+        bindings.local(*base).map(|local| local.kind),
+        Some(LocalBindingKind::Let)
+    );
+    assert_eq!(bindings.body(), body.id);
+}
+
 #[test]
 fn lowers_impl_metadata_and_method_bindings() {
     let mut graph = ModuleGraph::new();

@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::{SourceId, Span};
-use vela_hir::binding::BindingMap;
+use vela_hir::binding::{BindingMap, LocalBindingKind};
 use vela_hir::body::{HirBody, HirPathKind};
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{
@@ -181,9 +181,14 @@ impl SemanticSource {
             let Some(expr) = payloads.get(&declaration) else {
                 continue;
             };
-            if let Some(value) = evaluate_const_expr(self.source, expr, &values_by_name, &|span| {
-                hir_value_path_for_span(&self.graph, span)
-            })? {
+            let bindings = self.graph.const_initializer_bindings(declaration);
+            if let Some(value) = evaluate_const_expr(
+                self.source,
+                expr,
+                &values_by_name,
+                &|span| hir_value_path_for_span(&self.graph, span),
+                &|span| hir_let_local_name_for_span(bindings, span),
+            )? {
                 values_by_declaration.insert(declaration, value.clone());
                 values_by_name.insert(name, value);
             }
@@ -394,11 +399,14 @@ impl SemanticModules {
                     let mut values_by_name =
                         self.imported_const_values(*module, &values_by_declaration);
                     values_by_name.extend(previous_values.clone());
-                    if let Some(value) =
-                        evaluate_const_expr(source, expr, &values_by_name, &|span| {
-                            hir_value_path_for_span(&self.graph, span)
-                        })?
-                    {
+                    let bindings = self.graph.const_initializer_bindings(declaration);
+                    if let Some(value) = evaluate_const_expr(
+                        source,
+                        expr,
+                        &values_by_name,
+                        &|span| hir_value_path_for_span(&self.graph, span),
+                        &|span| hir_let_local_name_for_span(bindings, span),
+                    )? {
                         values_by_declaration.insert(declaration, value.clone());
                         previous_values.insert(name, value);
                         progressed = true;
@@ -483,6 +491,13 @@ fn hir_value_path_for_span(graph: &ModuleGraph, span: Span) -> Option<Vec<String
         .paths_in_source_by_kind(span.source, HirPathKind::Value)
         .find(|path| path.origin.span == span)
         .map(|path| path.path.clone())
+}
+
+fn hir_let_local_name_for_span(bindings: Option<&BindingMap>, span: Span) -> Option<String> {
+    bindings?
+        .locals()
+        .find(|local| local.kind == LocalBindingKind::Let && local.span == span)
+        .map(|local| local.name.clone())
 }
 
 fn function_body_payload<'ast>(

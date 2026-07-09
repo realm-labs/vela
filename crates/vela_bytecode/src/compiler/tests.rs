@@ -204,6 +204,24 @@ fn main(player: Player) {
     }
 }
 
+#[test]
+fn compiler_evaluates_schema_default_block_lets_from_hir_locals() {
+    compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Reward {
+    count: i64 = { let base = 1; base + 1 },
+}
+
+fn main() {
+    let reward = Reward {};
+    return reward.count;
+}
+"#,
+    )
+    .expect("schema default block let should compile as a constant");
+}
+
 mod call_diagnostics;
 mod closures_and_bindings;
 mod diagnostics;

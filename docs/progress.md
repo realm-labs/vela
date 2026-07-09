@@ -204,6 +204,9 @@ HIR field facts for direct and lambda-local shape queries.
 Bytecode schema-default payload collection now keys default expressions to
 struct and enum field identity through HIR metadata spans instead of parsed
 type, variant, and field names.
+HIR now retains schema field default expression binding maps by body ID, and
+bytecode constant evaluation resolves const/schema default block `let` names
+through HIR local facts instead of parsed let-name syntax.
 Bytecode function, impl-method, and trait-default method body payload pairing
 now uses HIR-owned body/default spans instead of parsed declaration names.
 Bytecode const initializer payload collection now keys syntax expressions by

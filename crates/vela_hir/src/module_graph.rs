@@ -61,6 +61,7 @@ pub struct ModuleGraph {
     impl_method_bodies: BTreeMap<HirNodeId, HirBodyId>,
     bindings: BTreeMap<HirDeclId, BindingMap>,
     const_initializer_bindings: BTreeMap<HirDeclId, BindingMap>,
+    schema_field_default_bindings: BTreeMap<HirBodyId, BindingMap>,
     function_signatures: BTreeMap<HirDeclId, FunctionSignature>,
     struct_shapes: BTreeMap<HirDeclId, StructShape>,
     enum_shapes: BTreeMap<HirDeclId, EnumShape>,
@@ -514,6 +515,11 @@ impl ModuleGraph {
     #[must_use]
     pub fn const_initializer_bindings(&self, declaration: HirDeclId) -> Option<&BindingMap> {
         self.const_initializer_bindings.get(&declaration)
+    }
+
+    #[must_use]
+    pub fn schema_field_default_bindings(&self, body: HirBodyId) -> Option<&BindingMap> {
+        self.schema_field_default_bindings.get(&body)
     }
 
     #[must_use]

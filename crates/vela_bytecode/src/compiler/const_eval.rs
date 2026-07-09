@@ -75,6 +75,7 @@ pub(super) fn evaluate_const_expr(
     expr: &SyntaxExpression,
     values_by_name: &BTreeMap<String, Constant>,
     path_resolver: &dyn Fn(Span) -> Option<Vec<String>>,
+    local_name_resolver: &dyn Fn(Span) -> Option<String>,
 ) -> CompileResult<Option<Constant>> {
     match expr.expression_kind() {
         SyntaxExpressionKind::Literal => {
@@ -99,7 +100,13 @@ pub(super) fn evaluate_const_expr(
             let Some(inner) = expr.as_paren().and_then(|paren| paren.expression()) else {
                 return Ok(None);
             };
-            evaluate_const_expr(source, &inner, values_by_name, path_resolver)
+            evaluate_const_expr(
+                source,
+                &inner,
+                values_by_name,
+                path_resolver,
+                local_name_resolver,
+            )
         }
         SyntaxExpressionKind::Unary => {
             let Some(unary) = expr.as_unary() else {
@@ -120,7 +127,13 @@ pub(super) fn evaluate_const_expr(
             {
                 return Ok(Some(value));
             }
-            let Some(value) = evaluate_const_expr(source, &inner, values_by_name, path_resolver)?
+            let Some(value) = evaluate_const_expr(
+                source,
+                &inner,
+                values_by_name,
+                path_resolver,
+                local_name_resolver,
+            )?
             else {
                 return Ok(None);
             };
@@ -139,13 +152,23 @@ pub(super) fn evaluate_const_expr(
             let Some(right_expr) = binary.rhs() else {
                 return Ok(None);
             };
-            let Some(left) =
-                evaluate_const_expr(source, &left_expr, values_by_name, path_resolver)?
+            let Some(left) = evaluate_const_expr(
+                source,
+                &left_expr,
+                values_by_name,
+                path_resolver,
+                local_name_resolver,
+            )?
             else {
                 return Ok(None);
             };
-            let Some(right) =
-                evaluate_const_expr(source, &right_expr, values_by_name, path_resolver)?
+            let Some(right) = evaluate_const_expr(
+                source,
+                &right_expr,
+                values_by_name,
+                path_resolver,
+                local_name_resolver,
+            )?
             else {
                 return Ok(None);
             };
@@ -157,7 +180,15 @@ pub(super) fn evaluate_const_expr(
             };
             array
                 .expressions()
-                .map(|value| evaluate_const_expr(source, &value, values_by_name, path_resolver))
+                .map(|value| {
+                    evaluate_const_expr(
+                        source,
+                        &value,
+                        values_by_name,
+                        path_resolver,
+                        local_name_resolver,
+                    )
+                })
                 .collect::<CompileResult<Option<Vec<_>>>>()
                 .map(|values| values.map(Constant::Array))
         }
@@ -167,7 +198,13 @@ pub(super) fn evaluate_const_expr(
             };
             map.entries()
                 .map(|entry| {
-                    evaluate_const_map_entry(source, &entry, values_by_name, path_resolver)
+                    evaluate_const_map_entry(
+                        source,
+                        &entry,
+                        values_by_name,
+                        path_resolver,
+                        local_name_resolver,
+                    )
                 })
                 .collect::<CompileResult<Option<Vec<_>>>>()
                 .map(|entries| entries.map(Constant::Map))
@@ -176,7 +213,13 @@ pub(super) fn evaluate_const_expr(
             let Some(block) = expr.as_block() else {
                 return Ok(None);
             };
-            evaluate_const_block(source, &block, values_by_name, path_resolver)
+            evaluate_const_block(
+                source,
+                &block,
+                values_by_name,
+                path_resolver,
+                local_name_resolver,
+            )
         }
         SyntaxExpressionKind::Assign
         | SyntaxExpressionKind::Unit
@@ -197,7 +240,7 @@ pub(super) fn evaluate_const_expr_without_paths(
     expr: &SyntaxExpression,
     values_by_name: &BTreeMap<String, Constant>,
 ) -> CompileResult<Option<Constant>> {
-    evaluate_const_expr(source, expr, values_by_name, &|_| None)
+    evaluate_const_expr(source, expr, values_by_name, &|_| None, &|_| None)
 }
 
 fn evaluate_const_block(
@@ -205,6 +248,7 @@ fn evaluate_const_block(
     block: &SyntaxBlock,
     values_by_name: &BTreeMap<String, Constant>,
     path_resolver: &dyn Fn(Span) -> Option<Vec<String>>,
+    local_name_resolver: &dyn Fn(Span) -> Option<String>,
 ) -> CompileResult<Option<Constant>> {
     let mut local_values = values_by_name.clone();
     let mut tail_value = None;
@@ -214,14 +258,22 @@ fn evaluate_const_block(
                 let Some(statement) = statement.as_let() else {
                     return Ok(None);
                 };
-                let Some(name) = statement.name_text() else {
+                let Some(name) = statement
+                    .name_token()
+                    .and_then(|token| local_name_resolver(span_for(source, token.text_range())))
+                else {
                     return Ok(None);
                 };
                 let Some(initializer) = statement.initializer() else {
                     return Ok(None);
                 };
-                let Some(value) =
-                    evaluate_const_expr(source, &initializer, &local_values, path_resolver)?
+                let Some(value) = evaluate_const_expr(
+                    source,
+                    &initializer,
+                    &local_values,
+                    path_resolver,
+                    local_name_resolver,
+                )?
                 else {
                     return Ok(None);
                 };
@@ -235,7 +287,13 @@ fn evaluate_const_block(
                 let Some(value) = statement.expression() else {
                     return Ok(Some(Constant::Unit));
                 };
-                return evaluate_const_expr(source, &value, &local_values, path_resolver);
+                return evaluate_const_expr(
+                    source,
+                    &value,
+                    &local_values,
+                    path_resolver,
+                    local_name_resolver,
+                );
             }
             SyntaxStatementKind::Expr => {
                 let Some(statement) = statement.as_expr() else {
@@ -247,15 +305,26 @@ fn evaluate_const_block(
                 tail_value = if statement.semicolon_token().is_some() {
                     None
                 } else {
-                    evaluate_const_expr(source, &value, &local_values, path_resolver)?
+                    evaluate_const_expr(
+                        source,
+                        &value,
+                        &local_values,
+                        path_resolver,
+                        local_name_resolver,
+                    )?
                 };
             }
             SyntaxStatementKind::Block => {
                 let Some(statement) = statement.as_block() else {
                     return Ok(None);
                 };
-                tail_value =
-                    evaluate_const_block(source, &statement, &local_values, path_resolver)?;
+                tail_value = evaluate_const_block(
+                    source,
+                    &statement,
+                    &local_values,
+                    path_resolver,
+                    local_name_resolver,
+                )?;
             }
             SyntaxStatementKind::Break
             | SyntaxStatementKind::Continue
@@ -272,11 +341,18 @@ fn evaluate_const_map_entry(
     entry: &SyntaxMapEntry,
     values_by_name: &BTreeMap<String, Constant>,
     path_resolver: &dyn Fn(Span) -> Option<Vec<String>>,
+    local_name_resolver: &dyn Fn(Span) -> Option<String>,
 ) -> CompileResult<Option<(String, Constant)>> {
     let Some(value_expr) = entry.value() else {
         return Ok(None);
     };
-    let Some(value) = evaluate_const_expr(source, &value_expr, values_by_name, path_resolver)?
+    let Some(value) = evaluate_const_expr(
+        source,
+        &value_expr,
+        values_by_name,
+        path_resolver,
+        local_name_resolver,
+    )?
     else {
         return Ok(None);
     };
