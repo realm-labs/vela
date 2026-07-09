@@ -613,10 +613,14 @@ Focused validation:
   and tuples. Unit type-hint completion and tuple/unit hover and signature
   display now preserve structural type facts through the language-service
   query layer and LSP-focused validation.
-- [ ] Replace user-facing null placeholders with `()`, `Option::None`, or
-  typed fixits.
-- [ ] Classify surviving JSON nulls as protocol/serde fixture data rather than
-  Vela language values.
+- [x] Replace user-facing null placeholders with `()`, `Option::None`, or
+  typed fixits. Active docs, examples, editor grammar, and website audits no
+  longer show Vela-language null placeholders. The surviving active
+  user-facing source strings are the intentional removed-`null` diagnostic and
+  no-completion assertions.
+- [x] Classify surviving JSON nulls as protocol/serde fixture data rather than
+  Vela language values. LSP `processId`, `params`, unsupported-result, and
+  no-result `JsonValue::Null` cases remain external JSON-RPC protocol data.
 
 Focused validation:
 
@@ -628,11 +632,16 @@ Focused validation:
 
 - [ ] Remove obsolete null compatibility helpers, tests, docs, diagnostics, and
   migration-only names.
-- [ ] Confirm no temporary external-null wrapper was added only to keep old
-  behavior alive.
+- [x] Confirm no temporary external-null wrapper was added only to keep old
+  behavior alive. Audits for legacy or compatibility null wrapper names have no
+  active code hits.
 - [ ] Confirm touched active source/test files stay under the ordinary
   1200-line guideline or have a documented exception.
-- [ ] Run zero-result language-null audits and classify protocol/data nulls.
+- [~] Run zero-result language-null audits and classify protocol/data nulls.
+  Symbolic Vela-language null forms are gone. Intentional source-string
+  survivors remain for the removed-`null` diagnostic/test and no-completion
+  tests; protocol/data survivors are classified below and must be rechecked at
+  final acceptance.
 - [ ] Run full workspace validation.
 
 Final validation:
@@ -648,9 +657,34 @@ npm --prefix site run build
 If a command is unavailable in the current environment, record the reason and
 the closest focused substitute in the checkpoint notes.
 
+## Current Surviving Null Classification
+
+As of the 2026-07-09 audit checkpoint, active Vela-language null symbols are
+absent for `NullKw`, `Literal::Null`, `Value::Null`, `OwnedValue::Null`,
+`HostValue::Null`, `Constant::Null`, `PrimitiveTag::Null`, `TypeKind::Null`,
+`TypeHint::null`, and `StdTypeSpec::primitive("Null")` or
+`StdTypeSpec::primitive("null")`.
+
+Reviewed survivors are classified as follows:
+
+- Intentional source rejection coverage: the syntax diagnostic that reports
+  removed `null` source and parser tests proving `return null;` is rejected.
+- Intentional completion coverage: language-service tests asserting `null` is
+  not suggested as a type hint.
+- External JSON protocol data: LSP JSON-RPC `processId: null`,
+  request `params: null`, unsupported or empty response results, and
+  `serde_json::Value::Null` or `JsonValue::Null` transport/test fixtures.
+- External C ABI terminology: null pointer and null-terminated string
+  validation in `vela_c_api` docs and website reference pages.
+- Historical or planning text: `docs/archive`, this plan, progress notes, and
+  decision records describing the completed removal.
+
 ## 7. Audit Commands
 
-Primary Vela-language null audit, expected zero hits at close-out:
+Primary Vela-language null audit. At close-out, symbolic language null forms
+must produce zero hits; source-string survivors must be limited to intentional
+removed-source diagnostics, no-completion assertions, or documented
+historical/protocol/external-data text:
 
 ```bash
 rg -n "\bNullKw\b|Literal::Null|Value::Null|OwnedValue::Null|HostValue::Null|Constant::Null|PrimitiveTag::Null|TypeKind::Null|TypeHint::null|StdTypeSpec::primitive\(\"Null\"|\"null\"|return null|=> null" crates/vela_syntax crates/vela_hir crates/vela_analysis crates/vela_bytecode crates/vela_vm crates/vela_engine crates/vela_host crates/vela_reflect crates/vela_stdlib crates/vela_hot_reload crates/vela_language_service examples docs/architecture docs/grammar.ebnf editors/tree-sitter-vela

@@ -173,7 +173,11 @@ including unit, tuple, Option, and Result nesting, with missing descriptor data
 represented as `Option::None`. `reflect::type_of` and analysis facts for
 optional reflection metadata now use `Option<T>` instead of unit placeholders.
 Tuple Map/Set keys are rejected by source type-hint validation and runtime
-`ValueKey` keyability.
+`ValueKey` keyability. The active null audit now classifies all surviving
+`null` strings as intentional removed-source diagnostics/no-completion tests,
+external JSON-RPC protocol data, external C ABI pointer terminology, or
+historical/planning text rather than Vela language values.
+
 ## Milestone Snapshot
 
 | Milestone | Status | Current note |
