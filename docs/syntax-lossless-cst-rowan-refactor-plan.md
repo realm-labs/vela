@@ -608,6 +608,30 @@ Checkpoint checklist:
   user-visible because CLI rendering may fall back to debug output when no
   diagnostic is available. Remove CST/internal payload terminology from those
   messages or convert the path into a proper source-spanned diagnostic.
+- [ ] Refactor hard-switch readability debt introduced by incremental CST
+  migration. Replace long probe-and-return chains such as "try one syntax
+  shape, return `Ok(Some(...))`, otherwise return `Ok(None)`" with a stable
+  dispatch structure based on `SyntaxExpressionKind`, `SyntaxStatementKind`, or
+  a small typed classifier. Prefer `match` expressions, table-like dispatch,
+  or focused helpers over accumulated `if let` ladders when the branch key is
+  already an enum or can be classified once.
+- [ ] Refactor boolean coverage predicates such as
+  `param_default_cst_lowering_covers` into final semantic support checks.
+  Avoid sequences of `if !condition { return false; }` when the same logic can
+  be expressed as a match, `Option`/iterator combinators, or named helper
+  predicates that describe the supported language shape.
+- [ ] Split or reorganize migration-dense compiler files after the hard switch.
+  Priority targets include `control_flow/syntax_statement_values.rs`, which is
+  over 2200 lines and contains many syntax-shape probes, and
+  `param_defaults.rs`, whose compile and support-check logic are tightly
+  interleaved. Split by expression family, statement family, assignment/host
+  path lowering, container literals, calls, or parameter-default support, as
+  appropriate for ownership and tests.
+- [ ] Remove "fallback-shaped" control flow after the fallback is gone. Branches
+  that repeatedly return `Ok(None)`, `return false`, or generic unsupported
+  errors should either be a deliberate optional fast path with a clear caller
+  contract, a source-spanned unsupported-language diagnostic, or a match arm in
+  the canonical lowering dispatch.
 - [ ] Close any remaining pattern and control-flow expression lowering gaps
   exposed by deleting the old AST, using typed CST wrappers or HIR facts only.
 - [ ] Prove compile-dir and checked examples pass with CST/HIR-only syntax
@@ -636,6 +660,12 @@ Do not change:
   concepts in `vela_bytecode`; after old AST deletion there is only the
   production syntax path and the question is what language shapes the compiler
   supports.
+- Do not perform style-only churn that obscures behavior. The cleanup should
+  remove migration scaffolding, clarify branch ownership, reduce repeated
+  syntax probes, or make source-spanned failure behavior more explicit.
+- Do not replace early returns mechanically. Keep guard clauses where they
+  enforce preconditions cleanly; refactor the cases where many guards emulate a
+  missing enum dispatch or fallback chain.
 
 Validation:
 
@@ -647,6 +677,7 @@ cargo run --manifest-path examples/Cargo.toml --bin level_up
 cargo run --manifest-path examples/Cargo.toml --bin modules
 rg -n "legacy-body-parser|legacy_body_parser|parse_owned_body_blocks_for_tests|\\.fallback\\(|\\bExprKind\\b|\\bStmtKind\\b|vela_syntax::ast::(Expr|Stmt|Block|Argument|RecordField)|vela_syntax::ast::\\{[^}]*\\b(Expr|Stmt|Block|Argument|RecordField)\\b" crates/vela_bytecode crates/vela_syntax
 rg -n "missing CST|unsupported CST|CST .*payload|cst_payload|cst_lowering_covers|syntax_only|is_syntax_only" crates/vela_bytecode
+rg -n "return Ok\\(None\\)|return Ok\\(Some|return false;|if let Some\\(|else if let" crates/vela_bytecode/src/compiler/control_flow/syntax_statement_values.rs crates/vela_bytecode/src/compiler/param_defaults.rs crates/vela_bytecode/src/compiler/param_defaults
 ```
 
 ### Phase 6: Migrate language service features
@@ -795,6 +826,11 @@ Checkpoint checklist:
   `super`" rule.
 - [ ] Audit touched active source/test files for the 1200-line rule and split
   by ownership when needed.
+- [ ] Audit migration-dense control flow in touched downstream crates. Replace
+  fallback-shaped `if let`/early-return ladders with canonical enum dispatch,
+  typed classifiers, or focused helper modules when that makes branch ownership
+  clearer. Record any intentionally retained large file or guard-heavy
+  function with a short rationale near the module or in the close-out notes.
 - [ ] Update `docs/architecture.md` and subsystem architecture docs only for
   durable architecture changes.
 - [ ] Update `docs/progress.md` when milestone state changes.
@@ -820,6 +856,11 @@ Expected behavior:
 - Public `vela_syntax` API exposes a deliberate scoped syntax facade.
 - Module layout follows the file-size, scope, `super`, and re-export constraints
   from the Codex goal.
+- Migration-era control flow is not left as the final architecture: repeated
+  syntax-shape probes, `Ok(None)` fallback chains, `return false` support
+  ladders, and generic unsupported branches are either refactored into
+  canonical dispatch/support predicates or explicitly justified as deliberate
+  fast-path probes.
 - `docs/architecture.md`, `docs/architecture/lsp.md`, `docs/progress.md`, and
   `docs/decisions.md` are updated only where the architecture or milestone state
   materially changed.
