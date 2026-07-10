@@ -358,7 +358,7 @@ impl GenerationBuilder<'_, '_> {
                 debug_name: metadata.name.clone(),
                 signature,
                 access: CompileFunctionAccess::script(
-                    metadata.visibility == vela_syntax::ast::Visibility::Public,
+                    metadata.visibility == vela_hir::module_graph::Visibility::Public,
                 ),
             };
             let selected = matches!(self.request.roots, SemanticRoots::Program)

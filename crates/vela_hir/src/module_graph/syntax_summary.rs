@@ -4,7 +4,6 @@ use vela_syntax::ast::{
     SyntaxExpression, SyntaxFunctionItem, SyntaxGlobalItem, SyntaxImplItem, SyntaxImplMethod,
     SyntaxItem, SyntaxParam, SyntaxParamList, SyntaxSourceFile, SyntaxStructField,
     SyntaxStructItem, SyntaxTraitItem, SyntaxTraitMethod, SyntaxTypeHint, SyntaxUseItem,
-    Visibility,
 };
 use vela_syntax::{Parse as SyntaxParse, SyntaxKind, SyntaxToken, TextRange};
 
@@ -17,7 +16,7 @@ use crate::type_hint::{
     StructFieldHint, StructShape, TraitMethodMetadata, TraitShape,
 };
 
-use super::model::DeclarationKind;
+use super::model::{DeclarationKind, Visibility};
 use super::names::{inherent_impl_declaration_name, trait_impl_declaration_name};
 
 #[derive(Clone, Debug, Eq, PartialEq)]

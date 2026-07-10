@@ -1,7 +1,6 @@
 use vela_def::script_function_id;
-use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
+use vela_hir::module_graph::{DeclarationKind, ModuleGraph, Visibility};
 use vela_hir::type_hint::FunctionSignature;
-use vela_syntax::ast::Visibility;
 
 use crate::{registry::TypeRegistry, script_attrs::ReflectedScriptAttrs};
 

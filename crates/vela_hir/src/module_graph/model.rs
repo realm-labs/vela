@@ -1,7 +1,6 @@
 use std::collections::{BTreeMap, btree_map::Entry};
 
 use vela_common::{SourceId, Span};
-use vela_syntax::ast::Visibility;
 
 use crate::ids::{HirDeclId, HirNodeId, ModuleId};
 
@@ -63,6 +62,12 @@ pub struct Declaration {
     pub visibility: Visibility,
     pub name_span: Span,
     pub span: Span,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum Visibility {
+    Private,
+    Public,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

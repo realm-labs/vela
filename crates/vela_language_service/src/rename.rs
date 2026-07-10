@@ -4,9 +4,10 @@ use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::ids::{HirDeclId, HirLocalId};
-use vela_hir::module_graph::{Declaration, DeclarationKind, Import, ImportResolution, ModuleGraph};
+use vela_hir::module_graph::{
+    Declaration, DeclarationKind, Import, ImportResolution, ModuleGraph, Visibility,
+};
 use vela_hir::type_hint::{EnumVariantFieldsHint, FunctionSignature, HirTypeHint};
-use vela_syntax::ast::Visibility;
 use vela_syntax::token::Keyword;
 
 use crate::{

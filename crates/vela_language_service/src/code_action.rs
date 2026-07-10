@@ -1,5 +1,4 @@
-use vela_hir::module_graph::{Declaration, DeclarationKind};
-use vela_syntax::ast::Visibility;
+use vela_hir::module_graph::{Declaration, DeclarationKind, Visibility};
 
 use crate::{
     DiagnosticRange, DocumentId, DocumentTextEdit, LanguageServiceDatabases, LineIndex, Position,

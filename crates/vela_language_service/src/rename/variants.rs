@@ -4,8 +4,7 @@ use vela_common::SourceId;
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::body::HirPathKind;
 use vela_hir::ids::HirDeclId;
-use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
-use vela_syntax::ast::Visibility;
+use vela_hir::module_graph::{DeclarationKind, ModuleGraph, Visibility};
 
 use crate::{
     DocumentId, LanguageServiceDatabases, TextRange, hir_path_sites,
