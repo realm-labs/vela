@@ -69,5 +69,5 @@ pub use targets::{
 };
 pub use value::{
     MirBinaryOp, MirComparisonOp, MirEvaluatedConstant, MirImmediate, MirNumericBinaryOp,
-    MirOperand, MirPlace, MirRvalue, MirUnaryOp, MirValueType,
+    MirOperand, MirPatternPredicate, MirPlace, MirRvalue, MirUnaryOp, MirValueType,
 };

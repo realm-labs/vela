@@ -1,3 +1,4 @@
+mod aggregate_patterns;
 mod builder;
 mod call_guards;
 mod control;

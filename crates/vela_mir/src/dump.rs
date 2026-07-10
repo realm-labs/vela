@@ -3,9 +3,9 @@ use std::fmt::{self, Write};
 use crate::{
     MirAggregate, MirCall, MirDynamicArgument, MirEffect, MirEvaluatedConstant, MirFormatPart,
     MirFunction, MirFunctionOwner, MirGlobalOperation, MirHostOperation, MirImmediate,
-    MirIndexOperation, MirIteratorOperation, MirOperand, MirProgram, MirReflectionOperation,
-    MirRvalue, MirScriptArgument, MirSourceNode, MirSourceOrigin, MirStatement, MirStatementKind,
-    MirTerminator, MirTerminatorKind,
+    MirIndexOperation, MirIteratorOperation, MirOperand, MirPatternPredicate, MirProgram,
+    MirReflectionOperation, MirRvalue, MirScriptArgument, MirSourceNode, MirSourceOrigin,
+    MirStatement, MirStatementKind, MirTerminator, MirTerminatorKind,
 };
 
 impl MirProgram {
@@ -429,6 +429,11 @@ fn write_aggregate(formatter: &mut fmt::Formatter<'_>, aggregate: &MirAggregate)
             write_fields(formatter, fields)?;
             formatter.write_char(']')
         }
+        MirAggregate::DynamicRecord { type_name, fields } => {
+            write!(formatter, "alloc.record.dynamic type={type_name:?} [")?;
+            write_dynamic_fields(formatter, fields)?;
+            formatter.write_char(']')
+        }
         MirAggregate::Enum {
             type_id,
             variant,
@@ -441,6 +446,18 @@ fn write_aggregate(formatter: &mut fmt::Formatter<'_>, aggregate: &MirAggregate)
                 variant.get()
             )?;
             write_fields(formatter, fields)?;
+            formatter.write_char(']')
+        }
+        MirAggregate::DynamicVariant {
+            owner_name,
+            variant_name,
+            fields,
+        } => {
+            write!(
+                formatter,
+                "alloc.variant.dynamic owner={owner_name:?} variant={variant_name:?} ["
+            )?;
+            write_dynamic_fields(formatter, fields)?;
             formatter.write_char(']')
         }
         MirAggregate::Closure { function, captures } => {
@@ -474,6 +491,19 @@ fn write_fields(
             formatter.write_str(", ")?;
         }
         write!(formatter, "#{}={}", field.get(), operand_text(value))?;
+    }
+    Ok(())
+}
+
+fn write_dynamic_fields(
+    formatter: &mut fmt::Formatter<'_>,
+    fields: &[(String, MirOperand)],
+) -> fmt::Result {
+    for (index, (field, value)) in fields.iter().enumerate() {
+        if index > 0 {
+            formatter.write_str(", ")?;
+        }
+        write!(formatter, "{field:?}={}", operand_text(value))?;
     }
     Ok(())
 }
@@ -839,18 +869,52 @@ fn rvalue(value: &MirRvalue) -> String {
         MirRvalue::Use(operand) => operand_text(operand),
         MirRvalue::Truthy { value } => format!("truthy {}", operand_text(value)),
         MirRvalue::IsMissing { value } => format!("is_missing {}", operand_text(value)),
-        MirRvalue::EnumVariant {
+        MirRvalue::PatternPredicate(predicate) => pattern_predicate(predicate),
+    }
+}
+
+fn pattern_predicate(predicate: &MirPatternPredicate) -> String {
+    match predicate {
+        MirPatternPredicate::TupleArity { value, arity } => {
+            format!("pattern.tuple-arity {} == {arity}", operand_text(value))
+        }
+        MirPatternPredicate::RecordShape {
+            value,
+            type_id,
+            shape,
+        } => format!(
+            "pattern.record-shape {} type#{} shape#{}",
+            operand_text(value),
+            type_id.get(),
+            shape.get()
+        ),
+        MirPatternPredicate::VariantShape {
             value,
             type_id,
             variant,
-        } => {
-            format!(
-                "enum.variant {} type#{} == variant#{}",
-                operand_text(value),
-                type_id.get(),
-                variant.get()
-            )
-        }
+        } => format!(
+            "pattern.variant-shape {} type#{} variant#{}",
+            operand_text(value),
+            type_id.get(),
+            variant.get()
+        ),
+        MirPatternPredicate::DynamicRecord {
+            value,
+            type_name,
+            required_fields,
+        } => format!(
+            "pattern.record.dynamic {} type={type_name:?} fields={required_fields:?}",
+            operand_text(value)
+        ),
+        MirPatternPredicate::DynamicVariant {
+            value,
+            owner_name,
+            variant_name,
+            required_fields,
+        } => format!(
+            "pattern.variant.dynamic {} owner={owner_name:?} variant={variant_name:?} fields={required_fields:?}",
+            operand_text(value)
+        ),
     }
 }
 

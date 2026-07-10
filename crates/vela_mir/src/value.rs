@@ -114,18 +114,44 @@ pub enum MirBinaryOp {
     },
 }
 
+/// A non-trapping structural check used before pattern projections.
+///
+/// Stable checks carry definition identities. Dynamic checks also carry every
+/// field name that a successful match must make safe to project. Host values
+/// and host paths deliberately have no structural predicate form.
 #[derive(Clone, Debug, PartialEq)]
-pub enum MirRvalue {
-    Use(MirOperand),
-    Truthy {
+pub enum MirPatternPredicate {
+    TupleArity {
         value: MirOperand,
+        arity: u32,
     },
-    IsMissing {
+    RecordShape {
         value: MirOperand,
+        type_id: TypeId,
+        shape: ShapeId,
     },
-    EnumVariant {
+    VariantShape {
         value: MirOperand,
         type_id: TypeId,
         variant: VariantId,
     },
+    DynamicRecord {
+        value: MirOperand,
+        type_name: String,
+        required_fields: Vec<String>,
+    },
+    DynamicVariant {
+        value: MirOperand,
+        owner_name: String,
+        variant_name: String,
+        required_fields: Vec<String>,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum MirRvalue {
+    Use(MirOperand),
+    Truthy { value: MirOperand },
+    IsMissing { value: MirOperand },
+    PatternPredicate(MirPatternPredicate),
 }

@@ -90,10 +90,22 @@ pub enum MirAggregate {
         shape: ShapeId,
         fields: Vec<(FieldId, MirOperand)>,
     },
+    /// An unregistered record whose evaluated fields remain in source order.
+    DynamicRecord {
+        type_name: String,
+        fields: Vec<(String, MirOperand)>,
+    },
     Enum {
         type_id: TypeId,
         variant: VariantId,
         fields: Vec<(FieldId, MirOperand)>,
+    },
+    /// An unregistered enum variant whose evaluated fields remain in source
+    /// order.
+    DynamicVariant {
+        owner_name: String,
+        variant_name: String,
+        fields: Vec<(String, MirOperand)>,
     },
     Closure {
         function: MirFunctionId,
