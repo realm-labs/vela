@@ -4,6 +4,7 @@ pub mod diagnostic_render;
 pub mod primitive;
 
 pub use primitive::{NumericTag, PrimitiveTag, ScalarValue};
+pub use vela_def::stable_id;
 
 use std::collections::HashMap;
 use std::fmt;
@@ -52,26 +53,6 @@ fn script_shape_hash_bytes(hash: &mut u32, bytes: &[u8]) {
     for byte in bytes {
         *hash ^= u32::from(*byte);
         *hash = hash.wrapping_mul(0x0100_0193);
-    }
-}
-
-#[must_use]
-pub const fn stable_id(namespace: &str, owner: &str, name: &str) -> u64 {
-    let mut hash = 0xcbf2_9ce4_8422_2325;
-    stable_hash_bytes(&mut hash, namespace.as_bytes());
-    stable_hash_bytes(&mut hash, &[0]);
-    stable_hash_bytes(&mut hash, owner.as_bytes());
-    stable_hash_bytes(&mut hash, &[0]);
-    stable_hash_bytes(&mut hash, name.as_bytes());
-    if hash == 0 { 1 } else { hash }
-}
-
-const fn stable_hash_bytes(hash: &mut u64, bytes: &[u8]) {
-    let mut index = 0;
-    while index < bytes.len() {
-        *hash ^= bytes[index] as u64;
-        *hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
-        index += 1;
     }
 }
 
@@ -295,6 +276,13 @@ impl fmt::Display for Severity {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const REEXPORTED_STABLE_ID: u64 = stable_id("trait_method", "PartialEq", "eq");
+
+    #[test]
+    fn stable_id_reexport_preserves_const_identity() {
+        assert_eq!(REEXPORTED_STABLE_ID, 0xafff_db83_17bd_1f5c);
+    }
 
     #[test]
     fn interning_reuses_symbols_and_resolves_text() {

@@ -4,7 +4,9 @@ use crate::{
     CacheSiteKind, CallArgument, Register, UnlinkedCodeObject, UnlinkedInstruction,
     UnlinkedInstructionKind, UnlinkedProgram,
 };
-use vela_def::{DefPath, FieldId, FunctionId, MethodId};
+use vela_def::{
+    DefPath, FieldId, FunctionId, MethodId, script_inherent_method_id, script_trait_method_id,
+};
 use vela_host::target::HostPathPart;
 
 fn semantic_diagnostic_codes(error: CompileError) -> Vec<String> {
@@ -18,19 +20,11 @@ fn semantic_diagnostic_codes(error: CompileError) -> Vec<String> {
 }
 
 fn stable_test_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {
-    MethodId::new(u128::from(vela_common::stable_id(
-        "trait_method",
-        trait_name,
-        method_name,
-    )))
+    script_trait_method_id(trait_name, method_name)
 }
 
 fn stable_test_inherent_method_id(type_name: &str, method_name: &str) -> MethodId {
-    MethodId::new(u128::from(vela_common::stable_id(
-        "inherent_method",
-        type_name,
-        method_name,
-    )))
+    script_inherent_method_id(type_name, method_name)
 }
 
 #[test]

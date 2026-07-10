@@ -1,5 +1,8 @@
 use vela_common::{HostMethodId, Span};
-use vela_def::{MethodId, script_field_id, script_type_id, script_variant_id};
+use vela_def::{
+    script_field_id, script_inherent_method_id, script_trait_method_id, script_type_id,
+    script_variant_id,
+};
 use vela_hir::attributes::{HirAttribute, schema_id_attr};
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
@@ -140,7 +143,7 @@ impl TypeRegistry {
                         |desc, method| {
                             desc.method(apply_trait_method_attrs(
                                 TraitMethodDesc::new(
-                                    stable_trait_method_id(&trait_name, &method.name),
+                                    script_trait_method_id(&trait_name, &method.name),
                                     method.name.clone(),
                                 )
                                 .origin(DeclOrigin::Script)
@@ -204,7 +207,7 @@ fn inherent_methods_for_type(
             metadata.methods.iter().map(|method| {
                 apply_method_signature(
                     MethodDesc::new(
-                        stable_inherent_host_method_id(&type_name, &method.name),
+                        script_inherent_host_method_id(&type_name, &method.name),
                         method.name.clone(),
                     )
                     .origin(DeclOrigin::Script)
@@ -466,20 +469,8 @@ fn hash_bytes(hash: &mut u64, bytes: &[u8]) {
     }
 }
 
-fn stable_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {
-    MethodId::new(u128::from(vela_common::stable_id(
-        "trait_method",
-        trait_name,
-        method_name,
-    )))
-}
-
-fn stable_inherent_host_method_id(type_name: &str, method_name: &str) -> HostMethodId {
-    HostMethodId::new(u128::from(vela_common::stable_id(
-        "inherent_method",
-        type_name,
-        method_name,
-    )))
+fn script_inherent_host_method_id(type_name: &str, method_name: &str) -> HostMethodId {
+    HostMethodId::new(script_inherent_method_id(type_name, method_name).get())
 }
 
 fn explicit_script_id(attrs: &[HirAttribute]) -> Option<u128> {
@@ -861,7 +852,7 @@ impl Player {
         let method = &player.methods[0];
         assert_eq!(
             method.id,
-            stable_inherent_host_method_id("game::combat::Player", "bonus")
+            script_inherent_host_method_id("game::combat::Player", "bonus")
         );
         assert_eq!(method.origin, DeclOrigin::Script);
         assert_eq!(method.return_type.as_deref(), Some("i64"));
@@ -924,6 +915,10 @@ impl Damageable for Player {
             [("damage", false), ("alive", true)]
         );
         assert_eq!(damageable.methods[0].docs.as_deref(), Some("Apply damage."));
+        assert_eq!(
+            damageable.methods[0].id,
+            script_trait_method_id("game::combat::Damageable", "damage")
+        );
         assert_eq!(damageable.methods[0].origin, DeclOrigin::Script);
         assert_eq!(damageable.methods[0].return_type.as_deref(), Some("i64"));
         assert_eq!(

@@ -1,4 +1,4 @@
-use crate::{DefPath, FieldId, FunctionId, GlobalId, TypeId, VariantId};
+use crate::{DefPath, FieldId, FunctionId, GlobalId, MethodId, TypeId, VariantId, stable_id};
 
 const SCRIPT_PACKAGE: &str = "script";
 
@@ -16,6 +16,25 @@ pub fn script_function_path(symbol: &str) -> DefPath {
 #[must_use]
 pub fn script_function_id(symbol: &str) -> FunctionId {
     FunctionId::from_def_id(script_function_path(symbol).id())
+}
+
+/// Returns the stable identity for an inherent script method.
+///
+/// `owner` is the source-qualified script type name selected by the compiler,
+/// such as `main::Player` or `game::combat::Player`.
+#[must_use]
+pub fn script_inherent_method_id(owner: &str, method: &str) -> MethodId {
+    MethodId::new(u128::from(stable_id("inherent_method", owner, method)))
+}
+
+/// Returns the stable identity shared by every implementation of a script
+/// trait method.
+///
+/// `trait_name` is the source-qualified trait name selected by the compiler,
+/// or the builtin comparison-trait name for builtin operator traits.
+#[must_use]
+pub fn script_trait_method_id(trait_name: &str, method: &str) -> MethodId {
+    MethodId::new(u128::from(stable_id("trait_method", trait_name, method)))
 }
 
 /// Returns the canonical definition path for a script type symbol.
@@ -184,5 +203,29 @@ mod tests {
 
         assert_eq!(first[0], reordered[1]);
         assert_eq!(first[1], reordered[0]);
+    }
+
+    #[test]
+    fn script_method_helpers_preserve_existing_fnv_identities() {
+        assert_eq!(
+            script_inherent_method_id("main::Player", "bonus"),
+            MethodId::new(0xe0dc_50cc_b2ea_1381)
+        );
+        assert_eq!(
+            script_trait_method_id("main::BonusSource", "bonus"),
+            MethodId::new(0xbc3f_86dc_30f1_b48f)
+        );
+        assert_eq!(
+            script_trait_method_id("PartialEq", "eq"),
+            MethodId::new(0xafff_db83_17bd_1f5c)
+        );
+        assert_eq!(
+            script_inherent_method_id("game::combat::Player", "bonus"),
+            MethodId::new(u128::from(stable_id(
+                "inherent_method",
+                "game::combat::Player",
+                "bonus"
+            )))
+        );
     }
 }

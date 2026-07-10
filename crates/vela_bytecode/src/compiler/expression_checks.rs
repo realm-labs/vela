@@ -1,5 +1,5 @@
 use vela_common::{Diagnostic, Span};
-use vela_def::MethodId;
+use vela_def::script_trait_method_id;
 use vela_hir::body::HirBinaryOp;
 
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
@@ -91,7 +91,7 @@ impl Compiler<'_, '_> {
         method_name: &str,
     ) -> bool {
         self.script_method_id_for_type(type_name, method_name)
-            == Some(builtin_trait_method_id(trait_name, method_name))
+            == Some(script_trait_method_id(trait_name, method_name))
             || self
                 .facts
                 .derived_operator_traits
@@ -157,12 +157,4 @@ fn binary_op_source_name(op: HirBinaryOp) -> &'static str {
         HirBinaryOp::Or => "||",
         HirBinaryOp::And => "&&",
     }
-}
-
-fn builtin_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {
-    MethodId::new(u128::from(vela_common::stable_id(
-        "trait_method",
-        trait_name,
-        method_name,
-    )))
 }

@@ -4,7 +4,7 @@ use vela_bytecode::{
     LinkedProgram, UnlinkedProgramCode, derived_linked_record_trait_fields,
     derived_record_trait_fields,
 };
-use vela_def::MethodId;
+use vela_def::{MethodId, script_trait_method_id};
 use vela_reflect::registry::TypeRegistry;
 
 use crate::heap::{GcRef, HeapValue};
@@ -139,7 +139,7 @@ fn call_partial_eq(
     else {
         return Ok(None);
     };
-    let method_id = builtin_trait_method_id("PartialEq", PARTIAL_EQ_METHOD);
+    let method_id = script_trait_method_id("PartialEq", PARTIAL_EQ_METHOD);
     let Some(result) =
         call_builtin_trait_method(lhs, rhs, runtime, &type_name, method_id, PARTIAL_EQ_METHOD)?
     else {
@@ -273,7 +273,7 @@ fn call_partial_ord(
     else {
         return Ok(None);
     };
-    let method_id = builtin_trait_method_id("PartialOrd", PARTIAL_ORD_METHOD);
+    let method_id = script_trait_method_id("PartialOrd", PARTIAL_ORD_METHOD);
     let Some(result) =
         call_builtin_trait_method(lhs, rhs, runtime, &type_name, method_id, PARTIAL_ORD_METHOD)?
     else {
@@ -294,7 +294,7 @@ fn call_ord(
     else {
         return Ok(None);
     };
-    let method_id = builtin_trait_method_id("Ord", ORD_METHOD);
+    let method_id = script_trait_method_id("Ord", ORD_METHOD);
     let Some(result) =
         call_builtin_trait_method(lhs, rhs, runtime, &type_name, method_id, ORD_METHOD)?
     else {
@@ -559,14 +559,6 @@ fn receiver_type_name<'a>(
         },
         _ => None,
     }
-}
-
-fn builtin_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {
-    MethodId::new(u128::from(vela_common::stable_id(
-        "trait_method",
-        trait_name,
-        method_name,
-    )))
 }
 
 fn leaf_values_equal(

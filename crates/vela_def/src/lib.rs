@@ -1,13 +1,16 @@
 //! Stable semantic definition identity for Vela.
 
 mod script;
+mod stable;
 
 use std::fmt;
 
 pub use script::{
     script_field_id, script_field_path, script_function_id, script_function_path, script_global_id,
-    script_global_path, script_type_id, script_type_path, script_variant_id, script_variant_path,
+    script_global_path, script_inherent_method_id, script_trait_method_id, script_type_id,
+    script_type_path, script_variant_id, script_variant_path,
 };
+pub use stable::stable_id;
 
 const HASH_VERSION_PREFIX: &str = "vela-def-v1";
 
