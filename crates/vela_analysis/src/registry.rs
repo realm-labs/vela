@@ -463,6 +463,50 @@ impl RegistryFacts {
             .get(&(owner.to_owned(), field.to_owned()))
     }
 
+    #[must_use]
+    pub fn field_targets_for_owner_or_short_name(
+        &self,
+        owner: &str,
+    ) -> Vec<RegistryFieldTargetFact> {
+        let exact = self
+            .field_targets
+            .keys()
+            .filter(|(field_owner, _)| field_owner == owner)
+            .cloned()
+            .collect::<Vec<_>>();
+        let keys = if exact.is_empty() {
+            let short_owner = owner.rsplit("::").next().unwrap_or(owner);
+            let indexed = self
+                .fields_by_short_owner
+                .get(short_owner)
+                .cloned()
+                .unwrap_or_default();
+            let qualified_owners = indexed
+                .iter()
+                .map(|(field_owner, _)| field_owner)
+                .collect::<BTreeSet<_>>();
+            if qualified_owners.len() == 1 {
+                indexed.into_iter().collect()
+            } else {
+                Vec::new()
+            }
+        } else {
+            exact
+        };
+        let mut targets = keys
+            .into_iter()
+            .filter_map(|key| self.field_targets.get(&key).cloned())
+            .collect::<Vec<_>>();
+        targets.sort_by(|lhs, rhs| {
+            (lhs.declaration_order, &lhs.owner_name, &lhs.name).cmp(&(
+                rhs.declaration_order,
+                &rhs.owner_name,
+                &rhs.name,
+            ))
+        });
+        targets
+    }
+
     pub fn fields(&self) -> impl Iterator<Item = RegistryMemberFact> + '_ {
         self.fields
             .iter()
@@ -476,6 +520,31 @@ impl RegistryFacts {
             .take_while(|((field_owner, _), _)| field_owner == owner)
             .map(|((owner, name), fact)| RegistryMemberFact::new(owner, name, fact.clone()))
             .collect()
+    }
+
+    pub(crate) fn fields_for_exact_or_unique_short_name(
+        &self,
+        owner: &str,
+    ) -> Option<Vec<RegistryMemberFact>> {
+        let exact = self.fields_for_owner(owner);
+        if !exact.is_empty() {
+            return Some(exact);
+        }
+        let short_owner = owner.rsplit("::").next().unwrap_or(owner);
+        let indexed = self
+            .fields_by_short_owner
+            .get(short_owner)
+            .cloned()
+            .unwrap_or_default();
+        let qualified_owners = indexed
+            .iter()
+            .map(|(field_owner, _)| field_owner)
+            .collect::<BTreeSet<_>>();
+        if qualified_owners.len() > 1 {
+            return None;
+        }
+        let resolved_owner = qualified_owners.into_iter().next();
+        Some(resolved_owner.map_or_else(Vec::new, |owner| self.fields_for_owner(owner)))
     }
 
     #[must_use]
@@ -502,6 +571,47 @@ impl RegistryFacts {
     #[must_use]
     pub fn variant_fact(&self, owner: &str, variant: &str) -> Option<&TypeFact> {
         self.variants.get(&(owner.to_owned(), variant.to_owned()))
+    }
+
+    #[must_use]
+    pub fn variant_for_owner_or_unique_short_name(
+        &self,
+        owner: &str,
+        variant: &str,
+    ) -> Option<RegistryMemberFact> {
+        if let Some(fact) = self.variant_fact(owner, variant) {
+            return Some(RegistryMemberFact::new(owner, variant, fact.clone()));
+        }
+        let semantic_owner = self.type_target_fact(owner).map(|target| target.semantic);
+        let mut keys = semantic_owner.map_or_else(BTreeSet::new, |semantic_owner| {
+            self.type_targets
+                .iter()
+                .filter(|(name, target)| {
+                    target.semantic == semantic_owner && self.variant_fact(name, variant).is_some()
+                })
+                .map(|(name, _)| (name.clone(), variant.to_owned()))
+                .collect()
+        });
+        if keys.is_empty() {
+            let short_owner = owner.rsplit("::").next().unwrap_or(owner);
+            keys.extend(
+                self.variants_by_short_owner
+                    .get(short_owner)
+                    .into_iter()
+                    .flatten()
+                    .filter(|(_, name)| name == variant)
+                    .cloned(),
+            );
+        }
+        (keys.len() == 1).then(|| {
+            let (owner, name) = keys.into_iter().next().expect("one variant key");
+            let fact = self
+                .variants
+                .get(&(owner.clone(), name.clone()))
+                .expect("indexed variant fact")
+                .clone();
+            RegistryMemberFact::new(owner, name, fact)
+        })
     }
 
     pub fn variant_names(&self, owner: &str) -> Vec<String> {

@@ -739,6 +739,15 @@ impl HirSemanticFacts {
         let Some(path) = expression_path(body, call.callee, HirPathKind::Callee) else {
             return CallTargetFact::Dynamic;
         };
+        if let Some((variant, owner_path)) = path.split_last()
+            && let Some(declaration) = source_declaration_for_path(graph, owner_path)
+            && declaration.kind == DeclarationKind::Enum
+        {
+            return CallTargetFact::Variant {
+                enum_declaration: declaration.id,
+                variant: variant.clone(),
+            };
+        }
         let qualified = path.join("::");
         let args = call
             .arguments
@@ -1018,10 +1027,12 @@ fn constructor_target(
             .split_last()
             .expect("non-empty dynamic constructor path");
         let owner = owner_path.join("::");
-        if schema.is_some_and(|schema| schema.variant_fact(&owner, variant).is_some()) {
+        if let Some(target) =
+            schema.and_then(|schema| schema.variant_for_owner_or_unique_short_name(&owner, variant))
+        {
             return ConstructorTargetFact::RegistryVariant {
-                owner,
-                variant: variant.clone(),
+                owner: target.owner,
+                variant: target.name,
             };
         }
     }

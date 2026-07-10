@@ -67,7 +67,7 @@ pub(super) fn record_body(
         if !call_diagnostics.is_empty() {
             validation
                 .call_diagnostic_batches
-                .push((call_span, call_diagnostics));
+                .push((expression, call_span, call_diagnostics));
         }
         validation.calls.insert(
             expression,

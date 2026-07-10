@@ -25,8 +25,8 @@ use crate::semantic_facts::{
 };
 use crate::type_fact::TypeFact;
 use crate::validation::{
-    ArrayOrderingCapabilityFact, CallArgumentPlacementFact, ExecutableValidationFacts,
-    LoopControlFact, OperatorCapabilityFact,
+    ArrayOrderingCapabilityFact, CallArgumentPlacementFact, ConstructorPlacementFact,
+    ExecutableValidationFacts, LoopControlFact, OperatorCapabilityFact,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -385,6 +385,14 @@ impl ExecutableAnalysisView<'_> {
         expression: HirExprId,
     ) -> Option<&CallArgumentPlacementFact> {
         self.root.validation.call_argument_placement(expression)
+    }
+
+    #[must_use]
+    pub fn constructor_placement(
+        &self,
+        expression: HirExprId,
+    ) -> Option<&ConstructorPlacementFact> {
+        self.root.validation.constructor_placement(expression)
     }
 
     #[must_use]

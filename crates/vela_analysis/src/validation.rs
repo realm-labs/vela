@@ -13,13 +13,18 @@ use vela_hir::module_graph::ModuleGraph;
 
 use crate::facts::AnalysisFacts;
 use crate::registry::RegistryFacts;
+use crate::semantic_facts::ConstructorTargetFact;
+use crate::type_fact::TypeFact;
 
 mod calls;
 mod capabilities;
+mod constructors;
 mod diagnostics;
 
 #[cfg(test)]
 mod call_tests;
+#[cfg(test)]
+mod constructor_tests;
 #[cfg(test)]
 mod tests;
 
@@ -182,13 +187,64 @@ pub struct CallArgumentPlacementFact {
     pub parameter_slots: Option<Vec<CallParameterSlotFact>>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ConstructorInputKindFact {
+    RecordFields,
+    TupleArguments,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ConstructorSourceValueFact {
+    pub source_index: usize,
+    pub name: Option<String>,
+    pub value: Option<HirExprId>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ConstructorSlotValueFact {
+    Explicit {
+        source_index: usize,
+        value: Option<HirExprId>,
+    },
+    SourceDefault {
+        body: HirBodyId,
+    },
+    /// HIR declared a source default but did not retain a complete provider.
+    SourceDefaultUnavailable {
+        body: Option<HirBodyId>,
+    },
+    /// Registry metadata promises a default but does not carry its value.
+    RegisteredDefaultUnavailable,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ConstructorFieldSlotFact {
+    pub declaration_index: usize,
+    pub field_name: String,
+    pub parameter_name: String,
+    pub expected: TypeFact,
+    pub declaration_span: Option<Span>,
+    pub value: ConstructorSlotValueFact,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ConstructorPlacementFact {
+    pub target: ConstructorTargetFact,
+    pub input_kind: ConstructorInputKindFact,
+    pub source_order: Vec<ConstructorSourceValueFact>,
+    pub declaration_slots: Option<Vec<ConstructorFieldSlotFact>>,
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ExecutableValidationFacts {
     operators: BTreeMap<HirExprId, OperatorCapabilityFact>,
     array_ordering: BTreeMap<HirExprId, ArrayOrderingCapabilityFact>,
     loop_controls: BTreeMap<HirStmtId, LoopControlFact>,
     calls: BTreeMap<HirExprId, CallArgumentPlacementFact>,
-    call_diagnostic_batches: Vec<(Span, Vec<Diagnostic>)>,
+    constructors: BTreeMap<HirExprId, ConstructorPlacementFact>,
+    call_diagnostic_batches: Vec<(HirExprId, Span, Vec<Diagnostic>)>,
+    constructor_diagnostic_batches: Vec<(HirExprId, Span, Vec<Diagnostic>)>,
     diagnostics: Vec<Diagnostic>,
 }
 
@@ -204,7 +260,13 @@ impl ExecutableValidationFacts {
         for body in bodies.iter().filter_map(|body| graph.body(*body)) {
             capabilities::record_body(&mut validation, &capabilities, graph, facts, body);
             calls::record_body(&mut validation, graph, schema, facts, body);
+            constructors::record_body(&mut validation, graph, schema, facts, body);
         }
+        let constructor_diagnostic_expressions = validation
+            .constructor_diagnostic_batches
+            .iter()
+            .map(|(expression, _, _)| *expression)
+            .collect::<BTreeSet<_>>();
         let mut diagnostic_batches = validation
             .diagnostics
             .drain(..)
@@ -213,7 +275,16 @@ impl ExecutableValidationFacts {
                 validation
                     .call_diagnostic_batches
                     .drain(..)
-                    .map(|(origin, diagnostics)| (Some(origin), diagnostics)),
+                    .filter(|(expression, _, _)| {
+                        !constructor_diagnostic_expressions.contains(expression)
+                    })
+                    .map(|(_, origin, diagnostics)| (Some(origin), diagnostics)),
+            )
+            .chain(
+                validation
+                    .constructor_diagnostic_batches
+                    .drain(..)
+                    .map(|(_, origin, diagnostics)| (Some(origin), diagnostics)),
             )
             .collect::<Vec<_>>();
         diagnostic_batches
@@ -246,6 +317,14 @@ impl ExecutableValidationFacts {
         expression: HirExprId,
     ) -> Option<&CallArgumentPlacementFact> {
         self.calls.get(&expression)
+    }
+
+    #[must_use]
+    pub fn constructor_placement(
+        &self,
+        expression: HirExprId,
+    ) -> Option<&ConstructorPlacementFact> {
+        self.constructors.get(&expression)
     }
 
     #[must_use]
