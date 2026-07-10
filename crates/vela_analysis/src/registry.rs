@@ -1,16 +1,16 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use vela_common::{PrimitiveTag, Span};
-use vela_reflect::access::{FunctionEffectSet, MethodAccess, MethodEffectSet};
-use vela_reflect::modules::{DeclOrigin, FunctionDesc, ModuleDesc};
-use vela_reflect::registry::{
-    FieldDesc, MethodDesc, TraitMethodDesc, TypeDesc, TypeKind, TypeRegistry,
-};
+use vela_common::{HostTypeId, PrimitiveTag, Span};
+use vela_def::{FieldId, TypeId};
+use vela_reflect::access::MethodAccess;
+use vela_reflect::modules::{DeclOrigin, ModuleDesc};
+use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKind, TypeRegistry};
 use vela_registry::TypeHintDef;
 
 use crate::type_fact::TypeFact;
 
 mod compile_view;
+mod reflect_view;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RegistryMemberFact {
@@ -38,6 +38,62 @@ pub struct RegistryFieldAccessFact {
     pub reflect_readable: bool,
     pub reflect_writable: bool,
     pub required_permissions: Vec<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RegistryTypeTargetFact {
+    pub name: String,
+    pub semantic: TypeId,
+    pub host_runtime: Option<HostTypeId>,
+}
+
+impl RegistryTypeTargetFact {
+    #[must_use]
+    pub fn new(
+        name: impl Into<String>,
+        semantic: TypeId,
+        host_runtime: Option<HostTypeId>,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            semantic,
+            host_runtime,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RegistryFieldTargetFact {
+    pub owner: TypeId,
+    pub owner_name: String,
+    pub name: String,
+    pub semantic: FieldId,
+    pub host_runtime: Option<FieldId>,
+    pub variant_field: bool,
+    pub access: RegistryFieldAccessFact,
+}
+
+impl RegistryFieldTargetFact {
+    #[must_use]
+    pub fn new(
+        owner: TypeId,
+        owner_name: impl Into<String>,
+        name: impl Into<String>,
+        semantic: FieldId,
+        host_runtime: Option<FieldId>,
+        variant_field: bool,
+        access: RegistryFieldAccessFact,
+    ) -> Self {
+        Self {
+            owner,
+            owner_name: owner_name.into(),
+            name: name.into(),
+            semantic,
+            host_runtime,
+            variant_field,
+            access,
+        }
+    }
 }
 
 impl RegistryFieldAccessFact {
@@ -280,6 +336,7 @@ impl RegistryEffectFact {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct RegistryFacts {
     types: BTreeMap<String, TypeFact>,
+    type_targets: BTreeMap<String, RegistryTypeTargetFact>,
     type_docs: BTreeMap<String, String>,
     traits: BTreeMap<String, TypeFact>,
     trait_docs: BTreeMap<String, String>,
@@ -287,6 +344,7 @@ pub struct RegistryFacts {
     fields_by_short_owner: BTreeMap<String, BTreeSet<(String, String)>>,
     field_docs: BTreeMap<(String, String), String>,
     field_access: BTreeMap<(String, String), RegistryFieldAccessFact>,
+    field_targets: BTreeMap<(String, String), RegistryFieldTargetFact>,
     variants: BTreeMap<(String, String), TypeFact>,
     variants_by_short_owner: BTreeMap<String, BTreeSet<(String, String)>>,
     variant_docs: BTreeMap<(String, String), String>,
@@ -307,162 +365,17 @@ pub struct RegistryFacts {
 
 impl RegistryFacts {
     #[must_use]
-    pub fn from_registry(registry: &TypeRegistry) -> Self {
-        let mut facts = Self::default();
-
-        for desc in registry.types() {
-            let type_fact = type_desc_fact(desc);
-            facts.types.insert(desc.key.name.clone(), type_fact.clone());
-            if let Some(docs) = &desc.docs {
-                facts.type_docs.insert(desc.key.name.clone(), docs.clone());
-            }
-            if let Some(capability) = &desc.index_capability {
-                facts.index_capabilities.insert(
-                    desc.key.name.clone(),
-                    RegistryIndexCapabilityFact::new(&desc.key.name, capability, registry),
-                );
-            }
-
-            for field in &desc.fields {
-                let key = (desc.key.name.clone(), field.name.clone());
-                facts.fields.insert(
-                    key.clone(),
-                    field
-                        .type_hint
-                        .as_deref()
-                        .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint)),
-                );
-                if let Some(docs) = &field.docs {
-                    facts.field_docs.insert(key.clone(), docs.clone());
-                }
-                facts.field_access.insert(
-                    key,
-                    RegistryFieldAccessFact::new(&desc.key.name, &field.name, field),
-                );
-            }
-
-            for method in &desc.methods {
-                let key = (desc.key.name.clone(), method.name.clone());
-                facts
-                    .methods
-                    .insert(key.clone(), method_desc_fact(registry, method));
-                if let Some(docs) = &method.docs {
-                    facts.method_docs.insert(key.clone(), docs.clone());
-                }
-                facts
-                    .method_effects
-                    .insert(key.clone(), method_effect_fact(&method.effects));
-                facts.method_access.insert(
-                    key,
-                    RegistryMethodAccessFact::new(&desc.key.name, &method.name, &method.access),
-                );
-            }
-
-            for trait_desc in &desc.traits {
-                facts
-                    .traits
-                    .entry(trait_desc.name.clone())
-                    .or_insert_with(|| TypeFact::trait_type(&trait_desc.name));
-                if let Some(docs) = &trait_desc.docs {
-                    facts
-                        .trait_docs
-                        .entry(trait_desc.name.clone())
-                        .or_insert_with(|| docs.clone());
-                }
-            }
-
-            for variant in &desc.variants {
-                let variant_key = (desc.key.name.clone(), variant.name.clone());
-                facts.variants.insert(
-                    variant_key.clone(),
-                    TypeFact::enum_type(&desc.key.name, Some(&variant.name)),
-                );
-                if let Some(docs) = &variant.docs {
-                    facts.variant_docs.insert(variant_key, docs.clone());
-                }
-                for field in &variant.fields {
-                    let owner = format!("{}::{}", desc.key.name, variant.name);
-                    let key = (owner.clone(), field.name.clone());
-                    facts.fields.insert(
-                        key.clone(),
-                        field
-                            .type_hint
-                            .as_deref()
-                            .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint)),
-                    );
-                    if let Some(docs) = &field.docs {
-                        facts.field_docs.insert(key.clone(), docs.clone());
-                    }
-                    facts
-                        .field_access
-                        .insert(key, RegistryFieldAccessFact::new(owner, &field.name, field));
-                }
-            }
-        }
-
-        for function in registry.functions() {
-            facts.functions.insert(
-                function.name.clone(),
-                function_desc_fact(registry, function),
-            );
-            facts
-                .function_origins
-                .insert(function.name.clone(), function.origin);
-            if let Some(docs) = &function.docs {
-                facts
-                    .function_docs
-                    .insert(function.name.clone(), docs.clone());
-            }
-            facts.function_effects.insert(
-                function.name.clone(),
-                function_effect_fact(&function.effects),
-            );
-        }
-
-        for module in registry.modules() {
-            facts
-                .modules
-                .insert(module.name.clone(), RegistryModuleFact::new(module));
-        }
-
-        for trait_desc in registry.traits() {
-            facts
-                .traits
-                .entry(trait_desc.name.clone())
-                .or_insert_with(|| TypeFact::trait_type(&trait_desc.name));
-            if let Some(docs) = &trait_desc.docs {
-                facts
-                    .trait_docs
-                    .entry(trait_desc.name.clone())
-                    .or_insert_with(|| docs.clone());
-            }
-            for method in &trait_desc.methods {
-                let key = (trait_desc.name.clone(), method.name.clone());
-                facts
-                    .trait_methods
-                    .insert(key.clone(), trait_method_desc_fact(registry, method));
-                facts
-                    .trait_method_effects
-                    .insert(key.clone(), RegistryEffectFact::pure());
-                if let Some(docs) = &method.docs {
-                    facts.trait_method_docs.insert(key, docs.clone());
-                }
-            }
-        }
-
-        collect_trait_methods(registry, &mut facts);
-        facts.rebuild_owner_indexes();
-
-        facts
-    }
-
-    #[must_use]
     pub fn type_fact(&self, name: &str) -> Option<&TypeFact> {
         self.types.get(name)
     }
 
     pub fn types(&self) -> impl Iterator<Item = (&str, &TypeFact)> {
         self.types.iter().map(|(name, fact)| (name.as_str(), fact))
+    }
+
+    #[must_use]
+    pub fn type_target_fact(&self, name: &str) -> Option<&RegistryTypeTargetFact> {
+        self.type_targets.get(name)
     }
 
     #[must_use]
@@ -499,6 +412,12 @@ impl RegistryFacts {
     #[must_use]
     pub fn field_access_fact(&self, owner: &str, field: &str) -> Option<&RegistryFieldAccessFact> {
         self.field_access.get(&(owner.to_owned(), field.to_owned()))
+    }
+
+    #[must_use]
+    pub fn field_target_fact(&self, owner: &str, field: &str) -> Option<&RegistryFieldTargetFact> {
+        self.field_targets
+            .get(&(owner.to_owned(), field.to_owned()))
     }
 
     pub fn fields(&self) -> impl Iterator<Item = RegistryMemberFact> + '_ {
@@ -749,6 +668,10 @@ impl RegistryFacts {
         self.types.insert(name.into(), fact);
     }
 
+    pub fn insert_type_target(&mut self, target: RegistryTypeTargetFact) {
+        self.type_targets.insert(target.name.clone(), target);
+    }
+
     pub fn insert_type_docs(&mut self, name: impl Into<String>, docs: impl Into<String>) {
         self.type_docs.insert(name.into(), docs.into());
     }
@@ -786,6 +709,11 @@ impl RegistryFacts {
     pub fn insert_field_access(&mut self, access: RegistryFieldAccessFact) {
         self.field_access
             .insert((access.owner.clone(), access.name.clone()), access);
+    }
+
+    pub fn insert_field_target(&mut self, target: RegistryFieldTargetFact) {
+        self.field_targets
+            .insert((target.owner_name.clone(), target.name.clone()), target);
     }
 
     pub fn insert_variant(
@@ -932,36 +860,6 @@ impl RegistryFacts {
     }
 }
 
-fn function_effect_fact(effects: &FunctionEffectSet) -> RegistryEffectFact {
-    RegistryEffectFact {
-        reads_host: effects.reads_host,
-        writes_host: effects.writes_host,
-        emits_events: effects.emits_events,
-        reads_time: effects.reads_time,
-        uses_random: effects.uses_random,
-        reads_io: effects.reads_io,
-        writes_io: effects.writes_io,
-        reads_reflection: effects.reads_reflection,
-        writes_reflection: effects.writes_reflection,
-        calls_reflection: effects.calls_reflection,
-    }
-}
-
-fn method_effect_fact(effects: &MethodEffectSet) -> RegistryEffectFact {
-    RegistryEffectFact {
-        reads_host: effects.reads_host,
-        writes_host: effects.writes_host,
-        emits_events: effects.emits_events,
-        reads_time: effects.reads_time,
-        uses_random: effects.uses_random,
-        reads_io: effects.reads_io,
-        writes_io: effects.writes_io,
-        reads_reflection: effects.reads_reflection,
-        writes_reflection: effects.writes_reflection,
-        calls_reflection: effects.calls_reflection,
-    }
-}
-
 fn type_desc_fact(desc: &TypeDesc) -> TypeFact {
     if let Some(tag) = PrimitiveTag::from_name(&desc.key.name) {
         return TypeFact::primitive(tag);
@@ -992,60 +890,6 @@ fn type_desc_fact(desc: &TypeDesc) -> TypeFact {
         TypeKind::ScriptStruct => TypeFact::record(&desc.key.name),
         TypeKind::ScriptEnum => TypeFact::enum_type(&desc.key.name, None::<String>),
     }
-}
-
-fn function_desc_fact(registry: &TypeRegistry, desc: &FunctionDesc) -> TypeFact {
-    let params = desc
-        .params
-        .iter()
-        .map(|param| {
-            param
-                .type_hint
-                .as_deref()
-                .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint))
-        })
-        .collect();
-    let returns = desc
-        .return_type
-        .as_deref()
-        .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint));
-    TypeFact::function(params, returns)
-}
-
-fn method_desc_fact(registry: &TypeRegistry, desc: &MethodDesc) -> TypeFact {
-    let params = desc
-        .params
-        .iter()
-        .map(|param| {
-            param
-                .type_hint
-                .as_deref()
-                .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint))
-        })
-        .collect();
-    let returns = desc
-        .return_type
-        .as_deref()
-        .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint));
-    TypeFact::function(params, returns)
-}
-
-fn trait_method_desc_fact(registry: &TypeRegistry, desc: &TraitMethodDesc) -> TypeFact {
-    let params = desc
-        .params
-        .iter()
-        .map(|param| {
-            param
-                .type_hint
-                .as_deref()
-                .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint))
-        })
-        .collect();
-    let returns = desc
-        .return_type
-        .as_deref()
-        .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint));
-    TypeFact::function(params, returns)
 }
 
 fn registry_hint_fact(registry: &TypeRegistry, hint: &str) -> TypeFact {
@@ -1123,25 +967,6 @@ fn trait_or_unknown(registry: &TypeRegistry, name: &str) -> TypeFact {
         TypeFact::trait_type(name)
     } else {
         TypeFact::Unknown
-    }
-}
-
-fn collect_trait_methods(registry: &TypeRegistry, facts: &mut RegistryFacts) {
-    for type_desc in registry.types() {
-        for trait_desc in &type_desc.traits {
-            for method in &trait_desc.methods {
-                let key = (trait_desc.name.clone(), method.name.clone());
-                facts
-                    .trait_methods
-                    .insert(key.clone(), trait_method_desc_fact(registry, method));
-                facts
-                    .trait_method_effects
-                    .insert(key.clone(), RegistryEffectFact::pure());
-                if let Some(docs) = &method.docs {
-                    facts.trait_method_docs.insert(key, docs.clone());
-                }
-            }
-        }
     }
 }
 

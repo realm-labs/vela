@@ -604,8 +604,7 @@ fn host_definition_registry(
         )
         .host_runtime_id(field.id.get())
         .writable(field.writable)
-        .type_hint(field.type_hint.map(str::to_owned))
-        .variant_field(field.variant);
+        .type_hint(field.type_hint.map(str::to_owned));
         registry
             .register_field(def)
             .expect("test host field should register");
@@ -648,7 +647,6 @@ struct TestHostField<'a> {
     id: FieldId,
     writable: bool,
     type_hint: Option<&'a str>,
-    variant: bool,
 }
 
 impl<'a> TestHostField<'a> {
@@ -659,7 +657,6 @@ impl<'a> TestHostField<'a> {
             id,
             writable: true,
             type_hint: None,
-            variant: false,
         }
     }
 

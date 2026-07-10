@@ -1,19 +1,24 @@
 use std::collections::BTreeMap;
 
 mod control_flow;
+mod script_types;
+mod targets;
 
 use control_flow::{block_flow, fallthrough_flow, if_flow, match_flow, statement_flow};
+pub use targets::{
+    CallTargetFact, ConstructorTargetFact, HostPathIndexKindFact, HostPathSegmentFact,
+    HostPathTargetFact, MemberTargetFact, OperatorTargetFact, ScriptTypeTargetFact,
+};
+use targets::{direct_lambda_body, registry_field_owner, source_field_fact};
 
 use vela_common::PrimitiveTag;
 use vela_hir::binding::BindingResolution;
 use vela_hir::body::{
-    HirAssignOp, HirBinaryOp, HirBody, HirBodyRoot, HirElseBranch, HirExprKind, HirFloatSuffix,
+    HirBinaryOp, HirBody, HirBodyRoot, HirElseBranch, HirExprKind, HirFloatSuffix,
     HirIntegerSuffix, HirLiteral, HirMatchArmBody, HirPathKind, HirPathOwner, HirPatternKind,
-    HirStmtKind, HirUnaryOp,
+    HirStmtKind,
 };
-use vela_hir::ids::{
-    HirBlockId, HirDeclId, HirExprId, HirLocalId, HirNodeId, HirPatternId, HirStmtId,
-};
+use vela_hir::ids::{HirBlockId, HirExprId, HirLocalId, HirNodeId, HirPatternId, HirStmtId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::ImplMetadataKind;
 
@@ -22,91 +27,6 @@ use crate::hints::type_fact_from_hint_in_module;
 use crate::registry::{RegistryEffectFact, RegistryFacts};
 use crate::stdlib::{stdlib_function_fact, stdlib_method_fact};
 use crate::type_fact::TypeFact;
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum CallTargetFact {
-    Declaration(HirDeclId),
-    Variant {
-        enum_declaration: HirDeclId,
-        variant: String,
-    },
-    ScriptMethod {
-        method: HirNodeId,
-    },
-    Local(HirLocalId),
-    RegistryFunction {
-        path: String,
-    },
-    NativeFunction {
-        path: String,
-    },
-    HostMethod {
-        owner: String,
-        name: String,
-    },
-    RegistryMethod {
-        owner: String,
-        name: String,
-    },
-    StdlibFunction {
-        path: String,
-    },
-    StdlibMethod {
-        name: String,
-    },
-    Dynamic,
-    Unresolved,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum MemberTargetFact {
-    HostField { owner: String, name: String },
-    RegistryField { owner: String, name: String },
-    RegistryMethod { owner: String, name: String },
-    StdlibMethod { name: String },
-    TupleIndex(usize),
-    Dynamic,
-    Unresolved,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum OperatorTargetFact {
-    Unary(HirUnaryOp),
-    Binary(HirBinaryOp),
-    Assignment(HirAssignOp),
-    Dynamic,
-    Unresolved,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum ConstructorTargetFact {
-    Declaration(HirDeclId),
-    Variant {
-        enum_declaration: HirDeclId,
-        variant: String,
-    },
-    RegistryType {
-        path: String,
-    },
-    RegistryVariant {
-        owner: String,
-        variant: String,
-    },
-    Dynamic,
-    Unresolved,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct HostPathTargetFact {
-    pub root: HirExprId,
-    pub segments: Vec<HostPathSegmentFact>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum HostPathSegmentFact {
-    Field(String),
-    DynamicIndex(HirExprId),
-}
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ControlFlowFact {
@@ -120,6 +40,8 @@ pub struct ControlFlowFact {
 pub struct HirSemanticFacts {
     types: BTreeMap<HirExprId, TypeFact>,
     locals: BTreeMap<HirLocalId, TypeFact>,
+    script_types: BTreeMap<HirExprId, ScriptTypeTargetFact>,
+    local_script_types: BTreeMap<HirLocalId, ScriptTypeTargetFact>,
     patterns: BTreeMap<HirPatternId, TypeFact>,
     calls: BTreeMap<HirExprId, CallTargetFact>,
     members: BTreeMap<HirExprId, MemberTargetFact>,
@@ -153,8 +75,14 @@ impl HirSemanticFacts {
             .max(1);
         for _ in 0..passes {
             let before = facts.types.clone();
+            let script_types_before = facts.script_types.clone();
+            let local_script_types_before = facts.local_script_types.clone();
             for body in graph.bodies() {
                 for expression in body.expressions.values().rev() {
+                    if let Some(target) = facts.infer_script_type(graph, body, expression.id, base)
+                    {
+                        facts.script_types.insert(expression.id, target);
+                    }
                     let fact = facts.infer_expression(graph, body, expression.id, schema, base);
                     if !matches!(fact, TypeFact::Unknown) {
                         facts.types.insert(expression.id, fact);
@@ -162,9 +90,13 @@ impl HirSemanticFacts {
                     facts.record_targets(graph, body, expression.id, schema, base);
                 }
                 facts.infer_local_facts(body);
+                facts.infer_local_script_types(body);
                 facts.record_patterns(graph, body, schema, base);
             }
-            if facts.types == before {
+            if facts.types == before
+                && facts.script_types == script_types_before
+                && facts.local_script_types == local_script_types_before
+            {
                 break;
             }
         }
@@ -182,6 +114,16 @@ impl HirSemanticFacts {
     #[must_use]
     pub fn local(&self, local: HirLocalId) -> Option<&TypeFact> {
         self.locals.get(&local)
+    }
+
+    #[must_use]
+    pub fn script_type(&self, expression: HirExprId) -> Option<&ScriptTypeTargetFact> {
+        self.script_types.get(&expression)
+    }
+
+    #[must_use]
+    pub fn local_script_type(&self, local: HirLocalId) -> Option<&ScriptTypeTargetFact> {
+        self.local_script_types.get(&local)
     }
 
     #[must_use]
@@ -294,9 +236,13 @@ impl HirSemanticFacts {
             HirExprKind::Assign { value, .. } => {
                 value.map_or(TypeFact::Unknown, |id| self.fact(id))
             }
-            HirExprKind::Field(field) => {
-                field_fact(&self.fact(field.receiver), &field.name, schema)
-            }
+            HirExprKind::Field(field) => field_fact(
+                graph,
+                self.script_types.get(&field.receiver),
+                &self.fact(field.receiver),
+                &field.name,
+                schema,
+            ),
             HirExprKind::Call(call) => self.call_return(graph, body, call, schema),
             HirExprKind::Index(index) => index_fact(&self.fact(index.receiver), schema),
             HirExprKind::Array { elements } => {
@@ -411,46 +357,73 @@ impl HirSemanticFacts {
             .or_insert_with(RegistryEffectFact::pure);
         match &expression.kind {
             HirExprKind::Call(call) => {
-                let target = match base.resolution(call.callee) {
-                    Some(BindingResolution::Declaration(declaration)) => {
-                        let path = expression_path(body, call.callee, HirPathKind::Callee);
-                        if graph
-                            .declaration(*declaration)
-                            .is_some_and(|decl| decl.kind == DeclarationKind::Enum)
-                            && let Some(variant) = path.and_then(|path| path.last())
-                        {
-                            CallTargetFact::Variant {
-                                enum_declaration: *declaration,
-                                variant: variant.clone(),
+                let target = if let Some(lambda) = direct_lambda_body(body, call.callee) {
+                    CallTargetFact::Lambda(lambda)
+                } else {
+                    match base.resolution(call.callee) {
+                        Some(BindingResolution::Declaration(declaration)) => {
+                            let path = expression_path(body, call.callee, HirPathKind::Callee);
+                            if graph
+                                .declaration(*declaration)
+                                .is_some_and(|decl| decl.kind == DeclarationKind::Enum)
+                                && let Some(variant) = path.and_then(|path| path.last())
+                            {
+                                CallTargetFact::Variant {
+                                    enum_declaration: *declaration,
+                                    variant: variant.clone(),
+                                }
+                            } else {
+                                CallTargetFact::Declaration(*declaration)
                             }
-                        } else {
-                            CallTargetFact::Declaration(*declaration)
                         }
+                        Some(BindingResolution::Local(id)) => CallTargetFact::Local(*id),
+                        Some(BindingResolution::Import(_)) => CallTargetFact::Unresolved,
+                        Some(BindingResolution::QualifiedPath(_)) => {
+                            self.unbound_call_target(graph, body, id, call, schema)
+                        }
+                        None => self.unbound_call_target(graph, body, id, call, schema),
                     }
-                    Some(BindingResolution::Local(id)) => CallTargetFact::Local(*id),
-                    Some(BindingResolution::Import(_)) => CallTargetFact::Unresolved,
-                    Some(BindingResolution::QualifiedPath(_)) => {
-                        self.unbound_call_target(graph, body, id, call, schema)
-                    }
-                    None => self.unbound_call_target(graph, body, id, call, schema),
                 };
+                if let CallTargetFact::Variant {
+                    enum_declaration,
+                    variant,
+                } = &target
+                {
+                    self.script_types.insert(
+                        id,
+                        ScriptTypeTargetFact {
+                            declaration: *enum_declaration,
+                            variant: Some(variant.clone()),
+                        },
+                    );
+                }
                 self.calls.insert(id, target);
             }
             HirExprKind::Field(field) => {
                 let receiver = self.fact(field.receiver);
-                let target = if let Ok(index) = field.name.parse::<usize>() {
+                let source_field = self
+                    .script_types
+                    .get(&field.receiver)
+                    .and_then(|receiver| source_field_fact(graph, receiver, &field.name));
+                let target = if let Some(field) = source_field {
+                    MemberTargetFact::ScriptField {
+                        owner: field.owner,
+                        variant: field.variant,
+                        name: field.name,
+                    }
+                } else if let Ok(index) = field.name.parse::<usize>() {
                     MemberTargetFact::TupleIndex(index)
-                } else if let Some(owner) = type_owner(&receiver) {
-                    if schema.is_some_and(|schema| schema.field_fact(owner, &field.name).is_some())
+                } else if let Some(owner) = registry_field_owner(&receiver) {
+                    if schema.is_some_and(|schema| schema.field_fact(&owner, &field.name).is_some())
                     {
                         if matches!(receiver, TypeFact::Host { .. }) {
-                            MemberTargetFact::HostField {
-                                owner: owner.to_owned(),
-                                name: field.name.clone(),
-                            }
+                            schema
+                                .and_then(|schema| schema.field_target_fact(&owner, &field.name))
+                                .cloned()
+                                .map_or(MemberTargetFact::Unresolved, MemberTargetFact::HostField)
                         } else {
                             MemberTargetFact::RegistryField {
-                                owner: owner.to_owned(),
+                                owner: owner.clone(),
                                 name: field.name.clone(),
                             }
                         }
@@ -458,7 +431,7 @@ impl HirSemanticFacts {
                         registry_method_fact(schema, &receiver, &field.name).is_some()
                     }) {
                         MemberTargetFact::RegistryMethod {
-                            owner: owner.to_owned(),
+                            owner,
                             name: field.name.clone(),
                         }
                     } else {
@@ -474,12 +447,12 @@ impl HirSemanticFacts {
                     MemberTargetFact::Unresolved
                 };
                 self.members.insert(id, target);
-                if let Some(path) = self.host_path_for(body, id) {
+                if let Some(path) = self.host_path_for(body, id, schema) {
                     self.host_paths.insert(id, path);
                 }
             }
             HirExprKind::Index(_) => {
-                if let Some(path) = self.host_path_for(body, id) {
+                if let Some(path) = self.host_path_for(body, id, schema) {
                     self.host_paths.insert(id, path);
                 }
             }
@@ -516,7 +489,9 @@ impl HirSemanticFacts {
                     }
                 });
                 self.operators.insert(id, operator);
-                if let Some(target) = target.and_then(|target| self.host_path_for(body, target)) {
+                if let Some(target) =
+                    target.and_then(|target| self.host_path_for(body, target, schema))
+                {
                     self.host_paths.insert(id, target);
                 }
             }
@@ -525,6 +500,28 @@ impl HirSemanticFacts {
                     .map_or(ConstructorTargetFact::Unresolved, |path| {
                         constructor_target_for_path(graph, schema, path)
                     });
+                match &target {
+                    ConstructorTargetFact::Declaration(declaration) => {
+                        self.script_types
+                            .insert(id, ScriptTypeTargetFact::declaration(*declaration));
+                    }
+                    ConstructorTargetFact::Variant {
+                        enum_declaration,
+                        variant,
+                    } => {
+                        self.script_types.insert(
+                            id,
+                            ScriptTypeTargetFact {
+                                declaration: *enum_declaration,
+                                variant: Some(variant.clone()),
+                            },
+                        );
+                    }
+                    ConstructorTargetFact::RegistryType { .. }
+                    | ConstructorTargetFact::RegistryVariant { .. }
+                    | ConstructorTargetFact::Dynamic
+                    | ConstructorTargetFact::Unresolved => {}
+                }
                 self.constructors.insert(id, target);
             }
             HirExprKind::Block { block } => {
@@ -733,32 +730,64 @@ impl HirSemanticFacts {
             .unwrap_or(TypeFact::Unknown)
     }
 
-    fn host_path_for(&self, body: &HirBody, expression: HirExprId) -> Option<HostPathTargetFact> {
+    fn host_path_for(
+        &self,
+        body: &HirBody,
+        expression: HirExprId,
+        schema: Option<&RegistryFacts>,
+    ) -> Option<HostPathTargetFact> {
         let expression = body.expressions.get(&expression)?;
         match &expression.kind {
             HirExprKind::Path(_) if matches!(self.fact(expression.id), TypeFact::Host { .. }) => {
+                let fact = self.fact(expression.id);
+                let owner = type_owner(&fact)?;
+                let root_type = schema?.type_target_fact(owner)?.clone();
                 Some(HostPathTargetFact {
                     root: expression.id,
+                    root_type,
                     segments: Vec::new(),
                 })
             }
+            HirExprKind::Paren {
+                expression: Some(inner),
+            } => self.host_path_for(body, *inner, schema),
             HirExprKind::Field(field) => {
-                let mut path = self.host_path_for(body, field.receiver).or_else(|| {
-                    matches!(self.fact(field.receiver), TypeFact::Host { .. }).then_some(
-                        HostPathTargetFact {
+                let mut path = self
+                    .host_path_for(body, field.receiver, schema)
+                    .or_else(|| {
+                        let receiver = self.fact(field.receiver);
+                        if !matches!(receiver, TypeFact::Host { .. }) {
+                            return None;
+                        }
+                        let owner = type_owner(&receiver)?;
+                        Some(HostPathTargetFact {
                             root: field.receiver,
+                            root_type: schema?.type_target_fact(owner)?.clone(),
                             segments: Vec::new(),
-                        },
-                    )
-                })?;
-                path.segments
-                    .push(HostPathSegmentFact::Field(field.name.clone()));
+                        })
+                    })?;
+                let owner = registry_field_owner(&self.fact(field.receiver))?;
+                let target = schema?.field_target_fact(&owner, &field.name)?.clone();
+                path.segments.push(HostPathSegmentFact::Field(target));
                 Some(path)
             }
             HirExprKind::Index(index) => {
-                let mut path = self.host_path_for(body, index.receiver)?;
-                path.segments
-                    .push(HostPathSegmentFact::DynamicIndex(index.index));
+                let mut path = self.host_path_for(body, index.receiver, schema)?;
+                let receiver = self.fact(index.receiver);
+                let owner_name = type_owner(&receiver)?;
+                let owner = schema?.type_target_fact(owner_name)?.clone();
+                let capability = schema?.index_capability_fact(owner_name)?.clone();
+                let kind = if capability.key == TypeFact::I64 {
+                    HostPathIndexKindFact::Index
+                } else {
+                    HostPathIndexKindFact::Key
+                };
+                path.segments.push(HostPathSegmentFact::Index {
+                    expression: index.index,
+                    owner,
+                    kind,
+                    capability,
+                });
                 Some(path)
             }
             _ => None,
@@ -929,6 +958,7 @@ fn source_declaration_for_path<'a>(
 struct SourceMethodFact {
     node: HirNodeId,
     returns: TypeFact,
+    return_target: Option<ScriptTypeTargetFact>,
 }
 
 fn source_method(graph: &ModuleGraph, receiver: &TypeFact, name: &str) -> Option<SourceMethodFact> {
@@ -949,9 +979,18 @@ fn source_method(graph: &ModuleGraph, receiver: &TypeFact, name: &str) -> Option
                 .map_or(TypeFact::Unknown, |hint| {
                     type_fact_from_hint_in_module(graph, declaration.module, hint)
                 });
+            let return_target = method.signature.return_type.as_ref().and_then(|hint| {
+                crate::hints::schema_declaration_from_hint_in_module(
+                    graph,
+                    declaration.module,
+                    hint,
+                )
+                .map(ScriptTypeTargetFact::declaration)
+            });
             return Some(SourceMethodFact {
                 node: method.node,
                 returns,
+                return_target,
             });
         }
         let ImplMetadataKind::Trait { trait_path } = &metadata.kind else {
@@ -973,7 +1012,19 @@ fn source_method(graph: &ModuleGraph, receiver: &TypeFact, name: &str) -> Option
                 .map_or(TypeFact::Unknown, |hint| {
                     type_fact_from_hint_in_module(graph, trait_declaration.module, hint)
                 });
-            return Some(SourceMethodFact { node, returns });
+            let return_target = method.signature.return_type.as_ref().and_then(|hint| {
+                crate::hints::schema_declaration_from_hint_in_module(
+                    graph,
+                    trait_declaration.module,
+                    hint,
+                )
+                .map(ScriptTypeTargetFact::declaration)
+            });
+            return Some(SourceMethodFact {
+                node,
+                returns,
+                return_target,
+            });
         }
     }
     None
@@ -1025,16 +1076,26 @@ fn binary_fact(op: Option<HirBinaryOp>, lhs: Option<TypeFact>, rhs: Option<TypeF
     }
 }
 
-fn field_fact(receiver: &TypeFact, name: &str, schema: Option<&RegistryFacts>) -> TypeFact {
+fn field_fact(
+    graph: &ModuleGraph,
+    source: Option<&ScriptTypeTargetFact>,
+    receiver: &TypeFact,
+    name: &str,
+    schema: Option<&RegistryFacts>,
+) -> TypeFact {
     if let TypeFact::Tuple { elements } = receiver
         && let Ok(index) = name.parse::<usize>()
     {
         return elements.get(index).cloned().unwrap_or(TypeFact::Unknown);
     }
+    if let Some(field) = source.and_then(|source| source_field_fact(graph, source, name)) {
+        return field.fact;
+    }
     if let Some(method) = stdlib_method_fact(receiver, name, None) {
         return TypeFact::function(method.params, method.returns);
     }
-    type_owner(receiver)
+    registry_field_owner(receiver)
+        .as_deref()
         .and_then(|owner| {
             let schema = schema?;
             schema

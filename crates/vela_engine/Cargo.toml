@@ -22,6 +22,7 @@ vela_vm = { workspace = true }
 serde = ["dep:serde", "vela_vm/serde"]
 
 [dev-dependencies]
+vela_analysis = { workspace = true }
 vela_macros = { workspace = true }
 
 [[bench]]

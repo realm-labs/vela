@@ -1,5 +1,5 @@
 use vela_common::PrimitiveTag;
-use vela_hir::ids::ModuleId;
+use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{Declaration, DeclarationKind, ImportResolution, ModuleGraph};
 use vela_hir::type_hint::HirTypeHint;
 
@@ -19,6 +19,15 @@ pub fn type_fact_from_hint_in_module(
     }
     imported_schema_fact(graph, module, &hint.path)
         .unwrap_or_else(|| type_fact_from_hint(graph, hint))
+}
+
+pub(crate) fn schema_declaration_from_hint_in_module(
+    graph: &ModuleGraph,
+    module: ModuleId,
+    hint: &HirTypeHint,
+) -> Option<HirDeclId> {
+    imported_schema_declaration(graph, module, &hint.path)
+        .or_else(|| resolved_schema_declaration(graph, &hint.path))
 }
 
 pub fn type_fact_from_path(graph: &ModuleGraph, path: &[String]) -> TypeFact {
@@ -154,15 +163,10 @@ fn builtin_type_fact(name: &str) -> Option<TypeFact> {
 }
 
 fn resolved_schema_fact(graph: &ModuleGraph, path: &[String]) -> Option<TypeFact> {
-    let matches = graph
-        .declarations()
-        .filter(|declaration| schema_path_matches(graph, declaration, path))
-        .collect::<Vec<_>>();
-
-    let [declaration] = matches.as_slice() else {
-        return None;
-    };
-    declaration_schema_fact(graph, declaration)
+    declaration_schema_fact(
+        graph,
+        graph.declaration(resolved_schema_declaration(graph, path)?)?,
+    )
 }
 
 fn imported_schema_fact(
@@ -170,6 +174,29 @@ fn imported_schema_fact(
     module: ModuleId,
     path: &[String],
 ) -> Option<TypeFact> {
+    declaration_schema_fact(
+        graph,
+        graph.declaration(imported_schema_declaration(graph, module, path)?)?,
+    )
+}
+
+fn resolved_schema_declaration(graph: &ModuleGraph, path: &[String]) -> Option<HirDeclId> {
+    let matches = graph
+        .declarations()
+        .filter(|declaration| schema_path_matches(graph, declaration, path))
+        .map(|declaration| declaration.id)
+        .collect::<Vec<_>>();
+    let [declaration] = matches.as_slice() else {
+        return None;
+    };
+    Some(*declaration)
+}
+
+fn imported_schema_declaration(
+    graph: &ModuleGraph,
+    module: ModuleId,
+    path: &[String],
+) -> Option<HirDeclId> {
     let [name] = path else {
         return None;
     };
@@ -181,7 +208,8 @@ fn imported_schema_fact(
         let Some(ImportResolution::Declaration(declaration)) = import.resolution else {
             return None;
         };
-        declaration_schema_fact(graph, graph.declaration(declaration)?)
+        declaration_schema_fact(graph, graph.declaration(declaration)?)?;
+        Some(declaration)
     })
 }
 

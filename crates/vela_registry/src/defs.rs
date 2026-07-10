@@ -5,6 +5,172 @@ use vela_def::{
     DefId, DefKind, DefPath, FieldId, FunctionId, MethodId, TraitId, TypeId, VariantId,
 };
 
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum TypeKindDef {
+    Unit,
+    Bool,
+    I8,
+    I16,
+    I32,
+    I64,
+    U8,
+    U16,
+    U32,
+    U64,
+    F32,
+    F64,
+    Char,
+    String,
+    Bytes,
+    Array,
+    Map,
+    Set,
+    Iterator,
+    Range,
+    Function,
+    Closure,
+    Host,
+    ScriptStruct,
+    ScriptEnum,
+}
+
+impl TypeKindDef {
+    #[must_use]
+    pub const fn from_primitive(primitive: PrimitiveTag) -> Self {
+        match primitive {
+            PrimitiveTag::Unit => Self::Unit,
+            PrimitiveTag::Bool => Self::Bool,
+            PrimitiveTag::I8 => Self::I8,
+            PrimitiveTag::I16 => Self::I16,
+            PrimitiveTag::I32 => Self::I32,
+            PrimitiveTag::I64 => Self::I64,
+            PrimitiveTag::U8 => Self::U8,
+            PrimitiveTag::U16 => Self::U16,
+            PrimitiveTag::U32 => Self::U32,
+            PrimitiveTag::U64 => Self::U64,
+            PrimitiveTag::F32 => Self::F32,
+            PrimitiveTag::F64 => Self::F64,
+            PrimitiveTag::Char => Self::Char,
+            PrimitiveTag::String => Self::String,
+            PrimitiveTag::Bytes => Self::Bytes,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FieldAccessDef {
+    pub readable: bool,
+    pub writable: bool,
+    pub reflect_readable: bool,
+    pub reflect_writable: bool,
+    required_permissions: Vec<String>,
+}
+
+impl FieldAccessDef {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[must_use]
+    pub const fn readable(mut self, readable: bool) -> Self {
+        self.readable = readable;
+        self
+    }
+
+    #[must_use]
+    pub const fn writable(mut self, writable: bool) -> Self {
+        self.writable = writable;
+        self
+    }
+
+    #[must_use]
+    pub const fn reflect_readable(mut self, reflect_readable: bool) -> Self {
+        self.reflect_readable = reflect_readable;
+        self
+    }
+
+    #[must_use]
+    pub const fn reflect_writable(mut self, reflect_writable: bool) -> Self {
+        self.reflect_writable = reflect_writable;
+        self
+    }
+
+    #[must_use]
+    pub fn require_permission(mut self, permission: impl Into<String>) -> Self {
+        self.required_permissions.push(permission.into());
+        self.required_permissions.sort();
+        self.required_permissions.dedup();
+        self
+    }
+
+    #[must_use]
+    pub fn required_permissions(&self) -> &[String] {
+        &self.required_permissions
+    }
+}
+
+impl Default for FieldAccessDef {
+    fn default() -> Self {
+        Self {
+            readable: true,
+            writable: true,
+            reflect_readable: false,
+            reflect_writable: false,
+            required_permissions: Vec::new(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MethodAccessDef {
+    pub public: bool,
+    pub reflect_callable: bool,
+    required_permissions: Vec<String>,
+}
+
+impl MethodAccessDef {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[must_use]
+    pub const fn public(mut self, public: bool) -> Self {
+        self.public = public;
+        self
+    }
+
+    #[must_use]
+    pub const fn reflect_callable(mut self, reflect_callable: bool) -> Self {
+        self.reflect_callable = reflect_callable;
+        self
+    }
+
+    #[must_use]
+    pub fn require_permission(mut self, permission: impl Into<String>) -> Self {
+        self.required_permissions.push(permission.into());
+        self.required_permissions.sort();
+        self.required_permissions.dedup();
+        self
+    }
+
+    #[must_use]
+    pub fn required_permissions(&self) -> &[String] {
+        &self.required_permissions
+    }
+}
+
+impl Default for MethodAccessDef {
+    fn default() -> Self {
+        Self {
+            public: true,
+            reflect_callable: true,
+            required_permissions: Vec::new(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TypeHintDef {
     pub path: Vec<String>,
@@ -440,6 +606,18 @@ impl Def {
     }
 
     #[must_use]
+    pub const fn type_kind(&self) -> Option<TypeKindDef> {
+        match self {
+            Self::Type(def) => Some(def.kind),
+            Self::Function(_)
+            | Self::Method(_)
+            | Self::Field(_)
+            | Self::Variant(_)
+            | Self::Trait(_) => None,
+        }
+    }
+
+    #[must_use]
     pub const fn host_method_runtime_id(&self) -> Option<u128> {
         match self {
             Self::Method(def) => def.host_runtime_id,
@@ -454,7 +632,7 @@ impl Def {
     #[must_use]
     pub const fn field_writable(&self) -> Option<bool> {
         match self {
-            Self::Field(def) => Some(def.writable),
+            Self::Field(def) => Some(def.access.writable),
             Self::Function(_)
             | Self::Method(_)
             | Self::Type(_)
@@ -490,7 +668,7 @@ impl Def {
     #[must_use]
     pub const fn field_is_variant_field(&self) -> Option<bool> {
         match self {
-            Self::Field(def) => Some(def.variant_field),
+            Self::Field(def) => Some(def.variant.is_some()),
             Self::Function(_)
             | Self::Method(_)
             | Self::Type(_)
@@ -518,6 +696,7 @@ pub enum SemanticKey {
     },
     Field {
         owner: TypeId,
+        variant: Option<VariantId>,
         name: String,
     },
     Variant {
@@ -551,6 +730,7 @@ impl SemanticKey {
             },
             DefKind::Field => Self::Field {
                 owner: owner_type_id(path),
+                variant: None,
                 name: path.name.clone(),
             },
             DefKind::Variant => Self::Variant {
@@ -620,6 +800,7 @@ pub struct MethodDef {
     pub owner: TypeId,
     pub signature: FunctionSignature,
     pub effects: EffectSet,
+    pub access: MethodAccessDef,
     pub host_runtime_id: Option<u128>,
 }
 
@@ -635,6 +816,7 @@ impl MethodDef {
             owner,
             signature,
             effects: EffectSet::default(),
+            access: MethodAccessDef::default(),
             host_runtime_id: None,
         }
     }
@@ -652,6 +834,12 @@ impl MethodDef {
     }
 
     #[must_use]
+    pub fn access(mut self, access: MethodAccessDef) -> Self {
+        self.access = access;
+        self
+    }
+
+    #[must_use]
     pub const fn host_runtime_id(mut self, id: u128) -> Self {
         self.host_runtime_id = Some(id);
         self
@@ -663,6 +851,7 @@ pub struct TypeDef {
     pub id: TypeId,
     pub path: DefPath,
     pub semantic_key: SemanticKey,
+    pub kind: TypeKindDef,
     pub primitive: Option<PrimitiveTag>,
     pub host_runtime_id: Option<u128>,
 }
@@ -672,10 +861,16 @@ impl TypeDef {
     pub fn new(path: DefPath) -> Self {
         let id = TypeId::from_def_id(path.id());
         let semantic_key = SemanticKey::from_path(&path);
+        let kind = if path.package == "host" {
+            TypeKindDef::Host
+        } else {
+            TypeKindDef::ScriptStruct
+        };
         Self {
             id,
             path,
             semantic_key,
+            kind,
             primitive: None,
             host_runtime_id: None,
         }
@@ -693,6 +888,12 @@ impl TypeDef {
     }
 
     #[must_use]
+    pub const fn kind(mut self, kind: TypeKindDef) -> Self {
+        self.kind = kind;
+        self
+    }
+
+    #[must_use]
     pub const fn host_runtime_id(mut self, id: u128) -> Self {
         self.host_runtime_id = Some(id);
         self
@@ -701,6 +902,7 @@ impl TypeDef {
     #[must_use]
     pub const fn primitive_tag(mut self, primitive: PrimitiveTag) -> Self {
         self.primitive = Some(primitive);
+        self.kind = TypeKindDef::from_primitive(primitive);
         self
     }
 }
@@ -711,10 +913,11 @@ pub struct FieldDef {
     pub path: DefPath,
     pub semantic_key: SemanticKey,
     pub owner: TypeId,
-    pub writable: bool,
+    pub variant: Option<VariantId>,
+    pub declaration_order: u32,
+    pub access: FieldAccessDef,
     pub type_hint: Option<TypeHintDef>,
     pub host_runtime_id: Option<u128>,
-    pub variant_field: bool,
 }
 
 impl FieldDef {
@@ -725,12 +928,17 @@ impl FieldDef {
         Self {
             id,
             path,
-            semantic_key: SemanticKey::Field { owner, name },
+            semantic_key: SemanticKey::Field {
+                owner,
+                variant: None,
+                name,
+            },
             owner,
-            writable: true,
+            variant: None,
+            declaration_order: 0,
+            access: FieldAccessDef::default(),
             type_hint: None,
             host_runtime_id: None,
-            variant_field: false,
         }
     }
 
@@ -742,7 +950,30 @@ impl FieldDef {
 
     #[must_use]
     pub const fn writable(mut self, writable: bool) -> Self {
-        self.writable = writable;
+        self.access.writable = writable;
+        self
+    }
+
+    #[must_use]
+    pub fn access(mut self, access: FieldAccessDef) -> Self {
+        self.access = access;
+        self
+    }
+
+    #[must_use]
+    pub fn variant_owner(mut self, variant: VariantId) -> Self {
+        self.variant = Some(variant);
+        self.semantic_key = SemanticKey::Field {
+            owner: self.owner,
+            variant: Some(variant),
+            name: self.path.name.clone(),
+        };
+        self
+    }
+
+    #[must_use]
+    pub const fn declaration_order(mut self, declaration_order: u32) -> Self {
+        self.declaration_order = declaration_order;
         self
     }
 
@@ -757,12 +988,6 @@ impl FieldDef {
         self.host_runtime_id = Some(id);
         self
     }
-
-    #[must_use]
-    pub const fn variant_field(mut self, variant_field: bool) -> Self {
-        self.variant_field = variant_field;
-        self
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -771,6 +996,7 @@ pub struct VariantDef {
     pub path: DefPath,
     pub semantic_key: SemanticKey,
     pub owner: TypeId,
+    pub declaration_order: u32,
 }
 
 impl VariantDef {
@@ -783,12 +1009,19 @@ impl VariantDef {
             path,
             semantic_key: SemanticKey::Variant { owner, name },
             owner,
+            declaration_order: 0,
         }
     }
 
     #[must_use]
     pub fn with_id(mut self, id: VariantId) -> Self {
         self.id = id;
+        self
+    }
+
+    #[must_use]
+    pub const fn declaration_order(mut self, declaration_order: u32) -> Self {
+        self.declaration_order = declaration_order;
         self
     }
 }
@@ -867,6 +1100,7 @@ pub struct EffectSet {
     pub host_read: bool,
     pub host_write: bool,
     pub reflection_read: bool,
+    pub reflection_write: bool,
     pub reflection_call: bool,
     pub event_emit: bool,
     pub time: bool,

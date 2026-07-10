@@ -1,7 +1,7 @@
 use vela_common::PrimitiveTag;
 use vela_def::{DefPath, FieldId, FunctionId, MethodId, TypeId, VariantId};
 use vela_registry::{
-    FieldDef, FunctionDef, FunctionSignature, MethodDef, ParamDef, TypeDef, VariantDef,
+    FieldDef, FunctionDef, FunctionSignature, MethodDef, ParamDef, TypeDef, TypeKindDef, VariantDef,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -201,7 +201,17 @@ impl StdTypeSpec {
         if let Some(primitive) = self.primitive {
             def.primitive_tag(primitive)
         } else {
-            def
+            def.kind(match self.name {
+                "Array" => TypeKindDef::Array,
+                "Map" => TypeKindDef::Map,
+                "Set" => TypeKindDef::Set,
+                "Function" => TypeKindDef::Function,
+                "Closure" => TypeKindDef::Closure,
+                "Iterator" => TypeKindDef::Iterator,
+                "Range" => TypeKindDef::Range,
+                "Option" | "Result" => TypeKindDef::ScriptEnum,
+                _ => TypeKindDef::ScriptStruct,
+            })
         }
     }
 
@@ -262,7 +272,17 @@ impl StdFieldSpec {
 
     #[must_use]
     pub fn owner_type_id(self) -> TypeId {
-        TypeId::from_def_id(DefPath::ty("std", std::iter::empty::<&str>(), self.owner).id())
+        TypeId::from_def_id(
+            DefPath::ty("std", std::iter::empty::<&str>(), self.owner_type_name()).id(),
+        )
+    }
+
+    #[must_use]
+    pub fn owner_variant_id(self) -> Option<VariantId> {
+        let (owner, variant) = self.owner.split_once("::")?;
+        Some(VariantId::from_def_id(
+            DefPath::variant("std", std::iter::empty::<&str>(), owner, variant).id(),
+        ))
     }
 
     #[must_use]
@@ -277,7 +297,18 @@ impl StdFieldSpec {
 
     #[must_use]
     pub fn def(self) -> FieldDef {
-        FieldDef::new(self.path(), self.owner_type_id())
+        let def = FieldDef::new(self.path(), self.owner_type_id());
+        if let Some(variant) = self.owner_variant_id() {
+            def.variant_owner(variant)
+        } else {
+            def
+        }
+    }
+
+    fn owner_type_name(self) -> &'static str {
+        self.owner
+            .split_once("::")
+            .map_or(self.owner, |(owner, _)| owner)
     }
 }
 
@@ -752,7 +783,7 @@ mod tests {
     use std::collections::BTreeSet;
 
     use vela_def::DefPath;
-    use vela_registry::RegistryError;
+    use vela_registry::{Def, RegistryError};
 
     use super::*;
     use crate::{STD_METHODS, standard_registry};
@@ -989,6 +1020,33 @@ mod tests {
             registry.id_for_path(&option_some_field.path()),
             Some(option_some_field.id().def_id())
         );
+        let option_definition = view
+            .definitions()
+            .find_map(|definition| match definition {
+                Def::Type(definition) if definition.id == option_type.id() => Some(definition),
+                _ => None,
+            })
+            .expect("Option type definition");
+        assert_eq!(option_definition.kind, TypeKindDef::ScriptEnum);
+        let option_some = view
+            .definitions()
+            .find_map(|definition| match definition {
+                Def::Variant(definition)
+                    if definition.owner == option_type.id() && definition.path.name == "Some" =>
+                {
+                    Some(definition)
+                }
+                _ => None,
+            })
+            .expect("Option::Some variant definition");
+        assert_eq!(option_some.declaration_order, 0);
+        assert!(view.definitions().any(|definition| {
+            matches!(definition, Def::Field(definition)
+                if definition.id == option_some_field.id()
+                    && definition.owner == option_type.id()
+                    && definition.variant == Some(option_some.id)
+                    && definition.declaration_order == 0)
+        }));
         for spec in STD_TYPES.iter().filter(|spec| spec.primitive.is_some()) {
             let primitive = spec.primitive.expect("primitive spec should carry tag");
             assert_eq!(registry.primitive_type_id(primitive), Some(spec.id()));

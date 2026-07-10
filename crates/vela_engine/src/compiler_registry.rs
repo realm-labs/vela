@@ -1,8 +1,11 @@
-use vela_def::{DefPath, FunctionId};
-use vela_reflect::registry::{FieldDesc, MethodDesc, MethodParamDesc, TypeDesc};
+use vela_def::{DefPath, FunctionId, VariantId};
+use vela_reflect::registry::{
+    FieldDesc, MethodDesc, MethodParamDesc, TypeDesc, TypeKind, VariantDesc,
+};
 use vela_registry::{
-    DefinitionRegistry, EffectSet as DefinitionEffectSet, FieldDef, FunctionDef, FunctionSignature,
-    MethodDef, ParamDef, RegistryError, TypeDef, TypeHintDef,
+    DefinitionRegistry, EffectSet as DefinitionEffectSet, FieldAccessDef, FieldDef, FunctionDef,
+    FunctionSignature, MethodAccessDef, MethodDef, ParamDef, RegistryError, TypeDef, TypeHintDef,
+    TypeKindDef, VariantDef,
 };
 
 use crate::native::{
@@ -48,12 +51,25 @@ fn register_type_def(
     desc: &TypeDesc,
 ) -> Result<(), RegistryError> {
     let type_id = registry.register_type(type_def(desc))?;
-    for field in &desc.fields {
-        registry.register_field(field_def(desc, type_id, field))?;
+    for (order, field) in desc.fields.iter().enumerate() {
+        registry.register_field(field_def(desc, type_id, field, declaration_order(order)))?;
     }
-    for variant in &desc.variants {
-        for field in &variant.fields {
-            registry.register_field(variant_field_def(desc, type_id, &variant.name, field))?;
+    for (order, variant) in desc.variants.iter().enumerate() {
+        let variant_id = registry.register_variant(variant_def(
+            desc,
+            type_id,
+            variant,
+            declaration_order(order),
+        ))?;
+        for (field_order, field) in variant.fields.iter().enumerate() {
+            registry.register_field(variant_field_def(
+                desc,
+                type_id,
+                variant_id,
+                &variant.name,
+                field,
+                declaration_order(field_order),
+            ))?;
         }
     }
     for method in &desc.methods {
@@ -63,28 +79,50 @@ fn register_type_def(
 }
 
 fn type_def(desc: &TypeDesc) -> TypeDef {
-    let mut def = TypeDef::new(source_type_path("host", &desc.key.name));
+    let mut def = TypeDef::new(source_type_path("host", &desc.key.name))
+        .kind(definition_type_kind(desc.kind));
     if let Some(host_type_id) = desc.host_type_id {
         def = def.host_runtime_id(host_type_id.get().into());
     }
     def
 }
 
-fn field_def(desc: &TypeDesc, owner: vela_def::TypeId, field: &FieldDesc) -> FieldDef {
+fn field_def(
+    desc: &TypeDesc,
+    owner: vela_def::TypeId,
+    field: &FieldDesc,
+    declaration_order: u32,
+) -> FieldDef {
     FieldDef::new(
         source_field_path("host", &desc.key.name, &field.name),
         owner,
     )
     .host_runtime_id(field.id.get())
-    .writable(field.access.writable)
+    .declaration_order(declaration_order)
+    .access(field_access(&field.access))
     .type_hint(field.type_hint.as_deref().map(raw_type_hint_def))
+}
+
+fn variant_def(
+    desc: &TypeDesc,
+    owner: vela_def::TypeId,
+    variant: &VariantDesc,
+    declaration_order: u32,
+) -> VariantDef {
+    VariantDef::new(
+        source_variant_path("host", &desc.key.name, &variant.name),
+        owner,
+    )
+    .declaration_order(declaration_order)
 }
 
 fn variant_field_def(
     desc: &TypeDesc,
     owner: vela_def::TypeId,
+    variant_id: VariantId,
     variant: &str,
     field: &FieldDesc,
+    declaration_order: u32,
 ) -> FieldDef {
     FieldDef::new(
         source_field_path(
@@ -95,8 +133,9 @@ fn variant_field_def(
         owner,
     )
     .host_runtime_id(field.id.get())
-    .writable(field.access.writable)
-    .variant_field(true)
+    .variant_owner(variant_id)
+    .declaration_order(declaration_order)
+    .access(field_access(&field.access))
     .type_hint(field.type_hint.as_deref().map(raw_type_hint_def))
 }
 
@@ -111,6 +150,7 @@ fn method_def(desc: &TypeDesc, owner: vela_def::TypeId, method: &MethodDesc) -> 
     )
     .host_runtime_id(method.id.get())
     .effects(method_effects(&method.effects))
+    .access(method_access(&method.access))
 }
 
 fn method_param_def(param: &MethodParamDesc) -> ParamDef {
@@ -157,8 +197,67 @@ fn source_field_path(package: &str, owner: &str, name: &str) -> DefPath {
     DefPath::field(package, std::iter::empty::<&str>(), owner, name)
 }
 
+fn source_variant_path(package: &str, owner: &str, name: &str) -> DefPath {
+    DefPath::variant(package, std::iter::empty::<&str>(), owner, name)
+}
+
 fn source_method_path(package: &str, owner: &str, name: &str) -> DefPath {
     DefPath::method(package, std::iter::empty::<&str>(), owner, name)
+}
+
+const fn definition_type_kind(kind: TypeKind) -> TypeKindDef {
+    match kind {
+        TypeKind::Unit => TypeKindDef::Unit,
+        TypeKind::Bool => TypeKindDef::Bool,
+        TypeKind::I8 => TypeKindDef::I8,
+        TypeKind::I16 => TypeKindDef::I16,
+        TypeKind::I32 => TypeKindDef::I32,
+        TypeKind::I64 => TypeKindDef::I64,
+        TypeKind::U8 => TypeKindDef::U8,
+        TypeKind::U16 => TypeKindDef::U16,
+        TypeKind::U32 => TypeKindDef::U32,
+        TypeKind::U64 => TypeKindDef::U64,
+        TypeKind::F32 => TypeKindDef::F32,
+        TypeKind::F64 => TypeKindDef::F64,
+        TypeKind::Char => TypeKindDef::Char,
+        TypeKind::String => TypeKindDef::String,
+        TypeKind::Bytes => TypeKindDef::Bytes,
+        TypeKind::Array => TypeKindDef::Array,
+        TypeKind::Map => TypeKindDef::Map,
+        TypeKind::Set => TypeKindDef::Set,
+        TypeKind::Range => TypeKindDef::Range,
+        TypeKind::Function => TypeKindDef::Function,
+        TypeKind::Closure => TypeKindDef::Closure,
+        TypeKind::Host => TypeKindDef::Host,
+        TypeKind::ScriptStruct => TypeKindDef::ScriptStruct,
+        TypeKind::ScriptEnum => TypeKindDef::ScriptEnum,
+    }
+}
+
+fn field_access(access: &vela_reflect::access::FieldAccess) -> FieldAccessDef {
+    let mut definition = FieldAccessDef::new()
+        .readable(access.readable)
+        .writable(access.writable)
+        .reflect_readable(access.reflect_readable)
+        .reflect_writable(access.reflect_writable);
+    for permission in access.required_permissions() {
+        definition = definition.require_permission(permission);
+    }
+    definition
+}
+
+fn method_access(access: &vela_reflect::access::MethodAccess) -> MethodAccessDef {
+    let mut definition = MethodAccessDef::new()
+        .public(access.public)
+        .reflect_callable(access.reflect_callable);
+    for permission in access.required_permissions() {
+        definition = definition.require_permission(permission);
+    }
+    definition
+}
+
+fn declaration_order(index: usize) -> u32 {
+    u32::try_from(index).expect("definition declaration order exceeds u32::MAX")
 }
 
 fn native_function_effects(effects: &crate::native::EffectSet) -> DefinitionEffectSet {
@@ -166,6 +265,7 @@ fn native_function_effects(effects: &crate::native::EffectSet) -> DefinitionEffe
         host_read: effects.reads_host(),
         host_write: effects.writes_host(),
         reflection_read: effects.reads_reflection(),
+        reflection_write: effects.writes_reflection(),
         reflection_call: effects.calls_reflection(),
         event_emit: effects.emits_events(),
         time: effects.reads_time(),
@@ -180,6 +280,7 @@ fn method_effects(effects: &vela_reflect::access::MethodEffectSet) -> Definition
         host_read: effects.reads_host,
         host_write: effects.writes_host,
         reflection_read: effects.reads_reflection,
+        reflection_write: effects.writes_reflection,
         reflection_call: effects.calls_reflection,
         event_emit: effects.emits_events,
         time: effects.reads_time,
@@ -191,17 +292,37 @@ fn method_effects(effects: &vela_reflect::access::MethodEffectSet) -> Definition
 
 fn register_reflection_native_defs(registry: &mut DefinitionRegistry) -> Result<(), RegistryError> {
     for (name, params) in REFLECTION_NATIVE_DEFS {
-        registry.register_function(FunctionDef::new(
-            source_function_path("host", name),
-            FunctionSignature::new(
-                params
-                    .iter()
-                    .map(|param| ParamDef::new(*param, None::<TypeHintDef>)),
-                None::<TypeHintDef>,
-            ),
-        ))?;
+        registry.register_function(
+            FunctionDef::new(
+                source_function_path("host", name),
+                FunctionSignature::new(
+                    params
+                        .iter()
+                        .map(|param| ParamDef::new(*param, None::<TypeHintDef>)),
+                    None::<TypeHintDef>,
+                ),
+            )
+            .effects(reflection_native_effects(name)),
+        )?;
     }
     Ok(())
+}
+
+fn reflection_native_effects(name: &str) -> DefinitionEffectSet {
+    match name {
+        "reflect::set" => DefinitionEffectSet {
+            reflection_write: true,
+            ..DefinitionEffectSet::default()
+        },
+        "reflect::call" => DefinitionEffectSet {
+            reflection_call: true,
+            ..DefinitionEffectSet::default()
+        },
+        _ => DefinitionEffectSet {
+            reflection_read: true,
+            ..DefinitionEffectSet::default()
+        },
+    }
 }
 
 pub(crate) fn reflection_native_function_ids() -> impl Iterator<Item = FunctionId> {
@@ -301,5 +422,188 @@ fn type_hint_def(hint: &crate::native::TypeHint) -> TypeHintDef {
         | crate::native::TypeHint::Host(key) => TypeHintDef::named(key.name.clone()),
         crate::native::TypeHint::Trait(name) => TypeHintDef::named(name.clone()),
         crate::native::TypeHint::Function => TypeHintDef::named("Function"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use vela_analysis::registry::RegistryFacts;
+    use vela_common::{HostMethodId, HostTypeId};
+    use vela_def::{FieldId, FunctionId, TypeId, VariantId};
+    use vela_reflect::access::{FieldAccess, MethodAccess, MethodEffectSet};
+    use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey, TypeKind, VariantDesc};
+    use vela_registry::{Def, TypeKindDef};
+
+    use super::definition_registry_from_engine_parts;
+    use crate::native::{EffectSet, NativeFunctionDesc, NativeFunctionEntry};
+
+    #[test]
+    fn production_registry_conversion_preserves_compile_and_analysis_metadata() {
+        let type_desc = TypeDesc::new(TypeKey::new(TypeId::new(70), "QuestState"))
+            .kind(TypeKind::ScriptEnum)
+            .host_type(HostTypeId::new(71))
+            .field(
+                FieldDesc::new(FieldId::new(72), "revision")
+                    .type_hint("u32")
+                    .access(
+                        FieldAccess::new()
+                            .readable(false)
+                            .writable(true)
+                            .reflect_readable(true)
+                            .reflect_writable(false)
+                            .require_permission("quest.inspect"),
+                    ),
+            )
+            .variant(
+                VariantDesc::new(VariantId::new(73), "Active")
+                    .field(FieldDesc::new(FieldId::new(74), "payload").type_hint("String"))
+                    .field(FieldDesc::new(FieldId::new(75), "count").type_hint("i64")),
+            )
+            .variant(
+                VariantDesc::new(VariantId::new(76), "Done")
+                    .field(FieldDesc::new(FieldId::new(77), "payload").type_hint("String")),
+            )
+            .method(
+                MethodDesc::new(HostMethodId::new(78), "rewrite")
+                    .effects(MethodEffectSet {
+                        writes_reflection: true,
+                        ..MethodEffectSet::default()
+                    })
+                    .access(
+                        MethodAccess::new()
+                            .public(false)
+                            .reflect_callable(false)
+                            .require_permission("quest.admin"),
+                    ),
+            );
+        let native = NativeFunctionEntry::new(
+            NativeFunctionDesc::new("admin::rewrite", FunctionId::new(79))
+                .effects(EffectSet::reflection_write()),
+            |_| unreachable!("metadata-only native should not execute"),
+        );
+
+        let registry =
+            definition_registry_from_engine_parts(&[type_desc], &[native], &[], &[], true, false)
+                .expect("production registry conversion should succeed");
+        let view = registry.compile_view();
+        let definitions = view.definitions().collect::<Vec<_>>();
+        let type_definition = definitions
+            .iter()
+            .find_map(|definition| match definition {
+                Def::Type(definition) if definition.path.name == "QuestState" => Some(definition),
+                _ => None,
+            })
+            .expect("QuestState type definition");
+        assert_eq!(type_definition.kind, TypeKindDef::ScriptEnum);
+        assert_eq!(type_definition.host_runtime_id, Some(71));
+
+        let mut variants = definitions
+            .iter()
+            .filter_map(|definition| match definition {
+                Def::Variant(variant) if variant.owner == type_definition.id => Some(variant),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        variants.sort_by_key(|variant| variant.declaration_order);
+        assert_eq!(
+            variants
+                .iter()
+                .map(|variant| (variant.path.name.as_str(), variant.declaration_order))
+                .collect::<Vec<_>>(),
+            [("Active", 0), ("Done", 1)]
+        );
+
+        let active = variants[0];
+        let done = variants[1];
+        let mut active_fields = definitions
+            .iter()
+            .filter_map(|definition| match definition {
+                Def::Field(field) if field.variant == Some(active.id) => Some(field),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        active_fields.sort_by_key(|field| field.declaration_order);
+        assert_eq!(
+            active_fields
+                .iter()
+                .map(|field| (field.path.name.as_str(), field.declaration_order))
+                .collect::<Vec<_>>(),
+            [("payload", 0), ("count", 1)]
+        );
+        assert!(definitions.iter().any(|definition| {
+            matches!(definition, Def::Field(field)
+                if field.variant == Some(done.id) && field.path.name == "payload")
+        }));
+
+        let root_field = definitions
+            .iter()
+            .find_map(|definition| match definition {
+                Def::Field(field) if field.path.name == "revision" => Some(field),
+                _ => None,
+            })
+            .expect("root field definition");
+        assert!(!root_field.access.readable);
+        assert!(root_field.access.writable);
+        assert!(root_field.access.reflect_readable);
+        assert!(!root_field.access.reflect_writable);
+        assert_eq!(root_field.access.required_permissions(), ["quest.inspect"]);
+
+        let method = definitions
+            .iter()
+            .find_map(|definition| match definition {
+                Def::Method(method) if method.path.name == "rewrite" => Some(method),
+                _ => None,
+            })
+            .expect("method definition");
+        assert!(!method.access.public);
+        assert!(!method.access.reflect_callable);
+        assert_eq!(method.access.required_permissions(), ["quest.admin"]);
+        assert!(method.effects.reflection_write);
+
+        let facts = RegistryFacts::from_compile_view(view);
+        let type_target = facts
+            .type_target_fact("QuestState")
+            .expect("semantic type target");
+        assert_eq!(type_target.semantic, type_definition.id);
+        assert_eq!(type_target.host_runtime, Some(HostTypeId::new(71)));
+        assert!(facts.variant_fact("QuestState", "Active").is_some());
+        assert!(facts.variant_fact("QuestState", "Done").is_some());
+        assert!(facts.field_fact("QuestState::Active", "payload").is_some());
+        assert!(facts.field_fact("QuestState::Done", "payload").is_some());
+        let field_target = facts
+            .field_target_fact("QuestState", "revision")
+            .expect("semantic field target");
+        assert_eq!(field_target.semantic, root_field.id);
+        assert_eq!(field_target.host_runtime, Some(FieldId::new(72)));
+        assert_eq!(
+            &field_target.access,
+            facts
+                .field_access_fact("QuestState", "revision")
+                .expect("field access fact")
+        );
+        assert!(
+            facts
+                .method_access_fact("QuestState", "rewrite")
+                .is_some_and(|access| {
+                    !access.public
+                        && !access.reflect_callable
+                        && access.required_permissions == ["quest.admin"]
+                })
+        );
+        assert!(
+            facts
+                .method_effect_fact("QuestState", "rewrite")
+                .is_some_and(|effect| effect.writes_reflection)
+        );
+        assert!(
+            facts
+                .function_effect_fact("admin::rewrite")
+                .is_some_and(|effect| effect.writes_reflection)
+        );
+        assert!(
+            facts
+                .function_effect_fact("reflect::set")
+                .is_some_and(|effect| effect.writes_reflection)
+        );
     }
 }

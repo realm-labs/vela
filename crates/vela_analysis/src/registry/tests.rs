@@ -76,6 +76,14 @@ mod tests {
 
         assert_eq!(facts.type_fact("Player"), Some(&TypeFact::host("Player")));
         assert_eq!(
+            facts.type_target_fact("Player"),
+            Some(&RegistryTypeTargetFact::new(
+                "Player",
+                TypeId::new(1),
+                Some(HostTypeId::new(1)),
+            ))
+        );
+        assert_eq!(
             facts.type_fact("Inventory"),
             Some(&TypeFact::record("Inventory"))
         );
@@ -84,6 +92,16 @@ mod tests {
             Some(&TypeFact::enum_type("QuestState", None::<String>))
         );
         assert_eq!(facts.field_fact("Player", "level"), Some(&TypeFact::I64));
+        assert!(matches!(
+            facts.field_target_fact("Player", "level"),
+            Some(target)
+                if target.owner == TypeId::new(1)
+                    && target.semantic == FieldId::new(1)
+                    && target.host_runtime == Some(FieldId::new(1))
+                    && !target.variant_field
+                    && target.access.readable
+                    && !target.access.writable
+        ));
         assert_eq!(
             facts.field_fact("Player", "inventory"),
             Some(&TypeFact::record("Inventory"))
@@ -97,6 +115,14 @@ mod tests {
             facts.field_fact("QuestState::Active", "quest_id"),
             Some(&TypeFact::STRING)
         );
+        assert!(matches!(
+            facts.field_target_fact("QuestState::Active", "quest_id"),
+            Some(target)
+                if target.owner == TypeId::new(3)
+                    && target.semantic == FieldId::new(1)
+                    && target.host_runtime.is_none()
+                    && target.variant_field
+        ));
         assert_eq!(
             facts.method_fact("Player", "grant_exp"),
             Some(&TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL))
@@ -346,8 +372,8 @@ mod tests {
     fn compile_view_facts_preserve_targets_signatures_effects_and_type_hints() {
         use vela_def::DefPath;
         use vela_registry::{
-            DefinitionRegistry, EffectSet, FieldDef, FunctionDef, FunctionSignature, MethodDef,
-            ParamDef, TypeDef, TypeHintDef,
+            DefinitionRegistry, EffectSet, FieldAccessDef, FieldDef, FunctionDef,
+            FunctionSignature, MethodAccessDef, MethodDef, ParamDef, TypeDef, TypeHintDef,
         };
 
         let mut registry = DefinitionRegistry::new();
@@ -360,7 +386,15 @@ mod tests {
         registry
             .register_field(
                 FieldDef::new(DefPath::field("host", ["game"], "Player", "level"), player)
-                    .writable(false)
+                    .access(
+                        FieldAccessDef::new()
+                            .readable(false)
+                            .writable(true)
+                            .reflect_readable(true)
+                            .reflect_writable(false)
+                            .require_permission("player.inspect"),
+                    )
+                    .host_runtime_id(81)
                     .type_hint(Some("i64")),
             )
             .expect("level registration");
@@ -385,8 +419,15 @@ mod tests {
                 .effects(EffectSet {
                     host_read: true,
                     host_write: true,
+                    reflection_write: true,
                     ..EffectSet::default()
-                }),
+                })
+                .access(
+                    MethodAccessDef::new()
+                        .public(false)
+                        .reflect_callable(false)
+                        .require_permission("player.admin"),
+                ),
             )
             .expect("save registration");
         registry
@@ -409,6 +450,7 @@ mod tests {
                 .effects(EffectSet {
                     host_read: true,
                     event_emit: true,
+                    reflection_write: true,
                     ..EffectSet::default()
                 }),
             )
@@ -424,6 +466,12 @@ mod tests {
             facts.type_fact("Player"),
             Some(&TypeFact::host("game::Player"))
         );
+        assert!(matches!(
+            facts.type_target_fact("game::Player"),
+            Some(target)
+                if target.semantic == player
+                    && target.host_runtime == Some(HostTypeId::new(7))
+        ));
         assert_eq!(
             facts.type_fact("game::Reward"),
             Some(&TypeFact::record("game::Reward"))
@@ -439,15 +487,38 @@ mod tests {
         assert!(
             facts
                 .field_access_fact("game::Player", "level")
-                .is_some_and(|access| access.readable && !access.writable)
+                .is_some_and(|access| {
+                    !access.readable
+                        && access.writable
+                        && access.reflect_readable
+                        && !access.reflect_writable
+                        && access.required_permissions == ["player.inspect"]
+                })
         );
+        assert!(matches!(
+            facts.field_target_fact("game::Player", "level"),
+            Some(target)
+                if target.owner == player
+                    && target.host_runtime == Some(FieldId::new(81))
+                    && !target.variant_field
+        ));
         assert_eq!(
             facts.method_fact("game::Player", "save"),
             Some(&TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL))
         );
-        assert_eq!(
-            facts.method_effect_fact("game::Player", "save"),
-            Some(&RegistryEffectFact::host_write())
+        assert!(
+            facts
+                .method_effect_fact("game::Player", "save")
+                .is_some_and(|effect| effect.writes_host && effect.writes_reflection)
+        );
+        assert!(
+            facts
+                .method_access_fact("game::Player", "save")
+                .is_some_and(|access| {
+                    !access.public
+                        && !access.reflect_callable
+                        && access.required_permissions == ["player.admin"]
+                })
         );
         assert_eq!(
             facts.function_fact("game::grant"),
@@ -460,7 +531,9 @@ mod tests {
         assert!(
             facts
                 .function_effect_fact("game::grant")
-                .is_some_and(|effect| effect.reads_host && effect.emits_events)
+                .is_some_and(|effect| {
+                    effect.reads_host && effect.emits_events && effect.writes_reflection
+                })
         );
     }
 
@@ -564,8 +637,9 @@ mod tests {
         assert_eq!(analysis.expression(level.id), Some(&TypeFact::I64));
         assert!(matches!(
             analysis.member_target(level.id),
-            Some(crate::semantic_facts::MemberTargetFact::HostField { owner, name })
-                if owner == "game::Player" && name == "level"
+            Some(crate::semantic_facts::MemberTargetFact::HostField(target))
+                if target.owner_name == "game::Player" && target.name == "level"
+                    && target.owner == player
         ));
     }
 }

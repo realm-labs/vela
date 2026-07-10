@@ -1,11 +1,16 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
-use vela_common::PrimitiveTag;
-use vela_def::{DefPath, TypeId};
+use vela_common::{HostTypeId, PrimitiveTag};
+use vela_def::{DefPath, FieldId, TypeId, VariantId};
 use vela_reflect::modules::DeclOrigin;
-use vela_registry::{Def, EffectSet, FunctionSignature, RegistryCompileView, TypeDef, TypeHintDef};
+use vela_registry::{
+    Def, EffectSet, FunctionSignature, RegistryCompileView, TypeDef, TypeHintDef, TypeKindDef,
+};
 
-use super::{RegistryEffectFact, RegistryFacts, RegistryFieldAccessFact};
+use super::{
+    RegistryEffectFact, RegistryFacts, RegistryFieldAccessFact, RegistryFieldTargetFact,
+    RegistryMethodAccessFact, RegistryTypeTargetFact,
+};
 use crate::type_fact::TypeFact;
 
 impl RegistryFacts {
@@ -21,15 +26,16 @@ struct CompileViewFacts<'registry> {
     registry: RegistryCompileView<'registry>,
     type_names: BTreeMap<TypeId, String>,
     type_facts: BTreeMap<String, TypeFact>,
-    enum_types: BTreeSet<TypeId>,
+    type_targets: BTreeMap<String, (TypeId, Option<u128>)>,
+    variant_names: BTreeMap<VariantId, String>,
 }
 
 impl<'registry> CompileViewFacts<'registry> {
     fn new(registry: RegistryCompileView<'registry>) -> Self {
-        let enum_types = registry
+        let variant_names = registry
             .definitions()
             .filter_map(|definition| match definition {
-                Def::Variant(variant) => Some(variant.owner),
+                Def::Variant(variant) => Some((variant.id, variant.path.name.clone())),
                 _ => None,
             })
             .collect();
@@ -37,7 +43,8 @@ impl<'registry> CompileViewFacts<'registry> {
             registry,
             type_names: BTreeMap::new(),
             type_facts: BTreeMap::new(),
-            enum_types,
+            type_targets: BTreeMap::new(),
+            variant_names,
         }
     }
 
@@ -46,6 +53,13 @@ impl<'registry> CompileViewFacts<'registry> {
         let mut facts = RegistryFacts::default();
         for (name, fact) in &self.type_facts {
             facts.insert_type(name, fact.clone());
+        }
+        for (name, (semantic, host_runtime)) in &self.type_targets {
+            facts.insert_type_target(RegistryTypeTargetFact::new(
+                name,
+                *semantic,
+                host_runtime.map(host_type_id),
+            ));
         }
 
         for definition in self.registry.definitions() {
@@ -65,6 +79,13 @@ impl<'registry> CompileViewFacts<'registry> {
                         &method.path.name,
                         definition_effect_fact(method.effects),
                     );
+                    facts.insert_method_access(RegistryMethodAccessFact {
+                        owner: owner.clone(),
+                        name: method.path.name.clone(),
+                        public: method.access.public,
+                        reflect_callable: method.access.reflect_callable,
+                        required_permissions: method.access.required_permissions().to_vec(),
+                    });
                 }
                 Def::Function(function) => {
                     let name = source_name(&function.path);
@@ -116,14 +137,19 @@ impl<'registry> CompileViewFacts<'registry> {
         }
         for definition in types {
             let name = source_name(&definition.path);
-            let fact =
-                registered_type_fact(definition, &name, self.enum_types.contains(&definition.id));
+            let fact = registered_type_fact(definition, &name);
             self.type_names.insert(definition.id, name.clone());
             self.type_facts.insert(name.clone(), fact.clone());
+            self.type_targets
+                .insert(name.clone(), (definition.id, definition.host_runtime_id));
             if name != definition.path.name
                 && short_name_counts.get(&definition.path.name) == Some(&1)
             {
                 self.type_facts.insert(definition.path.name.clone(), fact);
+                self.type_targets.insert(
+                    definition.path.name.clone(),
+                    (definition.id, definition.host_runtime_id),
+                );
             }
         }
     }
@@ -132,16 +158,11 @@ impl<'registry> CompileViewFacts<'registry> {
         let Some(type_owner) = self.type_names.get(&field.owner) else {
             return;
         };
-        let owner = if field.variant_field {
-            field
-                .path
-                .owner
-                .as_deref()
-                .and_then(|owner| owner.rsplit("::").next())
-                .map_or_else(
-                    || type_owner.clone(),
-                    |variant| format!("{type_owner}::{variant}"),
-                )
+        let owner = if let Some(variant) = field.variant {
+            let Some(variant) = self.variant_names.get(&variant) else {
+                return;
+            };
+            format!("{type_owner}::{variant}")
         } else {
             type_owner.clone()
         };
@@ -150,15 +171,25 @@ impl<'registry> CompileViewFacts<'registry> {
             .as_ref()
             .map_or(TypeFact::Unknown, |hint| self.type_hint_fact(hint));
         facts.insert_field(&owner, &field.path.name, fact);
-        facts.insert_field_access(RegistryFieldAccessFact {
-            owner,
+        let access = RegistryFieldAccessFact {
+            owner: owner.clone(),
             name: field.path.name.clone(),
-            readable: true,
-            writable: field.writable,
-            reflect_readable: false,
-            reflect_writable: false,
-            required_permissions: Vec::new(),
-        });
+            readable: field.access.readable,
+            writable: field.access.writable,
+            reflect_readable: field.access.reflect_readable,
+            reflect_writable: field.access.reflect_writable,
+            required_permissions: field.access.required_permissions().to_vec(),
+        };
+        facts.insert_field_access(access.clone());
+        facts.insert_field_target(RegistryFieldTargetFact::new(
+            field.owner,
+            owner,
+            &field.path.name,
+            field.id,
+            field.host_runtime_id.map(FieldId::new),
+            field.variant.is_some(),
+            access,
+        ));
     }
 
     fn signature_fact(&self, signature: &FunctionSignature) -> TypeFact {
@@ -224,25 +255,44 @@ fn source_name(path: &DefPath) -> String {
         .join("::")
 }
 
-fn registered_type_fact(definition: &TypeDef, name: &str, is_enum: bool) -> TypeFact {
+fn registered_type_fact(definition: &TypeDef, name: &str) -> TypeFact {
     if let Some(primitive) = definition.primitive {
         return TypeFact::primitive(primitive);
     }
-    if definition.path.package == "host" || definition.host_runtime_id.is_some() {
-        return TypeFact::host(name);
+    if definition.path.package == "std" {
+        match definition.path.name.as_str() {
+            "Option" => return TypeFact::option(TypeFact::Any),
+            "Result" => return TypeFact::result(TypeFact::Any, TypeFact::Any),
+            _ => {}
+        }
     }
-    match definition.path.name.as_str() {
-        "Any" => TypeFact::Any,
-        "Array" => TypeFact::array(TypeFact::Any),
-        "Map" => TypeFact::map(TypeFact::Any, TypeFact::Any),
-        "Set" => TypeFact::set(TypeFact::Any),
-        "Iterator" => TypeFact::iterator(TypeFact::Any),
-        "Range" => TypeFact::Range,
-        "Function" | "Closure" => TypeFact::function(Vec::new(), TypeFact::Any),
-        "Option" => TypeFact::option(TypeFact::Any),
-        "Result" => TypeFact::result(TypeFact::Any, TypeFact::Any),
-        _ if is_enum => TypeFact::enum_type(name, None::<String>),
-        _ => TypeFact::record(name),
+    match definition.kind {
+        TypeKindDef::Unit => TypeFact::UNIT,
+        TypeKindDef::Bool => TypeFact::BOOL,
+        TypeKindDef::I8 => TypeFact::I8,
+        TypeKindDef::I16 => TypeFact::I16,
+        TypeKindDef::I32 => TypeFact::I32,
+        TypeKindDef::I64 => TypeFact::I64,
+        TypeKindDef::U8 => TypeFact::U8,
+        TypeKindDef::U16 => TypeFact::U16,
+        TypeKindDef::U32 => TypeFact::U32,
+        TypeKindDef::U64 => TypeFact::U64,
+        TypeKindDef::F32 => TypeFact::F32,
+        TypeKindDef::F64 => TypeFact::F64,
+        TypeKindDef::Char => TypeFact::CHAR,
+        TypeKindDef::String => TypeFact::STRING,
+        TypeKindDef::Bytes => TypeFact::BYTES,
+        TypeKindDef::Array => TypeFact::array(TypeFact::Any),
+        TypeKindDef::Map => TypeFact::map(TypeFact::Any, TypeFact::Any),
+        TypeKindDef::Set => TypeFact::set(TypeFact::Any),
+        TypeKindDef::Iterator => TypeFact::iterator(TypeFact::Any),
+        TypeKindDef::Range => TypeFact::Range,
+        TypeKindDef::Function | TypeKindDef::Closure => {
+            TypeFact::function(Vec::new(), TypeFact::Any)
+        }
+        TypeKindDef::Host => TypeFact::host(name),
+        TypeKindDef::ScriptStruct => TypeFact::record(name),
+        TypeKindDef::ScriptEnum => TypeFact::enum_type(name, None::<String>),
     }
 }
 
@@ -256,7 +306,11 @@ fn definition_effect_fact(effects: EffectSet) -> RegistryEffectFact {
         reads_io: effects.io_read,
         writes_io: effects.io_write,
         reads_reflection: effects.reflection_read,
-        writes_reflection: false,
+        writes_reflection: effects.reflection_write,
         calls_reflection: effects.reflection_call,
     }
+}
+
+fn host_type_id(value: u128) -> HostTypeId {
+    HostTypeId::new(u64::try_from(value).expect("host type runtime id exceeds u64::MAX"))
 }

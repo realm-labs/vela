@@ -12,8 +12,8 @@ use vela_def::{
 };
 
 pub use defs::{
-    Def, EffectSet, FieldDef, FunctionDef, FunctionSignature, MethodDef, ParamDef, SemanticKey,
-    TraitDef, TypeDef, TypeHintDef, VariantDef,
+    Def, EffectSet, FieldAccessDef, FieldDef, FunctionDef, FunctionSignature, MethodAccessDef,
+    MethodDef, ParamDef, SemanticKey, TraitDef, TypeDef, TypeHintDef, TypeKindDef, VariantDef,
 };
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -244,6 +244,39 @@ impl<'registry> RegistryCompileView<'registry> {
     pub fn resolve_host_field(&self, owner: TypeId, name: &str) -> Option<FieldId> {
         let key = SemanticKey::Field {
             owner,
+            variant: None,
+            name: name.to_owned(),
+        };
+        let direct = self
+            .registry
+            .id_for_semantic_key(&key)
+            .and_then(|id| self.registry.get(id))
+            .and_then(Def::field_id);
+        if direct.is_some() {
+            return direct;
+        }
+
+        let mut matches = self.registry.defs_by_id.values().filter_map(|definition| {
+            let Def::Field(field) = definition else {
+                return None;
+            };
+            (field.owner == owner && field.variant.is_some() && field.path.name == name)
+                .then_some(field.id)
+        });
+        let field = matches.next()?;
+        matches.next().is_none().then_some(field)
+    }
+
+    #[must_use]
+    pub fn resolve_variant_field(
+        &self,
+        owner: TypeId,
+        variant: VariantId,
+        name: &str,
+    ) -> Option<FieldId> {
+        let key = SemanticKey::Field {
+            owner,
+            variant: Some(variant),
             name: name.to_owned(),
         };
         self.registry
@@ -866,12 +899,140 @@ mod tests {
         }));
         assert!(definitions.iter().any(|definition| {
             matches!(definition, Def::Field(definition)
-                if !definition.writable
+                if !definition.access.writable
                     && definition.type_hint.as_ref().is_some_and(|hint| hint.display() == "i64"))
         }));
         assert!(definitions.iter().any(|definition| {
             matches!(definition, Def::Method(definition)
                 if definition.signature.params == [int_param("bonus")])
         }));
+    }
+
+    #[test]
+    fn compile_view_preserves_exact_schema_ownership_order_and_access() {
+        let mut registry = DefinitionRegistry::new();
+        let owner = registry
+            .register_type(
+                TypeDef::new(DefPath::ty("host", ["combat"], "Outcome"))
+                    .kind(TypeKindDef::ScriptEnum),
+            )
+            .expect("type registration should succeed");
+        let granted = registry
+            .register_variant(
+                VariantDef::new(
+                    DefPath::variant("host", ["combat"], "Outcome", "Granted"),
+                    owner,
+                )
+                .declaration_order(0),
+            )
+            .expect("Granted registration should succeed");
+        let denied = registry
+            .register_variant(
+                VariantDef::new(
+                    DefPath::variant("host", ["combat"], "Outcome", "Denied"),
+                    owner,
+                )
+                .declaration_order(1),
+            )
+            .expect("Denied registration should succeed");
+        let field_access = FieldAccessDef::new()
+            .readable(false)
+            .writable(true)
+            .reflect_readable(true)
+            .reflect_writable(false)
+            .require_permission("outcome.inspect");
+        let granted_value = registry
+            .register_field(
+                FieldDef::new(
+                    DefPath::field("host", ["combat"], "Outcome::Granted", "value"),
+                    owner,
+                )
+                .variant_owner(granted)
+                .declaration_order(0)
+                .access(field_access.clone()),
+            )
+            .expect("Granted value registration should succeed");
+        let denied_value = registry
+            .register_field(
+                FieldDef::new(
+                    DefPath::field("host", ["combat"], "Outcome::Denied", "value"),
+                    owner,
+                )
+                .variant_owner(denied)
+                .declaration_order(0),
+            )
+            .expect("Denied value registration should succeed");
+        let granted_code = registry
+            .register_field(
+                FieldDef::new(
+                    DefPath::field("host", ["combat"], "Outcome::Granted", "code"),
+                    owner,
+                )
+                .variant_owner(granted)
+                .declaration_order(1),
+            )
+            .expect("Granted code registration should succeed");
+        registry
+            .register_method(
+                MethodDef::new(
+                    DefPath::method("host", ["combat"], "Outcome", "rewrite"),
+                    owner,
+                    FunctionSignature::default(),
+                )
+                .access(
+                    MethodAccessDef::new()
+                        .public(false)
+                        .reflect_callable(false)
+                        .require_permission("outcome.admin"),
+                )
+                .effects(EffectSet {
+                    reflection_write: true,
+                    ..EffectSet::default()
+                }),
+            )
+            .expect("method registration should succeed");
+
+        let definitions = registry.compile_view().definitions().collect::<Vec<_>>();
+        assert!(definitions.iter().any(|definition| {
+            matches!(definition, Def::Type(definition)
+                if definition.id == owner && definition.kind == TypeKindDef::ScriptEnum)
+        }));
+        assert!(definitions.iter().any(|definition| {
+            matches!(definition, Def::Variant(definition)
+                if definition.id == granted && definition.declaration_order == 0)
+        }));
+        assert!(definitions.iter().any(|definition| {
+            matches!(definition, Def::Variant(definition)
+                if definition.id == denied && definition.declaration_order == 1)
+        }));
+        assert!(definitions.iter().any(|definition| {
+            matches!(definition, Def::Field(definition)
+                if definition.id == granted_value
+                    && definition.variant == Some(granted)
+                    && definition.declaration_order == 0
+                    && definition.access == field_access)
+        }));
+        assert!(definitions.iter().any(|definition| {
+            matches!(definition, Def::Field(definition)
+                if definition.id == denied_value && definition.variant == Some(denied))
+        }));
+        assert!(definitions.iter().any(|definition| {
+            matches!(definition, Def::Method(definition)
+                if !definition.access.public
+                    && !definition.access.reflect_callable
+                    && definition.access.required_permissions() == ["outcome.admin"]
+                    && definition.effects.reflection_write)
+        }));
+        let view = registry.compile_view();
+        assert_eq!(
+            view.resolve_variant_field(owner, granted, "value"),
+            Some(granted_value)
+        );
+        assert_eq!(
+            view.resolve_variant_field(owner, denied, "value"),
+            Some(denied_value)
+        );
+        assert_eq!(view.resolve_host_field(owner, "value"), None);
+        assert_eq!(view.resolve_host_field(owner, "code"), Some(granted_code));
     }
 }

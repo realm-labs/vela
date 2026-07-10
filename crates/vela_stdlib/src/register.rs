@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use vela_registry::{DefinitionRegistry, RegistryError};
 
 use crate::{STD_FIELDS, STD_FUNCTIONS, STD_METHODS, STD_TYPES, STD_VARIANTS};
@@ -17,11 +19,17 @@ pub fn register_stdlib(
     for spec in STD_TYPES {
         registry.register_type(spec.def())?;
     }
+    let mut variant_orders = BTreeMap::<&str, u32>::new();
     for spec in STD_VARIANTS {
-        registry.register_variant(spec.def())?;
+        let order = variant_orders.entry(spec.owner).or_default();
+        registry.register_variant(spec.def().declaration_order(*order))?;
+        *order += 1;
     }
+    let mut field_orders = BTreeMap::<&str, u32>::new();
     for spec in STD_FIELDS {
-        registry.register_field(spec.def())?;
+        let order = field_orders.entry(spec.owner).or_default();
+        registry.register_field(spec.def().declaration_order(*order))?;
+        *order += 1;
     }
     for spec in STD_FUNCTIONS {
         registry.register_function(spec.def())?;

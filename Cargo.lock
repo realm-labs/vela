@@ -1008,6 +1008,7 @@ name = "vela_engine"
 version = "0.1.0"
 dependencies = [
  "serde",
+ "vela_analysis",
  "vela_bytecode",
  "vela_common",
  "vela_def",
