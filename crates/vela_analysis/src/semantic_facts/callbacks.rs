@@ -6,7 +6,7 @@ use vela_hir::module_graph::ModuleGraph;
 
 use crate::facts::AnalysisFacts;
 use crate::registry::RegistryFacts;
-use crate::stdlib::{StdlibMethodFact, stdlib_method_fact_with_lambda_arity};
+use crate::stdlib::{StdlibMethodFact, stdlib_method_fact_for_call};
 use crate::type_fact::TypeFact;
 
 use super::lookups::type_owner;
@@ -104,8 +104,25 @@ impl HirSemanticFacts {
         body: &HirBody,
         call: &HirCall,
     ) -> Option<StdlibMethodFact> {
-        self.contextual_stdlib_callback(graph, body, call)
-            .map(|(_, method)| method)
+        let field = body.field(call.callee)?;
+        let receiver = self.fact(field.receiver);
+        let lambda = direct_lambda_context(self, graph, body, call);
+        let arguments = call
+            .arguments
+            .iter()
+            .map(|argument| {
+                argument
+                    .value
+                    .map_or(TypeFact::Unknown, |value| self.fact(value))
+            })
+            .collect::<Vec<_>>();
+        stdlib_method_fact_for_call(
+            &receiver,
+            &field.name,
+            lambda.as_ref().and_then(|context| context.returns.as_ref()),
+            lambda.as_ref().map(|context| context.param_count),
+            &arguments,
+        )
     }
 
     fn contextual_stdlib_callback(
@@ -114,28 +131,10 @@ impl HirSemanticFacts {
         body: &HirBody,
         call: &HirCall,
     ) -> Option<(HirBodyId, StdlibMethodFact)> {
-        let field = body.field(call.callee)?;
-        let receiver = self.fact(field.receiver);
-        let mut lambdas = call.arguments.iter().filter_map(|argument| {
-            argument
-                .value
-                .and_then(|value| direct_lambda_body(body, value))
-        });
-        let lambda_body = lambdas.next()?;
-        if lambdas.next().is_some() {
-            return None;
-        }
-        let lambda = graph.body(lambda_body)?;
-        let lambda_return = self.body_value(lambda);
-        let lambda_return = (!matches!(lambda_return, TypeFact::Unknown)).then_some(lambda_return);
-        let method = stdlib_method_fact_with_lambda_arity(
-            &receiver,
-            &field.name,
-            lambda_return.as_ref(),
-            Some(lambda.params.len()),
-        )?;
+        let context = direct_lambda_context(self, graph, body, call)?;
+        let method = self.contextual_stdlib_method_fact(graph, body, call)?;
         method.lambda.as_ref()?;
-        Some((lambda_body, method))
+        Some((context.body, method))
     }
 
     fn resolved_callable_fact(
@@ -161,6 +160,36 @@ impl HirSemanticFacts {
             .cloned()
             .unwrap_or(TypeFact::Unknown)
     }
+}
+
+struct DirectLambdaContext {
+    body: HirBodyId,
+    returns: Option<TypeFact>,
+    param_count: usize,
+}
+
+fn direct_lambda_context(
+    facts: &HirSemanticFacts,
+    graph: &ModuleGraph,
+    body: &HirBody,
+    call: &HirCall,
+) -> Option<DirectLambdaContext> {
+    let mut lambdas = call.arguments.iter().filter_map(|argument| {
+        argument
+            .value
+            .and_then(|value| direct_lambda_body(body, value))
+    });
+    let lambda_body = lambdas.next()?;
+    if lambdas.next().is_some() {
+        return None;
+    }
+    let lambda = graph.body(lambda_body)?;
+    let returns = facts.body_value(lambda);
+    Some(DirectLambdaContext {
+        body: lambda_body,
+        returns: (!matches!(returns, TypeFact::Unknown)).then_some(returns),
+        param_count: lambda.params.len(),
+    })
 }
 
 fn lambda_param_seeds(

@@ -399,3 +399,30 @@ fn option_and_result_map_methods_expose_dynamic_enum_facts() {
         .is_none()
     );
 }
+
+#[test]
+fn call_arguments_specialize_fallback_and_error_value_facts() {
+    let arrays = TypeFact::option(TypeFact::array(TypeFact::STRING));
+    let unwrapped = stdlib_method_fact_for_call(
+        &arrays,
+        "unwrap_or",
+        None,
+        None,
+        &[TypeFact::array(TypeFact::Unknown)],
+    )
+    .expect("argument-sensitive unwrap_or fact");
+    assert_eq!(unwrapped.returns, TypeFact::array(TypeFact::STRING));
+
+    let result = stdlib_method_fact_for_call(
+        &TypeFact::option(TypeFact::I64),
+        "ok_or",
+        None,
+        None,
+        &[TypeFact::STRING],
+    )
+    .expect("argument-sensitive ok_or fact");
+    assert_eq!(
+        result.returns,
+        TypeFact::result(TypeFact::I64, TypeFact::STRING)
+    );
+}

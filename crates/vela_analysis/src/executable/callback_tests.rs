@@ -199,6 +199,8 @@ fn main() {
     let map_values = method_calls(body, "map_values")[0];
     let filter = method_calls(body, "filter")[0];
     let find = method_calls(body, "find")[0];
+    let key_len = method_calls(lambdas[1], "len")[0];
+    let collection_lengths = method_calls(body, "len");
 
     let function = FunctionId::new(9_301);
     let generation = ExecutableAnalysisGeneration::from_module_graph(
@@ -230,6 +232,53 @@ fn main() {
             TypeFact::I64
         )))
     );
+    assert_stdlib_call(&view, key_len, "len");
+    assert_eq!(collection_lengths.len(), 2);
+    for call in collection_lengths {
+        assert_stdlib_call(&view, call, "len");
+    }
+}
+
+#[test]
+fn map_lookup_fallbacks_preserve_nested_collection_receiver_targets() {
+    let (graph, main) = graph(
+        96,
+        r#"
+fn main() {
+    let groups = {"w": ["wolf", "wisp"], "b": ["bat"]};
+    return groups.get_or("w", []).len() + groups.get("b").unwrap_or([]).len();
+}
+"#,
+    );
+    let body = graph.function_body(main).expect("main body");
+    let get_or = method_calls(body, "get_or")[0];
+    let get = method_calls(body, "get")[0];
+    let unwrap_or = method_calls(body, "unwrap_or")[0];
+    let lengths = method_calls(body, "len");
+
+    let function = FunctionId::new(9_601);
+    let generation = ExecutableAnalysisGeneration::from_module_graph(
+        &graph,
+        [ExecutableAnalysisInput::new(function, body.id)],
+    )
+    .expect("map fallback analysis");
+    let view = generation.view(function).expect("main view");
+    let arrays = TypeFact::array(TypeFact::STRING);
+
+    assert_eq!(view.expression(get_or), Some(&arrays));
+    assert_eq!(
+        view.expression(get),
+        Some(&TypeFact::option(arrays.clone()))
+    );
+    assert_eq!(view.expression(unwrap_or), Some(&arrays));
+    assert_stdlib_call(&view, get_or, "get_or");
+    assert_stdlib_call(&view, get, "get");
+    assert_stdlib_call(&view, unwrap_or, "unwrap_or");
+    assert_eq!(lengths.len(), 2);
+    for call in lengths {
+        assert_eq!(call_receiver_fact(body, &view, call), Some(&arrays));
+        assert_stdlib_call(&view, call, "len");
+    }
 }
 
 #[test]
@@ -465,4 +514,17 @@ fn assert_stdlib_call(view: &ExecutableAnalysisView<'_>, call: HirExprId, method
             name: method.to_owned(),
         })
     );
+}
+
+fn call_receiver_fact<'a>(
+    body: &HirBody,
+    view: &'a ExecutableAnalysisView<'_>,
+    call: HirExprId,
+) -> Option<&'a TypeFact> {
+    let call = body.expression(call)?;
+    let HirExprKind::Call(call) = &call.kind else {
+        return None;
+    };
+    let field = body.field(call.callee)?;
+    view.expression(field.receiver)
 }

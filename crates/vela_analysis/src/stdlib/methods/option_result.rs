@@ -12,6 +12,7 @@ pub(super) fn option_method_fact(
     shape: OptionShape,
     method: &str,
     lambda_return: Option<&TypeFact>,
+    arguments: Option<&[TypeFact]>,
 ) -> Option<StdlibMethodFact> {
     let receiver = match shape {
         OptionShape::Maybe => TypeFact::option(some.clone()),
@@ -25,7 +26,7 @@ pub(super) fn option_method_fact(
             StdlibMethodFact::new(
                 receiver,
                 "unwrap_or",
-                option_unwrap_or_return(&some, shape, TypeFact::Any),
+                option_unwrap_or_return(&some, shape, fallback_argument(arguments)),
             )
             .with_params(vec![TypeFact::Any]),
         ),
@@ -33,7 +34,7 @@ pub(super) fn option_method_fact(
             StdlibMethodFact::new(
                 receiver,
                 "ok_or",
-                option_ok_or_return(&some, shape, TypeFact::Any),
+                option_ok_or_return(&some, shape, fallback_argument(arguments)),
             )
             .with_params(vec![TypeFact::Any]),
         ),
@@ -88,6 +89,7 @@ pub(super) fn result_method_fact(
     shape: ResultShape,
     method: &str,
     lambda_return: Option<&TypeFact>,
+    arguments: Option<&[TypeFact]>,
 ) -> Option<StdlibMethodFact> {
     let mapped = lambda_return.cloned().unwrap_or(TypeFact::Any);
     let receiver = match shape {
@@ -102,7 +104,7 @@ pub(super) fn result_method_fact(
             StdlibMethodFact::new(
                 receiver,
                 "unwrap_or",
-                result_unwrap_or_return(&ok, shape, TypeFact::Any),
+                result_unwrap_or_return(&ok, shape, fallback_argument(arguments)),
             )
             .with_params(vec![TypeFact::Any]),
         ),
@@ -151,6 +153,13 @@ pub(super) fn result_method_fact(
         }
         _ => None,
     }
+}
+
+fn fallback_argument(arguments: Option<&[TypeFact]>) -> TypeFact {
+    arguments
+        .and_then(|arguments| arguments.first())
+        .cloned()
+        .unwrap_or(TypeFact::Any)
 }
 
 pub(super) fn option_chain_lambda_return(lambda_return: Option<&TypeFact>) -> TypeFact {

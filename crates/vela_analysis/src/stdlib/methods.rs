@@ -181,6 +181,7 @@ pub(super) fn method_fact(
     method: &str,
     lambda_return: Option<&TypeFact>,
     lambda_param_count: Option<usize>,
+    arguments: Option<&[TypeFact]>,
 ) -> Option<StdlibMethodFact> {
     match receiver {
         TypeFact::Array { element } => {
@@ -201,21 +202,34 @@ pub(super) fn method_fact(
         TypeFact::Primitive(PrimitiveTag::Bytes) => bytes_method_fact(method),
         TypeFact::Primitive(PrimitiveTag::Char) => char_method_fact(method),
         TypeFact::Range => range_method_fact(method),
-        TypeFact::Option { some } => {
-            option_method_fact((**some).clone(), OptionShape::Maybe, method, lambda_return)
-        }
-        TypeFact::OptionSome { some } => {
-            option_method_fact((**some).clone(), OptionShape::Some, method, lambda_return)
-        }
-        TypeFact::OptionNone => {
-            option_method_fact(TypeFact::Never, OptionShape::None, method, lambda_return)
-        }
+        TypeFact::Option { some } => option_method_fact(
+            (**some).clone(),
+            OptionShape::Maybe,
+            method,
+            lambda_return,
+            arguments,
+        ),
+        TypeFact::OptionSome { some } => option_method_fact(
+            (**some).clone(),
+            OptionShape::Some,
+            method,
+            lambda_return,
+            arguments,
+        ),
+        TypeFact::OptionNone => option_method_fact(
+            TypeFact::Never,
+            OptionShape::None,
+            method,
+            lambda_return,
+            arguments,
+        ),
         TypeFact::Result { ok, err } => result_method_fact(
             (**ok).clone(),
             (**err).clone(),
             ResultShape::Maybe,
             method,
             lambda_return,
+            arguments,
         ),
         TypeFact::ResultOk { ok } => result_method_fact(
             (**ok).clone(),
@@ -223,6 +237,7 @@ pub(super) fn method_fact(
             ResultShape::Ok,
             method,
             lambda_return,
+            arguments,
         ),
         TypeFact::ResultErr { err } => result_method_fact(
             TypeFact::Never,
@@ -230,6 +245,7 @@ pub(super) fn method_fact(
             ResultShape::Err,
             method,
             lambda_return,
+            arguments,
         ),
         _ => None,
     }
@@ -241,7 +257,7 @@ pub(super) fn method_facts(
 ) -> Vec<StdlibMethodFact> {
     method_names(receiver)
         .iter()
-        .filter_map(|method| method_fact(receiver, method, lambda_return, None))
+        .filter_map(|method| method_fact(receiver, method, lambda_return, None, None))
         .collect()
 }
 
@@ -266,10 +282,34 @@ fn method_names(receiver: &TypeFact) -> &'static [&'static str] {
 }
 
 fn value_or_fallback(value: TypeFact, fallback: TypeFact) -> TypeFact {
-    if value == fallback {
-        value
-    } else {
-        TypeFact::union([value, fallback])
+    merge_value_facts(value, fallback)
+}
+
+fn merge_value_facts(value: TypeFact, fallback: TypeFact) -> TypeFact {
+    if value == fallback || matches!(fallback, TypeFact::Unknown | TypeFact::Never) {
+        return value;
+    }
+    if matches!(value, TypeFact::Unknown | TypeFact::Never) {
+        return fallback;
+    }
+    match (value, fallback) {
+        (TypeFact::Array { element }, TypeFact::Array { element: fallback }) => {
+            TypeFact::array(merge_value_facts(*element, *fallback))
+        }
+        (
+            TypeFact::Map { key, value },
+            TypeFact::Map {
+                key: fallback_key,
+                value: fallback_value,
+            },
+        ) => TypeFact::map(
+            merge_value_facts(*key, *fallback_key),
+            merge_value_facts(*value, *fallback_value),
+        ),
+        (TypeFact::Set { element }, TypeFact::Set { element: fallback }) => {
+            TypeFact::set(merge_value_facts(*element, *fallback))
+        }
+        (value, fallback) => TypeFact::union([value, fallback]),
     }
 }
 
