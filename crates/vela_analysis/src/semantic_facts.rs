@@ -2,10 +2,14 @@ use std::collections::{BTreeMap, BTreeSet};
 
 mod callbacks;
 mod control_flow;
+mod local_flow;
 mod logical_records;
 mod lookups;
 mod script_types;
 mod targets;
+
+#[cfg(test)]
+mod local_flow_tests;
 
 use control_flow::{block_flow, fallthrough_flow, if_flow, match_flow, statement_flow};
 use logical_records::logical_member_target;
@@ -46,6 +50,7 @@ pub struct ControlFlowFact {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct HirSemanticFacts {
     types: BTreeMap<HirExprId, TypeFact>,
+    local_use_types: BTreeMap<HirExprId, TypeFact>,
     locals: BTreeMap<HirLocalId, TypeFact>,
     script_types: BTreeMap<HirExprId, ScriptTypeTargetFact>,
     local_script_types: BTreeMap<HirLocalId, ScriptTypeTargetFact>,
@@ -104,22 +109,26 @@ impl HirSemanticFacts {
             .max(1);
         for _ in 0..passes {
             let before = facts.types.clone();
+            let local_uses_before = facts.local_use_types.clone();
             let locals_before = facts.locals.clone();
             let script_types_before = facts.script_types.clone();
             let local_script_types_before = facts.local_script_types.clone();
             for body in &bodies {
+                facts.infer_local_facts(body, base);
+                facts.record_local_use_facts(body, base);
                 for expression in body.expressions.values().rev() {
                     if let Some(target) = facts.infer_script_type(graph, body, expression.id, base)
                     {
                         facts.script_types.insert(expression.id, target);
                     }
                     let fact = facts.infer_expression(graph, body, expression.id, schema, base);
-                    if !matches!(fact, TypeFact::Unknown) {
+                    if matches!(fact, TypeFact::Unknown) {
+                        facts.types.remove(&expression.id);
+                    } else {
                         facts.types.insert(expression.id, fact);
                     }
                     facts.record_targets(graph, body, expression.id, schema, base);
                 }
-                facts.infer_local_facts(body, base);
                 facts.infer_local_script_types(body);
                 facts.record_patterns(graph, body, schema, base);
             }
@@ -127,6 +136,7 @@ impl HirSemanticFacts {
                 facts.infer_callback_params(graph, body, schema, base);
             }
             if facts.types == before
+                && facts.local_use_types == local_uses_before
                 && facts.locals == locals_before
                 && facts.script_types == script_types_before
                 && facts.local_script_types == local_script_types_before
@@ -239,9 +249,12 @@ impl HirSemanticFacts {
         match &expression.kind {
             HirExprKind::Literal(literal) => literal_fact(literal),
             HirExprKind::Path(_) => match base.resolution(id) {
-                Some(BindingResolution::Local(local)) => {
-                    self.locals.get(local).cloned().unwrap_or(TypeFact::Unknown)
-                }
+                Some(BindingResolution::Local(local)) => self
+                    .local_use_types
+                    .get(&id)
+                    .cloned()
+                    .or_else(|| self.locals.get(local).cloned())
+                    .unwrap_or(TypeFact::Unknown),
                 _ => base
                     .base_expression(id)
                     .cloned()
@@ -687,7 +700,7 @@ impl HirSemanticFacts {
                     name: field.name.clone(),
                 };
             }
-            if let Some(owner) = type_owner(&receiver)
+            if let Some(owner) = registry_callable_owner(&receiver)
                 && let Some(schema) = schema
                 && registry_method_fact(schema, &receiver, &field.name).is_some()
             {

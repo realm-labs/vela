@@ -5,7 +5,9 @@ use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::ImplMetadataKind;
 
 use super::source_declaration_for_path;
-use super::targets::{ScriptTypeTargetFact, registry_field_owner, source_field_fact};
+use super::targets::{
+    ScriptTypeTargetFact, registry_callable_owner, registry_field_owner, source_field_fact,
+};
 use crate::hints::type_fact_from_hint_in_module;
 use crate::literals::{LiteralResult, ResolvedLiteralFact};
 use crate::registry::{RegistryEffectFact, RegistryFacts};
@@ -222,7 +224,7 @@ pub(super) fn registry_method_fact<'a>(
     receiver: &TypeFact,
     method: &str,
 ) -> Option<&'a TypeFact> {
-    let owner = type_owner(receiver)?;
+    let owner = registry_callable_owner(receiver)?;
     match receiver {
         TypeFact::Trait { .. } => schema
             .trait_method_fact(owner, method)
@@ -238,7 +240,7 @@ pub(super) fn registry_method_effect<'a>(
     receiver: &TypeFact,
     method: &str,
 ) -> Option<&'a RegistryEffectFact> {
-    let owner = type_owner(receiver)?;
+    let owner = registry_callable_owner(receiver)?;
     match receiver {
         TypeFact::Trait { .. } => schema
             .trait_method_effect_fact(owner, method)
