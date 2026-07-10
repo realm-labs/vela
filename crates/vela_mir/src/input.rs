@@ -3,25 +3,30 @@ use std::error::Error;
 use std::fmt;
 
 use vela_analysis::facts::AnalysisFacts;
-use vela_common::{HostMethodId, ShapeId};
+use vela_common::ShapeId;
 use vela_def::{FieldId, FunctionId, GlobalId, MethodId, TypeId, VariantId};
 use vela_hir::body::HirBodyOwner;
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId, HirPatternId};
 use vela_hir::module_graph::ModuleGraph;
 
 use crate::{
-    CompileFieldAccess, CompileFieldDescriptor, CompileFunctionClass, CompileFunctionDescriptor,
-    CompileGlobalDescriptor, CompileMethodAccess, CompileMethodClass, CompileMethodDescriptor,
-    CompileTypeDescriptor, CompileVariantDescriptor, HostTypeTarget, MirBlockId, MirEffect,
-    MirEvaluatedConstant, MirLocalId, MirSourceOrigin, MirTargetTable, MirTempId, MirTypeContract,
+    CompileFieldDescriptor, CompileFunctionClass, CompileFunctionDescriptor,
+    CompileGlobalDescriptor, CompileMethodClass, CompileMethodDescriptor, CompileTypeDescriptor,
+    CompileVariantDescriptor, MirBlockId, MirEffect, MirEvaluatedConstant, MirLocalId,
+    MirSourceOrigin, MirTargetTable, MirTempId, MirTypeContract,
 };
 
 mod calls;
+mod host;
 mod identity;
 
 pub use calls::{
     CompileCallArguments, CompileCallTarget, CompileCalleeTarget, CompileDynamicCallArgument,
     CompileReflectionCall, CompileScriptCallArgument,
+};
+pub use host::{
+    CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget, HostFieldTarget,
+    HostMethodTarget,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -44,25 +49,6 @@ impl DynamicMethodTarget {
             named_arguments,
         }
     }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct HostFieldTarget {
-    pub owner: HostTypeTarget,
-    pub semantic: FieldId,
-    pub runtime: FieldId,
-    /// Immutable policy snapshot; MIR and its backends do not query a registry.
-    pub access: CompileFieldAccess,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct HostMethodTarget {
-    pub owner: HostTypeTarget,
-    pub semantic: MethodId,
-    pub runtime: HostMethodId,
-    pub signature: CompileSignature,
-    /// Immutable policy snapshot; MIR and its backends do not query a registry.
-    pub access: CompileMethodAccess,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -209,39 +195,6 @@ pub enum CompilePositionalPolicy {
     RuntimeChecked,
     /// A proven variadic callable with a statically known minimum arity.
     Variadic { minimum: u32 },
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum CompileHostPathSegment {
-    Field(HostFieldTarget),
-    ConstantIndex(u32),
-    ConstantKey(String),
-    DynamicIndex {
-        expression: HirExprId,
-        capability: CompileHostIndexCapability,
-    },
-    DynamicKey {
-        expression: HirExprId,
-        capability: CompileHostIndexCapability,
-    },
-    VariantField(HostFieldTarget),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct CompileHostIndexCapability {
-    pub readable: bool,
-    pub writable: bool,
-    pub mutable: bool,
-    pub removable: bool,
-    pub key: Option<MirTypeContract>,
-    pub value: Option<MirTypeContract>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct CompileHostPathTarget {
-    pub root: HirExprId,
-    pub root_type: HostTypeTarget,
-    pub segments: Vec<CompileHostPathSegment>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

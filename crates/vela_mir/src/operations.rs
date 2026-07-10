@@ -207,8 +207,14 @@ pub enum MirCall {
 #[derive(Clone, Debug, PartialEq)]
 pub enum MirHostPathSegment {
     Field(HostFieldTarget),
-    ConstantIndex(u32),
-    ConstantKey(String),
+    ConstantIndex {
+        value: u32,
+        capability: CompileHostIndexCapability,
+    },
+    ConstantKey {
+        value: String,
+        capability: CompileHostIndexCapability,
+    },
     Index {
         value: MirOperand,
         capability: CompileHostIndexCapability,

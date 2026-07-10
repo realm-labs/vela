@@ -514,3 +514,104 @@ fn mir_model_dynamic_host_path_segments_retain_index_capabilities() {
     assert!(dump.contains("value: Some(Primitive(String))"));
     assert!(dump.contains("key: Some(Primitive(Char))"));
 }
+
+#[test]
+fn mir_model_constant_host_path_segments_retain_complete_index_capabilities() {
+    let body = HirBodyId::new(360);
+    let root = HirExprId::new(361);
+    let path_expression = HirExprId::new(362);
+    let origin = MirSourceOrigin::expression(
+        body,
+        path_expression,
+        vela_common::Span::new(vela_common::SourceId::new(11), 3, 19),
+    );
+    let host_type = HostTypeTarget {
+        semantic: TypeId::new(363),
+        runtime: HostTypeId::new(364),
+    };
+    let index_capability = CompileHostIndexCapability {
+        readable: true,
+        writable: false,
+        mutable: true,
+        removable: false,
+        key: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
+        value: Some(MirTypeContract::Primitive(PrimitiveTag::String)),
+    };
+    let key_capability = CompileHostIndexCapability {
+        readable: false,
+        writable: true,
+        mutable: false,
+        removable: true,
+        key: Some(MirTypeContract::Primitive(PrimitiveTag::Char)),
+        value: Some(MirTypeContract::Primitive(PrimitiveTag::Bool)),
+    };
+    let compile_path = CompileHostPathTarget {
+        root,
+        root_type: host_type,
+        segments: vec![
+            CompileHostPathSegment::ConstantIndex {
+                value: 7,
+                capability: index_capability.clone(),
+            },
+            CompileHostPathSegment::ConstantKey {
+                value: "reward".to_owned(),
+                capability: key_capability.clone(),
+            },
+        ],
+    };
+    let mut targets = CompileTargetSnapshot::builder();
+    targets
+        .insert_host_path(path_expression, compile_path, origin)
+        .expect("constant host path target should be unique");
+    let targets = targets.build();
+    let retained = targets
+        .host_path(path_expression)
+        .expect("constant host path should remain in the immutable snapshot");
+    assert!(matches!(
+        &retained.segments[0],
+        CompileHostPathSegment::ConstantIndex { value: 7, capability }
+            if capability == &index_capability
+                && capability.readable
+                && !capability.writable
+                && capability.mutable
+                && !capability.removable
+                && capability.key == Some(MirTypeContract::Primitive(PrimitiveTag::I64))
+                && capability.value == Some(MirTypeContract::Primitive(PrimitiveTag::String))
+    ));
+    assert!(matches!(
+        &retained.segments[1],
+        CompileHostPathSegment::ConstantKey { value, capability }
+            if value == "reward"
+                && capability == &key_capability
+                && !capability.readable
+                && capability.writable
+                && !capability.mutable
+                && capability.removable
+                && capability.key == Some(MirTypeContract::Primitive(PrimitiveTag::Char))
+                && capability.value == Some(MirTypeContract::Primitive(PrimitiveTag::Bool))
+    ));
+
+    let mir_path = MirHostPath {
+        root_type: retained.root_type,
+        segments: vec![
+            MirHostPathSegment::ConstantIndex {
+                value: 7,
+                capability: index_capability.clone(),
+            },
+            MirHostPathSegment::ConstantKey {
+                value: "reward".to_owned(),
+                capability: key_capability.clone(),
+            },
+        ],
+    };
+    assert!(matches!(
+        &mir_path.segments[0],
+        MirHostPathSegment::ConstantIndex { value: 7, capability }
+            if capability == &index_capability
+    ));
+    assert!(matches!(
+        &mir_path.segments[1],
+        MirHostPathSegment::ConstantKey { value, capability }
+            if value == "reward" && capability == &key_capability
+    ));
+}
