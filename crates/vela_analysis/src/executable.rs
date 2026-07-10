@@ -26,7 +26,7 @@ use crate::semantic_facts::{
 use crate::type_fact::TypeFact;
 use crate::validation::{
     ArrayOrderingCapabilityFact, CallArgumentPlacementFact, ConstructorPlacementFact,
-    ExecutableValidationFacts, LoopControlFact, OperatorCapabilityFact,
+    ExecutableValidationFacts, HostAccessUseFact, LoopControlFact, OperatorCapabilityFact,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -425,7 +425,11 @@ impl ExecutableAnalysisView<'_> {
 
     #[must_use]
     pub fn effect(&self, expression: HirExprId) -> Option<&RegistryEffectFact> {
-        self.root.facts.effect(expression)
+        self.root
+            .validation
+            .host_access_use(expression)
+            .map(|fact| &fact.effect)
+            .or_else(|| self.root.facts.effect(expression))
     }
 
     #[must_use]
@@ -459,6 +463,11 @@ impl ExecutableAnalysisView<'_> {
     #[must_use]
     pub fn loop_control(&self, statement: HirStmtId) -> Option<LoopControlFact> {
         self.root.validation.loop_control(statement)
+    }
+
+    #[must_use]
+    pub fn host_access_use(&self, expression: HirExprId) -> Option<&HostAccessUseFact> {
+        self.root.validation.host_access_use(expression)
     }
 
     #[must_use]

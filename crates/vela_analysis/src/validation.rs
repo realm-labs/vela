@@ -20,15 +20,21 @@ mod calls;
 mod capabilities;
 mod constructors;
 mod diagnostics;
+mod host_access;
 
 #[cfg(test)]
 mod call_tests;
 #[cfg(test)]
 mod constructor_tests;
 #[cfg(test)]
+mod host_access_tests;
+#[cfg(test)]
 mod tests;
 
 use capabilities::CapabilityIndex;
+pub use host_access::{
+    HostAccessUseFact, HostAccessUseKind, HostIndexCapabilityResolutionFact, HostIndexUseFact,
+};
 
 /// Whether analysis can prove a required semantic capability at a use site.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -243,6 +249,7 @@ pub struct ExecutableValidationFacts {
     loop_controls: BTreeMap<HirStmtId, LoopControlFact>,
     calls: BTreeMap<HirExprId, CallArgumentPlacementFact>,
     constructors: BTreeMap<HirExprId, ConstructorPlacementFact>,
+    host_access_uses: BTreeMap<HirExprId, HostAccessUseFact>,
     call_diagnostic_batches: Vec<(HirExprId, Span, Vec<Diagnostic>)>,
     constructor_diagnostic_batches: Vec<(HirExprId, Span, Vec<Diagnostic>)>,
     diagnostics: Vec<Diagnostic>,
@@ -261,6 +268,7 @@ impl ExecutableValidationFacts {
             capabilities::record_body(&mut validation, &capabilities, graph, facts, body);
             calls::record_body(&mut validation, graph, schema, facts, body);
             constructors::record_body(&mut validation, graph, schema, facts, body);
+            host_access::record_body(&mut validation, schema, facts, body);
         }
         let constructor_diagnostic_expressions = validation
             .constructor_diagnostic_batches
@@ -325,6 +333,11 @@ impl ExecutableValidationFacts {
         expression: HirExprId,
     ) -> Option<&ConstructorPlacementFact> {
         self.constructors.get(&expression)
+    }
+
+    #[must_use]
+    pub fn host_access_use(&self, expression: HirExprId) -> Option<&HostAccessUseFact> {
+        self.host_access_uses.get(&expression)
     }
 
     #[must_use]
