@@ -4,8 +4,8 @@ use vela_common::{Diagnostic, SourceId, Span};
 use vela_syntax::SyntaxToken;
 use vela_syntax::ast::{
     AstNode, SyntaxArgument, SyntaxBlock, SyntaxElseBranch, SyntaxExpression, SyntaxExpressionKind,
-    SyntaxMapEntry, SyntaxParam, SyntaxPattern, SyntaxPatternKind, SyntaxRecordExprField,
-    SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
+    SyntaxInterpolatedStringPart, SyntaxMapEntry, SyntaxParam, SyntaxPattern, SyntaxPatternKind,
+    SyntaxRecordExprField, SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
 };
 
 use crate::binding::{
@@ -118,6 +118,8 @@ struct SyntaxBindingLowerer<'a> {
     local_bodies: BTreeMap<HirLocalId, HirBodyId>,
     resolutions: BTreeMap<HirExprId, BindingResolution>,
     pattern_resolutions: BTreeMap<Vec<String>, BindingResolution>,
+    pending_constructor_paths: BTreeMap<HirExprId, Vec<String>>,
+    pending_pattern_paths: BTreeMap<Vec<String>, Vec<String>>,
     bodies: BTreeMap<HirBodyId, HirBody>,
     capture_keys: BTreeMap<(HirBodyId, HirLocalId), HirCaptureId>,
     diagnostics: Vec<Diagnostic>,
@@ -185,6 +187,8 @@ impl<'a> SyntaxBindingLowerer<'a> {
             local_bodies: BTreeMap::new(),
             resolutions: BTreeMap::new(),
             pattern_resolutions: BTreeMap::new(),
+            pending_constructor_paths: BTreeMap::new(),
+            pending_pattern_paths: BTreeMap::new(),
             bodies: BTreeMap::from([(input.body_id, root_body)]),
             capture_keys: BTreeMap::new(),
             diagnostics: Vec::new(),
@@ -294,6 +298,8 @@ impl<'a> SyntaxBindingLowerer<'a> {
             local_bodies: BTreeMap::new(),
             resolutions: BTreeMap::new(),
             pattern_resolutions: BTreeMap::new(),
+            pending_constructor_paths: BTreeMap::new(),
+            pending_pattern_paths: BTreeMap::new(),
             bodies: BTreeMap::from([(input.body_id, root_body)]),
             capture_keys: BTreeMap::new(),
             diagnostics: Vec::new(),
@@ -312,6 +318,8 @@ impl<'a> SyntaxBindingLowerer<'a> {
                 locals_by_name: self.locals_by_name,
                 resolutions: self.resolutions,
                 pattern_resolutions: self.pattern_resolutions,
+                pending_constructor_paths: self.pending_constructor_paths,
+                pending_pattern_paths: self.pending_pattern_paths,
             },
             self.bodies.into_values().collect(),
             self.diagnostics,
@@ -680,12 +688,17 @@ impl<'a> SyntaxBindingLowerer<'a> {
         if let Some(resolution) = self.resolve_constructor_path(path) {
             self.record_capture_for_resolution(id, &resolution);
             self.resolutions.insert(id, resolution);
+        } else {
+            self.pending_constructor_paths.insert(id, path.to_vec());
         }
     }
 
     fn bind_pattern_path(&mut self, path: &[String]) {
         if let Some(resolution) = self.resolve_constructor_path(path) {
             self.pattern_resolutions.insert(path.to_vec(), resolution);
+        } else {
+            self.pending_pattern_paths
+                .insert(path.to_vec(), path.to_vec());
         }
     }
 

@@ -440,28 +440,17 @@ impl SyntaxBindingLowerer<'_> {
         let source_text = literal
             .token_text()
             .unwrap_or_else(|| literal.syntax().text().to_string());
-        let Some(token_parts) = vela_syntax::lexer::lex(self.source, &source_text)
-            .tokens
-            .into_iter()
-            .find_map(|token| match token.kind {
-                vela_syntax::token::TokenKind::InterpolatedString(parts) => Some(parts),
-                _ => None,
-            })
-        else {
+        let Some(syntax_parts) = literal.interpolated_string_parts() else {
             return HirLiteral::Invalid { source_text };
         };
-        let mut expressions = literal.interpolation_expressions();
-        let mut parts = Vec::with_capacity(token_parts.len());
+        let mut parts = Vec::with_capacity(syntax_parts.len());
         let mut has_expression = false;
-        for part in token_parts {
+        for part in syntax_parts {
             match part {
-                vela_syntax::token::InterpolatedStringTokenPart::Text(text) => {
+                SyntaxInterpolatedStringPart::Text(text) => {
                     parts.push(crate::body::HirInterpolatedStringPart::Text(text));
                 }
-                vela_syntax::token::InterpolatedStringTokenPart::Expr { .. } => {
-                    let Some(expression) = expressions.next() else {
-                        return HirLiteral::Invalid { source_text };
-                    };
+                SyntaxInterpolatedStringPart::Expression(expression) => {
                     parts.push(crate::body::HirInterpolatedStringPart::Expr(
                         self.bind_expr(&expression, PathUsage::Value),
                     ));
@@ -469,7 +458,7 @@ impl SyntaxBindingLowerer<'_> {
                 }
             }
         }
-        if !has_expression || expressions.next().is_some() {
+        if !has_expression {
             return HirLiteral::Invalid { source_text };
         }
         HirLiteral::Interpolated { parts }

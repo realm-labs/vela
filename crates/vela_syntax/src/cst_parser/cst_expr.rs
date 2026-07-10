@@ -161,12 +161,17 @@ impl CstParser<'_, '_> {
             self.emit_current_token();
             return;
         };
+        let multiline = text.starts_with("f\"\"\"");
 
         let mut chunk_start = 0;
         let mut cursor = content_start;
         let mut emitted_interpolation = false;
 
         while cursor < content_end {
+            if !multiline && starts_with_at(text, cursor, "\\") {
+                cursor = skip_interpolated_string_escape(text, cursor, content_end);
+                continue;
+            }
             if starts_with_at(text, cursor, "{{") || starts_with_at(text, cursor, "}}") {
                 cursor += 2;
                 continue;
@@ -1060,6 +1065,17 @@ fn interpolated_content_range(text: &str) -> (Option<usize>, Option<usize>) {
     } else {
         (None, None)
     }
+}
+
+fn skip_interpolated_string_escape(text: &str, cursor: usize, limit: usize) -> usize {
+    let escaped = next_char_boundary(text, cursor);
+    if escaped >= limit {
+        return escaped;
+    }
+    if starts_with_at(text, escaped, "u{") {
+        return skip_until_after(text, escaped + 2, limit, "}");
+    }
+    next_char_boundary(text, escaped)
 }
 
 fn find_interpolation_close(text: &str, mut cursor: usize, limit: usize) -> Option<usize> {

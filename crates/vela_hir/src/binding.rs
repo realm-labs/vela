@@ -43,6 +43,12 @@ pub enum BindingResolution {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ConstructorResolution {
+    Declaration(HirDeclId),
+    Dynamic(Vec<String>),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct ImportBinding {
     pub name: String,
     pub declaration: Option<HirDeclId>,
@@ -56,6 +62,8 @@ pub struct BindingMap {
     pub(crate) locals_by_name: BTreeMap<String, Vec<HirLocalId>>,
     pub(crate) resolutions: BTreeMap<HirExprId, BindingResolution>,
     pub(crate) pattern_resolutions: BTreeMap<Vec<String>, BindingResolution>,
+    pub(crate) pending_constructor_paths: BTreeMap<HirExprId, Vec<String>>,
+    pub(crate) pending_pattern_paths: BTreeMap<Vec<String>, Vec<String>>,
 }
 
 impl BindingMap {
@@ -120,6 +128,44 @@ impl BindingMap {
             .map(|(path, resolution)| (path.as_slice(), resolution))
     }
 
+    #[must_use]
+    pub fn constructor_resolution(&self, expression: HirExprId) -> Option<ConstructorResolution> {
+        match self.resolution(expression) {
+            Some(BindingResolution::Declaration(declaration)) => {
+                Some(ConstructorResolution::Declaration(*declaration))
+            }
+            Some(
+                BindingResolution::Local(_)
+                | BindingResolution::Import(_)
+                | BindingResolution::QualifiedPath(_),
+            ) => None,
+            None => self
+                .pending_constructor_paths
+                .get(&expression)
+                .cloned()
+                .map(ConstructorResolution::Dynamic),
+        }
+    }
+
+    #[must_use]
+    pub fn pattern_constructor_resolution(&self, path: &[String]) -> Option<ConstructorResolution> {
+        match self.pattern_resolution(path) {
+            Some(BindingResolution::Declaration(declaration)) => {
+                Some(ConstructorResolution::Declaration(*declaration))
+            }
+            Some(
+                BindingResolution::Local(_)
+                | BindingResolution::Import(_)
+                | BindingResolution::QualifiedPath(_),
+            ) => None,
+            None => self
+                .pending_pattern_paths
+                .get(path)
+                .cloned()
+                .map(ConstructorResolution::Dynamic),
+        }
+    }
+
     pub(crate) fn resolve_import_declarations(&mut self, imports: &BTreeMap<String, HirDeclId>) {
         for resolution in self.resolutions.values_mut() {
             if let BindingResolution::Import(name) = resolution
@@ -155,7 +201,43 @@ impl BindingMap {
                 *resolution = BindingResolution::Declaration(declaration);
             }
         }
+        let resolved = self
+            .pending_constructor_paths
+            .iter()
+            .filter_map(|(expression, path)| {
+                constructor_declaration(path, declarations)
+                    .map(|declaration| (*expression, declaration))
+            })
+            .collect::<Vec<_>>();
+        for (expression, declaration) in resolved {
+            self.pending_constructor_paths.remove(&expression);
+            self.resolutions
+                .insert(expression, BindingResolution::Declaration(declaration));
+        }
+        let resolved = self
+            .pending_pattern_paths
+            .keys()
+            .filter_map(|path| {
+                constructor_declaration(path, declarations)
+                    .map(|declaration| (path.clone(), declaration))
+            })
+            .collect::<Vec<_>>();
+        for (path, declaration) in resolved {
+            self.pending_pattern_paths.remove(&path);
+            self.pattern_resolutions
+                .insert(path, BindingResolution::Declaration(declaration));
+        }
     }
+}
+
+fn constructor_declaration(
+    path: &[String],
+    declarations: &BTreeMap<Vec<String>, HirDeclId>,
+) -> Option<HirDeclId> {
+    declarations.get(path).copied().or_else(|| {
+        let (_, owner) = path.split_last()?;
+        declarations.get(owner).copied()
+    })
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

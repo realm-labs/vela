@@ -3,6 +3,12 @@ use crate::ast::{AstChildren, AstNode, Literal, SyntaxExpression};
 use crate::{SyntaxKind, SyntaxNode, SyntaxToken};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SyntaxInterpolatedStringPart {
+    Text(String),
+    Expression(SyntaxExpression),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SyntaxLiteral {
     syntax: SyntaxNode,
 }
@@ -40,6 +46,50 @@ impl SyntaxLiteral {
     pub fn interpolation_expressions(&self) -> impl Iterator<Item = SyntaxExpression> {
         self.interpolations()
             .filter_map(|interpolation| interpolation.expression())
+    }
+
+    #[must_use]
+    pub fn interpolated_string_parts(&self) -> Option<Vec<SyntaxInterpolatedStringPart>> {
+        let elements = self.syntax.children_with_tokens().collect::<Vec<_>>();
+        let first_text = elements.iter().position(is_interpolated_string_token)?;
+        let last_text = elements.iter().rposition(is_interpolated_string_token)?;
+        let first_token = elements[first_text].as_token()?;
+        let (opening, closing, multiline) = if first_token.text().starts_with("f\"\"\"") {
+            ("f\"\"\"", "\"\"\"", true)
+        } else if first_token.text().starts_with("f\"") {
+            ("f\"", "\"", false)
+        } else {
+            return None;
+        };
+
+        let mut parts = Vec::new();
+        for (index, element) in elements.into_iter().enumerate() {
+            if let Some(token) = element.as_token() {
+                if token.kind() != SyntaxKind::InterpolatedString {
+                    return None;
+                }
+                let mut raw = token.text();
+                if index == first_text {
+                    raw = raw.strip_prefix(opening)?;
+                }
+                if index == last_text {
+                    raw = raw.strip_suffix(closing)?;
+                }
+                let text = decode_interpolated_text(raw, multiline);
+                if !text.is_empty() {
+                    parts.push(SyntaxInterpolatedStringPart::Text(text));
+                }
+                continue;
+            }
+
+            let interpolation = SyntaxInterpolation::cast(element.into_node()?)?;
+            interpolation.l_brace_token()?;
+            interpolation.r_brace_token()?;
+            parts.push(SyntaxInterpolatedStringPart::Expression(
+                interpolation.expression()?,
+            ));
+        }
+        Some(parts)
     }
 
     #[must_use]
@@ -113,6 +163,76 @@ fn literal_token_kind(kind: SyntaxKind) -> bool {
     )
 }
 
+fn is_interpolated_string_token(element: &crate::SyntaxElement) -> bool {
+    element
+        .as_token()
+        .is_some_and(|token| token.kind() == SyntaxKind::InterpolatedString)
+}
+
+fn decode_interpolated_text(raw: &str, multiline: bool) -> String {
+    let mut decoded = String::new();
+    let mut chars = raw.chars().peekable();
+    while let Some(ch) = chars.next() {
+        match ch {
+            '{' if chars.peek() == Some(&'{') => {
+                chars.next();
+                decoded.push('{');
+            }
+            '}' if chars.peek() == Some(&'}') => {
+                chars.next();
+                decoded.push('}');
+            }
+            '\\' if !multiline => decode_interpolated_escape(&mut chars, &mut decoded),
+            other => decoded.push(other),
+        }
+    }
+    decoded
+}
+
+fn decode_interpolated_escape(
+    chars: &mut std::iter::Peekable<std::str::Chars<'_>>,
+    decoded: &mut String,
+) {
+    let Some(escaped) = chars.next() else {
+        return;
+    };
+    if escaped == 'u' && chars.peek() == Some(&'{') {
+        chars.next();
+        let mut digits = String::new();
+        let mut valid = true;
+        let mut closed = false;
+        for ch in chars.by_ref() {
+            if ch == '}' {
+                closed = true;
+                break;
+            }
+            valid &= ch.is_ascii_hexdigit();
+            digits.push(ch);
+        }
+        if valid
+            && closed
+            && !digits.is_empty()
+            && let Ok(value) = u32::from_str_radix(&digits, 16)
+            && let Some(value) = char::from_u32(value)
+        {
+            decoded.push(value);
+        }
+        return;
+    }
+    decoded.push(match escaped {
+        'n' => '\n',
+        'r' => '\r',
+        't' => '\t',
+        '0' => '\0',
+        '"' => '"',
+        '\\' => '\\',
+        '/' => '/',
+        '{' => '{',
+        '}' => '}',
+        other => other,
+    });
+}
+
 fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
     parent.children().find_map(N::cast)
 }
@@ -128,7 +248,8 @@ fn token(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken> {
 mod tests {
     use crate::SyntaxKind;
     use crate::ast::{
-        AstNode, FloatSuffix, IntRadix, IntegerSuffix, Literal, SyntaxExpressionKind, SyntaxLiteral,
+        AstNode, FloatSuffix, IntRadix, IntegerSuffix, Literal, SyntaxExpressionKind,
+        SyntaxInterpolatedStringPart, SyntaxLiteral,
     };
     use crate::parse::parse_source;
 
@@ -273,5 +394,100 @@ mod tests {
             expressions[1].syntax().text().to_string(),
             "player.level + 1"
         );
+    }
+
+    #[test]
+    fn ast_interpolated_literal_exposes_ordered_decoded_parts() {
+        let source = r#"fn greet(name) {
+    let message = f"start \n\t\u{1f642} \{left\} {{right}} {name} end";
+}
+"#;
+        let parse = parse_source(source);
+        let initializer = parse
+            .tree()
+            .functions()
+            .next()
+            .and_then(|function| function.body())
+            .and_then(|body| body.let_statements().next())
+            .and_then(|statement| statement.initializer())
+            .expect("interpolated initializer");
+        let literal = SyntaxLiteral::cast(initializer.syntax().clone()).expect("literal expr");
+        let parts = literal
+            .interpolated_string_parts()
+            .expect("ordered interpolation parts");
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(parts.len(), 3);
+        assert_eq!(
+            parts[0],
+            SyntaxInterpolatedStringPart::Text("start \n\t🙂 {left} {right} ".to_owned())
+        );
+        assert!(matches!(
+            &parts[1],
+            SyntaxInterpolatedStringPart::Expression(expression)
+                if expression.syntax().text() == "name"
+        ));
+        assert_eq!(
+            parts[2],
+            SyntaxInterpolatedStringPart::Text(" end".to_owned())
+        );
+    }
+
+    #[test]
+    fn ast_multiline_interpolation_preserves_ordered_text() {
+        let source = r####"fn greet(name) {
+    let message = f"""first \n {{ready}} {name}
+last""";
+}
+"####;
+        let parse = parse_source(source);
+        let initializer = parse
+            .tree()
+            .functions()
+            .next()
+            .and_then(|function| function.body())
+            .and_then(|body| body.let_statements().next())
+            .and_then(|statement| statement.initializer())
+            .expect("multiline initializer");
+        let literal = SyntaxLiteral::cast(initializer.syntax().clone()).expect("literal expr");
+        let parts = literal
+            .interpolated_string_parts()
+            .expect("multiline interpolation parts");
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(parts.len(), 3);
+        assert_eq!(
+            parts[0],
+            SyntaxInterpolatedStringPart::Text("first \\n {ready} ".to_owned())
+        );
+        assert!(matches!(
+            &parts[1],
+            SyntaxInterpolatedStringPart::Expression(expression)
+                if expression.syntax().text() == "name"
+        ));
+        assert_eq!(
+            parts[2],
+            SyntaxInterpolatedStringPart::Text("\nlast".to_owned())
+        );
+    }
+
+    #[test]
+    fn ast_interpolated_literal_rejects_missing_expression_structure() {
+        let source = r#"fn greet() {
+    let message = f"before {} after";
+}
+"#;
+        let parse = parse_source(source);
+        let initializer = parse
+            .tree()
+            .functions()
+            .next()
+            .and_then(|function| function.body())
+            .and_then(|body| body.let_statements().next())
+            .and_then(|statement| statement.initializer())
+            .expect("malformed interpolation initializer");
+        let literal = SyntaxLiteral::cast(initializer.syntax().clone()).expect("literal expr");
+
+        assert!(literal.interpolated_string_parts().is_none());
     }
 }

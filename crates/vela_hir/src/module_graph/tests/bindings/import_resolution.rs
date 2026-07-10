@@ -198,6 +198,89 @@ pub enum Damage { Physical }
             && resolution == &BindingResolution::Declaration(damage)
     }));
 }
+
+#[test]
+fn constructor_bindings_resolve_after_later_qualified_sources_are_added() {
+    let mut graph = ModuleGraph::new();
+    let module = graph.add_source(source(
+        1,
+        "game::main",
+        r#"
+use game::schema::Reward as Prize
+use game::schema::State as ImportedState
+
+fn main(value) {
+    Prize { amount: 1 };
+    game::schema::Reward { amount: 2 };
+    ImportedState::Ready { amount: 3 };
+    game::schema::State::Ready { amount: 4 };
+    Missing { amount: 5 };
+    match value {
+        ImportedState::Ready { amount } => {},
+        game::schema::State::Idle => {},
+        Missing::Ready { amount } => {},
+    }
+}
+"#,
+    ));
+    let schema = graph.add_source(source(
+        2,
+        "game::schema",
+        r#"
+pub struct Reward { amount: i64 }
+pub enum State { Ready { amount: i64 }, Idle }
+"#,
+    ));
+    graph.resolve_imports();
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+
+    let main = graph
+        .module(module)
+        .and_then(|module| module.get("main"))
+        .expect("main declaration");
+    let reward = graph
+        .module(schema)
+        .and_then(|module| module.get("Reward"))
+        .expect("Reward declaration");
+    let state = graph
+        .module(schema)
+        .and_then(|module| module.get("State"))
+        .expect("State declaration");
+    let body = graph.function_body(main).expect("main body");
+    let bindings = graph.bindings(main).expect("main bindings");
+
+    for path in body.paths.iter() {
+        match (path.kind, path.owner) {
+            (HirPathKind::Constructor, HirPathOwner::Expression(expression)) => {
+                let expected = match path.path.join("::").as_str() {
+                    "Prize" | "game::schema::Reward" => {
+                        ConstructorResolution::Declaration(reward)
+                    }
+                    "ImportedState::Ready" | "game::schema::State::Ready" => {
+                        ConstructorResolution::Declaration(state)
+                    }
+                    "Missing" => ConstructorResolution::Dynamic(path.path.clone()),
+                    other => panic!("unexpected constructor path `{other}`"),
+                };
+                assert_eq!(bindings.constructor_resolution(expression), Some(expected));
+            }
+            (HirPathKind::Pattern, HirPathOwner::Pattern(_)) => {
+                let expected = match path.path.join("::").as_str() {
+                    "ImportedState::Ready" | "game::schema::State::Idle" => {
+                        ConstructorResolution::Declaration(state)
+                    }
+                    "Missing::Ready" => ConstructorResolution::Dynamic(path.path.clone()),
+                    other => panic!("unexpected pattern path `{other}`"),
+                };
+                assert_eq!(
+                    bindings.pattern_constructor_resolution(&path.path),
+                    Some(expected)
+                );
+            }
+            _ => {}
+        }
+    }
+}
 #[test]
 fn function_bindings_resolve_tuple_constructor_call_aliases() {
     let mut graph = ModuleGraph::new();

@@ -283,6 +283,66 @@ fn main(name, amount) {
 }
 
 #[test]
+fn function_bodies_lower_multiline_interpolation_from_cst_parts() {
+    let mut graph = ModuleGraph::new();
+    let source_text = r####"
+fn main(name) {
+    return f"""first \n {{ready}} {name}
+last""";
+}
+"####;
+    let module = graph.add_source(source(1, "game::main", source_text));
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+
+    let main = graph
+        .module(module)
+        .and_then(|module| module.get("main"))
+        .expect("main declaration");
+    let body = graph.function_body(main).expect("main body");
+    let parts = body
+        .expressions
+        .values()
+        .find_map(|expression| match &expression.kind {
+            HirExprKind::Literal(HirLiteral::Interpolated { parts }) => Some(parts),
+            _ => None,
+        })
+        .expect("multiline interpolated literal parts");
+
+    assert_eq!(parts.len(), 3);
+    assert_eq!(
+        parts[0],
+        HirInterpolatedStringPart::Text("first \\n {ready} ".to_owned())
+    );
+    assert!(matches!(parts[1], HirInterpolatedStringPart::Expr(_)));
+    assert_eq!(
+        parts[2],
+        HirInterpolatedStringPart::Text("\nlast".to_owned())
+    );
+}
+
+#[test]
+fn function_bodies_keep_structurally_incomplete_interpolation_invalid() {
+    let mut graph = ModuleGraph::new();
+    let source_text = r#"
+fn main() {
+    return f"before {} after";
+}
+"#;
+    let module = graph.add_source(source(1, "game::main", source_text));
+    let main = graph
+        .module(module)
+        .and_then(|module| module.get("main"))
+        .expect("main declaration");
+    let body = graph.function_body(main).expect("main body");
+
+    assert!(body.expressions.values().any(|expression| matches!(
+        &expression.kind,
+        HirExprKind::Literal(HirLiteral::Invalid { source_text })
+            if source_text == r#"f"before {} after""#
+    )));
+}
+
+#[test]
 fn schema_field_defaults_record_value_path_facts() {
     let mut graph = ModuleGraph::new();
     let source_text = r#"
