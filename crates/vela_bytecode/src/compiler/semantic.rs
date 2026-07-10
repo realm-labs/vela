@@ -398,7 +398,11 @@ pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResu
     }
     let mut graph = ModuleGraph::new();
     let module = graph.add_parsed_source(
-        ModuleSource::new(source, ModulePath::from_qualified("main"), text.to_owned()),
+        ModuleSource::new(
+            source,
+            ModulePath::new(Vec::<String>::new()),
+            text.to_owned(),
+        ),
         &syntax,
     );
     graph.resolve_imports();
@@ -468,7 +472,7 @@ fn increment(counter: Counter) {
         assert_eq!(metadata, &semantic.graph);
         assert_eq!(
             metadata.module_path(semantic.module),
-            Some(&ModulePath::from_qualified("main")),
+            Some(&ModulePath::new(Vec::<String>::new())),
         );
 
         let semantic_declaration = semantic
