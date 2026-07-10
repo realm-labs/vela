@@ -11,6 +11,12 @@ const HOT_RELOAD_PARAMETER_ABI_V2: &str =
 const HOT_RELOAD_PARAMETER_ABI_EXPECTED: &str =
     include_str!("../../../../tests/fixtures/diagnostics/hot_reload_parameter_abi.expected");
 
+fn script_function_id(name: &str) -> FunctionId {
+    let mut segments = name.split("::").collect::<Vec<_>>();
+    let function = segments.pop().unwrap_or(name);
+    FunctionId::from_def_id(vela_def::DefPath::function("script", segments, function).id())
+}
+
 #[test]
 fn new_calls_enter_new_code_after_update() {
     let initial =
@@ -580,6 +586,77 @@ fn hot_update_exposes_read_only_preflight_metadata() {
         metadata
             .module_id(&ModulePath::from_qualified("game::main"))
             .is_some()
+    );
+}
+
+#[test]
+fn accepted_update_preserves_stable_function_and_method_ids() {
+    let initial = compile_initial_modules_with_abi_and_options(
+        &script_method_module_sources(),
+        HotReloadAbi::empty(),
+        &CompilerOptions::default(),
+    )
+    .expect("compile initial modules");
+    let mut runtime = HotReloadRuntime::new(initial);
+    let old = runtime.current();
+    let main_name = "game::main::main";
+    let method_function_name = "game::main.__impl.BonusSource.for.game::main::Player.bonus";
+    let main_id = script_function_id(main_name);
+    let method_function_id = script_function_id(method_function_name);
+    let old_method_id = old
+        .script_method("game::main::Player", "bonus")
+        .expect("initial script method metadata")
+        .id;
+
+    assert_eq!(
+        old.program_image()
+            .function_by_id(main_id)
+            .map(|code| code.name.as_str()),
+        Some(main_name)
+    );
+    assert_eq!(
+        old.program_image()
+            .function_by_id(method_function_id)
+            .map(|code| code.name.as_str()),
+        Some(method_function_name)
+    );
+
+    let update = compile_update_modules_with_abi_and_options_and_policy(
+        &old,
+        &script_method_module_sources_with_bonus("self.level + amount + 1"),
+        old.abi().clone(),
+        &CompilerOptions::default(),
+        &HotReloadPolicy::default(),
+    )
+    .expect("compile compatible body update");
+    assert_eq!(
+        update
+            .script_method("game::main::Player", "bonus")
+            .expect("updated script method metadata")
+            .id,
+        old_method_id
+    );
+
+    let new = runtime
+        .apply_hot_update(update)
+        .expect("apply compatible body update");
+    assert_eq!(
+        new.script_method("game::main::Player", "bonus")
+            .expect("reloaded script method metadata")
+            .id,
+        old_method_id
+    );
+    assert_eq!(
+        new.program_image()
+            .function_by_id(main_id)
+            .map(|code| code.name.as_str()),
+        Some(main_name)
+    );
+    assert_eq!(
+        new.program_image()
+            .function_by_id(method_function_id)
+            .map(|code| code.name.as_str()),
+        Some(method_function_name)
     );
 }
 

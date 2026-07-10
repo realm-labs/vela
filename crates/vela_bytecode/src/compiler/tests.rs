@@ -145,6 +145,7 @@ impl Reward {
 
 fn main(player: Player) {
     let reward = Reward { gold: bonus };
+    reward.gold = reward.gold + 1;
     let current = player.level;
     player.level = current + reward.gold;
     give_reward(reward.score(1));
@@ -166,8 +167,21 @@ fn main(player: Player) {
     assert!(site_kinds.contains(&CacheSiteKind::NativeCall));
     assert!(site_kinds.contains(&CacheSiteKind::MethodCall));
     assert!(site_kinds.contains(&CacheSiteKind::RecordFieldRead));
+    assert!(site_kinds.contains(&CacheSiteKind::RecordFieldWrite));
     assert!(site_kinds.contains(&CacheSiteKind::HostPathRead));
     assert!(site_kinds.contains(&CacheSiteKind::HostPathWrite));
+    let record_write_site = main
+        .cache_sites
+        .sites()
+        .iter()
+        .find(|site| site.kind == CacheSiteKind::RecordFieldWrite)
+        .expect("record field write cache site should exist");
+    assert!(matches!(
+        main.instructions
+            .get(record_write_site.instruction_offset.0)
+            .map(|instruction| &instruction.kind),
+        Some(UnlinkedInstructionKind::SetRecordSlot { .. })
+    ));
     let load_global_site = main
         .instructions
         .iter()

@@ -326,6 +326,18 @@ fn main(player: Player) {
         ),
     )
     .expect("compile host path push source");
+    let main = program.function("main").expect("main function");
+    let [site] = main.cache_sites.sites() else {
+        panic!("host push should emit exactly one cache site");
+    };
+    assert_eq!(site.kind, CacheSiteKind::HostPathMutate);
+    assert!(matches!(
+        main.instructions
+            .get(site.instruction_offset.0)
+            .map(|instruction| &instruction.kind),
+        Some(UnlinkedInstructionKind::HostMutate { cache_site, .. })
+            if *cache_site == site.id
+    ));
     let mut adapter = MockStateAdapter::new();
     adapter.insert_diagnostic_path_value(
         reward_path.clone(),
@@ -391,6 +403,18 @@ fn main(player: Player) {
         ),
     )
     .expect("compile host path remove source");
+    let main = program.function("main").expect("main function");
+    let [site] = main.cache_sites.sites() else {
+        panic!("host remove should emit exactly one cache site");
+    };
+    assert_eq!(site.kind, CacheSiteKind::HostPathRemove);
+    assert!(matches!(
+        main.instructions
+            .get(site.instruction_offset.0)
+            .map(|instruction| &instruction.kind),
+        Some(UnlinkedInstructionKind::HostRemove { cache_site, .. })
+            if *cache_site == site.id
+    ));
     let mut adapter = MockStateAdapter::new();
     adapter.insert_diagnostic_path_value(item_path.clone(), HostValue::String("gold".into()));
     let mut tx = HostAccess::new();

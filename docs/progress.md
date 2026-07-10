@@ -45,10 +45,12 @@ completed Heavy HIR contract; semantic gaps must still be fixed in HIR or
 analysis rather than repaired during MIR lowering.
 
 MIR Phase 0 is active. Ordered interpolated-string text/expression parts are
-HIR-owned and runtime body lowering no longer re-lexes source. The current
-checkpoint is closing the immutable AnalysisFacts/compile-target input and
-freezing compiler diagnostic, evaluation-order, metadata, budget, host,
-reflection, reload, and example behavior before `vela_mir` backend work.
+HIR-owned and runtime body lowering no longer re-lexes source. The frozen
+compiler/VM/host/reflection/reload/example behavior baseline is complete,
+including diagnostic/span contracts, single-evaluation and instruction-budget
+edges, emitted cache-site families, frame metadata, and stable reload identity.
+The remaining Phase 0 checkpoint is the immutable AnalysisFacts/compile-target
+production input bridge.
 
 The internal `vela_mir` Phase 1 model checkpoint now exists without production
 routing: it depends only on HIR/analysis/stable-definition crates and defines

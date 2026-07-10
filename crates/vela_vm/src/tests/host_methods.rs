@@ -55,6 +55,18 @@ fn main(player: Player) {
         ),
     )
     .expect("compile host method source");
+    let main = program.function("main").expect("main function");
+    let [site] = main.cache_sites.sites() else {
+        panic!("host call should emit exactly one cache site");
+    };
+    assert_eq!(site.kind, CacheSiteKind::HostPathCall);
+    assert!(matches!(
+        main.instructions
+            .get(site.instruction_offset.0)
+            .map(|instruction| &instruction.kind),
+        Some(UnlinkedInstructionKind::HostCall { cache_site, .. })
+            if *cache_site == site.id
+    ));
     let mut adapter = host_adapter(
         host_ref,
         HostValue::Scalar(vela_common::ScalarValue::I64(9)),

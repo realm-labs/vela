@@ -4,8 +4,8 @@
 > foundation after Heavy HIR
 > **Document status:** Codex goal-mode execution plan
 > **Execution status:** Phase 0 in progress; Heavy HIR acceptance is complete,
-> ordered interpolated-string parts are HIR-owned, and the remaining work is
-> semantic/compile-target input closure plus frozen behavior fixtures
+> ordered interpolated-string parts are HIR-owned, the frozen behavior baseline
+> is complete, and semantic/compile-target input closure remains
 > **Compatibility policy:** breaking pre-release MIR, bytecode-compiler, and
 > internal test APIs are allowed. Preserve Vela language semantics, evaluation
 > order, VM behavior, diagnostics, execution budgets, GC roots, HostAccess
@@ -498,10 +498,10 @@ resolver, type-flow engine, or diagnostic pipeline.
 
 ### 7.3 Frozen Behavior Baseline
 
-- [ ] Build or organize fixtures that pin runtime results, host side effects,
+- [x] Build or organize fixtures that pin runtime results, host side effects,
   diagnostics, source spans, frame/debug locals, guard behavior, cache-site
   families, and hot-reload identity for the behavior matrix in Phase 7.
-- [ ] Pin selected structural bytecode snapshots where instruction family or
+- [x] Pin selected structural bytecode snapshots where instruction family or
   metadata shape is a contract. Do not require all bytecode to remain
   byte-for-byte identical when equivalent CFG/register allocation is valid.
 - [x] Keep the current direct compiler as the production baseline in Phase 0;
@@ -593,10 +593,22 @@ The frozen behavior baseline is organized by durable subsystem fixtures:
 | stable function/method identity, accepted/rejected reloads, cache invalidation | `vela_hot_reload` and Engine source-reload fixtures |
 | end-to-end embedding behavior | `examples/tests/runnable_examples.rs` |
 
-The Phase 0 test additions must fill only uncovered rows: ordered HIR
+The Phase 0 audit ties those ownership rows to durable fixtures: compiler
+`diagnostic_contracts` and `closures_and_bindings` pin diagnostics, spans, and
+frame/debug locals; VM `runtime_semantics`, `type_guards`, control-flow,
+collection, GC, host, and reflection suites pin results, ordering, guards,
+budgets, roots, and side effects; production-source compiler/VM assertions pin
+every currently emitted cache-site family; hot-reload runtime and Engine reload
+tests pin stable function/method identity, old-code lifetime, new-call routing,
+and cache invalidation; runnable examples pin the embedding boundary. The
+reserved `GlobalWrite` cache kind has no production compiler emitter and is not
+treated as an emitted-family fixture.
+
+The Phase 0 test additions are limited to uncovered rows: ordered HIR
 interpolation parts, a complete compiler diagnostic contract fixture, explicit
-single-evaluation/effect-order cases, and representative instruction-budget
-edges. The MIR backend will be compared against these production-source
+single-evaluation/effect-order cases, representative instruction-budget edges,
+emitted cache-site/instruction pairings, and stable identity across an accepted
+reload. The MIR backend will be compared against these production-source
 fixtures; a selectable dual-backend test harness is forbidden.
 
 Validation:
