@@ -250,6 +250,39 @@ fn mir_model_compile_snapshot_owns_source_identity_and_diagnostic_origins() {
 }
 
 #[test]
+fn mir_input_callable_contracts_keep_kind_and_optional_arity_independent() {
+    let function = MirTypeContract::Callable {
+        kind: MirCallableKind::Function,
+        positional_arity: None,
+    };
+    let zero_arg_function = MirTypeContract::Callable {
+        kind: MirCallableKind::Function,
+        positional_arity: Some(0),
+    };
+    let closure = MirTypeContract::Callable {
+        kind: MirCallableKind::Closure,
+        positional_arity: None,
+    };
+
+    assert_ne!(function, zero_arg_function);
+    assert_ne!(function, closure);
+    assert!(matches!(
+        function,
+        MirTypeContract::Callable {
+            kind: MirCallableKind::Function,
+            positional_arity: None,
+        }
+    ));
+    assert!(matches!(
+        closure,
+        MirTypeContract::Callable {
+            kind: MirCallableKind::Closure,
+            positional_arity: None,
+        }
+    ));
+}
+
+#[test]
 fn mir_model_target_access_is_complete_and_registry_independent() {
     let origin = MirSourceOrigin::body(
         HirBodyId::new(340),

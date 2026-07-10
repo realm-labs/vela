@@ -7,6 +7,18 @@ pub struct HostTypeTarget {
     pub runtime: HostTypeId,
 }
 
+/// Source-language callable category checked by a backend-neutral contract.
+///
+/// Function values and closure values have distinct runtime representations
+/// and guard behavior. Positional arity is modeled separately so an erased
+/// callable contract (`None`) cannot be confused with a proven zero-argument
+/// callable (`Some(0)`).
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum MirCallableKind {
+    Function,
+    Closure,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MirTypeContract {
     Any,
@@ -26,6 +38,7 @@ pub enum MirTypeContract {
         err: Option<Box<Self>>,
     },
     Callable {
+        kind: MirCallableKind,
         positional_arity: Option<u32>,
     },
     Definition(TypeId),

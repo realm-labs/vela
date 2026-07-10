@@ -745,6 +745,47 @@ fn mir_model_snapshot_owns_method_signatures_and_guard_contracts() {
 }
 
 #[test]
+fn mir_model_dump_distinguishes_callable_kinds_and_erased_arity() {
+    let body = HirBodyId::new(223);
+    let origin = origin(body);
+    let function_contract = MirTypeContract::Callable {
+        kind: MirCallableKind::Function,
+        positional_arity: None,
+    };
+    let closure_contract = MirTypeContract::Callable {
+        kind: MirCallableKind::Closure,
+        positional_arity: Some(0),
+    };
+    let mut function = MirFunction::new(
+        body,
+        MirFunctionOwner::Function(FunctionId::new(224)),
+        "game::callable_contracts",
+        Some(MirFunctionReturn {
+            contract: function_contract,
+            origin,
+        }),
+        origin,
+    );
+    function.add_parameter(MirParameterSpec {
+        hir_local: HirLocalId::new(225),
+        kind: MirParameterKind::Explicit(vela_hir::ids::HirParamId::new(226)),
+        name: "callback".to_owned(),
+        value_type: MirValueType::Dynamic,
+        contract: Some(closure_contract),
+        default_body: None,
+        origin,
+    });
+    let mut program = MirProgram::new(MirTargetTable::default());
+    program
+        .add_function(function)
+        .expect("callable contract fixture should have unique identity");
+
+    let dump = program.dump();
+    assert!(dump.contains("return: Callable { kind: Function, positional_arity: None }"));
+    assert!(dump.contains("contract=Some(Callable { kind: Closure, positional_arity: Some(0) })"));
+}
+
+#[test]
 fn mir_model_keeps_record_and_variant_field_slots_distinct() {
     let type_id = TypeId::new(223);
     let shape = vela_common::ShapeId::new(224);

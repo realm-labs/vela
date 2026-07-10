@@ -24,7 +24,7 @@ pub use cfg::{
     MirBasicBlock, MirRangeStepMode, MirSwitchCase, MirSwitchValue, MirTerminator,
     MirTerminatorKind,
 };
-pub use contract::{HostTypeTarget, MirTypeContract};
+pub use contract::{HostTypeTarget, MirCallableKind, MirTypeContract};
 pub use effects::{MirEffect, MirGuard, MirGuardAssumption, MirLiveValue, MirSafepoint};
 pub use function::{
     DebugLocalKind, MirDebugLocal, MirFunction, MirFunctionCapture, MirFunctionOwner,
