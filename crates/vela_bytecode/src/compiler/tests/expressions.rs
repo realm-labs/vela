@@ -822,6 +822,35 @@ fn main() {
 }
 
 #[test]
+fn compiler_resolves_index_assignment_operands_from_hir() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let values = [2, 4, 8];
+    let index = 1;
+    values[index] += 5;
+    return values[index];
+}
+"#,
+        "main",
+    )
+    .expect("HIR-backed index assignment should compile");
+    assert!(
+        code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::SetIndex { .. }
+        ))
+    );
+    assert!(
+        code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::GetIndex { .. }
+        ))
+    );
+}
+
+#[test]
 fn compiler_lowers_literal_string_map_index_writes() {
     let code = compile_function_source(
         SourceId::new(1),
@@ -981,6 +1010,43 @@ fn main() {
             UnlinkedInstructionKind::SetRecordSlot { .. }
         )
     }));
+    assert!(!code.instructions.iter().any(|instruction| {
+        matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::GetRecordField { .. }
+                | UnlinkedInstructionKind::SetRecordField { .. }
+        )
+    }));
+}
+
+#[test]
+fn compiler_resolves_indexed_record_field_write_from_hir_index() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let players = [
+        Player { level: 2, exp: 5 },
+        Player { level: 7, exp: 1 },
+    ];
+    let index = 1;
+    players[index].level += 3;
+    return players[index].level;
+}
+"#,
+        "main",
+    )
+    .expect("HIR-backed indexed record field write should compile");
+    assert!(
+        code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::SetIndex { .. }
+        ))
+    );
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::SetRecordSlot { .. }
+    )));
     assert!(!code.instructions.iter().any(|instruction| {
         matches!(
             instruction.kind,

@@ -1702,7 +1702,9 @@ callable parameter facts, stable `TypeFact`s, `Any`/unknown suppression, and
   operands from HIR index facts instead of index syntax while preserving
   HostAccess target plans. Host-index capability diagnostics and read-only
   host-field assignment checks now read HIR index/field receiver facts instead
-  of reconstructing those receivers from syntax.
+  of reconstructing those receivers from syntax. Ordinary index assignment and
+  indexed record-field assignment lowering now read receiver and subscript
+  operands from HIR index facts instead of index syntax.
 
 ### Remaining Gaps
 

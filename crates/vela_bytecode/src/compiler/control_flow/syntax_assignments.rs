@@ -50,7 +50,7 @@ impl Compiler<'_, '_> {
             };
             return self.compile_syntax_local_assignment(op, target, value, assigned_type);
         }
-        if let Some(index_target) = target_expression.as_index() {
+        if target_expression.as_index().is_some() {
             let Some(value) = self.compile_syntax_expression(source, &value_expression)? else {
                 return Ok(None);
             };
@@ -63,7 +63,7 @@ impl Compiler<'_, '_> {
             )? {
                 return Ok(Some(assigned));
             }
-            return self.compile_syntax_index_assignment(source, op, &index_target, value);
+            return self.compile_syntax_index_assignment(source, op, &target_expression, value);
         }
         let Some(value) = self.compile_syntax_expression(source, &value_expression)? else {
             return Ok(None);
@@ -567,13 +567,30 @@ impl Compiler<'_, '_> {
         &mut self,
         source: SourceId,
         op: AssignOp,
-        target: &vela_syntax::ast::SyntaxIndexExpr,
+        target: &SyntaxExpression,
         value: Register,
     ) -> CompileResult<Option<Register>> {
-        let Some(receiver_expression) = target.receiver() else {
+        if target.as_index().is_none() {
+            return Ok(None);
+        }
+        let target_span = syntax_expression_span(source, target);
+        let Some(index_target) = self.hir_index_for_span(target_span) else {
             return Ok(None);
         };
-        let Some(index_expression) = target.index() else {
+        let Some(receiver_span) = self.expression_span(index_target.receiver) else {
+            return Ok(None);
+        };
+        let Some(index_span) = self.expression_span(index_target.index) else {
+            return Ok(None);
+        };
+        let Some(receiver_expression) =
+            syntax_assignment_expression_at_span(source, target, receiver_span)
+        else {
+            return Ok(None);
+        };
+        let Some(index_expression) =
+            syntax_assignment_expression_at_span(source, target, index_span)
+        else {
             return Ok(None);
         };
         let Some(base) = self.compile_syntax_expression(source, &receiver_expression)? else {
@@ -662,9 +679,14 @@ impl Compiler<'_, '_> {
         let receiver_span = self.expression_span(field.receiver)?;
         let receiver = syntax_assignment_expression_at_span(source, &expression, receiver_span)?;
         let field_name = field.name.clone();
-        if let Some(index) = receiver.as_index() {
-            let collection = index.receiver()?;
-            let index = index.index()?;
+        if receiver.as_index().is_some() {
+            let receiver_span = syntax_expression_span(source, &receiver);
+            let index = self.hir_index_for_span(receiver_span)?;
+            let collection_span = self.expression_span(index.receiver)?;
+            let index_span = self.expression_span(index.index)?;
+            let collection =
+                syntax_assignment_expression_at_span(source, &receiver, collection_span)?;
+            let index = syntax_assignment_expression_at_span(source, &receiver, index_span)?;
             return Some((collection, index, vec![field_name]));
         }
         let (collection, index, mut fields) =
