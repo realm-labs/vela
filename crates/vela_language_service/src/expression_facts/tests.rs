@@ -197,7 +197,7 @@ fn expression_facts_use_hir_paths_for_record_constructors_and_calls() {
             source_id,
             range_for_nth(source, "Reward { count: 1 }", 1)
         ),
-        Some(TypeFact::record("Reward"))
+        Some(TypeFact::record("game::main::Reward"))
     );
     assert_eq!(
         fact_for_range(
@@ -205,7 +205,7 @@ fn expression_facts_use_hir_paths_for_record_constructors_and_calls() {
             source_id,
             range_for_nth(source, "option::some(reward)", 1)
         ),
-        Some(TypeFact::option(TypeFact::record("Reward")))
+        Some(TypeFact::option(TypeFact::record("game::main::Reward")))
     );
 }
 

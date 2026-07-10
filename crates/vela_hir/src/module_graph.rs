@@ -23,7 +23,7 @@ use self::body_binding::FunctionBodySource;
 use crate::attributes::HirAttribute;
 use crate::binding::BindingMap;
 use crate::body::{HirBody, HirField, HirIndex, HirPath, HirPathKind};
-use crate::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId, HirPatternId, ModuleId};
+use crate::ids::{HirBodyId, HirDeclId, HirExprId, HirLocalId, HirNodeId, HirPatternId, ModuleId};
 #[cfg(test)]
 use crate::type_hint::HirTypeHint;
 use crate::type_hint::{
@@ -531,6 +531,17 @@ impl ModuleGraph {
 
     pub fn bodies(&self) -> impl Iterator<Item = &HirBody> {
         self.bodies.values()
+    }
+
+    #[must_use]
+    pub fn local_binding(&self, local: HirLocalId) -> Option<&crate::binding::LocalBinding> {
+        self.bindings
+            .values()
+            .chain(self.const_initializer_bindings.values())
+            .chain(self.schema_field_default_bindings.values())
+            .chain(self.trait_default_method_bindings.values())
+            .chain(self.impl_method_bindings.values())
+            .find_map(|bindings| bindings.local(local))
     }
 
     #[must_use]

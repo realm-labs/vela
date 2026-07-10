@@ -214,13 +214,25 @@ pub(crate) fn member_callable_facts(
     let Some(receiver) = type_fact_for_source_range(databases, source_id, receiver_range) else {
         return Vec::new();
     };
-    let mut facts = source_method_callable_facts(databases, &receiver, method);
+    member_callable_facts_for_type(databases, &receiver, method, args_prefix)
+}
+
+pub(crate) fn member_callable_facts_for_type(
+    databases: &LanguageServiceDatabases,
+    receiver: &TypeFact,
+    method: &str,
+    args_prefix: &str,
+) -> Vec<CallableFacts> {
+    if method.is_empty() {
+        return Vec::new();
+    }
+    let mut facts = source_method_callable_facts(databases, receiver, method);
     facts.extend(schema_method_callable_facts(
         databases.schema_db().facts(),
-        &receiver,
+        receiver,
         method,
     ));
-    facts.extend(stdlib_method_callable_facts(&receiver, method, args_prefix));
+    facts.extend(stdlib_method_callable_facts(receiver, method, args_prefix));
     facts
 }
 

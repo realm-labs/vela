@@ -516,7 +516,7 @@ pub(crate) fn type_fact_for_source_range(
     let graph = databases.hir_db().graph();
     let facts = AnalysisFacts::from_module_graph_and_schema(graph, databases.schema_db().facts());
     graph
-        .expression_at_span(span)
+        .expression_containing_span(span)
         .and_then(|expression| facts.expression(expression).cloned())
         .filter(|fact| !matches!(fact, TypeFact::Unknown))
         .or_else(|| expression_facts::fact_for_range(databases, source_id, range))

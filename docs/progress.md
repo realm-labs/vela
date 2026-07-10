@@ -379,9 +379,12 @@ Heavy HIR executable closure is now complete: expression, statement, pattern,
 scope, match-arm, path, binding, and capture relationships are HIR-owned under
 stable IDs, and analysis derives HIR-keyed type, target, member, operator,
 host-path, effect, degradation, and control-flow facts without body syntax.
-The next hard-switch checkpoint deletes language-service semantic span joins
-and makes editor features start from HIR IDs; bytecode syntax payload deletion
-follows in its own checkpoint. MIR will then add
+The language-service hard switch is now complete: the syntax-owned expression
+fact evaluator and inlay semantic walkers are deleted, editor semantic facts
+come from `AnalysisFacts`/HIR IDs, and the remaining CST access is confined to
+lexical recovery and source projection. The required language-service span-join
+audit is clean and the LSP protocol/analysis-only behavior remains unchanged.
+Bytecode syntax payload deletion is the active checkpoint. MIR will then add
 an internal `vela_mir`
 execution-shape layer for CFG, typed operations, guards, liveness, bytecode
 lowering, and future M22 Cranelift input. M20 cache-family audit and measured

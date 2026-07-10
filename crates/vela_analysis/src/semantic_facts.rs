@@ -14,6 +14,7 @@ use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::ImplMetadataKind;
 
 use crate::facts::AnalysisFacts;
+use crate::hints::type_fact_from_hint_in_module;
 use crate::registry::{RegistryEffectFact, RegistryFacts};
 use crate::stdlib::{stdlib_function_fact, stdlib_method_fact};
 use crate::type_fact::TypeFact;
@@ -292,8 +293,8 @@ impl HirSemanticFacts {
             HirExprKind::Field(field) => {
                 field_fact(&self.fact(field.receiver), &field.name, schema)
             }
-            HirExprKind::Call(call) => self.call_return(body, call, schema),
-            HirExprKind::Index(index) => index_fact(&self.fact(index.receiver)),
+            HirExprKind::Call(call) => self.call_return(graph, body, call, schema),
+            HirExprKind::Index(index) => index_fact(&self.fact(index.receiver), schema),
             HirExprKind::Array { elements } => {
                 TypeFact::array(TypeFact::union(elements.iter().map(|id| self.fact(*id))))
             }
@@ -449,9 +450,9 @@ impl HirSemanticFacts {
                                 name: field.name.clone(),
                             }
                         }
-                    } else if schema
-                        .is_some_and(|schema| schema.method_fact(owner, &field.name).is_some())
-                    {
+                    } else if schema.is_some_and(|schema| {
+                        registry_method_fact(schema, &receiver, &field.name).is_some()
+                    }) {
                         MemberTargetFact::RegistryMethod {
                             owner: owner.to_owned(),
                             name: field.name.clone(),
@@ -621,7 +622,9 @@ impl HirSemanticFacts {
         if let Some(field) = body.field(call.callee) {
             let receiver = self.fact(field.receiver);
             if let Some(method) = source_method(graph, &receiver, &field.name) {
-                return CallTargetFact::ScriptMethod { method };
+                return CallTargetFact::ScriptMethod {
+                    method: method.node,
+                };
             }
             if stdlib_method_fact(&receiver, &field.name, None).is_some() {
                 return CallTargetFact::StdlibMethod {
@@ -630,9 +633,9 @@ impl HirSemanticFacts {
             }
             if let Some(owner) = type_owner(&receiver)
                 && let Some(schema) = schema
-                && schema.method_fact(owner, &field.name).is_some()
+                && registry_method_fact(schema, &receiver, &field.name).is_some()
             {
-                if let Some(effect) = schema.method_effect_fact(owner, &field.name) {
+                if let Some(effect) = registry_method_effect(schema, &receiver, &field.name) {
                     self.effects.insert(call_id, effect.clone());
                 }
                 return if matches!(receiver, TypeFact::Host { .. }) {
@@ -681,6 +684,7 @@ impl HirSemanticFacts {
 
     fn call_return(
         &self,
+        graph: &ModuleGraph,
         body: &HirBody,
         call: &vela_hir::body::HirCall,
         schema: Option<&RegistryFacts>,
@@ -691,12 +695,15 @@ impl HirSemanticFacts {
         }
         if let Some(field) = body.field(call.callee) {
             let receiver = self.fact(field.receiver);
+            if let Some(method) = source_method(graph, &receiver, &field.name) {
+                return method.returns;
+            }
             if let Some(method) = stdlib_method_fact(&receiver, &field.name, None) {
                 return method.returns;
             }
-            if let Some(owner) = type_owner(&receiver)
+            if type_owner(&receiver).is_some()
                 && let Some(method) =
-                    schema.and_then(|schema| schema.method_fact(owner, &field.name))
+                    schema.and_then(|schema| registry_method_fact(schema, &receiver, &field.name))
             {
                 return call_return_fact(method.clone());
             }
@@ -915,7 +922,12 @@ fn source_declaration_for_path<'a>(
     matches.next().is_none().then_some(declaration)
 }
 
-fn source_method(graph: &ModuleGraph, receiver: &TypeFact, name: &str) -> Option<HirNodeId> {
+struct SourceMethodFact {
+    node: HirNodeId,
+    returns: TypeFact,
+}
+
+fn source_method(graph: &ModuleGraph, receiver: &TypeFact, name: &str) -> Option<SourceMethodFact> {
     let owner = type_owner(receiver)?;
     for declaration in graph.declarations_by_kind(DeclarationKind::Impl) {
         let Some(metadata) = graph.impl_metadata(declaration.id) else {
@@ -926,7 +938,17 @@ fn source_method(graph: &ModuleGraph, receiver: &TypeFact, name: &str) -> Option
             continue;
         }
         if let Some(method) = metadata.methods.iter().find(|method| method.name == name) {
-            return Some(method.node);
+            let returns = method
+                .signature
+                .return_type
+                .as_ref()
+                .map_or(TypeFact::Unknown, |hint| {
+                    type_fact_from_hint_in_module(graph, declaration.module, hint)
+                });
+            return Some(SourceMethodFact {
+                node: method.node,
+                returns,
+            });
         }
         let ImplMetadataKind::Trait { trait_path } = &metadata.kind else {
             continue;
@@ -940,7 +962,14 @@ fn source_method(graph: &ModuleGraph, receiver: &TypeFact, name: &str) -> Option
         if let Some(method) = shape.methods.iter().find(|method| method.name == name)
             && let Some(node) = method.default_body_node
         {
-            return Some(node);
+            let returns = method
+                .signature
+                .return_type
+                .as_ref()
+                .map_or(TypeFact::Unknown, |hint| {
+                    type_fact_from_hint_in_module(graph, trait_declaration.module, hint)
+                });
+            return Some(SourceMethodFact { node, returns });
         }
     }
     None
@@ -1026,7 +1055,7 @@ fn call_return_fact(callee: TypeFact) -> TypeFact {
     }
 }
 
-fn index_fact(receiver: &TypeFact) -> TypeFact {
+fn index_fact(receiver: &TypeFact, schema: Option<&RegistryFacts>) -> TypeFact {
     match receiver {
         TypeFact::Array { element } | TypeFact::Set { element } => (**element).clone(),
         TypeFact::Map { value, .. } => (**value).clone(),
@@ -1034,7 +1063,41 @@ fn index_fact(receiver: &TypeFact) -> TypeFact {
         TypeFact::Primitive(PrimitiveTag::String) => TypeFact::CHAR,
         TypeFact::Primitive(PrimitiveTag::Bytes) => TypeFact::U8,
         TypeFact::Any => TypeFact::Any,
-        _ => TypeFact::Unknown,
+        _ => type_owner(receiver)
+            .and_then(|owner| schema?.index_capability_fact(owner))
+            .map_or(TypeFact::Unknown, |capability| capability.value.clone()),
+    }
+}
+
+fn registry_method_fact<'a>(
+    schema: &'a RegistryFacts,
+    receiver: &TypeFact,
+    method: &str,
+) -> Option<&'a TypeFact> {
+    let owner = type_owner(receiver)?;
+    match receiver {
+        TypeFact::Trait { .. } => schema
+            .trait_method_fact(owner, method)
+            .or_else(|| schema.method_fact(owner, method)),
+        _ => schema
+            .method_fact(owner, method)
+            .or_else(|| schema.trait_method_fact(owner, method)),
+    }
+}
+
+fn registry_method_effect<'a>(
+    schema: &'a RegistryFacts,
+    receiver: &TypeFact,
+    method: &str,
+) -> Option<&'a RegistryEffectFact> {
+    let owner = type_owner(receiver)?;
+    match receiver {
+        TypeFact::Trait { .. } => schema
+            .trait_method_effect_fact(owner, method)
+            .or_else(|| schema.method_effect_fact(owner, method)),
+        _ => schema
+            .method_effect_fact(owner, method)
+            .or_else(|| schema.trait_method_effect_fact(owner, method)),
     }
 }
 

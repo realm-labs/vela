@@ -710,7 +710,7 @@ fn resolved_identifier_classification(
     span: Span,
     databases: &LanguageServiceDatabases,
 ) -> Option<SemanticTokenClassification> {
-    let resolution = bindings.resolution(graph.expression_at_span(span)?)?;
+    let resolution = bindings.resolution(graph.expression_containing_span(span)?)?;
     match resolution {
         BindingResolution::Local(local) => bindings.local(*local).map(local_use_classification),
         BindingResolution::Declaration(declaration) => databases

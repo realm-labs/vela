@@ -1,9 +1,8 @@
 use vela_analysis::hints::type_fact_from_hint;
 use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
-use vela_common::{SourceId, Span};
+use vela_common::SourceId;
 use vela_hir::body::HirBody;
-use vela_hir::ids::HirExprId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::StructFieldHint;
 use vela_syntax::ast::{
@@ -11,7 +10,7 @@ use vela_syntax::ast::{
     SyntaxFunctionItem, SyntaxLambdaBody, SyntaxMatchArm, SyntaxMatchArmBody, SyntaxSourceFile,
     SyntaxStatement, SyntaxStatementKind,
 };
-use vela_syntax::{SyntaxKind, TextRange as SyntaxTextRange, TextSize};
+use vela_syntax::{SyntaxKind, TextSize};
 
 use super::{
     CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind,
@@ -21,11 +20,11 @@ use crate::symbol_ref::schema_member_symbol;
 
 pub(super) fn record_constructor_at(
     source: &SyntaxSourceFile,
-    body: Option<&HirBody>,
-    source_id: Option<SourceId>,
+    _body: Option<&HirBody>,
+    _source_id: Option<SourceId>,
     offset: usize,
 ) -> Option<RecordConstructor> {
-    let search = RecordConstructorSearch::new(body, source_id, syntax_offset(offset)?);
+    let search = RecordConstructorSearch::new(syntax_offset(offset)?);
     for item in source.items() {
         match item.syntax().kind() {
             SyntaxKind::ConstItem => {
@@ -50,60 +49,13 @@ pub(super) fn record_constructor_at(
 }
 
 #[derive(Clone, Copy)]
-struct RecordConstructorSearch<'a> {
-    body: Option<&'a HirBody>,
-    source_id: Option<SourceId>,
+struct RecordConstructorSearch {
     offset: TextSize,
 }
 
-impl<'a> RecordConstructorSearch<'a> {
-    const fn new(body: Option<&'a HirBody>, source_id: Option<SourceId>, offset: TextSize) -> Self {
-        Self {
-            body,
-            source_id,
-            offset,
-        }
-    }
-
-    fn hir_expression(&self, expr: &SyntaxExpression) -> Option<HirExprId> {
-        let body = self.body?;
-        let source_id = self.source_id?;
-        let span = syntax_node_span(source_id, expr.syntax().text_range());
-        body.expressions
-            .values()
-            .find_map(|expression| (expression.origin.span == span).then_some(expression.id))
-    }
-
-    fn hir_field_receiver(&self, expr: &SyntaxExpression) -> Option<HirExprId> {
-        let body = self.body?;
-        let expression = self.hir_expression(expr)?;
-        body.field(expression).map(|field| field.receiver)
-    }
-
-    fn hir_call_callee(&self, expr: &SyntaxExpression) -> Option<HirExprId> {
-        let body = self.body?;
-        let expression = self.hir_expression(expr)?;
-        body.call(expression).map(|call| call.callee)
-    }
-
-    fn hir_index_operands(&self, expr: &SyntaxExpression) -> Option<(HirExprId, HirExprId)> {
-        let body = self.body?;
-        let expression = self.hir_expression(expr)?;
-        body.index(expression)
-            .map(|index| (index.receiver, index.index))
-    }
-
-    fn syntax_expr_for_hir_expression(
-        &self,
-        root: &SyntaxExpression,
-        expression: HirExprId,
-    ) -> Option<SyntaxExpression> {
-        let body = self.body?;
-        let expression = body.expressions.get(&expression)?;
-        if Some(expression.origin.source) != self.source_id {
-            return None;
-        }
-        syntax_expr_at_span(root, expression.origin.span)
+impl RecordConstructorSearch {
+    const fn new(offset: TextSize) -> Self {
+        Self { offset }
     }
 }
 
@@ -132,7 +84,7 @@ pub(super) fn record_field_completion_items(
 
 fn record_constructor_for_function(
     function: &SyntaxFunctionItem,
-    search: &RecordConstructorSearch<'_>,
+    search: &RecordConstructorSearch,
 ) -> Option<RecordConstructor> {
     if let Some(params) = function.param_list() {
         for param in params.params() {
@@ -150,7 +102,7 @@ fn record_constructor_for_function(
 
 fn record_constructor_for_block(
     block: &SyntaxBlock,
-    search: &RecordConstructorSearch<'_>,
+    search: &RecordConstructorSearch,
 ) -> Option<RecordConstructor> {
     if !block.syntax().text_range().contains(search.offset) {
         return None;
@@ -165,7 +117,7 @@ fn record_constructor_for_block(
 
 fn record_constructor_for_statement(
     statement: &SyntaxStatement,
-    search: &RecordConstructorSearch<'_>,
+    search: &RecordConstructorSearch,
 ) -> Option<RecordConstructor> {
     if !statement.syntax().text_range().contains(search.offset) {
         return None;
@@ -219,7 +171,7 @@ fn record_constructor_for_statement(
 
 fn record_constructor_for_expr(
     expr: &SyntaxExpression,
-    search: &RecordConstructorSearch<'_>,
+    search: &RecordConstructorSearch,
 ) -> Option<RecordConstructor> {
     if !expr.syntax().text_range().contains(search.offset) {
         return None;
@@ -286,39 +238,19 @@ fn record_constructor_for_expr(
                         .and_then(|value| record_constructor_for_expr(&value, search))
                 })
         }
-        SyntaxExpressionKind::Field => search
-            .hir_field_receiver(expr)
-            .and_then(|receiver| search.syntax_expr_for_hir_expression(expr, receiver))
-            .and_then(|value| record_constructor_for_expr(&value, search))
-            .or_else(|| record_constructor_for_child_exprs(expr, search)),
+        SyntaxExpressionKind::Field => record_constructor_for_child_exprs(expr, search),
         SyntaxExpressionKind::Call => {
             let call = expr.as_call()?;
-            search
-                .hir_call_callee(expr)
-                .and_then(|callee| search.syntax_expr_for_hir_expression(expr, callee))
-                .and_then(|callee| record_constructor_for_expr(&callee, search))
-                .or_else(|| {
-                    call.arguments().into_iter().find_map(|argument| {
-                        argument
-                            .expression()
-                            .and_then(|value| record_constructor_for_expr(&value, search))
-                    })
+            call.arguments()
+                .into_iter()
+                .find_map(|argument| {
+                    argument
+                        .expression()
+                        .and_then(|value| record_constructor_for_expr(&value, search))
                 })
                 .or_else(|| record_constructor_for_child_exprs(expr, search))
         }
-        SyntaxExpressionKind::Index => search
-            .hir_index_operands(expr)
-            .and_then(|(receiver, index)| {
-                search
-                    .syntax_expr_for_hir_expression(expr, receiver)
-                    .and_then(|value| record_constructor_for_expr(&value, search))
-                    .or_else(|| {
-                        search
-                            .syntax_expr_for_hir_expression(expr, index)
-                            .and_then(|value| record_constructor_for_expr(&value, search))
-                    })
-            })
-            .or_else(|| record_constructor_for_child_exprs(expr, search)),
+        SyntaxExpressionKind::Index => record_constructor_for_child_exprs(expr, search),
         SyntaxExpressionKind::Array => expr.as_array().and_then(|array| {
             array
                 .expressions()
@@ -393,7 +325,7 @@ fn record_constructor_for_expr(
 
 fn record_constructor_for_match_arm(
     arm: &SyntaxMatchArm,
-    search: &RecordConstructorSearch<'_>,
+    search: &RecordConstructorSearch,
 ) -> Option<RecordConstructor> {
     if !arm.syntax().text_range().contains(search.offset) {
         return None;
@@ -411,7 +343,7 @@ fn record_constructor_for_match_arm(
 
 fn record_constructor_for_child_exprs(
     expr: &SyntaxExpression,
-    search: &RecordConstructorSearch<'_>,
+    search: &RecordConstructorSearch,
 ) -> Option<RecordConstructor> {
     let root_range = expr.syntax().text_range();
     expr.syntax()
@@ -432,18 +364,6 @@ fn record_constructor_for_child_exprs(
 fn syntax_offset(offset: usize) -> Option<TextSize> {
     let offset = u32::try_from(offset).ok()?;
     Some(TextSize::from(offset))
-}
-
-fn syntax_node_span(source_id: SourceId, range: SyntaxTextRange) -> Span {
-    Span::new(source_id, u32::from(range.start()), u32::from(range.end()))
-}
-
-fn syntax_expr_at_span(root: &SyntaxExpression, span: Span) -> Option<SyntaxExpression> {
-    let range = SyntaxTextRange::new(TextSize::from(span.start), TextSize::from(span.end));
-    root.syntax()
-        .descendants()
-        .filter_map(SyntaxExpression::cast)
-        .find(|expr| expr.syntax().text_range() == range)
 }
 
 fn script_record_field_completions(

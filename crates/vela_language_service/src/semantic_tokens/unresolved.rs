@@ -20,7 +20,7 @@ pub(super) fn classification(
     range: TextRange,
 ) -> Option<SemanticTokenClassification> {
     let resolution = graph
-        .expression_at_span(span)
+        .expression_containing_span(span)
         .and_then(|expression| bindings.resolution(expression));
     if unresolved_identifiers.contains(&(range.start, range.end))
         || matches!(

@@ -158,17 +158,14 @@ focused tests and validation command pass.
 
 ### Current Execution State
 
-Checkpoint A is complete and Checkpoint B is active. Body HIR now owns
+Checkpoints A and B are complete, and Checkpoint C is active. Body HIR now owns
 executable expression, statement, pattern, scope, match-arm, path, binding, and
 capture relationships under stable IDs. Analysis evaluates those HIR bodies
 without body syntax and records HIR-keyed type, callable, member, effect,
 control-flow, constructor, operator, host-path, and degradation facts.
 
-The remaining mixed-architecture blockers are downstream consumers:
-
-- language-service helpers that accept syntax expressions and recover HIR IDs
-  by source span;
-- bytecode `CompilerBodyPayload`/syntax payload pairing and a
+The remaining mixed-architecture blocker is the bytecode
+`CompilerBodyPayload`/syntax payload pairing and its
   `compile_syntax_expression` primary dispatcher.
 
 Passing focused tests proves behavior preservation, not completion. The
@@ -332,23 +329,23 @@ HIR and source origins.
 Purpose: make editor queries consume Heavy HIR facts instead of feature-local
 semantic reconstruction.
 
-- [~] Update query context to expose HIR body, HIR IDs, analysis facts, and
+- [x] Update query context to expose HIR body, HIR IDs, analysis facts, and
   source-origin lookup as the default editor-neutral input.
-- [~] Move completion, signature help, hover, definition, references, rename,
+- [x] Move completion, signature help, hover, definition, references, rename,
   code actions, semantic tokens, and inlay hints away from body-level syntax
   semantic inference.
-- [ ] Keep formatting on the canonical lossless syntax formatter; formatting
+- [x] Keep formatting on the canonical lossless syntax formatter; formatting
   must not build a second semantic tree or depend on feature-local semantic
   reconstruction.
-- [ ] Delete feature-local helpers that take a `SyntaxExpression` only to find
+- [x] Delete feature-local helpers that take a `SyntaxExpression` only to find
   `HirExprId` by span, or that find a syntax expression from a HIR ID before
   performing semantic work. Start semantic queries from HIR IDs and project
   results back through HIR source origins.
-- [ ] Keep syntax/CST access only for lexical recovery under incomplete edits,
+- [x] Keep syntax/CST access only for lexical recovery under incomplete edits,
   lossless formatting, folding/selection structure, token trivia, and final
   source-range projection. These paths must not own resolved semantic facts.
-- [ ] Keep LSP protocol projection unchanged.
-- [ ] Preserve stale-generation, overlay, cancellation, and analysis-only LSP
+- [x] Keep LSP protocol projection unchanged.
+- [x] Preserve stale-generation, overlay, cancellation, and analysis-only LSP
   behavior.
 
 Validation:
