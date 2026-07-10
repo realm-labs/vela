@@ -1,5 +1,5 @@
 use vela_common::Span;
-use vela_syntax::ast::Literal;
+use vela_hir::body::HirLiteral;
 
 use crate::{Register, UnlinkedInstructionKind};
 
@@ -10,7 +10,7 @@ impl Compiler<'_, '_> {
     pub(super) fn compile_literal(
         &mut self,
         span: Option<Span>,
-        literal: &Literal,
+        literal: &HirLiteral,
     ) -> CompileResult<Register> {
         let constant = compile_literal_constant(literal).map_err(|error| match span {
             Some(span) => error.with_span(span),

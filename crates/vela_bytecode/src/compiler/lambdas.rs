@@ -1,11 +1,9 @@
-use vela_common::{SourceId, Span};
+use vela_common::Span;
 use vela_hir::body::{HirBody, HirBodyOwner};
-use vela_hir::ids::HirLocalId;
-use vela_syntax::ast::{AstNode, SyntaxExpression, SyntaxLambdaBody};
+use vela_hir::ids::{HirExprId, HirLocalId};
 
-use crate::{Register, UnlinkedCodeObject, UnlinkedInstructionKind};
+use crate::{Register, UnlinkedInstructionKind};
 
-use super::body_payloads::CompilerBodyPayload;
 use super::record_shapes::ValueShape;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, CompilerHirContext};
 
@@ -24,20 +22,28 @@ pub(crate) struct LambdaParam {
 }
 
 impl<'ast> Compiler<'ast, '_> {
-    pub(in crate::compiler) fn compile_syntax_lambda_with_callback_shapes(
+    pub(in crate::compiler) fn compile_hir_lambda(
         &mut self,
-        source: SourceId,
-        expression: &SyntaxExpression,
+        expression: HirExprId,
         callback_shapes: &[Option<ValueShape>],
-    ) -> CompileResult<Option<Register>> {
-        let Some(lambda) = expression.as_lambda() else {
-            return Ok(None);
-        };
-        let Some(body) = lambda.body() else {
-            return Ok(None);
-        };
-        let lambda_span = syntax_expr_span(source, expression);
-        let hir_body = self.hir_lambda_body(lambda_span)?;
+    ) -> CompileResult<Register> {
+        let hir_body = self
+            .hir_bodies
+            .iter()
+            .copied()
+            .find(|body| {
+                matches!(
+                    body.owner,
+                    HirBodyOwner::Lambda {
+                        expression: lambda_expression,
+                        ..
+                    } if lambda_expression == expression
+                )
+            })
+            .ok_or_else(|| {
+                CompileError::new(CompileErrorKind::UnsupportedSyntax("lambda HIR body"))
+            })?;
+        let lambda_span = hir_body.origin.span;
         let params = self.lambda_params_from_hir(hir_body)?;
         let captures = self.lambda_captures_from_hir(hir_body)?;
         let capture_registers = captures
@@ -48,7 +54,7 @@ impl<'ast> Compiler<'ast, '_> {
             format!("{}::<lambda@{}>", self.code.name, lambda_span.start),
             lambda_span,
             &params,
-            self.body.clone(),
+            hir_body.id,
             &captures,
             CompilerHirContext {
                 bindings: self.bindings,
@@ -80,10 +86,7 @@ impl<'ast> Compiler<'ast, '_> {
             }
         }
         for (index, shape) in callback_shapes.iter().enumerate() {
-            let Some(shape) = shape else {
-                continue;
-            };
-            let Some(param) = params.get(index) else {
+            let (Some(shape), Some(param)) = (shape, params.get(index)) else {
                 continue;
             };
             lambda_compiler
@@ -93,7 +96,7 @@ impl<'ast> Compiler<'ast, '_> {
                 .value_shapes
                 .set_local(param.local, &param.name, Some(shape.clone()));
         }
-        let code = lambda_compiler.compile_syntax_lambda_body(source, body, hir_body)?;
+        let code = lambda_compiler.compile_hir_value_body(hir_body.id)?;
         let function = self.code.push_nested_function(code);
         let dst = self.alloc_register()?;
         self.emit(UnlinkedInstructionKind::MakeClosure {
@@ -101,33 +104,7 @@ impl<'ast> Compiler<'ast, '_> {
             function,
             captures: capture_registers,
         });
-        Ok(Some(dst))
-    }
-
-    pub(in crate::compiler) fn hir_lambda_body(
-        &self,
-        lambda_span: Span,
-    ) -> CompileResult<&HirBody> {
-        let expression = self.expression_at_span(lambda_span).ok_or_else(|| {
-            CompileError::new(CompileErrorKind::UnsupportedSyntax("lambda HIR expression"))
-                .with_span(lambda_span)
-        })?;
-        self.hir_bodies
-            .iter()
-            .copied()
-            .find(|body| {
-                matches!(
-                    body.owner,
-                    HirBodyOwner::Lambda {
-                        expression: lambda_expression,
-                        ..
-                    } if lambda_expression == expression
-                )
-            })
-            .ok_or_else(|| {
-                CompileError::new(CompileErrorKind::UnsupportedSyntax("lambda HIR body"))
-                    .with_span(lambda_span)
-            })
+        Ok(dst)
     }
 
     pub(in crate::compiler) fn lambda_params_from_hir(
@@ -178,41 +155,4 @@ impl<'ast> Compiler<'ast, '_> {
             })
             .collect()
     }
-
-    fn compile_syntax_lambda_body(
-        mut self,
-        source: SourceId,
-        body: SyntaxLambdaBody,
-        hir_body: &'ast HirBody,
-    ) -> CompileResult<UnlinkedCodeObject> {
-        self.compile_param_defaults()?;
-        match body {
-            SyntaxLambdaBody::Expression(expression) => {
-                let value = self
-                    .compile_syntax_expression(source, &expression)?
-                    .ok_or_else(|| {
-                        CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "unsupported lambda expression body",
-                        ))
-                        .with_span(syntax_expr_span(source, &expression))
-                    })?;
-                self.emit(UnlinkedInstructionKind::Return { src: value });
-            }
-            SyntaxLambdaBody::Block(block) => {
-                let dst = self.alloc_register()?;
-                let body = CompilerBodyPayload::hir_body(source, block, hir_body);
-                let returned = self.compile_block_payload_value_to(&body, dst)?;
-                if !returned {
-                    self.emit(UnlinkedInstructionKind::Return { src: dst });
-                }
-            }
-        }
-        self.code.register_count = self.next_register;
-        Ok(self.code)
-    }
-}
-
-fn syntax_expr_span(source: SourceId, expression: &SyntaxExpression) -> Span {
-    let range = expression.syntax().text_range();
-    Span::new(source, range.start().into(), range.end().into())
 }

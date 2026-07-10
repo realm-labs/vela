@@ -1,7 +1,5 @@
 pub(in crate::compiler) mod metadata;
 
-use vela_syntax::ast::SyntaxArgument;
-
 use super::record_shapes::ValueShape;
 use super::value_types::RuntimeTypeFact;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
@@ -103,28 +101,21 @@ impl Compiler<'_, '_> {
         Err(missing_array_ord_error(method, "key", type_name, span))
     }
 
-    pub(in crate::compiler) fn reject_static_syntax_array_ordering_method_without_ord(
+    pub(in crate::compiler) fn reject_static_hir_array_ordering_method_without_ord(
         &self,
-        source: vela_common::SourceId,
         method: &str,
-        args: &[SyntaxArgument],
         receiver_type: Option<&RuntimeTypeFact>,
         receiver_shape: Option<&ValueShape>,
+        key_shape: Option<&ValueShape>,
         span: Span,
     ) -> CompileResult<()> {
         if !matches!(method, "sort" | "sort_by" | "min" | "max") {
             return Ok(());
         }
         if method == "sort_by" {
-            let Some(receiver_shape) = receiver_shape else {
-                return Ok(());
-            };
-            let Some(key_shape) =
-                self.syntax_callback_return_shape(receiver_shape, method, args, Some(source))
-            else {
-                return Ok(());
-            };
-            return self.reject_static_ord_shape(method, &key_shape, span);
+            return key_shape.map_or(Ok(()), |shape| {
+                self.reject_static_ord_shape(method, shape, span)
+            });
         }
         if let Some(RuntimeTypeFact::Array(element)) = receiver_type
             && !runtime_type_satisfies_ord(element)
@@ -139,15 +130,7 @@ impl Compiler<'_, '_> {
         let Some(ValueShape::Array(element)) = receiver_shape else {
             return Ok(());
         };
-        let Some(type_name) = element.as_record().and_then(|record| record.type_name()) else {
-            return Ok(());
-        };
-        if !self.is_declared_script_type(type_name)
-            || self.type_implements_builtin_trait_method(type_name, "Ord", "cmp")
-        {
-            return Ok(());
-        }
-        Err(missing_array_ord_error(method, "element", type_name, span))
+        self.reject_static_ord_shape(method, element, span)
     }
 }
 

@@ -31,6 +31,15 @@ required.
 
 ## Current Focus
 
+The Heavy HIR hard switch has reached Phase 7 acceptance. `vela_hir` owns
+stable body, expression, statement, pattern, scope, binding, capture,
+call/member-target, and control-flow facts; analysis, language-service semantic
+queries, and bytecode lowering consume those facts without body-level syntax
+reconstruction. The bytecode compiler's syntax payload/dispatcher path has
+been deleted, Phase 6 bytecode/VM/engine validation is green, and the Phase 7
+audit searches satisfy their expected results. Full workspace and runnable
+examples validation remains before the hard-switch goal is complete.
+
 M0-M19 are complete enough as a runnable prototype, embedding surface,
 production hot-reload workflow, diagnostics/tooling foundation, runnable
 embedding/conformance proof, measured performance baselines, and non-JIT

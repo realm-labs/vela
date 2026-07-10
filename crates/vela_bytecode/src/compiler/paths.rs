@@ -184,7 +184,7 @@ impl Compiler<'_, '_> {
                     current,
                     HostPath {
                         root: HostPathRoot::LocalPath {
-                            name: &path[0],
+                            name: path[0].clone(),
                             span: root_span,
                         },
                         segments: vec![HostPathPart::Field(field)],

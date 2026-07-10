@@ -11,6 +11,6 @@ pub(super) fn guard_location_and_name(
         TypeContractContext::NativeParameter { name, index, .. } => {
             Some((GuardLocation::Parameter { index }, name))
         }
-        TypeContractContext::FunctionParameter { .. } | TypeContractContext::Return => None,
+        TypeContractContext::FunctionParameter { .. } => None,
     }
 }

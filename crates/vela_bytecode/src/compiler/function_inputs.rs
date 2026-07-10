@@ -1,8 +1,9 @@
-use super::body_payloads::CompilerBodyPayload;
+use vela_hir::ids::HirBodyId;
+
 use super::param_defaults::ParamDefaultValue;
 
-pub(super) struct FunctionBodyPayload<'ast> {
+pub(super) struct FunctionCompileInput {
     pub(super) name: String,
-    pub(super) body: CompilerBodyPayload<'ast>,
+    pub(super) body: HirBodyId,
     pub(super) param_defaults: Vec<Option<ParamDefaultValue>>,
 }

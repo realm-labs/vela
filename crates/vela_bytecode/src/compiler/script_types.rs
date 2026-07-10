@@ -1,10 +1,8 @@
 use std::collections::HashMap;
 
-use vela_common::{SourceId, Span};
 use vela_hir::body::{HirPathKind, HirPathOwner};
 use vela_hir::ids::{HirExprId, HirLocalId};
 use vela_hir::type_hint::HirTypeHint;
-use vela_syntax::ast::{AstNode, SyntaxExpression};
 
 use super::patterns::enum_variant_path;
 
@@ -200,7 +198,10 @@ impl super::Compiler<'_, '_> {
         Some(ScriptTypeFact::enum_variant(type_name, variant))
     }
 
-    fn script_fact_for_hir_expression(&self, expression: HirExprId) -> Option<ScriptTypeFact> {
+    pub(in crate::compiler) fn script_fact_for_hir_expression(
+        &self,
+        expression: HirExprId,
+    ) -> Option<ScriptTypeFact> {
         if let Some(fact) = self.script_fact_for_hir_constructor(expression) {
             return Some(fact);
         }
@@ -234,18 +235,4 @@ impl super::Compiler<'_, '_> {
             .name_fact(name)
             .or_else(|| self.global_type_named(name).map(ScriptTypeFact::new))
     }
-
-    pub(super) fn script_fact_for_syntax_expression(
-        &self,
-        source: SourceId,
-        expression: &SyntaxExpression,
-    ) -> Option<ScriptTypeFact> {
-        let expression = self.expression_at_span(syntax_expression_span(source, expression))?;
-        self.script_fact_for_hir_expression(expression)
-    }
-}
-
-fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {
-    let range = expression.syntax().text_range();
-    Span::new(source, range.start().into(), range.end().into())
 }

@@ -1,13 +1,8 @@
 use std::collections::HashMap;
 
-use vela_common::{PrimitiveTag, SourceId, Span};
-use vela_hir::ids::{HirExprId, HirLocalId};
+use vela_common::{PrimitiveTag, Span};
+use vela_hir::ids::HirLocalId;
 use vela_hir::type_hint::HirTypeHint;
-use vela_syntax::SyntaxKind;
-use vela_syntax::ast::{
-    AstNode, BinaryOp, Literal, SyntaxBlock, SyntaxElseBranch, SyntaxExpression,
-    SyntaxExpressionKind,
-};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) enum RuntimeTypeFact {
@@ -55,7 +50,6 @@ pub(super) enum TypeContractContext {
         name: String,
         index: u16,
     },
-    Return,
     TypedLet {
         name: String,
     },
@@ -225,10 +219,6 @@ impl ValueTypeFlow {
         self.locals.get(&local).cloned()
     }
 
-    pub(super) fn name(&self, name: &str) -> Option<RuntimeTypeFact> {
-        self.names.get(name).cloned()
-    }
-
     pub(super) fn set_name(&mut self, name: impl Into<String>, fact: Option<RuntimeTypeFact>) {
         let name = name.into();
         match fact {
@@ -258,338 +248,6 @@ impl ValueTypeFlow {
                 self.names.remove(&name);
             }
         }
-    }
-}
-
-fn static_syntax_expr_type(
-    expression: &SyntaxExpression,
-    source: Option<SourceId>,
-    expression_at_span: &dyn Fn(Span) -> Option<HirExprId>,
-    local_type_for_expression: &dyn Fn(HirExprId) -> Option<RuntimeTypeFact>,
-) -> Option<StaticExprType> {
-    match expression.expression_kind() {
-        SyntaxExpressionKind::Literal => {
-            let literal = expression.as_literal()?;
-            if let Some(literal) = literal.literal() {
-                return Some(static_literal_type(&literal));
-            }
-            if literal.token_kind() == Some(SyntaxKind::InterpolatedString) {
-                return Some(StaticExprType::Exact(RuntimeTypeFact::primitive(
-                    PrimitiveTag::String,
-                )));
-            }
-            Some(StaticExprType::Dynamic)
-        }
-        SyntaxExpressionKind::Array => {
-            let array = expression.as_array()?;
-            Some(StaticExprType::Exact(array_literal_type(
-                array.expressions().map(|value| {
-                    syntax_expression_value_type(
-                        &value,
-                        source,
-                        expression_at_span,
-                        local_type_for_expression,
-                    )
-                }),
-            )))
-        }
-        SyntaxExpressionKind::Map => {
-            let map = expression.as_map()?;
-            Some(StaticExprType::Exact(map_literal_type(map.entries().map(
-                |entry| {
-                    entry.value().and_then(|value| {
-                        syntax_expression_value_type(
-                            &value,
-                            source,
-                            expression_at_span,
-                            local_type_for_expression,
-                        )
-                    })
-                },
-            ))))
-        }
-        SyntaxExpressionKind::Tuple => {
-            let tuple = expression.as_tuple()?;
-            let elements = tuple
-                .expressions()
-                .map(|value| {
-                    syntax_expression_value_type(
-                        &value,
-                        source,
-                        expression_at_span,
-                        local_type_for_expression,
-                    )
-                })
-                .collect::<Option<Vec<_>>>()?;
-            Some(StaticExprType::Exact(RuntimeTypeFact::tuple(elements)))
-        }
-        SyntaxExpressionKind::Lambda => Some(StaticExprType::Exact(RuntimeTypeFact::standard(
-            StandardRuntimeType::Closure,
-        ))),
-        SyntaxExpressionKind::Binary => {
-            let binary = expression.as_binary()?;
-            let op = binary.operator()?;
-            let left = binary.lhs().and_then(|value| {
-                syntax_expression_value_type(
-                    &value,
-                    source,
-                    expression_at_span,
-                    local_type_for_expression,
-                )
-            });
-            let right = binary.rhs().and_then(|value| {
-                syntax_expression_value_type(
-                    &value,
-                    source,
-                    expression_at_span,
-                    local_type_for_expression,
-                )
-            });
-            i64_binary_result_type(op, left.as_ref(), right.as_ref()).map(StaticExprType::Exact)
-        }
-        SyntaxExpressionKind::Path => {
-            let span = source.map(|source| syntax_expression_span(source, expression))?;
-            let Some(expression) = expression_at_span(span) else {
-                return Some(StaticExprType::Dynamic);
-            };
-            Some(
-                local_type_for_expression(expression)
-                    .map(StaticExprType::Exact)
-                    .unwrap_or(StaticExprType::Dynamic),
-            )
-        }
-        SyntaxExpressionKind::Block => expression.as_block().map(|block| {
-            static_syntax_block_type(
-                &block,
-                source,
-                expression_at_span,
-                local_type_for_expression,
-            )
-        }),
-        SyntaxExpressionKind::If => {
-            let if_expr = expression.as_if()?;
-            let then_type = if_expr.then_block().map(|block| {
-                static_syntax_block_type(
-                    &block,
-                    source,
-                    expression_at_span,
-                    local_type_for_expression,
-                )
-            })?;
-            let else_type = match if_expr.else_branch() {
-                Some(SyntaxElseBranch::If(else_if)) => {
-                    SyntaxExpression::cast(else_if.syntax().clone())
-                        .and_then(|expression| {
-                            static_syntax_expr_type(
-                                &expression,
-                                source,
-                                expression_at_span,
-                                local_type_for_expression,
-                            )
-                        })
-                        .unwrap_or(StaticExprType::Dynamic)
-                }
-                Some(SyntaxElseBranch::Block(block)) => static_syntax_block_type(
-                    &block,
-                    source,
-                    expression_at_span,
-                    local_type_for_expression,
-                ),
-                None => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Unit)),
-            };
-            Some(merge_branch_static_type(then_type, else_type))
-        }
-        SyntaxExpressionKind::Match => {
-            let match_expr = expression.as_match()?;
-            let mut arms = match_expr.arms().into_iter();
-            let Some(first) = arms.next() else {
-                return Some(StaticExprType::Dynamic);
-            };
-            let first = static_syntax_match_arm_type(
-                &first,
-                source,
-                expression_at_span,
-                local_type_for_expression,
-            );
-            Some(arms.fold(first, |merged, arm| {
-                merge_branch_static_type(
-                    merged,
-                    static_syntax_match_arm_type(
-                        &arm,
-                        source,
-                        expression_at_span,
-                        local_type_for_expression,
-                    ),
-                )
-            }))
-        }
-        SyntaxExpressionKind::Try => {
-            let operand_type = expression.as_try()?.expression().and_then(|operand| {
-                syntax_expression_value_type(
-                    &operand,
-                    source,
-                    expression_at_span,
-                    local_type_for_expression,
-                )
-            });
-            Some(match operand_type {
-                Some(RuntimeTypeFact::Option(payload)) => StaticExprType::Exact(*payload),
-                Some(RuntimeTypeFact::Result { ok, .. }) => StaticExprType::Exact(*ok),
-                _ => StaticExprType::Dynamic,
-            })
-        }
-        SyntaxExpressionKind::Unit => Some(StaticExprType::Exact(RuntimeTypeFact::primitive(
-            PrimitiveTag::Unit,
-        ))),
-        SyntaxExpressionKind::Paren
-        | SyntaxExpressionKind::Unary
-        | SyntaxExpressionKind::Assign
-        | SyntaxExpressionKind::Field
-        | SyntaxExpressionKind::Call
-        | SyntaxExpressionKind::Index
-        | SyntaxExpressionKind::Record => None,
-    }
-}
-
-fn static_syntax_block_type(
-    block: &SyntaxBlock,
-    source: Option<SourceId>,
-    expression_at_span: &dyn Fn(Span) -> Option<HirExprId>,
-    local_type_for_expression: &dyn Fn(HirExprId) -> Option<RuntimeTypeFact>,
-) -> StaticExprType {
-    let Some(tail) = block.statements().last() else {
-        return StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Unit));
-    };
-    let Some(expr_stmt) = tail.as_expr() else {
-        return StaticExprType::Dynamic;
-    };
-    if expr_stmt.semicolon_token().is_some() {
-        return StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Unit));
-    }
-    expr_stmt
-        .expression()
-        .and_then(|expression| {
-            static_syntax_expr_type(
-                &expression,
-                source,
-                expression_at_span,
-                local_type_for_expression,
-            )
-        })
-        .unwrap_or(StaticExprType::Dynamic)
-}
-
-fn static_syntax_match_arm_type(
-    arm: &vela_syntax::ast::SyntaxMatchArm,
-    source: Option<SourceId>,
-    expression_at_span: &dyn Fn(Span) -> Option<HirExprId>,
-    local_type_for_expression: &dyn Fn(HirExprId) -> Option<RuntimeTypeFact>,
-) -> StaticExprType {
-    if let Some(block) = arm.body_block() {
-        return static_syntax_block_type(
-            &block,
-            source,
-            expression_at_span,
-            local_type_for_expression,
-        );
-    }
-    arm.body_expression()
-        .and_then(|expression| {
-            static_syntax_expr_type(
-                &expression,
-                source,
-                expression_at_span,
-                local_type_for_expression,
-            )
-        })
-        .unwrap_or(StaticExprType::Dynamic)
-}
-
-fn merge_branch_static_type(left: StaticExprType, right: StaticExprType) -> StaticExprType {
-    if left == right {
-        left
-    } else {
-        StaticExprType::Dynamic
-    }
-}
-
-fn syntax_expression_value_type(
-    expression: &SyntaxExpression,
-    source: Option<SourceId>,
-    expression_at_span: &dyn Fn(Span) -> Option<HirExprId>,
-    local_type_for_expression: &dyn Fn(HirExprId) -> Option<RuntimeTypeFact>,
-) -> Option<RuntimeTypeFact> {
-    match static_syntax_expr_type(
-        expression,
-        source,
-        expression_at_span,
-        local_type_for_expression,
-    )? {
-        StaticExprType::Exact(fact) => Some(fact),
-        StaticExprType::UnsuffixedIntegerLiteral => {
-            Some(RuntimeTypeFact::primitive(PrimitiveTag::I64))
-        }
-        StaticExprType::UnsuffixedFloatLiteral => {
-            Some(RuntimeTypeFact::primitive(PrimitiveTag::F64))
-        }
-        StaticExprType::Dynamic => None,
-    }
-}
-
-fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {
-    let range = expression.syntax().text_range();
-    Span::new(source, range.start().into(), range.end().into())
-}
-
-pub(super) fn static_literal_type(literal: &Literal) -> StaticExprType {
-    match literal {
-        Literal::Integer(value) if value.suffix.is_none() => {
-            StaticExprType::UnsuffixedIntegerLiteral
-        }
-        Literal::Float(value) if value.suffix.is_none() => StaticExprType::UnsuffixedFloatLiteral,
-        Literal::Bool(_) => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Bool)),
-        Literal::Char(_) => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Char)),
-        Literal::Integer(value) => {
-            StaticExprType::Exact(RuntimeTypeFact::primitive(integer_literal_tag(value)))
-        }
-        Literal::Float(value) => {
-            StaticExprType::Exact(RuntimeTypeFact::primitive(float_literal_tag(value)))
-        }
-        Literal::String(_) => {
-            StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::String))
-        }
-        Literal::Bytes(_) => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Bytes)),
-    }
-}
-
-fn i64_binary_result_type(
-    op: BinaryOp,
-    left: Option<&RuntimeTypeFact>,
-    right: Option<&RuntimeTypeFact>,
-) -> Option<RuntimeTypeFact> {
-    let both_i64 = matches!(
-        (left, right),
-        (
-            Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64)),
-            Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
-        )
-    );
-    if !both_i64 {
-        return None;
-    }
-    match op {
-        BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem => {
-            Some(RuntimeTypeFact::primitive(PrimitiveTag::I64))
-        }
-        BinaryOp::Equal
-        | BinaryOp::NotEqual
-        | BinaryOp::IdentityEqual
-        | BinaryOp::IdentityNotEqual
-        | BinaryOp::Less
-        | BinaryOp::LessEqual
-        | BinaryOp::Greater
-        | BinaryOp::GreaterEqual => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bool)),
-        BinaryOp::Range | BinaryOp::RangeInclusive | BinaryOp::Or | BinaryOp::And => None,
     }
 }
 
@@ -775,8 +433,7 @@ impl TypeContractContext {
             Self::NativeParameter { function, name, .. } => {
                 format!("native parameter `{function}::{name}`")
             }
-            Self::Return => "return value".to_owned(),
-            Self::TypedLet { name } => format!("let binding `{name}`"),
+            Self::TypedLet { name } => format!("typed local `{name}`"),
             Self::Field { name } => format!("field `{name}`"),
         }
     }
@@ -790,31 +447,6 @@ impl ActualContractType {
             Self::UnsuffixedFloatLiteral => "unsuffixed float literal".to_owned(),
         }
     }
-}
-
-fn array_literal_type(
-    values: impl IntoIterator<Item = Option<RuntimeTypeFact>>,
-) -> RuntimeTypeFact {
-    uniform_runtime_type(values)
-        .map(RuntimeTypeFact::array)
-        .unwrap_or_else(|| RuntimeTypeFact::standard(StandardRuntimeType::Array))
-}
-
-fn map_literal_type(values: impl IntoIterator<Item = Option<RuntimeTypeFact>>) -> RuntimeTypeFact {
-    uniform_runtime_type(values)
-        .map(|value| RuntimeTypeFact::map(RuntimeTypeFact::primitive(PrimitiveTag::String), value))
-        .unwrap_or_else(|| RuntimeTypeFact::standard(StandardRuntimeType::Map))
-}
-
-fn uniform_runtime_type(
-    values: impl IntoIterator<Item = Option<RuntimeTypeFact>>,
-) -> Option<RuntimeTypeFact> {
-    let mut values = values.into_iter();
-    let first = values.next()??;
-    values.try_fold(first, |expected, value| {
-        let value = value?;
-        (value == expected).then_some(expected)
-    })
 }
 
 fn accepts_erased_or_parameterized(actual: &RuntimeTypeFact, expected: &RuntimeTypeFact) -> bool {
@@ -882,59 +514,4 @@ fn parameterized_outer_matches_erased(
             RuntimeTypeFact::Standard(StandardRuntimeType::Iterator)
         )
     )
-}
-
-fn integer_literal_tag(value: &vela_syntax::ast::IntegerLiteral) -> PrimitiveTag {
-    match value.suffix {
-        Some(vela_syntax::ast::IntegerSuffix::I8) => PrimitiveTag::I8,
-        Some(vela_syntax::ast::IntegerSuffix::I16) => PrimitiveTag::I16,
-        Some(vela_syntax::ast::IntegerSuffix::I32) => PrimitiveTag::I32,
-        None | Some(vela_syntax::ast::IntegerSuffix::I64) => PrimitiveTag::I64,
-        Some(vela_syntax::ast::IntegerSuffix::U8) => PrimitiveTag::U8,
-        Some(vela_syntax::ast::IntegerSuffix::U16) => PrimitiveTag::U16,
-        Some(vela_syntax::ast::IntegerSuffix::U32) => PrimitiveTag::U32,
-        Some(vela_syntax::ast::IntegerSuffix::U64) => PrimitiveTag::U64,
-    }
-}
-
-fn float_literal_tag(value: &vela_syntax::ast::FloatLiteral) -> PrimitiveTag {
-    match value.suffix {
-        Some(vela_syntax::ast::FloatSuffix::F32) => PrimitiveTag::F32,
-        None | Some(vela_syntax::ast::FloatSuffix::F64) => PrimitiveTag::F64,
-    }
-}
-
-impl super::Compiler<'_, '_> {
-    pub(in crate::compiler) fn syntax_static_type_for_expression(
-        &self,
-        source: Option<SourceId>,
-        expression: &SyntaxExpression,
-    ) -> StaticExprType {
-        static_syntax_expr_type(
-            expression,
-            source,
-            &|span| self.expression_at_span(span),
-            &|expression| {
-                self.local_for_expression(expression)
-                    .and_then(|local| self.value_types.local(local))
-            },
-        )
-        .unwrap_or(StaticExprType::Dynamic)
-    }
-
-    pub(in crate::compiler) fn syntax_value_type_for_expression(
-        &self,
-        source: Option<SourceId>,
-        expression: &SyntaxExpression,
-    ) -> Option<RuntimeTypeFact> {
-        syntax_expression_value_type(
-            expression,
-            source,
-            &|span| self.expression_at_span(span),
-            &|expression| {
-                self.local_for_expression(expression)
-                    .and_then(|local| self.value_types.local(local))
-            },
-        )
-    }
 }

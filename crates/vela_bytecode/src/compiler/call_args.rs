@@ -1,28 +1,32 @@
 use std::collections::BTreeSet;
 
 use vela_common::{Diagnostic, Span};
+use vela_hir::ids::HirExprId;
 use vela_hir::type_hint::ParamHint;
-use vela_syntax::ast::SyntaxExpression;
-
-use crate::{CallArgument, ScriptCallMode};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(super) struct ScriptCallArgs {
-    pub(super) args: Vec<CallArgument>,
-    pub(super) mode: ScriptCallMode,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub(in crate::compiler) struct SyntaxCallArgument {
+pub(in crate::compiler) struct HirCallArgument {
     pub(in crate::compiler) name: Option<String>,
     pub(in crate::compiler) span: Span,
-    pub(in crate::compiler) value: SyntaxExpression,
+    pub(in crate::compiler) value: HirExprId,
 }
-pub(in crate::compiler) fn resolve_syntax_call_arguments(
+
+pub(in crate::compiler) fn resolve_hir_call_arguments(
     params: &[ParamHint],
-    args: &[SyntaxCallArgument],
+    args: &[HirCallArgument],
     call_span: Span,
-) -> Result<Vec<Option<SyntaxCallArgument>>, Vec<Diagnostic>> {
+) -> Result<Vec<Option<HirCallArgument>>, Vec<Diagnostic>> {
+    resolve_call_arguments(params, args, call_span, |arg| {
+        (arg.name.as_deref(), arg.span)
+    })
+}
+
+fn resolve_call_arguments<T: Clone>(
+    params: &[ParamHint],
+    args: &[T],
+    call_span: Span,
+    fields: impl Fn(&T) -> (Option<&str>, Span),
+) -> Result<Vec<Option<T>>, Vec<Diagnostic>> {
     let mut slots = vec![None; params.len()];
     let mut slot_spans = vec![None; params.len()];
     let mut diagnostics = Vec::new();
@@ -30,10 +34,11 @@ pub(in crate::compiler) fn resolve_syntax_call_arguments(
     let mut seen_named = false;
 
     for arg in args {
+        let (name, span) = fields(arg);
         let Some(index) = argument_index(
             params,
-            arg.name.as_deref(),
-            arg.span,
+            name,
+            span,
             &mut next_positional,
             &mut seen_named,
             &mut diagnostics,
@@ -45,12 +50,12 @@ pub(in crate::compiler) fn resolve_syntax_call_arguments(
             diagnostics.push(duplicate_argument_diagnostic(
                 &params[index].name,
                 previous_span,
-                arg.span,
+                span,
             ));
             continue;
         }
         slots[index] = Some(arg.clone());
-        slot_spans[index] = Some(arg.span);
+        slot_spans[index] = Some(span);
     }
 
     for (slot, param) in slots.iter().zip(params) {

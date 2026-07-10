@@ -1,16 +1,15 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use vela_common::{Diagnostic, SourceId, Span};
-use vela_hir::binding::{BindingMap, LocalBindingKind};
-use vela_hir::body::{HirBodyOwner, HirPathKind};
+use vela_common::{Diagnostic, Span};
+use vela_hir::body::HirBodyOwner;
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
-use vela_syntax::ast::{AstNode, SyntaxExpression};
 
 use crate::Constant;
 
-use super::call_args::SyntaxCallArgument;
+use super::const_eval::evaluate_const_body;
+use super::error::CompileResult;
 use super::value_types::{RuntimeTypeFact, type_hint_value_type};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -84,6 +83,18 @@ impl ConstructorShape {
             .and_then(|field| field.value_type.clone())
     }
 
+    pub(in crate::compiler) fn argument_name_at(&self, index: usize) -> Option<&str> {
+        self.fields
+            .get(index)
+            .map(|field| field.argument_name.as_str())
+    }
+
+    pub(in crate::compiler) fn field_has_default_at(&self, index: usize) -> bool {
+        self.fields
+            .get(index)
+            .is_some_and(|field| field.default.is_some())
+    }
+
     pub(super) fn field_value_type(&self, name: &str) -> Option<RuntimeTypeFact> {
         self.fields
             .iter()
@@ -106,20 +117,13 @@ impl ConstructorShape {
             .collect()
     }
 
-    fn argument_names(&self) -> Vec<&str> {
-        self.fields
-            .iter()
-            .map(|field| field.argument_name.as_str())
-            .collect()
-    }
-
-    fn argument_index(&self, name: &str) -> Option<usize> {
+    pub(in crate::compiler) fn argument_index(&self, name: &str) -> Option<usize> {
         self.fields
             .iter()
             .position(|field| field.argument_name == name)
     }
 
-    fn len(&self) -> usize {
+    pub(in crate::compiler) fn len(&self) -> usize {
         self.fields.len()
     }
 }
@@ -135,61 +139,33 @@ struct ConstructorField {
 #[derive(Clone, Debug, PartialEq)]
 pub(super) struct SchemaFieldDefault {
     pub(super) name: String,
-    pub(super) value: SchemaDefaultValue,
-    pub(super) constants: BTreeMap<String, Constant>,
-    path_facts: Vec<(Span, Vec<String>)>,
-    local_facts: Vec<(Span, String)>,
-}
-
-impl SchemaFieldDefault {
-    pub(super) fn path_for_span(&self, span: Span) -> Option<Vec<String>> {
-        self.path_facts
-            .iter()
-            .find(|(path_span, _)| *path_span == span)
-            .map(|(_, path)| path.clone())
-    }
-
-    pub(super) fn local_name_for_span(&self, span: Span) -> Option<String> {
-        self.local_facts
-            .iter()
-            .find(|(local_span, _)| *local_span == span)
-            .map(|(_, name)| name.clone())
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub(super) struct SchemaDefaultValue {
-    source: SourceId,
-    syntax: SyntaxExpression,
-}
-
-impl SchemaDefaultValue {
-    pub(super) const fn new(source: SourceId, syntax: SyntaxExpression) -> Self {
-        Self { source, syntax }
-    }
-
-    pub(super) const fn source(&self) -> SourceId {
-        self.source
-    }
-
-    pub(super) const fn syntax(&self) -> &SyntaxExpression {
-        &self.syntax
-    }
-
-    pub(super) fn span(&self) -> Span {
-        let range = self.syntax.syntax().text_range();
-        Span::new(self.source, range.start().into(), range.end().into())
-    }
+    pub(super) value: Option<Constant>,
+    pub(super) span: Span,
 }
 
 pub(super) fn source_schema_defaults(
-    default_payloads: &SchemaDefaultPayloads,
     graph: &ModuleGraph,
     module: ModuleId,
     type_symbols: &BTreeMap<HirDeclId, String>,
-    constants: BTreeMap<String, Constant>,
-) -> ScriptSchemaDefaults {
+    constants: &BTreeMap<HirDeclId, Constant>,
+) -> CompileResult<ScriptSchemaDefaults> {
     let mut defaults = ScriptSchemaDefaults::default();
+    let mut evaluated_defaults = Vec::new();
+    for body in graph.bodies() {
+        let HirBodyOwner::SchemaFieldDefault(declaration) = body.owner else {
+            continue;
+        };
+        if !type_symbols.contains_key(&declaration) {
+            continue;
+        }
+        let Some(bindings) = graph.schema_field_default_bindings(body.id) else {
+            continue;
+        };
+        evaluated_defaults.push((
+            body.origin.span,
+            evaluate_const_body(body, bindings, constants)?,
+        ));
+    }
 
     for declaration in module_schema_declarations(graph, module) {
         let Some(metadata) = graph.declaration(declaration) else {
@@ -210,20 +186,9 @@ pub(super) fn source_schema_defaults(
                         name: field.name.clone(),
                         argument_name: field.name.clone(),
                         value_type: field.type_hint.as_ref().and_then(type_hint_value_type),
-                        default: field
-                            .default_value_span
-                            .as_ref()
-                            .and_then(|_| {
-                                default_payloads.struct_field(&metadata.name, &field.name)
-                            })
-                            .map(|value| {
-                                schema_field_default(
-                                    field.name.clone(),
-                                    value,
-                                    constants.clone(),
-                                    graph,
-                                )
-                            }),
+                        default: field.default_value_span.and_then(|span| {
+                            schema_field_default(field.name.clone(), span, &evaluated_defaults)
+                        }),
                     })
                     .collect::<Vec<_>>();
                 defaults
@@ -247,9 +212,7 @@ pub(super) fn source_schema_defaults(
                         &metadata.name,
                         &variant.name,
                         &variant.fields,
-                        default_payloads,
-                        constants.clone(),
-                        graph,
+                        &evaluated_defaults,
                     );
                     defaults.enum_shapes.insert(
                         (type_name.clone(), variant.name.clone()),
@@ -261,7 +224,7 @@ pub(super) fn source_schema_defaults(
         }
     }
 
-    defaults
+    Ok(defaults)
 }
 
 fn module_schema_declarations(graph: &ModuleGraph, module: ModuleId) -> Vec<HirDeclId> {
@@ -284,120 +247,15 @@ fn module_schema_declarations(graph: &ModuleGraph, module: ModuleId) -> Vec<HirD
     schema_declarations
 }
 
-#[derive(Default)]
-pub(super) struct SchemaDefaultPayloads {
-    struct_fields: BTreeMap<(String, String), SchemaDefaultValue>,
-    enum_tuple_fields: BTreeMap<(String, String, usize), SchemaDefaultValue>,
-    enum_record_fields: BTreeMap<(String, String, String), SchemaDefaultValue>,
-}
-
-impl SchemaDefaultPayloads {
-    pub(super) fn insert_struct_field(
-        &mut self,
-        type_name: String,
-        field_name: String,
-        value: SchemaDefaultValue,
-    ) {
-        self.struct_fields.insert((type_name, field_name), value);
-    }
-
-    pub(super) fn insert_enum_tuple_field(
-        &mut self,
-        type_name: String,
-        variant_name: String,
-        index: usize,
-        value: SchemaDefaultValue,
-    ) {
-        self.enum_tuple_fields
-            .insert((type_name, variant_name, index), value);
-    }
-
-    pub(super) fn insert_enum_record_field(
-        &mut self,
-        type_name: String,
-        variant_name: String,
-        field_name: String,
-        value: SchemaDefaultValue,
-    ) {
-        self.enum_record_fields
-            .insert((type_name, variant_name, field_name), value);
-    }
-
-    fn struct_field(&self, type_name: &str, field_name: &str) -> Option<SchemaDefaultValue> {
-        self.struct_fields
-            .get(&(type_name.to_owned(), field_name.to_owned()))
-            .cloned()
-    }
-
-    fn enum_tuple_field(
-        &self,
-        type_name: &str,
-        variant_name: &str,
-        index: usize,
-    ) -> Option<SchemaDefaultValue> {
-        self.enum_tuple_fields
-            .get(&(type_name.to_owned(), variant_name.to_owned(), index))
-            .cloned()
-    }
-
-    fn enum_record_field(
-        &self,
-        type_name: &str,
-        variant_name: &str,
-        field_name: &str,
-    ) -> Option<SchemaDefaultValue> {
-        self.enum_record_fields
-            .get(&(
-                type_name.to_owned(),
-                variant_name.to_owned(),
-                field_name.to_owned(),
-            ))
-            .cloned()
-    }
-}
-
 fn schema_field_default(
     name: String,
-    value: SchemaDefaultValue,
-    constants: BTreeMap<String, Constant>,
-    graph: &ModuleGraph,
-) -> SchemaFieldDefault {
-    let path_facts = value_path_facts_for_source(graph, value.source());
-    let local_facts = schema_default_local_facts(graph, value.span());
-    SchemaFieldDefault {
-        name,
-        value,
-        constants,
-        path_facts,
-        local_facts,
-    }
-}
-
-fn value_path_facts_for_source(graph: &ModuleGraph, source: SourceId) -> Vec<(Span, Vec<String>)> {
-    graph
-        .paths_in_source_by_kind(source, HirPathKind::Value)
-        .map(|path| (path.origin.span, path.path.clone()))
-        .collect()
-}
-
-fn schema_default_local_facts(graph: &ModuleGraph, span: Span) -> Vec<(Span, String)> {
-    let Some(body) = graph.bodies().find(|body| {
-        body.origin.span == span && matches!(body.owner, HirBodyOwner::SchemaFieldDefault(_))
-    }) else {
-        return Vec::new();
-    };
-    let Some(bindings) = graph.schema_field_default_bindings(body.id) else {
-        return Vec::new();
-    };
-    local_facts(bindings)
-}
-
-fn local_facts(bindings: &BindingMap) -> Vec<(Span, String)> {
-    bindings
-        .locals()
-        .filter(|local| local.kind == LocalBindingKind::Let)
-        .map(|local| (local.span, local.name.clone()))
-        .collect()
+    span: Span,
+    values: &[(Span, Option<Constant>)],
+) -> Option<SchemaFieldDefault> {
+    let value = values
+        .iter()
+        .find_map(|(value_span, value)| (*value_span == span).then(|| value.clone()))?;
+    Some(SchemaFieldDefault { name, value, span })
 }
 
 pub(super) fn record_constructor_field_diagnostics(
@@ -439,77 +297,6 @@ pub(super) fn record_constructor_field_diagnostics(
     diagnostics
 }
 
-pub(super) fn syntax_tuple_constructor_diagnostics(
-    type_name: &str,
-    variant: &str,
-    shape: Option<&ConstructorShape>,
-    args: &[SyntaxCallArgument],
-    constructor_span: Span,
-) -> Vec<Diagnostic> {
-    let Some(shape) = shape else {
-        return Vec::new();
-    };
-    let owner = format!("{type_name}::{variant}");
-    match resolve_syntax_tuple_constructor_arguments(shape, &owner, args, constructor_span) {
-        Ok(_) => Vec::new(),
-        Err(diagnostics) => diagnostics,
-    }
-}
-
-pub(super) fn resolve_syntax_tuple_constructor_arguments<'ast>(
-    shape: &ConstructorShape,
-    owner: &str,
-    args: &'ast [SyntaxCallArgument],
-    constructor_span: Span,
-) -> Result<Vec<Option<&'ast SyntaxCallArgument>>, Vec<Diagnostic>> {
-    let mut diagnostics = Vec::new();
-    let mut slots = vec![None; shape.len()];
-    let mut slot_spans = vec![None; shape.len()];
-    let mut next_positional = 0_usize;
-    let mut seen_named = false;
-
-    for arg in args {
-        let Some(index) = tuple_argument_index(
-            shape,
-            arg.name.as_deref(),
-            arg.span,
-            &mut next_positional,
-            &mut seen_named,
-            &mut diagnostics,
-            owner,
-        ) else {
-            continue;
-        };
-
-        if let Some(previous_span) = slot_spans[index] {
-            diagnostics.push(duplicate_constructor_field_diagnostic(
-                shape.fields[index].argument_name.as_str(),
-                previous_span,
-                arg.span,
-            ));
-            continue;
-        }
-        slots[index] = Some(arg);
-        slot_spans[index] = Some(arg.span);
-    }
-
-    for (slot, field) in slots.iter().zip(&shape.fields) {
-        if slot.is_none() && field.default.is_none() {
-            diagnostics.push(missing_field_diagnostic(
-                owner,
-                &field.argument_name,
-                constructor_span,
-            ));
-        }
-    }
-
-    if diagnostics.is_empty() {
-        Ok(slots)
-    } else {
-        Err(diagnostics)
-    }
-}
-
 pub(super) fn unknown_enum_variant_diagnostic(
     enum_name: &str,
     variant: &str,
@@ -534,58 +321,6 @@ fn duplicate_record_field_diagnostics(fields: &[ConstructorFieldUse]) -> Vec<Dia
         }
     }
     diagnostics
-}
-
-fn tuple_argument_index(
-    shape: &ConstructorShape,
-    arg_name: Option<&str>,
-    arg_span: Span,
-    next_positional: &mut usize,
-    seen_named: &mut bool,
-    diagnostics: &mut Vec<Diagnostic>,
-    owner: &str,
-) -> Option<usize> {
-    if let Some(name) = arg_name {
-        *seen_named = true;
-        return match shape.argument_index(name) {
-            Some(index) => Some(index),
-            None => {
-                diagnostics.push(unknown_field_diagnostic(
-                    owner,
-                    name,
-                    arg_span,
-                    shape.argument_names(),
-                ));
-                None
-            }
-        };
-    }
-
-    if *seen_named {
-        diagnostics.push(
-            Diagnostic::error("positional argument after named argument")
-                .with_code("compiler::positional_after_named_argument")
-                .with_span(arg_span)
-                .with_label(
-                    arg_span,
-                    "positional arguments must appear before named arguments",
-                ),
-        );
-        return None;
-    }
-
-    let index = *next_positional;
-    *next_positional = next_positional.saturating_add(1);
-    if index >= shape.len() {
-        diagnostics.push(unknown_field_diagnostic(
-            owner,
-            &index.to_string(),
-            arg_span,
-            shape.argument_names(),
-        ));
-        return None;
-    }
-    Some(index)
 }
 
 fn duplicate_constructor_field_diagnostic(
@@ -629,12 +364,10 @@ fn missing_field_diagnostic(type_name: &str, field: &str, span: Span) -> Diagnos
 }
 
 fn enum_variant_fields(
-    enum_name: &str,
-    variant_name: &str,
+    _enum_name: &str,
+    _variant_name: &str,
     fields: &EnumVariantFieldsHint,
-    default_payloads: &SchemaDefaultPayloads,
-    constants: BTreeMap<String, Constant>,
-    graph: &ModuleGraph,
+    evaluated_defaults: &[(Span, Option<Constant>)],
 ) -> Vec<ConstructorField> {
     match fields {
         EnumVariantFieldsHint::Unit => Vec::new(),
@@ -645,13 +378,9 @@ fn enum_variant_fields(
                 name: index.to_string(),
                 argument_name: field.name.clone(),
                 value_type: field.type_hint.as_ref().and_then(type_hint_value_type),
-                default: field
-                    .default_value_span
-                    .as_ref()
-                    .and_then(|_| default_payloads.enum_tuple_field(enum_name, variant_name, index))
-                    .map(|value| {
-                        schema_field_default(index.to_string(), value, constants.clone(), graph)
-                    }),
+                default: field.default_value_span.and_then(|span| {
+                    schema_field_default(index.to_string(), span, evaluated_defaults)
+                }),
             })
             .collect(),
         EnumVariantFieldsHint::Record(fields) => fields
@@ -660,15 +389,9 @@ fn enum_variant_fields(
                 name: field.name.clone(),
                 argument_name: field.name.clone(),
                 value_type: field.type_hint.as_ref().and_then(type_hint_value_type),
-                default: field
-                    .default_value_span
-                    .as_ref()
-                    .and_then(|_| {
-                        default_payloads.enum_record_field(enum_name, variant_name, &field.name)
-                    })
-                    .map(|value| {
-                        schema_field_default(field.name.clone(), value, constants.clone(), graph)
-                    }),
+                default: field.default_value_span.and_then(|span| {
+                    schema_field_default(field.name.clone(), span, evaluated_defaults)
+                }),
             })
             .collect(),
     }

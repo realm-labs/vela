@@ -1,6 +1,5 @@
 //! Minimal AST-to-bytecode compiler for the M2 VM loop.
 
-mod body_payloads;
 mod cache_sites;
 mod call_args;
 mod calls;
@@ -12,7 +11,8 @@ mod expected_exprs;
 mod expression_checks;
 mod expressions;
 mod field_slots;
-mod function_payloads;
+mod function_inputs;
+mod hir_lowering;
 mod host_paths;
 mod lambdas;
 mod operators;
@@ -26,7 +26,6 @@ mod schema_defaults;
 mod script_impls;
 mod script_types;
 mod semantic;
-mod syntax_payloads;
 mod value_types;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -48,7 +47,6 @@ use crate::{
     TryPropagateFamily, UnlinkedCodeObject, UnlinkedGuardContext, UnlinkedInstruction,
     UnlinkedInstructionKind, UnlinkedProgram, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
 };
-use body_payloads::CompilerBodyPayload;
 use cache_sites::{attach_cache_site, cache_site_kind};
 use control_flow::LoopContext;
 use error::{CompileError, CompileErrorKind, CompileResult};
@@ -155,7 +153,7 @@ fn compile_function_source_inner<'registry>(
     let derived_operator_traits =
         derived_operator_traits(&semantic.script_metadata_graph(), &type_symbols);
     let const_values = semantic.const_values()?;
-    let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values);
+    let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values)?;
     let facts = CompilerFacts {
         script_function_symbols,
         script_function_signatures,
@@ -248,7 +246,7 @@ fn compile_program_source_inner<'registry>(
     let derived_operator_traits =
         derived_operator_traits(&semantic.script_metadata_graph(), &type_symbols);
     let const_values = semantic.const_values()?;
-    let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values);
+    let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values)?;
     let facts = CompilerFacts {
         script_function_symbols,
         script_function_signatures,
@@ -339,7 +337,7 @@ fn compile_module_sources_inner<'registry>(
     let derived_operator_traits =
         derived_operator_traits(&semantic.script_metadata_graph(), &type_symbols);
     let const_values = semantic.const_values()?;
-    let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values);
+    let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values)?;
     let facts = CompilerFacts {
         script_function_symbols,
         script_function_signatures,
@@ -727,7 +725,7 @@ struct Compiler<'ast, 'registry> {
     next_register: u16,
     param_defaults: Vec<Option<ParamDefaultValue>>,
     return_type: Option<RuntimeTypeFact>,
-    body: CompilerBodyPayload<'ast>,
+    body: vela_hir::ids::HirBodyId,
     facts: CompilerFacts<'registry>,
     loop_stack: Vec<LoopContext>,
 }
@@ -753,7 +751,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn new_with_param_defaults(
         code_name: String,
-        body: CompilerBodyPayload<'ast>,
+        body: vela_hir::ids::HirBodyId,
         param_defaults: Vec<Option<ParamDefaultValue>>,
         signature: &FunctionSignature,
         hir: CompilerHirContext<'ast>,
@@ -762,19 +760,11 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         Self::new_body(code_name, param_defaults, signature, body, hir, facts)
     }
 
-    fn hir_block_body_payload(
-        &self,
-        source: SourceId,
-        block: vela_syntax::ast::SyntaxBlock,
-    ) -> CompileResult<CompilerBodyPayload<'ast>> {
-        CompilerBodyPayload::hir_block(source, block, &self.hir_bodies)
-    }
-
     fn new_body(
         code_name: String,
         param_defaults: Vec<Option<ParamDefaultValue>>,
         signature: &FunctionSignature,
-        body: CompilerBodyPayload<'ast>,
+        body: vela_hir::ids::HirBodyId,
         hir: CompilerHirContext<'ast>,
         facts: CompilerFacts<'registry>,
     ) -> CompileResult<Self> {
@@ -876,7 +866,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         code_name: String,
         param_defaults: Vec<Option<ParamDefaultValue>>,
         signature: &FunctionSignature,
-        body: CompilerBodyPayload<'ast>,
+        body: vela_hir::ids::HirBodyId,
         hir: CompilerHirContext<'ast>,
         receiver_type: &str,
         facts: CompilerFacts<'registry>,
@@ -892,7 +882,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         name: String,
         _lambda_span: Span,
         params: &[LambdaParam],
-        body: CompilerBodyPayload<'ast>,
+        body: vela_hir::ids::HirBodyId,
         captures: &[LambdaCapture],
         hir: CompilerHirContext<'ast>,
         facts: CompilerFacts<'registry>,
@@ -1014,8 +1004,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn compile(mut self) -> CompileResult<UnlinkedCodeObject> {
         self.compile_param_defaults()?;
-        let statements = self.body.statement_payloads()?;
-        let returned = self.compile_statement_payloads(&statements)?;
+        let returned = self.compile_hir_root_body()?;
         if !returned {
             let unit = self.emit_constant(Constant::Unit)?;
             self.emit(UnlinkedInstructionKind::Return { src: unit });
@@ -1047,11 +1036,6 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             .find_map(|body| body.field(expression))
     }
 
-    pub(in crate::compiler) fn hir_field_for_span(&self, span: Span) -> Option<&HirField> {
-        let expression = self.expression_at_span(span)?;
-        self.hir_field_for_expression(expression)
-    }
-
     pub(in crate::compiler) fn hir_index_for_expression(
         &self,
         expression: HirExprId,
@@ -1059,21 +1043,6 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         self.hir_bodies
             .iter()
             .find_map(|body| body.index(expression))
-    }
-
-    pub(in crate::compiler) fn hir_index_for_span(&self, span: Span) -> Option<&HirIndex> {
-        let expression = self.expression_at_span(span)?;
-        self.hir_index_for_expression(expression)
-    }
-
-    pub(in crate::compiler) fn hir_field_name_for_span(&self, span: Span) -> Option<&str> {
-        self.hir_field_for_span(span)
-            .map(|field| field.name.as_str())
-    }
-
-    pub(in crate::compiler) fn hir_field_receiver_span_for_span(&self, span: Span) -> Option<Span> {
-        let field = self.hir_field_for_span(span)?;
-        self.expression_span(field.receiver)
     }
 
     pub(in crate::compiler) fn binding_resolution_for_expression(
@@ -1104,29 +1073,6 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             return None;
         };
         Some(*local)
-    }
-
-    pub(in crate::compiler) fn let_local_binding_for_patterns(
-        &self,
-        patterns: &[HirPatternId],
-    ) -> Option<(HirLocalId, Option<HirTypeHint>)> {
-        patterns.iter().copied().find_map(|pattern_id| {
-            let local = self.local_for_pattern(pattern_id, LocalBindingKind::Let)?;
-            let binding = self.bindings.local(local)?;
-            Some((local, binding.type_hint.clone()))
-        })
-    }
-
-    pub(in crate::compiler) fn let_binding_name_for_patterns(
-        &self,
-        patterns: &[HirPatternId],
-    ) -> Option<String> {
-        patterns.iter().copied().find_map(|pattern_id| {
-            let local = self.local_for_pattern(pattern_id, LocalBindingKind::Let)?;
-            self.bindings
-                .local(local)
-                .map(|binding| binding.name.clone())
-        })
     }
 
     pub(in crate::compiler) fn local_for_pattern(
@@ -1175,7 +1121,10 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         Ok(())
     }
 
-    fn script_function_call(&self, call: HirExprId) -> Option<(HirDeclId, String)> {
+    pub(in crate::compiler) fn script_function_call(
+        &self,
+        call: HirExprId,
+    ) -> Option<(HirDeclId, String)> {
         let Some(BindingResolution::Declaration(declaration)) = self.call_callee_resolution(call)
         else {
             return None;
@@ -1187,7 +1136,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             .map(|name| (*declaration, name))
     }
 
-    fn local_call_callee(&self, call: HirExprId) -> Option<HirLocalId> {
+    pub(in crate::compiler) fn local_call_callee(&self, call: HirExprId) -> Option<HirLocalId> {
         let Some(BindingResolution::Local(local)) = self.call_callee_resolution(call) else {
             return None;
         };
@@ -1226,7 +1175,11 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         self.facts.script_field_slots.record(type_name, field)
     }
 
-    fn script_method_id_for_type(&self, type_name: &str, method: &str) -> Option<MethodId> {
+    pub(in crate::compiler) fn script_method_id_for_type(
+        &self,
+        type_name: &str,
+        method: &str,
+    ) -> Option<MethodId> {
         self.facts
             .script_method_ids
             .get(&(type_name.to_owned(), method.to_owned()))

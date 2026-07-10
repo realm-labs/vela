@@ -1,40 +1,31 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use vela_common::{SourceId, Span};
-use vela_hir::binding::{BindingMap, LocalBindingKind};
-use vela_hir::body::{HirBody, HirPathKind};
+use vela_common::SourceId;
+use vela_hir::binding::BindingMap;
+use vela_hir::body::HirBody;
 use vela_hir::ids::{HirDeclId, ModuleId};
-use vela_hir::module_graph::{
-    DeclarationKind, ImportResolution, ModuleGraph, ModulePath, ModuleSource,
-};
+use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath, ModuleSource};
 use vela_hir::type_hint::{FunctionSignature, ParamHint};
-use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::TextRange;
-use vela_syntax::ast::{AstNode, SyntaxFunctionItem, SyntaxSourceFile};
 use vela_syntax::parse::parse_source_with_id;
 
 use crate::Constant;
 
-use super::const_eval::evaluate_const_expr;
+use super::const_eval::evaluate_const_body;
 use super::error::{CompileError, CompileErrorKind, CompileResult};
 use super::field_slots::ScriptFieldSlots;
-use super::function_payloads::FunctionBodyPayload;
+use super::function_inputs::FunctionCompileInput;
 use super::param_defaults::param_default_values;
 use super::schema_defaults::{ScriptSchemaDefaults, source_schema_defaults};
 use super::script_impls;
-use super::syntax_payloads::{const_value_payloads, schema_default_payloads};
 
 pub(super) struct SemanticSource {
     source: SourceId,
     text: String,
-    syntax: SyntaxParse<SyntaxSourceFile>,
     graph: ModuleGraph,
     module: ModuleId,
 }
 
 pub(super) struct SemanticModules {
-    syntax: BTreeMap<ModuleId, SyntaxParse<SyntaxSourceFile>>,
-    source_ids: BTreeMap<ModuleId, SourceId>,
     graph: ModuleGraph,
     modules: Vec<ModuleId>,
 }
@@ -55,7 +46,7 @@ impl SemanticSource {
         &self,
         name: &str,
     ) -> Option<(
-        FunctionBodyPayload<'_>,
+        FunctionCompileInput,
         &FunctionSignature,
         &BindingMap,
         Vec<&HirBody>,
@@ -64,8 +55,8 @@ impl SemanticSource {
         let signature = self.graph.function_signature(declaration)?;
         let bindings = self.graph.bindings(declaration)?;
         let hir_body = self.graph.function_body(declaration)?;
-        let payload = function_body_payload(self.source, &self.syntax, &self.graph, hir_body)?;
-        Some((payload, signature, bindings, self.graph.bodies().collect()))
+        let input = function_compile_input(&self.graph, hir_body, signature)?;
+        Some((input, signature, bindings, self.graph.bodies().collect()))
     }
 
     pub(super) fn script_function_names(&self) -> BTreeSet<String> {
@@ -162,56 +153,28 @@ impl SemanticSource {
         &self,
         type_symbols: &BTreeMap<HirDeclId, String>,
         const_values: &BTreeMap<HirDeclId, Constant>,
-    ) -> ScriptSchemaDefaults {
-        let payloads = schema_default_payloads(self.source, &self.syntax, &self.graph, self.module);
-        source_schema_defaults(
-            &payloads,
-            &self.graph,
-            self.module,
-            type_symbols,
-            self.const_values_by_name(const_values),
-        )
+    ) -> CompileResult<ScriptSchemaDefaults> {
+        source_schema_defaults(&self.graph, self.module, type_symbols, const_values)
     }
 
     pub(super) fn const_values(&self) -> CompileResult<BTreeMap<HirDeclId, Constant>> {
         let mut values_by_declaration = BTreeMap::new();
-        let mut values_by_name = BTreeMap::new();
-        let payloads = const_value_payloads(self.source, &self.syntax, &self.graph, self.module);
-        for (declaration, name) in module_const_declarations(&self.graph, self.module) {
-            let Some(expr) = payloads.get(&declaration) else {
+        for (declaration, _) in module_const_declarations(&self.graph, self.module) {
+            let Some(body) = self.graph.const_initializer_body(declaration) else {
                 continue;
             };
-            let bindings = self.graph.const_initializer_bindings(declaration);
-            if let Some(value) = evaluate_const_expr(
-                self.source,
-                expr,
-                &values_by_name,
-                &|span| hir_value_path_for_span(&self.graph, span),
-                &|span| hir_let_local_name_for_span(bindings, span),
-            )? {
-                values_by_declaration.insert(declaration, value.clone());
-                values_by_name.insert(name, value);
+            let Some(bindings) = self.graph.const_initializer_bindings(declaration) else {
+                continue;
+            };
+            if let Some(value) = evaluate_const_body(body, bindings, &values_by_declaration)? {
+                values_by_declaration.insert(declaration, value);
             }
         }
         Ok(values_by_declaration)
     }
 
     pub(super) fn script_impl_methods(&self) -> Vec<script_impls::ScriptImplMethod<'_>> {
-        script_impls::source_methods(&self.syntax, self.source, &self.graph, self.module)
-    }
-
-    fn const_values_by_name(
-        &self,
-        const_values: &BTreeMap<HirDeclId, Constant>,
-    ) -> BTreeMap<String, Constant> {
-        let mut values = BTreeMap::new();
-        for (declaration, name) in module_const_declarations(&self.graph, self.module) {
-            let Some(value) = const_values.get(&declaration).cloned() else {
-                continue;
-            };
-            values.insert(name, value);
-        }
-        values
+        script_impls::source_methods(&self.graph, self.module)
     }
 
     fn function_declaration(&self, name: &str) -> Option<HirDeclId> {
@@ -230,19 +193,16 @@ impl SemanticModules {
         &self,
         declaration: HirDeclId,
     ) -> Option<(
-        FunctionBodyPayload<'_>,
+        FunctionCompileInput,
         &FunctionSignature,
         &BindingMap,
         Vec<&HirBody>,
     )> {
-        let metadata = self.graph.declaration(declaration)?;
         let signature = self.graph.function_signature(declaration)?;
         let bindings = self.graph.bindings(declaration)?;
-        let syntax = self.syntax.get(&metadata.module)?;
-        let source = self.source_ids.get(&metadata.module).copied()?;
         let hir_body = self.graph.function_body(declaration)?;
-        let payload = function_body_payload(source, syntax, &self.graph, hir_body)?;
-        Some((payload, signature, bindings, self.graph.bodies().collect()))
+        let input = function_compile_input(&self.graph, hir_body, signature)?;
+        Some((input, signature, bindings, self.graph.bodies().collect()))
     }
 
     pub(super) fn script_function_declarations(&self) -> BTreeSet<HirDeclId> {
@@ -352,25 +312,17 @@ impl SemanticModules {
         &self,
         type_symbols: &BTreeMap<HirDeclId, String>,
         const_values: &BTreeMap<HirDeclId, Constant>,
-    ) -> ScriptSchemaDefaults {
+    ) -> CompileResult<ScriptSchemaDefaults> {
         let mut defaults = ScriptSchemaDefaults::default();
         for module in &self.modules {
-            let Some(syntax) = self.syntax.get(module) else {
-                continue;
-            };
-            let Some(source) = self.source_ids.get(module).copied() else {
-                continue;
-            };
-            let payloads = schema_default_payloads(source, syntax, &self.graph, *module);
             defaults.merge(source_schema_defaults(
-                &payloads,
                 &self.graph,
                 *module,
                 type_symbols,
-                self.const_values_by_name(*module, const_values),
-            ));
+                const_values,
+            )?);
         }
-        defaults
+        Ok(defaults)
     }
 
     pub(super) fn const_values(&self) -> CompileResult<BTreeMap<HirDeclId, Constant>> {
@@ -378,37 +330,20 @@ impl SemanticModules {
         loop {
             let mut progressed = false;
             for module in &self.modules {
-                let mut previous_values = BTreeMap::new();
-                let Some(parsed) = self.syntax.get(module) else {
-                    continue;
-                };
-                let Some(source) = self.source_ids.get(module).copied() else {
-                    continue;
-                };
-                let payloads = const_value_payloads(source, parsed, &self.graph, *module);
-                for (declaration, name) in module_const_declarations(&self.graph, *module) {
-                    if let Some(value) = values_by_declaration.get(&declaration).cloned() {
-                        previous_values.insert(name.clone(), value);
+                for (declaration, _) in module_const_declarations(&self.graph, *module) {
+                    if values_by_declaration.contains_key(&declaration) {
                         continue;
                     }
-
-                    let Some(expr) = payloads.get(&declaration) else {
+                    let Some(body) = self.graph.const_initializer_body(declaration) else {
                         continue;
                     };
-
-                    let mut values_by_name =
-                        self.imported_const_values(*module, &values_by_declaration);
-                    values_by_name.extend(previous_values.clone());
-                    let bindings = self.graph.const_initializer_bindings(declaration);
-                    if let Some(value) = evaluate_const_expr(
-                        source,
-                        expr,
-                        &values_by_name,
-                        &|span| hir_value_path_for_span(&self.graph, span),
-                        &|span| hir_let_local_name_for_span(bindings, span),
-                    )? {
-                        values_by_declaration.insert(declaration, value.clone());
-                        previous_values.insert(name, value);
+                    let Some(bindings) = self.graph.const_initializer_bindings(declaration) else {
+                        continue;
+                    };
+                    if let Some(value) =
+                        evaluate_const_body(body, bindings, &values_by_declaration)?
+                    {
+                        values_by_declaration.insert(declaration, value);
                         progressed = true;
                     }
                 }
@@ -421,52 +356,7 @@ impl SemanticModules {
     }
 
     pub(super) fn script_impl_methods(&self) -> Vec<script_impls::ScriptImplMethod<'_>> {
-        script_impls::module_methods(&self.syntax, &self.source_ids, &self.graph)
-    }
-
-    fn const_values_by_name(
-        &self,
-        module: ModuleId,
-        const_values: &BTreeMap<HirDeclId, Constant>,
-    ) -> BTreeMap<String, Constant> {
-        let mut values = self.imported_const_values(module, const_values);
-        for (declaration, name) in module_const_declarations(&self.graph, module) {
-            let Some(value) = const_values.get(&declaration).cloned() else {
-                continue;
-            };
-            values.insert(name, value);
-        }
-        values
-    }
-
-    fn imported_const_values(
-        &self,
-        module: ModuleId,
-        values_by_declaration: &BTreeMap<HirDeclId, Constant>,
-    ) -> BTreeMap<String, Constant> {
-        let mut values = BTreeMap::new();
-        let Some(imports) = self.graph.imports(module) else {
-            return values;
-        };
-        for import in imports {
-            let Some(ImportResolution::Declaration(declaration)) = import.resolution else {
-                continue;
-            };
-            let Some(metadata) = self.graph.declaration(declaration) else {
-                continue;
-            };
-            if metadata.kind != DeclarationKind::Const {
-                continue;
-            }
-            let Some(value) = values_by_declaration.get(&declaration).cloned() else {
-                continue;
-            };
-            let Some(name) = import.alias.clone().or_else(|| import.path.last().cloned()) else {
-                continue;
-            };
-            values.insert(name, value);
-        }
-        values
+        script_impls::module_methods(&self.graph)
     }
 }
 
@@ -486,39 +376,15 @@ fn module_const_declarations(graph: &ModuleGraph, module: ModuleId) -> Vec<(HirD
     consts
 }
 
-fn hir_value_path_for_span(graph: &ModuleGraph, span: Span) -> Option<Vec<String>> {
-    graph
-        .paths_in_source_by_kind(span.source, HirPathKind::Value)
-        .find(|path| path.origin.span == span)
-        .map(|path| path.path.clone())
-}
-
-fn hir_let_local_name_for_span(bindings: Option<&BindingMap>, span: Span) -> Option<String> {
-    bindings?
-        .locals()
-        .find(|local| local.kind == LocalBindingKind::Let && local.span == span)
-        .map(|local| local.name.clone())
-}
-
-fn function_body_payload<'ast>(
-    source: SourceId,
-    syntax: &SyntaxParse<SyntaxSourceFile>,
+fn function_compile_input(
     graph: &ModuleGraph,
-    hir_body: &'ast HirBody,
-) -> Option<FunctionBodyPayload<'ast>> {
-    let syntax_function = syntax.tree().functions().find(|function| {
-        syntax_function_body_span(source, function) == Some(hir_body.origin.span)
-    })?;
-    let body = super::body_payloads::CompilerBodyPayload::hir_body(
-        source,
-        syntax_function.body()?,
-        hir_body,
-    );
-    let param_defaults =
-        param_default_values(source, syntax_function.param_list(), graph, hir_body);
-    Some(FunctionBodyPayload {
+    hir_body: &HirBody,
+    signature: &FunctionSignature,
+) -> Option<FunctionCompileInput> {
+    let param_defaults = param_default_values(hir_body, signature);
+    Some(FunctionCompileInput {
         name: function_name_for_body(hir_body, graph)?,
-        body,
+        body: hir_body.id,
         param_defaults,
     })
 }
@@ -530,15 +396,6 @@ fn function_name_for_body(hir_body: &HirBody, graph: &ModuleGraph) -> Option<Str
     graph
         .declaration(declaration)
         .map(|metadata| metadata.name.clone())
-}
-
-fn syntax_function_body_span(source: SourceId, function: &SyntaxFunctionItem) -> Option<Span> {
-    let body = function.body()?;
-    Some(span_for(source, body.syntax().text_range()))
-}
-
-fn span_for(source: SourceId, range: TextRange) -> Span {
-    Span::new(source, range.start().into(), range.end().into())
 }
 
 pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResult<SemanticSource> {
@@ -559,7 +416,6 @@ pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResu
         Ok(SemanticSource {
             source,
             text: text.to_owned(),
-            syntax,
             graph,
             module,
         })
@@ -585,26 +441,17 @@ pub(super) fn parse_semantic_modules(sources: &[ModuleSource]) -> CompileResult<
         )));
     }
 
-    let mut syntax = BTreeMap::new();
-    let mut source_ids = BTreeMap::new();
     let mut graph = ModuleGraph::new();
     let mut modules = Vec::new();
 
-    for (source, syntax_file) in syntax_sources {
+    for (source, _) in syntax_sources {
         let module = graph.add_source(source.clone());
-        syntax.insert(module, syntax_file);
-        source_ids.insert(module, source.id);
         modules.push(module);
     }
 
     graph.resolve_imports();
     if graph.diagnostics().is_empty() {
-        Ok(SemanticModules {
-            syntax,
-            source_ids,
-            graph,
-            modules,
-        })
+        Ok(SemanticModules { graph, modules })
     } else {
         Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
             graph.diagnostics().to_vec(),

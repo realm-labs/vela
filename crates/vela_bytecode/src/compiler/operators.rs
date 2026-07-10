@@ -1,72 +1,31 @@
-use vela_syntax::ast::{AssignOp, BinaryOp};
+use vela_hir::body::HirBinaryOp;
 
 use crate::{BinaryLiteralOp, I64CompareOp, Register, UnlinkedInstructionKind};
 
-pub(super) fn binary_literal_op(op: BinaryOp) -> Option<BinaryLiteralOp> {
+pub(super) fn binary_literal_op(op: HirBinaryOp) -> Option<BinaryLiteralOp> {
     match op {
-        BinaryOp::Add => Some(BinaryLiteralOp::Add),
-        BinaryOp::Sub => Some(BinaryLiteralOp::Sub),
-        BinaryOp::Mul => Some(BinaryLiteralOp::Mul),
-        BinaryOp::Div => Some(BinaryLiteralOp::Div),
-        BinaryOp::Rem => Some(BinaryLiteralOp::Rem),
-        BinaryOp::Less => Some(BinaryLiteralOp::Less),
-        BinaryOp::LessEqual => Some(BinaryLiteralOp::LessEqual),
-        BinaryOp::Greater => Some(BinaryLiteralOp::Greater),
-        BinaryOp::GreaterEqual => Some(BinaryLiteralOp::GreaterEqual),
-        BinaryOp::Equal
-        | BinaryOp::NotEqual
-        | BinaryOp::IdentityEqual
-        | BinaryOp::IdentityNotEqual
-        | BinaryOp::Range
-        | BinaryOp::RangeInclusive
-        | BinaryOp::Or
-        | BinaryOp::And => None,
-    }
-}
-
-pub(super) fn non_logical_binary_instruction(
-    op: BinaryOp,
-    dst: Register,
-    lhs: Register,
-    rhs: Register,
-) -> Option<UnlinkedInstructionKind> {
-    match op {
-        BinaryOp::Add => Some(UnlinkedInstructionKind::Add { dst, lhs, rhs }),
-        BinaryOp::Sub => Some(UnlinkedInstructionKind::Sub { dst, lhs, rhs }),
-        BinaryOp::Mul => Some(UnlinkedInstructionKind::Mul { dst, lhs, rhs }),
-        BinaryOp::Div => Some(UnlinkedInstructionKind::Div { dst, lhs, rhs }),
-        BinaryOp::Rem => Some(UnlinkedInstructionKind::Rem { dst, lhs, rhs }),
-        BinaryOp::Equal => Some(UnlinkedInstructionKind::Equal { dst, lhs, rhs }),
-        BinaryOp::NotEqual => Some(UnlinkedInstructionKind::NotEqual { dst, lhs, rhs }),
-        BinaryOp::IdentityEqual => Some(UnlinkedInstructionKind::IdentityEqual { dst, lhs, rhs }),
-        BinaryOp::IdentityNotEqual => {
-            Some(UnlinkedInstructionKind::IdentityNotEqual { dst, lhs, rhs })
-        }
-        BinaryOp::Less => Some(UnlinkedInstructionKind::Less { dst, lhs, rhs }),
-        BinaryOp::LessEqual => Some(UnlinkedInstructionKind::LessEqual { dst, lhs, rhs }),
-        BinaryOp::Greater => Some(UnlinkedInstructionKind::Greater { dst, lhs, rhs }),
-        BinaryOp::GreaterEqual => Some(UnlinkedInstructionKind::GreaterEqual { dst, lhs, rhs }),
-        BinaryOp::Range | BinaryOp::RangeInclusive | BinaryOp::Or | BinaryOp::And => None,
-    }
-}
-
-pub(super) fn i64_binary_instruction(
-    op: BinaryOp,
-    dst: Register,
-    lhs: Register,
-    rhs: Register,
-) -> Option<UnlinkedInstructionKind> {
-    match op {
-        BinaryOp::Add => Some(UnlinkedInstructionKind::I64Add { dst, lhs, rhs }),
-        BinaryOp::Sub => Some(UnlinkedInstructionKind::I64Sub { dst, lhs, rhs }),
-        BinaryOp::Mul => Some(UnlinkedInstructionKind::I64Mul { dst, lhs, rhs }),
-        BinaryOp::Rem => Some(UnlinkedInstructionKind::I64Rem { dst, lhs, rhs }),
-        _ => None,
+        HirBinaryOp::Add => Some(BinaryLiteralOp::Add),
+        HirBinaryOp::Sub => Some(BinaryLiteralOp::Sub),
+        HirBinaryOp::Mul => Some(BinaryLiteralOp::Mul),
+        HirBinaryOp::Div => Some(BinaryLiteralOp::Div),
+        HirBinaryOp::Rem => Some(BinaryLiteralOp::Rem),
+        HirBinaryOp::Less => Some(BinaryLiteralOp::Less),
+        HirBinaryOp::LessEqual => Some(BinaryLiteralOp::LessEqual),
+        HirBinaryOp::Greater => Some(BinaryLiteralOp::Greater),
+        HirBinaryOp::GreaterEqual => Some(BinaryLiteralOp::GreaterEqual),
+        HirBinaryOp::Equal
+        | HirBinaryOp::NotEqual
+        | HirBinaryOp::IdentityEqual
+        | HirBinaryOp::IdentityNotEqual
+        | HirBinaryOp::Range
+        | HirBinaryOp::RangeInclusive
+        | HirBinaryOp::Or
+        | HirBinaryOp::And => None,
     }
 }
 
 pub(super) fn i64_immediate_instruction(
-    op: BinaryOp,
+    op: HirBinaryOp,
     dst: Register,
     lhs: Register,
     imm: i64,
@@ -75,16 +34,16 @@ pub(super) fn i64_immediate_instruction(
         return None;
     }
     match op {
-        BinaryOp::Add => Some(UnlinkedInstructionKind::I64AddImm { dst, lhs, imm }),
-        BinaryOp::Sub => Some(UnlinkedInstructionKind::I64SubImm { dst, lhs, imm }),
-        BinaryOp::Mul => Some(UnlinkedInstructionKind::I64MulImm { dst, lhs, imm }),
-        BinaryOp::Rem => Some(UnlinkedInstructionKind::I64RemImm { dst, lhs, imm }),
-        BinaryOp::Equal
-        | BinaryOp::NotEqual
-        | BinaryOp::Less
-        | BinaryOp::LessEqual
-        | BinaryOp::Greater
-        | BinaryOp::GreaterEqual => Some(UnlinkedInstructionKind::I64CmpImm {
+        HirBinaryOp::Add => Some(UnlinkedInstructionKind::I64AddImm { dst, lhs, imm }),
+        HirBinaryOp::Sub => Some(UnlinkedInstructionKind::I64SubImm { dst, lhs, imm }),
+        HirBinaryOp::Mul => Some(UnlinkedInstructionKind::I64MulImm { dst, lhs, imm }),
+        HirBinaryOp::Rem => Some(UnlinkedInstructionKind::I64RemImm { dst, lhs, imm }),
+        HirBinaryOp::Equal
+        | HirBinaryOp::NotEqual
+        | HirBinaryOp::Less
+        | HirBinaryOp::LessEqual
+        | HirBinaryOp::Greater
+        | HirBinaryOp::GreaterEqual => Some(UnlinkedInstructionKind::I64CmpImm {
             dst,
             op: i64_compare_op(op)?,
             lhs,
@@ -94,61 +53,30 @@ pub(super) fn i64_immediate_instruction(
     }
 }
 
-pub(super) fn i64_immediate_op_supported(op: BinaryOp, imm: i64) -> bool {
+fn i64_immediate_op_supported(op: HirBinaryOp, imm: i64) -> bool {
     matches!(
         op,
-        BinaryOp::Add
-            | BinaryOp::Sub
-            | BinaryOp::Mul
-            | BinaryOp::Equal
-            | BinaryOp::NotEqual
-            | BinaryOp::Less
-            | BinaryOp::LessEqual
-            | BinaryOp::Greater
-            | BinaryOp::GreaterEqual
-    ) || matches!(op, BinaryOp::Rem if imm != 0)
+        HirBinaryOp::Add
+            | HirBinaryOp::Sub
+            | HirBinaryOp::Mul
+            | HirBinaryOp::Equal
+            | HirBinaryOp::NotEqual
+            | HirBinaryOp::Less
+            | HirBinaryOp::LessEqual
+            | HirBinaryOp::Greater
+            | HirBinaryOp::GreaterEqual
+    ) || matches!(op, HirBinaryOp::Rem if imm != 0)
 }
 
-pub(super) fn i64_compare_op(op: BinaryOp) -> Option<I64CompareOp> {
+pub(super) fn i64_compare_op(op: HirBinaryOp) -> Option<I64CompareOp> {
     match op {
-        BinaryOp::Equal => Some(I64CompareOp::Equal),
-        BinaryOp::NotEqual => Some(I64CompareOp::NotEqual),
-        BinaryOp::IdentityEqual | BinaryOp::IdentityNotEqual => None,
-        BinaryOp::Less => Some(I64CompareOp::Less),
-        BinaryOp::LessEqual => Some(I64CompareOp::LessEqual),
-        BinaryOp::Greater => Some(I64CompareOp::Greater),
-        BinaryOp::GreaterEqual => Some(I64CompareOp::GreaterEqual),
+        HirBinaryOp::Equal => Some(I64CompareOp::Equal),
+        HirBinaryOp::NotEqual => Some(I64CompareOp::NotEqual),
+        HirBinaryOp::IdentityEqual | HirBinaryOp::IdentityNotEqual => None,
+        HirBinaryOp::Less => Some(I64CompareOp::Less),
+        HirBinaryOp::LessEqual => Some(I64CompareOp::LessEqual),
+        HirBinaryOp::Greater => Some(I64CompareOp::Greater),
+        HirBinaryOp::GreaterEqual => Some(I64CompareOp::GreaterEqual),
         _ => None,
-    }
-}
-
-pub(super) fn compound_assignment_instruction(
-    op: AssignOp,
-    dst: Register,
-    lhs: Register,
-    rhs: Register,
-) -> Option<UnlinkedInstructionKind> {
-    match op {
-        AssignOp::Add => Some(UnlinkedInstructionKind::Add { dst, lhs, rhs }),
-        AssignOp::Sub => Some(UnlinkedInstructionKind::Sub { dst, lhs, rhs }),
-        AssignOp::Mul => Some(UnlinkedInstructionKind::Mul { dst, lhs, rhs }),
-        AssignOp::Div => Some(UnlinkedInstructionKind::Div { dst, lhs, rhs }),
-        AssignOp::Rem => Some(UnlinkedInstructionKind::Rem { dst, lhs, rhs }),
-        AssignOp::Set => None,
-    }
-}
-
-pub(super) fn i64_compound_assignment_instruction(
-    op: AssignOp,
-    dst: Register,
-    lhs: Register,
-    rhs: Register,
-) -> Option<UnlinkedInstructionKind> {
-    match op {
-        AssignOp::Add => Some(UnlinkedInstructionKind::I64Add { dst, lhs, rhs }),
-        AssignOp::Sub => Some(UnlinkedInstructionKind::I64Sub { dst, lhs, rhs }),
-        AssignOp::Mul => Some(UnlinkedInstructionKind::I64Mul { dst, lhs, rhs }),
-        AssignOp::Rem => Some(UnlinkedInstructionKind::I64Rem { dst, lhs, rhs }),
-        AssignOp::Div | AssignOp::Set => None,
     }
 }

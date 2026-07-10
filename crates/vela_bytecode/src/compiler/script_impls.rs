@@ -1,19 +1,12 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
-use vela_common::{SourceId, Span};
 use vela_def::MethodId;
 use vela_hir::binding::BindingMap;
 use vela_hir::body::HirBody;
-use vela_hir::ids::ModuleId;
+use vela_hir::ids::{HirBodyId, ModuleId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
-use vela_hir::type_hint::{FunctionSignature, ImplMetadata, ImplMetadataKind, TraitShape};
-use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::TextRange;
-use vela_syntax::ast::{
-    AstNode, SyntaxImplItem, SyntaxImplMethod, SyntaxSourceFile, SyntaxTraitItem, SyntaxTraitMethod,
-};
+use vela_hir::type_hint::{FunctionSignature, ImplMetadata, ImplMetadataKind};
 
-use super::body_payloads::CompilerBodyPayload;
 use super::param_defaults::{ParamDefaultValue, param_default_values};
 
 pub(super) struct ScriptImplMethod<'ast> {
@@ -22,351 +15,118 @@ pub(super) struct ScriptImplMethod<'ast> {
     pub(super) method_id: MethodId,
     pub(super) symbol: String,
     pub(super) default_values: Vec<Option<ParamDefaultValue>>,
-    pub(super) body: CompilerBodyPayload<'ast>,
+    pub(super) body: HirBodyId,
     pub(super) signature: &'ast FunctionSignature,
     pub(super) bindings: &'ast BindingMap,
     pub(super) hir_bodies: Vec<&'ast HirBody>,
 }
 
-struct MethodBodyPayload<'ast> {
-    default_values: Vec<Option<ParamDefaultValue>>,
-    body: CompilerBodyPayload<'ast>,
-}
-
-pub(super) fn source_methods<'ast>(
-    syntax: &SyntaxParse<SyntaxSourceFile>,
-    source: vela_common::SourceId,
-    graph: &'ast ModuleGraph,
-    module: ModuleId,
-) -> Vec<ScriptImplMethod<'ast>> {
+pub(super) fn source_methods(graph: &ModuleGraph, module: ModuleId) -> Vec<ScriptImplMethod<'_>> {
     graph
         .declarations()
         .filter(|declaration| declaration.module == module)
         .filter(|declaration| declaration.kind == DeclarationKind::Impl)
-        .flat_map(|declaration| {
-            let module_path = graph.module_path(declaration.module);
-            let Some(impl_metadata) = graph.impl_metadata(declaration.id) else {
-                return Vec::new();
-            };
-            let method_payloads =
-                impl_method_payloads(syntax, source, declaration.span, graph, impl_metadata);
-            let target_type = local_target_name(&impl_metadata.target_path);
-            let trait_item = impl_metadata.trait_path().and_then(|trait_path| {
-                let declaration = trait_declaration(graph, declaration.module, trait_path)?;
-                let trait_declaration_metadata = graph.declaration(declaration)?;
-                let shape = graph.trait_shape(declaration)?;
-                let payloads = trait_default_method_payloads(
-                    syntax,
-                    source,
-                    trait_declaration_metadata.span,
-                    graph,
-                    shape,
-                );
-                Some((shape, payloads))
-            });
-            collect_methods(
-                graph,
-                module_path,
-                impl_metadata,
-                &method_payloads,
-                trait_item,
-                target_type,
-            )
-        })
+        .flat_map(|declaration| collect_impl_methods(graph, declaration.id, false))
         .collect()
 }
 
-pub(super) fn module_methods<'ast>(
-    syntax: &BTreeMap<ModuleId, SyntaxParse<SyntaxSourceFile>>,
-    source_ids: &BTreeMap<ModuleId, vela_common::SourceId>,
-    graph: &'ast ModuleGraph,
-) -> Vec<ScriptImplMethod<'ast>> {
+pub(super) fn module_methods(graph: &ModuleGraph) -> Vec<ScriptImplMethod<'_>> {
     graph
         .declarations()
         .filter(|declaration| declaration.kind == DeclarationKind::Impl)
-        .flat_map(|declaration| {
-            let module_path = graph.module_path(declaration.module);
-            let Some(impl_metadata) = graph.impl_metadata(declaration.id) else {
-                return Vec::new();
-            };
-            let Some(syntax_source) = syntax.get(&declaration.module) else {
-                return Vec::new();
-            };
-            let Some(source_id) = source_ids.get(&declaration.module).copied() else {
-                return Vec::new();
-            };
-            let method_payloads = impl_method_payloads(
-                syntax_source,
-                source_id,
-                declaration.span,
-                graph,
-                impl_metadata,
-            );
-            let target_type = module_target_name(module_path, &impl_metadata.target_path);
-            let Some(trait_path) = impl_metadata.trait_path() else {
-                return collect_methods(
-                    graph,
-                    module_path,
-                    impl_metadata,
-                    &method_payloads,
-                    None,
-                    target_type,
-                );
-            };
-            let Some(trait_declaration) = trait_declaration(graph, declaration.module, trait_path)
-            else {
-                return collect_methods(
-                    graph,
-                    module_path,
-                    impl_metadata,
-                    &method_payloads,
-                    None,
-                    target_type,
-                );
-            };
-            let Some(trait_declaration_metadata) = graph.declaration(trait_declaration) else {
-                return collect_methods(
-                    graph,
-                    module_path,
-                    impl_metadata,
-                    &method_payloads,
-                    None,
-                    target_type,
-                );
-            };
-            let trait_item = syntax
-                .get(&trait_declaration_metadata.module)
-                .zip(source_ids.get(&trait_declaration_metadata.module).copied())
-                .and_then(|(syntax, source_id)| {
-                    graph.trait_shape(trait_declaration).map(|shape| {
-                        (
-                            shape,
-                            trait_default_method_payloads(
-                                syntax,
-                                source_id,
-                                trait_declaration_metadata.span,
-                                graph,
-                                shape,
-                            ),
-                        )
-                    })
-                });
-            collect_methods(
-                graph,
-                module_path,
-                impl_metadata,
-                &method_payloads,
-                trait_item,
-                target_type,
-            )
-        })
+        .flat_map(|declaration| collect_impl_methods(graph, declaration.id, true))
         .collect()
 }
 
-fn collect_methods<'ast>(
+fn collect_impl_methods<'ast>(
     graph: &'ast ModuleGraph,
-    module_path: Option<&'ast ModulePath>,
-    impl_metadata: &'ast ImplMetadata,
-    method_payloads: &BTreeMap<String, MethodBodyPayload<'ast>>,
-    trait_item: Option<(
-        &'ast vela_hir::type_hint::TraitShape,
-        BTreeMap<String, MethodBodyPayload<'ast>>,
-    )>,
-    target_type: String,
+    declaration: vela_hir::ids::HirDeclId,
+    qualified_target: bool,
 ) -> Vec<ScriptImplMethod<'ast>> {
-    let explicit_names = impl_metadata
-        .methods
-        .iter()
-        .map(|method| method.name.clone())
-        .collect::<BTreeSet<_>>();
+    let Some(declaration_metadata) = graph.declaration(declaration) else {
+        return Vec::new();
+    };
+    let Some(impl_metadata) = graph.impl_metadata(declaration) else {
+        return Vec::new();
+    };
+    let module_path = graph.module_path(declaration_metadata.module);
+    let target_type = if qualified_target {
+        module_target_name(module_path, &impl_metadata.target_path)
+    } else {
+        local_target_name(&impl_metadata.target_path)
+    };
     let mut methods = impl_metadata
         .methods
         .iter()
-        .filter_map(|method_metadata| {
-            let payload = method_payloads.get(&method_metadata.name)?;
-            let bindings = graph.impl_method_bindings(method_metadata.node)?;
-            let symbol = method_symbol(
+        .filter_map(|method| {
+            let body = graph.impl_method_body(method.node)?;
+            let bindings = graph.impl_method_bindings(method.node)?;
+            Some(build_method(
+                graph,
                 module_path,
                 impl_metadata,
-                &target_type,
-                &method_metadata.name,
-            );
-            let method_id = stable_method_id(module_path, impl_metadata, &method_metadata.name);
-            Some(ScriptImplMethod {
-                target_type: target_type.clone(),
-                method_name: method_metadata.name.clone(),
-                method_id,
-                symbol,
-                default_values: payload.default_values.clone(),
-                body: payload.body.clone(),
-                signature: &method_metadata.signature,
+                target_type.clone(),
+                method.name.clone(),
+                &method.signature,
+                body,
                 bindings,
-                hir_bodies: graph.bodies().collect(),
-            })
+            ))
         })
         .collect::<Vec<_>>();
-    if let Some((trait_shape, trait_payloads)) = trait_item {
-        methods.extend(collect_default_methods(
-            graph,
-            module_path,
-            impl_metadata,
-            trait_shape,
-            &trait_payloads,
-            &target_type,
-            &explicit_names,
-        ));
+
+    let explicit = impl_metadata
+        .methods
+        .iter()
+        .map(|method| method.name.as_str())
+        .collect::<BTreeSet<_>>();
+    if let Some(trait_path) = impl_metadata.trait_path()
+        && let Some(trait_declaration) =
+            trait_declaration(graph, declaration_metadata.module, trait_path)
+        && let Some(shape) = graph.trait_shape(trait_declaration)
+    {
+        methods.extend(shape.methods.iter().filter_map(|method| {
+            if explicit.contains(method.name.as_str()) {
+                return None;
+            }
+            let node = method.default_body_node?;
+            let body = graph.trait_default_method_body(node)?;
+            let bindings = graph.trait_default_method_bindings(node)?;
+            Some(build_method(
+                graph,
+                module_path,
+                impl_metadata,
+                target_type.clone(),
+                method.name.clone(),
+                &method.signature,
+                body,
+                bindings,
+            ))
+        }));
     }
     methods
 }
 
-fn collect_default_methods<'ast>(
+fn build_method<'ast>(
     graph: &'ast ModuleGraph,
     module_path: Option<&'ast ModulePath>,
     impl_metadata: &'ast ImplMetadata,
-    trait_shape: &'ast vela_hir::type_hint::TraitShape,
-    trait_payloads: &BTreeMap<String, MethodBodyPayload<'ast>>,
-    target_type: &str,
-    explicit_names: &BTreeSet<String>,
-) -> Vec<ScriptImplMethod<'ast>> {
-    trait_shape
-        .methods
-        .iter()
-        .filter_map(|method_metadata| {
-            if explicit_names.contains(&method_metadata.name) {
-                return None;
-            }
-            let node = method_metadata.default_body_node?;
-            let payload = trait_payloads.get(&method_metadata.name)?;
-            let bindings = graph.trait_default_method_bindings(node)?;
-            let symbol = method_symbol(
-                module_path,
-                impl_metadata,
-                target_type,
-                &method_metadata.name,
-            );
-            let method_id = stable_method_id(module_path, impl_metadata, &method_metadata.name);
-            Some(ScriptImplMethod {
-                target_type: target_type.to_owned(),
-                method_name: method_metadata.name.clone(),
-                method_id,
-                symbol,
-                default_values: payload.default_values.clone(),
-                body: payload.body.clone(),
-                signature: &method_metadata.signature,
-                bindings,
-                hir_bodies: graph.bodies().collect(),
-            })
-        })
-        .collect()
-}
-
-fn impl_method_payloads<'ast>(
-    syntax: &SyntaxParse<SyntaxSourceFile>,
-    source: SourceId,
-    impl_span: Span,
-    graph: &'ast ModuleGraph,
-    metadata: &ImplMetadata,
-) -> BTreeMap<String, MethodBodyPayload<'ast>> {
-    let Some(syntax_item) = syntax_impl_item(syntax, source, impl_span) else {
-        return BTreeMap::new();
-    };
-    metadata
-        .methods
-        .iter()
-        .filter_map(|method_metadata| {
-            let syntax_method = syntax_item.methods().find(|syntax_method| {
-                syntax_impl_method_body_span(source, syntax_method)
-                    == Some(method_metadata.body_span)
-            })?;
-            let hir_body = graph.impl_method_body(method_metadata.node)?;
-            let body = CompilerBodyPayload::hir_body(source, syntax_method.body()?, hir_body);
-            Some((
-                method_metadata.name.clone(),
-                MethodBodyPayload {
-                    default_values: param_default_values(
-                        source,
-                        syntax_method.param_list(),
-                        graph,
-                        hir_body,
-                    ),
-                    body,
-                },
-            ))
-        })
-        .collect()
-}
-
-fn trait_default_method_payloads<'ast>(
-    syntax: &SyntaxParse<SyntaxSourceFile>,
-    source: SourceId,
-    trait_span: Span,
-    graph: &'ast ModuleGraph,
-    shape: &TraitShape,
-) -> BTreeMap<String, MethodBodyPayload<'ast>> {
-    let Some(syntax_item) = syntax_trait_item(syntax, source, trait_span) else {
-        return BTreeMap::new();
-    };
-    shape
-        .methods
-        .iter()
-        .filter_map(|method_metadata| {
-            let default_node = method_metadata.default_body_node?;
-            let default_body_span = method_metadata.default_body_span?;
-            let syntax_method = syntax_item.methods().find(|syntax_method| {
-                syntax_trait_method_body_span(source, syntax_method) == Some(default_body_span)
-            })?;
-            let hir_body = graph.trait_default_method_body(default_node)?;
-            let body = CompilerBodyPayload::hir_body(source, syntax_method.body()?, hir_body);
-            Some((
-                method_metadata.name.clone(),
-                MethodBodyPayload {
-                    default_values: param_default_values(
-                        source,
-                        syntax_method.param_list(),
-                        graph,
-                        hir_body,
-                    ),
-                    body,
-                },
-            ))
-        })
-        .collect()
-}
-
-fn syntax_impl_item(
-    parsed: &SyntaxParse<SyntaxSourceFile>,
-    source: SourceId,
-    span: Span,
-) -> Option<SyntaxImplItem> {
-    parsed
-        .tree()
-        .impls()
-        .find(|item| span_for(source, item.syntax().text_range()) == span)
-}
-
-fn syntax_trait_item(
-    parsed: &SyntaxParse<SyntaxSourceFile>,
-    source: SourceId,
-    span: Span,
-) -> Option<SyntaxTraitItem> {
-    parsed
-        .tree()
-        .traits()
-        .find(|item| span_for(source, item.syntax().text_range()) == span)
-}
-
-fn span_for(source: SourceId, range: TextRange) -> Span {
-    Span::new(source, range.start().into(), range.end().into())
-}
-
-fn syntax_impl_method_body_span(source: SourceId, method: &SyntaxImplMethod) -> Option<Span> {
-    let body = method.body()?;
-    Some(span_for(source, body.syntax().text_range()))
-}
-
-fn syntax_trait_method_body_span(source: SourceId, method: &SyntaxTraitMethod) -> Option<Span> {
-    let body = method.body()?;
-    Some(span_for(source, body.syntax().text_range()))
+    target_type: String,
+    method_name: String,
+    signature: &'ast FunctionSignature,
+    body: &'ast HirBody,
+    bindings: &'ast BindingMap,
+) -> ScriptImplMethod<'ast> {
+    ScriptImplMethod {
+        method_id: stable_method_id(module_path, impl_metadata, &method_name),
+        symbol: method_symbol(module_path, impl_metadata, &target_type, &method_name),
+        default_values: param_default_values(body, signature),
+        body: body.id,
+        target_type,
+        method_name,
+        signature,
+        bindings,
+        hir_bodies: graph.bodies().collect(),
+    }
 }
 
 fn trait_declaration(
@@ -409,14 +169,12 @@ fn module_target_name(module_path: Option<&ModulePath>, path: &[String]) -> Stri
     if path.len() != 1 {
         return path.join("::");
     }
-    let Some(module_path) = module_path else {
-        return path[0].clone();
-    };
-    if module_path.segments().is_empty() {
-        path[0].clone()
-    } else {
-        format!("{}::{}", module_path.join(), path[0])
-    }
+    module_path
+        .filter(|path| !path.segments().is_empty())
+        .map_or_else(
+            || path[0].clone(),
+            |module| format!("{}::{}", module.join(), path[0]),
+        )
 }
 
 fn method_symbol(
@@ -429,15 +187,11 @@ fn method_symbol(
         .filter(|path| !path.segments().is_empty())
         .map_or_else(String::new, |path| format!("{}.", path.join()));
     match &impl_metadata.kind {
-        ImplMetadataKind::Inherent => format!("{prefix}__impl.{}.{}", target_type, method),
-        ImplMetadataKind::Trait { trait_path } => {
-            format!(
-                "{prefix}__impl.{}.for.{}.{}",
-                trait_path.join("::"),
-                target_type,
-                method
-            )
-        }
+        ImplMetadataKind::Inherent => format!("{prefix}__impl.{target_type}.{method}"),
+        ImplMetadataKind::Trait { trait_path } => format!(
+            "{prefix}__impl.{}.for.{target_type}.{method}",
+            trait_path.join("::")
+        ),
     }
 }
 
@@ -462,38 +216,28 @@ fn target_owner_name(module_path: Option<&ModulePath>, target_path: &[String]) -
     if target_path.len() != 1 {
         return target_path.join("::");
     }
-    let Some(module_path) = module_path else {
-        return target_path[0].clone();
-    };
-    if module_path.segments().is_empty() {
-        target_path[0].clone()
-    } else {
-        format!("{}::{}", module_path.join(), target_path[0])
-    }
+    module_path
+        .filter(|path| !path.segments().is_empty())
+        .map_or_else(
+            || target_path[0].clone(),
+            |module| format!("{}::{}", module.join(), target_path[0]),
+        )
 }
 
 fn trait_method_owner_name(module_path: Option<&ModulePath>, trait_path: &[String]) -> String {
-    if is_builtin_operator_trait(trait_path) {
-        return trait_path[0].clone();
-    }
-    if trait_path.len() != 1 {
+    if is_builtin_operator_trait(trait_path) || trait_path.len() != 1 {
         return trait_path.join("::");
     }
-    let Some(module_path) = module_path else {
-        return trait_path[0].clone();
-    };
-    if module_path.segments().is_empty() {
-        trait_path[0].clone()
-    } else {
-        format!("{}::{}", module_path.join(), trait_path[0])
-    }
+    module_path
+        .filter(|path| !path.segments().is_empty())
+        .map_or_else(
+            || trait_path[0].clone(),
+            |module| format!("{}::{}", module.join(), trait_path[0]),
+        )
 }
 
 fn is_builtin_operator_trait(path: &[String]) -> bool {
-    let [name] = path else {
-        return false;
-    };
-    matches!(name.as_str(), "PartialEq" | "Eq" | "PartialOrd" | "Ord")
+    matches!(path, [name] if matches!(name.as_str(), "PartialEq" | "Eq" | "PartialOrd" | "Ord"))
 }
 
 fn stable_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {

@@ -1,18 +1,21 @@
 use vela_common::{Diagnostic, Span};
 use vela_def::MethodId;
-use vela_syntax::ast::BinaryOp;
+use vela_hir::body::HirBinaryOp;
 
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 impl Compiler<'_, '_> {
     pub(in crate::compiler) fn reject_static_script_path_binary_operands(
         &self,
-        op: BinaryOp,
+        op: HirBinaryOp,
         span: Span,
         left_type_name: Option<&str>,
         right_type_name: Option<&str>,
     ) -> CompileResult<()> {
-        if matches!(op, BinaryOp::IdentityEqual | BinaryOp::IdentityNotEqual) {
+        if matches!(
+            op,
+            HirBinaryOp::IdentityEqual | HirBinaryOp::IdentityNotEqual
+        ) {
             for (side, type_name) in [("left", left_type_name), ("right", right_type_name)] {
                 let Some(type_name) = type_name else {
                     continue;
@@ -104,54 +107,55 @@ struct ComparisonTraitRequirement {
 }
 
 impl ComparisonTraitRequirement {
-    fn for_op(op: BinaryOp) -> Option<Self> {
+    fn for_op(op: HirBinaryOp) -> Option<Self> {
         match op {
-            BinaryOp::Equal | BinaryOp::NotEqual => Some(Self {
+            HirBinaryOp::Equal | HirBinaryOp::NotEqual => Some(Self {
                 trait_name: "PartialEq",
                 method_name: "eq",
                 operator: binary_op_source_name(op),
             }),
-            BinaryOp::Less | BinaryOp::LessEqual | BinaryOp::Greater | BinaryOp::GreaterEqual => {
-                Some(Self {
-                    trait_name: "PartialOrd",
-                    method_name: "partial_cmp",
-                    operator: binary_op_source_name(op),
-                })
-            }
-            BinaryOp::Add
-            | BinaryOp::Sub
-            | BinaryOp::Mul
-            | BinaryOp::Div
-            | BinaryOp::Rem
-            | BinaryOp::Range
-            | BinaryOp::RangeInclusive
-            | BinaryOp::Or
-            | BinaryOp::And
-            | BinaryOp::IdentityEqual
-            | BinaryOp::IdentityNotEqual => None,
+            HirBinaryOp::Less
+            | HirBinaryOp::LessEqual
+            | HirBinaryOp::Greater
+            | HirBinaryOp::GreaterEqual => Some(Self {
+                trait_name: "PartialOrd",
+                method_name: "partial_cmp",
+                operator: binary_op_source_name(op),
+            }),
+            HirBinaryOp::Add
+            | HirBinaryOp::Sub
+            | HirBinaryOp::Mul
+            | HirBinaryOp::Div
+            | HirBinaryOp::Rem
+            | HirBinaryOp::Range
+            | HirBinaryOp::RangeInclusive
+            | HirBinaryOp::Or
+            | HirBinaryOp::And
+            | HirBinaryOp::IdentityEqual
+            | HirBinaryOp::IdentityNotEqual => None,
         }
     }
 }
 
-fn binary_op_source_name(op: BinaryOp) -> &'static str {
+fn binary_op_source_name(op: HirBinaryOp) -> &'static str {
     match op {
-        BinaryOp::Add => "+",
-        BinaryOp::Sub => "-",
-        BinaryOp::Mul => "*",
-        BinaryOp::Div => "/",
-        BinaryOp::Rem => "%",
-        BinaryOp::Equal => "==",
-        BinaryOp::NotEqual => "!=",
-        BinaryOp::IdentityEqual => "===",
-        BinaryOp::IdentityNotEqual => "!==",
-        BinaryOp::Less => "<",
-        BinaryOp::LessEqual => "<=",
-        BinaryOp::Greater => ">",
-        BinaryOp::GreaterEqual => ">=",
-        BinaryOp::Range => "..",
-        BinaryOp::RangeInclusive => "..=",
-        BinaryOp::Or => "||",
-        BinaryOp::And => "&&",
+        HirBinaryOp::Add => "+",
+        HirBinaryOp::Sub => "-",
+        HirBinaryOp::Mul => "*",
+        HirBinaryOp::Div => "/",
+        HirBinaryOp::Rem => "%",
+        HirBinaryOp::Equal => "==",
+        HirBinaryOp::NotEqual => "!=",
+        HirBinaryOp::IdentityEqual => "===",
+        HirBinaryOp::IdentityNotEqual => "!==",
+        HirBinaryOp::Less => "<",
+        HirBinaryOp::LessEqual => "<=",
+        HirBinaryOp::Greater => ">",
+        HirBinaryOp::GreaterEqual => ">=",
+        HirBinaryOp::Range => "..",
+        HirBinaryOp::RangeInclusive => "..=",
+        HirBinaryOp::Or => "||",
+        HirBinaryOp::And => "&&",
     }
 }
 

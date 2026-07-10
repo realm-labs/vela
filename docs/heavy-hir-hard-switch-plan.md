@@ -366,22 +366,22 @@ span join is not an accepted exception.
 
 Purpose: make bytecode lowering consume Heavy HIR and analysis facts.
 
-- [ ] Introduce compiler entrypoints that lower from `HirBody` plus analysis
+- [x] Introduce compiler entrypoints that lower from `HirBody` plus analysis
   facts, with source origins used only for diagnostics and debug metadata.
-- [~] Move statement, expression, pattern, call, assignment, host path, index,
+- [x] Move statement, expression, pattern, call, assignment, host path, index,
   operator, container, lambda, default-parameter, and control-flow lowering to
   HIR body IDs.
-- [~] Derive runtime type contracts, guards, call targets, and frame/debug
+- [x] Derive runtime type contracts, guards, call targets, and frame/debug
   metadata from Heavy HIR facts.
-- [ ] Replace the primary `compile_syntax_expression`/syntax-kind dispatcher
+- [x] Replace the primary `compile_syntax_expression`/syntax-kind dispatcher
   with HIR expression/statement/pattern dispatch. Do this for the complete body
   compiler rather than adding more HIR gates around syntax-shaped helpers.
-- [ ] Delete `SyntaxBodyPayload`, `CompilerBodyPayload`,
+- [x] Delete `SyntaxBodyPayload`, `CompilerBodyPayload`,
   `CompilerStatementPayload`, body-level `function_body_payload` pairing,
   `hir_block_body_payload`, `expression_syntax_*` helpers, and migration-only
   `syntax_*` lowering module/function names in the same checkpoint that makes
   HIR lowering green.
-- [ ] Preserve bytecode output semantics, VM behavior, and diagnostics.
+- [x] Preserve bytecode output semantics, VM behavior, and diagnostics.
 
 Validation:
 
@@ -403,11 +403,11 @@ that use the production HIR path.
 
 Purpose: remove transition names and prove Heavy HIR is the semantic source.
 
-- [ ] Delete migration-only payload/fact/helper names.
-- [ ] Ensure downstream body-level semantic decisions do not read syntax
+- [x] Delete migration-only payload/fact/helper names.
+- [x] Ensure downstream body-level semantic decisions do not read syntax
   directly. Source-origin/span lookup may project an existing HIR result back
   to source, but must not reconstruct semantic identity or operands.
-- [ ] Update docs/progress.md and docs/decisions.md only when implementation
+- [x] Update docs/progress.md and docs/decisions.md only when implementation
   status changes.
 - [ ] Keep MIR unimplemented until Heavy HIR acceptance passes.
 

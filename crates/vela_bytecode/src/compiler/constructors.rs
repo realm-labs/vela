@@ -4,7 +4,6 @@ use vela_common::Diagnostic;
 
 use crate::Register;
 
-use super::const_eval::evaluate_const_expr;
 use super::schema_defaults::{ConstructorShape, SchemaFieldDefault};
 use super::value_types::{
     RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type,
@@ -75,18 +74,12 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         default: &SchemaFieldDefault,
         expected: Option<RuntimeTypeFact>,
     ) -> CompileResult<Register> {
-        if let Some(value) = evaluate_const_expr(
-            default.value.source(),
-            default.value.syntax(),
-            &default.constants,
-            &|span| default.path_for_span(span),
-            &|span| default.local_name_for_span(span),
-        )? {
+        if let Some(value) = default.value.clone() {
             if let Some(expected) = expected {
                 check_expected_type(
                     static_type_for_constant(&value),
                     expected,
-                    default.value.span(),
+                    default.span,
                     TypeContractContext::Field {
                         name: default.name.clone(),
                     },
@@ -97,7 +90,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "non-constant schema default expression",
         ))
-        .with_span(default.value.span()))
+        .with_span(default.span))
     }
 }
 

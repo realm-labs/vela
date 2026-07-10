@@ -1,29 +1,26 @@
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{CacheSiteId, HostTargetPlanId, Register, UnlinkedInstructionKind};
 use vela_common::HostTypeId;
-use vela_common::SourceId;
 use vela_common::Span;
 use vela_def::FieldId;
+use vela_hir::body::HirExprKind;
+use vela_hir::ids::HirExprId;
 use vela_host::resolved::HostMutationOp;
 use vela_host::target::HostTargetPlan;
-use vela_syntax::ast::{AstNode, SyntaxExpression};
-pub(super) struct HostPath<'ast> {
-    pub(super) root: HostPathRoot<'ast>,
-    pub(super) segments: Vec<HostPathPart<'ast>>,
+pub(super) struct HostPath {
+    pub(super) root: HostPathRoot,
+    pub(super) segments: Vec<HostPathPart>,
 }
 #[derive(Clone)]
-pub(super) enum HostPathRoot<'ast> {
-    LocalPath { name: &'ast str, span: Span },
-    OwnedLocalPath { name: String, span: Span },
+pub(super) enum HostPathRoot {
+    LocalPath { name: String, span: Span },
 }
-pub(super) enum HostPathPart<'ast> {
+pub(super) enum HostPathPart {
     Field(FieldId),
     VariantField(FieldId),
-    SyntaxValue {
-        source: SourceId,
-        expression: SyntaxExpression,
+    DynamicValue {
+        expression: HirExprId,
         dynamic_kind: DynamicHostPathPart,
-        _ast: std::marker::PhantomData<&'ast ()>,
     },
 }
 #[derive(Clone, Copy)]
@@ -31,17 +28,17 @@ pub(super) enum DynamicHostPathPart {
     Index,
     Key,
 }
-impl HostPath<'_> {
+impl HostPath {
     pub(super) fn requires_path_instruction(&self) -> bool {
         !matches!(self.segments.as_slice(), [HostPathPart::Field(_)])
     }
 }
 impl Compiler<'_, '_> {
-    pub(super) fn host_field_path_parts<'ast>(
+    pub(super) fn host_field_path_parts(
         &self,
         span: Span,
-        path: &'ast [String],
-    ) -> Option<ResolvedHostPath<'ast>> {
+        path: &[String],
+    ) -> Option<ResolvedHostPath> {
         if path.len() < 2 {
             return None;
         }
@@ -57,7 +54,7 @@ impl Compiler<'_, '_> {
         Some(ResolvedHostPath {
             path: HostPath {
                 root: HostPathRoot::LocalPath {
-                    name: root,
+                    name: root.clone(),
                     span: root_span,
                 },
                 segments,
@@ -65,11 +62,11 @@ impl Compiler<'_, '_> {
             type_name: current_type,
         })
     }
-    pub(super) fn owned_host_field_path_parts<'ast>(
+    pub(super) fn owned_host_field_path_parts(
         &self,
         span: Span,
         path: &[String],
-    ) -> Option<ResolvedHostPath<'ast>> {
+    ) -> Option<ResolvedHostPath> {
         if path.len() < 2 {
             return None;
         }
@@ -84,7 +81,7 @@ impl Compiler<'_, '_> {
         }
         Some(ResolvedHostPath {
             path: HostPath {
-                root: HostPathRoot::OwnedLocalPath {
+                root: HostPathRoot::LocalPath {
                     name: root,
                     span: root_span,
                 },
@@ -114,7 +111,7 @@ impl Compiler<'_, '_> {
         &mut self,
         dst: Register,
         root: Register,
-        path: HostPath<'_>,
+        path: HostPath,
         span: Span,
     ) -> CompileResult<()> {
         let CompiledHostTarget {
@@ -136,7 +133,7 @@ impl Compiler<'_, '_> {
     pub(super) fn emit_host_write(
         &mut self,
         root: Register,
-        path: HostPath<'_>,
+        path: HostPath,
         src: Register,
         span: Span,
     ) -> CompileResult<()> {
@@ -159,7 +156,7 @@ impl Compiler<'_, '_> {
     pub(super) fn emit_host_mutate(
         &mut self,
         root: Register,
-        path: HostPath<'_>,
+        path: HostPath,
         op: HostMutationOp,
         rhs: Register,
         span: Span,
@@ -184,7 +181,7 @@ impl Compiler<'_, '_> {
     pub(super) fn emit_host_remove(
         &mut self,
         root: Register,
-        path: HostPath<'_>,
+        path: HostPath,
         span: Span,
     ) -> CompileResult<()> {
         let CompiledHostTarget {
@@ -206,7 +203,7 @@ impl Compiler<'_, '_> {
         &mut self,
         dst: Option<Register>,
         root: Register,
-        path: HostPath<'_>,
+        path: HostPath,
         method: vela_common::HostMethodId,
         args: Vec<Register>,
         span: Span,
@@ -229,23 +226,17 @@ impl Compiler<'_, '_> {
         );
         Ok(())
     }
-    pub(super) fn compile_host_path_root<'expr>(
+    pub(super) fn compile_host_path_root(
         &mut self,
-        root: &HostPathRoot<'expr>,
+        root: &HostPathRoot,
     ) -> CompileResult<Register> {
         match root {
             HostPathRoot::LocalPath { name, span } => {
                 self.required_local_register_at_hir_expression_span(*span, name)
             }
-            HostPathRoot::OwnedLocalPath { name, span } => {
-                self.required_local_register_at_hir_expression_span(*span, name)
-            }
         }
     }
-    fn compile_host_target<'expr>(
-        &mut self,
-        path: HostPath<'expr>,
-    ) -> CompileResult<CompiledHostTarget> {
+    fn compile_host_target(&mut self, path: HostPath) -> CompileResult<CompiledHostTarget> {
         let root_type = self.host_path_root_type(path.root);
         let mut plan = HostTargetPlan::with_part_capacity(root_type, path.segments.len());
         let mut dynamic_args = Vec::new();
@@ -257,24 +248,16 @@ impl Compiler<'_, '_> {
                 HostPathPart::VariantField(field) => {
                     plan = plan.variant_field(field);
                 }
-                HostPathPart::SyntaxValue {
-                    source,
+                HostPathPart::DynamicValue {
                     expression,
                     dynamic_kind,
-                    ..
                 } => {
                     let arg = u8::try_from(dynamic_args.len()).map_err(|_| {
                         CompileError::new(CompileErrorKind::UnsupportedSyntax(
                             "host path dynamic argument count",
                         ))
                     })?;
-                    let register = self
-                        .compile_syntax_expression(source, &expression)?
-                        .ok_or_else(|| {
-                            CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                                "host path dynamic argument",
-                            ))
-                        })?;
+                    let register = self.compile_hir_expression(expression)?;
                     dynamic_args.push(register);
                     plan = match dynamic_kind {
                         DynamicHostPathPart::Index => plan.dyn_index(arg),
@@ -288,15 +271,14 @@ impl Compiler<'_, '_> {
             dynamic_args,
         })
     }
-    fn host_path_root_type(&self, root: HostPathRoot<'_>) -> HostTypeId {
+    fn host_path_root_type(&self, root: HostPathRoot) -> HostTypeId {
         self.host_path_root_type_name(root)
             .and_then(|type_name| self.host_runtime_type_id(&type_name))
             .unwrap_or_else(|| HostTypeId::new(0))
     }
-    fn host_path_root_type_name(&self, root: HostPathRoot<'_>) -> Option<String> {
+    fn host_path_root_type_name(&self, root: HostPathRoot) -> Option<String> {
         match root {
-            HostPathRoot::LocalPath { name, span } => self.host_local_type_name(name, span),
-            HostPathRoot::OwnedLocalPath { name, span } => self.host_local_type_name(&name, span),
+            HostPathRoot::LocalPath { name, span } => self.host_local_type_name(&name, span),
         }
     }
     pub(super) fn host_local_type_name(&self, name: &str, span: Span) -> Option<String> {
@@ -310,26 +292,9 @@ impl Compiler<'_, '_> {
             .or_else(|| self.script_types.name(name))
             .or_else(|| self.global_type_named(name))
     }
-    pub(in crate::compiler) fn syntax_root_host_index_path(
-        &self,
-        source: SourceId,
-        expression: &SyntaxExpression,
-    ) -> Option<HostPath<'static>> {
-        self.syntax_host_index_path(source, expression)
-            .map(|resolved| resolved.path)
-    }
-    fn syntax_host_index_path(
-        &self,
-        source: SourceId,
-        expression: &SyntaxExpression,
-    ) -> Option<ResolvedHostPath<'static>> {
-        let span = syntax_host_expression_span(source, expression);
-        let index = self.hir_index_for_span(span)?;
-        let receiver_span = self.expression_span(index.receiver)?;
-        let index_span = self.expression_span(index.index)?;
-        let receiver = syntax_expression_child_at_span(source, expression, receiver_span)?;
-        let index_expression = syntax_expression_child_at_span(source, expression, index_span)?;
-        let mut resolved = self.syntax_host_path(source, &receiver)?;
+    fn hir_host_index_path(&self, expression: HirExprId) -> Option<ResolvedHostPath> {
+        let index = self.hir_index_for_expression(expression)?;
+        let mut resolved = self.hir_host_path(index.receiver)?;
         if resolved.path.segments.is_empty()
             && resolved.type_name.as_deref().is_none_or(|type_name| {
                 self.facts
@@ -341,23 +306,21 @@ impl Compiler<'_, '_> {
             return None;
         }
         let receiver_type = resolved.type_name.clone();
-        let dynamic_kind = self.syntax_host_index_dynamic_kind(receiver_type.as_deref());
-        resolved.path.segments.push(HostPathPart::SyntaxValue {
-            source,
-            expression: index_expression,
+        let dynamic_kind = self.host_index_dynamic_kind(receiver_type.as_deref());
+        resolved.path.segments.push(HostPathPart::DynamicValue {
+            expression: index.index,
             dynamic_kind,
-            _ast: std::marker::PhantomData,
         });
-        resolved.type_name = self.syntax_host_index_value_type(receiver_type.as_deref());
+        resolved.type_name = self.host_index_value_type(receiver_type.as_deref());
         Some(resolved)
     }
-    fn syntax_host_index_dynamic_kind(&self, receiver_type: Option<&str>) -> DynamicHostPathPart {
+    fn host_index_dynamic_kind(&self, receiver_type: Option<&str>) -> DynamicHostPathPart {
         receiver_type
             .and_then(|type_name| self.facts.options.host_index_capability(type_name))
             .and_then(|capability| capability.key_type.as_deref())
             .map_or(DynamicHostPathPart::Key, dynamic_host_path_part)
     }
-    fn syntax_host_index_value_type(&self, receiver_type: Option<&str>) -> Option<String> {
+    fn host_index_value_type(&self, receiver_type: Option<&str>) -> Option<String> {
         receiver_type.and_then(|type_name| {
             self.facts
                 .options
@@ -365,42 +328,43 @@ impl Compiler<'_, '_> {
                 .and_then(|capability| capability.value_type.clone())
         })
     }
-    fn syntax_host_path(
+    pub(in crate::compiler) fn hir_host_path(
         &self,
-        source: SourceId,
-        expression: &SyntaxExpression,
-    ) -> Option<ResolvedHostPath<'static>> {
-        if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
-            return self.syntax_host_path(source, &inner);
+        expression: HirExprId,
+    ) -> Option<ResolvedHostPath> {
+        let kind = self
+            .hir_bodies
+            .iter()
+            .find_map(|body| body.expression(expression))?
+            .kind
+            .clone();
+        match kind {
+            HirExprKind::Paren {
+                expression: Some(inner),
+            } => self.hir_host_path(inner),
+            HirExprKind::Index(_) => self.hir_host_index_path(expression),
+            HirExprKind::Field(field) => {
+                let mut resolved = self.hir_host_path(field.receiver)?;
+                let field_part =
+                    self.host_path_field_part(resolved.type_name.as_deref(), &field.name)?;
+                resolved.path.segments.push(field_part.part);
+                resolved.type_name = field_part.type_hint;
+                Some(resolved)
+            }
+            _ => self.hir_host_value_path(expression),
         }
-        if self
-            .hir_index_for_span(syntax_host_expression_span(source, expression))
-            .is_some()
-        {
-            return self.syntax_host_index_path(source, expression);
-        }
-        let span = syntax_host_expression_span(source, expression);
-        if let Some(resolved) = self.hir_host_value_path(span) {
-            return Some(resolved);
-        }
-        let name = self.hir_field_name_for_span(span)?.to_owned();
-        let receiver_span = self.hir_field_receiver_span_for_span(span)?;
-        let receiver = syntax_expression_child_at_span(source, expression, receiver_span)?;
-        let mut resolved = self.syntax_host_path(source, &receiver)?;
-        let field = self.host_path_field_part(resolved.type_name.as_deref(), &name)?;
-        resolved.path.segments.push(field.part);
-        resolved.type_name = field.type_hint;
-        Some(resolved)
     }
-    fn hir_host_value_path(&self, span: Span) -> Option<ResolvedHostPath<'static>> {
-        let path = self.hir_value_path_for_span(span)?;
+
+    fn hir_host_value_path(&self, expression: HirExprId) -> Option<ResolvedHostPath> {
+        let path = self.hir_value_path_for_expression(expression)?;
+        let span = self.expression_span(expression)?;
         if path.len() == 1 {
             let name = path.into_iter().next()?;
             let root_span = self.hir_value_path_root_span_for_span(span).unwrap_or(span);
             let type_name = self.host_local_type_name(&name, root_span);
             return Some(ResolvedHostPath {
                 path: HostPath {
-                    root: HostPathRoot::OwnedLocalPath {
+                    root: HostPathRoot::LocalPath {
                         name,
                         span: root_span,
                     },
@@ -412,20 +376,13 @@ impl Compiler<'_, '_> {
         let root_span = self.hir_value_path_root_span_for_span(span).unwrap_or(span);
         self.owned_host_field_path_parts(root_span, &path)
     }
-    pub(in crate::compiler) fn syntax_host_field_path(
-        &self,
-        source: SourceId,
-        expression: &SyntaxExpression,
-    ) -> Option<ResolvedHostPath<'static>> {
-        self.syntax_host_path(source, expression)
-    }
 }
-pub(super) struct ResolvedHostPath<'ast> {
-    pub(super) path: HostPath<'ast>,
+pub(super) struct ResolvedHostPath {
+    pub(super) path: HostPath,
     pub(super) type_name: Option<String>,
 }
 struct ResolvedHostPathField {
-    part: HostPathPart<'static>,
+    part: HostPathPart,
     type_hint: Option<String>,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -490,23 +447,4 @@ fn dynamic_host_path_part(key_type: &str) -> DynamicHostPathPart {
         "i64" => DynamicHostPathPart::Index,
         _ => DynamicHostPathPart::Key,
     }
-}
-fn syntax_host_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {
-    let range = expression.syntax().text_range();
-    Span::new(source, range.start().into(), range.end().into())
-}
-
-fn syntax_expression_child_at_span(
-    source: SourceId,
-    expression: &SyntaxExpression,
-    span: Span,
-) -> Option<SyntaxExpression> {
-    if span.source != source {
-        return None;
-    }
-    expression
-        .syntax()
-        .descendants()
-        .filter_map(SyntaxExpression::cast)
-        .find(|child| syntax_host_expression_span(source, child) == span)
 }

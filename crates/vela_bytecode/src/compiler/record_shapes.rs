@@ -3,11 +3,10 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use vela_common::PrimitiveTag;
 use vela_hir::ids::HirLocalId;
 
-use super::record_reflection_shapes;
 use super::value_types::{RuntimeTypeFact, StandardRuntimeType};
 
+mod hir_shapes;
 mod queries;
-mod syntax_shapes;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(super) struct ValueShapeFlow {
@@ -230,24 +229,6 @@ impl ValueShape {
         }
     }
 
-    pub(super) fn array_element_record(&self) -> Option<&RecordShape> {
-        self.array_element().and_then(ValueShape::as_record)
-    }
-
-    fn iterator_item(&self) -> Option<&ValueShape> {
-        match self {
-            Self::Iterator(item) => Some(item),
-            _ => None,
-        }
-    }
-
-    pub(super) fn map_parts(&self) -> Option<(&ValueShape, &ValueShape)> {
-        match self {
-            Self::Map { key, value } => Some((key, value)),
-            _ => None,
-        }
-    }
-
     pub(super) fn map_entry(key: ValueShape, value: ValueShape) -> Self {
         Self::Record(RecordShape::from_field_shapes_with_type(
             Some("MapEntry".to_owned()),
@@ -331,11 +312,6 @@ impl RecordShape {
     }
 }
 
-fn common_shape(mut shapes: Vec<ValueShape>) -> Option<ValueShape> {
-    let first = shapes.pop()?;
-    shapes.iter().all(|shape| shape == &first).then_some(first)
-}
-
 pub(super) fn callback_param_shapes(
     receiver: &ValueShape,
     method: &str,
@@ -370,25 +346,6 @@ pub(super) fn callback_param_shapes(
 impl super::Compiler<'_, '_> {
     pub(super) fn record_shape_for_type(&self, type_name: &str) -> Option<RecordShape> {
         self.record_shape_for_type_inner(type_name, &mut BTreeSet::new())
-    }
-
-    pub(in crate::compiler) fn schema_record_field_value_type(
-        &self,
-        root_type: Option<&str>,
-        fields: &[String],
-    ) -> Option<RuntimeTypeFact> {
-        let mut current_type = root_type?.to_owned();
-        let (leaf, parents) = fields.split_last()?;
-        for field in parents {
-            current_type = self
-                .facts
-                .script_field_slots
-                .record_field_fact(&current_type, field)?
-                .type_name;
-        }
-        self.facts
-            .script_field_slots
-            .record_field_value_type(&current_type, leaf)
     }
 
     fn record_shape_for_type_inner(
