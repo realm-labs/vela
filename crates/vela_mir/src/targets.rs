@@ -5,6 +5,111 @@ use vela_def::{FieldId, FunctionId, GlobalId, MethodId, TypeId, VariantId};
 
 use crate::{CompileSignature, MethodExecutableTarget, MirTypeContract};
 
+/// Function visibility copied into one immutable compile-target generation.
+///
+/// Capability requirements remain part of the function effect metadata. The
+/// current function access contract has no named permission list, unlike
+/// fields and methods.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CompileFunctionAccess {
+    pub public: bool,
+    pub reflect_visible: bool,
+    pub reflect_callable: bool,
+}
+
+impl CompileFunctionAccess {
+    #[must_use]
+    pub const fn new(public: bool, reflect_visible: bool, reflect_callable: bool) -> Self {
+        Self {
+            public,
+            reflect_visible,
+            reflect_callable,
+        }
+    }
+
+    /// Access assigned to a source script function.
+    #[must_use]
+    pub const fn script(public: bool) -> Self {
+        Self::new(public, true, false)
+    }
+}
+
+/// Method visibility and reflection policy copied from semantic metadata.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompileMethodAccess {
+    pub public: bool,
+    pub reflect_callable: bool,
+    required_permissions: Vec<String>,
+}
+
+impl CompileMethodAccess {
+    #[must_use]
+    pub fn new(public: bool, reflect_callable: bool, required_permissions: Vec<String>) -> Self {
+        Self {
+            public,
+            reflect_callable,
+            required_permissions: canonical_permissions(required_permissions),
+        }
+    }
+
+    /// Access assigned to a source script method.
+    #[must_use]
+    pub fn script() -> Self {
+        Self::new(true, true, Vec::new())
+    }
+
+    #[must_use]
+    pub fn required_permissions(&self) -> &[String] {
+        &self.required_permissions
+    }
+}
+
+/// Field read/write and reflection policy copied from semantic metadata.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompileFieldAccess {
+    pub readable: bool,
+    pub writable: bool,
+    pub reflect_readable: bool,
+    pub reflect_writable: bool,
+    required_permissions: Vec<String>,
+}
+
+impl CompileFieldAccess {
+    #[must_use]
+    pub fn new(
+        readable: bool,
+        writable: bool,
+        reflect_readable: bool,
+        reflect_writable: bool,
+        required_permissions: Vec<String>,
+    ) -> Self {
+        Self {
+            readable,
+            writable,
+            reflect_readable,
+            reflect_writable,
+            required_permissions: canonical_permissions(required_permissions),
+        }
+    }
+
+    /// Access assigned to a source script record or enum field.
+    #[must_use]
+    pub fn script() -> Self {
+        Self::new(true, true, true, true, Vec::new())
+    }
+
+    #[must_use]
+    pub fn required_permissions(&self) -> &[String] {
+        &self.required_permissions
+    }
+}
+
+fn canonical_permissions(mut permissions: Vec<String>) -> Vec<String> {
+    permissions.sort();
+    permissions.dedup();
+    permissions
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CompileFunctionClass {
     Script,
@@ -20,6 +125,7 @@ pub struct CompileFunctionDescriptor {
     pub canonical_symbol: String,
     pub debug_name: String,
     pub signature: CompileSignature,
+    pub access: CompileFunctionAccess,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -45,6 +151,7 @@ pub struct CompileMethodDescriptor {
     pub class: CompileMethodClass,
     /// User parameters only. A script method receiver is described separately.
     pub signature: CompileSignature,
+    pub access: CompileMethodAccess,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -83,7 +190,7 @@ pub struct CompileFieldDescriptor {
     pub name: String,
     pub contract: Option<MirTypeContract>,
     pub declaration_order: u32,
-    pub writable: bool,
+    pub access: CompileFieldAccess,
     pub host_runtime: Option<FieldId>,
 }
 

@@ -55,9 +55,10 @@ pub use operations::{
 };
 pub use origin::{MirSourceNode, MirSourceOrigin};
 pub use targets::{
-    CompileFieldDescriptor, CompileFunctionClass, CompileFunctionDescriptor,
-    CompileGlobalDescriptor, CompileMethodClass, CompileMethodDescriptor, CompileTypeClass,
-    CompileTypeDescriptor, CompileVariantDescriptor, MirTargetTable,
+    CompileFieldAccess, CompileFieldDescriptor, CompileFunctionAccess, CompileFunctionClass,
+    CompileFunctionDescriptor, CompileGlobalDescriptor, CompileMethodAccess, CompileMethodClass,
+    CompileMethodDescriptor, CompileTypeClass, CompileTypeDescriptor, CompileVariantDescriptor,
+    MirTargetTable,
 };
 pub use value::{
     MirBinaryOp, MirComparisonOp, MirEvaluatedConstant, MirImmediate, MirNumericBinaryOp,

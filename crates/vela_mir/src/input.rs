@@ -10,10 +10,10 @@ use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId, HirPatternId};
 use vela_hir::module_graph::ModuleGraph;
 
 use crate::{
-    CompileFieldDescriptor, CompileFunctionClass, CompileFunctionDescriptor,
-    CompileGlobalDescriptor, CompileMethodClass, CompileMethodDescriptor, CompileTypeDescriptor,
-    CompileVariantDescriptor, HostTypeTarget, MirBlockId, MirEffect, MirEvaluatedConstant,
-    MirLocalId, MirSourceOrigin, MirTargetTable, MirTempId, MirTypeContract,
+    CompileFieldAccess, CompileFieldDescriptor, CompileFunctionClass, CompileFunctionDescriptor,
+    CompileGlobalDescriptor, CompileMethodAccess, CompileMethodClass, CompileMethodDescriptor,
+    CompileTypeDescriptor, CompileVariantDescriptor, HostTypeTarget, MirBlockId, MirEffect,
+    MirEvaluatedConstant, MirLocalId, MirSourceOrigin, MirTargetTable, MirTempId, MirTypeContract,
 };
 
 mod calls;
@@ -51,8 +51,8 @@ pub struct HostFieldTarget {
     pub owner: HostTypeTarget,
     pub semantic: FieldId,
     pub runtime: FieldId,
-    pub readable: bool,
-    pub writable: bool,
+    /// Immutable policy snapshot; MIR and its backends do not query a registry.
+    pub access: CompileFieldAccess,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -61,6 +61,8 @@ pub struct HostMethodTarget {
     pub semantic: MethodId,
     pub runtime: HostMethodId,
     pub signature: CompileSignature,
+    /// Immutable policy snapshot; MIR and its backends do not query a registry.
+    pub access: CompileMethodAccess,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

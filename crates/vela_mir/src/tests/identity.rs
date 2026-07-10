@@ -40,6 +40,7 @@ fn script_method_descriptor(
             return_contract: None,
             effect: MirEffect::PURE,
         },
+        access: CompileMethodAccess::script(),
     }
 }
 
@@ -238,6 +239,7 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
                     return_contract: None,
                     effect: MirEffect::PURE,
                 },
+                access: CompileFunctionAccess::new(true, true, false),
             },
             body_origin,
         )
@@ -281,6 +283,7 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
                     return_contract: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
                     effect: MirEffect::PURE,
                 },
+                access: CompileFunctionAccess::script(true),
             },
             body_origin,
         )
@@ -307,6 +310,7 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
                     return_contract: None,
                     effect: MirEffect::PURE,
                 },
+                access: CompileFunctionAccess::script(true),
             },
             body_origin,
         )

@@ -1,5 +1,5 @@
-use vela_common::{HostTypeId, PrimitiveTag};
-use vela_def::{FunctionId, MethodId, TypeId};
+use vela_common::{HostTypeId, PrimitiveTag, ScalarValue};
+use vela_def::{FieldId, FunctionId, MethodId, TypeId};
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId};
 
 use crate::*;
@@ -140,6 +140,7 @@ fn mir_model_compile_snapshot_owns_source_identity_and_diagnostic_origins() {
                     return_contract: None,
                     effect: MirEffect::PURE,
                 },
+                access: CompileFunctionAccess::script(true),
             },
             origin,
         )
@@ -177,6 +178,7 @@ fn mir_model_compile_snapshot_owns_source_identity_and_diagnostic_origins() {
                     return_contract: None,
                     effect: MirEffect::PURE,
                 },
+                access: CompileFunctionAccess::script(true),
             },
             origin,
         )
@@ -245,4 +247,237 @@ fn mir_model_compile_snapshot_owns_source_identity_and_diagnostic_origins() {
             .collect::<Vec<_>>(),
         [function, method.function]
     );
+}
+
+#[test]
+fn mir_model_target_access_is_complete_and_registry_independent() {
+    let origin = MirSourceOrigin::body(
+        HirBodyId::new(340),
+        vela_common::Span::new(vela_common::SourceId::new(9), 4, 18),
+    );
+    let function = FunctionId::new(341);
+    let owner = TypeId::new(342);
+    let method = MethodId::new(343);
+    let field = FieldId::new(344);
+    let function_access = CompileFunctionAccess::new(false, true, true);
+    let method_access = CompileMethodAccess::new(
+        false,
+        false,
+        vec![
+            "player.reward".to_owned(),
+            "player.admin".to_owned(),
+            "player.reward".to_owned(),
+        ],
+    );
+    let field_access =
+        CompileFieldAccess::new(true, false, true, false, vec!["player.inspect".to_owned()]);
+    let signature = CompileSignature {
+        parameters: Vec::new(),
+        positional: CompilePositionalPolicy::RuntimeChecked,
+        return_contract: None,
+        effect: MirEffect::host_read(),
+    };
+    let mut targets = CompileTargetSnapshot::builder();
+    targets
+        .insert_function_descriptor(
+            CompileFunctionDescriptor {
+                id: function,
+                class: CompileFunctionClass::Registry,
+                canonical_symbol: "admin::rewrite".to_owned(),
+                debug_name: "admin::rewrite".to_owned(),
+                signature: signature.clone(),
+                access: function_access,
+            },
+            origin,
+        )
+        .expect("function access should be copied into its target descriptor");
+    targets
+        .insert_method_descriptor(
+            CompileMethodDescriptor {
+                id: method,
+                owner,
+                member_name: "reward".to_owned(),
+                debug_name: "Player::reward".to_owned(),
+                class: CompileMethodClass::Host {
+                    runtime: vela_common::HostMethodId::new(345),
+                },
+                signature: signature.clone(),
+                access: method_access.clone(),
+            },
+            origin,
+        )
+        .expect("method access should be copied into its target descriptor");
+    targets
+        .insert_field_descriptor(
+            CompileFieldDescriptor {
+                id: field,
+                owner,
+                variant: None,
+                name: "secret".to_owned(),
+                contract: None,
+                declaration_order: 0,
+                access: field_access.clone(),
+                host_runtime: Some(FieldId::new(346)),
+            },
+            origin,
+        )
+        .expect("field access should be copied into its target descriptor");
+    let targets = targets.build();
+
+    assert_eq!(
+        targets
+            .function_descriptor(function)
+            .map(|descriptor| descriptor.access),
+        Some(function_access)
+    );
+    assert_eq!(
+        targets
+            .method_descriptor(owner, method)
+            .map(|descriptor| &descriptor.access),
+        Some(&method_access)
+    );
+    assert_eq!(
+        targets
+            .field_descriptor(field)
+            .map(|descriptor| &descriptor.access),
+        Some(&field_access)
+    );
+    assert_eq!(
+        method_access.required_permissions(),
+        ["player.admin", "player.reward"]
+    );
+    assert_eq!(field_access.required_permissions(), ["player.inspect"]);
+
+    let host_type = HostTypeTarget {
+        semantic: owner,
+        runtime: HostTypeId::new(347),
+    };
+    let host_field = HostFieldTarget {
+        owner: host_type,
+        semantic: field,
+        runtime: FieldId::new(346),
+        access: field_access,
+    };
+    let host_method = HostMethodTarget {
+        owner: host_type,
+        semantic: method,
+        runtime: vela_common::HostMethodId::new(345),
+        signature,
+        access: method_access,
+    };
+    assert!(host_field.access.readable);
+    assert!(!host_field.access.writable);
+    assert!(host_field.access.reflect_readable);
+    assert!(!host_field.access.reflect_writable);
+    assert_eq!(host_field.access.required_permissions(), ["player.inspect"]);
+    assert!(!host_method.access.public);
+    assert!(!host_method.access.reflect_callable);
+    assert_eq!(
+        host_method.access.required_permissions(),
+        ["player.admin", "player.reward"]
+    );
+
+    assert_eq!(
+        CompileFunctionAccess::script(false),
+        CompileFunctionAccess::new(false, true, false)
+    );
+    assert_eq!(
+        CompileMethodAccess::script(),
+        CompileMethodAccess::new(true, true, Vec::new())
+    );
+    assert_eq!(
+        CompileFieldAccess::script(),
+        CompileFieldAccess::new(true, true, true, true, Vec::new())
+    );
+
+    let dump = MirProgram::new(targets.target_table().clone()).dump();
+    assert!(dump.contains("reflect_visible: true"));
+    assert!(dump.contains("required_permissions: [\"player.admin\", \"player.reward\"]"));
+    assert!(dump.contains("required_permissions: [\"player.inspect\"]"));
+}
+
+#[test]
+fn mir_model_dynamic_host_path_segments_retain_index_capabilities() {
+    let body = HirBodyId::new(350);
+    let origin = MirSourceOrigin::body(
+        body,
+        vela_common::Span::new(vela_common::SourceId::new(10), 2, 11),
+    );
+    let host_type = HostTypeTarget {
+        semantic: TypeId::new(351),
+        runtime: HostTypeId::new(352),
+    };
+    let index_capability = CompileHostIndexCapability {
+        readable: true,
+        writable: false,
+        mutable: false,
+        removable: true,
+        key: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
+        value: Some(MirTypeContract::Primitive(PrimitiveTag::String)),
+    };
+    let key_capability = CompileHostIndexCapability {
+        readable: true,
+        writable: true,
+        mutable: true,
+        removable: false,
+        key: Some(MirTypeContract::Primitive(PrimitiveTag::Char)),
+        value: Some(MirTypeContract::Primitive(PrimitiveTag::Bool)),
+    };
+    let path = MirHostPath {
+        root_type: host_type,
+        segments: vec![
+            MirHostPathSegment::Index {
+                value: MirOperand::Immediate(MirImmediate::Scalar(ScalarValue::I64(2))),
+                capability: index_capability.clone(),
+            },
+            MirHostPathSegment::Key {
+                value: MirOperand::Immediate(MirImmediate::Char('k')),
+                capability: key_capability.clone(),
+            },
+        ],
+    };
+    assert!(matches!(
+        &path.segments[0],
+        MirHostPathSegment::Index { capability, .. } if capability == &index_capability
+    ));
+    assert!(matches!(
+        &path.segments[1],
+        MirHostPathSegment::Key { capability, .. } if capability == &key_capability
+    ));
+
+    let mut function = MirFunction::new(
+        body,
+        MirFunctionOwner::Function(FunctionId::new(353)),
+        "host::indexed".to_owned(),
+        None,
+        origin,
+    );
+    let root = function.add_synthetic_local(MirValueType::Host(host_type), origin);
+    let result = function.add_temp(MirValueType::Dynamic, origin);
+    let safepoint = function.add_safepoint(MirSafepoint::new(origin));
+    function
+        .append_statement(
+            function.entry_block(),
+            MirStatement::new(
+                origin,
+                Some(MirPlace::temp(result)),
+                MirStatementKind::Host(MirHostOperation::Read {
+                    root: MirOperand::Local(root),
+                    path,
+                }),
+                MirEffect::host_read(),
+                Some(safepoint),
+            ),
+        )
+        .expect("dynamic host path capability metadata should remain executable MIR");
+    let mut program = MirProgram::new(MirTargetTable::default());
+    program
+        .add_function(function)
+        .expect("host path fixture function should be unique");
+    let dump = program.dump();
+    assert!(dump.contains("Index {"));
+    assert!(dump.contains("key: Some(Primitive(I64))"));
+    assert!(dump.contains("Key {"));
+    assert!(dump.contains("value: Some(Primitive(String))"));
+    assert!(dump.contains("key: Some(Primitive(Char))"));
 }

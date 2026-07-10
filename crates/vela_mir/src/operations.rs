@@ -3,8 +3,8 @@ use vela_common::ShapeId;
 use vela_def::{FieldId, FunctionId, GlobalId, MethodId, TypeId, VariantId};
 
 use crate::input::{
-    CompileParameterDefault, CompilePositionalPolicy, CompileSignature, DynamicMethodTarget,
-    HostFieldTarget, HostMethodTarget,
+    CompileHostIndexCapability, CompileParameterDefault, CompilePositionalPolicy, CompileSignature,
+    DynamicMethodTarget, HostFieldTarget, HostMethodTarget,
 };
 use crate::{
     HostTypeTarget, MirEffect, MirEvaluatedConstant, MirFunctionId, MirGuardId, MirOperand,
@@ -197,8 +197,14 @@ pub enum MirHostPathSegment {
     Field(HostFieldTarget),
     ConstantIndex(u32),
     ConstantKey(String),
-    Index(MirOperand),
-    Key(MirOperand),
+    Index {
+        value: MirOperand,
+        capability: CompileHostIndexCapability,
+    },
+    Key {
+        value: MirOperand,
+        capability: CompileHostIndexCapability,
+    },
     VariantField(HostFieldTarget),
 }
 

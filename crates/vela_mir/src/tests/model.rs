@@ -252,8 +252,7 @@ fn mir_model_exposes_allocating_host_reflection_and_dynamic_boundaries() {
                     owner: host_type,
                     semantic: vela_def::FieldId::new(283),
                     runtime: vela_def::FieldId::new(284),
-                    readable: true,
-                    writable: false,
+                    access: CompileFieldAccess::new(true, false, true, false, Vec::new()),
                 })],
             },
         }),
@@ -612,6 +611,7 @@ fn mir_model_snapshot_owns_method_signatures_and_guard_contracts() {
         debug_name: "Array::push".to_owned(),
         class: CompileMethodClass::Value,
         signature: signature.clone(),
+        access: CompileMethodAccess::script(),
     };
     let type_id = TypeId::new(218);
     let variant_id = vela_def::VariantId::new(219);
@@ -645,6 +645,7 @@ fn mir_model_snapshot_owns_method_signatures_and_guard_contracts() {
             runtime: vela_common::HostMethodId::new(301),
         },
         signature: signature.clone(),
+        access: CompileMethodAccess::new(false, false, vec!["player.admin".to_owned()]),
     };
     snapshot
         .insert_method_descriptor(host_method_descriptor.clone(), fact_origin)
@@ -686,7 +687,7 @@ fn mir_model_snapshot_owns_method_signatures_and_guard_contracts() {
                 name: "amount".to_owned(),
                 contract: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
                 declaration_order: 0,
-                writable: true,
+                access: CompileFieldAccess::script(),
                 host_runtime: None,
             },
             fact_origin,
