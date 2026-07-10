@@ -22,6 +22,51 @@ pub enum ContractActual {
     Dynamic,
 }
 
+/// Source-language callable category imposed by an expected contract.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ExpectedCallableKind {
+    Function,
+    Closure,
+}
+
+/// Callable contract semantics that cannot be represented losslessly by a
+/// [`TypeFact::Function`] parameter vector.
+///
+/// In particular, `None` is an erased arity contract and is distinct from a
+/// proven zero-argument contract represented by `Some(0)`.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ExpectedCallableContract {
+    kind: ExpectedCallableKind,
+    positional_arity: Option<u32>,
+}
+
+impl ExpectedCallableContract {
+    #[must_use]
+    pub const fn new(kind: ExpectedCallableKind, positional_arity: Option<u32>) -> Self {
+        Self {
+            kind,
+            positional_arity,
+        }
+    }
+
+    #[must_use]
+    pub const fn kind(self) -> ExpectedCallableKind {
+        self.kind
+    }
+
+    #[must_use]
+    pub const fn positional_arity(self) -> Option<u32> {
+        self.positional_arity
+    }
+
+    fn projected_type_fact(self) -> TypeFact {
+        match self.kind {
+            ExpectedCallableKind::Function => TypeFact::function(Vec::new(), TypeFact::Unknown),
+            ExpectedCallableKind::Closure => TypeFact::Closure,
+        }
+    }
+}
+
 impl ContractActual {
     /// Converts a validated literal fact into a contract actual.
     ///
@@ -197,6 +242,11 @@ pub fn check_expected_contract(
     expected: TypeFact,
     context: ExpectedContractContext,
 ) -> Result<ExpectedContractOutcome, Box<ContractMismatch>> {
+    if let Some(callable) = erased_callable_contract(&expected) {
+        return check_expected_callable_contract_with_projection(
+            actual, callable, expected, context,
+        );
+    }
     if contract_is_erased(&expected) {
         return Ok(ExpectedContractOutcome::Proven);
     }
@@ -234,6 +284,39 @@ pub fn check_expected_contract(
     }
 }
 
+/// Classifies a callable value while preserving erased versus exact arity.
+///
+/// This is the semantic entrypoint for MIR or another backend-neutral caller
+/// that already owns a callable kind and optional arity. Backends retain their
+/// original physical guard contract; the returned [`TypeFact`] remains only
+/// the frozen diagnostic/outcome projection.
+pub fn check_expected_callable_contract(
+    actual: ContractActual,
+    expected: ExpectedCallableContract,
+    context: ExpectedContractContext,
+) -> Result<ExpectedContractOutcome, Box<ContractMismatch>> {
+    let projected = expected.projected_type_fact();
+    check_expected_callable_contract_with_projection(actual, expected, projected, context)
+}
+
+/// Callable contract validation keyed by the stable HIR value supplying it.
+pub fn check_expected_callable_contract_at(
+    expression: HirExprId,
+    actual: ContractActual,
+    expected: ExpectedCallableContract,
+    context: ExpectedContractContext,
+) -> Result<HirContractValidation, HirContractMismatch> {
+    check_expected_callable_contract(actual, expected, context)
+        .map(|outcome| HirContractValidation {
+            expression,
+            outcome,
+        })
+        .map_err(|mismatch| HirContractMismatch {
+            expression,
+            mismatch,
+        })
+}
+
 /// Classifies a value and preserves the stable HIR diagnostic origin.
 pub fn check_expected_contract_at(
     expression: HirExprId,
@@ -261,6 +344,102 @@ fn expected_primitive(expected: &TypeFact) -> Option<PrimitiveTag> {
 
 fn contract_is_erased(contract: &TypeFact) -> bool {
     matches!(contract, TypeFact::Unknown | TypeFact::Any)
+}
+
+fn erased_callable_contract(expected: &TypeFact) -> Option<ExpectedCallableContract> {
+    match expected {
+        TypeFact::Function { params, returns }
+            if params.is_empty() && contract_is_erased(returns) =>
+        {
+            Some(ExpectedCallableContract::new(
+                ExpectedCallableKind::Function,
+                None,
+            ))
+        }
+        TypeFact::Closure => Some(ExpectedCallableContract::new(
+            ExpectedCallableKind::Closure,
+            None,
+        )),
+        _ => None,
+    }
+}
+
+fn check_expected_callable_contract_with_projection(
+    actual: ContractActual,
+    expected: ExpectedCallableContract,
+    projected: TypeFact,
+    context: ExpectedContractContext,
+) -> Result<ExpectedContractOutcome, Box<ContractMismatch>> {
+    match actual {
+        ContractActual::Exact(TypeFact::Never) => Ok(ExpectedContractOutcome::Proven),
+        ContractActual::Exact(actual) if fact_requires_runtime_proof(&actual) => {
+            Ok(ExpectedContractOutcome::RequiresRuntimeGuard(projected))
+        }
+        ContractActual::Exact(actual) => {
+            let Some((actual_kind, actual_arity)) = callable_fact(&actual) else {
+                return Err(contract_mismatch(
+                    projected,
+                    ContractActual::Exact(actual),
+                    context,
+                ));
+            };
+            let kind_matches = actual_kind == expected.kind
+                || (actual_kind == ExpectedCallableKind::Closure
+                    && expected.kind == ExpectedCallableKind::Function);
+            if !kind_matches {
+                return Err(contract_mismatch(
+                    projected,
+                    ContractActual::Exact(actual),
+                    context,
+                ));
+            }
+            match (actual_arity, expected.positional_arity) {
+                (_, None) => Ok(ExpectedContractOutcome::Proven),
+                (Some(actual), Some(expected)) if actual == expected => {
+                    Ok(ExpectedContractOutcome::Proven)
+                }
+                (None, Some(_)) => Ok(ExpectedContractOutcome::RequiresRuntimeGuard(projected)),
+                (Some(_), Some(_)) => Err(contract_mismatch(
+                    projected,
+                    ContractActual::Exact(actual),
+                    context,
+                )),
+            }
+        }
+        ContractActual::DeferredNumeric(kind) => Err(contract_mismatch(
+            projected,
+            ContractActual::DeferredNumeric(kind),
+            context,
+        )),
+        ContractActual::Dynamic => Ok(ExpectedContractOutcome::RequiresRuntimeGuard(projected)),
+    }
+}
+
+fn callable_fact(fact: &TypeFact) -> Option<(ExpectedCallableKind, Option<u32>)> {
+    match fact {
+        TypeFact::Function { params, returns } => {
+            let arity = if params.is_empty() && contract_is_erased(returns) {
+                None
+            } else {
+                u32::try_from(params.len()).ok()
+            };
+            Some((ExpectedCallableKind::Function, arity))
+        }
+        TypeFact::Closure => Some((ExpectedCallableKind::Closure, None)),
+        _ => None,
+    }
+}
+
+fn contract_mismatch(
+    expected: TypeFact,
+    actual: ContractActual,
+    context: ExpectedContractContext,
+) -> Box<ContractMismatch> {
+    Box::new(ContractMismatch {
+        expected,
+        actual,
+        context,
+    })
 }
 
 fn fact_requires_runtime_proof(actual: &TypeFact) -> bool {

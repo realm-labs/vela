@@ -277,6 +277,83 @@ fn incompatible_literal_context_becomes_type_contract_mismatch() {
     );
 }
 
+#[test]
+fn callable_contracts_distinguish_erased_zero_and_exact_arity() {
+    let context = function_parameter("callback");
+    let erased = ExpectedCallableContract::new(ExpectedCallableKind::Function, None);
+    let zero = ExpectedCallableContract::new(ExpectedCallableKind::Function, Some(0));
+    let one = ExpectedCallableContract::new(ExpectedCallableKind::Function, Some(1));
+    let known_zero = ContractActual::Exact(TypeFact::function(Vec::new(), TypeFact::BOOL));
+    let known_one = ContractActual::Exact(TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL));
+    let erased_actual = ContractActual::Exact(TypeFact::function(Vec::new(), TypeFact::Unknown));
+
+    assert_eq!(
+        check_expected_callable_contract(known_one.clone(), erased, context.clone()),
+        Ok(ExpectedContractOutcome::Proven)
+    );
+    assert_eq!(
+        check_expected_callable_contract(known_zero, zero, context.clone()),
+        Ok(ExpectedContractOutcome::Proven)
+    );
+    assert_eq!(
+        check_expected_callable_contract(known_one.clone(), one, context.clone()),
+        Ok(ExpectedContractOutcome::Proven)
+    );
+    assert!(check_expected_callable_contract(known_one, zero, context.clone()).is_err());
+    assert_eq!(
+        check_expected_callable_contract(erased_actual, zero, context),
+        Ok(ExpectedContractOutcome::RequiresRuntimeGuard(
+            TypeFact::function(Vec::new(), TypeFact::Unknown)
+        ))
+    );
+}
+
+#[test]
+fn callable_contracts_preserve_kind_direction_and_dynamic_guards() {
+    let context = function_parameter("callback");
+    let function = ExpectedCallableContract::new(ExpectedCallableKind::Function, None);
+    let closure = ExpectedCallableContract::new(ExpectedCallableKind::Closure, None);
+
+    assert_eq!(
+        check_expected_callable_contract(
+            ContractActual::Exact(TypeFact::Closure),
+            function,
+            context.clone(),
+        ),
+        Ok(ExpectedContractOutcome::Proven)
+    );
+    assert!(
+        check_expected_callable_contract(
+            ContractActual::Exact(TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL)),
+            closure,
+            context.clone(),
+        )
+        .is_err()
+    );
+    assert_eq!(
+        check_expected_callable_contract(
+            ContractActual::Exact(TypeFact::Closure),
+            closure,
+            context.clone(),
+        ),
+        Ok(ExpectedContractOutcome::Proven)
+    );
+
+    let expression = HirExprId::new(991);
+    let validation = check_expected_callable_contract_at(
+        expression,
+        ContractActual::Dynamic,
+        ExpectedCallableContract::new(ExpectedCallableKind::Closure, Some(0)),
+        context,
+    )
+    .expect("dynamic callable requires a runtime guard");
+    assert_eq!(validation.expression(), expression);
+    assert_eq!(
+        validation.outcome(),
+        &ExpectedContractOutcome::RequiresRuntimeGuard(TypeFact::Closure)
+    );
+}
+
 fn graph_with_source(source: SourceId, text: &str) -> ModuleGraph {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
