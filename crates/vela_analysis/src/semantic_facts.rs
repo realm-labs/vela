@@ -470,18 +470,22 @@ impl HirSemanticFacts {
                 } else if let Ok(index) = field.name.parse::<usize>() {
                     MemberTargetFact::TupleIndex(index)
                 } else if let Some(owner) = registry_field_owner(&receiver) {
-                    if schema.is_some_and(|schema| schema.field_fact(&owner, &field.name).is_some())
+                    let host_field = matches!(receiver, TypeFact::Host { .. })
+                        .then(|| {
+                            schema.and_then(|schema| {
+                                schema.host_field_target_fact(&owner, &field.name)
+                            })
+                        })
+                        .flatten();
+                    if let Some(target) = host_field {
+                        MemberTargetFact::HostField(target.clone())
+                    } else if !matches!(receiver, TypeFact::Host { .. })
+                        && schema
+                            .is_some_and(|schema| schema.field_fact(&owner, &field.name).is_some())
                     {
-                        if matches!(receiver, TypeFact::Host { .. }) {
-                            schema
-                                .and_then(|schema| schema.field_target_fact(&owner, &field.name))
-                                .cloned()
-                                .map_or(MemberTargetFact::Unresolved, MemberTargetFact::HostField)
-                        } else {
-                            MemberTargetFact::RegistryField {
-                                owner: owner.clone(),
-                                name: field.name.clone(),
-                            }
+                        MemberTargetFact::RegistryField {
+                            owner: owner.clone(),
+                            name: field.name.clone(),
                         }
                     } else if schema.is_some_and(|schema| {
                         registry_method_fact(schema, &receiver, &field.name).is_some()
@@ -865,7 +869,7 @@ impl HirSemanticFacts {
                         })
                     })?;
                 let owner = registry_field_owner(&self.fact(field.receiver))?;
-                let target = schema?.field_target_fact(&owner, &field.name)?.clone();
+                let target = schema?.host_field_target_fact(&owner, &field.name)?.clone();
                 path.segments.push(HostPathSegmentFact::Field(target));
                 Some(path)
             }

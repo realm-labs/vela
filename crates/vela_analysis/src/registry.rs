@@ -463,6 +463,46 @@ impl RegistryFacts {
             .get(&(owner.to_owned(), field.to_owned()))
     }
 
+    /// Resolves a host-visible field with the same direct-then-unique-variant
+    /// policy as the authoritative definition registry.
+    ///
+    /// A plain field always wins. If no plain field exists, a field exposed by
+    /// exactly one variant is available through the host target path. The
+    /// fallback deliberately rejects two variants exposing the same name.
+    #[must_use]
+    pub fn host_field_target_fact(
+        &self,
+        owner: &str,
+        field: &str,
+    ) -> Option<&RegistryFieldTargetFact> {
+        let semantic_owner = self.type_target_fact(owner)?.semantic;
+        let matching = |target: &&RegistryFieldTargetFact| {
+            target.owner == semantic_owner && target.name == field
+        };
+        let mut direct = self
+            .field_targets
+            .values()
+            .filter(matching)
+            .filter(|target| !target.variant_field);
+        if let Some(target) = direct.next() {
+            return direct.next().is_none().then_some(target);
+        }
+        let mut variants = self
+            .field_targets
+            .values()
+            .filter(matching)
+            .filter(|target| target.variant_field);
+        let target = variants.next()?;
+        variants.next().is_none().then_some(target)
+    }
+
+    #[must_use]
+    pub fn host_field_fact(&self, owner: &str, field: &str) -> Option<&TypeFact> {
+        let target = self.host_field_target_fact(owner, field)?;
+        self.fields
+            .get(&(target.owner_name.clone(), target.name.clone()))
+    }
+
     #[must_use]
     pub fn field_targets_for_owner_or_short_name(
         &self,

@@ -183,9 +183,15 @@ pub(super) fn field_fact(
         .as_deref()
         .and_then(|owner| {
             let schema = schema?;
-            schema
-                .field_fact(owner, name)
-                .or_else(|| schema.method_fact(owner, name))
+            if matches!(receiver, TypeFact::Host { .. }) {
+                schema
+                    .host_field_fact(owner, name)
+                    .or_else(|| schema.method_fact(owner, name))
+            } else {
+                schema
+                    .field_fact(owner, name)
+                    .or_else(|| schema.method_fact(owner, name))
+            }
         })
         .cloned()
         .unwrap_or({
