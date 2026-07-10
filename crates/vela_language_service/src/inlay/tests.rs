@@ -3,7 +3,7 @@ use crate::{
     DisplayPartKind, SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot,
     assemble_project_sources,
 };
-use vela_analysis::registry::RegistryFacts;
+use vela_analysis::registry::{RegistryFacts, RegistryIndexCapabilityFact};
 use vela_analysis::type_fact::TypeFact;
 
 fn databases_for(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {
@@ -525,6 +525,49 @@ fn inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver() {
             )),
             Some(SymbolRef::Schema("Inventory.slots".to_owned())),
             Some(SymbolRef::Schema("Inventory.slots".to_owned()))
+        ]
+    );
+}
+
+#[test]
+fn inlay_hints_use_hir_index_operands_for_host_field_receivers() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"pub fn main(players: PlayerList) {
+    let level = players[0].level + 1;
+}"#;
+    let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+    let mut schema = RegistryFacts::default();
+    schema.insert_type("PlayerList", TypeFact::host("PlayerList"));
+    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_field("Player", "level", TypeFact::I64);
+    schema.insert_index_capability(RegistryIndexCapabilityFact {
+        owner: "PlayerList".to_owned(),
+        readable: true,
+        writable: false,
+        addable: false,
+        removable: false,
+        key: TypeFact::I64,
+        value: TypeFact::host("Player"),
+    });
+    databases.set_schema_facts(schema);
+
+    let hints = databases.inlay_hints(
+        &document,
+        DiagnosticRange::new(Position::new(0, 0), Position::new(3, 0)),
+    );
+
+    assert_eq!(
+        hint_labels(&hints),
+        vec![
+            (position_after_nth(text, "level", 1), ": i64".to_owned()),
+            (position_after_nth(text, "level", 2), ": i64".to_owned())
+        ]
+    );
+    assert_eq!(
+        hint_symbols(&hints),
+        vec![
+            Some(local_symbol_at(&document, text, "level", 1)),
+            Some(SymbolRef::Schema("Player.level".to_owned()))
         ]
     );
 }

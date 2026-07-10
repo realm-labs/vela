@@ -5,8 +5,11 @@ use vela_analysis::{
     registry::RegistryFacts, stdlib::stdlib_method_fact_with_lambda_arity, type_fact::TypeFact,
 };
 use vela_common::{SourceId, Span};
-use vela_hir::body::{HirPathKind, HirPathOwner};
 use vela_hir::module_graph::ModuleGraph;
+use vela_hir::{
+    body::{HirField, HirIndex, HirPathKind, HirPathOwner},
+    ids::HirExprId,
+};
 use vela_syntax::ast::{
     AstNode, SyntaxBlock, SyntaxCallExpr, SyntaxConstItem, SyntaxElseBranch, SyntaxExpression,
     SyntaxExpressionKind, SyntaxFunctionItem, SyntaxImplItem, SyntaxImplMethod, SyntaxLambdaBody,
@@ -414,15 +417,28 @@ impl LanguageServiceDatabases {
                 }
             }
             SyntaxExpressionKind::Field => {
-                if let Some(base) = expr.as_field().and_then(|expr| expr.receiver()) {
+                let receiver = self
+                    .hir_field_for_syntax_expr(expr, context)
+                    .map(|field| field.receiver);
+                if let Some(base) = receiver
+                    .and_then(|receiver| self.syntax_expr_for_hir_expression(expr, receiver))
+                {
                     self.collect_syntax_expr_parameter_hints(&base, context, hints);
+                } else {
+                    self.collect_syntax_child_expr_parameter_hints(expr, context, hints);
                 }
             }
             SyntaxExpressionKind::Call => {
                 if let Some(call) = expr.as_call() {
                     self.collect_syntax_call_parameter_hints(&call, context, hints);
-                    if let Some(callee) = call.callee() {
+                    let callee = self.hir_callee_for_syntax_call_expr(expr, context);
+                    if let Some(callee) =
+                        callee.and_then(|callee| self.syntax_expr_for_hir_expression(expr, callee))
+                    {
                         self.collect_syntax_expr_parameter_hints(&callee, context, hints);
+                    } else {
+                        self.collect_syntax_child_expr_parameter_hints(expr, context, hints);
+                        return;
                     }
                     for arg in call.arguments() {
                         if let Some(value) = arg.expression() {
@@ -432,13 +448,18 @@ impl LanguageServiceDatabases {
                 }
             }
             SyntaxExpressionKind::Index => {
-                if let Some(expr) = expr.as_index() {
-                    if let Some(base) = expr.receiver() {
+                let operands = self
+                    .hir_index_for_syntax_expr(expr, context)
+                    .map(|index| (index.receiver, index.index));
+                if let Some((receiver, index)) = operands {
+                    if let Some(base) = self.syntax_expr_for_hir_expression(expr, receiver) {
                         self.collect_syntax_expr_parameter_hints(&base, context, hints);
                     }
-                    if let Some(index) = expr.index() {
+                    if let Some(index) = self.syntax_expr_for_hir_expression(expr, index) {
                         self.collect_syntax_expr_parameter_hints(&index, context, hints);
                     }
+                } else {
+                    self.collect_syntax_child_expr_parameter_hints(expr, context, hints);
                 }
             }
             SyntaxExpressionKind::Array => {
@@ -569,7 +590,12 @@ impl LanguageServiceDatabases {
         context: ParameterHintContext<'_>,
         hints: &mut Vec<InlayHint>,
     ) {
-        if call.callee().is_none() {
+        let Some(call_expression) =
+            hir_expression_for_call(self.hir_db().graph(), context.source_id, call)
+        else {
+            return;
+        };
+        if self.hir_db().graph().call_callee(call_expression).is_none() {
             return;
         }
         let args = call.arguments();
@@ -607,6 +633,33 @@ impl LanguageServiceDatabases {
                 kind: InlayHintKind::Parameter,
                 symbol: Some(parameter_symbol(callable.symbol(), parameter.name())),
             });
+        }
+    }
+
+    fn collect_syntax_child_expr_parameter_hints(
+        &self,
+        expr: &SyntaxExpression,
+        context: ParameterHintContext<'_>,
+        hints: &mut Vec<InlayHint>,
+    ) {
+        let root_range = expr.syntax().text_range();
+        for child in expr
+            .syntax()
+            .descendants()
+            .filter_map(SyntaxExpression::cast)
+        {
+            if child.syntax().text_range() == root_range {
+                continue;
+            }
+            let has_expression_ancestor_between = child
+                .syntax()
+                .ancestors()
+                .skip(1)
+                .take_while(|node| node.text_range() != root_range)
+                .any(|node| SyntaxExpression::cast(node).is_some());
+            if !has_expression_ancestor_between {
+                self.collect_syntax_expr_parameter_hints(&child, context, hints);
+            }
         }
     }
 
@@ -649,6 +702,56 @@ impl LanguageServiceDatabases {
             return Vec::new();
         };
         callable_facts(self, &callee_path.join("::"))
+    }
+
+    fn hir_expression_for_syntax_expr(
+        &self,
+        expr: &SyntaxExpression,
+        context: ParameterHintContext<'_>,
+    ) -> Option<HirExprId> {
+        self.hir_db().graph().expression_at_span(syntax_node_span(
+            context.source_id,
+            expr.syntax().text_range(),
+        ))
+    }
+
+    fn hir_callee_for_syntax_call_expr(
+        &self,
+        call: &SyntaxExpression,
+        context: ParameterHintContext<'_>,
+    ) -> Option<HirExprId> {
+        self.hir_expression_for_syntax_expr(call, context)
+            .and_then(|expression| self.hir_db().graph().call_callee(expression))
+    }
+
+    fn hir_field_for_syntax_expr(
+        &self,
+        expr: &SyntaxExpression,
+        context: ParameterHintContext<'_>,
+    ) -> Option<&HirField> {
+        let expression = self.hir_expression_for_syntax_expr(expr, context)?;
+        self.hir_db()
+            .graph()
+            .fields_in_source(context.source_id)
+            .find(|field| field.expression == expression)
+    }
+
+    fn hir_index_for_syntax_expr(
+        &self,
+        expr: &SyntaxExpression,
+        context: ParameterHintContext<'_>,
+    ) -> Option<&HirIndex> {
+        self.hir_expression_for_syntax_expr(expr, context)
+            .and_then(|expression| self.hir_db().graph().index_for_expression(expression))
+    }
+
+    fn syntax_expr_for_hir_expression(
+        &self,
+        root: &SyntaxExpression,
+        expression: HirExprId,
+    ) -> Option<SyntaxExpression> {
+        let span = self.hir_db().graph().expression_span(expression)?;
+        syntax_expr_at_span(root, span)
     }
 }
 
@@ -703,6 +806,14 @@ fn syntax_node_span(source_id: SourceId, range: SyntaxTextRange) -> Span {
 
 fn span_text_range(span: Span) -> TextRange {
     TextRange::new(span.start as usize, span.end as usize)
+}
+
+fn syntax_expr_at_span(root: &SyntaxExpression, span: Span) -> Option<SyntaxExpression> {
+    let range = SyntaxTextRange::new(TextSize::from(span.start), TextSize::from(span.end));
+    root.syntax()
+        .descendants()
+        .filter_map(SyntaxExpression::cast)
+        .find(|expr| expr.syntax().text_range() == range)
 }
 
 fn text_size_to_usize(size: TextSize) -> usize {
@@ -925,22 +1036,46 @@ impl TypeHintCollector<'_, '_> {
                 }
             }
             SyntaxExpressionKind::Field => {
-                if let Some(field) = expr.as_field()
-                    && let Some(base) = field.receiver()
+                let receiver = self.hir_field_for_expr(expr).map(|field| field.receiver);
+                if let Some(base) = receiver
+                    .and_then(|receiver| self.syntax_expr_for_hir_expression(expr, receiver))
                 {
                     self.collect_expr(&base);
                     self.collect_field_hint(expr);
+                } else {
+                    self.collect_syntax_child_exprs(expr);
                 }
             }
             SyntaxExpressionKind::Call => {
                 if let Some(call) = expr.as_call() {
                     let lambda_params = self.lambda_parameter_facts(&call);
-                    if let Some(callee) = call.callee() {
-                        if let Some(base) = callee.as_field().and_then(|field| field.receiver()) {
-                            self.collect_expr(&base);
+                    let callee = self.hir_callee_for_call(expr);
+                    let collected_callee = if let Some(callee) = callee {
+                        if let Some(receiver) = self
+                            .hir_field_for_expression(callee)
+                            .map(|field| field.receiver)
+                        {
+                            if let Some(base) = self.syntax_expr_for_hir_expression(expr, receiver)
+                            {
+                                self.collect_expr(&base);
+                                true
+                            } else {
+                                false
+                            }
+                        } else if let Some(callee_expr) =
+                            self.syntax_expr_for_hir_expression(expr, callee)
+                        {
+                            self.collect_expr(&callee_expr);
+                            true
                         } else {
-                            self.collect_expr(&callee);
+                            false
                         }
+                    } else {
+                        false
+                    };
+                    if !collected_callee {
+                        self.collect_syntax_child_exprs(expr);
+                        return;
                     }
                     for arg in call.arguments() {
                         if let Some(value) = arg.expression() {
@@ -954,13 +1089,18 @@ impl TypeHintCollector<'_, '_> {
                 }
             }
             SyntaxExpressionKind::Index => {
-                if let Some(expr) = expr.as_index() {
-                    if let Some(base) = expr.receiver() {
+                if let Some((receiver, value)) = self
+                    .hir_index_for_expr(expr)
+                    .map(|index| (index.receiver, index.index))
+                {
+                    if let Some(base) = self.syntax_expr_for_hir_expression(expr, receiver) {
                         self.collect_expr(&base);
                     }
-                    if let Some(index) = expr.index() {
+                    if let Some(index) = self.syntax_expr_for_hir_expression(expr, value) {
                         self.collect_expr(&index);
                     }
+                } else {
+                    self.collect_syntax_child_exprs(expr);
                 }
             }
             SyntaxExpressionKind::Array => {
@@ -1148,9 +1288,67 @@ impl TypeHintCollector<'_, '_> {
             .and_then(|fact| fact.lambda.map(|lambda| lambda.params))
     }
 
-    fn hir_expression(&self, expr: &SyntaxExpression) -> Option<vela_hir::ids::HirExprId> {
+    fn hir_expression(&self, expr: &SyntaxExpression) -> Option<HirExprId> {
         self.graph
             .expression_at_span(syntax_node_span(self.source_id, expr.syntax().text_range()))
+    }
+
+    fn hir_callee_for_call(&self, call: &SyntaxExpression) -> Option<HirExprId> {
+        self.hir_expression(call)
+            .and_then(|expression| self.graph.call_callee(expression))
+    }
+
+    fn hir_field_for_expr(&self, expr: &SyntaxExpression) -> Option<&HirField> {
+        let expression = self.hir_expression(expr)?;
+        self.hir_field_for_expression(expression)
+    }
+
+    fn hir_field_for_expression(&self, expression: HirExprId) -> Option<&HirField> {
+        self.graph
+            .fields_in_source(self.source_id)
+            .find(|field| field.expression == expression)
+    }
+
+    fn hir_index_for_expr(&self, expr: &SyntaxExpression) -> Option<&HirIndex> {
+        self.hir_expression(expr)
+            .and_then(|expression| self.graph.index_for_expression(expression))
+    }
+
+    fn syntax_expr_for_hir_expression(
+        &self,
+        root: &SyntaxExpression,
+        expression: HirExprId,
+    ) -> Option<SyntaxExpression> {
+        let span = self.graph.expression_span(expression)?;
+        self.syntax_expr_at_span(root, span)
+    }
+
+    fn syntax_expr_at_span(&self, root: &SyntaxExpression, span: Span) -> Option<SyntaxExpression> {
+        if span.source != self.source_id {
+            return None;
+        }
+        syntax_expr_at_span(root, span)
+    }
+
+    fn collect_syntax_child_exprs(&mut self, expr: &SyntaxExpression) {
+        let root_range = expr.syntax().text_range();
+        let children: Vec<_> = expr
+            .syntax()
+            .descendants()
+            .filter_map(SyntaxExpression::cast)
+            .filter(|child| child.syntax().text_range() != root_range)
+            .filter(|child| {
+                !child
+                    .syntax()
+                    .ancestors()
+                    .skip(1)
+                    .take_while(|node| node.text_range() != root_range)
+                    .any(|node| SyntaxExpression::cast(node).is_some())
+            })
+            .collect();
+        for child in children {
+            self.collect_expr(&child);
+        }
     }
 
     fn expression_fact(&self, expr: &SyntaxExpression) -> Option<TypeFact> {

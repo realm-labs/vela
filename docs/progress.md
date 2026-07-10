@@ -1708,7 +1708,10 @@ callable parameter facts, stable `TypeFact`s, `Any`/unknown suppression, and
   expression-fact traversal now reads complete field, call, and index operands
   from HIR facts, with only generic child-expression recovery for incomplete
   edits. Call-argument completion and signature contexts now read member method
-  names from HIR field facts instead of splitting callee text.
+  names from HIR field facts instead of splitting callee text. Language-service
+  parameter and type inlay traversal now follow HIR field, call-callee, and
+  index operand facts for receiver/callee/subscript walks instead of
+  reconstructing those relationships from field, call, and index syntax.
 
 ### Remaining Gaps
 
