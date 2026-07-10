@@ -1,11 +1,14 @@
 use std::collections::BTreeMap;
-use std::num::{ParseFloatError, ParseIntError};
 
+use vela_analysis::literals::{
+    DeferredNumericLiteral, LiteralError, LiteralPrimitiveContext, LiteralSign,
+    ResolvedLiteralFact, float_literal_spelling, integer_literal_spelling, resolve_numeric_literal,
+};
 use vela_common::{PrimitiveTag, ScalarValue};
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::body::{
-    HirBinaryOp, HirBody, HirBodyRoot, HirExprKind, HirFloatLiteral, HirFloatSuffix, HirIntRadix,
-    HirIntegerLiteral, HirIntegerSuffix, HirLiteral, HirPatternKind, HirStmtKind, HirUnaryOp,
+    HirBinaryOp, HirBody, HirBodyRoot, HirExprKind, HirIntegerSuffix, HirLiteral, HirPatternKind,
+    HirStmtKind, HirUnaryOp,
 };
 use vela_hir::ids::{HirBlockId, HirDeclId, HirExprId, HirLocalId};
 
@@ -17,8 +20,11 @@ pub(super) fn compile_literal_constant(literal: &HirLiteral) -> CompileResult<Co
     Ok(match literal {
         HirLiteral::Bool(value) => Constant::Bool(*value),
         HirLiteral::Char(value) => Constant::Char(*value),
-        HirLiteral::Integer(value) => Constant::Scalar(parse_i64eger_scalar(value)?),
-        HirLiteral::Float(value) => Constant::Scalar(parse_f64_scalar(value)?),
+        HirLiteral::Integer(_) | HirLiteral::Float(_) => Constant::Scalar(resolved_scalar(
+            literal,
+            LiteralPrimitiveContext::Default,
+            LiteralSign::Positive,
+        )?),
         HirLiteral::String(value) => Constant::String(value.clone()),
         HirLiteral::Bytes(value) => Constant::Bytes(value.clone()),
         HirLiteral::Interpolated { .. } | HirLiteral::Invalid { .. } => {
@@ -34,11 +40,29 @@ pub(super) fn compile_literal_constant_for_type(
     expected: PrimitiveTag,
 ) -> CompileResult<Option<Constant>> {
     match literal {
-        HirLiteral::Integer(value) if value.suffix.is_none() && is_integer_tag(expected) => {
-            parse_i64eger_scalar_as(value, expected).map(|value| Some(Constant::Scalar(value)))
+        HirLiteral::Integer(value)
+            if value.suffix.is_none()
+                && vela_analysis::literals::NumericLiteralKind::Integer
+                    .accepts_primitive(expected) =>
+        {
+            resolved_scalar(
+                literal,
+                LiteralPrimitiveContext::Expected(expected),
+                LiteralSign::Positive,
+            )
+            .map(|value| Some(Constant::Scalar(value)))
         }
-        HirLiteral::Float(value) if value.suffix.is_none() && is_float_tag(expected) => {
-            parse_f64_scalar_as(value, expected).map(|value| Some(Constant::Scalar(value)))
+        HirLiteral::Float(value)
+            if value.suffix.is_none()
+                && vela_analysis::literals::NumericLiteralKind::Float
+                    .accepts_primitive(expected) =>
+        {
+            resolved_scalar(
+                literal,
+                LiteralPrimitiveContext::Expected(expected),
+                LiteralSign::Positive,
+            )
+            .map(|value| Some(Constant::Scalar(value)))
         }
         _ => Ok(None),
     }
@@ -49,12 +73,77 @@ pub(super) fn compile_negated_literal_constant(
 ) -> CompileResult<Option<Constant>> {
     match literal {
         HirLiteral::Integer(value) => {
-            parse_negated_integer_scalar(value).map(|value| value.map(Constant::Scalar))
+            if matches!(
+                value.suffix,
+                Some(
+                    HirIntegerSuffix::U8
+                        | HirIntegerSuffix::U16
+                        | HirIntegerSuffix::U32
+                        | HirIntegerSuffix::U64
+                )
+            ) {
+                return Ok(None);
+            }
+            resolved_scalar(
+                literal,
+                LiteralPrimitiveContext::Default,
+                LiteralSign::Negated,
+            )
+            .map(|value| Some(Constant::Scalar(value)))
         }
-        HirLiteral::Float(value) => Ok(Some(Constant::Scalar(negate_float_scalar(
-            parse_f64_scalar(value)?,
-        )))),
+        HirLiteral::Float(_) => resolved_scalar(
+            literal,
+            LiteralPrimitiveContext::Default,
+            LiteralSign::Negated,
+        )
+        .map(|value| Some(Constant::Scalar(value))),
         _ => Ok(None),
+    }
+}
+
+pub(super) fn compile_negated_literal_constant_for_type(
+    literal: &HirLiteral,
+    expected: PrimitiveTag,
+) -> CompileResult<Option<Constant>> {
+    let compatible = match literal {
+        HirLiteral::Integer(value) => {
+            value.suffix.is_none()
+                && expected
+                    .numeric_tag()
+                    .is_some_and(|tag| tag.is_signed_integer())
+        }
+        HirLiteral::Float(value) => {
+            value.suffix.is_none()
+                && vela_analysis::literals::NumericLiteralKind::Float.accepts_primitive(expected)
+        }
+        _ => false,
+    };
+    if !compatible {
+        return Ok(None);
+    }
+    resolved_scalar(
+        literal,
+        LiteralPrimitiveContext::Expected(expected),
+        LiteralSign::Negated,
+    )
+    .map(|value| Some(Constant::Scalar(value)))
+}
+
+pub(super) fn validate_deferred_numeric_literal(
+    literal: &HirLiteral,
+) -> CompileResult<DeferredNumericLiteral> {
+    let resolved = resolve_numeric_literal(
+        literal,
+        LiteralPrimitiveContext::DeferredDynamic,
+        LiteralSign::Positive,
+    )
+    .expect("deferred literal validation requires a numeric literal")
+    .map_err(literal_compile_error)?;
+    match resolved {
+        ResolvedLiteralFact::Deferred(literal) => Ok(literal),
+        ResolvedLiteralFact::Scalar(_) => {
+            unreachable!("unsuffixed dynamic numeric literals always defer")
+        }
     }
 }
 
@@ -243,8 +332,8 @@ fn evaluate_const_block(
 fn const_map_key_name(body: &HirBody, expression: HirExprId) -> Option<String> {
     match &body.expression(expression)?.kind {
         HirExprKind::Literal(HirLiteral::String(value)) => Some(value.clone()),
-        HirExprKind::Literal(HirLiteral::Integer(value)) => Some(integer_text(value)),
-        HirExprKind::Literal(HirLiteral::Float(value)) => Some(float_text(value)),
+        HirExprKind::Literal(HirLiteral::Integer(value)) => Some(integer_literal_spelling(value)),
+        HirExprKind::Literal(HirLiteral::Float(value)) => Some(float_literal_spelling(value)),
         HirExprKind::Path(path) => body
             .paths
             .get(path)
@@ -406,252 +495,34 @@ fn evaluate_numeric_compare_const(
     }
 }
 
-fn integer_text(value: &HirIntegerLiteral) -> String {
-    let suffix = match value.suffix {
-        Some(HirIntegerSuffix::I8) => "i8",
-        Some(HirIntegerSuffix::I16) => "i16",
-        Some(HirIntegerSuffix::I32) => "i32",
-        Some(HirIntegerSuffix::I64) => "i64",
-        Some(HirIntegerSuffix::U8) => "u8",
-        Some(HirIntegerSuffix::U16) => "u16",
-        Some(HirIntegerSuffix::U32) => "u32",
-        Some(HirIntegerSuffix::U64) => "u64",
-        None => "",
-    };
-    format!("{}{suffix}", value.text)
-}
-
-fn int_radix_base(radix: HirIntRadix) -> u32 {
-    match radix {
-        HirIntRadix::Binary => 2,
-        HirIntRadix::Decimal => 10,
-        HirIntRadix::Hex => 16,
-    }
-}
-
-fn float_text(value: &HirFloatLiteral) -> String {
-    let suffix = match value.suffix {
-        Some(HirFloatSuffix::F32) => "f32",
-        Some(HirFloatSuffix::F64) => "f64",
-        None => "",
-    };
-    format!("{}{suffix}", value.text)
-}
-
-fn parse_i64eger_scalar(value: &HirIntegerLiteral) -> CompileResult<ScalarValue> {
-    let magnitude = parse_i64eger_magnitude(value)?;
-    let scalar = match value.suffix {
-        None | Some(HirIntegerSuffix::I64) => {
-            ScalarValue::I64(checked_signed_positive(value, magnitude, i64::MAX as u128)? as i64)
-        }
-        Some(HirIntegerSuffix::I8) => {
-            ScalarValue::I8(checked_signed_positive(value, magnitude, i8::MAX as u128)? as i8)
-        }
-        Some(HirIntegerSuffix::I16) => {
-            ScalarValue::I16(checked_signed_positive(value, magnitude, i16::MAX as u128)? as i16)
-        }
-        Some(HirIntegerSuffix::I32) => {
-            ScalarValue::I32(checked_signed_positive(value, magnitude, i32::MAX as u128)? as i32)
-        }
-        Some(HirIntegerSuffix::U8) => {
-            ScalarValue::U8(checked_unsigned_positive(value, magnitude, u8::MAX as u128)? as u8)
-        }
-        Some(HirIntegerSuffix::U16) => {
-            ScalarValue::U16(checked_unsigned_positive(value, magnitude, u16::MAX as u128)? as u16)
-        }
-        Some(HirIntegerSuffix::U32) => {
-            ScalarValue::U32(checked_unsigned_positive(value, magnitude, u32::MAX as u128)? as u32)
-        }
-        Some(HirIntegerSuffix::U64) => {
-            ScalarValue::U64(checked_unsigned_positive(value, magnitude, u64::MAX as u128)? as u64)
-        }
-    };
-    Ok(scalar)
-}
-
-fn parse_i64eger_scalar_as(
-    value: &HirIntegerLiteral,
-    expected: PrimitiveTag,
+fn resolved_scalar(
+    literal: &HirLiteral,
+    context: LiteralPrimitiveContext,
+    sign: LiteralSign,
 ) -> CompileResult<ScalarValue> {
-    let magnitude = parse_i64eger_magnitude(value)?;
-    let scalar = match expected {
-        PrimitiveTag::I8 => {
-            ScalarValue::I8(checked_signed_positive(value, magnitude, i8::MAX as u128)? as i8)
-        }
-        PrimitiveTag::I16 => {
-            ScalarValue::I16(checked_signed_positive(value, magnitude, i16::MAX as u128)? as i16)
-        }
-        PrimitiveTag::I32 => {
-            ScalarValue::I32(checked_signed_positive(value, magnitude, i32::MAX as u128)? as i32)
-        }
-        PrimitiveTag::I64 => {
-            ScalarValue::I64(checked_signed_positive(value, magnitude, i64::MAX as u128)? as i64)
-        }
-        PrimitiveTag::U8 => {
-            ScalarValue::U8(checked_unsigned_positive(value, magnitude, u8::MAX as u128)? as u8)
-        }
-        PrimitiveTag::U16 => {
-            ScalarValue::U16(checked_unsigned_positive(value, magnitude, u16::MAX as u128)? as u16)
-        }
-        PrimitiveTag::U32 => {
-            ScalarValue::U32(checked_unsigned_positive(value, magnitude, u32::MAX as u128)? as u32)
-        }
-        PrimitiveTag::U64 => {
-            ScalarValue::U64(checked_unsigned_positive(value, magnitude, u64::MAX as u128)? as u64)
-        }
-        _ => unreachable!("caller only passes integer primitive tags"),
-    };
-    Ok(scalar)
+    let result = resolve_numeric_literal(literal, context, sign)
+        .expect("resolved_scalar is only called for numeric literals")
+        .map_err(literal_compile_error)?;
+    match result {
+        ResolvedLiteralFact::Scalar(value) => Ok(value.value()),
+        ResolvedLiteralFact::Deferred(_) => unreachable!("scalar resolution never defers"),
+    }
 }
 
-fn parse_negated_integer_scalar(value: &HirIntegerLiteral) -> CompileResult<Option<ScalarValue>> {
-    let magnitude = parse_i64eger_magnitude(value)?;
-    let scalar = match value.suffix {
-        None | Some(HirIntegerSuffix::I64) => {
-            ScalarValue::I64(checked_signed_negative(value, magnitude, i64::MAX as u128)? as i64)
+fn literal_compile_error(error: LiteralError) -> CompileError {
+    let kind = match error.kind() {
+        vela_analysis::literals::NumericLiteralKind::Integer => {
+            CompileErrorKind::InvalidIntLiteral {
+                literal: error.spelling().to_owned(),
+                error: error.detail().to_owned(),
+            }
         }
-        Some(HirIntegerSuffix::I8) => {
-            ScalarValue::I8(checked_signed_negative(value, magnitude, i8::MAX as u128)? as i8)
-        }
-        Some(HirIntegerSuffix::I16) => {
-            ScalarValue::I16(checked_signed_negative(value, magnitude, i16::MAX as u128)? as i16)
-        }
-        Some(HirIntegerSuffix::I32) => {
-            ScalarValue::I32(checked_signed_negative(value, magnitude, i32::MAX as u128)? as i32)
-        }
-        Some(
-            HirIntegerSuffix::U8
-            | HirIntegerSuffix::U16
-            | HirIntegerSuffix::U32
-            | HirIntegerSuffix::U64,
-        ) => {
-            return Ok(None);
+        vela_analysis::literals::NumericLiteralKind::Float => {
+            CompileErrorKind::InvalidFloatLiteral {
+                literal: error.spelling().to_owned(),
+                error: error.detail().to_owned(),
+            }
         }
     };
-    Ok(Some(scalar))
-}
-
-fn parse_i64eger_magnitude(value: &HirIntegerLiteral) -> CompileResult<u128> {
-    let value_without_separators = value.text.replace('_', "");
-    let digits = match value.radix {
-        HirIntRadix::Binary | HirIntRadix::Hex => &value_without_separators[2..],
-        HirIntRadix::Decimal => value_without_separators.as_str(),
-    };
-    u128::from_str_radix(digits, int_radix_base(value.radix)).map_err(|error: ParseIntError| {
-        CompileError::new(CompileErrorKind::InvalidIntLiteral {
-            literal: integer_text(value),
-            error: error.to_string(),
-        })
-    })
-}
-
-fn checked_signed_positive(
-    literal: &HirIntegerLiteral,
-    magnitude: u128,
-    max: u128,
-) -> CompileResult<u128> {
-    if magnitude <= max {
-        Ok(magnitude)
-    } else {
-        Err(out_of_range_integer(literal))
-    }
-}
-
-fn checked_unsigned_positive(
-    literal: &HirIntegerLiteral,
-    magnitude: u128,
-    max: u128,
-) -> CompileResult<u128> {
-    if magnitude <= max {
-        Ok(magnitude)
-    } else {
-        Err(out_of_range_integer(literal))
-    }
-}
-
-fn checked_signed_negative(
-    literal: &HirIntegerLiteral,
-    magnitude: u128,
-    positive_max: u128,
-) -> CompileResult<i128> {
-    if magnitude <= positive_max + 1 {
-        Ok(-(magnitude as i128))
-    } else {
-        Err(out_of_range_integer(literal))
-    }
-}
-
-fn out_of_range_integer(value: &HirIntegerLiteral) -> CompileError {
-    CompileError::new(CompileErrorKind::InvalidIntLiteral {
-        literal: integer_text(value),
-        error: "integer literal out of range".to_owned(),
-    })
-}
-
-fn parse_f64_scalar(value: &HirFloatLiteral) -> CompileResult<ScalarValue> {
-    match value.suffix {
-        Some(HirFloatSuffix::F32) => parse_f64::<f32>(value).map(ScalarValue::F32),
-        None | Some(HirFloatSuffix::F64) => parse_f64::<f64>(value).map(ScalarValue::F64),
-    }
-}
-
-fn parse_f64_scalar_as(
-    value: &HirFloatLiteral,
-    expected: PrimitiveTag,
-) -> CompileResult<ScalarValue> {
-    match expected {
-        PrimitiveTag::F32 => parse_f64::<f32>(value).map(ScalarValue::F32),
-        PrimitiveTag::F64 => parse_f64::<f64>(value).map(ScalarValue::F64),
-        _ => unreachable!("caller only passes float primitive tags"),
-    }
-}
-
-fn is_integer_tag(tag: PrimitiveTag) -> bool {
-    matches!(
-        tag,
-        PrimitiveTag::I8
-            | PrimitiveTag::I16
-            | PrimitiveTag::I32
-            | PrimitiveTag::I64
-            | PrimitiveTag::U8
-            | PrimitiveTag::U16
-            | PrimitiveTag::U32
-            | PrimitiveTag::U64
-    )
-}
-
-fn is_float_tag(tag: PrimitiveTag) -> bool {
-    matches!(tag, PrimitiveTag::F32 | PrimitiveTag::F64)
-}
-
-fn parse_f64<T>(value: &HirFloatLiteral) -> CompileResult<T>
-where
-    T: Copy + Into<f64> + std::str::FromStr<Err = ParseFloatError>,
-{
-    let parsed: T = value
-        .text
-        .replace('_', "")
-        .parse()
-        .map_err(|error: ParseFloatError| {
-            CompileError::new(CompileErrorKind::InvalidFloatLiteral {
-                literal: float_text(value),
-                error: error.to_string(),
-            })
-        })?;
-    if parsed.into().is_finite() {
-        Ok(parsed)
-    } else {
-        Err(CompileError::new(CompileErrorKind::InvalidFloatLiteral {
-            literal: float_text(value),
-            error: "float literal out of range".to_owned(),
-        }))
-    }
-}
-
-fn negate_float_scalar(value: ScalarValue) -> ScalarValue {
-    match value {
-        ScalarValue::F32(value) => ScalarValue::F32(-value),
-        ScalarValue::F64(value) => ScalarValue::F64(-value),
-        _ => value,
-    }
+    CompileError::new(kind)
 }

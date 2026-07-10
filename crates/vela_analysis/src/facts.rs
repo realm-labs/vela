@@ -7,6 +7,7 @@ use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use crate::hints::{
     declaration_schema_fact, schema_declaration_from_hint_in_module, type_fact_from_hint_in_module,
 };
+use crate::literals::{LiteralFacts, LiteralPrimitiveContext, LiteralResult};
 use crate::registry::RegistryFacts;
 use crate::semantic_facts::{
     CallTargetFact, ConstructorTargetFact, ControlFlowFact, HirSemanticFacts, HostPathTargetFact,
@@ -21,6 +22,7 @@ pub struct AnalysisFacts {
     expressions: BTreeMap<HirExprId, TypeFact>,
     local_script_types: BTreeMap<HirLocalId, ScriptTypeTargetFact>,
     resolutions: BTreeMap<HirExprId, BindingResolution>,
+    literals: LiteralFacts,
     semantic: HirSemanticFacts,
 }
 
@@ -86,6 +88,7 @@ impl AnalysisFacts {
             }
         }
 
+        facts.literals = LiteralFacts::from_module_graph(graph);
         facts.semantic = HirSemanticFacts::from_module_graph(graph, schema, &facts);
         facts
     }
@@ -122,6 +125,31 @@ impl AnalysisFacts {
     #[must_use]
     pub fn script_type(&self, expression: HirExprId) -> Option<&ScriptTypeTargetFact> {
         self.semantic.script_type(expression)
+    }
+
+    #[must_use]
+    pub fn literal(&self, expression: HirExprId) -> Option<&LiteralResult> {
+        self.literals.get(expression)
+    }
+
+    /// Revalidates numeric literals with the exact primitive or dynamic
+    /// contexts selected by the compile-target analysis.
+    pub fn resolve_literal_contexts(
+        &mut self,
+        graph: &ModuleGraph,
+        contexts: &BTreeMap<HirExprId, LiteralPrimitiveContext>,
+    ) {
+        self.literals = LiteralFacts::from_module_graph_with_contexts(graph, contexts);
+    }
+
+    #[must_use]
+    pub const fn literal_facts(&self) -> &LiteralFacts {
+        &self.literals
+    }
+
+    #[must_use]
+    pub fn literal_diagnostics(&self, graph: &ModuleGraph) -> Vec<vela_common::Diagnostic> {
+        self.literals.compiler_diagnostics(graph)
     }
 
     #[must_use]

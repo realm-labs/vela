@@ -39,55 +39,23 @@ mod operators;
 mod values;
 
 fn integer_text(value: &vela_hir::body::HirIntegerLiteral) -> String {
-    let mut text = value.text.clone();
-    if let Some(suffix) = value.suffix {
-        text.push_str(match suffix {
-            HirIntegerSuffix::I8 => "i8",
-            HirIntegerSuffix::I16 => "i16",
-            HirIntegerSuffix::I32 => "i32",
-            HirIntegerSuffix::I64 => "i64",
-            HirIntegerSuffix::U8 => "u8",
-            HirIntegerSuffix::U16 => "u16",
-            HirIntegerSuffix::U32 => "u32",
-            HirIntegerSuffix::U64 => "u64",
-        });
-    }
-    text
+    vela_analysis::literals::integer_literal_spelling(value)
 }
 
 fn float_text(value: &vela_hir::body::HirFloatLiteral) -> String {
-    let mut text = value.text.clone();
-    if let Some(suffix) = value.suffix {
-        text.push_str(match suffix {
-            HirFloatSuffix::F32 => "f32",
-            HirFloatSuffix::F64 => "f64",
-        });
-    }
-    text
+    vela_analysis::literals::float_literal_spelling(value)
 }
 
 pub(in crate::compiler) fn integer_suffix_tag(
     suffix: Option<HirIntegerSuffix>,
 ) -> vela_common::PrimitiveTag {
-    match suffix {
-        None | Some(HirIntegerSuffix::I64) => vela_common::PrimitiveTag::I64,
-        Some(HirIntegerSuffix::I8) => vela_common::PrimitiveTag::I8,
-        Some(HirIntegerSuffix::I16) => vela_common::PrimitiveTag::I16,
-        Some(HirIntegerSuffix::I32) => vela_common::PrimitiveTag::I32,
-        Some(HirIntegerSuffix::U8) => vela_common::PrimitiveTag::U8,
-        Some(HirIntegerSuffix::U16) => vela_common::PrimitiveTag::U16,
-        Some(HirIntegerSuffix::U32) => vela_common::PrimitiveTag::U32,
-        Some(HirIntegerSuffix::U64) => vela_common::PrimitiveTag::U64,
-    }
+    vela_analysis::literals::integer_suffix_primitive(suffix)
 }
 
 pub(in crate::compiler) fn float_suffix_tag(
     suffix: Option<HirFloatSuffix>,
 ) -> vela_common::PrimitiveTag {
-    match suffix {
-        Some(HirFloatSuffix::F32) => vela_common::PrimitiveTag::F32,
-        None | Some(HirFloatSuffix::F64) => vela_common::PrimitiveTag::F64,
-    }
+    vela_analysis::literals::float_suffix_primitive(suffix)
 }
 
 fn hir_host_mutation_op(op: HirAssignOp) -> Option<HostMutationOp> {

@@ -554,10 +554,7 @@ impl Compiler<'_, '_> {
         };
         let outcome = check_expected_type(static_type, expected, span, context.clone())?;
         if let ExpectedTypeOutcome::Contextualized(RuntimeTypeFact::Primitive(tag)) = &outcome
-            && let HirExprKind::Literal(literal) = &kind
-            && let Some(constant) =
-                crate::compiler::const_eval::compile_literal_constant_for_type(literal, *tag)
-                    .map_err(|error| error.with_span(span))?
+            && let Some(constant) = self.compile_hir_contextual_numeric_literal(expression, *tag)?
         {
             return self.emit_constant(constant).map(|value| (value, false));
         }

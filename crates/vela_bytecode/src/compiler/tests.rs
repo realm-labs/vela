@@ -584,6 +584,7 @@ mod closures_and_bindings;
 mod diagnostic_contracts;
 mod diagnostics;
 mod expressions;
+mod literal_validation;
 mod literals_and_calls;
 mod loops_and_errors;
 mod module_resolution;

@@ -456,11 +456,19 @@ fn mir_model_keeps_contextual_literals_static_keys_and_traps_explicit() {
         MirStatementKind::ContextualNumericBinary {
             operation: MirContextualBinaryOp::Add,
             value: MirOperand::Local(value),
-            literal: MirContextualNumericLiteral::Integer(vela_hir::body::HirIntegerLiteral {
-                text: "0x12c".to_owned(),
-                radix: vela_hir::body::HirIntRadix::Hex,
-                suffix: None,
-            }),
+            literal: vela_analysis::literals::resolve_integer_literal(
+                &vela_hir::body::HirIntegerLiteral {
+                    text: "0x12c".to_owned(),
+                    radix: vela_hir::body::HirIntRadix::Hex,
+                    suffix: None,
+                },
+                vela_analysis::literals::LiteralPrimitiveContext::DeferredDynamic,
+                vela_analysis::literals::LiteralSign::Positive,
+            )
+            .expect("valid contextual integer")
+            .deferred()
+            .expect("contextual integer remains deferred")
+            .clone(),
             literal_side: MirLiteralSide::Right,
         },
         MirEffect::PURE,

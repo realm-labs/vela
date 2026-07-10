@@ -960,6 +960,7 @@ dependencies = [
 name = "vela_bytecode"
 version = "0.1.0"
 dependencies = [
+ "vela_analysis",
  "vela_common",
  "vela_def",
  "vela_hir",

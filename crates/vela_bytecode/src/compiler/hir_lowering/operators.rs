@@ -114,7 +114,7 @@ impl Compiler<'_, '_> {
         lhs: HirExprId,
         rhs: HirExprId,
     ) -> CompileResult<Option<Register>> {
-        let Some((value_expression, literal, side)) =
+        let Some((value_expression, literal_expression, literal, side)) =
             self.hir_numeric_literal_operands(lhs, rhs)?
         else {
             return Ok(None);
@@ -128,10 +128,24 @@ impl Compiler<'_, '_> {
                 return Ok(None);
             }
             let hir_literal = literal.to_hir_literal();
-            let Some(constant) =
-                crate::compiler::const_eval::compile_literal_constant_for_type(&hir_literal, tag)
-                    .map_err(|error| error.with_span(span))?
-            else {
+            let constant = match literal.sign() {
+                vela_analysis::literals::LiteralSign::Positive => {
+                    crate::compiler::const_eval::compile_literal_constant_for_type(
+                        &hir_literal,
+                        tag,
+                    )
+                }
+                vela_analysis::literals::LiteralSign::Negated => {
+                    crate::compiler::const_eval::compile_negated_literal_constant_for_type(
+                        &hir_literal,
+                        tag,
+                    )
+                }
+            }
+            .map_err(|error| {
+                error.with_span(self.expression_span(literal_expression).unwrap_or(span))
+            })?;
+            let Some(constant) = constant else {
                 return Ok(None);
             };
             let value = self.compile_hir_expression(value_expression)?;
@@ -146,25 +160,32 @@ impl Compiler<'_, '_> {
         if value_type.is_some() {
             return Ok(None);
         }
+        if literal.sign() == vela_analysis::literals::LiteralSign::Negated {
+            return Ok(None);
+        }
 
+        let hir_literal = literal.to_hir_literal();
+        let literal_span = self.expression_span(literal_expression).unwrap_or(span);
+        let deferred = crate::compiler::const_eval::validate_deferred_numeric_literal(&hir_literal)
+            .map_err(|error| error.with_span(literal_span))?;
         let value_register = self.compile_hir_expression(value_expression)?;
         let dst = self.alloc_register()?;
-        let instruction = match literal {
-            HirInlineNumericLiteral::Integer(literal) => {
+        let instruction = match deferred.kind() {
+            vela_analysis::literals::NumericLiteralKind::Integer => {
                 UnlinkedInstructionKind::BinaryIntLiteral {
                     dst,
                     op: literal_op,
                     value: value_register,
-                    literal: literal.text,
+                    literal: deferred.text().to_owned(),
                     side,
                 }
             }
-            HirInlineNumericLiteral::Float(literal) => {
+            vela_analysis::literals::NumericLiteralKind::Float => {
                 UnlinkedInstructionKind::BinaryFloatLiteral {
                     dst,
                     op: literal_op,
                     value: value_register,
-                    literal: literal.text,
+                    literal: deferred.text().to_owned(),
                     side,
                 }
             }
@@ -177,12 +198,23 @@ impl Compiler<'_, '_> {
         &self,
         lhs: HirExprId,
         rhs: HirExprId,
-    ) -> CompileResult<Option<(HirExprId, HirInlineNumericLiteral, BinaryLiteralSide)>> {
+    ) -> CompileResult<
+        Option<(
+            HirExprId,
+            HirExprId,
+            HirInlineNumericLiteral,
+            BinaryLiteralSide,
+        )>,
+    > {
         let lhs_literal = self.hir_inline_numeric_literal(lhs)?;
         let rhs_literal = self.hir_inline_numeric_literal(rhs)?;
         Ok(match (lhs_literal, rhs_literal) {
-            (None, Some(literal)) => Some((lhs, literal, BinaryLiteralSide::Right)),
-            (Some(literal), None) => Some((rhs, literal, BinaryLiteralSide::Left)),
+            (None, Some((literal_expression, literal))) => {
+                Some((lhs, literal_expression, literal, BinaryLiteralSide::Right))
+            }
+            (Some((literal_expression, literal)), None) => {
+                Some((rhs, literal_expression, literal, BinaryLiteralSide::Left))
+            }
             (Some(_), Some(_)) | (None, None) => None,
         })
     }
@@ -190,18 +222,54 @@ impl Compiler<'_, '_> {
     fn hir_inline_numeric_literal(
         &self,
         mut expression: HirExprId,
-    ) -> CompileResult<Option<HirInlineNumericLiteral>> {
+    ) -> CompileResult<Option<(HirExprId, HirInlineNumericLiteral)>> {
         loop {
             match self.hir_expression_record(expression)?.1 {
                 HirExprKind::Paren {
                     expression: Some(inner),
                 } => expression = inner,
                 HirExprKind::Literal(HirLiteral::Integer(value)) if value.suffix.is_none() => {
-                    return Ok(Some(HirInlineNumericLiteral::Integer(value)));
+                    return Ok(Some((
+                        expression,
+                        HirInlineNumericLiteral::Integer {
+                            literal: value,
+                            sign: vela_analysis::literals::LiteralSign::Positive,
+                        },
+                    )));
                 }
                 HirExprKind::Literal(HirLiteral::Float(value)) if value.suffix.is_none() => {
-                    return Ok(Some(HirInlineNumericLiteral::Float(value)));
+                    return Ok(Some((
+                        expression,
+                        HirInlineNumericLiteral::Float {
+                            literal: value,
+                            sign: vela_analysis::literals::LiteralSign::Positive,
+                        },
+                    )));
                 }
+                HirExprKind::Unary {
+                    op: Some(HirUnaryOp::Negate),
+                    operand: Some(operand),
+                } => match self.hir_expression_record(operand)?.1 {
+                    HirExprKind::Literal(HirLiteral::Integer(value)) if value.suffix.is_none() => {
+                        return Ok(Some((
+                            operand,
+                            HirInlineNumericLiteral::Integer {
+                                literal: value,
+                                sign: vela_analysis::literals::LiteralSign::Negated,
+                            },
+                        )));
+                    }
+                    HirExprKind::Literal(HirLiteral::Float(value)) if value.suffix.is_none() => {
+                        return Ok(Some((
+                            operand,
+                            HirInlineNumericLiteral::Float {
+                                literal: value,
+                                sign: vela_analysis::literals::LiteralSign::Negated,
+                            },
+                        )));
+                    }
+                    _ => return Ok(None),
+                },
                 _ => return Ok(None),
             }
         }
@@ -385,15 +453,27 @@ impl Compiler<'_, '_> {
 
 #[derive(Clone)]
 enum HirInlineNumericLiteral {
-    Integer(vela_hir::body::HirIntegerLiteral),
-    Float(vela_hir::body::HirFloatLiteral),
+    Integer {
+        literal: vela_hir::body::HirIntegerLiteral,
+        sign: vela_analysis::literals::LiteralSign,
+    },
+    Float {
+        literal: vela_hir::body::HirFloatLiteral,
+        sign: vela_analysis::literals::LiteralSign,
+    },
 }
 
 impl HirInlineNumericLiteral {
     fn to_hir_literal(&self) -> HirLiteral {
         match self {
-            Self::Integer(value) => HirLiteral::Integer(value.clone()),
-            Self::Float(value) => HirLiteral::Float(value.clone()),
+            Self::Integer { literal, .. } => HirLiteral::Integer(literal.clone()),
+            Self::Float { literal, .. } => HirLiteral::Float(literal.clone()),
+        }
+    }
+
+    const fn sign(&self) -> vela_analysis::literals::LiteralSign {
+        match self {
+            Self::Integer { sign, .. } | Self::Float { sign, .. } => *sign,
         }
     }
 }

@@ -378,21 +378,11 @@ fn expected_primitive_tag(expected: &RuntimeTypeFact) -> Option<PrimitiveTag> {
 }
 
 fn is_integer_tag(tag: PrimitiveTag) -> bool {
-    matches!(
-        tag,
-        PrimitiveTag::I8
-            | PrimitiveTag::I16
-            | PrimitiveTag::I32
-            | PrimitiveTag::I64
-            | PrimitiveTag::U8
-            | PrimitiveTag::U16
-            | PrimitiveTag::U32
-            | PrimitiveTag::U64
-    )
+    vela_analysis::literals::NumericLiteralKind::Integer.accepts_primitive(tag)
 }
 
 fn is_float_tag(tag: PrimitiveTag) -> bool {
-    matches!(tag, PrimitiveTag::F32 | PrimitiveTag::F64)
+    vela_analysis::literals::NumericLiteralKind::Float.accepts_primitive(tag)
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

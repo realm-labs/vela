@@ -1,6 +1,6 @@
+use vela_analysis::literals::DeferredNumericLiteral;
 use vela_common::ShapeId;
 use vela_def::{FieldId, FunctionId, GlobalId, MethodId, TypeId, VariantId};
-use vela_hir::body::{HirFloatLiteral, HirIntegerLiteral};
 
 use crate::input::{
     CompileParameterDefault, CompilePositionalPolicy, CompileSignature, DynamicMethodTarget,
@@ -57,11 +57,8 @@ pub enum MirLiteralSide {
     Right,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum MirContextualNumericLiteral {
-    Integer(HirIntegerLiteral),
-    Float(HirFloatLiteral),
-}
+/// A contextual numeric literal validated by `vela_analysis` before MIR.
+pub type MirContextualNumericLiteral = DeferredNumericLiteral;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MirFieldTarget {

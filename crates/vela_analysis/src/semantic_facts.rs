@@ -14,9 +14,8 @@ use targets::{direct_lambda_body, registry_field_owner, source_field_fact};
 use vela_common::PrimitiveTag;
 use vela_hir::binding::BindingResolution;
 use vela_hir::body::{
-    HirBinaryOp, HirBody, HirBodyRoot, HirElseBranch, HirExprKind, HirFloatSuffix,
-    HirIntegerSuffix, HirLiteral, HirMatchArmBody, HirPathKind, HirPathOwner, HirPatternKind,
-    HirStmtKind,
+    HirBinaryOp, HirBody, HirBodyRoot, HirElseBranch, HirExprKind, HirLiteral, HirMatchArmBody,
+    HirPathKind, HirPathOwner, HirPatternKind, HirStmtKind,
 };
 use vela_hir::ids::{HirBlockId, HirExprId, HirLocalId, HirNodeId, HirPatternId, HirStmtId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
@@ -1033,20 +1032,12 @@ fn source_method(graph: &ModuleGraph, receiver: &TypeFact, name: &str) -> Option
 fn literal_fact(literal: &HirLiteral) -> TypeFact {
     match literal {
         HirLiteral::Bool(_) => TypeFact::BOOL,
-        HirLiteral::Integer(value) => TypeFact::primitive(match value.suffix {
-            Some(HirIntegerSuffix::I8) => PrimitiveTag::I8,
-            Some(HirIntegerSuffix::I16) => PrimitiveTag::I16,
-            Some(HirIntegerSuffix::I32) => PrimitiveTag::I32,
-            Some(HirIntegerSuffix::I64) | None => PrimitiveTag::I64,
-            Some(HirIntegerSuffix::U8) => PrimitiveTag::U8,
-            Some(HirIntegerSuffix::U16) => PrimitiveTag::U16,
-            Some(HirIntegerSuffix::U32) => PrimitiveTag::U32,
-            Some(HirIntegerSuffix::U64) => PrimitiveTag::U64,
-        }),
-        HirLiteral::Float(value) => TypeFact::primitive(match value.suffix {
-            Some(HirFloatSuffix::F32) => PrimitiveTag::F32,
-            Some(HirFloatSuffix::F64) | None => PrimitiveTag::F64,
-        }),
+        HirLiteral::Integer(value) => {
+            TypeFact::primitive(crate::literals::integer_suffix_primitive(value.suffix))
+        }
+        HirLiteral::Float(value) => {
+            TypeFact::primitive(crate::literals::float_suffix_primitive(value.suffix))
+        }
         HirLiteral::Char(_) => TypeFact::CHAR,
         HirLiteral::String(_) | HirLiteral::Interpolated { .. } => TypeFact::STRING,
         HirLiteral::Bytes(_) => TypeFact::BYTES,

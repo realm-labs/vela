@@ -128,7 +128,7 @@ impl Compiler<'_, '_> {
         let Some(expected) = expected else {
             return self.compile_hir_expression(expression);
         };
-        let (span, kind) = self.hir_expression_record(expression)?;
+        let (span, _) = self.hir_expression_record(expression)?;
         let context = TypeContractContext::Field {
             name: field_name.to_owned(),
         };
@@ -139,10 +139,7 @@ impl Compiler<'_, '_> {
             context.clone(),
         )?;
         if let ExpectedTypeOutcome::Contextualized(RuntimeTypeFact::Primitive(tag)) = &outcome
-            && let HirExprKind::Literal(literal) = &kind
-            && let Some(constant) =
-                crate::compiler::const_eval::compile_literal_constant_for_type(literal, *tag)
-                    .map_err(|error| error.with_span(span))?
+            && let Some(constant) = self.compile_hir_contextual_numeric_literal(expression, *tag)?
         {
             return self.emit_constant(constant);
         }
@@ -219,12 +216,8 @@ impl Compiler<'_, '_> {
             span,
             context.clone(),
         )?;
-        let (expression_span, kind) = self.hir_expression_record(expression)?;
         if let ExpectedTypeOutcome::Contextualized(RuntimeTypeFact::Primitive(tag)) = &outcome
-            && let HirExprKind::Literal(literal) = &kind
-            && let Some(constant) =
-                crate::compiler::const_eval::compile_literal_constant_for_type(literal, *tag)
-                    .map_err(|error| error.with_span(expression_span))?
+            && let Some(constant) = self.compile_hir_contextual_numeric_literal(expression, *tag)?
         {
             return self.emit_constant(constant);
         }
@@ -261,6 +254,19 @@ impl Compiler<'_, '_> {
             HirExprKind::Literal(HirLiteral::Float(value)) if value.suffix.is_none() => {
                 StaticExprType::UnsuffixedFloatLiteral
             }
+            HirExprKind::Unary {
+                op: Some(HirUnaryOp::Negate),
+                operand: Some(operand),
+            } => match self.hir_static_type(operand) {
+                known @ (StaticExprType::UnsuffixedIntegerLiteral
+                | StaticExprType::UnsuffixedFloatLiteral) => known,
+                known @ StaticExprType::Exact(RuntimeTypeFact::Primitive(tag))
+                    if tag.numeric_tag().is_some() =>
+                {
+                    known
+                }
+                StaticExprType::Exact(_) | StaticExprType::Dynamic => StaticExprType::Dynamic,
+            },
             HirExprKind::Literal(HirLiteral::Bool(_)) => {
                 StaticExprType::Exact(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::Bool))
             }
@@ -348,6 +354,34 @@ impl Compiler<'_, '_> {
             StaticExprType::Dynamic => self
                 .value_shape_for_hir_expression(expression)
                 .and_then(|shape| shape.value_type()),
+        }
+    }
+
+    pub(in crate::compiler) fn compile_hir_contextual_numeric_literal(
+        &self,
+        expression: HirExprId,
+        expected: vela_common::PrimitiveTag,
+    ) -> CompileResult<Option<Constant>> {
+        let (span, kind) = self.hir_expression_record(expression)?;
+        match kind {
+            HirExprKind::Literal(literal) => {
+                crate::compiler::const_eval::compile_literal_constant_for_type(&literal, expected)
+                    .map_err(|error| error.with_span(span))
+            }
+            HirExprKind::Unary {
+                op: Some(HirUnaryOp::Negate),
+                operand: Some(operand),
+            } => {
+                let (operand_span, operand) = self.hir_expression_record(operand)?;
+                let HirExprKind::Literal(literal) = operand else {
+                    return Ok(None);
+                };
+                crate::compiler::const_eval::compile_negated_literal_constant_for_type(
+                    &literal, expected,
+                )
+                .map_err(|error| error.with_span(operand_span))
+            }
+            _ => Ok(None),
         }
     }
 
