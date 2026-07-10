@@ -6,5 +6,6 @@ fn source(id: u32, module: &str, text: &str) -> ModuleSource {
 }
 
 mod bindings;
+mod ingestion;
 mod metadata;
 mod resolution;

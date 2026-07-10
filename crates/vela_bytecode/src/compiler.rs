@@ -151,7 +151,7 @@ fn compile_function_source_inner<'registry>(
     let global_type_symbols = semantic.global_type_symbols();
     let script_field_slots = semantic.script_field_slots(&type_symbols);
     let derived_operator_traits =
-        derived_operator_traits(&semantic.script_metadata_graph(), &type_symbols);
+        derived_operator_traits(semantic.script_metadata_graph(), &type_symbols);
     let const_values = semantic.const_values()?;
     let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values)?;
     let facts = CompilerFacts {
@@ -244,7 +244,7 @@ fn compile_program_source_inner<'registry>(
     let global_type_symbols = semantic.global_type_symbols();
     let script_field_slots = semantic.script_field_slots(&type_symbols);
     let derived_operator_traits =
-        derived_operator_traits(&semantic.script_metadata_graph(), &type_symbols);
+        derived_operator_traits(semantic.script_metadata_graph(), &type_symbols);
     let const_values = semantic.const_values()?;
     let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values)?;
     let facts = CompilerFacts {
@@ -286,7 +286,7 @@ fn compile_program_source_inner<'registry>(
         );
     }
     insert_script_impl_methods(&mut program, script_impl_methods, &facts)?;
-    program.set_script_metadata(semantic.script_metadata_graph());
+    program.set_script_metadata(semantic.script_metadata_graph().clone());
 
     verify_program(program)
 }
@@ -335,7 +335,7 @@ fn compile_module_sources_inner<'registry>(
     let global_type_symbols = semantic.global_type_symbols();
     let script_field_slots = semantic.script_field_slots(&type_symbols);
     let derived_operator_traits =
-        derived_operator_traits(&semantic.script_metadata_graph(), &type_symbols);
+        derived_operator_traits(semantic.script_metadata_graph(), &type_symbols);
     let const_values = semantic.const_values()?;
     let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values)?;
     let facts = CompilerFacts {
@@ -382,7 +382,7 @@ fn compile_module_sources_inner<'registry>(
         );
     }
     insert_script_impl_methods(&mut program, script_impl_methods, &facts)?;
-    program.set_script_metadata(semantic.script_metadata_graph());
+    program.set_script_metadata(semantic.script_metadata_graph().clone());
 
     verify_program(program)
 }

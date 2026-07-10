@@ -19,8 +19,6 @@ use super::schema_defaults::{ScriptSchemaDefaults, source_schema_defaults};
 use super::script_impls;
 
 pub(super) struct SemanticSource {
-    source: SourceId,
-    text: String,
     graph: ModuleGraph,
     module: ModuleId,
 }
@@ -31,15 +29,8 @@ pub(super) struct SemanticModules {
 }
 
 impl SemanticSource {
-    pub(super) fn script_metadata_graph(&self) -> ModuleGraph {
-        let mut graph = ModuleGraph::new();
-        graph.add_source(ModuleSource::new(
-            self.source,
-            ModulePath::new(Vec::<String>::new()),
-            self.text.clone(),
-        ));
-        graph.resolve_imports();
-        graph
+    pub(super) const fn script_metadata_graph(&self) -> &ModuleGraph {
+        &self.graph
     }
 
     pub(super) fn function(
@@ -185,8 +176,8 @@ impl SemanticSource {
 }
 
 impl SemanticModules {
-    pub(super) fn script_metadata_graph(&self) -> ModuleGraph {
-        self.graph.clone()
+    pub(super) const fn script_metadata_graph(&self) -> &ModuleGraph {
+        &self.graph
     }
 
     pub(super) fn function(
@@ -406,19 +397,13 @@ pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResu
         )));
     }
     let mut graph = ModuleGraph::new();
-    let module = graph.add_source(ModuleSource::new(
-        source,
-        ModulePath::from_qualified("main"),
-        text.to_owned(),
-    ));
+    let module = graph.add_parsed_source(
+        ModuleSource::new(source, ModulePath::from_qualified("main"), text.to_owned()),
+        &syntax,
+    );
     graph.resolve_imports();
     if graph.diagnostics().is_empty() {
-        Ok(SemanticSource {
-            source,
-            text: text.to_owned(),
-            graph,
-            module,
-        })
+        Ok(SemanticSource { graph, module })
     } else {
         Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
             graph.diagnostics().to_vec(),
@@ -444,8 +429,8 @@ pub(super) fn parse_semantic_modules(sources: &[ModuleSource]) -> CompileResult<
     let mut graph = ModuleGraph::new();
     let mut modules = Vec::new();
 
-    for (source, _) in syntax_sources {
-        let module = graph.add_source(source.clone());
+    for (source, parsed) in syntax_sources {
+        let module = graph.add_parsed_source(source.clone(), &parsed);
         modules.push(module);
     }
 
@@ -456,5 +441,56 @@ pub(super) fn parse_semantic_modules(sources: &[ModuleSource]) -> CompileResult<
         Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
             graph.diagnostics().to_vec(),
         )))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn single_source_metadata_reuses_the_authoritative_semantic_graph() {
+        let semantic = parse_semantic_source(
+            SourceId::new(23),
+            r#"
+struct Counter {
+    value: i64,
+}
+
+fn increment(counter: Counter) {
+    return counter.value + 1;
+}
+"#,
+        )
+        .expect("source should produce semantic HIR");
+
+        let metadata = semantic.script_metadata_graph();
+        assert_eq!(metadata, &semantic.graph);
+        assert_eq!(
+            metadata.module_path(semantic.module),
+            Some(&ModulePath::from_qualified("main")),
+        );
+
+        let semantic_declaration = semantic
+            .graph
+            .module(semantic.module)
+            .and_then(|declarations| declarations.get("increment"))
+            .expect("semantic graph should contain increment");
+        let metadata_declaration = metadata
+            .module(semantic.module)
+            .and_then(|declarations| declarations.get("increment"))
+            .expect("metadata graph should contain increment");
+        assert_eq!(metadata_declaration, semantic_declaration);
+        assert_eq!(
+            metadata
+                .function_body(metadata_declaration)
+                .expect("metadata function body")
+                .id,
+            semantic
+                .graph
+                .function_body(semantic_declaration)
+                .expect("semantic function body")
+                .id,
+        );
     }
 }
