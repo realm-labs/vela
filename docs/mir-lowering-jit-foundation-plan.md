@@ -474,7 +474,7 @@ resolver, type-flow engine, or diagnostic pipeline.
   with ordered HIR-owned text/expression parts.
 - [x] Delete the body-lowering dependency on `vela_syntax::lexer`,
   `TokenKind`, and `InterpolatedStringTokenPart`.
-- [ ] Inventory integer/float literal normalization, contextual conversion,
+- [x] Inventory integer/float literal normalization, contextual conversion,
   invalid-literal diagnostics, map-key spelling, and format-string errors.
 - [ ] Put source-independent literal structure in HIR, contextual validity and
   user diagnostics in analysis or an explicit pre-MIR compile validation pass,
@@ -483,7 +483,7 @@ resolver, type-flow engine, or diagnostic pipeline.
 
 ### 7.2 Semantic And Compile-Target Input Closure
 
-- [ ] Inventory `CompilerFacts`, `RuntimeTypeFact`, `ScriptTypeFlow`,
+- [x] Inventory `CompilerFacts`, `RuntimeTypeFact`, `ScriptTypeFlow`,
   `ValueTypeFlow`, `ValueShapeFlow`, script field slots, schema defaults,
   expected-type checks, call argument metadata, host target resolution, and
   guard-plan construction.
@@ -493,7 +493,7 @@ resolver, type-flow engine, or diagnostic pipeline.
 - [ ] Move semantic facts to HIR/analysis and keep physical encoding facts in
   the bytecode backend. Delete duplicate fact stores when their replacement is
   proven.
-- [ ] Inventory every user-facing bytecode compiler diagnostic by code, message,
+- [x] Inventory every user-facing bytecode compiler diagnostic by code, message,
   and span and assign its final owner before backend work begins.
 
 ### 7.3 Frozen Behavior Baseline
@@ -552,7 +552,22 @@ definition registry, stdlib manifest, host schema, and compiler options used by
 production compilation. `vela_mir` must not retain `RegistryCompileView`,
 `CompilerOptions`, syntax values, or bytecode values.
 
+The executable-literal closure is assigned as follows:
+
+| Literal concern | Current seam | Final owner |
+|---|---|---|
+| decoded boolean, char, string, bytes, integer radix/digits/suffix, float spelling/suffix, and ordered interpolation text/expression parts | `vela_hir::body::HirLiteral` and syntax-to-HIR lowering | HIR; runtime lowering never re-lexes or asks for syntax tokens |
+| intrinsic literal type and contextual compatibility with a declared primitive, including signed-min handling and out-of-range diagnostics | `vela_analysis::semantic_facts`, old `value_types`, and old `const_eval` | analysis or a pre-MIR compile-validation pass keyed by `HirExprId` |
+| source spelling used as a string/numeric map-key name | HIR literal/path payload queried by old const/body lowering | HIR-owned spelling; MIR carries the logical key value |
+| const and schema-default evaluation of the proven pure literal/unary/binary/aggregate subset | old `compiler::const_eval` | compile-time const/schema evaluator outside runtime MIR |
+| typed scalar versus generic literal value and typed-literal binary operation | old `hir_lowering::{values,operators}` | MIR rvalue/operation selection |
+| scalar/constant-pool encoding, inline-immediate selection, and operand limits | old bytecode compiler | `vela_bytecode::compiler::mir_backend` |
+| malformed format-string braces and interpolation syntax | lexer/parser diagnostics; HIR receives ordered valid parts | syntax/HIR boundary, never MIR or bytecode |
+
 The user-facing diagnostic inventory is also fixed before MIR construction:
+
+The exhaustive code/message/span inventory is maintained in
+[`mir-phase0-diagnostic-inventory.md`](mir-phase0-diagnostic-inventory.md).
 
 | Diagnostic family | Final owner |
 |---|---|
