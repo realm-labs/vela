@@ -189,6 +189,19 @@ analysis facts only; it must not parse source or repair missing semantic facts.
 The execution plans are [heavy-hir-hard-switch-plan.md](heavy-hir-hard-switch-plan.md)
 and [mir-lowering-jit-foundation-plan.md](mir-lowering-jit-foundation-plan.md).
 
+MIR v1 is a generation-local non-SSA IR with mutable script/synthetic locals
+and single-assignment temporaries. Branch joins use synthetic mutable locals;
+MIR v1 does not add phi nodes, block parameters, or Rust-style move/borrow
+semantics. Calls are explicit terminators with continuations and safepoint/
+effect metadata. HostRef, HostAccess, dynamic field/index access, allocation,
+guards, and reflection are explicit effectful operations rather than ordinary
+places or pure rvalues. MIR may depend on HIR, analysis, and required low-level
+stable target crates, but never on syntax, bytecode, or VM crates. The physical
+MIR-to-bytecode backend belongs to `vela_bytecode`, parameter defaults lower
+into their owning function prologue, and const/schema evaluation remains a
+compile-time service outside runtime MIR v1. MIR IDs are not runtime, hot-reload
+ABI, or serialized identities.
+
 Heavy HIR body ownership uses stable `HirBodyId` records with explicit owners:
 declarations, trait default methods, impl methods, lambdas, and parameter
 defaults. Nested executable regions such as lambdas and parameter defaults are
