@@ -5,6 +5,7 @@
 //! serialization identities.
 
 mod arena;
+mod builder;
 mod cfg;
 mod contract;
 mod dump;
@@ -20,6 +21,7 @@ mod value;
 #[cfg(test)]
 mod tests;
 
+pub use builder::build_mir;
 pub use cfg::{
     MirBasicBlock, MirRangeStepMode, MirSwitchCase, MirSwitchValue, MirTerminator,
     MirTerminatorKind,

@@ -6,7 +6,7 @@
 > **Execution status:** Phase 0 and the bytecode-independent Phase 1 model are
 > complete; production compilation builds and validates one immutable
 > executable-analysis/compile-target generation, and Phase 2 MIR builder work
-> is next
+> is active
 > **Compatibility policy:** breaking pre-release MIR, bytecode-compiler, and
 > internal test APIs are allowed. Preserve Vela language semantics, evaluation
 > order, VM behavior, diagnostics, execution budgets, GC roots, HostAccess

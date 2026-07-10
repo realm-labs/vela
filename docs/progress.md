@@ -72,9 +72,14 @@ backend-neutral targets and contracts, explicit host/reflection/call/allocation
 operations, explicit recoverable-guard CFG edges, and stable human-readable
 dumps. Heap-backed evaluated constants materialize at explicit allocation
 safepoints, method receivers and default-delivery policies are explicit, and
-try propagation has no hidden statement edge. Phase 2 is the next MIR work:
-build complete executable CFGs against the validated immutable input. No MIR
-backend selector or production MIR route exists.
+try propagation has no hidden statement edge. Phase 2 is active. The initial
+complete-function builder slice maps parameters and mutable script locals,
+lowers scalar/string/bytes literals, nested blocks, explicit and implicit
+returns, typed and dynamic unary/binary operators, contextual numeric operands,
+identity comparison, and ranges while preserving left-to-right evaluation and
+explicit allocation/dynamic-comparison safepoints. Unsupported execution
+families fail with `MirBuildError`; they never invoke direct bytecode lowering.
+No MIR backend selector or production MIR route exists.
 
 The Phase 1 semantic gate also fixes backend-bearing edge cases before a
 builder exists: owner-qualified executable method lookup preserves shared trait
