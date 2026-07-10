@@ -341,4 +341,231 @@ mod tests {
             ))
         );
     }
+
+    #[test]
+    fn compile_view_facts_preserve_targets_signatures_effects_and_type_hints() {
+        use vela_def::DefPath;
+        use vela_registry::{
+            DefinitionRegistry, EffectSet, FieldDef, FunctionDef, FunctionSignature, MethodDef,
+            ParamDef, TypeDef, TypeHintDef,
+        };
+
+        let mut registry = DefinitionRegistry::new();
+        let player = registry
+            .register_type(TypeDef::new(DefPath::ty("host", ["game"], "Player")).host_runtime_id(7))
+            .expect("Player registration");
+        registry
+            .register_type(TypeDef::new(DefPath::ty("script", ["game"], "Reward")))
+            .expect("Reward registration");
+        registry
+            .register_field(
+                FieldDef::new(DefPath::field("host", ["game"], "Player", "level"), player)
+                    .writable(false)
+                    .type_hint(Some("i64")),
+            )
+            .expect("level registration");
+        registry
+            .register_field(
+                FieldDef::new(
+                    DefPath::field("host", ["game"], "Player", "rewards"),
+                    player,
+                )
+                .type_hint(Some(
+                    TypeHintDef::named("Array").with_args([TypeHintDef::new(["game", "Reward"])]),
+                )),
+            )
+            .expect("rewards registration");
+        registry
+            .register_method(
+                MethodDef::new(
+                    DefPath::method("host", ["game"], "Player", "save"),
+                    player,
+                    FunctionSignature::new([ParamDef::new("amount", Some("i64"))], Some("bool")),
+                )
+                .effects(EffectSet {
+                    host_read: true,
+                    host_write: true,
+                    ..EffectSet::default()
+                }),
+            )
+            .expect("save registration");
+        registry
+            .register_function(
+                FunctionDef::new(
+                    DefPath::function("host", ["game"], "grant"),
+                    FunctionSignature::new(
+                        [ParamDef::new(
+                            "player",
+                            Some(TypeHintDef::new(["game", "Player"])),
+                        )],
+                        Some(
+                            TypeHintDef::named("Result").with_args([
+                                TypeHintDef::named("bool"),
+                                TypeHintDef::named("String"),
+                            ]),
+                        ),
+                    ),
+                )
+                .effects(EffectSet {
+                    host_read: true,
+                    event_emit: true,
+                    ..EffectSet::default()
+                }),
+            )
+            .expect("grant registration");
+
+        let facts = RegistryFacts::from_compile_view(registry.compile_view());
+
+        assert_eq!(
+            facts.type_fact("game::Player"),
+            Some(&TypeFact::host("game::Player"))
+        );
+        assert_eq!(
+            facts.type_fact("Player"),
+            Some(&TypeFact::host("game::Player"))
+        );
+        assert_eq!(
+            facts.type_fact("game::Reward"),
+            Some(&TypeFact::record("game::Reward"))
+        );
+        assert_eq!(
+            facts.field_fact("game::Player", "level"),
+            Some(&TypeFact::I64)
+        );
+        assert_eq!(
+            facts.field_fact("game::Player", "rewards"),
+            Some(&TypeFact::array(TypeFact::record("game::Reward")))
+        );
+        assert!(
+            facts
+                .field_access_fact("game::Player", "level")
+                .is_some_and(|access| access.readable && !access.writable)
+        );
+        assert_eq!(
+            facts.method_fact("game::Player", "save"),
+            Some(&TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL))
+        );
+        assert_eq!(
+            facts.method_effect_fact("game::Player", "save"),
+            Some(&RegistryEffectFact::host_write())
+        );
+        assert_eq!(
+            facts.function_fact("game::grant"),
+            Some(&TypeFact::function(
+                vec![TypeFact::host("game::Player")],
+                TypeFact::result(TypeFact::BOOL, TypeFact::STRING),
+            ))
+        );
+        assert_eq!(facts.function_origin("game::grant"), Some(DeclOrigin::Host));
+        assert!(
+            facts
+                .function_effect_fact("game::grant")
+                .is_some_and(|effect| effect.reads_host && effect.emits_events)
+        );
+    }
+
+    #[test]
+    fn compile_view_facts_feed_analysis_targets_without_reflection_descriptors() {
+        use vela_def::DefPath;
+        use vela_hir::body::HirExprKind;
+        use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+        use vela_registry::{
+            DefinitionRegistry, EffectSet, FieldDef, FunctionDef, FunctionSignature, MethodDef,
+            ParamDef, TypeDef, TypeHintDef,
+        };
+
+        let mut registry = DefinitionRegistry::new();
+        let player = registry
+            .register_type(TypeDef::new(DefPath::ty("host", ["game"], "Player")))
+            .expect("Player registration");
+        registry
+            .register_field(
+                FieldDef::new(DefPath::field("host", ["game"], "Player", "level"), player)
+                    .type_hint(Some("i64")),
+            )
+            .expect("level registration");
+        registry
+            .register_method(
+                MethodDef::new(
+                    DefPath::method("host", ["game"], "Player", "save"),
+                    player,
+                    FunctionSignature::new([ParamDef::new("amount", Some("i64"))], Some("bool")),
+                )
+                .effects(EffectSet {
+                    host_write: true,
+                    ..EffectSet::default()
+                }),
+            )
+            .expect("save registration");
+        registry
+            .register_function(
+                FunctionDef::new(
+                    DefPath::function("host", ["game"], "grant"),
+                    FunctionSignature::new(
+                        [ParamDef::new(
+                            "player",
+                            Some(TypeHintDef::new(["game", "Player"])),
+                        )],
+                        Some("bool"),
+                    ),
+                )
+                .effects(EffectSet {
+                    host_read: true,
+                    ..EffectSet::default()
+                }),
+            )
+            .expect("grant registration");
+
+        let schema = RegistryFacts::from_compile_view(registry.compile_view());
+        let mut graph = ModuleGraph::new();
+        graph.add_source(ModuleSource::new(
+            SourceId::new(91),
+            ModulePath::from_qualified("test"),
+            r#"
+            fn main(player: game::Player) -> bool {
+                game::grant(player)
+                player.save(1)
+                return player.level > 0
+            }
+            "#,
+        ));
+        graph.resolve_imports();
+        assert_eq!(graph.diagnostics(), &[]);
+
+        let analysis = crate::facts::AnalysisFacts::from_module_graph_and_schema(&graph, &schema);
+        let body = graph
+            .bodies()
+            .find(|body| matches!(body.owner, vela_hir::body::HirBodyOwner::Declaration(_)))
+            .expect("main body");
+
+        assert!(body.expressions.values().any(|expression| {
+            matches!(
+                analysis.call_target(expression.id),
+                Some(crate::semantic_facts::CallTargetFact::NativeFunction { path })
+                    if path == "game::grant"
+            )
+        }));
+        assert!(body.expressions.values().any(|expression| {
+            matches!(
+                analysis.call_target(expression.id),
+                Some(crate::semantic_facts::CallTargetFact::HostMethod { owner, name })
+                    if owner == "game::Player" && name == "save"
+            ) && analysis
+                .effect(expression.id)
+                .is_some_and(|effect| effect.writes_host)
+        }));
+        let level = body
+            .expressions
+            .values()
+            .find(|expression| {
+                matches!(&expression.kind, HirExprKind::Field(field) if field.name == "level")
+            })
+            .expect("level field");
+        assert_eq!(analysis.expression(level.id), Some(&TypeFact::I64));
+        assert!(matches!(
+            analysis.member_target(level.id),
+            Some(crate::semantic_facts::MemberTargetFact::HostField { owner, name })
+                if owner == "game::Player" && name == "level"
+        ));
+    }
 }

@@ -10,6 +10,8 @@ use vela_registry::TypeHintDef;
 
 use crate::type_fact::TypeFact;
 
+mod compile_view;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RegistryMemberFact {
     pub owner: String,

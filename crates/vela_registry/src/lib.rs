@@ -188,6 +188,11 @@ pub struct RegistryCompileView<'registry> {
 }
 
 impl<'registry> RegistryCompileView<'registry> {
+    /// Iterates backend-neutral definition metadata in deterministic ID order.
+    pub fn definitions(&self) -> impl Iterator<Item = &'registry Def> + 'registry {
+        self.registry.defs_by_id.values()
+    }
+
     #[must_use]
     pub fn resolve_native_function_path(&self, path: &DefPath) -> Option<FunctionId> {
         self.registry.get_by_path(path).and_then(Def::function_id)
@@ -827,5 +832,46 @@ mod tests {
         assert_eq!(view.resolve_host_field(owner, "level"), Some(field_id));
         assert_eq!(view.resolve_host_field(owner, "missing"), None);
         assert_eq!(view.resolve_type(&function_path("score")), None);
+    }
+
+    #[test]
+    fn compile_view_iterates_backend_neutral_definition_metadata() {
+        let mut registry = DefinitionRegistry::new();
+        let owner = registry
+            .register_type(type_def("Player"))
+            .expect("type registration should succeed");
+        registry
+            .register_field(
+                FieldDef::new(
+                    DefPath::field("script", ["combat"], "Player", "level"),
+                    owner,
+                )
+                .writable(false)
+                .type_hint(Some("i64")),
+            )
+            .expect("field registration should succeed");
+        registry
+            .register_method(MethodDef::new(
+                DefPath::method("script", ["combat"], "Player", "score"),
+                owner,
+                FunctionSignature::new([int_param("bonus")], Some("i64")),
+            ))
+            .expect("method registration should succeed");
+
+        let definitions = registry.compile_view().definitions().collect::<Vec<_>>();
+
+        assert_eq!(definitions.len(), 3);
+        assert!(definitions.iter().any(|definition| {
+            matches!(definition, Def::Type(definition) if definition.id == owner)
+        }));
+        assert!(definitions.iter().any(|definition| {
+            matches!(definition, Def::Field(definition)
+                if !definition.writable
+                    && definition.type_hint.as_ref().is_some_and(|hint| hint.display() == "i64"))
+        }));
+        assert!(definitions.iter().any(|definition| {
+            matches!(definition, Def::Method(definition)
+                if definition.signature.params == [int_param("bonus")])
+        }));
     }
 }
