@@ -190,21 +190,38 @@ fn mir_model_compile_snapshot_owns_source_identity_and_diagnostic_origins() {
     snapshot
         .insert_script_method_target(referenced_method, origin)
         .expect("non-root methods still need stable call targets");
+    let shared_default_method = MethodExecutableTarget {
+        method: method.method,
+        function: FunctionId::new(334),
+        owner: TypeId::new(335),
+        node: method.node,
+    };
+    snapshot
+        .insert_script_method_target(shared_default_method, origin)
+        .expect("one trait default node may instantiate for another receiver owner");
     let snapshot = snapshot.build();
 
     assert_eq!(
         snapshot.function_for_declaration(function_declaration),
         Some(function)
     );
-    assert_eq!(snapshot.method_for_node(method.node), Some(method));
+    assert_eq!(
+        snapshot.method_for_node(method.node, method.owner),
+        Some(method)
+    );
     assert_eq!(
         snapshot.function_for_declaration(referenced_declaration),
         Some(referenced_function)
     );
     assert_eq!(
-        snapshot.method_for_node(referenced_method.node),
+        snapshot.method_for_node(referenced_method.node, referenced_method.owner),
         Some(referenced_method)
     );
+    assert_eq!(
+        snapshot.method_for_node(method.node, shared_default_method.owner),
+        Some(shared_default_method)
+    );
+    assert_eq!(snapshot.methods_for_node(method.node).len(), 2);
     assert_eq!(
         snapshot.type_for_declaration(type_declaration),
         Some(type_id)

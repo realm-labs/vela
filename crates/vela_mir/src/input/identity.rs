@@ -15,8 +15,20 @@ impl CompileTargetSnapshot {
     }
 
     #[must_use]
-    pub fn method_for_node(&self, node: HirNodeId) -> Option<MethodExecutableTarget> {
-        self.methods_by_node.get(&node).copied()
+    pub fn method_for_node(
+        &self,
+        node: HirNodeId,
+        owner: TypeId,
+    ) -> Option<MethodExecutableTarget> {
+        self.methods_by_node
+            .get(&node)?
+            .iter()
+            .find(|target| target.owner == owner)
+            .copied()
+    }
+
+    pub fn methods_for_node(&self, node: HirNodeId) -> &[MethodExecutableTarget] {
+        self.methods_by_node.get(&node).map_or(&[], Vec::as_slice)
     }
 
     #[must_use]
@@ -115,13 +127,25 @@ impl CompileTargetSnapshotBuilder {
         target: MethodExecutableTarget,
         origin: MirSourceOrigin,
     ) -> Result<(), MirBuildError> {
-        if self.snapshot.methods_by_node.contains_key(&target.node) {
+        let methods = self
+            .snapshot
+            .methods_by_node
+            .entry(target.node)
+            .or_default();
+        if methods.iter().any(|existing| {
+            existing.owner == target.owner
+                && (existing.method == target.method || existing.function == target.function)
+        }) {
             return Err(inconsistent(
                 origin,
-                format!("duplicate script method node {:?}", target.node),
+                format!(
+                    "duplicate script method node {:?} for owner #{}",
+                    target.node,
+                    target.owner.get()
+                ),
             ));
         }
-        self.snapshot.methods_by_node.insert(target.node, target);
+        methods.push(target);
         Ok(())
     }
 
