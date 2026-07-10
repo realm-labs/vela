@@ -158,15 +158,13 @@ focused tests and validation command pass.
 
 ### Current Execution State
 
-Checkpoints A and B are complete, and Checkpoint C is active. Body HIR now owns
-executable expression, statement, pattern, scope, match-arm, path, binding, and
-capture relationships under stable IDs. Analysis evaluates those HIR bodies
-without body syntax and records HIR-keyed type, callable, member, effect,
-control-flow, constructor, operator, host-path, and degradation facts.
-
-The remaining mixed-architecture blocker is the bytecode
-`CompilerBodyPayload`/syntax payload pairing and its
-  `compile_syntax_expression` primary dispatcher.
+Checkpoints A through D are complete. Body HIR owns executable expression,
+statement, pattern, scope, match-arm, path, binding, and capture relationships
+under stable IDs. Analysis evaluates those HIR bodies without body syntax and
+records HIR-keyed type, callable, member, effect, control-flow, constructor,
+operator, host-path, and degradation facts. Language-service semantic queries
+and bytecode lowering consume those facts, the old bytecode syntax payload and
+dispatcher are deleted, and the Phase 7 audits and final validation pass.
 
 Passing focused tests proves behavior preservation, not completion. The
 remaining execution unit is no longer an individual call/field/index fact.
@@ -409,7 +407,7 @@ Purpose: remove transition names and prove Heavy HIR is the semantic source.
   to source, but must not reconstruct semantic identity or operands.
 - [x] Update docs/progress.md and docs/decisions.md only when implementation
   status changes.
-- [ ] Keep MIR unimplemented until Heavy HIR acceptance passes.
+- [x] Keep MIR unimplemented until Heavy HIR acceptance passes.
 
 Audit searches:
 

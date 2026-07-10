@@ -31,14 +31,15 @@ required.
 
 ## Current Focus
 
-The Heavy HIR hard switch has reached Phase 7 acceptance. `vela_hir` owns
+The Heavy HIR hard switch is complete. `vela_hir` owns
 stable body, expression, statement, pattern, scope, binding, capture,
 call/member-target, and control-flow facts; analysis, language-service semantic
 queries, and bytecode lowering consume those facts without body-level syntax
 reconstruction. The bytecode compiler's syntax payload/dispatcher path has
 been deleted, Phase 6 bytecode/VM/engine validation is green, and the Phase 7
 audit searches satisfy their expected results. Full workspace and runnable
-examples validation remains before the hard-switch goal is complete.
+examples validation passes. MIR remained unimplemented through acceptance and
+is now unblocked as a separate future architecture track.
 
 M0-M19 are complete enough as a runnable prototype, embedding surface,
 production hot-reload workflow, diagnostics/tooling foundation, runnable
@@ -393,14 +394,14 @@ fact evaluator and inlay semantic walkers are deleted, editor semantic facts
 come from `AnalysisFacts`/HIR IDs, and the remaining CST access is confined to
 lexical recovery and source projection. The required language-service span-join
 audit is clean and the LSP protocol/analysis-only behavior remains unchanged.
-Bytecode syntax payload deletion is the active checkpoint. MIR will then add
-an internal `vela_mir`
+Bytecode syntax payload deletion and Heavy HIR acceptance are complete. Future
+MIR work may now add an internal `vela_mir`
 execution-shape layer for CFG, typed operations, guards, liveness, bytecode
 lowering, and future M22 Cranelift input. M20 cache-family audit and measured
 close-out may continue in parallel, but new broad lowering architecture work
-should follow
-[heavy-hir-hard-switch-plan.md](heavy-hir-hard-switch-plan.md) before
-[mir-lowering-jit-foundation-plan.md](mir-lowering-jit-foundation-plan.md).
+should use the validated
+[heavy-hir-hard-switch-plan.md](heavy-hir-hard-switch-plan.md) baseline and
+follow [mir-lowering-jit-foundation-plan.md](mir-lowering-jit-foundation-plan.md).
 
 The lossless CST rowan refactor is complete as a breaking syntax foundation
 track. `vela_syntax` now uses rowan-backed lossless parse trees and typed AST
