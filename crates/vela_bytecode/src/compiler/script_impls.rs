@@ -3,16 +3,18 @@ use std::collections::BTreeSet;
 use vela_def::MethodId;
 use vela_hir::binding::BindingMap;
 use vela_hir::body::HirBody;
-use vela_hir::ids::{HirBodyId, ModuleId};
+use vela_hir::ids::{HirBodyId, HirNodeId, ModuleId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
 use vela_hir::type_hint::{FunctionSignature, ImplMetadata, ImplMetadataKind};
 
 use super::param_defaults::{ParamDefaultValue, param_default_values};
 
+#[derive(Clone)]
 pub(super) struct ScriptImplMethod<'ast> {
     pub(super) target_type: String,
     pub(super) method_name: String,
     pub(super) method_id: MethodId,
+    pub(super) node: HirNodeId,
     pub(super) symbol: String,
     pub(super) default_values: Vec<Option<ParamDefaultValue>>,
     pub(super) body: HirBodyId,
@@ -149,6 +151,11 @@ fn build_method<'ast>(
         bindings,
     } = input;
     ScriptImplMethod {
+        node: match body.owner {
+            vela_hir::body::HirBodyOwner::TraitDefaultMethod(node)
+            | vela_hir::body::HirBodyOwner::ImplMethod(node) => node,
+            _ => unreachable!("script impl methods own method HIR bodies"),
+        },
         method_id: stable_method_id(
             module_path,
             source_identity_module,

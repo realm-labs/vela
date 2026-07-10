@@ -38,6 +38,14 @@ impl CompileError {
             | CompileErrorKind::RegisterOverflow
             | CompileErrorKind::BytecodeVerification(_)
             | CompileErrorKind::UnsupportedSyntax(_) => return None,
+            CompileErrorKind::MirInput(error) => {
+                Diagnostic::error(format!("inconsistent compiler MIR input: {error}"))
+                    .with_code("compiler::inconsistent_mir_input")
+            }
+            CompileErrorKind::RegistrySnapshot(message) => Diagnostic::error(format!(
+                "invalid compile-target registry snapshot: {message}"
+            ))
+            .with_code("compiler::invalid_registry_snapshot"),
         };
         Some(match self.span {
             Some(span) => diagnostic.with_span(span),
@@ -57,6 +65,8 @@ pub enum CompileErrorKind {
     RegisterOverflow,
     BytecodeVerification(VerificationError),
     UnsupportedSyntax(&'static str),
+    MirInput(Box<vela_mir::MirBuildError>),
+    RegistrySnapshot(String),
 }
 
 pub type CompileResult<T> = Result<T, CompileError>;

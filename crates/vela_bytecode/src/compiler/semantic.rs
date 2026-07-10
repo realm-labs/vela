@@ -168,7 +168,7 @@ impl SemanticSource {
         script_impls::source_methods(&self.graph, self.module)
     }
 
-    fn function_declaration(&self, name: &str) -> Option<HirDeclId> {
+    pub(super) fn function_declaration(&self, name: &str) -> Option<HirDeclId> {
         let declaration = self.graph.module(self.module)?.get(name)?;
         let metadata = self.graph.declaration(declaration)?;
         (metadata.kind == DeclarationKind::Function).then_some(declaration)

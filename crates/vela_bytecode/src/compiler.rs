@@ -26,6 +26,7 @@ mod schema_defaults;
 mod script_impls;
 mod script_types;
 mod semantic;
+mod semantic_input;
 mod value_types;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -153,7 +154,9 @@ fn compile_function_source_inner<'registry>(
     let derived_operator_traits =
         derived_operator_traits(semantic.script_metadata_graph(), &type_symbols);
     let const_values = semantic.const_values()?;
+    let semantic_constants = const_values.clone();
     let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values)?;
+    let semantic_schema_defaults = schema_defaults.clone();
     let facts = CompilerFacts {
         script_function_symbols,
         script_function_signatures,
@@ -170,12 +173,17 @@ fn compile_function_source_inner<'registry>(
         options: options.clone(),
         registry,
     };
+    let declaration = semantic
+        .function_declaration(function_name)
+        .ok_or_else(|| {
+            CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
+        })?;
     let (payload, signature, bindings, hir_bodies) =
         semantic.function(function_name).ok_or_else(|| {
             CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
         })?;
 
-    verify_code_object(
+    let code = verify_code_object(
         Compiler::new_with_param_defaults(
             payload.name,
             payload.body,
@@ -188,7 +196,26 @@ fn compile_function_source_inner<'registry>(
             facts,
         )?
         .compile()?,
-    )
+    )?;
+    let script_function_symbols = semantic.script_function_symbols();
+    let type_symbols = semantic.type_symbols();
+    let global_symbols = semantic.global_symbols();
+    let script_methods = semantic.script_impl_methods();
+    drop(semantic_input::prepare_semantic_input(
+        semantic_input::SemanticInputRequest {
+            graph: semantic.script_metadata_graph(),
+            roots: semantic_input::SemanticRoots::Function(declaration),
+            script_function_symbols: &script_function_symbols,
+            script_methods: &script_methods,
+            type_symbols: &type_symbols,
+            global_symbols: &global_symbols,
+            constants: &semantic_constants,
+            schema_defaults: &semantic_schema_defaults,
+            options,
+            registry,
+        },
+    )?);
+    Ok(code)
 }
 
 pub fn compile_program_source(source: SourceId, text: &str) -> CompileResult<UnlinkedProgram> {
@@ -246,7 +273,9 @@ fn compile_program_source_inner<'registry>(
     let derived_operator_traits =
         derived_operator_traits(semantic.script_metadata_graph(), &type_symbols);
     let const_values = semantic.const_values()?;
+    let semantic_constants = const_values.clone();
     let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values)?;
+    let semantic_schema_defaults = schema_defaults.clone();
     let facts = CompilerFacts {
         script_function_symbols,
         script_function_signatures,
@@ -288,7 +317,26 @@ fn compile_program_source_inner<'registry>(
     insert_script_impl_methods(&mut program, script_impl_methods, &facts)?;
     program.set_script_metadata(semantic.script_metadata_graph().clone());
 
-    verify_program(program)
+    let program = verify_program(program)?;
+    let script_function_symbols = semantic.script_function_symbols();
+    let type_symbols = semantic.type_symbols();
+    let global_symbols = semantic.global_symbols();
+    let script_methods = semantic.script_impl_methods();
+    drop(semantic_input::prepare_semantic_input(
+        semantic_input::SemanticInputRequest {
+            graph: semantic.script_metadata_graph(),
+            roots: semantic_input::SemanticRoots::Program,
+            script_function_symbols: &script_function_symbols,
+            script_methods: &script_methods,
+            type_symbols: &type_symbols,
+            global_symbols: &global_symbols,
+            constants: &semantic_constants,
+            schema_defaults: &semantic_schema_defaults,
+            options,
+            registry,
+        },
+    )?);
+    Ok(program)
 }
 
 pub fn compile_module_sources(sources: &[ModuleSource]) -> CompileResult<UnlinkedProgram> {
@@ -337,7 +385,9 @@ fn compile_module_sources_inner<'registry>(
     let derived_operator_traits =
         derived_operator_traits(semantic.script_metadata_graph(), &type_symbols);
     let const_values = semantic.const_values()?;
+    let semantic_constants = const_values.clone();
     let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values)?;
+    let semantic_schema_defaults = schema_defaults.clone();
     let facts = CompilerFacts {
         script_function_symbols,
         script_function_signatures,
@@ -384,7 +434,26 @@ fn compile_module_sources_inner<'registry>(
     insert_script_impl_methods(&mut program, script_impl_methods, &facts)?;
     program.set_script_metadata(semantic.script_metadata_graph().clone());
 
-    verify_program(program)
+    let program = verify_program(program)?;
+    let script_function_symbols = semantic.script_function_symbols();
+    let type_symbols = semantic.type_symbols();
+    let global_symbols = semantic.global_symbols();
+    let script_methods = semantic.script_impl_methods();
+    drop(semantic_input::prepare_semantic_input(
+        semantic_input::SemanticInputRequest {
+            graph: semantic.script_metadata_graph(),
+            roots: semantic_input::SemanticRoots::Program,
+            script_function_symbols: &script_function_symbols,
+            script_methods: &script_methods,
+            type_symbols: &type_symbols,
+            global_symbols: &global_symbols,
+            constants: &semantic_constants,
+            schema_defaults: &semantic_schema_defaults,
+            options,
+            registry,
+        },
+    )?);
+    Ok(program)
 }
 
 fn verify_program(program: UnlinkedProgram) -> CompileResult<UnlinkedProgram> {

@@ -169,6 +169,12 @@ fn compile_error_response(error: CompileError) -> PlaygroundResponse {
         CompileErrorKind::UnsupportedSyntax(message) => {
             single_error_response(format!("unsupported syntax: {message}"))
         }
+        CompileErrorKind::MirInput(error) => {
+            single_error_response(format!("inconsistent compiler MIR input: {error}"))
+        }
+        CompileErrorKind::RegistrySnapshot(message) => single_error_response(format!(
+            "invalid compile-target registry snapshot: {message}"
+        )),
     }
 }
 

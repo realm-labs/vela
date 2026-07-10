@@ -23,12 +23,14 @@ pub(super) struct ScriptSchemaDefaults {
     record_shapes: BTreeMap<String, ConstructorShape>,
     enum_shapes: BTreeMap<(String, String), ConstructorShape>,
     enum_variants: BTreeMap<String, BTreeSet<String>>,
+    evaluated_defaults: BTreeMap<HirBodyId, Option<Constant>>,
 }
 
 impl ScriptSchemaDefaults {
     pub(super) fn merge(&mut self, other: Self) {
         self.record_shapes.extend(other.record_shapes);
         self.enum_shapes.extend(other.enum_shapes);
+        self.evaluated_defaults.extend(other.evaluated_defaults);
         for (enum_name, variants) in other.enum_variants {
             self.enum_variants
                 .entry(enum_name)
@@ -50,6 +52,10 @@ impl ScriptSchemaDefaults {
         self.enum_variants
             .get(type_name)
             .is_some_and(|variants| variants.contains(variant))
+    }
+
+    pub(super) fn evaluated_defaults(&self) -> &BTreeMap<HirBodyId, Option<Constant>> {
+        &self.evaluated_defaults
     }
 }
 
@@ -225,6 +231,8 @@ pub(super) fn source_schema_defaults(
             _ => {}
         }
     }
+
+    defaults.evaluated_defaults = evaluated_defaults;
 
     Ok(defaults)
 }
