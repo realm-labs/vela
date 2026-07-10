@@ -3,7 +3,7 @@
 > **Track:** semantic architecture, HIR ownership, compiler/LSP fact cleanup
 > before MIR and JIT foundation work
 > **Document status:** Codex goal-mode execution plan
-> **Execution status:** D1 and D2 complete; D3 size close-out open
+> **Execution status:** complete; D1 through D3 and final validation pass
 > **Compatibility policy:** breaking pre-release HIR, analysis,
 > language-service, bytecode-compiler, and test APIs are allowed. Preserve
 > product contracts: no script-language generics, no Rust `&mut` exposure,
@@ -170,19 +170,15 @@ semantic facts, the large language-service syntax semantic walkers are gone,
 and bytecode's syntax payload/dispatcher path is deleted. Focused, workspace,
 clippy, and runnable-example validation is green.
 
-Final acceptance remains open after a second review. D1 and D2 are complete:
+Final acceptance is complete after the reopened review. D1 through D3 pass:
 
 - bytecode path, host-path, and record-shape helpers receive `HirExprId`;
 - editor local features share HIR-backed `HirLocalId` source projection;
 - production editor queries select nested lambda and parameter-default bodies;
-
-D3 still has a concrete gap:
-
-- the fixed-path size audit is green only for the four files named by the first
-  close-out review. A directory-wide scan still finds over-1200-line active
-  files in analysis semantic facts, HIR syntax binding, and HIR module graph,
-  with no documented exceptions. Completion record tests
-  moved to a focused module while closing D2.
+- the directory-wide size audit is clean after completion record tests, module
+  graph queries, syntax expression lowering, and semantic control-flow facts
+  moved into focused modules;
+- all Phase 7 searches and the full final validation pass.
 
 Passing focused tests proves behavior preservation, not completion. The
 remaining execution unit is no longer an individual call/field/index fact.
@@ -206,7 +202,7 @@ Goal mode must use the following close-out status:
 [x] D2. Completion boundary closure: select the active nested HIR body in the
         production query path, then use syntax only for proven incomplete-edit
         recovery that did not lower a usable HIR record.
-[~] D3. Architecture and acceptance: run an all-files size audit over the
+[x] D3. Architecture and acceptance: run an all-files size audit over the
         affected crates, split every over-threshold active file or document a
         concrete exception, run final validation, update status docs, and only
         then unblock MIR and complete the goal.
@@ -452,14 +448,12 @@ Purpose: remove transition names and prove Heavy HIR is the semantic source.
   recover HIR identity directly from source spans. Source-origin/span lookup
   may project an existing HIR result back to source, but must not reconstruct
   semantic identity or operands.
-- [~] Update docs/progress.md and docs/decisions.md only when implementation
+- [x] Update docs/progress.md and docs/decisions.md only when implementation
   status changes.
-- [~] Keep MIR unimplemented until the reopened Heavy HIR acceptance passes.
-- [~] Split all active files in the affected HIR/analysis/bytecode/language-
+- [x] Keep MIR unimplemented until the reopened Heavy HIR acceptance passes.
+- [x] Split all active files in the affected HIR/analysis/bytecode/language-
   service trees that exceed 1200 lines unless a concrete exception is
-  documented. The original four files are split; the directory-wide audit
-  still reports `semantic_facts.rs`, `syntax_binding.rs`, and
-  `module_graph.rs`.
+  documented. The directory-wide audit is clean with no exceptions.
 - [x] Replace stale AST/migration descriptions and misleading test names,
   including the bytecode compiler module description and record completion's
   claimed HIR-operand test.

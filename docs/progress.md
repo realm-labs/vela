@@ -31,16 +31,18 @@ required.
 
 ## Current Focus
 
-The Heavy HIR primary hard switch and D1/D2 close-out are complete.
+The Heavy HIR hard switch and D1-D3 close-out are complete.
 `vela_hir` owns executable body and stable semantic identity, bytecode consumes
 `HirExprId` without span-to-ID reconstruction, and language-service local
 features share `HirLocalId` projection. Production query context now selects
 the narrowest cursor-containing HIR body, and public root/lambda/default record
 completion tests prove HIR ownership while malformed source alone exercises
-syntax recovery. D3 acceptance remains open: the directory-wide size audit
-still reports analysis `semantic_facts.rs` and HIR
-`syntax_binding.rs`/`module_graph.rs`. MIR remains blocked until those splits,
-the Phase 7 audits, and final validation close.
+syntax recovery. The directory-wide size audit is clean after focused module
+splits, every Phase 7 zero-hit search has its expected result, the remaining
+syntax-type hits are confined to documented editor lexical/recovery/folding
+boundaries, and full final validation passes. MIR work may now begin from the
+completed Heavy HIR contract; semantic gaps must still be fixed in HIR or
+analysis rather than repaired during MIR lowering.
 
 M0-M19 are complete enough as a runnable prototype, embedding surface,
 production hot-reload workflow, diagnostics/tooling foundation, runnable
@@ -391,12 +393,13 @@ scope, match-arm, path, binding, and capture relationships are HIR-owned under
 stable IDs, and analysis derives HIR-keyed type, target, member, operator,
 host-path, effect, degradation, and control-flow facts without body syntax.
 The language-service's large syntax-owned expression/inlay semantic walkers and
-the bytecode syntax payload/dispatcher are deleted, and D1 stable identity is
-complete. Final acceptance remains open for nested-body record-completion HIR
-selection and the directory-wide file-size gate named in
-[heavy-hir-hard-switch-plan.md](heavy-hir-hard-switch-plan.md). MIR must remain
-unimplemented until D2/D3 pass; M20 cache-family audit may continue
-independently when it does not change lowering architecture.
+the bytecode syntax payload/dispatcher are deleted, and D1 stable identity,
+D2 nested-body query selection, and D3 architecture acceptance are complete.
+The Phase 7 searches, directory-wide file-size gate, workspace clippy/tests,
+and runnable examples named in
+[heavy-hir-hard-switch-plan.md](heavy-hir-hard-switch-plan.md) pass. MIR may
+now consume the completed Heavy HIR contract; M20 cache-family audit may
+continue independently when it does not change lowering architecture.
 
 The lossless CST rowan refactor is complete as a breaking syntax foundation
 track. `vela_syntax` now uses rowan-backed lossless parse trees and typed AST
