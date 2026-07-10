@@ -9,14 +9,23 @@ use vela_hir::ids::{HirBlockId, HirExprId, HirLocalId};
 
 use super::{HirSemanticFacts, iterable_item_fact, pattern_local_facts};
 use crate::facts::AnalysisFacts;
+use crate::registry::RegistryFacts;
 use crate::type_fact::TypeFact;
 
 type LocalEnvironment = BTreeMap<HirLocalId, TypeFact>;
 
 impl HirSemanticFacts {
-    pub(super) fn record_local_use_facts(&mut self, body: &HirBody, base: &AnalysisFacts) {
+    pub(super) fn record_local_use_facts(
+        &mut self,
+        graph: &vela_hir::module_graph::ModuleGraph,
+        body: &HirBody,
+        schema: Option<&RegistryFacts>,
+        base: &AnalysisFacts,
+    ) {
         let mut flow = LocalFlow {
+            graph,
             body,
+            schema,
             base,
             expression_types: &self.types,
             uses: BTreeMap::new(),
@@ -31,7 +40,9 @@ impl HirSemanticFacts {
 }
 
 struct LocalFlow<'facts> {
+    graph: &'facts vela_hir::module_graph::ModuleGraph,
     body: &'facts HirBody,
+    schema: Option<&'facts RegistryFacts>,
     base: &'facts AnalysisFacts,
     expression_types: &'facts BTreeMap<HirExprId, TypeFact>,
     uses: BTreeMap<HirExprId, TypeFact>,
@@ -265,9 +276,14 @@ impl LocalFlow<'_> {
         fact: &TypeFact,
         environment: &mut LocalEnvironment,
     ) {
-        for (local, inferred) in pattern_local_facts(self.body, pattern, fact) {
-            let fact = self.base.local(local).cloned().unwrap_or(inferred);
-            set_local(environment, local, fact);
+        for inferred in pattern_local_facts(self.graph, self.schema, self.body, pattern, fact, None)
+        {
+            let fact = self
+                .base
+                .local(inferred.local)
+                .cloned()
+                .unwrap_or(inferred.fact);
+            set_local(environment, inferred.local, fact);
         }
     }
 

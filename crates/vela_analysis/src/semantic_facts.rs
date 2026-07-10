@@ -5,6 +5,7 @@ mod control_flow;
 mod local_flow;
 mod logical_records;
 mod lookups;
+mod patterns;
 mod script_types;
 mod targets;
 
@@ -18,6 +19,7 @@ use lookups::{
     registry_method_fact, resolved_literal_type, schema_knows_owner, source_method,
     try_payload_fact, type_owner,
 };
+use patterns::{pattern_constructor_target, pattern_local_facts};
 pub(crate) use targets::registry_callable_owner;
 pub use targets::{
     CallTargetFact, ConstructorTargetFact, HostPathIndexKindFact, HostPathSegmentFact,
@@ -114,8 +116,8 @@ impl HirSemanticFacts {
             let script_types_before = facts.script_types.clone();
             let local_script_types_before = facts.local_script_types.clone();
             for body in &bodies {
-                facts.infer_local_facts(body, base);
-                facts.record_local_use_facts(body, base);
+                facts.infer_local_facts(graph, body, schema, base);
+                facts.record_local_use_facts(graph, body, schema, base);
                 for expression in body.expressions.values().rev() {
                     if let Some(target) = facts.infer_script_type(graph, body, expression.id, base)
                     {
@@ -623,25 +625,19 @@ impl HirSemanticFacts {
                 _ => TypeFact::Unknown,
             };
             self.patterns.insert(pattern.id, fact);
-            let path = match &pattern.kind {
-                HirPatternKind::TupleVariant { path, .. }
-                | HirPatternKind::RecordVariant { path, .. }
-                | HirPatternKind::Path { path } => path.and_then(|id| body.paths.get(&id)),
-                _ => None,
-            };
-            if let Some(path) = path {
-                let resolution = graph
-                    .bindings_for_body(body.id)
-                    .and_then(|bindings| bindings.pattern_constructor_resolution(&path.path));
-                self.pattern_constructors.insert(
-                    pattern.id,
-                    constructor_target(graph, schema, &path.path, resolution),
-                );
+            if let Some(target) = pattern_constructor_target(graph, schema, body, pattern.id) {
+                self.pattern_constructors.insert(pattern.id, target);
             }
         }
     }
 
-    fn infer_local_facts(&mut self, body: &HirBody, base: &AnalysisFacts) {
+    fn infer_local_facts(
+        &mut self,
+        graph: &ModuleGraph,
+        body: &HirBody,
+        schema: Option<&RegistryFacts>,
+        base: &AnalysisFacts,
+    ) {
         let mut inferred = Vec::new();
         for statement in body.statements.values() {
             match &statement.kind {
@@ -651,7 +647,14 @@ impl HirSemanticFacts {
                     ..
                 } => {
                     let fact = self.fact(*initializer);
-                    inferred.extend(pattern_local_facts(body, *pattern, &fact));
+                    inferred.extend(pattern_local_facts(
+                        graph,
+                        schema,
+                        body,
+                        *pattern,
+                        &fact,
+                        self.script_types.get(initializer),
+                    ));
                 }
                 HirStmtKind::For {
                     patterns,
@@ -665,23 +668,28 @@ impl HirSemanticFacts {
                         } else {
                             item.clone()
                         };
-                        inferred.extend(pattern_local_facts(body, *pattern, &fact));
+                        inferred.extend(pattern_local_facts(
+                            graph, schema, body, *pattern, &fact, None,
+                        ));
                     }
                 }
                 HirStmtKind::Match(value) => {
-                    infer_match_locals(self, body, value, &mut inferred);
+                    infer_match_locals(self, graph, schema, body, value, &mut inferred);
                 }
                 _ => {}
             }
         }
         for expression in body.expressions.values() {
             if let HirExprKind::Match(value) = &expression.kind {
-                infer_match_locals(self, body, value, &mut inferred);
+                infer_match_locals(self, graph, schema, body, value, &mut inferred);
             }
         }
-        for (local, fact) in inferred {
-            if base.local(local).is_none() && !matches!(fact, TypeFact::Unknown) {
-                self.locals.insert(local, fact);
+        for inferred in inferred {
+            if base.local(inferred.local).is_none() && !matches!(inferred.fact, TypeFact::Unknown) {
+                if let Some(script_type) = inferred.script_type {
+                    self.local_script_types.insert(inferred.local, script_type);
+                }
+                self.locals.insert(inferred.local, inferred.fact);
             }
         }
     }
@@ -934,58 +942,30 @@ fn expression_path(body: &HirBody, expression: HirExprId, kind: HirPathKind) -> 
         .map(|path| path.path.as_slice())
 }
 
-fn pattern_local_facts(
-    body: &HirBody,
-    pattern: HirPatternId,
-    fact: &TypeFact,
-) -> Vec<(HirLocalId, TypeFact)> {
-    let Some(pattern) = body.patterns.get(&pattern) else {
-        return Vec::new();
-    };
-    match &pattern.kind {
-        HirPatternKind::Binding { local } => {
-            local.iter().map(|local| (*local, fact.clone())).collect()
-        }
-        HirPatternKind::TupleVariant { fields, .. } => {
-            let elements = match fact {
-                TypeFact::Tuple { elements } => Some(elements.as_slice()),
-                _ => None,
-            };
-            fields
-                .iter()
-                .enumerate()
-                .flat_map(|(index, pattern)| {
-                    let fact = elements
-                        .and_then(|elements| elements.get(index))
-                        .unwrap_or(&TypeFact::Unknown);
-                    pattern_local_facts(body, *pattern, fact)
-                })
-                .collect()
-        }
-        HirPatternKind::RecordVariant { fields, .. } => fields
-            .iter()
-            .filter_map(|field| field.pattern)
-            .flat_map(|pattern| pattern_local_facts(body, pattern, &TypeFact::Unknown))
-            .collect(),
-        HirPatternKind::Path { .. }
-        | HirPatternKind::Wildcard
-        | HirPatternKind::Literal(_)
-        | HirPatternKind::Missing => Vec::new(),
-    }
-}
-
 fn infer_match_locals(
     facts: &HirSemanticFacts,
+    graph: &ModuleGraph,
+    schema: Option<&RegistryFacts>,
     body: &HirBody,
     value: &vela_hir::body::HirMatch,
-    inferred: &mut Vec<(HirLocalId, TypeFact)>,
+    inferred: &mut Vec<patterns::PatternLocalFact>,
 ) {
     let fact = value
         .scrutinee
         .map_or(TypeFact::Unknown, |id| facts.fact(id));
+    let script_type = value
+        .scrutinee
+        .and_then(|scrutinee| facts.script_types.get(&scrutinee));
     for arm in &value.arms {
         if let Some(pattern) = body.match_arms.get(arm).and_then(|arm| arm.pattern) {
-            inferred.extend(pattern_local_facts(body, pattern, &fact));
+            inferred.extend(pattern_local_facts(
+                graph,
+                schema,
+                body,
+                pattern,
+                &fact,
+                script_type,
+            ));
         }
     }
 }
