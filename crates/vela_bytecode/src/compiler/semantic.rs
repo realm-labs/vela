@@ -5,7 +5,11 @@ use vela_hir::binding::BindingMap;
 use vela_hir::body::HirBody;
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::script_methods::{
+    ScriptMethodCatalog, ScriptMethodCatalogError, ScriptMethodCatalogMode,
+};
 use vela_hir::type_hint::{FunctionSignature, ParamHint};
+use vela_mir::{MirBuildError, MirSourceOrigin};
 use vela_syntax::parse::parse_source_with_id;
 
 use crate::Constant;
@@ -21,11 +25,13 @@ use super::script_impls;
 pub(super) struct SemanticSource {
     graph: ModuleGraph,
     module: ModuleId,
+    script_methods: ScriptMethodCatalog,
 }
 
 pub(super) struct SemanticModules {
     graph: ModuleGraph,
     modules: Vec<ModuleId>,
+    script_methods: ScriptMethodCatalog,
 }
 
 impl SemanticSource {
@@ -164,8 +170,14 @@ impl SemanticSource {
         Ok(values_by_declaration)
     }
 
-    pub(super) fn script_impl_methods(&self) -> Vec<script_impls::ScriptImplMethod<'_>> {
-        script_impls::source_methods(&self.graph, self.module)
+    pub(super) const fn script_method_catalog(&self) -> &ScriptMethodCatalog {
+        &self.script_methods
+    }
+
+    pub(super) fn script_impl_methods(
+        &self,
+    ) -> CompileResult<Vec<script_impls::ScriptImplMethod<'_>>> {
+        script_impls::direct_methods(&self.graph, &self.script_methods)
     }
 
     pub(super) fn function_declaration(&self, name: &str) -> Option<HirDeclId> {
@@ -346,8 +358,14 @@ impl SemanticModules {
         Ok(values_by_declaration)
     }
 
-    pub(super) fn script_impl_methods(&self) -> Vec<script_impls::ScriptImplMethod<'_>> {
-        script_impls::module_methods(&self.graph)
+    pub(super) const fn script_method_catalog(&self) -> &ScriptMethodCatalog {
+        &self.script_methods
+    }
+
+    pub(super) fn script_impl_methods(
+        &self,
+    ) -> CompileResult<Vec<script_impls::ScriptImplMethod<'_>>> {
+        script_impls::direct_methods(&self.graph, &self.script_methods)
     }
 }
 
@@ -407,7 +425,16 @@ pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResu
     );
     graph.resolve_imports();
     if graph.diagnostics().is_empty() {
-        Ok(SemanticSource { graph, module })
+        let script_methods = ScriptMethodCatalog::from_graph(
+            &graph,
+            ScriptMethodCatalogMode::single_source(module, "main"),
+        )
+        .map_err(script_method_catalog_error)?;
+        Ok(SemanticSource {
+            graph,
+            module,
+            script_methods,
+        })
     } else {
         Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
             graph.diagnostics().to_vec(),
@@ -440,12 +467,30 @@ pub(super) fn parse_semantic_modules(sources: &[ModuleSource]) -> CompileResult<
 
     graph.resolve_imports();
     if graph.diagnostics().is_empty() {
-        Ok(SemanticModules { graph, modules })
+        let script_methods =
+            ScriptMethodCatalog::from_graph(&graph, ScriptMethodCatalogMode::ModuleGraph)
+                .map_err(script_method_catalog_error)?;
+        Ok(SemanticModules {
+            graph,
+            modules,
+            script_methods,
+        })
     } else {
         Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
             graph.diagnostics().to_vec(),
         )))
     }
+}
+
+fn script_method_catalog_error(error: ScriptMethodCatalogError) -> CompileError {
+    let span = error.origin().span;
+    CompileError::new(CompileErrorKind::MirInput(Box::new(
+        MirBuildError::InconsistentInput {
+            origin: MirSourceOrigin::declaration(error.declaration(), span),
+            message: error.to_string(),
+        },
+    )))
+    .with_span(span)
 }
 
 #[cfg(test)]

@@ -1,6 +1,7 @@
 mod external_descriptors;
 mod logical_records;
 mod roots_schema;
+mod script_methods;
 mod target_placements;
 
 use std::collections::BTreeMap;
@@ -136,7 +137,7 @@ fn prepare_source_inner(
         })
         .collect();
     let script_function_symbols = semantic.script_function_symbols();
-    let script_methods = semantic.script_impl_methods();
+    let script_methods = semantic.script_method_catalog();
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
     let constants = semantic.const_values()?;
@@ -146,7 +147,7 @@ fn prepare_source_inner(
         graph: semantic.script_metadata_graph(),
         roots,
         script_function_symbols: &script_function_symbols,
-        script_methods: &script_methods,
+        script_methods,
         type_symbols: &type_symbols,
         global_symbols: &global_symbols,
         constants: &constants,

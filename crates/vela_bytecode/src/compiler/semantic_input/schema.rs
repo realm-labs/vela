@@ -377,56 +377,62 @@ impl GenerationBuilder<'_, '_> {
     }
 
     fn insert_script_methods(&mut self) -> CompileResult<()> {
-        for index in 0..self.request.script_methods.len() {
-            let method = &self.request.script_methods[index];
+        let methods = self
+            .request
+            .script_methods
+            .methods()
+            .cloned()
+            .collect::<Vec<_>>();
+        for method in &methods {
+            let target_type = method.owner().target_type();
+            let symbol = method.symbol_seed();
             let body = self
                 .request
                 .graph
-                .body(method.body)
+                .body(method.body())
                 .ok_or_else(registry_input_error)?;
             let origin = MirSourceOrigin::body(body.id, body.origin.span);
             let owner = self
                 .type_ids
                 .iter()
                 .find_map(|(declaration, id)| {
-                    (self.request.type_symbols.get(declaration) == Some(&method.target_type))
+                    self.request
+                        .type_symbols
+                        .get(declaration)
+                        .is_some_and(|symbol| symbol == target_type)
                         .then_some(*id)
                 })
                 .or_else(|| {
                     self.registry_facts
-                        .type_target_fact(&method.target_type)
+                        .type_target_fact(target_type)
                         .map(|target| target.semantic)
                 })
-                .map_or_else(
-                    || self.ensure_opaque_external_type(&method.target_type, origin),
-                    Ok,
-                )?;
-            let module = self
-                .request
-                .graph
-                .declaration(method.bindings.declaration)
-                .map(|declaration| declaration.module)
-                .ok_or_else(registry_input_error)?;
-            let function = script_function_id(&method.symbol);
+                .map_or_else(|| self.ensure_opaque_external_type(target_type, origin), Ok)?;
+            let function = script_function_id(&symbol);
             let target = MethodExecutableTarget {
-                method: method.method_id,
+                method: method.method_id(),
                 function,
                 owner,
-                node: method.node,
+                node: method.node(),
             };
-            self.method_targets.insert((method.node, owner), target);
+            self.method_targets.insert((method.node(), owner), target);
             if !self.type_names.contains_key(&owner) {
                 self.ensure_external_type(owner, origin)?;
             }
-            let full_signature = self.script_signature(function, body, method.signature, module)?;
+            let full_signature = self.script_signature(
+                function,
+                body,
+                method.signature(),
+                method.signature_module(),
+            )?;
             self.remember_signature_contracts(&full_signature, origin);
             self.targets
                 .insert_function_descriptor(
                     CompileFunctionDescriptor {
                         id: function,
                         class: CompileFunctionClass::Script,
-                        canonical_symbol: method.symbol.clone(),
-                        debug_name: format!("{}::{}", method.target_type, method.method_name),
+                        canonical_symbol: symbol.clone(),
+                        debug_name: format!("{target_type}::{}", method.name()),
                         signature: full_signature.clone(),
                         access: CompileFunctionAccess::script(false),
                     },
@@ -436,14 +442,14 @@ impl GenerationBuilder<'_, '_> {
             self.targets
                 .insert_method_descriptor(
                     CompileMethodDescriptor {
-                        id: method.method_id,
+                        id: method.method_id(),
                         owner,
-                        member_name: method.method_name.clone(),
-                        debug_name: format!("{}::{}", method.target_type, method.method_name),
+                        member_name: method.name().to_owned(),
+                        debug_name: format!("{target_type}::{}", method.name()),
                         class: CompileMethodClass::Script {
                             executable: target,
-                            owner_name: method.target_type.clone(),
-                            code_symbol: method.symbol.clone(),
+                            owner_name: target_type.to_owned(),
+                            code_symbol: symbol,
                         },
                         signature: CompileSignature {
                             parameters: full_signature.parameters.iter().skip(1).cloned().collect(),

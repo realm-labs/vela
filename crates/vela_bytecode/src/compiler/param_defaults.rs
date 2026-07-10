@@ -18,12 +18,22 @@ pub(super) fn param_default_values(
     body: &vela_hir::body::HirBody,
     signature: &FunctionSignature,
 ) -> Vec<Option<ParamDefaultValue>> {
-    body.params
-        .iter()
+    param_default_values_from_ids(
+        body.params.iter().map(|parameter| parameter.default_body),
+        signature,
+    )
+}
+
+pub(super) fn param_default_values_from_ids(
+    defaults: impl IntoIterator<Item = Option<HirBodyId>>,
+    signature: &FunctionSignature,
+) -> Vec<Option<ParamDefaultValue>> {
+    defaults
+        .into_iter()
         .zip(&signature.params)
-        .map(|(param, hint)| {
+        .map(|(body, hint)| {
             Some(ParamDefaultValue {
-                body: param.default_body?,
+                body: body?,
                 expected: hint.type_hint.as_ref().and_then(type_hint_value_type),
                 name: hint.name.clone(),
             })

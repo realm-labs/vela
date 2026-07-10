@@ -167,24 +167,18 @@ impl GenerationBuilder<'_, '_> {
                 let method_input = self
                     .request
                     .script_methods
-                    .iter()
+                    .methods()
                     .find(|candidate| {
-                        candidate.node == method
-                            && self.method_targets.get(&(candidate.node, owner))
+                        candidate.node() == method
+                            && self.method_targets.get(&(candidate.node(), owner))
                                 == Some(&method_target)
                     })
-                    .ok_or_else(registry_input_error)?;
-                let module = self
-                    .request
-                    .graph
-                    .declaration(method_input.bindings.declaration)
-                    .map(|declaration| declaration.module)
                     .ok_or_else(registry_input_error)?;
                 let arguments = self.script_arguments(
                     executable,
                     call,
-                    method_input.signature.params.get(1..).unwrap_or_default(),
-                    module,
+                    method_input.signature().params.get(1..).unwrap_or_default(),
+                    method_input.signature_module(),
                     origin,
                 )?;
                 self.targets

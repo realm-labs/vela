@@ -40,6 +40,7 @@ use vela_hir::ids::{HirDeclId, HirExprId, HirLocalId, HirPatternId};
 #[cfg(test)]
 use vela_hir::module_graph::ModulePath;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModuleSource};
+use vela_hir::script_methods::ScriptMethodCatalog;
 use vela_hir::type_hint::{FunctionSignature, HirTypeHint, ParamHint};
 use vela_registry::RegistryCompileView;
 
@@ -200,13 +201,13 @@ fn compile_function_source_inner<'registry>(
     let script_function_symbols = semantic.script_function_symbols();
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
-    let script_methods = semantic.script_impl_methods();
+    let script_methods = semantic.script_method_catalog();
     drop(semantic_input::prepare_semantic_input(
         semantic_input::SemanticInputRequest {
             graph: semantic.script_metadata_graph(),
             roots: semantic_input::SemanticRoots::Function(declaration),
             script_function_symbols: &script_function_symbols,
-            script_methods: &script_methods,
+            script_methods,
             type_symbols: &type_symbols,
             global_symbols: &global_symbols,
             constants: &semantic_constants,
@@ -262,9 +263,10 @@ fn compile_program_source_inner<'registry>(
     let script_functions = semantic.script_function_names();
     let script_function_symbols = semantic.script_function_symbols();
     let script_function_signatures = semantic.script_function_signatures();
-    let script_impl_methods = semantic.script_impl_methods();
-    let script_method_ids = script_method_ids(&script_impl_methods);
-    let script_method_signatures = script_method_signatures(&script_impl_methods);
+    let script_method_catalog = semantic.script_method_catalog();
+    let script_impl_methods = semantic.script_impl_methods()?;
+    let script_method_ids = script_method_ids(script_method_catalog);
+    let script_method_signatures = script_method_signatures(script_method_catalog);
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
     let global_slots = global_slots(&global_symbols);
@@ -321,13 +323,12 @@ fn compile_program_source_inner<'registry>(
     let script_function_symbols = semantic.script_function_symbols();
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
-    let script_methods = semantic.script_impl_methods();
     drop(semantic_input::prepare_semantic_input(
         semantic_input::SemanticInputRequest {
             graph: semantic.script_metadata_graph(),
             roots: semantic_input::SemanticRoots::Program,
             script_function_symbols: &script_function_symbols,
-            script_methods: &script_methods,
+            script_methods: script_method_catalog,
             type_symbols: &type_symbols,
             global_symbols: &global_symbols,
             constants: &semantic_constants,
@@ -374,9 +375,10 @@ fn compile_module_sources_inner<'registry>(
     let script_functions = semantic.script_function_declarations();
     let script_function_symbols = semantic.script_function_symbols();
     let script_function_signatures = semantic.script_function_signatures();
-    let script_impl_methods = semantic.script_impl_methods();
-    let script_method_ids = script_method_ids(&script_impl_methods);
-    let script_method_signatures = script_method_signatures(&script_impl_methods);
+    let script_method_catalog = semantic.script_method_catalog();
+    let script_impl_methods = semantic.script_impl_methods()?;
+    let script_method_ids = script_method_ids(script_method_catalog);
+    let script_method_signatures = script_method_signatures(script_method_catalog);
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
     let global_slots = global_slots(&global_symbols);
@@ -438,13 +440,12 @@ fn compile_module_sources_inner<'registry>(
     let script_function_symbols = semantic.script_function_symbols();
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
-    let script_methods = semantic.script_impl_methods();
     drop(semantic_input::prepare_semantic_input(
         semantic_input::SemanticInputRequest {
             graph: semantic.script_metadata_graph(),
             roots: semantic_input::SemanticRoots::Program,
             script_function_symbols: &script_function_symbols,
-            script_methods: &script_methods,
+            script_methods: script_method_catalog,
             type_symbols: &type_symbols,
             global_symbols: &global_symbols,
             constants: &semantic_constants,
@@ -527,7 +528,7 @@ fn insert_script_impl_methods(
             Compiler::new_script_method_body(
                 method.symbol,
                 method.default_values.clone(),
-                method.signature,
+                &method.signature,
                 method.body,
                 CompilerHirContext {
                     bindings: method.bindings,
@@ -542,29 +543,33 @@ fn insert_script_impl_methods(
     Ok(())
 }
 
-fn script_method_ids(
-    methods: &[script_impls::ScriptImplMethod<'_>],
-) -> BTreeMap<(String, String), MethodId> {
+fn script_method_ids(methods: &ScriptMethodCatalog) -> BTreeMap<(String, String), MethodId> {
     methods
-        .iter()
+        .methods()
         .map(|method| {
             (
-                (method.target_type.clone(), method.method_name.clone()),
-                method.method_id,
+                (
+                    method.owner().target_type().to_owned(),
+                    method.name().to_owned(),
+                ),
+                method.method_id(),
             )
         })
         .collect()
 }
 
 fn script_method_signatures(
-    methods: &[script_impls::ScriptImplMethod<'_>],
+    methods: &ScriptMethodCatalog,
 ) -> BTreeMap<(String, String), Vec<ParamHint>> {
     methods
-        .iter()
+        .methods()
         .map(|method| {
             (
-                (method.target_type.clone(), method.method_name.clone()),
-                method.signature.params.clone(),
+                (
+                    method.owner().target_type().to_owned(),
+                    method.name().to_owned(),
+                ),
+                method.signature().params.clone(),
             )
         })
         .collect()

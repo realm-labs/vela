@@ -30,6 +30,7 @@ use vela_def::{FieldId, FunctionId, MethodId, TypeId, VariantId, script_function
 use vela_hir::body::HirBody;
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
+use vela_hir::script_methods::{ScriptMethod, ScriptMethodCatalog};
 use vela_mir::{
     CompileTargetSnapshot, CompileTargetSnapshotBuilder, MethodExecutableTarget, MirBuildError,
     MirLoweringConfig, MirLoweringInput, MirSourceOrigin, MirTypeContract,
@@ -39,7 +40,6 @@ use vela_registry::RegistryCompileView;
 use super::error::{CompileError, CompileErrorKind, CompileResult};
 use super::options::CompilerOptions;
 use super::schema_defaults::ScriptSchemaDefaults;
-use super::script_impls::ScriptImplMethod;
 use crate::Constant;
 
 use self::contracts::ContractBoundary;
@@ -56,7 +56,7 @@ pub(super) struct SemanticInputRequest<'graph, 'methods, 'registry> {
     pub(super) graph: &'graph ModuleGraph,
     pub(super) roots: SemanticRoots,
     pub(super) script_function_symbols: &'graph BTreeMap<HirDeclId, String>,
-    pub(super) script_methods: &'methods [ScriptImplMethod<'graph>],
+    pub(super) script_methods: &'methods ScriptMethodCatalog,
     pub(super) type_symbols: &'graph BTreeMap<HirDeclId, String>,
     pub(super) global_symbols: &'graph BTreeMap<HirDeclId, String>,
     pub(super) constants: &'graph BTreeMap<HirDeclId, Constant>,
@@ -291,8 +291,8 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
                 roots.extend(
                     self.request
                         .script_methods
-                        .iter()
-                        .map(|method| (script_function_id(&method.symbol), method.body)),
+                        .methods()
+                        .map(|method| (script_function_id(&method.symbol_seed()), method.body())),
                 );
             }
         }
@@ -353,8 +353,8 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
                 if let Some(method) = self
                     .request
                     .script_methods
-                    .iter()
-                    .find(|method| script_function_id(&method.symbol) == function)
+                    .methods()
+                    .find(|method| script_function_id(&method.symbol_seed()) == function)
                 {
                     input = input.with_receiver(self.executable_receiver(method));
                 }
@@ -375,9 +375,10 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
         Ok(())
     }
 
-    fn executable_receiver(&self, method: &ScriptImplMethod<'_>) -> ExecutableReceiverInput {
+    fn executable_receiver(&self, method: &ScriptMethod) -> ExecutableReceiverInput {
+        let target_type = method.owner().target_type();
         if let Some((declaration, _)) = self.request.type_symbols.iter().find(|(_, symbol)| {
-            *symbol == &method.target_type || symbol.ends_with(&format!("::{}", method.target_type))
+            *symbol == target_type || symbol.ends_with(&format!("::{target_type}"))
         }) {
             let fact = match self
                 .request
@@ -385,19 +386,17 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
                 .declaration(*declaration)
                 .map(|declaration| declaration.kind)
             {
-                Some(DeclarationKind::Enum) => {
-                    TypeFact::enum_type(&method.target_type, None::<String>)
-                }
-                _ => TypeFact::record(&method.target_type),
+                Some(DeclarationKind::Enum) => TypeFact::enum_type(target_type, None::<String>),
+                _ => TypeFact::record(target_type),
             };
             return ExecutableReceiverInput::new(fact)
                 .with_script_type(ScriptTypeTargetFact::declaration(*declaration));
         }
         let fact = self
             .registry_facts
-            .type_fact(&method.target_type)
+            .type_fact(target_type)
             .cloned()
-            .unwrap_or_else(|| TypeFact::host(&method.target_type));
+            .unwrap_or_else(|| TypeFact::host(target_type));
         ExecutableReceiverInput::new(fact)
     }
 

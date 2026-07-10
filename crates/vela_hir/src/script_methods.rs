@@ -331,7 +331,14 @@ fn collect_impl_methods(
     let actual_module = graph
         .module_path(declaration.module)
         .cloned()
-        .unwrap_or_else(ModulePath::root);
+        .ok_or_else(|| {
+            catalog_error(
+                declaration.id,
+                None,
+                origin(declaration.span),
+                "impl declaration has no owning module path",
+            )
+        })?;
     let target_type = match qualification {
         TargetQualification::Local => impl_metadata.target_path.join("::"),
         TargetQualification::Module => {
