@@ -129,9 +129,7 @@ impl SyntaxModuleSummary {
                 visibility,
                 name_span,
                 span,
-            }) if *header_kind == kind => {
-                Some((name.clone(), *visibility, *name_span, *span))
-            }
+            }) if *header_kind == kind => Some((name.clone(), *visibility, *name_span, *span)),
             _ => None,
         }
     }
