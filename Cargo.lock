@@ -1029,6 +1029,7 @@ name = "vela_hir"
 version = "0.1.0"
 dependencies = [
  "vela_common",
+ "vela_def",
  "vela_syntax",
 ]
 
