@@ -566,6 +566,15 @@ pub(super) fn unresolved_native(path: &str, span: vela_common::Span) -> CompileE
     ]))
 }
 
+pub(super) fn unresolved_method(method: &str, span: vela_common::Span) -> CompileError {
+    CompileError::new(CompileErrorKind::SemanticDiagnostics(vec![
+        Diagnostic::error(format!("unresolved method `{method}`"))
+            .with_code("compiler::unresolved_method")
+            .with_span(span)
+            .with_label(span, "method is not defined for the known receiver type"),
+    ]))
+}
+
 pub(super) fn source_name(path: &DefPath) -> String {
     path.module
         .iter()

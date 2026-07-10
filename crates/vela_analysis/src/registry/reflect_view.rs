@@ -3,6 +3,7 @@ use vela_reflect::modules::FunctionDesc;
 use vela_reflect::registry::{MethodDesc, TraitMethodDesc, TypeKind, TypeRegistry};
 
 use super::{
+    CallableParameterFact, CallableParameterRequirementFact, CallableSignatureFact,
     RegistryEffectFact, RegistryFacts, RegistryFieldAccessFact, RegistryFieldTargetFact,
     RegistryFunctionAccessFact, RegistryIndexCapabilityFact, RegistryMethodAccessFact,
     RegistryModuleFact, RegistryTypeTargetFact, registry_hint_fact, type_desc_fact,
@@ -66,6 +67,9 @@ impl RegistryFacts {
                 facts
                     .methods
                     .insert(key.clone(), method_desc_fact(registry, method));
+                facts
+                    .method_signatures
+                    .insert(key.clone(), method_desc_signature_fact(registry, method));
                 if let Some(docs) = &method.docs {
                     facts.method_docs.insert(key.clone(), docs.clone());
                 }
@@ -138,6 +142,10 @@ impl RegistryFacts {
                 function.name.clone(),
                 function_desc_fact(registry, function),
             );
+            facts.function_signatures.insert(
+                function.name.clone(),
+                function_desc_signature_fact(registry, function),
+            );
             facts
                 .function_origins
                 .insert(function.name.clone(), function.origin);
@@ -178,6 +186,10 @@ impl RegistryFacts {
                 facts
                     .trait_methods
                     .insert(key.clone(), trait_method_desc_fact(registry, method));
+                facts.trait_method_signatures.insert(
+                    key.clone(),
+                    trait_method_desc_signature_fact(registry, method),
+                );
                 facts
                     .trait_method_effects
                     .insert(key.clone(), RegistryEffectFact::pure());
@@ -242,6 +254,26 @@ fn function_desc_fact(registry: &TypeRegistry, desc: &FunctionDesc) -> TypeFact 
     TypeFact::function(params, returns)
 }
 
+fn function_desc_signature_fact(
+    registry: &TypeRegistry,
+    desc: &FunctionDesc,
+) -> CallableSignatureFact {
+    let parameters = desc.params.iter().map(|parameter| {
+        reflected_parameter_fact(
+            &parameter.name,
+            parameter.type_hint.as_deref(),
+            parameter.has_default,
+            registry,
+        )
+    });
+    CallableSignatureFact::new(
+        parameters,
+        desc.return_type
+            .as_deref()
+            .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint)),
+    )
+}
+
 fn method_desc_fact(registry: &TypeRegistry, desc: &MethodDesc) -> TypeFact {
     let params = desc
         .params
@@ -258,6 +290,23 @@ fn method_desc_fact(registry: &TypeRegistry, desc: &MethodDesc) -> TypeFact {
         .as_deref()
         .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint));
     TypeFact::function(params, returns)
+}
+
+fn method_desc_signature_fact(registry: &TypeRegistry, desc: &MethodDesc) -> CallableSignatureFact {
+    let parameters = desc.params.iter().map(|parameter| {
+        reflected_parameter_fact(
+            &parameter.name,
+            parameter.type_hint.as_deref(),
+            parameter.has_default,
+            registry,
+        )
+    });
+    CallableSignatureFact::new(
+        parameters,
+        desc.return_type
+            .as_deref()
+            .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint)),
+    )
 }
 
 fn trait_method_desc_fact(registry: &TypeRegistry, desc: &TraitMethodDesc) -> TypeFact {
@@ -278,6 +327,43 @@ fn trait_method_desc_fact(registry: &TypeRegistry, desc: &TraitMethodDesc) -> Ty
     TypeFact::function(params, returns)
 }
 
+fn trait_method_desc_signature_fact(
+    registry: &TypeRegistry,
+    desc: &TraitMethodDesc,
+) -> CallableSignatureFact {
+    let parameters = desc.params.iter().map(|parameter| {
+        reflected_parameter_fact(
+            &parameter.name,
+            parameter.type_hint.as_deref(),
+            parameter.has_default,
+            registry,
+        )
+    });
+    CallableSignatureFact::new(
+        parameters,
+        desc.return_type
+            .as_deref()
+            .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint)),
+    )
+}
+
+fn reflected_parameter_fact(
+    name: &str,
+    type_hint: Option<&str>,
+    has_default: bool,
+    registry: &TypeRegistry,
+) -> CallableParameterFact {
+    CallableParameterFact::new(
+        name,
+        type_hint.map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint)),
+        if has_default {
+            CallableParameterRequirementFact::Defaulted
+        } else {
+            CallableParameterRequirementFact::Required
+        },
+    )
+}
+
 fn collect_trait_methods(registry: &TypeRegistry, facts: &mut RegistryFacts) {
     for type_desc in registry.types() {
         for trait_desc in &type_desc.traits {
@@ -286,6 +372,10 @@ fn collect_trait_methods(registry: &TypeRegistry, facts: &mut RegistryFacts) {
                 facts
                     .trait_methods
                     .insert(key.clone(), trait_method_desc_fact(registry, method));
+                facts.trait_method_signatures.insert(
+                    key.clone(),
+                    trait_method_desc_signature_fact(registry, method),
+                );
                 facts
                     .trait_method_effects
                     .insert(key.clone(), RegistryEffectFact::pure());

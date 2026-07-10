@@ -1,5 +1,6 @@
 //! Analysis-only facts for diagnostics, completion, and stdlib metadata.
 
+pub mod callable;
 pub mod completion;
 pub mod contracts;
 pub mod executable;

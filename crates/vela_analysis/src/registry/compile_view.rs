@@ -8,6 +8,7 @@ use vela_registry::{
 };
 
 use super::{
+    CallableParameterFact, CallableParameterRequirementFact, CallableSignatureFact,
     RegistryEffectFact, RegistryFacts, RegistryFieldAccessFact, RegistryFieldTargetFact,
     RegistryFunctionAccessFact, RegistryIndexCapabilityFact, RegistryMethodAccessFact,
     RegistryTypeTargetFact,
@@ -106,6 +107,11 @@ impl<'registry> CompileViewFacts<'registry> {
                         &method.path.name,
                         self.signature_fact(&method.signature),
                     );
+                    facts.insert_method_signature(
+                        owner,
+                        &method.path.name,
+                        self.callable_signature_fact(&method.signature),
+                    );
                     facts.insert_method_effect(
                         owner,
                         &method.path.name,
@@ -122,6 +128,10 @@ impl<'registry> CompileViewFacts<'registry> {
                 Def::Function(function) => {
                     let name = source_name(&function.path);
                     facts.insert_function(&name, self.signature_fact(&function.signature));
+                    facts.insert_function_signature(
+                        &name,
+                        self.callable_signature_fact(&function.signature),
+                    );
                     facts.insert_function_effect(&name, definition_effect_fact(function.effects));
                     facts.insert_function_access(RegistryFunctionAccessFact {
                         name: name.clone(),
@@ -250,6 +260,28 @@ impl<'registry> CompileViewFacts<'registry> {
             .as_ref()
             .map_or(TypeFact::Unknown, |hint| self.type_hint_fact(hint));
         TypeFact::function(params, returns)
+    }
+
+    fn callable_signature_fact(&self, signature: &FunctionSignature) -> CallableSignatureFact {
+        let parameters = signature.params.iter().map(|parameter| {
+            CallableParameterFact::new(
+                &parameter.name,
+                parameter
+                    .type_hint
+                    .as_ref()
+                    .map_or(TypeFact::Unknown, |hint| self.type_hint_fact(hint)),
+                if parameter.has_default {
+                    CallableParameterRequirementFact::Defaulted
+                } else {
+                    CallableParameterRequirementFact::Required
+                },
+            )
+        });
+        let returns = signature
+            .return_type
+            .as_ref()
+            .map_or(TypeFact::Unknown, |hint| self.type_hint_fact(hint));
+        CallableSignatureFact::new(parameters, returns)
     }
 
     fn type_hint_fact(&self, hint: &TypeHintDef) -> TypeFact {

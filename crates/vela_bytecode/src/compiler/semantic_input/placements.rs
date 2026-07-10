@@ -24,7 +24,7 @@ use vela_mir::{
 };
 
 use super::contracts::ContractBoundary;
-use super::external::{external_signature, unresolved_native};
+use super::external::{external_signature, unresolved_method, unresolved_native};
 use super::schema::{contract_from_fact, registry_hint_contract};
 use super::{GenerationBuilder, input_error, registry_input_error};
 use crate::compiler::call_args::{HirCallArgument, resolve_hir_call_arguments};
@@ -227,6 +227,9 @@ impl GenerationBuilder<'_, '_> {
             }
             CallTargetFact::StdlibMethod { name } => {
                 self.value_method_call(executable, body, call, &name, origin)?
+            }
+            CallTargetFact::KnownReceiverMiss { method, .. } => {
+                return Err(unresolved_method(&method, origin.span));
             }
             CallTargetFact::Dynamic => self.dynamic_call(body, call, origin)?,
             CallTargetFact::Unresolved => {

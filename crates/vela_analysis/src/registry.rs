@@ -12,6 +12,10 @@ use crate::type_fact::TypeFact;
 mod compile_view;
 mod reflect_view;
 
+pub use crate::callable::{
+    CallableParameterFact, CallableParameterRequirementFact, CallableSignatureFact,
+};
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RegistryMemberFact {
     pub owner: String,
@@ -384,11 +388,14 @@ pub struct RegistryFacts {
     variants_by_short_owner: BTreeMap<String, BTreeSet<(String, String)>>,
     variant_docs: BTreeMap<(String, String), String>,
     methods: BTreeMap<(String, String), TypeFact>,
+    method_signatures: BTreeMap<(String, String), CallableSignatureFact>,
     method_docs: BTreeMap<(String, String), String>,
     trait_methods: BTreeMap<(String, String), TypeFact>,
+    trait_method_signatures: BTreeMap<(String, String), CallableSignatureFact>,
     trait_method_docs: BTreeMap<(String, String), String>,
     modules: BTreeMap<String, RegistryModuleFact>,
     functions: BTreeMap<String, TypeFact>,
+    function_signatures: BTreeMap<String, CallableSignatureFact>,
     function_origins: BTreeMap<String, DeclOrigin>,
     function_docs: BTreeMap<String, String>,
     function_access: BTreeMap<String, RegistryFunctionAccessFact>,
@@ -554,6 +561,16 @@ impl RegistryFacts {
     }
 
     #[must_use]
+    pub fn method_signature_fact(
+        &self,
+        owner: &str,
+        method: &str,
+    ) -> Option<&CallableSignatureFact> {
+        self.method_signatures
+            .get(&(owner.to_owned(), method.to_owned()))
+    }
+
+    #[must_use]
     pub fn method_docs(&self, owner: &str, method: &str) -> Option<&str> {
         self.method_docs
             .get(&(owner.to_owned(), method.to_owned()))
@@ -589,6 +606,16 @@ impl RegistryFacts {
     }
 
     #[must_use]
+    pub fn trait_method_signature_fact(
+        &self,
+        trait_name: &str,
+        method: &str,
+    ) -> Option<&CallableSignatureFact> {
+        self.trait_method_signatures
+            .get(&(trait_name.to_owned(), method.to_owned()))
+    }
+
+    #[must_use]
     pub fn trait_method_docs(&self, trait_name: &str, method: &str) -> Option<&str> {
         self.trait_method_docs
             .get(&(trait_name.to_owned(), method.to_owned()))
@@ -614,6 +641,11 @@ impl RegistryFacts {
     #[must_use]
     pub fn function_fact(&self, name: &str) -> Option<&TypeFact> {
         self.functions.get(name)
+    }
+
+    #[must_use]
+    pub fn function_signature_fact(&self, name: &str) -> Option<&CallableSignatureFact> {
+        self.function_signatures.get(name)
     }
 
     #[must_use]
@@ -792,6 +824,16 @@ impl RegistryFacts {
         self.methods.insert((owner.into(), name.into()), fact);
     }
 
+    pub fn insert_method_signature(
+        &mut self,
+        owner: impl Into<String>,
+        name: impl Into<String>,
+        signature: CallableSignatureFact,
+    ) {
+        self.method_signatures
+            .insert((owner.into(), name.into()), signature);
+    }
+
     pub fn insert_method_docs(
         &mut self,
         owner: impl Into<String>,
@@ -826,6 +868,16 @@ impl RegistryFacts {
         self.trait_methods.insert((owner.into(), name.into()), fact);
     }
 
+    pub fn insert_trait_method_signature(
+        &mut self,
+        owner: impl Into<String>,
+        name: impl Into<String>,
+        signature: CallableSignatureFact,
+    ) {
+        self.trait_method_signatures
+            .insert((owner.into(), name.into()), signature);
+    }
+
     pub fn insert_trait_method_docs(
         &mut self,
         owner: impl Into<String>,
@@ -848,6 +900,14 @@ impl RegistryFacts {
 
     pub fn insert_function(&mut self, name: impl Into<String>, fact: TypeFact) {
         self.functions.insert(name.into(), fact);
+    }
+
+    pub fn insert_function_signature(
+        &mut self,
+        name: impl Into<String>,
+        signature: CallableSignatureFact,
+    ) {
+        self.function_signatures.insert(name.into(), signature);
     }
 
     pub fn insert_function_origin(&mut self, name: impl Into<String>, origin: DeclOrigin) {

@@ -1,3 +1,4 @@
+use vela_common::PrimitiveTag;
 use vela_hir::body::{HirAssignOp, HirBinaryOp, HirBody, HirExprKind, HirUnaryOp};
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirLocalId, HirNodeId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
@@ -57,6 +58,11 @@ pub enum CallTargetFact {
     },
     StdlibMethod {
         name: String,
+    },
+    KnownReceiverMiss {
+        receiver: TypeFact,
+        script_type: Option<ScriptTypeTargetFact>,
+        method: String,
     },
     Dynamic,
     Unresolved,
@@ -233,5 +239,55 @@ pub(super) fn registry_field_owner(fact: &TypeFact) -> Option<String> {
             variant: Some(variant),
         } => Some(format!("{name}::{variant}")),
         _ => super::type_owner(fact).map(str::to_owned),
+    }
+}
+
+pub(crate) fn registry_callable_owner(fact: &TypeFact) -> Option<&str> {
+    match fact {
+        TypeFact::Primitive(primitive) => Some(primitive_registry_owner(*primitive)),
+        TypeFact::Range => Some("Range"),
+        TypeFact::Array { .. } => Some("Array"),
+        TypeFact::Map { .. } => Some("Map"),
+        TypeFact::Set { .. } => Some("Set"),
+        TypeFact::Iterator { .. } => Some("Iterator"),
+        TypeFact::Option { .. } | TypeFact::OptionSome { .. } | TypeFact::OptionNone => {
+            Some("Option")
+        }
+        TypeFact::Result { .. } | TypeFact::ResultOk { .. } | TypeFact::ResultErr { .. } => {
+            Some("Result")
+        }
+        TypeFact::Function { .. } => Some("Function"),
+        TypeFact::Closure => Some("Closure"),
+        TypeFact::Record { name }
+        | TypeFact::Enum { name, .. }
+        | TypeFact::Host { name }
+        | TypeFact::Trait { name } => Some(name),
+        TypeFact::LogicalRecord(record) => Some(record.runtime_name()),
+        TypeFact::Unknown
+        | TypeFact::Never
+        | TypeFact::Any
+        | TypeFact::Tuple { .. }
+        | TypeFact::Module { .. }
+        | TypeFact::Union(_) => None,
+    }
+}
+
+const fn primitive_registry_owner(primitive: PrimitiveTag) -> &'static str {
+    match primitive {
+        PrimitiveTag::Unit => "Unit",
+        PrimitiveTag::Bool => "Bool",
+        PrimitiveTag::Char => "Char",
+        PrimitiveTag::I8 => "I8",
+        PrimitiveTag::I16 => "I16",
+        PrimitiveTag::I32 => "I32",
+        PrimitiveTag::I64 => "I64",
+        PrimitiveTag::U8 => "U8",
+        PrimitiveTag::U16 => "U16",
+        PrimitiveTag::U32 => "U32",
+        PrimitiveTag::U64 => "U64",
+        PrimitiveTag::F32 => "F32",
+        PrimitiveTag::F64 => "F64",
+        PrimitiveTag::String => "String",
+        PrimitiveTag::Bytes => "Bytes",
     }
 }

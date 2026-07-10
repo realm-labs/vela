@@ -25,7 +25,8 @@ use crate::semantic_facts::{
 };
 use crate::type_fact::TypeFact;
 use crate::validation::{
-    ArrayOrderingCapabilityFact, ExecutableValidationFacts, LoopControlFact, OperatorCapabilityFact,
+    ArrayOrderingCapabilityFact, CallArgumentPlacementFact, ExecutableValidationFacts,
+    LoopControlFact, OperatorCapabilityFact,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -306,7 +307,7 @@ fn analyze_root(
         receiver,
         &input.literal_contexts,
     );
-    let validation = ExecutableValidationFacts::from_analysis(graph, &facts, &bodies);
+    let validation = ExecutableValidationFacts::from_analysis(graph, schema, &facts, &bodies);
     Ok(ExecutableRootFacts {
         body: input.body,
         bodies,
@@ -376,6 +377,14 @@ impl ExecutableAnalysisView<'_> {
     #[must_use]
     pub fn call_target(&self, expression: HirExprId) -> Option<&CallTargetFact> {
         self.root.facts.call_target(expression)
+    }
+
+    #[must_use]
+    pub fn call_argument_placement(
+        &self,
+        expression: HirExprId,
+    ) -> Option<&CallArgumentPlacementFact> {
+        self.root.validation.call_argument_placement(expression)
     }
 
     #[must_use]

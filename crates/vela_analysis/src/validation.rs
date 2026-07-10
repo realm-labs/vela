@@ -6,16 +6,20 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use vela_common::Diagnostic;
+use vela_common::{Diagnostic, Span};
 use vela_hir::body::HirBinaryOp;
 use vela_hir::ids::{HirBodyId, HirExprId, HirStmtId};
 use vela_hir::module_graph::ModuleGraph;
 
 use crate::facts::AnalysisFacts;
+use crate::registry::RegistryFacts;
 
+mod calls;
 mod capabilities;
 mod diagnostics;
 
+#[cfg(test)]
+mod call_tests;
 #[cfg(test)]
 mod tests;
 
@@ -137,17 +141,61 @@ pub struct LoopControlFact {
     pub placement: LoopControlPlacement,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CallPlacementModeFact {
+    Strict,
+    ExternalNamed,
+    ExternalPositional,
+    Dynamic,
+    Positional,
+    Unresolved,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CallSourceArgumentFact {
+    pub source_index: usize,
+    pub name: Option<String>,
+    pub value: Option<HirExprId>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CallParameterSlotValueFact {
+    Explicit {
+        source_index: usize,
+        value: Option<HirExprId>,
+    },
+    MissingDefault,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CallParameterSlotFact {
+    pub parameter_index: usize,
+    pub name: String,
+    pub value: CallParameterSlotValueFact,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CallArgumentPlacementFact {
+    pub mode: CallPlacementModeFact,
+    pub source_order: Vec<CallSourceArgumentFact>,
+    pub parameter_slots: Option<Vec<CallParameterSlotFact>>,
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ExecutableValidationFacts {
     operators: BTreeMap<HirExprId, OperatorCapabilityFact>,
     array_ordering: BTreeMap<HirExprId, ArrayOrderingCapabilityFact>,
     loop_controls: BTreeMap<HirStmtId, LoopControlFact>,
+    calls: BTreeMap<HirExprId, CallArgumentPlacementFact>,
+    call_diagnostic_batches: Vec<(Span, Vec<Diagnostic>)>,
     diagnostics: Vec<Diagnostic>,
 }
 
 impl ExecutableValidationFacts {
     pub(crate) fn from_analysis(
         graph: &ModuleGraph,
+        schema: Option<&RegistryFacts>,
         facts: &AnalysisFacts,
         bodies: &BTreeSet<HirBodyId>,
     ) -> Self {
@@ -155,12 +203,25 @@ impl ExecutableValidationFacts {
         let mut validation = Self::default();
         for body in bodies.iter().filter_map(|body| graph.body(*body)) {
             capabilities::record_body(&mut validation, &capabilities, graph, facts, body);
+            calls::record_body(&mut validation, graph, schema, facts, body);
         }
-        validation.diagnostics.sort_by_key(|diagnostic| {
-            diagnostic
-                .span
-                .map(|span| (span.source, span.start, span.end))
-        });
+        let mut diagnostic_batches = validation
+            .diagnostics
+            .drain(..)
+            .map(|diagnostic| (diagnostic.span, vec![diagnostic]))
+            .chain(
+                validation
+                    .call_diagnostic_batches
+                    .drain(..)
+                    .map(|(origin, diagnostics)| (Some(origin), diagnostics)),
+            )
+            .collect::<Vec<_>>();
+        diagnostic_batches
+            .sort_by_key(|(origin, _)| origin.map(|span| (span.source, span.start, span.end)));
+        validation.diagnostics = diagnostic_batches
+            .into_iter()
+            .flat_map(|(_, diagnostics)| diagnostics)
+            .collect();
         validation
     }
 
@@ -177,6 +238,14 @@ impl ExecutableValidationFacts {
     #[must_use]
     pub fn loop_control(&self, statement: HirStmtId) -> Option<LoopControlFact> {
         self.loop_controls.get(&statement).copied()
+    }
+
+    #[must_use]
+    pub fn call_argument_placement(
+        &self,
+        expression: HirExprId,
+    ) -> Option<&CallArgumentPlacementFact> {
+        self.calls.get(&expression)
     }
 
     #[must_use]

@@ -24,7 +24,11 @@ mod tests {
             .field(FieldDesc::new(FieldId::new(2), "inventory").type_hint("Inventory"))
             .method(
                 MethodDesc::new(HostMethodId::new(1), "grant_exp")
-                    .param(MethodParamDesc::new("amount").type_hint("i64"))
+                    .param(
+                        MethodParamDesc::new("amount")
+                            .type_hint("i64")
+                            .defaulted(true),
+                    )
                     .return_type("bool")
                     .docs("Grant player experience.")
                     .effects(MethodEffectSet::host_write())
@@ -67,7 +71,11 @@ mod tests {
         registry.register_function(
             FunctionDesc::new(FunctionId::new(1), "game::reward::grant")
                 .param(FunctionParamDesc::new("player").type_hint("Player"))
-                .param(FunctionParamDesc::new("amount").type_hint("i64"))
+                .param(
+                    FunctionParamDesc::new("amount")
+                        .type_hint("i64")
+                        .defaulted(true),
+                )
                 .return_type("bool")
                 .docs("Grant reward from a script module."),
         );
@@ -127,6 +135,16 @@ mod tests {
             facts.method_fact("Player", "grant_exp"),
             Some(&TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL))
         );
+        let method_signature = facts
+            .method_signature_fact("Player", "grant_exp")
+            .expect("method signature");
+        assert_eq!(method_signature.parameters[0].name, "amount");
+        assert_eq!(method_signature.parameters[0].type_fact, TypeFact::I64);
+        assert_eq!(
+            method_signature.parameters[0].requirement,
+            CallableParameterRequirementFact::Defaulted
+        );
+        assert_eq!(method_signature.parameters[0].declaration_span, None);
         assert_eq!(
             facts.method_effect_fact("Player", "grant_exp"),
             Some(&RegistryEffectFact::host_write())
@@ -144,6 +162,32 @@ mod tests {
                 TypeFact::BOOL,
             ))
         );
+        let function_signature = facts
+            .function_signature_fact("game::reward::grant")
+            .expect("function signature");
+        assert_eq!(
+            function_signature
+                .parameters
+                .iter()
+                .map(|parameter| parameter.name.as_str())
+                .collect::<Vec<_>>(),
+            ["player", "amount"]
+        );
+        assert_eq!(
+            function_signature.parameters[0].requirement,
+            CallableParameterRequirementFact::Required
+        );
+        assert_eq!(
+            function_signature.parameters[1].requirement,
+            CallableParameterRequirementFact::Defaulted
+        );
+        assert!(
+            function_signature
+                .parameters
+                .iter()
+                .all(|parameter| parameter.declaration_span.is_none())
+        );
+        assert_eq!(function_signature.returns, TypeFact::BOOL);
         assert!(
             facts
                 .function_access_fact("game::reward::grant")
@@ -550,6 +594,16 @@ mod tests {
             facts.method_fact("game::Player", "save"),
             Some(&TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL))
         );
+        let method_signature = facts
+            .method_signature_fact("game::Player", "save")
+            .expect("compile-view method signature");
+        assert_eq!(method_signature.parameters[0].name, "amount");
+        assert_eq!(method_signature.parameters[0].type_fact, TypeFact::I64);
+        assert_eq!(
+            method_signature.parameters[0].requirement,
+            CallableParameterRequirementFact::Required
+        );
+        assert_eq!(method_signature.parameters[0].declaration_span, None);
         assert!(
             facts
                 .method_effect_fact("game::Player", "save")
@@ -570,6 +624,23 @@ mod tests {
                 vec![TypeFact::host("game::Player")],
                 TypeFact::result(TypeFact::BOOL, TypeFact::STRING),
             ))
+        );
+        let function_signature = facts
+            .function_signature_fact("game::grant")
+            .expect("compile-view function signature");
+        assert_eq!(function_signature.parameters[0].name, "player");
+        assert_eq!(
+            function_signature.parameters[0].type_fact,
+            TypeFact::host("game::Player")
+        );
+        assert_eq!(
+            function_signature.parameters[0].requirement,
+            CallableParameterRequirementFact::Required
+        );
+        assert_eq!(function_signature.parameters[0].declaration_span, None);
+        assert_eq!(
+            function_signature.returns,
+            TypeFact::result(TypeFact::BOOL, TypeFact::STRING)
         );
         assert_eq!(facts.function_origin("game::grant"), Some(DeclOrigin::Host));
         assert!(

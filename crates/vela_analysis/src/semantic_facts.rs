@@ -14,6 +14,7 @@ use lookups::{
     registry_method_fact, resolved_literal_type, schema_knows_owner, source_method,
     try_payload_fact, type_owner,
 };
+pub(crate) use targets::registry_callable_owner;
 pub use targets::{
     CallTargetFact, ConstructorTargetFact, HostPathIndexKindFact, HostPathSegmentFact,
     HostPathTargetFact, MemberTargetFact, OperatorTargetFact, ScriptTypeTargetFact,
@@ -675,6 +676,7 @@ impl HirSemanticFacts {
     ) -> CallTargetFact {
         if let Some(field) = body.field(call.callee) {
             let receiver = self.fact(field.receiver);
+            let script_type = self.script_types.get(&field.receiver).cloned();
             if let Some(method) = source_method(graph, &receiver, &field.name) {
                 return CallTargetFact::ScriptMethod {
                     method: method.node,
@@ -702,6 +704,20 @@ impl HirSemanticFacts {
                         owner: owner.to_owned(),
                         name: field.name.clone(),
                     }
+                };
+            }
+            let registry_owner_is_closed = schema.is_some_and(|schema| {
+                registry_callable_owner(&receiver)
+                    .is_some_and(|owner| schema_knows_owner(schema, owner))
+            });
+            if script_type.is_some()
+                || matches!(&receiver, TypeFact::LogicalRecord(_))
+                || registry_owner_is_closed
+            {
+                return CallTargetFact::KnownReceiverMiss {
+                    receiver,
+                    script_type,
+                    method: field.name.clone(),
                 };
             }
             return CallTargetFact::Dynamic;
