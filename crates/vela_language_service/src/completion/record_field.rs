@@ -505,6 +505,7 @@ mod tests {
         let source_id = SourceId::new(1);
         let text = "pub struct Player { level: i64 }\npub fn main(players: Array<i64>) { let value = players[Player { le }]; }";
         let offset = text.find("le }").expect("record field") + 2;
+        let hir_offset = u32::try_from(offset).expect("test offset should fit in u32");
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             source_id,
@@ -516,8 +517,8 @@ mod tests {
             .find(|body| {
                 body.expressions.values().any(|expression| {
                     expression.origin.span.source == source_id
-                        && expression.origin.span.start <= u32::try_from(offset).unwrap()
-                        && u32::try_from(offset).unwrap() <= expression.origin.span.end
+                        && expression.origin.span.start <= hir_offset
+                        && hir_offset <= expression.origin.span.end
                 })
             })
             .expect("body containing record");

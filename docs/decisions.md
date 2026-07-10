@@ -44,6 +44,16 @@ decision history lives in
 
 ## Active Architecture Decisions
 
+### Stable HIR Identity At Compiler And Editor Boundaries
+
+Bytecode semantic helpers receive `HirExprId` directly; source spans are only
+for diagnostics and debug metadata, never for reconstructing expression
+identity. Editor source projection resolves local declaration ranges once to
+`HirLocalId`, and definition, hover, references, rename, symbol targets, and
+semantic tokens consume that shared identity. Record-field completion obtains
+constructor identity and fields from HIR whenever a record expression lowered;
+CST traversal is limited to the explicitly named incomplete-edit recovery path.
+
 ### Heavy HIR Path Facts
 
 Body-owned HIR path facts are the semantic source for expression paths, call

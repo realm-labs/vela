@@ -31,16 +31,14 @@ required.
 
 ## Current Focus
 
-The Heavy HIR primary hard switch is implemented, but final architecture
-close-out is reopened. `vela_hir` owns executable body facts, analysis owns
-HIR-keyed semantic facts, and bytecode's old syntax payload/dispatcher is
-deleted; focused, workspace, clippy, and runnable-example validation is green.
-Remaining close-out work is concrete: remove bytecode span-to-`HirExprId`
-reconstruction, centralize language-service `HirLocalId` lookup instead of
-feature-local span scans, make record-field completion HIR-first with isolated
-incomplete-edit syntax recovery, split the current over-1200-line active files,
-and remove stale AST/test descriptions. MIR is blocked until these D1-D3
-checkpoints and the updated Heavy HIR acceptance audits pass.
+The Heavy HIR hard switch and D1-D3 architecture close-out are complete.
+`vela_hir` owns executable body and stable semantic identity, analysis owns
+HIR-keyed facts, bytecode consumes `HirExprId` directly without span-to-ID
+reconstruction, and language-service local features share `HirLocalId`
+projection. Record-field completion is HIR-first with isolated incomplete-edit
+syntax recovery. The Phase 7 zero-hit and file-size audits pass, as do formatting,
+workspace clippy/tests, and runnable examples. MIR work is unblocked and must
+consume this Heavy HIR contract without restoring syntax-semantic fallbacks.
 
 M0-M19 are complete enough as a runnable prototype, embedding surface,
 production hot-reload workflow, diagnostics/tooling foundation, runnable
@@ -1799,8 +1797,8 @@ diagnostics.
   deferred before starting more implementation.
 - Close only named cache-family gaps with focused tests and paired benchmark
   evidence. Avoid generic "continue specialization" tasks.
-- Use the Heavy HIR plan before MIR or JIT-facing lowering work: semantic gaps
-  must be solved in `vela_hir`/analysis before they become MIR inputs.
+- Begin MIR or JIT-facing lowering only from the completed Heavy HIR contract;
+  solve new semantic gaps in `vela_hir`/analysis before they become MIR inputs.
 - Keep the completed primitive scalar, bytes, type-hint contract, and guard-plan
   refactor as the baseline; do not reintroduce old `int`/`float` compatibility
   paths or string fallback dispatch.

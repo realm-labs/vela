@@ -3,7 +3,7 @@
 > **Track:** semantic architecture, HIR ownership, compiler/LSP fact cleanup
 > before MIR and JIT foundation work
 > **Document status:** Codex goal-mode execution plan
-> **Execution status:** primary hard switch implemented; D1-D3 close-out reopened
+> **Execution status:** complete; D1-D3 and Phase 7 acceptance validated
 > **Compatibility policy:** breaking pre-release HIR, analysis,
 > language-service, bytecode-compiler, and test APIs are allowed. Preserve
 > product contracts: no script-language generics, no Rust `&mut` exposure,
@@ -169,20 +169,13 @@ semantic facts, the large language-service syntax semantic walkers are gone,
 and bytecode's syntax payload/dispatcher path is deleted. Focused, workspace,
 clippy, and runnable-example validation is green.
 
-Final acceptance is reopened because review found identity and architecture
-gaps that the earlier audits did not cover:
+Final acceptance was reopened because review found identity and architecture
+gaps that the earlier audits did not cover; D1-D3 now close those gaps:
 
-- bytecode path, host-path, and record-shape helpers still accept `Span` and
-  call `Compiler::expression_at_span` to reconstruct `HirExprId`;
-- definition, references, rename, hover, semantic tokens, and related editor
-  paths still duplicate local-by-name/local-by-span lookup instead of consuming
-  one shared HIR-backed symbol identity;
-- record-field completion ignores its `HirBody`/`SourceId` inputs and uses a
-  syntax-only recursive walk to discover constructor identity, while a test
-  named as HIR coverage does not exercise HIR;
-- one active analysis implementation file and three active test files exceed
-  the ordinary 1200-line guideline, and the bytecode compiler module comment
-  still describes the removed AST compiler.
+- bytecode path, host-path, and record-shape helpers receive `HirExprId`;
+- editor local features share HIR-backed `HirLocalId` source projection;
+- record-field completion is HIR-first with explicit incomplete-edit recovery;
+- the active over-threshold files are split and stale descriptions are removed.
 
 Passing focused tests proves behavior preservation, not completion. The
 remaining execution unit is no longer an individual call/field/index fact.
@@ -198,7 +191,7 @@ C. Bytecode hard switch: switch the compiler entrypoint and all body lowering,
 D. Cleanup and acceptance: reopened by the final architecture review below.
 ```
 
-Goal mode must now complete these close-out checkpoints in order:
+Goal mode completed these close-out checkpoints in order:
 
 ```text
 D1. Stable identity closure: pass HirExprId/HirLocalId through bytecode and
@@ -288,7 +281,7 @@ Purpose: make all lexical and binding facts body-HIR-owned.
 
 - [x] Replace body-local binding ownership with HIR body scopes and resolution
   tables.
-- [~] Delete downstream local-by-name/local-by-span scans such as
+- [x] Delete downstream local-by-name/local-by-span scans such as
   `hir_let_local_name_for_span`; this remaining caller migration belongs to
   Checkpoints B and C, and consumers must start from a body-owned HIR ID.
 - [x] Represent pattern locals for `let`, `match`, and `for` bindings with
@@ -357,19 +350,19 @@ semantic reconstruction.
 
 - [x] Update query context to expose HIR body, HIR IDs, analysis facts, and
   source-origin lookup as the default editor-neutral input.
-- [~] Move completion, signature help, hover, definition, references, rename,
+- [x] Move completion, signature help, hover, definition, references, rename,
   code actions, semantic tokens, and inlay hints away from body-level syntax
   semantic inference. Record-field completion and local identity lookup remain
   in the reopened close-out.
 - [x] Keep formatting on the canonical lossless syntax formatter; formatting
   must not build a second semantic tree or depend on feature-local semantic
   reconstruction.
-- [~] Delete feature-local helpers that take a `SyntaxExpression` only to find
+- [x] Delete feature-local helpers that take a `SyntaxExpression` only to find
   `HirExprId` by span, or that find a syntax expression from a HIR ID before
   performing semantic work. Start semantic queries from HIR IDs and project
   results back through HIR source origins. Apply the same rule to duplicated
   local-binding lookup by name or source range.
-- [~] Keep syntax/CST access only for lexical recovery under incomplete edits,
+- [x] Keep syntax/CST access only for lexical recovery under incomplete edits,
   lossless formatting, folding/selection structure, token trivia, and final
   source-range projection. Record-constructor identity must come from HIR when
   a recovered HIR record expression exists; syntax recovery must be isolated
@@ -399,11 +392,11 @@ Purpose: make bytecode lowering consume Heavy HIR and analysis facts.
 
 - [x] Introduce compiler entrypoints that lower from `HirBody` plus analysis
   facts, with source origins used only for diagnostics and debug metadata.
-- [~] Move statement, expression, pattern, call, assignment, host path, index,
+- [x] Move statement, expression, pattern, call, assignment, host path, index,
   operator, container, lambda, default-parameter, and control-flow lowering to
   HIR body IDs. Path, host-path, and record-shape helpers must receive IDs
   directly instead of reconstructing them from expression spans.
-- [~] Derive runtime type contracts, guards, call targets, and frame/debug
+- [x] Derive runtime type contracts, guards, call targets, and frame/debug
   metadata from Heavy HIR facts without `expression_at_span` identity joins.
 - [x] Replace the primary `compile_syntax_expression`/syntax-kind dispatcher
   with HIR expression/statement/pattern dispatch. Do this for the complete body
@@ -437,17 +430,17 @@ that use the production HIR path.
 Purpose: remove transition names and prove Heavy HIR is the semantic source.
 
 - [x] Delete migration-only payload/fact/helper names.
-- [~] Ensure downstream body-level semantic decisions do not read syntax or
+- [x] Ensure downstream body-level semantic decisions do not read syntax or
   recover HIR identity directly from source spans. Source-origin/span lookup
   may project an existing HIR result back
   to source, but must not reconstruct semantic identity or operands.
-- [~] Update docs/progress.md and docs/decisions.md only when implementation
+- [x] Update docs/progress.md and docs/decisions.md only when implementation
   status changes.
-- [~] Keep MIR unimplemented until the reopened Heavy HIR acceptance passes.
-- [ ] Split active files that exceed 1200 lines unless a concrete exception is
+- [x] Keep MIR unimplemented until the reopened Heavy HIR acceptance passes.
+- [x] Split active files that exceed 1200 lines unless a concrete exception is
   documented: `vela_analysis/src/registry.rs`, HIR binding tests, and bytecode
   literal/call and expression tests are the current close-out set.
-- [ ] Replace stale AST/migration descriptions and misleading test names,
+- [x] Replace stale AST/migration descriptions and misleading test names,
   including the bytecode compiler module description and record completion's
   claimed HIR-operand test.
 
