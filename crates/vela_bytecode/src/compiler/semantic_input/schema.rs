@@ -736,6 +736,10 @@ fn structural_contract(
             kind: MirCallableKind::Closure,
             positional_arity: None,
         },
+        TypeFact::LogicalRecord(record) => MirTypeContract::Shape {
+            type_id: record.type_id(),
+            shape: record.shape(),
+        },
         TypeFact::Record { name } | TypeFact::Enum { name, .. } => definition(name, false)?,
         TypeFact::Host { name } => definition(name, true)?,
         TypeFact::Trait { .. } | TypeFact::Module { .. } => MirTypeContract::Any,

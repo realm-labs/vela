@@ -7,6 +7,7 @@
 
 mod contracts;
 mod external;
+mod logical_records;
 mod placements;
 mod schema;
 mod try_targets;
@@ -128,6 +129,7 @@ pub(super) struct GenerationBuilder<'graph, 'methods> {
     inserted_external_types: BTreeSet<TypeId>,
     inserted_external_variants: BTreeSet<VariantId>,
     inserted_external_fields: BTreeSet<FieldId>,
+    inserted_logical_records: BTreeSet<vela_analysis::logical_records::LogicalRecordKind>,
     boundaries: Vec<ContractBoundary>,
     contract_edges: Vec<(MirTypeContract, MirSourceOrigin)>,
     diagnostics: Vec<Diagnostic>,
@@ -176,6 +178,7 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
             inserted_external_types: BTreeSet::new(),
             inserted_external_variants: BTreeSet::new(),
             inserted_external_fields: BTreeSet::new(),
+            inserted_logical_records: BTreeSet::new(),
             boundaries: Vec::new(),
             contract_edges: Vec::new(),
             diagnostics: Vec::new(),
@@ -562,6 +565,10 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
         }
         if self.catalog.ty(type_id).is_some() {
             return self.ensure_external_type(type_id, origin);
+        }
+        if let Some(kind) = vela_analysis::logical_records::LogicalRecordKind::from_type_id(type_id)
+        {
+            return self.ensure_logical_record(kind, origin);
         }
         Err(input_error(MirBuildError::InconsistentInput {
             origin,

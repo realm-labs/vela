@@ -1,4 +1,5 @@
 mod external_descriptors;
+mod logical_records;
 mod roots_schema;
 mod target_placements;
 
@@ -25,6 +26,7 @@ pub(super) struct SemanticFixture {
     pub(super) declarations: BTreeMap<String, HirDeclId>,
     pub(super) schema_default_bodies: Vec<HirBodyId>,
     pub(super) try_expressions: Vec<(HirBodyId, HirExprId)>,
+    pub(super) member_expressions: Vec<(HirBodyId, HirExprId, String)>,
     pub(super) constructor_expressions: Vec<(HirBodyId, HirExprId, Vec<String>)>,
     pub(super) constructor_patterns: Vec<(HirBodyId, HirPatternId, Vec<String>)>,
 }
@@ -87,6 +89,18 @@ fn prepare_source_inner(
             })
         })
         .collect();
+    let member_expressions = semantic
+        .script_metadata_graph()
+        .bodies()
+        .flat_map(|body| {
+            body.expressions.values().filter_map(|expression| {
+                let HirExprKind::Field(field) = &expression.kind else {
+                    return None;
+                };
+                Some((body.id, expression.id, field.name.clone()))
+            })
+        })
+        .collect();
     let constructor_expressions = semantic
         .script_metadata_graph()
         .bodies()
@@ -145,6 +159,7 @@ fn prepare_source_inner(
         declarations,
         schema_default_bodies,
         try_expressions,
+        member_expressions,
         constructor_expressions,
         constructor_patterns,
     })

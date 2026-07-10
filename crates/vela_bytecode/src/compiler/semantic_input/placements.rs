@@ -645,6 +645,14 @@ impl GenerationBuilder<'_, '_> {
             MemberTargetFact::HostField(field) => {
                 CompileMemberTarget::HostField(self.host_field_target(&field, origin)?)
             }
+            MemberTargetFact::LogicalRecordField(field) => {
+                self.ensure_logical_record(field.kind, origin)?;
+                CompileMemberTarget::ScriptField(CompileFieldTarget::RecordSlot {
+                    type_id: field.type_id,
+                    shape: field.shape,
+                    field: field.field,
+                })
+            }
             MemberTargetFact::RegistryField { owner, name } => {
                 self.registry_field_target(&owner, &name, origin)?
             }

@@ -82,6 +82,9 @@ impl GenerationBuilder<'_, '_> {
         if let Some(script) = analysis.script_type(expression) {
             return self.type_ids.get(&script.declaration).copied();
         }
+        if let TypeFact::LogicalRecord(record) = analysis.expression(expression)? {
+            return Some(record.type_id());
+        }
         let name = type_owner_name_for_fact(analysis.expression(expression)?)?;
         self.registry_facts
             .type_target_fact(name)
@@ -207,6 +210,7 @@ pub(super) fn checked_u16(
 
 pub(super) fn type_owner_name_for_fact(fact: &TypeFact) -> Option<&str> {
     match fact {
+        TypeFact::LogicalRecord(record) => Some(record.runtime_name()),
         TypeFact::Record { name } | TypeFact::Enum { name, .. } | TypeFact::Host { name } => {
             Some(name)
         }
