@@ -933,6 +933,9 @@ impl SchemaTypeFact {
                 elements: elements.iter().map(Self::from_type_fact).collect(),
             },
             TypeFact::Record { name } => Self::Record { name: name.clone() },
+            TypeFact::LogicalRecord(record) => Self::Record {
+                name: record.runtime_name().to_owned(),
+            },
             TypeFact::Enum { name, variant } => Self::Enum {
                 name: name.clone(),
                 variant: variant.clone(),

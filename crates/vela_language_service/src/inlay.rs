@@ -377,6 +377,7 @@ fn is_stable_type_fact(fact: &TypeFact) -> bool {
         | TypeFact::Closure
         | TypeFact::OptionNone
         | TypeFact::Record { .. }
+        | TypeFact::LogicalRecord(_)
         | TypeFact::Enum { .. }
         | TypeFact::Host { .. }
         | TypeFact::Trait { .. }

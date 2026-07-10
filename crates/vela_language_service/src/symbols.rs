@@ -697,7 +697,7 @@ fn schema_member_symbol_ref(member: &RegistryMemberFact, kind: DocumentSymbolKin
 fn schema_type_symbol_kind(fact: &TypeFact) -> DocumentSymbolKind {
     match fact {
         TypeFact::Host { .. } => DocumentSymbolKind::Class,
-        TypeFact::Record { .. } => DocumentSymbolKind::Struct,
+        TypeFact::Record { .. } | TypeFact::LogicalRecord(_) => DocumentSymbolKind::Struct,
         TypeFact::Enum { variant: None, .. } => DocumentSymbolKind::Enum,
         TypeFact::Enum {
             variant: Some(_), ..

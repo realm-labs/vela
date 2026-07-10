@@ -305,6 +305,7 @@ impl LanguageServiceDatabases {
             | TypeFact::Function { .. }
             | TypeFact::Closure
             | TypeFact::Tuple { .. }
+            | TypeFact::LogicalRecord(_)
             | TypeFact::Module { .. } => None,
         }
     }

@@ -48,6 +48,7 @@ fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
         | TypeFact::Host { .. }
         | TypeFact::Trait { .. }
         | TypeFact::Tuple { .. }
+        | TypeFact::LogicalRecord(_)
         | TypeFact::Module { .. } => {}
     }
 }
