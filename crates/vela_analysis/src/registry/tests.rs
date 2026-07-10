@@ -144,6 +144,13 @@ mod tests {
                 TypeFact::BOOL,
             ))
         );
+        assert!(
+            facts
+                .function_access_fact("game::reward::grant")
+                .is_some_and(|access| {
+                    access.public && access.reflect_visible && !access.reflect_callable
+                })
+        );
         assert_eq!(
             facts.module_fact("game::reward"),
             Some(&TypeFact::module("game::reward"))
@@ -372,13 +379,26 @@ mod tests {
     fn compile_view_facts_preserve_targets_signatures_effects_and_type_hints() {
         use vela_def::DefPath;
         use vela_registry::{
-            DefinitionRegistry, EffectSet, FieldAccessDef, FieldDef, FunctionDef,
-            FunctionSignature, MethodAccessDef, MethodDef, ParamDef, TypeDef, TypeHintDef,
+            DefinitionRegistry, EffectSet, FieldAccessDef, FieldDef, FunctionAccessDef,
+            FunctionDef, FunctionSignature, IndexCapabilityDef, MethodAccessDef, MethodDef,
+            ParamDef, TypeDef, TypeHintDef,
         };
 
         let mut registry = DefinitionRegistry::new();
         let player = registry
-            .register_type(TypeDef::new(DefPath::ty("host", ["game"], "Player")).host_runtime_id(7))
+            .register_type(
+                TypeDef::new(DefPath::ty("host", ["game"], "Player"))
+                    .host_runtime_id(7)
+                    .index_capability(
+                        IndexCapabilityDef::new()
+                            .readable(true)
+                            .writable(false)
+                            .addable(true)
+                            .removable(false)
+                            .key_type("String")
+                            .value_type(TypeHintDef::new(["game", "Reward"])),
+                    ),
+            )
             .expect("Player registration");
         registry
             .register_type(TypeDef::new(DefPath::ty("script", ["game"], "Reward")))
@@ -395,6 +415,8 @@ mod tests {
                             .require_permission("player.inspect"),
                     )
                     .host_runtime_id(81)
+                    .declaration_order(3)
+                    .defaulted(true)
                     .type_hint(Some("i64")),
             )
             .expect("level registration");
@@ -452,7 +474,13 @@ mod tests {
                     event_emit: true,
                     reflection_write: true,
                     ..EffectSet::default()
-                }),
+                })
+                .access(
+                    FunctionAccessDef::new()
+                        .public(false)
+                        .reflect_visible(true)
+                        .reflect_callable(true),
+                ),
             )
             .expect("grant registration");
 
@@ -476,6 +504,23 @@ mod tests {
             facts.type_fact("game::Reward"),
             Some(&TypeFact::record("game::Reward"))
         );
+        assert!(matches!(
+            facts.index_capability_fact("game::Player"),
+            Some(capability)
+                if capability.readable
+                    && !capability.writable
+                    && capability.addable
+                    && !capability.removable
+                    && capability.key == TypeFact::STRING
+                    && capability.value == TypeFact::record("game::Reward")
+        ));
+        assert!(matches!(
+            facts.index_capability_fact("Player"),
+            Some(capability)
+                if capability.owner == "Player"
+                    && capability.key == TypeFact::STRING
+                    && capability.value == TypeFact::record("game::Reward")
+        ));
         assert_eq!(
             facts.field_fact("game::Player", "level"),
             Some(&TypeFact::I64)
@@ -501,6 +546,8 @@ mod tests {
                 if target.owner == player
                     && target.host_runtime == Some(FieldId::new(81))
                     && !target.variant_field
+                    && target.declaration_order == 3
+                    && target.has_default
         ));
         assert_eq!(
             facts.method_fact("game::Player", "save"),
@@ -533,6 +580,13 @@ mod tests {
                 .function_effect_fact("game::grant")
                 .is_some_and(|effect| {
                     effect.reads_host && effect.emits_events && effect.writes_reflection
+                })
+        );
+        assert!(
+            facts
+                .function_access_fact("game::grant")
+                .is_some_and(|access| {
+                    !access.public && access.reflect_visible && access.reflect_callable
                 })
         );
     }

@@ -1,11 +1,11 @@
 use vela_def::{DefPath, FunctionId, VariantId};
 use vela_reflect::registry::{
-    FieldDesc, MethodDesc, MethodParamDesc, TypeDesc, TypeKind, VariantDesc,
+    FieldDesc, HostIndexCapability, MethodDesc, MethodParamDesc, TypeDesc, TypeKind, VariantDesc,
 };
 use vela_registry::{
-    DefinitionRegistry, EffectSet as DefinitionEffectSet, FieldAccessDef, FieldDef, FunctionDef,
-    FunctionSignature, MethodAccessDef, MethodDef, ParamDef, RegistryError, TypeDef, TypeHintDef,
-    TypeKindDef, VariantDef,
+    DefinitionRegistry, EffectSet as DefinitionEffectSet, FieldAccessDef, FieldDef,
+    FunctionAccessDef, FunctionDef, FunctionSignature, IndexCapabilityDef, MethodAccessDef,
+    MethodDef, ParamDef, RegistryError, TypeDef, TypeHintDef, TypeKindDef, VariantDef,
 };
 
 use crate::native::{
@@ -84,7 +84,25 @@ fn type_def(desc: &TypeDesc) -> TypeDef {
     if let Some(host_type_id) = desc.host_type_id {
         def = def.host_runtime_id(host_type_id.get().into());
     }
+    if let Some(capability) = &desc.index_capability {
+        def = def.index_capability(index_capability_def(capability));
+    }
     def
+}
+
+fn index_capability_def(capability: &HostIndexCapability) -> IndexCapabilityDef {
+    let mut definition = IndexCapabilityDef::new()
+        .readable(capability.readable)
+        .writable(capability.writable)
+        .addable(capability.addable)
+        .removable(capability.removable);
+    if let Some(key_type) = capability.key_type.as_deref() {
+        definition = definition.key_type(raw_type_hint_def(key_type));
+    }
+    if let Some(value_type) = capability.value_type.as_deref() {
+        definition = definition.value_type(raw_type_hint_def(value_type));
+    }
+    definition
 }
 
 fn field_def(
@@ -99,6 +117,7 @@ fn field_def(
     )
     .host_runtime_id(field.id.get())
     .declaration_order(declaration_order)
+    .defaulted(field.has_default)
     .access(field_access(&field.access))
     .type_hint(field.type_hint.as_deref().map(raw_type_hint_def))
 }
@@ -135,6 +154,7 @@ fn variant_field_def(
     .host_runtime_id(field.id.get())
     .variant_owner(variant_id)
     .declaration_order(declaration_order)
+    .defaulted(field.has_default)
     .access(field_access(&field.access))
     .type_hint(field.type_hint.as_deref().map(raw_type_hint_def))
 }
@@ -178,6 +198,7 @@ fn native_function_def(desc: &NativeFunctionDesc) -> FunctionDef {
     )
     .with_id(desc.id)
     .effects(native_function_effects(&desc.effects))
+    .access(function_access(&desc.access))
 }
 
 fn source_function_path(package: &str, name: &str) -> DefPath {
@@ -256,6 +277,13 @@ fn method_access(access: &vela_reflect::access::MethodAccess) -> MethodAccessDef
     definition
 }
 
+fn function_access(access: &crate::native::FunctionAccess) -> FunctionAccessDef {
+    FunctionAccessDef::new()
+        .public(access.public)
+        .reflect_visible(access.reflect_visible)
+        .reflect_callable(access.reflect_callable)
+}
+
 fn declaration_order(index: usize) -> u32 {
     u32::try_from(index).expect("definition declaration order exceeds u32::MAX")
 }
@@ -302,7 +330,8 @@ fn register_reflection_native_defs(registry: &mut DefinitionRegistry) -> Result<
                     None::<TypeHintDef>,
                 ),
             )
-            .effects(reflection_native_effects(name)),
+            .effects(reflection_native_effects(name))
+            .access(FunctionAccessDef::new()),
         )?;
     }
     Ok(())
@@ -427,12 +456,19 @@ fn type_hint_def(hint: &crate::native::TypeHint) -> TypeHintDef {
 
 #[cfg(test)]
 mod tests {
+    use vela_analysis::facts::AnalysisFacts;
     use vela_analysis::registry::RegistryFacts;
-    use vela_common::{HostMethodId, HostTypeId};
+    use vela_analysis::semantic_facts::HostPathSegmentFact;
+    use vela_analysis::type_fact::TypeFact;
+    use vela_common::{HostMethodId, HostTypeId, SourceId};
     use vela_def::{FieldId, FunctionId, TypeId, VariantId};
+    use vela_hir::body::HirExprKind;
+    use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
     use vela_reflect::access::{FieldAccess, MethodAccess, MethodEffectSet};
-    use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey, TypeKind, VariantDesc};
-    use vela_registry::{Def, TypeKindDef};
+    use vela_reflect::registry::{
+        FieldDesc, HostIndexCapability, MethodDesc, TypeDesc, TypeKey, TypeKind, VariantDesc,
+    };
+    use vela_registry::{Def, IndexCapabilityDef, TypeHintDef, TypeKindDef};
 
     use super::definition_registry_from_engine_parts;
     use crate::native::{EffectSet, NativeFunctionDesc, NativeFunctionEntry};
@@ -445,6 +481,7 @@ mod tests {
             .field(
                 FieldDesc::new(FieldId::new(72), "revision")
                     .type_hint("u32")
+                    .defaulted(true)
                     .access(
                         FieldAccess::new()
                             .readable(false)
@@ -457,7 +494,11 @@ mod tests {
             .variant(
                 VariantDesc::new(VariantId::new(73), "Active")
                     .field(FieldDesc::new(FieldId::new(74), "payload").type_hint("String"))
-                    .field(FieldDesc::new(FieldId::new(75), "count").type_hint("i64")),
+                    .field(
+                        FieldDesc::new(FieldId::new(75), "count")
+                            .type_hint("i64")
+                            .defaulted(true),
+                    ),
             )
             .variant(
                 VariantDesc::new(VariantId::new(76), "Done")
@@ -476,15 +517,38 @@ mod tests {
                             .require_permission("quest.admin"),
                     ),
             );
+        let index_desc = TypeDesc::new(TypeKey::new(TypeId::new(80), "QuestIndex"))
+            .kind(TypeKind::Host)
+            .host_type(HostTypeId::new(81))
+            .index_capability(
+                HostIndexCapability::new()
+                    .readable(true)
+                    .writable(false)
+                    .addable(true)
+                    .removable(false)
+                    .key_type("String")
+                    .value_type("i64"),
+            );
         let native = NativeFunctionEntry::new(
             NativeFunctionDesc::new("admin::rewrite", FunctionId::new(79))
-                .effects(EffectSet::reflection_write()),
+                .effects(EffectSet::reflection_write())
+                .access(
+                    crate::native::FunctionAccess::private()
+                        .reflect_visible(true)
+                        .reflect_callable(true),
+                ),
             |_| unreachable!("metadata-only native should not execute"),
         );
 
-        let registry =
-            definition_registry_from_engine_parts(&[type_desc], &[native], &[], &[], true, false)
-                .expect("production registry conversion should succeed");
+        let registry = definition_registry_from_engine_parts(
+            &[type_desc, index_desc],
+            &[native],
+            &[],
+            &[],
+            true,
+            false,
+        )
+        .expect("production registry conversion should succeed");
         let view = registry.compile_view();
         let definitions = view.definitions().collect::<Vec<_>>();
         let type_definition = definitions
@@ -496,6 +560,28 @@ mod tests {
             .expect("QuestState type definition");
         assert_eq!(type_definition.kind, TypeKindDef::ScriptEnum);
         assert_eq!(type_definition.host_runtime_id, Some(71));
+        assert!(type_definition.index_capability.is_none());
+        let index_definition = definitions
+            .iter()
+            .find_map(|definition| match definition {
+                Def::Type(definition) if definition.path.name == "QuestIndex" => Some(definition),
+                _ => None,
+            })
+            .expect("QuestIndex type definition");
+        assert_eq!(index_definition.kind, TypeKindDef::Host);
+        assert_eq!(index_definition.host_runtime_id, Some(81));
+        assert_eq!(
+            index_definition.index_capability,
+            Some(
+                IndexCapabilityDef::new()
+                    .readable(true)
+                    .writable(false)
+                    .addable(true)
+                    .removable(false)
+                    .key_type(TypeHintDef::named("String"))
+                    .value_type(TypeHintDef::named("i64"))
+            )
+        );
 
         let mut variants = definitions
             .iter()
@@ -526,9 +612,15 @@ mod tests {
         assert_eq!(
             active_fields
                 .iter()
-                .map(|field| (field.path.name.as_str(), field.declaration_order))
+                .map(|field| {
+                    (
+                        field.path.name.as_str(),
+                        field.declaration_order,
+                        field.has_default,
+                    )
+                })
                 .collect::<Vec<_>>(),
-            [("payload", 0), ("count", 1)]
+            [("payload", 0, false), ("count", 1, true)]
         );
         assert!(definitions.iter().any(|definition| {
             matches!(definition, Def::Field(field)
@@ -547,6 +639,8 @@ mod tests {
         assert!(root_field.access.reflect_readable);
         assert!(!root_field.access.reflect_writable);
         assert_eq!(root_field.access.required_permissions(), ["quest.inspect"]);
+        assert_eq!(root_field.declaration_order, 0);
+        assert!(root_field.has_default);
 
         let method = definitions
             .iter()
@@ -559,6 +653,16 @@ mod tests {
         assert!(!method.access.reflect_callable);
         assert_eq!(method.access.required_permissions(), ["quest.admin"]);
         assert!(method.effects.reflection_write);
+        let native_function = definitions
+            .iter()
+            .find_map(|definition| match definition {
+                Def::Function(function) if function.path.name == "rewrite" => Some(function),
+                _ => None,
+            })
+            .expect("admin rewrite function definition");
+        assert!(!native_function.access.public);
+        assert!(native_function.access.reflect_visible);
+        assert!(native_function.access.reflect_callable);
 
         let facts = RegistryFacts::from_compile_view(view);
         let type_target = facts
@@ -566,6 +670,20 @@ mod tests {
             .expect("semantic type target");
         assert_eq!(type_target.semantic, type_definition.id);
         assert_eq!(type_target.host_runtime, Some(HostTypeId::new(71)));
+        let index_type_target = facts
+            .type_target_fact("QuestIndex")
+            .expect("semantic index type target");
+        assert_eq!(index_type_target.semantic, index_definition.id);
+        assert_eq!(index_type_target.host_runtime, Some(HostTypeId::new(81)));
+        let index_capability = facts
+            .index_capability_fact("QuestIndex")
+            .expect("host index capability fact");
+        assert!(index_capability.readable);
+        assert!(!index_capability.writable);
+        assert!(index_capability.addable);
+        assert!(!index_capability.removable);
+        assert_eq!(index_capability.key, TypeFact::STRING);
+        assert_eq!(index_capability.value, TypeFact::I64);
         assert!(facts.variant_fact("QuestState", "Active").is_some());
         assert!(facts.variant_fact("QuestState", "Done").is_some());
         assert!(facts.field_fact("QuestState::Active", "payload").is_some());
@@ -575,6 +693,8 @@ mod tests {
             .expect("semantic field target");
         assert_eq!(field_target.semantic, root_field.id);
         assert_eq!(field_target.host_runtime, Some(FieldId::new(72)));
+        assert_eq!(field_target.declaration_order, 0);
+        assert!(field_target.has_default);
         assert_eq!(
             &field_target.access,
             facts
@@ -602,8 +722,50 @@ mod tests {
         );
         assert!(
             facts
+                .function_access_fact("admin::rewrite")
+                .is_some_and(|access| {
+                    !access.public && access.reflect_visible && access.reflect_callable
+                })
+        );
+        assert!(
+            facts
                 .function_effect_fact("reflect::set")
                 .is_some_and(|effect| effect.writes_reflection)
         );
+        assert!(
+            facts
+                .function_access_fact("reflect::set")
+                .is_some_and(|access| {
+                    access.public && access.reflect_visible && !access.reflect_callable
+                })
+        );
+
+        let mut graph = ModuleGraph::new();
+        graph.add_source(ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_qualified("game"),
+            "fn lookup(state: QuestIndex, key: i64) -> i64 { return state[key]; }",
+        ));
+        graph.resolve_imports();
+        assert_eq!(graph.diagnostics(), &[]);
+        let analysis = AnalysisFacts::from_module_graph_and_schema(&graph, &facts);
+        let body = graph.bodies().next().expect("lookup body");
+        let indexed = body
+            .expressions
+            .values()
+            .find(|expression| matches!(expression.kind, HirExprKind::Index(_)))
+            .expect("indexed host expression");
+        let HirExprKind::Index(index) = &indexed.kind else {
+            unreachable!("index expression selected above")
+        };
+        assert_eq!(analysis.expression(index.index), Some(&TypeFact::I64));
+        let path = analysis
+            .host_path_target(indexed.id)
+            .expect("host index path target");
+        let Some(HostPathSegmentFact::Index { capability, .. }) = path.segments.last() else {
+            panic!("expected terminal host index segment: {path:?}");
+        };
+        assert_eq!(capability.key, TypeFact::STRING);
+        assert_ne!(analysis.expression(index.index), Some(&capability.key));
     }
 }

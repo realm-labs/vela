@@ -9,7 +9,8 @@ use vela_registry::{
 
 use super::{
     RegistryEffectFact, RegistryFacts, RegistryFieldAccessFact, RegistryFieldTargetFact,
-    RegistryMethodAccessFact, RegistryTypeTargetFact,
+    RegistryFunctionAccessFact, RegistryIndexCapabilityFact, RegistryMethodAccessFact,
+    RegistryTypeTargetFact,
 };
 use crate::type_fact::TypeFact;
 
@@ -61,6 +62,37 @@ impl<'registry> CompileViewFacts<'registry> {
                 host_runtime.map(host_type_id),
             ));
         }
+        for definition in self.registry.definitions() {
+            let Def::Type(definition) = definition else {
+                continue;
+            };
+            let Some(capability) = &definition.index_capability else {
+                continue;
+            };
+            let key = capability
+                .key_type
+                .as_ref()
+                .map_or(TypeFact::Unknown, |hint| self.type_hint_fact(hint));
+            let value = capability
+                .value_type
+                .as_ref()
+                .map_or(TypeFact::Unknown, |hint| self.type_hint_fact(hint));
+            for owner in self
+                .type_targets
+                .iter()
+                .filter_map(|(name, target)| (target.0 == definition.id).then_some(name))
+            {
+                facts.insert_index_capability(RegistryIndexCapabilityFact {
+                    owner: owner.clone(),
+                    readable: capability.readable,
+                    writable: capability.writable,
+                    addable: capability.addable,
+                    removable: capability.removable,
+                    key: key.clone(),
+                    value: value.clone(),
+                });
+            }
+        }
 
         for definition in self.registry.definitions() {
             match definition {
@@ -91,6 +123,12 @@ impl<'registry> CompileViewFacts<'registry> {
                     let name = source_name(&function.path);
                     facts.insert_function(&name, self.signature_fact(&function.signature));
                     facts.insert_function_effect(&name, definition_effect_fact(function.effects));
+                    facts.insert_function_access(RegistryFunctionAccessFact {
+                        name: name.clone(),
+                        public: function.access.public,
+                        reflect_visible: function.access.reflect_visible,
+                        reflect_callable: function.access.reflect_callable,
+                    });
                     facts.insert_function_origin(
                         name,
                         if function.path.package == "host" {
@@ -181,15 +219,19 @@ impl<'registry> CompileViewFacts<'registry> {
             required_permissions: field.access.required_permissions().to_vec(),
         };
         facts.insert_field_access(access.clone());
-        facts.insert_field_target(RegistryFieldTargetFact::new(
-            field.owner,
-            owner,
-            &field.path.name,
-            field.id,
-            field.host_runtime_id.map(FieldId::new),
-            field.variant.is_some(),
-            access,
-        ));
+        facts.insert_field_target(
+            RegistryFieldTargetFact::new(
+                field.owner,
+                owner,
+                &field.path.name,
+                field.id,
+                field.host_runtime_id.map(FieldId::new),
+                field.variant.is_some(),
+                access,
+            )
+            .declaration_order(field.declaration_order)
+            .defaulted(field.has_default),
+        );
     }
 
     fn signature_fact(&self, signature: &FunctionSignature) -> TypeFact {

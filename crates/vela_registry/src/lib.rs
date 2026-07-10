@@ -12,8 +12,9 @@ use vela_def::{
 };
 
 pub use defs::{
-    Def, EffectSet, FieldAccessDef, FieldDef, FunctionDef, FunctionSignature, MethodAccessDef,
-    MethodDef, ParamDef, SemanticKey, TraitDef, TypeDef, TypeHintDef, TypeKindDef, VariantDef,
+    Def, EffectSet, FieldAccessDef, FieldDef, FunctionAccessDef, FunctionDef, FunctionSignature,
+    IndexCapabilityDef, MethodAccessDef, MethodDef, ParamDef, SemanticKey, TraitDef, TypeDef,
+    TypeHintDef, TypeKindDef, VariantDef,
 };
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -312,6 +313,14 @@ impl<'registry> RegistryCompileView<'registry> {
     }
 
     #[must_use]
+    pub fn field_has_default(&self, id: FieldId) -> Option<bool> {
+        match self.registry.get(id.def_id()) {
+            Some(Def::Field(field)) => Some(field.has_default),
+            _ => None,
+        }
+    }
+
+    #[must_use]
     pub fn resolve_type(&self, path: &DefPath) -> Option<TypeId> {
         self.registry.get_by_path(path).and_then(Def::type_id)
     }
@@ -338,6 +347,14 @@ impl<'registry> RegistryCompileView<'registry> {
     }
 
     #[must_use]
+    pub fn type_index_capability(&self, id: TypeId) -> Option<&'registry IndexCapabilityDef> {
+        match self.registry.get(id.def_id()) {
+            Some(Def::Type(definition)) => definition.index_capability.as_ref(),
+            _ => None,
+        }
+    }
+
+    #[must_use]
     pub fn type_primitive_kind(&self, id: TypeId) -> Option<PrimitiveTag> {
         self.registry.type_primitive_kind(id)
     }
@@ -353,6 +370,14 @@ impl<'registry> RegistryCompileView<'registry> {
             .get(id.def_id())
             .and_then(Def::function_signature)
             .map(|signature| signature.params.as_slice())
+    }
+
+    #[must_use]
+    pub fn function_access(&self, id: FunctionId) -> Option<&'registry FunctionAccessDef> {
+        match self.registry.get(id.def_id()) {
+            Some(Def::Function(function)) => Some(&function.access),
+            _ => None,
+        }
     }
 
     #[must_use]
@@ -802,8 +827,12 @@ mod tests {
         let mut registry = DefinitionRegistry::new();
         let path = function_path("score");
         let signature = FunctionSignature::new([int_param("amount")], Some("i64".to_owned()));
+        let access = FunctionAccessDef::new()
+            .public(false)
+            .reflect_visible(true)
+            .reflect_callable(true);
         let function_id = registry
-            .register_function(FunctionDef::new(path.clone(), signature))
+            .register_function(FunctionDef::new(path.clone(), signature).access(access.clone()))
             .expect("function registration should succeed");
         let view = registry.compile_view();
 
@@ -812,6 +841,7 @@ mod tests {
             view.function_params(function_id),
             Some([int_param("amount")].as_slice())
         );
+        assert_eq!(view.function_access(function_id), Some(&access));
         assert_eq!(
             view.resolve_native_function_path(&type_def("Player").path),
             None
@@ -911,10 +941,19 @@ mod tests {
     #[test]
     fn compile_view_preserves_exact_schema_ownership_order_and_access() {
         let mut registry = DefinitionRegistry::new();
+        let index_capability = IndexCapabilityDef::new()
+            .readable(true)
+            .writable(false)
+            .addable(true)
+            .removable(false)
+            .key_type(TypeHintDef::named("String"))
+            .value_type(TypeHintDef::named("Outcome"));
         let owner = registry
             .register_type(
                 TypeDef::new(DefPath::ty("host", ["combat"], "Outcome"))
-                    .kind(TypeKindDef::ScriptEnum),
+                    .kind(TypeKindDef::ScriptEnum)
+                    .host_runtime_id(101)
+                    .index_capability(index_capability.clone()),
             )
             .expect("type registration should succeed");
         let granted = registry
@@ -949,6 +988,7 @@ mod tests {
                 )
                 .variant_owner(granted)
                 .declaration_order(0)
+                .defaulted(true)
                 .access(field_access.clone()),
             )
             .expect("Granted value registration should succeed");
@@ -1010,6 +1050,7 @@ mod tests {
                 if definition.id == granted_value
                     && definition.variant == Some(granted)
                     && definition.declaration_order == 0
+                    && definition.has_default
                     && definition.access == field_access)
         }));
         assert!(definitions.iter().any(|definition| {
@@ -1024,6 +1065,10 @@ mod tests {
                     && definition.effects.reflection_write)
         }));
         let view = registry.compile_view();
+        assert_eq!(view.type_host_runtime_id(owner), Some(101));
+        assert_eq!(view.type_index_capability(owner), Some(&index_capability));
+        assert_eq!(view.field_has_default(granted_value), Some(true));
+        assert_eq!(view.field_has_default(denied_value), Some(false));
         assert_eq!(
             view.resolve_variant_field(owner, granted, "value"),
             Some(granted_value)

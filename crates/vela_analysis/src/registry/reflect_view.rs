@@ -4,8 +4,8 @@ use vela_reflect::registry::{MethodDesc, TraitMethodDesc, TypeKind, TypeRegistry
 
 use super::{
     RegistryEffectFact, RegistryFacts, RegistryFieldAccessFact, RegistryFieldTargetFact,
-    RegistryIndexCapabilityFact, RegistryMethodAccessFact, RegistryModuleFact,
-    RegistryTypeTargetFact, registry_hint_fact, type_desc_fact,
+    RegistryFunctionAccessFact, RegistryIndexCapabilityFact, RegistryMethodAccessFact,
+    RegistryModuleFact, RegistryTypeTargetFact, registry_hint_fact, type_desc_fact,
 };
 use crate::type_fact::TypeFact;
 
@@ -31,7 +31,7 @@ impl RegistryFacts {
                 );
             }
 
-            for field in &desc.fields {
+            for (declaration_order, field) in desc.fields.iter().enumerate() {
                 let key = (desc.key.name.clone(), field.name.clone());
                 facts.fields.insert(
                     key.clone(),
@@ -55,7 +55,9 @@ impl RegistryFacts {
                         matches!(desc.kind, TypeKind::Host).then_some(field.id),
                         false,
                         access,
-                    ),
+                    )
+                    .declaration_order(declaration_order_u32(declaration_order))
+                    .defaulted(field.has_default),
                 );
             }
 
@@ -98,7 +100,7 @@ impl RegistryFacts {
                 if let Some(docs) = &variant.docs {
                     facts.variant_docs.insert(variant_key, docs.clone());
                 }
-                for field in &variant.fields {
+                for (declaration_order, field) in variant.fields.iter().enumerate() {
                     let owner = format!("{}::{}", desc.key.name, variant.name);
                     let key = (owner.clone(), field.name.clone());
                     facts.fields.insert(
@@ -123,7 +125,9 @@ impl RegistryFacts {
                             matches!(desc.kind, TypeKind::Host).then_some(field.id),
                             true,
                             access,
-                        ),
+                        )
+                        .declaration_order(declaration_order_u32(declaration_order))
+                        .defaulted(field.has_default),
                     );
                 }
             }
@@ -145,6 +149,10 @@ impl RegistryFacts {
             facts.function_effects.insert(
                 function.name.clone(),
                 function_effect_fact(&function.effects),
+            );
+            facts.function_access.insert(
+                function.name.clone(),
+                RegistryFunctionAccessFact::new(&function.name, &function.access),
             );
         }
 
@@ -287,4 +295,8 @@ fn collect_trait_methods(registry: &TypeRegistry, facts: &mut RegistryFacts) {
             }
         }
     }
+}
+
+fn declaration_order_u32(index: usize) -> u32 {
+    u32::try_from(index).expect("reflection field declaration order exceeds u32::MAX")
 }

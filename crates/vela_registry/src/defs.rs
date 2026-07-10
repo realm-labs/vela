@@ -5,6 +5,10 @@ use vela_def::{
     DefId, DefKind, DefPath, FieldId, FunctionId, MethodId, TraitId, TypeId, VariantId,
 };
 
+mod access;
+
+pub use access::{FieldAccessDef, FunctionAccessDef, MethodAccessDef};
+
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum TypeKindDef {
     Unit,
@@ -53,120 +57,6 @@ impl TypeKindDef {
             PrimitiveTag::Char => Self::Char,
             PrimitiveTag::String => Self::String,
             PrimitiveTag::Bytes => Self::Bytes,
-        }
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct FieldAccessDef {
-    pub readable: bool,
-    pub writable: bool,
-    pub reflect_readable: bool,
-    pub reflect_writable: bool,
-    required_permissions: Vec<String>,
-}
-
-impl FieldAccessDef {
-    #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    #[must_use]
-    pub const fn readable(mut self, readable: bool) -> Self {
-        self.readable = readable;
-        self
-    }
-
-    #[must_use]
-    pub const fn writable(mut self, writable: bool) -> Self {
-        self.writable = writable;
-        self
-    }
-
-    #[must_use]
-    pub const fn reflect_readable(mut self, reflect_readable: bool) -> Self {
-        self.reflect_readable = reflect_readable;
-        self
-    }
-
-    #[must_use]
-    pub const fn reflect_writable(mut self, reflect_writable: bool) -> Self {
-        self.reflect_writable = reflect_writable;
-        self
-    }
-
-    #[must_use]
-    pub fn require_permission(mut self, permission: impl Into<String>) -> Self {
-        self.required_permissions.push(permission.into());
-        self.required_permissions.sort();
-        self.required_permissions.dedup();
-        self
-    }
-
-    #[must_use]
-    pub fn required_permissions(&self) -> &[String] {
-        &self.required_permissions
-    }
-}
-
-impl Default for FieldAccessDef {
-    fn default() -> Self {
-        Self {
-            readable: true,
-            writable: true,
-            reflect_readable: false,
-            reflect_writable: false,
-            required_permissions: Vec::new(),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct MethodAccessDef {
-    pub public: bool,
-    pub reflect_callable: bool,
-    required_permissions: Vec<String>,
-}
-
-impl MethodAccessDef {
-    #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    #[must_use]
-    pub const fn public(mut self, public: bool) -> Self {
-        self.public = public;
-        self
-    }
-
-    #[must_use]
-    pub const fn reflect_callable(mut self, reflect_callable: bool) -> Self {
-        self.reflect_callable = reflect_callable;
-        self
-    }
-
-    #[must_use]
-    pub fn require_permission(mut self, permission: impl Into<String>) -> Self {
-        self.required_permissions.push(permission.into());
-        self.required_permissions.sort();
-        self.required_permissions.dedup();
-        self
-    }
-
-    #[must_use]
-    pub fn required_permissions(&self) -> &[String] {
-        &self.required_permissions
-    }
-}
-
-impl Default for MethodAccessDef {
-    fn default() -> Self {
-        Self {
-            public: true,
-            reflect_callable: true,
-            required_permissions: Vec::new(),
         }
     }
 }
@@ -288,6 +178,66 @@ impl From<&str> for TypeHintDef {
 impl From<String> for TypeHintDef {
     fn from(value: String) -> Self {
         Self::from(value.as_str())
+    }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct IndexCapabilityDef {
+    pub readable: bool,
+    pub writable: bool,
+    pub addable: bool,
+    pub removable: bool,
+    pub key_type: Option<TypeHintDef>,
+    pub value_type: Option<TypeHintDef>,
+}
+
+impl IndexCapabilityDef {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            readable: false,
+            writable: false,
+            addable: false,
+            removable: false,
+            key_type: None,
+            value_type: None,
+        }
+    }
+
+    #[must_use]
+    pub const fn readable(mut self, readable: bool) -> Self {
+        self.readable = readable;
+        self
+    }
+
+    #[must_use]
+    pub const fn writable(mut self, writable: bool) -> Self {
+        self.writable = writable;
+        self
+    }
+
+    #[must_use]
+    pub const fn addable(mut self, addable: bool) -> Self {
+        self.addable = addable;
+        self
+    }
+
+    #[must_use]
+    pub const fn removable(mut self, removable: bool) -> Self {
+        self.removable = removable;
+        self
+    }
+
+    #[must_use]
+    pub fn key_type(mut self, key_type: impl Into<TypeHintDef>) -> Self {
+        self.key_type = Some(key_type.into());
+        self
+    }
+
+    #[must_use]
+    pub fn value_type(mut self, value_type: impl Into<TypeHintDef>) -> Self {
+        self.value_type = Some(value_type.into());
+        self
     }
 }
 
@@ -763,6 +713,7 @@ pub struct FunctionDef {
     pub semantic_key: SemanticKey,
     pub signature: FunctionSignature,
     pub effects: EffectSet,
+    pub access: FunctionAccessDef,
 }
 
 impl FunctionDef {
@@ -776,6 +727,7 @@ impl FunctionDef {
             semantic_key,
             signature,
             effects: EffectSet::default(),
+            access: FunctionAccessDef::default(),
         }
     }
 
@@ -788,6 +740,12 @@ impl FunctionDef {
     #[must_use]
     pub fn effects(mut self, effects: EffectSet) -> Self {
         self.effects = effects;
+        self
+    }
+
+    #[must_use]
+    pub fn access(mut self, access: FunctionAccessDef) -> Self {
+        self.access = access;
         self
     }
 }
@@ -854,6 +812,7 @@ pub struct TypeDef {
     pub kind: TypeKindDef,
     pub primitive: Option<PrimitiveTag>,
     pub host_runtime_id: Option<u128>,
+    pub index_capability: Option<IndexCapabilityDef>,
 }
 
 impl TypeDef {
@@ -873,6 +832,7 @@ impl TypeDef {
             kind,
             primitive: None,
             host_runtime_id: None,
+            index_capability: None,
         }
     }
 
@@ -900,6 +860,12 @@ impl TypeDef {
     }
 
     #[must_use]
+    pub fn index_capability(mut self, capability: IndexCapabilityDef) -> Self {
+        self.index_capability = Some(capability);
+        self
+    }
+
+    #[must_use]
     pub const fn primitive_tag(mut self, primitive: PrimitiveTag) -> Self {
         self.primitive = Some(primitive);
         self.kind = TypeKindDef::from_primitive(primitive);
@@ -915,6 +881,7 @@ pub struct FieldDef {
     pub owner: TypeId,
     pub variant: Option<VariantId>,
     pub declaration_order: u32,
+    pub has_default: bool,
     pub access: FieldAccessDef,
     pub type_hint: Option<TypeHintDef>,
     pub host_runtime_id: Option<u128>,
@@ -936,6 +903,7 @@ impl FieldDef {
             owner,
             variant: None,
             declaration_order: 0,
+            has_default: false,
             access: FieldAccessDef::default(),
             type_hint: None,
             host_runtime_id: None,
@@ -974,6 +942,12 @@ impl FieldDef {
     #[must_use]
     pub const fn declaration_order(mut self, declaration_order: u32) -> Self {
         self.declaration_order = declaration_order;
+        self
+    }
+
+    #[must_use]
+    pub const fn defaulted(mut self, has_default: bool) -> Self {
+        self.has_default = has_default;
         self
     }
 

@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::{HostTypeId, PrimitiveTag, Span};
 use vela_def::{FieldId, TypeId};
-use vela_reflect::access::MethodAccess;
+use vela_reflect::access::{FunctionAccess, MethodAccess};
 use vela_reflect::modules::{DeclOrigin, ModuleDesc};
 use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKind, TypeRegistry};
 use vela_registry::TypeHintDef;
@@ -70,6 +70,8 @@ pub struct RegistryFieldTargetFact {
     pub semantic: FieldId,
     pub host_runtime: Option<FieldId>,
     pub variant_field: bool,
+    pub declaration_order: u32,
+    pub has_default: bool,
     pub access: RegistryFieldAccessFact,
 }
 
@@ -91,8 +93,22 @@ impl RegistryFieldTargetFact {
             semantic,
             host_runtime,
             variant_field,
+            declaration_order: 0,
+            has_default: false,
             access,
         }
+    }
+
+    #[must_use]
+    pub const fn declaration_order(mut self, declaration_order: u32) -> Self {
+        self.declaration_order = declaration_order;
+        self
+    }
+
+    #[must_use]
+    pub const fn defaulted(mut self, has_default: bool) -> Self {
+        self.has_default = has_default;
+        self
     }
 }
 
@@ -117,6 +133,25 @@ pub struct RegistryMethodAccessFact {
     pub public: bool,
     pub reflect_callable: bool,
     pub required_permissions: Vec<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RegistryFunctionAccessFact {
+    pub name: String,
+    pub public: bool,
+    pub reflect_visible: bool,
+    pub reflect_callable: bool,
+}
+
+impl RegistryFunctionAccessFact {
+    fn new(name: impl Into<String>, access: &FunctionAccess) -> Self {
+        Self {
+            name: name.into(),
+            public: access.public,
+            reflect_visible: access.reflect_visible,
+            reflect_callable: access.reflect_callable,
+        }
+    }
 }
 
 impl RegistryMethodAccessFact {
@@ -356,6 +391,7 @@ pub struct RegistryFacts {
     functions: BTreeMap<String, TypeFact>,
     function_origins: BTreeMap<String, DeclOrigin>,
     function_docs: BTreeMap<String, String>,
+    function_access: BTreeMap<String, RegistryFunctionAccessFact>,
     index_capabilities: BTreeMap<String, RegistryIndexCapabilityFact>,
     method_effects: BTreeMap<(String, String), RegistryEffectFact>,
     method_access: BTreeMap<(String, String), RegistryMethodAccessFact>,
@@ -616,6 +652,11 @@ impl RegistryFacts {
         self.function_effects.get(name)
     }
 
+    #[must_use]
+    pub fn function_access_fact(&self, name: &str) -> Option<&RegistryFunctionAccessFact> {
+        self.function_access.get(name)
+    }
+
     pub fn functions(&self) -> impl Iterator<Item = RegistryFunctionFact> + '_ {
         self.functions
             .iter()
@@ -628,6 +669,10 @@ impl RegistryFacts {
 
     pub fn method_accesses(&self) -> impl Iterator<Item = RegistryMethodAccessFact> + '_ {
         self.method_access.values().cloned()
+    }
+
+    pub fn function_accesses(&self) -> impl Iterator<Item = RegistryFunctionAccessFact> + '_ {
+        self.function_access.values().cloned()
     }
 
     pub fn index_capabilities(&self) -> impl Iterator<Item = RegistryIndexCapabilityFact> + '_ {
@@ -819,6 +864,10 @@ impl RegistryFacts {
 
     pub fn insert_function_effect(&mut self, name: impl Into<String>, effect: RegistryEffectFact) {
         self.function_effects.insert(name.into(), effect);
+    }
+
+    pub fn insert_function_access(&mut self, access: RegistryFunctionAccessFact) {
+        self.function_access.insert(access.name.clone(), access);
     }
 
     pub fn insert_index_capability(&mut self, capability: RegistryIndexCapabilityFact) {
