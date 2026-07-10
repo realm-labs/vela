@@ -332,6 +332,119 @@ fn item_count(player: IndexedPlayer, item_id: String) {
 }
 
 #[test]
+fn compiler_checks_host_index_key_type_from_hir_operand() {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty(
+                "host",
+                std::iter::empty::<&str>(),
+                "KeyedPlayer",
+            ))
+            .host_runtime_id(41),
+        )
+        .expect("KeyedPlayer type should register");
+    let _inventory = registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty(
+                "host",
+                std::iter::empty::<&str>(),
+                "KeyedInventory",
+            ))
+            .host_runtime_id(42),
+        )
+        .expect("KeyedInventory type should register");
+    registry
+        .register_field(
+            vela_registry::FieldDef::new(
+                DefPath::field(
+                    "host",
+                    std::iter::empty::<&str>(),
+                    "KeyedPlayer",
+                    "inventory",
+                ),
+                player,
+            )
+            .type_hint(Some("KeyedInventory"))
+            .host_runtime_id(44),
+        )
+        .expect("KeyedPlayer::inventory field should register");
+    let options = options::CompilerOptions::new().with_host_index_capability(
+        "KeyedInventory",
+        options::HostIndexCapabilityInfo {
+            readable: true,
+            key_type: Some("i64".to_owned()),
+            ..Default::default()
+        },
+    );
+
+    let error = compile_program_source_with_options_and_registry(
+        SourceId::new(1),
+        r#"
+fn item_count(player: KeyedPlayer) {
+    return player.inventory["gold"];
+}
+"#,
+        &options,
+        registry.compile_view(),
+    )
+    .expect_err("wrong host index key type should fail");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["analysis::host_index_key_mismatch"]
+    );
+}
+
+#[test]
+fn compiler_checks_read_only_host_field_from_hir_receiver() {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty(
+                "host",
+                std::iter::empty::<&str>(),
+                "ReadOnlyPlayer",
+            ))
+            .host_runtime_id(51),
+        )
+        .expect("ReadOnlyPlayer type should register");
+    registry
+        .register_field(
+            vela_registry::FieldDef::new(
+                DefPath::field(
+                    "host",
+                    std::iter::empty::<&str>(),
+                    "ReadOnlyPlayer",
+                    "level",
+                ),
+                player,
+            )
+            .type_hint(Some("i64"))
+            .writable(false)
+            .host_runtime_id(52),
+        )
+        .expect("ReadOnlyPlayer::level field should register");
+
+    let error = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn bump(player: ReadOnlyPlayer) {
+    player.level = 2;
+    return 1;
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect_err("read-only host field assignment should fail");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["analysis::field_not_writable"]
+    );
+}
+
+#[test]
 fn compiler_resolves_param_default_field_receiver_from_hir() {
     let mut registry = vela_registry::DefinitionRegistry::new();
     let player = registry

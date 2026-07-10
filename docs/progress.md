@@ -1700,7 +1700,9 @@ callable parameter facts, stable `TypeFact`s, `Any`/unknown suppression, and
   subscript operands from HIR index facts instead of index syntax. HostPath
   dynamic-index target construction now also reads receiver and subscript
   operands from HIR index facts instead of index syntax while preserving
-  HostAccess target plans.
+  HostAccess target plans. Host-index capability diagnostics and read-only
+  host-field assignment checks now read HIR index/field receiver facts instead
+  of reconstructing those receivers from syntax.
 
 ### Remaining Gaps
 

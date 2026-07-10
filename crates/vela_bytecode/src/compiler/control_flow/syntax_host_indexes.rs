@@ -1,6 +1,6 @@
 use vela_common::{Diagnostic, SourceId, Span};
 use vela_host::resolved::HostMutationOp;
-use vela_syntax::ast::{AssignOp, SyntaxExpression};
+use vela_syntax::ast::{AssignOp, AstNode, SyntaxExpression};
 
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{Constant, Register};
@@ -307,10 +307,13 @@ impl Compiler<'_, '_> {
         source: SourceId,
         target_expression: &SyntaxExpression,
     ) -> Option<(String, String)> {
-        let field = target_expression.as_field()?;
-        let receiver = field.receiver()?;
-        let field =
-            self.hir_field_name_for_span(syntax_expression_span(source, target_expression))?;
+        target_expression.as_field()?;
+        let span = syntax_expression_span(source, target_expression);
+        let field = self.hir_field_for_span(span)?;
+        let receiver_span = self.expression_span(field.receiver)?;
+        let receiver =
+            syntax_host_index_expression_at_span(source, target_expression, receiver_span)?;
+        let field = field.name.as_str();
         let receiver_type = self
             .script_fact_for_syntax_expression(source, &receiver)
             .map(|fact| fact.type_name)
@@ -328,13 +331,27 @@ impl Compiler<'_, '_> {
         target_expression: &SyntaxExpression,
         kind: HostIndexAccessKind,
     ) -> CompileResult<()> {
-        let Some(index) = target_expression.as_index() else {
+        if target_expression.as_index().is_none() {
+            return Ok(());
+        }
+        let target_span = syntax_expression_span(source, target_expression);
+        let Some(index) = self.hir_index_for_span(target_span) else {
             return Ok(());
         };
-        let Some(receiver_expression) = index.receiver() else {
+        let Some(receiver_span) = self.expression_span(index.receiver) else {
             return Ok(());
         };
-        let Some(index_expression) = index.index() else {
+        let Some(index_span) = self.expression_span(index.index) else {
+            return Ok(());
+        };
+        let Some(receiver_expression) =
+            syntax_host_index_expression_at_span(source, target_expression, receiver_span)
+        else {
+            return Ok(());
+        };
+        let Some(index_expression) =
+            syntax_host_index_expression_at_span(source, target_expression, index_span)
+        else {
             return Ok(());
         };
         let Some(receiver_type) =
@@ -343,7 +360,6 @@ impl Compiler<'_, '_> {
             return Ok(());
         };
         let expression_span = syntax_expression_span(source, expression);
-        let receiver_span = syntax_expression_span(source, &receiver_expression);
         let Some(capability) = self.facts.options.host_index_capability(&receiver_type) else {
             return Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
                 vec![
@@ -413,4 +429,19 @@ impl Compiler<'_, '_> {
                     .and_then(|resolved| resolved.type_name)
             })
     }
+}
+
+fn syntax_host_index_expression_at_span(
+    source: SourceId,
+    expression: &SyntaxExpression,
+    span: Span,
+) -> Option<SyntaxExpression> {
+    if span.source != source {
+        return None;
+    }
+    expression
+        .syntax()
+        .descendants()
+        .filter_map(SyntaxExpression::cast)
+        .find(|child| syntax_expression_span(source, child) == span)
 }
