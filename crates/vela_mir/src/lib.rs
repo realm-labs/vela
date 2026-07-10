@@ -43,8 +43,9 @@ pub use input::{
     CompileHostPathSegment, CompileHostPathTarget, CompileMemberTarget, CompileParameter,
     CompileParameterDefault, CompilePatternConstructorTarget, CompilePositionalPolicy,
     CompileReflectionCall, CompileScriptCallArgument, CompileSignature, CompileTargetKind,
-    CompileTargetSnapshot, CompileTargetSnapshotBuilder, DynamicMethodTarget, HostFieldTarget,
-    HostMethodTarget, MethodExecutableTarget, MirBuildError, MirLoweringConfig, MirLoweringInput,
+    CompileTargetSnapshot, CompileTargetSnapshotBuilder, CompileTryFamily, CompileTryLayoutTarget,
+    CompileTryTarget, DynamicMethodTarget, HostFieldTarget, HostMethodTarget,
+    MethodExecutableTarget, MirBuildError, MirLoweringConfig, MirLoweringInput,
 };
 pub use operations::{
     MirAggregate, MirCall, MirContextualBinaryOp, MirContextualNumericLiteral, MirDynamicArgument,

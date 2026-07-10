@@ -13,8 +13,8 @@ use crate::{
 
 use super::{
     CompileCallTarget, CompileFunctionIdentity, CompileFunctionTarget, CompileHostPathTarget,
-    CompileTargetSnapshot, CompileTargetSnapshotBuilder, HostFieldTarget, MethodExecutableTarget,
-    MirBuildError,
+    CompileTargetSnapshot, CompileTargetSnapshotBuilder, CompileTryTarget, HostFieldTarget,
+    MethodExecutableTarget, MirBuildError,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -122,6 +122,7 @@ pub enum CompileTargetKind {
     Member,
     Constructor,
     HostPath,
+    Try,
 }
 
 impl fmt::Display for CompileTargetKind {
@@ -131,6 +132,7 @@ impl fmt::Display for CompileTargetKind {
             Self::Member => "member",
             Self::Constructor => "constructor",
             Self::HostPath => "host path",
+            Self::Try => "try",
         })
     }
 }
@@ -190,6 +192,11 @@ impl<'a> CompileFunctionTargets<'a> {
     #[must_use]
     pub fn host_path(self, expression: HirExprId) -> Option<&'a CompileHostPathTarget> {
         self.snapshot.host_path(self.function(), expression)
+    }
+
+    #[must_use]
+    pub fn try_target(self, expression: HirExprId) -> Option<&'a CompileTryTarget> {
+        self.snapshot.try_target(self.function(), expression)
     }
 
     #[must_use]

@@ -20,6 +20,7 @@ mod host;
 mod identity;
 mod origins;
 mod placements;
+mod try_targets;
 mod validation;
 
 use origins::CompileTargetOrigins;
@@ -37,6 +38,7 @@ pub use placements::{
     CompileFunctionTargets, CompileGuardKey, CompileGuardTarget, CompileMemberTarget,
     CompilePatternConstructorTarget, CompileTargetKind,
 };
+pub use try_targets::{CompileTryFamily, CompileTryLayoutTarget, CompileTryTarget};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DynamicMethodTarget {
@@ -141,6 +143,7 @@ pub struct CompileTargetSnapshot {
     constructors: BTreeMap<(FunctionId, HirExprId), CompileConstructorTarget>,
     pattern_constructors: BTreeMap<(FunctionId, HirPatternId), CompilePatternConstructorTarget>,
     host_paths: BTreeMap<(FunctionId, HirExprId), CompileHostPathTarget>,
+    try_targets: BTreeMap<(FunctionId, HirExprId), CompileTryTarget>,
     globals: BTreeMap<HirDeclId, GlobalId>,
     evaluated_constants: BTreeMap<HirDeclId, MirEvaluatedConstant>,
     evaluated_schema_defaults: BTreeMap<HirBodyId, MirEvaluatedConstant>,

@@ -25,6 +25,7 @@ pub(super) struct CompileTargetOrigins {
     pub(super) constructors: BTreeMap<(FunctionId, HirExprId), MirSourceOrigin>,
     pub(super) pattern_constructors: BTreeMap<(FunctionId, HirPatternId), MirSourceOrigin>,
     pub(super) host_paths: BTreeMap<(FunctionId, HirExprId), MirSourceOrigin>,
+    pub(super) try_targets: BTreeMap<(FunctionId, HirExprId), MirSourceOrigin>,
     pub(super) evaluated_constants: BTreeMap<HirDeclId, MirSourceOrigin>,
     pub(super) evaluated_schema_defaults: BTreeMap<HirBodyId, MirSourceOrigin>,
     pub(super) guards: BTreeMap<CompileGuardKey, MirSourceOrigin>,

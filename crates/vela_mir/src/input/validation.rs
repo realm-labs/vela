@@ -2,6 +2,7 @@ mod contracts;
 mod descriptors;
 mod host;
 mod placements;
+mod try_targets;
 
 use std::collections::BTreeMap;
 
@@ -31,7 +32,8 @@ impl<'a> SnapshotValidator<'a> {
 
     fn validate(&self) -> Result<(), MirBuildError> {
         descriptors::validate(self)?;
-        placements::validate(self)
+        placements::validate(self)?;
+        try_targets::validate(self)
     }
 
     fn error(&self, origin: MirSourceOrigin, message: impl Into<String>) -> MirBuildError {
