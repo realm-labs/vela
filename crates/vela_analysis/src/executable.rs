@@ -451,4 +451,7 @@ fn expression_belongs_to(
 }
 
 #[cfg(test)]
+mod callback_tests;
+
+#[cfg(test)]
 mod tests;

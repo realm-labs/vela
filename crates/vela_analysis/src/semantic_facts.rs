@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+mod callbacks;
 mod control_flow;
 mod lookups;
 mod script_types;
@@ -100,6 +101,7 @@ impl HirSemanticFacts {
             .max(1);
         for _ in 0..passes {
             let before = facts.types.clone();
+            let locals_before = facts.locals.clone();
             let script_types_before = facts.script_types.clone();
             let local_script_types_before = facts.local_script_types.clone();
             for body in &bodies {
@@ -114,11 +116,15 @@ impl HirSemanticFacts {
                     }
                     facts.record_targets(graph, body, expression.id, schema, base);
                 }
-                facts.infer_local_facts(body);
+                facts.infer_local_facts(body, base);
                 facts.infer_local_script_types(body);
                 facts.record_patterns(graph, body, schema, base);
             }
+            for body in &bodies {
+                facts.infer_callback_params(graph, body, schema, base);
+            }
             if facts.types == before
+                && facts.locals == locals_before
                 && facts.script_types == script_types_before
                 && facts.local_script_types == local_script_types_before
             {
@@ -296,7 +302,9 @@ impl HirSemanticFacts {
                     .params
                     .iter()
                     .map(|param| {
-                        base.local(param.local)
+                        self.locals
+                            .get(&param.local)
+                            .or_else(|| base.local(param.local))
                             .cloned()
                             .unwrap_or(TypeFact::Unknown)
                     })
@@ -608,7 +616,7 @@ impl HirSemanticFacts {
         }
     }
 
-    fn infer_local_facts(&mut self, body: &HirBody) {
+    fn infer_local_facts(&mut self, body: &HirBody, base: &AnalysisFacts) {
         let mut inferred = Vec::new();
         for statement in body.statements.values() {
             match &statement.kind {
@@ -647,8 +655,8 @@ impl HirSemanticFacts {
             }
         }
         for (local, fact) in inferred {
-            if !matches!(fact, TypeFact::Unknown) {
-                self.locals.entry(local).or_insert(fact);
+            if base.local(local).is_none() && !matches!(fact, TypeFact::Unknown) {
+                self.locals.insert(local, fact);
             }
         }
     }
@@ -731,12 +739,15 @@ impl HirSemanticFacts {
         call: &vela_hir::body::HirCall,
         schema: Option<&RegistryFacts>,
     ) -> TypeFact {
-        let direct = call_return_fact(self.fact(call.callee));
-        if !matches!(direct, TypeFact::Unknown) {
-            return direct;
-        }
         if let Some(field) = body.field(call.callee) {
             let receiver = self.fact(field.receiver);
+            if let Some(method) = self.contextual_stdlib_method_fact(graph, body, call) {
+                return method.returns;
+            }
+            let direct = call_return_fact(self.fact(call.callee));
+            if !matches!(direct, TypeFact::Unknown) {
+                return direct;
+            }
             if let Some(method) = source_method(graph, &receiver, &field.name) {
                 return method.returns;
             }
@@ -750,6 +761,10 @@ impl HirSemanticFacts {
                 return call_return_fact(method.clone());
             }
             return TypeFact::Unknown;
+        }
+        let direct = call_return_fact(self.fact(call.callee));
+        if !matches!(direct, TypeFact::Unknown) {
+            return direct;
         }
         let Some(path) = expression_path(body, call.callee, HirPathKind::Callee) else {
             return TypeFact::Unknown;
