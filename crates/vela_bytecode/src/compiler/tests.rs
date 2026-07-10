@@ -4,7 +4,8 @@ use crate::{
     CacheSiteKind, CallArgument, Register, UnlinkedCodeObject, UnlinkedInstruction,
     UnlinkedInstructionKind, UnlinkedProgram,
 };
-use vela_def::{DefPath, FunctionId, MethodId};
+use vela_def::{DefPath, FieldId, FunctionId, MethodId};
+use vela_host::target::HostPathPart;
 
 fn semantic_diagnostic_codes(error: CompileError) -> Vec<String> {
     let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
@@ -311,6 +312,22 @@ fn item_count(player: IndexedPlayer, item_id: String) {
             .iter()
             .any(|site| site.kind == CacheSiteKind::HostPathRead),
         "host field after dynamic index should lower to a host path read"
+    );
+    let target = function
+        .instructions
+        .iter()
+        .find_map(|instruction| match instruction.kind {
+            UnlinkedInstructionKind::HostRead { target, .. } => function.host_target(target),
+            _ => None,
+        })
+        .expect("host path read should carry a target plan");
+    assert_eq!(
+        target.parts.as_slice(),
+        &[
+            HostPathPart::Field(FieldId::new(20)),
+            HostPathPart::DynKey { arg: 0 },
+            HostPathPart::Field(FieldId::new(21)),
+        ]
     );
 }
 

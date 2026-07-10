@@ -323,9 +323,13 @@ impl Compiler<'_, '_> {
         source: SourceId,
         expression: &SyntaxExpression,
     ) -> Option<ResolvedHostPath<'static>> {
-        let index = expression.as_index()?;
-        let receiver = index.receiver()?;
-        let index_expression = index.index()?;
+        expression.as_index()?;
+        let span = syntax_host_expression_span(source, expression);
+        let index = self.hir_index_for_span(span)?;
+        let receiver_span = self.expression_span(index.receiver)?;
+        let index_span = self.expression_span(index.index)?;
+        let receiver = syntax_expression_child_at_span(source, expression, receiver_span)?;
+        let index_expression = syntax_expression_child_at_span(source, expression, index_span)?;
         let mut resolved = self.syntax_host_path(source, &receiver)?;
         if resolved.path.segments.is_empty()
             && resolved.type_name.as_deref().is_none_or(|type_name| {

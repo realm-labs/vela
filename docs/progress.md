@@ -1697,7 +1697,10 @@ callable parameter facts, stable `TypeFact`s, `Any`/unknown suppression, and
   record-shape inference now uses the same HIR index operand facts for direct
   and lambda-local index shapes instead of asking index syntax for receivers.
   Parameter-default index expression lowering now also reads receiver and
-  subscript operands from HIR index facts instead of index syntax.
+  subscript operands from HIR index facts instead of index syntax. HostPath
+  dynamic-index target construction now also reads receiver and subscript
+  operands from HIR index facts instead of index syntax while preserving
+  HostAccess target plans.
 
 ### Remaining Gaps
 
