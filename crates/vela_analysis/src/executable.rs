@@ -24,6 +24,9 @@ use crate::semantic_facts::{
     OperatorTargetFact, ScriptTypeTargetFact,
 };
 use crate::type_fact::TypeFact;
+use crate::validation::{
+    ArrayOrderingCapabilityFact, ExecutableValidationFacts, LoopControlFact, OperatorCapabilityFact,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExecutableReceiverInput {
@@ -180,6 +183,7 @@ struct ExecutableRootFacts {
     bodies: BTreeSet<HirBodyId>,
     receiver: Option<ExecutableReceiverInput>,
     facts: AnalysisFacts,
+    validation: ExecutableValidationFacts,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -302,11 +306,13 @@ fn analyze_root(
         receiver,
         &input.literal_contexts,
     );
+    let validation = ExecutableValidationFacts::from_analysis(graph, &facts, &bodies);
     Ok(ExecutableRootFacts {
         body: input.body,
         bodies,
         receiver: input.receiver.clone(),
         facts,
+        validation,
     })
 }
 
@@ -418,6 +424,29 @@ impl ExecutableAnalysisView<'_> {
     #[must_use]
     pub fn statement_control_flow(&self, statement: HirStmtId) -> Option<&ControlFlowFact> {
         self.root.facts.statement_control_flow(statement)
+    }
+
+    #[must_use]
+    pub fn operator_capability(&self, expression: HirExprId) -> Option<&OperatorCapabilityFact> {
+        self.root.validation.operator(expression)
+    }
+
+    #[must_use]
+    pub fn array_ordering_capability(
+        &self,
+        expression: HirExprId,
+    ) -> Option<&ArrayOrderingCapabilityFact> {
+        self.root.validation.array_ordering(expression)
+    }
+
+    #[must_use]
+    pub fn loop_control(&self, statement: HirStmtId) -> Option<LoopControlFact> {
+        self.root.validation.loop_control(statement)
+    }
+
+    #[must_use]
+    pub fn validation_diagnostics(&self) -> &[Diagnostic] {
+        self.root.validation.diagnostics()
     }
 
     #[must_use]

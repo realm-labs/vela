@@ -13,3 +13,4 @@ pub mod registry;
 pub mod semantic_facts;
 pub mod stdlib;
 pub mod type_fact;
+pub mod validation;
