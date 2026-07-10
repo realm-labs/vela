@@ -77,6 +77,9 @@ The immutable input now also exposes authoritative `HirDeclId -> FunctionId`,
 deterministic compilation-root iteration, canonical type lookup, and parameter
 declaration origins. The production bridge still must populate and prove these
 indexes from the real source/registry front door before Phase 0 closes.
+Call targets now likewise own prevalidated script parameter slots, external
+positional order, and genuinely dynamic named order keyed by HIR expression;
+MIR will not repeat call-argument placement.
 
 M0-M19 are complete enough as a runnable prototype, embedding surface,
 production hot-reload workflow, diagnostics/tooling foundation, runnable

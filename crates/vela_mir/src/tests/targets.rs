@@ -10,15 +10,21 @@ fn mir_model_compile_targets_select_behavior_intrinsics_without_names() {
         HirBodyId::new(300),
         vela_common::Span::new(vela_common::SourceId::new(7), 0, 5),
     );
-    let reflection = CompileCallTarget::Reflection {
-        operation: CompileReflectionCall::Call,
-        function: FunctionId::new(301),
-        debug_name: "reflect::call".to_owned(),
-    };
-    let set = CompileCallTarget::SetFromArray {
-        function: FunctionId::new(302),
-        debug_name: "set::from_array".to_owned(),
-    };
+    let reflection = CompileCallTarget::positional(
+        CompileCalleeTarget::Reflection {
+            operation: CompileReflectionCall::Call,
+            function: FunctionId::new(301),
+            debug_name: "reflect::call".to_owned(),
+        },
+        vec![HirExprId::new(311), HirExprId::new(312)],
+    );
+    let set = CompileCallTarget::positional(
+        CompileCalleeTarget::SetFromArray {
+            function: FunctionId::new(302),
+            debug_name: "set::from_array".to_owned(),
+        },
+        vec![HirExprId::new(313)],
+    );
     let path = CompileHostPathTarget {
         root: HirExprId::new(303),
         root_type: HostTypeTarget {
@@ -37,13 +43,48 @@ fn mir_model_compile_targets_select_behavior_intrinsics_without_names() {
             },
         }],
     };
-    let remove = CompileCallTarget::HostRemove { path: path.clone() };
-    let push = CompileCallTarget::HostPush { path };
+    let remove = CompileCallTarget::positional(
+        CompileCalleeTarget::HostRemove { path: path.clone() },
+        Vec::new(),
+    );
+    let push = CompileCallTarget::positional(
+        CompileCalleeTarget::HostPush { path },
+        vec![HirExprId::new(314)],
+    );
+    let script = CompileCallTarget::script(
+        CompileCalleeTarget::ScriptFunction {
+            function: FunctionId::new(315),
+            debug_name: "game::defaulted".to_owned(),
+        },
+        vec![
+            CompileScriptCallArgument {
+                parameter: 0,
+                value: Some(HirExprId::new(316)),
+            },
+            CompileScriptCallArgument {
+                parameter: 1,
+                value: None,
+            },
+        ],
+    );
+    let dynamic = CompileCallTarget::dynamic(
+        CompileCalleeTarget::DynamicMethod(DynamicMethodTarget::method(
+            "invoke",
+            0,
+            vec!["value".to_owned()],
+        )),
+        vec![CompileDynamicCallArgument {
+            name: Some("value".to_owned()),
+            value: HirExprId::new(317),
+        }],
+    );
     let expressions = [
         (HirExprId::new(307), reflection.clone()),
         (HirExprId::new(308), set.clone()),
         (HirExprId::new(309), remove.clone()),
         (HirExprId::new(310), push.clone()),
+        (HirExprId::new(318), script.clone()),
+        (HirExprId::new(319), dynamic.clone()),
     ];
     let mut snapshot = CompileTargetSnapshot::builder();
     for (expression, target) in &expressions {
@@ -57,6 +98,8 @@ fn mir_model_compile_targets_select_behavior_intrinsics_without_names() {
     assert_eq!(snapshot.call(expressions[1].0), Some(&set));
     assert_eq!(snapshot.call(expressions[2].0), Some(&remove));
     assert_eq!(snapshot.call(expressions[3].0), Some(&push));
+    assert_eq!(snapshot.call(expressions[4].0), Some(&script));
+    assert_eq!(snapshot.call(expressions[5].0), Some(&dynamic));
 }
 
 #[test]

@@ -6,7 +6,7 @@ use vela_analysis::facts::AnalysisFacts;
 use vela_common::{HostMethodId, ShapeId};
 use vela_def::{FieldId, FunctionId, GlobalId, MethodId, TypeId, VariantId};
 use vela_hir::body::HirBodyOwner;
-use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirLocalId, HirNodeId, HirPatternId};
+use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId, HirPatternId};
 use vela_hir::module_graph::ModuleGraph;
 
 use crate::{
@@ -16,7 +16,13 @@ use crate::{
     MirLocalId, MirSourceOrigin, MirTargetTable, MirTempId, MirTypeContract,
 };
 
+mod calls;
 mod identity;
+
+pub use calls::{
+    CompileCallArguments, CompileCallTarget, CompileCalleeTarget, CompileDynamicCallArgument,
+    CompileReflectionCall, CompileScriptCallArgument,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DynamicMethodTarget {
@@ -86,58 +92,6 @@ pub struct CompileFunctionTarget {
     pub identity: CompileFunctionIdentity,
     pub body: HirBodyId,
     pub origin: MirSourceOrigin,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum CompileCallTarget {
-    ScriptFunction {
-        function: FunctionId,
-        debug_name: String,
-    },
-    ScriptMethod {
-        target: MethodExecutableTarget,
-        debug_name: String,
-    },
-    Local(HirLocalId),
-    Lambda(HirBodyId),
-    NativeFunction {
-        function: FunctionId,
-        debug_name: String,
-    },
-    StdlibFunction {
-        function: FunctionId,
-        debug_name: String,
-    },
-    ValueMethod {
-        owner: TypeId,
-        method: MethodId,
-        debug_name: String,
-    },
-    HostMethod(HostMethodTarget),
-    Reflection {
-        operation: CompileReflectionCall,
-        function: FunctionId,
-        debug_name: String,
-    },
-    SetFromArray {
-        function: FunctionId,
-        debug_name: String,
-    },
-    HostRemove {
-        path: CompileHostPathTarget,
-    },
-    HostPush {
-        path: CompileHostPathTarget,
-    },
-    DynamicCallable,
-    DynamicMethod(DynamicMethodTarget),
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum CompileReflectionCall {
-    Read,
-    Write,
-    Call,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

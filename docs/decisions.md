@@ -230,6 +230,9 @@ state whether positional arity is declared/defaulted, runtime-checked, or
 proven variadic; this preserves existing native/host behavior instead of
 silently adding static arity rejection. Callable-value calls remain
 positional-only, and dynamic method calls preserve ordered runtime names.
+Compile-call input records the already-resolved HIR expression IDs in complete
+script slots, validated positional order, or genuine runtime named order; the
+MIR builder does not perform argument-name resolution.
 Contract guards are trap-only statements. Recoverable optimization guards are
 terminators with explicit passed/slow CFG successors, and `Option`/`Result`
 propagation uses ordinary variant tests, CFG edges, extraction, and return
