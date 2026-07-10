@@ -291,6 +291,65 @@ fn main(player: Player, other: Player) {
 }
 
 #[test]
+fn host_method_uses_retain_root_and_parenthesized_host_targets() {
+    let source = SourceId::new(809);
+    let text = r#"
+fn main(player: Player) {
+    player.save();
+    (player).save();
+}
+"#;
+    let (graph, main) = graph(source, text);
+    let schema = host_schema(None, true, true);
+    let function = FunctionId::new(80_809);
+    let generation = generation(&graph, &schema, main, function);
+    let view = generation.view(function).expect("main analysis");
+    let body = graph.function_body(main).expect("main body");
+    let expected_root =
+        RegistryTypeTargetFact::new("Player", TypeId::new(801), Some(HostTypeId::new(801)));
+
+    let root_call = expression_exact(&graph, source, text, "player.save()", 0);
+    let root_use = view.host_access_use(root_call).expect("root host call use");
+    let root_target = body
+        .expression(root_use.target)
+        .expect("root host call target");
+    assert_eq!(span_text(text, root_target.origin.span), "player");
+    let root_path = view
+        .host_path_target(root_use.target)
+        .expect("root host target fact");
+    assert_eq!(root_path.root, root_use.target);
+    assert_eq!(root_path.root_type, expected_root);
+    assert!(root_path.segments.is_empty());
+
+    let parenthesized_call = expression_exact(&graph, source, text, "(player).save()", 0);
+    let parenthesized_use = view
+        .host_access_use(parenthesized_call)
+        .expect("parenthesized host call use");
+    let parenthesized_target = body
+        .expression(parenthesized_use.target)
+        .expect("parenthesized host call target");
+    assert_eq!(
+        span_text(text, parenthesized_target.origin.span),
+        "(player)"
+    );
+    let parenthesized_path = view
+        .host_path_target(parenthesized_use.target)
+        .expect("parenthesized host target fact");
+    assert_eq!(
+        span_text(
+            text,
+            body.expression(parenthesized_path.root)
+                .expect("parenthesized host root")
+                .origin
+                .span,
+        ),
+        "player"
+    );
+    assert_eq!(parenthesized_path.root_type, expected_root);
+    assert!(parenthesized_path.segments.is_empty());
+}
+
+#[test]
 fn root_host_index_without_capability_retains_its_stable_owner() {
     let source = SourceId::new(810);
     let text = "fn main(player: Player) { return player[\"gold\"]; }";

@@ -458,6 +458,10 @@ impl HirSemanticFacts {
         self.effects
             .entry(id)
             .or_insert_with(RegistryEffectFact::pure);
+        self.host_paths.remove(&id);
+        if let Some(path) = self.host_path_for(body, id, schema) {
+            self.host_paths.insert(id, path);
+        }
         match &expression.kind {
             HirExprKind::Call(call) => {
                 let target = if let Some(lambda) = direct_lambda_body(body, call.callee) {
@@ -560,14 +564,6 @@ impl HirSemanticFacts {
                     MemberTargetFact::Unresolved
                 };
                 self.members.insert(id, target);
-                if let Some(path) = self.host_path_for(body, id, schema) {
-                    self.host_paths.insert(id, path);
-                }
-            }
-            HirExprKind::Index(_) => {
-                if let Some(path) = self.host_path_for(body, id, schema) {
-                    self.host_paths.insert(id, path);
-                }
             }
             HirExprKind::Unary { op, operand } => {
                 let target = op.map_or(OperatorTargetFact::Unresolved, |op| {
