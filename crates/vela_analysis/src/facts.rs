@@ -66,6 +66,11 @@ impl AnalysisFacts {
         self.literals.get(expression)
     }
 
+    #[must_use]
+    pub fn pattern_literal(&self, pattern: HirPatternId) -> Option<&LiteralResult> {
+        self.literals.pattern(pattern)
+    }
+
     /// Revalidates numeric literals with the exact primitive or dynamic
     /// contexts selected by the compile-target analysis.
     pub fn resolve_literal_contexts(

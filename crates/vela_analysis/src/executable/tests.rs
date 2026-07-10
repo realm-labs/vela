@@ -1,6 +1,6 @@
 use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_def::FunctionId;
-use vela_hir::body::{HirBinaryOp, HirBodyOwner, HirExprKind};
+use vela_hir::body::{HirBinaryOp, HirBodyOwner, HirExprKind, HirLiteral, HirPatternKind};
 use vela_hir::ids::HirExprId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath, ModuleSource};
 
@@ -258,6 +258,61 @@ fn contextual_literals_rebuild_scoped_semantic_operator_facts() {
         rebuilt.operator_target(binary),
         Some(OperatorTargetFact::Dynamic)
     );
+}
+
+#[test]
+fn executable_views_expose_validated_pattern_literal_facts() {
+    let source = SourceId::new(73);
+    let text = r#"
+fn main(value) {
+    return match value {
+        128i8 => 1,
+        _ => 0,
+    };
+}
+"#;
+    let mut graph = ModuleGraph::new();
+    graph.add_source(ModuleSource::new(
+        source,
+        ModulePath::from_qualified("game"),
+        text,
+    ));
+    graph.resolve_imports();
+    assert_eq!(graph.diagnostics(), &[]);
+    let main = declaration_named(&graph, "main");
+    let body = graph.function_body(main).expect("main body");
+    let pattern = body
+        .patterns
+        .values()
+        .find(|pattern| {
+            matches!(
+                &pattern.kind,
+                HirPatternKind::Literal(Some(HirLiteral::Integer(literal)))
+                    if literal.text == "128"
+            )
+        })
+        .expect("invalid numeric pattern")
+        .id;
+    let function = FunctionId::new(714);
+    let generation = ExecutableAnalysisGeneration::from_module_graph(
+        &graph,
+        [ExecutableAnalysisInput::new(function, body.id)],
+    )
+    .expect("executable pattern analysis");
+    let view = generation.view(function).expect("main view");
+
+    assert!(matches!(view.pattern_literal(pattern), Some(Err(_))));
+    assert_eq!(view.pattern(pattern), Some(&TypeFact::Unknown));
+    let diagnostics = view.literal_diagnostics(&graph);
+    let [diagnostic] = diagnostics.as_slice() else {
+        panic!("expected one pattern literal diagnostic");
+    };
+    assert_eq!(
+        diagnostic.code.as_deref(),
+        Some("compiler::invalid_int_literal")
+    );
+    let span = diagnostic.span.expect("pattern diagnostic span");
+    assert_eq!(&text[span.start as usize..span.end as usize], "128i8");
 }
 
 fn assert_script_field(

@@ -616,7 +616,10 @@ impl HirSemanticFacts {
                     .or_else(|| self.locals.get(local))
                     .cloned()
                     .unwrap_or(TypeFact::Unknown),
-                HirPatternKind::Literal(Some(literal)) => literal_fact(literal),
+                HirPatternKind::Literal(Some(literal)) => base
+                    .pattern_literal(pattern.id)
+                    .map(resolved_literal_type)
+                    .unwrap_or_else(|| literal_fact(literal)),
                 _ => TypeFact::Unknown,
             };
             self.patterns.insert(pattern.id, fact);

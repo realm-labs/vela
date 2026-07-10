@@ -370,6 +370,11 @@ impl ExecutableAnalysisView<'_> {
     }
 
     #[must_use]
+    pub fn pattern_literal(&self, pattern: HirPatternId) -> Option<&LiteralResult> {
+        self.root.facts.pattern_literal(pattern)
+    }
+
+    #[must_use]
     pub fn pattern(&self, pattern: HirPatternId) -> Option<&TypeFact> {
         self.root.facts.pattern(pattern)
     }

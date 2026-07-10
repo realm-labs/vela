@@ -183,6 +183,14 @@ impl ModuleGraph {
     }
 
     #[must_use]
+    pub fn pattern_span(&self, pattern: HirPatternId) -> Option<Span> {
+        self.bodies
+            .values()
+            .find_map(|body| body.patterns.get(&pattern))
+            .map(|pattern| pattern.origin.span)
+    }
+
+    #[must_use]
     pub fn call_callee(&self, expression: HirExprId) -> Option<HirExprId> {
         self.bodies
             .values()

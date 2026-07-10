@@ -1,7 +1,10 @@
 use super::*;
 use vela_common::SourceId;
-use vela_hir::body::HirExprKind;
+use vela_hir::body::{HirExprKind, HirPatternKind};
 use vela_hir::module_graph::{ModulePath, ModuleSource};
+
+use crate::facts::AnalysisFacts;
+use crate::type_fact::TypeFact;
 
 fn integer(text: &str, radix: HirIntRadix, suffix: Option<HirIntegerSuffix>) -> HirIntegerLiteral {
     HirIntegerLiteral {
@@ -438,4 +441,147 @@ fn contextual_facts_and_diagnostics_preserve_hir_ids_and_spans() {
     );
     let span = diagnostic.span.expect("diagnostic span");
     assert_eq!(&SOURCE[span.start as usize..span.end as usize], "128i8");
+}
+
+#[test]
+fn numeric_literal_use_classifies_frozen_dynamic_operator_shapes() {
+    const SOURCE: &str = r#"
+fn main(value) {
+    let positive = value + 1;
+    let parenthesized = value + (2);
+    let negated = value + -3;
+    let equality = value == 4;
+}
+"#;
+    let mut graph = ModuleGraph::new();
+    graph.add_source(ModuleSource::new(
+        SourceId::new(10),
+        ModulePath::from_qualified("main"),
+        SOURCE,
+    ));
+    graph.resolve_imports();
+    assert_eq!(graph.diagnostics(), &[]);
+    let body = graph.bodies().next().expect("main body");
+
+    let binary_rhs = |source_text: &str| {
+        body.expressions
+            .values()
+            .find_map(|expression| {
+                let span = expression.origin.span;
+                let text = &SOURCE[span.start as usize..span.end as usize];
+                if text != source_text {
+                    return None;
+                }
+                match expression.kind {
+                    HirExprKind::Binary {
+                        op: Some(op),
+                        rhs: Some(rhs),
+                        ..
+                    } => Some((op, rhs)),
+                    _ => None,
+                }
+            })
+            .unwrap_or_else(|| panic!("binary expression `{source_text}`"))
+    };
+
+    let (add, positive) = binary_rhs("value + 1");
+    let positive = NumericLiteralUse::classify(body, positive).expect("positive literal use");
+    assert_eq!(positive.kind(), NumericLiteralKind::Integer);
+    assert_eq!(positive.sign(), LiteralSign::Positive);
+    assert!(!positive.is_parenthesized());
+    assert!(positive.supports_direct_contract_context());
+    assert!(positive.supports_deferred_operation(add));
+
+    let (add, parenthesized) = binary_rhs("value + (2)");
+    let parenthesized =
+        NumericLiteralUse::classify(body, parenthesized).expect("parenthesized literal use");
+    assert!(parenthesized.is_parenthesized());
+    assert!(!parenthesized.supports_direct_contract_context());
+    assert!(parenthesized.supports_deferred_operation(add));
+
+    let (add, negated) = binary_rhs("value + -3");
+    let negated = NumericLiteralUse::classify(body, negated).expect("negated literal use");
+    assert_eq!(negated.sign(), LiteralSign::Negated);
+    assert!(!negated.supports_deferred_operation(add));
+    assert_ne!(
+        negated.literal_expression(),
+        negated.resolution_expression()
+    );
+
+    let (equal, equality) = binary_rhs("value == 4");
+    let equality = NumericLiteralUse::classify(body, equality).expect("equality literal use");
+    assert_eq!(equality.sign(), LiteralSign::Positive);
+    assert!(!equality.supports_deferred_operation(equal));
+    assert!(!supports_deferred_numeric_literal(equal));
+}
+
+#[test]
+fn pattern_literal_facts_validate_ranges_and_preserve_pattern_spans() {
+    const SOURCE: &str = r#"
+fn main(value) {
+    return match value {
+        128i8 => 1,
+        2u8 => 2,
+        _ => 0,
+    };
+}
+"#;
+    let source = SourceId::new(11);
+    let mut graph = ModuleGraph::new();
+    graph.add_source(ModuleSource::new(
+        source,
+        ModulePath::from_qualified("main"),
+        SOURCE,
+    ));
+    graph.resolve_imports();
+    assert_eq!(graph.diagnostics(), &[]);
+    let body = graph.bodies().next().expect("main body");
+    let mut invalid = None;
+    let mut valid = None;
+    for pattern in body.patterns.values() {
+        let HirPatternKind::Literal(Some(HirLiteral::Integer(literal))) = &pattern.kind else {
+            continue;
+        };
+        match literal.text.as_str() {
+            "128" => invalid = Some(pattern.id),
+            "2" => valid = Some(pattern.id),
+            _ => {}
+        }
+    }
+    let invalid = invalid.expect("invalid i8 pattern");
+    let valid = valid.expect("valid u8 pattern");
+    let facts = LiteralFacts::from_module_graph(&graph);
+    assert!(matches!(
+        facts.pattern(invalid),
+        Some(Err(error)) if error.class() == LiteralErrorClass::OutOfRange
+    ));
+    assert_eq!(
+        facts
+            .pattern(valid)
+            .and_then(|result| result.as_ref().ok())
+            .and_then(ResolvedLiteralFact::scalar),
+        Some(ScalarValue::U8(2))
+    );
+
+    let analysis = AnalysisFacts::from_module_graph(&graph);
+    assert_eq!(analysis.pattern(invalid), Some(&TypeFact::Unknown));
+    assert_eq!(analysis.pattern(valid), Some(&TypeFact::U8));
+    assert!(analysis.pattern_literal(invalid).is_some());
+
+    let diagnostics = facts.compiler_diagnostics(&graph);
+    let [diagnostic] = diagnostics.as_slice() else {
+        panic!("expected one invalid pattern literal diagnostic");
+    };
+    assert_eq!(
+        diagnostic.code.as_deref(),
+        Some("compiler::invalid_int_literal")
+    );
+    assert_eq!(
+        diagnostic.message,
+        "invalid integer literal `128i8`: integer literal out of range"
+    );
+    let start = SOURCE.find("128i8").expect("invalid pattern start") as u32;
+    let expected_span = Span::new(source, start, start + "128i8".len() as u32);
+    assert_eq!(diagnostic.span, Some(expected_span));
+    assert_eq!(graph.pattern_span(invalid), Some(expected_span));
 }

@@ -10,10 +10,10 @@ use std::num::{ParseFloatError, ParseIntError};
 
 use vela_common::{Diagnostic, PrimitiveTag, ScalarValue, Span};
 use vela_hir::body::{
-    HirExprKind, HirFloatLiteral, HirFloatSuffix, HirIntRadix, HirIntegerLiteral, HirIntegerSuffix,
-    HirLiteral, HirUnaryOp,
+    HirBinaryOp, HirBody, HirExprKind, HirFloatLiteral, HirFloatSuffix, HirIntRadix,
+    HirIntegerLiteral, HirIntegerSuffix, HirLiteral, HirPatternKind, HirUnaryOp,
 };
-use vela_hir::ids::{HirBodyId, HirExprId};
+use vela_hir::ids::{HirBodyId, HirExprId, HirPatternId};
 use vela_hir::module_graph::ModuleGraph;
 
 /// The primitive-selection policy for an unsuffixed numeric literal.
@@ -38,6 +38,134 @@ pub enum LiteralSign {
 pub enum NumericLiteralKind {
     Integer,
     Float,
+}
+
+/// A source-independent unsuffixed numeric literal used as one expression.
+///
+/// Outer parentheses remain explicit so compile validation can preserve the
+/// established distinction between direct contract literals and inline
+/// dynamic-operator literals. Negation is recognized only when its operand is
+/// the literal itself, matching the executable surface accepted before MIR.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct NumericLiteralUse {
+    expression: HirExprId,
+    resolution_expression: HirExprId,
+    literal_expression: HirExprId,
+    kind: NumericLiteralKind,
+    sign: LiteralSign,
+    parenthesized: bool,
+}
+
+impl NumericLiteralUse {
+    #[must_use]
+    pub fn classify(body: &HirBody, expression: HirExprId) -> Option<Self> {
+        let mut candidate = expression;
+        let mut parenthesized = false;
+        loop {
+            let record = body.expression(candidate)?;
+            match record.kind {
+                HirExprKind::Paren {
+                    expression: Some(inner),
+                } => {
+                    candidate = inner;
+                    parenthesized = true;
+                }
+                _ => break,
+            }
+        }
+
+        let record = body.expression(candidate)?;
+        let (literal_expression, kind, sign) = match &record.kind {
+            HirExprKind::Literal(literal) => (
+                candidate,
+                unsuffixed_numeric_literal_kind(literal)?,
+                LiteralSign::Positive,
+            ),
+            HirExprKind::Unary {
+                op: Some(HirUnaryOp::Negate),
+                operand: Some(operand),
+            } => {
+                let literal = match &body.expression(*operand)?.kind {
+                    HirExprKind::Literal(literal) => literal,
+                    _ => return None,
+                };
+                (
+                    *operand,
+                    unsuffixed_numeric_literal_kind(literal)?,
+                    LiteralSign::Negated,
+                )
+            }
+            _ => return None,
+        };
+        Some(Self {
+            expression,
+            resolution_expression: candidate,
+            literal_expression,
+            kind,
+            sign,
+            parenthesized,
+        })
+    }
+
+    #[must_use]
+    pub const fn expression(self) -> HirExprId {
+        self.expression
+    }
+
+    #[must_use]
+    pub const fn resolution_expression(self) -> HirExprId {
+        self.resolution_expression
+    }
+
+    #[must_use]
+    pub const fn literal_expression(self) -> HirExprId {
+        self.literal_expression
+    }
+
+    #[must_use]
+    pub const fn kind(self) -> NumericLiteralKind {
+        self.kind
+    }
+
+    #[must_use]
+    pub const fn sign(self) -> LiteralSign {
+        self.sign
+    }
+
+    #[must_use]
+    pub const fn is_parenthesized(self) -> bool {
+        self.parenthesized
+    }
+
+    /// Direct expected-contract contextualization historically did not look
+    /// through parentheses. Keep that migration baseline explicit.
+    #[must_use]
+    pub const fn supports_direct_contract_context(self) -> bool {
+        !self.parenthesized
+    }
+
+    /// Dynamic contextual numeric operations accept only positive literals
+    /// and the arithmetic/ordering family supported by the runtime.
+    #[must_use]
+    pub const fn supports_deferred_operation(self, operation: HirBinaryOp) -> bool {
+        matches!(self.sign, LiteralSign::Positive) && supports_deferred_numeric_literal(operation)
+    }
+}
+
+#[must_use]
+pub const fn supports_deferred_numeric_literal(operation: HirBinaryOp) -> bool {
+    matches!(
+        operation,
+        HirBinaryOp::Add
+            | HirBinaryOp::Sub
+            | HirBinaryOp::Mul
+            | HirBinaryOp::Div
+            | HirBinaryOp::Rem
+            | HirBinaryOp::Less
+            | HirBinaryOp::LessEqual
+            | HirBinaryOp::Greater
+            | HirBinaryOp::GreaterEqual
+    )
 }
 
 impl NumericLiteralKind {
@@ -198,6 +326,7 @@ pub type LiteralResult = Result<ResolvedLiteralFact, LiteralError>;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct LiteralFacts {
     facts: BTreeMap<HirExprId, LiteralResult>,
+    patterns: BTreeMap<HirPatternId, LiteralResult>,
     diagnostic_origins: BTreeMap<HirExprId, HirExprId>,
 }
 
@@ -232,6 +361,7 @@ impl LiteralFacts {
         contexts: &BTreeMap<HirExprId, LiteralPrimitiveContext>,
     ) -> Self {
         let mut facts = BTreeMap::new();
+        let mut patterns = BTreeMap::new();
         let mut diagnostic_origins = BTreeMap::new();
         for body in graph
             .bodies()
@@ -280,9 +410,26 @@ impl LiteralFacts {
                     facts.insert(*expression, positive);
                 }
             }
+
+            for pattern in body.patterns.values() {
+                let HirPatternKind::Literal(Some(literal)) = &pattern.kind else {
+                    continue;
+                };
+                if numeric_literal_kind(literal).is_none() {
+                    continue;
+                }
+                let result = resolve_numeric_literal(
+                    literal,
+                    LiteralPrimitiveContext::Default,
+                    LiteralSign::Positive,
+                )
+                .expect("numeric literal kind was checked before resolution");
+                patterns.insert(pattern.id, result);
+            }
         }
         Self {
             facts,
+            patterns,
             diagnostic_origins,
         }
     }
@@ -292,10 +439,21 @@ impl LiteralFacts {
         self.facts.get(&expression)
     }
 
+    #[must_use]
+    pub fn pattern(&self, pattern: HirPatternId) -> Option<&LiteralResult> {
+        self.patterns.get(&pattern)
+    }
+
     pub fn errors(&self) -> impl Iterator<Item = (HirExprId, &LiteralError)> {
         self.facts
             .iter()
             .filter_map(|(expression, fact)| fact.as_ref().err().map(|error| (*expression, error)))
+    }
+
+    pub fn pattern_errors(&self) -> impl Iterator<Item = (HirPatternId, &LiteralError)> {
+        self.patterns
+            .iter()
+            .filter_map(|(pattern, fact)| fact.as_ref().err().map(|error| (*pattern, error)))
     }
 
     /// Projects range/parse failures to the frozen compiler diagnostic
@@ -303,17 +461,26 @@ impl LiteralFacts {
     /// analysis and are intentionally excluded here.
     #[must_use]
     pub fn compiler_diagnostics(&self, graph: &ModuleGraph) -> Vec<Diagnostic> {
-        self.errors()
+        let mut diagnostics = self
+            .errors()
             .filter_map(|(expression, error)| {
-                graph
-                    .expression_span(
-                        self.diagnostic_origins
-                            .get(&expression)
-                            .copied()
-                            .unwrap_or(expression),
-                    )
-                    .and_then(|span| error.to_compiler_diagnostic(span))
+                let span = graph.expression_span(
+                    self.diagnostic_origins
+                        .get(&expression)
+                        .copied()
+                        .unwrap_or(expression),
+                )?;
+                Some((span, error.to_compiler_diagnostic(span)?))
             })
+            .chain(self.pattern_errors().filter_map(|(pattern, error)| {
+                let span = graph.pattern_span(pattern)?;
+                Some((span, error.to_compiler_diagnostic(span)?))
+            }))
+            .collect::<Vec<_>>();
+        diagnostics.sort_by_key(|(span, _)| (span.source, span.start, span.end));
+        diagnostics
+            .into_iter()
+            .map(|(_, diagnostic)| diagnostic)
             .collect()
     }
 }
@@ -494,6 +661,14 @@ fn numeric_literal_kind(literal: &HirLiteral) -> Option<NumericLiteralKind> {
     match literal {
         HirLiteral::Integer(_) => Some(NumericLiteralKind::Integer),
         HirLiteral::Float(_) => Some(NumericLiteralKind::Float),
+        _ => None,
+    }
+}
+
+fn unsuffixed_numeric_literal_kind(literal: &HirLiteral) -> Option<NumericLiteralKind> {
+    match literal {
+        HirLiteral::Integer(value) if value.suffix.is_none() => Some(NumericLiteralKind::Integer),
+        HirLiteral::Float(value) if value.suffix.is_none() => Some(NumericLiteralKind::Float),
         _ => None,
     }
 }
