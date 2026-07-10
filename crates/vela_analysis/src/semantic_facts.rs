@@ -91,6 +91,33 @@ impl HirSemanticFacts {
         Self::from_module_graph_with_body_filter(graph, schema, base, Some(bodies))
     }
 
+    pub(crate) fn totalize_executable_scope(
+        &mut self,
+        graph: &ModuleGraph,
+        bodies: &BTreeSet<HirBodyId>,
+    ) {
+        for body in bodies.iter().filter_map(|body| graph.body(*body)) {
+            for expression in body.expressions.keys() {
+                self.types.entry(*expression).or_insert(TypeFact::Unknown);
+                self.effects
+                    .entry(*expression)
+                    .or_insert_with(RegistryEffectFact::pure);
+            }
+            for local in body
+                .locals
+                .iter()
+                .copied()
+                .chain(body.params.iter().map(|param| param.local))
+                .chain(body.self_binding)
+            {
+                self.locals.entry(local).or_insert(TypeFact::Unknown);
+            }
+            for pattern in body.patterns.keys() {
+                self.patterns.entry(*pattern).or_insert(TypeFact::Unknown);
+            }
+        }
+    }
+
     fn from_module_graph_with_body_filter(
         graph: &ModuleGraph,
         schema: Option<&RegistryFacts>,

@@ -139,7 +139,10 @@ impl AnalysisFacts {
         };
         facts.semantic = match bodies {
             Some(bodies) => {
-                HirSemanticFacts::from_module_graph_for_bodies(graph, schema, &facts, bodies)
+                let mut semantic =
+                    HirSemanticFacts::from_module_graph_for_bodies(graph, schema, &facts, bodies);
+                semantic.totalize_executable_scope(graph, bodies);
+                semantic
             }
             None => HirSemanticFacts::from_module_graph(graph, schema, &facts),
         };

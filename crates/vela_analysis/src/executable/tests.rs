@@ -1,6 +1,6 @@
 use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_def::FunctionId;
-use vela_hir::body::{HirBinaryOp, HirBodyOwner, HirExprKind, HirLiteral, HirPatternKind};
+use vela_hir::body::{HirBinaryOp, HirBody, HirBodyOwner, HirExprKind, HirLiteral, HirPatternKind};
 use vela_hir::ids::HirExprId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath, ModuleSource};
 
@@ -33,7 +33,7 @@ struct Monster { value: String }
 impl Probe for Player { fn target(self) {} }
 impl Probe for Monster { fn target(self) {} }
 
-fn unrelated() { return 99; }
+fn unrelated(hidden) { let outside = hidden; return 99; }
 "#;
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
@@ -73,6 +73,10 @@ fn unrelated() { return 99; }
         })
         .expect("nested lambda body");
     let default = body.params[1].default_body.expect("fallback default body");
+    let default_body = graph.body(default).expect("fallback default HIR body");
+    let unrelated = graph
+        .function_body(declaration_named(&graph, "unrelated"))
+        .expect("unrelated body");
 
     let direct_self = expression_inside(&graph, source, text, "let current = self", "self");
     let current_value = expression_exact(&graph, source, text, "current.value");
@@ -112,6 +116,19 @@ fn unrelated() { return 99; }
     assert!(player_view.contains_body(default));
     assert!(monster_view.contains_body(lambda.id));
     assert!(monster_view.contains_body(default));
+
+    for selected in [body, lambda, default_body] {
+        assert_total_body_facts(&player_view, selected);
+        assert_total_body_facts(&monster_view, selected);
+    }
+    assert_eq!(
+        player_view.local(lambda.params[0].local),
+        Some(&TypeFact::Unknown)
+    );
+    assert_eq!(
+        monster_view.local(lambda.params[0].local),
+        Some(&TypeFact::Unknown)
+    );
 
     assert_eq!(
         player_view.expression(direct_self),
@@ -155,11 +172,22 @@ fn unrelated() { return 99; }
 
     assert!(player_view.expression(unrelated_literal).is_none());
     assert!(monster_view.expression(unrelated_literal).is_none());
+    assert!(player_view.effect(unrelated_literal).is_none());
+    for expression in unrelated.expressions.keys() {
+        assert!(player_view.expression(*expression).is_none());
+    }
+    for local in &unrelated.locals {
+        assert!(player_view.local(*local).is_none());
+    }
+    for pattern in unrelated.patterns.keys() {
+        assert!(player_view.pattern(*pattern).is_none());
+    }
     let editor = AnalysisFacts::from_module_graph(&graph);
     assert_ne!(
         editor.expression(direct_self),
         Some(&TypeFact::record("game::Player"))
     );
+    assert!(editor.local(lambda.params[0].local).is_none());
 
     let root_block = match body.root {
         vela_hir::body::HirBodyRoot::Block(block) => block,
@@ -168,6 +196,34 @@ fn unrelated() { return 99; }
     assert!(player_view.block_control_flow(root_block).is_some());
     let statement = *body.statements.keys().next().expect("inspect statement");
     assert!(player_view.statement_control_flow(statement).is_some());
+}
+
+fn assert_total_body_facts(view: &super::ExecutableAnalysisView<'_>, body: &HirBody) {
+    for expression in body.expressions.keys() {
+        assert!(
+            view.expression(*expression).is_some(),
+            "selected expression {expression:?}"
+        );
+        assert!(
+            view.effect(*expression).is_some(),
+            "selected expression effect {expression:?}"
+        );
+    }
+    for local in body
+        .locals
+        .iter()
+        .copied()
+        .chain(body.params.iter().map(|param| param.local))
+        .chain(body.self_binding)
+    {
+        assert!(view.local(local).is_some(), "selected local {local:?}");
+    }
+    for pattern in body.patterns.keys() {
+        assert!(
+            view.pattern(*pattern).is_some(),
+            "selected pattern {pattern:?}"
+        );
+    }
 }
 
 #[test]
@@ -258,6 +314,73 @@ fn contextual_literals_rebuild_scoped_semantic_operator_facts() {
         rebuilt.operator_target(binary),
         Some(OperatorTargetFact::Dynamic)
     );
+}
+
+#[test]
+fn executable_totalization_preserves_fixed_point_callback_inference() {
+    let source = SourceId::new(74);
+    let text = r#"
+fn main(unresolved) {
+    let values = ["quest"];
+    let mapped = values.map(|value| value.to_upper());
+    let opaque = |item| item;
+    return mapped.join(",");
+}
+"#;
+    let mut graph = ModuleGraph::new();
+    graph.add_source(ModuleSource::new(
+        source,
+        ModulePath::from_qualified("game"),
+        text,
+    ));
+    graph.resolve_imports();
+    assert_eq!(graph.diagnostics(), &[]);
+    let main = declaration_named(&graph, "main");
+    let body = graph.function_body(main).expect("main body");
+    let bindings = graph.bindings_for_body(body.id).expect("main bindings");
+    let [mapped] = bindings.locals_named("mapped") else {
+        panic!("mapped local");
+    };
+    let mut lambdas = graph
+        .bodies()
+        .filter(|candidate| {
+            matches!(candidate.owner, HirBodyOwner::Lambda { parent, .. } if parent == body.id)
+        })
+        .collect::<Vec<_>>();
+    lambdas.sort_by_key(|lambda| lambda.origin.span.start);
+    let [callback, opaque] = lambdas.as_slice() else {
+        panic!("callback and opaque lambdas");
+    };
+    let to_upper = expression_exact(&graph, source, text, "value.to_upper()");
+
+    let function = FunctionId::new(715);
+    let generation = ExecutableAnalysisGeneration::from_module_graph(
+        &graph,
+        [ExecutableAnalysisInput::new(function, body.id)],
+    )
+    .expect("total executable analysis");
+    let view = generation.view(function).expect("main view");
+
+    assert_eq!(view.local(body.params[0].local), Some(&TypeFact::Unknown));
+    assert_eq!(
+        view.local(callback.params[0].local),
+        Some(&TypeFact::STRING)
+    );
+    assert_eq!(view.local(opaque.params[0].local), Some(&TypeFact::Unknown));
+    assert_eq!(
+        view.local(*mapped),
+        Some(&TypeFact::array(TypeFact::STRING))
+    );
+    assert_eq!(
+        view.call_target(to_upper),
+        Some(&CallTargetFact::StdlibMethod {
+            name: "to_upper".to_owned(),
+        })
+    );
+    assert_eq!(view.expression(to_upper), Some(&TypeFact::STRING));
+
+    let editor = AnalysisFacts::from_module_graph(&graph);
+    assert!(editor.local(opaque.params[0].local).is_none());
 }
 
 #[test]
