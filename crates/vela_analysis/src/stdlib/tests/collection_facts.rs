@@ -1,4 +1,5 @@
 use super::*;
+use crate::logical_records::map_entry;
 
 #[test]
 fn array_lambda_methods_expose_element_parameter_facts() {
@@ -60,7 +61,7 @@ fn map_lambda_methods_expose_key_and_value_parameter_facts() {
     let found = stdlib_method_fact(&receiver, "find", None).expect("find fact");
     assert_eq!(
         found.returns,
-        TypeFact::option(TypeFact::record("MapEntry"))
+        TypeFact::option(map_entry(TypeFact::STRING, TypeFact::I64))
     );
     assert_eq!(
         found.lambda.expect("find lambda").params,
@@ -149,13 +150,13 @@ fn scalar_collection_methods_return_non_generic_facts() {
         stdlib_method_fact(&map, "iter", None)
             .expect("map iter fact")
             .returns,
-        TypeFact::iterator(TypeFact::record("MapEntry"))
+        TypeFact::iterator(map_entry(TypeFact::STRING, TypeFact::I64))
     );
     assert_eq!(
         stdlib_method_fact(&map, "entries", None)
             .expect("entries fact")
             .returns,
-        TypeFact::iterator(TypeFact::record("MapEntry"))
+        TypeFact::iterator(map_entry(TypeFact::STRING, TypeFact::I64))
     );
     assert_eq!(
         stdlib_method_fact(&map, "clear", None)

@@ -1,6 +1,6 @@
 use vela_common::SourceId;
 use vela_def::FunctionId;
-use vela_hir::body::{HirBody, HirBodyOwner, HirExprKind};
+use vela_hir::body::{HirBody, HirBodyOwner, HirExpr, HirExprKind};
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId};
 use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
 
@@ -8,6 +8,7 @@ use super::{
     ExecutableAnalysisGeneration, ExecutableAnalysisInput, ExecutableAnalysisView,
     ExecutableReceiverInput,
 };
+use crate::logical_records::{LogicalRecordKind, map_entry};
 use crate::registry::RegistryFacts;
 use crate::semantic_facts::{CallTargetFact, MemberTargetFact, ScriptTypeTargetFact};
 use crate::type_fact::TypeFact;
@@ -224,8 +225,91 @@ fn main() {
     );
     assert_eq!(
         view.expression(find),
-        Some(&TypeFact::option(TypeFact::record("MapEntry")))
+        Some(&TypeFact::option(map_entry(
+            TypeFact::STRING,
+            TypeFact::I64
+        )))
     );
+}
+
+#[test]
+fn logical_map_entries_survive_option_iterator_array_local_and_callback_flow() {
+    let (graph, main) = graph(
+        95,
+        r#"
+fn main() {
+    let rewards = {"gold": 5, "gem": 6};
+    let found = rewards.find(|value| value == 6);
+    let entry = found?;
+    let entries = rewards.entries().collect_array();
+    let first = entries[0];
+    let mapped = rewards.entries().map(|entry| entry.key.len() + entry.value).collect_array();
+    let rebuilt = rewards.iter().collect_map();
+    return entry.value + first.value + mapped[0] + rebuilt.len();
+}
+"#,
+    );
+    let body = graph.function_body(main).expect("main body");
+    let lambdas = child_lambdas(&graph, body.id);
+    assert_eq!(lambdas.len(), 2);
+
+    let entry = map_entry(TypeFact::STRING, TypeFact::I64);
+    let find = method_calls(body, "find")[0];
+    let try_entry = body
+        .expressions
+        .values()
+        .find(|expression| matches!(expression.kind, HirExprKind::Try { .. }))
+        .expect("Map.find try expression")
+        .id;
+    let collect_entries = method_calls(body, "collect_array")[0];
+    let collect_map = method_calls(body, "collect_map")[0];
+    let entry_fields = fields_named(body, "value");
+    let callback_key = fields_named(lambdas[1], "key")[0];
+    let callback_value = fields_named(lambdas[1], "value")[0];
+
+    let function = FunctionId::new(9_501);
+    let generation = ExecutableAnalysisGeneration::from_module_graph(
+        &graph,
+        [ExecutableAnalysisInput::new(function, body.id)],
+    )
+    .expect("logical MapEntry flow analysis");
+    let view = generation.view(function).expect("main view");
+
+    assert_eq!(
+        view.expression(find),
+        Some(&TypeFact::option(entry.clone()))
+    );
+    assert_eq!(view.expression(try_entry), Some(&entry));
+    assert_eq!(
+        view.expression(collect_entries),
+        Some(&TypeFact::array(entry.clone()))
+    );
+    assert_eq!(view.local(lambdas[1].params[0].local), Some(&entry));
+    assert_eq!(
+        view.expression(collect_map),
+        Some(&TypeFact::map(TypeFact::STRING, TypeFact::I64))
+    );
+
+    for field in entry_fields
+        .into_iter()
+        .chain([callback_key, callback_value])
+    {
+        let HirExprKind::Field(member) = &body_or_lambda_expression(body, &lambdas, field).kind
+        else {
+            panic!("member expression");
+        };
+        assert_eq!(view.expression(member.receiver), Some(&entry));
+        let record = entry.as_logical_record().expect("logical MapEntry fact");
+        assert_eq!(record.kind(), LogicalRecordKind::MapEntry);
+        assert_eq!(
+            view.member_target(field),
+            Some(&MemberTargetFact::LogicalRecordField(
+                record
+                    .field_target(&member.name)
+                    .expect("stable MapEntry field target")
+            ))
+        );
+    }
 }
 
 #[test]
@@ -362,6 +446,16 @@ fn fields_named(body: &HirBody, name: &str) -> Vec<HirExprId> {
             .map(|value| value.origin.span.start)
     });
     fields
+}
+
+fn body_or_lambda_expression<'a>(
+    body: &'a HirBody,
+    lambdas: &[&'a HirBody],
+    expression: HirExprId,
+) -> &'a HirExpr {
+    body.expression(expression)
+        .or_else(|| lambdas.iter().find_map(|body| body.expression(expression)))
+        .expect("expression in body or child lambda")
 }
 
 fn assert_stdlib_call(view: &ExecutableAnalysisView<'_>, call: HirExprId, method: &str) {

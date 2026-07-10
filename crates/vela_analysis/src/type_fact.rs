@@ -2,6 +2,8 @@ use std::fmt;
 
 use vela_common::PrimitiveTag;
 
+use crate::logical_records::LogicalRecordFact;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TypeFact {
     Unknown,
@@ -50,6 +52,7 @@ pub enum TypeFact {
     Record {
         name: String,
     },
+    LogicalRecord(LogicalRecordFact),
     Enum {
         name: String,
         variant: Option<String>,
@@ -158,6 +161,18 @@ impl TypeFact {
 
     pub fn record(name: impl Into<String>) -> Self {
         Self::Record { name: name.into() }
+    }
+
+    pub fn logical_record(record: LogicalRecordFact) -> Self {
+        Self::LogicalRecord(record)
+    }
+
+    #[must_use]
+    pub const fn as_logical_record(&self) -> Option<&LogicalRecordFact> {
+        match self {
+            Self::LogicalRecord(record) => Some(record),
+            _ => None,
+        }
     }
 
     pub fn enum_type(name: impl Into<String>, variant: Option<impl Into<String>>) -> Self {
@@ -274,6 +289,7 @@ impl TypeFact {
                 format!("Function({params}) -> {}", returns.display_name())
             }
             Self::Closure => "Closure".to_owned(),
+            Self::LogicalRecord(record) => record.runtime_name().to_owned(),
             Self::Record { name }
             | Self::Host { name }
             | Self::Trait { name }

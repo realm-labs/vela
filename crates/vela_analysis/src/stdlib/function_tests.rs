@@ -1,4 +1,5 @@
 use super::*;
+use crate::logical_records::{LogicalRecordKind, fixed_record};
 
 #[test]
 fn math_set_and_time_functions_expose_return_facts() {
@@ -312,22 +313,22 @@ fn function_completion_facts_enumerate_global_api_surface() {
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "reflect::types"
-            && fact.returns == TypeFact::array(TypeFact::record("ReflectType"))
+            && fact.returns == TypeFact::array(logical(LogicalRecordKind::ReflectType))
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "reflect::fields"
-            && fact.returns == TypeFact::array(TypeFact::record("ReflectField"))
+            && fact.returns == TypeFact::array(logical(LogicalRecordKind::ReflectField))
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "reflect::functions"
-            && fact.returns == TypeFact::array(TypeFact::record("ReflectFunction"))
+            && fact.returns == TypeFact::array(logical(LogicalRecordKind::ReflectFunction))
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "reflect::exports"
             && fact.params
                 == vec![TypeFact::union([
                     TypeFact::STRING,
-                    TypeFact::record("ReflectModule"),
+                    logical(LogicalRecordKind::ReflectModule),
                 ])]
             && fact.returns == TypeFact::array(TypeFact::STRING)
     }));
@@ -338,7 +339,7 @@ fn function_completion_facts_enumerate_global_api_surface() {
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "reflect::call"
-            && fact.params == vec![TypeFact::record("ReflectFunction")]
+            && fact.params == vec![logical(LogicalRecordKind::ReflectFunction)]
             && fact.returns == TypeFact::Any
     }));
     assert!(facts.iter().any(|fact| {
@@ -346,8 +347,12 @@ fn function_completion_facts_enumerate_global_api_surface() {
             && fact.params
                 == vec![
                     TypeFact::Any,
-                    TypeFact::union([TypeFact::STRING, TypeFact::record("ReflectTrait")]),
+                    TypeFact::union([TypeFact::STRING, logical(LogicalRecordKind::ReflectTrait)]),
                 ]
             && fact.returns == TypeFact::BOOL
     }));
+}
+
+fn logical(kind: LogicalRecordKind) -> TypeFact {
+    fixed_record(kind)
 }

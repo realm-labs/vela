@@ -165,6 +165,12 @@ pub(super) fn field_fact(
     {
         return elements.get(index).cloned().unwrap_or(TypeFact::Unknown);
     }
+    if let TypeFact::LogicalRecord(record) = receiver {
+        return record
+            .field(name)
+            .map(|field| field.fact().clone())
+            .unwrap_or(TypeFact::Unknown);
+    }
     if let Some(field) = source.and_then(|source| source_field_fact(graph, source, name)) {
         return field.fact;
     }
@@ -258,6 +264,7 @@ pub(super) fn type_owner(fact: &TypeFact) -> Option<&str> {
         | TypeFact::Enum { name, .. }
         | TypeFact::Host { name }
         | TypeFact::Trait { name } => Some(name),
+        TypeFact::LogicalRecord(record) => Some(record.runtime_name()),
         _ => None,
     }
 }

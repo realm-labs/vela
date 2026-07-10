@@ -8,6 +8,7 @@ pub mod facts;
 pub mod hints;
 pub mod hover;
 pub mod literals;
+pub mod logical_records;
 pub mod registry;
 pub mod semantic_facts;
 pub mod stdlib;

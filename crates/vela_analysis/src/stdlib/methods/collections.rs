@@ -1,4 +1,5 @@
 use super::*;
+use crate::logical_records::{LogicalRecordKind, map_entry};
 
 pub(super) fn array_method_fact(
     element: TypeFact,
@@ -193,7 +194,7 @@ pub(super) fn map_method_fact(
         "entries" => Some(StdlibMethodFact::new(
             receiver,
             "entries",
-            TypeFact::iterator(TypeFact::record("MapEntry")),
+            TypeFact::iterator(map_entry(key.clone(), value.clone())),
         )),
         "merge" => Some(
             StdlibMethodFact::new(receiver, "merge", TypeFact::map(key.clone(), value.clone()))
@@ -226,7 +227,7 @@ pub(super) fn map_method_fact(
             StdlibMethodFact::new(
                 receiver,
                 "find",
-                TypeFact::option(TypeFact::record("MapEntry")),
+                TypeFact::option(map_entry(key.clone(), value.clone())),
             )
             .with_lambda(
                 map_lambda_params(key.clone(), value.clone(), lambda_param_count),
@@ -254,7 +255,7 @@ pub(super) fn map_method_fact(
         "iter" => Some(StdlibMethodFact::new(
             receiver,
             "iter",
-            TypeFact::iterator(TypeFact::record("MapEntry")),
+            TypeFact::iterator(map_entry(key, value)),
         )),
         _ => None,
     }
@@ -600,11 +601,19 @@ pub(super) fn iterator_method_fact(
             "collect_set",
             TypeFact::set(item),
         )),
-        "collect_map" => Some(StdlibMethodFact::new(
-            receiver,
-            "collect_map",
-            TypeFact::map(TypeFact::Any, TypeFact::Any),
-        )),
+        "collect_map" => {
+            let returns = item
+                .as_logical_record()
+                .filter(|record| record.kind() == LogicalRecordKind::MapEntry)
+                .and_then(|record| {
+                    Some(TypeFact::map(
+                        record.field("key")?.fact().clone(),
+                        record.field("value")?.fact().clone(),
+                    ))
+                })
+                .unwrap_or_else(|| TypeFact::map(TypeFact::Any, TypeFact::Any));
+            Some(StdlibMethodFact::new(receiver, "collect_map", returns))
+        }
         _ => None,
     }
 }

@@ -4,6 +4,7 @@ use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
 
 use crate::hints::{schema_declaration_from_hint_in_module, type_fact_from_hint_in_module};
+use crate::logical_records::LogicalRecordFieldTargetFact;
 use crate::registry::{
     RegistryFieldTargetFact, RegistryIndexCapabilityFact, RegistryTypeTargetFact,
 };
@@ -69,6 +70,7 @@ pub enum MemberTargetFact {
         name: String,
     },
     HostField(RegistryFieldTargetFact),
+    LogicalRecordField(LogicalRecordFieldTargetFact),
     RegistryField {
         owner: String,
         name: String,

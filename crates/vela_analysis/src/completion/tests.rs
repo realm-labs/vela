@@ -127,7 +127,10 @@ fn receiver_completions_include_stdlib_collection_and_string_methods() {
                 vec![TypeFact::STRING, TypeFact::I64],
                 TypeFact::BOOL,
             )],
-            TypeFact::option(TypeFact::record("MapEntry")),
+            TypeFact::option(crate::logical_records::map_entry(
+                TypeFact::STRING,
+                TypeFact::I64,
+            )),
         ),
     )));
     assert!(map.contains(&CompletionItem::new(

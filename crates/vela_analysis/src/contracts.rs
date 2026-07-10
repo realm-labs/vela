@@ -640,6 +640,7 @@ fn contract_type_display(contract: &TypeFact) -> String {
         TypeFact::ResultErr { err } => format!("Result::Err<{}>", contract_type_display(err)),
         TypeFact::Function { .. } => "Function".to_owned(),
         TypeFact::Closure => "Closure".to_owned(),
+        TypeFact::LogicalRecord(record) => record.runtime_name().to_owned(),
         TypeFact::Record { name }
         | TypeFact::Host { name }
         | TypeFact::Trait { name }

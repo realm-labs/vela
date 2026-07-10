@@ -2,11 +2,13 @@ use std::collections::{BTreeMap, BTreeSet};
 
 mod callbacks;
 mod control_flow;
+mod logical_records;
 mod lookups;
 mod script_types;
 mod targets;
 
 use control_flow::{block_flow, fallthrough_flow, if_flow, match_flow, statement_flow};
+use logical_records::logical_member_target;
 use lookups::{
     binary_fact, call_return_fact, field_fact, index_fact, literal_fact, registry_method_effect,
     registry_method_fact, resolved_literal_type, schema_knows_owner, source_method,
@@ -443,7 +445,9 @@ impl HirSemanticFacts {
                 let source_receiver = self.script_types.get(&field.receiver);
                 let source_field = source_receiver
                     .and_then(|receiver| source_field_fact(graph, receiver, &field.name));
-                let target = if let Some(field) = source_field {
+                let target = if let Some(target) = logical_member_target(&receiver, &field.name) {
+                    target
+                } else if let Some(field) = source_field {
                     MemberTargetFact::ScriptField {
                         owner: field.owner,
                         variant: field.variant,

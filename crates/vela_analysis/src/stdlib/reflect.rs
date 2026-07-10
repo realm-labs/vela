@@ -1,3 +1,4 @@
+use crate::logical_records::{LogicalRecordKind, fixed_record};
 use crate::stdlib::StdlibFunctionFact;
 use crate::type_fact::TypeFact;
 
@@ -14,11 +15,15 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
             vec![TypeFact::Any],
             maybe_reflect_type(),
         ),
-        fact("reflect::types", Vec::new(), array(record("ReflectType"))),
+        fact(
+            "reflect::types",
+            Vec::new(),
+            array(record(LogicalRecordKind::ReflectType)),
+        ),
         fact(
             "reflect::type_info",
             vec![TypeFact::STRING],
-            record("ReflectType"),
+            record(LogicalRecordKind::ReflectType),
         ),
         fact("reflect::has_type", vec![TypeFact::STRING], TypeFact::BOOL),
         fact("reflect::name", vec![TypeFact::Any], TypeFact::STRING),
@@ -52,24 +57,28 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
         fact(
             "reflect::effects",
             vec![TypeFact::Any],
-            record("ReflectEffectSet"),
+            record(LogicalRecordKind::ReflectEffectSet),
         ),
         fact(
             "reflect::params",
             vec![TypeFact::Any],
-            array(record("ReflectParam")),
+            array(record(LogicalRecordKind::ReflectParam)),
         ),
         fact("reflect::returns", vec![TypeFact::Any], maybe_string()),
-        fact("reflect::fields", Vec::new(), array(record("ReflectField"))),
+        fact(
+            "reflect::fields",
+            Vec::new(),
+            array(record(LogicalRecordKind::ReflectField)),
+        ),
         fact(
             "reflect::fields",
             vec![TypeFact::Any],
-            array(record("ReflectField")),
+            array(record(LogicalRecordKind::ReflectField)),
         ),
         fact(
             "reflect::field",
             vec![TypeFact::Any, TypeFact::STRING],
-            record("ReflectField"),
+            record(LogicalRecordKind::ReflectField),
         ),
         fact(
             "reflect::has_field",
@@ -79,7 +88,7 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
         fact(
             "reflect::module",
             vec![TypeFact::STRING],
-            record("ReflectModule"),
+            record(LogicalRecordKind::ReflectModule),
         ),
         fact(
             "reflect::has_module",
@@ -89,7 +98,7 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
         fact(
             "reflect::modules",
             Vec::new(),
-            array(record("ReflectModule")),
+            array(record(LogicalRecordKind::ReflectModule)),
         ),
         fact(
             "reflect::exports",
@@ -99,7 +108,7 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
         fact(
             "reflect::function",
             vec![TypeFact::STRING],
-            record("ReflectFunction"),
+            record(LogicalRecordKind::ReflectFunction),
         ),
         fact(
             "reflect::has_function",
@@ -109,54 +118,58 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
         fact(
             "reflect::functions",
             Vec::new(),
-            array(record("ReflectFunction")),
+            array(record(LogicalRecordKind::ReflectFunction)),
         ),
         fact(
             "reflect::methods",
             Vec::new(),
-            array(record("ReflectMethod")),
+            array(record(LogicalRecordKind::ReflectMethod)),
         ),
         fact(
             "reflect::methods",
             vec![TypeFact::Any],
-            array(record("ReflectMethod")),
+            array(record(LogicalRecordKind::ReflectMethod)),
         ),
         fact(
             "reflect::method",
             vec![TypeFact::Any, TypeFact::STRING],
-            record("ReflectMethod"),
+            record(LogicalRecordKind::ReflectMethod),
         ),
         fact(
             "reflect::has_method",
             vec![TypeFact::Any, TypeFact::STRING],
             TypeFact::BOOL,
         ),
-        fact("reflect::traits", Vec::new(), array(record("ReflectTrait"))),
+        fact(
+            "reflect::traits",
+            Vec::new(),
+            array(record(LogicalRecordKind::ReflectTrait)),
+        ),
         fact(
             "reflect::traits",
             vec![TypeFact::Any],
-            array(record("ReflectTrait")),
+            array(record(LogicalRecordKind::ReflectTrait)),
         ),
         fact(
             "reflect::trait_info",
             vec![TypeFact::STRING],
-            record("ReflectTrait"),
+            record(LogicalRecordKind::ReflectTrait),
         ),
         fact("reflect::has_trait", vec![TypeFact::STRING], TypeFact::BOOL),
         fact(
             "reflect::variants",
             Vec::new(),
-            array(record("ReflectVariant")),
+            array(record(LogicalRecordKind::ReflectVariant)),
         ),
         fact(
             "reflect::variants",
             vec![TypeFact::Any],
-            array(record("ReflectVariant")),
+            array(record(LogicalRecordKind::ReflectVariant)),
         ),
         fact(
             "reflect::variant_info",
             vec![TypeFact::Any, TypeFact::STRING],
-            record("ReflectVariant"),
+            record(LogicalRecordKind::ReflectVariant),
         ),
         fact(
             "reflect::has_variant",
@@ -186,7 +199,7 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
         ),
         fact(
             "reflect::call",
-            vec![record("ReflectFunction")],
+            vec![record(LogicalRecordKind::ReflectFunction)],
             TypeFact::Any,
         ),
         fact(
@@ -204,9 +217,9 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
         {
             match name {
                 "reflect::permissions" => array(TypeFact::STRING),
-                "reflect::types" => array(record("ReflectType")),
-                "reflect::modules" => array(record("ReflectModule")),
-                "reflect::functions" => array(record("ReflectFunction")),
+                "reflect::types" => array(record(LogicalRecordKind::ReflectType)),
+                "reflect::modules" => array(record(LogicalRecordKind::ReflectModule)),
+                "reflect::functions" => array(record(LogicalRecordKind::ReflectFunction)),
                 _ => unreachable!("name matched above"),
             }
         }
@@ -220,7 +233,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             TypeFact::BOOL
         }
         "reflect::type_of" if args.len() == 1 => maybe_reflect_type(),
-        "reflect::type_info" if args.len() == 1 => record("ReflectType"),
+        "reflect::type_info" if args.len() == 1 => record(LogicalRecordKind::ReflectType),
         "reflect::name" | "reflect::kind" | "reflect::variant" if args.len() == 1 => {
             TypeFact::STRING
         }
@@ -232,37 +245,37 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
         "reflect::docs" if args.len() == 1 => maybe_string(),
         "reflect::origin" if args.len() == 1 => maybe_string(),
         "reflect::source_span" if args.len() == 1 => maybe_source_span(),
-        "reflect::access" if args.len() == 1 => access(),
+        "reflect::access" if args.len() == 1 => access_for(&args[0]),
         "reflect::required_permissions" if args.len() == 1 => array(TypeFact::STRING),
-        "reflect::effects" if args.len() == 1 => record("ReflectEffectSet"),
-        "reflect::params" if args.len() == 1 => array(record("ReflectParam")),
+        "reflect::effects" if args.len() == 1 => record(LogicalRecordKind::ReflectEffectSet),
+        "reflect::params" if args.len() == 1 => array(record(LogicalRecordKind::ReflectParam)),
         "reflect::returns" if args.len() == 1 => maybe_string(),
         "reflect::fields" => match args.len() {
-            0 => array(record("ReflectField")),
-            1 => array(record("ReflectField")),
+            0 => array(record(LogicalRecordKind::ReflectField)),
+            1 => array(record(LogicalRecordKind::ReflectField)),
             _ => return None,
         },
-        "reflect::field" if args.len() == 2 => record("ReflectField"),
+        "reflect::field" if args.len() == 2 => record(LogicalRecordKind::ReflectField),
         "reflect::has_field" if args.len() == 2 => TypeFact::BOOL,
-        "reflect::module" if args.len() == 1 => record("ReflectModule"),
+        "reflect::module" if args.len() == 1 => record(LogicalRecordKind::ReflectModule),
         "reflect::exports" if args.len() == 1 => array(TypeFact::STRING),
-        "reflect::function" if args.len() == 1 => record("ReflectFunction"),
+        "reflect::function" if args.len() == 1 => record(LogicalRecordKind::ReflectFunction),
         "reflect::methods" => match args.len() {
-            0 | 1 => array(record("ReflectMethod")),
+            0 | 1 => array(record(LogicalRecordKind::ReflectMethod)),
             _ => return None,
         },
-        "reflect::method" if args.len() == 2 => record("ReflectMethod"),
+        "reflect::method" if args.len() == 2 => record(LogicalRecordKind::ReflectMethod),
         "reflect::has_method" if args.len() == 2 => TypeFact::BOOL,
         "reflect::traits" => match args.len() {
-            0 | 1 => array(record("ReflectTrait")),
+            0 | 1 => array(record(LogicalRecordKind::ReflectTrait)),
             _ => return None,
         },
-        "reflect::trait_info" if args.len() == 1 => record("ReflectTrait"),
+        "reflect::trait_info" if args.len() == 1 => record(LogicalRecordKind::ReflectTrait),
         "reflect::variants" => match args.len() {
-            0 | 1 => array(record("ReflectVariant")),
+            0 | 1 => array(record(LogicalRecordKind::ReflectVariant)),
             _ => return None,
         },
-        "reflect::variant_info" if args.len() == 2 => record("ReflectVariant"),
+        "reflect::variant_info" if args.len() == 2 => record(LogicalRecordKind::ReflectVariant),
         "reflect::has_variant" | "reflect::variant_is" if args.len() == 2 => TypeFact::BOOL,
         "reflect::get" if args.len() == 2 => TypeFact::Any,
         "reflect::set" if args.len() == 3 => TypeFact::Any,
@@ -288,15 +301,32 @@ fn attrs() -> TypeFact {
 }
 
 fn trait_target() -> TypeFact {
-    TypeFact::union([TypeFact::STRING, record("ReflectTrait")])
+    TypeFact::union([TypeFact::STRING, record(LogicalRecordKind::ReflectTrait)])
 }
 
 fn access() -> TypeFact {
     TypeFact::union([
-        record("ReflectFieldAccess"),
-        record("ReflectMethodAccess"),
-        record("ReflectFunctionAccess"),
+        record(LogicalRecordKind::ReflectFieldAccess),
+        record(LogicalRecordKind::ReflectMethodAccess),
+        record(LogicalRecordKind::ReflectFunctionAccess),
     ])
+}
+
+fn access_for(target: &TypeFact) -> TypeFact {
+    let TypeFact::LogicalRecord(record) = target else {
+        return access();
+    };
+    match record.kind() {
+        LogicalRecordKind::ReflectField => fixed_record(LogicalRecordKind::ReflectFieldAccess),
+        LogicalRecordKind::ReflectMethod => fixed_record(LogicalRecordKind::ReflectMethodAccess),
+        LogicalRecordKind::ReflectFunction => {
+            fixed_record(LogicalRecordKind::ReflectFunctionAccess)
+        }
+        LogicalRecordKind::ReflectFieldAccess
+        | LogicalRecordKind::ReflectMethodAccess
+        | LogicalRecordKind::ReflectFunctionAccess => target.clone(),
+        _ => access(),
+    }
 }
 
 fn maybe_string() -> TypeFact {
@@ -304,26 +334,27 @@ fn maybe_string() -> TypeFact {
 }
 
 fn maybe_reflect_type() -> TypeFact {
-    TypeFact::option(record("ReflectType"))
+    TypeFact::option(record(LogicalRecordKind::ReflectType))
 }
 
 fn maybe_source_span() -> TypeFact {
-    TypeFact::option(record("ReflectSourceSpan"))
+    TypeFact::option(record(LogicalRecordKind::ReflectSourceSpan))
 }
 
 fn module_target() -> TypeFact {
-    TypeFact::union([TypeFact::STRING, record("ReflectModule")])
+    TypeFact::union([TypeFact::STRING, record(LogicalRecordKind::ReflectModule)])
 }
 
 fn is_reflect_function_call(args: &[TypeFact]) -> bool {
     matches!(
         args.first(),
-        Some(TypeFact::Record { name }) if name == "ReflectFunction"
+        Some(TypeFact::LogicalRecord(record))
+            if record.kind() == LogicalRecordKind::ReflectFunction
     )
 }
 
-fn record(name: &'static str) -> TypeFact {
-    TypeFact::record(name)
+fn record(kind: LogicalRecordKind) -> TypeFact {
+    fixed_record(kind)
 }
 
 fn canonical_name(name: &str) -> Option<&'static str> {
