@@ -381,7 +381,15 @@ fn compiled_source_removes_host_path_through_host_access() {
         .field(inventory)
         .field(items)
         .key("gold");
-    let program = compile_host_program_source(
+    let options = CompilerOptions::new().with_host_index_capability(
+        "Items",
+        HostIndexCapabilityInfo {
+            removable: true,
+            key_type: Some("String".into()),
+            ..HostIndexCapabilityInfo::default()
+        },
+    );
+    let program = compile_host_program_source_with_options(
         SourceId::new(1),
         r#"
 fn main(player: Player) {
@@ -390,14 +398,16 @@ fn main(player: Player) {
     return 1;
 }
 "#,
+        &options,
         host_definition_registry(
             &[
                 ("Player", host_ref.type_id),
                 ("Inventory", HostTypeId::new(8)),
+                ("Items", HostTypeId::new(9)),
             ],
             &[
                 TestHostField::new("Player", "inventory", inventory).type_hint("Inventory"),
-                TestHostField::new("Inventory", "items", items),
+                TestHostField::new("Inventory", "items", items).type_hint("Items"),
             ],
             &[],
         ),

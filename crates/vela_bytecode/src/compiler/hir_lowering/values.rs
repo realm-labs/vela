@@ -43,80 +43,289 @@ impl Compiler<'_, '_> {
             .hir_constructor_path(expression)
             .ok_or_else(|| hir_unsupported("record constructor", span))?
             .to_vec();
-        let field_uses = hir_fields
-            .iter()
-            .map(|field| ConstructorFieldUse {
-                name: field.name.clone(),
-                span: field.name_origin.span,
-            })
-            .collect::<Vec<_>>();
-        let (enum_constructor, record_type_name, shape) = if let Some((enum_name, variant)) =
-            enum_variant_path(&path)
-        {
-            let resolved = self.type_symbol_for_expression(expression);
-            let enum_name = resolved.clone().unwrap_or(enum_name);
-            if resolved.is_some() && !self.enum_constructor_variant_exists(&enum_name, &variant) {
-                return Err(self.constructor_diagnostics_error(vec![
-                    unknown_enum_variant_diagnostic(&enum_name, &variant, span),
-                ]));
-            }
-            let shape = self.enum_constructor_shape(&enum_name, &variant);
-            self.reject_constructor_diagnostics(record_constructor_field_diagnostics(
-                &format!("{enum_name}::{variant}"),
-                shape.as_ref(),
-                &field_uses,
-                span,
-            ))?;
-            (Some((enum_name, variant)), None, shape)
-        } else {
-            let type_name = self
-                .type_symbol_for_expression(expression)
-                .unwrap_or_else(|| path.join("::"));
-            let shape = self.record_constructor_shape(&type_name);
-            self.reject_constructor_diagnostics(record_constructor_field_diagnostics(
-                &type_name,
-                shape.as_ref(),
-                &field_uses,
-                span,
-            ))?;
-            (None, Some(type_name), shape)
-        };
-
-        let mut fields = Vec::with_capacity(hir_fields.len());
-        let mut explicit_names = BTreeSet::new();
-        for field in hir_fields {
-            let value = field
-                .value
-                .ok_or_else(|| hir_unsupported("record field", field.name_origin.span))?;
-            let expected = shape
-                .as_ref()
-                .and_then(|shape| shape.field_value_type(&field.name));
-            let value = self.compile_hir_constructor_field_value(value, expected, &field.name)?;
-            explicit_names.insert(field.name.clone());
-            fields.push((field.name.clone(), value));
-        }
-        self.compile_schema_default_fields(
-            &mut fields,
-            &explicit_names,
-            schema_default_fields(shape.as_ref()),
-            shape.as_ref(),
-        )?;
+        let target = self.placed_constructor_target(expression)?;
         let dst = self.alloc_register()?;
-        if let Some((enum_name, variant)) = enum_constructor {
-            self.emit(UnlinkedInstructionKind::MakeEnum {
-                dst,
-                enum_name,
-                variant,
+        match target {
+            vela_mir::CompileConstructorTarget::Record {
+                type_id,
+                evaluation_order,
                 fields,
-            });
-        } else {
-            self.emit(UnlinkedInstructionKind::MakeRecord {
-                dst,
-                type_name: record_type_name.expect("record constructor has a type"),
+                ..
+            } => {
+                let type_name = self
+                    .type_symbol_for_expression(expression)
+                    .unwrap_or_else(|| path.join("::"));
+                self.require_constructor_type_name(expression, type_id, &type_name)?;
+                let shape = self.record_constructor_shape(&type_name);
+                let fields = self.compile_placed_constructor_fields(
+                    expression,
+                    hir_fields,
+                    &evaluation_order,
+                    &fields,
+                    shape.as_ref(),
+                )?;
+                self.emit(UnlinkedInstructionKind::MakeRecord {
+                    dst,
+                    type_name,
+                    fields,
+                });
+            }
+            vela_mir::CompileConstructorTarget::Variant {
+                type_id,
+                variant: variant_id,
+                evaluation_order,
                 fields,
-            });
+            } => {
+                let Some((fallback_owner, fallback_variant)) = enum_variant_path(&path) else {
+                    return Err(self.compile_target_input_error(
+                        expression,
+                        "variant placement disagrees with record-constructor HIR path",
+                    ));
+                };
+                let enum_name = self
+                    .type_symbol_for_expression(expression)
+                    .unwrap_or(fallback_owner);
+                self.require_constructor_type_name(expression, type_id, &enum_name)?;
+                let (variant_owner, variant_name) = self
+                    .facts
+                    .semantic_input
+                    .targets()
+                    .variant_descriptor(variant_id)
+                    .map(|descriptor| (descriptor.owner, descriptor.name.clone()))
+                    .ok_or_else(|| {
+                        self.compile_target_input_error(
+                            expression,
+                            "variant constructor descriptor is missing",
+                        )
+                    })?;
+                if variant_owner != type_id || variant_name != fallback_variant {
+                    return Err(self.compile_target_input_error(
+                        expression,
+                        "variant placement disagrees with the HIR constructor path",
+                    ));
+                }
+                let shape = self.enum_constructor_shape(&enum_name, &variant_name);
+                let fields = self.compile_placed_constructor_fields(
+                    expression,
+                    hir_fields,
+                    &evaluation_order,
+                    &fields,
+                    shape.as_ref(),
+                )?;
+                self.emit(UnlinkedInstructionKind::MakeEnum {
+                    dst,
+                    enum_name,
+                    variant: variant_name,
+                    fields,
+                });
+            }
+            vela_mir::CompileConstructorTarget::DynamicRecord { type_name, fields } => {
+                let fields =
+                    self.compile_dynamic_constructor_fields(expression, hir_fields, fields)?;
+                self.emit(UnlinkedInstructionKind::MakeRecord {
+                    dst,
+                    type_name,
+                    fields,
+                });
+            }
+            vela_mir::CompileConstructorTarget::DynamicVariant {
+                owner_name,
+                variant_name,
+                fields,
+            } => {
+                let fields =
+                    self.compile_dynamic_constructor_fields(expression, hir_fields, fields)?;
+                self.emit(UnlinkedInstructionKind::MakeEnum {
+                    dst,
+                    enum_name: owner_name,
+                    variant: variant_name,
+                    fields,
+                });
+            }
         }
         Ok(dst)
+    }
+
+    pub(in crate::compiler) fn require_constructor_type_name(
+        &self,
+        expression: HirExprId,
+        type_id: vela_def::TypeId,
+        name: &str,
+    ) -> CompileResult<()> {
+        let source_matches = self.facts.type_symbols.iter().any(|(declaration, symbol)| {
+            symbol == name
+                && self
+                    .facts
+                    .semantic_input
+                    .targets()
+                    .type_for_declaration(*declaration)
+                    == Some(type_id)
+        });
+        let descriptor_matches = self
+            .facts
+            .semantic_input
+            .targets()
+            .type_descriptor(type_id)
+            .is_some_and(|descriptor| {
+                descriptor.canonical_name == name
+                    || descriptor.canonical_name.ends_with(&format!("::{name}"))
+            });
+        if source_matches || descriptor_matches {
+            Ok(())
+        } else {
+            Err(self.compile_target_input_error(
+                expression,
+                format!("constructor type #{type_id:?} disagrees with HIR name `{name}`"),
+            ))
+        }
+    }
+
+    fn compile_placed_constructor_fields(
+        &mut self,
+        expression: HirExprId,
+        hir_fields: &[vela_hir::body::HirRecordField],
+        evaluation_order: &[HirExprId],
+        fields: &[vela_mir::CompileConstructorField],
+        shape: Option<&crate::compiler::schema_defaults::ConstructorShape>,
+    ) -> CompileResult<Vec<(String, Register)>> {
+        if evaluation_order.len() != hir_fields.len() {
+            return Err(self.compile_target_input_error(
+                expression,
+                "constructor evaluation order does not cover every HIR field",
+            ));
+        }
+        for (source, field) in evaluation_order.iter().zip(hir_fields) {
+            if field.value != Some(*source) {
+                return Err(self.compile_target_input_error(
+                    expression,
+                    "constructor evaluation order disagrees with HIR source fields",
+                ));
+            }
+        }
+
+        let placed = fields
+            .iter()
+            .enumerate()
+            .map(|(index, field)| {
+                if usize::try_from(field.parameter) != Ok(index) {
+                    return Err(self.compile_target_input_error(
+                        expression,
+                        "constructor fields are not in contiguous target order",
+                    ));
+                }
+                let name = self
+                    .facts
+                    .semantic_input
+                    .targets()
+                    .field_descriptor(field.field)
+                    .map(|descriptor| descriptor.name.clone())
+                    .ok_or_else(|| {
+                        self.compile_target_input_error(
+                            expression,
+                            "constructor field descriptor is missing",
+                        )
+                    })?;
+                Ok((name, field.value))
+            })
+            .collect::<CompileResult<Vec<_>>>()?;
+
+        let mut source_registers = vec![None; evaluation_order.len()];
+        for (source_index, source) in evaluation_order.iter().copied().enumerate() {
+            let (field_name, value) = placed
+                .iter()
+                .find_map(|(name, value)| match value {
+                    vela_mir::CompileConstructorValue::Explicit {
+                        source_index: candidate,
+                        value,
+                    } if usize::try_from(*candidate) == Ok(source_index) => Some((name, *value)),
+                    vela_mir::CompileConstructorValue::Explicit { .. }
+                    | vela_mir::CompileConstructorValue::EvaluatedDefault(_) => None,
+                })
+                .ok_or_else(|| {
+                    self.compile_target_input_error(
+                        expression,
+                        "constructor source is not referenced by a field slot",
+                    )
+                })?;
+            if value != source || hir_fields[source_index].name != *field_name {
+                return Err(self.compile_target_input_error(
+                    expression,
+                    "constructor field slot disagrees with source evaluation order",
+                ));
+            }
+            let expected = shape.and_then(|shape| shape.field_value_type(field_name));
+            source_registers[source_index] =
+                Some(self.compile_hir_constructor_field_value(source, expected, field_name)?);
+        }
+
+        let mut compiled = Vec::with_capacity(placed.len());
+        for (field_name, value) in placed {
+            let register = match value {
+                vela_mir::CompileConstructorValue::Explicit { source_index, .. } => {
+                    let source_index = usize::try_from(source_index).map_err(|_| {
+                        self.compile_target_input_error(
+                            expression,
+                            "constructor source index exceeds usize",
+                        )
+                    })?;
+                    source_registers
+                        .get(source_index)
+                        .copied()
+                        .flatten()
+                        .ok_or_else(|| {
+                            self.compile_target_input_error(
+                                expression,
+                                "constructor source index is out of bounds",
+                            )
+                        })?
+                }
+                vela_mir::CompileConstructorValue::EvaluatedDefault(body) => {
+                    let value = self
+                        .facts
+                        .semantic_input
+                        .targets()
+                        .evaluated_schema_default(body)
+                        .cloned()
+                        .ok_or_else(|| {
+                            self.compile_target_input_error(
+                                expression,
+                                format!("constructor default {body:?} is missing"),
+                            )
+                        })?;
+                    self.emit_constant(constant_from_mir(value))?
+                }
+            };
+            compiled.push((field_name, register));
+        }
+        Ok(compiled)
+    }
+
+    fn compile_dynamic_constructor_fields(
+        &mut self,
+        expression: HirExprId,
+        hir_fields: &[vela_hir::body::HirRecordField],
+        fields: Vec<vela_mir::CompileDynamicConstructorField>,
+    ) -> CompileResult<Vec<(String, Register)>> {
+        if fields.len() != hir_fields.len() {
+            return Err(self.compile_target_input_error(
+                expression,
+                "dynamic constructor placement does not cover every HIR field",
+            ));
+        }
+        fields
+            .into_iter()
+            .zip(hir_fields)
+            .map(|(field, hir)| {
+                if hir.name != field.name || hir.value != Some(field.value) {
+                    return Err(self.compile_target_input_error(
+                        expression,
+                        "dynamic constructor placement disagrees with HIR fields",
+                    ));
+                }
+                self.compile_hir_expression(field.value)
+                    .map(|register| (field.name, register))
+            })
+            .collect()
     }
 
     pub(in crate::compiler) fn compile_hir_constructor_field_value(
@@ -444,25 +653,6 @@ impl Compiler<'_, '_> {
         Ok(dst)
     }
 
-    pub(in crate::compiler) fn hir_map_key(&self, expression: HirExprId) -> CompileResult<String> {
-        let (span, kind) = self.hir_expression_record(expression)?;
-        match kind {
-            HirExprKind::Literal(HirLiteral::String(value)) => Ok(value),
-            HirExprKind::Literal(HirLiteral::Char(value)) => Ok(value.to_string()),
-            HirExprKind::Literal(HirLiteral::Integer(value)) => Ok(integer_text(&value)),
-            HirExprKind::Literal(HirLiteral::Float(value)) => Ok(float_text(&value)),
-            HirExprKind::Path(path) => self
-                .hir_bodies
-                .iter()
-                .find_map(|body| body.paths.get(&path))
-                .filter(|path| path.kind == HirPathKind::Value)
-                .map(|path| path.path.join("::"))
-                .filter(|path| !path.is_empty())
-                .ok_or_else(|| hir_unsupported("map key", span)),
-            _ => Err(hir_unsupported("map key", span)),
-        }
-    }
-
     pub(in crate::compiler) fn compile_hir_unary(
         &mut self,
         span: Span,
@@ -609,5 +799,49 @@ impl Compiler<'_, '_> {
         names.sort_unstable();
         names.dedup();
         names.iter().position(|field| field == name)
+    }
+
+    pub(in crate::compiler) fn hir_block_tail_expression(
+        &self,
+        block: HirBlockId,
+    ) -> Option<HirExprId> {
+        let statement = self
+            .hir_bodies
+            .iter()
+            .find_map(|body| body.blocks.get(&block))?
+            .statements
+            .last()?;
+        match self
+            .hir_bodies
+            .iter()
+            .find_map(|body| body.statements.get(statement))?
+            .kind
+        {
+            HirStmtKind::Expr {
+                expression: Some(expression),
+                ..
+            } => Some(expression),
+            _ => None,
+        }
+    }
+}
+
+pub(super) fn constant_from_mir(value: vela_mir::MirEvaluatedConstant) -> Constant {
+    match value {
+        vela_mir::MirEvaluatedConstant::Unit => Constant::Unit,
+        vela_mir::MirEvaluatedConstant::Bool(value) => Constant::Bool(value),
+        vela_mir::MirEvaluatedConstant::Char(value) => Constant::Char(value),
+        vela_mir::MirEvaluatedConstant::Scalar(value) => Constant::Scalar(value),
+        vela_mir::MirEvaluatedConstant::String(value) => Constant::String(value),
+        vela_mir::MirEvaluatedConstant::Bytes(value) => Constant::Bytes(value),
+        vela_mir::MirEvaluatedConstant::Array(values) => {
+            Constant::Array(values.into_iter().map(constant_from_mir).collect())
+        }
+        vela_mir::MirEvaluatedConstant::Map(entries) => Constant::Map(
+            entries
+                .into_iter()
+                .map(|(key, value)| (key, constant_from_mir(value)))
+                .collect(),
+        ),
     }
 }

@@ -21,6 +21,7 @@ pub(super) struct ScriptImplMethod<'graph> {
     pub(super) method_name: String,
     pub(super) method_id: MethodId,
     pub(super) symbol: String,
+    pub(super) origin: MirSourceOrigin,
     pub(super) default_values: Vec<Option<ParamDefaultValue>>,
     pub(super) body: HirBodyId,
     pub(super) signature: FunctionSignature,
@@ -42,7 +43,7 @@ fn direct_method<'graph>(
     graph: &'graph ModuleGraph,
     method: &ScriptMethod,
 ) -> CompileResult<ScriptImplMethod<'graph>> {
-    let _body = graph.body(method.body()).ok_or_else(|| {
+    let body = graph.body(method.body()).ok_or_else(|| {
         method_input_error(method, "catalog method body is missing from the HIR graph")
     })?;
     let bindings = graph.bindings_for_body(method.body()).ok_or_else(|| {
@@ -56,6 +57,7 @@ fn direct_method<'graph>(
         method_name: method.name().to_owned(),
         method_id: method.method_id(),
         symbol: method.symbol_seed(),
+        origin: MirSourceOrigin::body(body.id, body.origin.span),
         default_values: param_default_values_from_ids(
             method.parameter_default_bodies().iter().copied(),
             method.signature(),

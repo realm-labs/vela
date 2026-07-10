@@ -12,8 +12,9 @@ use vela_mir::{
     MirSourceOrigin, MirTypeContract,
 };
 use vela_registry::{
-    Def, DefinitionRegistry, FieldDef, FunctionDef, MethodDef, RegistryCompileView, TypeDef,
-    TypeHintDef, TypeKindDef, VariantDef,
+    Def, DefinitionRegistry, FieldDef, FunctionDef, MethodDef, RegistryCompileView,
+    RegistryDeclarationSlotError, RegistryDeclarationSlots, TypeDef, TypeHintDef, TypeKindDef,
+    VariantDef,
 };
 
 use super::{GenerationBuilder, input_error, registry_input_error};
@@ -101,7 +102,10 @@ pub(super) struct ExternalCatalog {
 }
 
 impl ExternalCatalog {
-    pub(super) fn from_view(view: RegistryCompileView<'_>) -> Self {
+    pub(super) fn from_view(
+        view: RegistryCompileView<'_>,
+        declaration_slots: &RegistryDeclarationSlots,
+    ) -> Result<Self, RegistryDeclarationSlotError> {
         let mut catalog = Self::default();
         for definition in view.definitions() {
             match definition {
@@ -129,15 +133,19 @@ impl ExternalCatalog {
                     catalog.types.insert(value.id, value.clone());
                 }
                 Def::Field(value) => {
-                    catalog.fields.insert(value.id, value.clone());
+                    let mut value = value.clone();
+                    value.declaration_order = declaration_slots.field(value.id)?;
+                    catalog.fields.insert(value.id, value);
                 }
                 Def::Variant(value) => {
-                    catalog.variants.insert(value.id, value.clone());
+                    let mut value = value.clone();
+                    value.declaration_order = declaration_slots.variant(value.id)?;
+                    catalog.variants.insert(value.id, value);
                 }
                 Def::Trait(_) => {}
             }
         }
-        catalog
+        Ok(catalog)
     }
 
     pub(super) fn function_by_source(&self, path: &str) -> Option<&FunctionDef> {

@@ -4,53 +4,19 @@ use super::record_shapes::ValueShape;
 use super::value_types::RuntimeTypeFact;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use vela_common::{Diagnostic, PrimitiveTag, Span};
-use vela_def::{DefPath, FunctionId, MethodId, TypeId};
-use vela_registry::ParamDef;
+use vela_def::{DefPath, MethodId, TypeId};
 
 impl Compiler<'_, '_> {
-    pub(in crate::compiler) fn resolve_native_function_id(
-        &self,
-        name: &str,
-        call_span: Span,
-    ) -> CompileResult<FunctionId> {
-        let Some(registry) = self.facts.registry else {
-            return Ok(function_id_for_native_name(name));
-        };
-        if let Some(id) = registry.resolve_native_function_name(name) {
-            return Ok(id);
-        }
-
-        Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
-            vec![
-                Diagnostic::error(format!("unresolved native function `{name}`"))
-                    .with_code("compiler::unresolved_native_function")
-                    .with_span(call_span)
-                    .with_label(call_span, "native function is not registered"),
-            ],
-        )))
-    }
-
-    pub(in crate::compiler) fn value_method_id_for_type(
+    pub(in crate::compiler) fn value_method_target_for_type(
         &self,
         receiver_type: &RuntimeTypeFact,
         method: &str,
-    ) -> Option<MethodId> {
-        if let Some(registry) = self.facts.registry {
-            let owner = self.registry_value_type_id(receiver_type)?;
-            return registry.resolve_value_method(owner, method);
-        }
-        None
-    }
-
-    pub(in crate::compiler) fn registry_value_method_params(
-        &self,
-        receiver_type: Option<&RuntimeTypeFact>,
-        method: &str,
-    ) -> Option<&[ParamDef]> {
+    ) -> Option<(TypeId, MethodId)> {
         let registry = self.facts.registry?;
-        let owner = self.registry_value_type_id(receiver_type?)?;
-        let method = registry.resolve_value_method(owner, method)?;
-        registry.method_params(method)
+        let owner = self.registry_value_type_id(receiver_type)?;
+        registry
+            .resolve_value_method(owner, method)
+            .map(|method| (owner, method))
     }
 
     pub(in crate::compiler) fn value_methods_known_for_type(
@@ -258,19 +224,4 @@ pub(in crate::compiler) fn mutation_arg_debug_name(
     } else {
         param_name.to_owned()
     }
-}
-
-fn function_id_for_native_name(name: &str) -> FunctionId {
-    if let Some((module, function)) = name.rsplit_once("::")
-        && let Some(id) = vela_stdlib::std_function_id(module, function)
-    {
-        return id;
-    }
-    function_id_for_path("host", name)
-}
-
-fn function_id_for_path(package: &str, name: &str) -> FunctionId {
-    let mut segments = name.split("::").collect::<Vec<_>>();
-    let function = segments.pop().unwrap_or(name);
-    FunctionId::from_def_id(DefPath::function(package, segments, function).id())
 }

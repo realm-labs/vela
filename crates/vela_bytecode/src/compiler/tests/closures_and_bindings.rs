@@ -323,7 +323,12 @@ fn main() {
             ModulePath::from_qualified("game::config"),
             r#"
 enum RewardKey { Small }
-pub const DEFAULTS = { RewardKey::Small: 5 };
+pub const DEFAULTS = {
+    RewardKey::Small: 5,
+    'x': 6,
+    0x10u8: 7,
+    3.5f32: 8,
+};
 "#,
         ),
     ])
@@ -331,10 +336,24 @@ pub const DEFAULTS = { RewardKey::Small: 5 };
     let main = program
         .function("game::main::main")
         .expect("qualified main function");
-    assert!(main.constants.contains(&Constant::Map(vec![(
-        "RewardKey::Small".to_owned(),
-        Constant::Scalar(vela_common::ScalarValue::I64(5)),
-    )])));
+    assert!(main.constants.contains(&Constant::Map(vec![
+        (
+            "RewardKey::Small".to_owned(),
+            Constant::Scalar(vela_common::ScalarValue::I64(5)),
+        ),
+        (
+            "x".to_owned(),
+            Constant::Scalar(vela_common::ScalarValue::I64(6)),
+        ),
+        (
+            "0x10u8".to_owned(),
+            Constant::Scalar(vela_common::ScalarValue::I64(7)),
+        ),
+        (
+            "3.5f32".to_owned(),
+            Constant::Scalar(vela_common::ScalarValue::I64(8)),
+        ),
+    ])));
 }
 
 #[test]

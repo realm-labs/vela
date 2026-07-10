@@ -69,34 +69,53 @@ fn assert_diagnostic_contract(
 }
 
 #[test]
-fn loop_placement_failures_remain_uncoded_across_lambda_boundaries() {
+fn loop_placement_failures_are_analysis_diagnostics_across_lambda_boundaries() {
     let cases = [
-        ("fn main() { break; }", "break outside loop", "root break"),
+        (
+            "fn main() { break; }",
+            "analysis::break_outside_loop",
+            "break outside loop",
+            "break;",
+            "root break",
+        ),
         (
             "fn main() { continue; }",
+            "analysis::continue_outside_loop",
             "continue outside loop",
+            "continue;",
             "root continue",
         ),
         (
             "fn main() { for value in [1] { let stop = || { break; }; stop(); } }",
+            "analysis::break_outside_loop",
             "break outside loop",
+            "break;",
             "lambda break",
         ),
         (
             "fn main() { for value in [1] { let skip = || { continue; }; skip(); } }",
+            "analysis::continue_outside_loop",
             "continue outside loop",
+            "continue;",
             "lambda continue",
         ),
     ];
 
-    for (source, message, context) in cases {
+    for (source, code, message, statement, context) in cases {
         let error = match compile_program_source(SourceId::new(720), source) {
             Ok(_) => panic!("{context} should fail compilation"),
             Err(error) => error,
         };
-        assert_eq!(error.kind, CompileErrorKind::UnsupportedSyntax(message));
-        assert_eq!(error.span, None, "{context} unexpectedly gained a span");
-        assert_eq!(error.to_diagnostic(), None);
+        let diagnostic = only_semantic_diagnostic(error);
+        assert_diagnostic_contract(
+            &diagnostic,
+            SourceId::new(720),
+            source,
+            code,
+            message,
+            statement,
+            &[],
+        );
     }
 }
 

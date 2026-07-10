@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use vela_analysis::literals::{
     DeferredNumericLiteral, LiteralError, LiteralPrimitiveContext, LiteralSign,
-    ResolvedLiteralFact, float_literal_spelling, integer_literal_spelling, resolve_numeric_literal,
+    ResolvedLiteralFact, resolve_numeric_literal,
 };
 use vela_common::{PrimitiveTag, ScalarValue};
 use vela_hir::binding::{BindingMap, BindingResolution};
@@ -226,10 +226,7 @@ fn evaluate_const_expression(
         HirExprKind::Map { entries } => entries
             .iter()
             .map(|entry| {
-                let (Some(key), Some(value)) = (entry.key, entry.value) else {
-                    return Ok(None);
-                };
-                let Some(key) = const_map_key_name(body, key) else {
+                let (Some(key), Some(value)) = (entry.logical_key.clone(), entry.value) else {
                     return Ok(None);
                 };
                 let Some(value) = evaluate_const_expression(body, bindings, value, values, locals)?
@@ -327,20 +324,6 @@ fn evaluate_const_block(
         }
     }
     Ok(tail_value)
-}
-
-fn const_map_key_name(body: &HirBody, expression: HirExprId) -> Option<String> {
-    match &body.expression(expression)?.kind {
-        HirExprKind::Literal(HirLiteral::String(value)) => Some(value.clone()),
-        HirExprKind::Literal(HirLiteral::Integer(value)) => Some(integer_literal_spelling(value)),
-        HirExprKind::Literal(HirLiteral::Float(value)) => Some(float_literal_spelling(value)),
-        HirExprKind::Path(path) => body
-            .paths
-            .get(path)
-            .map(|path| path.path.join("::"))
-            .filter(|path| !path.is_empty()),
-        _ => None,
-    }
 }
 
 fn hir_literal_constant(literal: &HirLiteral) -> CompileResult<Option<Constant>> {

@@ -1,14 +1,6 @@
+use super::call_placements::{HirMethodArguments, HirMethodCallee};
 use super::*;
-
-struct HirMethodArguments<'a> {
-    method: &'a str,
-    receiver_type: Option<&'a RuntimeTypeFact>,
-    receiver_shape: Option<&'a ValueShape>,
-    params: &'a [ParamHint],
-    arguments: &'a [vela_hir::body::HirArgument],
-    call_span: Span,
-    preserve_missing_defaults: bool,
-}
+use vela_mir::{CompileCallArguments, CompileCalleeTarget, CompilePlacedCallValue};
 
 impl Compiler<'_, '_> {
     pub(in crate::compiler) fn compile_hir_call(
@@ -16,55 +8,10 @@ impl Compiler<'_, '_> {
         span: Span,
         call: &vela_hir::body::HirCall,
     ) -> CompileResult<Register> {
+        if let Some(result) = self.try_compile_placed_hir_host_call(span, call)? {
+            return Ok(result);
+        }
         if let Some(field) = self.hir_field_for_expression(call.callee).cloned() {
-            if let Some(resolved) = self.hir_host_path(field.receiver) {
-                if field.name == "remove"
-                    && call.arguments.is_empty()
-                    && matches!(
-                        self.hir_expression_record(field.receiver)?.1,
-                        HirExprKind::Index(_)
-                    )
-                {
-                    self.reject_invalid_hir_host_index_access(
-                        field.receiver,
-                        HostIndexAccessKind::Remove,
-                        span,
-                    )?;
-                    let root = self.compile_host_path_root(&resolved.path.root)?;
-                    self.emit_host_remove(root, resolved.path, span)?;
-                    return self.emit_constant(Constant::Unit);
-                }
-                if field.name == "push" && !resolved.path.segments.is_empty() {
-                    let [argument] = call.arguments.as_slice() else {
-                        return Err(hir_unsupported("host path push arity", span));
-                    };
-                    if argument.name.is_some() {
-                        return Err(hir_unsupported("host path push", span));
-                    }
-                    self.reject_invalid_hir_host_assignment(
-                        field.receiver,
-                        HirAssignOp::Set,
-                        span,
-                    )?;
-                    let value = argument
-                        .value
-                        .ok_or_else(|| hir_unsupported("host path push", span))?;
-                    let value = self.compile_hir_expression(value)?;
-                    let root = self.compile_host_path_root(&resolved.path.root)?;
-                    self.emit_host_mutate(root, resolved.path, HostMutationOp::Push, value, span)?;
-                    return self.emit_constant(Constant::Unit);
-                }
-                if let Some(method_id) =
-                    self.host_method_id(resolved.type_name.as_deref(), &field.name)
-                {
-                    let args =
-                        self.compile_hir_host_method_arguments(method_id, &call.arguments, span)?;
-                    let root = self.compile_host_path_root(&resolved.path.root)?;
-                    let dst = self.alloc_register()?;
-                    self.emit_host_call(Some(dst), root, resolved.path, method_id, args, span)?;
-                    return Ok(dst);
-                }
-            }
             let receiver_fact = self.script_fact_for_hir_expression(field.receiver);
             let receiver_shape = self.value_shape_for_hir_expression(field.receiver);
             let value_receiver_type = self
@@ -87,94 +34,228 @@ impl Compiler<'_, '_> {
                 ordering_key_shape.as_ref(),
                 span,
             )?;
+            let legacy_script_method = receiver_fact.as_ref().and_then(|fact| {
+                self.script_method_id_for_type(&fact.type_name, &field.name)
+                    .map(|method| (fact.type_name.clone(), method))
+            });
+            let legacy_value_method = value_receiver_type
+                .as_ref()
+                .and_then(|value| self.value_method_target_for_type(value, &field.name));
+            let target = self.placed_call_target(call.expression)?;
             let receiver = self.compile_hir_expression(field.receiver)?;
             let dst = self.alloc_register()?;
-            if let Some(method_id) = receiver_fact
-                .as_ref()
-                .and_then(|fact| self.script_method_id_for_type(&fact.type_name, &field.name))
-            {
-                let params = self
-                    .script_method_params(
-                        &receiver_fact.as_ref().expect("method fact").type_name,
-                        &field.name,
-                    )
-                    .unwrap_or_default()
-                    .into_iter()
-                    .skip(1)
-                    .collect::<Vec<_>>();
-                let args = self.compile_hir_method_arguments(HirMethodArguments {
-                    method: &field.name,
-                    receiver_type: value_receiver_type.as_ref(),
-                    receiver_shape: receiver_shape.as_ref(),
-                    params: &params,
-                    arguments: &call.arguments,
-                    call_span: span,
-                    preserve_missing_defaults: true,
-                })?;
-                self.emit_spanned(
-                    UnlinkedInstructionKind::CallMethodId {
-                        dst,
-                        receiver,
-                        method: field.name,
-                        method_id,
-                        args,
-                    },
-                    span,
-                );
-                return Ok(dst);
-            }
-            if let Some(method_id) = value_receiver_type
-                .as_ref()
-                .and_then(|value| self.value_method_id_for_type(value, &field.name))
-            {
-                let params = self
-                    .registry_value_method_params(value_receiver_type.as_ref(), &field.name)
-                    .map(|params| registry_param_hints(params, span))
-                    .unwrap_or_default();
-                let args = self.compile_hir_method_arguments(HirMethodArguments {
-                    method: &field.name,
-                    receiver_type: value_receiver_type.as_ref(),
-                    receiver_shape: receiver_shape.as_ref(),
-                    params: &params,
-                    arguments: &call.arguments,
-                    call_span: span,
-                    preserve_missing_defaults: false,
-                })?;
-                self.emit_spanned(
-                    UnlinkedInstructionKind::CallMethodId {
-                        dst,
-                        receiver,
-                        method: field.name,
-                        method_id,
-                        args,
-                    },
-                    span,
-                );
-                return Ok(dst);
-            }
-            if receiver_fact.is_some() || value_methods_known {
-                return Err(unresolved_static_method_error(&field.name, span));
-            }
-            let mut args = Vec::with_capacity(call.arguments.len());
-            for argument in &call.arguments {
-                let value = argument
-                    .value
-                    .ok_or_else(|| hir_unsupported("call argument", argument.origin.span))?;
-                args.push(DynamicCallArgument {
-                    name: argument.name.clone(),
-                    value: self.compile_hir_expression(value)?,
-                });
-            }
-            self.emit_spanned(
-                UnlinkedInstructionKind::CallDynamicMethod {
-                    dst,
-                    receiver,
-                    method: field.name,
-                    args,
-                },
-                span,
-            );
-            return Ok(dst);
+            return match target.callee {
+                CompileCalleeTarget::ScriptMethod {
+                    target: method_target,
+                    debug_name,
+                } => {
+                    if debug_name != field.name {
+                        return Err(self.compile_target_input_error(
+                            call.expression,
+                            "script method target name disagrees with HIR",
+                        ));
+                    }
+                    if legacy_value_method.is_some()
+                        || legacy_script_method
+                            .as_ref()
+                            .is_some_and(|(type_name, method)| {
+                                *method != method_target.method
+                                    || self
+                                        .facts
+                                        .semantic_input
+                                        .targets()
+                                        .type_descriptor(method_target.owner)
+                                        .is_none_or(|owner| {
+                                            owner.canonical_name != *type_name
+                                                && !owner
+                                                    .canonical_name
+                                                    .ends_with(&format!("::{type_name}"))
+                                        })
+                            })
+                    {
+                        return Err(self.compile_target_input_error(
+                            call.expression,
+                            "script method target disagrees with the direct stable selection",
+                        ));
+                    }
+                    let descriptor = self
+                        .facts
+                        .semantic_input
+                        .targets()
+                        .method_descriptor(method_target.owner, method_target.method)
+                        .cloned()
+                        .ok_or_else(|| {
+                            self.compile_target_input_error(
+                                call.expression,
+                                "script method target has no neutral descriptor",
+                            )
+                        })?;
+                    if descriptor.member_name != field.name
+                        || !matches!(
+                            descriptor.class,
+                            vela_mir::CompileMethodClass::Script { executable, .. }
+                                if executable == method_target
+                        )
+                    {
+                        return Err(self.compile_target_input_error(
+                            call.expression,
+                            "script method descriptor disagrees with the placed executable",
+                        ));
+                    }
+                    let params = self
+                        .facts
+                        .script_method_ids
+                        .iter()
+                        .find_map(|(key, method)| {
+                            (*method == method_target.method)
+                                .then(|| self.facts.script_method_signatures.get(key).cloned())
+                                .flatten()
+                        })
+                        .unwrap_or_default()
+                        .into_iter()
+                        .skip(1)
+                        .collect::<Vec<_>>();
+                    let args = self.compile_hir_method_arguments(HirMethodArguments {
+                        call: call.expression,
+                        target: HirMethodCallee::Script(method_target),
+                        method: &field.name,
+                        receiver_type: value_receiver_type.as_ref(),
+                        receiver_shape: receiver_shape.as_ref(),
+                        signature: descriptor.signature,
+                        params: &params,
+                        preserve_missing_defaults: true,
+                    })?;
+                    self.emit_spanned(
+                        UnlinkedInstructionKind::CallMethodId {
+                            dst,
+                            receiver,
+                            method: field.name,
+                            method_id: method_target.method,
+                            args,
+                        },
+                        span,
+                    );
+                    Ok(dst)
+                }
+                CompileCalleeTarget::ValueMethod {
+                    owner,
+                    method,
+                    debug_name,
+                } => {
+                    if debug_name != field.name {
+                        return Err(self.compile_target_input_error(
+                            call.expression,
+                            "value method target name disagrees with HIR",
+                        ));
+                    }
+                    if legacy_script_method.is_some()
+                        || legacy_value_method.is_some_and(|(legacy_owner, legacy_method)| {
+                            legacy_owner != owner || legacy_method != method
+                        })
+                    {
+                        return Err(self.compile_target_input_error(
+                            call.expression,
+                            "value method target disagrees with the direct stable selection",
+                        ));
+                    }
+                    let descriptor = self
+                        .facts
+                        .semantic_input
+                        .targets()
+                        .method_descriptor(owner, method)
+                        .cloned()
+                        .ok_or_else(|| {
+                            self.compile_target_input_error(
+                                call.expression,
+                                "value method target has no neutral descriptor",
+                            )
+                        })?;
+                    if descriptor.member_name != field.name
+                        || !matches!(
+                            descriptor.class,
+                            vela_mir::CompileMethodClass::Value
+                                | vela_mir::CompileMethodClass::Registry
+                        )
+                    {
+                        return Err(self.compile_target_input_error(
+                            call.expression,
+                            "value method descriptor disagrees with the placed target",
+                        ));
+                    }
+                    let params = self
+                        .facts
+                        .registry
+                        .and_then(|registry| registry.method_params(method))
+                        .map(|params| registry_param_hints(params, span))
+                        .unwrap_or_default();
+                    let args = self.compile_hir_method_arguments(HirMethodArguments {
+                        call: call.expression,
+                        target: HirMethodCallee::Value { owner, method },
+                        method: &field.name,
+                        receiver_type: value_receiver_type.as_ref(),
+                        receiver_shape: receiver_shape.as_ref(),
+                        signature: descriptor.signature,
+                        params: &params,
+                        preserve_missing_defaults: false,
+                    })?;
+                    self.emit_spanned(
+                        UnlinkedInstructionKind::CallMethodId {
+                            dst,
+                            receiver,
+                            method: field.name,
+                            method_id: method,
+                            args,
+                        },
+                        span,
+                    );
+                    Ok(dst)
+                }
+                CompileCalleeTarget::DynamicMethod(method_target) => {
+                    if legacy_script_method.is_some()
+                        || legacy_value_method.is_some()
+                        || receiver_fact.is_some()
+                        || value_methods_known
+                    {
+                        return Err(self.compile_target_input_error(
+                            call.expression,
+                            "dynamic method target disagrees with direct stable receiver facts",
+                        ));
+                    }
+                    if method_target.member != field.name {
+                        return Err(self.compile_target_input_error(
+                            call.expression,
+                            "dynamic method placement name disagrees with HIR",
+                        ));
+                    }
+                    let CompileCallArguments::Dynamic(arguments) = target.arguments else {
+                        return Err(self.compile_target_input_error(
+                            call.expression,
+                            "dynamic method call has non-dynamic argument placement",
+                        ));
+                    };
+                    let mut args = Vec::with_capacity(arguments.len());
+                    for argument in arguments {
+                        args.push(DynamicCallArgument {
+                            name: argument.name,
+                            value: self.compile_hir_expression(argument.value)?,
+                        });
+                    }
+                    self.emit_spanned(
+                        UnlinkedInstructionKind::CallDynamicMethod {
+                            dst,
+                            receiver,
+                            method: field.name,
+                            args,
+                        },
+                        span,
+                    );
+                    Ok(dst)
+                }
+                _ => Err(self.compile_target_input_error(
+                    call.expression,
+                    "method HIR owns a non-method compile-target family",
+                )),
+            };
         }
 
         let dst = self.alloc_register()?;
@@ -185,11 +266,12 @@ impl Compiler<'_, '_> {
                 .get(&declaration)
                 .cloned()
                 .ok_or_else(|| hir_unsupported("script call", span))?;
-            let (args, mode) = self.compile_hir_script_arguments(&params, &call.arguments, span)?;
+            let (target, args, mode) =
+                self.compile_hir_script_arguments(call.expression, declaration, &params)?;
             self.emit_spanned(
                 UnlinkedInstructionKind::CallFunction {
                     dst,
-                    target: vela_def::script_function_id(&name),
+                    target,
                     name,
                     mode,
                     args,
@@ -201,8 +283,44 @@ impl Compiler<'_, '_> {
         if self.local_call_callee(call.expression).is_some()
             || self.hir_callee_path(call.expression).is_none()
         {
+            let target = self.placed_call_target(call.expression)?;
+            let callee_matches = match target.callee {
+                CompileCalleeTarget::Local(local) => {
+                    self.local_call_callee(call.expression) == Some(local)
+                }
+                CompileCalleeTarget::Lambda(body) => {
+                    self.hir_direct_lambda_body(call.callee) == Some(body)
+                }
+                CompileCalleeTarget::DynamicCallable => {
+                    self.local_call_callee(call.expression).is_none()
+                }
+                _ => false,
+            };
+            if !callee_matches {
+                return Err(self.compile_target_input_error(
+                    call.expression,
+                    "callable-value placement disagrees with the HIR callee",
+                ));
+            }
             let callee = self.compile_hir_expression(call.callee)?;
-            let args = self.compile_hir_call_arguments(&call.arguments)?;
+            let values = match target.arguments {
+                CompileCallArguments::Positional(values) => values,
+                CompileCallArguments::Dynamic(arguments) => arguments
+                    .into_iter()
+                    .map(|argument| argument.value)
+                    .collect(),
+                CompileCallArguments::Script { .. }
+                | CompileCallArguments::ExternalNamed { .. } => {
+                    return Err(self.compile_target_input_error(
+                        call.expression,
+                        "callable value owns an incompatible argument placement",
+                    ));
+                }
+            };
+            let args = values
+                .into_iter()
+                .map(|value| self.compile_hir_expression(value))
+                .collect::<CompileResult<Vec<_>>>()?;
             self.emit_spanned(
                 UnlinkedInstructionKind::CallClosure { dst, callee, args },
                 span,
@@ -213,6 +331,7 @@ impl Compiler<'_, '_> {
             && let Some(variant) = fact.enum_variant
         {
             let fields = self.compile_hir_tuple_variant_fields(
+                call.expression,
                 &fact.type_name,
                 &variant,
                 &call.arguments,
@@ -232,7 +351,23 @@ impl Compiler<'_, '_> {
             .to_vec();
         let name = path.join("::");
         if name == "set::from_array" {
-            let args = self.compile_hir_call_arguments(&call.arguments)?;
+            let target = self.placed_call_target(call.expression)?;
+            if !matches!(target.callee, CompileCalleeTarget::SetFromArray { .. }) {
+                return Err(self.compile_target_input_error(
+                    call.expression,
+                    "set::from_array placement has a different callee family",
+                ));
+            }
+            let CompileCallArguments::Positional(values) = target.arguments else {
+                return Err(self.compile_target_input_error(
+                    call.expression,
+                    "set::from_array owns non-positional arguments",
+                ));
+            };
+            let args = values
+                .into_iter()
+                .map(|value| self.compile_hir_expression(value))
+                .collect::<CompileResult<Vec<_>>>()?;
             let [src] = args.as_slice() else {
                 return Err(hir_unsupported("set::from_array", span));
             };
@@ -242,8 +377,7 @@ impl Compiler<'_, '_> {
             );
             return Ok(dst);
         }
-        let native = self.resolve_native_function_id(&name, span)?;
-        let args = self.compile_hir_native_arguments(&name, native, &call.arguments, span)?;
+        let (native, args) = self.compile_hir_native_arguments(call.expression, &name, span)?;
         self.emit_spanned(
             UnlinkedInstructionKind::CallNative {
                 dst: Some(dst),
@@ -257,242 +391,398 @@ impl Compiler<'_, '_> {
         Ok(dst)
     }
 
-    pub(in crate::compiler) fn compile_hir_call_arguments(
-        &mut self,
-        arguments: &[vela_hir::body::HirArgument],
-    ) -> CompileResult<Vec<Register>> {
-        arguments
-            .iter()
-            .map(|argument| {
-                argument
-                    .value
-                    .ok_or_else(|| hir_unsupported("call argument", argument.origin.span))
-                    .and_then(|value| self.compile_hir_expression(value))
-            })
-            .collect()
-    }
-
-    pub(in crate::compiler) fn hir_call_arguments(
-        &self,
-        arguments: &[vela_hir::body::HirArgument],
-    ) -> CompileResult<Vec<HirCallArgument>> {
-        arguments
-            .iter()
-            .map(|argument| {
-                let value = argument
-                    .value
-                    .ok_or_else(|| hir_unsupported("call argument", argument.origin.span))?;
-                Ok(HirCallArgument {
-                    name: argument.name.clone(),
-                    span: argument.origin.span,
-                    value,
-                })
-            })
-            .collect()
-    }
-
     pub(in crate::compiler) fn compile_hir_native_arguments(
         &mut self,
+        call: HirExprId,
         function: &str,
-        native: crate::FunctionId,
-        arguments: &[vela_hir::body::HirArgument],
         call_span: Span,
-    ) -> CompileResult<Vec<Register>> {
+    ) -> CompileResult<(crate::FunctionId, Vec<Register>)> {
+        let target = self.placed_call_target(call)?;
+        let (target_function, debug_name) = match target.callee {
+            CompileCalleeTarget::NativeFunction {
+                function,
+                debug_name,
+            }
+            | CompileCalleeTarget::StdlibFunction {
+                function,
+                debug_name,
+            }
+            | CompileCalleeTarget::Reflection {
+                function,
+                debug_name,
+                ..
+            } => (function, debug_name),
+            _ => {
+                return Err(self.compile_target_input_error(
+                    call,
+                    "native call target disagrees with the direct callee selection",
+                ));
+            }
+        };
+        if debug_name != function {
+            return Err(self.compile_target_input_error(
+                call,
+                "native call target name disagrees with the HIR callee",
+            ));
+        }
+        if self
+            .facts
+            .registry
+            .and_then(|registry| registry.resolve_native_function_name(function))
+            .is_some_and(|legacy| legacy != target_function)
+        {
+            return Err(self.compile_target_input_error(
+                call,
+                "native call FunctionId disagrees with the direct registry selection",
+            ));
+        }
+        let descriptor = self
+            .facts
+            .semantic_input
+            .targets()
+            .function_descriptor(target_function)
+            .cloned()
+            .ok_or_else(|| {
+                self.compile_target_input_error(
+                    call,
+                    "native call target has no neutral descriptor",
+                )
+            })?;
+        if descriptor.id != target_function || descriptor.debug_name != function {
+            return Err(self.compile_target_input_error(
+                call,
+                "native call descriptor disagrees with the placed target",
+            ));
+        }
         let params = self
             .facts
             .registry
-            .and_then(|registry| registry.function_params(native))
-            .map(|params| registry_param_hints(params, call_span));
-        let Some(params) = params else {
-            if arguments.iter().any(|argument| argument.name.is_some()) {
-                return Err(hir_unsupported("named native arguments", call_span));
-            }
-            return self.compile_hir_call_arguments(arguments);
-        };
-        if arguments.iter().all(|argument| argument.name.is_none()) {
-            let mut registers = Vec::with_capacity(arguments.len());
-            for (index, argument) in arguments.iter().enumerate() {
-                let expression = argument
-                    .value
-                    .ok_or_else(|| hir_unsupported("native argument", argument.origin.span))?;
-                let register = if let Some(param) = params.get(index) {
-                    self.compile_hir_argument_for_expected_param(
-                        function,
-                        index,
-                        expression,
-                        param,
-                        &[],
-                        false,
-                    )?
-                    .0
-                } else {
-                    self.compile_hir_expression(expression)?
-                };
-                registers.push(register);
-            }
-            return Ok(registers);
+            .and_then(|registry| registry.function_params(target_function))
+            .map(|params| registry_param_hints(params, call_span))
+            .unwrap_or_default();
+        if !params.is_empty()
+            && (params.len() != descriptor.signature.parameters.len()
+                || params
+                    .iter()
+                    .zip(&descriptor.signature.parameters)
+                    .any(|(legacy, neutral)| legacy.name != neutral.name))
+        {
+            return Err(self.compile_target_input_error(
+                call,
+                "registry function parameters disagree with the compile-target signature",
+            ));
         }
-        let args = self.hir_call_arguments(arguments)?;
-        let slots =
-            resolve_hir_call_arguments(&params, &args, call_span).map_err(|diagnostics| {
-                CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
-            })?;
-        let mut registers = Vec::new();
-        for (index, (slot, param)) in slots.into_iter().zip(params.iter()).enumerate() {
-            let Some(arg) = slot else {
-                continue;
-            };
-            let (register, _) = self.compile_hir_argument_for_expected_param(
-                function,
-                index,
-                arg.value,
-                param,
-                &[],
-                false,
-            )?;
-            registers.push(register);
+        match target.arguments {
+            CompileCallArguments::Positional(evaluation_order) => {
+                let mut registers = Vec::with_capacity(evaluation_order.len());
+                for (index, expression) in evaluation_order.into_iter().enumerate() {
+                    let register = if let Some(param) = params.get(index) {
+                        self.compile_hir_argument_for_expected_param(
+                            function,
+                            index,
+                            expression,
+                            param,
+                            &[],
+                            false,
+                        )?
+                        .0
+                    } else {
+                        self.compile_hir_expression(expression)?
+                    };
+                    registers.push(register);
+                }
+                Ok((target_function, registers))
+            }
+            CompileCallArguments::ExternalNamed {
+                evaluation_order,
+                parameter_slots,
+            } => {
+                if descriptor.signature.parameters.len() != parameter_slots.len() {
+                    return Err(self.compile_target_input_error(
+                        call,
+                        "named native placement disagrees with the compile-target signature",
+                    ));
+                }
+                let source_registers = self.compile_placed_call_sources(
+                    call,
+                    &evaluation_order,
+                    &parameter_slots,
+                    |compiler, parameter, expression| match params.get(parameter) {
+                        Some(param) => compiler.compile_hir_argument_for_expected_param(
+                            function,
+                            parameter,
+                            expression,
+                            param,
+                            &[],
+                            false,
+                        ),
+                        None => compiler
+                            .compile_hir_expression(expression)
+                            .map(|register| (register, false)),
+                    },
+                )?;
+                self.validate_external_missing_slots(
+                    call,
+                    &descriptor.signature,
+                    &parameter_slots,
+                )?;
+                self.project_external_registers(call, &parameter_slots, &source_registers)
+                    .map(|arguments| (target_function, arguments))
+            }
+            CompileCallArguments::Script { .. } | CompileCallArguments::Dynamic(_) => Err(self
+                .compile_target_input_error(
+                    call,
+                    "native call owns an incompatible argument placement",
+                )),
         }
-        Ok(registers)
     }
 
     pub(in crate::compiler) fn compile_hir_host_method_arguments(
         &mut self,
-        method: vela_common::HostMethodId,
-        arguments: &[vela_hir::body::HirArgument],
+        call: HirExprId,
+        method_name: &str,
+        legacy_owner: Option<vela_def::TypeId>,
+        legacy_method: Option<vela_common::HostMethodId>,
         call_span: Span,
-    ) -> CompileResult<Vec<Register>> {
+    ) -> CompileResult<(vela_common::HostMethodId, Vec<Register>)> {
+        let target = self.placed_call_target(call)?;
+        let CompileCalleeTarget::HostMethod(host) = target.callee else {
+            return Err(self.compile_target_input_error(
+                call,
+                "host method placement has a different callee family",
+            ));
+        };
+        if legacy_owner.is_some_and(|owner| host.owner.semantic != owner)
+            || legacy_method.is_some_and(|method| host.runtime != method)
+        {
+            return Err(self.compile_target_input_error(
+                call,
+                "host method placement runtime ID disagrees with direct selection",
+            ));
+        }
+        let descriptor = self
+            .facts
+            .semantic_input
+            .targets()
+            .method_descriptor(host.owner.semantic, host.semantic)
+            .cloned()
+            .ok_or_else(|| {
+                self.compile_target_input_error(
+                    call,
+                    "host method target has no neutral descriptor",
+                )
+            })?;
+        if descriptor.member_name != method_name
+            || descriptor.signature != host.signature
+            || !matches!(
+                descriptor.class,
+                vela_mir::CompileMethodClass::Host { runtime } if runtime == host.runtime
+            )
+        {
+            return Err(self.compile_target_input_error(
+                call,
+                "host method descriptor disagrees with the placed target",
+            ));
+        }
         let params = self
             .facts
             .registry
-            .and_then(|registry| registry.host_method_params_by_runtime_id(method.get()))
-            .map(|params| registry_param_hints(params, call_span));
-        let Some(params) = params else {
-            if arguments.iter().any(|argument| argument.name.is_some()) {
-                return Err(hir_unsupported("named host method arguments", call_span));
+            .and_then(|registry| registry.host_method_params_by_runtime_id(host.runtime.get()))
+            .map(|params| registry_param_hints(params, call_span))
+            .unwrap_or_default();
+        if !params.is_empty()
+            && (params.len() != host.signature.parameters.len()
+                || params
+                    .iter()
+                    .zip(&host.signature.parameters)
+                    .any(|(legacy, neutral)| legacy.name != neutral.name))
+        {
+            return Err(self.compile_target_input_error(
+                call,
+                "registry host parameters disagree with the compile-target signature",
+            ));
+        }
+        match target.arguments {
+            CompileCallArguments::Positional(evaluation_order) => evaluation_order
+                .into_iter()
+                .map(|expression| self.compile_hir_expression(expression))
+                .collect::<CompileResult<Vec<_>>>()
+                .map(|arguments| (host.runtime, arguments)),
+            CompileCallArguments::ExternalNamed {
+                evaluation_order,
+                parameter_slots,
+            } => {
+                if host.signature.parameters.len() != parameter_slots.len() {
+                    return Err(self.compile_target_input_error(
+                        call,
+                        "named host method placement disagrees with the compile-target signature",
+                    ));
+                }
+                let source_registers = self.compile_placed_call_sources(
+                    call,
+                    &evaluation_order,
+                    &parameter_slots,
+                    |compiler, parameter, expression| match params.get(parameter) {
+                        Some(param) => compiler.compile_hir_argument_for_expected_param(
+                            "host method",
+                            parameter,
+                            expression,
+                            param,
+                            &[],
+                            false,
+                        ),
+                        None => compiler
+                            .compile_hir_expression(expression)
+                            .map(|register| (register, false)),
+                    },
+                )?;
+                self.validate_external_missing_slots(call, &host.signature, &parameter_slots)?;
+                self.project_external_registers(call, &parameter_slots, &source_registers)
+                    .map(|arguments| (host.runtime, arguments))
             }
-            return self.compile_hir_call_arguments(arguments);
-        };
-        if arguments.iter().all(|argument| argument.name.is_none()) {
-            return self.compile_hir_call_arguments(arguments);
+            CompileCallArguments::Script { .. } | CompileCallArguments::Dynamic(_) => Err(self
+                .compile_target_input_error(
+                    call,
+                    "host method owns an incompatible argument placement",
+                )),
         }
-        let args = self.hir_call_arguments(arguments)?;
-        let slots =
-            resolve_hir_call_arguments(&params, &args, call_span).map_err(|diagnostics| {
-                CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
-            })?;
-        let mut registers = Vec::new();
-        for (index, (slot, param)) in slots.into_iter().zip(params.iter()).enumerate() {
-            let Some(arg) = slot else {
-                continue;
-            };
-            let (register, _) = self.compile_hir_argument_for_expected_param(
-                "host method",
-                index,
-                arg.value,
-                param,
-                &[],
-                false,
-            )?;
-            registers.push(register);
-        }
-        Ok(registers)
     }
 
     pub(in crate::compiler) fn compile_hir_script_arguments(
         &mut self,
+        call: HirExprId,
+        declaration: vela_hir::ids::HirDeclId,
         params: &[ParamHint],
-        arguments: &[vela_hir::body::HirArgument],
-        call_span: Span,
-    ) -> CompileResult<(Vec<CallArgument>, ScriptCallMode)> {
-        let args = self.hir_call_arguments(arguments)?;
-        let slots =
-            resolve_hir_call_arguments(params, &args, call_span).map_err(|diagnostics| {
-                CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
+    ) -> CompileResult<(vela_def::FunctionId, Vec<CallArgument>, ScriptCallMode)> {
+        let target = self.placed_call_target(call)?;
+        let CompileCalleeTarget::ScriptFunction { function, .. } = target.callee else {
+            return Err(self.compile_target_input_error(
+                call,
+                "resolved script function call has a different compile-target family",
+            ));
+        };
+        if self
+            .facts
+            .semantic_input
+            .targets()
+            .function_for_declaration(declaration)
+            != Some(function)
+        {
+            return Err(self.compile_target_input_error(
+                call,
+                "script function call target disagrees with its HIR declaration",
+            ));
+        }
+        let descriptor = self
+            .facts
+            .semantic_input
+            .targets()
+            .function_descriptor(function)
+            .cloned()
+            .ok_or_else(|| {
+                self.compile_target_input_error(
+                    call,
+                    "script function target has no neutral descriptor",
+                )
             })?;
-        let mut mode = ScriptCallMode::Unchecked;
-        let mut compiled = Vec::with_capacity(params.len());
-        for (index, (slot, param)) in slots.into_iter().zip(params.iter()).enumerate() {
-            if let Some(arg) = slot {
-                let (register, requires_guard) = self.compile_hir_argument_for_expected_param(
+        if descriptor.class != vela_mir::CompileFunctionClass::Script
+            || descriptor.signature.parameters.len() != params.len()
+            || descriptor
+                .signature
+                .parameters
+                .iter()
+                .zip(params)
+                .any(|(neutral, hir)| neutral.name != hir.name)
+        {
+            return Err(self.compile_target_input_error(
+                call,
+                "script function descriptor disagrees with its HIR signature",
+            ));
+        }
+        let CompileCallArguments::Script {
+            evaluation_order,
+            parameter_slots,
+        } = target.arguments
+        else {
+            return Err(self.compile_target_input_error(
+                call,
+                "script call does not own placed script arguments",
+            ));
+        };
+        if parameter_slots.len() != descriptor.signature.parameters.len() {
+            return Err(self.compile_target_input_error(
+                call,
+                "script placement disagrees with the compile-target signature",
+            ));
+        }
+        let source_registers = self.compile_placed_call_sources(
+            call,
+            &evaluation_order,
+            &parameter_slots,
+            |compiler, parameter, expression| {
+                let param = params.get(parameter).ok_or_else(|| {
+                    compiler.compile_target_input_error(
+                        call,
+                        "script call parameter slot exceeds its HIR signature",
+                    )
+                })?;
+                compiler.compile_hir_argument_for_expected_param(
                     "script function",
-                    index,
-                    arg.value,
+                    parameter,
+                    expression,
                     param,
                     &[],
                     true,
-                )?;
-                if requires_guard {
-                    mode = ScriptCallMode::Checked;
+                )
+            },
+        )?;
+        let mut mode = ScriptCallMode::Unchecked;
+        let mut arguments = Vec::with_capacity(params.len());
+        for (index, (slot, param)) in parameter_slots.iter().zip(params).enumerate() {
+            if usize::try_from(slot.parameter) != Ok(index) {
+                return Err(self.compile_target_input_error(
+                    call,
+                    "script call parameter slots are not contiguous",
+                ));
+            }
+            match slot.value {
+                CompilePlacedCallValue::Explicit { source_index, .. } => {
+                    let source_index = usize::try_from(source_index).map_err(|_| {
+                        self.compile_target_input_error(
+                            call,
+                            "script call source index exceeds usize",
+                        )
+                    })?;
+                    let (register, requires_guard) =
+                        source_registers.get(source_index).copied().ok_or_else(|| {
+                            self.compile_target_input_error(
+                                call,
+                                "script call source index is out of bounds",
+                            )
+                        })?;
+                    if requires_guard {
+                        mode = ScriptCallMode::Checked;
+                    }
+                    arguments.push(CallArgument::Register(register));
                 }
-                compiled.push(CallArgument::Register(register));
-            } else {
-                if param.type_hint.is_some() {
-                    mode = ScriptCallMode::Checked;
+                CompilePlacedCallValue::MissingDefault => {
+                    if matches!(
+                        descriptor.signature.parameters[index].default,
+                        vela_mir::CompileParameterDefault::Required
+                    ) {
+                        return Err(self.compile_target_input_error(
+                            call,
+                            "required script parameter is represented as missing",
+                        ));
+                    }
+                    if param.type_hint.is_some() {
+                        mode = ScriptCallMode::Checked;
+                    }
+                    arguments.push(CallArgument::Missing);
                 }
-                compiled.push(CallArgument::Missing);
             }
         }
-        Ok((compiled, mode))
-    }
-
-    fn compile_hir_method_arguments(
-        &mut self,
-        request: HirMethodArguments<'_>,
-    ) -> CompileResult<Vec<CallArgument>> {
-        let HirMethodArguments {
-            method,
-            receiver_type,
-            receiver_shape,
-            params,
-            arguments,
-            call_span,
-            preserve_missing_defaults,
-        } = request;
-        if params.is_empty() && arguments.iter().all(|argument| argument.name.is_none()) {
-            return self
-                .compile_hir_call_arguments(arguments)
-                .map(|args| args.into_iter().map(CallArgument::Register).collect());
-        }
-        let args = self.hir_call_arguments(arguments)?;
-        let slots =
-            resolve_hir_call_arguments(params, &args, call_span).map_err(|diagnostics| {
-                CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
-            })?;
-        let mut compiled = Vec::with_capacity(params.len());
-        for (index, (slot, param)) in slots.into_iter().zip(params.iter()).enumerate() {
-            let Some(arg) = slot else {
-                if preserve_missing_defaults {
-                    compiled.push(CallArgument::Missing);
-                }
-                continue;
-            };
-            let callback_shapes = self.hir_callback_param_shapes(receiver_shape, method, arg.value);
-            let expected =
-                typed_container_mutation_arg_contract(receiver_type, method, &param.name, index);
-            let (register, _) = if let Some(expected) = expected {
-                self.compile_hir_expression_for_expected_type(
-                    arg.value,
-                    expected,
-                    TypeContractContext::NativeParameter {
-                        function: method.to_owned(),
-                        name: mutation_arg_debug_name(method, &param.name, index),
-                        index: u16::try_from(index).unwrap_or(u16::MAX),
-                    },
-                    callback_shapes.as_deref().unwrap_or(&[]),
-                )?
-            } else {
-                self.compile_hir_argument_for_expected_param(
-                    method,
-                    index,
-                    arg.value,
-                    param,
-                    callback_shapes.as_deref().unwrap_or(&[]),
-                    false,
-                )?
-            };
-            compiled.push(CallArgument::Register(register));
-        }
-        Ok(compiled)
+        Ok((function, arguments, mode))
     }
 
     pub(in crate::compiler) fn compile_hir_argument_for_expected_param(
@@ -629,30 +919,6 @@ impl Compiler<'_, '_> {
         self.hir_shape_with_locals(expression, &locals)
     }
 
-    pub(in crate::compiler) fn hir_block_tail_expression(
-        &self,
-        block: HirBlockId,
-    ) -> Option<HirExprId> {
-        let statement = self
-            .hir_bodies
-            .iter()
-            .find_map(|body| body.blocks.get(&block))?
-            .statements
-            .last()?;
-        match self
-            .hir_bodies
-            .iter()
-            .find_map(|body| body.statements.get(statement))?
-            .kind
-        {
-            HirStmtKind::Expr {
-                expression: Some(expression),
-                ..
-            } => Some(expression),
-            _ => None,
-        }
-    }
-
     pub(in crate::compiler) fn hir_shape_with_locals(
         &self,
         expression: HirExprId,
@@ -689,96 +955,156 @@ impl Compiler<'_, '_> {
 
     pub(in crate::compiler) fn compile_hir_tuple_variant_fields(
         &mut self,
+        call: HirExprId,
         type_name: &str,
         variant: &str,
         arguments: &[vela_hir::body::HirArgument],
-        call_span: Span,
+        _call_span: Span,
     ) -> CompileResult<Vec<(String, Register)>> {
-        let Some(shape) = self.enum_constructor_shape(type_name, variant) else {
-            if arguments.iter().any(|argument| argument.name.is_some()) {
-                return Err(hir_unsupported(
-                    "named tuple constructor arguments",
-                    call_span,
-                ));
-            }
-            return self.compile_hir_call_arguments(arguments).map(|values| {
-                values
-                    .into_iter()
-                    .enumerate()
-                    .map(|(index, value)| (index.to_string(), value))
-                    .collect()
-            });
+        let target = self.placed_constructor_target(call)?;
+        let vela_mir::CompileConstructorTarget::Variant {
+            type_id,
+            variant: variant_id,
+            evaluation_order,
+            fields,
+        } = target
+        else {
+            return Err(self.compile_target_input_error(
+                call,
+                "tuple variant HIR call has a non-variant constructor placement",
+            ));
         };
-        let params = (0..shape.len())
-            .map(|index| ParamHint {
-                name: shape.argument_name_at(index).unwrap_or("").to_owned(),
-                span: call_span,
-                type_hint: None,
-                default_value_span: shape.field_has_default_at(index).then_some(call_span),
-                default_body: None,
-            })
-            .collect::<Vec<_>>();
-        let field_uses = arguments
+        self.require_constructor_type_name(call, type_id, type_name)?;
+        let (variant_owner, variant_name) = self
+            .facts
+            .semantic_input
+            .targets()
+            .variant_descriptor(variant_id)
+            .map(|descriptor| (descriptor.owner, descriptor.name.clone()))
+            .ok_or_else(|| {
+                self.compile_target_input_error(call, "tuple variant descriptor is missing")
+            })?;
+        if variant_owner != type_id || variant_name != variant {
+            return Err(self.compile_target_input_error(
+                call,
+                "tuple variant placement disagrees with the HIR callee",
+            ));
+        }
+        if evaluation_order.len() != arguments.len()
+            || evaluation_order
+                .iter()
+                .zip(arguments)
+                .any(|(source, argument)| argument.value != Some(*source))
+        {
+            return Err(self.compile_target_input_error(
+                call,
+                "tuple constructor evaluation order disagrees with HIR arguments",
+            ));
+        }
+        let placed = fields
             .iter()
             .enumerate()
-            .map(|(position, argument)| {
-                let name = match argument.name.as_deref() {
-                    Some(name) => shape
-                        .argument_index(name)
-                        .and_then(|index| shape.field_name_at(index))
-                        .unwrap_or(name)
-                        .to_owned(),
-                    None => shape
-                        .field_name_at(position)
-                        .map(str::to_owned)
-                        .unwrap_or_else(|| position.to_string()),
-                };
-                ConstructorFieldUse {
-                    name,
-                    span: argument.origin.span,
+            .map(|(index, field)| {
+                if usize::try_from(field.parameter) != Ok(index) {
+                    return Err(self.compile_target_input_error(
+                        call,
+                        "tuple constructor fields are not contiguous",
+                    ));
                 }
+                let field_name = self
+                    .facts
+                    .semantic_input
+                    .targets()
+                    .field_descriptor(field.field)
+                    .map(|descriptor| descriptor.name.clone())
+                    .ok_or_else(|| {
+                        self.compile_target_input_error(
+                            call,
+                            "tuple constructor field descriptor is missing",
+                        )
+                    })?;
+                Ok((field_name, field.parameter_name.clone(), field.value))
             })
-            .collect::<Vec<_>>();
-        self.reject_constructor_diagnostics(record_constructor_field_diagnostics(
-            &format!("{type_name}::{variant}"),
-            Some(&shape),
-            &field_uses,
-            call_span,
-        ))?;
-        let args = self.hir_call_arguments(arguments)?;
-        let slots =
-            resolve_hir_call_arguments(&params, &args, call_span).map_err(|diagnostics| {
-                CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
-            })?;
-        let mut fields = Vec::new();
-        let mut explicit = BTreeSet::new();
-        for (index, slot) in slots.into_iter().enumerate() {
-            let Some(arg) = slot else {
-                continue;
-            };
-            let field_name = shape.field_name_at(index).unwrap_or("").to_owned();
-            let value = if let Some(expected) = shape.field_value_type_at(index) {
-                self.compile_hir_expression_for_expected_type(
-                    arg.value,
-                    expected,
-                    TypeContractContext::Field {
-                        name: field_name.clone(),
-                    },
-                    &[],
-                )?
-                .0
-            } else {
-                self.compile_hir_expression(arg.value)?
-            };
-            explicit.insert(field_name.clone());
-            fields.push((field_name, value));
+            .collect::<CompileResult<Vec<_>>>()?;
+        let shape = self.enum_constructor_shape(type_name, variant);
+        let mut source_registers = vec![None; evaluation_order.len()];
+        for (source_index, source) in evaluation_order.iter().copied().enumerate() {
+            let (field_name, parameter_name, value) = placed
+                .iter()
+                .find_map(|(field_name, parameter_name, value)| match value {
+                    vela_mir::CompileConstructorValue::Explicit {
+                        source_index: candidate,
+                        value,
+                    } if usize::try_from(*candidate) == Ok(source_index) => {
+                        Some((field_name, parameter_name, *value))
+                    }
+                    vela_mir::CompileConstructorValue::Explicit { .. }
+                    | vela_mir::CompileConstructorValue::EvaluatedDefault(_) => None,
+                })
+                .ok_or_else(|| {
+                    self.compile_target_input_error(
+                        call,
+                        "tuple constructor source has no field slot",
+                    )
+                })?;
+            if source != value
+                || arguments[source_index]
+                    .name
+                    .as_deref()
+                    .is_some_and(|name| name != parameter_name)
+            {
+                return Err(self.compile_target_input_error(
+                    call,
+                    "tuple constructor source disagrees with its field slot",
+                ));
+            }
+            let expected = shape
+                .as_ref()
+                .and_then(|shape| shape.field_value_type(field_name));
+            source_registers[source_index] =
+                Some(self.compile_hir_constructor_field_value(source, expected, field_name)?);
         }
-        self.compile_schema_default_fields(
-            &mut fields,
-            &explicit,
-            schema_default_fields(Some(&shape)),
-            Some(&shape),
-        )?;
-        Ok(fields)
+
+        placed
+            .into_iter()
+            .map(|(field_name, _, value)| {
+                let register = match value {
+                    vela_mir::CompileConstructorValue::Explicit { source_index, .. } => {
+                        let source_index = usize::try_from(source_index).map_err(|_| {
+                            self.compile_target_input_error(
+                                call,
+                                "tuple constructor source index exceeds usize",
+                            )
+                        })?;
+                        source_registers
+                            .get(source_index)
+                            .copied()
+                            .flatten()
+                            .ok_or_else(|| {
+                                self.compile_target_input_error(
+                                    call,
+                                    "tuple constructor source index is out of bounds",
+                                )
+                            })?
+                    }
+                    vela_mir::CompileConstructorValue::EvaluatedDefault(body) => {
+                        let value = self
+                            .facts
+                            .semantic_input
+                            .targets()
+                            .evaluated_schema_default(body)
+                            .cloned()
+                            .ok_or_else(|| {
+                                self.compile_target_input_error(
+                                    call,
+                                    format!("tuple constructor default {body:?} is missing"),
+                                )
+                            })?;
+                        self.emit_constant(super::values::constant_from_mir(value))?
+                    }
+                };
+                Ok((field_name, register))
+            })
+            .collect()
     }
 }

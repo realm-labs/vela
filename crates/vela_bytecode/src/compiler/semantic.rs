@@ -394,6 +394,7 @@ fn function_compile_input(
     Some(FunctionCompileInput {
         name: function_name_for_body(hir_body, graph)?,
         body: hir_body.id,
+        origin: MirSourceOrigin::body(hir_body.id, hir_body.origin.span),
         param_defaults,
     })
 }

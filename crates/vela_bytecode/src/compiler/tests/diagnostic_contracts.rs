@@ -247,16 +247,7 @@ fn literal_diagnostic_contract_pins_contextual_conversion_failure() {
     const SOURCE: &str = "fn main() { return 128i8; }";
     let error = compile_function_source(SOURCE_ID, SOURCE, "main")
         .expect_err("out-of-range suffixed literal should fail compilation");
-    let diagnostic = error
-        .to_diagnostic()
-        .expect("literal conversion errors should project to a user diagnostic");
-    assert_eq!(
-        error.kind,
-        CompileErrorKind::InvalidIntLiteral {
-            literal: "128i8".to_owned(),
-            error: "integer literal out of range".to_owned(),
-        }
-    );
+    let diagnostic = only_semantic_diagnostic(error);
 
     assert_diagnostic_contract(
         &diagnostic,

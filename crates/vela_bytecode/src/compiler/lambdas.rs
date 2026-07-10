@@ -5,7 +5,10 @@ use vela_hir::ids::{HirExprId, HirLocalId};
 use crate::{Register, UnlinkedInstructionKind};
 
 use super::record_shapes::ValueShape;
-use super::{CompileError, CompileErrorKind, CompileResult, Compiler, CompilerHirContext};
+use super::{
+    CompileError, CompileErrorKind, CompileResult, Compiler, CompilerHirContext,
+    LambdaCompilerInput,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct LambdaCapture {
@@ -51,11 +54,14 @@ impl<'ast> Compiler<'ast, '_> {
             .map(|capture| capture.register)
             .collect::<Vec<_>>();
         let mut lambda_compiler = Compiler::new_lambda(
-            format!("{}::<lambda@{}>", self.code.name, lambda_span.start),
-            lambda_span,
-            &params,
-            hir_body.id,
-            &captures,
+            LambdaCompilerInput {
+                name: format!("{}::<lambda@{}>", self.code.name, lambda_span.start),
+                function: self.function,
+                root_origin: vela_mir::MirSourceOrigin::body(hir_body.id, lambda_span),
+                params: &params,
+                body: hir_body.id,
+                captures: &captures,
+            },
             CompilerHirContext {
                 bindings: self.bindings,
                 bodies: self.hir_bodies.clone(),

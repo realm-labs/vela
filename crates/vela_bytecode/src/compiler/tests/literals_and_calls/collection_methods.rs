@@ -227,7 +227,7 @@ fn main() {
 }
 
 #[test]
-fn compiler_allows_known_std_value_methods_without_registry() {
+fn compiler_uses_stable_std_value_method_targets_without_registry() {
     let code = compile_function_source(
         SourceId::new(1),
         r##"
@@ -240,7 +240,7 @@ fn main() {
         "main",
     )
     .expect("string sequence methods should compile without registry");
-    let methods = dynamic_method_names(&code);
+    let methods = nested_method_id_names(&code);
 
     assert!(methods.iter().any(|method| method == "chars"));
     assert!(methods.iter().any(|method| method == "bytes"));
@@ -410,23 +410,6 @@ fn collect_nested_method_id_names(code: &UnlinkedCodeObject, methods: &mut Vec<S
     }
     for nested in &code.nested_functions {
         collect_nested_method_id_names(nested, methods);
-    }
-}
-
-fn dynamic_method_names(code: &UnlinkedCodeObject) -> Vec<String> {
-    let mut methods = Vec::new();
-    collect_dynamic_method_names(code, &mut methods);
-    methods
-}
-
-fn collect_dynamic_method_names(code: &UnlinkedCodeObject, methods: &mut Vec<String>) {
-    for instruction in &code.instructions {
-        if let UnlinkedInstructionKind::CallDynamicMethod { method, .. } = &instruction.kind {
-            methods.push(method.clone());
-        }
-    }
-    for nested in &code.nested_functions {
-        collect_dynamic_method_names(nested, methods);
     }
 }
 

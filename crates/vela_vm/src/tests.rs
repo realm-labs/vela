@@ -48,6 +48,7 @@ mod consts;
 mod control_flow;
 mod deferred_literals;
 mod dynamic_method_dispatch;
+mod evaluation_order;
 mod execution_core;
 mod heap_host;
 mod host_fields;

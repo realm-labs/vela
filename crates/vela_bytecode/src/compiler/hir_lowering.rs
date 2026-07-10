@@ -1,18 +1,13 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
-use crate::compiler::call_args::{HirCallArgument, resolve_hir_call_arguments};
-use crate::compiler::calls::metadata::{registry_param_hints, unresolved_static_method_error};
+use crate::compiler::calls::metadata::registry_param_hints;
 use crate::compiler::calls::{mutation_arg_debug_name, typed_container_mutation_arg_contract};
-use crate::compiler::constructors::schema_default_fields;
 use crate::compiler::control_flow::{LoopContext, LoopIterable};
 use crate::compiler::expected_exprs::guard_location_and_name;
 use crate::compiler::host_paths::HostIndexAccessKind;
 use crate::compiler::patterns::PatternBindingFacts;
 use crate::compiler::patterns::enum_variant_path;
 use crate::compiler::record_shapes::{ValueShape, callback_param_shapes};
-use crate::compiler::schema_defaults::{
-    ConstructorFieldUse, record_constructor_field_diagnostics, unknown_enum_variant_diagnostic,
-};
 use crate::compiler::value_types::{
     ExpectedTypeOutcome, RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type,
 };
@@ -26,25 +21,19 @@ use vela_hir::binding::LocalBindingKind;
 use vela_hir::body::{
     HirAssignOp, HirBinaryOp, HirBodyRoot, HirElseBranch, HirExprKind, HirFloatSuffix, HirIf,
     HirIntegerSuffix, HirInterpolatedStringPart, HirLiteral, HirMatch, HirMatchArmBody,
-    HirPathKind, HirPatternKind, HirStmtKind, HirUnaryOp,
+    HirPatternKind, HirStmtKind, HirUnaryOp,
 };
 use vela_hir::ids::{HirBlockId, HirBodyId, HirExprId, HirPatternId, HirStmtId};
 use vela_hir::type_hint::ParamHint;
 use vela_host::resolved::HostMutationOp;
 
 mod assignments;
+mod call_placements;
 mod calls;
 mod control_flow;
+mod host_calls;
 mod operators;
 mod values;
-
-fn integer_text(value: &vela_hir::body::HirIntegerLiteral) -> String {
-    vela_analysis::literals::integer_literal_spelling(value)
-}
-
-fn float_text(value: &vela_hir::body::HirFloatLiteral) -> String {
-    vela_analysis::literals::float_literal_spelling(value)
-}
 
 pub(in crate::compiler) fn integer_suffix_tag(
     suffix: Option<HirIntegerSuffix>,

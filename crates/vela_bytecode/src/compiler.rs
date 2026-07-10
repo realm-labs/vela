@@ -1,7 +1,6 @@
 //! Heavy-HIR-to-bytecode compiler for the Vela VM.
 
 mod cache_sites;
-mod call_args;
 mod calls;
 mod const_eval;
 mod constructors;
@@ -30,9 +29,10 @@ mod semantic_input;
 mod value_types;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::sync::Arc;
 
 use vela_common::{GlobalSlot, HostMethodId, HostTypeId, SourceId, Span};
-use vela_def::{DefPath, FieldId, MethodId, TypeId};
+use vela_def::{DefPath, FieldId, FunctionId, MethodId, TypeId};
 use vela_hir::attributes::derived_traits;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBindingKind};
 use vela_hir::body::{HirBody, HirField, HirIndex};
@@ -78,6 +78,7 @@ struct CompilerFacts<'registry> {
     const_values: BTreeMap<HirDeclId, Constant>,
     options: CompilerOptions,
     registry: Option<RegistryCompileView<'registry>>,
+    semantic_input: Arc<semantic_input::PreparedSemanticInput>,
 }
 
 impl CompilerFacts<'_> {
@@ -155,9 +156,33 @@ fn compile_function_source_inner<'registry>(
     let derived_operator_traits =
         derived_operator_traits(semantic.script_metadata_graph(), &type_symbols);
     let const_values = semantic.const_values()?;
-    let semantic_constants = const_values.clone();
     let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values)?;
-    let semantic_schema_defaults = schema_defaults.clone();
+    let declaration = semantic
+        .function_declaration(function_name)
+        .ok_or_else(|| {
+            CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
+        })?;
+    let (payload, signature, bindings, hir_bodies) =
+        semantic.function(function_name).ok_or_else(|| {
+            CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
+        })?;
+    let script_methods = semantic.script_method_catalog();
+    let semantic_input = Arc::new(semantic_input::prepare_semantic_input(
+        semantic_input::SemanticInputRequest {
+            graph: semantic.script_metadata_graph(),
+            roots: semantic_input::SemanticRoots::Function(declaration),
+            script_function_symbols: &script_function_symbols,
+            script_methods,
+            type_symbols: &type_symbols,
+            global_symbols: &global_symbols,
+            constants: &const_values,
+            schema_defaults: &schema_defaults,
+            options,
+            registry,
+        },
+    )?);
+    let body_origin = payload.origin;
+    let function = semantic_input.require_function_for_declaration(declaration, body_origin)?;
     let facts = CompilerFacts {
         script_function_symbols,
         script_function_signatures,
@@ -173,22 +198,18 @@ fn compile_function_source_inner<'registry>(
         const_values,
         options: options.clone(),
         registry,
+        semantic_input,
     };
-    let declaration = semantic
-        .function_declaration(function_name)
-        .ok_or_else(|| {
-            CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
-        })?;
-    let (payload, signature, bindings, hir_bodies) =
-        semantic.function(function_name).ok_or_else(|| {
-            CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
-        })?;
 
     let code = verify_code_object(
         Compiler::new_with_param_defaults(
-            payload.name,
-            payload.body,
-            payload.param_defaults,
+            CompilerBodyInput {
+                code_name: payload.name,
+                function,
+                root_origin: body_origin,
+                body: payload.body,
+                param_defaults: payload.param_defaults,
+            },
             signature,
             CompilerHirContext {
                 bindings,
@@ -198,24 +219,6 @@ fn compile_function_source_inner<'registry>(
         )?
         .compile()?,
     )?;
-    let script_function_symbols = semantic.script_function_symbols();
-    let type_symbols = semantic.type_symbols();
-    let global_symbols = semantic.global_symbols();
-    let script_methods = semantic.script_method_catalog();
-    drop(semantic_input::prepare_semantic_input(
-        semantic_input::SemanticInputRequest {
-            graph: semantic.script_metadata_graph(),
-            roots: semantic_input::SemanticRoots::Function(declaration),
-            script_function_symbols: &script_function_symbols,
-            script_methods,
-            type_symbols: &type_symbols,
-            global_symbols: &global_symbols,
-            constants: &semantic_constants,
-            schema_defaults: &semantic_schema_defaults,
-            options,
-            registry,
-        },
-    )?);
     Ok(code)
 }
 
@@ -275,9 +278,21 @@ fn compile_program_source_inner<'registry>(
     let derived_operator_traits =
         derived_operator_traits(semantic.script_metadata_graph(), &type_symbols);
     let const_values = semantic.const_values()?;
-    let semantic_constants = const_values.clone();
     let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values)?;
-    let semantic_schema_defaults = schema_defaults.clone();
+    let semantic_input = Arc::new(semantic_input::prepare_semantic_input(
+        semantic_input::SemanticInputRequest {
+            graph: semantic.script_metadata_graph(),
+            roots: semantic_input::SemanticRoots::Program,
+            script_function_symbols: &script_function_symbols,
+            script_methods: script_method_catalog,
+            type_symbols: &type_symbols,
+            global_symbols: &global_symbols,
+            constants: &const_values,
+            schema_defaults: &schema_defaults,
+            options,
+            registry,
+        },
+    )?);
     let facts = CompilerFacts {
         script_function_symbols,
         script_function_signatures,
@@ -293,19 +308,40 @@ fn compile_program_source_inner<'registry>(
         const_values,
         options: options.clone(),
         registry,
+        semantic_input,
     };
     let mut program = UnlinkedProgram::new();
     program.set_global_layout(global_names(&facts.global_symbols));
 
     for name in &script_functions {
-        let (payload, signature, bindings, hir_bodies) = semantic
-            .function(name)
-            .expect("HIR function declarations come from parsed function items");
+        let declaration = semantic
+            .function_declaration(name)
+            .ok_or_else(|| CompileError::new(CompileErrorKind::FunctionNotFound(name.clone())))?;
+        let declaration_origin = semantic
+            .script_metadata_graph()
+            .declaration(declaration)
+            .map(|metadata| vela_mir::MirSourceOrigin::declaration(declaration, metadata.span))
+            .ok_or_else(|| CompileError::new(CompileErrorKind::FunctionNotFound(name.clone())))?;
+        let (payload, signature, bindings, hir_bodies) =
+            semantic.function(name).ok_or_else(|| {
+                inconsistent_semantic_input(
+                    declaration_origin,
+                    format!("function declaration {declaration:?} has no executable HIR body"),
+                )
+            })?;
+        let body_origin = payload.origin;
+        let function = facts
+            .semantic_input
+            .require_function_for_declaration(declaration, body_origin)?;
         program.insert_function(
             Compiler::new_with_param_defaults(
-                payload.name,
-                payload.body,
-                payload.param_defaults,
+                CompilerBodyInput {
+                    code_name: payload.name,
+                    function,
+                    root_origin: body_origin,
+                    body: payload.body,
+                    param_defaults: payload.param_defaults,
+                },
                 signature,
                 CompilerHirContext {
                     bindings,
@@ -320,23 +356,6 @@ fn compile_program_source_inner<'registry>(
     program.set_script_metadata(semantic.script_metadata_graph().clone());
 
     let program = verify_program(program)?;
-    let script_function_symbols = semantic.script_function_symbols();
-    let type_symbols = semantic.type_symbols();
-    let global_symbols = semantic.global_symbols();
-    drop(semantic_input::prepare_semantic_input(
-        semantic_input::SemanticInputRequest {
-            graph: semantic.script_metadata_graph(),
-            roots: semantic_input::SemanticRoots::Program,
-            script_function_symbols: &script_function_symbols,
-            script_methods: script_method_catalog,
-            type_symbols: &type_symbols,
-            global_symbols: &global_symbols,
-            constants: &semantic_constants,
-            schema_defaults: &semantic_schema_defaults,
-            options,
-            registry,
-        },
-    )?);
     Ok(program)
 }
 
@@ -387,9 +406,21 @@ fn compile_module_sources_inner<'registry>(
     let derived_operator_traits =
         derived_operator_traits(semantic.script_metadata_graph(), &type_symbols);
     let const_values = semantic.const_values()?;
-    let semantic_constants = const_values.clone();
     let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values)?;
-    let semantic_schema_defaults = schema_defaults.clone();
+    let semantic_input = Arc::new(semantic_input::prepare_semantic_input(
+        semantic_input::SemanticInputRequest {
+            graph: semantic.script_metadata_graph(),
+            roots: semantic_input::SemanticRoots::Program,
+            script_function_symbols: &script_function_symbols,
+            script_methods: script_method_catalog,
+            type_symbols: &type_symbols,
+            global_symbols: &global_symbols,
+            constants: &const_values,
+            schema_defaults: &schema_defaults,
+            options,
+            registry,
+        },
+    )?);
     let facts = CompilerFacts {
         script_function_symbols,
         script_function_signatures,
@@ -405,24 +436,51 @@ fn compile_module_sources_inner<'registry>(
         const_values,
         options: options.clone(),
         registry,
+        semantic_input,
     };
     let mut program = UnlinkedProgram::new();
     program.set_global_layout(global_names(&facts.global_symbols));
 
     for declaration in script_functions {
-        let (payload, signature, bindings, hir_bodies) = semantic
-            .function(declaration)
-            .expect("HIR function declaration comes from parsed function item");
+        let declaration_origin = semantic
+            .script_metadata_graph()
+            .declaration(declaration)
+            .map(|metadata| vela_mir::MirSourceOrigin::declaration(declaration, metadata.span))
+            .ok_or_else(|| {
+                CompileError::new(CompileErrorKind::FunctionNotFound(format!(
+                    "{declaration:?}"
+                )))
+            })?;
+        let (payload, signature, bindings, hir_bodies) =
+            semantic.function(declaration).ok_or_else(|| {
+                inconsistent_semantic_input(
+                    declaration_origin,
+                    format!("function declaration {declaration:?} has no executable HIR body"),
+                )
+            })?;
+        let body_origin = payload.origin;
+        let function = facts
+            .semantic_input
+            .require_function_for_declaration(declaration, body_origin)?;
         let code_name = facts
             .script_function_symbols
             .get(&declaration)
-            .expect("script function symbol exists for declaration")
+            .ok_or_else(|| {
+                inconsistent_semantic_input(
+                    declaration_origin,
+                    format!("function declaration {declaration:?} has no canonical symbol"),
+                )
+            })?
             .clone();
         program.insert_function(
             Compiler::new_with_param_defaults(
-                code_name,
-                payload.body,
-                payload.param_defaults,
+                CompilerBodyInput {
+                    code_name,
+                    function,
+                    root_origin: body_origin,
+                    body: payload.body,
+                    param_defaults: payload.param_defaults,
+                },
                 signature,
                 CompilerHirContext {
                     bindings,
@@ -437,23 +495,6 @@ fn compile_module_sources_inner<'registry>(
     program.set_script_metadata(semantic.script_metadata_graph().clone());
 
     let program = verify_program(program)?;
-    let script_function_symbols = semantic.script_function_symbols();
-    let type_symbols = semantic.type_symbols();
-    let global_symbols = semantic.global_symbols();
-    drop(semantic_input::prepare_semantic_input(
-        semantic_input::SemanticInputRequest {
-            graph: semantic.script_metadata_graph(),
-            roots: semantic_input::SemanticRoots::Program,
-            script_function_symbols: &script_function_symbols,
-            script_methods: script_method_catalog,
-            type_symbols: &type_symbols,
-            global_symbols: &global_symbols,
-            constants: &semantic_constants,
-            schema_defaults: &semantic_schema_defaults,
-            options,
-            registry,
-        },
-    )?);
     Ok(program)
 }
 
@@ -468,6 +509,19 @@ fn verify_code_object(code: UnlinkedCodeObject) -> CompileResult<UnlinkedCodeObj
     code.verify()
         .map_err(|error| CompileError::new(CompileErrorKind::BytecodeVerification(error)))?;
     Ok(code)
+}
+
+fn inconsistent_semantic_input(
+    origin: vela_mir::MirSourceOrigin,
+    message: impl Into<String>,
+) -> CompileError {
+    CompileError::new(CompileErrorKind::MirInput(Box::new(
+        vela_mir::MirBuildError::InconsistentInput {
+            origin,
+            message: message.into(),
+        },
+    )))
+    .with_span(origin.span)
 }
 
 fn global_names(global_symbols: &BTreeMap<HirDeclId, String>) -> Vec<String> {
@@ -518,18 +572,28 @@ fn insert_script_impl_methods(
     facts: &CompilerFacts<'_>,
 ) -> CompileResult<()> {
     for method in methods {
+        let target = facts.semantic_input.require_method_for_body_symbol(
+            method.body,
+            &method.symbol,
+            method.method_id,
+            method.origin,
+        )?;
         program.insert_script_method(
             method.target_type.clone(),
             method.method_name.clone(),
-            method.method_id,
+            target.method,
             method.symbol.clone(),
         );
         program.insert_function(
             Compiler::new_script_method_body(
-                method.symbol,
-                method.default_values.clone(),
+                CompilerBodyInput {
+                    code_name: method.symbol,
+                    function: target.function,
+                    root_origin: method.origin,
+                    body: method.body,
+                    param_defaults: method.default_values.clone(),
+                },
                 &method.signature,
-                method.body,
                 CompilerHirContext {
                     bindings: method.bindings,
                     bodies: method.hir_bodies,
@@ -800,6 +864,8 @@ struct Compiler<'ast, 'registry> {
     param_defaults: Vec<Option<ParamDefaultValue>>,
     return_type: Option<RuntimeTypeFact>,
     body: vela_hir::ids::HirBodyId,
+    function: FunctionId,
+    root_origin: vela_mir::MirSourceOrigin,
     facts: CompilerFacts<'registry>,
     loop_stack: Vec<LoopContext>,
 }
@@ -807,6 +873,23 @@ struct Compiler<'ast, 'registry> {
 struct CompilerHirContext<'ast> {
     bindings: &'ast BindingMap,
     bodies: Vec<&'ast HirBody>,
+}
+
+struct CompilerBodyInput {
+    code_name: String,
+    function: FunctionId,
+    root_origin: vela_mir::MirSourceOrigin,
+    body: vela_hir::ids::HirBodyId,
+    param_defaults: Vec<Option<ParamDefaultValue>>,
+}
+
+struct LambdaCompilerInput<'input> {
+    name: String,
+    function: FunctionId,
+    root_origin: vela_mir::MirSourceOrigin,
+    params: &'input [LambdaParam],
+    body: vela_hir::ids::HirBodyId,
+    captures: &'input [LambdaCapture],
 }
 
 impl<'ast, 'registry> Compiler<'ast, 'registry> {
@@ -824,24 +907,27 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
     }
 
     fn new_with_param_defaults(
-        code_name: String,
-        body: vela_hir::ids::HirBodyId,
-        param_defaults: Vec<Option<ParamDefaultValue>>,
+        input: CompilerBodyInput,
         signature: &FunctionSignature,
         hir: CompilerHirContext<'ast>,
         facts: CompilerFacts<'registry>,
     ) -> CompileResult<Self> {
-        Self::new_body(code_name, param_defaults, signature, body, hir, facts)
+        Self::new_body(input, signature, hir, facts)
     }
 
     fn new_body(
-        code_name: String,
-        param_defaults: Vec<Option<ParamDefaultValue>>,
+        input: CompilerBodyInput,
         signature: &FunctionSignature,
-        body: vela_hir::ids::HirBodyId,
         hir: CompilerHirContext<'ast>,
         facts: CompilerFacts<'registry>,
     ) -> CompileResult<Self> {
+        let CompilerBodyInput {
+            code_name,
+            function,
+            root_origin,
+            body,
+            param_defaults,
+        } = input;
         let bindings = hir.bindings;
         let param_count = u16::try_from(signature.params.len())
             .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;
@@ -931,21 +1017,21 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             param_defaults,
             return_type,
             body,
+            function,
+            root_origin,
             facts,
             loop_stack: Vec::new(),
         })
     }
 
     fn new_script_method_body(
-        code_name: String,
-        param_defaults: Vec<Option<ParamDefaultValue>>,
+        input: CompilerBodyInput,
         signature: &FunctionSignature,
-        body: vela_hir::ids::HirBodyId,
         hir: CompilerHirContext<'ast>,
         receiver_type: &str,
         facts: CompilerFacts<'registry>,
     ) -> CompileResult<Self> {
-        let mut compiler = Self::new_body(code_name, param_defaults, signature, body, hir, facts)?;
+        let mut compiler = Self::new_body(input, signature, hir, facts)?;
         compiler
             .script_types
             .set_name("self", Some(receiver_type.to_owned()));
@@ -953,14 +1039,18 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
     }
 
     fn new_lambda(
-        name: String,
-        _lambda_span: Span,
-        params: &[LambdaParam],
-        body: vela_hir::ids::HirBodyId,
-        captures: &[LambdaCapture],
+        input: LambdaCompilerInput<'_>,
         hir: CompilerHirContext<'ast>,
         facts: CompilerFacts<'registry>,
     ) -> CompileResult<Self> {
+        let LambdaCompilerInput {
+            name,
+            function,
+            root_origin,
+            params,
+            body,
+            captures,
+        } = input;
         let bindings = hir.bindings;
         let capture_count = u16::try_from(captures.len())
             .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;
@@ -1071,6 +1161,8 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             param_defaults: vec![None; params.len()],
             return_type: None,
             body,
+            function,
+            root_origin,
             facts,
             loop_stack: Vec::new(),
         })
@@ -1092,6 +1184,73 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             .iter()
             .find_map(|body| body.expressions.get(&expression))
             .map(|expression| expression.origin.span)
+    }
+
+    pub(in crate::compiler) fn placed_call_target(
+        &self,
+        expression: HirExprId,
+    ) -> CompileResult<vela_mir::CompileCallTarget> {
+        self.facts
+            .semantic_input
+            .targets()
+            .call(self.function, expression)
+            .cloned()
+            .ok_or_else(|| self.compile_target_input_error(expression, "missing call placement"))
+    }
+
+    pub(in crate::compiler) fn placed_constructor_target(
+        &self,
+        expression: HirExprId,
+    ) -> CompileResult<vela_mir::CompileConstructorTarget> {
+        self.facts
+            .semantic_input
+            .targets()
+            .constructor(self.function, expression)
+            .cloned()
+            .ok_or_else(|| {
+                self.compile_target_input_error(expression, "missing constructor placement")
+            })
+    }
+
+    pub(in crate::compiler) fn placed_host_path_target(
+        &self,
+        expression: HirExprId,
+    ) -> CompileResult<vela_mir::CompileHostPathTarget> {
+        self.facts
+            .semantic_input
+            .targets()
+            .host_path(self.function, expression)
+            .cloned()
+            .ok_or_else(|| {
+                self.compile_target_input_error(expression, "missing host-path placement")
+            })
+    }
+
+    pub(in crate::compiler) fn compile_target_input_error(
+        &self,
+        expression: HirExprId,
+        message: impl Into<String>,
+    ) -> CompileError {
+        let origin = self
+            .hir_bodies
+            .iter()
+            .find_map(|body| {
+                body.expressions.get(&expression).map(|record| {
+                    vela_mir::MirSourceOrigin::expression(body.id, expression, record.origin.span)
+                })
+            })
+            .unwrap_or(self.root_origin);
+        CompileError::new(CompileErrorKind::MirInput(Box::new(
+            vela_mir::MirBuildError::InconsistentInput {
+                origin,
+                message: format!(
+                    "function #{} expression {expression:?}: {}",
+                    self.function.get(),
+                    message.into()
+                ),
+            },
+        )))
+        .with_span(origin.span)
     }
 
     pub(in crate::compiler) fn hir_field_for_expression(
@@ -1251,13 +1410,6 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             .script_method_ids
             .get(&(type_name.to_owned(), method.to_owned()))
             .copied()
-    }
-
-    fn script_method_params(&self, type_name: &str, method: &str) -> Option<Vec<ParamHint>> {
-        self.facts
-            .script_method_signatures
-            .get(&(type_name.to_owned(), method.to_owned()))
-            .cloned()
     }
 
     fn host_type_id_for_name(&self, type_name: &str) -> Option<TypeId> {

@@ -52,14 +52,11 @@ fn compiler_rejects_contextual_negative_overflow_at_operand_span() {
     let error = compile_function_source(SourceId::new(1), SOURCE, "main")
         .expect_err("contextual negative overflow should fail");
 
-    assert_eq!(
-        error.kind,
-        CompileErrorKind::InvalidIntLiteral {
-            literal: "129".to_owned(),
-            error: "integer literal out of range".to_owned(),
-        }
+    let span = semantic_literal_error_span(
+        error,
+        "compiler::invalid_int_literal",
+        "invalid integer literal `129`: integer literal out of range",
     );
-    let span = error.span.expect("literal error span");
     assert_eq!(&SOURCE[span.start as usize..span.end as usize], "129");
 }
 
@@ -71,14 +68,11 @@ fn compiler_rejects_f32_and_f64_literal_overflow() {
     ] {
         let error = compile_function_source(SourceId::new(1), source, "main")
             .expect_err("non-finite float literal should fail");
-        assert_eq!(
-            error.kind,
-            CompileErrorKind::InvalidFloatLiteral {
-                literal: literal.to_owned(),
-                error: "float literal out of range".to_owned(),
-            }
+        let span = semantic_literal_error_span(
+            error,
+            "compiler::invalid_float_literal",
+            &format!("invalid float literal `{literal}`: float literal out of range"),
         );
-        let span = error.span.expect("literal error span");
         assert_eq!(&source[span.start as usize..span.end as usize], literal);
     }
 }
@@ -89,16 +83,25 @@ fn compiler_validates_deferred_dynamic_literal_range() {
     let error = compile_function_source(SourceId::new(1), SOURCE, "main")
         .expect_err("no numeric primitive can hold the deferred literal");
 
-    assert_eq!(
-        error.kind,
-        CompileErrorKind::InvalidIntLiteral {
-            literal: "18446744073709551616".to_owned(),
-            error: "integer literal out of range".to_owned(),
-        }
+    let span = semantic_literal_error_span(
+        error,
+        "compiler::invalid_int_literal",
+        "invalid integer literal `18446744073709551616`: integer literal out of range",
     );
-    let span = error.span.expect("literal error span");
     assert_eq!(
         &SOURCE[span.start as usize..span.end as usize],
         "18446744073709551616"
     );
+}
+
+fn semantic_literal_error_span(error: CompileError, code: &str, message: &str) -> Span {
+    let CompileErrorKind::SemanticDiagnostics(diagnostics) = &error.kind else {
+        panic!("expected semantic literal diagnostics, got {error:?}");
+    };
+    let [diagnostic] = diagnostics.as_slice() else {
+        panic!("expected one literal diagnostic, got {diagnostics:?}");
+    };
+    assert_eq!(diagnostic.code.as_deref(), Some(code));
+    assert_eq!(diagnostic.message, message);
+    diagnostic.span.expect("literal diagnostic span")
 }

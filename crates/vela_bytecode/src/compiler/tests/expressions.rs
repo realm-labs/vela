@@ -250,12 +250,12 @@ fn compiler_lowers_block_and_if_expression_values() {
 fn main() {
     let value = {
         let base = 2;
-        base + 3;
+        base + 3
     };
     return if value > 4 {
-        value;
+        value
     } else {
-        0;
+        0
     };
 }
 "#,

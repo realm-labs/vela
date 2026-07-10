@@ -525,7 +525,8 @@ mod tests {
             )
             .expect("grant registration");
 
-        let facts = RegistryFacts::from_compile_view(registry.compile_view());
+        let facts = RegistryFacts::from_compile_view(registry.compile_view())
+            .expect("registry declaration slots");
 
         assert_eq!(
             facts.type_fact("game::Player"),
@@ -587,7 +588,7 @@ mod tests {
                 if target.owner == player
                     && target.host_runtime == Some(FieldId::new(81))
                     && !target.variant_field
-                    && target.declaration_order == 3
+                    && target.declaration_order == 1
                     && target.has_default
         ));
         assert_eq!(
@@ -711,7 +712,8 @@ mod tests {
             )
             .expect("grant registration");
 
-        let schema = RegistryFacts::from_compile_view(registry.compile_view());
+        let schema = RegistryFacts::from_compile_view(registry.compile_view())
+            .expect("registry declaration slots");
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(91),

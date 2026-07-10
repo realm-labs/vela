@@ -244,7 +244,12 @@ mod tests {
                 .insert(definition)
                 .expect("unique standard definition");
         }
-        let catalog = ExternalCatalog::from_view(registry.compile_view());
+        let slots = registry
+            .compile_view()
+            .declaration_slots()
+            .expect("registry declaration slots");
+        let catalog =
+            ExternalCatalog::from_view(registry.compile_view(), &slots).expect("external catalog");
 
         let error = TryLayouts::from_catalog(&catalog)
             .expect_err("a cross-type Some edge must be rejected");

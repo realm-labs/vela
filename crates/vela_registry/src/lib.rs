@@ -1,5 +1,6 @@
 //! Central definition registry for semantic definitions.
 
+mod declaration_slots;
 mod defs;
 
 use std::collections::BTreeMap;
@@ -11,6 +12,7 @@ use vela_def::{
     DefId, DefKind, DefPath, FieldId, FunctionId, MethodId, TraitId, TypeId, VariantId,
 };
 
+pub use declaration_slots::{RegistryDeclarationSlotError, RegistryDeclarationSlots};
 pub use defs::{
     Def, EffectSet, FieldAccessDef, FieldDef, FunctionAccessDef, FunctionDef, FunctionSignature,
     IndexCapabilityDef, MethodAccessDef, MethodDef, ParamDef, SemanticKey, TraitDef, TypeDef,
@@ -192,6 +194,16 @@ impl<'registry> RegistryCompileView<'registry> {
     /// Iterates backend-neutral definition metadata in deterministic ID order.
     pub fn definitions(&self) -> impl Iterator<Item = &'registry Def> + 'registry {
         self.registry.defs_by_id.values()
+    }
+
+    /// Freezes declaration metadata into contiguous, deterministic schema
+    /// slots. Registry declarations may share the same requested order (the
+    /// builder default is zero), so stable name and ID ties decide their
+    /// relative position inside each owner shape.
+    pub fn declaration_slots(
+        &self,
+    ) -> Result<RegistryDeclarationSlots, RegistryDeclarationSlotError> {
+        RegistryDeclarationSlots::from_view(*self)
     }
 
     #[must_use]
@@ -1079,5 +1091,67 @@ mod tests {
         );
         assert_eq!(view.resolve_host_field(owner, "value"), None);
         assert_eq!(view.resolve_host_field(owner, "code"), Some(granted_code));
+    }
+
+    #[test]
+    fn compile_view_canonicalizes_duplicate_declaration_orders_per_shape() {
+        let mut registry = DefinitionRegistry::new();
+        let owner = registry
+            .register_type(TypeDef::new(DefPath::ty("host", ["game"], "Payload")))
+            .expect("payload type");
+        let zed = registry
+            .register_variant(VariantDef::new(
+                DefPath::variant("host", ["game"], "Payload", "Zed"),
+                owner,
+            ))
+            .expect("Zed variant");
+        let alpha = registry
+            .register_variant(VariantDef::new(
+                DefPath::variant("host", ["game"], "Payload", "Alpha"),
+                owner,
+            ))
+            .expect("Alpha variant");
+        let root_zeta = registry
+            .register_field(FieldDef::new(
+                DefPath::field("host", ["game"], "Payload", "zeta"),
+                owner,
+            ))
+            .expect("zeta field");
+        let root_alpha = registry
+            .register_field(FieldDef::new(
+                DefPath::field("host", ["game"], "Payload", "alpha"),
+                owner,
+            ))
+            .expect("alpha field");
+        let variant_beta = registry
+            .register_field(
+                FieldDef::new(
+                    DefPath::field("host", ["game"], "Payload::Zed", "beta"),
+                    owner,
+                )
+                .variant_owner(zed),
+            )
+            .expect("Zed beta field");
+        let variant_alpha = registry
+            .register_field(
+                FieldDef::new(
+                    DefPath::field("host", ["game"], "Payload::Zed", "alpha"),
+                    owner,
+                )
+                .variant_owner(zed),
+            )
+            .expect("Zed alpha field");
+
+        let slots = registry
+            .compile_view()
+            .declaration_slots()
+            .expect("canonical declaration slots");
+
+        assert_eq!(slots.field(root_alpha), Ok(0));
+        assert_eq!(slots.field(root_zeta), Ok(1));
+        assert_eq!(slots.variant(alpha), Ok(0));
+        assert_eq!(slots.variant(zed), Ok(1));
+        assert_eq!(slots.field(variant_alpha), Ok(0));
+        assert_eq!(slots.field(variant_beta), Ok(1));
     }
 }

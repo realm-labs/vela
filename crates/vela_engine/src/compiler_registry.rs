@@ -573,7 +573,7 @@ mod tests {
         assert!(native_function.access.reflect_visible);
         assert!(native_function.access.reflect_callable);
 
-        let facts = RegistryFacts::from_compile_view(view);
+        let facts = RegistryFacts::from_compile_view(view).expect("registry declaration slots");
         let type_target = facts
             .type_target_fact("QuestState")
             .expect("semantic type target");

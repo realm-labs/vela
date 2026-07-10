@@ -4,7 +4,9 @@ use vela_analysis::semantic_facts::{
     MemberTargetFact,
 };
 use vela_analysis::type_fact::TypeFact;
-use vela_analysis::validation::CallPlacementModeFact;
+use vela_analysis::validation::{
+    CallPlacementModeFact, HostAccessUseFact, HostAccessUseKind, HostIndexCapabilityResolutionFact,
+};
 use vela_common::{PrimitiveTag, ScalarValue};
 use vela_def::{FieldId, FunctionId, TypeId};
 use vela_hir::body::{
@@ -95,7 +97,7 @@ impl GenerationBuilder<'_, '_> {
             .unwrap_or(CallTargetFact::Unresolved);
 
         if let Some(special) =
-            self.host_behavior_call(executable, body, call, &placement, origin)?
+            self.host_access_call(executable, body, expression, &target, &placement, origin)?
         {
             self.targets
                 .insert_call(executable, expression, special, origin)
@@ -222,8 +224,11 @@ impl GenerationBuilder<'_, '_> {
             | CallTargetFact::StdlibFunction { path } => {
                 self.external_function_call(executable, &path, &placement, origin)?
             }
-            CallTargetFact::HostMethod { owner, name } => {
-                self.host_method_call(executable, &owner, &name, &placement, origin)?
+            CallTargetFact::HostMethod { .. } => {
+                return Err(input_error(MirBuildError::InconsistentInput {
+                    origin,
+                    message: "host method call is missing its HostAccess use fact".to_owned(),
+                }));
             }
             CallTargetFact::RegistryMethod { owner, name } => {
                 self.registry_method_call(executable, &owner, &name, &placement, origin)?
@@ -275,6 +280,9 @@ impl GenerationBuilder<'_, '_> {
         origin: MirSourceOrigin,
     ) -> CompileResult<CompileCallTarget> {
         let Some(definition) = self.catalog.function_by_source(path).cloned() else {
+            if self.registry_was_provided {
+                return Err(unresolved_native(path, origin.span));
+            }
             let arguments = self.positional_argument_values(
                 placement,
                 CallPlacementModeFact::ExternalPositional,
@@ -524,59 +532,176 @@ impl GenerationBuilder<'_, '_> {
         ))
     }
 
-    fn host_behavior_call(
+    fn host_access_call(
         &mut self,
         executable: FunctionId,
         body: &HirBody,
-        call: &vela_hir::body::HirCall,
+        expression: HirExprId,
+        call_target: &CallTargetFact,
         placement: &vela_analysis::validation::CallArgumentPlacementFact,
         origin: MirSourceOrigin,
     ) -> CompileResult<Option<CompileCallTarget>> {
-        let Some(field) = body.field(call.callee) else {
-            return Ok(None);
-        };
-        let Some(path) = self
+        let Some(fact) = self
             .executable_analysis(executable)?
-            .host_path_target(field.receiver)
+            .host_access_use(expression)
             .cloned()
         else {
+            if matches!(call_target, CallTargetFact::HostMethod { .. }) {
+                return Err(input_error(MirBuildError::InconsistentInput {
+                    origin,
+                    message: "host method target has no HostAccess use fact".to_owned(),
+                }));
+            }
             return Ok(None);
         };
-        if field.name == "remove"
-            && call.arguments.is_empty()
-            && matches!(
-                body.expression(field.receiver).map(|value| &value.kind),
-                Some(HirExprKind::Index(_))
-            )
+        self.validate_host_access_call(executable, body, expression, &fact, origin)?;
+        let path_fact = self
+            .executable_analysis(executable)?
+            .host_path_target(fact.target)
+            .cloned()
+            .ok_or_else(|| {
+                input_error(MirBuildError::InconsistentInput {
+                    origin,
+                    message: "HostAccess call target has no host-path target".to_owned(),
+                })
+            })?;
+        let path = self.convert_host_path(executable, path_fact)?;
+        let target = match fact.kind {
+            HostAccessUseKind::Remove => {
+                let arguments = self.source_argument_values(placement, origin)?;
+                if !arguments.is_empty() {
+                    return Err(input_error(MirBuildError::InconsistentInput {
+                        origin,
+                        message: "host remove placement has unexpected arguments".to_owned(),
+                    }));
+                }
+                CompileCallTarget::positional(CompileCalleeTarget::HostRemove { path }, arguments)
+            }
+            HostAccessUseKind::Push => {
+                let arguments = self.source_argument_values(placement, origin)?;
+                if arguments.len() != 1 {
+                    return Err(input_error(MirBuildError::InconsistentInput {
+                        origin,
+                        message: "host push placement must contain one argument".to_owned(),
+                    }));
+                }
+                CompileCallTarget::positional(CompileCalleeTarget::HostPush { path }, arguments)
+            }
+            HostAccessUseKind::Call => {
+                let CallTargetFact::HostMethod { owner, name } = call_target else {
+                    return Err(input_error(MirBuildError::InconsistentInput {
+                        origin,
+                        message: "HostAccess call fact disagrees with its host method target"
+                            .to_owned(),
+                    }));
+                };
+                self.host_method_call(executable, owner, name, placement, origin)?
+            }
+            HostAccessUseKind::Read | HostAccessUseKind::Write | HostAccessUseKind::Mutate => {
+                return Err(input_error(MirBuildError::InconsistentInput {
+                    origin,
+                    message: "non-call HostAccess use fact is attached to a call expression"
+                        .to_owned(),
+                }));
+            }
+        };
+        Ok(Some(target))
+    }
+
+    fn validate_host_access_call(
+        &self,
+        executable: FunctionId,
+        body: &HirBody,
+        expression: HirExprId,
+        fact: &HostAccessUseFact,
+        origin: MirSourceOrigin,
+    ) -> CompileResult<()> {
+        let call = body.call(expression).ok_or_else(registry_input_error)?;
+        let field = body.field(call.callee).ok_or_else(|| {
+            input_error(MirBuildError::InconsistentInput {
+                origin,
+                message: "HostAccess call has no field callee".to_owned(),
+            })
+        })?;
+        if field.receiver != fact.target {
+            return Err(input_error(MirBuildError::InconsistentInput {
+                origin,
+                message: "HostAccess target disagrees with the call receiver".to_owned(),
+            }));
+        }
+        let analysis = self.executable_analysis(executable)?;
+        let path = analysis.host_path_target(fact.target).ok_or_else(|| {
+            input_error(MirBuildError::InconsistentInput {
+                origin,
+                message: "HostAccess call target has no host-path fact".to_owned(),
+            })
+        })?;
+        let path_indexes = path
+            .segments
+            .iter()
+            .filter_map(|segment| match segment {
+                HostPathSegmentFact::Index {
+                    expression,
+                    owner,
+                    capability,
+                    ..
+                } => Some((*expression, owner, capability)),
+                HostPathSegmentFact::Field(_) => None,
+            })
+            .collect::<Vec<_>>();
+        if path_indexes.len() != fact.indexes.len() {
+            return Err(input_error(MirBuildError::InconsistentInput {
+                origin,
+                message: "HostAccess indexes disagree with the host path".to_owned(),
+            }));
+        }
+        for (index_use, (key, owner, capability)) in fact.indexes.iter().zip(path_indexes) {
+            let hir_index = body.index(index_use.expression).ok_or_else(|| {
+                input_error(MirBuildError::InconsistentInput {
+                    origin,
+                    message: "HostAccess index use does not identify an index expression"
+                        .to_owned(),
+                })
+            })?;
+            let HostIndexCapabilityResolutionFact::Registered(index_capability) =
+                &index_use.capability
+            else {
+                return Err(input_error(MirBuildError::InconsistentInput {
+                    origin,
+                    message: "HostAccess index has no registered compile capability".to_owned(),
+                }));
+            };
+            if hir_index.receiver != index_use.receiver
+                || hir_index.index != index_use.key
+                || index_use.key != key
+                || &index_use.owner != owner
+                || index_capability != capability
+            {
+                return Err(input_error(MirBuildError::InconsistentInput {
+                    origin,
+                    message: "HostAccess index metadata disagrees with the host path".to_owned(),
+                }));
+            }
+        }
+        let expected_accessed_index = (fact.kind != HostAccessUseKind::Call)
+            .then(|| body.index(fact.target))
+            .flatten()
+            .and_then(|target| {
+                fact.indexes
+                    .iter()
+                    .position(|index| index.expression == target.expression)
+            });
+        if fact.accessed_index != expected_accessed_index
+            || fact
+                .accessed_index
+                .is_some_and(|index| index >= fact.indexes.len())
         {
-            let path = self.convert_host_path(executable, path)?;
-            let arguments = self.source_argument_values(placement, origin)?;
-            if !arguments.is_empty() {
-                return Err(input_error(MirBuildError::InconsistentInput {
-                    origin,
-                    message: "host remove placement has unexpected arguments".to_owned(),
-                }));
-            }
-            return Ok(Some(CompileCallTarget::positional(
-                CompileCalleeTarget::HostRemove { path },
-                arguments,
-            )));
+            return Err(input_error(MirBuildError::InconsistentInput {
+                origin,
+                message: "HostAccess accessed index disagrees with its target".to_owned(),
+            }));
         }
-        if field.name == "push" && !path.segments.is_empty() && call.arguments.len() == 1 {
-            let path = self.convert_host_path(executable, path)?;
-            let arguments = self.source_argument_values(placement, origin)?;
-            if arguments.len() != 1 {
-                return Err(input_error(MirBuildError::InconsistentInput {
-                    origin,
-                    message: "host push placement must contain one argument".to_owned(),
-                }));
-            }
-            return Ok(Some(CompileCallTarget::positional(
-                CompileCalleeTarget::HostPush { path },
-                arguments,
-            )));
-        }
-        Ok(None)
+        Ok(())
     }
 
     fn insert_member(

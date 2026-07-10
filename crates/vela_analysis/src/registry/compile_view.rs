@@ -4,7 +4,8 @@ use vela_common::{HostTypeId, PrimitiveTag};
 use vela_def::{DefPath, FieldId, TypeId, VariantId};
 use vela_reflect::modules::DeclOrigin;
 use vela_registry::{
-    Def, EffectSet, FunctionSignature, RegistryCompileView, TypeDef, TypeHintDef, TypeKindDef,
+    Def, EffectSet, FunctionSignature, RegistryCompileView, RegistryDeclarationSlotError,
+    RegistryDeclarationSlots, TypeDef, TypeHintDef, TypeKindDef,
 };
 
 use super::{
@@ -18,9 +19,20 @@ use crate::type_fact::TypeFact;
 impl RegistryFacts {
     /// Builds analysis schema facts from the same backend-neutral definition
     /// metadata used by production compilation.
-    #[must_use]
-    pub fn from_compile_view(registry: RegistryCompileView<'_>) -> Self {
-        CompileViewFacts::new(registry).build()
+    pub fn from_compile_view(
+        registry: RegistryCompileView<'_>,
+    ) -> Result<Self, RegistryDeclarationSlotError> {
+        let declaration_slots = registry.declaration_slots()?;
+        Self::from_compile_view_with_slots(registry, declaration_slots)
+    }
+
+    /// Builds facts with a declaration-slot snapshot shared by another
+    /// compile-input consumer.
+    pub fn from_compile_view_with_slots(
+        registry: RegistryCompileView<'_>,
+        declaration_slots: RegistryDeclarationSlots,
+    ) -> Result<Self, RegistryDeclarationSlotError> {
+        CompileViewFacts::new(registry, declaration_slots).build()
     }
 }
 
@@ -30,10 +42,14 @@ struct CompileViewFacts<'registry> {
     type_facts: BTreeMap<String, TypeFact>,
     type_targets: BTreeMap<String, (TypeId, Option<u128>)>,
     variant_names: BTreeMap<VariantId, String>,
+    declaration_slots: RegistryDeclarationSlots,
 }
 
 impl<'registry> CompileViewFacts<'registry> {
-    fn new(registry: RegistryCompileView<'registry>) -> Self {
+    fn new(
+        registry: RegistryCompileView<'registry>,
+        declaration_slots: RegistryDeclarationSlots,
+    ) -> Self {
         let variant_names = registry
             .definitions()
             .filter_map(|definition| match definition {
@@ -47,10 +63,11 @@ impl<'registry> CompileViewFacts<'registry> {
             type_facts: BTreeMap::new(),
             type_targets: BTreeMap::new(),
             variant_names,
+            declaration_slots,
         }
     }
 
-    fn build(mut self) -> RegistryFacts {
+    fn build(mut self) -> Result<RegistryFacts, RegistryDeclarationSlotError> {
         self.collect_types();
         let mut facts = RegistryFacts::default();
         for (name, fact) in &self.type_facts {
@@ -97,7 +114,7 @@ impl<'registry> CompileViewFacts<'registry> {
 
         for definition in self.registry.definitions() {
             match definition {
-                Def::Field(field) => self.insert_field(&mut facts, field),
+                Def::Field(field) => self.insert_field(&mut facts, field)?,
                 Def::Method(method) => {
                     let Some(owner) = self.type_names.get(&method.owner) else {
                         continue;
@@ -165,7 +182,7 @@ impl<'registry> CompileViewFacts<'registry> {
                 Def::Type(_) => {}
             }
         }
-        facts
+        Ok(facts)
     }
 
     fn collect_types(&mut self) {
@@ -202,13 +219,17 @@ impl<'registry> CompileViewFacts<'registry> {
         }
     }
 
-    fn insert_field(&self, facts: &mut RegistryFacts, field: &vela_registry::FieldDef) {
+    fn insert_field(
+        &self,
+        facts: &mut RegistryFacts,
+        field: &vela_registry::FieldDef,
+    ) -> Result<(), RegistryDeclarationSlotError> {
         let Some(type_owner) = self.type_names.get(&field.owner) else {
-            return;
+            return Ok(());
         };
         let owner = if let Some(variant) = field.variant {
             let Some(variant) = self.variant_names.get(&variant) else {
-                return;
+                return Ok(());
             };
             format!("{type_owner}::{variant}")
         } else {
@@ -239,9 +260,10 @@ impl<'registry> CompileViewFacts<'registry> {
                 field.variant.is_some(),
                 access,
             )
-            .declaration_order(field.declaration_order)
+            .declaration_order(self.declaration_slots.field(field.id)?)
             .defaulted(field.has_default),
         );
+        Ok(())
     }
 
     fn signature_fact(&self, signature: &FunctionSignature) -> TypeFact {

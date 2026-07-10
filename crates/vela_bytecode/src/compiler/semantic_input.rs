@@ -72,12 +72,86 @@ pub(super) struct PreparedSemanticInput {
 }
 
 impl PreparedSemanticInput {
+    pub(super) fn require_function_for_declaration(
+        &self,
+        declaration: HirDeclId,
+        origin: MirSourceOrigin,
+    ) -> CompileResult<FunctionId> {
+        let function = self
+            .targets
+            .function_for_declaration(declaration)
+            .ok_or_else(|| {
+                input_error(MirBuildError::InconsistentInput {
+                    origin,
+                    message: format!(
+                        "missing compile target for function declaration {declaration:?}"
+                    ),
+                })
+            })?;
+        let executable = self.targets.function(function).ok_or_else(|| {
+            input_error(MirBuildError::InconsistentInput {
+                origin,
+                message: format!(
+                    "function #{} is not a selected compile root",
+                    function.get()
+                ),
+            })
+        })?;
+        if executable.identity != vela_mir::CompileFunctionIdentity::Function(function) {
+            return Err(input_error(MirBuildError::InconsistentInput {
+                origin,
+                message: format!(
+                    "function declaration {declaration:?} maps to a method executable"
+                ),
+            }));
+        }
+        Ok(function)
+    }
+
+    pub(super) fn require_method_for_body_symbol(
+        &self,
+        body: HirBodyId,
+        symbol: &str,
+        method: MethodId,
+        origin: MirSourceOrigin,
+    ) -> CompileResult<MethodExecutableTarget> {
+        self.targets
+            .functions_for_body(body)
+            .iter()
+            .find_map(|function| {
+                if self
+                    .targets
+                    .function_descriptor(*function)
+                    .is_none_or(|descriptor| descriptor.canonical_symbol != symbol)
+                {
+                    return None;
+                }
+                let executable = self.targets.function(*function)?;
+                match executable.identity {
+                    vela_mir::CompileFunctionIdentity::Method(target)
+                        if target.method == method =>
+                    {
+                        Some(target)
+                    }
+                    vela_mir::CompileFunctionIdentity::Function(_)
+                    | vela_mir::CompileFunctionIdentity::Method(_) => None,
+                }
+            })
+            .ok_or_else(|| {
+                input_error(MirBuildError::InconsistentInput {
+                    origin,
+                    message: format!(
+                        "missing selected method target `{symbol}` ({method:?}) for HIR body {body:?}"
+                    ),
+                })
+            })
+    }
+
     #[cfg(test)]
     pub(super) const fn analysis(&self) -> &ExecutableAnalysisGeneration {
         &self.analysis
     }
 
-    #[cfg(test)]
     pub(super) const fn targets(&self) -> &CompileTargetSnapshot {
         &self.targets
     }
@@ -87,21 +161,35 @@ pub(super) fn prepare_semantic_input(
     request: SemanticInputRequest<'_, '_, '_>,
 ) -> CompileResult<PreparedSemanticInput> {
     let combined = external::combined_registry(request.registry)?;
-    let catalog = ExternalCatalog::from_view(combined.compile_view());
+    let declaration_slots = combined
+        .compile_view()
+        .declaration_slots()
+        .map_err(|error| {
+            CompileError::new(CompileErrorKind::RegistrySnapshot(error.to_string()))
+        })?;
+    let catalog = ExternalCatalog::from_view(combined.compile_view(), &declaration_slots).map_err(
+        |error| CompileError::new(CompileErrorKind::RegistrySnapshot(error.to_string())),
+    )?;
     let try_layouts = try_targets::TryLayouts::from_catalog(&catalog)?;
-    let mut registry_facts = RegistryFacts::from_compile_view(combined.compile_view());
+    let mut registry_facts =
+        RegistryFacts::from_compile_view_with_slots(combined.compile_view(), declaration_slots)
+            .map_err(|error| {
+                CompileError::new(CompileErrorKind::RegistrySnapshot(error.to_string()))
+            })?;
     external::apply_option_index_capabilities(&mut registry_facts, request.options, &catalog);
     let mut builder = GenerationBuilder::new(request, registry_facts, catalog, try_layouts);
     builder.insert_script_schema()?;
     builder.insert_script_callables()?;
     builder.insert_compile_time_values()?;
     builder.rebuild_executable_analysis(&BTreeMap::new())?;
+    builder.reject_literal_diagnostics()?;
     builder.reject_analysis_validation_diagnostics()?;
     let mut probe = builder.clone();
     probe.insert_placements()?;
     let literal_contexts = probe.literal_contexts()?;
     builder.boundaries = probe.boundaries;
     builder.rebuild_executable_analysis(&literal_contexts)?;
+    builder.reject_literal_diagnostics()?;
     builder.reject_analysis_validation_diagnostics()?;
     builder.insert_placements()?;
     builder.finish()

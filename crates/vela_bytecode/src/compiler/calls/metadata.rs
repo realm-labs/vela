@@ -1,8 +1,6 @@
-use vela_common::{Diagnostic, Span};
+use vela_common::Span;
 use vela_hir::type_hint::{HirTypeHint, ParamHint};
 use vela_registry::{ParamDef, TypeHintDef};
-
-use crate::compiler::{CompileError, CompileErrorKind};
 
 pub(in crate::compiler) fn registry_param_hints(
     params: &[ParamDef],
@@ -33,16 +31,4 @@ pub(in crate::compiler) fn registry_type_hint(hint: &TypeHintDef, span: Span) ->
             .collect(),
         span,
     }
-}
-
-pub(in crate::compiler) fn unresolved_static_method_error(
-    method: &str,
-    span: Span,
-) -> CompileError {
-    CompileError::new(CompileErrorKind::SemanticDiagnostics(vec![
-        Diagnostic::error(format!("unresolved method `{method}`"))
-            .with_code("compiler::unresolved_method")
-            .with_span(span)
-            .with_label(span, "method is not defined for the known receiver type"),
-    ]))
 }

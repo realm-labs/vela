@@ -294,7 +294,7 @@ impl Compiler<'_, '_> {
             dynamic_args,
         })
     }
-    fn host_path_root_type(&self, root: HostPathRoot) -> HostTypeId {
+    pub(in crate::compiler) fn host_path_root_type(&self, root: HostPathRoot) -> HostTypeId {
         self.host_path_root_type_name(root)
             .and_then(|type_name| self.host_runtime_type_id(&type_name))
             .unwrap_or_else(|| HostTypeId::new(0))

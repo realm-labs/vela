@@ -192,20 +192,26 @@ fn main() {
     )
     .expect_err("out-of-range suffixed literal should fail");
 
+    let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+        panic!("expected invalid integer literal diagnostics");
+    };
+    let [diagnostic] = diagnostics.as_slice() else {
+        panic!("expected one invalid integer literal diagnostic");
+    };
+    assert_eq!(
+        diagnostic.code.as_deref(),
+        Some("compiler::invalid_int_literal")
+    );
+    assert!(diagnostic.message.contains("out of range"));
     assert_error_span_text(
         r#"
 fn main() {
     return 128i8;
 }
 "#,
-        error.span,
+        diagnostic.span,
         "128i8",
     );
-    let CompileErrorKind::InvalidIntLiteral { literal, error } = error.kind else {
-        panic!("expected invalid integer literal");
-    };
-    assert_eq!(literal, "128i8");
-    assert!(error.contains("out of range"), "{error}");
 }
 
 fn assert_error_span_text(source: &str, span: Option<vela_common::Span>, expected: &str) {
@@ -376,12 +382,80 @@ fn main() {
 }
 
 #[test]
+fn compiler_evaluates_named_script_args_in_source_order_then_projects_parameters() {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    registry
+        .register_function(vela_registry::FunctionDef::new(
+            DefPath::function("host", std::iter::empty::<&str>(), "mark"),
+            vela_registry::FunctionSignature::new(
+                [vela_registry::ParamDef::new("value", Some("i64"))],
+                Some("i64"),
+            ),
+        ))
+        .expect("mark native fixture");
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn combine(first, second) { return first * 10 + second; }
+fn main() { return combine(second = mark(2), first = mark(1)); }
+"#,
+        registry.compile_view(),
+    )
+    .expect("named script argument order fixture should compile");
+    let main = program.function("main").expect("main function");
+    let mut constant_by_register = BTreeMap::new();
+    let mut mark_calls = Vec::new();
+    let mut projected = None;
+    for instruction in &main.instructions {
+        match &instruction.kind {
+            UnlinkedInstructionKind::LoadConst { dst, constant } => {
+                if let Constant::Scalar(vela_common::ScalarValue::I64(value)) =
+                    &main.constants[constant.0]
+                {
+                    constant_by_register.insert(*dst, *value);
+                }
+            }
+            UnlinkedInstructionKind::CallNative {
+                dst: Some(dst),
+                name,
+                args,
+                ..
+            } if name == "mark" => {
+                let [argument] = args.as_slice() else {
+                    panic!("mark call should own one argument");
+                };
+                mark_calls.push((*dst, constant_by_register[argument]));
+            }
+            UnlinkedInstructionKind::CallFunction { args, .. } => {
+                projected = Some(args.clone());
+            }
+            _ => {}
+        }
+    }
+
+    assert_eq!(
+        mark_calls
+            .iter()
+            .map(|(_, value)| *value)
+            .collect::<Vec<_>>(),
+        [2, 1]
+    );
+    assert_eq!(
+        projected,
+        Some(vec![
+            CallArgument::Register(mark_calls[1].0),
+            CallArgument::Register(mark_calls[0].0),
+        ])
+    );
+}
+
+#[test]
 fn compiler_lowers_parameter_default_map_keys_through_hir_paths() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
 const SMALL: i64 = 1;
-fn grant(config = { SMALL: 10, "large": 20 }) {
+fn grant(config = { SMALL: 10, "large": 20, 'x': 30, 0x10u8: 40, 3.5f32: 50 }) {
     return config;
 }
 "#,
@@ -402,7 +476,7 @@ fn grant(config = { SMALL: 10, "large": 20 }) {
         })
         .expect("parameter default should emit MakeMap");
 
-    assert_eq!(map_keys, ["SMALL", "large"]);
+    assert_eq!(map_keys, ["SMALL", "large", "x", "0x10u8", "3.5f32"]);
 }
 
 #[test]
@@ -482,6 +556,72 @@ fn main() {
         &instruction.kind,
         UnlinkedInstructionKind::CallNative { name, native, args, .. }
             if name == "game::add" && *native == native_id && args.len() == 2
+    )));
+}
+
+#[test]
+fn compiler_lowers_named_stdlib_args_from_neutral_signature_without_registry() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        "fn main() { return math::clamp(max = 10, value = 12, min = 0); }",
+    )
+    .expect("named stdlib arguments should use the neutral manifest");
+    let main = program.function("main").expect("main function");
+    let constants = main
+        .instructions
+        .iter()
+        .filter_map(|instruction| match instruction.kind {
+            UnlinkedInstructionKind::LoadConst { dst, constant } => {
+                let Constant::Scalar(vela_common::ScalarValue::I64(value)) =
+                    &main.constants[constant.0]
+                else {
+                    return None;
+                };
+                Some((dst, *value))
+            }
+            _ => None,
+        })
+        .collect::<BTreeMap<_, _>>();
+    let args = main
+        .instructions
+        .iter()
+        .find_map(|instruction| match &instruction.kind {
+            UnlinkedInstructionKind::CallNative { name, args, .. } if name == "math::clamp" => {
+                Some(args)
+            }
+            _ => None,
+        })
+        .expect("math::clamp call");
+
+    assert_eq!(
+        args.iter()
+            .map(|register| constants[register])
+            .collect::<Vec<_>>(),
+        [12, 0, 10]
+    );
+}
+
+#[test]
+fn compiler_lowers_named_reflection_args_from_enabled_neutral_manifest() {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    vela_stdlib::register_reflection_natives(&mut registry)
+        .expect("reflection manifest should register");
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main(value) {
+    return reflect::get(field = "name", target = value);
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("enabled reflection arguments should use the neutral manifest");
+    let main = program.function("main").expect("main function");
+
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::CallNative { name, args, .. }
+            if name == "reflect::get" && args.len() == 2
     )));
 }
 
@@ -706,6 +846,26 @@ fn main() {
     assert!(main.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
         UnlinkedInstructionKind::CallMethodId { method, args, .. } if method == "get_or" && args.len() == 2
+    )));
+}
+
+#[test]
+fn compiler_lowers_named_stdlib_method_args_without_registry() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    return {"gold": 4}.get_or(default = 0, key = "gold");
+}
+"#,
+    )
+    .expect("named stdlib method args should use the neutral signature");
+    let main = program.function("main").expect("main function");
+
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::CallMethodId { method, args, .. }
+            if method == "get_or" && args.len() == 2
     )));
 }
 

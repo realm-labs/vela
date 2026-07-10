@@ -78,12 +78,12 @@ impl Compiler<'_, '_> {
                 let mut compiled = Vec::with_capacity(entries.len());
                 for entry in entries {
                     let key = entry
-                        .key
+                        .logical_key
                         .ok_or_else(|| hir_unsupported("map key", entry.origin.span))?;
                     let value = entry
                         .value
                         .ok_or_else(|| hir_unsupported("map value", entry.origin.span))?;
-                    compiled.push((self.hir_map_key(key)?, self.compile_hir_expression(value)?));
+                    compiled.push((key, self.compile_hir_expression(value)?));
                 }
                 let dst = self.alloc_register()?;
                 self.emit(UnlinkedInstructionKind::MakeMap {

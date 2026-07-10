@@ -14,7 +14,8 @@ use crate::validation::HostAccessUseKind;
 #[test]
 fn unique_host_variant_field_matches_definition_registry_fallback() {
     let registry = quest_registry(false);
-    let schema = RegistryFacts::from_compile_view(registry.compile_view());
+    let schema = RegistryFacts::from_compile_view(registry.compile_view())
+        .expect("registry declaration slots");
     let source = SourceId::new(91);
     let text = r#"
 fn main(player: Player) {
@@ -70,7 +71,8 @@ fn main(player: Player) {
 #[test]
 fn ambiguous_host_variant_field_remains_unresolved() {
     let registry = quest_registry(true);
-    let schema = RegistryFacts::from_compile_view(registry.compile_view());
+    let schema = RegistryFacts::from_compile_view(registry.compile_view())
+        .expect("registry declaration slots");
     assert!(
         schema
             .host_field_target_fact("QuestProgress", "count")

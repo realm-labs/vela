@@ -217,8 +217,8 @@ fn main() {
     )
     .expect_err("break outside loop should be rejected");
     assert_eq!(
-        break_error.kind,
-        CompileErrorKind::UnsupportedSyntax("break outside loop")
+        semantic_diagnostic_codes(break_error),
+        ["analysis::break_outside_loop"]
     );
     let continue_error = compile_function_source(
         SourceId::new(1),
@@ -231,8 +231,8 @@ fn main() {
     )
     .expect_err("continue outside loop should be rejected");
     assert_eq!(
-        continue_error.kind,
-        CompileErrorKind::UnsupportedSyntax("continue outside loop")
+        semantic_diagnostic_codes(continue_error),
+        ["analysis::continue_outside_loop"]
     );
 }
 
