@@ -99,11 +99,14 @@ fn evaluate_const_expression(
             operand: Some(operand),
         } => {
             if *op == HirUnaryOp::Negate
-                && let Some(HirExprKind::Literal(literal)) =
-                    body.expression(*operand).map(|expression| &expression.kind)
-                && let Some(value) = compile_negated_literal_constant(literal)?
+                && let Some(operand) = body.expression(*operand)
+                && let HirExprKind::Literal(literal) = &operand.kind
             {
-                return Ok(Some(value));
+                let value = compile_negated_literal_constant(literal)
+                    .map_err(|error| error.with_span(operand.origin.span))?;
+                if let Some(value) = value {
+                    return Ok(Some(value));
+                }
             }
             let Some(value) = evaluate_const_expression(body, bindings, *operand, values, locals)?
             else {

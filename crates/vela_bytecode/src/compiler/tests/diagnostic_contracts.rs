@@ -270,6 +270,27 @@ fn literal_diagnostic_contract_pins_contextual_conversion_failure() {
 }
 
 #[test]
+fn literal_diagnostic_contract_pins_negated_const_origin() {
+    const SOURCE_ID: SourceId = SourceId::new(710);
+    const SOURCE: &str = "const BAD = -129i8;\nfn main() { return BAD; }";
+    let error = compile_program_source(SOURCE_ID, SOURCE)
+        .expect_err("out-of-range negated const literal should fail compilation");
+    let diagnostic = error
+        .to_diagnostic()
+        .expect("negated const conversion errors should project to a user diagnostic");
+
+    assert_diagnostic_contract(
+        &diagnostic,
+        SOURCE_ID,
+        SOURCE,
+        "compiler::invalid_int_literal",
+        "invalid integer literal `129i8`: integer literal out of range",
+        "129i8",
+        &[],
+    );
+}
+
+#[test]
 fn named_argument_diagnostic_contract_pins_parameter_candidates() {
     const SOURCE_ID: SourceId = SourceId::new(707);
     const SOURCE: &str = "fn grant(base, amount = 10) { return base + amount; }\nfn main() { return grant(amunt = 2, base = 1); }";
