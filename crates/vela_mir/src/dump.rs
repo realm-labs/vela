@@ -876,6 +876,7 @@ fn effect(effect: MirEffect) -> String {
 
 fn origin(origin: MirSourceOrigin) -> String {
     let node = match origin.node {
+        MirSourceNode::Declaration(id) => format!("d{}", id.get()),
         MirSourceNode::Body(id) => format!("h{}", id.get()),
         MirSourceNode::Expression(id) => format!("e{}", id.get()),
         MirSourceNode::Statement(id) => format!("s{}", id.get()),

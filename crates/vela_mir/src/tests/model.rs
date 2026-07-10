@@ -19,6 +19,17 @@ fn test_function(body: HirBodyId, owner: MirFunctionOwner, origin: MirSourceOrig
 }
 
 #[test]
+fn mir_model_preserves_declaration_scoped_origins_without_fake_bodies() {
+    let declaration = HirDeclId::new(9);
+    let span = Span::new(SourceId::new(7), 2, 8);
+    let origin = MirSourceOrigin::declaration(declaration, span);
+
+    assert_eq!(origin.body, None);
+    assert_eq!(origin.node, MirSourceNode::Declaration(declaration));
+    assert_eq!(origin.span, span);
+}
+
+#[test]
 fn mir_model_enforces_single_assignment_temps_and_mutable_locals() {
     let body = HirBodyId::new(1);
     let origin = origin(body);
