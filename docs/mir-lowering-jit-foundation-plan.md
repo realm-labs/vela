@@ -151,6 +151,9 @@ MIR v1 does not include:
 - Cranelift, machine code, JIT enablement, runtime side exits, or deoptimization;
 - SSA construction, phi-node optimization, inlining, LICM, CSE, speculative
   specialization, or a general optimization pipeline;
+- language-level `throw`, `catch`, `finally`, exception tables, or unwind CFG;
+  recoverable errors remain explicit `Result`/`Option` values and unrecoverable
+  runtime failures remain `may_trap` VM exits;
 - MIR serialization, a public embedding API, a stable on-disk MIR format, or
   MIR identity in hot-reload ABI;
 - new VM instructions or changed runtime semantics, unless a separately
@@ -357,17 +360,25 @@ Effectful operation families include explicit forms for:
 - runtime type/shape/arity guards;
 - iterator/range steps and try propagation.
 
-Calls are represented only as a call terminator with destination,
-continuation, target, arguments, effect metadata, safepoint, and source origin.
-Do not also encode call families as statements or ordinary rvalues. Runtime
-errors continue to leave the current VM execution path; MIR v1 does not add a
-language-level unwind successor.
+Calls are represented only as effectful statements with destination, target,
+arguments, effect metadata, safepoint, and source origin. A successful call
+continues with the next operation in the same basic block. An unrecoverable
+runtime failure leaves the current VM execution path through the call's
+`may_trap` behavior; MIR v1 does not add a language-level unwind successor.
+Calls must not also appear as pure rvalues or terminators.
+
+Future explicit async/coroutine work may add `Await`, `Yield`, and `Suspend`
+terminators with resume IDs and live-frame metadata. MIR v1 reserves those
+names and extension points but does not implement them, and ordinary calls do
+not implicitly become suspension terminators. A future stackful model with
+transitive implicit suspension requires a separate architecture decision.
 
 ### 5.3 CFG And Evaluation Semantics
 
-Every basic block has exactly one terminator. Terminators cover return, jump,
-branch/switch, call continuation, fail/trap boundary, loop backedge, try
-propagation, and unreachable state as required by current semantics.
+Every basic block has exactly one terminator. MIR v1 terminators cover jump,
+branch/switch, return, explicit fail/trap boundaries, and unreachable state.
+Loop backedges and `Result`/`Option` try propagation lower through those forms.
+`Await`, `Yield`, and `Suspend` remain reserved future terminators.
 
 The builder must preserve:
 
@@ -615,8 +626,11 @@ explicit before code generation.
 - [ ] Verify every temp has exactly one definition that dominates all uses.
 - [ ] Verify there is no Rust-style move invalidation or implicit hidden read in
   an operand/place.
-- [ ] Verify branch/switch destinations, call continuations, return values, loop
-  targets, break/continue scopes, and try propagation families.
+- [ ] Verify branch/switch destinations, return values, loop targets,
+  break/continue scopes, and try propagation families.
+- [ ] Verify each effectful call statement has a valid target, arguments,
+  destination, effect, safepoint, and source origin without a hidden
+  continuation block or unwind edge.
 - [ ] Verify call target kind, arity, named/default argument placement, capture
   placement, and result destination.
 - [ ] Verify type/guard consistency only from proven semantic facts; dynamic
