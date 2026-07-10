@@ -244,11 +244,13 @@ fn mir_model_represents_ranges_formats_defaults_and_iterator_control() {
                                 name: "value".to_owned(),
                                 contract: None,
                                 default: CompileParameterDefault::Required,
+                                origin: None,
                             },
                             CompileParameter {
                                 name: "fallback".to_owned(),
                                 contract: None,
                                 default: CompileParameterDefault::HirBody(HirBodyId::new(222)),
+                                origin: Some(origin),
                             },
                         ],
                         positional: CompilePositionalPolicy::ExactOrTrailingDefaults,

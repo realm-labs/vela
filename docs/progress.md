@@ -72,6 +72,12 @@ array source; and reflection/set/host path intrinsics are selected by compile
 targets rather than names. Unsupported targetless index removal/global writes
 and speculative bitwise/shift forms are absent.
 
+The immutable input now also exposes authoritative `HirDeclId -> FunctionId`,
+`HirDeclId -> TypeId`, and `HirNodeId -> MethodExecutableTarget` mappings,
+deterministic compilation-root iteration, canonical type lookup, and parameter
+declaration origins. The production bridge still must populate and prove these
+indexes from the real source/registry front door before Phase 0 closes.
+
 M0-M19 are complete enough as a runnable prototype, embedding surface,
 production hot-reload workflow, diagnostics/tooling foundation, runnable
 embedding/conformance proof, measured performance baselines, and non-JIT

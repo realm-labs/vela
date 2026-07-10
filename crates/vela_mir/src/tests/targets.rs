@@ -1,6 +1,6 @@
-use vela_common::HostTypeId;
-use vela_def::{FunctionId, TypeId};
-use vela_hir::ids::{HirBodyId, HirExprId};
+use vela_common::{HostTypeId, PrimitiveTag};
+use vela_def::{FunctionId, MethodId, TypeId};
+use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId};
 
 use crate::*;
 
@@ -57,4 +57,95 @@ fn mir_model_compile_targets_select_behavior_intrinsics_without_names() {
     assert_eq!(snapshot.call(expressions[1].0), Some(&set));
     assert_eq!(snapshot.call(expressions[2].0), Some(&remove));
     assert_eq!(snapshot.call(expressions[3].0), Some(&push));
+}
+
+#[test]
+fn mir_model_compile_snapshot_owns_source_identity_and_diagnostic_origins() {
+    let body = HirBodyId::new(320);
+    let origin = MirSourceOrigin::body(
+        body,
+        vela_common::Span::new(vela_common::SourceId::new(8), 3, 12),
+    );
+    let function_declaration = HirDeclId::new(321);
+    let function = FunctionId::new(322);
+    let type_declaration = HirDeclId::new(323);
+    let type_id = TypeId::new(324);
+    let method = MethodExecutableTarget {
+        method: MethodId::new(325),
+        function: FunctionId::new(326),
+        owner: type_id,
+        node: HirNodeId::new(327),
+    };
+    let mut snapshot = CompileTargetSnapshot::builder();
+    snapshot
+        .insert_script_function(
+            function_declaration,
+            body,
+            CompileFunctionDescriptor {
+                id: function,
+                class: CompileFunctionClass::Script,
+                canonical_symbol: "game::main".to_owned(),
+                debug_name: "main".to_owned(),
+                signature: CompileSignature {
+                    parameters: vec![CompileParameter {
+                        name: "value".to_owned(),
+                        contract: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
+                        default: CompileParameterDefault::Required,
+                        origin: Some(origin),
+                    }],
+                    positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
+                    return_contract: None,
+                    effect: MirEffect::PURE,
+                },
+            },
+            origin,
+        )
+        .expect("script function identity should be inserted atomically");
+    snapshot
+        .insert_script_method(body, method, origin)
+        .expect("method node should map to its owner-qualified executable");
+    snapshot
+        .insert_script_type(
+            type_declaration,
+            CompileTypeDescriptor {
+                id: type_id,
+                canonical_name: "game::Player".to_owned(),
+                class: CompileTypeClass::ScriptRecord,
+                shape: Some(vela_common::ShapeId::new(328)),
+                fields: Vec::new(),
+                variants: Vec::new(),
+            },
+            origin,
+        )
+        .expect("script type identity should be inserted atomically");
+    let snapshot = snapshot.build();
+
+    assert_eq!(
+        snapshot.function_for_declaration(function_declaration),
+        Some(function)
+    );
+    assert_eq!(snapshot.method_for_node(method.node), Some(method));
+    assert_eq!(
+        snapshot.type_for_declaration(type_declaration),
+        Some(type_id)
+    );
+    assert_eq!(
+        snapshot
+            .type_by_name("game::Player")
+            .map(|descriptor| descriptor.id),
+        Some(type_id)
+    );
+    assert_eq!(
+        snapshot
+            .function_descriptor(function)
+            .and_then(|descriptor| descriptor.signature.parameters[0].origin),
+        Some(origin)
+    );
+    assert_eq!(
+        snapshot
+            .compilation_roots()
+            .map(|(function, _)| function)
+            .collect::<Vec<_>>(),
+        [function, method.function]
+    );
 }

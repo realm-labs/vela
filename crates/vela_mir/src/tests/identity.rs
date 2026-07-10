@@ -275,6 +275,7 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
                         name: "value".to_owned(),
                         contract: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
                         default: CompileParameterDefault::Required,
+                        origin: Some(body_origin),
                     }],
                     positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
                     return_contract: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),

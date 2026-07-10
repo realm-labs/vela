@@ -16,6 +16,8 @@ use crate::{
     MirLocalId, MirSourceOrigin, MirTargetTable, MirTempId, MirTypeContract,
 };
 
+mod identity;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DynamicMethodTarget {
     pub member: String,
@@ -223,6 +225,7 @@ pub struct CompileParameter {
     pub name: String,
     pub contract: Option<MirTypeContract>,
     pub default: CompileParameterDefault,
+    pub origin: Option<MirSourceOrigin>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -326,6 +329,10 @@ impl fmt::Display for CompileTargetKind {
 pub struct CompileTargetSnapshot {
     functions: BTreeMap<FunctionId, CompileFunctionTarget>,
     functions_by_body: BTreeMap<HirBodyId, Vec<FunctionId>>,
+    functions_by_declaration: BTreeMap<HirDeclId, FunctionId>,
+    methods_by_node: BTreeMap<HirNodeId, MethodExecutableTarget>,
+    types_by_declaration: BTreeMap<HirDeclId, TypeId>,
+    types_by_name: BTreeMap<String, TypeId>,
     calls: BTreeMap<HirExprId, CompileCallTarget>,
     members: BTreeMap<HirExprId, CompileMemberTarget>,
     constructors: BTreeMap<HirExprId, CompileConstructorTarget>,
@@ -645,7 +652,20 @@ impl CompileTargetSnapshotBuilder {
         origin: MirSourceOrigin,
     ) -> Result<(), MirBuildError> {
         let id = descriptor.id;
+        let canonical_name = descriptor.canonical_name.clone();
+        if self.snapshot.type_descriptor(id).is_some()
+            || self.snapshot.types_by_name.contains_key(&canonical_name)
+        {
+            return Err(MirBuildError::InconsistentInput {
+                origin,
+                message: format!(
+                    "duplicate type descriptor #{} or canonical name {canonical_name:?}",
+                    id.get()
+                ),
+            });
+        }
         if self.snapshot.targets.insert_type(descriptor) {
+            self.snapshot.types_by_name.insert(canonical_name, id);
             Ok(())
         } else {
             Err(duplicate_descriptor("type", id.get(), origin))

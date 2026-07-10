@@ -243,6 +243,12 @@ analysis, or a live registry. Every `MirFunction` also owns its code symbol,
 ordered receiver/parameter/default ABI, ordered capture ABI, and return
 contract; debug-local records are not an ABI reconstruction source.
 
+The compile-target snapshot also owns source-to-stable identity indexes for
+script function/type declarations, method nodes, compilation roots, and
+canonical type names. Signature parameters retain an optional declaration
+origin so source diagnostics can preserve secondary parameter labels; external
+registry parameters without a source declaration use no synthetic origin.
+
 Trait `MethodId` remains the shared dispatch identity across receiver
 implementations. Executable method descriptors and MIR lookup maps are keyed
 by `(TypeId, MethodId)`, while the owner-specific `FunctionId` remains the code
