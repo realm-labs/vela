@@ -213,8 +213,11 @@ impl HirSemanticFacts {
                 .base_expression(id)
                 .cloned()
                 .unwrap_or(TypeFact::Unknown),
-            HirExprKind::Paren { expression } | HirExprKind::Try { expression } => {
+            HirExprKind::Paren { expression } => {
                 expression.map_or(TypeFact::Unknown, |id| self.fact(id))
+            }
+            HirExprKind::Try { expression } => {
+                expression.map_or(TypeFact::Unknown, |id| try_payload_fact(self.fact(id)))
             }
             HirExprKind::Unit => TypeFact::UNIT,
             HirExprKind::Tuple { elements } => {
@@ -1042,6 +1045,18 @@ fn literal_fact(literal: &HirLiteral) -> TypeFact {
         HirLiteral::String(_) | HirLiteral::Interpolated { .. } => TypeFact::STRING,
         HirLiteral::Bytes(_) => TypeFact::BYTES,
         HirLiteral::Invalid { .. } => TypeFact::Unknown,
+    }
+}
+
+fn try_payload_fact(fact: TypeFact) -> TypeFact {
+    match fact {
+        TypeFact::Option { some } | TypeFact::OptionSome { some } => *some,
+        TypeFact::Result { ok, .. } | TypeFact::ResultOk { ok } => *ok,
+        TypeFact::OptionNone | TypeFact::ResultErr { .. } => TypeFact::Never,
+        TypeFact::Union(facts) => TypeFact::union(facts.into_iter().map(try_payload_fact)),
+        TypeFact::Unknown => TypeFact::Unknown,
+        TypeFact::Any => TypeFact::Any,
+        _ => TypeFact::Unknown,
     }
 }
 

@@ -478,6 +478,100 @@ mod tests {
     }
 
     #[test]
+    fn analysis_facts_unwrap_try_payloads_and_preserve_dynamic_facts() {
+        use vela_hir::body::HirExprKind;
+
+        let mut graph = ModuleGraph::new();
+        graph.add_source(ModuleSource::new(
+            SourceId::new(19),
+            ModulePath::from_qualified("game"),
+            r#"
+            fn main() {
+                let option_payload = fixture::option()?;
+                let result_payload = fixture::result()?;
+                let union_payload = fixture::union()?;
+                let known_failure = fixture::failure()?;
+                let dynamic_payload = fixture::dynamic()?;
+                let unknown_payload = fixture::unknown()?;
+            }
+            "#,
+        ));
+        graph.resolve_imports();
+        assert_eq!(graph.diagnostics(), &[]);
+
+        let mut schema = RegistryFacts::default();
+        schema.insert_function(
+            "fixture::option",
+            TypeFact::function(Vec::new(), TypeFact::option(TypeFact::I64)),
+        );
+        schema.insert_function(
+            "fixture::result",
+            TypeFact::function(
+                Vec::new(),
+                TypeFact::result(TypeFact::STRING, TypeFact::BOOL),
+            ),
+        );
+        schema.insert_function(
+            "fixture::union",
+            TypeFact::function(
+                Vec::new(),
+                TypeFact::union([
+                    TypeFact::option_some(TypeFact::I64),
+                    TypeFact::result_ok(TypeFact::STRING),
+                    TypeFact::option_none(),
+                ]),
+            ),
+        );
+        schema.insert_function(
+            "fixture::failure",
+            TypeFact::function(
+                Vec::new(),
+                TypeFact::union([
+                    TypeFact::option_none(),
+                    TypeFact::result_err(TypeFact::STRING),
+                ]),
+            ),
+        );
+        schema.insert_function(
+            "fixture::dynamic",
+            TypeFact::function(Vec::new(), TypeFact::Any),
+        );
+        schema.insert_function(
+            "fixture::unknown",
+            TypeFact::function(Vec::new(), TypeFact::Unknown),
+        );
+
+        let facts = AnalysisFacts::from_module_graph_and_schema(&graph, &schema);
+        let body = graph
+            .bodies()
+            .find(|body| matches!(body.owner, vela_hir::body::HirBodyOwner::Declaration(_)))
+            .expect("main body");
+        let try_facts = body
+            .expressions
+            .values()
+            .filter(|expression| matches!(expression.kind, HirExprKind::Try { .. }))
+            .map(|expression| {
+                facts
+                    .expression(expression.id)
+                    .cloned()
+                    .unwrap_or(TypeFact::Unknown)
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            try_facts,
+            vec![
+                TypeFact::I64,
+                TypeFact::STRING,
+                TypeFact::union([TypeFact::I64, TypeFact::STRING]),
+                TypeFact::Never,
+                TypeFact::Any,
+                TypeFact::Unknown,
+            ]
+        );
+    }
+
+    #[test]
     fn analysis_facts_include_global_type_hints() {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
