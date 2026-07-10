@@ -11,10 +11,17 @@ pub struct CompileCallTarget {
 
 impl CompileCallTarget {
     #[must_use]
-    pub fn script(callee: CompileCalleeTarget, arguments: Vec<CompileScriptCallArgument>) -> Self {
+    pub fn script(
+        callee: CompileCalleeTarget,
+        evaluation_order: Vec<HirExprId>,
+        parameter_slots: Vec<CompilePlacedCallArgument>,
+    ) -> Self {
         Self {
             callee,
-            arguments: CompileCallArguments::Script(arguments),
+            arguments: CompileCallArguments::Script {
+                evaluation_order,
+                parameter_slots,
+            },
         }
     }
 
@@ -23,6 +30,21 @@ impl CompileCallTarget {
         Self {
             callee,
             arguments: CompileCallArguments::Positional(arguments),
+        }
+    }
+
+    #[must_use]
+    pub fn external_named(
+        callee: CompileCalleeTarget,
+        evaluation_order: Vec<HirExprId>,
+        parameter_slots: Vec<CompilePlacedCallArgument>,
+    ) -> Self {
+        Self {
+            callee,
+            arguments: CompileCallArguments::ExternalNamed {
+                evaluation_order,
+                parameter_slots,
+            },
         }
     }
 
@@ -85,9 +107,21 @@ pub enum CompileCalleeTarget {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompileCallArguments {
-    /// Complete parameter slots for a script callee. A missing value is valid
-    /// only when that parameter owns a HIR default body.
-    Script(Vec<CompileScriptCallArgument>),
+    /// Source evaluation order and complete parameter slots for a script
+    /// callee. Explicit slots refer back to `evaluation_order` by source index;
+    /// a missing slot is valid only when that parameter owns a HIR default
+    /// body.
+    Script {
+        evaluation_order: Vec<HirExprId>,
+        parameter_slots: Vec<CompilePlacedCallArgument>,
+    },
+    /// A signature-resolved external named call. Expressions remain in source
+    /// evaluation order while complete parameter slots describe target
+    /// placement and runtime-provided defaults.
+    ExternalNamed {
+        evaluation_order: Vec<HirExprId>,
+        parameter_slots: Vec<CompilePlacedCallArgument>,
+    },
     /// Already-validated positional order for native, stdlib, host, value,
     /// callable-value, and behavior-intrinsic calls.
     Positional(Vec<HirExprId>),
@@ -96,9 +130,36 @@ pub enum CompileCallArguments {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct CompileScriptCallArgument {
+pub struct CompilePlacedCallArgument {
     pub parameter: u32,
-    pub value: Option<HirExprId>,
+    pub value: CompilePlacedCallValue,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CompilePlacedCallValue {
+    Explicit { source_index: u32, value: HirExprId },
+    MissingDefault,
+}
+
+impl CompilePlacedCallArgument {
+    #[must_use]
+    pub const fn placed(parameter: u32, source_index: u32, value: HirExprId) -> Self {
+        Self {
+            parameter,
+            value: CompilePlacedCallValue::Explicit {
+                source_index,
+                value,
+            },
+        }
+    }
+
+    #[must_use]
+    pub const fn missing(parameter: u32) -> Self {
+        Self {
+            parameter,
+            value: CompilePlacedCallValue::MissingDefault,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

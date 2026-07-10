@@ -136,93 +136,187 @@ fn validate_call_arguments(
     signature: Option<&CompileSignature>,
     origin: MirSourceOrigin,
 ) -> Result<(), MirBuildError> {
-    match (&target.callee, &target.arguments) {
-        (
-            CompileCalleeTarget::ScriptFunction { .. } | CompileCalleeTarget::ScriptMethod { .. },
-            CompileCallArguments::Script(arguments),
-        ) => validate_script_arguments(
-            validator,
-            arguments,
-            signature.expect("script call targets always resolve a signature"),
-            origin,
-        ),
-        (
-            CompileCalleeTarget::DynamicCallable | CompileCalleeTarget::DynamicMethod(_),
-            CompileCallArguments::Dynamic(arguments),
-        ) => {
-            if let CompileCalleeTarget::DynamicMethod(method) = &target.callee {
-                let positional = arguments
-                    .iter()
-                    .filter(|argument| argument.name.is_none())
-                    .count();
-                let named = arguments
-                    .iter()
-                    .filter_map(|argument| argument.name.clone())
-                    .collect::<Vec<_>>();
-                if usize::try_from(method.positional_arity) != Ok(positional)
-                    || method.named_arguments != named
-                {
-                    return Err(validator.error(
-                        origin,
-                        "dynamic method argument metadata disagrees with its operands",
-                    ));
-                }
+    match &target.arguments {
+        CompileCallArguments::Script {
+            evaluation_order,
+            parameter_slots,
+        } => match &target.callee {
+            CompileCalleeTarget::ScriptFunction { .. }
+            | CompileCalleeTarget::ScriptMethod { .. } => validate_placed_arguments(
+                validator,
+                evaluation_order,
+                parameter_slots,
+                signature.expect("script call targets always resolve a signature"),
+                PlacedCallKind::Script,
+                origin,
+            ),
+            CompileCalleeTarget::DynamicCallable | CompileCalleeTarget::DynamicMethod(_) => {
+                Err(validator.error(origin, "dynamic call target lacks dynamic arguments"))
             }
-            Ok(())
-        }
-        (
-            CompileCalleeTarget::ScriptFunction { .. } | CompileCalleeTarget::ScriptMethod { .. },
-            CompileCallArguments::Positional(_) | CompileCallArguments::Dynamic(_),
-        ) => Err(validator.error(origin, "script call target lacks parameter-slot arguments")),
-        (
-            CompileCalleeTarget::DynamicCallable | CompileCalleeTarget::DynamicMethod(_),
-            CompileCallArguments::Script(_) | CompileCallArguments::Positional(_),
-        ) => Err(validator.error(origin, "dynamic call target lacks dynamic arguments")),
-        (
-            CompileCalleeTarget::Local(_)
-            | CompileCalleeTarget::Lambda(_)
-            | CompileCalleeTarget::NativeFunction { .. }
+            _ => Err(validator.error(
+                origin,
+                "non-script call target has incompatible argument placement",
+            )),
+        },
+        CompileCallArguments::ExternalNamed {
+            evaluation_order,
+            parameter_slots,
+        } => match &target.callee {
+            CompileCalleeTarget::NativeFunction { .. }
             | CompileCalleeTarget::StdlibFunction { .. }
             | CompileCalleeTarget::ValueMethod { .. }
             | CompileCalleeTarget::HostMethod(_)
             | CompileCalleeTarget::Reflection { .. }
-            | CompileCalleeTarget::SetFromArray { .. }
+            | CompileCalleeTarget::SetFromArray { .. } => validate_placed_arguments(
+                validator,
+                evaluation_order,
+                parameter_slots,
+                signature.expect("placed external call targets always resolve a signature"),
+                PlacedCallKind::External,
+                origin,
+            ),
+            CompileCalleeTarget::ScriptFunction { .. }
+            | CompileCalleeTarget::ScriptMethod { .. } => {
+                Err(validator.error(origin, "script call target lacks parameter-slot arguments"))
+            }
+            CompileCalleeTarget::DynamicCallable | CompileCalleeTarget::DynamicMethod(_) => {
+                Err(validator.error(origin, "dynamic call target lacks dynamic arguments"))
+            }
+            CompileCalleeTarget::Local(_)
+            | CompileCalleeTarget::Lambda(_)
             | CompileCalleeTarget::HostRemove { .. }
-            | CompileCalleeTarget::HostPush { .. },
-            CompileCallArguments::Positional(_),
-        ) => Ok(()),
-        (_, CompileCallArguments::Script(_) | CompileCallArguments::Dynamic(_)) => Err(validator
-            .error(
+            | CompileCalleeTarget::HostPush { .. } => {
+                Err(validator.error(origin, "call target cannot use placed external arguments"))
+            }
+        },
+        CompileCallArguments::Dynamic(arguments) => match &target.callee {
+            CompileCalleeTarget::DynamicCallable | CompileCalleeTarget::DynamicMethod(_) => {
+                if let CompileCalleeTarget::DynamicMethod(method) = &target.callee {
+                    let positional = arguments
+                        .iter()
+                        .filter(|argument| argument.name.is_none())
+                        .count();
+                    let named = arguments
+                        .iter()
+                        .filter_map(|argument| argument.name.clone())
+                        .collect::<Vec<_>>();
+                    if usize::try_from(method.positional_arity) != Ok(positional)
+                        || method.named_arguments != named
+                    {
+                        return Err(validator.error(
+                            origin,
+                            "dynamic method argument metadata disagrees with its operands",
+                        ));
+                    }
+                }
+                Ok(())
+            }
+            CompileCalleeTarget::ScriptFunction { .. }
+            | CompileCalleeTarget::ScriptMethod { .. } => {
+                Err(validator.error(origin, "script call target lacks parameter-slot arguments"))
+            }
+            _ => Err(validator.error(
                 origin,
                 "non-script call target has incompatible argument placement",
             )),
+        },
+        CompileCallArguments::Positional(_) => match &target.callee {
+            CompileCalleeTarget::ScriptFunction { .. }
+            | CompileCalleeTarget::ScriptMethod { .. } => {
+                Err(validator.error(origin, "script call target lacks parameter-slot arguments"))
+            }
+            CompileCalleeTarget::DynamicCallable | CompileCalleeTarget::DynamicMethod(_) => {
+                Err(validator.error(origin, "dynamic call target lacks dynamic arguments"))
+            }
+            _ => Ok(()),
+        },
     }
 }
 
-fn validate_script_arguments(
+#[derive(Clone, Copy)]
+enum PlacedCallKind {
+    Script,
+    External,
+}
+
+impl PlacedCallKind {
+    fn permits_missing(self, default: CompileParameterDefault) -> bool {
+        matches!(
+            (self, default),
+            (Self::Script, CompileParameterDefault::HirBody(_))
+                | (Self::External, CompileParameterDefault::RuntimeProvided)
+        )
+    }
+
+    const fn missing_parameter_message(self) -> &'static str {
+        match self {
+            Self::Script => "script call omits required parameter",
+            Self::External => "external named call omits required parameter",
+        }
+    }
+}
+
+fn validate_placed_arguments(
     validator: &SnapshotValidator<'_>,
-    arguments: &[crate::CompileScriptCallArgument],
+    evaluation_order: &[vela_hir::ids::HirExprId],
+    parameter_slots: &[crate::CompilePlacedCallArgument],
     signature: &CompileSignature,
+    kind: PlacedCallKind,
     origin: MirSourceOrigin,
 ) -> Result<(), MirBuildError> {
-    if arguments.len() != signature.parameters.len() {
+    if parameter_slots.len() != signature.parameters.len() {
         return Err(validator.error(
             origin,
-            "script call argument slots do not cover the signature",
+            "placed call argument slots do not cover the signature",
         ));
     }
-    for (index, (argument, parameter)) in arguments.iter().zip(&signature.parameters).enumerate() {
-        if usize::try_from(argument.parameter) != Ok(index) {
-            return Err(validator.error(origin, "script call argument slots are not contiguous"));
+    let mut source_indexes = BTreeSet::new();
+    for (index, (slot, parameter)) in parameter_slots
+        .iter()
+        .zip(&signature.parameters)
+        .enumerate()
+    {
+        if usize::try_from(slot.parameter) != Ok(index) {
+            return Err(validator.error(origin, "placed call argument slots are not contiguous"));
         }
-        if argument.value.is_none()
-            && !matches!(parameter.default, CompileParameterDefault::HirBody(_))
-        {
-            return Err(validator.error(
-                origin,
-                format!("script call omits required parameter {index}"),
-            ));
+        match slot.value {
+            crate::CompilePlacedCallValue::MissingDefault => {
+                if !kind.permits_missing(parameter.default) {
+                    return Err(validator.error(
+                        origin,
+                        format!("{} {index}", kind.missing_parameter_message()),
+                    ));
+                }
+            }
+            crate::CompilePlacedCallValue::Explicit {
+                source_index,
+                value,
+            } => {
+                let source_index = usize::try_from(source_index).map_err(|_| {
+                    validator.error(origin, "placed call argument source index is out of bounds")
+                })?;
+                let source_value = evaluation_order.get(source_index).ok_or_else(|| {
+                    validator.error(origin, "placed call argument source index is out of bounds")
+                })?;
+                if source_value != &value {
+                    return Err(validator.error(
+                        origin,
+                        "placed call argument source value disagrees with evaluation order",
+                    ));
+                }
+                if !source_indexes.insert(source_index) {
+                    return Err(
+                        validator.error(origin, "placed call argument source index is reused")
+                    );
+                }
+            }
         }
+    }
+    if source_indexes.len() != evaluation_order.len() {
+        return Err(validator.error(
+            origin,
+            "placed call evaluation order is not covered by parameter slots",
+        ));
     }
     Ok(())
 }
@@ -342,6 +436,7 @@ fn validate_constructors(validator: &SnapshotValidator<'_>) -> Result<(), MirBui
             CompileConstructorTarget::Record {
                 type_id,
                 shape,
+                evaluation_order,
                 fields,
             } => {
                 let owner = validator.require_type(*type_id, origin, "record constructor")?;
@@ -352,6 +447,7 @@ fn validate_constructors(validator: &SnapshotValidator<'_>) -> Result<(), MirBui
                 }
                 validate_constructor_fields(
                     validator,
+                    evaluation_order,
                     fields,
                     &owner.fields,
                     *type_id,
@@ -362,6 +458,7 @@ fn validate_constructors(validator: &SnapshotValidator<'_>) -> Result<(), MirBui
             CompileConstructorTarget::Variant {
                 type_id,
                 variant,
+                evaluation_order,
                 fields,
             } => {
                 let owner = validator.require_type(*type_id, origin, "variant constructor")?;
@@ -378,6 +475,7 @@ fn validate_constructors(validator: &SnapshotValidator<'_>) -> Result<(), MirBui
                 }
                 validate_constructor_fields(
                     validator,
+                    evaluation_order,
                     fields,
                     &variant_descriptor.fields,
                     *type_id,
@@ -440,6 +538,7 @@ fn validate_dynamic_constructor(
 
 fn validate_constructor_fields(
     validator: &SnapshotValidator<'_>,
+    evaluation_order: &[vela_hir::ids::HirExprId],
     fields: &[CompileConstructorField],
     expected_fields: &[vela_def::FieldId],
     owner: vela_def::TypeId,
@@ -449,18 +548,12 @@ fn validate_constructor_fields(
     if fields.len() != expected_fields.len() {
         return Err(validator.error(origin, "constructor fields do not cover their descriptor"));
     }
-    let mut seen_fields = BTreeSet::new();
-    let mut seen_parameters = BTreeSet::new();
-    for field in fields {
-        if !seen_fields.insert(field.field)
-            || !seen_parameters.insert(field.parameter)
-            || usize::try_from(field.parameter)
-                .ok()
-                .is_none_or(|index| index >= fields.len())
-        {
+    let mut source_indexes = BTreeSet::new();
+    for (index, (field, expected_field)) in fields.iter().zip(expected_fields).enumerate() {
+        if usize::try_from(field.parameter) != Ok(index) || field.field != *expected_field {
             return Err(validator.error(
                 origin,
-                "constructor field placement is not unique and contiguous",
+                "constructor fields are not in contiguous descriptor order",
             ));
         }
         let descriptor = validator
@@ -473,20 +566,46 @@ fn validate_constructor_fields(
         {
             return Err(validator.error(origin, "constructor field has the wrong owner"));
         }
-        if let CompileConstructorValue::EvaluatedDefault(body) = field.value
-            && !validator
-                .snapshot
-                .evaluated_schema_defaults
-                .contains_key(&body)
-        {
-            return Err(validator.error(
-                origin,
-                format!("constructor field references missing evaluated default {body:?}"),
-            ));
+        match field.value {
+            CompileConstructorValue::Explicit {
+                source_index,
+                value,
+            } => {
+                let source_index = usize::try_from(source_index).map_err(|_| {
+                    validator.error(origin, "constructor source index is out of bounds")
+                })?;
+                let source_value = evaluation_order.get(source_index).ok_or_else(|| {
+                    validator.error(origin, "constructor source index is out of bounds")
+                })?;
+                if source_value != &value {
+                    return Err(validator.error(
+                        origin,
+                        "constructor field value disagrees with evaluation order",
+                    ));
+                }
+                if !source_indexes.insert(source_index) {
+                    return Err(validator.error(origin, "constructor source index is reused"));
+                }
+            }
+            CompileConstructorValue::EvaluatedDefault(body) => {
+                if !validator
+                    .snapshot
+                    .evaluated_schema_defaults
+                    .contains_key(&body)
+                {
+                    return Err(validator.error(
+                        origin,
+                        format!("constructor field references missing evaluated default {body:?}"),
+                    ));
+                }
+            }
         }
     }
-    if seen_parameters.len() != fields.len() {
-        return Err(validator.error(origin, "constructor parameter slots are incomplete"));
+    if source_indexes.len() != evaluation_order.len() {
+        return Err(validator.error(
+            origin,
+            "constructor evaluation order is not covered by explicit fields",
+        ));
     }
     Ok(())
 }

@@ -27,7 +27,7 @@ use origins::CompileTargetOrigins;
 
 pub use calls::{
     CompileCallArguments, CompileCallTarget, CompileCalleeTarget, CompileDynamicCallArgument,
-    CompileReflectionCall, CompileScriptCallArgument,
+    CompilePlacedCallArgument, CompilePlacedCallValue, CompileReflectionCall,
 };
 pub use host::{
     CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget, HostFieldTarget,

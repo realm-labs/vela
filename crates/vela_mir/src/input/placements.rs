@@ -63,7 +63,7 @@ pub struct CompileConstructorField {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CompileConstructorValue {
-    Explicit(HirExprId),
+    Explicit { source_index: u32, value: HirExprId },
     EvaluatedDefault(HirBodyId),
 }
 
@@ -78,11 +78,13 @@ pub enum CompileConstructorTarget {
     Record {
         type_id: TypeId,
         shape: ShapeId,
+        evaluation_order: Vec<HirExprId>,
         fields: Vec<CompileConstructorField>,
     },
     Variant {
         type_id: TypeId,
         variant: VariantId,
+        evaluation_order: Vec<HirExprId>,
         fields: Vec<CompileConstructorField>,
     },
     DynamicRecord {

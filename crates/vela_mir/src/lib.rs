@@ -42,11 +42,11 @@ pub use input::{
     CompileFunctionTarget, CompileFunctionTargets, CompileGlobalTarget, CompileGuardKey,
     CompileGuardTarget, CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget,
     CompileMemberTarget, CompileParameter, CompileParameterDefault,
-    CompilePatternConstructorTarget, CompilePositionalPolicy, CompileReflectionCall,
-    CompileScriptCallArgument, CompileSignature, CompileTargetKind, CompileTargetSnapshot,
-    CompileTargetSnapshotBuilder, CompileTryFamily, CompileTryLayoutTarget, CompileTryTarget,
-    DynamicMethodTarget, HostFieldTarget, HostMethodTarget, MethodExecutableTarget, MirBuildError,
-    MirLoweringConfig, MirLoweringInput,
+    CompilePatternConstructorTarget, CompilePlacedCallArgument, CompilePlacedCallValue,
+    CompilePositionalPolicy, CompileReflectionCall, CompileSignature, CompileTargetKind,
+    CompileTargetSnapshot, CompileTargetSnapshotBuilder, CompileTryFamily, CompileTryLayoutTarget,
+    CompileTryTarget, DynamicMethodTarget, HostFieldTarget, HostMethodTarget,
+    MethodExecutableTarget, MirBuildError, MirLoweringConfig, MirLoweringInput,
 };
 pub use operations::{
     MirAggregate, MirCall, MirContextualBinaryOp, MirContextualNumericLiteral, MirDynamicArgument,

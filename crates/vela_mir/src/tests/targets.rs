@@ -89,15 +89,10 @@ fn mir_model_compile_targets_select_behavior_intrinsics_without_names() {
             function: FunctionId::new(315),
             debug_name: "game::defaulted".to_owned(),
         },
+        vec![HirExprId::new(316)],
         vec![
-            CompileScriptCallArgument {
-                parameter: 0,
-                value: Some(HirExprId::new(316)),
-            },
-            CompileScriptCallArgument {
-                parameter: 1,
-                value: None,
-            },
+            CompilePlacedCallArgument::placed(0, 0, HirExprId::new(316)),
+            CompilePlacedCallArgument::missing(1),
         ],
     );
     let dynamic = CompileCallTarget::dynamic(

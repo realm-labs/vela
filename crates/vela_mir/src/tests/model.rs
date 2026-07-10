@@ -960,6 +960,7 @@ fn mir_model_owns_distinct_schema_defaults_and_resolved_constructor_slots() {
             CompileConstructorTarget::Record {
                 type_id,
                 shape,
+                evaluation_order: Vec::new(),
                 fields: fields.clone(),
             },
             origin,
@@ -972,6 +973,7 @@ fn mir_model_owns_distinct_schema_defaults_and_resolved_constructor_slots() {
             CompileConstructorTarget::Variant {
                 type_id,
                 variant,
+                evaluation_order: Vec::new(),
                 fields: fields.clone(),
             },
             origin,

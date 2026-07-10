@@ -357,6 +357,7 @@ fn finalization_rejects_constructor_defaults_missing_from_the_snapshot() {
             CompileConstructorTarget::Record {
                 type_id,
                 shape,
+                evaluation_order: Vec::new(),
                 fields: vec![CompileConstructorField {
                     field,
                     parameter: 0,
