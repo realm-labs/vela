@@ -573,6 +573,7 @@ fn sample(counter: Counter) {
     );
 }
 
+mod block_tail_semantics;
 mod call_diagnostics;
 mod closures_and_bindings;
 mod contract_delegation;

@@ -41,6 +41,7 @@ fn value_runtime_slot_stays_compact() {
     );
 }
 
+mod block_tail_semantics;
 mod bytes;
 mod char;
 mod consts;

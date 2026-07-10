@@ -95,7 +95,7 @@ impl Compiler<'_, '_> {
                         kind,
                         HirStmtKind::Expr {
                             expression: Some(_),
-                            ..
+                            terminated: false,
                         } | HirStmtKind::If(_)
                             | HirStmtKind::Match(_)
                     )
