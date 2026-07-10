@@ -14,20 +14,19 @@ impl Compiler<'_, '_> {
         source: SourceId,
         expression: &SyntaxExpression,
     ) -> CompileResult<Option<Register>> {
-        if expression.as_index().is_none() {
-            return Ok(None);
-        }
-        if let Some(register) = self.compile_syntax_host_index(source, expression)? {
-            return Ok(Some(register));
-        }
         let span = syntax_expression_span(source, expression);
         let Some(index) = self.hir_index_for_span(span) else {
             return Ok(None);
         };
-        let Some(receiver_span) = self.expression_span(index.receiver) else {
+        let receiver = index.receiver;
+        let index = index.index;
+        if let Some(register) = self.compile_syntax_host_index(source, expression)? {
+            return Ok(Some(register));
+        }
+        let Some(receiver_span) = self.expression_span(receiver) else {
             return Ok(None);
         };
-        let Some(index_span) = self.expression_span(index.index) else {
+        let Some(index_span) = self.expression_span(index) else {
             return Ok(None);
         };
         let Some(receiver_expression) =

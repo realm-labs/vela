@@ -136,7 +136,10 @@ impl Compiler<'_, '_> {
         source: SourceId,
         expression: &SyntaxExpression,
     ) -> CompileResult<Option<Register>> {
-        if expression.as_index().is_none() {
+        if self
+            .hir_index_for_span(syntax_expression_span(source, expression))
+            .is_none()
+        {
             return Ok(None);
         }
         self.reject_invalid_syntax_host_index_read(source, expression)?;
@@ -331,9 +334,6 @@ impl Compiler<'_, '_> {
         target_expression: &SyntaxExpression,
         kind: HostIndexAccessKind,
     ) -> CompileResult<()> {
-        if target_expression.as_index().is_none() {
-            return Ok(());
-        }
         let target_span = syntax_expression_span(source, target_expression);
         let Some(index) = self.hir_index_for_span(target_span) else {
             return Ok(());

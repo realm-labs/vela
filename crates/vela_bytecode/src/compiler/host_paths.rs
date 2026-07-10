@@ -323,7 +323,6 @@ impl Compiler<'_, '_> {
         source: SourceId,
         expression: &SyntaxExpression,
     ) -> Option<ResolvedHostPath<'static>> {
-        expression.as_index()?;
         let span = syntax_host_expression_span(source, expression);
         let index = self.hir_index_for_span(span)?;
         let receiver_span = self.expression_span(index.receiver)?;
@@ -374,7 +373,10 @@ impl Compiler<'_, '_> {
         if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
             return self.syntax_host_path(source, &inner);
         }
-        if expression.as_index().is_some() {
+        if self
+            .hir_index_for_span(syntax_host_expression_span(source, expression))
+            .is_some()
+        {
             return self.syntax_host_index_path(source, expression);
         }
         let span = syntax_host_expression_span(source, expression);

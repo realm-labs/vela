@@ -266,7 +266,6 @@ impl Compiler<'_, '_> {
         source: Option<SourceId>,
         expression: &SyntaxExpression,
     ) -> Option<ValueShape> {
-        expression.as_index()?;
         let source = source?;
         let span = syntax_expression_span(source, expression);
         let index = self.hir_index_for_span(span)?;
@@ -830,7 +829,6 @@ impl Compiler<'_, '_> {
         expression: &SyntaxExpression,
         local_shapes: &BTreeMap<String, ValueShape>,
     ) -> Option<ValueShape> {
-        expression.as_index()?;
         let source = source?;
         let span = syntax_expression_span(source, expression);
         let index = self.hir_index_for_span(span)?;
@@ -853,7 +851,6 @@ impl Compiler<'_, '_> {
         expression: &SyntaxExpression,
         local_shapes: &BTreeMap<String, ValueShape>,
     ) -> Option<ValueShape> {
-        expression.as_call()?;
         let source_id = source?;
         let call_expression =
             self.expression_at_span(syntax_expression_span(source_id, expression))?;
