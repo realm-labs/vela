@@ -2,9 +2,10 @@ use std::collections::BTreeSet;
 
 use crate::{
     CompileCallArguments, CompileCallTarget, CompileCalleeTarget, CompileConstructorField,
-    CompileConstructorTarget, CompileConstructorValue, CompileFieldTarget, CompileFunctionClass,
-    CompileMemberTarget, CompileMethodClass, CompileParameterDefault,
-    CompilePatternConstructorTarget, CompileSignature, MirBuildError, MirSourceOrigin,
+    CompileConstructorTarget, CompileConstructorValue, CompileDynamicConstructorField,
+    CompileFieldTarget, CompileFunctionClass, CompileMemberTarget, CompileMethodClass,
+    CompileParameterDefault, CompilePatternConstructorTarget, CompileSignature, MirBuildError,
+    MirSourceOrigin,
 };
 
 use super::SnapshotValidator;
@@ -384,6 +385,54 @@ fn validate_constructors(validator: &SnapshotValidator<'_>) -> Result<(), MirBui
                     origin,
                 )?;
             }
+            CompileConstructorTarget::DynamicRecord { type_name, fields } => {
+                validate_dynamic_constructor(
+                    validator,
+                    type_name,
+                    None,
+                    fields,
+                    origin,
+                    "dynamic record constructor",
+                )?;
+            }
+            CompileConstructorTarget::DynamicVariant {
+                owner_name,
+                variant_name,
+                fields,
+            } => {
+                validate_dynamic_constructor(
+                    validator,
+                    owner_name,
+                    Some(variant_name.as_str()),
+                    fields,
+                    origin,
+                    "dynamic variant constructor",
+                )?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_dynamic_constructor(
+    validator: &SnapshotValidator<'_>,
+    owner_name: &str,
+    variant_name: Option<&str>,
+    fields: &[CompileDynamicConstructorField],
+    origin: MirSourceOrigin,
+    context: &str,
+) -> Result<(), MirBuildError> {
+    validate_dynamic_owner_and_variant(validator, owner_name, variant_name, origin, context)?;
+    let mut unique = BTreeSet::new();
+    for field in fields {
+        if field.name.is_empty() {
+            return Err(validator.error(origin, format!("{context} has an empty field name")));
+        }
+        if !unique.insert(field.name.as_str()) {
+            return Err(validator.error(
+                origin,
+                format!("{context} has duplicate field name {:?}", field.name),
+            ));
         }
     }
     Ok(())
@@ -487,7 +536,62 @@ fn validate_pattern_constructors(validator: &SnapshotValidator<'_>) -> Result<()
                     origin,
                 )?;
             }
+            CompilePatternConstructorTarget::DynamicRecord { type_name, fields } => {
+                validate_dynamic_pattern(
+                    validator,
+                    type_name,
+                    None,
+                    fields,
+                    origin,
+                    "dynamic record pattern",
+                )?;
+            }
+            CompilePatternConstructorTarget::DynamicVariant {
+                owner_name,
+                variant_name,
+                fields,
+            } => {
+                validate_dynamic_pattern(
+                    validator,
+                    owner_name,
+                    Some(variant_name.as_str()),
+                    fields,
+                    origin,
+                    "dynamic variant pattern",
+                )?;
+            }
         }
+    }
+    Ok(())
+}
+
+fn validate_dynamic_pattern(
+    validator: &SnapshotValidator<'_>,
+    owner_name: &str,
+    variant_name: Option<&str>,
+    fields: &[String],
+    origin: MirSourceOrigin,
+    context: &str,
+) -> Result<(), MirBuildError> {
+    validate_dynamic_owner_and_variant(validator, owner_name, variant_name, origin, context)?;
+    if fields.iter().any(String::is_empty) {
+        return Err(validator.error(origin, format!("{context} has an empty field name")));
+    }
+    Ok(())
+}
+
+fn validate_dynamic_owner_and_variant(
+    validator: &SnapshotValidator<'_>,
+    owner_name: &str,
+    variant_name: Option<&str>,
+    origin: MirSourceOrigin,
+    context: &str,
+) -> Result<(), MirBuildError> {
+    if owner_name.is_empty() {
+        return Err(validator.error(origin, format!("{context} has an empty owner/type name")));
+    }
+    if variant_name.is_some_and(str::is_empty) {
+        return Err(validator.error(origin, format!("{context} has an empty variant name")));
     }
     Ok(())
 }

@@ -34,9 +34,9 @@ pub use host::{
     HostMethodTarget,
 };
 pub use placements::{
-    CompileConstructorField, CompileConstructorTarget, CompileConstructorValue, CompileFieldTarget,
-    CompileFunctionTargets, CompileGuardKey, CompileGuardTarget, CompileMemberTarget,
-    CompilePatternConstructorTarget, CompileTargetKind,
+    CompileConstructorField, CompileConstructorTarget, CompileConstructorValue,
+    CompileDynamicConstructorField, CompileFieldTarget, CompileFunctionTargets, CompileGuardKey,
+    CompileGuardTarget, CompileMemberTarget, CompilePatternConstructorTarget, CompileTargetKind,
 };
 pub use try_targets::{CompileTryFamily, CompileTryLayoutTarget, CompileTryTarget};
 

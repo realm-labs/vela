@@ -68,6 +68,12 @@ pub enum CompileConstructorValue {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompileDynamicConstructorField {
+    pub name: String,
+    pub value: HirExprId,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompileConstructorTarget {
     Record {
         type_id: TypeId,
@@ -78,6 +84,15 @@ pub enum CompileConstructorTarget {
         type_id: TypeId,
         variant: VariantId,
         fields: Vec<CompileConstructorField>,
+    },
+    DynamicRecord {
+        type_name: String,
+        fields: Vec<CompileDynamicConstructorField>,
+    },
+    DynamicVariant {
+        owner_name: String,
+        variant_name: String,
+        fields: Vec<CompileDynamicConstructorField>,
     },
 }
 
@@ -92,6 +107,15 @@ pub enum CompilePatternConstructorTarget {
         type_id: TypeId,
         variant: VariantId,
         fields: Vec<FieldId>,
+    },
+    DynamicRecord {
+        type_name: String,
+        fields: Vec<String>,
+    },
+    DynamicVariant {
+        owner_name: String,
+        variant_name: String,
+        fields: Vec<String>,
     },
 }
 
@@ -290,6 +314,12 @@ impl<'a> CompileFunctionTargets<'a> {
 }
 
 impl CompileTargetSnapshot {
+    #[must_use]
+    pub fn function_targets(&self, function: FunctionId) -> Option<CompileFunctionTargets<'_>> {
+        self.function(function)
+            .map(|root| CompileFunctionTargets::new(self, root))
+    }
+
     #[must_use]
     pub fn call(&self, function: FunctionId, expression: HirExprId) -> Option<&CompileCallTarget> {
         self.calls.get(&(function, expression))

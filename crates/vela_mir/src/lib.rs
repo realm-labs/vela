@@ -38,14 +38,15 @@ pub use ids::{
 pub use input::{
     CompileCallArguments, CompileCallTarget, CompileCalleeTarget, CompileConstructorField,
     CompileConstructorTarget, CompileConstructorValue, CompileDynamicCallArgument,
-    CompileFieldTarget, CompileFunctionIdentity, CompileFunctionTarget, CompileFunctionTargets,
-    CompileGlobalTarget, CompileGuardKey, CompileGuardTarget, CompileHostIndexCapability,
-    CompileHostPathSegment, CompileHostPathTarget, CompileMemberTarget, CompileParameter,
-    CompileParameterDefault, CompilePatternConstructorTarget, CompilePositionalPolicy,
-    CompileReflectionCall, CompileScriptCallArgument, CompileSignature, CompileTargetKind,
-    CompileTargetSnapshot, CompileTargetSnapshotBuilder, CompileTryFamily, CompileTryLayoutTarget,
-    CompileTryTarget, DynamicMethodTarget, HostFieldTarget, HostMethodTarget,
-    MethodExecutableTarget, MirBuildError, MirLoweringConfig, MirLoweringInput,
+    CompileDynamicConstructorField, CompileFieldTarget, CompileFunctionIdentity,
+    CompileFunctionTarget, CompileFunctionTargets, CompileGlobalTarget, CompileGuardKey,
+    CompileGuardTarget, CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget,
+    CompileMemberTarget, CompileParameter, CompileParameterDefault,
+    CompilePatternConstructorTarget, CompilePositionalPolicy, CompileReflectionCall,
+    CompileScriptCallArgument, CompileSignature, CompileTargetKind, CompileTargetSnapshot,
+    CompileTargetSnapshotBuilder, CompileTryFamily, CompileTryLayoutTarget, CompileTryTarget,
+    DynamicMethodTarget, HostFieldTarget, HostMethodTarget, MethodExecutableTarget, MirBuildError,
+    MirLoweringConfig, MirLoweringInput,
 };
 pub use operations::{
     MirAggregate, MirCall, MirContextualBinaryOp, MirContextualNumericLiteral, MirDynamicArgument,
