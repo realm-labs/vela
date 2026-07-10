@@ -375,15 +375,13 @@ fn collect_impl_methods(
         .map(|method| method.name.as_str())
         .collect::<BTreeSet<_>>();
     if let Some(trait_path) = impl_metadata.trait_path() {
-        let trait_declaration = trait_declaration(graph, declaration.module, trait_path)
-            .ok_or_else(|| {
-                catalog_error(
-                    declaration.id,
-                    None,
-                    owner_origin,
-                    format!("trait `{}` has no declaration", trait_path.join("::")),
-                )
-            })?;
+        let Some(trait_declaration) = trait_declaration(graph, declaration.module, trait_path)
+        else {
+            // Builtin and registry-provided traits have no source-owned default
+            // shape. Explicit impl methods remain catalogued; external
+            // validation owns whether the trait exists.
+            return Ok(methods);
+        };
         let trait_metadata = graph.declaration(trait_declaration).ok_or_else(|| {
             catalog_error(
                 declaration.id,

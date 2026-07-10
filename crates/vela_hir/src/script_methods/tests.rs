@@ -129,29 +129,60 @@ impl BonusSource for Boss {
 }
 
 #[test]
-fn inconsistent_impl_metadata_returns_a_source_keyed_catalog_error() {
-    let mut graph = ModuleGraph::new();
-    let module = graph.add_source(ModuleSource::new(
-        SourceId::new(304),
+fn builtin_trait_methods_remain_catalogued_without_a_source_trait_shape() {
+    let (graph, module) = graph(
+        304,
         ModulePath::root(),
-        "struct Player {} impl MissingTrait for Player {}",
-    ));
-    graph.resolve_imports();
-
-    let error = ScriptMethodCatalog::from_graph(
+        r#"
+struct PlayerId { value: i64 }
+impl PartialEq for PlayerId {
+    fn eq(self, other: PlayerId) -> bool { return self.value == other.value; }
+}
+"#,
+    );
+    let catalog = ScriptMethodCatalog::from_graph(
         &graph,
         ScriptMethodCatalogMode::single_source(module, "main"),
     )
-    .expect_err("unresolved trait must not silently omit its impl");
+    .expect("builtin trait method catalog");
+    let method = only_method(&catalog);
 
-    assert_eq!(error.origin().span.source, SourceId::new(304));
-    assert!(error.node().is_none());
-    assert!(error.message().contains("MissingTrait"));
-    assert!(
-        error
-            .to_string()
-            .contains("script method catalog inconsistency")
+    assert_eq!(method.owner().target_type(), "PlayerId");
+    assert_eq!(method.owner().identity().canonical_owner(), "PartialEq");
+    assert_eq!(
+        method.method_id(),
+        script_trait_method_id("PartialEq", "eq")
     );
+}
+
+#[test]
+fn registry_style_trait_methods_do_not_require_a_source_default_shape() {
+    let (graph, module) = graph(
+        305,
+        ModulePath::root(),
+        r#"
+struct Player { level: i64 }
+impl BonusSource for Player {
+    fn bonus(self, amount: i64) -> i64 { return self.level + amount; }
+}
+"#,
+    );
+    let catalog = ScriptMethodCatalog::from_graph(
+        &graph,
+        ScriptMethodCatalogMode::single_source(module, "main"),
+    )
+    .expect("registry-style trait method catalog");
+    let method = only_method(&catalog);
+
+    assert_eq!(
+        method.owner().identity().canonical_owner(),
+        "main::BonusSource"
+    );
+    assert_eq!(
+        method.method_id(),
+        script_trait_method_id("main::BonusSource", "bonus")
+    );
+    assert_eq!(method.symbol_seed(), "__impl.BonusSource.for.Player.bonus");
 }
 
 fn graph(source: u32, path: ModulePath, text: &str) -> (ModuleGraph, ModuleId) {
