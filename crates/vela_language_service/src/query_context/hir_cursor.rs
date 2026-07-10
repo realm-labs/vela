@@ -1,4 +1,6 @@
 use vela_common::{SourceId, Span};
+use vela_hir::body::HirBody;
+use vela_hir::ids::HirExprId;
 use vela_hir::module_graph::ModuleGraph;
 
 use crate::{CursorContext, CursorContextKind, TextRange};
@@ -67,6 +69,26 @@ fn hir_call_ranges(
     offset: usize,
     open: usize,
 ) -> Option<HirCallRanges> {
+    let (body, expression) = hir_call_at(graph, source_id, open, offset)?;
+    let call = body.call(expression)?;
+    let callee = body.expressions.get(&call.callee)?;
+    let callee_range = span_text_range(callee.origin.span)?;
+    let member_receiver = body
+        .field(call.callee)
+        .and_then(|field| body.expressions.get(&field.receiver))
+        .and_then(|receiver| span_text_range(receiver.origin.span));
+    Some(HirCallRanges {
+        callee: callee_range,
+        member_receiver,
+    })
+}
+
+pub(super) fn hir_call_at(
+    graph: &ModuleGraph,
+    source_id: SourceId,
+    open: usize,
+    offset: usize,
+) -> Option<(&HirBody, HirExprId)> {
     graph
         .bodies()
         .flat_map(|body| {
@@ -78,27 +100,19 @@ fn hir_call_ranges(
                 {
                     return None;
                 }
-                let callee = body.expressions.get(&call.callee)?;
-                let callee_range = span_text_range(callee.origin.span)?;
-                let member_receiver = body
-                    .field(call.callee)
-                    .and_then(|field| body.expressions.get(&field.receiver))
-                    .and_then(|receiver| span_text_range(receiver.origin.span));
                 Some((
                     call_expression
                         .origin
                         .span
                         .end
                         .saturating_sub(call_expression.origin.span.start),
-                    HirCallRanges {
-                        callee: callee_range,
-                        member_receiver,
-                    },
+                    body,
+                    call.expression,
                 ))
             })
         })
-        .min_by_key(|(width, _)| *width)
-        .map(|(_, ranges)| ranges)
+        .min_by_key(|(width, _, _)| *width)
+        .map(|(_, body, expression)| (body, expression))
 }
 
 fn span_contains_usize(span: Span, offset: usize) -> bool {

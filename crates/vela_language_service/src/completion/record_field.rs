@@ -19,17 +19,21 @@ use super::{
 use crate::symbol_ref::schema_member_symbol;
 
 pub(super) fn record_constructor_at(
-    source: &SyntaxSourceFile,
     body: Option<&HirBody>,
     source_id: Option<SourceId>,
+    source: Option<SyntaxSourceFile>,
     offset: usize,
 ) -> Option<RecordConstructor> {
     body.zip(source_id)
         .and_then(|(body, source_id)| hir_record_constructor_at(body, source_id, offset))
-        .or_else(|| recover_record_constructor_from_incomplete_syntax(source, offset))
+        .or_else(|| {
+            source.as_ref().and_then(|source| {
+                recover_record_constructor_from_incomplete_syntax(source, offset)
+            })
+        })
 }
 
-fn hir_record_constructor_at(
+pub(super) fn hir_record_constructor_at(
     body: &HirBody,
     source_id: SourceId,
     offset: usize,

@@ -44,6 +44,16 @@ decision history lives in
 
 ## Active Architecture Decisions
 
+### Cursor-Specific HIR Query Bodies
+
+Production editor queries select the narrowest `HirBody` whose source origin
+contains the cursor, including lambda and parameter-default bodies. Queries
+that need an enclosing call search HIR call facts across the module graph by
+the shared cursor/call spans; they do not replace the active body with the root
+body or reconstruct call identity from syntax. Record completion consumes the
+active HIR record before consulting the isolated malformed-edit CST recovery
+path.
+
 ### Stable HIR Identity At Compiler And Editor Boundaries
 
 Bytecode semantic helpers receive `HirExprId` directly; source spans are only

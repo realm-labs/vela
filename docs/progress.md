@@ -31,17 +31,16 @@ required.
 
 ## Current Focus
 
-The Heavy HIR primary hard switch and D1 stable-identity close-out are complete.
+The Heavy HIR primary hard switch and D1/D2 close-out are complete.
 `vela_hir` owns executable body and stable semantic identity, bytecode consumes
 `HirExprId` without span-to-ID reconstruction, and language-service local
-features share `HirLocalId` projection. D2/D3 acceptance remains open:
-production query context must select nested lambda/default bodies before
-record completion can claim HIR-first behavior, and the size audit must scan all
-affected source trees rather than four historical paths. Current unhandled
-over-threshold files are analysis `semantic_facts.rs`, HIR
-`syntax_binding.rs`/`module_graph.rs`, and language-service
-`completion/tests.rs`. MIR remains blocked until these gaps and final validation
-close.
+features share `HirLocalId` projection. Production query context now selects
+the narrowest cursor-containing HIR body, and public root/lambda/default record
+completion tests prove HIR ownership while malformed source alone exercises
+syntax recovery. D3 acceptance remains open: the directory-wide size audit
+still reports analysis `semantic_facts.rs` and HIR
+`syntax_binding.rs`/`module_graph.rs`. MIR remains blocked until those splits,
+the Phase 7 audits, and final validation close.
 
 M0-M19 are complete enough as a runnable prototype, embedding surface,
 production hot-reload workflow, diagnostics/tooling foundation, runnable

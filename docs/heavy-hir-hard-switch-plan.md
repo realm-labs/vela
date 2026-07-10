@@ -3,7 +3,7 @@
 > **Track:** semantic architecture, HIR ownership, compiler/LSP fact cleanup
 > before MIR and JIT foundation work
 > **Document status:** Codex goal-mode execution plan
-> **Execution status:** D1 complete; D2 nested-body and D3 size close-out open
+> **Execution status:** D1 and D2 complete; D3 size close-out open
 > **Compatibility policy:** breaking pre-release HIR, analysis,
 > language-service, bytecode-compiler, and test APIs are allowed. Preserve
 > product contracts: no script-language generics, no Rust `&mut` exposure,
@@ -170,23 +170,19 @@ semantic facts, the large language-service syntax semantic walkers are gone,
 and bytecode's syntax payload/dispatcher path is deleted. Focused, workspace,
 clippy, and runnable-example validation is green.
 
-Final acceptance remains open after a second review. D1 is complete:
+Final acceptance remains open after a second review. D1 and D2 are complete:
 
 - bytecode path, host-path, and record-shape helpers receive `HirExprId`;
 - editor local features share HIR-backed `HirLocalId` source projection;
+- production editor queries select nested lambda and parameter-default bodies;
 
-D2 and D3 still have concrete gaps:
+D3 still has a concrete gap:
 
-- production `QueryContext` obtains `HirBody` from the root
-  `BindingMap::body()`. A record inside a lambda, parameter default, or another
-  nested body therefore misses the available nested HIR record and silently
-  enters syntax recovery;
-- the HIR-first unit test manually selects the body containing the cursor, so
-  it does not exercise the production query path or catch that fallback;
 - the fixed-path size audit is green only for the four files named by the first
   close-out review. A directory-wide scan still finds over-1200-line active
-  files in analysis semantic facts, HIR syntax binding, HIR module graph, and
-  language-service completion tests, with no documented exceptions.
+  files in analysis semantic facts, HIR syntax binding, and HIR module graph,
+  with no documented exceptions. Completion record tests
+  moved to a focused module while closing D2.
 
 Passing focused tests proves behavior preservation, not completion. The
 remaining execution unit is no longer an individual call/field/index fact.
@@ -207,7 +203,7 @@ Goal mode must use the following close-out status:
 ```text
 [x] D1. Stable identity closure: pass HirExprId/HirLocalId through bytecode and
         editor semantic APIs; delete span-to-ID and feature-local local scans.
-[~] D2. Completion boundary closure: select the active nested HIR body in the
+[x] D2. Completion boundary closure: select the active nested HIR body in the
         production query path, then use syntax only for proven incomplete-edit
         recovery that did not lower a usable HIR record.
 [~] D3. Architecture and acceptance: run an all-files size audit over the
@@ -361,13 +357,13 @@ HIR and source origins.
 Purpose: make editor queries consume Heavy HIR facts instead of feature-local
 semantic reconstruction.
 
-- [~] Update query context to expose HIR body, HIR IDs, analysis facts, and
-  source-origin lookup as the default editor-neutral input. Root-body exposure
-  exists; cursor-specific nested-body selection remains in D2.
-- [~] Move completion, signature help, hover, definition, references, rename,
+- [x] Update query context to expose HIR body, HIR IDs, analysis facts, and
+  source-origin lookup as the default editor-neutral input. The active body is
+  the narrowest cursor-containing body; enclosing call facts remain HIR-based.
+- [x] Move completion, signature help, hover, definition, references, rename,
   code actions, semantic tokens, and inlay hints away from body-level syntax
-  semantic inference. Stable local identity is complete; nested-body
-  record-field completion remains in D2.
+  semantic inference. Stable local identity and nested-body record-field
+  completion are complete.
 - [x] Keep formatting on the canonical lossless syntax formatter; formatting
   must not build a second semantic tree or depend on feature-local semantic
   reconstruction.
@@ -376,15 +372,15 @@ semantic reconstruction.
   performing semantic work. Start semantic queries from HIR IDs and project
   results back through HIR source origins. Apply the same rule to duplicated
   local-binding lookup by name or source range.
-- [~] Keep syntax/CST access only for lexical recovery under incomplete edits,
+- [x] Keep syntax/CST access only for lexical recovery under incomplete edits,
   lossless formatting, folding/selection structure, token trivia, and final
   source-range projection. Record-constructor identity must come from HIR when
   a recovered HIR record expression exists; syntax recovery must be isolated
   and must not own resolved semantic facts.
-- [ ] Make production `QueryContext` expose the narrowest `HirBody` whose
+- [x] Make production `QueryContext` expose the narrowest `HirBody` whose
   source origin contains the cursor, including lambda and parameter-default
   bodies, instead of always exposing the root binding-map body.
-- [ ] Add public completion-path tests for root-body, nested-lambda, and
+- [x] Add public completion-path tests for root-body, nested-lambda, and
   parameter-default record constructors plus a malformed record that genuinely
   requires syntax recovery. Do not satisfy this checkpoint only with an
   internal helper test that manually selects a body.
@@ -462,8 +458,8 @@ Purpose: remove transition names and prove Heavy HIR is the semantic source.
 - [~] Split all active files in the affected HIR/analysis/bytecode/language-
   service trees that exceed 1200 lines unless a concrete exception is
   documented. The original four files are split; the directory-wide audit
-  still reports `semantic_facts.rs`, `syntax_binding.rs`, `module_graph.rs`,
-  and language-service `completion/tests.rs`.
+  still reports `semantic_facts.rs`, `syntax_binding.rs`, and
+  `module_graph.rs`.
 - [x] Replace stale AST/migration descriptions and misleading test names,
   including the bytecode compiler module description and record completion's
   claimed HIR-operand test.

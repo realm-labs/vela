@@ -22,7 +22,7 @@ use vela_hir::{
 };
 
 mod hir_cursor;
-use hir_cursor::refine_cursor_with_hir;
+use hir_cursor::{hir_call_at, refine_cursor_with_hir};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct CallArgumentFacts<'a> {
@@ -126,6 +126,7 @@ pub struct QueryContext<'a> {
     generation: WorkspaceGeneration,
     source: QuerySource<'a>,
     syntax_parse: Option<&'a SyntaxParse<SyntaxSourceFile>>,
+    graph: Option<&'a ModuleGraph>,
     bindings: Option<&'a BindingMap>,
     body: Option<&'a HirBody>,
     cursor: CursorContext,
@@ -146,6 +147,7 @@ impl<'a> QueryContext<'a> {
             generation: snapshot.generation(),
             source: QuerySource::Snapshot(document),
             syntax_parse: None,
+            graph: None,
             bindings: None,
             body: None,
             cursor,
@@ -160,21 +162,23 @@ impl<'a> QueryContext<'a> {
     ) -> Option<Self> {
         let source = databases.source_db().records().get(document_id)?;
         let syntax_parse = databases.parse_db().syntax_parse(document_id);
+        let graph = databases.hir_db().graph();
         let mut cursor = cursor_context_at(source.text(), position, syntax_parse);
         refine_cursor_with_hir(
-            databases.hir_db().graph(),
+            graph,
             source.source_id(),
             cursor.replace_range().end,
             &mut cursor,
         );
         let bindings = query_bindings(databases, source, cursor.replace_range().end);
-        let body = bindings.and_then(|bindings| databases.hir_db().graph().body(bindings.body()));
+        let body = query_body(graph, source.source_id(), cursor.replace_range().end);
         Some(Self {
             document_id: document_id.clone(),
             position,
             generation: databases.generation(),
             source: QuerySource::Database(source),
             syntax_parse,
+            graph: Some(graph),
             bindings,
             body,
             cursor,
@@ -367,11 +371,20 @@ impl<'a> QueryContext<'a> {
             .text()
             .get(call_open_offset + 1..self.cursor.replace_range().end)?;
         let member_receiver = self.call_member_receiver_range();
-        let call_expression = self.hir_call_expression_for_cursor();
+        let hir_call = self.hir_call_for_cursor();
+        let call_expression = hir_call.map(|(_, expression)| expression);
         let callee_expression =
-            call_expression.and_then(|expression| self.hir_call_callee(expression));
-        let callee_path = callee_expression.and_then(|expression| self.hir_callee_path(expression));
-        let member_method = member_receiver.and_then(|_| self.hir_member_method(callee_expression));
+            hir_call.and_then(|(body, expression)| body.call(expression).map(|call| call.callee));
+        let callee_path = hir_call.and_then(|(body, _)| {
+            callee_expression.and_then(|expression| hir_callee_path(body, expression))
+        });
+        let member_method = member_receiver
+            .and_then(|_| {
+                hir_call.and_then(|(body, _)| {
+                    callee_expression.and_then(|expression| body.field(expression))
+                })
+            })
+            .map(|field| field.name.as_str());
         Some(CallArgumentFacts {
             call_expression,
             callee_expression,
@@ -433,60 +446,28 @@ impl<'a> QueryContext<'a> {
 }
 
 impl<'a> QueryContext<'a> {
-    fn hir_call_expression_for_cursor(&self) -> Option<HirExprId> {
-        let body = self.body?;
-        let call_open = self.call_open_offset()?;
-        let cursor_offset = self.cursor.replace_range().end;
-        body.calls()
-            .map(|(_, call)| call)
-            .filter_map(|call| {
-                let call_expression = body.expressions.get(&call.expression)?;
-                if !span_contains_usize(call_expression.origin.span, call_open)
-                    || !span_contains_usize(call_expression.origin.span, cursor_offset)
-                {
-                    return None;
-                }
-                Some((
-                    call_expression
-                        .origin
-                        .span
-                        .end
-                        .saturating_sub(call_expression.origin.span.start),
-                    call.expression,
-                ))
-            })
-            .min_by_key(|(width, _)| *width)
-            .map(|(_, expression)| expression)
+    fn hir_call_for_cursor(&self) -> Option<(&'a HirBody, HirExprId)> {
+        hir_call_at(
+            self.graph?,
+            self.source_id()?,
+            self.call_open_offset()?,
+            self.cursor.replace_range().end,
+        )
     }
+}
 
-    fn hir_call_callee(&self, call_expression: HirExprId) -> Option<HirExprId> {
-        self.body?.call(call_expression).map(|call| call.callee)
-    }
-
-    fn hir_member_method(&self, callee_expression: Option<HirExprId>) -> Option<&'a str> {
-        let body = self.body?;
-        body.field(callee_expression?)
-            .map(|field| field.name.as_str())
-    }
-
-    fn hir_callee_path(&self, callee_expression: HirExprId) -> Option<&'a [String]> {
-        self.body?
-            .paths
-            .iter()
-            .find(|path| {
-                path.kind == HirPathKind::Callee
-                    && path.owner == HirPathOwner::Expression(callee_expression)
-            })
-            .map(|path| path.path.as_slice())
-    }
+fn hir_callee_path(body: &HirBody, callee_expression: HirExprId) -> Option<&[String]> {
+    body.paths
+        .iter()
+        .find(|path| {
+            path.kind == HirPathKind::Callee
+                && path.owner == HirPathOwner::Expression(callee_expression)
+        })
+        .map(|path| path.path.as_slice())
 }
 
 fn text_range(text: &str, range: TextRange) -> Option<&str> {
     text.get(range.start..range.end)
-}
-
-fn span_contains_usize(span: Span, offset: usize) -> bool {
-    u32::try_from(offset).is_ok_and(|offset| span.start <= offset && offset <= span.end)
 }
 
 fn active_call_parameter_index(args_text: &str) -> usize {
@@ -541,6 +522,14 @@ fn query_bindings<'a>(
 ) -> Option<&'a BindingMap> {
     let offset = u32::try_from(offset).ok()?;
     binding_maps_at(databases, source.source_id(), offset).next()
+}
+
+fn query_body(graph: &ModuleGraph, source_id: SourceId, offset: usize) -> Option<&HirBody> {
+    let offset = u32::try_from(offset).ok()?;
+    graph
+        .bodies()
+        .filter(|body| body.origin.source == source_id && body.origin.span.contains(offset))
+        .min_by_key(|body| body.origin.span.end.saturating_sub(body.origin.span.start))
 }
 
 fn binding_maps_at<'a>(

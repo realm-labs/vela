@@ -65,9 +65,12 @@ pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext 
     }
 
     if cursor.kind() == CursorContextKind::RecordExpressionField
-        && let Some(mut record_constructor) = query.syntax_parse().and_then(|parsed| {
-            record_constructor_at(&parsed.tree(), query.body(), query.source_id(), offset)
-        })
+        && let Some(mut record_constructor) = record_constructor_at(
+            query.body(),
+            query.source_id(),
+            query.syntax_parse().map(|parsed| parsed.tree()),
+            offset,
+        )
     {
         record_constructor.current_module = query
             .module_path()
