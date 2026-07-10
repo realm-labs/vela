@@ -34,9 +34,11 @@ are pass-through values and retain their upstream owners. The table covers all
 | `analysis::host_index_key_mismatch` | `host index key for \`{type}\` must be \`{expected}\`` | index operation; actual key is labeled | `hir_lowering/assignments.rs` | analysis plus compile-target validation |
 
 All direct `Diagnostic::error` builders in the audited scope set both a code
-and a primary span. One projection gap remains: negated const/schema-default
-integer or float overflow can leave `const_eval::evaluate_const_expression`
-before the literal origin is attached. Phase 0 must fix and test that path.
+and a primary span. Negated const/schema-default integer and float overflow
+retain the literal operand origin before projection. The integer contract and
+the analogous out-of-range `f32` const/schema-default paths are pinned by the
+compiler diagnostic fixtures, including the operand-only span without the
+unary `-`.
 
 The legacy `CompileErrorKind` variants have these final assignments:
 
@@ -57,3 +59,12 @@ statements, expressions, patterns, paths, captures, or parameter-default
 bodies need source-spanned `MirBuildError` values. Jump patching, dynamic host
 operand counts, and physical layout failures belong only to the bytecode
 backend.
+
+`compiler::tests::phase0_frozen_contracts` additionally pins the pre-relocation
+state for loop-control placement across lambda boundaries, lazy non-constant
+schema defaults, known-versus-dynamic method misses, every host-index access
+diagnostic family, and negated float literal origins. The loop-control and used
+non-constant-default cases intentionally record their current uncoded
+`UnsupportedSyntax` projection only as a migration baseline; their final
+analysis/compile-validation diagnostics must replace those assertions before
+the hard switch.
