@@ -135,12 +135,22 @@ fn write_function(formatter: &mut fmt::Formatter<'_>, function: &MirFunction) ->
         )?;
     }
     for (guard_id, guard) in function.guards() {
-        writeln!(
-            formatter,
-            "    guard {guard_id}: {:?} {}",
-            guard.assumption,
-            origin(guard.origin)
-        )?;
+        match &guard.context {
+            Some(context) => writeln!(
+                formatter,
+                "    guard {guard_id}: {:?} at {:?} name={:?} {}",
+                guard.assumption,
+                context.location,
+                context.debug_name,
+                origin(guard.origin)
+            )?,
+            None => writeln!(
+                formatter,
+                "    guard {guard_id}: {:?} {}",
+                guard.assumption,
+                origin(guard.origin)
+            )?,
+        }
     }
     for (safepoint_id, safepoint) in function.safepoints() {
         writeln!(

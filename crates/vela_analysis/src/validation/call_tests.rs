@@ -239,6 +239,82 @@ fn main() {
 }
 
 #[test]
+fn set_from_array_uses_exact_external_arity_and_named_placement() {
+    let source = SourceId::new(111);
+    let text = r#"
+fn main() {
+    set::from_array([1]);
+    set::from_array(values = [2]);
+    set::from_array();
+    set::from_array([3], [4]);
+}
+"#;
+    let (graph, main) = graph(source, text);
+    let mut schema = RegistryFacts::default();
+    schema.insert_function(
+        "set::from_array",
+        TypeFact::function(
+            vec![TypeFact::array(TypeFact::Any)],
+            TypeFact::set(TypeFact::Any),
+        ),
+    );
+    schema.insert_function_signature(
+        "set::from_array",
+        CallableSignatureFact::new(
+            [CallableParameterFact::new(
+                "values",
+                TypeFact::array(TypeFact::Any),
+                CallableParameterRequirementFact::Required,
+            )],
+            TypeFact::set(TypeFact::Any),
+        ),
+    );
+    let function = FunctionId::new(11_101);
+    let generation = generation(&graph, Some(&schema), main, function);
+    let view = generation.view(function).expect("main view");
+
+    let positional = expression_exact(&graph, source, text, "set::from_array([1])");
+    assert_eq!(
+        placement_mode(view, positional),
+        CallPlacementModeFact::ExternalPositional
+    );
+    assert_eq!(
+        slot_sources(
+            view.call_argument_placement(positional)
+                .expect("positional placement")
+        ),
+        [Some(0)]
+    );
+
+    let named = expression_exact(&graph, source, text, "set::from_array(values = [2])");
+    let named = view
+        .call_argument_placement(named)
+        .expect("named placement");
+    assert_eq!(named.mode, CallPlacementModeFact::ExternalNamed);
+    assert_eq!(argument_names(&named.source_order), ["values"]);
+    assert_eq!(slot_sources(named), [Some(0)]);
+
+    let diagnostics = view.validation_diagnostics();
+    assert_eq!(diagnostics.len(), 2);
+    assert_eq!(
+        diagnostics[0].code.as_deref(),
+        Some("compiler::missing_required_argument")
+    );
+    assert_eq!(
+        span_text(text, diagnostics[0].span.expect("missing span")),
+        "set::from_array()"
+    );
+    assert_eq!(
+        diagnostics[1].code.as_deref(),
+        Some("compiler::too_many_arguments")
+    );
+    assert_eq!(
+        span_text(text, diagnostics[1].span.expect("extra span")),
+        "[4]"
+    );
+}
+
+#[test]
 fn dynamic_calls_retain_names_while_positional_callables_reject_them() {
     let source = SourceId::new(109);
     let text = r#"

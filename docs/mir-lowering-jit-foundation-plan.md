@@ -3,9 +3,10 @@
 > **Track:** middle IR, bytecode lowering architecture, optimizer/JIT
 > foundation after Heavy HIR
 > **Document status:** Codex goal-mode execution plan
-> **Execution status:** Phase 0 in progress; Heavy HIR acceptance is complete,
-> ordered interpolated-string parts are HIR-owned, the frozen behavior baseline
-> is complete, and semantic/compile-target input closure remains
+> **Execution status:** Phase 0 and the bytecode-independent Phase 1 model are
+> complete; production compilation builds and validates one immutable
+> executable-analysis/compile-target generation, and Phase 2 MIR builder work
+> is next
 > **Compatibility policy:** breaking pre-release MIR, bytecode-compiler, and
 > internal test APIs are allowed. Preserve Vela language semantics, evaluation
 > order, VM behavior, diagnostics, execution budgets, GC roots, HostAccess
@@ -101,18 +102,20 @@ also performing several distinct jobs:
 - patching bytecode jumps while source control flow is still being traversed;
 - projecting source spans and frame debug metadata.
 
-Heavy HIR and `AnalysisFacts` now provide stable body/expression/pattern/local
+Heavy HIR and `AnalysisFacts` provide stable body/expression/pattern/local
 identity plus type, call, member, constructor, operator, host-path, effect, and
-control-flow facts. However, MIR-specific input closure is not yet automatic:
+control-flow facts. MIR-specific input closure is complete:
 
-- interpolated-string HIR still carries raw source text plus expression IDs,
-  and current bytecode body lowering re-lexes that text to recover text/value
-  ordering;
-- numeric literal conversion and some user-facing compiler diagnostics still
-  live in bytecode compilation;
-- `CompilerFacts`, `RuntimeTypeFact`, `ScriptTypeFlow`, `ValueTypeFlow`,
-  `ValueShapeFlow`, script field slots, schema defaults, and registry compile
-  targets still need explicit ownership decisions;
+- ordered interpolated-string parts and contextual literal facts are
+  HIR/analysis-owned, so runtime body lowering does not re-lex source;
+- user-facing literal, call-placement, constructor, operator, loop-placement,
+  and HostAccess diagnostics are produced before MIR construction;
+- every production compile entry builds and validates the same immutable
+  executable-analysis and compile-target generation that MIR consumes;
+- the current direct backend still contains its execution-local
+  `CompilerFacts`, `RuntimeTypeFact`, `ScriptTypeFlow`, `ValueTypeFlow`, and
+  `ValueShapeFlow` migration oracle, but their final ownership is fixed and the
+  atomic hard switch deletes them with direct body lowering;
 - the VM conservatively traces all frame register values as roots; it does not
   consume an exact MIR root map.
 
@@ -476,7 +479,7 @@ resolver, type-flow engine, or diagnostic pipeline.
   `TokenKind`, and `InterpolatedStringTokenPart`.
 - [x] Inventory integer/float literal normalization, contextual conversion,
   invalid-literal diagnostics, map-key spelling, and format-string errors.
-- [ ] Put source-independent literal structure in HIR, contextual validity and
+- [x] Put source-independent literal structure in HIR, contextual validity and
   user diagnostics in analysis or an explicit pre-MIR compile validation pass,
   and representation selection in MIR. Do not copy the current
   parser/compiler split into MIR.
@@ -488,9 +491,9 @@ resolver, type-flow engine, or diagnostic pipeline.
   expected-type checks, call argument metadata, host target resolution, and
   guard-plan construction.
 - [x] Define `MirLoweringInput` and the backend-neutral compile-target snapshot.
-- [ ] Prove production registry/stdlib/host/script metadata can build the same
+- [x] Prove production registry/stdlib/host/script metadata can build the same
   AnalysisFacts and compile targets used by MIR.
-- [ ] Move semantic facts to HIR/analysis and keep physical encoding facts in
+- [x] Move semantic facts to HIR/analysis and keep physical encoding facts in
   the bytecode backend. Delete duplicate fact stores when their replacement is
   proven.
 - [x] Inventory every user-facing bytecode compiler diagnostic by code, message,
@@ -539,11 +542,14 @@ MirLoweringInput
 CompileTargetSnapshot
   script functions: HirDeclId -> stable FunctionId + signature
   script methods: HirNodeId -> stable MethodId + owner + signature
+  nested lambdas: (root FunctionId, HirBodyId) -> parent/expression/code symbol
+                  + ordered HIR parameter identities/contracts
   globals: HirDeclId -> stable name/type target (no physical GlobalSlot)
   script schema: declarations/fields/variants -> stable IDs and logical layout facts
   external calls/members: HirExprId -> stable registry/stdlib/host target or Dynamic
   host targets: stable TypeId/FieldId/MethodId/runtime IDs, access, effects, and index capabilities
-  guards: backend-neutral type/shape/variant/host descriptors (no bytecode guard enum)
+  guards: backend-neutral type/shape/variant/host descriptors plus source-level
+          parameter/return/local/global/field context (no bytecode guard enum)
 ```
 
 `MirLoweringInput` borrows or owns one immutable compilation generation. The

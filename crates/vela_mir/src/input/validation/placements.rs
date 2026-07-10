@@ -25,13 +25,14 @@ fn validate_calls(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildError
         let origin =
             validator.retained_origin(&validator.snapshot.origins.calls, &(*function, *expression));
         validator.require_root(*function, origin, "call placement")?;
-        validate_call(validator, target, origin)?;
+        validate_call(validator, *function, target, origin)?;
     }
     Ok(())
 }
 
 fn validate_call(
     validator: &SnapshotValidator<'_>,
+    root: vela_def::FunctionId,
     target: &CompileCallTarget,
     origin: MirSourceOrigin,
 ) -> Result<(), MirBuildError> {
@@ -119,8 +120,16 @@ fn validate_call(
             host::validate_path(validator, path, origin, "host intrinsic call target")?;
             None
         }
+        CompileCalleeTarget::Lambda(body) => {
+            validator.snapshot.lambda(root, *body).ok_or_else(|| {
+                validator.error(
+                    origin,
+                    format!("lambda call references missing HIR body {body:?}"),
+                )
+            })?;
+            None
+        }
         CompileCalleeTarget::Local(_)
-        | CompileCalleeTarget::Lambda(_)
         | CompileCalleeTarget::DynamicCallable
         | CompileCalleeTarget::DynamicMethod(_) => None,
     };
@@ -136,6 +145,21 @@ fn validate_call_arguments(
     signature: Option<&CompileSignature>,
     origin: MirSourceOrigin,
 ) -> Result<(), MirBuildError> {
+    if matches!(&target.callee, CompileCalleeTarget::SetFromArray { .. }) {
+        return match &target.arguments {
+            CompileCallArguments::Positional(values) if values.len() == 1 => Ok(()),
+            CompileCallArguments::Positional(_) => Err(validator.error(
+                origin,
+                "set-from-array intrinsic must own exactly one source operand",
+            )),
+            CompileCallArguments::Script { .. }
+            | CompileCallArguments::ExternalNamed { .. }
+            | CompileCallArguments::Dynamic(_) => Err(validator.error(
+                origin,
+                "set-from-array intrinsic must use canonical positional arguments",
+            )),
+        };
+    }
     match &target.arguments {
         CompileCallArguments::Script {
             evaluation_order,

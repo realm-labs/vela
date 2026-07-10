@@ -1,3 +1,4 @@
+use crate::logical_records::{LogicalRecordKind, map_entry};
 use crate::stdlib::StdlibMethodFact;
 use crate::type_fact::TypeFact;
 use vela_common::PrimitiveTag;
@@ -308,6 +309,36 @@ fn merge_value_facts(value: TypeFact, fallback: TypeFact) -> TypeFact {
         ),
         (TypeFact::Set { element }, TypeFact::Set { element: fallback }) => {
             TypeFact::set(merge_value_facts(*element, *fallback))
+        }
+        (TypeFact::LogicalRecord(value), TypeFact::LogicalRecord(fallback))
+            if value.kind() == LogicalRecordKind::MapEntry
+                && fallback.kind() == LogicalRecordKind::MapEntry =>
+        {
+            let key = merge_value_facts(
+                value
+                    .field("key")
+                    .expect("MapEntry manifest has key")
+                    .fact()
+                    .clone(),
+                fallback
+                    .field("key")
+                    .expect("MapEntry manifest has key")
+                    .fact()
+                    .clone(),
+            );
+            let value = merge_value_facts(
+                value
+                    .field("value")
+                    .expect("MapEntry manifest has value")
+                    .fact()
+                    .clone(),
+                fallback
+                    .field("value")
+                    .expect("MapEntry manifest has value")
+                    .fact()
+                    .clone(),
+            );
+            map_entry(key, value)
         }
         (value, fallback) => TypeFact::union([value, fallback]),
     }

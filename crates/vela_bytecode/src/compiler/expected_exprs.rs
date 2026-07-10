@@ -8,9 +8,12 @@ pub(super) fn guard_location_and_name(
     match context {
         TypeContractContext::TypedLet { name } => Some((GuardLocation::Local, name)),
         TypeContractContext::Field { name } => Some((GuardLocation::Field, name)),
-        TypeContractContext::NativeParameter { name, index, .. } => {
-            Some((GuardLocation::Parameter { index }, name))
-        }
+        TypeContractContext::NativeParameter { name, index, .. } => Some((
+            GuardLocation::Parameter {
+                index: u16::try_from(index).ok()?,
+            },
+            name,
+        )),
         TypeContractContext::FunctionParameter { .. } => None,
     }
 }

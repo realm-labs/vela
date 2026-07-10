@@ -4,7 +4,8 @@ use vela_def::GlobalId;
 
 use crate::{
     CompileFunctionClass, CompileFunctionIdentity, CompileGuardKey, CompileMethodClass,
-    CompileTypeClass, MethodExecutableTarget, MirBuildError, MirSourceOrigin, MirTypeContract,
+    CompileTypeClass, MethodExecutableTarget, MirBuildError, MirGuardLocation, MirSourceOrigin,
+    MirTypeContract,
 };
 
 use super::SnapshotValidator;
@@ -632,6 +633,7 @@ fn validate_guards(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildErro
             return Err(validator.error(origin, format!("guard {key:?} redundantly checks Any")));
         }
         validate_contract(validator, &guard.contract, origin, "guard contract")?;
+        validate_guard_context(validator, *key, guard, origin)?;
         let expected = match *key {
             CompileGuardKey::Expression { function, .. } => {
                 validator.require_script_function(function, origin, "expression guard")?;
@@ -676,6 +678,40 @@ fn validate_guards(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildErro
         }
     }
     validate_required_guards(validator)
+}
+
+fn validate_guard_context(
+    validator: &SnapshotValidator<'_>,
+    key: CompileGuardKey,
+    guard: &crate::CompileGuardTarget,
+    origin: MirSourceOrigin,
+) -> Result<(), MirBuildError> {
+    if guard.context.debug_name.trim().is_empty() {
+        return Err(validator.error(origin, format!("guard {key:?} has an empty debug name")));
+    }
+    let valid = match key {
+        CompileGuardKey::Expression { .. } => matches!(
+            guard.context.location,
+            MirGuardLocation::Parameter { .. } | MirGuardLocation::Local | MirGuardLocation::Field
+        ),
+        CompileGuardKey::Parameter { parameter, .. } => {
+            guard.context.location == MirGuardLocation::Parameter { index: parameter }
+        }
+        CompileGuardKey::Return(_) => guard.context.location == MirGuardLocation::Return,
+        CompileGuardKey::Global(_) => guard.context.location == MirGuardLocation::Global,
+        CompileGuardKey::Field(_) => guard.context.location == MirGuardLocation::Field,
+    };
+    if valid {
+        Ok(())
+    } else {
+        Err(validator.error(
+            origin,
+            format!(
+                "guard {key:?} has inconsistent boundary location {:?}",
+                guard.context.location
+            ),
+        ))
+    }
 }
 
 fn validate_required_guards(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildError> {

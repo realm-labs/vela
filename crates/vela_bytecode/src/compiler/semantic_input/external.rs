@@ -1,5 +1,8 @@
 use std::collections::BTreeMap;
 
+use vela_analysis::callable::{
+    CallableParameterFact, CallableParameterRequirementFact, CallableSignatureFact,
+};
 use vela_analysis::registry::{RegistryFacts, RegistryIndexCapabilityFact};
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{Diagnostic, HostMethodId, HostTypeId};
@@ -61,6 +64,24 @@ pub(super) fn combined_registry(
         }
     }
     Ok(combined)
+}
+
+pub(super) fn include_policy_neutral_reflection_signatures(facts: &mut RegistryFacts) {
+    for spec in vela_stdlib::reflection_native_specs() {
+        facts.insert_function_signature(
+            spec.source_name,
+            CallableSignatureFact::new(
+                spec.params.iter().map(|name| {
+                    CallableParameterFact::new(
+                        *name,
+                        TypeFact::Unknown,
+                        CallableParameterRequirementFact::Required,
+                    )
+                }),
+                TypeFact::Unknown,
+            ),
+        );
+    }
 }
 
 pub(super) fn apply_option_index_capabilities(
@@ -146,6 +167,14 @@ impl ExternalCatalog {
             }
         }
         Ok(catalog)
+    }
+
+    pub(super) fn include_policy_neutral_reflection_manifest(&mut self) {
+        for definition in vela_stdlib::reflection_native_specs().map(|spec| spec.def()) {
+            let name = source_name(&definition.path);
+            insert_unambiguous(&mut self.functions_by_source, name, definition.id);
+            self.functions.insert(definition.id, definition);
+        }
     }
 
     pub(super) fn function_by_source(&self, path: &str) -> Option<&FunctionDef> {

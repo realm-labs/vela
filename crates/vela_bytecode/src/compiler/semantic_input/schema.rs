@@ -19,7 +19,7 @@ use vela_mir::{
     CompileMethodAccess, CompileMethodClass, CompileMethodDescriptor, CompileParameter,
     CompileParameterDefault, CompilePositionalPolicy, CompileSignature, CompileTypeClass,
     CompileTypeDescriptor, CompileVariantDescriptor, HostTypeTarget, MethodExecutableTarget,
-    MirCallableKind, MirEffect, MirSourceOrigin, MirTypeContract,
+    MirCallableKind, MirEffect, MirGuardLocation, MirSourceOrigin, MirTypeContract,
 };
 use vela_registry::{TypeHintDef, TypeKindDef};
 
@@ -146,10 +146,11 @@ impl GenerationBuilder<'_, '_> {
                     if let Some(contract) = contract {
                         self.insert_guard_once(
                             CompileGuardKey::Field(id),
-                            CompileGuardTarget {
+                            CompileGuardTarget::new(
                                 contract,
-                                debug_name: format!("{type_name}::{}", field.name),
-                            },
+                                MirGuardLocation::Field,
+                                field.name.clone(),
+                            ),
                             origin,
                         )?;
                     }
@@ -215,13 +216,11 @@ impl GenerationBuilder<'_, '_> {
                         if let Some(contract) = contract {
                             self.insert_guard_once(
                                 CompileGuardKey::Field(id),
-                                CompileGuardTarget {
+                                CompileGuardTarget::new(
                                     contract,
-                                    debug_name: format!(
-                                        "{type_name}::{}::{}",
-                                        variant.name, field.name
-                                    ),
-                                },
+                                    MirGuardLocation::Field,
+                                    field.name.clone(),
+                                ),
                                 origin,
                             )?;
                         }
@@ -306,10 +305,11 @@ impl GenerationBuilder<'_, '_> {
             if !matches!(contract, MirTypeContract::Any) {
                 self.insert_guard_once(
                     CompileGuardKey::Global(declaration),
-                    CompileGuardTarget {
+                    CompileGuardTarget::new(
                         contract,
-                        debug_name: symbol,
-                    },
+                        MirGuardLocation::Global,
+                        metadata.name.clone(),
+                    ),
                     origin,
                 )?;
             }
@@ -348,6 +348,7 @@ impl GenerationBuilder<'_, '_> {
             let function = script_function_id(&symbol);
             self.function_ids.insert(declaration, function);
             let origin = MirSourceOrigin::body(body.id, body.origin.span);
+            self.function_code_symbols.insert(function, symbol.clone());
             let signature = self.script_signature(function, body, signature, metadata.module)?;
             self.remember_signature_contracts(&signature, origin);
             let descriptor = CompileFunctionDescriptor {
@@ -408,6 +409,7 @@ impl GenerationBuilder<'_, '_> {
                 })
                 .map_or_else(|| self.ensure_opaque_external_type(target_type, origin), Ok)?;
             let function = script_function_id(&symbol);
+            self.function_code_symbols.insert(function, symbol.clone());
             let target = MethodExecutableTarget {
                 method: method.method_id(),
                 function,
@@ -497,15 +499,19 @@ impl GenerationBuilder<'_, '_> {
                 origin: Some(origin),
             });
             if let Some(contract) = contract.clone() {
+                let parameter_index = checked_index(index, origin, "parameter index")?;
                 self.insert_guard_once(
                     CompileGuardKey::Parameter {
                         function,
-                        parameter: checked_index(index, origin, "parameter index")?,
+                        parameter: parameter_index,
                     },
-                    CompileGuardTarget {
-                        contract: contract.clone(),
-                        debug_name: hint.name.clone(),
-                    },
+                    CompileGuardTarget::new(
+                        contract.clone(),
+                        MirGuardLocation::Parameter {
+                            index: parameter_index,
+                        },
+                        hint.name.clone(),
+                    ),
                     origin,
                 )?;
                 if let Some(default_body) = parameter.default_body
@@ -516,6 +522,7 @@ impl GenerationBuilder<'_, '_> {
                         expression,
                         contract,
                         hint.name.clone(),
+                        parameter_index,
                     ));
                 }
             }
@@ -542,10 +549,7 @@ impl GenerationBuilder<'_, '_> {
         if let Some(contract) = return_contract.clone() {
             self.insert_guard_once(
                 CompileGuardKey::Return(function),
-                CompileGuardTarget {
-                    contract,
-                    debug_name: "return value".to_owned(),
-                },
+                CompileGuardTarget::new(contract, MirGuardLocation::Return, "return"),
                 origin,
             )?;
         }

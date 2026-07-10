@@ -12,6 +12,7 @@ pub(super) struct CompileTargetOrigins {
     pub(super) roots: BTreeMap<FunctionId, MirSourceOrigin>,
     pub(super) function_declarations: BTreeMap<HirDeclId, MirSourceOrigin>,
     pub(super) method_targets: BTreeMap<MethodExecutableTarget, MirSourceOrigin>,
+    pub(super) lambdas: BTreeMap<(FunctionId, HirBodyId), MirSourceOrigin>,
     pub(super) type_declarations: BTreeMap<HirDeclId, MirSourceOrigin>,
     pub(super) function_descriptors: BTreeMap<FunctionId, MirSourceOrigin>,
     pub(super) method_descriptors: BTreeMap<(TypeId, MethodId), MirSourceOrigin>,

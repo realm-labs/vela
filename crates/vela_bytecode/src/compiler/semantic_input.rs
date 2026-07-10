@@ -7,6 +7,7 @@
 
 mod contracts;
 mod external;
+mod lambdas;
 mod logical_records;
 mod placements;
 mod schema;
@@ -72,6 +73,36 @@ pub(super) struct PreparedSemanticInput {
 }
 
 impl PreparedSemanticInput {
+    pub(super) fn lowering_inputs<'a>(
+        &'a self,
+        graph: &'a ModuleGraph,
+        config: MirLoweringConfig,
+    ) -> CompileResult<Vec<MirLoweringInput<'a>>> {
+        self.targets
+            .compilation_roots()
+            .map(|(function, root)| {
+                let analysis = self.analysis.view(function).ok_or_else(|| {
+                    input_error(MirBuildError::InconsistentInput {
+                        origin: root.origin,
+                        message: format!(
+                            "missing executable analysis generation for function #{}",
+                            function.get()
+                        ),
+                    })
+                })?;
+                MirLoweringInput::new(
+                    graph,
+                    root.identity,
+                    root.body,
+                    analysis,
+                    &self.targets,
+                    config,
+                )
+                .map_err(input_error)
+            })
+            .collect()
+    }
+
     pub(super) fn require_function_for_declaration(
         &self,
         declaration: HirDeclId,
@@ -167,19 +198,27 @@ pub(super) fn prepare_semantic_input(
         .map_err(|error| {
             CompileError::new(CompileErrorKind::RegistrySnapshot(error.to_string()))
         })?;
-    let catalog = ExternalCatalog::from_view(combined.compile_view(), &declaration_slots).map_err(
-        |error| CompileError::new(CompileErrorKind::RegistrySnapshot(error.to_string())),
-    )?;
+    let mut catalog = ExternalCatalog::from_view(combined.compile_view(), &declaration_slots)
+        .map_err(|error| {
+            CompileError::new(CompileErrorKind::RegistrySnapshot(error.to_string()))
+        })?;
+    if request.registry.is_none() {
+        catalog.include_policy_neutral_reflection_manifest();
+    }
     let try_layouts = try_targets::TryLayouts::from_catalog(&catalog)?;
     let mut registry_facts =
         RegistryFacts::from_compile_view_with_slots(combined.compile_view(), declaration_slots)
             .map_err(|error| {
                 CompileError::new(CompileErrorKind::RegistrySnapshot(error.to_string()))
             })?;
+    if request.registry.is_none() {
+        external::include_policy_neutral_reflection_signatures(&mut registry_facts);
+    }
     external::apply_option_index_capabilities(&mut registry_facts, request.options, &catalog);
     let mut builder = GenerationBuilder::new(request, registry_facts, catalog, try_layouts);
     builder.insert_script_schema()?;
     builder.insert_script_callables()?;
+    builder.insert_lambda_targets()?;
     builder.insert_compile_time_values()?;
     builder.rebuild_executable_analysis(&BTreeMap::new())?;
     builder.reject_literal_diagnostics()?;
@@ -212,6 +251,7 @@ pub(super) struct GenerationBuilder<'graph, 'methods> {
     variant_ids: BTreeMap<(HirDeclId, String), VariantId>,
     field_ids: BTreeMap<(HirDeclId, Option<String>, String), FieldId>,
     method_targets: BTreeMap<(HirNodeId, TypeId), MethodExecutableTarget>,
+    function_code_symbols: BTreeMap<FunctionId, String>,
     function_return_contracts: BTreeMap<FunctionId, Option<MirTypeContract>>,
     try_layouts: try_targets::TryLayouts,
     inserted_external_functions: BTreeSet<FunctionId>,
@@ -261,6 +301,7 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
             variant_ids: BTreeMap::new(),
             field_ids: BTreeMap::new(),
             method_targets: BTreeMap::new(),
+            function_code_symbols: BTreeMap::new(),
             function_return_contracts: BTreeMap::new(),
             try_layouts,
             inserted_external_functions: BTreeSet::new(),
@@ -317,31 +358,9 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
         let graph = self.request.graph;
         let analysis = self.executable_analysis;
         let targets = self.targets.build().map_err(input_error)?;
-        for (_, root) in targets.compilation_roots() {
-            let executable = analysis.view(root.identity.function()).ok_or_else(|| {
-                graph
-                    .body(root.body)
-                    .map_or_else(registry_input_error, |body| {
-                        input_error(MirBuildError::InconsistentInput {
-                            origin: MirSourceOrigin::body(body.id, body.origin.span),
-                            message: format!(
-                                "missing executable analysis generation for function #{}",
-                                root.identity.function().get()
-                            ),
-                        })
-                    })
-            })?;
-            MirLoweringInput::new(
-                graph,
-                root.identity,
-                root.body,
-                executable,
-                &targets,
-                MirLoweringConfig::default(),
-            )
-            .map_err(input_error)?;
-        }
-        Ok(PreparedSemanticInput { analysis, targets })
+        let prepared = PreparedSemanticInput { analysis, targets };
+        drop(prepared.lowering_inputs(graph, MirLoweringConfig::default())?);
+        Ok(prepared)
     }
 
     fn body_for_expression(&self, expression: HirExprId) -> Option<&HirBody> {

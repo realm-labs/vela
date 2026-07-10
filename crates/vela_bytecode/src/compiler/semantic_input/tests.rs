@@ -1,4 +1,6 @@
 mod external_descriptors;
+mod field_assignment_contracts;
+mod lambda_targets;
 mod literal_ownership;
 mod logical_records;
 mod roots_schema;

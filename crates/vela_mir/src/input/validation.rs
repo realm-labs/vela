@@ -1,6 +1,7 @@
 mod contracts;
 mod descriptors;
 mod host;
+mod lambdas;
 mod placements;
 mod try_targets;
 
@@ -32,6 +33,7 @@ impl<'a> SnapshotValidator<'a> {
 
     fn validate(&self) -> Result<(), MirBuildError> {
         descriptors::validate(self)?;
+        lambdas::validate(self)?;
         placements::validate(self)?;
         try_targets::validate(self)
     }

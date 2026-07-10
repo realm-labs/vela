@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
-use vela_bytecode::compiler::compile_program_source;
+use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_registry};
 use vela_bytecode::{
     CacheSiteKind, Constant, InstructionOffset, LinkedProgram, Linker, Register,
     UnlinkedCodeObject, UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram,
 };
 use vela_common::{HostObjectId, HostTypeId, SourceId, Span};
-use vela_def::{FieldId, TypeId};
+use vela_def::{DefPath, FieldId, TypeId};
 use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
@@ -30,6 +30,10 @@ const HOST_PERMISSION_DENIED: &str =
     include_str!("../../../tests/fixtures/diagnostics/host_permission_denied.vela");
 const HOST_PERMISSION_DENIED_EXPECTED: &str =
     include_str!("../../../tests/fixtures/diagnostics/host_permission_denied.expected");
+const COMPILED_HOST_PERMISSION_DENIED: &str =
+    include_str!("../../../tests/fixtures/diagnostics/compiled_host_permission_denied.vela");
+const COMPILED_HOST_PERMISSION_DENIED_EXPECTED: &str =
+    include_str!("../../../tests/fixtures/diagnostics/compiled_host_permission_denied.expected");
 const HOST_COMPOUND_WRITE_DENIED: &str =
     include_str!("../../../tests/fixtures/diagnostics/host_compound_write_denied.vela");
 const HOST_COMPOUND_WRITE_DENIED_EXPECTED: &str =
@@ -125,6 +129,72 @@ fn host_permission_denied_fixture_renders_source_span() {
     .join("\n");
 
     assert_rendered_eq(&rendered, HOST_PERMISSION_DENIED_EXPECTED);
+}
+
+#[test]
+fn compiled_host_permission_denied_fixture_renders_source_span_and_call_stack() {
+    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+    let level_field = FieldId::new(1);
+    let level_path = HostPath::new(host_ref).field(level_field);
+    let source = normalized_fixture(COMPILED_HOST_PERMISSION_DENIED);
+
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty("host", std::iter::empty::<&str>(), "Player"))
+                .host_runtime_id(host_ref.type_id.get().into()),
+        )
+        .expect("Player host type should register");
+    registry
+        .register_field(
+            vela_registry::FieldDef::new(
+                DefPath::field("host", std::iter::empty::<&str>(), "Player", "level"),
+                player,
+            )
+            .host_runtime_id(level_field.get())
+            .type_hint(Some("i64")),
+        )
+        .expect("Player::level host field should register");
+    let program =
+        compile_program_source_with_registry(SourceId::new(1), &source, registry.compile_view())
+            .expect("compiled host diagnostic fixture should compile");
+
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_diagnostic_path_value(
+        level_path.clone(),
+        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
+    );
+    adapter.deny_diagnostic_path_read(level_path);
+    let mut tx = HostAccess::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        access: &mut tx,
+        script_globals: None,
+    };
+
+    let linked = link_fixture_program(&program);
+    let mut budget = ExecutionBudget::unbounded();
+    let error = Vm::new()
+        .run_linked_program_with_host_budget_and_caches(
+            &linked,
+            "main",
+            &[OwnedValue::HostRef(host_ref)],
+            &mut host,
+            &mut budget,
+            None,
+        )
+        .expect_err("compiled fixture should fail at the host read boundary");
+
+    let rendered = render_diagnostic(
+        &error.to_diagnostic(),
+        [diagnostic_source(
+            "compiled_host_permission_denied.vela",
+            source,
+        )],
+    )
+    .join("\n");
+
+    assert_rendered_eq(&rendered, COMPILED_HOST_PERMISSION_DENIED_EXPECTED);
 }
 
 #[test]

@@ -142,6 +142,7 @@ fn mir_model_guards_expose_slow_paths_as_cfg_edges() {
     );
     let guard = function.add_guard(MirGuard {
         assumption: MirGuardAssumption::TruthyBoolean,
+        context: None,
         origin,
     });
     function

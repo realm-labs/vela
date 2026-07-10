@@ -8,7 +8,7 @@ use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirPatternId};
 use crate::{
     CompileFieldDescriptor, CompileFunctionDescriptor, CompileGlobalDescriptor,
     CompileMethodDescriptor, CompileTypeDescriptor, CompileVariantDescriptor, MirEvaluatedConstant,
-    MirSourceOrigin, MirTargetTable, MirTypeContract,
+    MirGuardContext, MirGuardLocation, MirSourceOrigin, MirTargetTable, MirTypeContract,
 };
 
 use super::{
@@ -139,7 +139,21 @@ pub enum CompileGuardKey {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompileGuardTarget {
     pub contract: MirTypeContract,
-    pub debug_name: String,
+    pub context: MirGuardContext,
+}
+
+impl CompileGuardTarget {
+    #[must_use]
+    pub fn new(
+        contract: MirTypeContract,
+        location: MirGuardLocation,
+        debug_name: impl Into<String>,
+    ) -> Self {
+        Self {
+            contract,
+            context: MirGuardContext::new(location, debug_name),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -165,7 +179,7 @@ impl fmt::Display for CompileTargetKind {
 
 #[derive(Clone, Copy)]
 pub struct CompileFunctionTargets<'a> {
-    snapshot: &'a CompileTargetSnapshot,
+    pub(super) snapshot: &'a CompileTargetSnapshot,
     root: &'a CompileFunctionTarget,
 }
 
@@ -297,6 +311,16 @@ impl<'a> CompileFunctionTargets<'a> {
     #[must_use]
     pub fn type_descriptor(self, type_id: TypeId) -> Option<&'a CompileTypeDescriptor> {
         self.snapshot.type_descriptor(type_id)
+    }
+
+    #[must_use]
+    pub fn type_for_declaration(self, declaration: HirDeclId) -> Option<TypeId> {
+        self.snapshot.type_for_declaration(declaration)
+    }
+
+    #[must_use]
+    pub fn type_by_name(self, canonical_name: &str) -> Option<&'a CompileTypeDescriptor> {
+        self.snapshot.type_by_name(canonical_name)
     }
 
     #[must_use]

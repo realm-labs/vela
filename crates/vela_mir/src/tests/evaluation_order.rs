@@ -257,6 +257,43 @@ fn placed_call_validation_rejects_lossy_or_incompatible_source_projections() {
 }
 
 #[test]
+fn set_from_array_snapshot_requires_one_canonical_positional_operand() {
+    let value = HirExprId::new(760);
+    let extra = HirExprId::new(761);
+    build_set_from_array_call(CompileCallTarget::positional(
+        set_from_array_callee(),
+        vec![value],
+    ))
+    .expect("one positional set source must validate");
+
+    for (target, expected) in [
+        (
+            CompileCallTarget::positional(set_from_array_callee(), Vec::new()),
+            "must own exactly one source operand",
+        ),
+        (
+            CompileCallTarget::positional(set_from_array_callee(), vec![value, extra]),
+            "must own exactly one source operand",
+        ),
+        (
+            CompileCallTarget::external_named(
+                set_from_array_callee(),
+                vec![value],
+                vec![CompilePlacedCallArgument::placed(0, 0, value)],
+            ),
+            "must use canonical positional arguments",
+        ),
+    ] {
+        let error = build_set_from_array_call(target)
+            .expect_err("non-canonical set source operands must fail snapshot closure");
+        assert!(
+            error.to_string().contains(expected),
+            "expected {error:?} to contain {expected:?}"
+        );
+    }
+}
+
+#[test]
 fn static_constructors_keep_source_order_separate_from_schema_field_order() {
     let caller = FunctionId::new(730);
     let record_type = TypeId::new(731);
@@ -386,6 +423,32 @@ fn native_callee() -> CompileCalleeTarget {
         function: FunctionId::new(750),
         debug_name: "external".to_owned(),
     }
+}
+
+fn set_from_array_callee() -> CompileCalleeTarget {
+    CompileCalleeTarget::SetFromArray {
+        function: FunctionId::new(762),
+        debug_name: "set::from_array".to_owned(),
+    }
+}
+
+fn build_set_from_array_call(
+    target: CompileCallTarget,
+) -> Result<CompileTargetSnapshot, MirBuildError> {
+    let caller = FunctionId::new(763);
+    let origin = origin(764);
+    let mut builder = CompileTargetSnapshot::builder();
+    insert_root(&mut builder, caller, origin);
+    builder.insert_function_descriptor(
+        function_descriptor(
+            FunctionId::new(762),
+            CompileFunctionClass::Stdlib,
+            vec![parameter("values", CompileParameterDefault::Required)],
+        ),
+        origin,
+    )?;
+    builder.insert_call(caller, HirExprId::new(765), target, origin)?;
+    builder.build()
 }
 
 fn build_external_call(

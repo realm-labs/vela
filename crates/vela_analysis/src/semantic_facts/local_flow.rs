@@ -110,7 +110,7 @@ impl LocalFlow<'_> {
                     if let Some(body) = body {
                         self.visit_block(*body, &mut iteration);
                     }
-                    *environment = join_environments([&entry, &iteration]);
+                    *environment = join_environments([&entry, &iteration], self.base);
                 }
                 HirStmtKind::If(value) => self.visit_if(value, environment),
                 HirStmtKind::Match(value) => self.visit_match(value, environment),
@@ -155,7 +155,7 @@ impl LocalFlow<'_> {
                     let skipped = environment.clone();
                     let mut evaluated = skipped.clone();
                     self.visit_optional(*rhs, &mut evaluated);
-                    *environment = join_environments([&skipped, &evaluated]);
+                    *environment = join_environments([&skipped, &evaluated], self.base);
                 } else {
                     self.visit_optional(*rhs, environment);
                 }
@@ -166,12 +166,15 @@ impl LocalFlow<'_> {
                 if let Some(target) = target
                     && let Some(BindingResolution::Local(local)) = self.base.resolution(*target)
                 {
+                    let inferred = value
+                        .map(|value| self.fact(value, environment))
+                        .unwrap_or(TypeFact::Unknown);
                     let fact = self
                         .base
                         .local(*local)
-                        .cloned()
-                        .or_else(|| value.map(|value| self.fact(value, environment)))
-                        .unwrap_or(TypeFact::Unknown);
+                        .map_or(inferred.clone(), |declared| {
+                            refine_local_fact(declared, inferred)
+                        });
                     set_local(environment, *local, fact);
                 }
             }
@@ -228,7 +231,7 @@ impl LocalFlow<'_> {
                 HirElseBranch::Block(block) => self.visit_block(*block, &mut else_environment),
             }
         }
-        *environment = join_environments([&then_environment, &else_environment]);
+        *environment = join_environments([&then_environment, &else_environment], self.base);
     }
 
     fn visit_match(&mut self, value: &HirMatch, environment: &mut LocalEnvironment) {
@@ -257,7 +260,7 @@ impl LocalFlow<'_> {
             }
             branches.push(branch);
         }
-        *environment = join_environments(branches.iter());
+        *environment = join_environments(branches.iter(), self.base);
     }
 
     fn visit_optional(
@@ -281,8 +284,9 @@ impl LocalFlow<'_> {
             let fact = self
                 .base
                 .local(inferred.local)
-                .cloned()
-                .unwrap_or(inferred.fact);
+                .map_or(inferred.fact.clone(), |declared| {
+                    refine_local_fact(declared, inferred.fact)
+                });
             set_local(environment, inferred.local, fact);
         }
     }
@@ -298,6 +302,104 @@ impl LocalFlow<'_> {
     }
 }
 
+/// Preserves an explicit local contract while filling only its erased shape
+/// slots from the value currently known to flow into that local.
+pub(super) fn refine_local_fact(declared: &TypeFact, inferred: TypeFact) -> TypeFact {
+    if matches!(inferred, TypeFact::Unknown | TypeFact::Never) {
+        return declared.clone();
+    }
+
+    match (declared, inferred) {
+        (TypeFact::Unknown, inferred) => inferred,
+        (TypeFact::Any, _) => TypeFact::Any,
+        (TypeFact::Array { element }, TypeFact::Array { element: inferred }) => {
+            TypeFact::array(refine_local_fact(element, *inferred))
+        }
+        (
+            TypeFact::Map { key, value },
+            TypeFact::Map {
+                key: inferred_key,
+                value: inferred_value,
+            },
+        ) => TypeFact::map(
+            refine_local_fact(key, *inferred_key),
+            refine_local_fact(value, *inferred_value),
+        ),
+        (TypeFact::Set { element }, TypeFact::Set { element: inferred }) => {
+            TypeFact::set(refine_local_fact(element, *inferred))
+        }
+        (TypeFact::Iterator { item }, TypeFact::Iterator { item: inferred }) => {
+            TypeFact::iterator(refine_local_fact(item, *inferred))
+        }
+        (TypeFact::Tuple { elements }, TypeFact::Tuple { elements: inferred })
+            if elements.len() == inferred.len() =>
+        {
+            TypeFact::tuple(
+                elements
+                    .iter()
+                    .zip(inferred)
+                    .map(|(declared, inferred)| refine_local_fact(declared, inferred)),
+            )
+        }
+        (TypeFact::Option { some }, TypeFact::Option { some: inferred }) => {
+            TypeFact::option(refine_local_fact(some, *inferred))
+        }
+        (TypeFact::Option { some }, TypeFact::OptionSome { some: inferred }) => {
+            TypeFact::option(refine_local_fact(some, *inferred))
+        }
+        (TypeFact::Option { .. }, TypeFact::OptionNone) => declared.clone(),
+        (TypeFact::OptionSome { some }, TypeFact::OptionSome { some: inferred }) => {
+            TypeFact::option_some(refine_local_fact(some, *inferred))
+        }
+        (
+            TypeFact::Result { ok, err },
+            TypeFact::Result {
+                ok: inferred_ok,
+                err: inferred_err,
+            },
+        ) => TypeFact::result(
+            refine_local_fact(ok, *inferred_ok),
+            refine_local_fact(err, *inferred_err),
+        ),
+        (TypeFact::Result { ok, err }, TypeFact::ResultOk { ok: inferred }) => {
+            TypeFact::result(refine_local_fact(ok, *inferred), (**err).clone())
+        }
+        (TypeFact::Result { ok, err }, TypeFact::ResultErr { err: inferred }) => {
+            TypeFact::result((**ok).clone(), refine_local_fact(err, *inferred))
+        }
+        (TypeFact::ResultOk { ok }, TypeFact::ResultOk { ok: inferred }) => {
+            TypeFact::result_ok(refine_local_fact(ok, *inferred))
+        }
+        (TypeFact::ResultErr { err }, TypeFact::ResultErr { err: inferred }) => {
+            TypeFact::result_err(refine_local_fact(err, *inferred))
+        }
+        (
+            TypeFact::Function { params, returns },
+            TypeFact::Function {
+                params: inferred_params,
+                returns: inferred_returns,
+            },
+        ) if params.is_empty() && matches!(returns.as_ref(), TypeFact::Unknown) => {
+            TypeFact::function(inferred_params, *inferred_returns)
+        }
+        (
+            TypeFact::Function { params, returns },
+            TypeFact::Function {
+                params: inferred_params,
+                returns: inferred_returns,
+            },
+        ) if params.len() == inferred_params.len() => TypeFact::function(
+            params
+                .iter()
+                .zip(inferred_params)
+                .map(|(declared, inferred)| refine_local_fact(declared, inferred))
+                .collect(),
+            refine_local_fact(returns, *inferred_returns),
+        ),
+        (declared, _) => declared.clone(),
+    }
+}
+
 fn set_local(environment: &mut LocalEnvironment, local: HirLocalId, fact: TypeFact) {
     if matches!(fact, TypeFact::Unknown) {
         environment.remove(&local);
@@ -308,6 +410,7 @@ fn set_local(environment: &mut LocalEnvironment, local: HirLocalId, fact: TypeFa
 
 fn join_environments<'a>(
     environments: impl IntoIterator<Item = &'a LocalEnvironment>,
+    base: &AnalysisFacts,
 ) -> LocalEnvironment {
     let environments = environments.into_iter().collect::<Vec<_>>();
     let locals = environments
@@ -327,6 +430,8 @@ fn join_environments<'a>(
             .all(|environment| environment.get(&local) == Some(first))
         {
             joined.insert(local, first.clone());
+        } else if let Some(declared) = base.local(local) {
+            joined.insert(local, declared.clone());
         }
     }
     joined

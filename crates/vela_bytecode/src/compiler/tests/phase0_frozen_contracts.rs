@@ -120,7 +120,7 @@ fn loop_placement_failures_are_analysis_diagnostics_across_lambda_boundaries() {
 }
 
 #[test]
-fn nonconstant_schema_default_is_lazy_and_remains_uncoded_when_used() {
+fn nonconstant_schema_default_is_lazy_and_diagnosed_when_used() {
     const SOURCE_ID: SourceId = SourceId::new(721);
     const UNUSED: &str = r#"
 struct Reward { amount: i64 = math::random() }
@@ -135,15 +135,76 @@ fn main() { return Reward {}; }
 "#;
     let error = compile_program_source(SOURCE_ID, USED)
         .expect_err("using an omitted nonconstant schema default should fail");
-    assert_eq!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("non-constant schema default expression")
+    let diagnostic = only_semantic_diagnostic(error);
+    assert_diagnostic_contract(
+        &diagnostic,
+        SOURCE_ID,
+        USED,
+        "compiler::non_constant_schema_default",
+        "schema field default must be compile-time evaluable",
+        "math::random()",
+        &[ExpectedLabel {
+            text: "math::random()",
+            occurrence: 0,
+            message: "this default is used by an omitted constructor field",
+        }],
     );
-    assert_eq!(
-        error.span,
-        Some(source_span(SOURCE_ID, USED, "math::random()", 0))
+}
+
+#[test]
+fn set_from_array_accepts_one_positional_or_named_source_operand() {
+    for source in [
+        "fn main() { return set::from_array([1, 2]); }",
+        "fn main() { return set::from_array(values = [1, 2]); }",
+    ] {
+        let program = compile_program_source(SourceId::new(726), source)
+            .expect("one set source operand should compile");
+        let main = program.function("main").expect("main function");
+        assert!(main.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::MakeSetFromArray { .. }
+        )));
+    }
+}
+
+#[test]
+fn set_from_array_arity_failures_are_coded_call_diagnostics() {
+    const SOURCE_ID: SourceId = SourceId::new(727);
+    const MISSING: &str = "fn main() { return set::from_array(); }";
+    let error = compile_program_source(SOURCE_ID, MISSING)
+        .expect_err("set::from_array requires one source operand");
+    let diagnostic = only_semantic_diagnostic(error);
+    assert_diagnostic_contract(
+        &diagnostic,
+        SOURCE_ID,
+        MISSING,
+        "compiler::missing_required_argument",
+        "missing required argument `values`",
+        "set::from_array()",
+        &[ExpectedLabel {
+            text: "set::from_array()",
+            occurrence: 0,
+            message: "call does not provide this required parameter",
+        }],
     );
-    assert_eq!(error.to_diagnostic(), None);
+
+    const EXTRA: &str = "fn main() { return set::from_array([1], [2]); }";
+    let error = compile_program_source(SOURCE_ID, EXTRA)
+        .expect_err("set::from_array rejects extra source operands");
+    let diagnostic = only_semantic_diagnostic(error);
+    assert_diagnostic_contract(
+        &diagnostic,
+        SOURCE_ID,
+        EXTRA,
+        "compiler::too_many_arguments",
+        "too many arguments",
+        "[2]",
+        &[ExpectedLabel {
+            text: "[2]",
+            occurrence: 0,
+            message: "call accepts 1 positional argument(s)",
+        }],
+    );
 }
 
 #[test]

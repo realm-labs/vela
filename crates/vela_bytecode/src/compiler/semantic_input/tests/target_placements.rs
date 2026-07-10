@@ -1,9 +1,11 @@
+use vela_common::{PrimitiveTag, ScalarValue};
 use vela_def::DefPath;
 use vela_mir::{
     CompileCallArguments, CompileCallTarget, CompileCalleeTarget, CompileConstructorTarget,
-    CompileConstructorValue, CompileDynamicConstructorField, CompilePatternConstructorTarget,
-    CompilePlacedCallArgument, CompilePlacedCallValue, CompilePositionalPolicy, CompileTryFamily,
-    CompileTryLayoutTarget, CompileTryTarget,
+    CompileConstructorValue, CompileDynamicConstructorField, CompileMemberTarget,
+    CompilePatternConstructorTarget, CompilePlacedCallArgument, CompilePlacedCallValue,
+    CompilePositionalPolicy, CompileTryFamily, CompileTryLayoutTarget, CompileTryTarget,
+    MirGuardLocation, MirTypeContract,
 };
 use vela_registry::{DefinitionRegistry, FunctionDef, FunctionSignature, ParamDef};
 
@@ -289,6 +291,40 @@ fn main() { return target(second = 2, first = 1); }
 }
 
 #[test]
+fn named_script_argument_guards_retain_callee_parameter_indices() {
+    let fixture = prepare_source(
+        r#"
+fn target(first: i64, second: String) {}
+fn main(value) { target(second = value, first = value); }
+"#,
+        FixtureRoots::Program,
+    )
+    .expect("named script argument guard input");
+
+    for (parameter, contract, name) in [
+        (0, MirTypeContract::Primitive(PrimitiveTag::I64), "first"),
+        (
+            1,
+            MirTypeContract::Primitive(PrimitiveTag::String),
+            "second",
+        ),
+    ] {
+        let expression =
+            call_argument_expression(&fixture, "target(second = value, first = value)", parameter);
+        let guard = expression_guard(&fixture, expression)
+            .unwrap_or_else(|| panic!("missing script parameter guard {parameter}"));
+        assert_eq!(guard.contract, contract);
+        assert_eq!(
+            guard.context.location,
+            MirGuardLocation::Parameter {
+                index: u32::try_from(parameter).expect("fixture parameter index")
+            }
+        );
+        assert_eq!(guard.context.debug_name, name);
+    }
+}
+
+#[test]
 fn named_record_and_tuple_constructors_retain_source_order_and_schema_slots() {
     let record = prepare_source(
         r#"
@@ -312,12 +348,12 @@ fn main() { return Pair::Values(second = 2, first = 1); }
 }
 
 #[test]
-fn runtime_only_stdlib_calls_require_exact_facts_and_never_fabricate_named_slots() {
+fn policy_controlled_reflection_calls_use_the_authoritative_neutral_manifest() {
     let positional = prepare_source(
         "fn main() { return reflect::methods(1); }",
         FixtureRoots::Program,
     )
-    .expect("an exact argument-sensitive stdlib fact closes positional placement");
+    .expect("the reflection manifest closes positional placement");
     let call = only_call_target(&positional);
     let CompileCalleeTarget::NativeFunction { function, .. } = call.callee else {
         panic!("reflect::methods must remain a runtime native");
@@ -331,26 +367,348 @@ fn runtime_only_stdlib_calls_require_exact_facts_and_never_fabricate_named_slots
         .targets()
         .function_descriptor(function)
         .expect("runtime native descriptor");
-    assert!(descriptor.signature.parameters.is_empty());
+    assert_eq!(descriptor.signature.parameters.len(), 1);
+    assert_eq!(descriptor.signature.parameters[0].name, "target");
     assert_eq!(
         descriptor.signature.positional,
         CompilePositionalPolicy::RuntimeChecked
     );
+    assert!(descriptor.signature.effect.reflection_read);
+
+    let named = prepare_source(
+        "fn main() { return reflect::methods(target = 1); }",
+        FixtureRoots::Program,
+    )
+    .expect("the manifest parameter name authorizes named placement");
+    assert!(matches!(
+        only_call_target(&named).arguments,
+        CompileCallArguments::ExternalNamed {
+            ref evaluation_order,
+            ref parameter_slots,
+        } if evaluation_order.len() == 1 && parameter_slots.len() == 1
+    ));
 
     let error = prepare_source(
         "fn main() { return reflect::methods(value = 1); }",
         FixtureRoots::Program,
     )
-    .expect_err("runtime-only facts do not authorize fabricated parameter names");
+    .expect_err("unknown reflection parameter names remain source diagnostics");
     assert!(matches!(
         error.kind,
-        CompileErrorKind::MirInput(ref input)
-            if input.to_string().contains("placement mode")
+        CompileErrorKind::SemanticDiagnostics(ref diagnostics)
+            if diagnostics.iter().any(|diagnostic| {
+                diagnostic.code.as_deref() == Some("compiler::unknown_named_argument")
+                    && diagnostic.message.contains("value")
+            })
     ));
-    assert!(
-        error.span.is_some(),
-        "MIR input errors must retain the call span"
+}
+
+#[test]
+fn closed_script_member_miss_remains_an_explicit_dynamic_lookup() {
+    let fixture = prepare_source(
+        r#"
+struct Reward { amount: i64 }
+fn main() {
+    let reward = Reward { amount: 1 };
+    return reward.missing;
+}
+"#,
+        FixtureRoots::Program,
+    )
+    .expect("a closed member miss remains a runtime lookup");
+    let (body, expression, _) = fixture
+        .member_expressions
+        .iter()
+        .find(|(_, _, name)| name == "missing")
+        .expect("missing member expression");
+    let (function, _) = fixture
+        .input
+        .targets()
+        .compilation_roots()
+        .find(|(_, root)| root.body == *body)
+        .expect("owning executable root");
+
+    assert_eq!(
+        fixture
+            .input
+            .targets()
+            .function_targets(function)
+            .expect("scoped targets")
+            .member(*expression),
+        Some(&CompileMemberTarget::Dynamic {
+            name: "missing".to_owned(),
+        })
     );
+}
+
+#[test]
+fn set_from_array_calls_retain_one_canonical_positional_operand() {
+    for (source, operand) in [
+        ("fn main() { return set::from_array([1, 2]); }", "[1, 2]"),
+        (
+            "fn main() { return set::from_array(values = [3, 4]); }",
+            "[3, 4]",
+        ),
+    ] {
+        let fixture = prepare_source(source, FixtureRoots::Program)
+            .expect("set::from_array placement must be complete");
+        let target = only_call_target(&fixture);
+        assert!(matches!(
+            &target.callee,
+            CompileCalleeTarget::SetFromArray { debug_name, .. }
+                if debug_name == "set::from_array"
+        ));
+        assert_eq!(
+            target.arguments,
+            CompileCallArguments::Positional(vec![expression_exact(&fixture, operand)])
+        );
+    }
+}
+
+#[test]
+fn typed_container_mutations_contextualize_scalar_arguments() {
+    let fixture = prepare_source(
+        r#"
+fn main(array: Array<u8>, map: Map<u16, i32>, set: Set<u64>) {
+    array.push(1);
+    array.insert(0, 2);
+    map.set(3, 4);
+    set.add(5);
+}
+"#,
+        FixtureRoots::Program,
+    )
+    .expect("typed mutation scalar contexts");
+
+    let cases = [
+        ("array.push(1)", 0, ScalarValue::U8(1)),
+        ("array.insert(0, 2)", 0, ScalarValue::I64(0)),
+        ("array.insert(0, 2)", 1, ScalarValue::U8(2)),
+        ("map.set(3, 4)", 0, ScalarValue::U16(3)),
+        ("map.set(3, 4)", 1, ScalarValue::I32(4)),
+        ("set.add(5)", 0, ScalarValue::U64(5)),
+    ];
+    for (call, parameter, expected) in cases {
+        let expression = call_argument_expression(&fixture, call, parameter);
+        assert_eq!(
+            resolved_scalar(&fixture, expression),
+            Some(expected),
+            "{call}"
+        );
+    }
+}
+
+#[test]
+fn typed_container_mutations_reject_static_argument_mismatches() {
+    const SOURCE: &str = r#"
+fn main(values: Array<u8>) {
+    values.push("bad");
+}
+"#;
+    let error = prepare_source(SOURCE, FixtureRoots::Program)
+        .expect_err("typed array mutation must reject a static mismatch");
+    let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+        panic!("expected semantic diagnostics, got {error:?}");
+    };
+    let diagnostic = diagnostics
+        .iter()
+        .find(|diagnostic| diagnostic.code.as_deref() == Some("compiler::type_contract_mismatch"))
+        .expect("typed mutation mismatch diagnostic");
+    let span = diagnostic.span.expect("mismatched argument span");
+    assert_eq!(&SOURCE[span.start as usize..span.end as usize], "\"bad\"");
+    assert_eq!(
+        diagnostic.message,
+        "type contract mismatch for native parameter `push::value`"
+    );
+    assert_eq!(diagnostic.labels.len(), 1);
+    assert_eq!(
+        diagnostic.labels[0].message,
+        "expected `u8`, found `String`"
+    );
+}
+
+#[test]
+fn typed_container_mutations_own_all_dynamic_argument_guards() {
+    let fixture = prepare_source(
+        r#"
+fn main(array: Array<u8>, map: Map<u16, i32>, set: Set<u64>, value) {
+    array.push(value);
+    array.insert(0, value);
+    array.extend(value);
+    map.set(value, value);
+    map.extend(value);
+    set.add(value);
+    set.extend(value);
+}
+"#,
+        FixtureRoots::Program,
+    )
+    .expect("typed container mutation guard input");
+
+    let cases = [
+        (
+            "array.push(value)",
+            0,
+            MirTypeContract::Primitive(PrimitiveTag::U8),
+            "value",
+        ),
+        (
+            "array.insert(0, value)",
+            1,
+            MirTypeContract::Primitive(PrimitiveTag::U8),
+            "value",
+        ),
+        (
+            "array.extend(value)",
+            0,
+            MirTypeContract::Array(Some(Box::new(MirTypeContract::Primitive(PrimitiveTag::U8)))),
+            "values",
+        ),
+        (
+            "map.set(value, value)",
+            0,
+            MirTypeContract::Primitive(PrimitiveTag::U16),
+            "key",
+        ),
+        (
+            "map.set(value, value)",
+            1,
+            MirTypeContract::Primitive(PrimitiveTag::I32),
+            "value",
+        ),
+        (
+            "map.extend(value)",
+            0,
+            MirTypeContract::Map {
+                key: Some(Box::new(MirTypeContract::Primitive(PrimitiveTag::U16))),
+                value: Some(Box::new(MirTypeContract::Primitive(PrimitiveTag::I32))),
+            },
+            "values",
+        ),
+        (
+            "set.add(value)",
+            0,
+            MirTypeContract::Primitive(PrimitiveTag::U64),
+            "value",
+        ),
+        (
+            "set.extend(value)",
+            0,
+            MirTypeContract::Set(Some(Box::new(MirTypeContract::Primitive(
+                PrimitiveTag::U64,
+            )))),
+            "values",
+        ),
+    ];
+    for (call, parameter, contract, debug_name) in cases {
+        let expression = call_argument_expression(&fixture, call, parameter);
+        let guard = expression_guard(&fixture, expression).unwrap_or_else(|| {
+            panic!("missing typed mutation guard for {call} parameter {parameter}")
+        });
+        assert_eq!(guard.contract, contract, "{call} parameter {parameter}");
+        assert_eq!(
+            guard.context.location,
+            MirGuardLocation::Parameter {
+                index: u32::try_from(parameter).expect("fixture parameter index")
+            },
+            "{call} parameter {parameter}"
+        );
+        assert_eq!(
+            guard.context.debug_name, debug_name,
+            "{call} parameter {parameter}"
+        );
+    }
+}
+
+#[test]
+fn erased_container_receivers_keep_only_manifest_level_contracts() {
+    let fixture = prepare_source(
+        r#"
+fn main(
+    array: Array,
+    any_array: Array<Any>,
+    map: Map,
+    partial_map: Map<Any, i32>,
+    partial_key_map: Map<u16, Any>,
+    string_map: Map<String, i32>,
+    set: Set,
+    value,
+) {
+    let inferred_but_erased: Array = [1i32];
+    array.push(value);
+    any_array.push(value);
+    inferred_but_erased.push(value);
+    map.set(value, value);
+    partial_map.set(value, value);
+    partial_key_map.set(value, value);
+    string_map.set(value, value);
+    set.add(value);
+    array.extend(value);
+    any_array.extend(value);
+    map.extend(value);
+    partial_map.extend(value);
+    set.extend(value);
+}
+"#,
+        FixtureRoots::Program,
+    )
+    .expect("erased container mutation contracts");
+
+    for (call, parameters) in [
+        ("array.push(value)", &[0][..]),
+        ("any_array.push(value)", &[0][..]),
+        ("inferred_but_erased.push(value)", &[0][..]),
+        ("map.set(value, value)", &[0, 1][..]),
+        ("partial_map.set(value, value)", &[0, 1][..]),
+        ("partial_key_map.set(value, value)", &[0, 1][..]),
+        ("set.add(value)", &[0][..]),
+    ] {
+        for parameter in parameters {
+            let expression = call_argument_expression(&fixture, call, *parameter);
+            assert!(
+                expression_guard(&fixture, expression).is_none(),
+                "erased receiver invented a typed guard for {call} parameter {parameter}"
+            );
+        }
+    }
+
+    let string_key = call_argument_expression(&fixture, "string_map.set(value, value)", 0);
+    assert!(
+        expression_guard(&fixture, string_key).is_none(),
+        "Map<String, _>.set preserves the existing unguarded key contract"
+    );
+    let string_value = call_argument_expression(&fixture, "string_map.set(value, value)", 1);
+    assert_eq!(
+        expression_guard(&fixture, string_value).map(|guard| &guard.contract),
+        Some(&MirTypeContract::Primitive(PrimitiveTag::I32))
+    );
+
+    for (call, expected) in [
+        ("array.extend(value)", MirTypeContract::Array(None)),
+        ("any_array.extend(value)", MirTypeContract::Array(None)),
+        (
+            "map.extend(value)",
+            MirTypeContract::Map {
+                key: None,
+                value: None,
+            },
+        ),
+        (
+            "partial_map.extend(value)",
+            MirTypeContract::Map {
+                key: None,
+                value: None,
+            },
+        ),
+        ("set.extend(value)", MirTypeContract::Set(None)),
+    ] {
+        let expression = call_argument_expression(&fixture, call, 0);
+        assert_eq!(
+            expression_guard(&fixture, expression).map(|guard| &guard.contract),
+            Some(&expected),
+            "{call} must retain its manifest-level container guard"
+        );
+    }
 }
 
 #[test]
@@ -485,6 +843,87 @@ fn only_call_target(fixture: &SemanticFixture) -> &CompileCallTarget {
         .compilation_roots()
         .find_map(|(function, _)| targets.function_targets(function)?.call(expression))
         .expect("call target placement")
+}
+
+fn call_argument_expression(
+    fixture: &SemanticFixture,
+    call_source: &str,
+    parameter: usize,
+) -> vela_hir::ids::HirExprId {
+    let call = expression_exact(fixture, call_source);
+    let target = fixture
+        .input
+        .targets()
+        .compilation_roots()
+        .find_map(|(function, _)| {
+            fixture
+                .input
+                .targets()
+                .function_targets(function)?
+                .call(call)
+        })
+        .unwrap_or_else(|| panic!("missing call target for `{call_source}`"));
+    match &target.arguments {
+        CompileCallArguments::Positional(values) => values.get(parameter).copied(),
+        CompileCallArguments::ExternalNamed {
+            parameter_slots, ..
+        }
+        | CompileCallArguments::Script {
+            parameter_slots, ..
+        } => parameter_slots
+            .get(parameter)
+            .and_then(|slot| match slot.value {
+                CompilePlacedCallValue::Explicit { value, .. } => Some(value),
+                CompilePlacedCallValue::MissingDefault => None,
+            }),
+        CompileCallArguments::Dynamic(_) => None,
+    }
+    .unwrap_or_else(|| panic!("missing parameter {parameter} for `{call_source}`"))
+}
+
+fn expression_guard(
+    fixture: &SemanticFixture,
+    expression: vela_hir::ids::HirExprId,
+) -> Option<&vela_mir::CompileGuardTarget> {
+    fixture
+        .input
+        .targets()
+        .compilation_roots()
+        .find_map(|(function, _)| {
+            fixture
+                .input
+                .targets()
+                .function_targets(function)?
+                .expression_guard(expression)
+        })
+}
+
+fn resolved_scalar(
+    fixture: &SemanticFixture,
+    expression: vela_hir::ids::HirExprId,
+) -> Option<ScalarValue> {
+    fixture.input.analysis().functions().find_map(|function| {
+        fixture
+            .input
+            .analysis()
+            .view(function)?
+            .literal(expression)?
+            .as_ref()
+            .ok()?
+            .scalar()
+    })
+}
+
+fn expression_exact(fixture: &SemanticFixture, source: &str) -> vela_hir::ids::HirExprId {
+    let matches = fixture
+        .expression_sources
+        .iter()
+        .filter_map(|(_, expression, text)| (text == source).then_some(*expression))
+        .collect::<Vec<_>>();
+    let [expression] = matches.as_slice() else {
+        panic!("expected one expression `{source}`, got {matches:?}");
+    };
+    *expression
 }
 
 fn only_constructor_target(fixture: &SemanticFixture) -> &CompileConstructorTarget {

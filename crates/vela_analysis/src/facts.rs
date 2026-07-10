@@ -46,7 +46,12 @@ impl AnalysisFacts {
     }
 
     pub fn locals(&self) -> impl Iterator<Item = (HirLocalId, &TypeFact)> {
-        self.locals.iter().map(|(local, fact)| (*local, fact))
+        self.semantic.locals().chain(
+            self.locals
+                .iter()
+                .filter(|(local, _)| self.semantic.local(**local).is_none())
+                .map(|(local, fact)| (*local, fact)),
+        )
     }
 
     #[must_use]
@@ -99,9 +104,12 @@ impl AnalysisFacts {
     }
 
     pub fn expressions(&self) -> impl Iterator<Item = (HirExprId, &TypeFact)> {
-        self.expressions
-            .iter()
-            .map(|(expression, fact)| (*expression, fact))
+        self.semantic.types().chain(
+            self.expressions
+                .iter()
+                .filter(|(expression, _)| self.semantic.type_fact(**expression).is_none())
+                .map(|(expression, fact)| (*expression, fact)),
+        )
     }
 
     pub(crate) fn base_expression(&self, expression: HirExprId) -> Option<&TypeFact> {

@@ -213,6 +213,29 @@ identity is outside that function generation, not that analysis silently
 failed. Unknown placeholders are added only after inference reaches its fixed
 point so they cannot suppress callback, pattern, or local-flow refinement.
 
+An explicit erased builtin local contract keeps its declared outer family while
+analysis fills `Unknown` payload slots from initializer, assignment, pattern,
+and callback flow. `Any` remains an intentional dynamic boundary at every
+nesting depth, and divergent control-flow joins fall back to the declared
+contract rather than discarding its proven outer shape. Contract compatibility
+uses the same recursive erased-slot rule, including `Option`/`Result` variants,
+so analysis facts and compile validation cannot disagree about a refined local.
+
+Policy-controlled native availability is separate from compile metadata.
+Reflection natives use the backend-neutral `vela_stdlib` manifest for stable
+IDs, parameter names, effects, and call placement. Low-level compilation with
+no explicit registry may use that policy-neutral manifest, while compilation
+with an explicit engine registry treats only registered reflection natives as
+available. MIR therefore never fabricates a runtime-checked reflection
+signature, and an empty explicit registry cannot accidentally enable
+reflection.
+
+A member miss on a source-owned closed record or enum remains an explicit
+dynamic member target for the current language contract. This preserves the
+existing runtime lookup/failure behavior until a separately approved
+unknown-member diagnostic is introduced. Compile-target generation must never
+misclassify that valid semantic outcome as inconsistent MIR input.
+
 MIR v1 is a generation-local non-SSA IR with mutable script/synthetic locals
 and single-assignment temporaries. Branch joins use synthetic mutable locals;
 MIR v1 does not add phi nodes, block parameters, or Rust-style move/borrow
@@ -253,6 +276,10 @@ Contract guards are trap-only statements. Recoverable optimization guards are
 terminators with explicit passed/slow CFG successors, and `Option`/`Result`
 propagation uses ordinary variant tests, CFG edges, extraction, and return
 rather than a hidden statement side exit.
+Every contract guard retains a backend-neutral source context: logical
+parameter index, return, local, global, or field plus the clean source/debug
+name. A bytecode backend may encode that context, but must not reconstruct it
+from a guard key, HIR, or a formatted diagnostic description.
 
 Each MIR generation owns a canonical target table for function/method/type/
 variant/field/global IDs, canonical link symbols, debug names, host runtime IDs,
@@ -302,9 +329,11 @@ target contains ordered resolved slots with stable `FieldId`, declared
 parameter name/index, and either the explicit `HirExprId` or the selected
 evaluated-default body. Pattern constructor targets are separate because they
 do not deliver argument/default values. Set construction records its one
-already-evaluated array source and one visible allocation boundary. MIR v1 does
-not contain targetless index removal, script-global writes, or speculative
-bitwise/shift operations that have no Heavy-HIR/bytecode behavior.
+already-evaluated array source and one visible allocation boundary;
+`set::from_array(values = source)` is canonicalized to that same single logical
+operand, while missing or extra operands are source diagnostics before MIR.
+MIR v1 does not contain targetless index removal, script-global writes, or
+speculative bitwise/shift operations that have no Heavy-HIR/bytecode behavior.
 
 Heavy HIR body ownership uses stable `HirBodyId` records with explicit owners:
 declarations, trait default methods, impl methods, lambdas, and parameter

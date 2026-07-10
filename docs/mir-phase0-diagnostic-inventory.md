@@ -3,8 +3,10 @@
 This inventory freezes every user-facing diagnostic built by the direct
 bytecode compiler before MIR construction. Syntax and HIR semantic diagnostics
 are pass-through values and retain their upstream owners. The table covers all
-24 distinct coded diagnostics constructed under `compiler.rs` and
-`compiler/**` outside tests.
+distinct coded diagnostics constructed under `compiler.rs` and `compiler/**`
+outside tests, including the final coded compile-validation diagnostic that
+replaced the uncoded non-constant-default catch-all and the two internal-input
+diagnostic projections.
 
 | Code | Message contract | Primary span | Current seam | Final owner |
 |---|---|---|---|---|
@@ -32,6 +34,9 @@ are pass-through values and retain their upstream owners. The table covers all
 | `analysis::host_index_not_mutable` | `type \`{type}\` does not allow host index mutations` | compound index assignment | `hir_lowering/assignments.rs`, `host_paths.rs` | compile-target validation |
 | `analysis::host_index_not_removable` | `type \`{type}\` does not allow host index removals` | indexed remove call | `hir_lowering/assignments.rs`, `host_paths.rs` | compile-target validation |
 | `analysis::host_index_key_mismatch` | `host index key for \`{type}\` must be \`{expected}\`` | index operation; actual key is labeled | `hir_lowering/assignments.rs` | analysis plus compile-target validation |
+| `compiler::non_constant_schema_default` | `schema field default must be compile-time evaluable` | schema default expression; omitted-field use is labeled | pre-MIR compile-target validation | compile-target validation |
+| `compiler::inconsistent_mir_input` | `inconsistent compiler MIR input: {MirBuildError}` | originating HIR span when one exists; front-door selection failures may be unspanned | semantic-input projection | `MirBuildError` projected only at the compile API boundary |
+| `compiler::invalid_registry_snapshot` | `invalid compile-target registry snapshot: {message}` | no source span when authoritative definition metadata is globally malformed or missing | semantic-input projection | compile-target snapshot construction |
 
 All direct `Diagnostic::error` builders in the audited scope set both a code
 and a primary span. Negated const/schema-default integer and float overflow
@@ -39,6 +44,12 @@ retain the literal operand origin before projection. The integer contract and
 the analogous out-of-range `f32` const/schema-default paths are pinned by the
 compiler diagnostic fixtures, including the operand-only span without the
 unary `-`.
+
+The `set::from_array` intrinsic now reaches MIR only with one canonical source
+operand. Its missing and extra positional cases reuse
+`compiler::missing_required_argument` and `compiler::too_many_arguments`, and
+the valid `values = expression` spelling is normalized during compile-target
+generation rather than producing an uncoded `UnsupportedSyntax` error.
 
 The legacy `CompileErrorKind` variants have these final assignments:
 
@@ -54,7 +65,7 @@ The legacy `CompileErrorKind` variants have these final assignments:
 
 `UnsupportedSyntax` must not survive the hard switch as a semantic catch-all.
 Break/continue placement, named-argument restrictions, and non-constant schema
-defaults need ordinary user diagnostics. Missing HIR bodies, blocks,
+defaults use ordinary user diagnostics. Missing HIR bodies, blocks,
 statements, expressions, patterns, paths, captures, or parameter-default
 bodies need source-spanned `MirBuildError` values. Jump patching, dynamic host
 operand counts, and physical layout failures belong only to the bytecode
@@ -65,6 +76,7 @@ state for loop-control placement across lambda boundaries, lazy non-constant
 schema defaults, known-versus-dynamic method misses, every host-index access
 diagnostic family, and negated float literal origins. The loop-control and used
 non-constant-default cases intentionally record their current uncoded
-`UnsupportedSyntax` projection only as a migration baseline; their final
-analysis/compile-validation diagnostics must replace those assertions before
-the hard switch.
+`UnsupportedSyntax` projection only as a migration baseline. Loop placement and
+used non-constant defaults now have their final analysis/compile-validation
+diagnostics; any remaining catch-all case must be reassigned before the hard
+switch.

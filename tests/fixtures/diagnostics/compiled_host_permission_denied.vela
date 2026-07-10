@@ -1,0 +1,7 @@
+fn read_level(player: Player) {
+    return player.level;
+}
+
+fn main(player: Player) {
+    return read_level(player);
+}

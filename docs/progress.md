@@ -44,15 +44,27 @@ boundaries, and full final validation passes. MIR work may now begin from the
 completed Heavy HIR contract; semantic gaps must still be fixed in HIR or
 analysis rather than repaired during MIR lowering.
 
-MIR Phase 0 is active. Ordered interpolated-string text/expression parts are
+MIR Phase 0 is complete. Ordered interpolated-string text/expression parts are
 HIR-owned and runtime body lowering no longer re-lexes source. The frozen
 compiler/VM/host/reflection/reload/example behavior baseline is complete,
 including diagnostic/span contracts, single-evaluation and instruction-budget
 edges, emitted cache-site families, frame metadata, and stable reload identity.
-The remaining Phase 0 checkpoint is the immutable AnalysisFacts/compile-target
-production input bridge.
+Every production compile entry builds and validates one immutable
+executable-analysis and compile-target generation from the authoritative
+source graph, registry, stdlib, host schema, and compiler options. Literal,
+call-placement, constructor, operator, loop-placement, and HostAccess
+diagnostics are owned before MIR construction; physical encoding remains in
+the direct backend until the atomic hard switch deletes that backend.
+That generation now also owns root-scoped nested-lambda symbols and ordered
+parameter contracts, recursive erased-contract refinement, typed binary
+literal contexts, typed container-mutation and script-field assignment
+boundaries, clean guard locations/names, and the canonical one-operand
+`set::from_array` intrinsic shape. Closed source-record member misses remain
+explicit dynamic targets rather than inconsistent-input errors. MIR therefore
+does not need to inspect type-hint strings, recover guard context, or repeat an
+old compiler-local expected-type decision.
 
-The internal `vela_mir` Phase 1 model checkpoint now exists without production
+The internal `vela_mir` Phase 1 model checkpoint exists without production
 routing: it depends only on HIR/analysis/stable-definition crates and defines
 generation-local CFG/function/block/local/temp IDs, mutable locals,
 single-assignment temporaries, source/debug/liveness/safepoint metadata,
@@ -60,10 +72,9 @@ backend-neutral targets and contracts, explicit host/reflection/call/allocation
 operations, explicit recoverable-guard CFG edges, and stable human-readable
 dumps. Heap-backed evaluated constants materialize at explicit allocation
 safepoints, method receivers and default-delivery policies are explicit, and
-try propagation has no hidden statement edge. Phase 0 remains open until the
-production registry/stdlib/host/script metadata bridge builds and validates the
-same immutable analysis and compile-target input; no MIR backend selector or
-production MIR route exists.
+try propagation has no hidden statement edge. Phase 2 is the next MIR work:
+build complete executable CFGs against the validated immutable input. No MIR
+backend selector or production MIR route exists.
 
 The Phase 1 semantic gate also fixes backend-bearing edge cases before a
 builder exists: owner-qualified executable method lookup preserves shared trait
@@ -74,11 +85,11 @@ array source; and reflection/set/host path intrinsics are selected by compile
 targets rather than names. Unsupported targetless index removal/global writes
 and speculative bitwise/shift forms are absent.
 
-The immutable input now also exposes authoritative `HirDeclId -> FunctionId`,
+The immutable input also exposes authoritative `HirDeclId -> FunctionId`,
 `HirDeclId -> TypeId`, and `HirNodeId -> MethodExecutableTarget` mappings,
 deterministic compilation-root iteration, canonical type lookup, and parameter
-declaration origins. The production bridge still must populate and prove these
-indexes from the real source/registry front door before Phase 0 closes.
+declaration origins. Production source, module, registry, and host fixtures
+prove these indexes through the real compile front doors.
 Call targets now likewise own prevalidated script parameter slots, external
 positional order, and genuinely dynamic named order keyed by HIR expression;
 MIR will not repeat call-argument placement.

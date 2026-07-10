@@ -18,6 +18,7 @@ use crate::{
 mod calls;
 mod host;
 mod identity;
+mod lambdas;
 mod origins;
 mod placements;
 mod try_targets;
@@ -33,6 +34,7 @@ pub use host::{
     CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget, HostFieldTarget,
     HostMethodTarget,
 };
+pub use lambdas::{CompileLambdaParameterTarget, CompileLambdaTarget};
 pub use placements::{
     CompileConstructorField, CompileConstructorTarget, CompileConstructorValue,
     CompileDynamicConstructorField, CompileFieldTarget, CompileFunctionTargets, CompileGuardKey,
@@ -136,6 +138,7 @@ pub struct CompileTargetSnapshot {
     functions_by_body: BTreeMap<HirBodyId, Vec<FunctionId>>,
     functions_by_declaration: BTreeMap<HirDeclId, FunctionId>,
     methods_by_node: BTreeMap<HirNodeId, Vec<MethodExecutableTarget>>,
+    lambdas: BTreeMap<(FunctionId, HirBodyId), CompileLambdaTarget>,
     types_by_declaration: BTreeMap<HirDeclId, TypeId>,
     types_by_name: BTreeMap<String, TypeId>,
     calls: BTreeMap<(FunctionId, HirExprId), CompileCallTarget>,
@@ -544,6 +547,13 @@ impl<'a> MirLoweringInput<'a> {
                 function.get()
             )));
         }
+        lambdas::validate_hir_closure(
+            graph,
+            targets,
+            function,
+            body,
+            &function_descriptor.canonical_symbol,
+        )?;
         if let CompileFunctionIdentity::Method(method) = target.identity {
             let descriptor = targets
                 .method_descriptor(method.owner, method.method)

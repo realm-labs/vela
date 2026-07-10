@@ -122,6 +122,47 @@ fn erased_and_parameterized_container_contracts_preserve_guard_policy() {
 }
 
 #[test]
+fn nested_erasure_and_sum_variants_preserve_contract_direction() {
+    let nested_erased = TypeFact::map(TypeFact::STRING, TypeFact::array(TypeFact::Unknown));
+    let nested_exact = TypeFact::map(TypeFact::STRING, TypeFact::array(TypeFact::I64));
+    assert_eq!(
+        check(
+            ContractActual::Exact(nested_exact.clone()),
+            nested_erased.clone(),
+        ),
+        Ok(ExpectedContractOutcome::Proven)
+    );
+    assert_eq!(
+        check(ContractActual::Exact(nested_erased), nested_exact.clone(),),
+        Ok(ExpectedContractOutcome::RequiresRuntimeGuard(nested_exact))
+    );
+
+    assert_eq!(
+        check(
+            ContractActual::Exact(TypeFact::option_some(TypeFact::I64)),
+            TypeFact::option(TypeFact::I64),
+        ),
+        Ok(ExpectedContractOutcome::Proven)
+    );
+    assert_eq!(
+        check(
+            ContractActual::Exact(TypeFact::result_err(TypeFact::STRING)),
+            TypeFact::result(TypeFact::I64, TypeFact::STRING),
+        ),
+        Ok(ExpectedContractOutcome::Proven)
+    );
+
+    assert!(
+        check(
+            ContractActual::Exact(TypeFact::map(TypeFact::Unknown, TypeFact::I64)),
+            TypeFact::map(TypeFact::STRING, TypeFact::STRING),
+        )
+        .is_err(),
+        "a dynamic key cannot hide an independently incompatible value"
+    );
+}
+
+#[test]
 fn erased_and_dynamic_contract_rules_preserve_guard_direction() {
     let erased_function = TypeFact::function(Vec::new(), TypeFact::Unknown);
     assert_eq!(

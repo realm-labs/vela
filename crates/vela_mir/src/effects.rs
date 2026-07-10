@@ -217,9 +217,42 @@ pub enum MirGuardAssumption {
     TruthyBoolean,
 }
 
+/// Backend-neutral source boundary described by a runtime guard.
+///
+/// Parameter indices are logical signature indices. Physical backends remain
+/// responsible for checking whether their encoded operand width can represent
+/// the index.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum MirGuardLocation {
+    Parameter { index: u32 },
+    Return,
+    Local,
+    Global,
+    Field,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MirGuardContext {
+    pub location: MirGuardLocation,
+    pub debug_name: String,
+}
+
+impl MirGuardContext {
+    #[must_use]
+    pub fn new(location: MirGuardLocation, debug_name: impl Into<String>) -> Self {
+        Self {
+            location,
+            debug_name: debug_name.into(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MirGuard {
     pub assumption: MirGuardAssumption,
+    /// Contract guards carry the source boundary used by runtime diagnostics.
+    /// Pure optimization/branch assumptions may have no user-facing context.
+    pub context: Option<MirGuardContext>,
     pub origin: MirSourceOrigin,
 }
 

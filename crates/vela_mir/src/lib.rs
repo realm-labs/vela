@@ -25,7 +25,10 @@ pub use cfg::{
     MirTerminatorKind,
 };
 pub use contract::{HostTypeTarget, MirCallableKind, MirTypeContract};
-pub use effects::{MirEffect, MirGuard, MirGuardAssumption, MirLiveValue, MirSafepoint};
+pub use effects::{
+    MirEffect, MirGuard, MirGuardAssumption, MirGuardContext, MirGuardLocation, MirLiveValue,
+    MirSafepoint,
+};
 pub use function::{
     DebugLocalKind, MirDebugLocal, MirFunction, MirFunctionCapture, MirFunctionOwner,
     MirFunctionParameter, MirFunctionReservation, MirFunctionReturn, MirLiveRegion, MirLiveness,
@@ -41,12 +44,12 @@ pub use input::{
     CompileDynamicConstructorField, CompileFieldTarget, CompileFunctionIdentity,
     CompileFunctionTarget, CompileFunctionTargets, CompileGlobalTarget, CompileGuardKey,
     CompileGuardTarget, CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget,
-    CompileMemberTarget, CompileParameter, CompileParameterDefault,
-    CompilePatternConstructorTarget, CompilePlacedCallArgument, CompilePlacedCallValue,
-    CompilePositionalPolicy, CompileReflectionCall, CompileSignature, CompileTargetKind,
-    CompileTargetSnapshot, CompileTargetSnapshotBuilder, CompileTryFamily, CompileTryLayoutTarget,
-    CompileTryTarget, DynamicMethodTarget, HostFieldTarget, HostMethodTarget,
-    MethodExecutableTarget, MirBuildError, MirLoweringConfig, MirLoweringInput,
+    CompileLambdaParameterTarget, CompileLambdaTarget, CompileMemberTarget, CompileParameter,
+    CompileParameterDefault, CompilePatternConstructorTarget, CompilePlacedCallArgument,
+    CompilePlacedCallValue, CompilePositionalPolicy, CompileReflectionCall, CompileSignature,
+    CompileTargetKind, CompileTargetSnapshot, CompileTargetSnapshotBuilder, CompileTryFamily,
+    CompileTryLayoutTarget, CompileTryTarget, DynamicMethodTarget, HostFieldTarget,
+    HostMethodTarget, MethodExecutableTarget, MirBuildError, MirLoweringConfig, MirLoweringInput,
 };
 pub use operations::{
     MirAggregate, MirCall, MirContextualBinaryOp, MirContextualNumericLiteral, MirDynamicArgument,

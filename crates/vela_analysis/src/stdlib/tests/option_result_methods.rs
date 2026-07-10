@@ -1,4 +1,5 @@
 use super::*;
+use crate::logical_records::map_entry;
 
 #[test]
 fn set_lambda_methods_expose_element_parameter_facts() {
@@ -412,6 +413,17 @@ fn call_arguments_specialize_fallback_and_error_value_facts() {
     )
     .expect("argument-sensitive unwrap_or fact");
     assert_eq!(unwrapped.returns, TypeFact::array(TypeFact::STRING));
+
+    let entries = TypeFact::option(map_entry(TypeFact::Unknown, TypeFact::Unknown));
+    let entry = stdlib_method_fact_for_call(
+        &entries,
+        "unwrap_or",
+        None,
+        None,
+        &[map_entry(TypeFact::STRING, TypeFact::I64)],
+    )
+    .expect("MapEntry unwrap_or fact");
+    assert_eq!(entry.returns, map_entry(TypeFact::STRING, TypeFact::I64));
 
     let result = stdlib_method_fact_for_call(
         &TypeFact::option(TypeFact::I64),

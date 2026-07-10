@@ -13,6 +13,7 @@ mod targets;
 mod local_flow_tests;
 
 use control_flow::{block_flow, fallthrough_flow, if_flow, match_flow, statement_flow};
+use local_flow::refine_local_fact;
 use logical_records::{
     logical_member_target, logical_record_constructor_fact, logical_record_constructor_target,
 };
@@ -194,6 +195,16 @@ impl HirSemanticFacts {
     #[must_use]
     pub fn local(&self, local: HirLocalId) -> Option<&TypeFact> {
         self.locals.get(&local)
+    }
+
+    pub(crate) fn locals(&self) -> impl Iterator<Item = (HirLocalId, &TypeFact)> {
+        self.locals.iter().map(|(local, fact)| (*local, fact))
+    }
+
+    pub(crate) fn types(&self) -> impl Iterator<Item = (HirExprId, &TypeFact)> {
+        self.types
+            .iter()
+            .map(|(expression, fact)| (*expression, fact))
     }
 
     #[must_use]
@@ -655,9 +666,10 @@ impl HirSemanticFacts {
     ) {
         for pattern in body.patterns.values() {
             let fact = match &pattern.kind {
-                HirPatternKind::Binding { local: Some(local) } => base
-                    .local(*local)
-                    .or_else(|| self.locals.get(local))
+                HirPatternKind::Binding { local: Some(local) } => self
+                    .locals
+                    .get(local)
+                    .or_else(|| base.local(*local))
                     .cloned()
                     .unwrap_or(TypeFact::Unknown),
                 HirPatternKind::Literal(Some(literal)) => base
@@ -741,11 +753,17 @@ impl HirSemanticFacts {
             }
         }
         for inferred in inferred {
-            if base.local(inferred.local).is_none() && !matches!(inferred.fact, TypeFact::Unknown) {
-                if let Some(script_type) = inferred.script_type {
+            let declared = base.local(inferred.local);
+            let fact = declared.map_or(inferred.fact.clone(), |declared| {
+                refine_local_fact(declared, inferred.fact)
+            });
+            if !matches!(fact, TypeFact::Unknown) {
+                if declared.is_none()
+                    && let Some(script_type) = inferred.script_type
+                {
                     self.local_script_types.insert(inferred.local, script_type);
                 }
-                self.locals.insert(inferred.local, inferred.fact);
+                self.locals.insert(inferred.local, fact);
             }
         }
     }

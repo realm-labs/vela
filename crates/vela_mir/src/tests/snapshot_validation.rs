@@ -112,10 +112,7 @@ fn schema_only_snapshot_finalization_proves_complete_descriptor_closure() {
     builder
         .insert_guard(
             CompileGuardKey::Field(record_field),
-            CompileGuardTarget {
-                contract: record_contract,
-                debug_name: "Record::values".to_owned(),
-            },
+            CompileGuardTarget::new(record_contract, MirGuardLocation::Field, "values"),
             schema_origin,
         )
         .expect("record field guard fixture insertion");
@@ -163,10 +160,11 @@ fn schema_only_snapshot_finalization_proves_complete_descriptor_closure() {
     builder
         .insert_guard(
             CompileGuardKey::Field(variant_field),
-            CompileGuardTarget {
-                contract: MirTypeContract::Primitive(PrimitiveTag::I64),
-                debug_name: "State::Ready::count".to_owned(),
-            },
+            CompileGuardTarget::new(
+                MirTypeContract::Primitive(PrimitiveTag::I64),
+                MirGuardLocation::Field,
+                "count",
+            ),
             schema_origin,
         )
         .expect("variant field guard fixture insertion");
@@ -189,20 +187,18 @@ fn schema_only_snapshot_finalization_proves_complete_descriptor_closure() {
                 function,
                 parameter: 0,
             },
-            CompileGuardTarget {
-                contract: parameter_contract,
-                debug_name: "record".to_owned(),
-            },
+            CompileGuardTarget::new(
+                parameter_contract,
+                MirGuardLocation::Parameter { index: 0 },
+                "record",
+            ),
             schema_origin,
         )
         .expect("parameter guard fixture insertion");
     builder
         .insert_guard(
             CompileGuardKey::Return(function),
-            CompileGuardTarget {
-                contract: return_contract,
-                debug_name: "return value".to_owned(),
-            },
+            CompileGuardTarget::new(return_contract, MirGuardLocation::Return, "return"),
             schema_origin,
         )
         .expect("return guard fixture insertion");
@@ -221,10 +217,7 @@ fn schema_only_snapshot_finalization_proves_complete_descriptor_closure() {
     builder
         .insert_guard(
             CompileGuardKey::Global(global_declaration),
-            CompileGuardTarget {
-                contract: global_contract,
-                debug_name: "state".to_owned(),
-            },
+            CompileGuardTarget::new(global_contract, MirGuardLocation::Global, "state"),
             schema_origin,
         )
         .expect("global guard fixture insertion");
@@ -539,10 +532,11 @@ fn finalization_rejects_guard_contracts_that_disagree_with_their_parameter() {
                 function,
                 parameter: 0,
             },
-            CompileGuardTarget {
-                contract: MirTypeContract::Primitive(PrimitiveTag::String),
-                debug_name: "value".to_owned(),
-            },
+            CompileGuardTarget::new(
+                MirTypeContract::Primitive(PrimitiveTag::String),
+                MirGuardLocation::Parameter { index: 0 },
+                "value",
+            ),
             guard_origin,
         )
         .expect("mismatched guard fixture insertion");
@@ -553,5 +547,39 @@ fn finalization_rejects_guard_contracts_that_disagree_with_their_parameter() {
             .expect_err("mismatched guard must reject snapshot"),
         guard_origin,
         "disagrees",
+    );
+}
+
+#[test]
+fn finalization_rejects_guard_locations_that_disagree_with_their_key() {
+    let descriptor_origin = origin(484);
+    let guard_origin = origin(485);
+    let function = FunctionId::new(486);
+    let contract = MirTypeContract::Primitive(PrimitiveTag::I64);
+    let mut builder = CompileTargetSnapshot::builder();
+    builder
+        .insert_script_function_descriptor(
+            HirDeclId::new(487),
+            script_function(function, vec![parameter("value", Some(contract.clone()))]),
+            descriptor_origin,
+        )
+        .expect("guard function fixture insertion");
+    builder
+        .insert_guard(
+            CompileGuardKey::Parameter {
+                function,
+                parameter: 0,
+            },
+            CompileGuardTarget::new(contract, MirGuardLocation::Parameter { index: 1 }, "value"),
+            guard_origin,
+        )
+        .expect("mismatched guard location fixture insertion");
+
+    assert_input_error(
+        builder
+            .build()
+            .expect_err("mismatched guard location must reject snapshot"),
+        guard_origin,
+        "boundary location",
     );
 }

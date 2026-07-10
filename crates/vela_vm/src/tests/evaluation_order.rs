@@ -39,6 +39,36 @@ fn main() { return combine(second = mark(2), first = mark(1)); }
 }
 
 #[test]
+fn positional_nested_script_calls_evaluate_left_to_right() {
+    let (result, trace) = run_marked(
+        r#"
+fn combine(first, second) { return first * 10 + second; }
+fn main() { return combine(mark(1), combine(mark(2), mark(3))); }
+"#,
+    );
+
+    assert_eq!(
+        result,
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(33)))
+    );
+    assert_eq!(trace, [1, 2, 3]);
+}
+
+#[test]
+fn logical_short_circuit_skips_side_effecting_rhs_operands() {
+    let (result, trace) = run_marked(
+        r#"
+fn main() {
+    return (false && mark(1)) || (true || mark(2));
+}
+"#,
+    );
+
+    assert_eq!(result, Ok(OwnedValue::Bool(true)));
+    assert!(trace.is_empty(), "short-circuited markers ran: {trace:?}");
+}
+
+#[test]
 fn named_tuple_constructor_fields_evaluate_in_source_order_before_projection() {
     let (result, trace) = run_marked(
         r#"

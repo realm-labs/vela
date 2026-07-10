@@ -9,6 +9,7 @@ use crate::registry::RegistryFacts;
 use crate::stdlib::{StdlibMethodFact, stdlib_method_fact_for_call};
 use crate::type_fact::TypeFact;
 
+use super::local_flow::refine_local_fact;
 use super::lookups::type_owner;
 use super::targets::{ScriptTypeTargetFact, direct_lambda_body};
 use super::{HirSemanticFacts, expression_path, source_declaration_for_path};
@@ -36,15 +37,20 @@ impl HirSemanticFacts {
         }
 
         for seed in seeds {
-            if base.local(seed.local).is_some() || matches!(seed.fact, TypeFact::Unknown) {
+            if matches!(seed.fact, TypeFact::Unknown) {
                 continue;
             }
-            let script_type = source_script_type(graph, &seed.fact);
-            self.locals.insert(seed.local, seed.fact);
+            let declared = base.local(seed.local);
+            let fact = declared.map_or(seed.fact.clone(), |declared| {
+                refine_local_fact(declared, seed.fact)
+            });
+            let script_type = source_script_type(graph, &fact);
+            self.locals.insert(seed.local, fact);
             match script_type {
-                Some(script_type) => {
+                Some(script_type) if base.base_local_script_type(seed.local).is_none() => {
                     self.local_script_types.insert(seed.local, script_type);
                 }
+                Some(_) => {}
                 None if base.base_local_script_type(seed.local).is_none() => {
                     self.local_script_types.remove(&seed.local);
                 }

@@ -1,4 +1,20 @@
 use super::*;
+use vela_common::Diagnostic;
+
+pub(super) fn require_analysis_call_target(
+    target: Option<&CallTargetFact>,
+    expression: HirExprId,
+    origin: MirSourceOrigin,
+) -> CompileResult<CallTargetFact> {
+    target.cloned().ok_or_else(|| {
+        input_error(MirBuildError::InconsistentInput {
+            origin,
+            message: format!(
+                "executable analysis is missing a call target for expression {expression:?}"
+            ),
+        })
+    })
+}
 
 pub(super) fn field_is_call_callee(body: &HirBody, expression: HirExprId) -> bool {
     body.expressions.values().any(|candidate| {
@@ -10,6 +26,39 @@ pub(super) fn field_is_call_callee(body: &HirBody, expression: HirExprId) -> boo
 }
 
 impl GenerationBuilder<'_, '_> {
+    pub(super) fn direct_declared_receiver_fact(
+        &self,
+        body: &HirBody,
+        mut expression: HirExprId,
+    ) -> Option<TypeFact> {
+        loop {
+            match &body.expression(expression)?.kind {
+                HirExprKind::Paren {
+                    expression: Some(inner),
+                } => expression = *inner,
+                HirExprKind::Path(_) => break,
+                _ => return None,
+            }
+        }
+        let bindings = self.request.graph.bindings_for_body(body.id)?;
+        let vela_hir::binding::BindingResolution::Local(local) = bindings.resolution(expression)?
+        else {
+            return None;
+        };
+        let hint = self
+            .request
+            .graph
+            .local_binding(*local)?
+            .type_hint
+            .as_ref()?;
+        let module = self.request.graph.declaration(bindings.declaration)?.module;
+        Some(vela_analysis::hints::type_fact_from_hint_in_module(
+            self.request.graph,
+            module,
+            hint,
+        ))
+    }
+
     pub(super) fn require_evaluated_schema_default(
         &self,
         body: vela_hir::ids::HirBodyId,
@@ -29,10 +78,13 @@ impl GenerationBuilder<'_, '_> {
             .body(body)
             .map(|body| body.origin.span)
             .ok_or_else(registry_input_error)?;
-        Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            "non-constant schema default expression",
-        ))
-        .with_span(span))
+        let diagnostic = Diagnostic::error("schema field default must be compile-time evaluable")
+            .with_code("compiler::non_constant_schema_default")
+            .with_span(span)
+            .with_label(span, "this default is used by an omitted constructor field");
+        Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
+            vec![diagnostic],
+        )))
     }
 
     pub(super) fn collect_typed_let_boundaries(&mut self, executable: FunctionId, body: &HirBody) {
@@ -142,19 +194,6 @@ pub(super) fn checked_u32(
         input_error(MirBuildError::InconsistentInput {
             origin,
             message: format!("{description} exceeds u32::MAX"),
-        })
-    })
-}
-
-pub(super) fn checked_u16(
-    value: usize,
-    origin: MirSourceOrigin,
-    description: &str,
-) -> CompileResult<u16> {
-    u16::try_from(value).map_err(|_| {
-        input_error(MirBuildError::InconsistentInput {
-            origin,
-            message: format!("{description} exceeds u16::MAX"),
         })
     })
 }
@@ -273,5 +312,38 @@ pub(super) fn pattern_field_names(pattern: &vela_hir::body::HirPattern) -> Vec<S
         | HirPatternKind::Wildcard
         | HirPatternKind::Literal(_)
         | HirPatternKind::Missing => Vec::new(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn missing_analysis_call_target_never_becomes_an_unresolved_fallback() {
+        let expression = HirExprId::new(991);
+        let origin = MirSourceOrigin::body(
+            vela_hir::ids::HirBodyId::new(992),
+            vela_common::Span::new(vela_common::SourceId::new(993), 4, 12),
+        );
+        let error = require_analysis_call_target(None, expression, origin)
+            .expect_err("an absent total-analysis fact must fail compile-target construction");
+        assert_eq!(error.span, Some(origin.span));
+        assert!(matches!(
+            error.kind,
+            CompileErrorKind::MirInput(error)
+                if matches!(
+                    error.as_ref(),
+                    MirBuildError::InconsistentInput { origin: actual, message }
+                        if actual == &origin
+                            && message == "executable analysis is missing a call target for expression HirExprId(991)"
+                )
+        ));
+
+        assert_eq!(
+            require_analysis_call_target(Some(&CallTargetFact::Unresolved), expression, origin)
+                .expect("an explicitly analyzed unresolved path remains a language target"),
+            CallTargetFact::Unresolved
+        );
     }
 }

@@ -626,6 +626,26 @@ fn main(value) {
 }
 
 #[test]
+fn compiler_lowers_named_reflection_args_from_policy_neutral_manifest() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn main(value) {
+    return reflect::get(field = "name", target = value);
+}
+"#,
+    )
+    .expect("the policy-neutral reflection manifest should place named arguments");
+    let main = program.function("main").expect("main function");
+
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::CallNative { name, args, .. }
+            if name == "reflect::get" && args.len() == 2
+    )));
+}
+
+#[test]
 fn compiler_contextualizes_positional_native_args_from_registry() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     let program = compile_program_source_with_registry(

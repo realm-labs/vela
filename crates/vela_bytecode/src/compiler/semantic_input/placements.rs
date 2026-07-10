@@ -10,23 +10,39 @@ use vela_analysis::validation::{
 use vela_common::{PrimitiveTag, ScalarValue};
 use vela_def::{FieldId, FunctionId, TypeId};
 use vela_hir::body::{
-    HirBody, HirBodyOwner, HirExprKind, HirLiteral, HirPathKind, HirPathOwner, HirPatternKind,
+    HirAssignOp, HirBody, HirBodyOwner, HirExprKind, HirLiteral, HirPathKind, HirPathOwner,
+    HirPatternKind,
 };
 use vela_hir::ids::{HirDeclId, HirExprId, HirPatternId};
 use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint, StructFieldHint};
 use vela_mir::{
-    CompileCallTarget, CompileCalleeTarget, CompileConstructorField, CompileConstructorTarget,
-    CompileConstructorValue, CompileDynamicConstructorField, CompileFieldTarget,
-    CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget, CompileMemberTarget,
-    CompilePatternConstructorTarget, CompileReflectionCall, DynamicMethodTarget, HostFieldTarget,
-    HostMethodTarget, MirBuildError, MirSourceOrigin,
+    CompileCallArguments, CompileCallTarget, CompileCalleeTarget, CompileConstructorField,
+    CompileConstructorTarget, CompileConstructorValue, CompileDynamicConstructorField,
+    CompileFieldTarget, CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget,
+    CompileMemberTarget, CompilePatternConstructorTarget, CompilePlacedCallValue,
+    CompileReflectionCall, DynamicMethodTarget, HostFieldTarget, HostMethodTarget, MirBuildError,
+    MirSourceOrigin,
 };
 
-use super::contracts::ContractBoundary;
+use super::contracts::{
+    ContractBoundary, mutation_arg_debug_name, typed_container_mutation_arg_fact,
+};
 use super::external::{external_signature, unresolved_method, unresolved_native};
 use super::schema::{contract_from_fact, registry_hint_contract};
 use super::{GenerationBuilder, input_error, registry_input_error};
 use crate::compiler::error::{CompileError, CompileErrorKind, CompileResult};
+
+fn assignment_field_expression(body: &HirBody, mut expression: HirExprId) -> Option<HirExprId> {
+    loop {
+        match &body.expressions.get(&expression)?.kind {
+            HirExprKind::Paren {
+                expression: Some(inner),
+            } => expression = *inner,
+            HirExprKind::Field(_) => return Some(expression),
+            _ => return None,
+        }
+    }
+}
 
 impl GenerationBuilder<'_, '_> {
     pub(super) fn insert_placements(&mut self) -> CompileResult<()> {
@@ -74,7 +90,61 @@ impl GenerationBuilder<'_, '_> {
                     }
                 }
                 self.collect_typed_let_boundaries(function, &body);
+                self.collect_field_assignment_boundaries(function, &body)?;
             }
+        }
+        Ok(())
+    }
+
+    fn collect_field_assignment_boundaries(
+        &mut self,
+        executable: FunctionId,
+        body: &HirBody,
+    ) -> CompileResult<()> {
+        let assignments = body
+            .expressions
+            .values()
+            .filter_map(|expression| match &expression.kind {
+                HirExprKind::Assign {
+                    op: Some(HirAssignOp::Set),
+                    target: Some(target),
+                    value: Some(value),
+                } => Some((*target, *value)),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        for (target, value) in assignments {
+            let Some(target) = assignment_field_expression(body, target) else {
+                continue;
+            };
+            if !matches!(
+                self.executable_analysis(executable)?.member_target(target),
+                Some(MemberTargetFact::ScriptField { .. })
+            ) {
+                continue;
+            }
+            let Some(contract) = self
+                .executable_analysis(executable)?
+                .expression(target)
+                .and_then(|fact| {
+                    contract_from_fact(
+                        fact,
+                        &self.registry_facts,
+                        self.request.graph,
+                        &self.type_ids,
+                        &self.type_shapes,
+                    )
+                })
+                .and_then(super::schema::meaningful_contract)
+            else {
+                continue;
+            };
+            let name = body
+                .field(target)
+                .map(|field| field.name.clone())
+                .ok_or_else(registry_input_error)?;
+            self.boundaries
+                .push(ContractBoundary::field(executable, value, contract, name));
         }
         Ok(())
     }
@@ -90,11 +160,12 @@ impl GenerationBuilder<'_, '_> {
             .expression_origin(expression)
             .ok_or_else(registry_input_error)?;
         let placement = self.checked_call_placement(executable, call, origin)?;
-        let target = self
-            .executable_analysis(executable)?
-            .call_target(expression)
-            .cloned()
-            .unwrap_or(CallTargetFact::Unresolved);
+        let target = require_analysis_call_target(
+            self.executable_analysis(executable)?
+                .call_target(expression),
+            expression,
+            origin,
+        )?;
 
         if let Some(special) =
             self.host_access_call(executable, body, expression, &target, &placement, origin)?
@@ -283,54 +354,12 @@ impl GenerationBuilder<'_, '_> {
             if self.registry_was_provided {
                 return Err(unresolved_native(path, origin.span));
             }
-            let arguments = self.positional_argument_values(
-                placement,
-                CallPlacementModeFact::ExternalPositional,
+            return Err(input_error(MirBuildError::InconsistentInput {
                 origin,
-            )?;
-            let argument_facts = {
-                let analysis = self.executable_analysis(executable)?;
-                arguments
-                    .iter()
-                    .map(|argument| {
-                        analysis.expression(*argument).cloned().ok_or_else(|| {
-                            input_error(MirBuildError::InconsistentInput {
-                                origin,
-                                message: format!(
-                                    "stdlib call `{path}` is missing an argument type fact"
-                                ),
-                            })
-                        })
-                    })
-                    .collect::<CompileResult<Vec<_>>>()?
-            };
-            // Runtime-only stdlib natives currently lack a neutral manifest
-            // carrying parameter names and effects. Until that Phase 0 owner
-            // lands, accept only an exact argument-sensitive stdlib fact and
-            // retain the runtime-checked descriptor; never synthesize names.
-            vela_analysis::stdlib::stdlib_function_fact(path, &argument_facts).ok_or_else(
-                || {
-                    input_error(MirBuildError::InconsistentInput {
-                        origin,
-                        message: format!(
-                            "resolved external call `{path}` has no authoritative signature"
-                        ),
-                    })
-                },
-            )?;
-            let function = self.ensure_derived_native_function(path, origin)?;
-            let callee = reflection_operation(path).map_or_else(
-                || CompileCalleeTarget::NativeFunction {
-                    function,
-                    debug_name: path.to_owned(),
-                },
-                |operation| CompileCalleeTarget::Reflection {
-                    operation,
-                    function,
-                    debug_name: path.to_owned(),
-                },
-            );
-            return Ok(CompileCallTarget::positional(callee, arguments));
+                message: format!(
+                    "resolved external call `{path}` has no authoritative compile manifest"
+                ),
+            }));
         };
         self.ensure_external_function(definition.id, origin)?;
         let callee = if path == "set::from_array" {
@@ -355,14 +384,24 @@ impl GenerationBuilder<'_, '_> {
                 debug_name: path.to_owned(),
             }
         };
-        self.external_call_target(
-            executable,
-            callee,
-            path,
-            &definition.signature.params,
-            placement,
-            origin,
-        )
+        if matches!(&callee, CompileCalleeTarget::SetFromArray { .. }) {
+            self.set_from_array_call_target(
+                executable,
+                callee,
+                &definition.signature.params,
+                placement,
+                origin,
+            )
+        } else {
+            self.external_call_target(
+                executable,
+                callee,
+                path,
+                &definition.signature.params,
+                placement,
+                origin,
+            )
+        }
     }
 
     fn host_method_call(
@@ -467,6 +506,13 @@ impl GenerationBuilder<'_, '_> {
         let owner = self
             .owner_type_for_expression(executable, field.receiver)
             .ok_or_else(registry_input_error)?;
+        let receiver_fact = match self.direct_declared_receiver_fact(body, field.receiver) {
+            Some(declared) => Some(declared),
+            None => self
+                .executable_analysis(executable)?
+                .expression(field.receiver)
+                .cloned(),
+        };
         let method = match self.catalog.method_by_owner_name(owner, name).cloned() {
             Some(method) => method,
             None => {
@@ -482,7 +528,7 @@ impl GenerationBuilder<'_, '_> {
             }
         };
         self.ensure_external_method(method.id, origin)?;
-        self.external_call_target(
+        let target = self.external_call_target(
             executable,
             CompileCalleeTarget::ValueMethod {
                 owner: method.owner,
@@ -493,7 +539,56 @@ impl GenerationBuilder<'_, '_> {
             &method.signature.params,
             placement,
             origin,
-        )
+        )?;
+        self.insert_typed_container_mutation_contracts(
+            executable,
+            receiver_fact.as_ref(),
+            name,
+            &method.signature.params,
+            &target.arguments,
+            origin,
+        )?;
+        Ok(target)
+    }
+
+    fn insert_typed_container_mutation_contracts(
+        &mut self,
+        executable: FunctionId,
+        receiver: Option<&TypeFact>,
+        method: &str,
+        params: &[vela_registry::ParamDef],
+        arguments: &CompileCallArguments,
+        origin: MirSourceOrigin,
+    ) -> CompileResult<()> {
+        for (index, parameter) in params.iter().enumerate() {
+            let Some(expected) =
+                typed_container_mutation_arg_fact(receiver, method, &parameter.name, index)
+            else {
+                continue;
+            };
+            let Some(contract) = contract_from_fact(
+                &expected,
+                &self.registry_facts,
+                self.request.graph,
+                &self.type_ids,
+                &self.type_shapes,
+            )
+            .and_then(super::schema::meaningful_contract) else {
+                continue;
+            };
+            let Some(expression) = external_parameter_expression(arguments, index) else {
+                continue;
+            };
+            self.replace_native_parameter_boundary(
+                executable,
+                expression,
+                contract,
+                method,
+                mutation_arg_debug_name(method, &parameter.name, index),
+                checked_u32(index, origin, "typed container mutation parameter")?,
+            );
+        }
+        Ok(())
     }
 
     fn dynamic_call(
@@ -789,10 +884,11 @@ impl GenerationBuilder<'_, '_> {
                 CompileMemberTarget::Dynamic { name }
             }
             MemberTargetFact::Unresolved => {
-                return Err(input_error(MirBuildError::InconsistentInput {
-                    origin,
-                    message: format!("unresolved analysis member target for {expression:?}"),
-                }));
+                let name = body
+                    .field(expression)
+                    .map(|field| field.name.clone())
+                    .ok_or_else(registry_input_error)?;
+                CompileMemberTarget::Dynamic { name }
             }
         };
         self.targets
@@ -1056,6 +1152,27 @@ impl GenerationBuilder<'_, '_> {
             }
             _ => None,
         })
+    }
+}
+
+fn external_parameter_expression(
+    arguments: &CompileCallArguments,
+    parameter: usize,
+) -> Option<HirExprId> {
+    match arguments {
+        CompileCallArguments::Positional(values) => values.get(parameter).copied(),
+        CompileCallArguments::ExternalNamed {
+            parameter_slots, ..
+        }
+        | CompileCallArguments::Script {
+            parameter_slots, ..
+        } => parameter_slots
+            .get(parameter)
+            .and_then(|slot| match slot.value {
+                CompilePlacedCallValue::Explicit { value, .. } => Some(value),
+                CompilePlacedCallValue::MissingDefault => None,
+            }),
+        CompileCallArguments::Dynamic(_) => None,
     }
 }
 

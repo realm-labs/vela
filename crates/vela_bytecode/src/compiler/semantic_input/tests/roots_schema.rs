@@ -1,5 +1,7 @@
-use vela_common::{PrimitiveTag, ScalarValue};
-use vela_mir::{CompileGuardKey, MirEvaluatedConstant, MirTypeContract};
+use vela_common::{PrimitiveTag, ScalarValue, Severity};
+use vela_mir::{
+    CompileGuardKey, CompileGuardTarget, MirEvaluatedConstant, MirGuardLocation, MirTypeContract,
+};
 
 use super::{FixtureRoots, prepare_source};
 use crate::compiler::error::CompileErrorKind;
@@ -83,6 +85,97 @@ global current: Any;
 }
 
 #[test]
+fn semantic_guards_retain_true_boundaries_indices_and_clean_names() {
+    let fixture = prepare_source(
+        r#"
+struct Reward { amount: i64 }
+global current: i64;
+fn guarded(dynamic, required: i64, fallback: i64 = dynamic) -> i64 {
+    let local: i64 = dynamic;
+    return fallback;
+}
+"#,
+        FixtureRoots::Program,
+    )
+    .expect("guard boundary metadata should be closed before MIR");
+    let targets = fixture.input.targets();
+    let function = targets
+        .function_for_declaration(fixture.declarations["guarded"])
+        .expect("guarded function descriptor");
+
+    assert_guard_context(
+        targets
+            .guard(CompileGuardKey::Parameter {
+                function,
+                parameter: 1,
+            })
+            .expect("required parameter guard"),
+        MirGuardLocation::Parameter { index: 1 },
+        "required",
+    );
+    assert_guard_context(
+        targets
+            .guard(CompileGuardKey::Parameter {
+                function,
+                parameter: 2,
+            })
+            .expect("defaulted parameter guard"),
+        MirGuardLocation::Parameter { index: 2 },
+        "fallback",
+    );
+    assert_guard_context(
+        targets
+            .guard(CompileGuardKey::Return(function))
+            .expect("return guard"),
+        MirGuardLocation::Return,
+        "return",
+    );
+
+    let global = fixture.declarations["current"];
+    assert_guard_context(
+        targets
+            .guard(CompileGuardKey::Global(global))
+            .expect("global guard"),
+        MirGuardLocation::Global,
+        "current",
+    );
+    let field = targets
+        .type_by_name("script::Reward")
+        .expect("Reward descriptor")
+        .fields[0];
+    assert_guard_context(
+        targets
+            .guard(CompileGuardKey::Field(field))
+            .expect("field guard"),
+        MirGuardLocation::Field,
+        "amount",
+    );
+
+    let function_targets = targets
+        .function_targets(function)
+        .expect("guarded function targets");
+    let expression_guards = fixture
+        .expression_sources
+        .iter()
+        .filter(|(_, _, source)| source == "dynamic")
+        .filter_map(|(_, expression, _)| function_targets.expression_guard(*expression))
+        .collect::<Vec<_>>();
+    assert!(
+        expression_guards.iter().any(|guard| {
+            guard.context.location == MirGuardLocation::Parameter { index: 2 }
+                && guard.context.debug_name == "fallback"
+        }),
+        "the parameter-default guard must retain its owning signature index"
+    );
+    assert!(
+        expression_guards.iter().any(|guard| {
+            guard.context.location == MirGuardLocation::Local && guard.context.debug_name == "local"
+        }),
+        "the typed-let guard must retain its local boundary"
+    );
+}
+
+#[test]
 fn schema_defaults_reuse_the_authoritative_compile_time_value() {
     let fixture = prepare_source(
         r#"
@@ -115,7 +208,7 @@ struct Reward { amount: i64 = BASE + 1 }
 }
 
 #[test]
-fn used_nonconstant_schema_default_keeps_the_frozen_error() {
+fn used_nonconstant_schema_default_is_a_source_spanned_validation_diagnostic() {
     let error = prepare_source(
         r#"
 struct Reward { amount: i64 = math::random() }
@@ -125,9 +218,27 @@ fn main() { return Reward {}; }
     )
     .expect_err("a used runtime schema default must be rejected");
 
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("non-constant schema default expression")
-    ));
-    assert!(error.span.is_some());
+    let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+        panic!("expected semantic diagnostics, got {error:?}");
+    };
+    let [diagnostic] = diagnostics.as_slice() else {
+        panic!("expected one diagnostic, got {diagnostics:?}");
+    };
+    assert_eq!(diagnostic.severity, Severity::Error);
+    assert_eq!(
+        diagnostic.code.as_deref(),
+        Some("compiler::non_constant_schema_default")
+    );
+    assert_eq!(
+        diagnostic.message,
+        "schema field default must be compile-time evaluable"
+    );
+    assert!(diagnostic.span.is_some());
+    assert_eq!(diagnostic.labels.len(), 1);
+    assert_eq!(diagnostic.labels[0].span, diagnostic.span.expect("span"));
+}
+
+fn assert_guard_context(guard: &CompileGuardTarget, location: MirGuardLocation, debug_name: &str) {
+    assert_eq!(guard.context.location, location);
+    assert_eq!(guard.context.debug_name, debug_name);
 }

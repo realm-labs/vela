@@ -5,7 +5,9 @@ use vela_analysis::contracts::{
     ExpectedContractOutcome, check_expected_callable_contract, check_expected_callable_contract_at,
     check_expected_contract, check_expected_contract_at,
 };
-use vela_analysis::literals::{LiteralPrimitiveContext, NumericLiteralUse};
+use vela_analysis::literals::{
+    LiteralPrimitiveContext, NumericLiteralUse, supports_deferred_numeric_literal,
+};
 use vela_analysis::semantic_facts::OperatorTargetFact;
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{PrimitiveTag, Span};
@@ -13,7 +15,8 @@ use vela_def::FunctionId;
 use vela_hir::body::{HirBinaryOp, HirExprKind};
 use vela_hir::ids::HirExprId;
 use vela_mir::{
-    CompileGuardKey, CompileGuardTarget, MirBuildError, MirCallableKind, MirTypeContract,
+    CompileGuardKey, CompileGuardTarget, MirBuildError, MirCallableKind, MirGuardContext,
+    MirGuardLocation, MirTypeContract,
 };
 
 use super::{GenerationBuilder, input_error, registry_input_error};
@@ -25,6 +28,7 @@ pub(super) struct ContractBoundary {
     expression: HirExprId,
     expected: MirTypeContract,
     context: ExpectedContractContext,
+    guard_context: MirGuardContext,
 }
 
 impl ContractBoundary {
@@ -33,12 +37,14 @@ impl ContractBoundary {
         expression: HirExprId,
         expected: MirTypeContract,
         name: String,
+        index: u32,
     ) -> Self {
         Self {
             function,
             expression,
             expected,
-            context: ExpectedContractContext::FunctionParameter { name },
+            context: ExpectedContractContext::FunctionParameter { name: name.clone() },
+            guard_context: MirGuardContext::new(MirGuardLocation::Parameter { index }, name),
         }
     }
 
@@ -48,17 +54,20 @@ impl ContractBoundary {
         expected: MirTypeContract,
         display_function: impl Into<String>,
         name: impl Into<String>,
-        index: u16,
+        index: u32,
     ) -> Self {
+        let display_function = display_function.into();
+        let name = name.into();
         Self {
             function,
             expression,
             expected,
             context: ExpectedContractContext::NativeParameter {
-                function: display_function.into(),
-                name: name.into(),
+                function: display_function,
+                name: name.clone(),
                 index,
             },
+            guard_context: MirGuardContext::new(MirGuardLocation::Parameter { index }, name),
         }
     }
 
@@ -72,7 +81,8 @@ impl ContractBoundary {
             function,
             expression,
             expected,
-            context: ExpectedContractContext::TypedLet { name },
+            context: ExpectedContractContext::TypedLet { name: name.clone() },
+            guard_context: MirGuardContext::new(MirGuardLocation::Local, name),
         }
     }
 
@@ -82,16 +92,50 @@ impl ContractBoundary {
         expected: MirTypeContract,
         name: impl Into<String>,
     ) -> Self {
+        let name = name.into();
         Self {
             function,
             expression,
             expected,
-            context: ExpectedContractContext::Field { name: name.into() },
+            context: ExpectedContractContext::Field { name: name.clone() },
+            guard_context: MirGuardContext::new(MirGuardLocation::Field, name),
         }
+    }
+
+    fn has_native_parameter_site(
+        &self,
+        function: FunctionId,
+        expression: HirExprId,
+        context: &ExpectedContractContext,
+    ) -> bool {
+        self.function == function && self.expression == expression && &self.context == context
     }
 }
 
 impl GenerationBuilder<'_, '_> {
+    pub(super) fn replace_native_parameter_boundary(
+        &mut self,
+        function: FunctionId,
+        expression: HirExprId,
+        expected: MirTypeContract,
+        display_function: impl Into<String>,
+        name: impl Into<String>,
+        index: u32,
+    ) {
+        let replacement = ContractBoundary::native_parameter(
+            function,
+            expression,
+            expected,
+            display_function,
+            name,
+            index,
+        );
+        self.boundaries.retain(|boundary| {
+            !boundary.has_native_parameter_site(function, expression, &replacement.context)
+        });
+        self.boundaries.push(replacement);
+    }
+
     pub(super) fn reject_literal_diagnostics(&self) -> CompileResult<()> {
         let diagnostics = self.literal_diagnostics()?;
         if diagnostics.is_empty() {
@@ -149,12 +193,17 @@ impl GenerationBuilder<'_, '_> {
             }
         }
 
-        let mut checked =
-            BTreeMap::<(FunctionId, HirExprId), (MirTypeContract, ExpectedContractContext)>::new();
+        let mut checked = BTreeMap::<
+            (FunctionId, HirExprId),
+            (MirTypeContract, ExpectedContractContext, MirGuardContext),
+        >::new();
         for boundary in self.boundaries.clone() {
             let key = (boundary.function, boundary.expression);
-            if let Some((expected, context)) = checked.get(&key) {
-                if expected == &boundary.expected && context == &boundary.context {
+            if let Some((expected, context, guard_context)) = checked.get(&key) {
+                if expected == &boundary.expected
+                    && context == &boundary.context
+                    && guard_context == &boundary.guard_context
+                {
                     continue;
                 }
                 let origin = self
@@ -168,7 +217,14 @@ impl GenerationBuilder<'_, '_> {
                     ),
                 }));
             }
-            checked.insert(key, (boundary.expected.clone(), boundary.context.clone()));
+            checked.insert(
+                key,
+                (
+                    boundary.expected.clone(),
+                    boundary.context.clone(),
+                    boundary.guard_context.clone(),
+                ),
+            );
             let actual = self.contract_actual(boundary.function, boundary.expression)?;
             let validation = match &boundary.expected {
                 MirTypeContract::Callable {
@@ -207,7 +263,7 @@ impl GenerationBuilder<'_, '_> {
                                 },
                                 CompileGuardTarget {
                                     contract: boundary.expected,
-                                    debug_name: boundary.context.description(),
+                                    context: boundary.guard_context,
                                 },
                                 origin,
                             )
@@ -245,7 +301,7 @@ impl GenerationBuilder<'_, '_> {
         let mut contexts =
             BTreeMap::<FunctionId, BTreeMap<HirExprId, LiteralPrimitiveContext>>::new();
         for (function, root) in self.selected_executable_roots()? {
-            self.collect_dynamic_literal_contexts(
+            self.collect_binary_literal_contexts(
                 function,
                 &self.executable_body_ids(root),
                 contexts.entry(function).or_default(),
@@ -286,7 +342,7 @@ impl GenerationBuilder<'_, '_> {
         Ok(contexts)
     }
 
-    fn collect_dynamic_literal_contexts(
+    fn collect_binary_literal_contexts(
         &self,
         function: FunctionId,
         bodies: &[vela_hir::ids::HirBodyId],
@@ -300,26 +356,35 @@ impl GenerationBuilder<'_, '_> {
             for expression in body.expressions.values() {
                 let HirExprKind::Binary {
                     op: Some(operation),
-                    lhs,
-                    rhs,
+                    lhs: Some(lhs),
+                    rhs: Some(rhs),
                 } = expression.kind
                 else {
                     continue;
                 };
-                if analysis.operator_target(expression.id) != Some(OperatorTargetFact::Dynamic) {
+                if !supports_deferred_numeric_literal(operation) {
                     continue;
                 }
-                for operand in lhs.into_iter().chain(rhs) {
-                    let Some(literal) = NumericLiteralUse::classify(body, operand) else {
-                        continue;
-                    };
-                    if literal.supports_deferred_operation(operation) {
-                        contexts.insert(
-                            literal.resolution_expression(),
-                            LiteralPrimitiveContext::DeferredDynamic,
-                        );
+                let lhs_literal = NumericLiteralUse::classify(body, lhs);
+                let rhs_literal = NumericLiteralUse::classify(body, rhs);
+                let (peer, literal) = match (lhs_literal, rhs_literal) {
+                    (None, Some(literal)) => (lhs, literal),
+                    (Some(literal), None) => (rhs, literal),
+                    (Some(_), Some(_)) | (None, None) => continue,
+                };
+                let context = match analysis.expression(peer) {
+                    Some(TypeFact::Primitive(primitive)) if primitive.numeric_tag().is_some() => {
+                        LiteralPrimitiveContext::Expected(*primitive)
                     }
-                }
+                    _ if analysis.operator_target(expression.id)
+                        == Some(OperatorTargetFact::Dynamic)
+                        && literal.supports_deferred_operation(operation) =>
+                    {
+                        LiteralPrimitiveContext::DeferredDynamic
+                    }
+                    _ => continue,
+                };
+                contexts.insert(literal.resolution_expression(), context);
             }
         }
         Ok(())
@@ -487,6 +552,144 @@ impl GenerationBuilder<'_, '_> {
                 .ty(type_id)
                 .map(|definition| super::external::source_name(&definition.path))
         })
+    }
+}
+
+pub(super) fn typed_container_mutation_arg_fact(
+    receiver: Option<&TypeFact>,
+    method: &str,
+    param_name: &str,
+    position: usize,
+) -> Option<TypeFact> {
+    let receiver = project_mutation_contract_fact(receiver?)?;
+    match receiver {
+        TypeFact::Array { element } => {
+            match (method, mutation_arg_role(method, param_name, position)) {
+                ("push" | "insert", MutationArgRole::Value) => Some(*element),
+                ("extend", MutationArgRole::Values) => Some(TypeFact::Array { element }),
+                _ => None,
+            }
+        }
+        TypeFact::Map { key, value } => {
+            match (method, mutation_arg_role(method, param_name, position)) {
+                ("set", MutationArgRole::Key)
+                    if !matches!(key.as_ref(), TypeFact::Primitive(PrimitiveTag::String)) =>
+                {
+                    Some(*key)
+                }
+                ("set", MutationArgRole::Value) => Some(*value),
+                ("extend", MutationArgRole::Values) => Some(TypeFact::Map { key, value }),
+                _ => None,
+            }
+        }
+        TypeFact::Set { element } => {
+            match (method, mutation_arg_role(method, param_name, position)) {
+                ("add", MutationArgRole::Value) => Some(*element),
+                ("extend", MutationArgRole::Values) => Some(TypeFact::Set { element }),
+                _ => None,
+            }
+        }
+        TypeFact::Unknown
+        | TypeFact::Never
+        | TypeFact::Any
+        | TypeFact::Primitive(_)
+        | TypeFact::Range
+        | TypeFact::Iterator { .. }
+        | TypeFact::Tuple { .. }
+        | TypeFact::Option { .. }
+        | TypeFact::OptionSome { .. }
+        | TypeFact::OptionNone
+        | TypeFact::Result { .. }
+        | TypeFact::ResultOk { .. }
+        | TypeFact::ResultErr { .. }
+        | TypeFact::Function { .. }
+        | TypeFact::Closure
+        | TypeFact::Record { .. }
+        | TypeFact::LogicalRecord(_)
+        | TypeFact::Enum { .. }
+        | TypeFact::Host { .. }
+        | TypeFact::Trait { .. }
+        | TypeFact::Module { .. }
+        | TypeFact::Union(_) => None,
+    }
+}
+
+fn project_mutation_contract_fact(fact: &TypeFact) -> Option<TypeFact> {
+    Some(match fact {
+        TypeFact::Primitive(primitive) => TypeFact::Primitive(*primitive),
+        TypeFact::Range => TypeFact::Range,
+        TypeFact::Array { element } => TypeFact::array(project_mutation_contract_fact(element)?),
+        TypeFact::Map { key, value } => TypeFact::map(
+            project_mutation_contract_fact(key)?,
+            project_mutation_contract_fact(value)?,
+        ),
+        TypeFact::Set { element } => TypeFact::set(project_mutation_contract_fact(element)?),
+        TypeFact::Iterator { item } => TypeFact::iterator(project_mutation_contract_fact(item)?),
+        TypeFact::Tuple { elements } => TypeFact::tuple(
+            elements
+                .iter()
+                .map(project_mutation_contract_fact)
+                .collect::<Option<Vec<_>>>()?,
+        ),
+        TypeFact::Option { some } | TypeFact::OptionSome { some } => {
+            TypeFact::option(project_mutation_contract_fact(some)?)
+        }
+        TypeFact::OptionNone => TypeFact::option(TypeFact::Unknown),
+        TypeFact::Result { ok, err } => TypeFact::result(
+            project_mutation_contract_fact(ok)?,
+            project_mutation_contract_fact(err)?,
+        ),
+        TypeFact::ResultOk { .. } | TypeFact::ResultErr { .. } => {
+            TypeFact::result(TypeFact::Unknown, TypeFact::Unknown)
+        }
+        TypeFact::Function { .. } => TypeFact::function(Vec::new(), TypeFact::Unknown),
+        TypeFact::Closure => TypeFact::Closure,
+        TypeFact::Unknown
+        | TypeFact::Never
+        | TypeFact::Any
+        | TypeFact::Record { .. }
+        | TypeFact::LogicalRecord(_)
+        | TypeFact::Enum { .. }
+        | TypeFact::Host { .. }
+        | TypeFact::Trait { .. }
+        | TypeFact::Module { .. }
+        | TypeFact::Union(_) => return None,
+    })
+}
+
+pub(super) fn mutation_arg_debug_name(method: &str, param_name: &str, position: usize) -> String {
+    if param_name.is_empty() {
+        match mutation_arg_role(method, param_name, position) {
+            MutationArgRole::Key => "key",
+            MutationArgRole::Value => "value",
+            MutationArgRole::Values => "values",
+            MutationArgRole::Other => "argument",
+        }
+        .to_owned()
+    } else {
+        param_name.to_owned()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum MutationArgRole {
+    Key,
+    Value,
+    Values,
+    Other,
+}
+
+fn mutation_arg_role(method: &str, param_name: &str, position: usize) -> MutationArgRole {
+    match param_name {
+        "key" => MutationArgRole::Key,
+        "value" => MutationArgRole::Value,
+        "values" => MutationArgRole::Values,
+        _ => match (method, position) {
+            ("set", 0) => MutationArgRole::Key,
+            ("set", 1) | ("insert", 1) | ("push", 0) | ("add", 0) => MutationArgRole::Value,
+            ("extend", 0) => MutationArgRole::Values,
+            _ => MutationArgRole::Other,
+        },
     }
 }
 

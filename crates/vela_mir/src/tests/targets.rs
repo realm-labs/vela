@@ -5,6 +5,21 @@ use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId};
 use crate::*;
 
 #[test]
+fn mir_guard_context_keeps_parameter_indices_backend_neutral() {
+    let index = u32::from(u16::MAX) + 1;
+    let guard = CompileGuardTarget::new(
+        MirTypeContract::Primitive(PrimitiveTag::I64),
+        MirGuardLocation::Parameter { index },
+        "value",
+    );
+
+    assert_eq!(
+        guard.context,
+        MirGuardContext::new(MirGuardLocation::Parameter { index }, "value")
+    );
+}
+
+#[test]
 fn compile_targets_retain_opaque_external_dispatch_owners() {
     let origin = MirSourceOrigin::declaration(
         HirDeclId::new(299),
@@ -161,14 +176,16 @@ fn executable_placements_are_scoped_by_stable_function_identity() {
     let second_member = CompileMemberTarget::Dynamic {
         name: "second".to_owned(),
     };
-    let first_guard = CompileGuardTarget {
-        contract: MirTypeContract::Primitive(PrimitiveTag::I64),
-        debug_name: "first value".to_owned(),
-    };
-    let second_guard = CompileGuardTarget {
-        contract: MirTypeContract::Primitive(PrimitiveTag::String),
-        debug_name: "second value".to_owned(),
-    };
+    let first_guard = CompileGuardTarget::new(
+        MirTypeContract::Primitive(PrimitiveTag::I64),
+        MirGuardLocation::Local,
+        "first_value",
+    );
+    let second_guard = CompileGuardTarget::new(
+        MirTypeContract::Primitive(PrimitiveTag::String),
+        MirGuardLocation::Field,
+        "second_value",
+    );
     let mut snapshot = CompileTargetSnapshot::builder();
     snapshot
         .insert_call(first_function, expression, first_call.clone(), origin)

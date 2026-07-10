@@ -121,6 +121,7 @@ impl GenerationBuilder<'_, '_> {
                                 value,
                                 contract,
                                 parameter.name.clone(),
+                                checked_u32(index, origin, "script call parameter guard")?,
                             ));
                         }
                         CompilePlacedCallArgument::placed(
@@ -267,6 +268,72 @@ impl GenerationBuilder<'_, '_> {
         }
     }
 
+    pub(super) fn set_from_array_call_target(
+        &mut self,
+        executable: FunctionId,
+        callee: CompileCalleeTarget,
+        params: &[vela_registry::ParamDef],
+        placement: &CallArgumentPlacementFact,
+        origin: MirSourceOrigin,
+    ) -> CompileResult<CompileCallTarget> {
+        let target = self.external_call_target(
+            executable,
+            callee,
+            "set::from_array",
+            params,
+            placement,
+            origin,
+        )?;
+        let value = match &target.arguments {
+            CompileCallArguments::Positional(values) => {
+                let [value] = values.as_slice() else {
+                    return Err(placement_error(
+                        origin,
+                        "set::from_array requires exactly one source operand",
+                    ));
+                };
+                *value
+            }
+            CompileCallArguments::ExternalNamed {
+                evaluation_order,
+                parameter_slots,
+            } => {
+                let ([evaluation_value], [slot]) =
+                    (evaluation_order.as_slice(), parameter_slots.as_slice())
+                else {
+                    return Err(placement_error(
+                        origin,
+                        "set::from_array named placement must own one source operand",
+                    ));
+                };
+                let CompilePlacedCallValue::Explicit {
+                    source_index: 0,
+                    value,
+                } = slot.value
+                else {
+                    return Err(placement_error(
+                        origin,
+                        "set::from_array named placement must fill its values parameter",
+                    ));
+                };
+                if slot.parameter != 0 || value != *evaluation_value {
+                    return Err(placement_error(
+                        origin,
+                        "set::from_array named placement disagrees with source evaluation order",
+                    ));
+                }
+                value
+            }
+            CompileCallArguments::Script { .. } | CompileCallArguments::Dynamic(_) => {
+                return Err(placement_error(
+                    origin,
+                    "set::from_array has incompatible call argument placement",
+                ));
+            }
+        };
+        Ok(CompileCallTarget::positional(target.callee, vec![value]))
+    }
+
     fn push_external_boundary(
         &mut self,
         executable: FunctionId,
@@ -288,7 +355,7 @@ impl GenerationBuilder<'_, '_> {
                 contract,
                 debug_function,
                 &parameter.name,
-                checked_u16(index, origin, "native parameter index")?,
+                checked_u32(index, origin, "native parameter index")?,
             ));
         }
         Ok(())

@@ -4,6 +4,7 @@ use vela_hir::ids::HirExprId;
 use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
 
 use super::CallTargetFact;
+use super::local_flow::refine_local_fact;
 use crate::facts::AnalysisFacts;
 use crate::registry::RegistryFacts;
 use crate::type_fact::TypeFact;
@@ -40,6 +41,7 @@ fn main() {
     42.trim();
     42.touch(arg = 0);
 }
+
 "#;
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
@@ -114,6 +116,131 @@ fn main() {
         Some(CallTargetFact::RegistryMethod { owner, name })
             if owner == "I64" && name == "touch"
     ));
+}
+
+#[test]
+fn erased_collection_annotations_retain_initializer_and_assignment_shapes() {
+    let source = SourceId::new(85);
+    let text = r#"
+fn main() {
+    let values: Array = [21, 11, 10, 12, 13];
+    let groups: Map = values.group_by(|value| if value % 2 == 0 {
+        "even"
+    } else {
+        "odd"
+    });
+    groups["odd"].count(|value| value > 12);
+
+    let reassigned: Array = [];
+    reassigned = [1, 2, 3];
+    reassigned.count(|value| value > 1);
+
+    let branched: Array = [];
+    if true { branched = [4, 5]; }
+    branched.count(|value| value > 4);
+
+    let rows = [[1, 2], [3, 4]];
+    rows.map(|row: Array| row.count(|value| value > 1));
+}
+"#;
+    let mut graph = ModuleGraph::new();
+    graph.add_source(ModuleSource::new(
+        source,
+        ModulePath::from_qualified("game"),
+        text,
+    ));
+    graph.resolve_imports();
+    assert_eq!(graph.diagnostics(), &[]);
+
+    let facts = AnalysisFacts::from_module_graph(&graph);
+    let function = graph
+        .declarations()
+        .find(|declaration| declaration.name == "main")
+        .expect("main declaration");
+    let groups = graph
+        .bindings(function.id)
+        .expect("main bindings")
+        .locals()
+        .find(|local| local.name == "groups")
+        .expect("groups local");
+    let groups_pattern = graph
+        .bodies()
+        .flat_map(|body| body.patterns.values())
+        .find(|pattern| pattern.local() == Some(groups.id))
+        .expect("groups binding pattern");
+    let groups_fact = TypeFact::map(TypeFact::STRING, TypeFact::array(TypeFact::I64));
+    assert_eq!(facts.local(groups.id), Some(&groups_fact));
+    assert_eq!(
+        facts
+            .locals()
+            .find_map(|(local, fact)| (local == groups.id).then_some(fact)),
+        Some(&groups_fact)
+    );
+    assert_eq!(facts.pattern(groups_pattern.id), Some(&groups_fact));
+
+    let grouped_count = expression_exact(
+        &graph,
+        source,
+        text,
+        "groups[\"odd\"].count(|value| value > 12)",
+    );
+    let reassigned_count =
+        expression_exact(&graph, source, text, "reassigned.count(|value| value > 1)");
+    for call in [grouped_count, reassigned_count] {
+        assert_eq!(
+            receiver_fact(&graph, &facts, call),
+            Some(&TypeFact::array(TypeFact::I64))
+        );
+        assert!(matches!(
+            facts.call_target(call),
+            Some(CallTargetFact::StdlibMethod { name }) if name == "count"
+        ));
+    }
+    let branched_count =
+        expression_exact(&graph, source, text, "branched.count(|value| value > 4)");
+    assert_eq!(
+        receiver_fact(&graph, &facts, branched_count),
+        Some(&TypeFact::array(TypeFact::Unknown))
+    );
+    assert!(matches!(
+        facts.call_target(branched_count),
+        Some(CallTargetFact::StdlibMethod { name }) if name == "count"
+    ));
+    let typed_callback_count =
+        expression_exact(&graph, source, text, "row.count(|value| value > 1)");
+    assert_eq!(
+        receiver_fact(&graph, &facts, typed_callback_count),
+        Some(&TypeFact::array(TypeFact::I64))
+    );
+    assert!(matches!(
+        facts.call_target(typed_callback_count),
+        Some(CallTargetFact::StdlibMethod { name }) if name == "count"
+    ));
+}
+
+#[test]
+fn local_refinement_preserves_dynamic_boundaries_and_declared_sum_families() {
+    assert_eq!(
+        refine_local_fact(
+            &TypeFact::map(TypeFact::STRING, TypeFact::array(TypeFact::Any)),
+            TypeFact::map(TypeFact::STRING, TypeFact::array(TypeFact::I64)),
+        ),
+        TypeFact::map(TypeFact::STRING, TypeFact::array(TypeFact::Any)),
+    );
+    assert_eq!(
+        refine_local_fact(
+            &TypeFact::option(TypeFact::Unknown),
+            TypeFact::option_some(TypeFact::I64),
+        ),
+        TypeFact::option(TypeFact::I64),
+    );
+    assert_eq!(
+        refine_local_fact(
+            &TypeFact::result(TypeFact::Unknown, TypeFact::STRING),
+            TypeFact::result_ok(TypeFact::I64),
+        ),
+        TypeFact::result(TypeFact::I64, TypeFact::STRING),
+    );
 }
 
 fn receiver_fact<'a>(

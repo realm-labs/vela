@@ -602,12 +602,13 @@ fn mir_model_snapshot_owns_method_signatures_and_guard_contracts() {
         function: FunctionId::new(214),
         expression: HirExprId::new(216),
     };
-    let guard = CompileGuardTarget {
-        contract: MirTypeContract::Array(Some(Box::new(MirTypeContract::Primitive(
+    let guard = CompileGuardTarget::new(
+        MirTypeContract::Array(Some(Box::new(MirTypeContract::Primitive(
             PrimitiveTag::I64,
         )))),
-        debug_name: "values".to_owned(),
-    };
+        MirGuardLocation::Local,
+        "values",
+    );
     let signature = CompileSignature {
         parameters: vec![CompileParameter {
             name: "value".to_owned(),
@@ -785,8 +786,16 @@ fn mir_model_dump_distinguishes_callable_kinds_and_erased_arity() {
         kind: MirParameterKind::Explicit(vela_hir::ids::HirParamId::new(226)),
         name: "callback".to_owned(),
         value_type: MirValueType::Dynamic,
-        contract: Some(closure_contract),
+        contract: Some(closure_contract.clone()),
         default_body: None,
+        origin,
+    });
+    function.add_guard(MirGuard {
+        assumption: MirGuardAssumption::Type(closure_contract),
+        context: Some(MirGuardContext::new(
+            MirGuardLocation::Parameter { index: 0 },
+            "callback",
+        )),
         origin,
     });
     let mut program = MirProgram::new(MirTargetTable::default());
@@ -797,6 +806,9 @@ fn mir_model_dump_distinguishes_callable_kinds_and_erased_arity() {
     let dump = program.dump();
     assert!(dump.contains("return: Callable { kind: Function, positional_arity: None }"));
     assert!(dump.contains("contract=Some(Callable { kind: Closure, positional_arity: Some(0) })"));
+    assert!(dump.contains(
+        "guard g0: Type(Callable { kind: Closure, positional_arity: Some(0) }) at Parameter { index: 0 } name=\"callback\""
+    ));
 }
 
 #[test]

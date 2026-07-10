@@ -111,7 +111,7 @@ pub enum ExpectedContractContext {
     NativeParameter {
         function: String,
         name: String,
-        index: u16,
+        index: u32,
     },
     TypedLet {
         name: String,
@@ -252,24 +252,17 @@ pub fn check_expected_contract(
     }
 
     match actual {
-        ContractActual::Exact(actual) if actual == expected => Ok(ExpectedContractOutcome::Proven),
-        ContractActual::Exact(TypeFact::Never) => Ok(ExpectedContractOutcome::Proven),
-        ContractActual::Exact(actual) if fact_requires_runtime_proof(&actual) => {
-            Ok(ExpectedContractOutcome::RequiresRuntimeGuard(expected))
-        }
-        ContractActual::Exact(actual) if accepts_erased_expected(&actual, &expected) => {
-            Ok(ExpectedContractOutcome::Proven)
-        }
-        ContractActual::Exact(actual)
-            if erased_actual_matches_parameterized(&actual, &expected) =>
-        {
-            Ok(ExpectedContractOutcome::RequiresRuntimeGuard(expected))
-        }
-        ContractActual::Exact(actual) => Err(Box::new(ContractMismatch {
-            expected,
-            actual: ContractActual::Exact(actual),
-            context,
-        })),
+        ContractActual::Exact(actual) => match contract_relation(&actual, &expected) {
+            ContractRelation::Proven => Ok(ExpectedContractOutcome::Proven),
+            ContractRelation::RequiresRuntimeGuard => {
+                Ok(ExpectedContractOutcome::RequiresRuntimeGuard(expected))
+            }
+            ContractRelation::Mismatch => Err(Box::new(ContractMismatch {
+                expected,
+                actual: ContractActual::Exact(actual),
+                context,
+            })),
+        },
         ContractActual::DeferredNumeric(kind)
             if expected_primitive(&expected).is_some_and(|tag| kind.accepts_primitive(tag)) =>
         {
@@ -449,47 +442,27 @@ fn fact_requires_runtime_proof(actual: &TypeFact) -> bool {
     )
 }
 
-fn accepts_erased_expected(actual: &TypeFact, expected: &TypeFact) -> bool {
-    parameterized_outer_matches_erased(actual, expected)
-        || matches!(
-            (actual, expected),
-            (TypeFact::Closure, TypeFact::Function { params, returns })
-                if params.is_empty() && contract_is_erased(returns)
-        )
-        || matches!(
-            (actual, expected),
-            (TypeFact::OptionSome { .. } | TypeFact::OptionNone, TypeFact::Option { some })
-                if contract_is_erased(some)
-        )
-        || matches!(
-            (actual, expected),
-            (TypeFact::ResultOk { .. } | TypeFact::ResultErr { .. }, TypeFact::Result { ok, err })
-                if contract_is_erased(ok) && contract_is_erased(err)
-        )
-        || matches!(
-            (actual, expected),
-            (
-                TypeFact::Enum {
-                    name: actual_name,
-                    variant: Some(_),
-                },
-                TypeFact::Enum {
-                    name: expected_name,
-                    variant: None,
-                },
-            ) if actual_name == expected_name
-        )
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ContractRelation {
+    Proven,
+    RequiresRuntimeGuard,
+    Mismatch,
 }
 
-fn erased_actual_matches_parameterized(actual: &TypeFact, expected: &TypeFact) -> bool {
-    matches!(
-        (actual, expected),
-        (
-            TypeFact::Array { element: actual },
-            TypeFact::Array { element: expected },
-        ) if contract_is_erased(actual) && !contract_is_erased(expected)
-    ) || matches!(
-        (actual, expected),
+fn contract_relation(actual: &TypeFact, expected: &TypeFact) -> ContractRelation {
+    if contract_is_erased(expected) || actual == expected || matches!(actual, TypeFact::Never) {
+        return ContractRelation::Proven;
+    }
+    if fact_requires_runtime_proof(actual) {
+        return ContractRelation::RequiresRuntimeGuard;
+    }
+
+    match (actual, expected) {
+        (TypeFact::Array { element: actual }, TypeFact::Array { element: expected })
+        | (TypeFact::Set { element: actual }, TypeFact::Set { element: expected })
+        | (TypeFact::Iterator { item: actual }, TypeFact::Iterator { item: expected }) => {
+            contract_relation(actual, expected)
+        }
         (
             TypeFact::Map {
                 key: actual_key,
@@ -499,29 +472,26 @@ fn erased_actual_matches_parameterized(actual: &TypeFact, expected: &TypeFact) -
                 key: expected_key,
                 value: expected_value,
             },
-        ) if contract_is_erased(actual_key)
-            && contract_is_erased(actual_value)
-            && !(contract_is_erased(expected_key) && contract_is_erased(expected_value))
-    ) || matches!(
-        (actual, expected),
-        (
-            TypeFact::Set { element: actual },
-            TypeFact::Set { element: expected },
-        ) if contract_is_erased(actual) && !contract_is_erased(expected)
-    ) || matches!(
-        (actual, expected),
-        (
-            TypeFact::Iterator { item: actual },
-            TypeFact::Iterator { item: expected },
-        ) if contract_is_erased(actual) && !contract_is_erased(expected)
-    ) || matches!(
-        (actual, expected),
-        (
-            TypeFact::Option { some: actual },
-            TypeFact::Option { some: expected },
-        ) if contract_is_erased(actual) && !contract_is_erased(expected)
-    ) || matches!(
-        (actual, expected),
+        ) => combine_contract_relations([
+            contract_relation(actual_key, expected_key),
+            contract_relation(actual_value, expected_value),
+        ]),
+        (TypeFact::Tuple { elements: actual }, TypeFact::Tuple { elements: expected })
+            if actual.len() == expected.len() =>
+        {
+            combine_contract_relations(
+                actual
+                    .iter()
+                    .zip(expected)
+                    .map(|(actual, expected)| contract_relation(actual, expected)),
+            )
+        }
+        (TypeFact::Option { some: actual }, TypeFact::Option { some: expected })
+        | (TypeFact::OptionSome { some: actual }, TypeFact::Option { some: expected })
+        | (TypeFact::OptionSome { some: actual }, TypeFact::OptionSome { some: expected }) => {
+            contract_relation(actual, expected)
+        }
+        (TypeFact::OptionNone, TypeFact::Option { .. }) => ContractRelation::Proven,
         (
             TypeFact::Result {
                 ok: actual_ok,
@@ -531,66 +501,54 @@ fn erased_actual_matches_parameterized(actual: &TypeFact, expected: &TypeFact) -
                 ok: expected_ok,
                 err: expected_err,
             },
-        ) if contract_is_erased(actual_ok)
-            && contract_is_erased(actual_err)
-            && !(contract_is_erased(expected_ok) && contract_is_erased(expected_err))
-    )
+        ) => combine_contract_relations([
+            contract_relation(actual_ok, expected_ok),
+            contract_relation(actual_err, expected_err),
+        ]),
+        (TypeFact::ResultOk { ok: actual }, TypeFact::Result { ok: expected, .. })
+        | (TypeFact::ResultOk { ok: actual }, TypeFact::ResultOk { ok: expected }) => {
+            contract_relation(actual, expected)
+        }
+        (TypeFact::ResultErr { err: actual }, TypeFact::Result { err: expected, .. })
+        | (TypeFact::ResultErr { err: actual }, TypeFact::ResultErr { err: expected }) => {
+            contract_relation(actual, expected)
+        }
+        (
+            TypeFact::Enum {
+                name: actual_name,
+                variant: actual_variant,
+            },
+            TypeFact::Enum {
+                name: expected_name,
+                variant: expected_variant,
+            },
+        ) if actual_name == expected_name => match (actual_variant, expected_variant) {
+            (_, None) => ContractRelation::Proven,
+            (None, Some(_)) => ContractRelation::RequiresRuntimeGuard,
+            (Some(actual), Some(expected)) if actual == expected => ContractRelation::Proven,
+            (Some(_), Some(_)) => ContractRelation::Mismatch,
+        },
+        _ => ContractRelation::Mismatch,
+    }
 }
 
-fn parameterized_outer_matches_erased(actual: &TypeFact, expected: &TypeFact) -> bool {
-    matches!(
-        (actual, expected),
-        (
-            TypeFact::Array { element: actual },
-            TypeFact::Array { element: expected },
-        ) if !contract_is_erased(actual) && contract_is_erased(expected)
-    ) || matches!(
-        (actual, expected),
-        (
-            TypeFact::Map {
-                key: actual_key,
-                value: actual_value,
-            },
-            TypeFact::Map {
-                key: expected_key,
-                value: expected_value,
-            },
-        ) if !(contract_is_erased(actual_key) && contract_is_erased(actual_value))
-            && contract_is_erased(expected_key)
-            && contract_is_erased(expected_value)
-    ) || matches!(
-        (actual, expected),
-        (
-            TypeFact::Set { element: actual },
-            TypeFact::Set { element: expected },
-        ) if !contract_is_erased(actual) && contract_is_erased(expected)
-    ) || matches!(
-        (actual, expected),
-        (
-            TypeFact::Iterator { item: actual },
-            TypeFact::Iterator { item: expected },
-        ) if !contract_is_erased(actual) && contract_is_erased(expected)
-    ) || matches!(
-        (actual, expected),
-        (
-            TypeFact::Option { some: actual },
-            TypeFact::Option { some: expected },
-        ) if !contract_is_erased(actual) && contract_is_erased(expected)
-    ) || matches!(
-        (actual, expected),
-        (
-            TypeFact::Result {
-                ok: actual_ok,
-                err: actual_err,
-            },
-            TypeFact::Result {
-                ok: expected_ok,
-                err: expected_err,
-            },
-        ) if !(contract_is_erased(actual_ok) && contract_is_erased(actual_err))
-            && contract_is_erased(expected_ok)
-            && contract_is_erased(expected_err)
-    )
+fn combine_contract_relations(
+    relations: impl IntoIterator<Item = ContractRelation>,
+) -> ContractRelation {
+    relations
+        .into_iter()
+        .fold(ContractRelation::Proven, |combined, relation| {
+            match (combined, relation) {
+                (ContractRelation::Mismatch, _) | (_, ContractRelation::Mismatch) => {
+                    ContractRelation::Mismatch
+                }
+                (ContractRelation::RequiresRuntimeGuard, _)
+                | (_, ContractRelation::RequiresRuntimeGuard) => {
+                    ContractRelation::RequiresRuntimeGuard
+                }
+                (ContractRelation::Proven, ContractRelation::Proven) => ContractRelation::Proven,
+            }
+        })
 }
 
 fn contract_type_display(contract: &TypeFact) -> String {

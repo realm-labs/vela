@@ -57,6 +57,16 @@ pub(super) fn record_body(
                     (CallPlacementModeFact::Unresolved, None)
                 }
             }
+            PlacementPolicy::ExactExternal(signature) => {
+                let slots =
+                    resolve_arguments(&signature, &source_order, call_span, &mut call_diagnostics);
+                let mode = if source_order.iter().all(|argument| argument.name.is_none()) {
+                    CallPlacementModeFact::ExternalPositional
+                } else {
+                    CallPlacementModeFact::ExternalNamed
+                };
+                (mode, slots)
+            }
             PlacementPolicy::Dynamic => (CallPlacementModeFact::Dynamic, None),
             PlacementPolicy::Positional => {
                 reject_named_positional_arguments(&source_order, &mut call_diagnostics);
@@ -83,6 +93,7 @@ pub(super) fn record_body(
 enum PlacementPolicy {
     Strict(CallableSignatureFact),
     External(Option<CallableSignatureFact>),
+    ExactExternal(CallableSignatureFact),
     Dynamic,
     Positional,
     Unresolved,
@@ -108,9 +119,17 @@ fn placement_policy(
             .map_or(PlacementPolicy::Unresolved, PlacementPolicy::Strict),
         CallTargetFact::RegistryFunction { path }
         | CallTargetFact::NativeFunction { path }
-        | CallTargetFact::StdlibFunction { path } => PlacementPolicy::External(
-            schema.and_then(|schema| schema.function_signature_fact(path).cloned()),
-        ),
+        | CallTargetFact::StdlibFunction { path } => {
+            let signature = schema.and_then(|schema| schema.function_signature_fact(path).cloned());
+            if path == "set::from_array" {
+                signature.map_or(
+                    PlacementPolicy::External(None),
+                    PlacementPolicy::ExactExternal,
+                )
+            } else {
+                PlacementPolicy::External(signature)
+            }
+        }
         CallTargetFact::HostMethod { owner, name }
         | CallTargetFact::RegistryMethod { owner, name } => PlacementPolicy::External(
             schema.and_then(|schema| registry_method_signature(schema, owner, name)),

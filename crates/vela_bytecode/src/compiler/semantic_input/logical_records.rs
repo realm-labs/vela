@@ -1,7 +1,7 @@
 use vela_analysis::logical_records::{LogicalRecordFact, LogicalRecordKind};
 use vela_mir::{
     CompileFieldAccess, CompileFieldDescriptor, CompileGuardKey, CompileGuardTarget,
-    CompileTypeClass, CompileTypeDescriptor, MirSourceOrigin,
+    CompileTypeClass, CompileTypeDescriptor, MirGuardLocation, MirSourceOrigin,
 };
 
 use super::schema::{contract_from_fact, meaningful_contract};
@@ -65,10 +65,7 @@ impl GenerationBuilder<'_, '_> {
             if let Some(contract) = contract {
                 self.insert_guard_once(
                     CompileGuardKey::Field(field.id()),
-                    CompileGuardTarget {
-                        contract,
-                        debug_name: format!("{}::{}", manifest.runtime_name(), field.name()),
-                    },
+                    CompileGuardTarget::new(contract, MirGuardLocation::Field, field.name()),
                     origin,
                 )?;
             }
