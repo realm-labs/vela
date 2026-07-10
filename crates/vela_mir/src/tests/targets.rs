@@ -161,6 +161,35 @@ fn mir_model_compile_snapshot_owns_source_identity_and_diagnostic_origins() {
             origin,
         )
         .expect("script type identity should be inserted atomically");
+    let referenced_declaration = HirDeclId::new(329);
+    let referenced_function = FunctionId::new(330);
+    snapshot
+        .insert_script_function_descriptor(
+            referenced_declaration,
+            CompileFunctionDescriptor {
+                id: referenced_function,
+                class: CompileFunctionClass::Script,
+                canonical_symbol: "game::helper".to_owned(),
+                debug_name: "helper".to_owned(),
+                signature: CompileSignature {
+                    parameters: Vec::new(),
+                    positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
+                    return_contract: None,
+                    effect: MirEffect::PURE,
+                },
+            },
+            origin,
+        )
+        .expect("non-root script functions still need stable call descriptors");
+    let referenced_method = MethodExecutableTarget {
+        method: MethodId::new(331),
+        function: FunctionId::new(332),
+        owner: type_id,
+        node: HirNodeId::new(333),
+    };
+    snapshot
+        .insert_script_method_target(referenced_method, origin)
+        .expect("non-root methods still need stable call targets");
     let snapshot = snapshot.build();
 
     assert_eq!(
@@ -168,6 +197,14 @@ fn mir_model_compile_snapshot_owns_source_identity_and_diagnostic_origins() {
         Some(function)
     );
     assert_eq!(snapshot.method_for_node(method.node), Some(method));
+    assert_eq!(
+        snapshot.function_for_declaration(referenced_declaration),
+        Some(referenced_function)
+    );
+    assert_eq!(
+        snapshot.method_for_node(referenced_method.node),
+        Some(referenced_method)
+    );
     assert_eq!(
         snapshot.type_for_declaration(type_declaration),
         Some(type_id)

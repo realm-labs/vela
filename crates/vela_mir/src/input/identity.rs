@@ -44,6 +44,23 @@ impl CompileTargetSnapshotBuilder {
         descriptor: CompileFunctionDescriptor,
         origin: MirSourceOrigin,
     ) -> Result<(), MirBuildError> {
+        let function = descriptor.id;
+        if self.snapshot.functions.contains_key(&function) {
+            return Err(inconsistent(
+                origin,
+                format!("duplicate script function root #{}", function.get()),
+            ));
+        }
+        self.insert_script_function_descriptor(declaration, descriptor, origin)?;
+        self.insert_function(body, CompileFunctionIdentity::Function(function), origin)
+    }
+
+    pub fn insert_script_function_descriptor(
+        &mut self,
+        declaration: HirDeclId,
+        descriptor: CompileFunctionDescriptor,
+        origin: MirSourceOrigin,
+    ) -> Result<(), MirBuildError> {
         if self
             .snapshot
             .functions_by_declaration
@@ -55,16 +72,13 @@ impl CompileTargetSnapshotBuilder {
             ));
         }
         let function = descriptor.id;
-        if self.snapshot.functions.contains_key(&function)
-            || self.snapshot.function_descriptor(function).is_some()
-        {
+        if self.snapshot.function_descriptor(function).is_some() {
             return Err(inconsistent(
                 origin,
                 format!("duplicate script function #{}", function.get()),
             ));
         }
         self.insert_function_descriptor(descriptor, origin)?;
-        self.insert_function(body, CompileFunctionIdentity::Function(function), origin)?;
         self.snapshot
             .functions_by_declaration
             .insert(declaration, function);
@@ -77,13 +91,36 @@ impl CompileTargetSnapshotBuilder {
         target: MethodExecutableTarget,
         origin: MirSourceOrigin,
     ) -> Result<(), MirBuildError> {
+        if self.snapshot.functions.contains_key(&target.function)
+            || self.snapshot.functions.values().any(|existing| {
+                matches!(
+                    existing.identity,
+                    CompileFunctionIdentity::Method(method)
+                        if method.owner == target.owner && method.method == target.method
+                )
+            })
+        {
+            return Err(inconsistent(
+                origin,
+                format!("duplicate script method root #{}", target.function.get()),
+            ));
+        }
+        self.insert_script_method_target(target, origin)?;
+        self.insert_function(body, CompileFunctionIdentity::Method(target), origin)?;
+        Ok(())
+    }
+
+    pub fn insert_script_method_target(
+        &mut self,
+        target: MethodExecutableTarget,
+        origin: MirSourceOrigin,
+    ) -> Result<(), MirBuildError> {
         if self.snapshot.methods_by_node.contains_key(&target.node) {
             return Err(inconsistent(
                 origin,
                 format!("duplicate script method node {:?}", target.node),
             ));
         }
-        self.insert_function(body, CompileFunctionIdentity::Method(target), origin)?;
         self.snapshot.methods_by_node.insert(target.node, target);
         Ok(())
     }
