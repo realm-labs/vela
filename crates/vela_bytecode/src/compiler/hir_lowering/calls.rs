@@ -1,5 +1,15 @@
 use super::*;
 
+struct HirMethodArguments<'a> {
+    method: &'a str,
+    receiver_type: Option<&'a RuntimeTypeFact>,
+    receiver_shape: Option<&'a ValueShape>,
+    params: &'a [ParamHint],
+    arguments: &'a [vela_hir::body::HirArgument],
+    call_span: Span,
+    preserve_missing_defaults: bool,
+}
+
 impl Compiler<'_, '_> {
     pub(in crate::compiler) fn compile_hir_call(
         &mut self,
@@ -92,15 +102,15 @@ impl Compiler<'_, '_> {
                     .into_iter()
                     .skip(1)
                     .collect::<Vec<_>>();
-                let args = self.compile_hir_method_arguments(
-                    &field.name,
-                    value_receiver_type.as_ref(),
-                    receiver_shape.as_ref(),
-                    &params,
-                    &call.arguments,
-                    span,
-                    true,
-                )?;
+                let args = self.compile_hir_method_arguments(HirMethodArguments {
+                    method: &field.name,
+                    receiver_type: value_receiver_type.as_ref(),
+                    receiver_shape: receiver_shape.as_ref(),
+                    params: &params,
+                    arguments: &call.arguments,
+                    call_span: span,
+                    preserve_missing_defaults: true,
+                })?;
                 self.emit_spanned(
                     UnlinkedInstructionKind::CallMethodId {
                         dst,
@@ -121,15 +131,15 @@ impl Compiler<'_, '_> {
                     .registry_value_method_params(value_receiver_type.as_ref(), &field.name)
                     .map(|params| registry_param_hints(params, span))
                     .unwrap_or_default();
-                let args = self.compile_hir_method_arguments(
-                    &field.name,
-                    value_receiver_type.as_ref(),
-                    receiver_shape.as_ref(),
-                    &params,
-                    &call.arguments,
-                    span,
-                    false,
-                )?;
+                let args = self.compile_hir_method_arguments(HirMethodArguments {
+                    method: &field.name,
+                    receiver_type: value_receiver_type.as_ref(),
+                    receiver_shape: receiver_shape.as_ref(),
+                    params: &params,
+                    arguments: &call.arguments,
+                    call_span: span,
+                    preserve_missing_defaults: false,
+                })?;
                 self.emit_spanned(
                     UnlinkedInstructionKind::CallMethodId {
                         dst,
@@ -425,16 +435,19 @@ impl Compiler<'_, '_> {
         Ok((compiled, mode))
     }
 
-    pub(in crate::compiler) fn compile_hir_method_arguments(
+    fn compile_hir_method_arguments(
         &mut self,
-        method: &str,
-        receiver_type: Option<&RuntimeTypeFact>,
-        receiver_shape: Option<&ValueShape>,
-        params: &[ParamHint],
-        arguments: &[vela_hir::body::HirArgument],
-        call_span: Span,
-        preserve_missing_defaults: bool,
+        request: HirMethodArguments<'_>,
     ) -> CompileResult<Vec<CallArgument>> {
+        let HirMethodArguments {
+            method,
+            receiver_type,
+            receiver_shape,
+            params,
+            arguments,
+            call_span,
+            preserve_missing_defaults,
+        } = request;
         if params.is_empty() && arguments.iter().all(|argument| argument.name.is_none()) {
             return self
                 .compile_hir_call_arguments(arguments)

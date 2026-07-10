@@ -21,6 +21,14 @@ pub(super) struct ScriptImplMethod<'ast> {
     pub(super) hir_bodies: Vec<&'ast HirBody>,
 }
 
+struct MethodBuildInput<'ast> {
+    target_type: String,
+    method_name: String,
+    signature: &'ast FunctionSignature,
+    body: &'ast HirBody,
+    bindings: &'ast BindingMap,
+}
+
 pub(super) fn source_methods(graph: &ModuleGraph, module: ModuleId) -> Vec<ScriptImplMethod<'_>> {
     graph
         .declarations()
@@ -65,11 +73,13 @@ fn collect_impl_methods<'ast>(
                 graph,
                 module_path,
                 impl_metadata,
-                target_type.clone(),
-                method.name.clone(),
-                &method.signature,
-                body,
-                bindings,
+                MethodBuildInput {
+                    target_type: target_type.clone(),
+                    method_name: method.name.clone(),
+                    signature: &method.signature,
+                    body,
+                    bindings,
+                },
             ))
         })
         .collect::<Vec<_>>();
@@ -95,11 +105,13 @@ fn collect_impl_methods<'ast>(
                 graph,
                 module_path,
                 impl_metadata,
-                target_type.clone(),
-                method.name.clone(),
-                &method.signature,
-                body,
-                bindings,
+                MethodBuildInput {
+                    target_type: target_type.clone(),
+                    method_name: method.name.clone(),
+                    signature: &method.signature,
+                    body,
+                    bindings,
+                },
             ))
         }));
     }
@@ -110,12 +122,15 @@ fn build_method<'ast>(
     graph: &'ast ModuleGraph,
     module_path: Option<&'ast ModulePath>,
     impl_metadata: &'ast ImplMetadata,
-    target_type: String,
-    method_name: String,
-    signature: &'ast FunctionSignature,
-    body: &'ast HirBody,
-    bindings: &'ast BindingMap,
+    input: MethodBuildInput<'ast>,
 ) -> ScriptImplMethod<'ast> {
+    let MethodBuildInput {
+        target_type,
+        method_name,
+        signature,
+        body,
+        bindings,
+    } = input;
     ScriptImplMethod {
         method_id: stable_method_id(module_path, impl_metadata, &method_name),
         symbol: method_symbol(module_path, impl_metadata, &target_type, &method_name),
