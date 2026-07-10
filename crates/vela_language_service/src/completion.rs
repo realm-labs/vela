@@ -237,7 +237,7 @@ impl LanguageServiceDatabases {
             .iter()
             .map(String::as_str)
             .collect::<Vec<_>>();
-        let callables = query.source_callable_facts(self, &call.callee);
+        let callables = query.source_callable_facts_by_path(self, &call.callee_path);
         let items = script_function_parameter_completions(&callables, &used_names);
         dedupe_and_filter_service_items(items, context.replace_range(), context.prefix(), |item| {
             label_segment_matches(item.label(), context.prefix())

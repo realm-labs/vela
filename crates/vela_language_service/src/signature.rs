@@ -83,6 +83,7 @@ impl SignatureParameter {
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct CallContext {
     callee: String,
+    callee_path: Option<Vec<String>>,
     member_receiver: Option<TextRange>,
     member_method: Option<String>,
     args_prefix: String,
@@ -128,7 +129,11 @@ impl LanguageServiceDatabases {
             return signatures;
         }
         if let Some(query) = query {
-            let callables = query.callable_facts(self, &context.callee);
+            let callables = if let Some(path) = context.callee_path.as_ref() {
+                query.callable_facts_by_path(self, path)
+            } else {
+                query.callable_facts(self, &context.callee)
+            };
             self.signature_candidates_from_callables(&callables)
         } else {
             self.signature_candidates(&context.callee)
@@ -194,6 +199,7 @@ fn call_context_from_query(query: &QueryContext<'_>) -> Option<CallContext> {
     let call = query.call_argument_facts()?;
     Some(CallContext {
         callee: call.callee().to_owned(),
+        callee_path: call.callee_path().map(<[String]>::to_vec),
         member_receiver: call.member_receiver(),
         member_method: call.member_method().map(str::to_owned),
         active_parameter: call.active_parameter(),

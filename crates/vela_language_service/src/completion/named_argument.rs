@@ -15,8 +15,9 @@ pub(super) fn named_argument_completion_context(
     if current_arg.contains(':') || !is_argument_name_prefix(current_arg.trim_start()) {
         return None;
     }
+    let callee_path = call.callee_path()?;
     Some(CallArgumentContext {
-        callee: call.callee().to_owned(),
+        callee_path: callee_path.to_vec(),
         callee_range: Some(call.callee_range()),
         used_names: used_named_arguments(args_before_cursor),
     })

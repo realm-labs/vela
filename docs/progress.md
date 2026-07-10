@@ -1714,9 +1714,12 @@ callable parameter facts, stable `TypeFact`s, `Any`/unknown suppression, and
   reconstructing those relationships from field, call, and index syntax.
   Language-service call-argument facts now carry HIR call and callee expression
   IDs for database-backed queries, and member method names are read from HIR
-  callee field facts. Record-field completion now follows HIR field,
-  call-callee, and index operand facts for nested constructor discovery instead
-  of reconstructing those relationships from field, call, and index syntax.
+  callee field facts. Non-member signature help, expected call-argument facts,
+  and named-argument completion now resolve source callable candidates through
+  HIR callee path facts before falling back to text-only snapshot/schema/stdlib
+  lookup. Record-field completion now follows HIR field, call-callee, and index
+  operand facts for nested constructor discovery instead of reconstructing
+  those relationships from field, call, and index syntax.
 
 ### Remaining Gaps
 

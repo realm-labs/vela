@@ -107,56 +107,83 @@ pub(crate) fn source_callable_facts(
                     || qualified_declaration_label(graph, declaration.id) == callee)
         })
         .filter_map(|declaration| {
-            let signature = graph.function_signature(declaration.id)?;
-            let inferred = facts.declaration(declaration.id);
-            let inferred_params = match inferred {
-                Some(TypeFact::Function { params, .. }) => params.as_slice(),
-                _ => &[],
-            };
-            let inferred_returns = match inferred {
-                Some(TypeFact::Function { returns, .. }) => Some(returns),
-                _ => None,
-            };
-            let params = signature
-                .params
-                .iter()
-                .enumerate()
-                .map(|(index, param)| {
-                    let type_fact = inferred_params
-                        .get(index)
-                        .cloned()
-                        .filter(|fact| !matches!(fact, TypeFact::Unknown))
-                        .or_else(|| {
-                            param
-                                .type_hint
-                                .as_ref()
-                                .map(|hint| query_type_fact_from_hint(graph, hint, schema))
-                        })
-                        .unwrap_or(TypeFact::Unknown);
-                    CallableParameterFacts {
-                        name: param.name.clone(),
-                        type_fact,
-                        defaulted: param.default_value_span.is_some(),
-                    }
-                })
-                .collect::<Vec<_>>();
-            let returns = match inferred_returns {
-                Some(fact) if !matches!(fact.as_ref(), TypeFact::Unknown) => fact.as_ref().clone(),
-                _ => signature
-                    .return_type
-                    .as_ref()
-                    .map(|hint| query_type_fact_from_hint(graph, hint, schema))
-                    .unwrap_or(TypeFact::Unknown),
-            };
-            Some(CallableFacts {
-                name: declaration.name.clone(),
-                params,
-                returns,
-                origin: CallableOrigin::Source,
-                symbol: source_symbol_for_declaration(graph, declaration),
-            })
+            source_callable_facts_for_declaration(graph, schema, &facts, declaration)
         })
         .collect()
+}
+
+pub(crate) fn source_callable_facts_by_path(
+    databases: &LanguageServiceDatabases,
+    path: &[String],
+    current_module: &[String],
+) -> Vec<CallableFacts> {
+    let graph = databases.hir_db().graph();
+    let Some(declaration) =
+        graph.declaration_by_type_path(path, current_module, DeclarationKind::Function)
+    else {
+        return Vec::new();
+    };
+    let facts = AnalysisFacts::from_module_graph(graph);
+    let schema = databases.schema_db().facts();
+    source_callable_facts_for_declaration(graph, schema, &facts, declaration)
+        .into_iter()
+        .collect()
+}
+
+fn source_callable_facts_for_declaration(
+    graph: &ModuleGraph,
+    schema: &RegistryFacts,
+    facts: &AnalysisFacts,
+    declaration: &vela_hir::module_graph::Declaration,
+) -> Option<CallableFacts> {
+    let signature = graph.function_signature(declaration.id)?;
+    let inferred = facts.declaration(declaration.id);
+    let inferred_params = match inferred {
+        Some(TypeFact::Function { params, .. }) => params.as_slice(),
+        _ => &[],
+    };
+    let inferred_returns = match inferred {
+        Some(TypeFact::Function { returns, .. }) => Some(returns),
+        _ => None,
+    };
+    let params = signature
+        .params
+        .iter()
+        .enumerate()
+        .map(|(index, param)| {
+            let type_fact = inferred_params
+                .get(index)
+                .cloned()
+                .filter(|fact| !matches!(fact, TypeFact::Unknown))
+                .or_else(|| {
+                    param
+                        .type_hint
+                        .as_ref()
+                        .map(|hint| query_type_fact_from_hint(graph, hint, schema))
+                })
+                .unwrap_or(TypeFact::Unknown);
+            CallableParameterFacts {
+                name: param.name.clone(),
+                type_fact,
+                defaulted: param.default_value_span.is_some(),
+            }
+        })
+        .collect::<Vec<_>>();
+    let returns = match inferred_returns {
+        Some(fact) if !matches!(fact.as_ref(), TypeFact::Unknown) => fact.as_ref().clone(),
+        _ => signature
+            .return_type
+            .as_ref()
+            .map(|hint| query_type_fact_from_hint(graph, hint, schema))
+            .unwrap_or(TypeFact::Unknown),
+    };
+    Some(CallableFacts {
+        name: declaration.name.clone(),
+        params,
+        returns,
+        origin: CallableOrigin::Source,
+        symbol: source_symbol_for_declaration(graph, declaration),
+    })
 }
 
 pub(crate) fn callable_facts(

@@ -805,6 +805,44 @@ pub fn main(player: Player) { grant(player: player, am) }
 }
 
 #[test]
+fn named_argument_completion_uses_hir_callee_path() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let reward = DocumentId::from("/workspace/scripts/game/reward.vela");
+    let main_text = "pub fn main(player: Player) { game::reward::grant(player: player, ) }";
+    let reward_text = "pub fn grant(player: Player, amount: i64, reason: String = \"quest\") -> bool { return true }";
+    let files = vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(reward, reward_text),
+    ];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    let mut schema = RegistryFacts::default();
+    schema.insert_type("Player", TypeFact::host("Player"));
+    databases.set_schema_facts(schema);
+    databases.update(&project);
+
+    let completions = databases.completion_items(
+        &main,
+        Position::new(
+            0,
+            main_text
+                .find(", )")
+                .expect("call should contain empty argument")
+                + ", ".len(),
+        ),
+    );
+
+    assert_eq!(
+        completions.context().kind(),
+        CompletionContextKind::NamedArgument
+    );
+    assert_no_completion(&completions, "player");
+    assert_completion(&completions, "amount", CompletionKind::Parameter);
+    assert_completion(&completions, "reason", CompletionKind::Parameter);
+}
+
+#[test]
 fn map_key_completion_suggests_typed_enum_variants() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"

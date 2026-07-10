@@ -277,7 +277,10 @@ fn expected_call_argument(
         };
         query.member_callable_facts(databases, receiver, method, call.args_prefix())
     } else {
-        query.callable_facts(databases, call.callee())
+        let Some(callee_path) = call.callee_path() else {
+            return (None, None);
+        };
+        query.callable_facts_by_path(databases, callee_path)
     };
     let Some(param) = callables
         .iter()

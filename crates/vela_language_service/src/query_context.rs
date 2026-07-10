@@ -3,6 +3,7 @@ use vela_syntax::ast::SyntaxSourceFile;
 
 use crate::callable_context::{
     CallableFacts, callable_facts, member_callable_facts, source_callable_facts,
+    source_callable_facts_by_path,
 };
 use crate::{
     CursorContext, CursorContextKind, DocumentId, DocumentSnapshot, LanguageServiceDatabases,
@@ -15,7 +16,10 @@ use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::body::HirBody;
 use vela_hir::ids::{HirDeclId, HirExprId};
-use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
+use vela_hir::{
+    body::{HirPathKind, HirPathOwner},
+    module_graph::{DeclarationKind, ModuleGraph, ModulePath},
+};
 
 mod hir_cursor;
 use hir_cursor::refine_cursor_with_hir;
@@ -24,6 +28,7 @@ use hir_cursor::refine_cursor_with_hir;
 pub struct CallArgumentFacts<'a> {
     call_expression: Option<HirExprId>,
     callee_expression: Option<HirExprId>,
+    callee_path: Option<&'a [String]>,
     callee_range: TextRange,
     callee: &'a str,
     call_open_offset: usize,
@@ -42,6 +47,11 @@ impl<'a> CallArgumentFacts<'a> {
     #[must_use]
     pub const fn callee_expression(&self) -> Option<HirExprId> {
         self.callee_expression
+    }
+
+    #[must_use]
+    pub const fn callee_path(&self) -> Option<&'a [String]> {
+        self.callee_path
     }
 
     #[must_use]
@@ -259,12 +269,38 @@ impl<'a> QueryContext<'a> {
     }
 
     #[must_use]
+    pub fn source_callable_facts_by_path(
+        &self,
+        databases: &LanguageServiceDatabases,
+        callee_path: &[String],
+    ) -> Vec<CallableFacts> {
+        let current_module = self
+            .module_path()
+            .map(|module| module.segments())
+            .unwrap_or_default();
+        source_callable_facts_by_path(databases, callee_path, current_module)
+    }
+
+    #[must_use]
     pub fn callable_facts(
         &self,
         databases: &LanguageServiceDatabases,
         callee: &str,
     ) -> Vec<CallableFacts> {
         callable_facts(databases, callee)
+    }
+
+    #[must_use]
+    pub fn callable_facts_by_path(
+        &self,
+        databases: &LanguageServiceDatabases,
+        callee_path: &[String],
+    ) -> Vec<CallableFacts> {
+        let source = self.source_callable_facts_by_path(databases, callee_path);
+        if !source.is_empty() {
+            return source;
+        }
+        callable_facts(databases, &callee_path.join("::"))
     }
 
     #[must_use]
@@ -334,10 +370,12 @@ impl<'a> QueryContext<'a> {
         let call_expression = self.hir_call_expression_for_cursor();
         let callee_expression =
             call_expression.and_then(|expression| self.hir_call_callee(expression));
+        let callee_path = callee_expression.and_then(|expression| self.hir_callee_path(expression));
         let member_method = member_receiver.and_then(|_| self.hir_member_method(callee_expression));
         Some(CallArgumentFacts {
             call_expression,
             callee_expression,
+            callee_path,
             callee_range,
             callee,
             call_open_offset,
@@ -433,6 +471,17 @@ impl<'a> QueryContext<'a> {
         body.fields
             .get(&callee_expression?)
             .map(|field| field.name.as_str())
+    }
+
+    fn hir_callee_path(&self, callee_expression: HirExprId) -> Option<&'a [String]> {
+        self.body?
+            .paths
+            .iter()
+            .find(|path| {
+                path.kind == HirPathKind::Callee
+                    && path.owner == HirPathOwner::Expression(callee_expression)
+            })
+            .map(|path| path.path.as_slice())
     }
 }
 
@@ -718,6 +767,10 @@ mod tests {
             "database call facts should carry the HIR callee expression"
         );
         assert_eq!(
+            call_facts.callee_path(),
+            Some(["grant".to_owned()].as_slice())
+        );
+        assert_eq!(
             call_facts.callee_range(),
             call_context.call_callee_range().expect("callee")
         );
@@ -775,6 +828,7 @@ mod tests {
             method_call_facts.callee_expression().is_some(),
             "method call facts should carry the HIR callee expression"
         );
+        assert_eq!(method_call_facts.callee_path(), None);
         assert_eq!(method_call_facts.callee(), "scores.filter");
         assert_eq!(method_call_facts.member_method(), Some("filter"));
         assert_eq!(method_call_facts.args_prefix(), "");
