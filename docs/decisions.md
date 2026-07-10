@@ -214,6 +214,54 @@ bytecode, or VM crates. The physical MIR-to-bytecode backend belongs to
 and const/schema evaluation remains a compile-time service outside runtime MIR
 v1. MIR IDs are not runtime, hot-reload ABI, or serialized identities.
 
+MIR operands contain only already-evaluated logical values and non-allocating
+unit/bool/char/scalar immediates. Evaluated string, bytes, array, and map
+constants stay in the compile-target snapshot and enter runtime MIR through an
+explicit constant-materialization statement at each use, preserving heap
+identity, memory-budget, GC, and safepoint behavior. Range values remain inline
+runtime values: range construction may trap but does not allocate. Iterator
+steps are call-capable safepoint terminators, while range steps distinguish a
+proven `i64` mode from a dynamic-integer trapping mode.
+
+Resolved method calls carry an already-evaluated receiver. Script calls retain
+a complete ordered parameter-slot vector and may use the Missing sentinel only
+for HIR-owned defaults evaluated by the callee prologue. External signatures
+state whether positional arity is declared/defaulted, runtime-checked, or
+proven variadic; this preserves existing native/host behavior instead of
+silently adding static arity rejection. Callable-value calls remain
+positional-only, and dynamic method calls preserve ordered runtime names.
+Contract guards are trap-only statements. Recoverable optimization guards are
+terminators with explicit passed/slow CFG successors, and `Option`/`Result`
+propagation uses ordinary variant tests, CFG edges, extraction, and return
+rather than a hidden statement side exit.
+
+Each MIR generation owns a canonical target table for function/method/type/
+variant/field/global IDs, canonical link symbols, debug names, host runtime IDs,
+logical layouts, and signatures. Per-call source/debug spellings remain on the
+call operation. A backend must use that owned table rather than traverse HIR,
+analysis, or a live registry. Every `MirFunction` also owns its code symbol,
+ordered receiver/parameter/default ABI, ordered capture ABI, and return
+contract; debug-local records are not an ABI reconstruction source.
+
+Trait `MethodId` remains the shared dispatch identity across receiver
+implementations. Executable method descriptors and MIR lookup maps are keyed
+by `(TypeId, MethodId)`, while the owner-specific `FunctionId` remains the code
+identity. Reflection MIR carries the resolved native `FunctionId` and only
+evaluated operands; even literal member names materialize through an explicit
+heap-constant operation first. Reflection, `set::from_array`, host remove, and
+host push are explicit compile-target intrinsics, so lowering never selects
+them by matching a debug or canonical name.
+
+Schema defaults remain compile-time values keyed by their owning `HirBodyId`,
+separate from declaration-keyed const values. Each expression constructor
+target contains ordered resolved slots with stable `FieldId`, declared
+parameter name/index, and either the explicit `HirExprId` or the selected
+evaluated-default body. Pattern constructor targets are separate because they
+do not deliver argument/default values. Set construction records its one
+already-evaluated array source and one visible allocation boundary. MIR v1 does
+not contain targetless index removal, script-global writes, or speculative
+bitwise/shift operations that have no Heavy-HIR/bytecode behavior.
+
 Heavy HIR body ownership uses stable `HirBodyId` records with explicit owners:
 declarations, trait default methods, impl methods, lambdas, and parameter
 defaults. Nested executable regions such as lambdas and parameter defaults are

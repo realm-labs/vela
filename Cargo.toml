@@ -13,6 +13,7 @@ members = [
     "crates/vela_language_service",
     "crates/vela_lsp_server",
     "crates/vela_macros",
+    "crates/vela_mir",
     "crates/vela_playground_wasm",
     "crates/vela_registry",
     "crates/vela_reflect",
@@ -54,6 +55,7 @@ vela_hot_reload = { path = "crates/vela_hot_reload" }
 vela_host = { path = "crates/vela_host" }
 vela_language_service = { path = "crates/vela_language_service" }
 vela_macros = { path = "crates/vela_macros" }
+vela_mir = { path = "crates/vela_mir" }
 vela_playground_wasm = { path = "crates/vela_playground_wasm" }
 vela_registry = { path = "crates/vela_registry" }
 vela_reflect = { path = "crates/vela_reflect" }

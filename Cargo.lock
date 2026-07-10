@@ -1092,6 +1092,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "vela_mir"
+version = "0.1.0"
+dependencies = [
+ "vela_analysis",
+ "vela_common",
+ "vela_def",
+ "vela_hir",
+]
+
+[[package]]
 name = "vela_playground_wasm"
 version = "0.1.0"
 dependencies = [

@@ -487,7 +487,7 @@ resolver, type-flow engine, or diagnostic pipeline.
   `ValueTypeFlow`, `ValueShapeFlow`, script field slots, schema defaults,
   expected-type checks, call argument metadata, host target resolution, and
   guard-plan construction.
-- [ ] Define `MirLoweringInput` and the backend-neutral compile-target snapshot.
+- [x] Define `MirLoweringInput` and the backend-neutral compile-target snapshot.
 - [ ] Prove production registry/stdlib/host/script metadata can build the same
   AnalysisFacts and compile targets used by MIR.
 - [ ] Move semantic facts to HIR/analysis and keep physical encoding facts in
@@ -619,18 +619,18 @@ before Phase 1 starts.
 
 Purpose: establish a bytecode-independent MIR ownership boundary.
 
-- [ ] Add `crates/vela_mir` to the workspace and workspace dependencies.
-- [ ] Add only the minimal allowed crate dependencies from Section 3.
-- [ ] Add deterministic generation-local IDs, `MirProgram`, `MirFunction`,
+- [x] Add `crates/vela_mir` to the workspace and workspace dependencies.
+- [x] Add only the minimal allowed crate dependencies from Section 3.
+- [x] Add deterministic generation-local IDs, `MirProgram`, `MirFunction`,
   block/local/temp arenas, source origins, HIR identity mappings, and debug
   local records.
-- [ ] Add operands, restricted places, pure rvalues, effectful statements,
+- [x] Add operands, restricted places, pure rvalues, effectful statements,
   terminators, call targets, guard descriptors, effects, and safepoint records.
-- [ ] Encode non-SSA mutable-local/single-assignment-temp rules directly in the
+- [x] Encode non-SSA mutable-local/single-assignment-temp rules directly in the
   model APIs rather than relying on naming conventions.
-- [ ] Add stable human-readable MIR dumps for tests. They are test/debug output,
+- [x] Add stable human-readable MIR dumps for tests. They are test/debug output,
   not a stable serialization format.
-- [ ] Keep MIR internal to the workspace; do not re-export it from engine, VM,
+- [x] Keep MIR internal to the workspace; do not re-export it from engine, VM,
   C API, or public runtime APIs.
 
 Validation:

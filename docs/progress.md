@@ -50,6 +50,28 @@ checkpoint is closing the immutable AnalysisFacts/compile-target input and
 freezing compiler diagnostic, evaluation-order, metadata, budget, host,
 reflection, reload, and example behavior before `vela_mir` backend work.
 
+The internal `vela_mir` Phase 1 model checkpoint now exists without production
+routing: it depends only on HIR/analysis/stable-definition crates and defines
+generation-local CFG/function/block/local/temp IDs, mutable locals,
+single-assignment temporaries, source/debug/liveness/safepoint metadata,
+backend-neutral targets and contracts, explicit host/reflection/call/allocation
+operations, explicit recoverable-guard CFG edges, and stable human-readable
+dumps. Heap-backed evaluated constants materialize at explicit allocation
+safepoints, method receivers and default-delivery policies are explicit, and
+try propagation has no hidden statement edge. Phase 0 remains open until the
+production registry/stdlib/host/script metadata bridge builds and validates the
+same immutable analysis and compile-target input; no MIR backend selector or
+production MIR route exists.
+
+The Phase 1 semantic gate also fixes backend-bearing edge cases before a
+builder exists: owner-qualified executable method lookup preserves shared trait
+`MethodId`; external positional arity policy is explicit; schema-default values
+and resolved constructor slots are owned input; reflection carries stable
+native IDs plus evaluated operands; set construction preserves its evaluated
+array source; and reflection/set/host path intrinsics are selected by compile
+targets rather than names. Unsupported targetless index removal/global writes
+and speculative bitwise/shift forms are absent.
+
 M0-M19 are complete enough as a runnable prototype, embedding surface,
 production hot-reload workflow, diagnostics/tooling foundation, runnable
 embedding/conformance proof, measured performance baselines, and non-JIT

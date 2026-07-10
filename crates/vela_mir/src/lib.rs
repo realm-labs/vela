@@ -1,0 +1,64 @@
+//! Backend-neutral mid-level representation for Vela executable bodies.
+//!
+//! MIR is generation-local compiler state. It preserves stable HIR and
+//! definition identities, but its arena IDs are deliberately not runtime or
+//! serialization identities.
+
+mod arena;
+mod cfg;
+mod contract;
+mod dump;
+mod effects;
+mod function;
+mod ids;
+mod input;
+mod operations;
+mod origin;
+mod targets;
+mod value;
+
+#[cfg(test)]
+mod tests;
+
+pub use cfg::{
+    MirBasicBlock, MirRangeStepMode, MirSwitchCase, MirSwitchValue, MirTerminator,
+    MirTerminatorKind,
+};
+pub use contract::{HostTypeTarget, MirTypeContract};
+pub use effects::{MirEffect, MirGuard, MirGuardAssumption, MirLiveValue, MirSafepoint};
+pub use function::{
+    DebugLocalKind, MirDebugLocal, MirFunction, MirFunctionCapture, MirFunctionOwner,
+    MirFunctionParameter, MirFunctionReturn, MirLiveRegion, MirLiveness, MirLocal, MirLocalKind,
+    MirParameterKind, MirParameterSpec, MirProgram, MirTemp,
+};
+pub use ids::{
+    MirBlockId, MirDebugLocalId, MirFunctionId, MirGuardId, MirLocalId, MirSafepointId,
+    MirStatementId, MirTempId,
+};
+pub use input::{
+    CompileCallTarget, CompileConstructorField, CompileConstructorTarget, CompileConstructorValue,
+    CompileFieldTarget, CompileFunctionIdentity, CompileFunctionTarget, CompileGlobalTarget,
+    CompileGuardKey, CompileGuardTarget, CompileHostIndexCapability, CompileHostPathSegment,
+    CompileHostPathTarget, CompileMemberTarget, CompileParameter, CompileParameterDefault,
+    CompilePatternConstructorTarget, CompilePositionalPolicy, CompileReflectionCall,
+    CompileSignature, CompileTargetKind, CompileTargetSnapshot, CompileTargetSnapshotBuilder,
+    DynamicMethodTarget, HostFieldTarget, HostMethodTarget, MethodExecutableTarget, MirBuildError,
+    MirLoweringConfig, MirLoweringInput,
+};
+pub use operations::{
+    MirAggregate, MirCall, MirContextualBinaryOp, MirContextualNumericLiteral, MirDynamicArgument,
+    MirDynamicBinaryOp, MirDynamicUnaryOp, MirFieldTarget, MirFormatPart, MirGlobalOperation,
+    MirHostMutation, MirHostOperation, MirHostPath, MirHostPathSegment, MirIdentityOp, MirIndexKey,
+    MirIndexOperation, MirIteratorOperation, MirLiteralSide, MirReflectionOperation,
+    MirScriptArgument, MirStatement, MirStatementKind, MirTrapKind,
+};
+pub use origin::{MirSourceNode, MirSourceOrigin};
+pub use targets::{
+    CompileFieldDescriptor, CompileFunctionClass, CompileFunctionDescriptor,
+    CompileGlobalDescriptor, CompileMethodClass, CompileMethodDescriptor, CompileTypeClass,
+    CompileTypeDescriptor, CompileVariantDescriptor, MirTargetTable,
+};
+pub use value::{
+    MirBinaryOp, MirComparisonOp, MirEvaluatedConstant, MirImmediate, MirNumericBinaryOp,
+    MirOperand, MirPlace, MirRvalue, MirUnaryOp, MirValueType,
+};
