@@ -14,7 +14,7 @@ use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::body::HirBody;
-use vela_hir::ids::HirDeclId;
+use vela_hir::ids::{HirDeclId, HirExprId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
 
 mod hir_cursor;
@@ -22,6 +22,8 @@ use hir_cursor::refine_cursor_with_hir;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct CallArgumentFacts<'a> {
+    call_expression: Option<HirExprId>,
+    callee_expression: Option<HirExprId>,
     callee_range: TextRange,
     callee: &'a str,
     call_open_offset: usize,
@@ -32,6 +34,16 @@ pub struct CallArgumentFacts<'a> {
 }
 
 impl<'a> CallArgumentFacts<'a> {
+    #[must_use]
+    pub const fn call_expression(&self) -> Option<HirExprId> {
+        self.call_expression
+    }
+
+    #[must_use]
+    pub const fn callee_expression(&self) -> Option<HirExprId> {
+        self.callee_expression
+    }
+
     #[must_use]
     pub const fn callee_range(&self) -> TextRange {
         self.callee_range
@@ -319,8 +331,13 @@ impl<'a> QueryContext<'a> {
             .text()
             .get(call_open_offset + 1..self.cursor.replace_range().end)?;
         let member_receiver = self.call_member_receiver_range();
-        let member_method = member_receiver.and_then(|_| self.hir_member_method(callee_range));
+        let call_expression = self.hir_call_expression_for_cursor();
+        let callee_expression =
+            call_expression.and_then(|expression| self.hir_call_callee(expression));
+        let member_method = member_receiver.and_then(|_| self.hir_member_method(callee_expression));
         Some(CallArgumentFacts {
+            call_expression,
+            callee_expression,
             callee_range,
             callee,
             call_open_offset,
@@ -378,14 +395,43 @@ impl<'a> QueryContext<'a> {
 }
 
 impl<'a> QueryContext<'a> {
-    fn hir_member_method(&self, callee_range: TextRange) -> Option<&'a str> {
+    fn hir_call_expression_for_cursor(&self) -> Option<HirExprId> {
         let body = self.body?;
-        let source_id = self.source_id()?;
-        let span = span_for_text_range(source_id, callee_range)?;
-        body.expressions
+        let call_open = self.call_open_offset()?;
+        let cursor_offset = self.cursor.replace_range().end;
+        body.calls
             .values()
-            .find(|expression| expression.origin.span == span)
-            .and_then(|expression| body.fields.get(&expression.id))
+            .filter_map(|call| {
+                let call_expression = body.expressions.get(&call.expression)?;
+                if !span_contains_usize(call_expression.origin.span, call_open)
+                    || !span_contains_usize(call_expression.origin.span, cursor_offset)
+                {
+                    return None;
+                }
+                Some((
+                    call_expression
+                        .origin
+                        .span
+                        .end
+                        .saturating_sub(call_expression.origin.span.start),
+                    call.expression,
+                ))
+            })
+            .min_by_key(|(width, _)| *width)
+            .map(|(_, expression)| expression)
+    }
+
+    fn hir_call_callee(&self, call_expression: HirExprId) -> Option<HirExprId> {
+        self.body?
+            .calls
+            .get(&call_expression)
+            .map(|call| call.callee)
+    }
+
+    fn hir_member_method(&self, callee_expression: Option<HirExprId>) -> Option<&'a str> {
+        let body = self.body?;
+        body.fields
+            .get(&callee_expression?)
             .map(|field| field.name.as_str())
     }
 }
@@ -394,10 +440,8 @@ fn text_range(text: &str, range: TextRange) -> Option<&str> {
     text.get(range.start..range.end)
 }
 
-fn span_for_text_range(source_id: SourceId, range: TextRange) -> Option<Span> {
-    let start = u32::try_from(range.start).ok()?;
-    let end = u32::try_from(range.end).ok()?;
-    Some(Span::new(source_id, start, end))
+fn span_contains_usize(span: Span, offset: usize) -> bool {
+    u32::try_from(offset).is_ok_and(|offset| span.start <= offset && offset <= span.end)
 }
 
 fn active_call_parameter_index(args_text: &str) -> usize {
@@ -665,6 +709,14 @@ mod tests {
         assert_eq!(call_context.call_args_prefix_text(), Some("c"));
         assert_eq!(call_context.call_active_parameter_index(), Some(0));
         let call_facts = call_context.call_argument_facts().expect("call facts");
+        assert!(
+            call_facts.call_expression().is_some(),
+            "database call facts should carry the HIR call expression"
+        );
+        assert!(
+            call_facts.callee_expression().is_some(),
+            "database call facts should carry the HIR callee expression"
+        );
         assert_eq!(
             call_facts.callee_range(),
             call_context.call_callee_range().expect("callee")
@@ -715,6 +767,14 @@ mod tests {
         let method_call_facts = method_call_context
             .call_argument_facts()
             .expect("method call facts");
+        assert!(
+            method_call_facts.call_expression().is_some(),
+            "method call facts should carry the HIR call expression"
+        );
+        assert!(
+            method_call_facts.callee_expression().is_some(),
+            "method call facts should carry the HIR callee expression"
+        );
         assert_eq!(method_call_facts.callee(), "scores.filter");
         assert_eq!(method_call_facts.member_method(), Some("filter"));
         assert_eq!(method_call_facts.args_prefix(), "");
