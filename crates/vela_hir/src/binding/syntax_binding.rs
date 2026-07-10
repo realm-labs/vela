@@ -481,6 +481,9 @@ impl<'a> SyntaxBindingLowerer<'a> {
     }
 
     fn bind_expr(&mut self, expr: &SyntaxExpression, usage: PathUsage) -> HirExprId {
+        if matches!(expr.expression_kind(), SyntaxExpressionKind::Binary) {
+            return self.bind_binary_expr(expr);
+        }
         let span = span_for(self.source, expr.syntax().text_range());
         let id = self.next_expr(span);
         let kind = match expr.expression_kind() {
@@ -545,19 +548,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
                 HirExprKind::Unary { op, operand }
             }
             SyntaxExpressionKind::Binary => {
-                let binary = expr.as_binary();
-                let op = binary
-                    .as_ref()
-                    .and_then(|expr| expr.operator())
-                    .map(hir_binary_op);
-                let lhs = binary
-                    .as_ref()
-                    .and_then(|expr| expr.lhs())
-                    .map(|expr| self.bind_expr(&expr, PathUsage::Value));
-                let rhs = binary
-                    .and_then(|expr| expr.rhs())
-                    .map(|expr| self.bind_expr(&expr, PathUsage::Value));
-                HirExprKind::Binary { op, lhs, rhs }
+                unreachable!("binary expressions use iterative HIR lowering")
             }
             SyntaxExpressionKind::Assign => {
                 let assign = expr.as_assign();
@@ -764,6 +755,50 @@ impl<'a> SyntaxBindingLowerer<'a> {
         };
         self.finish_expr(id, kind);
         id
+    }
+
+    fn bind_binary_expr(&mut self, expr: &SyntaxExpression) -> HirExprId {
+        let mut pending = Vec::new();
+        let mut current = expr.clone();
+
+        loop {
+            let span = span_for(self.source, current.syntax().text_range());
+            let id = self.next_expr(span);
+            let binary = current
+                .as_binary()
+                .expect("binary expression kind should expose binary syntax");
+            let op = binary.operator().map(hir_binary_op);
+            let lhs = binary.lhs();
+            let rhs = binary.rhs();
+
+            if lhs
+                .as_ref()
+                .is_some_and(|lhs| matches!(lhs.expression_kind(), SyntaxExpressionKind::Binary))
+            {
+                pending.push((id, op, rhs));
+                current = lhs.expect("binary left operand checked above");
+                continue;
+            }
+
+            let lhs = lhs.map(|lhs| self.bind_expr(&lhs, PathUsage::Value));
+            let rhs = rhs.map(|rhs| self.bind_expr(&rhs, PathUsage::Value));
+            self.finish_expr(id, HirExprKind::Binary { op, lhs, rhs });
+
+            let mut completed = id;
+            while let Some((id, op, rhs)) = pending.pop() {
+                let rhs = rhs.map(|rhs| self.bind_expr(&rhs, PathUsage::Value));
+                self.finish_expr(
+                    id,
+                    HirExprKind::Binary {
+                        op,
+                        lhs: Some(completed),
+                        rhs,
+                    },
+                );
+                completed = id;
+            }
+            return completed;
+        }
     }
 
     fn bind_argument(&mut self, argument: &SyntaxArgument) -> HirArgument {

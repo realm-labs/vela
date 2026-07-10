@@ -81,6 +81,33 @@ fn main(player) {
             .any(|(_, resolution)| resolution == &BindingResolution::Local(*next))
     );
 }
+
+#[test]
+fn hir_lowers_long_binary_chains_without_recursive_descent() {
+    let condition = std::iter::repeat_n("true", 600)
+        .collect::<Vec<_>>()
+        .join(" && ");
+    let source_text = format!("fn main() {{ return {condition}; }}");
+    let mut graph = ModuleGraph::new();
+    let module = graph.add_source(source(1, "game::logic", &source_text));
+    let main = graph
+        .module(module)
+        .and_then(|module| module.get("main"))
+        .expect("main declaration");
+
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+    assert_eq!(
+        graph
+            .function_body(main)
+            .expect("main body")
+            .expressions
+            .values()
+            .filter(|expression| matches!(expression.kind, HirExprKind::Binary { .. }))
+            .count(),
+        599
+    );
+}
+
 #[test]
 fn binding_unresolved_names_report_candidate_hints() {
     let mut graph = ModuleGraph::new();
