@@ -92,6 +92,17 @@ impl LogicalRecordKind {
         Self::ALL.into_iter().find(|kind| kind.type_id() == type_id)
     }
 
+    /// Resolves the source constructor surface owned by the logical-record
+    /// manifest. Binding resolution must classify the path as dynamic before
+    /// callers use this lookup, so source declarations always take priority.
+    #[must_use]
+    pub fn from_source_constructor_path(path: &[String]) -> Option<Self> {
+        let [name] = path else {
+            return None;
+        };
+        (name == Self::MapEntry.runtime_name()).then_some(Self::MapEntry)
+    }
+
     #[must_use]
     pub fn field_id(self, field: &str) -> FieldId {
         FieldId::from_def_id(

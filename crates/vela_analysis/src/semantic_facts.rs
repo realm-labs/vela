@@ -13,7 +13,9 @@ mod targets;
 mod local_flow_tests;
 
 use control_flow::{block_flow, fallthrough_flow, if_flow, match_flow, statement_flow};
-use logical_records::logical_member_target;
+use logical_records::{
+    logical_member_target, logical_record_constructor_fact, logical_record_constructor_target,
+};
 use lookups::{
     binary_fact, call_return_fact, field_fact, index_fact, literal_fact, registry_method_effect,
     registry_method_fact, resolved_literal_type, schema_knows_owner, source_method,
@@ -37,6 +39,7 @@ use vela_hir::ids::{HirBlockId, HirBodyId, HirExprId, HirLocalId, HirPatternId, 
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 
 use crate::facts::AnalysisFacts;
+use crate::logical_records::LogicalRecordKind;
 use crate::registry::{RegistryEffectFact, RegistryFacts};
 use crate::stdlib::{stdlib_function_fact, stdlib_method_fact};
 use crate::type_fact::TypeFact;
@@ -57,6 +60,7 @@ pub struct HirSemanticFacts {
     script_types: BTreeMap<HirExprId, ScriptTypeTargetFact>,
     local_script_types: BTreeMap<HirLocalId, ScriptTypeTargetFact>,
     patterns: BTreeMap<HirPatternId, TypeFact>,
+    logical_record_constructors: BTreeMap<HirExprId, LogicalRecordKind>,
     calls: BTreeMap<HirExprId, CallTargetFact>,
     members: BTreeMap<HirExprId, MemberTargetFact>,
     operators: BTreeMap<HirExprId, OperatorTargetFact>,
@@ -109,6 +113,9 @@ impl HirSemanticFacts {
             .map(|body| body.expressions.len())
             .sum::<usize>()
             .max(1);
+        for body in &bodies {
+            facts.record_logical_record_constructor_targets(graph, body);
+        }
         for _ in 0..passes {
             let before = facts.types.clone();
             let local_uses_before = facts.local_use_types.clone();
@@ -175,6 +182,11 @@ impl HirSemanticFacts {
     #[must_use]
     pub fn pattern(&self, pattern: HirPatternId) -> Option<&TypeFact> {
         self.patterns.get(&pattern)
+    }
+
+    #[must_use]
+    pub fn logical_record_constructor(&self, expression: HirExprId) -> Option<LogicalRecordKind> {
+        self.logical_record_constructors.get(&expression).copied()
     }
 
     #[must_use]
@@ -262,9 +274,16 @@ impl HirSemanticFacts {
                     .cloned()
                     .unwrap_or(TypeFact::Unknown),
             },
-            HirExprKind::Record { .. } => base
-                .base_expression(id)
-                .cloned()
+            HirExprKind::Record { fields, .. } => self
+                .logical_record_constructors
+                .get(&id)
+                .copied()
+                .and_then(|kind| {
+                    logical_record_constructor_fact(kind, fields, |expression| {
+                        self.fact(expression)
+                    })
+                })
+                .or_else(|| base.base_expression(id).cloned())
                 .unwrap_or(TypeFact::Unknown),
             HirExprKind::Paren { expression } => {
                 expression.map_or(TypeFact::Unknown, |id| self.fact(id))
@@ -627,6 +646,20 @@ impl HirSemanticFacts {
             self.patterns.insert(pattern.id, fact);
             if let Some(target) = pattern_constructor_target(graph, schema, body, pattern.id) {
                 self.pattern_constructors.insert(pattern.id, target);
+            }
+        }
+    }
+
+    fn record_logical_record_constructor_targets(&mut self, graph: &ModuleGraph, body: &HirBody) {
+        for expression in body.expressions.values() {
+            let HirExprKind::Record { constructor, .. } = &expression.kind else {
+                continue;
+            };
+            if let Some(target) =
+                logical_record_constructor_target(graph, body, expression.id, *constructor)
+            {
+                self.logical_record_constructors
+                    .insert(expression.id, target);
             }
         }
     }

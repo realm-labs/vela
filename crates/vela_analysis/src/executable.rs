@@ -380,6 +380,14 @@ impl ExecutableAnalysisView<'_> {
     }
 
     #[must_use]
+    pub fn logical_record_constructor(
+        &self,
+        expression: HirExprId,
+    ) -> Option<crate::logical_records::LogicalRecordKind> {
+        self.root.facts.logical_record_constructor(expression)
+    }
+
+    #[must_use]
     pub fn call_target(&self, expression: HirExprId) -> Option<&CallTargetFact> {
         self.root.facts.call_target(expression)
     }

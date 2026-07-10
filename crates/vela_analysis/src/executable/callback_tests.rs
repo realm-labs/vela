@@ -201,6 +201,7 @@ fn main() {
     let find = method_calls(body, "find")[0];
     let key_len = method_calls(lambdas[1], "len")[0];
     let collection_lengths = method_calls(body, "len");
+    let fallback_value = fields_named(body, "value")[0];
 
     let function = FunctionId::new(9_301);
     let generation = ExecutableAnalysisGeneration::from_module_graph(
@@ -233,10 +234,172 @@ fn main() {
         )))
     );
     assert_stdlib_call(&view, key_len, "len");
+    let entry = map_entry(TypeFact::STRING, TypeFact::I64);
+    let HirExprKind::Field(member) = &body
+        .expression(fallback_value)
+        .expect("fallback value member")
+        .kind
+    else {
+        panic!("fallback value field");
+    };
+    assert_eq!(view.expression(member.receiver), Some(&entry));
+    let record = entry.as_logical_record().expect("MapEntry fact");
+    assert_eq!(
+        view.member_target(fallback_value),
+        Some(&MemberTargetFact::LogicalRecordField(
+            record.field_target("value").expect("MapEntry.value target")
+        ))
+    );
+    assert_eq!(
+        stdlib_method_id_for_call(body, &view, find),
+        vela_stdlib::std_method_id("Map", "find")
+    );
     assert_eq!(collection_lengths.len(), 2);
     for call in collection_lengths {
         assert_stdlib_call(&view, call, "len");
     }
+}
+
+#[test]
+fn map_find_function_fallbacks_preserve_specialized_logical_members() {
+    let (graph, main) = graph(
+        97,
+        r#"
+fn main() {
+    let counts = {"gold": 4, "xp": 6};
+    let count_found = counts.find(|key, value| key == "xp" && value == 6);
+    let count_entry = option::unwrap_or(count_found, MapEntry { key: "", value: 0 });
+    let labels = {"wolf": "active", "wyrm": "done"};
+    let label_found = labels.find(|key, value| key.starts_with("w") && value == "done");
+    let label_entry = option::unwrap_or(label_found, MapEntry { key: "", value: "" });
+    return count_entry.value + label_entry.key.len() + label_entry.value.len();
+}
+"#,
+    );
+    let body = graph.function_body(main).expect("main body");
+    let function = FunctionId::new(9_801);
+    let generation = ExecutableAnalysisGeneration::from_module_graph(
+        &graph,
+        [ExecutableAnalysisInput::new(function, body.id)],
+    )
+    .expect("Map.find fallback analysis");
+    let view = generation.view(function).expect("main view");
+
+    let logical_constructors = body
+        .expressions
+        .values()
+        .filter(|expression| matches!(expression.kind, HirExprKind::Record { .. }))
+        .map(|expression| view.logical_record_constructor(expression.id))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        logical_constructors,
+        vec![
+            Some(LogicalRecordKind::MapEntry),
+            Some(LogicalRecordKind::MapEntry)
+        ]
+    );
+
+    let find_calls = method_calls(body, "find");
+    assert_eq!(find_calls.len(), 2);
+    let count_entry = map_entry(TypeFact::STRING, TypeFact::I64);
+    let label_entry = map_entry(TypeFact::STRING, TypeFact::STRING);
+    for (call, entry) in find_calls.iter().copied().zip([&count_entry, &label_entry]) {
+        assert_eq!(
+            view.expression(call),
+            Some(&TypeFact::option(entry.clone()))
+        );
+        assert_stdlib_call(&view, call, "find");
+        assert_eq!(
+            stdlib_method_id_for_call(body, &view, call),
+            vela_stdlib::std_method_id("Map", "find")
+        );
+    }
+
+    let mut unwrap_calls = body
+        .expressions
+        .values()
+        .filter_map(|expression| {
+            matches!(
+                view.call_target(expression.id),
+                Some(CallTargetFact::StdlibFunction { path }) if path == "option::unwrap_or"
+            )
+            .then_some(expression.id)
+        })
+        .collect::<Vec<_>>();
+    unwrap_calls.sort_by_key(|expression| {
+        body.expression(*expression)
+            .map(|expression| expression.origin.span.start)
+    });
+    assert_eq!(unwrap_calls.len(), 2);
+    assert_eq!(view.expression(unwrap_calls[0]), Some(&count_entry));
+    assert_eq!(view.expression(unwrap_calls[1]), Some(&label_entry));
+
+    let value_fields = fields_named(body, "value");
+    assert_eq!(value_fields.len(), 2);
+    for (field, expected) in value_fields
+        .iter()
+        .copied()
+        .zip([&count_entry, &label_entry])
+    {
+        let HirExprKind::Field(member) = &body.expression(field).expect("value field").kind else {
+            panic!("value field expression");
+        };
+        assert_eq!(view.expression(member.receiver), Some(expected));
+        assert_logical_member(body, &view, field, "value");
+    }
+    let key_fields = fields_named(body, "key");
+    assert_eq!(key_fields.len(), 1);
+    for field in key_fields {
+        let HirExprKind::Field(member) = &body.expression(field).expect("key field").kind else {
+            panic!("key field expression");
+        };
+        assert_eq!(view.expression(member.receiver), Some(&label_entry));
+        assert_logical_member(body, &view, field, "key");
+    }
+}
+
+#[test]
+fn source_map_entry_declaration_is_not_a_logical_record_constructor() {
+    let (graph, main) = graph(
+        98,
+        r#"
+struct MapEntry { key: String, value: i64 }
+fn main() {
+    let entry = MapEntry { key: "xp", value: 6 };
+    return entry.value;
+}
+"#,
+    );
+    let declaration = declaration_named(&graph, "MapEntry");
+    let body = graph.function_body(main).expect("main body");
+    let constructor = body
+        .expressions
+        .values()
+        .find(|expression| matches!(expression.kind, HirExprKind::Record { .. }))
+        .expect("source MapEntry constructor")
+        .id;
+    let member = fields_named(body, "value")[0];
+    let function = FunctionId::new(9_802);
+    let generation = ExecutableAnalysisGeneration::from_module_graph(
+        &graph,
+        [ExecutableAnalysisInput::new(function, body.id)],
+    )
+    .expect("source MapEntry analysis");
+    let view = generation.view(function).expect("main view");
+
+    assert_eq!(view.logical_record_constructor(constructor), None);
+    assert_eq!(
+        view.expression(constructor),
+        Some(&TypeFact::record("game::MapEntry"))
+    );
+    assert_eq!(
+        view.member_target(member),
+        Some(&MemberTargetFact::ScriptField {
+            owner: declaration,
+            variant: None,
+            name: "value".to_owned(),
+        })
+    );
 }
 
 #[test]
@@ -540,4 +703,45 @@ fn call_receiver_fact<'a>(
     };
     let field = body.field(call.callee)?;
     view.expression(field.receiver)
+}
+
+fn stdlib_method_id_for_call(
+    body: &HirBody,
+    view: &ExecutableAnalysisView<'_>,
+    call: HirExprId,
+) -> Option<vela_def::MethodId> {
+    let call_record = body.call(call)?;
+    let member = body.field(call_record.callee)?;
+    let owner = match view.expression(member.receiver)? {
+        TypeFact::Map { .. } => "Map",
+        _ => return None,
+    };
+    let CallTargetFact::StdlibMethod { name } = view.call_target(call)? else {
+        return None;
+    };
+    vela_stdlib::std_method_id(owner, name)
+}
+
+fn assert_logical_member(
+    body: &HirBody,
+    view: &ExecutableAnalysisView<'_>,
+    field: HirExprId,
+    name: &str,
+) {
+    let HirExprKind::Field(member) = &body.expression(field).expect("member expression").kind
+    else {
+        panic!("field expression");
+    };
+    let TypeFact::LogicalRecord(record) = view
+        .expression(member.receiver)
+        .expect("logical member receiver")
+    else {
+        panic!("logical record receiver");
+    };
+    assert_eq!(
+        view.member_target(field),
+        Some(&MemberTargetFact::LogicalRecordField(
+            record.field_target(name).expect("logical field target")
+        ))
+    );
 }

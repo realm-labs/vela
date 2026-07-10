@@ -125,6 +125,14 @@ impl AnalysisFacts {
     }
 
     #[must_use]
+    pub fn logical_record_constructor(
+        &self,
+        expression: HirExprId,
+    ) -> Option<crate::logical_records::LogicalRecordKind> {
+        self.semantic.logical_record_constructor(expression)
+    }
+
+    #[must_use]
     pub fn call_target(&self, expression: HirExprId) -> Option<&CallTargetFact> {
         self.semantic.call_target(expression)
     }
