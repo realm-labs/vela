@@ -3,6 +3,7 @@
 > **Track:** semantic architecture, HIR ownership, compiler/LSP fact cleanup
 > before MIR and JIT foundation work
 > **Document status:** Codex goal-mode execution plan
+> **Execution status:** primary hard switch implemented; D1-D3 close-out reopened
 > **Compatibility policy:** breaking pre-release HIR, analysis,
 > language-service, bytecode-compiler, and test APIs are allowed. Preserve
 > product contracts: no script-language generics, no Rust `&mut` exposure,
@@ -23,7 +24,7 @@ the old syntax-semantic path and the new HIR-semantic path alive as parallel
 implementations; delete or rewrite the old path in the same checkpoint that
 makes the replacement green.
 
-For the remaining work, a "checkpoint" means one of the four close-out
+For the remaining work, a "checkpoint" means one of the reopened close-out
 checkpoints defined in Section 4. It does not mean one expression shape, one
 operand edge, one fallback, one helper, or one compiler error. Do not make a
 sequence of commits such as "read field receiver from HIR", "read index operand
@@ -59,7 +60,11 @@ subsystem. Preserve VM behavior, diagnostics quality, HostAccess safety, hot
 reload, and analysis-only LSP behavior. Do not mark the goal complete after an
 intermediate checkpoint or because focused tests are green. The goal is
 complete only after Phase 7 audit searches satisfy their expected results and
-the full final validation passes.
+the full final validation passes. Start from the reopened D1 checkpoint in
+Section 4: remove bytecode span-to-HIR identity reconstruction and duplicated
+language-service local-by-span lookup, then complete D2 record-completion
+HIR/recovery separation and D3 architecture hygiene. Do not redo the already
+deleted syntax payload compiler or introduce a replacement compatibility path.
 ```
 
 ---
@@ -158,17 +163,30 @@ focused tests and validation command pass.
 
 ### Current Execution State
 
-Checkpoints A through D are complete. Body HIR owns executable expression,
-statement, pattern, scope, match-arm, path, binding, and capture relationships
-under stable IDs. Analysis evaluates those HIR bodies without body syntax and
-records HIR-keyed type, callable, member, effect, control-flow, constructor,
-operator, host-path, and degradation facts. Language-service semantic queries
-and bytecode lowering consume those facts, the old bytecode syntax payload and
-dispatcher are deleted, and the Phase 7 audits and final validation pass.
+Checkpoint A is complete. Checkpoints B and C completed their primary hard
+switches: Body HIR owns executable relationships, analysis owns HIR-keyed
+semantic facts, the large language-service syntax semantic walkers are gone,
+and bytecode's syntax payload/dispatcher path is deleted. Focused, workspace,
+clippy, and runnable-example validation is green.
+
+Final acceptance is reopened because review found identity and architecture
+gaps that the earlier audits did not cover:
+
+- bytecode path, host-path, and record-shape helpers still accept `Span` and
+  call `Compiler::expression_at_span` to reconstruct `HirExprId`;
+- definition, references, rename, hover, semantic tokens, and related editor
+  paths still duplicate local-by-name/local-by-span lookup instead of consuming
+  one shared HIR-backed symbol identity;
+- record-field completion ignores its `HirBody`/`SourceId` inputs and uses a
+  syntax-only recursive walk to discover constructor identity, while a test
+  named as HIR coverage does not exercise HIR;
+- one active analysis implementation file and three active test files exceed
+  the ordinary 1200-line guideline, and the bytecode compiler module comment
+  still describes the removed AST compiler.
 
 Passing focused tests proves behavior preservation, not completion. The
 remaining execution unit is no longer an individual call/field/index fact.
-Goal mode must finish these four checkpoints in order:
+The original checkpoint history remains:
 
 ```text
 A. Executable HIR closure: finish Phase 3 and Phase 4 together so a body can be
@@ -177,15 +195,25 @@ B. Language-service hard switch: migrate every semantic feature and delete
    feature-local syntax-to-HIR span pairing.
 C. Bytecode hard switch: switch the compiler entrypoint and all body lowering,
    then delete syntax payload/dispatcher scaffolding in the same checkpoint.
-D. Cleanup and acceptance: run zero-hit audits, full validation, and only then
-   mark the goal complete and unblock MIR.
+D. Cleanup and acceptance: reopened by the final architecture review below.
 ```
 
-Checkpoint A may temporarily break analysis, language-service, and bytecode
-callers while HIR records change. Checkpoints B and C may likewise leave their
-subsystem uncompilable during the checkpoint. Do not preserve compatibility
-constructors, dual dispatch, aliases, or test-only mirrors merely to keep every
-intermediate edit green.
+Goal mode must now complete these close-out checkpoints in order:
+
+```text
+D1. Stable identity closure: pass HirExprId/HirLocalId through bytecode and
+    editor semantic APIs; delete span-to-ID and feature-local local-span scans.
+D2. Completion boundary closure: make record-field completion HIR-first and
+    isolate syntax traversal to explicitly named incomplete-edit recovery.
+D3. Architecture and acceptance: split over-threshold files, remove stale
+    AST/migration wording, run all zero-hit audits and full validation, update
+    status docs, and only then unblock MIR and complete the goal.
+```
+
+Each D checkpoint is a complete architecture slice, not one caller or helper.
+The tree may be temporarily red while signatures change. Do not preserve
+compatibility constructors, span fallbacks, dual dispatch, aliases, or
+test-only mirrors merely to keep every intermediate edit green.
 
 ---
 
@@ -329,19 +357,23 @@ semantic reconstruction.
 
 - [x] Update query context to expose HIR body, HIR IDs, analysis facts, and
   source-origin lookup as the default editor-neutral input.
-- [x] Move completion, signature help, hover, definition, references, rename,
+- [~] Move completion, signature help, hover, definition, references, rename,
   code actions, semantic tokens, and inlay hints away from body-level syntax
-  semantic inference.
+  semantic inference. Record-field completion and local identity lookup remain
+  in the reopened close-out.
 - [x] Keep formatting on the canonical lossless syntax formatter; formatting
   must not build a second semantic tree or depend on feature-local semantic
   reconstruction.
-- [x] Delete feature-local helpers that take a `SyntaxExpression` only to find
+- [~] Delete feature-local helpers that take a `SyntaxExpression` only to find
   `HirExprId` by span, or that find a syntax expression from a HIR ID before
   performing semantic work. Start semantic queries from HIR IDs and project
-  results back through HIR source origins.
-- [x] Keep syntax/CST access only for lexical recovery under incomplete edits,
+  results back through HIR source origins. Apply the same rule to duplicated
+  local-binding lookup by name or source range.
+- [~] Keep syntax/CST access only for lexical recovery under incomplete edits,
   lossless formatting, folding/selection structure, token trivia, and final
-  source-range projection. These paths must not own resolved semantic facts.
+  source-range projection. Record-constructor identity must come from HIR when
+  a recovered HIR record expression exists; syntax recovery must be isolated
+  and must not own resolved semantic facts.
 - [x] Keep LSP protocol projection unchanged.
 - [x] Preserve stale-generation, overlay, cancellation, and analysis-only LSP
   behavior.
@@ -352,6 +384,7 @@ Validation:
 cargo test -p vela_language_service
 cargo test -p vela_lsp_server
 rg -n "hir_.*SyntaxExpression|syntax_expr_for_hir_expression|expression_at_span|pattern_at_span" crates/vela_language_service/src
+rg -U -n "bindings\s*\.locals\(\)\s*\.(find|find_map)" crates/vela_language_service/src
 ```
 
 Every Phase 5 search hit must either be deleted or documented at the lexical,
@@ -366,11 +399,12 @@ Purpose: make bytecode lowering consume Heavy HIR and analysis facts.
 
 - [x] Introduce compiler entrypoints that lower from `HirBody` plus analysis
   facts, with source origins used only for diagnostics and debug metadata.
-- [x] Move statement, expression, pattern, call, assignment, host path, index,
+- [~] Move statement, expression, pattern, call, assignment, host path, index,
   operator, container, lambda, default-parameter, and control-flow lowering to
-  HIR body IDs.
-- [x] Derive runtime type contracts, guards, call targets, and frame/debug
-  metadata from Heavy HIR facts.
+  HIR body IDs. Path, host-path, and record-shape helpers must receive IDs
+  directly instead of reconstructing them from expression spans.
+- [~] Derive runtime type contracts, guards, call targets, and frame/debug
+  metadata from Heavy HIR facts without `expression_at_span` identity joins.
 - [x] Replace the primary `compile_syntax_expression`/syntax-kind dispatcher
   with HIR expression/statement/pattern dispatch. Do this for the complete body
   compiler rather than adding more HIR gates around syntax-shaped helpers.
@@ -388,9 +422,10 @@ cargo test -p vela_bytecode
 cargo test -p vela_vm
 cargo test -p vela_engine
 rg -n "CompilerBodyPayload|SyntaxBodyPayload|CompilerStatementPayload|compile_syntax_expression|hir_block_body_payload|expression_syntax_|body_payload|syntax_payload" crates/vela_bytecode/src/compiler
+rg -n "expression_at_span\(" crates/vela_bytecode/src/compiler
 ```
 
-The Phase 6 search must have zero hits. Do not keep a test-only syntax compiler,
+Both Phase 6 searches must have zero hits. Do not keep a test-only syntax compiler,
 comparison backend, compatibility facade, alias, or dual-path equivalence test
 after the HIR compiler is green. Preserve behavior with source-to-runtime tests
 that use the production HIR path.
@@ -402,31 +437,57 @@ that use the production HIR path.
 Purpose: remove transition names and prove Heavy HIR is the semantic source.
 
 - [x] Delete migration-only payload/fact/helper names.
-- [x] Ensure downstream body-level semantic decisions do not read syntax
-  directly. Source-origin/span lookup may project an existing HIR result back
+- [~] Ensure downstream body-level semantic decisions do not read syntax or
+  recover HIR identity directly from source spans. Source-origin/span lookup
+  may project an existing HIR result back
   to source, but must not reconstruct semantic identity or operands.
-- [x] Update docs/progress.md and docs/decisions.md only when implementation
+- [~] Update docs/progress.md and docs/decisions.md only when implementation
   status changes.
-- [x] Keep MIR unimplemented until Heavy HIR acceptance passes.
+- [~] Keep MIR unimplemented until the reopened Heavy HIR acceptance passes.
+- [ ] Split active files that exceed 1200 lines unless a concrete exception is
+  documented: `vela_analysis/src/registry.rs`, HIR binding tests, and bytecode
+  literal/call and expression tests are the current close-out set.
+- [ ] Replace stale AST/migration descriptions and misleading test names,
+  including the bytecode compiler module description and record completion's
+  claimed HIR-operand test.
 
 Audit searches:
 
 ```bash
 rg -n "CompilerBodyPayload|SyntaxBodyPayload|CompilerStatementPayload|compile_syntax_expression|hir_block_body_payload|expression_syntax_|body_payload|syntax_payload" crates/vela_bytecode/src/compiler
 rg -n "hir_let_local_name_for_span|hir_.*SyntaxExpression|syntax_expr_for_hir_expression" crates/vela_bytecode/src/compiler crates/vela_language_service/src crates/vela_analysis/src
+rg -n "expression_at_span\(" crates/vela_bytecode/src/compiler
+rg -U -n "bindings\s*\.locals\(\)\s*\.(find|find_map)" crates/vela_language_service/src
 rg -n "parse_source_with_id\\(|syntax_parse\\(" crates/vela_bytecode/src/compiler crates/vela_analysis/src
 rg -n "TODO.*HIR|temporary.*HIR|compat.*HIR|fallback.*HIR|Temporary 1200-line exception" crates examples editors
 rg -n "SyntaxExpression|SyntaxStatement" crates/vela_bytecode/src/compiler crates/vela_language_service/src crates/vela_analysis/src
+rg -n "Minimal AST-to-bytecode|uses_hir_index_operands" crates
 ```
 
-The first, second, and fourth searches must have zero hits. Review the third
-search: parsing is allowed only at module/source ingestion and in source-based
-behavior tests; analysis and body lowering must not reparse source to recover
-semantic facts. Review every hit from the final syntax-type search:
+File-size audit for the current close-out set:
+
+```powershell
+$files = @(
+  "crates/vela_analysis/src/registry.rs",
+  "crates/vela_hir/src/module_graph/tests/bindings.rs",
+  "crates/vela_bytecode/src/compiler/tests/literals_and_calls.rs",
+  "crates/vela_bytecode/src/compiler/tests/expressions.rs"
+)
+$files | ForEach-Object {
+  [pscustomobject]@{ Lines = (Get-Content $_).Count; File = $_ }
+} | Where-Object Lines -gt 1200
+```
+
+The first four and final stale-name searches must have zero hits. Review the
+source-parsing search: parsing is allowed only at module/source ingestion and
+in source-based behavior tests; analysis and body lowering must not reparse
+source to recover semantic facts. Review every hit from the final syntax-type
+search:
 `vela_bytecode` and `vela_analysis` must have no body-level syntax dependency;
 `vela_language_service` may retain syntax only for the explicit lexical,
 formatting, recovery, folding/selection, trivia, and source projection
-boundaries from Phase 5.
+boundaries from Phase 5. The file-size audit must produce no output unless this
+document records a concrete exception and its architectural justification.
 
 Final validation:
 
@@ -439,7 +500,8 @@ cargo test --manifest-path examples/Cargo.toml --test runnable_examples
 
 The plan is complete only when Heavy HIR owns body-level semantic facts,
 language-service and bytecode compiler consume those facts, old body-level
-syntax semantic reconstruction is removed, all four remaining checkpoints are
-complete, and full validation passes. A green intermediate tree, completion of
-one subsystem, or progress recorded in `docs/progress.md` is not sufficient to
-mark the goal complete.
+syntax semantic reconstruction and span-based identity reconstruction are
+removed, D1 through D3 are complete, over-threshold files are split or have a
+documented exception, and full validation passes. A green intermediate tree,
+completion of one subsystem, or progress recorded in `docs/progress.md` is not
+sufficient to mark the goal complete.

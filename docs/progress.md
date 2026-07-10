@@ -31,15 +31,16 @@ required.
 
 ## Current Focus
 
-The Heavy HIR hard switch is complete. `vela_hir` owns
-stable body, expression, statement, pattern, scope, binding, capture,
-call/member-target, and control-flow facts; analysis, language-service semantic
-queries, and bytecode lowering consume those facts without body-level syntax
-reconstruction. The bytecode compiler's syntax payload/dispatcher path has
-been deleted, Phase 6 bytecode/VM/engine validation is green, and the Phase 7
-audit searches satisfy their expected results. Full workspace and runnable
-examples validation passes. MIR remained unimplemented through acceptance and
-is now unblocked as a separate future architecture track.
+The Heavy HIR primary hard switch is implemented, but final architecture
+close-out is reopened. `vela_hir` owns executable body facts, analysis owns
+HIR-keyed semantic facts, and bytecode's old syntax payload/dispatcher is
+deleted; focused, workspace, clippy, and runnable-example validation is green.
+Remaining close-out work is concrete: remove bytecode span-to-`HirExprId`
+reconstruction, centralize language-service `HirLocalId` lookup instead of
+feature-local span scans, make record-field completion HIR-first with isolated
+incomplete-edit syntax recovery, split the current over-1200-line active files,
+and remove stale AST/test descriptions. MIR is blocked until these D1-D3
+checkpoints and the updated Heavy HIR acceptance audits pass.
 
 M0-M19 are complete enough as a runnable prototype, embedding surface,
 production hot-reload workflow, diagnostics/tooling foundation, runnable
@@ -385,23 +386,17 @@ sequence binder, removing its custom span-based recursive local binder. Pattern
 local setup now advances that HIR cursor across non-binding nested child
 patterns too, so later destructured locals keep their stable `HirLocalId` to
 register mapping instead of relying on name-map fallback.
-Heavy HIR executable closure is now complete: expression, statement, pattern,
+Heavy HIR executable closure is complete: expression, statement, pattern,
 scope, match-arm, path, binding, and capture relationships are HIR-owned under
 stable IDs, and analysis derives HIR-keyed type, target, member, operator,
 host-path, effect, degradation, and control-flow facts without body syntax.
-The language-service hard switch is now complete: the syntax-owned expression
-fact evaluator and inlay semantic walkers are deleted, editor semantic facts
-come from `AnalysisFacts`/HIR IDs, and the remaining CST access is confined to
-lexical recovery and source projection. The required language-service span-join
-audit is clean and the LSP protocol/analysis-only behavior remains unchanged.
-Bytecode syntax payload deletion and Heavy HIR acceptance are complete. Future
-MIR work may now add an internal `vela_mir`
-execution-shape layer for CFG, typed operations, guards, liveness, bytecode
-lowering, and future M22 Cranelift input. M20 cache-family audit and measured
-close-out may continue in parallel, but new broad lowering architecture work
-should use the validated
-[heavy-hir-hard-switch-plan.md](heavy-hir-hard-switch-plan.md) baseline and
-follow [mir-lowering-jit-foundation-plan.md](mir-lowering-jit-foundation-plan.md).
+The language-service's large syntax-owned expression/inlay semantic walkers and
+the bytecode syntax payload/dispatcher are deleted. Final acceptance remains
+open for the stable-identity, record-completion recovery boundary, file-size,
+and stale-description gaps named in
+[heavy-hir-hard-switch-plan.md](heavy-hir-hard-switch-plan.md). MIR must remain
+unimplemented until those close-out gates pass; M20 cache-family audit may
+continue independently when it does not change lowering architecture.
 
 The lossless CST rowan refactor is complete as a breaking syntax foundation
 track. `vela_syntax` now uses rowan-backed lossless parse trees and typed AST
