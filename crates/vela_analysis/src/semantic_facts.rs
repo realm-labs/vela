@@ -523,7 +523,7 @@ impl HirSemanticFacts {
             }
             HirExprKind::Unary { op, operand } => {
                 let target = op.map_or(OperatorTargetFact::Unresolved, |op| {
-                    if operand.is_some_and(|id| matches!(self.fact(id), TypeFact::Any)) {
+                    if operand.is_some_and(|id| operator_fact_is_dynamic(&self.fact(id))) {
                         OperatorTargetFact::Dynamic
                     } else {
                         OperatorTargetFact::Unary(op)
@@ -536,7 +536,7 @@ impl HirSemanticFacts {
                     if lhs
                         .iter()
                         .chain(rhs.iter())
-                        .any(|id| matches!(self.fact(*id), TypeFact::Any))
+                        .any(|id| operator_fact_is_dynamic(&self.fact(*id)))
                     {
                         OperatorTargetFact::Dynamic
                     } else {
@@ -547,7 +547,7 @@ impl HirSemanticFacts {
             }
             HirExprKind::Assign { op, target, .. } => {
                 let operator = op.map_or(OperatorTargetFact::Unresolved, |op| {
-                    if target.is_some_and(|id| matches!(self.fact(id), TypeFact::Any)) {
+                    if target.is_some_and(|id| operator_fact_is_dynamic(&self.fact(id))) {
                         OperatorTargetFact::Dynamic
                     } else {
                         OperatorTargetFact::Assignment(op)
@@ -921,6 +921,10 @@ impl HirSemanticFacts {
             }
         }
     }
+}
+
+fn operator_fact_is_dynamic(fact: &TypeFact) -> bool {
+    matches!(fact, TypeFact::Any | TypeFact::Unknown)
 }
 
 fn expression_path(body: &HirBody, expression: HirExprId, kind: HirPathKind) -> Option<&[String]> {

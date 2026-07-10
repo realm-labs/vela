@@ -1,5 +1,6 @@
 mod constructor_targets;
 mod host_variant_fields;
+mod operator_targets;
 
 use vela_common::SourceId;
 use vela_hir::body::HirExprKind;
