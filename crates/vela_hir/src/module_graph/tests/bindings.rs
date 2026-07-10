@@ -1,7 +1,7 @@
 use super::*;
 use crate::body::{
-    HirBodyOwner, HirBodyRoot, HirExprKind, HirPathKind, HirPathOwner, HirScopeKind, HirStmtKind,
-    HirStmtTag,
+    HirBodyOwner, HirBodyRoot, HirExprKind, HirInterpolatedStringPart, HirLiteral, HirPathKind,
+    HirPathOwner, HirScopeKind, HirStmtKind, HirStmtTag,
 };
 
 fn hir_resolution_for_span<'a>(

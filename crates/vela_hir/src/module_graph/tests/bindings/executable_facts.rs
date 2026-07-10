@@ -226,11 +226,34 @@ fn function_bodies_record_interpolated_string_path_facts() {
     let mut graph = ModuleGraph::new();
     let source_text = r#"
 fn main(name, amount) {
-    return f"reward {name}: {amount}";
+    return f"reward {{ready}} {name}: {amount}\n";
 }
 "#;
-    graph.add_source(source(1, "game::main", source_text));
+    let module = graph.add_source(source(1, "game::main", source_text));
     assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+
+    let main = graph
+        .module(module)
+        .and_then(|module| module.get("main"))
+        .expect("main declaration");
+    let body = graph.function_body(main).expect("main body");
+    let parts = body
+        .expressions
+        .values()
+        .find_map(|expression| match &expression.kind {
+            HirExprKind::Literal(HirLiteral::Interpolated { parts }) => Some(parts),
+            _ => None,
+        })
+        .expect("interpolated literal parts");
+    assert_eq!(parts.len(), 5);
+    assert_eq!(
+        parts[0],
+        HirInterpolatedStringPart::Text("reward {ready} ".to_owned())
+    );
+    assert!(matches!(parts[1], HirInterpolatedStringPart::Expr(_)));
+    assert_eq!(parts[2], HirInterpolatedStringPart::Text(": ".to_owned()));
+    assert!(matches!(parts[3], HirInterpolatedStringPart::Expr(_)));
+    assert_eq!(parts[4], HirInterpolatedStringPart::Text("\n".to_owned()));
 
     let path_facts = graph
         .paths_in_source_by_kind(SourceId::new(1), HirPathKind::Value)

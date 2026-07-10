@@ -1,17 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use vela_common::{Diagnostic, Span};
-use vela_hir::binding::LocalBindingKind;
-use vela_hir::body::{
-    HirAssignOp, HirBinaryOp, HirBodyRoot, HirElseBranch, HirExprKind, HirFloatSuffix, HirIf,
-    HirIntegerSuffix, HirLiteral, HirMatch, HirMatchArmBody, HirPathKind, HirPatternKind,
-    HirStmtKind, HirUnaryOp,
-};
-use vela_hir::ids::{HirBlockId, HirBodyId, HirExprId, HirPatternId, HirStmtId};
-use vela_hir::type_hint::ParamHint;
-use vela_host::resolved::HostMutationOp;
-use vela_syntax::token::{InterpolatedStringTokenPart, TokenKind};
-
 use crate::compiler::call_args::{HirCallArgument, resolve_hir_call_arguments};
 use crate::compiler::calls::metadata::{registry_param_hints, unresolved_static_method_error};
 use crate::compiler::calls::{mutation_arg_debug_name, typed_container_mutation_arg_contract};
@@ -33,6 +21,16 @@ use crate::{
     BinaryLiteralSide, CallArgument, Constant, DynamicCallArgument, FormatStringPart, GuardKind,
     Register, ScriptCallMode, UnlinkedGuardContext, UnlinkedInstructionKind, UnlinkedTypeGuard,
 };
+use vela_common::{Diagnostic, Span};
+use vela_hir::binding::LocalBindingKind;
+use vela_hir::body::{
+    HirAssignOp, HirBinaryOp, HirBodyRoot, HirElseBranch, HirExprKind, HirFloatSuffix, HirIf,
+    HirIntegerSuffix, HirInterpolatedStringPart, HirLiteral, HirMatch, HirMatchArmBody,
+    HirPathKind, HirPatternKind, HirStmtKind, HirUnaryOp,
+};
+use vela_hir::ids::{HirBlockId, HirBodyId, HirExprId, HirPatternId, HirStmtId};
+use vela_hir::type_hint::ParamHint;
+use vela_host::resolved::HostMutationOp;
 
 mod assignments;
 mod calls;

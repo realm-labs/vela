@@ -344,12 +344,17 @@ pub enum HirLiteral {
     String(String),
     Bytes(Vec<u8>),
     Interpolated {
-        source_text: String,
-        expressions: Vec<HirExprId>,
+        parts: Vec<HirInterpolatedStringPart>,
     },
     Invalid {
         source_text: String,
     },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum HirInterpolatedStringPart {
+    Text(String),
+    Expr(HirExprId),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

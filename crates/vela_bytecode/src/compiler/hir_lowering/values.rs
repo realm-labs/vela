@@ -378,10 +378,7 @@ impl Compiler<'_, '_> {
         literal: &HirLiteral,
     ) -> CompileResult<Register> {
         match literal {
-            HirLiteral::Interpolated {
-                source_text,
-                expressions,
-            } => self.compile_hir_interpolated_string(span, source_text, expressions),
+            HirLiteral::Interpolated { parts } => self.compile_hir_interpolated_string(parts),
             HirLiteral::Invalid { .. } => Err(hir_unsupported("literal", span)),
             literal => self.compile_literal(Some(span), literal),
         }
@@ -389,38 +386,21 @@ impl Compiler<'_, '_> {
 
     pub(in crate::compiler) fn compile_hir_interpolated_string(
         &mut self,
-        span: Span,
-        source_text: &str,
-        expressions: &[HirExprId],
+        parts: &[HirInterpolatedStringPart],
     ) -> CompileResult<Register> {
-        let parts = vela_syntax::lexer::lex(span.source, source_text)
-            .tokens
-            .into_iter()
-            .find_map(|token| match token.kind {
-                TokenKind::InterpolatedString(parts) => Some(parts),
-                _ => None,
-            })
-            .ok_or_else(|| hir_unsupported("interpolated string", span))?;
-        let mut expressions = expressions.iter();
         let mut compiled = Vec::with_capacity(parts.len());
         for part in parts {
             match part {
-                InterpolatedStringTokenPart::Text(value) => {
-                    let constant = self.code.push_constant(Constant::String(value));
+                HirInterpolatedStringPart::Text(value) => {
+                    let constant = self.code.push_constant(Constant::String(value.clone()));
                     compiled.push(FormatStringPart::Text(constant));
                 }
-                InterpolatedStringTokenPart::Expr { .. } => {
-                    let expression = expressions
-                        .next()
-                        .ok_or_else(|| hir_unsupported("interpolated expression", span))?;
+                HirInterpolatedStringPart::Expr(expression) => {
                     compiled.push(FormatStringPart::Value(
                         self.compile_hir_expression(*expression)?,
                     ));
                 }
             }
-        }
-        if expressions.next().is_some() {
-            return Err(hir_unsupported("interpolated expression", span));
         }
         let dst = self.alloc_register()?;
         self.emit(UnlinkedInstructionKind::FormatString {
