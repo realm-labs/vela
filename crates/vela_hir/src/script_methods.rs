@@ -6,12 +6,13 @@
 //! constants in this shared boundary.
 
 use std::collections::BTreeSet;
+use std::fmt;
 
 use vela_def::{MethodId, script_inherent_method_id, script_trait_method_id};
 
 use crate::body::{HirBody, HirSourceOrigin};
 use crate::ids::{HirBodyId, HirDeclId, HirNodeId, ModuleId};
-use crate::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
+use crate::module_graph::{Declaration, DeclarationKind, ModuleGraph, ModulePath};
 use crate::type_hint::{FunctionSignature, ImplMetadata, ImplMetadataKind};
 
 #[cfg(test)]
@@ -42,34 +43,42 @@ pub struct ScriptMethodCatalog {
 }
 
 impl ScriptMethodCatalog {
-    #[must_use]
-    pub fn from_graph(graph: &ModuleGraph, mode: ScriptMethodCatalogMode) -> Self {
-        let methods = match mode {
+    pub fn from_graph(
+        graph: &ModuleGraph,
+        mode: ScriptMethodCatalogMode,
+    ) -> Result<Self, ScriptMethodCatalogError> {
+        let (declarations, qualification, identity_namespace) = match mode {
             ScriptMethodCatalogMode::SingleSource {
                 module,
                 identity_namespace,
-            } => graph
-                .declarations()
-                .filter(|declaration| declaration.module == module)
-                .filter(|declaration| declaration.kind == DeclarationKind::Impl)
-                .flat_map(|declaration| {
-                    collect_impl_methods(
-                        graph,
-                        declaration.id,
-                        TargetQualification::Local,
-                        Some(identity_namespace.as_str()),
-                    )
-                })
-                .collect(),
-            ScriptMethodCatalogMode::ModuleGraph => graph
-                .declarations()
-                .filter(|declaration| declaration.kind == DeclarationKind::Impl)
-                .flat_map(|declaration| {
-                    collect_impl_methods(graph, declaration.id, TargetQualification::Module, None)
-                })
-                .collect(),
+            } => (
+                graph
+                    .declarations()
+                    .filter(|declaration| declaration.module == module)
+                    .filter(|declaration| declaration.kind == DeclarationKind::Impl)
+                    .collect::<Vec<_>>(),
+                TargetQualification::Local,
+                Some(identity_namespace),
+            ),
+            ScriptMethodCatalogMode::ModuleGraph => (
+                graph
+                    .declarations()
+                    .filter(|declaration| declaration.kind == DeclarationKind::Impl)
+                    .collect::<Vec<_>>(),
+                TargetQualification::Module,
+                None,
+            ),
         };
-        Self { methods }
+        let mut methods = Vec::new();
+        for declaration in declarations {
+            methods.extend(collect_impl_methods(
+                graph,
+                declaration,
+                qualification,
+                identity_namespace.as_deref(),
+            )?);
+        }
+        Ok(Self { methods })
     }
 
     pub fn methods(&self) -> impl ExactSizeIterator<Item = &ScriptMethod> {
@@ -86,6 +95,52 @@ impl ScriptMethodCatalog {
         self.methods.len()
     }
 }
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ScriptMethodCatalogError {
+    declaration: HirDeclId,
+    node: Option<HirNodeId>,
+    origin: HirSourceOrigin,
+    message: String,
+}
+
+impl ScriptMethodCatalogError {
+    #[must_use]
+    pub const fn declaration(&self) -> HirDeclId {
+        self.declaration
+    }
+
+    #[must_use]
+    pub const fn node(&self) -> Option<HirNodeId> {
+        self.node
+    }
+
+    #[must_use]
+    pub const fn origin(&self) -> HirSourceOrigin {
+        self.origin
+    }
+
+    #[must_use]
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+}
+
+impl fmt::Display for ScriptMethodCatalogError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "script method catalog inconsistency for declaration {:?}",
+            self.declaration
+        )?;
+        if let Some(node) = self.node {
+            write!(formatter, ", node {node:?}")?;
+        }
+        write!(formatter, ": {}", self.message)
+    }
+}
+
+impl std::error::Error for ScriptMethodCatalogError {}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ScriptMethod {
@@ -249,6 +304,7 @@ enum TargetQualification {
 }
 
 struct MethodBuildInput<'graph> {
+    node: HirNodeId,
     target_type: String,
     name: String,
     name_origin: HirSourceOrigin,
@@ -260,18 +316,20 @@ struct MethodBuildInput<'graph> {
 
 fn collect_impl_methods(
     graph: &ModuleGraph,
-    declaration: HirDeclId,
+    declaration: &Declaration,
     qualification: TargetQualification,
     identity_namespace: Option<&str>,
-) -> Vec<ScriptMethod> {
-    let Some(declaration_metadata) = graph.declaration(declaration) else {
-        return Vec::new();
-    };
-    let Some(impl_metadata) = graph.impl_metadata(declaration) else {
-        return Vec::new();
-    };
+) -> Result<Vec<ScriptMethod>, ScriptMethodCatalogError> {
+    let impl_metadata = graph.impl_metadata(declaration.id).ok_or_else(|| {
+        catalog_error(
+            declaration.id,
+            None,
+            origin(declaration.span),
+            "impl declaration has no HIR metadata",
+        )
+    })?;
     let actual_module = graph
-        .module_path(declaration_metadata.module)
+        .module_path(declaration.module)
         .cloned()
         .unwrap_or_else(ModulePath::root);
     let target_type = match qualification {
@@ -280,74 +338,176 @@ fn collect_impl_methods(
             module_target_name(Some(&actual_module), &impl_metadata.target_path)
         }
     };
-    let owner_origin = origin(declaration_metadata.span);
-    let mut methods = impl_metadata
-        .methods
-        .iter()
-        .filter_map(|method| {
-            let body = graph.impl_method_body(method.node)?;
-            Some(build_method(
-                &actual_module,
-                identity_namespace,
-                impl_metadata,
-                owner_origin,
-                MethodBuildInput {
-                    target_type: target_type.clone(),
-                    name: method.name.clone(),
-                    name_origin: origin(method.name_span),
-                    signature: &method.signature,
-                    body,
-                    module: declaration_metadata.module,
-                    signature_module: declaration_metadata.module,
-                },
-            ))
-        })
-        .collect::<Vec<_>>();
+    let owner_origin = origin(declaration.span);
+    let mut methods = Vec::new();
+    for method in &impl_metadata.methods {
+        let body = graph.impl_method_body(method.node).ok_or_else(|| {
+            catalog_error(
+                declaration.id,
+                Some(method.node),
+                origin(method.span),
+                "impl method has no owning HIR body",
+            )
+        })?;
+        methods.push(build_method(
+            graph,
+            declaration.id,
+            &actual_module,
+            identity_namespace,
+            impl_metadata,
+            owner_origin,
+            MethodBuildInput {
+                node: method.node,
+                target_type: target_type.clone(),
+                name: method.name.clone(),
+                name_origin: origin(method.name_span),
+                signature: &method.signature,
+                body,
+                module: declaration.module,
+                signature_module: declaration.module,
+            },
+        )?);
+    }
 
     let explicit = impl_metadata
         .methods
         .iter()
         .map(|method| method.name.as_str())
         .collect::<BTreeSet<_>>();
-    if let Some(trait_path) = impl_metadata.trait_path()
-        && let Some(trait_declaration) =
-            trait_declaration(graph, declaration_metadata.module, trait_path)
-        && let Some(trait_metadata) = graph.declaration(trait_declaration)
-        && let Some(shape) = graph.trait_shape(trait_declaration)
-    {
-        methods.extend(shape.methods.iter().filter_map(|method| {
+    if let Some(trait_path) = impl_metadata.trait_path() {
+        let trait_declaration = trait_declaration(graph, declaration.module, trait_path)
+            .ok_or_else(|| {
+                catalog_error(
+                    declaration.id,
+                    None,
+                    owner_origin,
+                    format!("trait `{}` has no declaration", trait_path.join("::")),
+                )
+            })?;
+        let trait_metadata = graph.declaration(trait_declaration).ok_or_else(|| {
+            catalog_error(
+                declaration.id,
+                None,
+                owner_origin,
+                "resolved trait has no declaration metadata",
+            )
+        })?;
+        let shape = graph.trait_shape(trait_declaration).ok_or_else(|| {
+            catalog_error(
+                declaration.id,
+                None,
+                owner_origin,
+                "resolved trait has no method shape",
+            )
+        })?;
+        for method in &shape.methods {
             if explicit.contains(method.name.as_str()) {
-                return None;
+                continue;
             }
-            let node = method.default_body_node?;
-            let body = graph.trait_default_method_body(node)?;
-            Some(build_method(
+            if !method.has_default {
+                continue;
+            }
+            let node = method.default_body_node.ok_or_else(|| {
+                catalog_error(
+                    declaration.id,
+                    None,
+                    origin(method.span),
+                    format!("default method `{}` has no body node", method.name),
+                )
+            })?;
+            let body = graph.trait_default_method_body(node).ok_or_else(|| {
+                catalog_error(
+                    declaration.id,
+                    Some(node),
+                    origin(method.default_body_span.unwrap_or(method.span)),
+                    format!("default method `{}` has no owning HIR body", method.name),
+                )
+            })?;
+            methods.push(build_method(
+                graph,
+                declaration.id,
                 &actual_module,
                 identity_namespace,
                 impl_metadata,
                 owner_origin,
                 MethodBuildInput {
+                    node,
                     target_type: target_type.clone(),
                     name: method.name.clone(),
                     name_origin: origin(method.name_span),
                     signature: &method.signature,
                     body,
-                    module: declaration_metadata.module,
+                    module: declaration.module,
                     signature_module: trait_metadata.module,
                 },
-            ))
-        }));
+            )?);
+        }
     }
-    methods
+    Ok(methods)
 }
 
 fn build_method(
+    graph: &ModuleGraph,
+    declaration: HirDeclId,
     actual_module: &ModulePath,
     identity_namespace: Option<&str>,
     impl_metadata: &ImplMetadata,
     owner_origin: HirSourceOrigin,
     input: MethodBuildInput<'_>,
-) -> ScriptMethod {
+) -> Result<ScriptMethod, ScriptMethodCatalogError> {
+    match input.body.owner {
+        crate::body::HirBodyOwner::TraitDefaultMethod(node)
+        | crate::body::HirBodyOwner::ImplMethod(node)
+            if node == input.node => {}
+        _ => {
+            return Err(catalog_error(
+                declaration,
+                Some(input.node),
+                input.body.origin,
+                "method body owner does not match its method node",
+            ));
+        }
+    }
+    if input.body.params.len() != input.signature.params.len() {
+        return Err(catalog_error(
+            declaration,
+            Some(input.node),
+            input.body.origin,
+            format!(
+                "method signature has {} parameters but its body has {}",
+                input.signature.params.len(),
+                input.body.params.len()
+            ),
+        ));
+    }
+    let parameter_default_bodies = input
+        .body
+        .params
+        .iter()
+        .map(|parameter| parameter.default_body)
+        .collect::<Vec<_>>();
+    for default_body in parameter_default_bodies.iter().flatten() {
+        let default = graph.body(*default_body).ok_or_else(|| {
+            catalog_error(
+                declaration,
+                Some(input.node),
+                input.body.origin,
+                format!("parameter default body {default_body:?} is missing"),
+            )
+        })?;
+        if !matches!(
+            default.owner,
+            crate::body::HirBodyOwner::ParameterDefault { parent, .. }
+                if parent == input.body.id
+        ) {
+            return Err(catalog_error(
+                declaration,
+                Some(input.node),
+                default.origin,
+                format!("parameter default body {default_body:?} has the wrong owner"),
+            ));
+        }
+    }
     let identity = match &impl_metadata.kind {
         ImplMetadataKind::Inherent => ScriptMethodIdentity::Inherent {
             owner: target_owner_name(
@@ -365,31 +525,36 @@ fn build_method(
             source_trait_path: trait_path.join("::"),
         },
     };
-    ScriptMethod {
+    Ok(ScriptMethod {
         owner: ScriptMethodOwner {
             target_type: input.target_type,
             actual_module: actual_module.clone(),
             identity,
         },
-        node: match input.body.owner {
-            crate::body::HirBodyOwner::TraitDefaultMethod(node)
-            | crate::body::HirBodyOwner::ImplMethod(node) => node,
-            _ => unreachable!("script methods own method HIR bodies"),
-        },
+        node: input.node,
         name: input.name,
         body: input.body.id,
         signature: input.signature.clone(),
-        parameter_default_bodies: input
-            .body
-            .params
-            .iter()
-            .map(|parameter| parameter.default_body)
-            .collect(),
+        parameter_default_bodies,
         module: input.module,
         signature_module: input.signature_module,
         origin: input.body.origin,
         name_origin: input.name_origin,
         owner_origin,
+    })
+}
+
+fn catalog_error(
+    declaration: HirDeclId,
+    node: Option<HirNodeId>,
+    origin: HirSourceOrigin,
+    message: impl Into<String>,
+) -> ScriptMethodCatalogError {
+    ScriptMethodCatalogError {
+        declaration,
+        node,
+        origin,
+        message: message.into(),
     }
 }
 

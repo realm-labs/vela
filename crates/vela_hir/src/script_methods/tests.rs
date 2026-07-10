@@ -19,7 +19,8 @@ impl Player {
     let catalog = ScriptMethodCatalog::from_graph(
         &graph,
         ScriptMethodCatalogMode::single_source(module, "main"),
-    );
+    )
+    .expect("single-source method catalog");
     let method = only_method(&catalog);
 
     assert_eq!(method.owner().target_type(), "Player");
@@ -53,7 +54,8 @@ impl Player {
 }
 "#,
     );
-    let catalog = ScriptMethodCatalog::from_graph(&graph, ScriptMethodCatalogMode::ModuleGraph);
+    let catalog = ScriptMethodCatalog::from_graph(&graph, ScriptMethodCatalogMode::ModuleGraph)
+        .expect("module method catalog");
     let method = only_method(&catalog);
 
     assert_eq!(method.owner().target_type(), "game::combat::Player");
@@ -92,7 +94,8 @@ impl BonusSource for Boss {
 }
 "#,
     );
-    let catalog = ScriptMethodCatalog::from_graph(&graph, ScriptMethodCatalogMode::ModuleGraph);
+    let catalog = ScriptMethodCatalog::from_graph(&graph, ScriptMethodCatalogMode::ModuleGraph)
+        .expect("trait-default method catalog");
     assert_eq!(catalog.len(), 3);
     let player = method_for(&catalog, "game::Player");
     let monster = method_for(&catalog, "game::Monster");
@@ -122,6 +125,32 @@ impl BonusSource for Boss {
     assert_eq!(
         boss.symbol_seed(),
         "game.__impl.BonusSource.for.game::Boss.bonus"
+    );
+}
+
+#[test]
+fn inconsistent_impl_metadata_returns_a_source_keyed_catalog_error() {
+    let mut graph = ModuleGraph::new();
+    let module = graph.add_source(ModuleSource::new(
+        SourceId::new(304),
+        ModulePath::root(),
+        "struct Player {} impl MissingTrait for Player {}",
+    ));
+    graph.resolve_imports();
+
+    let error = ScriptMethodCatalog::from_graph(
+        &graph,
+        ScriptMethodCatalogMode::single_source(module, "main"),
+    )
+    .expect_err("unresolved trait must not silently omit its impl");
+
+    assert_eq!(error.origin().span.source, SourceId::new(304));
+    assert!(error.node().is_none());
+    assert!(error.message().contains("MissingTrait"));
+    assert!(
+        error
+            .to_string()
+            .contains("script method catalog inconsistency")
     );
 }
 
