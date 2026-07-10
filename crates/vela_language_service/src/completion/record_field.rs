@@ -1,6 +1,9 @@
 use vela_analysis::hints::type_fact_from_hint;
 use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
+use vela_common::{SourceId, Span};
+use vela_hir::body::HirBody;
+use vela_hir::ids::HirExprId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::StructFieldHint;
 use vela_syntax::ast::{
@@ -8,7 +11,7 @@ use vela_syntax::ast::{
     SyntaxFunctionItem, SyntaxLambdaBody, SyntaxMatchArm, SyntaxMatchArmBody, SyntaxSourceFile,
     SyntaxStatement, SyntaxStatementKind,
 };
-use vela_syntax::{SyntaxKind, TextSize};
+use vela_syntax::{SyntaxKind, TextRange as SyntaxTextRange, TextSize};
 
 use super::{
     CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind,
@@ -18,22 +21,24 @@ use crate::symbol_ref::schema_member_symbol;
 
 pub(super) fn record_constructor_at(
     source: &SyntaxSourceFile,
+    body: Option<&HirBody>,
+    source_id: Option<SourceId>,
     offset: usize,
 ) -> Option<RecordConstructor> {
-    let offset = syntax_offset(offset)?;
+    let search = RecordConstructorSearch::new(body, source_id, syntax_offset(offset)?);
     for item in source.items() {
         match item.syntax().kind() {
             SyntaxKind::ConstItem => {
                 if let Some(item) = SyntaxConstItem::cast(item.syntax().clone())
                     && let Some(value) = item.value()
-                    && let Some(context) = record_constructor_for_expr(&value, offset)
+                    && let Some(context) = record_constructor_for_expr(&value, &search)
                 {
                     return Some(context);
                 }
             }
             SyntaxKind::FunctionItem => {
                 if let Some(item) = SyntaxFunctionItem::cast(item.syntax().clone())
-                    && let Some(context) = record_constructor_for_function(&item, offset)
+                    && let Some(context) = record_constructor_for_function(&item, &search)
                 {
                     return Some(context);
                 }
@@ -42,6 +47,65 @@ pub(super) fn record_constructor_at(
         }
     }
     None
+}
+
+#[derive(Clone, Copy)]
+struct RecordConstructorSearch<'a> {
+    body: Option<&'a HirBody>,
+    source_id: Option<SourceId>,
+    offset: TextSize,
+}
+
+impl<'a> RecordConstructorSearch<'a> {
+    const fn new(body: Option<&'a HirBody>, source_id: Option<SourceId>, offset: TextSize) -> Self {
+        Self {
+            body,
+            source_id,
+            offset,
+        }
+    }
+
+    fn hir_expression(&self, expr: &SyntaxExpression) -> Option<HirExprId> {
+        let body = self.body?;
+        let source_id = self.source_id?;
+        let span = syntax_node_span(source_id, expr.syntax().text_range());
+        body.expressions
+            .values()
+            .find_map(|expression| (expression.origin.span == span).then_some(expression.id))
+    }
+
+    fn hir_field_receiver(&self, expr: &SyntaxExpression) -> Option<HirExprId> {
+        let body = self.body?;
+        let expression = self.hir_expression(expr)?;
+        body.fields.get(&expression).map(|field| field.receiver)
+    }
+
+    fn hir_call_callee(&self, expr: &SyntaxExpression) -> Option<HirExprId> {
+        let body = self.body?;
+        let expression = self.hir_expression(expr)?;
+        body.calls.get(&expression).map(|call| call.callee)
+    }
+
+    fn hir_index_operands(&self, expr: &SyntaxExpression) -> Option<(HirExprId, HirExprId)> {
+        let body = self.body?;
+        let expression = self.hir_expression(expr)?;
+        body.indexes
+            .get(&expression)
+            .map(|index| (index.receiver, index.index))
+    }
+
+    fn syntax_expr_for_hir_expression(
+        &self,
+        root: &SyntaxExpression,
+        expression: HirExprId,
+    ) -> Option<SyntaxExpression> {
+        let body = self.body?;
+        let expression = body.expressions.get(&expression)?;
+        if Some(expression.origin.source) != self.source_id {
+            return None;
+        }
+        syntax_expr_at_span(root, expression.origin.span)
+    }
 }
 
 pub(super) fn record_field_completion_items(
@@ -69,12 +133,12 @@ pub(super) fn record_field_completion_items(
 
 fn record_constructor_for_function(
     function: &SyntaxFunctionItem,
-    offset: TextSize,
+    search: &RecordConstructorSearch<'_>,
 ) -> Option<RecordConstructor> {
     if let Some(params) = function.param_list() {
         for param in params.params() {
             if let Some(value) = param.default_value()
-                && let Some(context) = record_constructor_for_expr(&value, offset)
+                && let Some(context) = record_constructor_for_expr(&value, search)
             {
                 return Some(context);
             }
@@ -82,18 +146,18 @@ fn record_constructor_for_function(
     }
     function
         .body()
-        .and_then(|body| record_constructor_for_block(&body, offset))
+        .and_then(|body| record_constructor_for_block(&body, search))
 }
 
 fn record_constructor_for_block(
     block: &SyntaxBlock,
-    offset: TextSize,
+    search: &RecordConstructorSearch<'_>,
 ) -> Option<RecordConstructor> {
-    if !block.syntax().text_range().contains(offset) {
+    if !block.syntax().text_range().contains(search.offset) {
         return None;
     }
     for statement in block.statements() {
-        if let Some(context) = record_constructor_for_statement(&statement, offset) {
+        if let Some(context) = record_constructor_for_statement(&statement, search) {
             return Some(context);
         }
     }
@@ -102,9 +166,9 @@ fn record_constructor_for_block(
 
 fn record_constructor_for_statement(
     statement: &SyntaxStatement,
-    offset: TextSize,
+    search: &RecordConstructorSearch<'_>,
 ) -> Option<RecordConstructor> {
-    if !statement.syntax().text_range().contains(offset) {
+    if !statement.syntax().text_range().contains(search.offset) {
         return None;
     }
     match statement.statement_kind() {
@@ -112,7 +176,7 @@ fn record_constructor_for_statement(
             if let Some(statement) = statement.as_let()
                 && let Some(value) = statement.initializer()
             {
-                return record_constructor_for_expr(&value, offset);
+                return record_constructor_for_expr(&value, search);
             }
             None
         }
@@ -120,7 +184,7 @@ fn record_constructor_for_statement(
             if let Some(statement) = statement.as_expr()
                 && let Some(value) = statement.expression()
             {
-                return record_constructor_for_expr(&value, offset);
+                return record_constructor_for_expr(&value, search);
             }
             None
         }
@@ -128,7 +192,7 @@ fn record_constructor_for_statement(
             if let Some(statement) = statement.as_return()
                 && let Some(value) = statement.expression()
             {
-                return record_constructor_for_expr(&value, offset);
+                return record_constructor_for_expr(&value, search);
             }
             None
         }
@@ -137,28 +201,28 @@ fn record_constructor_for_statement(
             let statement = statement.as_for()?;
             statement
                 .iterable()
-                .and_then(|iterable| record_constructor_for_expr(&iterable, offset))
+                .and_then(|iterable| record_constructor_for_expr(&iterable, search))
                 .or_else(|| {
                     statement
                         .body()
-                        .and_then(|body| record_constructor_for_block(&body, offset))
+                        .and_then(|body| record_constructor_for_block(&body, search))
                 })
         }
         SyntaxStatementKind::Block => statement
             .as_block()
-            .and_then(|block| record_constructor_for_block(&block, offset)),
+            .and_then(|block| record_constructor_for_block(&block, search)),
         SyntaxStatementKind::If | SyntaxStatementKind::Match => {
             let expr = SyntaxExpression::cast(statement.syntax().clone())?;
-            record_constructor_for_expr(&expr, offset)
+            record_constructor_for_expr(&expr, search)
         }
     }
 }
 
 fn record_constructor_for_expr(
     expr: &SyntaxExpression,
-    offset: TextSize,
+    search: &RecordConstructorSearch<'_>,
 ) -> Option<RecordConstructor> {
-    if !expr.syntax().text_range().contains(offset) {
+    if !expr.syntax().text_range().contains(search.offset) {
         return None;
     }
     match expr.expression_kind() {
@@ -166,7 +230,7 @@ fn record_constructor_for_expr(
             let record = expr.as_record()?;
             for field in record.fields() {
                 if let Some(value) = field.expression()
-                    && let Some(context) = record_constructor_for_expr(&value, offset)
+                    && let Some(context) = record_constructor_for_expr(&value, search)
                 {
                     return Some(context);
                 }
@@ -187,83 +251,89 @@ fn record_constructor_for_expr(
         SyntaxExpressionKind::Paren => expr
             .as_paren()
             .and_then(|paren| paren.expression())
-            .and_then(|value| record_constructor_for_expr(&value, offset)),
+            .and_then(|value| record_constructor_for_expr(&value, search)),
         SyntaxExpressionKind::Tuple => expr.as_tuple().and_then(|tuple| {
             tuple
                 .expressions()
-                .find_map(|value| record_constructor_for_expr(&value, offset))
+                .find_map(|value| record_constructor_for_expr(&value, search))
         }),
         SyntaxExpressionKind::Unary => expr
             .as_unary()
             .and_then(|unary| unary.expression())
-            .and_then(|value| record_constructor_for_expr(&value, offset)),
+            .and_then(|value| record_constructor_for_expr(&value, search)),
         SyntaxExpressionKind::Try => expr
             .as_try()
             .and_then(|try_expr| try_expr.expression())
-            .and_then(|value| record_constructor_for_expr(&value, offset)),
+            .and_then(|value| record_constructor_for_expr(&value, search)),
         SyntaxExpressionKind::Binary => {
             let binary = expr.as_binary()?;
             binary
                 .lhs()
-                .and_then(|value| record_constructor_for_expr(&value, offset))
+                .and_then(|value| record_constructor_for_expr(&value, search))
                 .or_else(|| {
                     binary
                         .rhs()
-                        .and_then(|value| record_constructor_for_expr(&value, offset))
+                        .and_then(|value| record_constructor_for_expr(&value, search))
                 })
         }
         SyntaxExpressionKind::Assign => {
             let assign = expr.as_assign()?;
             assign
                 .target()
-                .and_then(|value| record_constructor_for_expr(&value, offset))
+                .and_then(|value| record_constructor_for_expr(&value, search))
                 .or_else(|| {
                     assign
                         .value()
-                        .and_then(|value| record_constructor_for_expr(&value, offset))
+                        .and_then(|value| record_constructor_for_expr(&value, search))
                 })
         }
-        SyntaxExpressionKind::Field => expr
-            .as_field()
-            .and_then(|field| field.receiver())
-            .and_then(|value| record_constructor_for_expr(&value, offset)),
+        SyntaxExpressionKind::Field => search
+            .hir_field_receiver(expr)
+            .and_then(|receiver| search.syntax_expr_for_hir_expression(expr, receiver))
+            .and_then(|value| record_constructor_for_expr(&value, search))
+            .or_else(|| record_constructor_for_child_exprs(expr, search)),
         SyntaxExpressionKind::Call => {
             let call = expr.as_call()?;
-            call.callee()
-                .and_then(|callee| record_constructor_for_expr(&callee, offset))
+            search
+                .hir_call_callee(expr)
+                .and_then(|callee| search.syntax_expr_for_hir_expression(expr, callee))
+                .and_then(|callee| record_constructor_for_expr(&callee, search))
                 .or_else(|| {
                     call.arguments().into_iter().find_map(|argument| {
                         argument
                             .expression()
-                            .and_then(|value| record_constructor_for_expr(&value, offset))
+                            .and_then(|value| record_constructor_for_expr(&value, search))
                     })
                 })
+                .or_else(|| record_constructor_for_child_exprs(expr, search))
         }
-        SyntaxExpressionKind::Index => {
-            let index = expr.as_index()?;
-            index
-                .receiver()
-                .and_then(|value| record_constructor_for_expr(&value, offset))
-                .or_else(|| {
-                    index
-                        .index()
-                        .and_then(|value| record_constructor_for_expr(&value, offset))
-                })
-        }
+        SyntaxExpressionKind::Index => search
+            .hir_index_operands(expr)
+            .and_then(|(receiver, index)| {
+                search
+                    .syntax_expr_for_hir_expression(expr, receiver)
+                    .and_then(|value| record_constructor_for_expr(&value, search))
+                    .or_else(|| {
+                        search
+                            .syntax_expr_for_hir_expression(expr, index)
+                            .and_then(|value| record_constructor_for_expr(&value, search))
+                    })
+            })
+            .or_else(|| record_constructor_for_child_exprs(expr, search)),
         SyntaxExpressionKind::Array => expr.as_array().and_then(|array| {
             array
                 .expressions()
-                .find_map(|value| record_constructor_for_expr(&value, offset))
+                .find_map(|value| record_constructor_for_expr(&value, search))
         }),
         SyntaxExpressionKind::Map => expr.as_map().and_then(|map| {
             map.entries().find_map(|entry| {
                 entry
                     .key()
-                    .and_then(|value| record_constructor_for_expr(&value, offset))
+                    .and_then(|value| record_constructor_for_expr(&value, search))
                     .or_else(|| {
                         entry
                             .value()
-                            .and_then(|value| record_constructor_for_expr(&value, offset))
+                            .and_then(|value| record_constructor_for_expr(&value, search))
                     })
             })
         }),
@@ -275,15 +345,15 @@ fn record_constructor_for_expr(
                     params.params().find_map(|param| {
                         param
                             .default_value()
-                            .and_then(|value| record_constructor_for_expr(&value, offset))
+                            .and_then(|value| record_constructor_for_expr(&value, search))
                     })
                 })
                 .or_else(|| match lambda.body() {
                     Some(SyntaxLambdaBody::Expression(value)) => {
-                        record_constructor_for_expr(&value, offset)
+                        record_constructor_for_expr(&value, search)
                     }
                     Some(SyntaxLambdaBody::Block(block)) => {
-                        record_constructor_for_block(&block, offset)
+                        record_constructor_for_block(&block, search)
                     }
                     None => None,
                 })
@@ -292,57 +362,89 @@ fn record_constructor_for_expr(
             let if_expr = expr.as_if()?;
             if_expr
                 .condition()
-                .and_then(|condition| record_constructor_for_expr(&condition, offset))
+                .and_then(|condition| record_constructor_for_expr(&condition, search))
                 .or_else(|| {
                     if_expr
                         .then_block()
-                        .and_then(|block| record_constructor_for_block(&block, offset))
+                        .and_then(|block| record_constructor_for_block(&block, search))
                 })
                 .or_else(|| {
                     if_expr
                         .else_as_expression()
-                        .and_then(|value| record_constructor_for_expr(&value, offset))
+                        .and_then(|value| record_constructor_for_expr(&value, search))
                 })
         }
         SyntaxExpressionKind::Match => {
             let match_expr = expr.as_match()?;
             match_expr
                 .scrutinee()
-                .and_then(|scrutinee| record_constructor_for_expr(&scrutinee, offset))
+                .and_then(|scrutinee| record_constructor_for_expr(&scrutinee, search))
                 .or_else(|| {
                     match_expr
                         .arms()
                         .into_iter()
-                        .find_map(|arm| record_constructor_for_match_arm(&arm, offset))
+                        .find_map(|arm| record_constructor_for_match_arm(&arm, search))
                 })
         }
         SyntaxExpressionKind::Block => expr
             .as_block()
-            .and_then(|block| record_constructor_for_block(&block, offset)),
+            .and_then(|block| record_constructor_for_block(&block, search)),
     }
 }
 
 fn record_constructor_for_match_arm(
     arm: &SyntaxMatchArm,
-    offset: TextSize,
+    search: &RecordConstructorSearch<'_>,
 ) -> Option<RecordConstructor> {
-    if !arm.syntax().text_range().contains(offset) {
+    if !arm.syntax().text_range().contains(search.offset) {
         return None;
     }
     arm.guard()
-        .and_then(|guard| record_constructor_for_expr(&guard, offset))
+        .and_then(|guard| record_constructor_for_expr(&guard, search))
         .or_else(|| match arm.body() {
             Some(SyntaxMatchArmBody::Expression(value)) => {
-                record_constructor_for_expr(&value, offset)
+                record_constructor_for_expr(&value, search)
             }
-            Some(SyntaxMatchArmBody::Block(block)) => record_constructor_for_block(&block, offset),
+            Some(SyntaxMatchArmBody::Block(block)) => record_constructor_for_block(&block, search),
             None => None,
         })
+}
+
+fn record_constructor_for_child_exprs(
+    expr: &SyntaxExpression,
+    search: &RecordConstructorSearch<'_>,
+) -> Option<RecordConstructor> {
+    let root_range = expr.syntax().text_range();
+    expr.syntax()
+        .descendants()
+        .filter_map(SyntaxExpression::cast)
+        .filter(|child| child.syntax().text_range() != root_range)
+        .filter(|child| {
+            !child
+                .syntax()
+                .ancestors()
+                .skip(1)
+                .take_while(|node| node.text_range() != root_range)
+                .any(|node| SyntaxExpression::cast(node).is_some())
+        })
+        .find_map(|child| record_constructor_for_expr(&child, search))
 }
 
 fn syntax_offset(offset: usize) -> Option<TextSize> {
     let offset = u32::try_from(offset).ok()?;
     Some(TextSize::from(offset))
+}
+
+fn syntax_node_span(source_id: SourceId, range: SyntaxTextRange) -> Span {
+    Span::new(source_id, u32::from(range.start()), u32::from(range.end()))
+}
+
+fn syntax_expr_at_span(root: &SyntaxExpression, span: Span) -> Option<SyntaxExpression> {
+    let range = SyntaxTextRange::new(TextSize::from(span.start), TextSize::from(span.end));
+    root.syntax()
+        .descendants()
+        .filter_map(SyntaxExpression::cast)
+        .find(|expr| expr.syntax().text_range() == range)
 }
 
 fn script_record_field_completions(

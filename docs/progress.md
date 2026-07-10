@@ -1712,6 +1712,11 @@ callable parameter facts, stable `TypeFact`s, `Any`/unknown suppression, and
   parameter and type inlay traversal now follow HIR field, call-callee, and
   index operand facts for receiver/callee/subscript walks instead of
   reconstructing those relationships from field, call, and index syntax.
+  Language-service call-argument facts now carry HIR call and callee expression
+  IDs for database-backed queries, and member method names are read from HIR
+  callee field facts. Record-field completion now follows HIR field,
+  call-callee, and index operand facts for nested constructor discovery instead
+  of reconstructing those relationships from field, call, and index syntax.
 
 ### Remaining Gaps
 

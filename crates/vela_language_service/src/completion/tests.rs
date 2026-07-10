@@ -516,6 +516,33 @@ fn record_field_completion_uses_schema_facts() {
 }
 
 #[test]
+fn record_field_completion_uses_hir_index_operands() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub struct Player { id: String level: i64 }\npub fn main(players: Array<i64>) { let value = players[Player { le }]; }";
+    let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project);
+    let main_line = text.lines().nth(1).expect("main line should exist");
+
+    let completions = databases.completion_items(
+        &document,
+        Position::new(
+            1,
+            main_line.find("le }").expect("record prefix") + "le".len(),
+        ),
+    );
+
+    assert_eq!(
+        completions.context().kind(),
+        CompletionContextKind::RecordField
+    );
+    assert_completion(&completions, "level", CompletionKind::Field);
+    assert_no_completion(&completions, "id");
+}
+
+#[test]
 fn module_completion_follows_import_context() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let reward = DocumentId::from("/workspace/scripts/game/reward.vela");
