@@ -5,6 +5,34 @@ use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId};
 use crate::*;
 
 #[test]
+fn compile_targets_retain_opaque_external_dispatch_owners() {
+    let origin = MirSourceOrigin::declaration(
+        HirDeclId::new(299),
+        vela_common::Span::new(vela_common::SourceId::new(6), 1, 9),
+    );
+    let owner = TypeId::new(298);
+    let mut snapshot = CompileTargetSnapshot::builder();
+    snapshot
+        .insert_type_descriptor(
+            CompileTypeDescriptor {
+                id: owner,
+                canonical_name: "Player".to_owned(),
+                class: CompileTypeClass::OpaqueExternal,
+                shape: None,
+                fields: Vec::new(),
+                variants: Vec::new(),
+            },
+            origin,
+        )
+        .expect("opaque external owner descriptor should be retained");
+
+    assert_eq!(
+        snapshot.build().type_descriptor(owner).map(|ty| ty.class),
+        Some(CompileTypeClass::OpaqueExternal)
+    );
+}
+
+#[test]
 fn mir_model_compile_targets_select_behavior_intrinsics_without_names() {
     let origin = MirSourceOrigin::body(
         HirBodyId::new(300),

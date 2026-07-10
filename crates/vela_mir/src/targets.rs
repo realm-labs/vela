@@ -158,6 +158,11 @@ pub struct CompileMethodDescriptor {
 pub enum CompileTypeClass {
     ScriptRecord,
     ScriptEnum,
+    /// A stable external dispatch owner known by source identity only.
+    ///
+    /// Unlike `Registry`, this type has no authoritative registry definition,
+    /// and unlike `Host`, it has no generation-local runtime type handle.
+    OpaqueExternal,
     Registry,
     Standard,
     Host { runtime: HostTypeId },
