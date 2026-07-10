@@ -238,6 +238,26 @@ fn main() {
 }
 
 #[test]
+fn compiler_uses_field_owned_bodies_for_enum_schema_defaults() {
+    compile_program_source(
+        SourceId::new(1),
+        r#"
+enum Reward {
+    Record { count: i64 = { let base = 1; base + 1 } },
+    Tuple(count: i64 = { let base = 2; base + 1 }),
+}
+
+fn main() {
+    let record = Reward::Record {};
+    let tuple = Reward::Tuple();
+    return record.count + tuple.0;
+}
+"#,
+    )
+    .expect("record and tuple schema defaults should resolve by their HIR body IDs");
+}
+
+#[test]
 fn compiler_resolves_host_field_after_dynamic_index_from_hir_receiver() {
     let mut registry = vela_registry::DefinitionRegistry::new();
     let player = registry

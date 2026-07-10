@@ -9,11 +9,14 @@ use crate::binding::{
 use crate::body::HirBodyOwner;
 use crate::ids::{HirBodyId, HirDeclId, HirNodeId, ModuleId};
 use crate::module_graph::{HirModule, ModuleGraph};
-use crate::type_hint::ParamHint;
+use crate::type_hint::{EnumVariantFieldsHint, ParamHint};
 
 use super::model::ImportResolution;
 use super::names::import_binding_name;
-use super::syntax_summary::{SyntaxBodySourceParts, SyntaxExpressionSourcePart};
+use super::syntax_summary::{
+    SchemaFieldDefaultTarget, SyntaxBodySourceParts, SyntaxExpressionSourcePart,
+    SyntaxSchemaFieldDefaultSource,
+};
 
 #[derive(Clone, Debug)]
 pub(super) struct FunctionBodySource {
@@ -51,6 +54,23 @@ impl ExpressionBodySource {
     }
 }
 
+#[derive(Clone, Debug)]
+pub(super) struct SchemaFieldDefaultBodySource {
+    declaration: HirDeclId,
+    target: SchemaFieldDefaultTarget,
+    syntax: SyntaxExpressionSourcePart,
+}
+
+impl SchemaFieldDefaultBodySource {
+    pub(super) fn new(declaration: HirDeclId, source: SyntaxSchemaFieldDefaultSource) -> Self {
+        Self {
+            declaration,
+            target: source.target,
+            syntax: source.expression,
+        }
+    }
+}
+
 impl ModuleGraph {
     pub(super) fn bind_const_initializer_body(
         &mut self,
@@ -74,18 +94,67 @@ impl ModuleGraph {
     pub(super) fn bind_schema_field_default_body(
         &mut self,
         module: &HirModule,
-        source: ExpressionBodySource,
+        source: SchemaFieldDefaultBodySource,
     ) {
         let declaration = source.declaration;
+        let target = source.target;
         let body = self.next_body_id();
         let (bindings, diagnostics) = self.bind_expression_body(
             module,
-            source,
+            ExpressionBodySource::new(declaration, source.syntax),
             body,
             HirBodyOwner::SchemaFieldDefault(declaration),
         );
         self.schema_field_default_bindings.insert(body, bindings);
+        self.attach_schema_field_default_body(declaration, target, body);
         self.diagnostics.extend(diagnostics);
+    }
+
+    fn attach_schema_field_default_body(
+        &mut self,
+        declaration: HirDeclId,
+        target: SchemaFieldDefaultTarget,
+        body: HirBodyId,
+    ) {
+        match target {
+            SchemaFieldDefaultTarget::Struct { field } => {
+                if let Some(field) = self
+                    .struct_shapes
+                    .get_mut(&declaration)
+                    .and_then(|shape| shape.fields.get_mut(field))
+                {
+                    field.default_body = Some(body);
+                }
+            }
+            SchemaFieldDefaultTarget::EnumTuple { variant, field } => {
+                let Some(variant) = self
+                    .enum_shapes
+                    .get_mut(&declaration)
+                    .and_then(|shape| shape.variants.get_mut(variant))
+                else {
+                    return;
+                };
+                if let EnumVariantFieldsHint::Tuple(fields) = &mut variant.fields
+                    && let Some(field) = fields.get_mut(field)
+                {
+                    field.default_body = Some(body);
+                }
+            }
+            SchemaFieldDefaultTarget::EnumRecord { variant, field } => {
+                let Some(variant) = self
+                    .enum_shapes
+                    .get_mut(&declaration)
+                    .and_then(|shape| shape.variants.get_mut(variant))
+                else {
+                    return;
+                };
+                if let EnumVariantFieldsHint::Record(fields) = &mut variant.fields
+                    && let Some(field) = fields.get_mut(field)
+                {
+                    field.default_body = Some(body);
+                }
+            }
+        }
     }
 
     pub(super) fn bind_function_body(&mut self, module: &HirModule, source: FunctionBodySource) {

@@ -18,6 +18,7 @@ pub(in crate::compiler) fn registry_param_hints(
                 .as_ref()
                 .map(|hint| registry_type_hint(hint, call_span)),
             default_value_span: param.has_default.then_some(call_span),
+            default_body: None,
         })
         .collect()
 }

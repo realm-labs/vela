@@ -45,6 +45,19 @@ pub(super) struct SyntaxExpressionSourcePart {
     pub(super) expression: SyntaxExpression,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum SchemaFieldDefaultTarget {
+    Struct { field: usize },
+    EnumTuple { variant: usize, field: usize },
+    EnumRecord { variant: usize, field: usize },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct SyntaxSchemaFieldDefaultSource {
+    pub(super) target: SchemaFieldDefaultTarget,
+    pub(super) expression: SyntaxExpressionSourcePart,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct SyntaxImportHeader {
     pub(super) path: Vec<String>,
@@ -186,15 +199,22 @@ impl SyntaxModuleSummary {
     pub(super) fn struct_field_default_sources(
         &self,
         index: usize,
-    ) -> Vec<SyntaxExpressionSourcePart> {
+    ) -> Vec<SyntaxSchemaFieldDefaultSource> {
         self.item(index, SyntaxKind::StructItem)
             .and_then(|item| SyntaxStructItem::cast(item.syntax().clone()))
             .and_then(|item| item.field_list())
             .map(|fields| {
                 fields
                     .fields()
-                    .filter_map(|field| field.default_value())
-                    .map(|expression| SyntaxExpressionSourcePart { expression })
+                    .filter(|field| field.name_token().is_some())
+                    .enumerate()
+                    .filter_map(|(field_index, field)| {
+                        let expression = field.default_value()?;
+                        Some(SyntaxSchemaFieldDefaultSource {
+                            target: SchemaFieldDefaultTarget::Struct { field: field_index },
+                            expression: SyntaxExpressionSourcePart { expression },
+                        })
+                    })
                     .collect()
             })
             .unwrap_or_default()
@@ -209,28 +229,48 @@ impl SyntaxModuleSummary {
     pub(super) fn enum_field_default_sources(
         &self,
         index: usize,
-    ) -> Vec<SyntaxExpressionSourcePart> {
+    ) -> Vec<SyntaxSchemaFieldDefaultSource> {
         self.item(index, SyntaxKind::EnumItem)
             .and_then(|item| SyntaxEnumItem::cast(item.syntax().clone()))
             .and_then(|item| item.variant_list())
             .map(|variants| {
                 variants
                     .variants()
-                    .flat_map(|variant| {
+                    .enumerate()
+                    .flat_map(|(variant_index, variant)| {
                         let tuple_defaults = variant
                             .tuple_field_list()
                             .into_iter()
                             .flat_map(|fields| fields.params())
-                            .filter_map(|param| param.default_value());
+                            .filter(|param| param.name_token().is_some())
+                            .enumerate()
+                            .filter_map(move |(field_index, param)| {
+                                let expression = param.default_value()?;
+                                Some(SyntaxSchemaFieldDefaultSource {
+                                    target: SchemaFieldDefaultTarget::EnumTuple {
+                                        variant: variant_index,
+                                        field: field_index,
+                                    },
+                                    expression: SyntaxExpressionSourcePart { expression },
+                                })
+                            });
                         let record_defaults = variant
                             .record_field_list()
                             .into_iter()
                             .flat_map(|fields| fields.fields())
-                            .filter_map(|field| field.default_value());
-                        tuple_defaults
-                            .chain(record_defaults)
-                            .map(|expression| SyntaxExpressionSourcePart { expression })
-                            .collect::<Vec<_>>()
+                            .filter(|field| field.name_token().is_some())
+                            .enumerate()
+                            .filter_map(move |(field_index, field)| {
+                                let expression = field.default_value()?;
+                                Some(SyntaxSchemaFieldDefaultSource {
+                                    target: SchemaFieldDefaultTarget::EnumRecord {
+                                        variant: variant_index,
+                                        field: field_index,
+                                    },
+                                    expression: SyntaxExpressionSourcePart { expression },
+                                })
+                            });
+                        tuple_defaults.chain(record_defaults).collect::<Vec<_>>()
                     })
                     .collect()
             })
@@ -616,6 +656,7 @@ fn struct_field_hint(source: SourceId, field: &SyntaxStructField) -> Option<Stru
             .default_value()
             .as_ref()
             .map(|value| span_for(source, value.syntax().text_range())),
+        default_body: None,
     })
 }
 
@@ -632,6 +673,7 @@ fn param_hint(source: SourceId, param: &SyntaxParam) -> Option<ParamHint> {
             .default_value()
             .as_ref()
             .map(|value| span_for(source, value.syntax().text_range())),
+        default_body: None,
     })
 }
 

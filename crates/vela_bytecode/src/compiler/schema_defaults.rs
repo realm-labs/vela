@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::{Diagnostic, Span};
 use vela_hir::body::HirBodyOwner;
-use vela_hir::ids::{HirDeclId, ModuleId};
+use vela_hir::ids::{HirBodyId, HirDeclId, ModuleId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
 
@@ -150,7 +150,7 @@ pub(super) fn source_schema_defaults(
     constants: &BTreeMap<HirDeclId, Constant>,
 ) -> CompileResult<ScriptSchemaDefaults> {
     let mut defaults = ScriptSchemaDefaults::default();
-    let mut evaluated_defaults = Vec::new();
+    let mut evaluated_defaults = BTreeMap::new();
     for body in graph.bodies() {
         let HirBodyOwner::SchemaFieldDefault(declaration) = body.owner else {
             continue;
@@ -161,10 +161,7 @@ pub(super) fn source_schema_defaults(
         let Some(bindings) = graph.schema_field_default_bindings(body.id) else {
             continue;
         };
-        evaluated_defaults.push((
-            body.origin.span,
-            evaluate_const_body(body, bindings, constants)?,
-        ));
+        evaluated_defaults.insert(body.id, evaluate_const_body(body, bindings, constants)?);
     }
 
     for declaration in module_schema_declarations(graph, module) {
@@ -186,8 +183,13 @@ pub(super) fn source_schema_defaults(
                         name: field.name.clone(),
                         argument_name: field.name.clone(),
                         value_type: field.type_hint.as_ref().and_then(type_hint_value_type),
-                        default: field.default_value_span.and_then(|span| {
-                            schema_field_default(field.name.clone(), span, &evaluated_defaults)
+                        default: field.default_body.and_then(|body| {
+                            schema_field_default(
+                                field.name.clone(),
+                                body,
+                                field.default_value_span?,
+                                &evaluated_defaults,
+                            )
                         }),
                     })
                     .collect::<Vec<_>>();
@@ -249,12 +251,11 @@ fn module_schema_declarations(graph: &ModuleGraph, module: ModuleId) -> Vec<HirD
 
 fn schema_field_default(
     name: String,
+    body: HirBodyId,
     span: Span,
-    values: &[(Span, Option<Constant>)],
+    values: &BTreeMap<HirBodyId, Option<Constant>>,
 ) -> Option<SchemaFieldDefault> {
-    let value = values
-        .iter()
-        .find_map(|(value_span, value)| (*value_span == span).then(|| value.clone()))?;
+    let value = values.get(&body)?.clone();
     Some(SchemaFieldDefault { name, value, span })
 }
 
@@ -367,7 +368,7 @@ fn enum_variant_fields(
     _enum_name: &str,
     _variant_name: &str,
     fields: &EnumVariantFieldsHint,
-    evaluated_defaults: &[(Span, Option<Constant>)],
+    evaluated_defaults: &BTreeMap<HirBodyId, Option<Constant>>,
 ) -> Vec<ConstructorField> {
     match fields {
         EnumVariantFieldsHint::Unit => Vec::new(),
@@ -378,8 +379,13 @@ fn enum_variant_fields(
                 name: index.to_string(),
                 argument_name: field.name.clone(),
                 value_type: field.type_hint.as_ref().and_then(type_hint_value_type),
-                default: field.default_value_span.and_then(|span| {
-                    schema_field_default(index.to_string(), span, evaluated_defaults)
+                default: field.default_body.and_then(|body| {
+                    schema_field_default(
+                        index.to_string(),
+                        body,
+                        field.default_value_span?,
+                        evaluated_defaults,
+                    )
                 }),
             })
             .collect(),
@@ -389,8 +395,13 @@ fn enum_variant_fields(
                 name: field.name.clone(),
                 argument_name: field.name.clone(),
                 value_type: field.type_hint.as_ref().and_then(type_hint_value_type),
-                default: field.default_value_span.and_then(|span| {
-                    schema_field_default(field.name.clone(), span, evaluated_defaults)
+                default: field.default_body.and_then(|body| {
+                    schema_field_default(
+                        field.name.clone(),
+                        body,
+                        field.default_value_span?,
+                        evaluated_defaults,
+                    )
                 }),
             })
             .collect(),

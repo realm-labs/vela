@@ -426,6 +426,12 @@ fn grant(amount = BASE, bonus = amount + 1) {
     let signature = graph.function_signature(grant).expect("function signature");
     assert!(signature.params[0].default_value_span.is_some());
     assert!(signature.params[1].default_value_span.is_some());
+    assert!(
+        signature
+            .params
+            .iter()
+            .all(|param| param.default_body.is_none())
+    );
     let bindings = graph.bindings(grant).expect("function bindings");
     assert!(bindings.resolutions().any(|(_, resolution)| {
         resolution
@@ -725,6 +731,7 @@ struct Reward {
 }
 enum QuestProgress {
     Active { quest_id: String, count: i64 = 0 },
+    Finished(label: String = "done"),
 }
 "#,
     ));
@@ -737,12 +744,25 @@ enum QuestProgress {
     let reward_shape = graph.struct_shape(reward).expect("Reward shape");
     assert!(reward_shape.fields[0].default_value_span.is_some());
     assert!(reward_shape.fields[1].default_value_span.is_some());
+    assert!(reward_shape.fields[0].default_body.is_some());
+    assert!(reward_shape.fields[1].default_body.is_some());
+    assert_ne!(
+        reward_shape.fields[0].default_body,
+        reward_shape.fields[1].default_body
+    );
     let progress_shape = graph.enum_shape(progress).expect("Progress shape");
     let EnumVariantFieldsHint::Record(fields) = &progress_shape.variants[0].fields else {
         panic!("expected record fields");
     };
     assert!(fields[0].default_value_span.is_none());
+    assert!(fields[0].default_body.is_none());
     assert!(fields[1].default_value_span.is_some());
+    assert!(fields[1].default_body.is_some());
+    let EnumVariantFieldsHint::Tuple(fields) = &progress_shape.variants[1].fields else {
+        panic!("expected tuple fields");
+    };
+    assert!(fields[0].default_value_span.is_some());
+    assert!(fields[0].default_body.is_some());
 }
 
 #[test]
@@ -761,15 +781,12 @@ struct Reward {
     let reward = declarations.get("Reward").expect("Reward declaration");
     assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
     let reward_shape = graph.struct_shape(reward).expect("Reward shape");
-    let span = reward_shape.fields[0]
-        .default_value_span
-        .expect("field default span");
-    let body = graph
-        .bodies()
-        .find(|body| {
-            body.owner == HirBodyOwner::SchemaFieldDefault(reward) && body.origin.span == span
-        })
-        .expect("schema default body");
+    let field = &reward_shape.fields[0];
+    let span = field.default_value_span.expect("field default span");
+    let body_id = field.default_body.expect("field default body ID");
+    let body = graph.body(body_id).expect("schema default body");
+    assert_eq!(body.owner, HirBodyOwner::SchemaFieldDefault(reward));
+    assert_eq!(body.origin.span, span);
     let bindings = graph
         .schema_field_default_bindings(body.id)
         .expect("schema default bindings");

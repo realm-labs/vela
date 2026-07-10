@@ -20,7 +20,7 @@ pub use model::{
 };
 use names::{closest_name, import_binding_name};
 
-use self::body_binding::FunctionBodySource;
+use self::body_binding::{FunctionBodySource, SchemaFieldDefaultBodySource};
 use crate::attributes::HirAttribute;
 use crate::binding::BindingMap;
 use crate::body::{HirBody, HirField, HirIndex, HirPath, HirPathKind};
@@ -283,9 +283,7 @@ impl ModuleGraph {
                         syntax_summary
                             .struct_field_default_sources(item_index)
                             .into_iter()
-                            .map(|source| {
-                                body_binding::ExpressionBodySource::new(declaration, source)
-                            }),
+                            .map(|source| SchemaFieldDefaultBodySource::new(declaration, source)),
                     );
                     self.declaration_attrs.insert(
                         declaration,
@@ -313,9 +311,7 @@ impl ModuleGraph {
                         syntax_summary
                             .enum_field_default_sources(item_index)
                             .into_iter()
-                            .map(|source| {
-                                body_binding::ExpressionBodySource::new(declaration, source)
-                            }),
+                            .map(|source| SchemaFieldDefaultBodySource::new(declaration, source)),
                     );
                     self.declaration_attrs.insert(
                         declaration,

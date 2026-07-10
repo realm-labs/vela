@@ -718,6 +718,7 @@ impl Compiler<'_, '_> {
                 span: call_span,
                 type_hint: None,
                 default_value_span: shape.field_has_default_at(index).then_some(call_span),
+                default_body: None,
             })
             .collect::<Vec<_>>();
         let field_uses = arguments

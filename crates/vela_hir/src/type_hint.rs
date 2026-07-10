@@ -1,6 +1,9 @@
 use vela_common::Span;
 
-use crate::{attributes::HirAttribute, ids::HirNodeId};
+use crate::{
+    attributes::HirAttribute,
+    ids::{HirBodyId, HirNodeId},
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HirTypeHint {
@@ -48,6 +51,9 @@ pub struct ParamHint {
     pub span: Span,
     pub type_hint: Option<HirTypeHint>,
     pub default_value_span: Option<Span>,
+    /// The bound HIR body for an enum tuple-field default. Function parameter
+    /// defaults are owned by [`crate::body::HirParam`] instead.
+    pub default_body: Option<HirBodyId>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -74,6 +80,8 @@ pub struct StructFieldHint {
     pub span: Span,
     pub type_hint: Option<HirTypeHint>,
     pub default_value_span: Option<Span>,
+    /// The field-owned HIR body for this schema default, when present.
+    pub default_body: Option<HirBodyId>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
