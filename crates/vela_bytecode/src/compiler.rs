@@ -1,4 +1,4 @@
-//! Minimal AST-to-bytecode compiler for the M2 VM loop.
+//! Heavy-HIR-to-bytecode compiler for the Vela VM.
 
 mod cache_sites;
 mod call_args;
