@@ -240,13 +240,15 @@ fn main() {
 }
 
 #[test]
-fn map_lookup_fallbacks_preserve_nested_collection_receiver_targets() {
+fn collection_fallbacks_preserve_nested_receiver_targets() {
     let (graph, main) = graph(
         96,
         r#"
 fn main() {
     let groups = {"w": ["wolf", "wisp"], "b": ["bat"]};
-    return groups.get_or("w", []).len() + groups.get("b").unwrap_or([]).len();
+    let none = option::none();
+    let joined = none.unwrap_or(["fallback"]).join(".");
+    return groups.get_or("w", []).len() + groups.get("b").unwrap_or([]).len() + joined.len();
 }
 "#,
     );
@@ -254,6 +256,8 @@ fn main() {
     let get_or = method_calls(body, "get_or")[0];
     let get = method_calls(body, "get")[0];
     let unwrap_or = method_calls(body, "unwrap_or")[0];
+    let option_unwrap_or = method_calls(body, "unwrap_or")[1];
+    let join = method_calls(body, "join")[0];
     let lengths = method_calls(body, "len");
 
     let function = FunctionId::new(9_601);
@@ -274,11 +278,20 @@ fn main() {
     assert_stdlib_call(&view, get_or, "get_or");
     assert_stdlib_call(&view, get, "get");
     assert_stdlib_call(&view, unwrap_or, "unwrap_or");
-    assert_eq!(lengths.len(), 2);
-    for call in lengths {
+    assert_eq!(view.expression(option_unwrap_or), Some(&arrays));
+    assert_stdlib_call(&view, option_unwrap_or, "unwrap_or");
+    assert_stdlib_call(&view, join, "join");
+    assert_eq!(lengths.len(), 3);
+    for call in &lengths[..2] {
+        let call = *call;
         assert_eq!(call_receiver_fact(body, &view, call), Some(&arrays));
         assert_stdlib_call(&view, call, "len");
     }
+    assert_eq!(
+        call_receiver_fact(body, &view, lengths[2]),
+        Some(&TypeFact::STRING)
+    );
+    assert_stdlib_call(&view, lengths[2], "len");
 }
 
 #[test]

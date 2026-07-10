@@ -9,7 +9,9 @@ fn unknown_or_unsupported_receiver_methods_have_no_stdlib_fact() {
 #[test]
 fn option_and_result_functions_expose_dynamic_enum_facts() {
     let some = stdlib_function_fact("option::some", &[TypeFact::STRING]).expect("some fact");
-    assert_eq!(some.returns, TypeFact::option(TypeFact::STRING));
+    assert_eq!(some.returns, TypeFact::option_some(TypeFact::STRING));
+    let none = stdlib_function_fact("option::none", &[]).expect("none fact");
+    assert_eq!(none.returns, TypeFact::option_none());
 
     let unwrapped = stdlib_function_fact(
         "option::unwrap_or",
@@ -50,7 +52,9 @@ fn option_and_result_functions_expose_dynamic_enum_facts() {
     assert!(stdlib_function_fact("option::flatten", &[TypeFact::option(TypeFact::I64)]).is_none());
 
     let ok = stdlib_function_fact("result::ok", &[TypeFact::I64]).expect("ok fact");
-    assert_eq!(ok.returns, TypeFact::result(TypeFact::I64, TypeFact::Any));
+    assert_eq!(ok.returns, TypeFact::result_ok(TypeFact::I64));
+    let err = stdlib_function_fact("result::err", &[TypeFact::STRING]).expect("err fact");
+    assert_eq!(err.returns, TypeFact::result_err(TypeFact::STRING));
 
     let narrowed_ok_unwrapped = stdlib_function_fact(
         "result::unwrap_or",

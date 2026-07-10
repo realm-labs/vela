@@ -262,7 +262,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 "option::some",
                 args.to_vec(),
-                TypeFact::option(args[0].clone()),
+                TypeFact::option_some(args[0].clone()),
             ))
         }
         "option::none" => {
@@ -270,7 +270,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 "option::none",
                 Vec::new(),
-                TypeFact::option(TypeFact::Any),
+                TypeFact::option_none(),
             ))
         }
         "option::is_some" | "option::is_none" => {
@@ -307,7 +307,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 "result::ok",
                 args.to_vec(),
-                TypeFact::result(args[0].clone(), TypeFact::Any),
+                TypeFact::result_ok(args[0].clone()),
             ))
         }
         "result::err" => {
@@ -315,7 +315,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 "result::err",
                 args.to_vec(),
-                TypeFact::result(TypeFact::Any, args[0].clone()),
+                TypeFact::result_err(args[0].clone()),
             ))
         }
         "result::is_ok" | "result::is_err" => {
