@@ -26,6 +26,7 @@ pub(super) struct SemanticFixture {
     pub(super) input: PreparedSemanticInput,
     pub(super) declarations: BTreeMap<String, HirDeclId>,
     pub(super) schema_default_bodies: Vec<HirBodyId>,
+    pub(super) call_expressions: Vec<(HirBodyId, HirExprId)>,
     pub(super) try_expressions: Vec<(HirBodyId, HirExprId)>,
     pub(super) member_expressions: Vec<(HirBodyId, HirExprId, String)>,
     pub(super) constructor_expressions: Vec<(HirBodyId, HirExprId, Vec<String>)>,
@@ -78,6 +79,15 @@ fn prepare_source_inner(
         .bodies()
         .filter_map(|body| {
             matches!(body.owner, HirBodyOwner::SchemaFieldDefault(_)).then_some(body.id)
+        })
+        .collect();
+    let call_expressions = semantic
+        .script_metadata_graph()
+        .bodies()
+        .flat_map(|body| {
+            body.calls()
+                .map(|(expression, _)| (body.id, expression))
+                .collect::<Vec<_>>()
         })
         .collect();
     let try_expressions = semantic
@@ -159,6 +169,7 @@ fn prepare_source_inner(
         input,
         declarations,
         schema_default_bodies,
+        call_expressions,
         try_expressions,
         member_expressions,
         constructor_expressions,

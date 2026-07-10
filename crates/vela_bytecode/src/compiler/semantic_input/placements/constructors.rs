@@ -10,16 +10,6 @@ impl GenerationBuilder<'_, '_> {
         let origin = self
             .expression_origin(expression)
             .ok_or_else(registry_input_error)?;
-        let target = self
-            .executable_analysis(executable)?
-            .constructor_target(expression)
-            .cloned()
-            .ok_or_else(|| {
-                input_error(MirBuildError::InconsistentInput {
-                    origin,
-                    message: format!("missing analysis constructor target for {expression:?}"),
-                })
-            })?;
         let HirExprKind::Record {
             constructor,
             fields,
@@ -33,10 +23,17 @@ impl GenerationBuilder<'_, '_> {
                 message: format!("constructor target {expression:?} is not a record expression"),
             }));
         };
+        let placement =
+            self.checked_record_constructor_placement(executable, expression, fields, origin)?;
+        let target = placement.target.clone();
         match target {
-            ConstructorTargetFact::Declaration(declaration) => {
-                self.insert_record_constructor(executable, expression, declaration, None, fields)
-            }
+            ConstructorTargetFact::Declaration(declaration) => self.insert_record_constructor(
+                executable,
+                expression,
+                declaration,
+                None,
+                &placement,
+            ),
             ConstructorTargetFact::Variant {
                 enum_declaration,
                 variant,
@@ -45,25 +42,26 @@ impl GenerationBuilder<'_, '_> {
                 expression,
                 enum_declaration,
                 Some(&variant),
-                fields,
+                &placement,
             ),
-            ConstructorTargetFact::RegistryType { path } => {
-                self.insert_external_record_constructor(executable, expression, &path, None, fields)
-            }
+            ConstructorTargetFact::RegistryType { path } => self
+                .insert_external_record_constructor(
+                    executable, expression, &path, None, &placement,
+                ),
             ConstructorTargetFact::RegistryVariant { owner, variant } => self
                 .insert_external_record_constructor(
                     executable,
                     expression,
                     &owner,
                     Some(&variant),
-                    fields,
+                    &placement,
                 ),
             ConstructorTargetFact::Dynamic => self.insert_dynamic_record_constructor(
                 executable,
                 body,
                 expression,
                 *constructor,
-                fields,
+                &placement,
             ),
             ConstructorTargetFact::Unresolved => {
                 Err(input_error(MirBuildError::InconsistentInput {
@@ -82,7 +80,7 @@ impl GenerationBuilder<'_, '_> {
         body: &HirBody,
         expression: HirExprId,
         constructor: Option<vela_hir::ids::HirPathId>,
-        fields: &[HirRecordField],
+        placement: &vela_analysis::validation::ConstructorPlacementFact,
     ) -> CompileResult<()> {
         let origin = self
             .expression_origin(expression)
@@ -103,30 +101,32 @@ impl GenerationBuilder<'_, '_> {
                 message: format!("dynamic constructor target {expression:?} has an empty path"),
             }));
         }
-        let uses = fields
-            .iter()
-            .map(|field| ConstructorFieldUse {
-                name: field.name.clone(),
-                span: field.name_origin.span,
-            })
-            .collect::<Vec<_>>();
-        let display_name = path.path.join("::");
-        let diagnostics =
-            record_constructor_field_diagnostics(&display_name, None, &uses, origin.span);
-        if !diagnostics.is_empty() {
-            return Err(semantic_diagnostics(diagnostics));
+        if placement.declaration_slots.is_some() {
+            return Err(input_error(MirBuildError::InconsistentInput {
+                origin,
+                message: "dynamic constructor unexpectedly has declaration slots".to_owned(),
+            }));
         }
-        let fields = fields
+        let fields = placement
+            .source_order
             .iter()
-            .map(|field| {
-                let value = field.value.ok_or_else(|| {
-                    CompileError::new(CompileErrorKind::UnsupportedSyntax("record field"))
-                        .with_span(field.name_origin.span)
+            .map(|source| {
+                let name = source.name.clone().ok_or_else(|| {
+                    input_error(MirBuildError::InconsistentInput {
+                        origin,
+                        message: "dynamic record constructor source lacks a field name".to_owned(),
+                    })
                 })?;
-                Ok(CompileDynamicConstructorField {
-                    name: field.name.clone(),
-                    value,
-                })
+                let value = source.value.ok_or_else(|| {
+                    input_error(MirBuildError::InconsistentInput {
+                        origin: MirSourceOrigin {
+                            span: source.span,
+                            ..origin
+                        },
+                        message: "dynamic constructor source lacks a HIR expression".to_owned(),
+                    })
+                })?;
+                Ok(CompileDynamicConstructorField { name, value })
             })
             .collect::<CompileResult<Vec<_>>>()?;
         let target = dynamic_constructor_target(&path.path, fields, origin)?;
@@ -141,7 +141,7 @@ impl GenerationBuilder<'_, '_> {
         expression: HirExprId,
         owner_name: &str,
         variant_name: Option<&str>,
-        fields: &[HirRecordField],
+        placement: &vela_analysis::validation::ConstructorPlacementFact,
     ) -> CompileResult<()> {
         let origin = self
             .expression_origin(expression)
@@ -175,54 +175,79 @@ impl GenerationBuilder<'_, '_> {
         if let Some(variant) = &variant {
             self.ensure_external_variant(variant.id, origin)?;
         }
-        let mut placed = Vec::with_capacity(fields.len());
-        for source_field in fields {
-            let field = self
-                .catalog
-                .field_by_owner_name(
-                    owner.id,
-                    variant.as_ref().map(|variant| variant.id),
-                    &source_field.name,
-                )
-                .cloned()
-                .ok_or_else(|| {
+        let variant_id = variant.as_ref().map(|variant| variant.id);
+        let mut descriptors = self
+            .catalog
+            .fields_for_owner(owner.id)
+            .into_iter()
+            .filter(|field| field.variant == variant_id)
+            .cloned()
+            .collect::<Vec<_>>();
+        descriptors.sort_by_key(|field| (field.declaration_order, field.path.name.clone()));
+        let slots = self.constructor_slots(placement, descriptors.len(), origin)?;
+        let evaluation_order = self.constructor_evaluation_order(placement, origin)?;
+        let mut placed = Vec::with_capacity(slots.len());
+        for (index, field) in descriptors.iter().enumerate() {
+            let slot = slots
+                .iter()
+                .find(|slot| slot.field_name == field.path.name)
+                .ok_or_else(registry_input_error)?;
+            require_constructor_slot_identity(
+                slot,
+                usize::try_from(field.declaration_order).map_err(|_| {
                     input_error(MirBuildError::InconsistentInput {
                         origin,
-                        message: format!(
-                            "external constructor field `{owner_name}::{}` has no descriptor",
-                            source_field.name
-                        ),
+                        message: "external constructor field order exceeds usize".to_owned(),
                     })
-                })?;
+                })?,
+                &field.path.name,
+                &field.path.name,
+                origin,
+            )?;
             self.ensure_external_field(field.id, origin)?;
-            let value = source_field.value.ok_or_else(|| {
-                CompileError::new(CompileErrorKind::UnsupportedSyntax("record field"))
-                    .with_span(source_field.name_origin.span)
-            })?;
-            if let Some(contract) = field
-                .type_hint
-                .as_ref()
-                .and_then(|hint| registry_hint_contract(hint, &self.catalog))
-                .and_then(super::super::schema::meaningful_contract)
-            {
-                self.boundaries.push(ContractBoundary::field(
-                    executable,
+            let value = match &slot.value {
+                vela_analysis::validation::ConstructorSlotValueFact::Explicit {
+                    source_index,
                     value,
-                    contract,
-                    &source_field.name,
-                ));
-            }
+                } => {
+                    let value =
+                        self.constructor_explicit_value(placement, *source_index, *value, origin)?;
+                    if let Some(contract) = field
+                        .type_hint
+                        .as_ref()
+                        .and_then(|hint| registry_hint_contract(hint, &self.catalog))
+                        .and_then(super::super::schema::meaningful_contract)
+                    {
+                        self.boundaries.push(ContractBoundary::field(
+                            executable,
+                            value,
+                            contract,
+                            &field.path.name,
+                        ));
+                    }
+                    CompileConstructorValue::Explicit {
+                        source_index: checked_u32(
+                            *source_index,
+                            origin,
+                            "external constructor source field",
+                        )?,
+                        value,
+                    }
+                }
+                unavailable => return Err(unavailable_constructor_default(unavailable, origin)),
+            };
             placed.push(CompileConstructorField {
                 field: field.id,
-                parameter: field.declaration_order,
-                parameter_name: source_field.name.clone(),
-                value: CompileConstructorValue::Explicit(value),
+                parameter: checked_u32(index, origin, "external constructor field slot")?,
+                parameter_name: slot.parameter_name.clone(),
+                value,
             });
         }
         let target = match variant {
             Some(variant) => CompileConstructorTarget::Variant {
                 type_id: owner.id,
                 variant: variant.id,
+                evaluation_order,
                 fields: placed,
             },
             None => CompileConstructorTarget::Record {
@@ -235,6 +260,7 @@ impl GenerationBuilder<'_, '_> {
                         ),
                     })
                 })?,
+                evaluation_order,
                 fields: placed,
             },
         };
@@ -249,49 +275,31 @@ impl GenerationBuilder<'_, '_> {
         expression: HirExprId,
         declaration: HirDeclId,
         variant: Option<&str>,
-        fields: &[HirRecordField],
+        placement: &vela_analysis::validation::ConstructorPlacementFact,
     ) -> CompileResult<()> {
         let type_id = self.type_ids[&declaration];
-        let type_name = self.type_names[&type_id].clone();
         let origin = self
             .expression_origin(expression)
             .ok_or_else(registry_input_error)?;
         let specs = self.constructor_specs(declaration, variant)?;
-        let uses = fields
-            .iter()
-            .map(|field| ConstructorFieldUse {
-                name: field.name.clone(),
-                span: field.name_origin.span,
-            })
-            .collect::<Vec<_>>();
-        let shape = variant.map_or_else(
-            || self.request.schema_defaults.record(&type_name),
-            |variant| {
-                self.request
-                    .schema_defaults
-                    .enum_variant(&type_name, variant)
-            },
-        );
-        let diagnostics = record_constructor_field_diagnostics(
-            &variant.map_or_else(
-                || type_name.clone(),
-                |variant| format!("{type_name}::{variant}"),
-            ),
-            shape,
-            &uses,
-            origin.span,
-        );
-        if !diagnostics.is_empty() {
-            return Err(semantic_diagnostics(diagnostics));
-        }
-        let explicit = fields
-            .iter()
-            .filter_map(|field| field.value.map(|value| (field.name.as_str(), value)))
-            .collect::<BTreeMap<_, _>>();
-        let mut placed = Vec::new();
-        for (parameter, spec) in specs.iter().enumerate() {
-            let value = match explicit.get(spec.field_name.as_str()).copied() {
-                Some(value) => {
+        let slots = self.constructor_slots(placement, specs.len(), origin)?;
+        let evaluation_order = self.constructor_evaluation_order(placement, origin)?;
+        let mut placed = Vec::with_capacity(slots.len());
+        for (parameter, (slot, spec)) in slots.iter().zip(&specs).enumerate() {
+            require_constructor_slot_identity(
+                slot,
+                parameter,
+                &spec.field_name,
+                &spec.parameter_name,
+                origin,
+            )?;
+            let value = match &slot.value {
+                vela_analysis::validation::ConstructorSlotValueFact::Explicit {
+                    source_index,
+                    value,
+                } => {
+                    let value =
+                        self.constructor_explicit_value(placement, *source_index, *value, origin)?;
                     if let Some(contract) = spec.contract.clone() {
                         self.boundaries.push(ContractBoundary::field(
                             executable,
@@ -300,13 +308,27 @@ impl GenerationBuilder<'_, '_> {
                             &spec.field_name,
                         ));
                     }
-                    CompileConstructorValue::Explicit(value)
+                    CompileConstructorValue::Explicit {
+                        source_index: checked_u32(
+                            *source_index,
+                            origin,
+                            "constructor source field",
+                        )?,
+                        value,
+                    }
                 }
-                None => {
-                    let body = spec.default_body.ok_or_else(registry_input_error)?;
-                    self.require_evaluated_schema_default(body)?;
-                    CompileConstructorValue::EvaluatedDefault(body)
+                vela_analysis::validation::ConstructorSlotValueFact::SourceDefault { body } => {
+                    if spec.default_body != Some(*body) {
+                        return Err(input_error(MirBuildError::InconsistentInput {
+                            origin,
+                            message: "analysis constructor default disagrees with HIR schema"
+                                .to_owned(),
+                        }));
+                    }
+                    self.require_evaluated_schema_default(*body)?;
+                    CompileConstructorValue::EvaluatedDefault(*body)
                 }
+                unavailable => return Err(unavailable_constructor_default(unavailable, origin)),
             };
             placed.push(CompileConstructorField {
                 field: spec.field,
@@ -319,12 +341,14 @@ impl GenerationBuilder<'_, '_> {
             CompileConstructorTarget::Variant {
                 type_id,
                 variant: self.variant_ids[&(declaration, variant.to_owned())],
+                evaluation_order,
                 fields: placed,
             }
         } else {
             CompileConstructorTarget::Record {
                 type_id,
                 shape: self.type_shapes[&type_id],
+                evaluation_order,
                 fields: placed,
             }
         };
@@ -340,44 +364,72 @@ impl GenerationBuilder<'_, '_> {
         expression: HirExprId,
         declaration: HirDeclId,
         variant: &str,
+        call_placement: &vela_analysis::validation::CallArgumentPlacementFact,
     ) -> CompileResult<()> {
         let call = body.call(expression).ok_or_else(registry_input_error)?;
         let origin = self
             .expression_origin(expression)
             .ok_or_else(registry_input_error)?;
         let specs = self.constructor_specs(declaration, Some(variant))?;
-        let params = specs
-            .iter()
-            .map(|spec| ParamHint {
-                name: spec.parameter_name.clone(),
-                span: spec.span,
-                type_hint: spec.hint.clone(),
-                default_value_span: spec.default_body.map(|_| spec.span),
-                default_body: spec.default_body,
-            })
-            .collect::<Vec<_>>();
-        let arguments = hir_call_arguments(&call.arguments)?;
-        let slots = resolve_hir_call_arguments(&params, &arguments, origin.span)
-            .map_err(semantic_diagnostics)?;
-        let mut fields = Vec::new();
-        for (parameter, (slot, spec)) in slots.into_iter().zip(&specs).enumerate() {
-            let value = match slot {
-                Some(value) => {
+        let expected_target = ConstructorTargetFact::Variant {
+            enum_declaration: declaration,
+            variant: variant.to_owned(),
+        };
+        let placement = self.checked_tuple_constructor_placement(
+            executable,
+            expression,
+            &call.arguments,
+            call_placement,
+            &expected_target,
+            origin,
+        )?;
+        let slots = self.constructor_slots(&placement, specs.len(), origin)?;
+        let evaluation_order = self.constructor_evaluation_order(&placement, origin)?;
+        let mut fields = Vec::with_capacity(slots.len());
+        for (parameter, (slot, spec)) in slots.iter().zip(&specs).enumerate() {
+            require_constructor_slot_identity(
+                slot,
+                parameter,
+                &spec.field_name,
+                &spec.parameter_name,
+                origin,
+            )?;
+            let value = match &slot.value {
+                vela_analysis::validation::ConstructorSlotValueFact::Explicit {
+                    source_index,
+                    value,
+                } => {
+                    let value =
+                        self.constructor_explicit_value(&placement, *source_index, *value, origin)?;
                     if let Some(contract) = spec.contract.clone() {
                         self.boundaries.push(ContractBoundary::field(
                             executable,
-                            value.value,
+                            value,
                             contract,
                             &spec.field_name,
                         ));
                     }
-                    CompileConstructorValue::Explicit(value.value)
+                    CompileConstructorValue::Explicit {
+                        source_index: checked_u32(
+                            *source_index,
+                            origin,
+                            "variant constructor source argument",
+                        )?,
+                        value,
+                    }
                 }
-                None => {
-                    let body = spec.default_body.ok_or_else(registry_input_error)?;
-                    self.require_evaluated_schema_default(body)?;
-                    CompileConstructorValue::EvaluatedDefault(body)
+                vela_analysis::validation::ConstructorSlotValueFact::SourceDefault { body } => {
+                    if spec.default_body != Some(*body) {
+                        return Err(input_error(MirBuildError::InconsistentInput {
+                            origin,
+                            message: "analysis tuple constructor default disagrees with HIR schema"
+                                .to_owned(),
+                        }));
+                    }
+                    self.require_evaluated_schema_default(*body)?;
+                    CompileConstructorValue::EvaluatedDefault(*body)
                 }
+                unavailable => return Err(unavailable_constructor_default(unavailable, origin)),
             };
             fields.push(CompileConstructorField {
                 field: spec.field,
@@ -393,6 +445,7 @@ impl GenerationBuilder<'_, '_> {
                 CompileConstructorTarget::Variant {
                     type_id: self.type_ids[&declaration],
                     variant: self.variant_ids[&(declaration, variant.to_owned())],
+                    evaluation_order,
                     fields,
                 },
                 origin,
@@ -442,8 +495,6 @@ impl GenerationBuilder<'_, '_> {
                         .as_ref()
                         .and_then(|hint| self.type_contract_for_hint(metadata.module, hint))
                         .and_then(super::super::schema::meaningful_contract),
-                    hint: field.hint,
-                    span: field.span,
                 }
             })
             .collect())

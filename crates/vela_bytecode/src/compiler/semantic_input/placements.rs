@@ -1,36 +1,30 @@
-use std::collections::BTreeMap;
-
 use vela_analysis::registry::{RegistryFieldTargetFact, RegistryIndexCapabilityFact};
 use vela_analysis::semantic_facts::{
     CallTargetFact, ConstructorTargetFact, HostPathIndexKindFact, HostPathSegmentFact,
     MemberTargetFact,
 };
 use vela_analysis::type_fact::TypeFact;
+use vela_analysis::validation::CallPlacementModeFact;
 use vela_common::{PrimitiveTag, ScalarValue};
 use vela_def::{FieldId, FunctionId, TypeId};
 use vela_hir::body::{
-    HirArgument, HirBody, HirBodyOwner, HirExprKind, HirLiteral, HirPathKind, HirPathOwner,
-    HirPatternKind, HirRecordField,
+    HirBody, HirBodyOwner, HirExprKind, HirLiteral, HirPathKind, HirPathOwner, HirPatternKind,
 };
-use vela_hir::ids::{HirDeclId, HirExprId, HirPatternId, ModuleId};
-use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint, ParamHint, StructFieldHint};
+use vela_hir::ids::{HirDeclId, HirExprId, HirPatternId};
+use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint, StructFieldHint};
 use vela_mir::{
     CompileCallTarget, CompileCalleeTarget, CompileConstructorField, CompileConstructorTarget,
-    CompileConstructorValue, CompileDynamicCallArgument, CompileDynamicConstructorField,
-    CompileFieldTarget, CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget,
-    CompileMemberTarget, CompilePatternConstructorTarget, CompileReflectionCall,
-    CompileScriptCallArgument, DynamicMethodTarget, HostFieldTarget, HostMethodTarget,
-    MirBuildError, MirSourceOrigin,
+    CompileConstructorValue, CompileDynamicConstructorField, CompileFieldTarget,
+    CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget, CompileMemberTarget,
+    CompilePatternConstructorTarget, CompileReflectionCall, DynamicMethodTarget, HostFieldTarget,
+    HostMethodTarget, MirBuildError, MirSourceOrigin,
 };
 
 use super::contracts::ContractBoundary;
 use super::external::{external_signature, unresolved_method, unresolved_native};
 use super::schema::{contract_from_fact, registry_hint_contract};
 use super::{GenerationBuilder, input_error, registry_input_error};
-use crate::compiler::call_args::{HirCallArgument, resolve_hir_call_arguments};
-use crate::compiler::calls::metadata::registry_param_hints;
 use crate::compiler::error::{CompileError, CompileErrorKind, CompileResult};
-use crate::compiler::schema_defaults::{ConstructorFieldUse, record_constructor_field_diagnostics};
 
 impl GenerationBuilder<'_, '_> {
     pub(super) fn insert_placements(&mut self) -> CompileResult<()> {
@@ -93,13 +87,16 @@ impl GenerationBuilder<'_, '_> {
         let origin = self
             .expression_origin(expression)
             .ok_or_else(registry_input_error)?;
+        let placement = self.checked_call_placement(executable, call, origin)?;
         let target = self
             .executable_analysis(executable)?
             .call_target(expression)
             .cloned()
             .unwrap_or(CallTargetFact::Unresolved);
 
-        if let Some(special) = self.host_behavior_call(executable, body, call, origin)? {
+        if let Some(special) =
+            self.host_behavior_call(executable, body, call, &placement, origin)?
+        {
             self.targets
                 .insert_call(executable, expression, special, origin)
                 .map_err(input_error)?;
@@ -127,18 +124,20 @@ impl GenerationBuilder<'_, '_> {
                     .declaration(declaration)
                     .map(|declaration| declaration.module)
                     .ok_or_else(registry_input_error)?;
+                let (evaluation_order, parameter_slots) = self.script_argument_slots(
+                    executable,
+                    &placement,
+                    signature.params.as_slice(),
+                    module,
+                    origin,
+                )?;
                 CompileCallTarget::script(
                     CompileCalleeTarget::ScriptFunction {
                         function,
                         debug_name: self.request.script_function_symbols[&declaration].clone(),
                     },
-                    self.script_arguments(
-                        executable,
-                        call,
-                        signature.params.as_slice(),
-                        module,
-                        origin,
-                    )?,
+                    evaluation_order,
+                    parameter_slots,
                 )
             }
             CallTargetFact::Variant {
@@ -151,6 +150,7 @@ impl GenerationBuilder<'_, '_> {
                     expression,
                     enum_declaration,
                     &variant,
+                    &placement,
                 )?;
                 return Ok(());
             }
@@ -174,9 +174,9 @@ impl GenerationBuilder<'_, '_> {
                                 == Some(&method_target)
                     })
                     .ok_or_else(registry_input_error)?;
-                let arguments = self.script_arguments(
+                let (evaluation_order, parameter_slots) = self.script_argument_slots(
                     executable,
-                    call,
+                    &placement,
                     method_input.signature().params.get(1..).unwrap_or_default(),
                     method_input.signature_module(),
                     origin,
@@ -197,35 +197,44 @@ impl GenerationBuilder<'_, '_> {
                         target: method_target,
                         debug_name: field.name.clone(),
                     },
-                    arguments,
+                    evaluation_order,
+                    parameter_slots,
                 )
             }
             CallTargetFact::Local(local) => CompileCallTarget::positional(
                 CompileCalleeTarget::Local(local),
-                positional_values(&call.arguments)?,
+                self.positional_argument_values(
+                    &placement,
+                    CallPlacementModeFact::Positional,
+                    origin,
+                )?,
             ),
             CallTargetFact::Lambda(lambda) => CompileCallTarget::positional(
                 CompileCalleeTarget::Lambda(lambda),
-                positional_values(&call.arguments)?,
+                self.positional_argument_values(
+                    &placement,
+                    CallPlacementModeFact::Positional,
+                    origin,
+                )?,
             ),
             CallTargetFact::RegistryFunction { path }
             | CallTargetFact::NativeFunction { path }
             | CallTargetFact::StdlibFunction { path } => {
-                self.external_function_call(executable, &path, call, origin)?
+                self.external_function_call(executable, &path, &placement, origin)?
             }
             CallTargetFact::HostMethod { owner, name } => {
-                self.host_method_call(executable, &owner, &name, call, origin)?
+                self.host_method_call(executable, &owner, &name, &placement, origin)?
             }
             CallTargetFact::RegistryMethod { owner, name } => {
-                self.registry_method_call(executable, &owner, &name, call, origin)?
+                self.registry_method_call(executable, &owner, &name, &placement, origin)?
             }
             CallTargetFact::StdlibMethod { name } => {
-                self.value_method_call(executable, body, call, &name, origin)?
+                self.value_method_call(executable, body, call, &placement, &name, origin)?
             }
             CallTargetFact::KnownReceiverMiss { method, .. } => {
                 return Err(unresolved_method(&method, origin.span));
             }
-            CallTargetFact::Dynamic => self.dynamic_call(body, call, origin)?,
+            CallTargetFact::Dynamic => self.dynamic_call(body, call, &placement, origin)?,
             CallTargetFact::Unresolved => {
                 let path = callee_path(body, call.callee).ok_or_else(|| {
                     input_error(MirBuildError::InconsistentInput {
@@ -245,7 +254,11 @@ impl GenerationBuilder<'_, '_> {
                         function,
                         debug_name: name,
                     },
-                    positional_values(&call.arguments)?,
+                    self.positional_argument_values(
+                        &placement,
+                        CallPlacementModeFact::Unresolved,
+                        origin,
+                    )?,
                 )
             }
         };
@@ -258,66 +271,90 @@ impl GenerationBuilder<'_, '_> {
         &mut self,
         executable: FunctionId,
         path: &str,
-        call: &vela_hir::body::HirCall,
+        placement: &vela_analysis::validation::CallArgumentPlacementFact,
         origin: MirSourceOrigin,
     ) -> CompileResult<CompileCallTarget> {
-        let definition = self.catalog.function_by_source(path).cloned();
-        let function = match definition.as_ref() {
-            Some(definition) => {
-                self.ensure_external_function(definition.id, origin)?;
-                definition.id
-            }
-            None if !self.registry_was_provided => {
-                self.ensure_derived_native_function(path, origin)?
-            }
-            None => return Err(unresolved_native(path, origin.span)),
-        };
-        let arguments = definition.as_ref().map_or_else(
-            || positional_values(&call.arguments),
-            |definition| {
-                self.external_arguments(
-                    executable,
-                    path,
-                    &definition.signature.params,
-                    call,
-                    origin,
-                )
-            },
-        )?;
-        if path == "set::from_array" {
-            return Ok(CompileCallTarget::positional(
-                CompileCalleeTarget::SetFromArray {
+        let Some(definition) = self.catalog.function_by_source(path).cloned() else {
+            let arguments = self.positional_argument_values(
+                placement,
+                CallPlacementModeFact::ExternalPositional,
+                origin,
+            )?;
+            let argument_facts = {
+                let analysis = self.executable_analysis(executable)?;
+                arguments
+                    .iter()
+                    .map(|argument| {
+                        analysis.expression(*argument).cloned().ok_or_else(|| {
+                            input_error(MirBuildError::InconsistentInput {
+                                origin,
+                                message: format!(
+                                    "stdlib call `{path}` is missing an argument type fact"
+                                ),
+                            })
+                        })
+                    })
+                    .collect::<CompileResult<Vec<_>>>()?
+            };
+            // Runtime-only stdlib natives currently lack a neutral manifest
+            // carrying parameter names and effects. Until that Phase 0 owner
+            // lands, accept only an exact argument-sensitive stdlib fact and
+            // retain the runtime-checked descriptor; never synthesize names.
+            vela_analysis::stdlib::stdlib_function_fact(path, &argument_facts).ok_or_else(
+                || {
+                    input_error(MirBuildError::InconsistentInput {
+                        origin,
+                        message: format!(
+                            "resolved external call `{path}` has no authoritative signature"
+                        ),
+                    })
+                },
+            )?;
+            let function = self.ensure_derived_native_function(path, origin)?;
+            let callee = reflection_operation(path).map_or_else(
+                || CompileCalleeTarget::NativeFunction {
                     function,
                     debug_name: path.to_owned(),
                 },
-                arguments,
-            ));
-        }
-        if let Some(operation) = reflection_operation(path) {
-            return Ok(CompileCallTarget::positional(
-                CompileCalleeTarget::Reflection {
+                |operation| CompileCalleeTarget::Reflection {
                     operation,
                     function,
                     debug_name: path.to_owned(),
                 },
-                arguments,
-            ));
-        }
-        let callee = if definition
-            .as_ref()
-            .is_some_and(|definition| definition.path.package == "std")
-        {
+            );
+            return Ok(CompileCallTarget::positional(callee, arguments));
+        };
+        self.ensure_external_function(definition.id, origin)?;
+        let callee = if path == "set::from_array" {
+            CompileCalleeTarget::SetFromArray {
+                function: definition.id,
+                debug_name: path.to_owned(),
+            }
+        } else if let Some(operation) = reflection_operation(path) {
+            CompileCalleeTarget::Reflection {
+                operation,
+                function: definition.id,
+                debug_name: path.to_owned(),
+            }
+        } else if definition.path.package == "std" {
             CompileCalleeTarget::StdlibFunction {
-                function,
+                function: definition.id,
                 debug_name: path.to_owned(),
             }
         } else {
             CompileCalleeTarget::NativeFunction {
-                function,
+                function: definition.id,
                 debug_name: path.to_owned(),
             }
         };
-        Ok(CompileCallTarget::positional(callee, arguments))
+        self.external_call_target(
+            executable,
+            callee,
+            path,
+            &definition.signature.params,
+            placement,
+            origin,
+        )
     }
 
     fn host_method_call(
@@ -325,7 +362,7 @@ impl GenerationBuilder<'_, '_> {
         executable: FunctionId,
         owner_name: &str,
         name: &str,
-        call: &vela_hir::body::HirCall,
+        placement: &vela_analysis::validation::CallArgumentPlacementFact,
         origin: MirSourceOrigin,
     ) -> CompileResult<CompileCallTarget> {
         let owner = self
@@ -356,9 +393,8 @@ impl GenerationBuilder<'_, '_> {
             &self.catalog,
             origin,
         )?;
-        let arguments =
-            self.external_arguments(executable, name, &definition.signature.params, call, origin)?;
-        Ok(CompileCallTarget::positional(
+        self.external_call_target(
+            executable,
             CompileCalleeTarget::HostMethod(HostMethodTarget {
                 owner: owner_target,
                 semantic: definition.id,
@@ -370,8 +406,11 @@ impl GenerationBuilder<'_, '_> {
                     definition.access.required_permissions().to_vec(),
                 ),
             }),
-            arguments,
-        ))
+            name,
+            &definition.signature.params,
+            placement,
+            origin,
+        )
     }
 
     fn registry_method_call(
@@ -379,7 +418,7 @@ impl GenerationBuilder<'_, '_> {
         executable: FunctionId,
         owner_name: &str,
         name: &str,
-        call: &vela_hir::body::HirCall,
+        placement: &vela_analysis::validation::CallArgumentPlacementFact,
         origin: MirSourceOrigin,
     ) -> CompileResult<CompileCallTarget> {
         let owner = self
@@ -393,16 +432,18 @@ impl GenerationBuilder<'_, '_> {
             .cloned()
             .ok_or_else(registry_input_error)?;
         self.ensure_external_method(method.id, origin)?;
-        let arguments =
-            self.external_arguments(executable, name, &method.signature.params, call, origin)?;
-        Ok(CompileCallTarget::positional(
+        self.external_call_target(
+            executable,
             CompileCalleeTarget::ValueMethod {
                 owner,
                 method: method.id,
                 debug_name: name.to_owned(),
             },
-            arguments,
-        ))
+            name,
+            &method.signature.params,
+            placement,
+            origin,
+        )
     }
 
     fn value_method_call(
@@ -410,6 +451,7 @@ impl GenerationBuilder<'_, '_> {
         executable: FunctionId,
         body: &HirBody,
         call: &vela_hir::body::HirCall,
+        placement: &vela_analysis::validation::CallArgumentPlacementFact,
         name: &str,
         origin: MirSourceOrigin,
     ) -> CompileResult<CompileCallTarget> {
@@ -432,38 +474,43 @@ impl GenerationBuilder<'_, '_> {
             }
         };
         self.ensure_external_method(method.id, origin)?;
-        let arguments =
-            self.external_arguments(executable, name, &method.signature.params, call, origin)?;
-        Ok(CompileCallTarget::positional(
+        self.external_call_target(
+            executable,
             CompileCalleeTarget::ValueMethod {
                 owner: method.owner,
                 method: method.id,
                 debug_name: name.to_owned(),
             },
-            arguments,
-        ))
+            name,
+            &method.signature.params,
+            placement,
+            origin,
+        )
     }
 
     fn dynamic_call(
         &self,
         body: &HirBody,
         call: &vela_hir::body::HirCall,
+        placement: &vela_analysis::validation::CallArgumentPlacementFact,
         origin: MirSourceOrigin,
     ) -> CompileResult<CompileCallTarget> {
-        let arguments = dynamic_values(&call.arguments)?;
+        let arguments = self.dynamic_argument_values(placement, origin)?;
         if let Some(field) = body.field(call.callee) {
             return Ok(CompileCallTarget::dynamic(
                 CompileCalleeTarget::DynamicMethod(DynamicMethodTarget::method(
                     &field.name,
                     checked_u32(
-                        call.arguments
+                        placement
+                            .source_order
                             .iter()
                             .filter(|argument| argument.name.is_none())
                             .count(),
                         origin,
                         "dynamic positional arity",
                     )?,
-                    call.arguments
+                    placement
+                        .source_order
                         .iter()
                         .filter_map(|argument| argument.name.clone())
                         .collect(),
@@ -482,7 +529,8 @@ impl GenerationBuilder<'_, '_> {
         executable: FunctionId,
         body: &HirBody,
         call: &vela_hir::body::HirCall,
-        _origin: MirSourceOrigin,
+        placement: &vela_analysis::validation::CallArgumentPlacementFact,
+        origin: MirSourceOrigin,
     ) -> CompileResult<Option<CompileCallTarget>> {
         let Some(field) = body.field(call.callee) else {
             return Ok(None);
@@ -502,116 +550,33 @@ impl GenerationBuilder<'_, '_> {
             )
         {
             let path = self.convert_host_path(executable, path)?;
+            let arguments = self.source_argument_values(placement, origin)?;
+            if !arguments.is_empty() {
+                return Err(input_error(MirBuildError::InconsistentInput {
+                    origin,
+                    message: "host remove placement has unexpected arguments".to_owned(),
+                }));
+            }
             return Ok(Some(CompileCallTarget::positional(
                 CompileCalleeTarget::HostRemove { path },
-                Vec::new(),
+                arguments,
             )));
         }
         if field.name == "push" && !path.segments.is_empty() && call.arguments.len() == 1 {
             let path = self.convert_host_path(executable, path)?;
+            let arguments = self.source_argument_values(placement, origin)?;
+            if arguments.len() != 1 {
+                return Err(input_error(MirBuildError::InconsistentInput {
+                    origin,
+                    message: "host push placement must contain one argument".to_owned(),
+                }));
+            }
             return Ok(Some(CompileCallTarget::positional(
                 CompileCalleeTarget::HostPush { path },
-                positional_values(&call.arguments)?,
+                arguments,
             )));
         }
         Ok(None)
-    }
-
-    fn script_arguments(
-        &mut self,
-        executable: FunctionId,
-        call: &vela_hir::body::HirCall,
-        params: &[ParamHint],
-        module: ModuleId,
-        origin: MirSourceOrigin,
-    ) -> CompileResult<Vec<CompileScriptCallArgument>> {
-        let arguments = hir_call_arguments(&call.arguments)?;
-        let slots = resolve_hir_call_arguments(params, &arguments, origin.span)
-            .map_err(semantic_diagnostics)?;
-        slots
-            .into_iter()
-            .zip(params)
-            .enumerate()
-            .map(|(index, (argument, parameter))| {
-                if let (Some(argument), Some(hint)) = (&argument, &parameter.type_hint)
-                    && let Some(contract) = self.type_contract_for_hint(module, hint)
-                {
-                    self.boundaries.push(ContractBoundary::function_parameter(
-                        executable,
-                        argument.value,
-                        contract,
-                        parameter.name.clone(),
-                    ));
-                }
-                Ok(CompileScriptCallArgument {
-                    parameter: checked_u32(index, origin, "script call parameter")?,
-                    value: argument.map(|argument| argument.value),
-                })
-            })
-            .collect()
-    }
-
-    fn external_arguments(
-        &mut self,
-        executable: FunctionId,
-        debug_function: &str,
-        params: &[vela_registry::ParamDef],
-        call: &vela_hir::body::HirCall,
-        origin: MirSourceOrigin,
-    ) -> CompileResult<Vec<HirExprId>> {
-        if call
-            .arguments
-            .iter()
-            .all(|argument| argument.name.is_none())
-        {
-            let values = positional_values(&call.arguments)?;
-            for (index, (value, parameter)) in values.iter().zip(params).enumerate() {
-                if let Some(contract) = parameter
-                    .type_hint
-                    .as_ref()
-                    .and_then(|hint| registry_hint_contract(hint, &self.catalog))
-                    .and_then(super::schema::meaningful_contract)
-                {
-                    self.boundaries.push(ContractBoundary::native_parameter(
-                        executable,
-                        *value,
-                        contract,
-                        debug_function,
-                        &parameter.name,
-                        checked_u16(index, origin, "native parameter index")?,
-                    ));
-                }
-            }
-            return Ok(values);
-        }
-
-        let param_hints = registry_param_hints(params, origin.span);
-        let arguments = hir_call_arguments(&call.arguments)?;
-        let slots = resolve_hir_call_arguments(&param_hints, &arguments, origin.span)
-            .map_err(semantic_diagnostics)?;
-        let mut values = Vec::new();
-        for (index, (slot, parameter)) in slots.into_iter().zip(params).enumerate() {
-            let Some(slot) = slot else {
-                continue;
-            };
-            if let Some(contract) = parameter
-                .type_hint
-                .as_ref()
-                .and_then(|hint| registry_hint_contract(hint, &self.catalog))
-                .and_then(super::schema::meaningful_contract)
-            {
-                self.boundaries.push(ContractBoundary::native_parameter(
-                    executable,
-                    slot.value,
-                    contract,
-                    debug_function,
-                    &parameter.name,
-                    checked_u16(index, origin, "native parameter index")?,
-                ));
-            }
-            values.push(slot.value);
-        }
-        Ok(values)
     }
 
     fn insert_member(
@@ -980,6 +945,9 @@ pub(super) fn runtime_semantic_body(body: &HirBody) -> bool {
     )
 }
 
+mod call_arguments;
+mod constructor_arguments;
 mod constructors;
 mod helpers;
+use self::constructor_arguments::*;
 use self::helpers::*;

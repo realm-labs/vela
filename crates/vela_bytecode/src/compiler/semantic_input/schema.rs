@@ -94,7 +94,7 @@ impl GenerationBuilder<'_, '_> {
                     .graph
                     .struct_shape(declaration)
                     .ok_or_else(registry_input_error)?;
-                let mut slots = shape
+                let slots = shape
                     .fields
                     .iter()
                     .enumerate()
@@ -110,7 +110,6 @@ impl GenerationBuilder<'_, '_> {
                         (field.name.clone(), id, order, field)
                     })
                     .collect::<Vec<_>>();
-                slots.sort_by(|left, right| left.0.cmp(&right.0));
                 type_fields.extend(slots.iter().map(|(_, id, _, _)| *id));
                 for (_, id, order, field) in slots {
                     let contract = field

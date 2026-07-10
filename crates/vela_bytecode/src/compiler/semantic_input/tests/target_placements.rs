@@ -1,9 +1,13 @@
+use vela_def::DefPath;
 use vela_mir::{
-    CompileConstructorTarget, CompileDynamicConstructorField, CompilePatternConstructorTarget,
-    CompileTryFamily, CompileTryLayoutTarget, CompileTryTarget,
+    CompileCallArguments, CompileCallTarget, CompileCalleeTarget, CompileConstructorTarget,
+    CompileConstructorValue, CompileDynamicConstructorField, CompilePatternConstructorTarget,
+    CompilePlacedCallArgument, CompilePlacedCallValue, CompilePositionalPolicy, CompileTryFamily,
+    CompileTryLayoutTarget, CompileTryTarget,
 };
+use vela_registry::{DefinitionRegistry, FunctionDef, FunctionSignature, ParamDef};
 
-use super::{FixtureRoots, SemanticFixture, prepare_source};
+use super::{FixtureRoots, SemanticFixture, prepare_source, prepare_source_with_registry};
 use crate::compiler::error::CompileErrorKind;
 
 #[test]
@@ -233,6 +237,273 @@ fn dynamic_constructor_duplicates_keep_the_frozen_diagnostic() {
     assert!(diagnostics.iter().any(|diagnostic| {
         diagnostic.code.as_deref() == Some("compiler::duplicate_constructor_field")
     }));
+}
+
+#[test]
+fn named_script_and_external_calls_retain_source_order_and_parameter_slots() {
+    let script = prepare_source(
+        r#"
+fn target(first, second, third = 3) { return first + second + third; }
+fn main() { return target(second = 2, first = 1); }
+"#,
+        FixtureRoots::Program,
+    )
+    .expect("named script call placement");
+    let CompileCallArguments::Script {
+        evaluation_order,
+        parameter_slots,
+    } = &only_call_target(&script).arguments
+    else {
+        panic!("expected placed script arguments");
+    };
+    assert_named_call_order(evaluation_order, parameter_slots);
+
+    let mut registry = DefinitionRegistry::new();
+    registry
+        .register_function(FunctionDef::new(
+            DefPath::function("host", ["audit"], "send"),
+            FunctionSignature::new(
+                [
+                    ParamDef::new("first", Some("i64")),
+                    ParamDef::new("second", Some("i64")),
+                    ParamDef::new("third", Some("i64")).defaulted(true),
+                ],
+                Some("i64"),
+            ),
+        ))
+        .expect("external function fixture");
+    let external = prepare_source_with_registry(
+        "fn main() { return audit::send(second = 2, first = 1); }",
+        FixtureRoots::Program,
+        registry.compile_view(),
+    )
+    .expect("named external call placement");
+    let CompileCallArguments::ExternalNamed {
+        evaluation_order,
+        parameter_slots,
+    } = &only_call_target(&external).arguments
+    else {
+        panic!("expected placed external arguments");
+    };
+    assert_named_call_order(evaluation_order, parameter_slots);
+}
+
+#[test]
+fn named_record_and_tuple_constructors_retain_source_order_and_schema_slots() {
+    let record = prepare_source(
+        r#"
+struct Pair { first: i64, second: i64, third: i64 = 3 }
+fn main() { return Pair { second: 2, first: 1 }; }
+"#,
+        FixtureRoots::Program,
+    )
+    .expect("named record constructor placement");
+    assert_named_constructor_order(only_constructor_target(&record));
+
+    let tuple = prepare_source(
+        r#"
+enum Pair { Values(first: i64, second: i64, third: i64 = 3) }
+fn main() { return Pair::Values(second = 2, first = 1); }
+"#,
+        FixtureRoots::Program,
+    )
+    .expect("named tuple constructor placement");
+    assert_named_constructor_order(only_constructor_target(&tuple));
+}
+
+#[test]
+fn runtime_only_stdlib_calls_require_exact_facts_and_never_fabricate_named_slots() {
+    let positional = prepare_source(
+        "fn main() { return reflect::methods(1); }",
+        FixtureRoots::Program,
+    )
+    .expect("an exact argument-sensitive stdlib fact closes positional placement");
+    let call = only_call_target(&positional);
+    let CompileCalleeTarget::NativeFunction { function, .. } = call.callee else {
+        panic!("reflect::methods must remain a runtime native");
+    };
+    assert!(matches!(
+        call.arguments,
+        CompileCallArguments::Positional(ref arguments) if arguments.len() == 1
+    ));
+    let descriptor = positional
+        .input
+        .targets()
+        .function_descriptor(function)
+        .expect("runtime native descriptor");
+    assert!(descriptor.signature.parameters.is_empty());
+    assert_eq!(
+        descriptor.signature.positional,
+        CompilePositionalPolicy::RuntimeChecked
+    );
+
+    let error = prepare_source(
+        "fn main() { return reflect::methods(value = 1); }",
+        FixtureRoots::Program,
+    )
+    .expect_err("runtime-only facts do not authorize fabricated parameter names");
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::MirInput(ref input)
+            if input.to_string().contains("placement mode")
+    ));
+    assert!(
+        error.span.is_some(),
+        "MIR input errors must retain the call span"
+    );
+}
+
+#[test]
+fn neutral_record_descriptor_and_constructor_keep_declaration_order() {
+    let fixture = prepare_source(
+        r#"
+struct Layout { zeta: i64, alpha: i64 }
+fn main() { return Layout { alpha: 1, zeta: 2 }; }
+"#,
+        FixtureRoots::Program,
+    )
+    .expect("non-alphabetic record declaration order");
+    let targets = fixture.input.targets();
+    let descriptor = targets
+        .type_by_name("script::Layout")
+        .expect("script record descriptor");
+    let names = descriptor
+        .fields
+        .iter()
+        .map(|field| {
+            targets
+                .field_descriptor(*field)
+                .expect("record field descriptor")
+                .name
+                .as_str()
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(names, ["zeta", "alpha"]);
+
+    let CompileConstructorTarget::Record {
+        evaluation_order,
+        fields,
+        ..
+    } = only_constructor_target(&fixture)
+    else {
+        panic!("expected static record constructor");
+    };
+    assert_eq!(evaluation_order.len(), 2);
+    assert_eq!(
+        fields.iter().map(|field| field.field).collect::<Vec<_>>(),
+        descriptor.fields.as_slice()
+    );
+    assert_eq!(
+        fields[0].value,
+        CompileConstructorValue::Explicit {
+            source_index: 1,
+            value: evaluation_order[1],
+        }
+    );
+    assert_eq!(
+        fields[1].value,
+        CompileConstructorValue::Explicit {
+            source_index: 0,
+            value: evaluation_order[0],
+        }
+    );
+}
+
+fn assert_named_call_order(
+    evaluation_order: &[vela_hir::ids::HirExprId],
+    slots: &[CompilePlacedCallArgument],
+) {
+    assert_eq!(evaluation_order.len(), 2);
+    assert_eq!(slots.len(), 3);
+    assert_eq!(slots[0].parameter, 0);
+    assert_eq!(
+        slots[0].value,
+        CompilePlacedCallValue::Explicit {
+            source_index: 1,
+            value: evaluation_order[1],
+        }
+    );
+    assert_eq!(slots[1].parameter, 1);
+    assert_eq!(
+        slots[1].value,
+        CompilePlacedCallValue::Explicit {
+            source_index: 0,
+            value: evaluation_order[0],
+        }
+    );
+    assert_eq!(slots[2].parameter, 2);
+    assert_eq!(slots[2].value, CompilePlacedCallValue::MissingDefault);
+}
+
+fn assert_named_constructor_order(target: &CompileConstructorTarget) {
+    let (evaluation_order, fields) = match target {
+        CompileConstructorTarget::Record {
+            evaluation_order,
+            fields,
+            ..
+        }
+        | CompileConstructorTarget::Variant {
+            evaluation_order,
+            fields,
+            ..
+        } => (evaluation_order, fields),
+        CompileConstructorTarget::DynamicRecord { .. }
+        | CompileConstructorTarget::DynamicVariant { .. } => {
+            panic!("expected static constructor placement")
+        }
+    };
+    assert_eq!(evaluation_order.len(), 2);
+    assert_eq!(fields.len(), 3);
+    assert_eq!(fields[0].parameter, 0);
+    assert_eq!(
+        fields[0].value,
+        CompileConstructorValue::Explicit {
+            source_index: 1,
+            value: evaluation_order[1],
+        }
+    );
+    assert_eq!(fields[1].parameter, 1);
+    assert_eq!(
+        fields[1].value,
+        CompileConstructorValue::Explicit {
+            source_index: 0,
+            value: evaluation_order[0],
+        }
+    );
+    assert_eq!(fields[2].parameter, 2);
+    assert!(matches!(
+        fields[2].value,
+        CompileConstructorValue::EvaluatedDefault(_)
+    ));
+}
+
+fn only_call_target(fixture: &SemanticFixture) -> &CompileCallTarget {
+    assert_eq!(fixture.call_expressions.len(), 1);
+    let expression = fixture.call_expressions[0].1;
+    let targets = fixture.input.targets();
+    targets
+        .compilation_roots()
+        .find_map(|(function, _)| targets.function_targets(function)?.call(expression))
+        .expect("call target placement")
+}
+
+fn only_constructor_target(fixture: &SemanticFixture) -> &CompileConstructorTarget {
+    let expression = fixture
+        .constructor_expressions
+        .first()
+        .map(|(_, expression, _)| *expression)
+        .or_else(|| {
+            fixture
+                .call_expressions
+                .first()
+                .map(|(_, expression)| *expression)
+        })
+        .expect("constructor expression");
+    let targets = fixture.input.targets();
+    targets
+        .compilation_roots()
+        .find_map(|(function, _)| targets.function_targets(function)?.constructor(expression))
+        .expect("constructor target placement")
 }
 
 fn only_try_target(fixture: &SemanticFixture) -> CompileTryTarget {

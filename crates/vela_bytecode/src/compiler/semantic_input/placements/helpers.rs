@@ -115,51 +115,6 @@ impl GenerationBuilder<'_, '_> {
     }
 }
 
-pub(super) fn hir_call_arguments(arguments: &[HirArgument]) -> CompileResult<Vec<HirCallArgument>> {
-    arguments
-        .iter()
-        .map(|argument| {
-            Ok(HirCallArgument {
-                name: argument.name.clone(),
-                span: argument.origin.span,
-                value: argument.value.ok_or_else(|| {
-                    CompileError::new(CompileErrorKind::UnsupportedSyntax("call argument"))
-                        .with_span(argument.origin.span)
-                })?,
-            })
-        })
-        .collect()
-}
-
-pub(super) fn positional_values(arguments: &[HirArgument]) -> CompileResult<Vec<HirExprId>> {
-    arguments
-        .iter()
-        .map(|argument| {
-            argument.value.ok_or_else(|| {
-                CompileError::new(CompileErrorKind::UnsupportedSyntax("call argument"))
-                    .with_span(argument.origin.span)
-            })
-        })
-        .collect()
-}
-
-pub(super) fn dynamic_values(
-    arguments: &[HirArgument],
-) -> CompileResult<Vec<CompileDynamicCallArgument>> {
-    arguments
-        .iter()
-        .map(|argument| {
-            Ok(CompileDynamicCallArgument {
-                name: argument.name.clone(),
-                value: argument.value.ok_or_else(|| {
-                    CompileError::new(CompileErrorKind::UnsupportedSyntax("call argument"))
-                        .with_span(argument.origin.span)
-                })?,
-            })
-        })
-        .collect()
-}
-
 pub(super) fn callee_path(body: &HirBody, callee: HirExprId) -> Option<&[String]> {
     body.paths
         .iter()
@@ -176,10 +131,6 @@ pub(super) fn reflection_operation(path: &str) -> Option<CompileReflectionCall> 
         "reflect::call" => Some(CompileReflectionCall::Call),
         _ => None,
     }
-}
-
-pub(super) fn semantic_diagnostics(diagnostics: Vec<vela_common::Diagnostic>) -> CompileError {
-    CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
 }
 
 pub(super) fn checked_u32(
@@ -267,8 +218,6 @@ pub(super) struct ConstructorSpec {
     pub(super) parameter_name: String,
     pub(super) default_body: Option<vela_hir::ids::HirBodyId>,
     pub(super) contract: Option<vela_mir::MirTypeContract>,
-    pub(super) hint: Option<HirTypeHint>,
-    pub(super) span: vela_common::Span,
 }
 
 pub(super) struct ConstructorFieldSpec {
@@ -276,7 +225,6 @@ pub(super) struct ConstructorFieldSpec {
     pub(super) parameter_name: String,
     pub(super) default_body: Option<vela_hir::ids::HirBodyId>,
     pub(super) hint: Option<HirTypeHint>,
-    pub(super) span: vela_common::Span,
 }
 
 impl ConstructorFieldSpec {
@@ -286,7 +234,6 @@ impl ConstructorFieldSpec {
             parameter_name: field.name.clone(),
             default_body: field.default_body,
             hint: field.type_hint.clone(),
-            span: field.span,
         }
     }
 }
@@ -304,7 +251,6 @@ pub(super) fn constructor_variant_specs(
                 parameter_name: field.name.clone(),
                 default_body: field.default_body,
                 hint: field.type_hint.clone(),
-                span: field.span,
             })
             .collect(),
         EnumVariantFieldsHint::Record(fields) => fields

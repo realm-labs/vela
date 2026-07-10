@@ -96,11 +96,13 @@ pub(super) fn prepare_semantic_input(
     builder.insert_script_callables()?;
     builder.insert_compile_time_values()?;
     builder.rebuild_executable_analysis(&BTreeMap::new())?;
+    builder.reject_analysis_validation_diagnostics()?;
     let mut probe = builder.clone();
     probe.insert_placements()?;
     let literal_contexts = probe.literal_contexts()?;
     builder.boundaries = probe.boundaries;
     builder.rebuild_executable_analysis(&literal_contexts)?;
+    builder.reject_analysis_validation_diagnostics()?;
     builder.insert_placements()?;
     builder.finish()
 }
@@ -339,6 +341,35 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
                 })
             })
         })
+    }
+
+    fn reject_analysis_validation_diagnostics(&self) -> CompileResult<()> {
+        let mut diagnostics = Vec::new();
+        let mut roots = self.selected_executable_roots()?;
+        roots.sort_by_key(|(function, body)| {
+            self.request.graph.body(*body).map(|body| {
+                (
+                    body.origin.span.source,
+                    body.origin.span.start,
+                    body.origin.span.end,
+                    *function,
+                )
+            })
+        });
+        for (function, _) in roots {
+            for diagnostic in self.executable_analysis(function)?.validation_diagnostics() {
+                if !diagnostics.contains(diagnostic) {
+                    diagnostics.push(diagnostic.clone());
+                }
+            }
+        }
+        if diagnostics.is_empty() {
+            Ok(())
+        } else {
+            Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
+                diagnostics,
+            )))
+        }
     }
 
     fn rebuild_executable_analysis(
