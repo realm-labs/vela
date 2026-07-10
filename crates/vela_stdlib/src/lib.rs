@@ -3,6 +3,7 @@
 mod ids;
 mod manifest;
 mod methods;
+mod reflection_natives;
 mod register;
 
 pub use ids::{std_field_id, std_function_id, std_method_id, std_type_id, std_variant_id};
@@ -11,4 +12,8 @@ pub use manifest::{
     StdMethodSpec, StdParamSpec, StdTypeSpec, StdVariantSpec,
 };
 pub use methods::STD_METHODS;
+pub use reflection_natives::{
+    REFLECTION_NATIVES, ReflectionNativeOperation, ReflectionNativeSpec, reflection_native_spec,
+    reflection_native_specs, register_reflection_natives,
+};
 pub use register::{StdlibRegistration, register_stdlib, standard_registry};

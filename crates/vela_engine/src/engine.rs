@@ -366,9 +366,10 @@ impl Engine {
             .chain(
                 self.reflection_policy
                     .is_some()
-                    .then(crate::compiler_registry::reflection_native_function_ids)
+                    .then(vela_stdlib::reflection_native_specs)
                     .into_iter()
-                    .flatten(),
+                    .flatten()
+                    .map(|spec| spec.id()),
             )
     }
 

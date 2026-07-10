@@ -1,4 +1,4 @@
-use vela_def::{DefPath, FunctionId, VariantId};
+use vela_def::{DefPath, VariantId};
 use vela_reflect::registry::{
     FieldDesc, HostIndexCapability, MethodDesc, MethodParamDesc, TypeDesc, TypeKind, VariantDesc,
 };
@@ -41,7 +41,7 @@ pub(crate) fn definition_registry_from_engine_parts(
         registry.register_function(native_function_def(desc))?;
     }
     if include_reflection_natives {
-        register_reflection_native_defs(&mut registry)?;
+        vela_stdlib::register_reflection_natives(&mut registry)?;
     }
     Ok(registry)
 }
@@ -317,97 +317,6 @@ fn method_effects(effects: &vela_reflect::access::MethodEffectSet) -> Definition
         io_write: effects.writes_io,
     }
 }
-
-fn register_reflection_native_defs(registry: &mut DefinitionRegistry) -> Result<(), RegistryError> {
-    for (name, params) in REFLECTION_NATIVE_DEFS {
-        registry.register_function(
-            FunctionDef::new(
-                source_function_path("host", name),
-                FunctionSignature::new(
-                    params
-                        .iter()
-                        .map(|param| ParamDef::new(*param, None::<TypeHintDef>)),
-                    None::<TypeHintDef>,
-                ),
-            )
-            .effects(reflection_native_effects(name))
-            .access(FunctionAccessDef::new()),
-        )?;
-    }
-    Ok(())
-}
-
-fn reflection_native_effects(name: &str) -> DefinitionEffectSet {
-    match name {
-        "reflect::set" => DefinitionEffectSet {
-            reflection_write: true,
-            ..DefinitionEffectSet::default()
-        },
-        "reflect::call" => DefinitionEffectSet {
-            reflection_call: true,
-            ..DefinitionEffectSet::default()
-        },
-        _ => DefinitionEffectSet {
-            reflection_read: true,
-            ..DefinitionEffectSet::default()
-        },
-    }
-}
-
-pub(crate) fn reflection_native_function_ids() -> impl Iterator<Item = FunctionId> {
-    REFLECTION_NATIVE_DEFS
-        .iter()
-        .map(|(name, _)| FunctionId::from_def_id(source_function_path("host", name).id()))
-}
-
-const REFLECTION_NATIVE_DEFS: &[(&str, &[&str])] = &[
-    ("reflect::access", &["target"]),
-    ("reflect::attr", &["target", "name"]),
-    ("reflect::attrs", &["target"]),
-    ("reflect::call", &["target"]),
-    ("reflect::docs", &["target"]),
-    ("reflect::effects", &["target"]),
-    ("reflect::exports", &["target"]),
-    ("reflect::field", &["target", "name"]),
-    ("reflect::fields", &["target"]),
-    ("reflect::function", &["name"]),
-    ("reflect::functions", &[]),
-    ("reflect::get", &["target", "field"]),
-    ("reflect::has_attr", &["target", "name"]),
-    ("reflect::has_field", &["target", "name"]),
-    ("reflect::has_function", &["name"]),
-    ("reflect::has_method", &["target", "name"]),
-    ("reflect::has_module", &["name"]),
-    ("reflect::has_permission", &["name"]),
-    ("reflect::has_trait", &["name"]),
-    ("reflect::has_type", &["name"]),
-    ("reflect::has_variant", &["target", "name"]),
-    ("reflect::id", &["target"]),
-    ("reflect::implements", &["target", "trait"]),
-    ("reflect::kind", &["target"]),
-    ("reflect::method", &["target", "name"]),
-    ("reflect::methods", &["target"]),
-    ("reflect::module", &["name"]),
-    ("reflect::modules", &[]),
-    ("reflect::name", &["target"]),
-    ("reflect::origin", &["target"]),
-    ("reflect::owner", &["target"]),
-    ("reflect::params", &["target"]),
-    ("reflect::permissions", &[]),
-    ("reflect::required_permissions", &["target"]),
-    ("reflect::returns", &["target"]),
-    ("reflect::set", &["target", "field", "value"]),
-    ("reflect::source_span", &["target"]),
-    ("reflect::trait_info", &["name"]),
-    ("reflect::traits", &["target"]),
-    ("reflect::type_info", &["name"]),
-    ("reflect::type_of", &["target"]),
-    ("reflect::types", &[]),
-    ("reflect::variant", &["target"]),
-    ("reflect::variant_info", &["target", "name"]),
-    ("reflect::variant_is", &["target", "name"]),
-    ("reflect::variants", &["target"]),
-];
 
 fn raw_type_hint_def(hint: &str) -> TypeHintDef {
     TypeHintDef::parse(hint).unwrap_or_else(|| TypeHintDef::named(hint))
