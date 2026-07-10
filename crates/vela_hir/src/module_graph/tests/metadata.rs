@@ -462,7 +462,7 @@ const BONUS = BASE + 1
         .expect("const initializer body");
     assert_eq!(body.owner, HirBodyOwner::ConstInitializer(bonus));
     assert!(matches!(body.root, HirBodyRoot::Expr(_)));
-    assert!(body.root_scope.is_some());
+    assert!(body.scopes.contains_key(&body.root_scope));
     assert!(body.params.is_empty());
     assert!(body.expressions.len() >= 3);
 

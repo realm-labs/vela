@@ -75,6 +75,8 @@ pub struct ModuleGraph {
     next_decl_id: u32,
     next_body_id: u32,
     next_block_id: u32,
+    next_match_arm_id: u32,
+    next_path_id: u32,
     next_scope_id: u32,
     next_stmt_id: u32,
     next_expr_id: u32,
@@ -559,37 +561,34 @@ impl ModuleGraph {
     pub fn call_callee(&self, expression: HirExprId) -> Option<HirExprId> {
         self.bodies
             .values()
-            .find_map(|body| body.calls.get(&expression))
+            .find_map(|body| body.call(expression))
             .map(|call| call.callee)
     }
 
     #[must_use]
     pub fn index_for_expression(&self, expression: HirExprId) -> Option<&HirIndex> {
-        self.bodies
-            .values()
-            .find_map(|body| body.indexes.get(&expression))
+        self.bodies.values().find_map(|body| body.index(expression))
     }
 
     #[must_use]
     pub fn field_at_member_span(&self, span: Span) -> Option<&HirField> {
         self.bodies
             .values()
-            .flat_map(|body| body.fields.values())
+            .flat_map(|body| body.fields().map(|(_, field)| field))
             .find(|field| field.member_origin.span == span)
     }
 
     pub fn fields_in_source(&self, source: SourceId) -> impl Iterator<Item = &HirField> + '_ {
         self.bodies
             .values()
-            .flat_map(|body| body.fields.values())
+            .flat_map(|body| body.fields().map(|(_, field)| field))
             .filter(move |field| field.member_origin.source == source)
     }
 
     pub fn member_calls_in_source(&self, source: SourceId) -> impl Iterator<Item = &HirField> + '_ {
         self.bodies.values().flat_map(move |body| {
-            body.calls.values().filter_map(move |call| {
-                body.fields
-                    .get(&call.callee)
+            body.calls().filter_map(move |(_, call)| {
+                body.field(call.callee)
                     .filter(|field| field.member_origin.source == source)
             })
         })
@@ -598,7 +597,7 @@ impl ModuleGraph {
     pub fn paths_in_source(&self, source: SourceId) -> impl Iterator<Item = &HirPath> + '_ {
         self.bodies
             .values()
-            .flat_map(|body| body.paths.iter())
+            .flat_map(|body| body.paths.values())
             .filter(move |path| path.segment_origin.source == source)
     }
 

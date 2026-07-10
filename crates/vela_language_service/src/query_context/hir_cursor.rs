@@ -70,7 +70,7 @@ fn hir_call_ranges(
     graph
         .bodies()
         .flat_map(|body| {
-            body.calls.values().filter_map(move |call| {
+            body.calls().filter_map(move |(_, call)| {
                 let call_expression = body.expressions.get(&call.expression)?;
                 if call_expression.origin.source != source_id
                     || !span_contains_usize(call_expression.origin.span, open)
@@ -81,8 +81,7 @@ fn hir_call_ranges(
                 let callee = body.expressions.get(&call.callee)?;
                 let callee_range = span_text_range(callee.origin.span)?;
                 let member_receiver = body
-                    .fields
-                    .get(&call.callee)
+                    .field(call.callee)
                     .and_then(|field| body.expressions.get(&field.receiver))
                     .and_then(|receiver| span_text_range(receiver.origin.span));
                 Some((

@@ -1,4 +1,4 @@
-use vela_hir::body::HirStmtKind;
+use vela_hir::body::HirStmtTag;
 use vela_syntax::ast::SyntaxExpressionKind;
 
 use crate::compiler::body_payloads::{CompilerBodyPayload, CompilerStatementPayload};
@@ -34,9 +34,9 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<bool> {
         let hir_kind = stmt.hir_statement_kind();
         match hir_kind {
-            HirStmtKind::Break => return self.compile_break(),
-            HirStmtKind::Continue => return self.compile_continue(),
-            HirStmtKind::Let if stmt.let_initializer_missing_in_syntax() => {
+            HirStmtTag::Break => return self.compile_break(),
+            HirStmtTag::Continue => return self.compile_continue(),
+            HirStmtTag::Let if stmt.let_initializer_missing_in_syntax() => {
                 let Some(name) = self.let_binding_name_for_patterns(stmt.hir_patterns()) else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing let binding name",
@@ -45,7 +45,7 @@ impl Compiler<'_, '_> {
                 let span = stmt.statement_span();
                 return self.compile_let_without_initializer(name, span, stmt.hir_patterns());
             }
-            HirStmtKind::Let => {
+            HirStmtTag::Let => {
                 let span = stmt.statement_span();
                 if let Some((source, pattern, expression, span)) =
                     stmt.let_pattern_initializer_syntax_expression_and_span()
@@ -161,11 +161,11 @@ impl Compiler<'_, '_> {
                     return Ok(compiled);
                 }
             }
-            HirStmtKind::Return if stmt.return_value_missing_in_syntax() => {
+            HirStmtTag::Return if stmt.return_value_missing_in_syntax() => {
                 let span = stmt.statement_span();
                 return self.compile_empty_return(span);
             }
-            HirStmtKind::Return => {
+            HirStmtTag::Return => {
                 let span = stmt.statement_span();
                 if let Some((literal, span)) = stmt.return_value_syntax_literal_and_span() {
                     return self.compile_return_literal(literal, span);
@@ -210,15 +210,15 @@ impl Compiler<'_, '_> {
                     return Ok(compiled);
                 }
             }
-            HirStmtKind::Block => return self.compile_block_statement_payload(stmt),
-            HirStmtKind::If => {
+            HirStmtTag::Block => return self.compile_block_statement_payload(stmt),
+            HirStmtTag::If => {
                 if let Some((source, if_expr)) = stmt.syntax_if()
                     && let Some(compiled) = self.compile_syntax_if_statement(source, &if_expr)?
                 {
                     return Ok(compiled);
                 }
             }
-            HirStmtKind::For => {
+            HirStmtTag::For => {
                 if let Some((source, for_stmt)) = stmt.syntax_for()
                     && let Some(compiled) =
                         self.compile_syntax_for_statement(source, &for_stmt, stmt.hir_patterns())?
@@ -226,7 +226,7 @@ impl Compiler<'_, '_> {
                     return Ok(compiled);
                 }
             }
-            HirStmtKind::Match => {
+            HirStmtTag::Match => {
                 if let Some((source, match_expr)) = stmt.syntax_match()
                     && let Some(compiled) =
                         self.compile_syntax_match_statement(source, &match_expr)?
@@ -237,7 +237,7 @@ impl Compiler<'_, '_> {
             _ => {}
         }
 
-        if hir_kind == HirStmtKind::Expr {
+        if hir_kind == HirStmtTag::Expr {
             return self.compile_expr_statement_payload(stmt);
         }
         let _ = hir_kind;

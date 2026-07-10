@@ -5,13 +5,13 @@ use vela_common::Span;
 use super::{ActiveScope, SyntaxBindingLowerer};
 use crate::binding::BindingResolution;
 use crate::body::{
-    HirBlock, HirBody, HirBodyOwner, HirCall, HirCapture, HirExpr, HirExprKind, HirField, HirIndex,
-    HirParam, HirPath, HirPathKind, HirPathOwner, HirPattern, HirPatternKind, HirScope,
-    HirScopeKind, HirSourceOrigin, HirStmt, HirStmtKind, HirUnresolvedReference,
+    HirBlock, HirBody, HirBodyOwner, HirCapture, HirExpr, HirExprKind, HirLiteral, HirMatchArm,
+    HirMatchArmBody, HirParam, HirPath, HirPathKind, HirPathOwner, HirPattern, HirPatternKind,
+    HirScope, HirScopeKind, HirSourceOrigin, HirStmt, HirStmtKind, HirUnresolvedReference,
 };
 use crate::ids::{
-    HirBlockId, HirBodyId, HirCaptureId, HirExprId, HirLocalId, HirParamId, HirPatternId,
-    HirScopeId, HirStmtId,
+    HirBlockId, HirBodyId, HirCaptureId, HirExprId, HirLocalId, HirMatchArmId, HirParamId,
+    HirPathId, HirPatternId, HirScopeId, HirStmtId,
 };
 
 impl<'a> SyntaxBindingLowerer<'a> {
@@ -22,6 +22,13 @@ impl<'a> SyntaxBindingLowerer<'a> {
             .expect("body lowering always has an active body")
     }
 
+    pub(super) fn current_scope(&self) -> HirScopeId {
+        self.scopes
+            .last()
+            .expect("body lowering always has an active scope")
+            .id
+    }
+
     pub(super) fn body_mut(&mut self, body: HirBodyId) -> &mut HirBody {
         self.bodies
             .get_mut(&body)
@@ -30,18 +37,17 @@ impl<'a> SyntaxBindingLowerer<'a> {
 
     pub(super) fn with_body(&mut self, body: HirBodyId, f: impl FnOnce(&mut Self)) {
         self.body_stack.push(body);
-        if let Some(root_scope) = self.body_mut(body).root_scope {
-            self.scopes.push(ActiveScope {
-                id: root_scope,
-                locals: BTreeMap::new(),
-            });
-        }
+        let root_scope = self.body_mut(body).root_scope;
+        self.scopes.push(ActiveScope {
+            id: root_scope,
+            locals: BTreeMap::new(),
+        });
         f(self);
-        if self.body_mut(body).root_scope.is_some_and(|root_scope| {
-            self.scopes
-                .last()
-                .is_some_and(|scope| scope.id == root_scope)
-        }) {
+        if self
+            .scopes
+            .last()
+            .is_some_and(|scope| scope.id == root_scope)
+        {
             self.scopes.pop();
         }
         self.body_stack.pop();
@@ -53,8 +59,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
         let root_scope = HirScopeId::new(*self.next_scope_id);
         *self.next_scope_id = self.next_scope_id.saturating_add(1);
         let source = self.source;
-        let mut body = HirBody::new(id, owner, HirSourceOrigin { source, span });
-        body.root_scope = Some(root_scope);
+        let mut body = HirBody::new(id, owner, HirSourceOrigin { source, span }, root_scope);
         body.scopes.insert(
             root_scope,
             HirScope {
@@ -75,30 +80,35 @@ impl<'a> SyntaxBindingLowerer<'a> {
         *self.next_block_id = self.next_block_id.saturating_add(1);
         let body = self.current_body();
         let source = self.source;
+        let scope = self.current_scope();
         self.body_mut(body).blocks.insert(
             id,
             HirBlock {
                 id,
                 origin: HirSourceOrigin { source, span },
+                scope,
                 statements: Vec::new(),
             },
         );
         id
     }
 
-    pub(super) fn next_stmt(&mut self, span: Span, kind: HirStmtKind) -> HirStmtId {
+    pub(super) fn next_stmt(&mut self, span: Span) -> HirStmtId {
         let id = HirStmtId::new(*self.next_stmt_id);
         *self.next_stmt_id = self.next_stmt_id.saturating_add(1);
         let body = self.current_body();
         let source = self.source;
+        let scope = self.current_scope();
         self.body_mut(body).statements.insert(
             id,
             HirStmt {
                 id,
                 origin: HirSourceOrigin { source, span },
-                kind,
-                patterns: Vec::new(),
-                initializer: None,
+                scope,
+                kind: HirStmtKind::Expr {
+                    expression: None,
+                    terminated: false,
+                },
             },
         );
         if let Some(block) = self.block_stack.last().copied()
@@ -109,149 +119,133 @@ impl<'a> SyntaxBindingLowerer<'a> {
         id
     }
 
-    pub(super) fn record_statement_initializer(
-        &mut self,
-        statement: HirStmtId,
-        initializer: HirExprId,
-    ) {
+    pub(super) fn finish_stmt(&mut self, statement: HirStmtId, kind: HirStmtKind) {
         let body = self.current_body();
-        if let Some(statement) = self.body_mut(body).statements.get_mut(&statement) {
-            statement.initializer = Some(initializer);
-        }
+        self.body_mut(body)
+            .statements
+            .get_mut(&statement)
+            .expect("reserved HIR statement should exist")
+            .kind = kind;
     }
 
-    pub(super) fn next_expr(&mut self, span: Span, kind: HirExprKind) -> HirExprId {
+    pub(super) fn next_expr(&mut self, span: Span) -> HirExprId {
         let id = HirExprId::new(*self.next_expr_id);
         *self.next_expr_id = self.next_expr_id.saturating_add(1);
         let body = self.current_body();
         let source = self.source;
+        let scope = self.current_scope();
         self.body_mut(body).expressions.insert(
             id,
             HirExpr {
                 id,
                 origin: HirSourceOrigin { source, span },
-                kind,
+                scope,
+                kind: HirExprKind::Literal(HirLiteral::Invalid {
+                    source_text: String::new(),
+                }),
             },
         );
         id
     }
 
-    pub(super) fn record_call(&mut self, expression: HirExprId, callee: HirExprId) {
+    pub(super) fn finish_expr(&mut self, expression: HirExprId, kind: HirExprKind) {
         let body = self.current_body();
         self.body_mut(body)
-            .calls
-            .insert(expression, HirCall { expression, callee });
+            .expressions
+            .get_mut(&expression)
+            .expect("reserved HIR expression should exist")
+            .kind = kind;
     }
 
-    pub(super) fn record_field(
-        &mut self,
-        expression: HirExprId,
-        receiver: HirExprId,
-        name: String,
-        member_span: Span,
-    ) {
-        let body = self.current_body();
-        let source = self.source;
-        self.body_mut(body).fields.insert(
-            expression,
-            HirField {
-                expression,
-                receiver,
-                name,
-                member_origin: HirSourceOrigin {
-                    source,
-                    span: member_span,
-                },
-            },
-        );
+    pub(super) fn missing_expr(&mut self, span: Span) -> HirExprId {
+        let expression = self.next_expr(span);
+        self.finish_expr(expression, HirExprKind::Missing);
+        expression
     }
 
-    pub(super) fn record_index(
+    pub(super) fn next_path(
         &mut self,
-        expression: HirExprId,
-        receiver: HirExprId,
-        index: HirExprId,
-    ) {
-        let body = self.current_body();
-        self.body_mut(body).indexes.insert(
-            expression,
-            HirIndex {
-                expression,
-                receiver,
-                index,
-            },
-        );
-    }
-
-    pub(super) fn record_expression_path(
-        &mut self,
-        expression: HirExprId,
+        owner: HirPathOwner,
         kind: HirPathKind,
         path: Vec<String>,
         origin_span: Span,
         segment_span: Span,
-    ) {
+    ) -> HirPathId {
+        let id = HirPathId::new(*self.next_path_id);
+        *self.next_path_id = self.next_path_id.saturating_add(1);
         let body = self.current_body();
         let source = self.source;
-        self.body_mut(body).paths.push(HirPath {
-            owner: HirPathOwner::Expression(expression),
-            kind,
-            path,
-            origin: HirSourceOrigin {
-                source,
-                span: origin_span,
+        self.body_mut(body).paths.insert(
+            id,
+            HirPath {
+                id,
+                owner,
+                kind,
+                path,
+                origin: HirSourceOrigin {
+                    source,
+                    span: origin_span,
+                },
+                segment_origin: HirSourceOrigin {
+                    source,
+                    span: segment_span,
+                },
             },
-            segment_origin: HirSourceOrigin {
-                source,
-                span: segment_span,
-            },
-        });
+        );
+        id
     }
 
-    pub(super) fn next_pattern(&mut self, span: Span, kind: HirPatternKind) -> HirPatternId {
+    pub(super) fn next_pattern(&mut self, span: Span) -> HirPatternId {
         let id = HirPatternId::new(*self.next_pattern_id);
         *self.next_pattern_id = self.next_pattern_id.saturating_add(1);
         let body = self.current_body();
         let source = self.source;
+        let scope = self.current_scope();
         self.body_mut(body).patterns.insert(
             id,
             HirPattern {
                 id,
                 origin: HirSourceOrigin { source, span },
-                kind,
-                local: None,
+                scope,
+                kind: HirPatternKind::Missing,
             },
         );
-        if let Some(statement) = self.pattern_statement_stack.last().copied()
-            && let Some(statement) = self.body_mut(body).statements.get_mut(&statement)
-        {
-            statement.patterns.push(id);
-        }
         id
     }
 
-    pub(super) fn record_pattern_path(
+    pub(super) fn finish_pattern(&mut self, pattern: HirPatternId, kind: HirPatternKind) {
+        let body = self.current_body();
+        self.body_mut(body)
+            .patterns
+            .get_mut(&pattern)
+            .expect("reserved HIR pattern should exist")
+            .kind = kind;
+    }
+
+    pub(super) fn next_match_arm(
         &mut self,
-        pattern: HirPatternId,
-        path: Vec<String>,
-        origin_span: Span,
-        segment_span: Span,
-    ) {
+        span: Span,
+        scope: HirScopeId,
+        pattern: Option<HirPatternId>,
+        guard: Option<HirExprId>,
+        arm_body: Option<HirMatchArmBody>,
+    ) -> HirMatchArmId {
+        let id = HirMatchArmId::new(*self.next_match_arm_id);
+        *self.next_match_arm_id = self.next_match_arm_id.saturating_add(1);
         let body = self.current_body();
         let source = self.source;
-        self.body_mut(body).paths.push(HirPath {
-            owner: HirPathOwner::Pattern(pattern),
-            kind: HirPathKind::Pattern,
-            path,
-            origin: HirSourceOrigin {
-                source,
-                span: origin_span,
+        self.body_mut(body).match_arms.insert(
+            id,
+            HirMatchArm {
+                id,
+                origin: HirSourceOrigin { source, span },
+                scope,
+                pattern,
+                guard,
+                body: arm_body,
             },
-            segment_origin: HirSourceOrigin {
-                source,
-                span: segment_span,
-            },
-        });
+        );
+        id
     }
 
     pub(super) fn next_param(&mut self, local: HirLocalId, span: Span) -> HirParamId {

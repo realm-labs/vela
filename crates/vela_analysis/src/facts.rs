@@ -1,11 +1,15 @@
 use std::collections::BTreeMap;
 
 use vela_hir::binding::BindingResolution;
-use vela_hir::ids::{HirDeclId, HirExprId, HirLocalId};
+use vela_hir::ids::{HirBlockId, HirDeclId, HirExprId, HirLocalId, HirPatternId, HirStmtId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 
 use crate::hints::{declaration_schema_fact, type_fact_from_hint_in_module};
 use crate::registry::RegistryFacts;
+use crate::semantic_facts::{
+    CallTargetFact, ConstructorTargetFact, ControlFlowFact, HirSemanticFacts, HostPathTargetFact,
+    MemberTargetFact, OperatorTargetFact,
+};
 use crate::type_fact::TypeFact;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -13,6 +17,8 @@ pub struct AnalysisFacts {
     declarations: BTreeMap<HirDeclId, TypeFact>,
     locals: BTreeMap<HirLocalId, TypeFact>,
     expressions: BTreeMap<HirExprId, TypeFact>,
+    resolutions: BTreeMap<HirExprId, BindingResolution>,
+    semantic: HirSemanticFacts,
 }
 
 impl AnalysisFacts {
@@ -55,12 +61,14 @@ impl AnalysisFacts {
                 continue;
             };
             for (expression, resolution) in bindings.resolutions() {
+                facts.resolutions.insert(expression, resolution.clone());
                 if let Some(fact) = facts.fact_for_resolution(resolution).cloned() {
                     facts.expressions.insert(expression, fact);
                 }
             }
         }
 
+        facts.semantic = HirSemanticFacts::from_module_graph(graph, schema, &facts);
         facts
     }
 
@@ -77,7 +85,9 @@ impl AnalysisFacts {
 
     #[must_use]
     pub fn local(&self, local: HirLocalId) -> Option<&TypeFact> {
-        self.locals.get(&local)
+        self.semantic
+            .local(local)
+            .or_else(|| self.locals.get(&local))
     }
 
     pub fn locals(&self) -> impl Iterator<Item = (HirLocalId, &TypeFact)> {
@@ -86,13 +96,81 @@ impl AnalysisFacts {
 
     #[must_use]
     pub fn expression(&self, expression: HirExprId) -> Option<&TypeFact> {
-        self.expressions.get(&expression)
+        self.semantic
+            .type_fact(expression)
+            .or_else(|| self.expressions.get(&expression))
     }
 
     pub fn expressions(&self) -> impl Iterator<Item = (HirExprId, &TypeFact)> {
         self.expressions
             .iter()
             .map(|(expression, fact)| (*expression, fact))
+    }
+
+    pub(crate) fn base_expression(&self, expression: HirExprId) -> Option<&TypeFact> {
+        self.expressions.get(&expression)
+    }
+
+    pub(crate) fn resolution(&self, expression: HirExprId) -> Option<&BindingResolution> {
+        self.resolutions.get(&expression)
+    }
+
+    #[must_use]
+    pub fn pattern(&self, pattern: HirPatternId) -> Option<&TypeFact> {
+        self.semantic.pattern(pattern)
+    }
+
+    #[must_use]
+    pub fn call_target(&self, expression: HirExprId) -> Option<&CallTargetFact> {
+        self.semantic.call_target(expression)
+    }
+
+    #[must_use]
+    pub fn member_target(&self, expression: HirExprId) -> Option<&MemberTargetFact> {
+        self.semantic.member_target(expression)
+    }
+
+    #[must_use]
+    pub fn operator_target(&self, expression: HirExprId) -> Option<OperatorTargetFact> {
+        self.semantic.operator_target(expression)
+    }
+
+    #[must_use]
+    pub fn constructor_target(&self, expression: HirExprId) -> Option<&ConstructorTargetFact> {
+        self.semantic.constructor_target(expression)
+    }
+
+    #[must_use]
+    pub fn pattern_constructor_target(
+        &self,
+        pattern: HirPatternId,
+    ) -> Option<&ConstructorTargetFact> {
+        self.semantic.pattern_constructor_target(pattern)
+    }
+
+    #[must_use]
+    pub fn host_path_target(&self, expression: HirExprId) -> Option<&HostPathTargetFact> {
+        self.semantic.host_path_target(expression)
+    }
+
+    #[must_use]
+    pub fn effect(&self, expression: HirExprId) -> Option<&crate::registry::RegistryEffectFact> {
+        self.semantic.effect(expression)
+    }
+
+    #[must_use]
+    pub fn control_flow(&self, expression: HirExprId) -> Option<&ControlFlowFact> {
+        self.semantic.control_flow(expression)
+    }
+
+    #[must_use]
+    pub fn block_control_flow(&self, block: HirBlockId) -> Option<&ControlFlowFact> {
+        self.semantic.block_control_flow(block)
+    }
+
+    #[must_use]
+    pub fn statement_control_flow(&self, statement: HirStmtId) -> Option<&ControlFlowFact> {
+        self.semantic.statement_control_flow(statement)
     }
 
     fn fact_for_resolution(&self, resolution: &BindingResolution) -> Option<&TypeFact> {
@@ -374,5 +452,220 @@ mod tests {
         }
 
         assert!(saw_active);
+    }
+
+    #[test]
+    fn analysis_facts_evaluate_complete_hir_body_and_resolve_targets() {
+        use crate::registry::RegistryEffectFact;
+        use crate::semantic_facts::{
+            CallTargetFact, ConstructorTargetFact, HostPathSegmentFact, MemberTargetFact,
+            OperatorTargetFact,
+        };
+        use vela_hir::body::{HirBodyRoot, HirExprKind};
+
+        let mut graph = ModuleGraph::new();
+        graph.add_source(ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_qualified("game"),
+            r#"
+            struct Reward { count: i64 }
+            enum State { Ready(value) }
+            fn main(player: Player, values: Array<i64>, state: State) -> bool {
+                let reward = Reward { count: 1 };
+                let ready = State::Ready(1);
+                values.len();
+                math::max(1, 2);
+                audit::log("saved");
+                player.save();
+                match state { State::Ready(value) => value, _ => 0 }
+                return player.level > values[0] && reward.count > 0;
+            }
+            "#,
+        ));
+        graph.resolve_imports();
+        assert_eq!(graph.diagnostics(), &[]);
+
+        let mut schema = RegistryFacts::default();
+        schema.insert_type("Player", TypeFact::host("Player"));
+        schema.insert_field("Player", "level", TypeFact::I64);
+        schema.insert_method(
+            "Player",
+            "save",
+            TypeFact::function(Vec::new(), TypeFact::BOOL),
+        );
+        schema.insert_method_effect("Player", "save", RegistryEffectFact::host_write());
+        schema.insert_function(
+            "audit::log",
+            TypeFact::function(vec![TypeFact::STRING], TypeFact::UNIT),
+        );
+        schema.insert_function_origin("audit::log", vela_reflect::modules::DeclOrigin::Host);
+        schema.insert_function_effect("audit::log", RegistryEffectFact::host_read());
+        let facts = AnalysisFacts::from_module_graph_and_schema(&graph, &schema);
+
+        let body = graph
+            .bodies()
+            .find(|body| matches!(body.owner, vela_hir::body::HirBodyOwner::Declaration(_)))
+            .expect("main body");
+        let record = body
+            .expressions
+            .values()
+            .find(|expression| matches!(&expression.kind, HirExprKind::Record { .. }))
+            .expect("record expression");
+        let reward = graph
+            .declarations()
+            .find(|declaration| declaration.name == "Reward")
+            .expect("Reward declaration");
+        assert_eq!(
+            facts.constructor_target(record.id),
+            Some(&ConstructorTargetFact::Declaration(reward.id))
+        );
+
+        let level = body.expressions.values().find(|expression| {
+            matches!(&expression.kind, HirExprKind::Field(field) if field.name == "level")
+        }).expect("level field");
+        assert_eq!(facts.expression(level.id), Some(&TypeFact::I64));
+        assert!(matches!(
+            facts.member_target(level.id),
+            Some(MemberTargetFact::HostField { owner, name })
+                if owner == "Player" && name == "level"
+        ));
+        assert!(matches!(
+            facts.host_path_target(level.id),
+            Some(path) if path.segments == [HostPathSegmentFact::Field("level".to_owned())]
+        ));
+
+        let save_call = body
+            .expressions
+            .values()
+            .find(|expression| {
+                matches!(&expression.kind, HirExprKind::Call(call)
+                if body.field(call.callee).is_some_and(|field| field.name == "save"))
+            })
+            .expect("save call");
+        assert_eq!(facts.expression(save_call.id), Some(&TypeFact::BOOL));
+        assert!(matches!(
+            facts.call_target(save_call.id),
+            Some(CallTargetFact::HostMethod { owner, name })
+                if owner == "Player" && name == "save"
+        ));
+        assert_eq!(
+            facts.effect(save_call.id),
+            Some(&RegistryEffectFact::host_write())
+        );
+
+        let len_call = body
+            .expressions
+            .values()
+            .find(|expression| {
+                matches!(&expression.kind, HirExprKind::Call(call)
+                    if body.field(call.callee).is_some_and(|field| field.name == "len"))
+            })
+            .expect("len call");
+        assert_eq!(facts.expression(len_call.id), Some(&TypeFact::I64));
+        assert!(matches!(
+            facts.call_target(len_call.id),
+            Some(CallTargetFact::StdlibMethod { name }) if name == "len"
+        ));
+        assert_eq!(facts.effect(len_call.id), Some(&RegistryEffectFact::pure()));
+
+        let path_call = |wanted: &[&str]| {
+            body.expressions.values().find(|expression| {
+                let HirExprKind::Call(call) = &expression.kind else {
+                    return false;
+                };
+                body.paths.iter().any(|path| {
+                    path.owner == vela_hir::body::HirPathOwner::Expression(call.callee)
+                        && path
+                            .path
+                            .iter()
+                            .map(String::as_str)
+                            .eq(wanted.iter().copied())
+                })
+            })
+        };
+        let max_call = path_call(&["math", "max"]).expect("stdlib function call");
+        assert_eq!(facts.expression(max_call.id), Some(&TypeFact::I64));
+        assert!(matches!(
+            facts.call_target(max_call.id),
+            Some(CallTargetFact::StdlibFunction { path }) if path == "math::max"
+        ));
+        let native_call = path_call(&["audit", "log"]).expect("native function call");
+        assert_eq!(facts.expression(native_call.id), Some(&TypeFact::UNIT));
+        assert!(matches!(
+            facts.call_target(native_call.id),
+            Some(CallTargetFact::NativeFunction { path }) if path == "audit::log"
+        ));
+        assert_eq!(
+            facts.effect(native_call.id),
+            Some(&RegistryEffectFact::host_read())
+        );
+
+        let comparison = body
+            .expressions
+            .values()
+            .find(|expression| {
+                matches!(
+                    &expression.kind,
+                    HirExprKind::Binary {
+                        op: Some(vela_hir::body::HirBinaryOp::Greater),
+                        ..
+                    }
+                )
+            })
+            .expect("comparison expression");
+        assert_eq!(
+            facts.operator_target(comparison.id),
+            Some(OperatorTargetFact::Binary(
+                vela_hir::body::HirBinaryOp::Greater
+            ))
+        );
+
+        let state = graph
+            .declarations()
+            .find(|declaration| declaration.name == "State")
+            .expect("State declaration");
+        let variant_call = body
+            .expressions
+            .values()
+            .find(|expression| {
+                matches!(&expression.kind, HirExprKind::Call(call)
+                if body.paths.iter().any(|path| {
+                    path.owner == vela_hir::body::HirPathOwner::Expression(call.callee)
+                        && path.path.iter().map(String::as_str).eq(["State", "Ready"])
+                }))
+            })
+            .expect("variant call");
+        assert_eq!(
+            facts.call_target(variant_call.id),
+            Some(&CallTargetFact::Variant {
+                enum_declaration: state.id,
+                variant: "Ready".to_owned(),
+            })
+        );
+        let pattern = body
+            .patterns
+            .values()
+            .find(|pattern| {
+                matches!(
+                    &pattern.kind,
+                    vela_hir::body::HirPatternKind::TupleVariant { .. }
+                )
+            })
+            .expect("variant pattern");
+        assert_eq!(
+            facts.pattern_constructor_target(pattern.id),
+            Some(&ConstructorTargetFact::Variant {
+                enum_declaration: state.id,
+                variant: "Ready".to_owned(),
+            })
+        );
+
+        let HirBodyRoot::Block(root) = body.root else {
+            panic!("main should have a root block");
+        };
+        assert!(matches!(
+            facts.block_control_flow(root),
+            Some(flow) if flow.may_return && !flow.can_fallthrough
+        ));
     }
 }

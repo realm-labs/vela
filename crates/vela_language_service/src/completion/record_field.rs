@@ -77,20 +77,19 @@ impl<'a> RecordConstructorSearch<'a> {
     fn hir_field_receiver(&self, expr: &SyntaxExpression) -> Option<HirExprId> {
         let body = self.body?;
         let expression = self.hir_expression(expr)?;
-        body.fields.get(&expression).map(|field| field.receiver)
+        body.field(expression).map(|field| field.receiver)
     }
 
     fn hir_call_callee(&self, expr: &SyntaxExpression) -> Option<HirExprId> {
         let body = self.body?;
         let expression = self.hir_expression(expr)?;
-        body.calls.get(&expression).map(|call| call.callee)
+        body.call(expression).map(|call| call.callee)
     }
 
     fn hir_index_operands(&self, expr: &SyntaxExpression) -> Option<(HirExprId, HirExprId)> {
         let body = self.body?;
         let expression = self.hir_expression(expr)?;
-        body.indexes
-            .get(&expression)
+        body.index(expression)
             .map(|index| (index.receiver, index.index))
     }
 

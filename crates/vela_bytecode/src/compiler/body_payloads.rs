@@ -1,5 +1,5 @@
 use vela_common::{SourceId, Span};
-use vela_hir::body::{HirBody, HirBodyRoot, HirStmt, HirStmtKind};
+use vela_hir::body::{HirBody, HirBodyRoot, HirStmt, HirStmtTag};
 use vela_hir::ids::{HirBlockId, HirPatternId};
 use vela_syntax::ast::{
     AstNode, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxForStmt, SyntaxIfExpr,
@@ -35,7 +35,7 @@ pub(super) struct CompilerBodyPayload<'ast> {
 pub(super) struct CompilerStatementPayload {
     source: SourceId,
     syntax: SyntaxStatement,
-    hir_kind: HirStmtKind,
+    hir_kind: HirStmtTag,
     patterns: Vec<HirPatternId>,
     span: Span,
 }
@@ -108,7 +108,7 @@ impl<'ast> CompilerBodyPayload<'ast> {
         };
         if matches!(
             tail.hir_statement_kind(),
-            HirStmtKind::Expr | HirStmtKind::If | HirStmtKind::Match
+            HirStmtTag::Expr | HirStmtTag::If | HirStmtTag::Match
         ) {
             CompilerBlockValue::TailExpression { prefix, tail }
         } else {
@@ -140,7 +140,7 @@ fn hir_body_statements(
                     .with_span(statement.origin.span)
                 })?;
             Ok(CompilerStatementPayload::new_hir_syntax(
-                source, syntax, statement,
+                source, syntax, hir_body, statement,
             ))
         })
         .collect()
@@ -229,17 +229,22 @@ fn syntax_statement_starts_with_infix_continuation(statement: &SyntaxStatement) 
 }
 
 impl CompilerStatementPayload {
-    fn new_hir_syntax(source: SourceId, syntax: SyntaxStatement, statement: &HirStmt) -> Self {
+    fn new_hir_syntax(
+        source: SourceId,
+        syntax: SyntaxStatement,
+        body: &HirBody,
+        statement: &HirStmt,
+    ) -> Self {
         Self {
             source,
             syntax,
-            hir_kind: statement.kind,
-            patterns: statement.patterns.clone(),
+            hir_kind: statement.tag(),
+            patterns: body.pattern_preorder(statement.patterns()),
             span: statement.origin.span,
         }
     }
 
-    pub(super) fn hir_statement_kind(&self) -> HirStmtKind {
+    pub(super) const fn hir_statement_kind(&self) -> HirStmtTag {
         self.hir_kind
     }
 

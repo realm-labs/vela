@@ -291,7 +291,7 @@ impl Compiler<'_, '_> {
         if let Some(field) = self
             .hir_bodies
             .iter()
-            .find_map(|body| body.fields.get(&expression))
+            .find_map(|body| body.field(expression))
         {
             return self.hir_value_path_root_expression(field.receiver);
         }
@@ -319,7 +319,7 @@ impl Compiler<'_, '_> {
         let field = self
             .hir_bodies
             .iter()
-            .find_map(|body| body.fields.get(&expression))?;
+            .find_map(|body| body.field(expression))?;
         if field.name.parse::<usize>().is_ok() {
             return None;
         }

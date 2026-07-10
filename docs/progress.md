@@ -375,8 +375,13 @@ sequence binder, removing its custom span-based recursive local binder. Pattern
 local setup now advances that HIR cursor across non-binding nested child
 patterns too, so later destructured locals keep their stable `HirLocalId` to
 register mapping instead of relying on name-map fallback.
-Heavy HIR will next move remaining body facts, language-service queries, and
-bytecode lowering away from body-level syntax reconstruction. MIR will then add
+Heavy HIR executable closure is now complete: expression, statement, pattern,
+scope, match-arm, path, binding, and capture relationships are HIR-owned under
+stable IDs, and analysis derives HIR-keyed type, target, member, operator,
+host-path, effect, degradation, and control-flow facts without body syntax.
+The next hard-switch checkpoint deletes language-service semantic span joins
+and makes editor features start from HIR IDs; bytecode syntax payload deletion
+follows in its own checkpoint. MIR will then add
 an internal `vela_mir`
 execution-shape layer for CFG, typed operations, guards, liveness, bytecode
 lowering, and future M22 Cranelift input. M20 cache-family audit and measured

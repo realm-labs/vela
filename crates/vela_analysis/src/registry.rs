@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::{PrimitiveTag, Span};
 use vela_reflect::access::{FunctionEffectSet, MethodAccess, MethodEffectSet};
-use vela_reflect::modules::{FunctionDesc, ModuleDesc};
+use vela_reflect::modules::{DeclOrigin, FunctionDesc, ModuleDesc};
 use vela_reflect::registry::{
     FieldDesc, MethodDesc, TraitMethodDesc, TypeDesc, TypeKind, TypeRegistry,
 };
@@ -294,6 +294,7 @@ pub struct RegistryFacts {
     trait_method_docs: BTreeMap<(String, String), String>,
     modules: BTreeMap<String, RegistryModuleFact>,
     functions: BTreeMap<String, TypeFact>,
+    function_origins: BTreeMap<String, DeclOrigin>,
     function_docs: BTreeMap<String, String>,
     index_capabilities: BTreeMap<String, RegistryIndexCapabilityFact>,
     method_effects: BTreeMap<(String, String), RegistryEffectFact>,
@@ -402,6 +403,9 @@ impl RegistryFacts {
                 function.name.clone(),
                 function_desc_fact(registry, function),
             );
+            facts
+                .function_origins
+                .insert(function.name.clone(), function.origin);
             if let Some(docs) = &function.docs {
                 facts
                     .function_docs
@@ -656,6 +660,11 @@ impl RegistryFacts {
     }
 
     #[must_use]
+    pub fn function_origin(&self, name: &str) -> Option<DeclOrigin> {
+        self.function_origins.get(name).copied()
+    }
+
+    #[must_use]
     pub fn module_fact(&self, name: &str) -> Option<&TypeFact> {
         self.modules.get(name).map(|module| &module.fact)
     }
@@ -864,6 +873,10 @@ impl RegistryFacts {
 
     pub fn insert_function(&mut self, name: impl Into<String>, fact: TypeFact) {
         self.functions.insert(name.into(), fact);
+    }
+
+    pub fn insert_function_origin(&mut self, name: impl Into<String>, origin: DeclOrigin) {
+        self.function_origins.insert(name.into(), origin);
     }
 
     pub fn insert_module(&mut self, module: RegistryModuleFact) {

@@ -437,8 +437,8 @@ impl<'a> QueryContext<'a> {
         let body = self.body?;
         let call_open = self.call_open_offset()?;
         let cursor_offset = self.cursor.replace_range().end;
-        body.calls
-            .values()
+        body.calls()
+            .map(|(_, call)| call)
             .filter_map(|call| {
                 let call_expression = body.expressions.get(&call.expression)?;
                 if !span_contains_usize(call_expression.origin.span, call_open)
@@ -460,16 +460,12 @@ impl<'a> QueryContext<'a> {
     }
 
     fn hir_call_callee(&self, call_expression: HirExprId) -> Option<HirExprId> {
-        self.body?
-            .calls
-            .get(&call_expression)
-            .map(|call| call.callee)
+        self.body?.call(call_expression).map(|call| call.callee)
     }
 
     fn hir_member_method(&self, callee_expression: Option<HirExprId>) -> Option<&'a str> {
         let body = self.body?;
-        body.fields
-            .get(&callee_expression?)
+        body.field(callee_expression?)
             .map(|field| field.name.as_str())
     }
 

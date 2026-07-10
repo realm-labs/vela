@@ -655,7 +655,7 @@ fn local_completions_include_function_scope_bindings() {
     assert!(completions.contains(&CompletionItem::new(
         "inferred",
         CompletionKind::Binding,
-        TypeFact::Unknown,
+        TypeFact::I64,
     )));
     assert!(completions.contains(&CompletionItem::new(
         "amount",

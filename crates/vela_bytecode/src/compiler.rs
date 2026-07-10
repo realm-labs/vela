@@ -35,7 +35,7 @@ use vela_common::{GlobalSlot, HostMethodId, HostTypeId, SourceId, Span};
 use vela_def::{DefPath, FieldId, MethodId, TypeId};
 use vela_hir::attributes::derived_traits;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBindingKind};
-use vela_hir::body::{HirBody, HirField, HirIndex, HirPatternKind};
+use vela_hir::body::{HirBody, HirField, HirIndex};
 use vela_hir::ids::{HirDeclId, HirExprId, HirLocalId, HirPatternId};
 #[cfg(test)]
 use vela_hir::module_graph::ModulePath;
@@ -1044,7 +1044,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
     ) -> Option<&HirField> {
         self.hir_bodies
             .iter()
-            .find_map(|body| body.fields.get(&expression))
+            .find_map(|body| body.field(expression))
     }
 
     pub(in crate::compiler) fn hir_field_for_span(&self, span: Span) -> Option<&HirField> {
@@ -1058,7 +1058,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
     ) -> Option<&HirIndex> {
         self.hir_bodies
             .iter()
-            .find_map(|body| body.indexes.get(&expression))
+            .find_map(|body| body.index(expression))
     }
 
     pub(in crate::compiler) fn hir_index_for_span(&self, span: Span) -> Option<&HirIndex> {
@@ -1086,7 +1086,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
     fn call_callee_expression(&self, call: HirExprId) -> Option<HirExprId> {
         self.hir_bodies
             .iter()
-            .find_map(|body| body.calls.get(&call))
+            .find_map(|body| body.call(call))
             .map(|call| call.callee)
     }
 
@@ -1138,10 +1138,10 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             let Some(pattern) = body.patterns.get(&pattern_id) else {
                 continue;
             };
-            if pattern.kind != HirPatternKind::Binding {
+            if !pattern.is_binding() {
                 return None;
             }
-            let local = pattern.local?;
+            let local = pattern.local()?;
             let binding = self.bindings.local(local)?;
             if binding.kind == kind {
                 return Some(local);

@@ -1,7 +1,7 @@
 use super::*;
 use crate::body::{
-    HirBodyOwner, HirBodyRoot, HirExprKind, HirPathKind, HirPathOwner, HirPatternKind,
-    HirScopeKind, HirStmtKind,
+    HirBodyOwner, HirBodyRoot, HirExprKind, HirPathKind, HirPathOwner, HirScopeKind, HirStmtKind,
+    HirStmtTag,
 };
 
 fn hir_resolution_for_span<'a>(
@@ -18,15 +18,13 @@ fn let_local_for_statement_span(graph: &ModuleGraph, span: Span) -> Option<crate
         let Some(statement) = body
             .statements
             .values()
-            .find(|statement| statement.kind == HirStmtKind::Let && statement.origin.span == span)
+            .find(|statement| statement.tag() == HirStmtTag::Let && statement.origin.span == span)
         else {
             continue;
         };
-        if let Some(local) = statement.patterns.iter().find_map(|pattern| {
+        if let Some(local) = statement.patterns().iter().find_map(|pattern| {
             let pattern = body.patterns.get(pattern)?;
-            (pattern.kind == HirPatternKind::Binding)
-                .then_some(pattern.local)
-                .flatten()
+            pattern.local()
         }) {
             return Some(local);
         }
@@ -584,12 +582,12 @@ fn grant(amount = BASE, bonus = amount + 1) {
     let let_statement = body
         .statements
         .values()
-        .find(|statement| statement.kind == HirStmtKind::Let)
+        .find(|statement| statement.tag() == HirStmtTag::Let)
         .expect("let statement");
-    assert!(let_statement.patterns.iter().any(|pattern| {
+    assert!(let_statement.patterns().iter().any(|pattern| {
         body.patterns
             .get(pattern)
-            .is_some_and(|pattern| pattern.local == Some(*total))
+            .is_some_and(|pattern| pattern.local() == Some(*total))
     }));
 
     for default_body in body.params.iter().filter_map(|param| param.default_body) {
@@ -640,7 +638,7 @@ fn main(player) {
             .iter()
             .any(|capture| capture.local == *base)
     );
-    assert!(lambda_body.root_scope.is_some());
+    assert!(lambda_body.scopes.contains_key(&lambda_body.root_scope));
     assert!(lambda_body.scopes.values().any(|scope| {
         scope.kind == HirScopeKind::Body
             && scope
@@ -755,11 +753,11 @@ fn main(values, state) {
             && block.statements.iter().any(|statement| {
                 body.statements
                     .get(statement)
-                    .is_some_and(|statement| statement.kind == HirStmtKind::Let)
+                    .is_some_and(|statement| statement.tag() == HirStmtTag::Let)
             })
     }));
 
-    assert!(body.root_scope.is_some());
+    assert!(body.scopes.contains_key(&body.root_scope));
     assert!(
         body.scopes
             .values()
@@ -1023,12 +1021,12 @@ fn main() { return helper(); }
 
     let body = graph.function_body(main).expect("main body");
     let call = body
-        .calls
-        .values()
+        .calls()
+        .map(|(_, call)| call)
         .find(|call| {
             body.expressions
                 .get(&call.expression)
-                .is_some_and(|expression| expression.kind == HirExprKind::Call)
+                .is_some_and(|expression| matches!(&expression.kind, HirExprKind::Call(_)))
         })
         .expect("call record");
     let callee = graph
@@ -1096,7 +1094,7 @@ fn main(player) {
     assert!(
         body.expressions
             .get(&field.expression)
-            .is_some_and(|expression| expression.kind == HirExprKind::Field)
+            .is_some_and(|expression| matches!(&expression.kind, HirExprKind::Field(_)))
     );
     assert_eq!(
         graph.expression_span(field.receiver),
@@ -1125,12 +1123,16 @@ fn main(values, key) {
 
     let body = graph.function_body(main).expect("main body");
     let index = body
-        .indexes
+        .expressions
         .values()
+        .filter_map(|expression| match &expression.kind {
+            HirExprKind::Index(index) => Some(index),
+            _ => None,
+        })
         .find(|index| {
             body.expressions
                 .get(&index.expression)
-                .is_some_and(|expression| expression.kind == HirExprKind::Index)
+                .is_some_and(|expression| matches!(&expression.kind, HirExprKind::Index(_)))
         })
         .expect("index fact");
     assert_eq!(
@@ -1352,19 +1354,19 @@ fn main() {
     let statement = body
         .statements
         .values()
-        .find(|statement| statement.kind == HirStmtKind::Let)
+        .find(|statement| statement.tag() == HirStmtTag::Let)
         .expect("let statement");
-    let initializer = statement.initializer.expect("let initializer expression");
+    let initializer = statement.initializer().expect("let initializer expression");
     assert!(body.expressions.contains_key(&initializer));
     assert!(body.paths.iter().any(|path| {
         path.kind == HirPathKind::Constructor
             && path.owner == HirPathOwner::Expression(initializer)
             && path.path.iter().map(String::as_str).eq(["Reward"])
     }));
-    assert!(statement.patterns.iter().any(|pattern| {
-        body.patterns.get(pattern).is_some_and(|pattern| {
-            pattern.kind == HirPatternKind::Binding && pattern.local.is_some()
-        })
+    assert!(statement.patterns().iter().any(|pattern| {
+        body.patterns
+            .get(pattern)
+            .is_some_and(|pattern| pattern.local().is_some())
     }));
 }
 
@@ -1397,6 +1399,100 @@ fn main() { return give_reward; }
             .resolutions()
             .any(|(_, resolution)| { resolution == &BindingResolution::Declaration(grant) })
     );
+}
+
+#[test]
+fn body_hir_owns_executable_operands_containers_and_control_flow() {
+    let mut graph = ModuleGraph::new();
+    let module = graph.add_source(source(
+        1,
+        "game::main",
+        r#"
+enum State { Ready { count } }
+fn main(player, values) {
+    let pair = (1, 2);
+    let data = { key: pair.0 };
+    let bump = |x| x + 1;
+    player.level += data["key"];
+    for value in values {
+        if value > 0 { player.save(value); }
+    }
+    match player.state {
+        State::Ready { count } if count > 0 => bump(count),
+        _ => 0,
+    }
+}
+"#,
+    ));
+    let main = graph
+        .module(module)
+        .and_then(|module| module.get("main"))
+        .expect("main declaration");
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+
+    let body = graph.function_body(main).expect("main body");
+    assert!(
+        body.expressions
+            .values()
+            .all(|expression| { !matches!(&expression.kind, HirExprKind::Missing) })
+    );
+    assert!(body.expressions.values().any(|expression| {
+        matches!(&expression.kind, HirExprKind::Tuple { elements } if elements.len() == 2)
+    }));
+    assert!(body.expressions.values().any(|expression| {
+        matches!(&expression.kind, HirExprKind::Map { entries }
+            if entries.len() == 1 && entries[0].key.is_some() && entries[0].value.is_some())
+    }));
+    assert!(body.expressions.values().any(|expression| {
+        matches!(&expression.kind, HirExprKind::Assign {
+            target: Some(target), value: Some(value), ..
+        } if body.expressions.contains_key(target) && body.expressions.contains_key(value))
+    }));
+    assert!(body.expressions.values().any(|expression| {
+        matches!(&expression.kind, HirExprKind::Call(call)
+            if body.expressions.contains_key(&call.callee)
+                && call.arguments.iter().all(|argument| argument.value
+                    .is_none_or(|value| body.expressions.contains_key(&value))))
+    }));
+    assert!(body.statements.values().any(|statement| {
+        matches!(&statement.kind, HirStmtKind::For {
+            iterable: Some(iterable), body: Some(block), ..
+        } if body.expressions.contains_key(iterable) && body.blocks.contains_key(block))
+    }));
+    let match_expr = body
+        .statements
+        .values()
+        .find_map(|statement| {
+            let HirStmtKind::Match(value) = &statement.kind else {
+                return None;
+            };
+            Some(value)
+        })
+        .expect("match expression");
+    assert_eq!(match_expr.arms.len(), 2);
+    assert!(match_expr.arms.iter().all(|arm| {
+        body.match_arms.get(arm).is_some_and(|arm| {
+            arm.pattern.is_some() && arm.body.is_some() && body.scopes.contains_key(&arm.scope)
+        })
+    }));
+
+    let lambda = body
+        .expressions
+        .values()
+        .find_map(|expression| {
+            let HirExprKind::Lambda { body } = expression.kind else {
+                return None;
+            };
+            Some(body)
+        })
+        .expect("lambda body id");
+    let lambda = graph.body(lambda).expect("lambda body");
+    assert!(matches!(lambda.root, HirBodyRoot::Expr(_)));
+    assert!(lambda.expressions.values().any(|expression| {
+        matches!(&expression.kind, HirExprKind::Binary {
+            lhs: Some(lhs), rhs: Some(rhs), ..
+        } if lambda.expressions.contains_key(lhs) && lambda.expressions.contains_key(rhs))
+    }));
 }
 #[test]
 fn function_bindings_resolve_record_constructor_import_aliases() {

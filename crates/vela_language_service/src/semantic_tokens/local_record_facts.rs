@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use vela_analysis::type_fact::TypeFact;
 use vela_common::SourceId;
 use vela_hir::{
-    body::{HirBody, HirPathKind, HirPathOwner, HirPatternKind, HirStmt, HirStmtKind},
+    body::{HirBody, HirPathKind, HirPathOwner, HirStmt, HirStmtTag},
     ids::HirLocalId,
     module_graph::ModuleGraph,
 };
@@ -25,10 +25,10 @@ pub(super) fn collect(graph: &ModuleGraph, source_id: SourceId) -> BTreeMap<HirL
 }
 
 fn local_record_fact(body: &HirBody, statement: &HirStmt) -> Option<(HirLocalId, TypeFact)> {
-    if statement.kind != HirStmtKind::Let {
+    if statement.tag() != HirStmtTag::Let {
         return None;
     }
-    let initializer = statement.initializer?;
+    let initializer = statement.initializer()?;
     let record_path = body
         .paths
         .iter()
@@ -44,11 +44,11 @@ fn local_record_fact(body: &HirBody, statement: &HirStmt) -> Option<(HirLocalId,
 }
 
 fn local_for_statement(body: &HirBody, statement: &HirStmt) -> Option<HirLocalId> {
-    statement.patterns.iter().find_map(|pattern| {
+    statement.patterns().iter().find_map(|pattern| {
         let pattern = body.patterns.get(pattern)?;
-        if pattern.kind != HirPatternKind::Binding {
+        if !pattern.is_binding() {
             return None;
         }
-        pattern.local
+        pattern.local()
     })
 }

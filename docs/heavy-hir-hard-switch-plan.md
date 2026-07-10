@@ -158,17 +158,14 @@ focused tests and validation command pass.
 
 ### Current Execution State
 
-The body HIR core and many HIR-keyed path, call, field, index, scope, pattern,
-and capture facts exist. Analysis has started keying expression type facts by
-`HirExprId`, and language-service and bytecode callers already consume parts of
-those facts. This is useful foundation work, but it is not a hard switch.
+Checkpoint A is complete and Checkpoint B is active. Body HIR now owns
+executable expression, statement, pattern, scope, match-arm, path, binding, and
+capture relationships under stable IDs. Analysis evaluates those HIR bodies
+without body syntax and records HIR-keyed type, callable, member, effect,
+control-flow, constructor, operator, host-path, and degradation facts.
 
-The current mixed architecture still contains all of the following blockers:
+The remaining mixed-architecture blockers are downstream consumers:
 
-- tag-oriented HIR expressions that do not yet own every executable operand
-  and child relationship;
-- analysis facts that do not yet provide the complete callable, member,
-  effect, control-flow, and resolved-target model;
 - language-service helpers that accept syntax expressions and recover HIR IDs
   by source span;
 - bytecode `CompilerBodyPayload`/syntax payload pairing and a
@@ -266,13 +263,15 @@ cargo test -p vela_hir module_graph
 
 Purpose: make all lexical and binding facts body-HIR-owned.
 
-- [~] Replace body-local binding scans with HIR body scopes and resolution
-  tables. Delete downstream local-by-name/local-by-span scans such as
-  `hir_let_local_name_for_span`; consumers must start from a body-owned HIR ID.
+- [x] Replace body-local binding ownership with HIR body scopes and resolution
+  tables.
+- [~] Delete downstream local-by-name/local-by-span scans such as
+  `hir_let_local_name_for_span`; this remaining caller migration belongs to
+  Checkpoints B and C, and consumers must start from a body-owned HIR ID.
 - [x] Represent pattern locals for `let`, `match`, and `for` bindings with
   token spans and binding scope spans.
 - [x] Represent lambda captures and `self` bindings explicitly.
-- [~] Represent imports, declaration references, shadowing, and unresolved
+- [x] Represent imports, declaration references, shadowing, and unresolved
   references through HIR resolution records.
 - [x] Preserve current diagnostics for unresolved names, duplicate bindings,
   and invalid pattern use.
@@ -294,20 +293,20 @@ cargo test -p vela_language_service definition
 Purpose: close the executable HIR model, then make analysis facts stable and
 reusable by LSP, bytecode, and MIR.
 
-- [~] Replace kind-only expression/statement/pattern records with HIR-owned
+- [x] Replace kind-only expression/statement/pattern records with HIR-owned
   payload and operand relationships for literals, unary/binary operations,
   assignment targets, calls and arguments, fields, indexes, arrays, maps,
   records, tuples, lambdas, blocks, `if`, `match`, loops, `try`, returns, and
   control-flow statements.
-- [~] Key `TypeFact`, callable facts, member facts, effect facts, and
+- [x] Key `TypeFact`, callable facts, member facts, effect facts, and
   control-flow facts by Heavy HIR IDs.
-- [ ] Represent call targets, method targets, field/member targets, variant
+- [x] Represent call targets, method targets, field/member targets, variant
   targets, operator targets, stdlib/native targets, host-path targets, and
   dynamic-boundary fallback facts.
-- [ ] Move fact formatting and display through shared analysis/HIR helpers.
-- [ ] Keep analysis degradation explicit for unknown/dynamic/failed schema
+- [x] Move fact formatting and display through shared analysis/HIR helpers.
+- [x] Keep analysis degradation explicit for unknown/dynamic/failed schema
   cases instead of rebuilding facts from syntax.
-- [ ] Prove that analysis can evaluate a complete body from `HirBody` and
+- [x] Prove that analysis can evaluate a complete body from `HirBody` and
   source-independent registry inputs without receiving body-level syntax
   wrappers or mapping syntax nodes back to HIR by span.
 
