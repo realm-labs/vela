@@ -164,6 +164,13 @@ internal compiler/reload concern and belongs to module-graph loading,
 diagnostic sources, and crate-local tests that need deterministic source
 identity.
 
+Single-source HIR and emitted metadata use the real root module path; the
+synthetic name `main` is not module identity. Existing script `MethodId`
+compatibility is the narrow exception: single-source inherent and user-trait
+method hashes retain `main` as their logical identity namespace. That mapping
+is applied only while constructing stable method identity, never to code/debug
+symbols, name resolution, reflection metadata, or the retained `ModuleGraph`.
+
 Rust source may use one direct-parent `super::...` reference inside a local
 module group. Multi-level `super::super` paths are prohibited; cross-subsystem
 imports should use explicit `crate::...` paths.
