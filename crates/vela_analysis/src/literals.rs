@@ -509,28 +509,12 @@ pub const fn float_suffix_primitive(suffix: Option<HirFloatSuffix>) -> Primitive
 
 #[must_use]
 pub fn integer_literal_spelling(value: &HirIntegerLiteral) -> String {
-    let suffix = match value.suffix {
-        Some(HirIntegerSuffix::I8) => "i8",
-        Some(HirIntegerSuffix::I16) => "i16",
-        Some(HirIntegerSuffix::I32) => "i32",
-        Some(HirIntegerSuffix::I64) => "i64",
-        Some(HirIntegerSuffix::U8) => "u8",
-        Some(HirIntegerSuffix::U16) => "u16",
-        Some(HirIntegerSuffix::U32) => "u32",
-        Some(HirIntegerSuffix::U64) => "u64",
-        None => "",
-    };
-    format!("{}{suffix}", value.text)
+    value.source_spelling()
 }
 
 #[must_use]
 pub fn float_literal_spelling(value: &HirFloatLiteral) -> String {
-    let suffix = match value.suffix {
-        Some(HirFloatSuffix::F32) => "f32",
-        Some(HirFloatSuffix::F64) => "f64",
-        None => "",
-    };
-    format!("{}{suffix}", value.text)
+    value.source_spelling()
 }
 
 /// Resolves a numeric HIR literal using language-level primitive rules.

@@ -364,6 +364,19 @@ pub struct HirIntegerLiteral {
     pub suffix: Option<HirIntegerSuffix>,
 }
 
+impl HirIntegerLiteral {
+    /// Returns the spelling retained in HIR, including its suffix, without
+    /// consulting syntax or source text.
+    #[must_use]
+    pub fn source_spelling(&self) -> String {
+        let mut spelling = self.text.clone();
+        if let Some(suffix) = self.suffix {
+            spelling.push_str(suffix.source_spelling());
+        }
+        spelling
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum HirIntRadix {
     Binary,
@@ -383,16 +396,55 @@ pub enum HirIntegerSuffix {
     U64,
 }
 
+impl HirIntegerSuffix {
+    #[must_use]
+    pub const fn source_spelling(self) -> &'static str {
+        match self {
+            Self::I8 => "i8",
+            Self::I16 => "i16",
+            Self::I32 => "i32",
+            Self::I64 => "i64",
+            Self::U8 => "u8",
+            Self::U16 => "u16",
+            Self::U32 => "u32",
+            Self::U64 => "u64",
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HirFloatLiteral {
     pub text: String,
     pub suffix: Option<HirFloatSuffix>,
 }
 
+impl HirFloatLiteral {
+    /// Returns the spelling retained in HIR, including its suffix, without
+    /// consulting syntax or source text.
+    #[must_use]
+    pub fn source_spelling(&self) -> String {
+        let mut spelling = self.text.clone();
+        if let Some(suffix) = self.suffix {
+            spelling.push_str(suffix.source_spelling());
+        }
+        spelling
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum HirFloatSuffix {
     F32,
     F64,
+}
+
+impl HirFloatSuffix {
+    #[must_use]
+    pub const fn source_spelling(self) -> &'static str {
+        match self {
+            Self::F32 => "f32",
+            Self::F64 => "f64",
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -465,8 +517,18 @@ pub struct HirIndex {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HirMapEntry {
     pub key: Option<HirExprId>,
+    /// The static string key represented by a supported literal or path key.
+    /// Dynamic, unsupported, and missing keys retain `None` explicitly.
+    pub logical_key: Option<String>,
     pub value: Option<HirExprId>,
     pub origin: HirSourceOrigin,
+}
+
+impl HirMapEntry {
+    #[must_use]
+    pub fn logical_key(&self) -> Option<&str> {
+        self.logical_key.as_deref()
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

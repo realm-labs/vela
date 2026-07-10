@@ -348,16 +348,58 @@ impl SyntaxBindingLowerer<'_> {
                 self.bind_expr(&key, PathUsage::Value)
             }
         });
+        let logical_key = key.and_then(|key| self.logical_map_key(key));
         let value = entry
             .value()
             .map(|value| self.bind_expr(&value, PathUsage::Value));
         HirMapEntry {
             key,
+            logical_key,
             value,
             origin: HirSourceOrigin {
                 source: self.source,
                 span: span_for(self.source, entry.syntax().text_range()),
             },
+        }
+    }
+
+    fn logical_map_key(&self, expression: HirExprId) -> Option<String> {
+        let body = self.bodies.get(&self.current_body())?;
+        match &body.expression(expression)?.kind {
+            HirExprKind::Literal(HirLiteral::String(value)) => Some(value.clone()),
+            HirExprKind::Literal(HirLiteral::Char(value)) => Some(value.to_string()),
+            HirExprKind::Literal(HirLiteral::Integer(value)) => Some(value.source_spelling()),
+            HirExprKind::Literal(HirLiteral::Float(value)) => Some(value.source_spelling()),
+            HirExprKind::Path(path) => body
+                .paths
+                .get(path)
+                .filter(|path| path.kind == HirPathKind::Value)
+                .map(|path| path.path.join("::"))
+                .filter(|path| !path.is_empty()),
+            HirExprKind::Literal(
+                HirLiteral::Bool(_)
+                | HirLiteral::Bytes(_)
+                | HirLiteral::Interpolated { .. }
+                | HirLiteral::Invalid { .. },
+            )
+            | HirExprKind::Paren { .. }
+            | HirExprKind::Unit
+            | HirExprKind::Tuple { .. }
+            | HirExprKind::Unary { .. }
+            | HirExprKind::Binary { .. }
+            | HirExprKind::Assign { .. }
+            | HirExprKind::Field(_)
+            | HirExprKind::Call(_)
+            | HirExprKind::Index(_)
+            | HirExprKind::Try { .. }
+            | HirExprKind::Array { .. }
+            | HirExprKind::Map { .. }
+            | HirExprKind::Record { .. }
+            | HirExprKind::Lambda { .. }
+            | HirExprKind::Block { .. }
+            | HirExprKind::If(_)
+            | HirExprKind::Match(_)
+            | HirExprKind::Missing => None,
         }
     }
 

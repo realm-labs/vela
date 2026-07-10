@@ -482,4 +482,122 @@ fn main() {
     }));
 }
 
+#[test]
+fn map_entries_retain_ordered_hir_owned_logical_keys() {
+    let mut graph = ModuleGraph::new();
+    let module = graph.add_source(source(
+        1,
+        "game::main",
+        r#"
+fn main(value) {
+    return {
+        value: 0,
+        game::reward::qualified: 1,
+        "line\n\u{41}\t": 2,
+        '\n': 3,
+        0b10_01u8: 4,
+        0x2Ai16: 5,
+        42u64: 6,
+        7: 7,
+        1.25f32: 8,
+        2.5f64: 9,
+        3.75: 10,
+    };
+}
+"#,
+    ));
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+
+    let main = graph
+        .module(module)
+        .and_then(|module| module.get("main"))
+        .expect("main declaration");
+    let body = graph.function_body(main).expect("main body");
+    let entries = body
+        .expressions
+        .values()
+        .find_map(|expression| match &expression.kind {
+            HirExprKind::Map { entries } => Some(entries),
+            _ => None,
+        })
+        .expect("map entries");
+
+    assert_eq!(
+        entries
+            .iter()
+            .map(|entry| entry.logical_key())
+            .collect::<Vec<_>>(),
+        vec![
+            Some("value"),
+            Some("game::reward::qualified"),
+            Some("line\nA\t"),
+            Some("\n"),
+            Some("0b10_01u8"),
+            Some("0x2Ai16"),
+            Some("42u64"),
+            Some("7"),
+            Some("1.25f32"),
+            Some("2.5f64"),
+            Some("3.75"),
+        ]
+    );
+
+    let bindings = graph.bindings(main).expect("main bindings");
+    for entry in &entries[..2] {
+        let key = entry.key.expect("path key expression");
+        assert_eq!(
+            bindings.resolution(key),
+            None,
+            "bare map keys must remain names rather than resolution reads"
+        );
+    }
+    assert!(body.unresolved_references.is_empty());
+}
+
+#[test]
+fn map_entries_keep_dynamic_unsupported_and_missing_keys_explicit() {
+    let mut graph = ModuleGraph::new();
+    let module = graph.add_source(source(
+        1,
+        "game::main",
+        r#"
+fn main(key) {
+    return { (key): 1, true: 2, {:}: 3 };
+}
+"#,
+    ));
+    let main = graph
+        .module(module)
+        .and_then(|module| module.get("main"))
+        .expect("main declaration");
+    let body = graph.function_body(main).expect("main body");
+    let entries = body
+        .expressions
+        .values()
+        .find_map(|expression| match &expression.kind {
+            HirExprKind::Map { entries } if entries.len() == 3 => Some(entries),
+            _ => None,
+        })
+        .expect("outer map entries");
+
+    assert_eq!(
+        entries
+            .iter()
+            .map(|entry| entry.logical_key())
+            .collect::<Vec<_>>(),
+        vec![None, None, None]
+    );
+    let missing = body
+        .expressions
+        .values()
+        .find_map(|expression| match &expression.kind {
+            HirExprKind::Map { entries } if entries.len() == 1 && entries[0].key.is_none() => {
+                Some(&entries[0])
+            }
+            _ => None,
+        })
+        .expect("recovered missing map key");
+    assert_eq!(missing.logical_key(), None);
+}
+
 include!("import_resolution.rs");
