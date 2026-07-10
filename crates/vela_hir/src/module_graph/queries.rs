@@ -36,6 +36,19 @@ impl ModuleGraph {
         self.declarations.get(&declaration)
     }
 
+    /// Returns a declaration's canonical source symbol without a package
+    /// prefix, including its module qualification when one exists.
+    #[must_use]
+    pub fn qualified_declaration_name(&self, declaration: HirDeclId) -> Option<String> {
+        let declaration = self.declaration(declaration)?;
+        let path = self.module_path(declaration.module)?;
+        if path.segments().is_empty() {
+            Some(declaration.name.clone())
+        } else {
+            Some(format!("{}::{}", path.join(), declaration.name))
+        }
+    }
+
     #[must_use]
     pub fn const_metadata(&self, declaration: HirDeclId) -> Option<&ConstMetadata> {
         self.const_metadata.get(&declaration)

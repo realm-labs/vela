@@ -1,13 +1,13 @@
 use std::collections::BTreeMap;
 
 use vela_common::GlobalSlot;
-use vela_def::FunctionId;
+use vela_def::{FunctionId, script_function_id};
 use vela_hir::module_graph::ModuleGraph;
 
 use crate::script_methods::ScriptMethodTable;
 use crate::{
     CacheSiteDesc, CacheSiteId, CacheSiteLayout, FunctionIndex, UnlinkedCodeObject,
-    UnlinkedInstructionKind, UnlinkedProgram, UnlinkedProgramCode, function_id_for_script_name,
+    UnlinkedInstructionKind, UnlinkedProgram, UnlinkedProgramCode,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -48,7 +48,7 @@ impl ProgramImage {
             let name = function.name.clone();
             let function = flatten_function(function, &mut indexed_functions);
             let index = FunctionIndex(indexed_functions.len());
-            function_by_id.insert(function_id_for_script_name(&name), index);
+            function_by_id.insert(script_function_id(&name), index);
             function_by_name.insert(name, index);
             indexed_functions.push(function);
         }

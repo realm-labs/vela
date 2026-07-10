@@ -9,6 +9,7 @@ mod native;
 mod random;
 mod reflection;
 mod runtime_args;
+mod script_identity;
 mod source_reload;
 mod strings;
 mod typed_host;

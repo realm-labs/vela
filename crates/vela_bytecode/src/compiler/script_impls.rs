@@ -179,23 +179,10 @@ fn trait_declaration(
     let full_name = path.join("::");
     graph.declarations().find_map(|declaration| {
         (declaration.kind == DeclarationKind::Trait
-            && declaration_qualified_name(graph, declaration) == full_name)
-            .then_some(declaration.id)
+            && graph.qualified_declaration_name(declaration.id).as_deref()
+                == Some(full_name.as_str()))
+        .then_some(declaration.id)
     })
-}
-
-fn declaration_qualified_name(
-    graph: &ModuleGraph,
-    declaration: &vela_hir::module_graph::Declaration,
-) -> String {
-    let Some(module_path) = graph.module_path(declaration.module) else {
-        return declaration.name.clone();
-    };
-    if module_path.segments().is_empty() {
-        declaration.name.clone()
-    } else {
-        format!("{}::{}", module_path.join(), declaration.name)
-    }
 }
 
 fn local_target_name(path: &[String]) -> String {

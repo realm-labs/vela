@@ -1,4 +1,4 @@
-use vela_def::FunctionId;
+use vela_def::script_function_id;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::FunctionSignature;
 use vela_syntax::ast::Visibility;
@@ -35,15 +35,14 @@ impl TypeRegistry {
             else {
                 continue;
             };
-            let qualified_name = qualified_function_name(&module_name, &declaration.name);
+            let qualified_name = graph
+                .qualified_declaration_name(declaration.id)
+                .expect("stored script function has a module path");
             let signature = graph.function_signature(declaration.id);
-            let mut desc = FunctionDesc::new(
-                stable_function_id(&module_name, &declaration.name),
-                qualified_name,
-            )
-            .public(declaration.visibility == Visibility::Public)
-            .origin(DeclOrigin::Script)
-            .source_span(declaration.span);
+            let mut desc = FunctionDesc::new(script_function_id(&qualified_name), qualified_name)
+                .public(declaration.visibility == Visibility::Public)
+                .origin(DeclOrigin::Script)
+                .source_span(declaration.span);
             if !module_name.is_empty() {
                 desc = desc.module(module_name);
             }
@@ -79,28 +78,4 @@ fn apply_function_attrs(
     desc.attrs = reflected.attrs;
     desc.docs = reflected.docs;
     desc
-}
-
-fn qualified_function_name(module: &str, name: &str) -> String {
-    if module.is_empty() {
-        name.to_owned()
-    } else {
-        format!("{module}::{name}")
-    }
-}
-
-fn stable_function_id(module: &str, name: &str) -> FunctionId {
-    let mut hash = 0xcbf2_9ce4_8422_2325;
-    for byte in b"function"
-        .iter()
-        .copied()
-        .chain([0])
-        .chain(module.bytes())
-        .chain([0])
-        .chain(name.bytes())
-    {
-        hash ^= u64::from(byte);
-        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
-    }
-    FunctionId::new(u128::from(if hash == 0 { 1 } else { hash }))
 }

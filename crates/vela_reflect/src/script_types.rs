@@ -1,5 +1,5 @@
 use vela_common::{HostMethodId, Span};
-use vela_def::{FieldId, MethodId, TypeId, VariantId};
+use vela_def::{MethodId, script_field_id, script_type_id, script_variant_id};
 use vela_hir::attributes::{HirAttribute, schema_id_attr};
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
@@ -19,18 +19,31 @@ impl TypeRegistry {
                     let Some(shape) = graph.struct_shape(declaration.id) else {
                         continue;
                     };
-                    let type_name = qualified_type_name(graph, declaration);
+                    let type_name = graph
+                        .qualified_declaration_name(declaration.id)
+                        .expect("stored script type has a module path");
                     let mut desc = shape.fields.iter().fold(
-                        TypeDesc::new(TypeKey::new(stable_type_id(&type_name), type_name.clone()))
-                            .kind(TypeKind::ScriptStruct)
-                            .origin(DeclOrigin::Script)
-                            .schema_hash(struct_schema_hash(&type_name, shape))
-                            .source_span(declaration.span),
+                        TypeDesc::new(TypeKey::new(
+                            script_type_id(
+                                &type_name,
+                                explicit_script_id(graph.declaration_attrs(declaration.id)),
+                            ),
+                            type_name.clone(),
+                        ))
+                        .kind(TypeKind::ScriptStruct)
+                        .origin(DeclOrigin::Script)
+                        .schema_hash(struct_schema_hash(&type_name, shape))
+                        .source_span(declaration.span),
                         |desc, field| {
                             desc.field(apply_field_attrs(
                                 apply_field_type_hint(
                                     FieldDesc::new(
-                                        script_field_id(&type_name, &field.name, &field.attrs),
+                                        script_field_id(
+                                            &type_name,
+                                            None,
+                                            &field.name,
+                                            explicit_script_id(&field.attrs),
+                                        ),
                                         field.name.clone(),
                                     )
                                     .writable(true)
@@ -53,17 +66,27 @@ impl TypeRegistry {
                     let Some(shape) = graph.enum_shape(declaration.id) else {
                         continue;
                     };
-                    let type_name = qualified_type_name(graph, declaration);
+                    let type_name = graph
+                        .qualified_declaration_name(declaration.id)
+                        .expect("stored script type has a module path");
                     let mut desc = shape.variants.iter().fold(
-                        TypeDesc::new(TypeKey::new(stable_type_id(&type_name), type_name.clone()))
-                            .kind(TypeKind::ScriptEnum)
-                            .origin(DeclOrigin::Script)
-                            .schema_hash(enum_schema_hash(&type_name, shape))
-                            .source_span(declaration.span),
+                        TypeDesc::new(TypeKey::new(
+                            script_type_id(
+                                &type_name,
+                                explicit_script_id(graph.declaration_attrs(declaration.id)),
+                            ),
+                            type_name.clone(),
+                        ))
+                        .kind(TypeKind::ScriptEnum)
+                        .origin(DeclOrigin::Script)
+                        .schema_hash(enum_schema_hash(&type_name, shape))
+                        .source_span(declaration.span),
                         |desc, variant| {
-                            let variant_owner = enum_variant_owner(&type_name, &variant.name);
-                            let variant_id =
-                                script_variant_id(&type_name, &variant.name, &variant.attrs);
+                            let variant_id = script_variant_id(
+                                &type_name,
+                                &variant.name,
+                                explicit_script_id(&variant.attrs),
+                            );
                             let variant_desc =
                                 enum_variant_fields(&variant.fields).into_iter().fold(
                                     apply_variant_attrs(
@@ -77,9 +100,10 @@ impl TypeRegistry {
                                             apply_field_type_hint_display(
                                                 FieldDesc::new(
                                                     script_field_id(
-                                                        &variant_owner,
+                                                        &type_name,
+                                                        Some(&variant.name),
                                                         &field.name,
-                                                        &field.attrs,
+                                                        explicit_script_id(&field.attrs),
                                                     ),
                                                     field.name,
                                                 )
@@ -106,7 +130,9 @@ impl TypeRegistry {
                     let Some(shape) = graph.trait_shape(declaration.id) else {
                         continue;
                     };
-                    let trait_name = qualified_type_name(graph, declaration);
+                    let trait_name = graph
+                        .qualified_declaration_name(declaration.id)
+                        .expect("stored script trait has a module path");
                     let mut desc = shape.methods.iter().fold(
                         TraitDesc::new(trait_name.clone())
                             .origin(DeclOrigin::Script)
@@ -162,7 +188,9 @@ fn inherent_methods_for_type(
     graph: &ModuleGraph,
     type_declaration: &Declaration,
 ) -> Vec<MethodDesc> {
-    let type_name = qualified_type_name(graph, type_declaration);
+    let type_name = graph
+        .qualified_declaration_name(type_declaration.id)
+        .expect("stored script type has a module path");
     graph
         .declarations()
         .filter(|declaration| declaration.kind == DeclarationKind::Impl)
@@ -327,17 +355,6 @@ fn enum_variant_fields(fields: &EnumVariantFieldsHint) -> Vec<VariantFieldMetada
     }
 }
 
-fn qualified_type_name(graph: &ModuleGraph, declaration: &Declaration) -> String {
-    let Some(module_path) = graph.module_path(declaration.module) else {
-        return declaration.name.clone();
-    };
-    if module_path.segments().is_empty() {
-        declaration.name.clone()
-    } else {
-        format!("{}::{}", module_path.join(), declaration.name)
-    }
-}
-
 fn qualified_path_name(graph: &ModuleGraph, owner: &Declaration, path: &[String]) -> String {
     if path.len() != 1 {
         return path.join("::");
@@ -358,7 +375,13 @@ fn struct_schema_hash(type_name: &str, shape: &vela_hir::type_hint::StructShape)
         .iter()
         .map(|field| {
             (
-                script_field_id(type_name, &field.name, &field.attrs).get(),
+                script_field_id(
+                    type_name,
+                    None,
+                    &field.name,
+                    explicit_script_id(&field.attrs),
+                )
+                .get(),
                 field.name.clone(),
                 field
                     .type_hint
@@ -376,7 +399,8 @@ fn enum_schema_hash(type_name: &str, shape: &vela_hir::type_hint::EnumShape) -> 
         .iter()
         .map(|variant| {
             (
-                script_variant_id(type_name, &variant.name, &variant.attrs).get(),
+                script_variant_id(type_name, &variant.name, explicit_script_id(&variant.attrs))
+                    .get(),
                 variant.name.clone(),
                 enum_variant_signature(type_name, variant),
             )
@@ -389,12 +413,17 @@ fn enum_variant_signature(
     type_name: &str,
     variant: &vela_hir::type_hint::EnumVariantHint,
 ) -> String {
-    let variant_owner = enum_variant_owner(type_name, &variant.name);
     let mut fields = enum_variant_fields(&variant.fields)
         .into_iter()
         .map(|field| {
             (
-                script_field_id(&variant_owner, &field.name, &field.attrs).get(),
+                script_field_id(
+                    type_name,
+                    Some(&variant.name),
+                    &field.name,
+                    explicit_script_id(&field.attrs),
+                )
+                .get(),
                 field.name,
                 field.type_hint,
             )
@@ -406,10 +435,6 @@ fn enum_variant_signature(
         .map(|(_, field_name, type_hint)| format!("{field_name}:{type_hint}"))
         .collect::<Vec<_>>()
         .join(",")
-}
-
-fn enum_variant_owner(type_name: &str, variant: &str) -> String {
-    format!("{type_name}::{variant}")
 }
 
 fn schema_hash(
@@ -441,24 +466,6 @@ fn hash_bytes(hash: &mut u64, bytes: &[u8]) {
     }
 }
 
-fn stable_type_id(name: &str) -> TypeId {
-    TypeId::new(u128::from(vela_common::stable_id("type", name, "")))
-}
-
-fn stable_field_id(type_name: &str, field_name: &str) -> FieldId {
-    FieldId::new(u128::from(vela_common::stable_id(
-        "field", type_name, field_name,
-    )))
-}
-
-fn stable_variant_id(type_name: &str, variant_name: &str) -> VariantId {
-    VariantId::new(u128::from(vela_common::stable_id(
-        "variant",
-        type_name,
-        variant_name,
-    )))
-}
-
 fn stable_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {
     MethodId::new(u128::from(vela_common::stable_id(
         "trait_method",
@@ -475,26 +482,15 @@ fn stable_inherent_host_method_id(type_name: &str, method_name: &str) -> HostMet
     )))
 }
 
-fn script_field_id(type_name: &str, field_name: &str, attrs: &[HirAttribute]) -> FieldId {
-    script_id_attr(attrs)
-        .map(|id| FieldId::new(u128::from(id)))
-        .unwrap_or_else(|| stable_field_id(type_name, field_name))
-}
-
-fn script_variant_id(type_name: &str, variant_name: &str, attrs: &[HirAttribute]) -> VariantId {
-    script_id_attr(attrs)
-        .map(|id| VariantId::new(u128::from(id)))
-        .unwrap_or_else(|| stable_variant_id(type_name, variant_name))
-}
-
-fn script_id_attr(attrs: &[HirAttribute]) -> Option<u64> {
-    schema_id_attr(attrs)
+fn explicit_script_id(attrs: &[HirAttribute]) -> Option<u128> {
+    schema_id_attr(attrs).map(u128::from)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use vela_common::SourceId;
+    use vela_def::{FieldId, VariantId};
     use vela_hir::module_graph::{ModulePath, ModuleSource};
 
     #[test]
@@ -652,7 +648,7 @@ enum QuestProgress {
                 .iter()
                 .find(|field| field.name == "count")
                 .map(|field| field.id),
-            Some(stable_field_id("game::reward::Reward", "count"))
+            Some(script_field_id("game::reward::Reward", None, "count", None,))
         );
         assert_eq!(
             progress
@@ -660,7 +656,11 @@ enum QuestProgress {
                 .iter()
                 .find(|variant| variant.name == "Active")
                 .map(|variant| variant.id),
-            Some(stable_variant_id("game::reward::QuestProgress", "Active"))
+            Some(script_variant_id(
+                "game::reward::QuestProgress",
+                "Active",
+                None,
+            ))
         );
     }
 

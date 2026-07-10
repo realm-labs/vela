@@ -51,3 +51,29 @@ fn grant(multiplier = 2) {
             .id,
     );
 }
+
+#[test]
+fn declaration_names_have_one_canonical_module_qualified_query() {
+    let mut graph = ModuleGraph::new();
+    let qualified_module =
+        graph.add_source(source(18, "game::reward", "struct Reward { amount: i64 }"));
+    let root_module = graph.add_source(source(19, "", "struct Local { value: i64 }"));
+
+    let reward = graph
+        .module(qualified_module)
+        .and_then(|declarations| declarations.get("Reward"))
+        .expect("qualified Reward declaration");
+    let local = graph
+        .module(root_module)
+        .and_then(|declarations| declarations.get("Local"))
+        .expect("root Local declaration");
+
+    assert_eq!(
+        graph.qualified_declaration_name(reward).as_deref(),
+        Some("game::reward::Reward")
+    );
+    assert_eq!(
+        graph.qualified_declaration_name(local).as_deref(),
+        Some("Local")
+    );
+}

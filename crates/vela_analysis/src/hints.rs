@@ -114,25 +114,11 @@ fn type_fact_from_arg(
     }
 }
 
-pub(crate) fn qualified_declaration_name(graph: &ModuleGraph, declaration: &Declaration) -> String {
-    graph
-        .module_path(declaration.module)
-        .map(|path| {
-            path.segments()
-                .iter()
-                .chain(std::iter::once(&declaration.name))
-                .cloned()
-                .collect::<Vec<_>>()
-                .join("::")
-        })
-        .unwrap_or_else(|| declaration.name.clone())
-}
-
 pub(crate) fn declaration_schema_fact(
     graph: &ModuleGraph,
     declaration: &Declaration,
 ) -> Option<TypeFact> {
-    let name = qualified_declaration_name(graph, declaration);
+    let name = graph.qualified_declaration_name(declaration.id)?;
     match declaration.kind {
         DeclarationKind::Struct => Some(TypeFact::record(name)),
         DeclarationKind::Enum => Some(TypeFact::enum_type(name, None::<String>)),

@@ -1,5 +1,6 @@
 use vela_common::{HostTypeId, SourceId};
-use vela_def::FieldId;
+use vela_def::{DefPath, FieldId};
+use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
 use vela_host::target::HostTargetPlan;
 use vela_registry::{DefinitionRegistry, FunctionDef, FunctionSignature};
 
@@ -178,7 +179,7 @@ fn linker_maps_script_functions_and_methods_to_dense_handles() {
     main.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::CallFunction {
             dst: Register(0),
-            target: function_id_for_script_name("helper"),
+            target: script_function_id("helper"),
             name: "helper".to_owned(),
             mode: crate::ScriptCallMode::Unchecked,
             args: Vec::new(),
@@ -423,6 +424,66 @@ fn linker_maps_globals_map_keys_and_field_slots_without_instruction_names() {
         InstructionKind::SetRecordSlot { field, debug_name, cache_site: Some(site), .. }
             if field == FieldSlot::new(0) && linked.debug_name(debug_name) == "level" && site == write_site
     ));
+}
+
+#[test]
+fn linker_uses_script_metadata_for_schema_identity_overrides() {
+    let mut graph = ModuleGraph::new();
+    graph.add_source(ModuleSource::new(
+        SourceId::new(31),
+        ModulePath::from_qualified("game::reward"),
+        r#"
+#[id(101)]
+struct Reward { count: i64 }
+
+enum Outcome {
+    #[id(201)]
+    Granted { value: i64 },
+}
+"#,
+    ));
+    graph.resolve_imports();
+    assert_eq!(graph.diagnostics(), &[]);
+
+    let mut code = UnlinkedCodeObject::new("game::reward::main", 2);
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::MakeRecord {
+            dst: Register(0),
+            type_name: "game::reward::Reward".to_owned(),
+            fields: vec![("count".to_owned(), Register(1))],
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::MakeEnum {
+            dst: Register(0),
+            enum_name: "game::reward::Outcome".to_owned(),
+            variant: "Granted".to_owned(),
+            fields: vec![("value".to_owned(), Register(1))],
+        },
+    ));
+    let mut program = UnlinkedProgram::new();
+    program.insert_function(code);
+    program.set_script_metadata(graph);
+
+    let linked = Linker::new()
+        .link_program(&program)
+        .expect("script schema identities should link from metadata");
+    let reward = linked
+        .types()
+        .find_map(|(_, ty)| {
+            (linked.debug_name(ty.debug_name) == "game::reward::Reward").then_some(ty)
+        })
+        .expect("linked Reward type");
+    let granted = linked
+        .variants()
+        .find_map(|(_, variant)| {
+            (linked.debug_name(variant.debug_name) == "game::reward::Outcome::Granted")
+                .then_some(variant)
+        })
+        .expect("linked Granted variant");
+
+    assert_eq!(reward.id, TypeId::new(101));
+    assert_eq!(granted.id, VariantId::new(201));
 }
 
 #[test]

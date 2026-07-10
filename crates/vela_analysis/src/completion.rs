@@ -146,18 +146,9 @@ fn completion_kind_for_declaration(kind: DeclarationKind) -> Option<CompletionKi
 }
 
 fn qualified_declaration_label(graph: &ModuleGraph, declaration: HirDeclId) -> String {
-    let Some(declaration) = graph.declaration(declaration) else {
-        return String::new();
-    };
-    let Some(module_path) = graph.module_path(declaration.module) else {
-        return declaration.name.clone();
-    };
-    let module = module_path.join();
-    if module.is_empty() {
-        declaration.name.clone()
-    } else {
-        format!("{module}::{}", declaration.name)
-    }
+    graph
+        .qualified_declaration_name(declaration)
+        .unwrap_or_default()
 }
 
 fn owner_member_completions(facts: &RegistryFacts, owner: &str) -> Vec<CompletionItem> {

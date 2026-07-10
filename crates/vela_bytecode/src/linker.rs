@@ -3,8 +3,10 @@ use std::error::Error;
 use std::fmt;
 
 use vela_common::HostMethodId;
-use vela_def::{DefPath, FunctionId, MethodId, TypeId, VariantId};
-use vela_registry::{Def, DefinitionRegistry};
+use vela_def::{FunctionId, MethodId, TypeId, VariantId, script_function_id};
+use vela_registry::DefinitionRegistry;
+
+use self::targets::script_schema_identities;
 
 use crate::linked::{
     DynamicCallArgumentLinked, GuardContext, Instruction, InstructionKind, LinkedCodeObject,
@@ -15,8 +17,10 @@ use crate::{
     CacheSiteId, CacheSiteKind, Constant, FieldSlot, FunctionIndex, HostTargetPlanId,
     InstructionOffset, MethodDispatchHandle, NativeHandle, ScriptFunctionHandle, TypeHandle,
     UnlinkedCodeObject, UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram,
-    UnlinkedTypeGuard, UnlinkedTypeGuardPlan, VariantHandle, function_id_for_script_name,
+    UnlinkedTypeGuard, UnlinkedTypeGuardPlan, VariantHandle,
 };
+
+mod targets;
 
 #[derive(Clone, Debug, Default)]
 pub struct Linker<'registry> {
@@ -148,6 +152,8 @@ struct LinkContext<'linker, 'registry> {
     script_methods_by_id: BTreeMap<MethodId, ScriptFunctionHandle>,
     native_handles: BTreeMap<FunctionId, NativeHandle>,
     method_handles: BTreeMap<MethodDispatchKey, MethodDispatchHandle>,
+    script_type_ids: BTreeMap<String, TypeId>,
+    script_variant_ids: BTreeMap<(String, String), VariantId>,
     type_handles: BTreeMap<TypeId, TypeHandle>,
     variant_handles: BTreeMap<VariantId, VariantHandle>,
     next_function_index: usize,
@@ -170,7 +176,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
         for (index, name) in program.function_names().enumerate() {
             let handle = ScriptFunctionHandle::new(index);
             script_functions_by_name.insert(name.to_owned(), handle);
-            script_functions_by_id.insert(function_id_for_script_name(name), handle);
+            script_functions_by_id.insert(script_function_id(name), handle);
         }
 
         let mut script_methods_by_id = BTreeMap::new();
@@ -179,6 +185,10 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 script_methods_by_id.insert(method.id, *function);
             }
         }
+        let (script_type_ids, script_variant_ids) = program
+            .script_metadata()
+            .map(script_schema_identities)
+            .unwrap_or_default();
 
         Self {
             linker,
@@ -188,6 +198,8 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
             script_methods_by_id,
             native_handles: BTreeMap::new(),
             method_handles: BTreeMap::new(),
+            script_type_ids,
+            script_variant_ids,
             type_handles: BTreeMap::new(),
             variant_handles: BTreeMap::new(),
             next_function_index: program.function_count(),
@@ -994,269 +1006,6 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
             span: instruction.span,
         })
     }
-
-    fn resolve_script_function(
-        &self,
-        target: FunctionId,
-        name: &str,
-    ) -> Result<ScriptFunctionHandle, LinkError> {
-        self.script_functions_by_id
-            .get(&target)
-            .copied()
-            .ok_or_else(|| LinkError::MissingScriptFunction {
-                name: name.to_owned(),
-                id: target,
-            })
-    }
-
-    fn link_native(&mut self, name: &str, id: FunctionId) -> Result<NativeHandle, LinkError> {
-        if let Some(handle) = self.native_handles.get(&id).copied() {
-            return Ok(handle);
-        }
-
-        if let Some(registry) = self.linker.registry
-            && registry.get(id.def_id()).and_then(Def::function_id) != Some(id)
-        {
-            return Err(LinkError::UnresolvedNative {
-                name: name.to_owned(),
-                id,
-            });
-        }
-
-        if !self.linker.native_implementations.contains(&id) {
-            return Err(LinkError::MissingNativeImplementation {
-                name: name.to_owned(),
-                id,
-            });
-        }
-
-        let debug_name = self.linked.intern_debug_name(name.to_owned());
-        let handle = self
-            .linked
-            .push_native_function(LinkedNativeFunction::new(id, debug_name));
-        self.native_handles.insert(id, handle);
-        Ok(handle)
-    }
-
-    fn link_method_dispatch(
-        &mut self,
-        method: &str,
-        method_id: MethodId,
-    ) -> Result<MethodDispatchHandle, LinkError> {
-        let key = if let Some(function) = self.script_methods_by_id.get(&method_id).copied() {
-            MethodDispatchKey::Script(method_id, function)
-        } else {
-            if let Some(registry) = self.linker.registry
-                && registry.get(method_id.def_id()).and_then(Def::method_id) != Some(method_id)
-            {
-                return Err(LinkError::MissingMethodDefinition {
-                    method: method.to_owned(),
-                    id: method_id,
-                });
-            }
-            MethodDispatchKey::Value(method_id)
-        };
-
-        self.intern_method_dispatch(key, method.to_owned())
-    }
-
-    fn link_host_method(&mut self, method_id: HostMethodId) -> MethodDispatchHandle {
-        self.intern_method_dispatch(
-            MethodDispatchKey::Host(method_id),
-            format!("host_method::{}", method_id.get()),
-        )
-        .expect("host method dispatch cannot fail")
-    }
-
-    fn intern_method_dispatch(
-        &mut self,
-        key: MethodDispatchKey,
-        debug_text: String,
-    ) -> Result<MethodDispatchHandle, LinkError> {
-        if let Some(handle) = self.method_handles.get(&key).copied() {
-            return Ok(handle);
-        }
-
-        let debug_name = self.linked.intern_debug_name(debug_text);
-        let kind = match key {
-            MethodDispatchKey::Script(method_id, function) => LinkedMethodDispatchKind::Script {
-                method_id,
-                function,
-            },
-            MethodDispatchKey::Value(method_id) => LinkedMethodDispatchKind::Value { method_id },
-            MethodDispatchKey::Host(method_id) => LinkedMethodDispatchKind::Host { method_id },
-        };
-        let handle = self
-            .linked
-            .push_method_dispatch(LinkedMethodDispatch::new(debug_name, kind));
-        self.method_handles.insert(key, handle);
-        Ok(handle)
-    }
-
-    fn link_type(&mut self, name: &str) -> Result<TypeHandle, LinkError> {
-        let id = self.resolve_type_id(name)?;
-        if let Some(handle) = self.type_handles.get(&id).copied() {
-            return Ok(handle);
-        }
-
-        let debug_name = self.linked.intern_debug_name(name.to_owned());
-        let handle = self.linked.push_type(LinkedType::new(id, debug_name));
-        self.type_handles.insert(id, handle);
-        Ok(handle)
-    }
-
-    fn link_variant(
-        &mut self,
-        enum_name: &str,
-        variant: &str,
-        owner: TypeHandle,
-    ) -> Result<VariantHandle, LinkError> {
-        let id = self.resolve_variant_id(enum_name, variant)?;
-        if let Some(handle) = self.variant_handles.get(&id).copied() {
-            return Ok(handle);
-        }
-
-        let debug_name = self
-            .linked
-            .intern_debug_name(format!("{enum_name}::{variant}"));
-        let handle = self
-            .linked
-            .push_variant(LinkedVariant::new(id, owner, debug_name));
-        self.variant_handles.insert(id, handle);
-        Ok(handle)
-    }
-
-    fn resolve_type_id(&self, name: &str) -> Result<TypeId, LinkError> {
-        if let Some(registry) = self.linker.registry {
-            for path in type_path_candidates(name) {
-                if let Some(id) = registry.get_by_path(&path).and_then(Def::type_id) {
-                    return Ok(id);
-                }
-            }
-            return Ok(TypeId::from_def_id(script_type_path(name).id()));
-        }
-
-        Ok(TypeId::from_def_id(script_type_path(name).id()))
-    }
-
-    fn resolve_variant_id(&self, enum_name: &str, variant: &str) -> Result<VariantId, LinkError> {
-        if let Some(registry) = self.linker.registry {
-            for path in variant_path_candidates(enum_name, variant) {
-                if let Some(id) = registry.get_by_path(&path).and_then(Def::variant_id) {
-                    return Ok(id);
-                }
-            }
-            return Ok(VariantId::from_def_id(
-                script_variant_path(enum_name, variant).id(),
-            ));
-        }
-
-        Ok(VariantId::from_def_id(
-            script_variant_path(enum_name, variant).id(),
-        ))
-    }
-
-    fn link_host_target(
-        &self,
-        code: &UnlinkedCodeObject,
-        host_target_map: &[HostTargetPlanId],
-        target: HostTargetPlanId,
-    ) -> Result<HostTargetPlanId, LinkError> {
-        host_target_map
-            .get(target.index())
-            .copied()
-            .ok_or_else(|| LinkError::InvalidHostTarget {
-                function: code.name.clone(),
-                target,
-            })
-    }
-
-    fn link_type_guard(
-        &mut self,
-        guard: UnlinkedTypeGuard,
-        code: &mut LinkedCodeObject,
-    ) -> Result<crate::TypeGuardPlanId, LinkError> {
-        let plan = self.link_type_guard_plan(guard.plan)?;
-        let context = GuardContext::new(
-            guard.context.kind,
-            guard.context.location,
-            self.linked.intern_debug_name(guard.context.debug_name),
-        );
-        Ok(code.intern_type_guard(TypeGuard::new(plan, context)))
-    }
-
-    fn link_type_guard_plan(
-        &mut self,
-        plan: UnlinkedTypeGuardPlan,
-    ) -> Result<TypeGuardPlan, LinkError> {
-        match plan {
-            UnlinkedTypeGuardPlan::Primitive(tag) => Ok(TypeGuardPlan::Primitive(tag)),
-            UnlinkedTypeGuardPlan::Standard(guard) => Ok(TypeGuardPlan::Standard(guard)),
-            UnlinkedTypeGuardPlan::Array { element } => Ok(TypeGuardPlan::Array {
-                element: element
-                    .map(|plan| self.link_type_guard_plan(*plan).map(Box::new))
-                    .transpose()?,
-            }),
-            UnlinkedTypeGuardPlan::Map { key, value } => Ok(TypeGuardPlan::Map {
-                key: key
-                    .map(|plan| self.link_type_guard_plan(*plan).map(Box::new))
-                    .transpose()?,
-                value: value
-                    .map(|plan| self.link_type_guard_plan(*plan).map(Box::new))
-                    .transpose()?,
-            }),
-            UnlinkedTypeGuardPlan::Set { element } => Ok(TypeGuardPlan::Set {
-                element: element
-                    .map(|plan| self.link_type_guard_plan(*plan).map(Box::new))
-                    .transpose()?,
-            }),
-            UnlinkedTypeGuardPlan::Iterator { item } => Ok(TypeGuardPlan::Iterator {
-                item: item
-                    .map(|plan| self.link_type_guard_plan(*plan).map(Box::new))
-                    .transpose()?,
-            }),
-            UnlinkedTypeGuardPlan::Tuple { elements } => Ok(TypeGuardPlan::Tuple {
-                elements: elements
-                    .into_iter()
-                    .map(|plan| {
-                        plan.map(|plan| self.link_type_guard_plan(*plan).map(Box::new))
-                            .transpose()
-                    })
-                    .collect::<Result<Vec<_>, _>>()?,
-            }),
-            UnlinkedTypeGuardPlan::Option { some } => Ok(TypeGuardPlan::Option {
-                some: some
-                    .map(|plan| self.link_type_guard_plan(*plan).map(Box::new))
-                    .transpose()?,
-            }),
-            UnlinkedTypeGuardPlan::Result { ok, err } => Ok(TypeGuardPlan::Result {
-                ok: ok
-                    .map(|plan| self.link_type_guard_plan(*plan).map(Box::new))
-                    .transpose()?,
-                err: err
-                    .map(|plan| self.link_type_guard_plan(*plan).map(Box::new))
-                    .transpose()?,
-            }),
-            UnlinkedTypeGuardPlan::Type(name) => self.link_type(&name).map(TypeGuardPlan::Type),
-            UnlinkedTypeGuardPlan::Variant { enum_name, variant } => {
-                let owner = self.link_type(&enum_name)?;
-                self.link_variant(&enum_name, &variant, owner)
-                    .map(TypeGuardPlan::Variant)
-            }
-            UnlinkedTypeGuardPlan::Shape {
-                type_name,
-                shape_id,
-            } => self
-                .link_type(&type_name)
-                .map(|ty| TypeGuardPlan::Shape { ty, shape_id }),
-            UnlinkedTypeGuardPlan::HostType {
-                type_name,
-                host_type_id,
-            } => self
-                .link_type(&type_name)
-                .map(|ty| TypeGuardPlan::HostType { ty, host_type_id }),
-        }
-    }
 }
 
 fn cache_site_at(
@@ -1289,48 +1038,6 @@ fn sorted_field_slots<'field>(
         .enumerate()
         .map(|(slot, field)| (field, slot))
         .collect()
-}
-
-fn type_path_candidates(name: &str) -> Vec<DefPath> {
-    let mut paths = Vec::new();
-    if !name.contains("::") {
-        paths.push(DefPath::ty("std", std::iter::empty::<&str>(), name));
-        paths.push(DefPath::ty("host", std::iter::empty::<&str>(), name));
-    }
-    paths.push(script_type_path(name));
-    paths
-}
-
-fn variant_path_candidates(enum_name: &str, variant: &str) -> Vec<DefPath> {
-    let mut paths = Vec::new();
-    if !enum_name.contains("::") {
-        paths.push(DefPath::variant(
-            "std",
-            std::iter::empty::<&str>(),
-            enum_name,
-            variant,
-        ));
-        paths.push(DefPath::variant(
-            "host",
-            std::iter::empty::<&str>(),
-            enum_name,
-            variant,
-        ));
-    }
-    paths.push(script_variant_path(enum_name, variant));
-    paths
-}
-
-fn script_type_path(name: &str) -> DefPath {
-    let mut segments = name.split("::").collect::<Vec<_>>();
-    let ty = segments.pop().unwrap_or(name);
-    DefPath::ty("script", segments, ty)
-}
-
-fn script_variant_path(enum_name: &str, variant: &str) -> DefPath {
-    let mut segments = enum_name.split("::").collect::<Vec<_>>();
-    let owner = segments.pop().unwrap_or(enum_name);
-    DefPath::variant("script", segments, owner, variant)
 }
 
 #[cfg(test)]

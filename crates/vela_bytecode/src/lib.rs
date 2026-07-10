@@ -5,16 +5,16 @@ pub mod compiler;
 pub mod linked;
 pub mod linker;
 pub mod program_image;
+mod script_metadata;
 pub mod script_methods;
 pub mod verification;
 
 use std::collections::BTreeMap;
 
 use vela_common::{GlobalSlot, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span};
-use vela_def::{DefPath, FunctionId, MethodId};
-use vela_hir::attributes::derived_traits;
+use vela_def::{FunctionId, MethodId, script_function_id};
 use vela_hir::ids::HirLocalId;
-use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
+use vela_hir::module_graph::ModuleGraph;
 use vela_host::resolved::HostMutationOp;
 use vela_host::target::HostTargetPlan;
 
@@ -28,6 +28,7 @@ pub use linked::{
 };
 pub use linker::{LinkError, Linker};
 pub use program_image::ProgramImage;
+pub use script_metadata::{derived_linked_record_trait_fields, derived_record_trait_fields};
 pub use vela_registry::DebugNameId;
 
 use crate::script_methods::ScriptMethodTable;
@@ -207,13 +208,11 @@ impl UnlinkedProgram {
                 .enumerate()
                 .map(|(index, function)| (function.name.clone(), FunctionIndex(index))),
         );
-        self.function_by_id
-            .extend(self.functions.iter().enumerate().map(|(index, function)| {
-                (
-                    function_id_for_script_name(&function.name),
-                    FunctionIndex(index),
-                )
-            }));
+        self.function_by_id.extend(
+            self.functions.iter().enumerate().map(|(index, function)| {
+                (script_function_id(&function.name), FunctionIndex(index))
+            }),
+        );
     }
 }
 
@@ -241,62 +240,6 @@ pub trait UnlinkedProgramCode {
         type_name: &str,
         method_id: MethodId,
     ) -> Option<&UnlinkedCodeObject>;
-}
-
-#[must_use]
-pub fn derived_record_trait_fields(
-    program: &dyn UnlinkedProgramCode,
-    type_name: &str,
-    trait_name: &str,
-) -> Option<Vec<String>> {
-    derived_record_trait_fields_in_graph(program.script_metadata()?, type_name, trait_name)
-}
-
-#[must_use]
-pub fn derived_linked_record_trait_fields(
-    program: &LinkedProgram,
-    type_name: &str,
-    trait_name: &str,
-) -> Option<Vec<String>> {
-    derived_record_trait_fields_in_graph(program.script_metadata()?, type_name, trait_name)
-}
-
-fn derived_record_trait_fields_in_graph(
-    graph: &ModuleGraph,
-    type_name: &str,
-    trait_name: &str,
-) -> Option<Vec<String>> {
-    graph.declarations().find_map(|declaration| {
-        if declaration.kind != DeclarationKind::Struct {
-            return None;
-        }
-        if declaration_type_name(graph, declaration) != type_name {
-            return None;
-        }
-        let traits = derived_traits(graph.declaration_attrs(declaration.id));
-        if !traits.contains(trait_name) {
-            return None;
-        }
-        let shape = graph.struct_shape(declaration.id)?;
-        Some(
-            shape
-                .fields
-                .iter()
-                .map(|field| field.name.clone())
-                .collect(),
-        )
-    })
-}
-
-fn declaration_type_name(graph: &ModuleGraph, declaration: &Declaration) -> String {
-    let Some(path) = graph.module_path(declaration.module) else {
-        return declaration.name.clone();
-    };
-    if path.segments().is_empty() {
-        declaration.name.clone()
-    } else {
-        format!("{}::{}", path.join(), declaration.name)
-    }
 }
 
 impl UnlinkedProgramCode for UnlinkedProgram {
@@ -327,12 +270,6 @@ impl UnlinkedProgramCode for UnlinkedProgram {
     ) -> Option<&UnlinkedCodeObject> {
         UnlinkedProgram::script_method_by_id(self, type_name, method_id)
     }
-}
-
-pub(crate) fn function_id_for_script_name(name: &str) -> FunctionId {
-    let mut segments = name.split("::").collect::<Vec<_>>();
-    let function = segments.pop().unwrap_or(name);
-    FunctionId::from_def_id(DefPath::function("script", segments, function).id())
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -189,7 +189,7 @@ impl Compiler<'_, '_> {
             self.emit_spanned(
                 UnlinkedInstructionKind::CallFunction {
                     dst,
-                    target: crate::function_id_for_script_name(&name),
+                    target: vela_def::script_function_id(&name),
                     name,
                     mode,
                     args,

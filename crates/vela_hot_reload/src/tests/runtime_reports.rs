@@ -1,6 +1,7 @@
 use super::*;
 use vela_bytecode::InstructionOffset;
 use vela_bytecode::compiler::options::CompilerOptions;
+use vela_def::script_function_id;
 use vela_hir::module_graph::{ModulePath, ModuleSource};
 use vela_vm::owned_value::OwnedValue;
 
@@ -10,12 +11,6 @@ const HOT_RELOAD_PARAMETER_ABI_V2: &str =
     include_str!("../../../../tests/fixtures/diagnostics/hot_reload_parameter_abi_v2.vela");
 const HOT_RELOAD_PARAMETER_ABI_EXPECTED: &str =
     include_str!("../../../../tests/fixtures/diagnostics/hot_reload_parameter_abi.expected");
-
-fn script_function_id(name: &str) -> FunctionId {
-    let mut segments = name.split("::").collect::<Vec<_>>();
-    let function = segments.pop().unwrap_or(name);
-    FunctionId::from_def_id(vela_def::DefPath::function("script", segments, function).id())
-}
 
 #[test]
 fn new_calls_enter_new_code_after_update() {

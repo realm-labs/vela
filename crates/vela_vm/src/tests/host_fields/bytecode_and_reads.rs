@@ -2,6 +2,7 @@ use super::*;
 use crate::value::Value as RuntimeValue;
 use std::cell::{Cell, RefCell};
 use vela_bytecode::{CacheSiteId, CacheSiteKind, HostTargetPlanId};
+use vela_def::script_function_id;
 use vela_host::resolved::{HostAccessOp, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess};
 use vela_host::target::HostTargetPlan;
 
@@ -15,14 +16,6 @@ fn host_cache_site(
     instruction_offset: usize,
 ) -> CacheSiteId {
     code.push_cache_site(kind, InstructionOffset(instruction_offset))
-}
-
-fn script_function_id(name: &str) -> vela_def::FunctionId {
-    let mut segments = name.split("::").collect::<Vec<_>>();
-    let function = segments.pop().unwrap_or(name);
-    vela_def::FunctionId::from_def_id(
-        vela_def::DefPath::function("script", segments, function).id(),
-    )
 }
 
 fn exec_host_field(
