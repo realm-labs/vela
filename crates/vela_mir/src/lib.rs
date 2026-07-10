@@ -28,8 +28,8 @@ pub use contract::{HostTypeTarget, MirTypeContract};
 pub use effects::{MirEffect, MirGuard, MirGuardAssumption, MirLiveValue, MirSafepoint};
 pub use function::{
     DebugLocalKind, MirDebugLocal, MirFunction, MirFunctionCapture, MirFunctionOwner,
-    MirFunctionParameter, MirFunctionReturn, MirLiveRegion, MirLiveness, MirLocal, MirLocalKind,
-    MirParameterKind, MirParameterSpec, MirProgram, MirTemp,
+    MirFunctionParameter, MirFunctionReservation, MirFunctionReturn, MirLiveRegion, MirLiveness,
+    MirLocal, MirLocalKind, MirParameterKind, MirParameterSpec, MirProgram, MirTemp,
 };
 pub use ids::{
     MirBlockId, MirDebugLocalId, MirFunctionId, MirGuardId, MirLocalId, MirSafepointId,
@@ -51,7 +51,7 @@ pub use operations::{
     MirDynamicBinaryOp, MirDynamicUnaryOp, MirFieldTarget, MirFormatPart, MirGlobalOperation,
     MirHostMutation, MirHostOperation, MirHostPath, MirHostPathSegment, MirIdentityOp, MirIndexKey,
     MirIndexOperation, MirIteratorOperation, MirLiteralSide, MirReflectionOperation,
-    MirScriptArgument, MirStatement, MirStatementKind, MirTrapKind,
+    MirScriptArgument, MirScriptParameterGuardMode, MirStatement, MirStatementKind, MirTrapKind,
 };
 pub use origin::{MirSourceNode, MirSourceOrigin};
 pub use targets::{

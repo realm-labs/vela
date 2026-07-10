@@ -146,6 +146,17 @@ impl MirDynamicArgument {
     }
 }
 
+/// Whether a direct script-function call may skip the callee's parameter
+/// contract guards.
+///
+/// This is a semantic call-site proof, not a bytecode selection hint. Calls
+/// with dynamic arguments or omitted typed defaults must retain callee checks.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum MirScriptParameterGuardMode {
+    ProvenAtCallSite,
+    CheckCalleeParameterContracts,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum MirCall {
     ScriptFunction {
@@ -153,6 +164,7 @@ pub enum MirCall {
         debug_name: String,
         signature: CompileSignature,
         arguments: Vec<MirScriptArgument>,
+        parameter_guards: MirScriptParameterGuardMode,
     },
     ScriptMethod {
         target: crate::MethodExecutableTarget,
@@ -508,13 +520,14 @@ impl MirCall {
             Self::ScriptFunction {
                 signature,
                 arguments,
+                parameter_guards,
                 ..
-            }
-            | Self::ScriptMethod {
+            } => script_arguments_match(signature, arguments, Some(*parameter_guards)),
+            Self::ScriptMethod {
                 signature,
                 arguments,
                 ..
-            } => script_arguments_match(signature, arguments),
+            } => script_arguments_match(signature, arguments, None),
             Self::CallableValue { .. } => true,
             Self::NativeFunction {
                 signature,
@@ -552,7 +565,11 @@ impl MirCall {
     }
 }
 
-fn script_arguments_match(signature: &CompileSignature, arguments: &[MirScriptArgument]) -> bool {
+fn script_arguments_match(
+    signature: &CompileSignature,
+    arguments: &[MirScriptArgument],
+    parameter_guards: Option<MirScriptParameterGuardMode>,
+) -> bool {
     if signature.positional != CompilePositionalPolicy::ExactOrTrailingDefaults
         || arguments.len() != signature.parameters.len()
     {
@@ -568,6 +585,14 @@ fn script_arguments_match(signature: &CompileSignature, arguments: &[MirScriptAr
             (true | false, CompileParameterDefault::RuntimeProvided)
             | (true, CompileParameterDefault::Required) => return false,
         }
+    }
+    if parameter_guards == Some(MirScriptParameterGuardMode::ProvenAtCallSite)
+        && arguments
+            .iter()
+            .zip(&signature.parameters)
+            .any(|(argument, parameter)| argument.value.is_none() && parameter.contract.is_some())
+    {
+        return false;
     }
     true
 }

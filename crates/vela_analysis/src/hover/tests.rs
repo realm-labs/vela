@@ -71,10 +71,7 @@ fn hovers_builtin_type_kinds_without_generics() {
     assert_eq!(map_info.detail.as_deref(), Some("kind: Map"));
 
     let closure_info = type_hover(&registry, "closure").expect("closure hover");
-    assert_eq!(
-        closure_info.fact,
-        TypeFact::function(Vec::new(), TypeFact::Any)
-    );
+    assert_eq!(closure_info.fact, TypeFact::Closure);
     assert_eq!(closure_info.detail.as_deref(), Some("kind: Closure"));
 }
 

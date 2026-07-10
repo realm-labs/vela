@@ -273,6 +273,7 @@ impl<'registry> CompileViewFacts<'registry> {
             ("Iterator", []) => TypeFact::iterator(TypeFact::Unknown),
             ("Iterator", [item]) => TypeFact::iterator(self.type_hint_fact(item)),
             ("Function", []) => TypeFact::function(Vec::new(), TypeFact::Unknown),
+            ("Closure", []) => TypeFact::Closure,
             ("Option", []) => TypeFact::option(TypeFact::Unknown),
             ("Option", [some]) => TypeFact::option(self.type_hint_fact(some)),
             ("Result", []) => TypeFact::result(TypeFact::Unknown, TypeFact::Unknown),
@@ -329,9 +330,8 @@ fn registered_type_fact(definition: &TypeDef, name: &str) -> TypeFact {
         TypeKindDef::Set => TypeFact::set(TypeFact::Any),
         TypeKindDef::Iterator => TypeFact::iterator(TypeFact::Any),
         TypeKindDef::Range => TypeFact::Range,
-        TypeKindDef::Function | TypeKindDef::Closure => {
-            TypeFact::function(Vec::new(), TypeFact::Any)
-        }
+        TypeKindDef::Function => TypeFact::function(Vec::new(), TypeFact::Any),
+        TypeKindDef::Closure => TypeFact::Closure,
         TypeKindDef::Host => TypeFact::host(name),
         TypeKindDef::ScriptStruct => TypeFact::record(name),
         TypeKindDef::ScriptEnum => TypeFact::enum_type(name, None::<String>),

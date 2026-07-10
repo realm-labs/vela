@@ -261,6 +261,7 @@ fn mir_model_represents_ranges_formats_defaults_and_iterator_control() {
                         MirScriptArgument::placed(0, MirOperand::Temp(formatted)),
                         MirScriptArgument::missing(1),
                     ],
+                    parameter_guards: MirScriptParameterGuardMode::ProvenAtCallSite,
                 }),
                 MirEffect::script_call(),
                 Some(call_safepoint),

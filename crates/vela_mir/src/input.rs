@@ -936,6 +936,26 @@ pub enum MirBuildError {
         function: crate::MirFunctionId,
         origin: MirSourceOrigin,
     },
+    MissingMirFunctionReservation {
+        function: crate::MirFunctionId,
+        origin: MirSourceOrigin,
+    },
+    MirFunctionAlreadyDefined {
+        function: crate::MirFunctionId,
+        origin: MirSourceOrigin,
+    },
+    MirFunctionReservationBodyMismatch {
+        function: crate::MirFunctionId,
+        expected: HirBodyId,
+        actual: HirBodyId,
+        origin: MirSourceOrigin,
+    },
+    MirFunctionReservationOwnerMismatch {
+        function: crate::MirFunctionId,
+        expected: Box<crate::MirFunctionOwner>,
+        actual: Box<crate::MirFunctionOwner>,
+        origin: MirSourceOrigin,
+    },
     MissingBlock {
         block: MirBlockId,
         origin: MirSourceOrigin,
@@ -1054,6 +1074,33 @@ impl fmt::Display for MirBuildError {
             Self::MissingMirFunction { function, .. } => {
                 write!(formatter, "missing parent MIR function {function}")
             }
+            Self::MissingMirFunctionReservation { function, .. } => {
+                write!(formatter, "missing MIR function reservation {function}")
+            }
+            Self::MirFunctionAlreadyDefined { function, .. } => {
+                write!(
+                    formatter,
+                    "MIR function reservation {function} is already defined"
+                )
+            }
+            Self::MirFunctionReservationBodyMismatch {
+                function,
+                expected,
+                actual,
+                ..
+            } => write!(
+                formatter,
+                "MIR function reservation {function} targets HIR body {expected:?}, not {actual:?}"
+            ),
+            Self::MirFunctionReservationOwnerMismatch {
+                function,
+                expected,
+                actual,
+                ..
+            } => write!(
+                formatter,
+                "MIR function reservation {function} has owner {expected:?}, not {actual:?}"
+            ),
             Self::MissingBlock { block, .. } => write!(formatter, "missing MIR block {block}"),
             Self::BlockAlreadyTerminated { block, .. } => {
                 write!(formatter, "MIR block {block} already has a terminator")
@@ -1113,6 +1160,10 @@ impl MirBuildError {
             | Self::DuplicateMirFunctionId { origin, .. }
             | Self::DuplicateMirMethodId { origin, .. }
             | Self::MissingMirFunction { origin, .. }
+            | Self::MissingMirFunctionReservation { origin, .. }
+            | Self::MirFunctionAlreadyDefined { origin, .. }
+            | Self::MirFunctionReservationBodyMismatch { origin, .. }
+            | Self::MirFunctionReservationOwnerMismatch { origin, .. }
             | Self::MissingBlock { origin, .. }
             | Self::BlockAlreadyTerminated { origin, .. }
             | Self::MissingTemp { origin, .. }

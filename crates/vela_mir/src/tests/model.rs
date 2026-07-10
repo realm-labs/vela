@@ -215,6 +215,7 @@ fn mir_model_rejects_effect_and_destination_contradictions() {
                 effect: MirEffect::PURE,
             },
             arguments: vec![MirScriptArgument::missing(0)],
+            parameter_guards: MirScriptParameterGuardMode::ProvenAtCallSite,
         }),
         MirEffect::script_call(),
         Some(safepoint),

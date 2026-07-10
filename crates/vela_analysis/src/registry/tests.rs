@@ -343,10 +343,7 @@ mod tests {
             facts.type_fact("function"),
             Some(&TypeFact::function(Vec::new(), TypeFact::Any))
         );
-        assert_eq!(
-            facts.type_fact("closure"),
-            Some(&TypeFact::function(Vec::new(), TypeFact::Any))
-        );
+        assert_eq!(facts.type_fact("closure"), Some(&TypeFact::Closure));
     }
 
     #[test]

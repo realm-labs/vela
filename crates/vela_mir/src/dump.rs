@@ -41,9 +41,19 @@ impl fmt::Display for MirProgram {
         for (id, target) in self.targets().globals() {
             writeln!(formatter, "  target global#{} {target:?}", id.get())?;
         }
-        for (function_id, function) in self.functions() {
+        for (function_id, reservation) in self.reservations() {
             write!(formatter, "  fn {function_id} ")?;
-            write_function(formatter, function)?;
+            if let Some(function) = self.function(function_id) {
+                write_function(formatter, function)?;
+            } else {
+                writeln!(
+                    formatter,
+                    "reserved body h{} owner {} {} <undefined>",
+                    reservation.body().get(),
+                    function_owner(reservation.owner()),
+                    origin(reservation.origin()),
+                )?;
+            }
         }
         formatter.write_str("}\n")
     }
@@ -465,10 +475,11 @@ fn write_call(formatter: &mut fmt::Formatter<'_>, call: &MirCall) -> fmt::Result
             debug_name,
             signature,
             arguments,
+            parameter_guards,
         } => {
             write!(
                 formatter,
-                "call script#{} name={debug_name:?} signature={signature:?}(",
+                "call script#{} name={debug_name:?} parameter_guards={parameter_guards:?} signature={signature:?}(",
                 function.get(),
             )?;
             write_script_arguments(formatter, arguments)?;

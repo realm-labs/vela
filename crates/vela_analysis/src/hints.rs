@@ -142,6 +142,7 @@ fn builtin_type_fact(name: &str) -> Option<TypeFact> {
         "Set" => Some(TypeFact::set(TypeFact::Unknown)),
         "Iterator" => Some(TypeFact::iterator(TypeFact::Unknown)),
         "Function" => Some(TypeFact::function(Vec::new(), TypeFact::Unknown)),
+        "Closure" => Some(TypeFact::Closure),
         "Option" => Some(TypeFact::option(TypeFact::Unknown)),
         "Result" => Some(TypeFact::result(TypeFact::Unknown, TypeFact::Unknown)),
         _ => None,
@@ -259,6 +260,10 @@ mod tests {
         assert_eq!(
             type_fact_from_path(&graph, &[HirTypeHint::UNIT_PATH.to_owned()]),
             TypeFact::UNIT
+        );
+        assert_eq!(
+            type_fact_from_path(&graph, &["Closure".to_owned()]),
+            TypeFact::Closure
         );
     }
 

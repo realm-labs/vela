@@ -46,6 +46,7 @@ pub enum TypeFact {
         params: Vec<TypeFact>,
         returns: Box<TypeFact>,
     },
+    Closure,
     Record {
         name: String,
     },
@@ -272,6 +273,7 @@ impl TypeFact {
                     .join(", ");
                 format!("Function({params}) -> {}", returns.display_name())
             }
+            Self::Closure => "Closure".to_owned(),
             Self::Record { name }
             | Self::Host { name }
             | Self::Trait { name }

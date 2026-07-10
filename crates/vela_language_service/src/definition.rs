@@ -303,6 +303,7 @@ impl LanguageServiceDatabases {
             | TypeFact::ResultOk { .. }
             | TypeFact::ResultErr { .. }
             | TypeFact::Function { .. }
+            | TypeFact::Closure
             | TypeFact::Tuple { .. }
             | TypeFact::Module { .. } => None,
         }

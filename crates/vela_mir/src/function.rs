@@ -604,10 +604,45 @@ impl MirFunction {
     }
 }
 
+/// Identity reserved for one generation-local MIR function slot.
+///
+/// Reservations let a parent body refer to a child lambda before either body
+/// has been completely lowered. Stable runtime indexes are installed when the
+/// slot is reserved, while [`MirProgram::function`] exposes only definitions.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MirFunctionReservation {
+    body: HirBodyId,
+    owner: MirFunctionOwner,
+    origin: MirSourceOrigin,
+}
+
+impl MirFunctionReservation {
+    #[must_use]
+    pub const fn body(&self) -> HirBodyId {
+        self.body
+    }
+
+    #[must_use]
+    pub const fn owner(&self) -> &MirFunctionOwner {
+        &self.owner
+    }
+
+    #[must_use]
+    pub const fn origin(&self) -> MirSourceOrigin {
+        self.origin
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct MirFunctionSlot {
+    reservation: MirFunctionReservation,
+    definition: Option<MirFunction>,
+}
+
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct MirProgram {
     targets: crate::MirTargetTable,
-    functions: Arena<MirFunctionId, MirFunction>,
+    functions: Arena<MirFunctionId, MirFunctionSlot>,
     functions_by_body: BTreeMap<HirBodyId, Vec<MirFunctionId>>,
     functions_by_id: BTreeMap<FunctionId, MirFunctionId>,
     methods_by_id: BTreeMap<(TypeId, MethodId), MirFunctionId>,
@@ -627,13 +662,20 @@ impl MirProgram {
         &self.targets
     }
 
-    pub fn add_function(&mut self, function: MirFunction) -> Result<MirFunctionId, MirBuildError> {
-        match &function.owner {
+    /// Reserves a deterministic generation-local function ID and installs all
+    /// stable body/function/method lookup indexes immediately.
+    pub fn reserve_function(
+        &mut self,
+        body: HirBodyId,
+        owner: MirFunctionOwner,
+        origin: MirSourceOrigin,
+    ) -> Result<MirFunctionId, MirBuildError> {
+        match &owner {
             MirFunctionOwner::Function(function_id) => {
                 if self.functions_by_id.contains_key(function_id) {
                     return Err(MirBuildError::DuplicateMirFunctionId {
                         function_id: *function_id,
-                        origin: function.origin,
+                        origin,
                     });
                 }
             }
@@ -641,7 +683,7 @@ impl MirProgram {
                 if self.functions_by_id.contains_key(&target.function) {
                     return Err(MirBuildError::DuplicateMirFunctionId {
                         function_id: target.function,
-                        origin: function.origin,
+                        origin,
                     });
                 }
                 if self
@@ -651,7 +693,7 @@ impl MirProgram {
                     return Err(MirBuildError::DuplicateMirMethodId {
                         owner: target.owner,
                         method_id: target.method,
-                        origin: function.origin,
+                        origin,
                     });
                 }
             }
@@ -659,14 +701,20 @@ impl MirProgram {
                 if self.functions.get(*parent).is_none() {
                     return Err(MirBuildError::MissingMirFunction {
                         function: *parent,
-                        origin: function.origin,
+                        origin,
                     });
                 }
             }
         }
-        let body = function.body;
-        let owner = function.owner.clone();
-        let id = self.functions.allocate(function);
+        let reservation = MirFunctionReservation {
+            body,
+            owner: owner.clone(),
+            origin,
+        };
+        let id = self.functions.allocate(MirFunctionSlot {
+            reservation,
+            definition: None,
+        });
         self.functions_by_body.entry(body).or_default().push(id);
         match owner {
             MirFunctionOwner::Function(function_id) => {
@@ -681,9 +729,60 @@ impl MirProgram {
         Ok(id)
     }
 
+    /// Defines a previously reserved function slot.
+    pub fn define_function(
+        &mut self,
+        reservation: MirFunctionId,
+        function: MirFunction,
+    ) -> Result<(), MirBuildError> {
+        let slot = self.functions.get_mut(reservation).ok_or(
+            MirBuildError::MissingMirFunctionReservation {
+                function: reservation,
+                origin: function.origin,
+            },
+        )?;
+        if slot.definition.is_some() {
+            return Err(MirBuildError::MirFunctionAlreadyDefined {
+                function: reservation,
+                origin: function.origin,
+            });
+        }
+        if slot.reservation.body != function.body {
+            return Err(MirBuildError::MirFunctionReservationBodyMismatch {
+                function: reservation,
+                expected: slot.reservation.body,
+                actual: function.body,
+                origin: function.origin,
+            });
+        }
+        if slot.reservation.owner != function.owner {
+            return Err(MirBuildError::MirFunctionReservationOwnerMismatch {
+                function: reservation,
+                expected: Box::new(slot.reservation.owner.clone()),
+                actual: Box::new(function.owner.clone()),
+                origin: function.origin,
+            });
+        }
+        slot.definition = Some(function);
+        Ok(())
+    }
+
+    /// Reserves and immediately defines a complete function.
+    pub fn add_function(&mut self, function: MirFunction) -> Result<MirFunctionId, MirBuildError> {
+        let reservation =
+            self.reserve_function(function.body, function.owner.clone(), function.origin)?;
+        self.define_function(reservation, function)?;
+        Ok(reservation)
+    }
+
     #[must_use]
     pub fn function(&self, function: MirFunctionId) -> Option<&MirFunction> {
-        self.functions.get(function)
+        self.functions.get(function)?.definition.as_ref()
+    }
+
+    #[must_use]
+    pub fn reservation(&self, function: MirFunctionId) -> Option<&MirFunctionReservation> {
+        self.functions.get(function).map(|slot| &slot.reservation)
     }
 
     #[must_use]
@@ -701,7 +800,33 @@ impl MirProgram {
     }
 
     pub fn functions(&self) -> impl Iterator<Item = (MirFunctionId, &MirFunction)> {
-        self.functions.iter()
+        self.functions
+            .iter()
+            .filter_map(|(id, slot)| slot.definition.as_ref().map(|function| (id, function)))
+    }
+
+    pub fn reservations(&self) -> impl Iterator<Item = (MirFunctionId, &MirFunctionReservation)> {
+        self.functions
+            .iter()
+            .map(|(id, slot)| (id, &slot.reservation))
+    }
+
+    pub fn undefined_reservations(
+        &self,
+    ) -> impl Iterator<Item = (MirFunctionId, &MirFunctionReservation)> {
+        self.functions
+            .iter()
+            .filter_map(|(id, slot)| slot.definition.is_none().then_some((id, &slot.reservation)))
+    }
+
+    #[must_use]
+    pub fn has_undefined_reservations(&self) -> bool {
+        self.undefined_reservations().next().is_some()
+    }
+
+    #[must_use]
+    pub fn defined_len(&self) -> usize {
+        self.functions().count()
     }
 
     #[must_use]
@@ -711,6 +836,8 @@ impl MirProgram {
 
     #[must_use]
     pub fn len(&self) -> usize {
+        // Reserved slots own generation-local IDs even before their bodies are
+        // complete, so program length intentionally counts reservations.
         self.functions.len()
     }
 }

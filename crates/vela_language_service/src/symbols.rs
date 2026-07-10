@@ -704,7 +704,7 @@ fn schema_type_symbol_kind(fact: &TypeFact) -> DocumentSymbolKind {
         } => DocumentSymbolKind::EnumMember,
         TypeFact::Trait { .. } => DocumentSymbolKind::Interface,
         TypeFact::Module { .. } => DocumentSymbolKind::Module,
-        TypeFact::Function { .. } => DocumentSymbolKind::Function,
+        TypeFact::Function { .. } | TypeFact::Closure => DocumentSymbolKind::Function,
         TypeFact::Unknown
         | TypeFact::Never
         | TypeFact::Any

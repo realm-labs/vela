@@ -1,5 +1,10 @@
 use std::collections::HashMap;
 
+use vela_analysis::contracts::{
+    ContractActual, ExpectedContractContext, ExpectedContractOutcome, check_expected_contract,
+};
+use vela_analysis::literals::NumericLiteralKind;
+use vela_analysis::type_fact::TypeFact;
 use vela_common::{PrimitiveTag, Span};
 use vela_hir::ids::HirLocalId;
 use vela_hir::type_hint::HirTypeHint;
@@ -40,23 +45,7 @@ pub(super) enum ExpectedTypeOutcome {
     RequiresRuntimeGuard(TypeRef),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub(super) enum TypeContractContext {
-    FunctionParameter {
-        name: String,
-    },
-    NativeParameter {
-        function: String,
-        name: String,
-        index: u16,
-    },
-    TypedLet {
-        name: String,
-    },
-    Field {
-        name: String,
-    },
-}
+pub(super) type TypeContractContext = ExpectedContractContext;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum StandardRuntimeType {
@@ -320,188 +309,69 @@ pub(super) fn check_expected_type(
     span: Span,
     context: TypeContractContext,
 ) -> super::CompileResult<ExpectedTypeOutcome> {
-    match actual {
-        StaticExprType::Exact(actual) if actual == expected => Ok(ExpectedTypeOutcome::Proven),
-        StaticExprType::Exact(actual) if accepts_erased_or_parameterized(&actual, &expected) => {
-            Ok(ExpectedTypeOutcome::Proven)
+    let actual = contract_actual(actual);
+    let expected_fact = contract_type_fact(&expected);
+    match check_expected_contract(actual, expected_fact, context) {
+        Ok(ExpectedContractOutcome::Proven) => Ok(ExpectedTypeOutcome::Proven),
+        Ok(ExpectedContractOutcome::Contextualized(_)) => {
+            Ok(ExpectedTypeOutcome::Contextualized(expected))
         }
-        StaticExprType::Exact(actual)
-            if erased_outer_matches_parameterized(&actual, &expected)
-                || parameterized_outer_matches_erased(&actual, &expected) =>
-        {
+        Ok(ExpectedContractOutcome::RequiresRuntimeGuard(_)) => {
             Ok(ExpectedTypeOutcome::RequiresRuntimeGuard(expected))
         }
-        StaticExprType::Exact(actual) => Err(type_contract_mismatch(
-            expected,
-            ActualContractType::Exact(actual),
-            span,
-            context,
+        Err(mismatch) => Err(super::CompileError::new(
+            super::CompileErrorKind::SemanticDiagnostics(vec![mismatch.to_diagnostic(span)]),
         )),
-        StaticExprType::UnsuffixedIntegerLiteral
-            if expected_primitive_tag(&expected).is_some_and(is_integer_tag) =>
-        {
-            Ok(ExpectedTypeOutcome::Contextualized(expected))
-        }
-        StaticExprType::UnsuffixedIntegerLiteral => Err(type_contract_mismatch(
-            expected,
-            ActualContractType::UnsuffixedIntegerLiteral,
-            span,
-            context,
-        )),
-        StaticExprType::UnsuffixedFloatLiteral
-            if expected_primitive_tag(&expected).is_some_and(is_float_tag) =>
-        {
-            Ok(ExpectedTypeOutcome::Contextualized(expected))
-        }
-        StaticExprType::UnsuffixedFloatLiteral => Err(type_contract_mismatch(
-            expected,
-            ActualContractType::UnsuffixedFloatLiteral,
-            span,
-            context,
-        )),
-        StaticExprType::Dynamic => Ok(ExpectedTypeOutcome::RequiresRuntimeGuard(expected)),
     }
 }
 
-fn expected_primitive_tag(expected: &RuntimeTypeFact) -> Option<PrimitiveTag> {
-    match expected {
-        RuntimeTypeFact::Primitive(tag) => Some(*tag),
-        RuntimeTypeFact::Standard(_)
-        | RuntimeTypeFact::Array(_)
-        | RuntimeTypeFact::Map { .. }
-        | RuntimeTypeFact::Set(_)
-        | RuntimeTypeFact::Iterator(_)
-        | RuntimeTypeFact::Tuple(_)
-        | RuntimeTypeFact::Option(_)
-        | RuntimeTypeFact::Result { .. } => None,
+fn contract_actual(actual: StaticExprType) -> ContractActual {
+    match actual {
+        StaticExprType::Exact(actual) => ContractActual::Exact(contract_type_fact(&actual)),
+        StaticExprType::UnsuffixedIntegerLiteral => {
+            ContractActual::DeferredNumeric(NumericLiteralKind::Integer)
+        }
+        StaticExprType::UnsuffixedFloatLiteral => {
+            ContractActual::DeferredNumeric(NumericLiteralKind::Float)
+        }
+        StaticExprType::Dynamic => ContractActual::Dynamic,
     }
 }
 
-fn is_integer_tag(tag: PrimitiveTag) -> bool {
-    vela_analysis::literals::NumericLiteralKind::Integer.accepts_primitive(tag)
-}
-
-fn is_float_tag(tag: PrimitiveTag) -> bool {
-    vela_analysis::literals::NumericLiteralKind::Float.accepts_primitive(tag)
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-enum ActualContractType {
-    Exact(RuntimeTypeFact),
-    UnsuffixedIntegerLiteral,
-    UnsuffixedFloatLiteral,
-}
-
-fn type_contract_mismatch(
-    expected: RuntimeTypeFact,
-    actual: ActualContractType,
-    span: Span,
-    context: TypeContractContext,
-) -> super::CompileError {
-    super::CompileError::new(super::CompileErrorKind::SemanticDiagnostics(vec![
-        vela_common::Diagnostic::error(format!(
-            "type contract mismatch for {}",
-            context.description()
-        ))
-        .with_code("compiler::type_contract_mismatch")
-        .with_span(span)
-        .with_label(
-            span,
-            format!(
-                "expected `{}`, found {}",
-                expected.source_type_display(),
-                actual.description()
-            ),
-        ),
-    ]))
-}
-
-impl TypeContractContext {
-    fn description(&self) -> String {
-        match self {
-            Self::FunctionParameter { name } => format!("parameter `{name}`"),
-            Self::NativeParameter { function, name, .. } => {
-                format!("native parameter `{function}::{name}`")
-            }
-            Self::TypedLet { name } => format!("typed local `{name}`"),
-            Self::Field { name } => format!("field `{name}`"),
+fn contract_type_fact(ty: &RuntimeTypeFact) -> TypeFact {
+    match ty {
+        RuntimeTypeFact::Primitive(tag) => TypeFact::primitive(*tag),
+        RuntimeTypeFact::Standard(StandardRuntimeType::Array) => TypeFact::array(TypeFact::Unknown),
+        RuntimeTypeFact::Standard(StandardRuntimeType::Map) => {
+            TypeFact::map(TypeFact::Unknown, TypeFact::Unknown)
+        }
+        RuntimeTypeFact::Standard(StandardRuntimeType::Set) => TypeFact::set(TypeFact::Unknown),
+        RuntimeTypeFact::Standard(StandardRuntimeType::Range) => TypeFact::Range,
+        RuntimeTypeFact::Standard(StandardRuntimeType::Function) => {
+            TypeFact::function(Vec::new(), TypeFact::Unknown)
+        }
+        RuntimeTypeFact::Standard(StandardRuntimeType::Closure) => TypeFact::Closure,
+        RuntimeTypeFact::Standard(StandardRuntimeType::Iterator) => {
+            TypeFact::iterator(TypeFact::Unknown)
+        }
+        RuntimeTypeFact::Standard(StandardRuntimeType::Option) => {
+            TypeFact::option(TypeFact::Unknown)
+        }
+        RuntimeTypeFact::Standard(StandardRuntimeType::Result) => {
+            TypeFact::result(TypeFact::Unknown, TypeFact::Unknown)
+        }
+        RuntimeTypeFact::Array(element) => TypeFact::array(contract_type_fact(element)),
+        RuntimeTypeFact::Map { key, value } => {
+            TypeFact::map(contract_type_fact(key), contract_type_fact(value))
+        }
+        RuntimeTypeFact::Set(element) => TypeFact::set(contract_type_fact(element)),
+        RuntimeTypeFact::Iterator(item) => TypeFact::iterator(contract_type_fact(item)),
+        RuntimeTypeFact::Tuple(elements) => {
+            TypeFact::tuple(elements.iter().map(contract_type_fact))
+        }
+        RuntimeTypeFact::Option(payload) => TypeFact::option(contract_type_fact(payload)),
+        RuntimeTypeFact::Result { ok, err } => {
+            TypeFact::result(contract_type_fact(ok), contract_type_fact(err))
         }
     }
-}
-
-impl ActualContractType {
-    fn description(&self) -> String {
-        match self {
-            Self::Exact(actual) => format!("`{}`", actual.source_type_display()),
-            Self::UnsuffixedIntegerLiteral => "unsuffixed integer literal".to_owned(),
-            Self::UnsuffixedFloatLiteral => "unsuffixed float literal".to_owned(),
-        }
-    }
-}
-
-fn accepts_erased_or_parameterized(actual: &RuntimeTypeFact, expected: &RuntimeTypeFact) -> bool {
-    parameterized_outer_matches_erased(actual, expected)
-        || matches!(
-            (actual, expected),
-            (
-                RuntimeTypeFact::Standard(StandardRuntimeType::Closure),
-                RuntimeTypeFact::Standard(StandardRuntimeType::Function)
-            ) | (
-                RuntimeTypeFact::Option(_),
-                RuntimeTypeFact::Standard(StandardRuntimeType::Option)
-            ) | (
-                RuntimeTypeFact::Result { .. },
-                RuntimeTypeFact::Standard(StandardRuntimeType::Result)
-            )
-        )
-}
-
-fn erased_outer_matches_parameterized(
-    actual: &RuntimeTypeFact,
-    expected: &RuntimeTypeFact,
-) -> bool {
-    matches!(
-        (actual, expected),
-        (
-            RuntimeTypeFact::Standard(StandardRuntimeType::Array),
-            RuntimeTypeFact::Array(_)
-        ) | (
-            RuntimeTypeFact::Standard(StandardRuntimeType::Map),
-            RuntimeTypeFact::Map { .. }
-        ) | (
-            RuntimeTypeFact::Standard(StandardRuntimeType::Set),
-            RuntimeTypeFact::Set(_)
-        ) | (
-            RuntimeTypeFact::Standard(StandardRuntimeType::Iterator),
-            RuntimeTypeFact::Iterator(_)
-        ) | (
-            RuntimeTypeFact::Standard(StandardRuntimeType::Option),
-            RuntimeTypeFact::Option(_)
-        ) | (
-            RuntimeTypeFact::Standard(StandardRuntimeType::Result),
-            RuntimeTypeFact::Result { .. }
-        )
-    )
-}
-
-fn parameterized_outer_matches_erased(
-    actual: &RuntimeTypeFact,
-    expected: &RuntimeTypeFact,
-) -> bool {
-    matches!(
-        (actual, expected),
-        (
-            RuntimeTypeFact::Array(_),
-            RuntimeTypeFact::Standard(StandardRuntimeType::Array)
-        ) | (
-            RuntimeTypeFact::Map { .. },
-            RuntimeTypeFact::Standard(StandardRuntimeType::Map)
-        ) | (
-            RuntimeTypeFact::Set(_),
-            RuntimeTypeFact::Standard(StandardRuntimeType::Set)
-        ) | (
-            RuntimeTypeFact::Iterator(_),
-            RuntimeTypeFact::Standard(StandardRuntimeType::Iterator)
-        )
-    )
 }

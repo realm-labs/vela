@@ -1001,6 +1001,7 @@ fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
         | TypeFact::ResultOk { .. }
         | TypeFact::ResultErr { .. }
         | TypeFact::Function { .. }
+        | TypeFact::Closure
         | TypeFact::Enum { .. }
         | TypeFact::Host { .. }
         | TypeFact::Trait { .. }
@@ -1040,6 +1041,7 @@ fn collect_trait_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
         | TypeFact::ResultOk { .. }
         | TypeFact::ResultErr { .. }
         | TypeFact::Function { .. }
+        | TypeFact::Closure
         | TypeFact::Enum { .. }
         | TypeFact::Host { .. }
         | TypeFact::Record { .. }

@@ -374,6 +374,7 @@ fn is_stable_type_fact(fact: &TypeFact) -> bool {
         }
         TypeFact::Primitive(_)
         | TypeFact::Range
+        | TypeFact::Closure
         | TypeFact::OptionNone
         | TypeFact::Record { .. }
         | TypeFact::Enum { .. }
