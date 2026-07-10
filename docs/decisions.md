@@ -204,6 +204,15 @@ analysis facts only; it must not parse source or repair missing semantic facts.
 The execution plans are [heavy-hir-hard-switch-plan.md](heavy-hir-hard-switch-plan.md)
 and [mir-lowering-jit-foundation-plan.md](mir-lowering-jit-foundation-plan.md).
 
+Production executable analysis is total within each selected stable function's
+runtime body closure, including nested lambdas and parameter-default bodies.
+Every owned expression, local, parameter, self binding, and pattern has an
+explicit type fact; unresolved values use `TypeFact::Unknown`, and every owned
+expression has an explicit effect fact. An absent executable fact means the HIR
+identity is outside that function generation, not that analysis silently
+failed. Unknown placeholders are added only after inference reaches its fixed
+point so they cannot suppress callback, pattern, or local-flow refinement.
+
 MIR v1 is a generation-local non-SSA IR with mutable script/synthetic locals
 and single-assignment temporaries. Branch joins use synthetic mutable locals;
 MIR v1 does not add phi nodes, block parameters, or Rust-style move/borrow
