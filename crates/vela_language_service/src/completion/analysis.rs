@@ -272,10 +272,9 @@ fn expected_call_argument(
         return (None, None);
     };
     let callables = if let Some(receiver) = call.member_receiver() {
-        let method = call
-            .callee()
-            .rsplit_once('.')
-            .map_or(call.callee(), |(_, method)| method);
+        let Some(method) = call.member_method() else {
+            return (None, None);
+        };
         query.member_callable_facts(databases, receiver, method, call.args_prefix())
     } else {
         query.callable_facts(databases, call.callee())

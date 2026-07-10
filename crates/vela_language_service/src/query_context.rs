@@ -28,6 +28,7 @@ pub struct CallArgumentFacts<'a> {
     args_prefix: &'a str,
     active_parameter: usize,
     member_receiver: Option<TextRange>,
+    member_method: Option<&'a str>,
 }
 
 impl<'a> CallArgumentFacts<'a> {
@@ -59,6 +60,11 @@ impl<'a> CallArgumentFacts<'a> {
     #[must_use]
     pub const fn member_receiver(&self) -> Option<TextRange> {
         self.member_receiver
+    }
+
+    #[must_use]
+    pub const fn member_method(&self) -> Option<&'a str> {
+        self.member_method
     }
 }
 
@@ -312,13 +318,16 @@ impl<'a> QueryContext<'a> {
         let args_prefix = self
             .text()
             .get(call_open_offset + 1..self.cursor.replace_range().end)?;
+        let member_receiver = self.call_member_receiver_range();
+        let member_method = member_receiver.and_then(|_| self.hir_member_method(callee_range));
         Some(CallArgumentFacts {
             callee_range,
             callee,
             call_open_offset,
             args_prefix,
             active_parameter: active_call_parameter_index(args_prefix),
-            member_receiver: self.call_member_receiver_range(),
+            member_receiver,
+            member_method,
         })
     }
 
@@ -368,8 +377,27 @@ impl<'a> QueryContext<'a> {
     }
 }
 
+impl<'a> QueryContext<'a> {
+    fn hir_member_method(&self, callee_range: TextRange) -> Option<&'a str> {
+        let body = self.body?;
+        let source_id = self.source_id()?;
+        let span = span_for_text_range(source_id, callee_range)?;
+        body.expressions
+            .values()
+            .find(|expression| expression.origin.span == span)
+            .and_then(|expression| body.fields.get(&expression.id))
+            .map(|field| field.name.as_str())
+    }
+}
+
 fn text_range(text: &str, range: TextRange) -> Option<&str> {
     text.get(range.start..range.end)
+}
+
+fn span_for_text_range(source_id: SourceId, range: TextRange) -> Option<Span> {
+    let start = u32::try_from(range.start).ok()?;
+    let end = u32::try_from(range.end).ok()?;
+    Some(Span::new(source_id, start, end))
 }
 
 fn active_call_parameter_index(args_text: &str) -> usize {
@@ -649,6 +677,7 @@ mod tests {
         assert_eq!(call_facts.args_prefix(), "c");
         assert_eq!(call_facts.active_parameter(), 0);
         assert_eq!(call_facts.member_receiver(), None);
+        assert_eq!(call_facts.member_method(), None);
 
         let method_call_offset =
             source.find("filter(player").expect("method call") + "filter(".len();
@@ -687,6 +716,7 @@ mod tests {
             .call_argument_facts()
             .expect("method call facts");
         assert_eq!(method_call_facts.callee(), "scores.filter");
+        assert_eq!(method_call_facts.member_method(), Some("filter"));
         assert_eq!(method_call_facts.args_prefix(), "");
         assert_eq!(method_call_facts.active_parameter(), 0);
         assert_eq!(
@@ -923,16 +953,14 @@ mod tests {
         let source_call = source_context
             .call_argument_facts()
             .expect("source method call facts");
-        let (_, source_method) = source_call
-            .callee()
-            .rsplit_once('.')
-            .expect("source method callee");
         let source_callables = source_context.member_callable_facts(
             &databases,
             source_call
                 .member_receiver()
                 .expect("source method receiver"),
-            source_method,
+            source_call
+                .member_method()
+                .expect("source method member name"),
             source_call.args_prefix(),
         );
         let source_callable = source_callables
@@ -955,16 +983,14 @@ mod tests {
         let schema_call = schema_context
             .call_argument_facts()
             .expect("schema method call facts");
-        let (_, schema_method) = schema_call
-            .callee()
-            .rsplit_once('.')
-            .expect("schema method callee");
         let schema_callables = schema_context.member_callable_facts(
             &databases,
             schema_call
                 .member_receiver()
                 .expect("schema method receiver"),
-            schema_method,
+            schema_call
+                .member_method()
+                .expect("schema method member name"),
             schema_call.args_prefix(),
         );
         let schema_callable = schema_callables
@@ -982,16 +1008,14 @@ mod tests {
         let stdlib_call = stdlib_context
             .call_argument_facts()
             .expect("stdlib method call facts");
-        let (_, stdlib_method) = stdlib_call
-            .callee()
-            .rsplit_once('.')
-            .expect("stdlib method callee");
         let stdlib_callables = stdlib_context.member_callable_facts(
             &databases,
             stdlib_call
                 .member_receiver()
                 .expect("stdlib method receiver"),
-            stdlib_method,
+            stdlib_call
+                .member_method()
+                .expect("stdlib method member name"),
             stdlib_call.args_prefix(),
         );
         let stdlib_callable = stdlib_callables
@@ -1037,11 +1061,10 @@ mod tests {
         let call = context
             .call_argument_facts()
             .expect("schema method call facts");
-        let (_, method) = call.callee().rsplit_once('.').expect("member call");
         let callables = context.member_callable_facts(
             &databases,
             call.member_receiver().expect("schema method receiver"),
-            method,
+            call.member_method().expect("schema method member name"),
             call.args_prefix(),
         );
         let callable = callables

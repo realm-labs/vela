@@ -1704,7 +1704,11 @@ callable parameter facts, stable `TypeFact`s, `Any`/unknown suppression, and
   host-field assignment checks now read HIR index/field receiver facts instead
   of reconstructing those receivers from syntax. Ordinary index assignment and
   indexed record-field assignment lowering now read receiver and subscript
-  operands from HIR index facts instead of index syntax.
+  operands from HIR index facts instead of index syntax. Language-service
+  expression-fact traversal now reads complete field, call, and index operands
+  from HIR facts, with only generic child-expression recovery for incomplete
+  edits. Call-argument completion and signature contexts now read member method
+  names from HIR field facts instead of splitting callee text.
 
 ### Remaining Gaps
 

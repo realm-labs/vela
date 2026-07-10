@@ -378,30 +378,45 @@ impl ExpressionFactCollector<'_> {
                 }
             }
             SyntaxExpressionKind::Field => {
-                if let Some(base) = expr.as_field().and_then(|expr| expr.receiver()) {
+                if let Some(base) = self
+                    .hir_field_for_expression(expr)
+                    .and_then(|field| self.syntax_expr_for_hir_expression(expr, field.receiver))
+                {
                     self.collect_expr(&base, scope);
+                } else {
+                    self.collect_syntax_child_exprs(expr, scope);
                 }
             }
             SyntaxExpressionKind::Call => {
                 if let Some(call) = expr.as_call() {
-                    if let Some(callee) = call.callee() {
+                    if let Some(callee) = self
+                        .hir_callee_for_call(expr)
+                        .and_then(|callee| self.syntax_expr_for_hir_expression(expr, callee))
+                    {
                         self.collect_expr(&callee, scope);
-                    }
-                    for arg in call.arguments() {
-                        if let Some(value) = arg.expression() {
-                            self.collect_expr(&value, scope);
+                        for arg in call.arguments() {
+                            if let Some(value) = arg.expression() {
+                                self.collect_expr(&value, scope);
+                            }
                         }
+                    } else {
+                        self.collect_syntax_child_exprs(expr, scope);
                     }
                 }
             }
             SyntaxExpressionKind::Index => {
-                if let Some(expr) = expr.as_index() {
-                    if let Some(base) = expr.receiver() {
+                if let Some((receiver, index)) = self
+                    .hir_index_for_expr(expr)
+                    .map(|index| (index.receiver, index.index))
+                {
+                    if let Some(base) = self.syntax_expr_for_hir_expression(expr, receiver) {
                         self.collect_expr(&base, scope);
                     }
-                    if let Some(index) = expr.index() {
+                    if let Some(index) = self.syntax_expr_for_hir_expression(expr, index) {
                         self.collect_expr(&index, scope);
                     }
+                } else {
+                    self.collect_syntax_child_exprs(expr, scope);
                 }
             }
             SyntaxExpressionKind::Array => {
@@ -618,9 +633,10 @@ impl ExpressionFactCollector<'_> {
                 .unwrap_or(TypeFact::Unknown),
             SyntaxExpressionKind::Index => expr
                 .as_index()
-                .and_then(|expr| {
-                    let base = expr.receiver()?;
-                    let index = expr.index()?;
+                .and_then(|_| {
+                    let index = self.hir_index_for_expr(expr)?;
+                    let base = self.syntax_expr_for_hir_expression(expr, index.receiver)?;
+                    let index = self.syntax_expr_for_hir_expression(expr, index.index)?;
                     Some(index_fact(
                         self.type_fact_from_expr(&base, scope),
                         self.type_fact_from_expr(&index, scope),
@@ -1001,6 +1017,11 @@ impl ExpressionFactCollector<'_> {
         self.graph.call_callee(call)
     }
 
+    fn hir_index_for_expr(&self, expr: &SyntaxExpression) -> Option<&vela_hir::body::HirIndex> {
+        let expression = self.hir_expression(expr)?;
+        self.graph.index_for_expression(expression)
+    }
+
     fn hir_field_for_expression(
         &self,
         expr: &SyntaxExpression,
@@ -1032,6 +1053,38 @@ impl ExpressionFactCollector<'_> {
 
     fn hir_expression(&self, expr: &SyntaxExpression) -> Option<HirExprId> {
         self.graph.expression_at_span(self.syntax_expr_span(expr)?)
+    }
+
+    fn syntax_expr_for_hir_expression(
+        &self,
+        root: &SyntaxExpression,
+        expression: HirExprId,
+    ) -> Option<SyntaxExpression> {
+        let span = self.graph.expression_span(expression)?;
+        self.syntax_expr_at_span(root, span)
+    }
+
+    fn syntax_expr_at_span(&self, root: &SyntaxExpression, span: Span) -> Option<SyntaxExpression> {
+        if span.source != self.source {
+            return None;
+        }
+        root.syntax()
+            .descendants()
+            .filter_map(SyntaxExpression::cast)
+            .find(|expr| self.syntax_expr_span(expr) == Some(span))
+    }
+
+    fn collect_syntax_child_exprs(&mut self, root: &SyntaxExpression, scope: &mut ExprFactScope) {
+        let root_range = root.syntax().text_range();
+        for child in root
+            .syntax()
+            .descendants()
+            .filter_map(SyntaxExpression::cast)
+        {
+            if child.syntax().text_range() != root_range {
+                self.collect_expr(&child, scope);
+            }
+        }
     }
 
     fn syntax_expr_span(&self, expr: &SyntaxExpression) -> Option<Span> {

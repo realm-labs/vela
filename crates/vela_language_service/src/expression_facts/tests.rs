@@ -141,6 +141,35 @@ fn expression_facts_include_tuple_projection_fields() {
 }
 
 #[test]
+fn expression_facts_use_hir_index_operands_for_field_receivers() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let source = r#"pub fn main() {
+            let pairs = [("Ada", 1)]
+            pairs[0].1
+        }"#;
+    let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project);
+    let source_id = databases
+        .source_db()
+        .records()
+        .get(&document)
+        .expect("document source record should exist")
+        .source_id();
+
+    assert_eq!(
+        fact_for_range(
+            &databases,
+            source_id,
+            range_for_nth(source, "pairs[0].1", 1)
+        ),
+        Some(TypeFact::I64)
+    );
+}
+
+#[test]
 fn expression_facts_use_hir_paths_for_record_constructors_and_calls() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let source = r#"struct Reward {

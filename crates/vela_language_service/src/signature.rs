@@ -84,6 +84,7 @@ impl SignatureParameter {
 struct CallContext {
     callee: String,
     member_receiver: Option<TextRange>,
+    member_method: Option<String>,
     args_prefix: String,
     active_parameter: usize,
 }
@@ -175,10 +176,7 @@ impl LanguageServiceDatabases {
         source_id: SourceId,
         context: &CallContext,
     ) -> Option<Vec<SignatureInformation>> {
-        let (_receiver, method) = context.callee.rsplit_once('.')?;
-        if method.is_empty() {
-            return None;
-        }
+        let method = context.member_method.as_deref()?;
         let receiver_range = context.member_receiver?;
         let callables = member_callable_facts(
             self,
@@ -197,6 +195,7 @@ fn call_context_from_query(query: &QueryContext<'_>) -> Option<CallContext> {
     Some(CallContext {
         callee: call.callee().to_owned(),
         member_receiver: call.member_receiver(),
+        member_method: call.member_method().map(str::to_owned),
         active_parameter: call.active_parameter(),
         args_prefix: call.args_prefix().to_owned(),
     })
