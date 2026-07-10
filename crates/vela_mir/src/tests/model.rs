@@ -719,7 +719,7 @@ fn mir_model_snapshot_owns_method_signatures_and_guard_contracts() {
             fact_origin,
         )
         .expect("global descriptor should be unique by declaration and stable ID");
-    let snapshot = snapshot.build();
+    let snapshot = snapshot.build_unchecked();
 
     assert_eq!(
         snapshot.method_descriptor(descriptor.owner, method),
@@ -909,7 +909,10 @@ fn mir_model_materializes_heap_constants_at_explicit_safepoints() {
         })
     );
     assert_eq!(
-        snapshot.build().evaluated_constant(declaration),
+        snapshot
+            .build()
+            .expect("standalone evaluated constant snapshot should validate")
+            .evaluated_constant(declaration),
         Some(&evaluated)
     );
 }
@@ -974,7 +977,7 @@ fn mir_model_owns_distinct_schema_defaults_and_resolved_constructor_slots() {
             origin,
         )
         .expect("variant constructor placement should be unique");
-    let snapshot = snapshot.build();
+    let snapshot = snapshot.build_unchecked();
 
     assert_eq!(
         snapshot.evaluated_schema_default(first_default),

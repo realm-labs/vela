@@ -345,7 +345,12 @@ impl CompileTargetSnapshotBuilder {
             target,
             CompileTargetKind::Call,
             origin,
-        )
+        )?;
+        self.snapshot
+            .origins
+            .calls
+            .insert((function, expression), origin);
+        Ok(())
     }
 
     pub fn insert_member(
@@ -362,7 +367,12 @@ impl CompileTargetSnapshotBuilder {
             target,
             CompileTargetKind::Member,
             origin,
-        )
+        )?;
+        self.snapshot
+            .origins
+            .members
+            .insert((function, expression), origin);
+        Ok(())
     }
 
     pub fn insert_constructor(
@@ -379,7 +389,12 @@ impl CompileTargetSnapshotBuilder {
             target,
             CompileTargetKind::Constructor,
             origin,
-        )
+        )?;
+        self.snapshot
+            .origins
+            .constructors
+            .insert((function, expression), origin);
+        Ok(())
     }
 
     pub fn insert_pattern_constructor(
@@ -396,6 +411,10 @@ impl CompileTargetSnapshotBuilder {
         {
             Entry::Vacant(entry) => {
                 entry.insert(target);
+                self.snapshot
+                    .origins
+                    .pattern_constructors
+                    .insert((function, pattern), origin);
                 Ok(())
             }
             Entry::Occupied(_) => Err(MirBuildError::DuplicatePatternConstructor {
@@ -420,7 +439,12 @@ impl CompileTargetSnapshotBuilder {
             target,
             CompileTargetKind::HostPath,
             origin,
-        )
+        )?;
+        self.snapshot
+            .origins
+            .host_paths
+            .insert((function, expression), origin);
+        Ok(())
     }
 
     pub fn insert_guard(
@@ -432,6 +456,7 @@ impl CompileTargetSnapshotBuilder {
         match self.snapshot.guards.entry(key) {
             Entry::Vacant(entry) => {
                 entry.insert(guard);
+                self.snapshot.origins.guards.insert(key, origin);
                 Ok(())
             }
             Entry::Occupied(_) => Err(MirBuildError::DuplicateGuardTarget { key, origin }),

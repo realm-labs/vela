@@ -94,6 +94,10 @@ impl CompileTargetSnapshotBuilder {
         self.snapshot
             .functions_by_declaration
             .insert(declaration, function);
+        self.snapshot
+            .origins
+            .function_declarations
+            .insert(declaration, origin);
         Ok(())
     }
 
@@ -146,6 +150,7 @@ impl CompileTargetSnapshotBuilder {
             ));
         }
         methods.push(target);
+        self.snapshot.origins.method_targets.insert(target, origin);
         Ok(())
     }
 
@@ -170,6 +175,10 @@ impl CompileTargetSnapshotBuilder {
         self.snapshot
             .types_by_declaration
             .insert(declaration, type_id);
+        self.snapshot
+            .origins
+            .type_declarations
+            .insert(declaration, origin);
         Ok(())
     }
 }

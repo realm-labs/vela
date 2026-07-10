@@ -27,7 +27,11 @@ fn compile_targets_retain_opaque_external_dispatch_owners() {
         .expect("opaque external owner descriptor should be retained");
 
     assert_eq!(
-        snapshot.build().type_descriptor(owner).map(|ty| ty.class),
+        snapshot
+            .build()
+            .expect("opaque schema-only snapshot should validate")
+            .type_descriptor(owner)
+            .map(|ty| ty.class),
         Some(CompileTypeClass::OpaqueExternal)
     );
 }
@@ -121,7 +125,7 @@ fn mir_model_compile_targets_select_behavior_intrinsics_without_names() {
             .insert_call(function, *expression, target.clone(), origin)
             .expect("intrinsic call target should be unique");
     }
-    let snapshot = snapshot.build();
+    let snapshot = snapshot.build_unchecked();
 
     assert_eq!(snapshot.call(function, expressions[0].0), Some(&reflection));
     assert_eq!(snapshot.call(function, expressions[1].0), Some(&set));
@@ -203,7 +207,7 @@ fn executable_placements_are_scoped_by_stable_function_identity() {
             origin,
         )
         .expect("the second expression guard should not collide across functions");
-    let snapshot = snapshot.build();
+    let snapshot = snapshot.build_unchecked();
 
     assert_eq!(snapshot.call(first_function, expression), Some(&first_call));
     assert_eq!(
@@ -342,7 +346,7 @@ fn mir_model_compile_snapshot_owns_source_identity_and_diagnostic_origins() {
     snapshot
         .insert_script_method_target(shared_default_method, origin)
         .expect("one trait default node may instantiate for another receiver owner");
-    let snapshot = snapshot.build();
+    let snapshot = snapshot.build_unchecked();
 
     assert_eq!(
         snapshot.function_for_declaration(function_declaration),
@@ -496,7 +500,7 @@ fn mir_model_target_access_is_complete_and_registry_independent() {
             origin,
         )
         .expect("field access should be copied into its target descriptor");
-    let targets = targets.build();
+    let targets = targets.build_unchecked();
 
     assert_eq!(
         targets
@@ -705,7 +709,7 @@ fn mir_model_constant_host_path_segments_retain_complete_index_capabilities() {
     targets
         .insert_host_path(function, path_expression, compile_path, origin)
         .expect("constant host path target should be unique");
-    let targets = targets.build();
+    let targets = targets.build_unchecked();
     let retained = targets
         .host_path(function, path_expression)
         .expect("constant host path should remain in the immutable snapshot");

@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, btree_map::Entry};
 use std::error::Error;
 use std::fmt;
 
-use vela_analysis::facts::AnalysisFacts;
+use vela_analysis::executable::ExecutableAnalysisView;
 use vela_def::{FieldId, FunctionId, GlobalId, MethodId, TypeId, VariantId};
 use vela_hir::body::HirBodyOwner;
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId, HirPatternId};
@@ -18,7 +18,11 @@ use crate::{
 mod calls;
 mod host;
 mod identity;
+mod origins;
 mod placements;
+mod validation;
+
+use origins::CompileTargetOrigins;
 
 pub use calls::{
     CompileCallArguments, CompileCallTarget, CompileCalleeTarget, CompileDynamicCallArgument,
@@ -142,6 +146,7 @@ pub struct CompileTargetSnapshot {
     evaluated_schema_defaults: BTreeMap<HirBodyId, MirEvaluatedConstant>,
     targets: MirTargetTable,
     guards: BTreeMap<CompileGuardKey, CompileGuardTarget>,
+    origins: CompileTargetOrigins,
 }
 
 impl CompileTargetSnapshot {
@@ -241,6 +246,7 @@ impl CompileTargetSnapshotBuilder {
                     .entry(body)
                     .or_default()
                     .push(function);
+                self.snapshot.origins.roots.insert(function, origin);
                 Ok(())
             }
             Entry::Occupied(_) => Err(MirBuildError::DuplicateFunctionTarget { function, origin }),
@@ -262,7 +268,15 @@ impl CompileTargetSnapshotBuilder {
         if !self.snapshot.targets.insert_global(target.clone()) {
             return Err(duplicate_descriptor("global", target.id.get(), origin));
         }
+        self.snapshot
+            .origins
+            .global_descriptors
+            .insert(target.id, origin);
         self.snapshot.globals.insert(declaration, target.id);
+        self.snapshot
+            .origins
+            .global_bindings
+            .insert(declaration, origin);
         Ok(())
     }
 
@@ -275,6 +289,10 @@ impl CompileTargetSnapshotBuilder {
         match self.snapshot.evaluated_constants.entry(declaration) {
             Entry::Vacant(entry) => {
                 entry.insert(value);
+                self.snapshot
+                    .origins
+                    .evaluated_constants
+                    .insert(declaration, origin);
                 Ok(())
             }
             Entry::Occupied(_) => Err(MirBuildError::DuplicateEvaluatedConstant {
@@ -293,6 +311,10 @@ impl CompileTargetSnapshotBuilder {
         match self.snapshot.evaluated_schema_defaults.entry(body) {
             Entry::Vacant(entry) => {
                 entry.insert(value);
+                self.snapshot
+                    .origins
+                    .evaluated_schema_defaults
+                    .insert(body, origin);
                 Ok(())
             }
             Entry::Occupied(_) => {
@@ -308,6 +330,10 @@ impl CompileTargetSnapshotBuilder {
     ) -> Result<(), MirBuildError> {
         let id = descriptor.id;
         if self.snapshot.targets.insert_function(descriptor) {
+            self.snapshot
+                .origins
+                .function_descriptors
+                .insert(id, origin);
             Ok(())
         } else {
             Err(duplicate_descriptor("function", id.get(), origin))
@@ -322,6 +348,10 @@ impl CompileTargetSnapshotBuilder {
         let id = descriptor.id;
         let owner = descriptor.owner;
         if self.snapshot.targets.insert_method(descriptor) {
+            self.snapshot
+                .origins
+                .method_descriptors
+                .insert((owner, id), origin);
             Ok(())
         } else {
             Err(MirBuildError::InconsistentInput {
@@ -355,6 +385,7 @@ impl CompileTargetSnapshotBuilder {
         }
         if self.snapshot.targets.insert_type(descriptor) {
             self.snapshot.types_by_name.insert(canonical_name, id);
+            self.snapshot.origins.type_descriptors.insert(id, origin);
             Ok(())
         } else {
             Err(duplicate_descriptor("type", id.get(), origin))
@@ -368,6 +399,7 @@ impl CompileTargetSnapshotBuilder {
     ) -> Result<(), MirBuildError> {
         let id = descriptor.id;
         if self.snapshot.targets.insert_variant(descriptor) {
+            self.snapshot.origins.variant_descriptors.insert(id, origin);
             Ok(())
         } else {
             Err(duplicate_descriptor("variant", id.get(), origin))
@@ -381,14 +413,20 @@ impl CompileTargetSnapshotBuilder {
     ) -> Result<(), MirBuildError> {
         let id = descriptor.id;
         if self.snapshot.targets.insert_field(descriptor) {
+            self.snapshot.origins.field_descriptors.insert(id, origin);
             Ok(())
         } else {
             Err(duplicate_descriptor("field", id.get(), origin))
         }
     }
 
-    #[must_use]
-    pub fn build(self) -> CompileTargetSnapshot {
+    pub fn build(self) -> Result<CompileTargetSnapshot, MirBuildError> {
+        self.snapshot.validate()?;
+        Ok(self.snapshot)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn build_unchecked(self) -> CompileTargetSnapshot {
         self.snapshot
     }
 }
@@ -420,7 +458,7 @@ pub struct MirLoweringInput<'a> {
     graph: &'a ModuleGraph,
     identity: CompileFunctionIdentity,
     body: HirBodyId,
-    analysis: &'a AnalysisFacts,
+    analysis: ExecutableAnalysisView<'a>,
     targets: CompileFunctionTargets<'a>,
     config: MirLoweringConfig,
 }
@@ -430,7 +468,7 @@ impl<'a> MirLoweringInput<'a> {
         graph: &'a ModuleGraph,
         identity: CompileFunctionIdentity,
         body: HirBodyId,
-        analysis: &'a AnalysisFacts,
+        analysis: ExecutableAnalysisView<'a>,
         targets: &'a CompileTargetSnapshot,
         config: MirLoweringConfig,
     ) -> Result<Self, MirBuildError> {
@@ -479,6 +517,21 @@ impl<'a> MirLoweringInput<'a> {
         }
         let origin = MirSourceOrigin::body(body, hir_body.origin.span);
         let inconsistent = |message| MirBuildError::InconsistentInput { origin, message };
+        if analysis.function() != function {
+            return Err(inconsistent(format!(
+                "executable analysis for function #{} cannot lower function #{}",
+                analysis.function().get(),
+                function.get()
+            )));
+        }
+        if analysis.root_body() != body {
+            return Err(inconsistent(format!(
+                "executable analysis for function #{} targets HIR body {:?}, not {:?}",
+                function.get(),
+                analysis.root_body(),
+                body
+            )));
+        }
         let function_descriptor = targets.function_descriptor(function).ok_or_else(|| {
             inconsistent(format!("missing function descriptor #{}", function.get()))
         })?;
@@ -567,7 +620,7 @@ impl<'a> MirLoweringInput<'a> {
     }
 
     #[must_use]
-    pub const fn analysis(self) -> &'a AnalysisFacts {
+    pub const fn analysis(self) -> ExecutableAnalysisView<'a> {
         self.analysis
     }
 

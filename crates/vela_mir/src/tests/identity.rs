@@ -1,4 +1,4 @@
-use vela_analysis::facts::AnalysisFacts;
+use vela_analysis::executable::{ExecutableAnalysisGeneration, ExecutableAnalysisInput};
 use vela_common::{PrimitiveTag, ScalarValue, SourceId, Span};
 use vela_def::{FunctionId, MethodId, TypeId};
 use vela_hir::ids::{HirBodyId, HirCaptureId, HirExprId, HirLocalId, HirNodeId, HirParamId};
@@ -205,7 +205,7 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
     graph.add_source(ModuleSource::new(
         SourceId::new(9),
         ModulePath::from_qualified("game"),
-        "fn main(value: i64) -> i64 { return value; }",
+        "fn main(value: i64) -> i64 { return value; } fn helper() {}",
     ));
     graph.resolve_imports();
     assert_eq!(graph.diagnostics(), &[]);
@@ -216,8 +216,36 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
     let hir_body = graph.function_body(declaration.id).expect("main HIR body");
     let body = hir_body.id;
     let body_origin = MirSourceOrigin::body(body, hir_body.origin.span);
-    let analysis = AnalysisFacts::from_module_graph(&graph);
     let function = FunctionId::new(90);
+    let method = MethodExecutableTarget {
+        method: MethodId::new(92),
+        function: FunctionId::new(93),
+        owner: TypeId::new(95),
+        node: HirNodeId::new(94),
+    };
+    let analysis = ExecutableAnalysisGeneration::from_module_graph(
+        &graph,
+        [
+            ExecutableAnalysisInput::new(function, body),
+            ExecutableAnalysisInput::new(method.function, body),
+        ],
+    )
+    .expect("both executable identities should receive independent analysis");
+    let function_analysis = analysis.view(function).expect("function analysis");
+    let method_analysis = analysis.view(method.function).expect("method analysis");
+    let helper = graph
+        .declarations()
+        .find(|declaration| declaration.name == "helper")
+        .and_then(|declaration| graph.function_body(declaration.id))
+        .expect("helper HIR body");
+    let wrong_body_analysis = ExecutableAnalysisGeneration::from_module_graph(
+        &graph,
+        [ExecutableAnalysisInput::new(function, helper.id)],
+    )
+    .expect("mismatched-body analysis fixture");
+    let wrong_body_analysis = wrong_body_analysis
+        .view(function)
+        .expect("mismatched-body analysis view");
     let mut non_script_targets = CompileTargetSnapshot::builder();
     non_script_targets
         .insert_function(
@@ -244,13 +272,13 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
             body_origin,
         )
         .expect("non-script fixture descriptor should be unique");
-    let non_script_targets = non_script_targets.build();
+    let non_script_targets = non_script_targets.build_unchecked();
     assert!(matches!(
         MirLoweringInput::new(
             &graph,
             CompileFunctionIdentity::Function(function),
             body,
-            &analysis,
+            function_analysis,
             &non_script_targets,
             MirLoweringConfig::default(),
         ),
@@ -288,12 +316,6 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
             body_origin,
         )
         .expect("function descriptor should be unique");
-    let method = MethodExecutableTarget {
-        method: MethodId::new(92),
-        function: FunctionId::new(93),
-        owner: TypeId::new(95),
-        node: HirNodeId::new(94),
-    };
     targets
         .insert_function(body, CompileFunctionIdentity::Method(method), body_origin)
         .expect("a method instantiation may share its source HIR body");
@@ -315,13 +337,13 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
             body_origin,
         )
         .expect("method code descriptor should be unique");
-    let missing_method_targets = targets.clone().build();
+    let missing_method_targets = targets.clone().build_unchecked();
     assert!(matches!(
         MirLoweringInput::new(
             &graph,
             CompileFunctionIdentity::Method(method),
             body,
-            &analysis,
+            method_analysis,
             &missing_method_targets,
             MirLoweringConfig::default(),
         ),
@@ -335,13 +357,13 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
             body_origin,
         )
         .expect("mismatched fixture descriptor should be unique");
-    let wrong_owner_targets = wrong_owner_targets.build();
+    let wrong_owner_targets = wrong_owner_targets.build_unchecked();
     assert!(matches!(
         MirLoweringInput::new(
             &graph,
             CompileFunctionIdentity::Method(method),
             body,
-            &analysis,
+            method_analysis,
             &wrong_owner_targets,
             MirLoweringConfig::default(),
         ),
@@ -361,13 +383,13 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
             body_origin,
         )
         .expect("mismatched fixture descriptor should be unique");
-    let wrong_executable_targets = wrong_executable_targets.build();
+    let wrong_executable_targets = wrong_executable_targets.build_unchecked();
     assert!(matches!(
         MirLoweringInput::new(
             &graph,
             CompileFunctionIdentity::Method(method),
             body,
-            &analysis,
+            method_analysis,
             &wrong_executable_targets,
             MirLoweringConfig::default(),
         ),
@@ -427,13 +449,13 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
             body_origin,
         )
         .expect("the method member placement should be root-scoped");
-    let targets = targets.build();
+    let targets = targets.build_unchecked();
 
     let input = MirLoweringInput::new(
         &graph,
         CompileFunctionIdentity::Function(function),
         body,
-        &analysis,
+        function_analysis,
         &targets,
         MirLoweringConfig::default(),
     )
@@ -461,7 +483,7 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
         &graph,
         CompileFunctionIdentity::Method(method),
         body,
-        &analysis,
+        method_analysis,
         &targets,
         MirLoweringConfig::default(),
     )
@@ -484,7 +506,7 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
         &graph,
         CompileFunctionIdentity::Function(FunctionId::new(91)),
         body,
-        &analysis,
+        function_analysis,
         &targets,
         MirLoweringConfig::default(),
     )
@@ -504,7 +526,7 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
         &graph,
         wrong_method_identity,
         body,
-        &analysis,
+        method_analysis,
         &targets,
         MirLoweringConfig::default(),
     )
@@ -518,6 +540,38 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
             ..
         } if *expected == CompileFunctionIdentity::Method(method)
             && *actual == wrong_method_identity
+    ));
+
+    let error = MirLoweringInput::new(
+        &graph,
+        CompileFunctionIdentity::Function(function),
+        body,
+        method_analysis,
+        &targets,
+        MirLoweringConfig::default(),
+    )
+    .map(|_| ())
+    .expect_err("analysis for another executable must not cross roots");
+    assert!(matches!(
+        error,
+        MirBuildError::InconsistentInput { message, .. }
+            if message.contains("cannot lower function")
+    ));
+
+    let error = MirLoweringInput::new(
+        &graph,
+        CompileFunctionIdentity::Function(function),
+        body,
+        wrong_body_analysis,
+        &targets,
+        MirLoweringConfig::default(),
+    )
+    .map(|_| ())
+    .expect_err("analysis for another HIR root must not be reused");
+    assert!(matches!(
+        error,
+        MirBuildError::InconsistentInput { message, .. }
+            if message.contains("targets HIR body")
     ));
 }
 
