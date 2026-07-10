@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, btree_map::Entry};
 
-use vela_common::{HostTypeId, ShapeId};
+use vela_common::{HostMethodId, HostTypeId, ShapeId};
 use vela_def::{FieldId, FunctionId, GlobalId, MethodId, TypeId, VariantId};
 
 use crate::{CompileSignature, MethodExecutableTarget, MirTypeContract};
@@ -28,6 +28,9 @@ pub enum CompileMethodClass {
         executable: MethodExecutableTarget,
         owner_name: String,
         code_symbol: String,
+    },
+    Host {
+        runtime: HostMethodId,
     },
     Value,
     Registry,

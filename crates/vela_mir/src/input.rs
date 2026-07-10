@@ -817,7 +817,9 @@ impl<'a> MirLoweringInput<'a> {
                         function_descriptor.canonical_symbol
                     )));
                 }
-                CompileMethodClass::Value | CompileMethodClass::Registry => {
+                CompileMethodClass::Host { .. }
+                | CompileMethodClass::Value
+                | CompileMethodClass::Registry => {
                     return Err(inconsistent(format!(
                         "method descriptor #{} is not a script method",
                         method.method.get()

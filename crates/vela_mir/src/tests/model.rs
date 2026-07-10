@@ -628,6 +628,19 @@ fn mir_model_snapshot_owns_method_signatures_and_guard_contracts() {
     snapshot
         .insert_method_descriptor(second_owner_descriptor.clone(), fact_origin)
         .expect("one trait MethodId may describe a distinct receiver owner");
+    let host_method_descriptor = CompileMethodDescriptor {
+        id: MethodId::new(216),
+        owner: TypeId::new(300),
+        member_name: "award".to_owned(),
+        debug_name: "HostPlayer::award".to_owned(),
+        class: CompileMethodClass::Host {
+            runtime: vela_common::HostMethodId::new(301),
+        },
+        signature: signature.clone(),
+    };
+    snapshot
+        .insert_method_descriptor(host_method_descriptor.clone(), fact_origin)
+        .expect("host method descriptor should retain its runtime ID");
     snapshot
         .insert_guard(guard_key, guard.clone(), fact_origin)
         .expect("guard target should be unique");
@@ -691,6 +704,10 @@ fn mir_model_snapshot_owns_method_signatures_and_guard_contracts() {
     assert_eq!(
         snapshot.method_descriptor(second_owner_descriptor.owner, method),
         Some(&second_owner_descriptor)
+    );
+    assert_eq!(
+        snapshot.method_descriptor(host_method_descriptor.owner, host_method_descriptor.id),
+        Some(&host_method_descriptor)
     );
     assert_eq!(snapshot.guard(guard_key), Some(&guard));
     assert_eq!(
