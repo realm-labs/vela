@@ -3,7 +3,6 @@ use std::error::Error;
 use std::fmt;
 
 use vela_analysis::facts::AnalysisFacts;
-use vela_common::ShapeId;
 use vela_def::{FieldId, FunctionId, GlobalId, MethodId, TypeId, VariantId};
 use vela_hir::body::HirBodyOwner;
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId, HirPatternId};
@@ -19,6 +18,7 @@ use crate::{
 mod calls;
 mod host;
 mod identity;
+mod placements;
 
 pub use calls::{
     CompileCallArguments, CompileCallTarget, CompileCalleeTarget, CompileDynamicCallArgument,
@@ -27,6 +27,11 @@ pub use calls::{
 pub use host::{
     CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget, HostFieldTarget,
     HostMethodTarget,
+};
+pub use placements::{
+    CompileConstructorField, CompileConstructorTarget, CompileConstructorValue, CompileFieldTarget,
+    CompileFunctionTargets, CompileGuardKey, CompileGuardTarget, CompileMemberTarget,
+    CompilePatternConstructorTarget, CompileTargetKind,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -82,84 +87,6 @@ pub struct CompileFunctionTarget {
     pub origin: MirSourceOrigin,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum CompileFieldTarget {
-    RecordSlot {
-        type_id: TypeId,
-        shape: ShapeId,
-        field: FieldId,
-    },
-    VariantSlot {
-        type_id: TypeId,
-        variant: VariantId,
-        field: FieldId,
-    },
-    Dynamic {
-        name: String,
-    },
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum CompileMemberTarget {
-    ScriptField(CompileFieldTarget),
-    HostField(HostFieldTarget),
-    ScriptMethod {
-        target: MethodExecutableTarget,
-        debug_name: String,
-    },
-    ValueMethod {
-        owner: TypeId,
-        method: MethodId,
-        debug_name: String,
-    },
-    TupleIndex(u32),
-    Dynamic {
-        name: String,
-    },
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct CompileConstructorField {
-    pub field: FieldId,
-    pub parameter: u32,
-    pub parameter_name: String,
-    pub value: CompileConstructorValue,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum CompileConstructorValue {
-    Explicit(HirExprId),
-    EvaluatedDefault(HirBodyId),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum CompileConstructorTarget {
-    Record {
-        type_id: TypeId,
-        shape: ShapeId,
-        fields: Vec<CompileConstructorField>,
-    },
-    Variant {
-        type_id: TypeId,
-        variant: VariantId,
-        fields: Vec<CompileConstructorField>,
-    },
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum CompilePatternConstructorTarget {
-    Record {
-        type_id: TypeId,
-        shape: ShapeId,
-        fields: Vec<FieldId>,
-    },
-    Variant {
-        type_id: TypeId,
-        variant: VariantId,
-        fields: Vec<FieldId>,
-    },
-}
-
 pub type CompileGlobalTarget = CompileGlobalDescriptor;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -197,43 +124,6 @@ pub enum CompilePositionalPolicy {
     Variadic { minimum: u32 },
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum CompileGuardKey {
-    Expression(HirExprId),
-    Parameter {
-        function: FunctionId,
-        parameter: u32,
-    },
-    Return(FunctionId),
-    Global(HirDeclId),
-    Field(FieldId),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct CompileGuardTarget {
-    pub contract: MirTypeContract,
-    pub debug_name: String,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum CompileTargetKind {
-    Call,
-    Member,
-    Constructor,
-    HostPath,
-}
-
-impl fmt::Display for CompileTargetKind {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(match self {
-            Self::Call => "call",
-            Self::Member => "member",
-            Self::Constructor => "constructor",
-            Self::HostPath => "host path",
-        })
-    }
-}
-
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CompileTargetSnapshot {
     functions: BTreeMap<FunctionId, CompileFunctionTarget>,
@@ -242,11 +132,11 @@ pub struct CompileTargetSnapshot {
     methods_by_node: BTreeMap<HirNodeId, Vec<MethodExecutableTarget>>,
     types_by_declaration: BTreeMap<HirDeclId, TypeId>,
     types_by_name: BTreeMap<String, TypeId>,
-    calls: BTreeMap<HirExprId, CompileCallTarget>,
-    members: BTreeMap<HirExprId, CompileMemberTarget>,
-    constructors: BTreeMap<HirExprId, CompileConstructorTarget>,
-    pattern_constructors: BTreeMap<HirPatternId, CompilePatternConstructorTarget>,
-    host_paths: BTreeMap<HirExprId, CompileHostPathTarget>,
+    calls: BTreeMap<(FunctionId, HirExprId), CompileCallTarget>,
+    members: BTreeMap<(FunctionId, HirExprId), CompileMemberTarget>,
+    constructors: BTreeMap<(FunctionId, HirExprId), CompileConstructorTarget>,
+    pattern_constructors: BTreeMap<(FunctionId, HirPatternId), CompilePatternConstructorTarget>,
+    host_paths: BTreeMap<(FunctionId, HirExprId), CompileHostPathTarget>,
     globals: BTreeMap<HirDeclId, GlobalId>,
     evaluated_constants: BTreeMap<HirDeclId, MirEvaluatedConstant>,
     evaluated_schema_defaults: BTreeMap<HirBodyId, MirEvaluatedConstant>,
@@ -267,34 +157,6 @@ impl CompileTargetSnapshot {
 
     pub fn functions_for_body(&self, body: HirBodyId) -> &[FunctionId] {
         self.functions_by_body.get(&body).map_or(&[], Vec::as_slice)
-    }
-
-    #[must_use]
-    pub fn call(&self, expression: HirExprId) -> Option<&CompileCallTarget> {
-        self.calls.get(&expression)
-    }
-
-    #[must_use]
-    pub fn member(&self, expression: HirExprId) -> Option<&CompileMemberTarget> {
-        self.members.get(&expression)
-    }
-
-    #[must_use]
-    pub fn constructor(&self, expression: HirExprId) -> Option<&CompileConstructorTarget> {
-        self.constructors.get(&expression)
-    }
-
-    #[must_use]
-    pub fn pattern_constructor(
-        &self,
-        pattern: HirPatternId,
-    ) -> Option<&CompilePatternConstructorTarget> {
-        self.pattern_constructors.get(&pattern)
-    }
-
-    #[must_use]
-    pub fn host_path(&self, expression: HirExprId) -> Option<&CompileHostPathTarget> {
-        self.host_paths.get(&expression)
     }
 
     #[must_use]
@@ -352,11 +214,6 @@ impl CompileTargetSnapshot {
     pub const fn target_table(&self) -> &MirTargetTable {
         &self.targets
     }
-
-    #[must_use]
-    pub fn guard(&self, key: CompileGuardKey) -> Option<&CompileGuardTarget> {
-        self.guards.get(&key)
-    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -388,83 +245,6 @@ impl CompileTargetSnapshotBuilder {
             }
             Entry::Occupied(_) => Err(MirBuildError::DuplicateFunctionTarget { function, origin }),
         }
-    }
-
-    pub fn insert_call(
-        &mut self,
-        expression: HirExprId,
-        target: CompileCallTarget,
-        origin: MirSourceOrigin,
-    ) -> Result<(), MirBuildError> {
-        insert_expression_target(
-            &mut self.snapshot.calls,
-            expression,
-            target,
-            CompileTargetKind::Call,
-            origin,
-        )
-    }
-
-    pub fn insert_member(
-        &mut self,
-        expression: HirExprId,
-        target: CompileMemberTarget,
-        origin: MirSourceOrigin,
-    ) -> Result<(), MirBuildError> {
-        insert_expression_target(
-            &mut self.snapshot.members,
-            expression,
-            target,
-            CompileTargetKind::Member,
-            origin,
-        )
-    }
-
-    pub fn insert_constructor(
-        &mut self,
-        expression: HirExprId,
-        target: CompileConstructorTarget,
-        origin: MirSourceOrigin,
-    ) -> Result<(), MirBuildError> {
-        insert_expression_target(
-            &mut self.snapshot.constructors,
-            expression,
-            target,
-            CompileTargetKind::Constructor,
-            origin,
-        )
-    }
-
-    pub fn insert_pattern_constructor(
-        &mut self,
-        pattern: HirPatternId,
-        target: CompilePatternConstructorTarget,
-        origin: MirSourceOrigin,
-    ) -> Result<(), MirBuildError> {
-        match self.snapshot.pattern_constructors.entry(pattern) {
-            Entry::Vacant(entry) => {
-                entry.insert(target);
-                Ok(())
-            }
-            Entry::Occupied(_) => {
-                Err(MirBuildError::DuplicatePatternConstructor { pattern, origin })
-            }
-        }
-    }
-
-    pub fn insert_host_path(
-        &mut self,
-        expression: HirExprId,
-        target: CompileHostPathTarget,
-        origin: MirSourceOrigin,
-    ) -> Result<(), MirBuildError> {
-        insert_expression_target(
-            &mut self.snapshot.host_paths,
-            expression,
-            target,
-            CompileTargetKind::HostPath,
-            origin,
-        )
     }
 
     pub fn insert_global(
@@ -607,21 +387,6 @@ impl CompileTargetSnapshotBuilder {
         }
     }
 
-    pub fn insert_guard(
-        &mut self,
-        key: CompileGuardKey,
-        guard: CompileGuardTarget,
-        origin: MirSourceOrigin,
-    ) -> Result<(), MirBuildError> {
-        match self.snapshot.guards.entry(key) {
-            Entry::Vacant(entry) => {
-                entry.insert(guard);
-                Ok(())
-            }
-            Entry::Occupied(_) => Err(MirBuildError::DuplicateGuardTarget { key, origin }),
-        }
-    }
-
     #[must_use]
     pub fn build(self) -> CompileTargetSnapshot {
         self.snapshot
@@ -632,26 +397,6 @@ fn duplicate_descriptor(kind: &str, id: u128, origin: MirSourceOrigin) -> MirBui
     MirBuildError::InconsistentInput {
         origin,
         message: format!("duplicate {kind} descriptor #{id}"),
-    }
-}
-
-fn insert_expression_target<T>(
-    targets: &mut BTreeMap<HirExprId, T>,
-    expression: HirExprId,
-    target: T,
-    kind: CompileTargetKind,
-    origin: MirSourceOrigin,
-) -> Result<(), MirBuildError> {
-    match targets.entry(expression) {
-        Entry::Vacant(entry) => {
-            entry.insert(target);
-            Ok(())
-        }
-        Entry::Occupied(_) => Err(MirBuildError::DuplicateCompileTarget {
-            kind,
-            expression,
-            origin,
-        }),
     }
 }
 
@@ -673,22 +418,23 @@ impl Default for MirLoweringConfig {
 #[derive(Clone, Copy)]
 pub struct MirLoweringInput<'a> {
     graph: &'a ModuleGraph,
-    function: FunctionId,
+    identity: CompileFunctionIdentity,
     body: HirBodyId,
     analysis: &'a AnalysisFacts,
-    targets: &'a CompileTargetSnapshot,
+    targets: CompileFunctionTargets<'a>,
     config: MirLoweringConfig,
 }
 
 impl<'a> MirLoweringInput<'a> {
     pub fn new(
         graph: &'a ModuleGraph,
-        function: FunctionId,
+        identity: CompileFunctionIdentity,
         body: HirBodyId,
         analysis: &'a AnalysisFacts,
         targets: &'a CompileTargetSnapshot,
         config: MirLoweringConfig,
     ) -> Result<Self, MirBuildError> {
+        let function = identity.function();
         let target = targets.function(function);
         let hir_body = graph.body(body).ok_or(match target {
             Some(target) => MirBuildError::MissingHirBody {
@@ -720,6 +466,14 @@ impl<'a> MirLoweringInput<'a> {
                 function,
                 expected: target.body,
                 actual: body,
+                origin: MirSourceOrigin::body(body, hir_body.origin.span),
+            });
+        }
+        if target.identity != identity {
+            return Err(MirBuildError::FunctionIdentityMismatch {
+                function,
+                expected: Box::new(target.identity),
+                actual: Box::new(identity),
                 origin: MirSourceOrigin::body(body, hir_body.origin.span),
             });
         }
@@ -784,10 +538,10 @@ impl<'a> MirLoweringInput<'a> {
         }
         Ok(Self {
             graph,
-            function,
+            identity,
             body,
             analysis,
-            targets,
+            targets: CompileFunctionTargets::new(targets, target),
             config,
         })
     }
@@ -804,7 +558,12 @@ impl<'a> MirLoweringInput<'a> {
 
     #[must_use]
     pub const fn function(self) -> FunctionId {
-        self.function
+        self.identity.function()
+    }
+
+    #[must_use]
+    pub const fn identity(self) -> CompileFunctionIdentity {
+        self.identity
     }
 
     #[must_use]
@@ -813,7 +572,7 @@ impl<'a> MirLoweringInput<'a> {
     }
 
     #[must_use]
-    pub const fn targets(self) -> &'a CompileTargetSnapshot {
+    pub const fn targets(self) -> CompileFunctionTargets<'a> {
         self.targets
     }
 
@@ -842,11 +601,13 @@ pub enum MirBuildError {
         origin: MirSourceOrigin,
     },
     DuplicateCompileTarget {
+        function: FunctionId,
         kind: CompileTargetKind,
         expression: HirExprId,
         origin: MirSourceOrigin,
     },
     DuplicatePatternConstructor {
+        function: FunctionId,
         pattern: HirPatternId,
         origin: MirSourceOrigin,
     },
@@ -874,6 +635,12 @@ pub enum MirBuildError {
         function: FunctionId,
         expected: HirBodyId,
         actual: HirBodyId,
+        origin: MirSourceOrigin,
+    },
+    FunctionIdentityMismatch {
+        function: FunctionId,
+        expected: Box<CompileFunctionIdentity>,
+        actual: Box<CompileFunctionIdentity>,
         origin: MirSourceOrigin,
     },
     DuplicateMirFunctionId {
@@ -974,12 +741,23 @@ impl fmt::Display for MirBuildError {
                 )
             }
             Self::DuplicateCompileTarget {
-                kind, expression, ..
+                function,
+                kind,
+                expression,
+                ..
             } => {
-                write!(formatter, "duplicate {kind} target for {expression:?}")
+                write!(
+                    formatter,
+                    "duplicate {kind} target for function {function:?} at {expression:?}"
+                )
             }
-            Self::DuplicatePatternConstructor { pattern, .. } => {
-                write!(formatter, "duplicate constructor target for {pattern:?}")
+            Self::DuplicatePatternConstructor {
+                function, pattern, ..
+            } => {
+                write!(
+                    formatter,
+                    "duplicate constructor target for function {function:?} at {pattern:?}"
+                )
             }
             Self::DuplicateGlobalTarget { declaration, .. } => {
                 write!(formatter, "duplicate global target for {declaration:?}")
@@ -1013,6 +791,15 @@ impl fmt::Display for MirBuildError {
                     "function {function:?} targets HIR body {expected:?}, not {actual:?}"
                 )
             }
+            Self::FunctionIdentityMismatch {
+                function,
+                expected,
+                actual,
+                ..
+            } => write!(
+                formatter,
+                "function {function:?} has compile identity {expected:?}, not {actual:?}"
+            ),
             Self::DuplicateMirFunctionId { function_id, .. } => {
                 write!(formatter, "duplicate MIR function ID {function_id:?}")
             }
@@ -1110,6 +897,7 @@ impl MirBuildError {
             | Self::DuplicateGuardTarget { origin, .. }
             | Self::MissingFunctionTarget { origin, .. }
             | Self::FunctionBodyMismatch { origin, .. }
+            | Self::FunctionIdentityMismatch { origin, .. }
             | Self::DuplicateMirFunctionId { origin, .. }
             | Self::DuplicateMirMethodId { origin, .. }
             | Self::MissingMirFunction { origin, .. }

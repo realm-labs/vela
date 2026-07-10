@@ -598,7 +598,10 @@ fn mir_model_keeps_contextual_literals_static_keys_and_traps_explicit() {
 fn mir_model_snapshot_owns_method_signatures_and_guard_contracts() {
     let method = MethodId::new(215);
     let fact_origin = origin(HirBodyId::new(21));
-    let guard_key = CompileGuardKey::Expression(HirExprId::new(216));
+    let guard_key = CompileGuardKey::Expression {
+        function: FunctionId::new(214),
+        expression: HirExprId::new(216),
+    };
     let guard = CompileGuardTarget {
         contract: MirTypeContract::Array(Some(Box::new(MirTypeContract::Primitive(
             PrimitiveTag::I64,
@@ -914,6 +917,7 @@ fn mir_model_materializes_heap_constants_at_explicit_safepoints() {
 #[test]
 fn mir_model_owns_distinct_schema_defaults_and_resolved_constructor_slots() {
     let origin = origin(HirBodyId::new(232));
+    let function = FunctionId::new(231);
     let first_default = HirBodyId::new(233);
     let second_default = HirBodyId::new(234);
     let first_value = MirEvaluatedConstant::Scalar(ScalarValue::I64(10));
@@ -948,6 +952,7 @@ fn mir_model_owns_distinct_schema_defaults_and_resolved_constructor_slots() {
         .expect("second field default should not collide with the first");
     snapshot
         .insert_constructor(
+            function,
             record_expression,
             CompileConstructorTarget::Record {
                 type_id,
@@ -959,6 +964,7 @@ fn mir_model_owns_distinct_schema_defaults_and_resolved_constructor_slots() {
         .expect("record constructor placement should be unique");
     snapshot
         .insert_constructor(
+            function,
             variant_expression,
             CompileConstructorTarget::Variant {
                 type_id,
@@ -979,11 +985,11 @@ fn mir_model_owns_distinct_schema_defaults_and_resolved_constructor_slots() {
         Some(&second_value)
     );
     assert!(matches!(
-        snapshot.constructor(record_expression),
+        snapshot.constructor(function, record_expression),
         Some(CompileConstructorTarget::Record { fields: actual, .. }) if actual == &fields
     ));
     assert!(matches!(
-        snapshot.constructor(variant_expression),
+        snapshot.constructor(function, variant_expression),
         Some(CompileConstructorTarget::Variant { fields: actual, .. }) if actual == &fields
     ));
 }

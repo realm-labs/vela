@@ -248,7 +248,7 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
     assert!(matches!(
         MirLoweringInput::new(
             &graph,
-            function,
+            CompileFunctionIdentity::Function(function),
             body,
             &analysis,
             &non_script_targets,
@@ -319,7 +319,7 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
     assert!(matches!(
         MirLoweringInput::new(
             &graph,
-            method.function,
+            CompileFunctionIdentity::Method(method),
             body,
             &analysis,
             &missing_method_targets,
@@ -339,7 +339,7 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
     assert!(matches!(
         MirLoweringInput::new(
             &graph,
-            method.function,
+            CompileFunctionIdentity::Method(method),
             body,
             &analysis,
             &wrong_owner_targets,
@@ -365,7 +365,7 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
     assert!(matches!(
         MirLoweringInput::new(
             &graph,
-            method.function,
+            CompileFunctionIdentity::Method(method),
             body,
             &analysis,
             &wrong_executable_targets,
@@ -377,11 +377,61 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
     targets
         .insert_method_descriptor(script_method_descriptor(method, method.owner), body_origin)
         .expect("method descriptor should be unique");
+    let shared_expression = HirExprId::new(99);
+    let function_call = CompileCallTarget::dynamic(
+        CompileCalleeTarget::DynamicCallable,
+        vec![CompileDynamicCallArgument {
+            name: None,
+            value: HirExprId::new(100),
+        }],
+    );
+    let method_call = CompileCallTarget::dynamic(
+        CompileCalleeTarget::DynamicMethod(DynamicMethodTarget::method("invoke", 0, Vec::new())),
+        Vec::new(),
+    );
+    let function_member = CompileMemberTarget::Dynamic {
+        name: "function_member".to_owned(),
+    };
+    let method_member = CompileMemberTarget::Dynamic {
+        name: "method_member".to_owned(),
+    };
+    targets
+        .insert_call(
+            function,
+            shared_expression,
+            function_call.clone(),
+            body_origin,
+        )
+        .expect("the function call placement should be unique within its root");
+    targets
+        .insert_call(
+            method.function,
+            shared_expression,
+            method_call.clone(),
+            body_origin,
+        )
+        .expect("a method instantiation may reuse its HIR expression IDs");
+    targets
+        .insert_member(
+            function,
+            shared_expression,
+            function_member.clone(),
+            body_origin,
+        )
+        .expect("the function member placement should be root-scoped");
+    targets
+        .insert_member(
+            method.function,
+            shared_expression,
+            method_member.clone(),
+            body_origin,
+        )
+        .expect("the method member placement should be root-scoped");
     let targets = targets.build();
 
     let input = MirLoweringInput::new(
         &graph,
-        function,
+        CompileFunctionIdentity::Function(function),
         body,
         &analysis,
         &targets,
@@ -389,10 +439,27 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
     )
     .expect("matching immutable lowering input should be accepted");
     assert_eq!(input.function(), function);
+    assert_eq!(
+        input.identity(),
+        CompileFunctionIdentity::Function(function)
+    );
+    assert_eq!(input.targets().function(), function);
+    assert_eq!(
+        input.targets().function_target().identity,
+        CompileFunctionIdentity::Function(function)
+    );
+    assert_eq!(
+        input.targets().call(shared_expression),
+        Some(&function_call)
+    );
+    assert_eq!(
+        input.targets().member(shared_expression),
+        Some(&function_member)
+    );
     assert_eq!(input.body(), body);
     let method_input = MirLoweringInput::new(
         &graph,
-        method.function,
+        CompileFunctionIdentity::Method(method),
         body,
         &analysis,
         &targets,
@@ -400,13 +467,22 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
     )
     .expect("matching method lowering input should be accepted");
     assert_eq!(method_input.function(), method.function);
+    assert_eq!(method_input.targets().identity(), method_input.identity());
+    assert_eq!(
+        method_input.targets().call(shared_expression),
+        Some(&method_call)
+    );
+    assert_eq!(
+        method_input.targets().member(shared_expression),
+        Some(&method_member)
+    );
     assert_eq!(
         targets.functions_for_body(body),
         &[function, method.function]
     );
     let error = MirLoweringInput::new(
         &graph,
-        FunctionId::new(91),
+        CompileFunctionIdentity::Function(FunctionId::new(91)),
         body,
         &analysis,
         &targets,
@@ -418,6 +494,30 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
         error,
         MirBuildError::MissingFunctionTarget { function, .. }
             if function == FunctionId::new(91)
+    ));
+
+    let wrong_method_identity = CompileFunctionIdentity::Method(MethodExecutableTarget {
+        method: MethodId::new(98),
+        ..method
+    });
+    let error = MirLoweringInput::new(
+        &graph,
+        wrong_method_identity,
+        body,
+        &analysis,
+        &targets,
+        MirLoweringConfig::default(),
+    )
+    .map(|_| ())
+    .expect_err("a method root must match its complete executable identity");
+    assert!(matches!(
+        error,
+        MirBuildError::FunctionIdentityMismatch {
+            expected,
+            actual,
+            ..
+        } if *expected == CompileFunctionIdentity::Method(method)
+            && *actual == wrong_method_identity
     ));
 }
 

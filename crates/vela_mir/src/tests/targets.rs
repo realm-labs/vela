@@ -38,6 +38,7 @@ fn mir_model_compile_targets_select_behavior_intrinsics_without_names() {
         HirBodyId::new(300),
         vela_common::Span::new(vela_common::SourceId::new(7), 0, 5),
     );
+    let function = FunctionId::new(299);
     let reflection = CompileCallTarget::positional(
         CompileCalleeTarget::Reflection {
             operation: CompileReflectionCall::Call,
@@ -117,17 +118,129 @@ fn mir_model_compile_targets_select_behavior_intrinsics_without_names() {
     let mut snapshot = CompileTargetSnapshot::builder();
     for (expression, target) in &expressions {
         snapshot
-            .insert_call(*expression, target.clone(), origin)
+            .insert_call(function, *expression, target.clone(), origin)
             .expect("intrinsic call target should be unique");
     }
     let snapshot = snapshot.build();
 
-    assert_eq!(snapshot.call(expressions[0].0), Some(&reflection));
-    assert_eq!(snapshot.call(expressions[1].0), Some(&set));
-    assert_eq!(snapshot.call(expressions[2].0), Some(&remove));
-    assert_eq!(snapshot.call(expressions[3].0), Some(&push));
-    assert_eq!(snapshot.call(expressions[4].0), Some(&script));
-    assert_eq!(snapshot.call(expressions[5].0), Some(&dynamic));
+    assert_eq!(snapshot.call(function, expressions[0].0), Some(&reflection));
+    assert_eq!(snapshot.call(function, expressions[1].0), Some(&set));
+    assert_eq!(snapshot.call(function, expressions[2].0), Some(&remove));
+    assert_eq!(snapshot.call(function, expressions[3].0), Some(&push));
+    assert_eq!(snapshot.call(function, expressions[4].0), Some(&script));
+    assert_eq!(snapshot.call(function, expressions[5].0), Some(&dynamic));
+}
+
+#[test]
+fn executable_placements_are_scoped_by_stable_function_identity() {
+    let expression = HirExprId::new(370);
+    let first_function = FunctionId::new(371);
+    let second_function = FunctionId::new(372);
+    let missing_function = FunctionId::new(373);
+    let origin = MirSourceOrigin::expression(
+        HirBodyId::new(374),
+        expression,
+        vela_common::Span::new(vela_common::SourceId::new(12), 4, 16),
+    );
+    let first_call = CompileCallTarget::dynamic(
+        CompileCalleeTarget::DynamicCallable,
+        vec![CompileDynamicCallArgument {
+            name: Some("left".to_owned()),
+            value: HirExprId::new(375),
+        }],
+    );
+    let second_call = CompileCallTarget::dynamic(
+        CompileCalleeTarget::DynamicCallable,
+        vec![CompileDynamicCallArgument {
+            name: Some("right".to_owned()),
+            value: HirExprId::new(376),
+        }],
+    );
+    let first_member = CompileMemberTarget::Dynamic {
+        name: "first".to_owned(),
+    };
+    let second_member = CompileMemberTarget::Dynamic {
+        name: "second".to_owned(),
+    };
+    let first_guard = CompileGuardTarget {
+        contract: MirTypeContract::Primitive(PrimitiveTag::I64),
+        debug_name: "first value".to_owned(),
+    };
+    let second_guard = CompileGuardTarget {
+        contract: MirTypeContract::Primitive(PrimitiveTag::String),
+        debug_name: "second value".to_owned(),
+    };
+    let mut snapshot = CompileTargetSnapshot::builder();
+    snapshot
+        .insert_call(first_function, expression, first_call.clone(), origin)
+        .expect("the first function owns its call placement");
+    snapshot
+        .insert_call(second_function, expression, second_call.clone(), origin)
+        .expect("a second function may reuse the same HIR expression identity");
+    snapshot
+        .insert_member(first_function, expression, first_member.clone(), origin)
+        .expect("the first function owns its member placement");
+    snapshot
+        .insert_member(second_function, expression, second_member.clone(), origin)
+        .expect("member placements use the same executable scope as calls");
+    snapshot
+        .insert_guard(
+            CompileGuardKey::Expression {
+                function: first_function,
+                expression,
+            },
+            first_guard.clone(),
+            origin,
+        )
+        .expect("the first expression guard should be unique in its function");
+    snapshot
+        .insert_guard(
+            CompileGuardKey::Expression {
+                function: second_function,
+                expression,
+            },
+            second_guard.clone(),
+            origin,
+        )
+        .expect("the second expression guard should not collide across functions");
+    let snapshot = snapshot.build();
+
+    assert_eq!(snapshot.call(first_function, expression), Some(&first_call));
+    assert_eq!(
+        snapshot.call(second_function, expression),
+        Some(&second_call)
+    );
+    assert_eq!(
+        snapshot.member(first_function, expression),
+        Some(&first_member)
+    );
+    assert_eq!(
+        snapshot.member(second_function, expression),
+        Some(&second_member)
+    );
+    assert_eq!(
+        snapshot.guard(CompileGuardKey::Expression {
+            function: first_function,
+            expression,
+        }),
+        Some(&first_guard)
+    );
+    assert_eq!(
+        snapshot.guard(CompileGuardKey::Expression {
+            function: second_function,
+            expression,
+        }),
+        Some(&second_guard)
+    );
+    assert_eq!(snapshot.call(missing_function, expression), None);
+    assert_eq!(snapshot.member(missing_function, expression), None);
+    assert_eq!(
+        snapshot.guard(CompileGuardKey::Expression {
+            function: missing_function,
+            expression,
+        }),
+        None
+    );
 }
 
 #[test]
@@ -546,6 +659,7 @@ fn mir_model_dynamic_host_path_segments_retain_index_capabilities() {
 #[test]
 fn mir_model_constant_host_path_segments_retain_complete_index_capabilities() {
     let body = HirBodyId::new(360);
+    let function = FunctionId::new(359);
     let root = HirExprId::new(361);
     let path_expression = HirExprId::new(362);
     let origin = MirSourceOrigin::expression(
@@ -589,11 +703,11 @@ fn mir_model_constant_host_path_segments_retain_complete_index_capabilities() {
     };
     let mut targets = CompileTargetSnapshot::builder();
     targets
-        .insert_host_path(path_expression, compile_path, origin)
+        .insert_host_path(function, path_expression, compile_path, origin)
         .expect("constant host path target should be unique");
     let targets = targets.build();
     let retained = targets
-        .host_path(path_expression)
+        .host_path(function, path_expression)
         .expect("constant host path should remain in the immutable snapshot");
     assert!(matches!(
         &retained.segments[0],

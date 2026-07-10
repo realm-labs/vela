@@ -165,7 +165,9 @@ pub enum CompileTypeClass {
     OpaqueExternal,
     Registry,
     Standard,
-    Host { runtime: HostTypeId },
+    Host {
+        runtime: HostTypeId,
+    },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
