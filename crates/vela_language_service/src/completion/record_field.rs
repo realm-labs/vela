@@ -2,7 +2,7 @@ use vela_analysis::hints::type_fact_from_hint;
 use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
 use vela_common::SourceId;
-use vela_hir::body::HirBody;
+use vela_hir::body::{HirBody, HirExprKind};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::StructFieldHint;
 use vela_syntax::ast::{
@@ -20,8 +20,57 @@ use crate::symbol_ref::schema_member_symbol;
 
 pub(super) fn record_constructor_at(
     source: &SyntaxSourceFile,
-    _body: Option<&HirBody>,
-    _source_id: Option<SourceId>,
+    body: Option<&HirBody>,
+    source_id: Option<SourceId>,
+    offset: usize,
+) -> Option<RecordConstructor> {
+    body.zip(source_id)
+        .and_then(|(body, source_id)| hir_record_constructor_at(body, source_id, offset))
+        .or_else(|| recover_record_constructor_from_incomplete_syntax(source, offset))
+}
+
+fn hir_record_constructor_at(
+    body: &HirBody,
+    source_id: SourceId,
+    offset: usize,
+) -> Option<RecordConstructor> {
+    let offset = u32::try_from(offset).ok()?;
+    body.expressions
+        .values()
+        .filter(|expression| {
+            expression.origin.span.source == source_id
+                && expression.origin.span.start <= offset
+                && offset <= expression.origin.span.end
+                && matches!(expression.kind, HirExprKind::Record { .. })
+        })
+        .min_by_key(|expression| {
+            expression
+                .origin
+                .span
+                .end
+                .saturating_sub(expression.origin.span.start)
+        })
+        .and_then(|expression| {
+            let HirExprKind::Record {
+                constructor,
+                fields,
+            } = &expression.kind
+            else {
+                return None;
+            };
+            let constructor = body.paths.get(constructor.as_ref()?)?;
+            Some(RecordConstructor {
+                path: constructor.path.clone(),
+                field_names: fields.iter().map(|field| field.name.clone()).collect(),
+                current_module: Vec::new(),
+            })
+        })
+}
+
+// CST traversal is deliberately confined to incomplete edits that did not
+// lower a recoverable record expression into HIR.
+fn recover_record_constructor_from_incomplete_syntax(
+    source: &SyntaxSourceFile,
     offset: usize,
 ) -> Option<RecordConstructor> {
     let search = RecordConstructorSearch::new(syntax_offset(offset)?);
@@ -441,4 +490,55 @@ fn schema_record_field_completions(
 
 fn field_label_matches(label: &str, prefix: &str) -> bool {
     prefix.is_empty() || label.starts_with(prefix)
+}
+
+#[cfg(test)]
+mod tests {
+    use vela_common::SourceId;
+    use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+    use vela_syntax::parse::parse_source_with_id;
+
+    use super::{hir_record_constructor_at, recover_record_constructor_from_incomplete_syntax};
+
+    #[test]
+    fn hir_record_constructor_identity_does_not_depend_on_syntax_traversal() {
+        let source_id = SourceId::new(1);
+        let text = "pub struct Player { level: i64 }\npub fn main(players: Array<i64>) { let value = players[Player { le }]; }";
+        let offset = text.find("le }").expect("record field") + 2;
+        let mut graph = ModuleGraph::new();
+        graph.add_source(ModuleSource::new(
+            source_id,
+            ModulePath::from_qualified("game::main"),
+            text,
+        ));
+        let body = graph
+            .bodies()
+            .find(|body| {
+                body.expressions.values().any(|expression| {
+                    expression.origin.span.source == source_id
+                        && expression.origin.span.start <= u32::try_from(offset).unwrap()
+                        && u32::try_from(offset).unwrap() <= expression.origin.span.end
+                })
+            })
+            .expect("body containing record");
+
+        let constructor = hir_record_constructor_at(body, source_id, offset)
+            .expect("HIR record constructor should be available");
+
+        assert_eq!(constructor.path, ["Player"]);
+        assert_eq!(constructor.field_names, ["le"]);
+    }
+
+    #[test]
+    fn incomplete_edit_recovery_is_an_explicit_syntax_boundary() {
+        let source_id = SourceId::new(1);
+        let text = "pub fn main() { let player = Player { le } }";
+        let offset = text.find("le }").expect("field prefix") + 2;
+        let parsed = parse_source_with_id(source_id, text);
+
+        let constructor = recover_record_constructor_from_incomplete_syntax(&parsed.tree(), offset)
+            .expect("incomplete record should recover from CST");
+
+        assert_eq!(constructor.path, ["Player"]);
+    }
 }

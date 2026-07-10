@@ -516,7 +516,7 @@ fn record_field_completion_uses_schema_facts() {
 }
 
 #[test]
-fn record_field_completion_uses_hir_index_operands() {
+fn record_field_completion_finds_constructor_nested_in_index() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub struct Player { id: String level: i64 }\npub fn main(players: Array<i64>) { let value = players[Player { le }]; }";
     let files = vec![SourceFileSnapshot::new(document.clone(), text)];
