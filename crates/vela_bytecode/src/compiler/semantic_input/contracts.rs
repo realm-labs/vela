@@ -5,14 +5,12 @@ use vela_analysis::contracts::{
     ExpectedContractOutcome, check_expected_callable_contract, check_expected_callable_contract_at,
     check_expected_contract, check_expected_contract_at,
 };
-use vela_analysis::literals::{
-    LiteralPrimitiveContext, NumericLiteralKind, float_suffix_primitive, integer_suffix_primitive,
-};
+use vela_analysis::literals::{LiteralPrimitiveContext, NumericLiteralUse};
 use vela_analysis::semantic_facts::OperatorTargetFact;
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{PrimitiveTag, Span};
 use vela_def::FunctionId;
-use vela_hir::body::{HirBinaryOp, HirExprKind, HirLiteral, HirUnaryOp};
+use vela_hir::body::{HirBinaryOp, HirExprKind};
 use vela_hir::ids::HirExprId;
 use vela_mir::{
     CompileGuardKey, CompileGuardTarget, MirBuildError, MirCallableKind, MirTypeContract,
@@ -94,6 +92,17 @@ impl ContractBoundary {
 }
 
 impl GenerationBuilder<'_, '_> {
+    pub(super) fn reject_literal_diagnostics(&self) -> CompileResult<()> {
+        let diagnostics = self.literal_diagnostics()?;
+        if diagnostics.is_empty() {
+            Ok(())
+        } else {
+            Err(crate::compiler::error::CompileError::new(
+                crate::compiler::error::CompileErrorKind::SemanticDiagnostics(diagnostics),
+            ))
+        }
+    }
+
     pub(super) fn validate_schema_default_contract(
         &mut self,
         body: vela_hir::ids::HirBodyId,
@@ -134,14 +143,9 @@ impl GenerationBuilder<'_, '_> {
     }
 
     pub(super) fn finish_contracts(&mut self) -> CompileResult<()> {
-        for (function, _) in self.selected_executable_roots()? {
-            let diagnostics = self
-                .executable_analysis(function)?
-                .literal_diagnostics(self.request.graph);
-            for diagnostic in diagnostics {
-                if !self.diagnostics.contains(&diagnostic) {
-                    self.diagnostics.push(diagnostic);
-                }
+        for diagnostic in self.literal_diagnostics()? {
+            if !self.diagnostics.contains(&diagnostic) {
+                self.diagnostics.push(diagnostic);
             }
         }
 
@@ -220,6 +224,21 @@ impl GenerationBuilder<'_, '_> {
         Ok(())
     }
 
+    fn literal_diagnostics(&self) -> CompileResult<Vec<vela_common::Diagnostic>> {
+        let mut diagnostics = Vec::new();
+        for (function, _) in self.selected_executable_roots()? {
+            for diagnostic in self
+                .executable_analysis(function)?
+                .literal_diagnostics(self.request.graph)
+            {
+                if !diagnostics.contains(&diagnostic) {
+                    diagnostics.push(diagnostic);
+                }
+            }
+        }
+        Ok(diagnostics)
+    }
+
     pub(super) fn literal_contexts(
         &self,
     ) -> CompileResult<BTreeMap<FunctionId, BTreeMap<HirExprId, LiteralPrimitiveContext>>> {
@@ -233,9 +252,13 @@ impl GenerationBuilder<'_, '_> {
             )?;
         }
         for boundary in &self.boundaries {
-            if numeric_kind(self.request.graph, boundary.expression).is_none() {
+            let Some(literal) = self
+                .body_for_expression(boundary.expression)
+                .and_then(|body| NumericLiteralUse::classify(body, boundary.expression))
+                .filter(|literal| literal.supports_direct_contract_context())
+            else {
                 continue;
-            }
+            };
             let context = match boundary.expected {
                 MirTypeContract::Primitive(primitive) => {
                     LiteralPrimitiveContext::Expected(primitive)
@@ -243,7 +266,8 @@ impl GenerationBuilder<'_, '_> {
                 _ => LiteralPrimitiveContext::Expected(PrimitiveTag::Unit),
             };
             let function_contexts = contexts.entry(boundary.function).or_default();
-            if let Some(previous) = function_contexts.insert(boundary.expression, context)
+            if let Some(previous) =
+                function_contexts.insert(literal.resolution_expression(), context)
                 && previous != context
             {
                 let origin = self
@@ -275,20 +299,7 @@ impl GenerationBuilder<'_, '_> {
         {
             for expression in body.expressions.values() {
                 let HirExprKind::Binary {
-                    op:
-                        Some(
-                            HirBinaryOp::Add
-                            | HirBinaryOp::Sub
-                            | HirBinaryOp::Mul
-                            | HirBinaryOp::Div
-                            | HirBinaryOp::Rem
-                            | HirBinaryOp::Equal
-                            | HirBinaryOp::NotEqual
-                            | HirBinaryOp::Less
-                            | HirBinaryOp::LessEqual
-                            | HirBinaryOp::Greater
-                            | HirBinaryOp::GreaterEqual,
-                        ),
+                    op: Some(operation),
                     lhs,
                     rhs,
                 } = expression.kind
@@ -299,8 +310,14 @@ impl GenerationBuilder<'_, '_> {
                     continue;
                 }
                 for operand in lhs.into_iter().chain(rhs) {
-                    if numeric_kind(self.request.graph, operand).is_some() {
-                        contexts.insert(operand, LiteralPrimitiveContext::DeferredDynamic);
+                    let Some(literal) = NumericLiteralUse::classify(body, operand) else {
+                        continue;
+                    };
+                    if literal.supports_deferred_operation(operation) {
+                        contexts.insert(
+                            literal.resolution_expression(),
+                            LiteralPrimitiveContext::DeferredDynamic,
+                        );
                     }
                 }
             }
@@ -313,8 +330,12 @@ impl GenerationBuilder<'_, '_> {
         function: FunctionId,
         expression: HirExprId,
     ) -> CompileResult<ContractActual> {
-        if let Some(kind) = numeric_kind(self.request.graph, expression) {
-            return Ok(ContractActual::DeferredNumeric(kind));
+        if let Some(literal) = self
+            .body_for_expression(expression)
+            .and_then(|body| NumericLiteralUse::classify(body, expression))
+            .filter(|literal| literal.supports_direct_contract_context())
+        {
+            return Ok(ContractActual::DeferredNumeric(literal.kind()));
         }
         let Some(record) = self
             .request
@@ -326,26 +347,10 @@ impl GenerationBuilder<'_, '_> {
         };
         let analysis = self.executable_analysis(function)?;
         Ok(match &record.kind {
-            HirExprKind::Literal(HirLiteral::Bool(_)) => ContractActual::Exact(TypeFact::BOOL),
-            HirExprKind::Literal(HirLiteral::Integer(value)) => {
-                ContractActual::Exact(TypeFact::primitive(integer_suffix_primitive(value.suffix)))
-            }
-            HirExprKind::Literal(HirLiteral::Float(value)) => {
-                ContractActual::Exact(TypeFact::primitive(float_suffix_primitive(value.suffix)))
-            }
-            HirExprKind::Literal(HirLiteral::Char(_)) => ContractActual::Exact(TypeFact::CHAR),
-            HirExprKind::Literal(HirLiteral::String(_) | HirLiteral::Interpolated { .. }) => {
-                ContractActual::Exact(TypeFact::STRING)
-            }
-            HirExprKind::Literal(HirLiteral::Bytes(_)) => ContractActual::Exact(TypeFact::BYTES),
+            HirExprKind::Literal(_) => analyzed_contract_actual(analysis.expression(expression)),
             HirExprKind::Unit => ContractActual::Exact(TypeFact::UNIT),
             HirExprKind::Lambda { .. } => ContractActual::Exact(TypeFact::Closure),
-            HirExprKind::Path(_) => match analysis.expression(expression) {
-                Some(TypeFact::Unknown | TypeFact::Any | TypeFact::Union(_)) | None => {
-                    ContractActual::Dynamic
-                }
-                Some(fact) => ContractActual::Exact(fact.clone()),
-            },
+            HirExprKind::Path(_) => analyzed_contract_actual(analysis.expression(expression)),
             HirExprKind::Binary {
                 op:
                     Some(
@@ -499,24 +504,11 @@ fn constant_actual(value: &crate::Constant) -> ContractActual {
     }
 }
 
-fn numeric_kind(
-    graph: &vela_hir::module_graph::ModuleGraph,
-    expression: HirExprId,
-) -> Option<NumericLiteralKind> {
-    let record = graph
-        .bodies()
-        .find_map(|body| body.expression(expression))?;
-    match &record.kind {
-        HirExprKind::Literal(HirLiteral::Integer(value)) if value.suffix.is_none() => {
-            Some(NumericLiteralKind::Integer)
+fn analyzed_contract_actual(fact: Option<&TypeFact>) -> ContractActual {
+    match fact {
+        Some(TypeFact::Unknown | TypeFact::Any | TypeFact::Union(_)) | None => {
+            ContractActual::Dynamic
         }
-        HirExprKind::Literal(HirLiteral::Float(value)) if value.suffix.is_none() => {
-            Some(NumericLiteralKind::Float)
-        }
-        HirExprKind::Unary {
-            op: Some(HirUnaryOp::Negate),
-            operand: Some(operand),
-        } => numeric_kind(graph, *operand),
-        _ => None,
+        Some(fact) => ContractActual::Exact(fact.clone()),
     }
 }

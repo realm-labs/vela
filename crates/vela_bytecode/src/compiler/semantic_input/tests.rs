@@ -1,4 +1,5 @@
 mod external_descriptors;
+mod literal_ownership;
 mod logical_records;
 mod roots_schema;
 mod script_methods;
@@ -31,6 +32,7 @@ pub(super) struct SemanticFixture {
     pub(super) member_expressions: Vec<(HirBodyId, HirExprId, String)>,
     pub(super) constructor_expressions: Vec<(HirBodyId, HirExprId, Vec<String>)>,
     pub(super) constructor_patterns: Vec<(HirBodyId, HirPatternId, Vec<String>)>,
+    pub(super) expression_sources: Vec<(HirBodyId, HirExprId, String)>,
 }
 
 pub(super) fn prepare_source(
@@ -146,6 +148,17 @@ fn prepare_source_inner(
             })
         })
         .collect();
+    let expression_sources = semantic
+        .script_metadata_graph()
+        .bodies()
+        .flat_map(|body| {
+            body.expressions.values().filter_map(|expression| {
+                let span = expression.origin.span;
+                text.get(span.start as usize..span.end as usize)
+                    .map(|source| (body.id, expression.id, source.to_owned()))
+            })
+        })
+        .collect();
     let script_function_symbols = semantic.script_function_symbols();
     let script_methods = semantic.script_method_catalog();
     let type_symbols = semantic.type_symbols();
@@ -174,5 +187,6 @@ fn prepare_source_inner(
         member_expressions,
         constructor_expressions,
         constructor_patterns,
+        expression_sources,
     })
 }
