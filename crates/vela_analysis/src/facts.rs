@@ -44,42 +44,46 @@ impl AnalysisFacts {
             if let Some(fact) = declaration_fact(graph, declaration.id) {
                 facts.declarations.insert(declaration.id, fact);
             }
-
-            if let Some(bindings) = graph.bindings(declaration.id) {
-                for local in bindings.locals() {
-                    let Some(hint) = local.type_hint.as_ref() else {
-                        continue;
-                    };
-                    if let Some(declaration) =
-                        schema_declaration_from_hint_in_module(graph, declaration.module, hint)
-                        && graph.declaration(declaration).is_some_and(|declaration| {
-                            matches!(
-                                declaration.kind,
-                                DeclarationKind::Struct | DeclarationKind::Enum
-                            )
-                        })
-                    {
-                        facts
-                            .local_script_types
-                            .insert(local.id, ScriptTypeTargetFact::declaration(declaration));
-                    }
-                    let fact = type_fact_from_hint_in_module(graph, declaration.module, hint);
-                    let fact = if matches!(fact, TypeFact::Unknown) {
-                        schema
-                            .and_then(|schema| schema_fact_for_hint(schema, &hint.path))
-                            .unwrap_or(fact)
-                    } else {
-                        fact
-                    };
-                    facts.locals.insert(local.id, fact);
-                }
-            }
         }
 
-        for declaration in graph.declarations() {
-            let Some(bindings) = graph.bindings(declaration.id) else {
+        let mut binding_roots = graph
+            .bodies()
+            .filter_map(|body| graph.bindings_for_body(body.id))
+            .collect::<Vec<_>>();
+        binding_roots.sort_by_key(|bindings| bindings.body());
+        binding_roots.dedup_by_key(|bindings| bindings.body());
+
+        for bindings in binding_roots {
+            let Some(owner) = graph.declaration(bindings.declaration) else {
                 continue;
             };
+            for local in bindings.locals() {
+                let Some(hint) = local.type_hint.as_ref() else {
+                    continue;
+                };
+                if let Some(declaration) =
+                    schema_declaration_from_hint_in_module(graph, owner.module, hint)
+                    && graph.declaration(declaration).is_some_and(|declaration| {
+                        matches!(
+                            declaration.kind,
+                            DeclarationKind::Struct | DeclarationKind::Enum
+                        )
+                    })
+                {
+                    facts
+                        .local_script_types
+                        .insert(local.id, ScriptTypeTargetFact::declaration(declaration));
+                }
+                let fact = type_fact_from_hint_in_module(graph, owner.module, hint);
+                let fact = if matches!(fact, TypeFact::Unknown) {
+                    schema
+                        .and_then(|schema| schema_fact_for_hint(schema, &hint.path))
+                        .unwrap_or(fact)
+                } else {
+                    fact
+                };
+                facts.locals.insert(local.id, fact);
+            }
             for (expression, resolution) in bindings.resolutions() {
                 facts.resolutions.insert(expression, resolution.clone());
                 if let Some(fact) = facts.fact_for_resolution(resolution).cloned() {
@@ -246,6 +250,9 @@ impl AnalysisFacts {
         }
     }
 }
+
+#[cfg(test)]
+mod body_binding_tests;
 
 fn schema_fact_for_hint(schema: &RegistryFacts, path: &[String]) -> Option<TypeFact> {
     if path.is_empty() {

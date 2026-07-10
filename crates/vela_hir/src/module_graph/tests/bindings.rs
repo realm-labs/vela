@@ -83,6 +83,52 @@ fn main(player) {
 }
 
 #[test]
+fn body_binding_query_follows_methods_lambdas_and_parameter_defaults() {
+    let mut graph = ModuleGraph::new();
+    graph.add_source(source(
+        1,
+        "game::reward",
+        r#"
+trait Score {
+    fn score(self, bonus: i64 = 1) { return (|value: i64| value + bonus)(self.count); }
+}
+
+struct Reward { count: i64 }
+impl Score for Reward {}
+
+impl Reward {
+    fn doubled(self) { return (|value: i64| value + self.count)(self.count); }
+}
+"#,
+    ));
+    graph.resolve_imports();
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+
+    for body in graph.bodies().filter(|body| {
+        matches!(
+            body.owner,
+            HirBodyOwner::TraitDefaultMethod(_)
+                | HirBodyOwner::ImplMethod(_)
+                | HirBodyOwner::Lambda { .. }
+                | HirBodyOwner::ParameterDefault { .. }
+        )
+    }) {
+        let bindings = graph
+            .bindings_for_body(body.id)
+            .unwrap_or_else(|| panic!("body {:?} should have owning bindings", body.id));
+        assert!(
+            bindings.body() == body.id
+                || graph
+                    .body_and_ancestors(body.id)
+                    .any(|ancestor| ancestor.id == bindings.body()),
+            "binding root {:?} should own body {:?}",
+            bindings.body(),
+            body.id
+        );
+    }
+}
+
+#[test]
 fn hir_lowers_long_binary_chains_without_recursive_descent() {
     let condition = std::iter::repeat_n("true", 600)
         .collect::<Vec<_>>()

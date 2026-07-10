@@ -82,6 +82,32 @@ impl ModuleGraph {
         self.schema_field_default_bindings.get(&body)
     }
 
+    /// Returns the canonical binding map that owns a HIR body.
+    ///
+    /// Lambda and parameter-default bodies share the binding generation of
+    /// their nearest enclosing executable body. Keeping this lookup on the
+    /// module graph prevents downstream consumers from rebuilding owner joins.
+    #[must_use]
+    pub fn bindings_for_body(&self, body: HirBodyId) -> Option<&BindingMap> {
+        match self.body(body)?.owner {
+            crate::body::HirBodyOwner::Declaration(declaration) => self.bindings(declaration),
+            crate::body::HirBodyOwner::ConstInitializer(declaration) => {
+                self.const_initializer_bindings(declaration)
+            }
+            crate::body::HirBodyOwner::SchemaFieldDefault(_) => {
+                self.schema_field_default_bindings(body)
+            }
+            crate::body::HirBodyOwner::TraitDefaultMethod(method) => {
+                self.trait_default_method_bindings(method)
+            }
+            crate::body::HirBodyOwner::ImplMethod(method) => self.impl_method_bindings(method),
+            crate::body::HirBodyOwner::Lambda { parent, .. }
+            | crate::body::HirBodyOwner::ParameterDefault { parent, .. } => {
+                self.bindings_for_body(parent)
+            }
+        }
+    }
+
     #[must_use]
     pub fn body(&self, body: HirBodyId) -> Option<&HirBody> {
         self.bodies.get(&body)
