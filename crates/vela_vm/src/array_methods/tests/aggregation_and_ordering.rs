@@ -1,4 +1,5 @@
 use super::*;
+use vela_bytecode::compiler::error::CompileErrorKind;
 
 #[test]
 fn runs_compiled_array_sum_methods() {
@@ -532,22 +533,23 @@ fn main() {
 }
 
 #[test]
-fn array_sort_by_rejects_float_keys_without_total_order() {
+fn array_sort_by_rejects_static_float_keys_without_total_order_at_compile_time() {
     let source = r#"
 fn main() {
     return [1, 2].sort_by(|value| if value == 1 { 1.0 } else { 0.5 });
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
-        .expect("array float sort_by source should compile");
-
-    let error = run_linked_array_test_code(&Vm::new(), code)
-        .expect_err("array sort_by should reject float keys without Ord");
+    let error = compile_function_source(SourceId::new(1), source, "main")
+        .expect_err("static array sort_by float keys should be rejected before execution");
+    let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+        panic!("expected array ordering semantic diagnostic");
+    };
     assert_eq!(
-        error.kind(),
-        VmErrorKind::TypeMismatch {
-            operation: "method sort_by"
-        }
+        diagnostics
+            .iter()
+            .filter_map(|diagnostic| diagnostic.code.as_deref())
+            .collect::<Vec<_>>(),
+        ["compiler::missing_ord_for_array_ordering"]
     );
 }
 

@@ -47,12 +47,12 @@ fn runs_compiled_block_and_if_expression_values() {
 fn main() {
     let value = {
         let base = 2;
-        base + 3;
+        base + 3
     };
     let selected = if value > 4 {
-        value;
+        value
     } else {
-        0;
+        0
     };
     return selected;
 }
@@ -74,10 +74,10 @@ fn runs_compiled_if_expression_without_else_can_be_discarded() {
         r#"
 fn main() {
     let missing = if false {
-        3;
+        3
     };
     let value = if true {
-        7;
+        7
     };
     missing;
     return value;
@@ -268,7 +268,7 @@ fn main() {
     let value = match damage {
         Damage::Magical { amount } => amount + 100,
         Damage::Physical { amount } => {
-            amount + 1;
+            amount + 1
         },
         _ => 0,
     };
