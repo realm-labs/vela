@@ -3,8 +3,9 @@
 > **Track:** middle IR, bytecode lowering architecture, optimizer/JIT
 > foundation after Heavy HIR
 > **Document status:** Codex goal-mode execution plan
-> **Execution status:** not started; Heavy HIR acceptance is complete, but the
-> MIR-specific Phase 0 preconditions in this document are still open
+> **Execution status:** Phase 0 in progress; Heavy HIR acceptance is complete,
+> ordered interpolated-string parts are HIR-owned, and the remaining work is
+> semantic/compile-target input closure plus frozen behavior fixtures
 > **Compatibility policy:** breaking pre-release MIR, bytecode-compiler, and
 > internal test APIs are allowed. Preserve Vela language semantics, evaluation
 > order, VM behavior, diagnostics, execution budgets, GC roots, HostAccess
@@ -469,9 +470,9 @@ resolver, type-flow engine, or diagnostic pipeline.
 
 ### 7.1 HIR Executable-Literal Closure
 
-- [ ] Replace interpolated-literal raw-text re-lexing in bytecode body lowering
+- [x] Replace interpolated-literal raw-text re-lexing in bytecode body lowering
   with ordered HIR-owned text/expression parts.
-- [ ] Delete the body-lowering dependency on `vela_syntax::lexer`,
+- [x] Delete the body-lowering dependency on `vela_syntax::lexer`,
   `TokenKind`, and `InterpolatedStringTokenPart`.
 - [ ] Inventory integer/float literal normalization, contextual conversion,
   invalid-literal diagnostics, map-key spelling, and format-string errors.
@@ -503,10 +504,85 @@ resolver, type-flow engine, or diagnostic pipeline.
 - [ ] Pin selected structural bytecode snapshots where instruction family or
   metadata shape is a contract. Do not require all bytecode to remain
   byte-for-byte identical when equivalent CFG/register allocation is valid.
-- [ ] Keep the current direct compiler as the production baseline in Phase 0;
+- [x] Keep the current direct compiler as the production baseline in Phase 0;
   do not introduce a MIR selector yet.
-- [ ] Record MIR as in progress in `docs/progress.md` only when implementation
+- [x] Record MIR as in progress in `docs/progress.md` only when implementation
   actually begins.
+
+### 7.4 Phase 0 Ownership Record
+
+This table is the required final ownership assignment for the compiler-local
+stores that existed when Phase 0 began. A later implementation may refine a
+type name, but it must not move semantic truth back into the bytecode backend
+or turn physical bytecode encoding into MIR state.
+
+| Current fact/store | Final owner | Required hard-switch result |
+|---|---|---|
+| function, type, global, body, parameter-default, lambda, binding, capture, path, signature, and source-origin facts | `vela_hir` | MIR starts from stable HIR IDs; no body source or span-to-ID reconstruction |
+| expression/local/pattern runtime type, collection element/key/value type, script record/enum identity, member/call/operator/constructor/host-path target, expected-type compatibility, trait validity, effect, and control-flow facts | `vela_analysis::AnalysisFacts` | delete `RuntimeTypeFact`, `ScriptTypeFlow`, `ValueTypeFlow`, and the semantic portions of `ValueShapeFlow` after MIR consumes the analysis facts |
+| stable registry/stdlib/host/script function, method, type, field, variant, global, host-runtime, signature/default, access, effect, and index-capability targets | backend-neutral `CompileTargetSnapshot` | MIR sees stable descriptors or explicit `Dynamic`; it never queries names as a fallback or retains a live registry view |
+| typed-versus-generic operation selection, logical shape flow required by execution, guards, parameter-default prologue, branch joins, loop targets, and lambda nesting | `vela_mir` | replace the execution portions of the old compiler flows with verified MIR |
+| const values and schema field defaults | compile-time const/schema evaluator | keep them outside runtime MIR; convert only the evaluated backend-neutral value at the bytecode boundary |
+| record/enum physical slots, `GlobalSlot`, registers, constants, host-target table entries, cache sites, frame slots, bytecode guards, jump layout, and verification | `vela_bytecode::compiler::mir_backend` | delete direct HIR emission, register allocation, interning, and jump patching |
+| register overflow and unrepresentable bytecode operands | bytecode backend diagnostics | never report these as semantic or MIR verification errors |
+| missing supposedly-valid HIR/analysis/target facts and malformed MIR | `MirBuildError` / `MirVerifyError` | source-spanned internal lowering failure; never select a source, name, or old-backend fallback |
+
+The concrete lowering input is fixed conceptually as:
+
+```text
+MirLoweringInput
+  module graph and selected owning HirBodyId
+  AnalysisFacts keyed by HIR IDs
+  immutable CompileTargetSnapshot
+  MirLoweringConfig containing representation policy only
+
+CompileTargetSnapshot
+  script functions: HirDeclId -> stable FunctionId + signature
+  script methods: HirNodeId -> stable MethodId + owner + signature
+  globals: HirDeclId -> stable name/type target (no physical GlobalSlot)
+  script schema: declarations/fields/variants -> stable IDs and logical layout facts
+  external calls/members: HirExprId -> stable registry/stdlib/host target or Dynamic
+  host targets: stable TypeId/FieldId/MethodId/runtime IDs, access, effects, and index capabilities
+  guards: backend-neutral type/shape/variant/host descriptors (no bytecode guard enum)
+```
+
+`MirLoweringInput` borrows or owns one immutable compilation generation. The
+snapshot is derived once at the source front door from the same script graph,
+definition registry, stdlib manifest, host schema, and compiler options used by
+production compilation. `vela_mir` must not retain `RegistryCompileView`,
+`CompilerOptions`, syntax values, or bytecode values.
+
+The user-facing diagnostic inventory is also fixed before MIR construction:
+
+| Diagnostic family | Final owner |
+|---|---|
+| invalid integer/float literal spelling, contextual literal contract, static type-contract mismatch | HIR/analysis compile validation |
+| unresolved native/stdlib/host/script call or method target | analysis plus compile-target validation |
+| unknown/duplicate/missing/named/positional call arguments | analysis call-argument placement |
+| invalid identity comparison, missing comparison trait, missing `Ord` for array ordering | analysis operator/call validation |
+| unknown variant, duplicate/unknown/missing constructor field | analysis constructor validation |
+| read-only field and unsupported/read-only/write-only/mutate/remove/key-mismatch host index access | analysis plus compile-target validation |
+| function selection by a compile API | source-front-door API error |
+| register overflow, bytecode operand/layout limits, bytecode verification | bytecode backend |
+| inconsistent HIR/analysis/target input | `MirBuildError` |
+| malformed CFG/data-flow/debug/safepoint MIR | `MirVerifyError` |
+
+The frozen behavior baseline is organized by durable subsystem fixtures:
+
+| Contract | Fixture ownership |
+|---|---|
+| literals, interpolation, calls, defaults, named arguments, compiler diagnostics | `vela_hir` executable-fact tests and `vela_bytecode::compiler::tests` |
+| evaluation order, control flow, patterns, closures, try propagation, budgets, GC, guards, cache/profile/linking behavior | `vela_vm` source/linked execution tests and conformance fixtures |
+| HostAccess write-through, aliases, permissions, stale refs, host calls | `vela_host` and `vela_vm` host fixtures |
+| reflection policy and source-spanned diagnostics | `vela_reflect`, `vela_vm`, and Engine reflection fixtures |
+| stable function/method identity, accepted/rejected reloads, cache invalidation | `vela_hot_reload` and Engine source-reload fixtures |
+| end-to-end embedding behavior | `examples/tests/runnable_examples.rs` |
+
+The Phase 0 test additions must fill only uncovered rows: ordered HIR
+interpolation parts, a complete compiler diagnostic contract fixture, explicit
+single-evaluation/effect-order cases, and representative instruction-budget
+edges. The MIR backend will be compared against these production-source
+fixtures; a selectable dual-backend test harness is forbidden.
 
 Validation:
 
@@ -515,7 +591,7 @@ cargo test -p vela_hir
 cargo test -p vela_analysis
 cargo test -p vela_bytecode
 rg -n "vela_syntax::lexer|InterpolatedStringTokenPart|TokenKind" crates/vela_bytecode/src/compiler/hir_lowering crates/vela_bytecode/src/compiler/hir_lowering.rs
-rg -n "CompilerFacts|RuntimeTypeFact|ScriptTypeFlow|ValueTypeFlow|ValueShapeFlow|ScriptFieldSlots|ScriptSchemaDefaults" crates/vela_bytecode/src/compiler crates/vela_analysis/src crates/vela_hir/src
+rg -n "CompilerFacts|RuntimeTypeFact|ScriptTypeFlow|ValueTypeFlow|ValueShapeFlow|ScriptFieldSlots|ScriptSchemaDefaults" crates/vela_bytecode/src/compiler.rs crates/vela_bytecode/src/compiler crates/vela_analysis/src crates/vela_hir/src
 ```
 
 The first search must have zero hits after 7.1. The second search is an

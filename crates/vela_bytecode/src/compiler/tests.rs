@@ -547,6 +547,7 @@ fn sample(counter: Counter) {
 
 mod call_diagnostics;
 mod closures_and_bindings;
+mod diagnostic_contracts;
 mod diagnostics;
 mod expressions;
 mod literals_and_calls;

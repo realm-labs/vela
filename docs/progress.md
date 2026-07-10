@@ -44,6 +44,12 @@ boundaries, and full final validation passes. MIR work may now begin from the
 completed Heavy HIR contract; semantic gaps must still be fixed in HIR or
 analysis rather than repaired during MIR lowering.
 
+MIR Phase 0 is active. Ordered interpolated-string text/expression parts are
+HIR-owned and runtime body lowering no longer re-lexes source. The current
+checkpoint is closing the immutable AnalysisFacts/compile-target input and
+freezing compiler diagnostic, evaluation-order, metadata, budget, host,
+reflection, reload, and example behavior before `vela_mir` backend work.
+
 M0-M19 are complete enough as a runnable prototype, embedding surface,
 production hot-reload workflow, diagnostics/tooling foundation, runnable
 embedding/conformance proof, measured performance baselines, and non-JIT
