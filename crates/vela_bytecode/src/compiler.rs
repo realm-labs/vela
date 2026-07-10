@@ -1013,13 +1013,6 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         Ok(self.code)
     }
 
-    fn expression_at_span(&self, span: Span) -> Option<HirExprId> {
-        self.hir_bodies
-            .iter()
-            .flat_map(|body| body.expressions.values())
-            .find_map(|expression| (expression.origin.span == span).then_some(expression.id))
-    }
-
     pub(in crate::compiler) fn expression_span(&self, expression: HirExprId) -> Option<Span> {
         self.hir_bodies
             .iter()

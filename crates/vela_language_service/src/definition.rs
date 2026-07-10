@@ -436,11 +436,8 @@ fn local_declaration_at_target<'a>(
     bindings: &'a BindingMap,
     target: &SymbolTarget,
 ) -> Option<&'a LocalBinding> {
-    bindings.locals().find(|binding| {
-        text_range_for_span(binding.span).is_some_and(|range| {
-            range.start <= target.range().start && target.range().end <= range.end
-        })
-    })
+    let local = bindings.local_containing_source_range(target.range().start, target.range().end)?;
+    bindings.local(local)
 }
 
 fn diagnostic_range(text: &str, range: TextRange) -> DiagnosticRange {

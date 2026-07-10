@@ -903,10 +903,8 @@ fn local_declaration_at_token<'a>(
     bindings: &'a BindingMap,
     token: &RenameToken,
 ) -> Option<&'a LocalBinding> {
-    bindings.locals().find(|binding| {
-        span_text_range(binding.span)
-            .is_some_and(|range| range.start <= token.range.start && token.range.end <= range.end)
-    })
+    let local = bindings.local_containing_source_range(token.range.start, token.range.end)?;
+    bindings.local(local)
 }
 
 fn local_name_conflicts(bindings: &BindingMap, local: HirLocalId, new_name: &str) -> bool {

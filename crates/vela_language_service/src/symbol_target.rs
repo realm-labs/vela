@@ -174,14 +174,9 @@ fn local_symbol_at_range(
     text: &str,
     range: TextRange,
 ) -> Option<SymbolRef> {
-    bindings
-        .locals()
-        .find(|binding| {
-            binding.name == text
-                && span_text_range(binding.span)
-                    .is_some_and(|binding_range| contains_range(binding_range, range))
-        })
-        .map(|binding| local_symbol_for_binding(databases, binding))
+    let local = bindings.local_containing_source_range(range.start, range.end)?;
+    let binding = bindings.local(local)?;
+    (binding.name == text).then(|| local_symbol_for_binding(databases, binding))
 }
 
 fn symbol_ref_for_source_declaration(

@@ -698,10 +698,9 @@ fn local_declaration_classification(
     name: &str,
     range: TextRange,
 ) -> Option<SemanticTokenClassification> {
-    bindings
-        .locals()
-        .find(|binding| binding.name == name && span_contains_range(binding.span, range))
-        .map(local_declaration_token_classification)
+    let local = bindings.local_containing_source_range(range.start, range.end)?;
+    let binding = bindings.local(local)?;
+    (binding.name == name).then(|| local_declaration_token_classification(binding))
 }
 
 fn resolved_identifier_classification(

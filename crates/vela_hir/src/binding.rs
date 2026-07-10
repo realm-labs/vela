@@ -73,6 +73,23 @@ impl BindingMap {
         self.locals.values()
     }
 
+    /// Projects a declaration source range to its stable local identity.
+    ///
+    /// Editor callers should use the returned ID for semantic work and keep
+    /// the source range only for protocol projection.
+    #[must_use]
+    pub fn local_containing_source_range(&self, start: usize, end: usize) -> Option<HirLocalId> {
+        self.locals
+            .values()
+            .filter(|binding| {
+                usize::try_from(binding.span.start)
+                    .is_ok_and(|binding_start| binding_start <= start)
+                    && usize::try_from(binding.span.end).is_ok_and(|binding_end| end <= binding_end)
+            })
+            .min_by_key(|binding| binding.span.end.saturating_sub(binding.span.start))
+            .map(|binding| binding.id)
+    }
+
     #[must_use]
     pub fn locals_named(&self, name: &str) -> &[HirLocalId] {
         self.locals_by_name

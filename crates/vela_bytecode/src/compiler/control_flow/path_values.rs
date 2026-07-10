@@ -1,19 +1,12 @@
-use vela_common::Span;
 use vela_hir::ids::HirExprId;
 
 use super::Compiler;
 
 impl Compiler<'_, '_> {
-    pub(in crate::compiler) fn hir_value_path_root_span_for_span(
+    pub(in crate::compiler) fn hir_value_path_root_expression(
         &self,
-        span: Span,
-    ) -> Option<Span> {
-        let expression = self.expression_at_span(span)?;
-        let root = self.hir_value_path_root_expression(expression)?;
-        self.expression_span(root)
-    }
-
-    fn hir_value_path_root_expression(&self, expression: HirExprId) -> Option<HirExprId> {
+        expression: HirExprId,
+    ) -> Option<HirExprId> {
         if let Some(field) = self
             .hir_bodies
             .iter()

@@ -13,7 +13,11 @@ pub(super) struct HostPath {
 }
 #[derive(Clone)]
 pub(super) enum HostPathRoot {
-    LocalPath { name: String, span: Span },
+    LocalPath {
+        name: String,
+        expression: HirExprId,
+        span: Span,
+    },
 }
 pub(super) enum HostPathPart {
     Field(FieldId),
@@ -36,6 +40,7 @@ impl HostPath {
 impl Compiler<'_, '_> {
     pub(super) fn host_field_path_parts(
         &self,
+        expression: HirExprId,
         span: Span,
         path: &[String],
     ) -> Option<ResolvedHostPath> {
@@ -43,8 +48,11 @@ impl Compiler<'_, '_> {
             return None;
         }
         let root = path.first()?;
-        let root_span = self.hir_value_path_root_span_for_span(span).unwrap_or(span);
-        let mut current_type = self.host_local_type_name(root, root_span);
+        let root_expression = self
+            .hir_value_path_root_expression(expression)
+            .unwrap_or(expression);
+        let root_span = self.expression_span(root_expression).unwrap_or(span);
+        let mut current_type = self.host_local_type_name(root, root_expression);
         let mut segments = Vec::with_capacity(path.len() - 1);
         for segment in &path[1..] {
             let field = self.host_path_field_part(current_type.as_deref(), segment)?;
@@ -55,6 +63,7 @@ impl Compiler<'_, '_> {
             path: HostPath {
                 root: HostPathRoot::LocalPath {
                     name: root.clone(),
+                    expression: root_expression,
                     span: root_span,
                 },
                 segments,
@@ -64,6 +73,7 @@ impl Compiler<'_, '_> {
     }
     pub(super) fn owned_host_field_path_parts(
         &self,
+        expression: HirExprId,
         span: Span,
         path: &[String],
     ) -> Option<ResolvedHostPath> {
@@ -71,8 +81,11 @@ impl Compiler<'_, '_> {
             return None;
         }
         let root = path.first()?.clone();
-        let root_span = self.hir_value_path_root_span_for_span(span).unwrap_or(span);
-        let mut current_type = self.host_local_type_name(&root, root_span);
+        let root_expression = self
+            .hir_value_path_root_expression(expression)
+            .unwrap_or(expression);
+        let root_span = self.expression_span(root_expression).unwrap_or(span);
+        let mut current_type = self.host_local_type_name(&root, root_expression);
         let mut segments = Vec::with_capacity(path.len() - 1);
         for segment in &path[1..] {
             let field = self.host_path_field_part(current_type.as_deref(), segment)?;
@@ -83,6 +96,7 @@ impl Compiler<'_, '_> {
             path: HostPath {
                 root: HostPathRoot::LocalPath {
                     name: root,
+                    expression: root_expression,
                     span: root_span,
                 },
                 segments,
@@ -231,9 +245,11 @@ impl Compiler<'_, '_> {
         root: &HostPathRoot,
     ) -> CompileResult<Register> {
         match root {
-            HostPathRoot::LocalPath { name, span } => {
-                self.required_local_register_at_hir_expression_span(*span, name)
-            }
+            HostPathRoot::LocalPath {
+                name,
+                expression,
+                span,
+            } => self.required_local_register_for_hir_expression(*expression, *span, name),
         }
     }
     fn compile_host_target(&mut self, path: HostPath) -> CompileResult<CompiledHostTarget> {
@@ -278,17 +294,15 @@ impl Compiler<'_, '_> {
     }
     fn host_path_root_type_name(&self, root: HostPathRoot) -> Option<String> {
         match root {
-            HostPathRoot::LocalPath { name, span } => self.host_local_type_name(&name, span),
+            HostPathRoot::LocalPath {
+                name, expression, ..
+            } => self.host_local_type_name(&name, expression),
         }
     }
-    pub(super) fn host_local_type_name(&self, name: &str, span: Span) -> Option<String> {
-        let expression = self.expression_at_span(span);
-        expression
-            .and_then(|expression| self.local_for_expression(expression))
+    pub(super) fn host_local_type_name(&self, name: &str, expression: HirExprId) -> Option<String> {
+        self.local_for_expression(expression)
             .and_then(|local| self.script_types.local(local))
-            .or_else(|| {
-                expression.and_then(|expression| self.global_type_for_expression(expression))
-            })
+            .or_else(|| self.global_type_for_expression(expression))
             .or_else(|| self.script_types.name(name))
             .or_else(|| self.global_type_named(name))
     }
@@ -358,14 +372,18 @@ impl Compiler<'_, '_> {
     fn hir_host_value_path(&self, expression: HirExprId) -> Option<ResolvedHostPath> {
         let path = self.hir_value_path_for_expression(expression)?;
         let span = self.expression_span(expression)?;
+        let root_expression = self
+            .hir_value_path_root_expression(expression)
+            .unwrap_or(expression);
+        let root_span = self.expression_span(root_expression).unwrap_or(span);
         if path.len() == 1 {
             let name = path.into_iter().next()?;
-            let root_span = self.hir_value_path_root_span_for_span(span).unwrap_or(span);
-            let type_name = self.host_local_type_name(&name, root_span);
+            let type_name = self.host_local_type_name(&name, root_expression);
             return Some(ResolvedHostPath {
                 path: HostPath {
                     root: HostPathRoot::LocalPath {
                         name,
+                        expression: root_expression,
                         span: root_span,
                     },
                     segments: Vec::new(),
@@ -373,8 +391,7 @@ impl Compiler<'_, '_> {
                 type_name,
             });
         }
-        let root_span = self.hir_value_path_root_span_for_span(span).unwrap_or(span);
-        self.owned_host_field_path_parts(root_span, &path)
+        self.owned_host_field_path_parts(root_expression, span, &path)
     }
 }
 pub(super) struct ResolvedHostPath {

@@ -10,29 +10,25 @@ use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 impl Compiler<'_, '_> {
     pub(super) fn compile_path_expr(
         &mut self,
+        expression: HirExprId,
         span: Span,
         path: &[String],
     ) -> CompileResult<Register> {
-        if let Some(value) = self.const_value_at_span(span) {
+        if let Some(value) = self.const_value_at_expression(expression) {
             return self.emit_constant(value);
         }
         if path.len() == 1 {
-            return self.compile_local_path(span, path);
+            return self.compile_local_path(expression, span, path);
         }
-        self.compile_path_access(span, path)
+        self.compile_path_access(expression, span, path)
     }
 
-    pub(super) fn required_local_register_at_hir_expression_span(
+    pub(super) fn required_local_register_for_hir_expression(
         &mut self,
+        expression: HirExprId,
         span: Span,
         name: &str,
     ) -> CompileResult<Register> {
-        let expression = self.expression_at_span(span).ok_or_else(|| {
-            CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "HIR expression source origin",
-            ))
-            .with_span(span)
-        })?;
         self.local_register_for_hir_expression(expression, name, span)
     }
 
@@ -71,8 +67,7 @@ impl Compiler<'_, '_> {
         }
     }
 
-    pub(super) fn const_value_at_span(&self, span: Span) -> Option<Constant> {
-        let expression = self.expression_at_span(span)?;
+    pub(super) fn const_value_at_expression(&self, expression: HirExprId) -> Option<Constant> {
         let BindingResolution::Declaration(declaration) =
             self.binding_resolution_for_expression(expression)?
         else {
@@ -83,17 +78,20 @@ impl Compiler<'_, '_> {
 
     pub(super) fn script_record_field_slot_for_path_root(
         &self,
-        span: Span,
+        expression: HirExprId,
         root: &str,
         field: &str,
     ) -> Option<usize> {
-        let type_name = self.script_type_for_path_root(span, root)?;
+        let type_name = self.script_type_for_path_root(expression, root)?;
         self.script_record_field_slot_for_type(&type_name, field)
     }
 
-    pub(super) fn script_type_for_path_root(&self, span: Span, root: &str) -> Option<String> {
-        let expression = self.expression_at_span(span);
-        match expression.and_then(|expression| self.binding_resolution_for_expression(expression)) {
+    pub(super) fn script_type_for_path_root(
+        &self,
+        expression: HirExprId,
+        root: &str,
+    ) -> Option<String> {
+        match self.binding_resolution_for_expression(expression) {
             Some(BindingResolution::Local(local)) => self.script_types.local(*local),
             Some(BindingResolution::Declaration(declaration)) => {
                 self.facts.global_type_symbols.get(declaration).cloned()
@@ -105,13 +103,18 @@ impl Compiler<'_, '_> {
         }
     }
 
-    fn compile_local_path(&mut self, span: Span, path: &[String]) -> CompileResult<Register> {
+    fn compile_local_path(
+        &mut self,
+        expression: HirExprId,
+        span: Span,
+        path: &[String],
+    ) -> CompileResult<Register> {
         let [name] = path else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "path expression",
             )));
         };
-        self.required_local_register_at_hir_expression_span(span, name)
+        self.required_local_register_for_hir_expression(expression, span, name)
     }
 
     fn emit_load_global(&mut self, dst: Register, global: String) {
@@ -124,14 +127,19 @@ impl Compiler<'_, '_> {
         });
     }
 
-    fn compile_path_access(&mut self, span: Span, path: &[String]) -> CompileResult<Register> {
+    fn compile_path_access(
+        &mut self,
+        expression: HirExprId,
+        span: Span,
+        path: &[String],
+    ) -> CompileResult<Register> {
         if path.len() < 2 {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "path expression",
             )));
         }
         if let Some(host_path) = self
-            .host_field_path_parts(span, path)
+            .host_field_path_parts(expression, span, path)
             .map(|resolved| resolved.path)
             && host_path.requires_path_instruction()
         {
@@ -140,14 +148,19 @@ impl Compiler<'_, '_> {
             self.emit_host_read(dst, root, host_path, span)?;
             return Ok(dst);
         }
-        let root_span = self.hir_value_path_root_span_for_span(span).unwrap_or(span);
+        let root_expression = self
+            .hir_value_path_root_expression(expression)
+            .unwrap_or(expression);
+        let root_span = self.expression_span(root_expression).unwrap_or(span);
         let mut current =
-            self.required_local_register_at_hir_expression_span(root_span, &path[0])?;
-        let mut current_record_shape = self.record_shape_for_path_root(root_span, &path[0]);
+            self.required_local_register_for_hir_expression(root_expression, root_span, &path[0])?;
+        let mut current_record_shape = self.record_shape_for_path_root(root_expression, &path[0]);
         for (index, segment) in path.iter().enumerate().skip(1) {
             let dst = self.alloc_register()?;
             let record_slot = (index == 1)
-                .then(|| self.script_record_field_slot_for_path_root(root_span, &path[0], segment))
+                .then(|| {
+                    self.script_record_field_slot_for_path_root(root_expression, &path[0], segment)
+                })
                 .flatten()
                 .or_else(|| {
                     current_record_shape
@@ -163,7 +176,7 @@ impl Compiler<'_, '_> {
                 });
             } else if index == 1
                 && let Some(slot) =
-                    self.script_enum_field_slot_for_path_root(root_span, &path[0], segment)
+                    self.script_enum_field_slot_for_path_root(root_expression, &path[0], segment)
             {
                 self.emit(UnlinkedInstructionKind::GetEnumSlot {
                     dst,
@@ -174,7 +187,8 @@ impl Compiler<'_, '_> {
             } else if index == 1
                 && let Some(field) = self
                     .host_field_info(
-                        self.host_local_type_name(&path[0], root_span).as_deref(),
+                        self.host_local_type_name(&path[0], root_expression)
+                            .as_deref(),
                         segment,
                     )
                     .map(|field| field.id)
@@ -185,6 +199,7 @@ impl Compiler<'_, '_> {
                     HostPath {
                         root: HostPathRoot::LocalPath {
                             name: path[0].clone(),
+                            expression: root_expression,
                             span: root_span,
                         },
                         segments: vec![HostPathPart::Field(field)],
@@ -209,14 +224,11 @@ impl Compiler<'_, '_> {
 
     fn script_enum_field_slot_for_path_root(
         &self,
-        span: Span,
+        expression: HirExprId,
         root: &str,
         field: &str,
     ) -> Option<usize> {
-        let expression = self.expression_at_span(span);
-        let fact = match expression
-            .and_then(|expression| self.binding_resolution_for_expression(expression))
-        {
+        let fact = match self.binding_resolution_for_expression(expression) {
             Some(BindingResolution::Local(local)) => self.script_types.local_fact(*local),
             _ => self.script_types.name_fact(root),
         }?;

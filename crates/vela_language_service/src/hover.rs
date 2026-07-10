@@ -740,21 +740,16 @@ fn hover_from_local_declaration(
     target: &SymbolTarget,
     range: DiagnosticRange,
 ) -> Option<Hover> {
-    bindings.locals().find_map(|binding| {
-        let start = usize::try_from(binding.span.start).ok()?;
-        let end = usize::try_from(binding.span.end).ok()?;
-        (binding.name == target.text()
-            && start <= target.range().start
-            && target.range().end <= end)
-            .then(|| {
-                local_hover(
-                    databases,
-                    binding,
-                    local_fact(binding, facts).unwrap_or(TypeFact::Unknown),
-                    range,
-                    target.symbol().cloned(),
-                )
-            })
+    let local = bindings.local_containing_source_range(target.range().start, target.range().end)?;
+    let binding = bindings.local(local)?;
+    (binding.name == target.text()).then(|| {
+        local_hover(
+            databases,
+            binding,
+            local_fact(binding, facts).unwrap_or(TypeFact::Unknown),
+            range,
+            target.symbol().cloned(),
+        )
     })
 }
 

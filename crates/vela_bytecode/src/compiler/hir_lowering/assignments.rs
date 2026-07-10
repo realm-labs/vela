@@ -14,7 +14,7 @@ impl Compiler<'_, '_> {
                     .iter()
                     .find_map(|body| body.paths.get(&path))
                     .ok_or_else(|| hir_unsupported("path", span))?;
-                self.compile_path_expr(span, &path.path)
+                self.compile_path_expr(expression, span, &path.path)
             }
             HirExprKind::Paren {
                 expression: Some(inner),
