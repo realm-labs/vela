@@ -1,4 +1,46 @@
 use super::*;
+use crate::compiler::host_paths::CompiledHostTarget;
+
+enum PreparedAssignmentTarget {
+    Local {
+        expression: HirExprId,
+    },
+    Index(PreparedIndexAssignment),
+    Field(PreparedFieldAssignment),
+    Host {
+        root: Register,
+        target: CompiledHostTarget,
+    },
+}
+
+struct PreparedIndexAssignment {
+    base: Register,
+    key: PreparedIndexKey,
+}
+
+#[derive(Clone, Copy)]
+enum PreparedIndexKey {
+    Dynamic(Register),
+    String(crate::ConstantId),
+}
+
+struct PreparedFieldAssignment {
+    fields: Vec<String>,
+    slots: Vec<Option<usize>>,
+    records: Vec<Register>,
+    indexed_root: Option<PreparedIndexedRoot>,
+}
+
+enum PreparedIndexedRoot {
+    Dynamic {
+        collection: Register,
+        index: Register,
+    },
+    String {
+        collection: Register,
+        key: crate::ConstantId,
+    },
+}
 
 impl Compiler<'_, '_> {
     pub(in crate::compiler) fn compile_hir_expression(
@@ -123,49 +165,86 @@ impl Compiler<'_, '_> {
         {
             target = inner;
         }
-        let value = if op == HirAssignOp::Set
+        let expected = if op == HirAssignOp::Set
             && let HirExprKind::Field(field) = self.hir_expression_record(target)?.1
             && let Some(expected) = self
                 .script_fact_for_hir_expression(field.receiver)
                 .and_then(|fact| self.record_constructor_shape(&fact.type_name))
                 .and_then(|shape| shape.field_value_type(&field.name))
         {
-            self.compile_hir_expression_for_expected_type(
-                value,
-                expected,
-                TypeContractContext::Field {
-                    name: field.name.clone(),
-                },
-                &[],
-            )?
-            .0
+            Some((expected, TypeContractContext::Field { name: field.name }))
+        } else {
+            None
+        };
+        let target = self.prepare_hir_assignment_target(target, op, span)?;
+        let value = if let Some((expected, context)) = expected {
+            self.compile_hir_expression_for_expected_type(value, expected, context, &[])?
+                .0
         } else {
             self.compile_hir_expression(value)?
         };
+        self.finish_hir_assignment(target, op, value, span)
+    }
+
+    fn prepare_hir_assignment_target(
+        &mut self,
+        target: HirExprId,
+        op: HirAssignOp,
+        span: Span,
+    ) -> CompileResult<PreparedAssignmentTarget> {
         if let Some(resolved) = self.hir_host_path(target)
             && !resolved.path.segments.is_empty()
         {
             self.reject_invalid_hir_host_assignment(target, op, span)?;
             let root = self.compile_host_path_root(&resolved.path.root)?;
-            match op {
-                HirAssignOp::Set => self.emit_host_write(root, resolved.path, value, span)?,
-                _ => self.emit_host_mutate(
-                    root,
-                    resolved.path,
-                    hir_host_mutation_op(op).expect("compound assignment has host mutation op"),
-                    value,
-                    span,
-                )?,
-            }
-            return Ok(value);
+            let target = self.compile_host_target(resolved.path)?;
+            return Ok(PreparedAssignmentTarget::Host { root, target });
         }
 
-        let (_, target_kind) = self.hir_expression_record(target)?;
-        match target_kind {
-            HirExprKind::Path(_) => self.compile_hir_local_assignment(op, target, value, span),
-            HirExprKind::Index(index) => self.compile_hir_index_assignment(op, &index, value),
-            HirExprKind::Field(field) => self.compile_hir_field_assignment(op, &field, value),
+        match self.hir_expression_record(target)?.1 {
+            HirExprKind::Path(_) => Ok(PreparedAssignmentTarget::Local { expression: target }),
+            HirExprKind::Index(index) => self
+                .prepare_hir_index_assignment(&index)
+                .map(PreparedAssignmentTarget::Index),
+            HirExprKind::Field(field) => self
+                .prepare_hir_field_assignment(&field)
+                .map(PreparedAssignmentTarget::Field),
             _ => Err(hir_unsupported("assignment target", span)),
+        }
+    }
+
+    fn finish_hir_assignment(
+        &mut self,
+        target: PreparedAssignmentTarget,
+        op: HirAssignOp,
+        value: Register,
+        span: Span,
+    ) -> CompileResult<Register> {
+        match target {
+            PreparedAssignmentTarget::Local { expression } => {
+                self.compile_hir_local_assignment(op, expression, value, span)
+            }
+            PreparedAssignmentTarget::Index(target) => {
+                self.finish_hir_index_assignment(op, target, value)
+            }
+            PreparedAssignmentTarget::Field(target) => {
+                self.finish_hir_field_assignment(op, target, value)
+            }
+            PreparedAssignmentTarget::Host { root, target } => {
+                match op {
+                    HirAssignOp::Set => {
+                        self.emit_compiled_host_write(root, target, value, span);
+                    }
+                    _ => self.emit_compiled_host_mutate(
+                        root,
+                        target,
+                        hir_host_mutation_op(op).expect("compound assignment has host mutation op"),
+                        value,
+                        span,
+                    ),
+                }
+                Ok(value)
+            }
         }
     }
 
@@ -337,104 +416,46 @@ impl Compiler<'_, '_> {
         Ok(dst)
     }
 
-    pub(in crate::compiler) fn compile_hir_index_assignment(
+    fn prepare_hir_index_assignment(
         &mut self,
-        op: HirAssignOp,
         index: &vela_hir::body::HirIndex,
-        value: Register,
-    ) -> CompileResult<Register> {
+    ) -> CompileResult<PreparedIndexAssignment> {
         let base = self.compile_hir_expression(index.receiver)?;
-        if let HirExprKind::Literal(HirLiteral::String(key)) =
+        let key = if let HirExprKind::Literal(HirLiteral::String(key)) =
             self.hir_expression_record(index.index)?.1
         {
-            let key = self.code.push_constant(Constant::String(key));
-            let assigned = if op == HirAssignOp::Set {
-                value
-            } else {
-                let current = self.alloc_register()?;
-                self.emit(UnlinkedInstructionKind::GetStringKeyIndex {
-                    dst: current,
-                    base,
-                    key,
-                });
-                let dst = self.alloc_register()?;
-                self.emit(
-                    hir_compound_instruction(op, dst, current, value, false)
-                        .expect("compound assignment operator"),
-                );
-                dst
-            };
-            self.emit(UnlinkedInstructionKind::SetStringKeyIndex {
-                base,
-                key,
-                src: assigned,
-            });
-            return Ok(assigned);
-        }
-        let key = self.compile_hir_expression(index.index)?;
-        let assigned = if op == HirAssignOp::Set {
-            value
+            PreparedIndexKey::String(self.code.push_constant(Constant::String(key)))
         } else {
-            let current = self.alloc_register()?;
-            self.emit(UnlinkedInstructionKind::GetIndex {
-                dst: current,
-                base,
-                index: key,
-            });
-            let dst = self.alloc_register()?;
-            self.emit(
-                hir_compound_instruction(op, dst, current, value, false)
-                    .expect("compound assignment operator"),
-            );
-            dst
+            PreparedIndexKey::Dynamic(self.compile_hir_expression(index.index)?)
         };
-        self.emit(UnlinkedInstructionKind::SetIndex {
-            base,
-            index: key,
-            src: assigned,
-        });
-        Ok(assigned)
+        Ok(PreparedIndexAssignment { base, key })
     }
 
-    pub(in crate::compiler) fn compile_hir_field_assignment(
+    fn finish_hir_index_assignment(
         &mut self,
         op: HirAssignOp,
-        field: &vela_hir::body::HirField,
+        target: PreparedIndexAssignment,
         value: Register,
     ) -> CompileResult<Register> {
-        if let Some(assigned) = self.compile_hir_nested_field_assignment(op, field, value)? {
-            return Ok(assigned);
-        }
-        let record = self.compile_hir_expression(field.receiver)?;
-        let fact = self.script_fact_for_hir_expression(field.receiver);
-        let slot = fact
-            .as_ref()
-            .and_then(|fact| self.script_record_field_slot_for_type(&fact.type_name, &field.name))
-            .or_else(|| {
-                self.value_shape_for_hir_expression(field.receiver)
-                    .and_then(|shape| {
-                        shape
-                            .as_record()
-                            .and_then(|shape| shape.field_slot(&field.name))
-                    })
-            });
         let assigned = if op == HirAssignOp::Set {
             value
         } else {
             let current = self.alloc_register()?;
-            if let Some(slot) = slot {
-                self.emit(UnlinkedInstructionKind::GetRecordSlot {
-                    dst: current,
-                    record,
-                    field: field.name.clone(),
-                    slot,
-                });
-            } else {
-                self.emit(UnlinkedInstructionKind::GetRecordField {
-                    dst: current,
-                    record,
-                    field: field.name.clone(),
-                });
+            match target.key {
+                PreparedIndexKey::Dynamic(index) => {
+                    self.emit(UnlinkedInstructionKind::GetIndex {
+                        dst: current,
+                        base: target.base,
+                        index,
+                    });
+                }
+                PreparedIndexKey::String(key) => {
+                    self.emit(UnlinkedInstructionKind::GetStringKeyIndex {
+                        dst: current,
+                        base: target.base,
+                        key,
+                    });
+                }
             }
             let dst = self.alloc_register()?;
             self.emit(
@@ -443,29 +464,29 @@ impl Compiler<'_, '_> {
             );
             dst
         };
-        if let Some(slot) = slot {
-            self.emit(UnlinkedInstructionKind::SetRecordSlot {
-                record,
-                field: field.name.clone(),
-                slot,
-                src: assigned,
-            });
-        } else {
-            self.emit(UnlinkedInstructionKind::SetRecordField {
-                record,
-                field: field.name.clone(),
-                src: assigned,
-            });
+        match target.key {
+            PreparedIndexKey::Dynamic(index) => {
+                self.emit(UnlinkedInstructionKind::SetIndex {
+                    base: target.base,
+                    index,
+                    src: assigned,
+                });
+            }
+            PreparedIndexKey::String(key) => {
+                self.emit(UnlinkedInstructionKind::SetStringKeyIndex {
+                    base: target.base,
+                    key,
+                    src: assigned,
+                });
+            }
         }
         Ok(assigned)
     }
 
-    pub(in crate::compiler) fn compile_hir_nested_field_assignment(
+    fn prepare_hir_field_assignment(
         &mut self,
-        op: HirAssignOp,
         target: &vela_hir::body::HirField,
-        value: Register,
-    ) -> CompileResult<Option<Register>> {
+    ) -> CompileResult<PreparedFieldAssignment> {
         let mut fields = Vec::new();
         let mut base = target.expression;
         while let HirExprKind::Field(field) = self.hir_expression_record(base)?.1 {
@@ -474,20 +495,6 @@ impl Compiler<'_, '_> {
         }
         fields.reverse();
         let base_kind = self.hir_expression_record(base)?.1;
-        if fields.len() <= 1 && !matches!(base_kind, HirExprKind::Index(_)) {
-            return Ok(None);
-        }
-
-        enum IndexedRoot {
-            Dynamic {
-                collection: Register,
-                index: Register,
-            },
-            String {
-                collection: Register,
-                key: crate::ConstantId,
-            },
-        }
         let (root, indexed_root) = match base_kind {
             HirExprKind::Index(index) => {
                 let collection = self.compile_hir_expression(index.receiver)?;
@@ -501,7 +508,7 @@ impl Compiler<'_, '_> {
                         base: collection,
                         key,
                     });
-                    (root, Some(IndexedRoot::String { collection, key }))
+                    (root, Some(PreparedIndexedRoot::String { collection, key }))
                 } else {
                     let index = self.compile_hir_expression(index.index)?;
                     self.emit(UnlinkedInstructionKind::GetIndex {
@@ -509,21 +516,37 @@ impl Compiler<'_, '_> {
                         base: collection,
                         index,
                     });
-                    (root, Some(IndexedRoot::Dynamic { collection, index }))
+                    (
+                        root,
+                        Some(PreparedIndexedRoot::Dynamic { collection, index }),
+                    )
                 }
             }
             _ => (self.compile_hir_expression(base)?, None),
         };
         let mut records = vec![root];
-        let mut shapes = vec![
-            self.value_shape_for_hir_expression(base)
-                .and_then(|shape| shape.as_record().cloned()),
-        ];
-        for field in fields.iter().take(fields.len().saturating_sub(1)) {
+        let mut shape = self
+            .value_shape_for_hir_expression(base)
+            .and_then(|shape| shape.as_record().cloned());
+        let direct_slot = (fields.len() == 1)
+            .then(|| {
+                self.script_fact_for_hir_expression(target.receiver)
+                    .and_then(|fact| {
+                        self.script_record_field_slot_for_type(&fact.type_name, &target.name)
+                    })
+            })
+            .flatten();
+        let mut slots = Vec::with_capacity(fields.len());
+        for (index, field) in fields.iter().enumerate() {
+            let slot =
+                direct_slot.or_else(|| shape.as_ref().and_then(|shape| shape.field_slot(field)));
+            slots.push(slot);
+            if index + 1 == fields.len() {
+                break;
+            }
             let record = *records.last().expect("nested assignment root");
-            let shape = shapes.last().and_then(|shape| shape.as_ref());
             let dst = self.alloc_register()?;
-            if let Some(slot) = shape.and_then(|shape| shape.field_slot(field)) {
+            if let Some(slot) = slot {
                 self.emit(UnlinkedInstructionKind::GetRecordSlot {
                     dst,
                     record,
@@ -537,19 +560,37 @@ impl Compiler<'_, '_> {
                     field: field.clone(),
                 });
             }
-            shapes.push(
-                shape
-                    .and_then(|shape| shape.field_record_shape(field))
-                    .cloned(),
-            );
+            shape = shape
+                .as_ref()
+                .and_then(|shape| shape.field_record_shape(field))
+                .cloned();
             records.push(dst);
         }
-        let leaf_record = *records.last().expect("nested assignment leaf parent");
-        let leaf = fields.last().expect("nested assignment field").clone();
-        let leaf_slot = shapes
+
+        Ok(PreparedFieldAssignment {
+            fields,
+            slots,
+            records,
+            indexed_root,
+        })
+    }
+
+    fn finish_hir_field_assignment(
+        &mut self,
+        op: HirAssignOp,
+        target: PreparedFieldAssignment,
+        value: Register,
+    ) -> CompileResult<Register> {
+        let leaf_record = *target
+            .records
             .last()
-            .and_then(|shape| shape.as_ref())
-            .and_then(|shape| shape.field_slot(&leaf));
+            .expect("nested assignment leaf parent");
+        let leaf = target
+            .fields
+            .last()
+            .expect("nested assignment field")
+            .clone();
+        let leaf_slot = *target.slots.last().expect("nested assignment leaf slot");
         let assigned = if op == HirAssignOp::Set {
             value
         } else {
@@ -589,44 +630,42 @@ impl Compiler<'_, '_> {
                 src: assigned,
             });
         }
-        for index in (0..fields.len().saturating_sub(1)).rev() {
-            let field = fields[index].clone();
-            let slot = shapes[index]
-                .as_ref()
-                .and_then(|shape| shape.field_slot(&field));
+        for index in (0..target.fields.len().saturating_sub(1)).rev() {
+            let field = target.fields[index].clone();
+            let slot = target.slots[index];
             if let Some(slot) = slot {
                 self.emit(UnlinkedInstructionKind::SetRecordSlot {
-                    record: records[index],
+                    record: target.records[index],
                     field,
                     slot,
-                    src: records[index + 1],
+                    src: target.records[index + 1],
                 });
             } else {
                 self.emit(UnlinkedInstructionKind::SetRecordField {
-                    record: records[index],
+                    record: target.records[index],
                     field,
-                    src: records[index + 1],
+                    src: target.records[index + 1],
                 });
             }
         }
-        if let Some(indexed_root) = indexed_root {
+        if let Some(indexed_root) = target.indexed_root {
             match indexed_root {
-                IndexedRoot::Dynamic { collection, index } => {
+                PreparedIndexedRoot::Dynamic { collection, index } => {
                     self.emit(UnlinkedInstructionKind::SetIndex {
                         base: collection,
                         index,
-                        src: root,
+                        src: target.records[0],
                     });
                 }
-                IndexedRoot::String { collection, key } => {
+                PreparedIndexedRoot::String { collection, key } => {
                     self.emit(UnlinkedInstructionKind::SetStringKeyIndex {
                         base: collection,
                         key,
-                        src: root,
+                        src: target.records[0],
                     });
                 }
             }
         }
-        Ok(Some(assigned))
+        Ok(assigned)
     }
 }

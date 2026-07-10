@@ -130,6 +130,14 @@ special-casing `self` or requiring a local path root. Host field assignments
 still resolve through HostAccess first; non-host record writes mutate script
 heap records through record field or slot bytecode.
 
+Every assignment evaluates and captures its target components once, from left
+to right, before evaluating the right-hand side. For an indexed target this is
+receiver, then index, then RHS. A compound assignment performs its explicit
+read-modify-write against the current target state after RHS evaluation, so an
+alias write performed by the RHS is observable by the RMW. Host compounds keep
+`HostMutate` as that current-state boundary; they are not lowered through a
+detached host read or an ordinary MIR place.
+
 ### Module Imports And Exports
 
 Vela has no source-level `module` declaration. `compile_file(path)` is a

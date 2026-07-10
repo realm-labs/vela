@@ -144,28 +144,23 @@ impl Compiler<'_, '_> {
         );
         Ok(())
     }
-    pub(super) fn emit_host_write(
+    pub(super) fn emit_compiled_host_write(
         &mut self,
         root: Register,
-        path: HostPath,
+        target: CompiledHostTarget,
         src: Register,
         span: Span,
-    ) -> CompileResult<()> {
-        let CompiledHostTarget {
-            target,
-            dynamic_args,
-        } = self.compile_host_target(path)?;
+    ) {
         self.emit_spanned(
             UnlinkedInstructionKind::HostWrite {
                 root,
-                target,
-                dynamic_args,
+                target: target.target,
+                dynamic_args: target.dynamic_args,
                 src,
                 cache_site: CacheSiteId::new(0),
             },
             span,
         );
-        Ok(())
     }
     pub(super) fn emit_host_mutate(
         &mut self,
@@ -175,22 +170,29 @@ impl Compiler<'_, '_> {
         rhs: Register,
         span: Span,
     ) -> CompileResult<()> {
-        let CompiledHostTarget {
-            target,
-            dynamic_args,
-        } = self.compile_host_target(path)?;
+        let target = self.compile_host_target(path)?;
+        self.emit_compiled_host_mutate(root, target, op, rhs, span);
+        Ok(())
+    }
+    pub(super) fn emit_compiled_host_mutate(
+        &mut self,
+        root: Register,
+        target: CompiledHostTarget,
+        op: HostMutationOp,
+        rhs: Register,
+        span: Span,
+    ) {
         self.emit_spanned(
             UnlinkedInstructionKind::HostMutate {
                 root,
-                target,
-                dynamic_args,
+                target: target.target,
+                dynamic_args: target.dynamic_args,
                 op,
                 rhs,
                 cache_site: CacheSiteId::new(0),
             },
             span,
         );
-        Ok(())
     }
     pub(super) fn emit_host_remove(
         &mut self,
@@ -252,7 +254,10 @@ impl Compiler<'_, '_> {
             } => self.required_local_register_for_hir_expression(*expression, *span, name),
         }
     }
-    fn compile_host_target(&mut self, path: HostPath) -> CompileResult<CompiledHostTarget> {
+    pub(super) fn compile_host_target(
+        &mut self,
+        path: HostPath,
+    ) -> CompileResult<CompiledHostTarget> {
         let root_type = self.host_path_root_type(path.root);
         let mut plan = HostTargetPlan::with_part_capacity(root_type, path.segments.len());
         let mut dynamic_args = Vec::new();
