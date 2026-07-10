@@ -1,3 +1,5 @@
+mod constructor_targets;
+
 use vela_common::SourceId;
 use vela_hir::body::HirExprKind;
 use vela_hir::ids::HirExprId;

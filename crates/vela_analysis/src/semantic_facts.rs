@@ -18,7 +18,7 @@ pub use targets::{
 use targets::{direct_lambda_body, registry_field_owner, source_field_fact};
 
 use vela_common::PrimitiveTag;
-use vela_hir::binding::BindingResolution;
+use vela_hir::binding::{BindingResolution, ConstructorResolution};
 use vela_hir::body::{
     HirBody, HirBodyRoot, HirElseBranch, HirExprKind, HirMatchArmBody, HirPathKind, HirPathOwner,
     HirPatternKind, HirStmtKind,
@@ -531,9 +531,12 @@ impl HirSemanticFacts {
                 }
             }
             HirExprKind::Record { .. } => {
+                let resolution = graph
+                    .bindings_for_body(body.id)
+                    .and_then(|bindings| bindings.constructor_resolution(id));
                 let target = expression_path(body, id, HirPathKind::Constructor)
                     .map_or(ConstructorTargetFact::Unresolved, |path| {
-                        constructor_target_for_path(graph, schema, path)
+                        constructor_target(graph, schema, path, resolution)
                     });
                 match &target {
                     ConstructorTargetFact::Declaration(declaration) => {
@@ -594,9 +597,12 @@ impl HirSemanticFacts {
                 _ => None,
             };
             if let Some(path) = path {
+                let resolution = graph
+                    .bindings_for_body(body.id)
+                    .and_then(|bindings| bindings.pattern_constructor_resolution(&path.path));
                 self.pattern_constructors.insert(
                     pattern.id,
-                    constructor_target_for_path(graph, schema, &path.path),
+                    constructor_target(graph, schema, &path.path, resolution),
                 );
             }
         }
@@ -929,24 +935,40 @@ fn iterable_item_fact(fact: &TypeFact) -> TypeFact {
     }
 }
 
-fn constructor_target_for_path(
+fn constructor_target(
     graph: &ModuleGraph,
     schema: Option<&RegistryFacts>,
     path: &[String],
+    resolution: Option<ConstructorResolution>,
 ) -> ConstructorTargetFact {
     if path.is_empty() {
         return ConstructorTargetFact::Unresolved;
     }
-    if path.len() > 1 {
-        let (variant, owner_path) = path.split_last().expect("non-empty constructor path");
-        if let Some(declaration) = source_declaration_for_path(graph, owner_path)
-            && declaration.kind == DeclarationKind::Enum
-        {
-            return ConstructorTargetFact::Variant {
-                enum_declaration: declaration.id,
-                variant: variant.clone(),
-            };
-        }
+    if let Some(ConstructorResolution::Declaration(declaration)) = resolution {
+        let Some(metadata) = graph.declaration(declaration) else {
+            return ConstructorTargetFact::Unresolved;
+        };
+        return match metadata.kind {
+            DeclarationKind::Struct => ConstructorTargetFact::Declaration(declaration),
+            DeclarationKind::Enum if path.len() > 1 => ConstructorTargetFact::Variant {
+                enum_declaration: declaration,
+                variant: path.last().cloned().expect("non-empty constructor path"),
+            },
+            DeclarationKind::Enum => ConstructorTargetFact::Declaration(declaration),
+            DeclarationKind::Const
+            | DeclarationKind::Global
+            | DeclarationKind::Function
+            | DeclarationKind::Trait
+            | DeclarationKind::Impl => ConstructorTargetFact::Unresolved,
+        };
+    }
+    let Some(ConstructorResolution::Dynamic(dynamic_path)) = resolution else {
+        return ConstructorTargetFact::Unresolved;
+    };
+    if dynamic_path.len() > 1 {
+        let (variant, owner_path) = dynamic_path
+            .split_last()
+            .expect("non-empty dynamic constructor path");
         let owner = owner_path.join("::");
         if schema.is_some_and(|schema| schema.variant_fact(&owner, variant).is_some()) {
             return ConstructorTargetFact::RegistryVariant {
@@ -955,19 +977,16 @@ fn constructor_target_for_path(
             };
         }
     }
-    if let Some(declaration) = source_declaration_for_path(graph, path) {
-        return ConstructorTargetFact::Declaration(declaration.id);
-    }
-    let qualified = path.join("::");
+    let qualified = dynamic_path.join("::");
     if schema.is_some_and(|schema| {
         schema.type_fact(&qualified).is_some()
-            || path
+            || dynamic_path
                 .last()
                 .is_some_and(|name| schema.type_fact(name).is_some())
     }) {
         return ConstructorTargetFact::RegistryType { path: qualified };
     }
-    ConstructorTargetFact::Unresolved
+    ConstructorTargetFact::Dynamic
 }
 
 fn source_declaration_for_path<'a>(
