@@ -262,16 +262,30 @@ runtime values: range construction may trap but does not allocate. Iterator
 steps are call-capable safepoint terminators, while range steps distinguish a
 proven `i64` mode from a dynamic-integer trapping mode.
 
+When a mutable script-local operand must survive lowering a later source
+operand, MIR snapshots that read into a single-assignment temporary before the
+later expression. This makes left-to-right evaluation explicit for operators,
+aggregate elements, receivers, callees, indexes, and arguments even when the
+later expression reassigns the local. A backend may coalesce a snapshot only
+when its allocation/liveness proof preserves the same observed value and
+instruction-budget contract.
+
 Resolved method calls carry an already-evaluated receiver. Script calls retain
 a complete ordered parameter-slot vector and may use the Missing sentinel only
 for HIR-owned defaults evaluated by the callee prologue. External signatures
 state whether positional arity is declared/defaulted, runtime-checked, or
 proven variadic; this preserves existing native/host behavior instead of
-silently adding static arity rejection. Callable-value calls remain
-positional-only, and dynamic method calls preserve ordered runtime names.
+silently adding static arity rejection. Resolved local/direct-lambda
+callable-value calls remain positional-only, while genuinely dynamic callable
+and method calls preserve ordered runtime names.
 Compile-call input records the already-resolved HIR expression IDs in complete
 script slots, validated positional order, or genuine runtime named order; the
 MIR builder does not perform argument-name resolution.
+Resolved local and direct-lambda callable-value calls are positional. A
+genuinely dynamic callable retains ordered positional/named arguments in a
+separate MIR call form, just as a dynamic method does; it must not erase names
+or be repaired through a method/name fallback.
+
 Contract guards are trap-only statements. Recoverable optimization guards are
 terminators with explicit passed/slow CFG successors, and `Option`/`Result`
 propagation uses ordinary variant tests, CFG edges, extraction, and return

@@ -189,6 +189,10 @@ pub enum MirCall {
         callee: MirOperand,
         arguments: Vec<MirOperand>,
     },
+    DynamicCallable {
+        callee: MirOperand,
+        arguments: Vec<MirDynamicArgument>,
+    },
     NativeFunction {
         function: FunctionId,
         debug_name: String,
@@ -547,6 +551,7 @@ impl MirCall {
                 ..
             } => script_arguments_match(signature, arguments, None),
             Self::CallableValue { .. } => true,
+            Self::DynamicCallable { arguments, .. } => dynamic_arguments_are_ordered(arguments),
             Self::NativeFunction {
                 signature,
                 arguments,
@@ -573,7 +578,9 @@ impl MirCall {
             Self::ScriptFunction { signature, .. } | Self::ScriptMethod { signature, .. } => {
                 MirEffect::script_call().union(signature.effect)
             }
-            Self::CallableValue { .. } | Self::DynamicMethod { .. } => MirEffect::dynamic_call(),
+            Self::CallableValue { .. }
+            | Self::DynamicCallable { .. }
+            | Self::DynamicMethod { .. } => MirEffect::dynamic_call(),
             Self::NativeFunction { signature, .. }
             | Self::StdlibFunction { signature, .. }
             | Self::ValueMethod { signature, .. } => {

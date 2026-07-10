@@ -69,6 +69,9 @@ impl FunctionBuilder<'_> {
 
         let operand_fact = self.expression_fact(operand, origin)?;
         let operand = self.lower_expression(operand)?;
+        if self.current_is_terminated()? {
+            return Ok(MirOperand::Immediate(MirImmediate::Unit));
+        }
         let kind = if proven {
             typed_unary(operation, &operand_fact).map_or_else(
                 || MirStatementKind::DynamicUnary {
@@ -104,7 +107,7 @@ impl FunctionBuilder<'_> {
         let right = right
             .ok_or_else(|| self.inconsistent(origin, "binary expression has no right operand"))?;
         if matches!(operation, HirBinaryOp::And | HirBinaryOp::Or) {
-            return Err(self.unsupported(origin, "short-circuit binary expression"));
+            return self.lower_short_circuit(expression, operation, left, right, origin);
         }
         let proven = match self.operator_target(expression, origin)? {
             OperatorTargetFact::Binary(target) if target == operation => true,
@@ -131,7 +134,14 @@ impl FunctionBuilder<'_> {
             HirBinaryOp::IdentityEqual | HirBinaryOp::IdentityNotEqual
         ) {
             let left = self.lower_expression(left)?;
+            if self.current_is_terminated()? {
+                return Ok(MirOperand::Immediate(MirImmediate::Unit));
+            }
+            let left = self.capture_operand(left, origin)?;
             let right = self.lower_expression(right)?;
+            if self.current_is_terminated()? {
+                return Ok(MirOperand::Immediate(MirImmediate::Unit));
+            }
             return self.append_operator(
                 expression,
                 origin,
@@ -149,7 +159,14 @@ impl FunctionBuilder<'_> {
         }
         if matches!(operation, HirBinaryOp::Range | HirBinaryOp::RangeInclusive) {
             let start = self.lower_expression(left)?;
+            if self.current_is_terminated()? {
+                return Ok(MirOperand::Immediate(MirImmediate::Unit));
+            }
+            let start = self.capture_operand(start, origin)?;
             let end = self.lower_expression(right)?;
+            if self.current_is_terminated()? {
+                return Ok(MirOperand::Immediate(MirImmediate::Unit));
+            }
             return self.append_operator(
                 expression,
                 origin,
@@ -171,7 +188,14 @@ impl FunctionBuilder<'_> {
         let left_fact = self.expression_fact(left, origin)?;
         let right_fact = self.expression_fact(right, origin)?;
         let left = self.lower_expression(left)?;
+        if self.current_is_terminated()? {
+            return Ok(MirOperand::Immediate(MirImmediate::Unit));
+        }
+        let left = self.capture_operand(left, origin)?;
         let right = self.lower_expression(right)?;
+        if self.current_is_terminated()? {
+            return Ok(MirOperand::Immediate(MirImmediate::Unit));
+        }
         if proven && let Some(operation) = typed_binary(operation, &left_fact, &right_fact) {
             return self.append_operator(
                 expression,
@@ -242,6 +266,9 @@ impl FunctionBuilder<'_> {
             )
         })?;
         let value = self.lower_expression(value)?;
+        if self.current_is_terminated()? {
+            return Ok(Some(MirOperand::Immediate(MirImmediate::Unit)));
+        }
         self.append_operator(
             expression,
             origin,
@@ -286,6 +313,9 @@ impl FunctionBuilder<'_> {
         kind: MirStatementKind,
         effect: MirEffect,
     ) -> Result<MirOperand, MirBuildError> {
+        if self.current_is_terminated()? {
+            return Ok(MirOperand::Immediate(MirImmediate::Unit));
+        }
         let result_fact = self.expression_fact(expression, origin)?;
         let destination = self
             .function

@@ -2,6 +2,7 @@ mod aggregate_patterns;
 mod builder;
 mod call_guards;
 mod control;
+mod control_flow_builder;
 mod dynamic_targets;
 mod evaluation_order;
 mod identity;

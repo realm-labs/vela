@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use vela_analysis::type_fact::TypeFact;
 use vela_hir::binding::BindingResolution;
 use vela_hir::body::{HirBody, HirBodyRoot, HirExprKind, HirPatternKind, HirStmtKind};
-use vela_hir::ids::{HirBlockId, HirExprId, HirLocalId};
+use vela_hir::ids::{HirBlockId, HirExprId, HirLocalId, HirStmtId};
 
 use crate::{
     DebugLocalKind, MirBuildError, MirDebugLocal, MirEffect, MirFunction, MirFunctionOwner,
@@ -247,7 +247,7 @@ impl<'a> FunctionBuilder<'a> {
         Ok(())
     }
 
-    fn lower_block(&mut self, block: HirBlockId) -> Result<(), MirBuildError> {
+    pub(super) fn lower_block(&mut self, block: HirBlockId) -> Result<(), MirBuildError> {
         let block = self.body.blocks.get(&block).ok_or_else(|| {
             self.inconsistent(self.body_origin(), format!("missing HIR block {block:?}"))
         })?;
@@ -256,62 +256,67 @@ impl<'a> FunctionBuilder<'a> {
             if self.current_is_terminated()? {
                 break;
             }
-            let statement = self
-                .body
-                .statements
-                .get(&statement_id)
-                .ok_or_else(|| {
-                    self.inconsistent(
-                        self.body_origin(),
-                        format!("missing HIR statement {statement_id:?}"),
-                    )
-                })?
-                .clone();
-            let origin =
-                MirSourceOrigin::statement(self.body.id, statement.id, statement.origin.span);
-            match statement.kind {
-                HirStmtKind::Let {
-                    pattern,
-                    initializer,
-                    ..
-                } => self.lower_let(pattern, initializer, origin)?,
-                HirStmtKind::Return { value } => {
-                    let value = value
-                        .map(|value| self.lower_expression(value))
-                        .transpose()?;
-                    self.function.set_terminator(
-                        self.current_block,
-                        MirTerminator::new(
-                            origin,
-                            MirTerminatorKind::Return(value),
-                            MirEffect::PURE,
-                            None,
-                        ),
-                    )?;
-                }
-                HirStmtKind::Block(block) => self.lower_block(block)?,
-                HirStmtKind::Expr {
-                    expression: Some(expression),
-                    ..
-                } => {
-                    self.lower_expression(expression)?;
-                }
-                HirStmtKind::Expr {
-                    expression: None, ..
-                } => {}
-                HirStmtKind::Break => return Err(self.unsupported(origin, "break statement")),
-                HirStmtKind::Continue => {
-                    return Err(self.unsupported(origin, "continue statement"));
-                }
-                HirStmtKind::For { .. } => return Err(self.unsupported(origin, "for statement")),
-                HirStmtKind::If(_) => return Err(self.unsupported(origin, "if statement")),
-                HirStmtKind::Match(_) => return Err(self.unsupported(origin, "match statement")),
-            }
+            self.lower_statement(statement_id)?;
         }
         Ok(())
     }
 
-    fn lower_let(
+    pub(super) fn lower_statement(&mut self, statement_id: HirStmtId) -> Result<(), MirBuildError> {
+        if self.current_is_terminated()? {
+            return Ok(());
+        }
+        let statement = self
+            .body
+            .statements
+            .get(&statement_id)
+            .ok_or_else(|| {
+                self.inconsistent(
+                    self.body_origin(),
+                    format!("missing HIR statement {statement_id:?}"),
+                )
+            })?
+            .clone();
+        let origin = MirSourceOrigin::statement(self.body.id, statement.id, statement.origin.span);
+        match statement.kind {
+            HirStmtKind::Let {
+                pattern,
+                initializer,
+                ..
+            } => self.lower_let(pattern, initializer, origin),
+            HirStmtKind::Return { value } => {
+                let value = value
+                    .map(|value| self.lower_expression(value))
+                    .transpose()?;
+                if self.current_is_terminated()? {
+                    return Ok(());
+                }
+                self.function.set_terminator(
+                    self.current_block,
+                    MirTerminator::new(
+                        origin,
+                        MirTerminatorKind::Return(value),
+                        MirEffect::PURE,
+                        None,
+                    ),
+                )
+            }
+            HirStmtKind::Block(block) => self.lower_block(block),
+            HirStmtKind::Expr {
+                expression: Some(expression),
+                ..
+            } => self.lower_expression(expression).map(|_| ()),
+            HirStmtKind::Expr {
+                expression: None, ..
+            } => Ok(()),
+            HirStmtKind::Break => Err(self.unsupported(origin, "break statement")),
+            HirStmtKind::Continue => Err(self.unsupported(origin, "continue statement")),
+            HirStmtKind::For { .. } => Err(self.unsupported(origin, "for statement")),
+            HirStmtKind::If(value) => self.lower_if_statement(&value, origin),
+            HirStmtKind::Match(_) => Err(self.unsupported(origin, "match statement")),
+        }
+    }
+
+    pub(super) fn lower_let(
         &mut self,
         pattern: Option<vela_hir::ids::HirPatternId>,
         initializer: Option<HirExprId>,
@@ -321,6 +326,9 @@ impl<'a> FunctionBuilder<'a> {
             .map(|expression| self.lower_expression(expression))
             .transpose()?
             .unwrap_or(MirOperand::Immediate(MirImmediate::Unit));
+        if self.current_is_terminated()? {
+            return Ok(());
+        }
         let Some(pattern) = pattern else {
             return Ok(());
         };
@@ -351,6 +359,9 @@ impl<'a> FunctionBuilder<'a> {
         })?;
         let kind = record.kind.clone();
         let origin = MirSourceOrigin::expression(self.body.id, expression, record.origin.span);
+        if let Some(value) = self.lower_aggregate_expression(expression, origin)? {
+            return Ok(value);
+        }
         match kind {
             HirExprKind::Literal(literal) => self.lower_literal(expression, &literal, origin),
             HirExprKind::Path(_) => self.lower_path(expression, origin),
@@ -371,15 +382,15 @@ impl<'a> FunctionBuilder<'a> {
             }
             HirExprKind::Assign { .. } => Err(self.unsupported(origin, "assignment expression")),
             HirExprKind::Field(_) => Err(self.unsupported(origin, "field expression")),
-            HirExprKind::Call(_) => Err(self.unsupported(origin, "call expression")),
+            HirExprKind::Call(call) => self.lower_call(expression, &call, origin),
             HirExprKind::Index(_) => Err(self.unsupported(origin, "index expression")),
             HirExprKind::Try { .. } => Err(self.unsupported(origin, "try expression")),
             HirExprKind::Array { .. } => Err(self.unsupported(origin, "array expression")),
             HirExprKind::Map { .. } => Err(self.unsupported(origin, "map expression")),
             HirExprKind::Record { .. } => Err(self.unsupported(origin, "record expression")),
             HirExprKind::Lambda { .. } => Err(self.unsupported(origin, "lambda expression")),
-            HirExprKind::Block { .. } => Err(self.unsupported(origin, "block value expression")),
-            HirExprKind::If(_) => Err(self.unsupported(origin, "if expression")),
+            HirExprKind::Block { block } => self.lower_block_expression(expression, block, origin),
+            HirExprKind::If(value) => self.lower_if_expression(expression, &value, origin),
             HirExprKind::Match(_) => Err(self.unsupported(origin, "match expression")),
         }
     }
@@ -427,7 +438,7 @@ impl<'a> FunctionBuilder<'a> {
         Ok(())
     }
 
-    fn current_is_terminated(&self) -> Result<bool, MirBuildError> {
+    pub(super) fn current_is_terminated(&self) -> Result<bool, MirBuildError> {
         self.function
             .block(self.current_block)
             .map(|block| block.terminator().is_some())
@@ -446,6 +457,39 @@ impl<'a> FunctionBuilder<'a> {
             .get(&local)
             .copied()
             .ok_or_else(|| self.inconsistent(origin, format!("missing MIR storage for {local:?}")))
+    }
+
+    /// Stabilize a value that must survive lowering a later source operand.
+    ///
+    /// Mutable script locals are reads at the eventual use site, so keeping a
+    /// `MirOperand::Local` across later lowering could observe an intervening
+    /// assignment. Immediates and already-defined temporaries are stable.
+    pub(super) fn capture_operand(
+        &mut self,
+        operand: MirOperand,
+        origin: MirSourceOrigin,
+    ) -> Result<MirOperand, MirBuildError> {
+        if self.current_is_terminated()? {
+            return Ok(MirOperand::Immediate(MirImmediate::Unit));
+        }
+        let MirOperand::Local(local) = operand else {
+            return Ok(operand);
+        };
+        let value_type = self
+            .function
+            .local(local)
+            .map(|local| local.value_type)
+            .ok_or(MirBuildError::MissingLocal { local, origin })?;
+        let temp = self.function.add_temp(value_type, origin);
+        self.function.append_statement(
+            self.current_block,
+            MirStatement::assign(
+                origin,
+                MirPlace::temp(temp),
+                MirRvalue::Use(MirOperand::Local(local)),
+            ),
+        )?;
+        Ok(MirOperand::Temp(temp))
     }
 
     fn body_origin(&self) -> MirSourceOrigin {

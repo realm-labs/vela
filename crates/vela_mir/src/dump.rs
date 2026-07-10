@@ -545,6 +545,10 @@ fn write_call(formatter: &mut fmt::Formatter<'_>, call: &MirCall) -> fmt::Result
             write!(formatter, "call closure({})(", operand_text(callee))?;
             write_operand_values(formatter, arguments)?;
         }
+        MirCall::DynamicCallable { callee, arguments } => {
+            write!(formatter, "call dynamic({})(", operand_text(callee))?;
+            write_dynamic_arguments(formatter, arguments)?;
+        }
         MirCall::NativeFunction {
             function,
             debug_name,

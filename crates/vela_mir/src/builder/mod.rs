@@ -4,6 +4,9 @@
 //! entrypoint. Complete-function tests can therefore exercise the real
 //! semantic input boundary while Phase 2 grows by execution responsibility.
 
+mod aggregates;
+mod calls;
+mod control_flow;
 mod core;
 mod literals;
 mod operators;

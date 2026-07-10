@@ -77,9 +77,15 @@ complete-function builder slice maps parameters and mutable script locals,
 lowers scalar/string/bytes literals, nested blocks, explicit and implicit
 returns, typed and dynamic unary/binary operators, contextual numeric operands,
 identity comparison, and ranges while preserving left-to-right evaluation and
-explicit allocation/dynamic-comparison safepoints. Unsupported execution
-families fail with `MirBuildError`; they never invoke direct bytecode lowering.
-No MIR backend selector or production MIR route exists.
+explicit allocation/dynamic-comparison safepoints. Tuple, array, logical-key
+map, interpolated-string, and explicitly targeted set construction now lower at
+allocation safepoints. Block and if values, nested else-if, and short-circuit
+operators use explicit CFG edges, mutable join locals, and unreachable joins;
+earlier mutable-local operands are captured before later source expressions.
+The model also owns ordered dynamic record/variant aggregates and pure
+projection-safe pattern predicates. Unsupported execution families fail with
+`MirBuildError`; they never invoke direct bytecode lowering. No MIR backend
+selector or production MIR route exists.
 
 The Phase 1 semantic gate also fixes backend-bearing edge cases before a
 builder exists: owner-qualified executable method lookup preserves shared trait

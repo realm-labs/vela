@@ -224,12 +224,16 @@ fn mir_builder_lowers_proven_scalar_operators_in_left_to_right_order() {
     local l4: Script(HirLocalId(4)) Primitive(Bool) @70:92..100/h0
     local l5: Script(HirLocalId(5)) Range @70:128..132/h0
     temp t0: Primitive(I32) def=s1 @70:77..82/e2
-    temp t1: Primitive(Bool) def=s3 @70:105..117/e6
-    temp t2: Primitive(Bool) def=s4 @70:103..118/e4
-    temp t3: Range def=s6 @70:135..147/e9
-    temp t4: Primitive(I32) def=s8 @70:161..172/e14
-    temp t5: Primitive(I32) def=s9 @70:177..189/e18
-    temp t6: Primitive(I32) def=s10 @70:160..190/e12
+    temp t1: Primitive(I32) def=s3 @70:105..117/e6
+    temp t2: Primitive(Bool) def=s4 @70:105..117/e6
+    temp t3: Primitive(Bool) def=s5 @70:103..118/e4
+    temp t4: Primitive(I32) def=s7 @70:135..147/e9
+    temp t5: Range def=s8 @70:135..147/e9
+    temp t6: Primitive(I32) def=s10 @70:161..172/e14
+    temp t7: Primitive(I32) def=s11 @70:161..172/e14
+    temp t8: Primitive(I32) def=s12 @70:177..189/e18
+    temp t9: Primitive(I32) def=s13 @70:177..189/e18
+    temp t10: Primitive(I32) def=s14 @70:160..190/e12
     debug dl0: left -> l0 kind=Parameter hir=Some(0) scope=h0 live=[] @70:8..12/h0
     debug dl1: right -> l1 kind=Parameter hir=Some(1) scope=h0 live=[] @70:19..24/h0
     debug dl2: minimum -> l2 kind=Local hir=Some(2) scope=h0 live=[] @70:41..48/h0
@@ -240,15 +244,19 @@ fn mir_builder_lowers_proven_scalar_operators_in_left_to_right_order() {
       s0: l2 = -128i8 [pure] @70:37..58/s0
       s1: t0 = Negate(I32) l0 [trap] @70:77..82/e2
       s2: l3 = t0 [pure] @70:63..83/s1
-      s3: t1 = Compare { operation: Less, kind: I32 } l0, l1 [trap] @70:105..117/e6
-      s4: t2 = NotBool t1 [trap] @70:103..118/e4
-      s5: l4 = t2 [pure] @70:88..119/s2
-      s6: t3 = range.make l0, l1 inclusive=true [trap] @70:135..147/e9
-      s7: l5 = t3 [pure] @70:124..148/s3
-      s8: t4 = Numeric { operation: Add, kind: I32 } l0, 1i32 [trap] @70:161..172/e14
-      s9: t5 = Numeric { operation: Subtract, kind: I32 } l1, 2i32 [trap] @70:177..189/e18
-      s10: t6 = Numeric { operation: Multiply, kind: I32 } t4, t5 [trap] @70:160..190/e12
-      -> return t6 [pure] @70:153..191/s4
+      s3: t1 = l0 [pure] @70:105..117/e6
+      s4: t2 = Compare { operation: Less, kind: I32 } t1, l1 [trap] @70:105..117/e6
+      s5: t3 = NotBool t2 [trap] @70:103..118/e4
+      s6: l4 = t3 [pure] @70:88..119/s2
+      s7: t4 = l0 [pure] @70:135..147/e9
+      s8: t5 = range.make t4, l1 inclusive=true [trap] @70:135..147/e9
+      s9: l5 = t5 [pure] @70:124..148/s3
+      s10: t6 = l0 [pure] @70:161..172/e14
+      s11: t7 = Numeric { operation: Add, kind: I32 } t6, 1i32 [trap] @70:161..172/e14
+      s12: t8 = l1 [pure] @70:177..189/e18
+      s13: t9 = Numeric { operation: Subtract, kind: I32 } t8, 2i32 [trap] @70:177..189/e18
+      s14: t10 = Numeric { operation: Multiply, kind: I32 } t7, t9 [trap] @70:160..190/e12
+      -> return t10 [pure] @70:153..191/s4
   }
 }
 "#
@@ -295,9 +303,12 @@ fn mir_builder_lowers_dynamic_contextual_identity_and_range_operators() {
     temp t1: Primitive(Bool) def=s2 @70:69..75/e2
     temp t2: Dynamic def=s4 @70:98..107/e4
     temp t3: Dynamic def=s6 @70:128..137/e7
-    temp t4: Primitive(Bool) def=s8 @70:158..172/e10
-    temp t5: Primitive(Bool) def=s10 @70:189..204/e13
-    temp t6: Range def=s12 @70:221..233/e16
+    temp t4: Dynamic def=s8 @70:158..172/e10
+    temp t5: Primitive(Bool) def=s9 @70:158..172/e10
+    temp t6: Dynamic def=s11 @70:189..204/e13
+    temp t7: Primitive(Bool) def=s12 @70:189..204/e13
+    temp t8: Dynamic def=s14 @70:221..233/e16
+    temp t9: Range def=s15 @70:221..233/e16
     debug dl0: value -> l0 kind=Parameter hir=Some(0) scope=h0 live=[] @70:8..13/h0
     debug dl1: other -> l1 kind=Parameter hir=Some(1) scope=h0 live=[] @70:15..20/h0
     debug dl2: negated -> l2 kind=Local hir=Some(2) scope=h0 live=[] @70:32..39/h0
@@ -317,12 +328,15 @@ fn mir_builder_lowers_dynamic_contextual_identity_and_range_operators() {
       s5: l4 = t2 [pure] @70:81..108/s2
       s6: t3 = contextual.Subtract value=l0 literal=DeferredNumericLiteral { kind: Integer, text: "2" } side=Left [trap] @70:128..137/e7
       s7: l5 = t3 [pure] @70:113..138/s3
-      s8: t4 = dyn.Equal l0, l1 [trap|alloc|dynamic-call, sp0] @70:158..172/e10
-      s9: l6 = t4 [pure] @70:143..173/s4
-      s10: t5 = identity.Equal l0, l1 [trap] @70:189..204/e13
-      s11: l7 = t5 [pure] @70:178..205/s5
-      s12: t6 = range.make l0, l1 inclusive=false [trap] @70:221..233/e16
-      s13: l8 = t6 [pure] @70:210..234/s6
+      s8: t4 = l0 [pure] @70:158..172/e10
+      s9: t5 = dyn.Equal t4, l1 [trap|alloc|dynamic-call, sp0] @70:158..172/e10
+      s10: l6 = t5 [pure] @70:143..173/s4
+      s11: t6 = l0 [pure] @70:189..204/e13
+      s12: t7 = identity.Equal t6, l1 [trap] @70:189..204/e13
+      s13: l7 = t7 [pure] @70:178..205/s5
+      s14: t8 = l0 [pure] @70:221..233/e16
+      s15: t9 = range.make t8, l1 inclusive=false [trap] @70:221..233/e16
+      s16: l8 = t9 [pure] @70:210..234/s6
       -> return l4 [pure] @70:239..257/s7
   }
 }
@@ -331,19 +345,7 @@ fn mir_builder_lowers_dynamic_contextual_identity_and_range_operators() {
 }
 
 #[test]
-fn mir_builder_rejects_short_circuit_and_invalid_contextual_operator_inputs() {
-    let short_circuit = try_build_with_parameters_and_contexts(
-        "fn main(left, right) { return left && right; }",
-        vec![required_parameter("left"), required_parameter("right")],
-        &[],
-    )
-    .expect_err("short-circuit lowering belongs to the CFG slice");
-    assert!(
-        short_circuit
-            .to_string()
-            .contains("short-circuit binary expression is outside")
-    );
-
+fn mir_builder_rejects_invalid_contextual_operator_inputs() {
     let invalid_context = try_build_with_parameters_and_contexts(
         "fn main(value) { return value == 1; }",
         vec![required_parameter("value")],
