@@ -2,6 +2,7 @@
 
 pub mod completion;
 pub mod contracts;
+pub mod executable;
 pub mod fact_scope;
 pub mod facts;
 pub mod hints;

@@ -1,10 +1,16 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 mod control_flow;
+mod lookups;
 mod script_types;
 mod targets;
 
 use control_flow::{block_flow, fallthrough_flow, if_flow, match_flow, statement_flow};
+use lookups::{
+    binary_fact, call_return_fact, field_fact, index_fact, literal_fact, registry_method_effect,
+    registry_method_fact, resolved_literal_type, schema_knows_owner, source_method,
+    try_payload_fact, type_owner,
+};
 pub use targets::{
     CallTargetFact, ConstructorTargetFact, HostPathIndexKindFact, HostPathSegmentFact,
     HostPathTargetFact, MemberTargetFact, OperatorTargetFact, ScriptTypeTargetFact,
@@ -14,15 +20,13 @@ use targets::{direct_lambda_body, registry_field_owner, source_field_fact};
 use vela_common::PrimitiveTag;
 use vela_hir::binding::BindingResolution;
 use vela_hir::body::{
-    HirBinaryOp, HirBody, HirBodyRoot, HirElseBranch, HirExprKind, HirLiteral, HirMatchArmBody,
-    HirPathKind, HirPathOwner, HirPatternKind, HirStmtKind,
+    HirBody, HirBodyRoot, HirElseBranch, HirExprKind, HirMatchArmBody, HirPathKind, HirPathOwner,
+    HirPatternKind, HirStmtKind,
 };
-use vela_hir::ids::{HirBlockId, HirExprId, HirLocalId, HirNodeId, HirPatternId, HirStmtId};
+use vela_hir::ids::{HirBlockId, HirBodyId, HirExprId, HirLocalId, HirPatternId, HirStmtId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
-use vela_hir::type_hint::ImplMetadataKind;
 
 use crate::facts::AnalysisFacts;
-use crate::hints::type_fact_from_hint_in_module;
 use crate::registry::{RegistryEffectFact, RegistryFacts};
 use crate::stdlib::{stdlib_function_fact, stdlib_method_fact};
 use crate::type_fact::TypeFact;
@@ -60,6 +64,24 @@ impl HirSemanticFacts {
         schema: Option<&RegistryFacts>,
         base: &AnalysisFacts,
     ) -> Self {
+        Self::from_module_graph_with_body_filter(graph, schema, base, None)
+    }
+
+    pub(crate) fn from_module_graph_for_bodies(
+        graph: &ModuleGraph,
+        schema: Option<&RegistryFacts>,
+        base: &AnalysisFacts,
+        bodies: &BTreeSet<HirBodyId>,
+    ) -> Self {
+        Self::from_module_graph_with_body_filter(graph, schema, base, Some(bodies))
+    }
+
+    fn from_module_graph_with_body_filter(
+        graph: &ModuleGraph,
+        schema: Option<&RegistryFacts>,
+        base: &AnalysisFacts,
+        selected: Option<&BTreeSet<HirBodyId>>,
+    ) -> Self {
         let mut facts = Self::default();
         facts
             .types
@@ -67,8 +89,12 @@ impl HirSemanticFacts {
         facts
             .locals
             .extend(base.locals().map(|(id, fact)| (id, fact.clone())));
-        let passes = graph
+        let bodies = graph
             .bodies()
+            .filter(|body| selected.is_none_or(|selected| selected.contains(&body.id)))
+            .collect::<Vec<_>>();
+        let passes = bodies
+            .iter()
             .map(|body| body.expressions.len())
             .sum::<usize>()
             .max(1);
@@ -76,7 +102,7 @@ impl HirSemanticFacts {
             let before = facts.types.clone();
             let script_types_before = facts.script_types.clone();
             let local_script_types_before = facts.local_script_types.clone();
-            for body in graph.bodies() {
+            for body in &bodies {
                 for expression in body.expressions.values().rev() {
                     if let Some(target) = facts.infer_script_type(graph, body, expression.id, base)
                     {
@@ -99,7 +125,7 @@ impl HirSemanticFacts {
                 break;
             }
         }
-        for body in graph.bodies() {
+        for body in bodies {
             facts.record_body_control_flow(body);
         }
         facts
@@ -198,6 +224,9 @@ impl HirSemanticFacts {
         let Some(expression) = body.expressions.get(&id) else {
             return TypeFact::Unknown;
         };
+        if let Some(fact) = base.literal(id).map(resolved_literal_type) {
+            return fact;
+        }
         match &expression.kind {
             HirExprKind::Literal(literal) => literal_fact(literal),
             HirExprKind::Path(_) => match base.resolution(id) {
@@ -403,9 +432,8 @@ impl HirSemanticFacts {
             }
             HirExprKind::Field(field) => {
                 let receiver = self.fact(field.receiver);
-                let source_field = self
-                    .script_types
-                    .get(&field.receiver)
+                let source_receiver = self.script_types.get(&field.receiver);
+                let source_field = source_receiver
                     .and_then(|receiver| source_field_fact(graph, receiver, &field.name));
                 let target = if let Some(field) = source_field {
                     MemberTargetFact::ScriptField {
@@ -436,6 +464,11 @@ impl HirSemanticFacts {
                             owner,
                             name: field.name.clone(),
                         }
+                    } else if matches!(receiver, TypeFact::Record { .. })
+                        && source_receiver.is_none()
+                        && !schema.is_some_and(|schema| schema_knows_owner(schema, &owner))
+                    {
+                        MemberTargetFact::Dynamic
                     } else {
                         MemberTargetFact::Unresolved
                     }
@@ -957,227 +990,5 @@ fn source_declaration_for_path<'a>(
     matches.next().is_none().then_some(declaration)
 }
 
-struct SourceMethodFact {
-    node: HirNodeId,
-    returns: TypeFact,
-    return_target: Option<ScriptTypeTargetFact>,
-}
-
-fn source_method(graph: &ModuleGraph, receiver: &TypeFact, name: &str) -> Option<SourceMethodFact> {
-    let owner = type_owner(receiver)?;
-    for declaration in graph.declarations_by_kind(DeclarationKind::Impl) {
-        let Some(metadata) = graph.impl_metadata(declaration.id) else {
-            continue;
-        };
-        let target = metadata.target_path.join("::");
-        if target != owner && !owner.ends_with(&format!("::{target}")) {
-            continue;
-        }
-        if let Some(method) = metadata.methods.iter().find(|method| method.name == name) {
-            let returns = method
-                .signature
-                .return_type
-                .as_ref()
-                .map_or(TypeFact::Unknown, |hint| {
-                    type_fact_from_hint_in_module(graph, declaration.module, hint)
-                });
-            let return_target = method.signature.return_type.as_ref().and_then(|hint| {
-                crate::hints::schema_declaration_from_hint_in_module(
-                    graph,
-                    declaration.module,
-                    hint,
-                )
-                .map(ScriptTypeTargetFact::declaration)
-            });
-            return Some(SourceMethodFact {
-                node: method.node,
-                returns,
-                return_target,
-            });
-        }
-        let ImplMetadataKind::Trait { trait_path } = &metadata.kind else {
-            continue;
-        };
-        let Some(trait_declaration) = source_declaration_for_path(graph, trait_path) else {
-            continue;
-        };
-        let Some(shape) = graph.trait_shape(trait_declaration.id) else {
-            continue;
-        };
-        if let Some(method) = shape.methods.iter().find(|method| method.name == name)
-            && let Some(node) = method.default_body_node
-        {
-            let returns = method
-                .signature
-                .return_type
-                .as_ref()
-                .map_or(TypeFact::Unknown, |hint| {
-                    type_fact_from_hint_in_module(graph, trait_declaration.module, hint)
-                });
-            let return_target = method.signature.return_type.as_ref().and_then(|hint| {
-                crate::hints::schema_declaration_from_hint_in_module(
-                    graph,
-                    trait_declaration.module,
-                    hint,
-                )
-                .map(ScriptTypeTargetFact::declaration)
-            });
-            return Some(SourceMethodFact {
-                node,
-                returns,
-                return_target,
-            });
-        }
-    }
-    None
-}
-
-fn literal_fact(literal: &HirLiteral) -> TypeFact {
-    match literal {
-        HirLiteral::Bool(_) => TypeFact::BOOL,
-        HirLiteral::Integer(value) => {
-            TypeFact::primitive(crate::literals::integer_suffix_primitive(value.suffix))
-        }
-        HirLiteral::Float(value) => {
-            TypeFact::primitive(crate::literals::float_suffix_primitive(value.suffix))
-        }
-        HirLiteral::Char(_) => TypeFact::CHAR,
-        HirLiteral::String(_) | HirLiteral::Interpolated { .. } => TypeFact::STRING,
-        HirLiteral::Bytes(_) => TypeFact::BYTES,
-        HirLiteral::Invalid { .. } => TypeFact::Unknown,
-    }
-}
-
-fn try_payload_fact(fact: TypeFact) -> TypeFact {
-    match fact {
-        TypeFact::Option { some } | TypeFact::OptionSome { some } => *some,
-        TypeFact::Result { ok, .. } | TypeFact::ResultOk { ok } => *ok,
-        TypeFact::OptionNone | TypeFact::ResultErr { .. } => TypeFact::Never,
-        TypeFact::Union(facts) => TypeFact::union(facts.into_iter().map(try_payload_fact)),
-        TypeFact::Unknown => TypeFact::Unknown,
-        TypeFact::Any => TypeFact::Any,
-        _ => TypeFact::Unknown,
-    }
-}
-
-fn binary_fact(op: Option<HirBinaryOp>, lhs: Option<TypeFact>, rhs: Option<TypeFact>) -> TypeFact {
-    match op {
-        Some(
-            HirBinaryOp::Equal
-            | HirBinaryOp::NotEqual
-            | HirBinaryOp::IdentityEqual
-            | HirBinaryOp::IdentityNotEqual
-            | HirBinaryOp::Less
-            | HirBinaryOp::LessEqual
-            | HirBinaryOp::Greater
-            | HirBinaryOp::GreaterEqual
-            | HirBinaryOp::And
-            | HirBinaryOp::Or,
-        ) => TypeFact::BOOL,
-        Some(HirBinaryOp::Range | HirBinaryOp::RangeInclusive) => TypeFact::Range,
-        _ => lhs
-            .filter(|fact| !matches!(fact, TypeFact::Unknown))
-            .or(rhs)
-            .unwrap_or(TypeFact::Unknown),
-    }
-}
-
-fn field_fact(
-    graph: &ModuleGraph,
-    source: Option<&ScriptTypeTargetFact>,
-    receiver: &TypeFact,
-    name: &str,
-    schema: Option<&RegistryFacts>,
-) -> TypeFact {
-    if let TypeFact::Tuple { elements } = receiver
-        && let Ok(index) = name.parse::<usize>()
-    {
-        return elements.get(index).cloned().unwrap_or(TypeFact::Unknown);
-    }
-    if let Some(field) = source.and_then(|source| source_field_fact(graph, source, name)) {
-        return field.fact;
-    }
-    if let Some(method) = stdlib_method_fact(receiver, name, None) {
-        return TypeFact::function(method.params, method.returns);
-    }
-    registry_field_owner(receiver)
-        .as_deref()
-        .and_then(|owner| {
-            let schema = schema?;
-            schema
-                .field_fact(owner, name)
-                .or_else(|| schema.method_fact(owner, name))
-        })
-        .cloned()
-        .unwrap_or({
-            if matches!(receiver, TypeFact::Any) {
-                TypeFact::Any
-            } else {
-                TypeFact::Unknown
-            }
-        })
-}
-
-fn call_return_fact(callee: TypeFact) -> TypeFact {
-    match callee {
-        TypeFact::Function { returns, .. } => *returns,
-        TypeFact::Any => TypeFact::Any,
-        _ => TypeFact::Unknown,
-    }
-}
-
-fn index_fact(receiver: &TypeFact, schema: Option<&RegistryFacts>) -> TypeFact {
-    match receiver {
-        TypeFact::Array { element } | TypeFact::Set { element } => (**element).clone(),
-        TypeFact::Map { value, .. } => (**value).clone(),
-        TypeFact::Tuple { elements } => TypeFact::union(elements.clone()),
-        TypeFact::Primitive(PrimitiveTag::String) => TypeFact::CHAR,
-        TypeFact::Primitive(PrimitiveTag::Bytes) => TypeFact::U8,
-        TypeFact::Any => TypeFact::Any,
-        _ => type_owner(receiver)
-            .and_then(|owner| schema?.index_capability_fact(owner))
-            .map_or(TypeFact::Unknown, |capability| capability.value.clone()),
-    }
-}
-
-fn registry_method_fact<'a>(
-    schema: &'a RegistryFacts,
-    receiver: &TypeFact,
-    method: &str,
-) -> Option<&'a TypeFact> {
-    let owner = type_owner(receiver)?;
-    match receiver {
-        TypeFact::Trait { .. } => schema
-            .trait_method_fact(owner, method)
-            .or_else(|| schema.method_fact(owner, method)),
-        _ => schema
-            .method_fact(owner, method)
-            .or_else(|| schema.trait_method_fact(owner, method)),
-    }
-}
-
-fn registry_method_effect<'a>(
-    schema: &'a RegistryFacts,
-    receiver: &TypeFact,
-    method: &str,
-) -> Option<&'a RegistryEffectFact> {
-    let owner = type_owner(receiver)?;
-    match receiver {
-        TypeFact::Trait { .. } => schema
-            .trait_method_effect_fact(owner, method)
-            .or_else(|| schema.method_effect_fact(owner, method)),
-        _ => schema
-            .method_effect_fact(owner, method)
-            .or_else(|| schema.trait_method_effect_fact(owner, method)),
-    }
-}
-
-fn type_owner(fact: &TypeFact) -> Option<&str> {
-    match fact {
-        TypeFact::Record { name }
-        | TypeFact::Enum { name, .. }
-        | TypeFact::Host { name }
-        | TypeFact::Trait { name } => Some(name),
-        _ => None,
-    }
-}
+#[cfg(test)]
+mod tests;

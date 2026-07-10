@@ -2,18 +2,18 @@ use std::collections::BTreeMap;
 
 use vela_hir::binding::BindingResolution;
 use vela_hir::ids::{HirBlockId, HirDeclId, HirExprId, HirLocalId, HirPatternId, HirStmtId};
-use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
+use vela_hir::module_graph::ModuleGraph;
 
-use crate::hints::{
-    declaration_schema_fact, schema_declaration_from_hint_in_module, type_fact_from_hint_in_module,
-};
 use crate::literals::{LiteralFacts, LiteralPrimitiveContext, LiteralResult};
-use crate::registry::RegistryFacts;
 use crate::semantic_facts::{
     CallTargetFact, ConstructorTargetFact, ControlFlowFact, HirSemanticFacts, HostPathTargetFact,
     MemberTargetFact, OperatorTargetFact, ScriptTypeTargetFact,
 };
 use crate::type_fact::TypeFact;
+
+mod build;
+
+pub(crate) use build::ExecutableReceiverSeed;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct AnalysisFacts {
@@ -27,76 +27,6 @@ pub struct AnalysisFacts {
 }
 
 impl AnalysisFacts {
-    #[must_use]
-    pub fn from_module_graph(graph: &ModuleGraph) -> Self {
-        Self::from_module_graph_with_schema(graph, None)
-    }
-
-    #[must_use]
-    pub fn from_module_graph_and_schema(graph: &ModuleGraph, schema: &RegistryFacts) -> Self {
-        Self::from_module_graph_with_schema(graph, Some(schema))
-    }
-
-    fn from_module_graph_with_schema(graph: &ModuleGraph, schema: Option<&RegistryFacts>) -> Self {
-        let mut facts = Self::default();
-
-        for declaration in graph.declarations() {
-            if let Some(fact) = declaration_fact(graph, declaration.id) {
-                facts.declarations.insert(declaration.id, fact);
-            }
-        }
-
-        let mut binding_roots = graph
-            .bodies()
-            .filter_map(|body| graph.bindings_for_body(body.id))
-            .collect::<Vec<_>>();
-        binding_roots.sort_by_key(|bindings| bindings.body());
-        binding_roots.dedup_by_key(|bindings| bindings.body());
-
-        for bindings in binding_roots {
-            let Some(owner) = graph.declaration(bindings.declaration) else {
-                continue;
-            };
-            for local in bindings.locals() {
-                let Some(hint) = local.type_hint.as_ref() else {
-                    continue;
-                };
-                if let Some(declaration) =
-                    schema_declaration_from_hint_in_module(graph, owner.module, hint)
-                    && graph.declaration(declaration).is_some_and(|declaration| {
-                        matches!(
-                            declaration.kind,
-                            DeclarationKind::Struct | DeclarationKind::Enum
-                        )
-                    })
-                {
-                    facts
-                        .local_script_types
-                        .insert(local.id, ScriptTypeTargetFact::declaration(declaration));
-                }
-                let fact = type_fact_from_hint_in_module(graph, owner.module, hint);
-                let fact = if matches!(fact, TypeFact::Unknown) {
-                    schema
-                        .and_then(|schema| schema_fact_for_hint(schema, &hint.path))
-                        .unwrap_or(fact)
-                } else {
-                    fact
-                };
-                facts.locals.insert(local.id, fact);
-            }
-            for (expression, resolution) in bindings.resolutions() {
-                facts.resolutions.insert(expression, resolution.clone());
-                if let Some(fact) = facts.fact_for_resolution(resolution).cloned() {
-                    facts.expressions.insert(expression, fact);
-                }
-            }
-        }
-
-        facts.literals = LiteralFacts::from_module_graph(graph);
-        facts.semantic = HirSemanticFacts::from_module_graph(graph, schema, &facts);
-        facts
-    }
-
     #[must_use]
     pub fn declaration(&self, declaration: HirDeclId) -> Option<&TypeFact> {
         self.declarations.get(&declaration)
@@ -254,60 +184,10 @@ impl AnalysisFacts {
 #[cfg(test)]
 mod body_binding_tests;
 
-fn schema_fact_for_hint(schema: &RegistryFacts, path: &[String]) -> Option<TypeFact> {
-    if path.is_empty() {
-        return None;
-    }
-    let qualified = path.join("::");
-    schema
-        .type_fact(&qualified)
-        .or_else(|| schema.trait_fact(&qualified))
-        .or_else(|| path.last().and_then(|name| schema.type_fact(name)))
-        .or_else(|| path.last().and_then(|name| schema.trait_fact(name)))
-        .cloned()
-}
-
-fn declaration_fact(graph: &ModuleGraph, declaration: HirDeclId) -> Option<TypeFact> {
-    let metadata = graph.declaration(declaration)?;
-    if let Some(schema_fact) = declaration_schema_fact(graph, metadata) {
-        return Some(schema_fact);
-    }
-
-    match metadata.kind {
-        DeclarationKind::Const => graph
-            .const_metadata(declaration)?
-            .type_hint
-            .as_ref()
-            .map(|hint| type_fact_from_hint_in_module(graph, metadata.module, hint)),
-        DeclarationKind::Global => graph
-            .global_metadata(declaration)
-            .map(|global| type_fact_from_hint_in_module(graph, metadata.module, &global.type_hint)),
-        DeclarationKind::Function => graph.function_signature(declaration).map(|signature| {
-            let params = signature
-                .params
-                .iter()
-                .map(|param| {
-                    param.type_hint.as_ref().map_or(TypeFact::Unknown, |hint| {
-                        type_fact_from_hint_in_module(graph, metadata.module, hint)
-                    })
-                })
-                .collect();
-            let returns = signature
-                .return_type
-                .as_ref()
-                .map_or(TypeFact::Unknown, |hint| {
-                    type_fact_from_hint_in_module(graph, metadata.module, hint)
-                });
-            TypeFact::function(params, returns)
-        }),
-        DeclarationKind::Impl => None,
-        DeclarationKind::Struct | DeclarationKind::Enum | DeclarationKind::Trait => None,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::registry::RegistryFacts;
     use vela_common::{HostTypeId, SourceId};
     use vela_def::{FieldId, TypeId};
     use vela_hir::binding::LocalBindingKind;

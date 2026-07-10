@@ -5,7 +5,7 @@
 //! minimum values. The result contains only language-level primitive values;
 //! it has no bytecode or MIR representation knowledge.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::num::{ParseFloatError, ParseIntError};
 
 use vela_common::{Diagnostic, PrimitiveTag, ScalarValue, Span};
@@ -13,7 +13,7 @@ use vela_hir::body::{
     HirExprKind, HirFloatLiteral, HirFloatSuffix, HirIntRadix, HirIntegerLiteral, HirIntegerSuffix,
     HirLiteral, HirUnaryOp,
 };
-use vela_hir::ids::HirExprId;
+use vela_hir::ids::{HirBodyId, HirExprId};
 use vela_hir::module_graph::ModuleGraph;
 
 /// The primitive-selection policy for an unsuffixed numeric literal.
@@ -215,9 +215,28 @@ impl LiteralFacts {
         graph: &ModuleGraph,
         contexts: &BTreeMap<HirExprId, LiteralPrimitiveContext>,
     ) -> Self {
+        Self::from_module_graph_with_body_filter(graph, None, contexts)
+    }
+
+    pub(crate) fn from_module_graph_for_bodies_with_contexts(
+        graph: &ModuleGraph,
+        bodies: &BTreeSet<HirBodyId>,
+        contexts: &BTreeMap<HirExprId, LiteralPrimitiveContext>,
+    ) -> Self {
+        Self::from_module_graph_with_body_filter(graph, Some(bodies), contexts)
+    }
+
+    fn from_module_graph_with_body_filter(
+        graph: &ModuleGraph,
+        bodies: Option<&BTreeSet<HirBodyId>>,
+        contexts: &BTreeMap<HirExprId, LiteralPrimitiveContext>,
+    ) -> Self {
         let mut facts = BTreeMap::new();
         let mut diagnostic_origins = BTreeMap::new();
-        for body in graph.bodies() {
+        for body in graph
+            .bodies()
+            .filter(|body| bodies.is_none_or(|bodies| bodies.contains(&body.id)))
+        {
             let negated_operands: BTreeMap<_, _> = body
                 .expressions
                 .iter()
