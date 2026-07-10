@@ -259,6 +259,25 @@ canonical type names. Signature parameters retain an optional declaration
 origin so source diagnostics can preserve secondary parameter labels; external
 registry parameters without a source declaration use no synthetic origin.
 
+Compile-target canonical type names are package-qualified semantic identities,
+not source aliases or runtime display names. They use the same canonical
+`DefPath` namespace as their stable `TypeId`, so `std::Result` and
+`script::Result` may coexist in one closed generation. Source lookup spellings,
+runtime record/enum names, debug names, and shape-hash seeds remain explicit
+separate facts and must never be used to repair a missing stable identity.
+
+Standard-library record values that are not source declarations—currently
+`MapEntry` and the `Reflect*` metadata records—are analysis-owned logical
+records. Their type and field identities use the package-qualified
+`std::value_records` definition namespace, while their `ShapeId` uses the
+runtime record name plus canonical sorted fields to match `ScriptFields`.
+Analysis carries exact recursive field facts, including each MapEntry key/value
+specialization, and member facts carry stable field targets. A generation emits
+one Standard descriptor per logical record on first use; MapEntry descriptor
+field contracts remain erased because multiple exact specializations may share
+that stable runtime layout in one generation. Physical record slots remain a
+bytecode-backend concern.
+
 Trait `MethodId` remains the shared dispatch identity across receiver
 implementations. Executable method descriptors and MIR lookup maps are keyed
 by `(TypeId, MethodId)`, while the owner-specific `FunctionId` remains the code
