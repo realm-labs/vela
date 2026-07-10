@@ -1701,7 +1701,8 @@ callable parameter facts, stable `TypeFact`s, `Any`/unknown suppression, and
   complete-expression shape gates instead of checking syntax node variants
   first.
   Parameter-default index expression lowering now also reads receiver and
-  subscript operands from HIR index facts instead of index syntax. HostPath
+  subscript operands and its complete-expression index gate from HIR index facts
+  instead of index syntax. HostPath
   dynamic-index target construction now also reads receiver and subscript
   operands from HIR index facts instead of index syntax while preserving
   HostAccess target plans. Host-index capability diagnostics and read-only

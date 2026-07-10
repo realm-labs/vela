@@ -198,9 +198,6 @@ impl Compiler<'_, '_> {
                 self.compile_param_default_if(source, expression, &if_expr)
             }
             SyntaxExpressionKind::Index => {
-                if expression.as_index().is_none() {
-                    return Err(param_default_unsupported(source, expression));
-                }
                 let span = span_for(source, expression);
                 let Some(index) = self.hir_index_for_span(span) else {
                     return Err(param_default_unsupported(source, expression));
