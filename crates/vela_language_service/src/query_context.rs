@@ -164,14 +164,19 @@ impl<'a> QueryContext<'a> {
         let syntax_parse = databases.parse_db().syntax_parse(document_id);
         let graph = databases.hir_db().graph();
         let mut cursor = cursor_context_at(source.text(), position, syntax_parse);
-        refine_cursor_with_hir(
-            graph,
-            source.source_id(),
-            cursor.replace_range().end,
-            &mut cursor,
-        );
+        let body = u32::try_from(cursor.replace_range().end)
+            .ok()
+            .and_then(|offset| graph.body_containing_offset(source.source_id(), offset));
+        if let Some(body) = body {
+            refine_cursor_with_hir(
+                graph,
+                body,
+                source.source_id(),
+                cursor.replace_range().end,
+                &mut cursor,
+            );
+        }
         let bindings = query_bindings(databases, source, cursor.replace_range().end);
-        let body = query_body(graph, source.source_id(), cursor.replace_range().end);
         Some(Self {
             document_id: document_id.clone(),
             position,
@@ -449,6 +454,7 @@ impl<'a> QueryContext<'a> {
     fn hir_call_for_cursor(&self) -> Option<(&'a HirBody, HirExprId)> {
         hir_call_at(
             self.graph?,
+            self.body?,
             self.source_id()?,
             self.call_open_offset()?,
             self.cursor.replace_range().end,
@@ -522,14 +528,6 @@ fn query_bindings<'a>(
 ) -> Option<&'a BindingMap> {
     let offset = u32::try_from(offset).ok()?;
     binding_maps_at(databases, source.source_id(), offset).next()
-}
-
-fn query_body(graph: &ModuleGraph, source_id: SourceId, offset: usize) -> Option<&HirBody> {
-    let offset = u32::try_from(offset).ok()?;
-    graph
-        .bodies()
-        .filter(|body| body.origin.source == source_id && body.origin.span.contains(offset))
-        .min_by_key(|body| body.origin.span.end.saturating_sub(body.origin.span.start))
 }
 
 fn binding_maps_at<'a>(

@@ -676,6 +676,65 @@ fn main(player) {
 }
 
 #[test]
+fn source_indexed_body_lookup_selects_nested_body_and_ancestors() {
+    let main_source = SourceId::new(1);
+    let other_source = SourceId::new(2);
+    let text = r#"
+fn main(base) {
+    let mapper = |amount| grant(amount + base);
+    return mapper;
+}
+"#;
+    let mut graph = ModuleGraph::new();
+    graph.add_source(source(1, "game::main", text));
+    graph.add_source(source(2, "game::other", "fn other() { return 2; }"));
+
+    assert_eq!(
+        graph
+            .body_ids_by_source
+            .get(&main_source)
+            .map(|ids| ids.len()),
+        Some(2)
+    );
+    assert_eq!(
+        graph
+            .body_ids_by_source
+            .get(&other_source)
+            .map(|ids| ids.len()),
+        Some(1)
+    );
+
+    let outer_offset = u32::try_from(text.find("let mapper").expect("outer body offset"))
+        .expect("test offset should fit u32");
+    let outer = graph
+        .body_containing_offset(main_source, outer_offset)
+        .expect("outer function body");
+    assert!(matches!(outer.owner, HirBodyOwner::Declaration(_)));
+
+    let lambda_offset = u32::try_from(text.find("amount + base").expect("lambda body offset"))
+        .expect("test offset should fit u32");
+    let lambda = graph
+        .body_containing_offset(main_source, lambda_offset)
+        .expect("nested lambda body");
+    assert!(matches!(
+        lambda.owner,
+        HirBodyOwner::Lambda { parent, .. } if parent == outer.id
+    ));
+    assert_eq!(
+        graph
+            .body_and_ancestors(lambda.id)
+            .map(|body| body.id)
+            .collect::<Vec<_>>(),
+        vec![lambda.id, outer.id]
+    );
+    assert!(
+        graph
+            .body_containing_offset(SourceId::new(3), lambda_offset)
+            .is_none()
+    );
+}
+
+#[test]
 fn body_hir_tracks_transitive_lambda_captures() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(

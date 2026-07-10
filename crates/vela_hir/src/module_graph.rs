@@ -56,6 +56,7 @@ pub struct ModuleGraph {
     const_metadata: BTreeMap<HirDeclId, ConstMetadata>,
     global_metadata: BTreeMap<HirDeclId, GlobalMetadata>,
     bodies: BTreeMap<HirBodyId, HirBody>,
+    body_ids_by_source: BTreeMap<SourceId, BTreeSet<HirBodyId>>,
     const_initializer_bodies: BTreeMap<HirDeclId, HirBodyId>,
     function_bodies: BTreeMap<HirDeclId, HirBodyId>,
     trait_default_method_bodies: BTreeMap<HirNodeId, HirBodyId>,
@@ -825,6 +826,16 @@ impl ModuleGraph {
         let id = HirBodyId::new(self.next_body_id);
         self.next_body_id = self.next_body_id.saturating_add(1);
         id
+    }
+
+    fn extend_bodies(&mut self, bodies: impl IntoIterator<Item = HirBody>) {
+        for body in bodies {
+            self.body_ids_by_source
+                .entry(body.origin.source)
+                .or_default()
+                .insert(body.id);
+            self.bodies.insert(body.id, body);
+        }
     }
 }
 

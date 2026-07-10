@@ -172,8 +172,7 @@ impl ModuleGraph {
                 next_param_id: &mut self.next_param_id,
                 next_capture_id: &mut self.next_capture_id,
             });
-        self.bodies
-            .extend(bodies.into_iter().map(|body| (body.id, body)));
+        self.extend_bodies(bodies);
         (bindings, diagnostics)
     }
 
@@ -220,8 +219,7 @@ impl ModuleGraph {
             next_param_id: &mut self.next_param_id,
             next_capture_id: &mut self.next_capture_id,
         });
-        self.bodies
-            .extend(bodies.into_iter().map(|body| (body.id, body)));
+        self.extend_bodies(bodies);
         (bindings, diagnostics)
     }
 

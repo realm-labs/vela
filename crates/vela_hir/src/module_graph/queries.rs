@@ -78,6 +78,36 @@ impl ModuleGraph {
         self.bodies.values()
     }
 
+    pub fn bodies_in_source(&self, source: SourceId) -> impl Iterator<Item = &HirBody> {
+        self.body_ids_by_source
+            .get(&source)
+            .into_iter()
+            .flatten()
+            .filter_map(|body| self.bodies.get(body))
+    }
+
+    #[must_use]
+    pub fn body_containing_offset(&self, source: SourceId, offset: u32) -> Option<&HirBody> {
+        self.bodies_in_source(source)
+            .filter(|body| body.origin.span.contains(offset))
+            .min_by_key(|body| body.origin.span.len())
+    }
+
+    pub fn body_and_ancestors(&self, body: HirBodyId) -> impl Iterator<Item = &HirBody> {
+        std::iter::successors(self.body(body), |body| {
+            let parent = match &body.owner {
+                crate::body::HirBodyOwner::Lambda { parent, .. }
+                | crate::body::HirBodyOwner::ParameterDefault { parent, .. } => *parent,
+                crate::body::HirBodyOwner::Declaration(_)
+                | crate::body::HirBodyOwner::ConstInitializer(_)
+                | crate::body::HirBodyOwner::SchemaFieldDefault(_)
+                | crate::body::HirBodyOwner::TraitDefaultMethod(_)
+                | crate::body::HirBodyOwner::ImplMethod(_) => return None,
+            };
+            self.body(parent)
+        })
+    }
+
     #[must_use]
     pub fn local_binding(&self, local: HirLocalId) -> Option<&crate::binding::LocalBinding> {
         self.bindings
@@ -135,14 +165,12 @@ impl ModuleGraph {
     }
 
     pub fn fields_in_source(&self, source: SourceId) -> impl Iterator<Item = &HirField> + '_ {
-        self.bodies
-            .values()
+        self.bodies_in_source(source)
             .flat_map(|body| body.fields().map(|(_, field)| field))
-            .filter(move |field| field.member_origin.source == source)
     }
 
     pub fn member_calls_in_source(&self, source: SourceId) -> impl Iterator<Item = &HirField> + '_ {
-        self.bodies.values().flat_map(move |body| {
+        self.bodies_in_source(source).flat_map(move |body| {
             body.calls().filter_map(move |(_, call)| {
                 body.field(call.callee)
                     .filter(|field| field.member_origin.source == source)
@@ -151,10 +179,8 @@ impl ModuleGraph {
     }
 
     pub fn paths_in_source(&self, source: SourceId) -> impl Iterator<Item = &HirPath> + '_ {
-        self.bodies
-            .values()
+        self.bodies_in_source(source)
             .flat_map(|body| body.paths.values())
-            .filter(move |path| path.segment_origin.source == source)
     }
 
     pub fn paths_in_source_by_kind(
