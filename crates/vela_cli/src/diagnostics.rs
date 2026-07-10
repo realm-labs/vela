@@ -46,9 +46,7 @@ fn compile_diagnostics(error: &CompileError) -> Vec<Diagnostic> {
         CompileErrorKind::InvalidIntLiteral { .. }
         | CompileErrorKind::InvalidFloatLiteral { .. }
         | CompileErrorKind::MirInput(_)
-        | CompileErrorKind::RegistrySnapshot(_) => {
-            error.to_diagnostic().into_iter().collect()
-        }
+        | CompileErrorKind::RegistrySnapshot(_) => error.to_diagnostic().into_iter().collect(),
     }
 }
 
