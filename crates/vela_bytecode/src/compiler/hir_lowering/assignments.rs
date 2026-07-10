@@ -421,12 +421,14 @@ impl Compiler<'_, '_> {
         index: &vela_hir::body::HirIndex,
     ) -> CompileResult<PreparedIndexAssignment> {
         let base = self.compile_hir_expression(index.receiver)?;
+        let base = self.capture_evaluated_value(base)?;
         let key = if let HirExprKind::Literal(HirLiteral::String(key)) =
             self.hir_expression_record(index.index)?.1
         {
             PreparedIndexKey::String(self.code.push_constant(Constant::String(key)))
         } else {
-            PreparedIndexKey::Dynamic(self.compile_hir_expression(index.index)?)
+            let key = self.compile_hir_expression(index.index)?;
+            PreparedIndexKey::Dynamic(self.capture_evaluated_value(key)?)
         };
         Ok(PreparedIndexAssignment { base, key })
     }
@@ -498,6 +500,7 @@ impl Compiler<'_, '_> {
         let (root, indexed_root) = match base_kind {
             HirExprKind::Index(index) => {
                 let collection = self.compile_hir_expression(index.receiver)?;
+                let collection = self.capture_evaluated_value(collection)?;
                 let root = self.alloc_register()?;
                 if let HirExprKind::Literal(HirLiteral::String(key)) =
                     self.hir_expression_record(index.index)?.1
@@ -511,6 +514,7 @@ impl Compiler<'_, '_> {
                     (root, Some(PreparedIndexedRoot::String { collection, key }))
                 } else {
                     let index = self.compile_hir_expression(index.index)?;
+                    let index = self.capture_evaluated_value(index)?;
                     self.emit(UnlinkedInstructionKind::GetIndex {
                         dst: root,
                         base: collection,
@@ -522,7 +526,10 @@ impl Compiler<'_, '_> {
                     )
                 }
             }
-            _ => (self.compile_hir_expression(base)?, None),
+            _ => {
+                let root = self.compile_hir_expression(base)?;
+                (self.capture_evaluated_value(root)?, None)
+            }
         };
         let mut records = vec![root];
         let mut shape = self

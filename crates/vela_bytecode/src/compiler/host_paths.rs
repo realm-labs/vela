@@ -246,13 +246,14 @@ impl Compiler<'_, '_> {
         &mut self,
         root: &HostPathRoot,
     ) -> CompileResult<Register> {
-        match root {
+        let root = match root {
             HostPathRoot::LocalPath {
                 name,
                 expression,
                 span,
             } => self.required_local_register_for_hir_expression(*expression, *span, name),
-        }
+        }?;
+        self.capture_evaluated_value(root)
     }
     pub(super) fn compile_host_target(
         &mut self,
@@ -279,6 +280,7 @@ impl Compiler<'_, '_> {
                         ))
                     })?;
                     let register = self.compile_hir_expression(expression)?;
+                    let register = self.capture_evaluated_value(register)?;
                     dynamic_args.push(register);
                     plan = match dynamic_kind {
                         DynamicHostPathPart::Index => plan.dyn_index(arg),

@@ -1267,6 +1267,12 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         Ok(Register(register))
     }
 
+    fn capture_evaluated_value(&mut self, src: Register) -> CompileResult<Register> {
+        let dst = self.alloc_register()?;
+        self.emit(UnlinkedInstructionKind::Move { dst, src });
+        Ok(dst)
+    }
+
     fn emit(&mut self, kind: UnlinkedInstructionKind) {
         let offset = InstructionOffset(self.current_offset());
         let kind = if let Some(cache_kind) = cache_site_kind(&kind) {

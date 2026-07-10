@@ -131,6 +131,60 @@ fn main() {
 }
 
 #[test]
+fn assignment_target_components_survive_rhs_local_reassignment() {
+    let program = compile_fixture(
+        r#"
+struct Box { value: i64 }
+
+fn main() {
+    let original_values = [10, 20];
+    let replacement_values = [100, 200];
+    let values = original_values;
+    let index = 0;
+    values[index] += if true {
+        values = replacement_values;
+        index = 1;
+        5
+    } else {
+        0
+    };
+
+    let original_box = Box { value: 30 };
+    let replacement_box = Box { value: 300 };
+    let target = original_box;
+    target.value += if true {
+        target = replacement_box;
+        7
+    } else {
+        0
+    };
+
+    return [
+        original_values[0],
+        original_values[1],
+        replacement_values[0],
+        replacement_values[1],
+        original_box.value,
+        replacement_box.value,
+    ];
+}
+"#,
+    );
+
+    assert_eq!(
+        run_fixture(&program, "main"),
+        Ok(OwnedValue::Array(vec![
+            OwnedValue::i64(15),
+            OwnedValue::i64(20),
+            OwnedValue::i64(100),
+            OwnedValue::i64(200),
+            OwnedValue::i64(37),
+            OwnedValue::i64(300),
+        ]))
+    );
+}
+
+#[test]
 fn loop_instruction_limit_has_a_stable_edge() {
     let program = compile_fixture(
         r#"
@@ -302,7 +356,7 @@ fn main(player: Player) {
     )
     .expect("host boundary fixture should compile");
 
-    let exact_limit = 4;
+    let exact_limit = 6;
     let (result, adapter, budget) = run_host_compound_fixture(&program, host_ref, 10, exact_limit);
     assert_eq!(result, Ok(OwnedValue::i64(11)));
     assert_eq!(budget.instructions_executed(), exact_limit);
@@ -311,7 +365,7 @@ fn main(player: Player) {
         Ok(HostValue::Scalar(vela_common::ScalarValue::I64(11)))
     );
 
-    let failing_limit = 1;
+    let failing_limit = 2;
     let (result, adapter, budget) =
         run_host_compound_fixture(&program, host_ref, 10, failing_limit);
     assert_eq!(
@@ -329,19 +383,84 @@ fn main(player: Player) {
         Ok(HostValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
 
-    let (result, adapter, budget) = run_host_compound_fixture(&program, host_ref, 10, 2);
+    let (result, adapter, budget) = run_host_compound_fixture(&program, host_ref, 10, 3);
     assert_eq!(
         result
             .expect_err("budget must stop execution after the completed host mutation")
             .kind(),
         VmErrorKind::BudgetExceeded {
             budget: ExecutionBudgetKind::Instructions,
-            limit: 2,
+            limit: 3,
         }
     );
-    assert_eq!(budget.instructions_executed(), 2);
+    assert_eq!(budget.instructions_executed(), 3);
     assert_eq!(
         adapter.read_diagnostic_path(&level_path(host_ref)),
         Ok(HostValue::Scalar(vela_common::ScalarValue::I64(11)))
+    );
+}
+
+#[test]
+fn host_assignment_root_survives_rhs_local_reassignment() {
+    let original = HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 1);
+    let replacement = HostRef::new(HostTypeId::new(1), HostObjectId::new(8), 1);
+    let program = compile_host_program_source(
+        SourceId::new(1),
+        r#"
+fn main(player: Player, replacement: Player) {
+    player.level += if true {
+        player = replacement;
+        1
+    } else {
+        0
+    };
+    return 0;
+}
+"#,
+        host_definition_registry(
+            &[("Player", original.type_id)],
+            &[TestHostField::new("Player", "level", level_field()).type_hint("i64")],
+            &[],
+        ),
+    )
+    .expect("host root capture fixture should compile");
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_diagnostic_path_value(
+        level_path(original),
+        HostValue::Scalar(vela_common::ScalarValue::I64(10)),
+    );
+    adapter.insert_diagnostic_path_value(
+        level_path(replacement),
+        HostValue::Scalar(vela_common::ScalarValue::I64(100)),
+    );
+    let mut access = HostAccess::new();
+    let mut budget = ExecutionBudget::new(BUDGET_CEILING, usize::MAX, usize::MAX);
+    let result = {
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            access: &mut access,
+            script_globals: None,
+        };
+        run_linked_test_program_with_host_budget(
+            &Vm::new(),
+            &program,
+            "main",
+            &[
+                OwnedValue::HostRef(original),
+                OwnedValue::HostRef(replacement),
+            ],
+            &mut host,
+            &mut budget,
+        )
+    };
+
+    assert_eq!(result, Ok(OwnedValue::i64(0)));
+    assert_eq!(
+        adapter.read_diagnostic_path(&level_path(original)),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(11)))
+    );
+    assert_eq!(
+        adapter.read_diagnostic_path(&level_path(replacement)),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(100)))
     );
 }
