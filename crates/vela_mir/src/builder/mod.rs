@@ -12,11 +12,13 @@ mod constructors;
 mod control_flow;
 mod core;
 mod defaults;
+mod guards;
 mod host;
 mod literals;
 mod loops;
 mod operators;
 mod patterns;
+mod r#try;
 
 use crate::{MirBuildError, MirFunctionOwner, MirLoweringInput, MirProgram, MirSourceOrigin};
 use vela_hir::ids::HirBodyId;

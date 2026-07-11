@@ -133,10 +133,7 @@ fn lower_isolated_expression(
         owner,
         std::collections::BTreeMap::from([(body.id, reservation)]),
     )?;
-    let value = match builder.lower_aggregate_expression(expression, origin)? {
-        Some(value) => value,
-        None => builder.lower_expression(expression)?,
-    };
+    let value = builder.lower_expression(expression)?;
     builder.function.set_terminator(
         builder.current_block,
         MirTerminator::new(

@@ -6,9 +6,9 @@ use vela_hir::ids::{HirBodyId, HirExprId};
 
 use crate::{
     CompileConstructorField, CompileConstructorTarget, CompileConstructorValue,
-    CompileDynamicConstructorField, CompileGuardTarget, MirAggregate, MirBuildError, MirEffect,
-    MirEvaluatedConstant, MirGuard, MirGuardAssumption, MirImmediate, MirOperand, MirPlace,
-    MirSafepoint, MirSourceOrigin, MirStatement, MirStatementKind, MirValueType,
+    CompileDynamicConstructorField, MirAggregate, MirBuildError, MirEffect, MirEvaluatedConstant,
+    MirImmediate, MirOperand, MirPlace, MirSafepoint, MirSourceOrigin, MirStatement,
+    MirStatementKind, MirValueType,
 };
 
 use super::core::FunctionBuilder;
@@ -198,7 +198,7 @@ impl FunctionBuilder<'_> {
                 )
             })?;
             let value_origin = self.constructor_operand_origin(expression)?;
-            let value = self.lower_constructor_operand(expression, value_origin)?;
+            let value = self.lower_expression(expression)?;
             if self.current_is_terminated()? {
                 return Ok(Vec::new());
             }
@@ -209,7 +209,6 @@ impl FunctionBuilder<'_> {
             } else {
                 value
             };
-            self.apply_constructor_guard(expression, value.clone(), value_origin)?;
             evaluated.push(value);
         }
 
@@ -286,7 +285,7 @@ impl FunctionBuilder<'_> {
         let mut lowered = Vec::with_capacity(fields.len());
         for (index, field) in fields.iter().enumerate() {
             let origin = self.constructor_operand_origin(field.value)?;
-            let value = self.lower_constructor_operand(field.value, origin)?;
+            let value = self.lower_expression(field.value)?;
             if self.current_is_terminated()? {
                 return Ok(Vec::new());
             }
@@ -295,61 +294,9 @@ impl FunctionBuilder<'_> {
             } else {
                 value
             };
-            if let Some(guard) = self.input.targets().expression_guard(field.value).cloned() {
-                self.append_guard(value.clone(), guard, origin)?;
-            }
             lowered.push((field.name.clone(), value));
         }
         Ok(lowered)
-    }
-
-    fn lower_constructor_operand(
-        &mut self,
-        expression: HirExprId,
-        origin: MirSourceOrigin,
-    ) -> Result<MirOperand, MirBuildError> {
-        if self.input.targets().constructor(expression).is_some() {
-            self.lower_constructor(expression, origin)
-        } else {
-            self.lower_expression(expression)
-        }
-    }
-
-    fn apply_constructor_guard(
-        &mut self,
-        expression: HirExprId,
-        value: MirOperand,
-        origin: MirSourceOrigin,
-    ) -> Result<(), MirBuildError> {
-        let guard = self.input.targets().expression_guard(expression).cloned();
-        if let Some(guard) = guard {
-            self.append_guard(value, guard, origin)?;
-        }
-        Ok(())
-    }
-
-    fn append_guard(
-        &mut self,
-        value: MirOperand,
-        target: CompileGuardTarget,
-        origin: MirSourceOrigin,
-    ) -> Result<(), MirBuildError> {
-        let guard = self.function.add_guard(MirGuard {
-            assumption: MirGuardAssumption::Type(target.contract),
-            context: Some(target.context),
-            origin,
-        });
-        self.function.append_statement(
-            self.current_block,
-            MirStatement::new(
-                origin,
-                None,
-                MirStatementKind::GuardTrap { value, guard },
-                MirEffect::may_trap(),
-                None,
-            ),
-        )?;
-        Ok(())
     }
 
     fn materialize_schema_default(

@@ -106,7 +106,7 @@ impl FunctionBuilder<'_> {
                 )
             })?;
             let value_origin = self.operand_origin(value)?;
-            let value = self.lower_aggregate_operand(value)?;
+            let value = self.lower_expression(value)?;
             if self.current_is_terminated()? {
                 return Ok(MirOperand::Immediate(crate::MirImmediate::Unit));
             }
@@ -142,7 +142,7 @@ impl FunctionBuilder<'_> {
                 HirInterpolatedStringPart::Text(text) => MirFormatPart::Text(text.clone()),
                 HirInterpolatedStringPart::Expr(value) => {
                     let value_origin = self.operand_origin(*value)?;
-                    let value = self.lower_aggregate_operand(*value)?;
+                    let value = self.lower_expression(*value)?;
                     if self.current_is_terminated()? {
                         return Ok(MirOperand::Immediate(crate::MirImmediate::Unit));
                     }
@@ -189,7 +189,7 @@ impl FunctionBuilder<'_> {
                 "set-from-array compile target lost its single source operand",
             ));
         };
-        let source = self.lower_aggregate_operand(*source)?;
+        let source = self.lower_expression(*source)?;
         if self.current_is_terminated()? {
             return Ok(Some(MirOperand::Immediate(crate::MirImmediate::Unit)));
         }
@@ -204,7 +204,7 @@ impl FunctionBuilder<'_> {
         let mut operands = Vec::with_capacity(expressions.len());
         for (index, expression) in expressions.iter().copied().enumerate() {
             let origin = self.operand_origin(expression)?;
-            let operand = self.lower_aggregate_operand(expression)?;
+            let operand = self.lower_expression(expression)?;
             if self.current_is_terminated()? {
                 break;
             }
@@ -216,17 +216,6 @@ impl FunctionBuilder<'_> {
             operands.push(operand);
         }
         Ok(operands)
-    }
-
-    fn lower_aggregate_operand(
-        &mut self,
-        expression: HirExprId,
-    ) -> Result<MirOperand, MirBuildError> {
-        let origin = self.operand_origin(expression)?;
-        if let Some(value) = self.lower_aggregate_expression(expression, origin)? {
-            return Ok(value);
-        }
-        self.lower_expression(expression)
     }
 
     fn operand_origin(&self, expression: HirExprId) -> Result<MirSourceOrigin, MirBuildError> {

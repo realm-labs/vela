@@ -24,6 +24,12 @@ pub(super) fn validate(validator: &SnapshotValidator<'_>) -> Result<(), MirBuild
                         "dynamic try layouts do not match their Option and Result slots",
                     ));
                 }
+                if option.type_id == result.type_id {
+                    return Err(validator.error(
+                        origin,
+                        "dynamic try Option and Result layouts must use distinct types",
+                    ));
+                }
                 validate_layout(validator, *option, origin, "dynamic Option try layout")?;
                 validate_layout(validator, *result, origin, "dynamic Result try layout")?;
             }

@@ -422,4 +422,43 @@ mod tests {
             "Option and Result slots",
         );
     }
+
+    #[test]
+    fn dynamic_try_target_requires_distinct_option_and_result_types() {
+        let function = FunctionId::new(850);
+        let expression = HirExprId::new(851);
+        let schema_origin = origin(852);
+        let target_origin = origin(853);
+        let mut builder = CompileTargetSnapshot::builder();
+        insert_root(
+            &mut builder,
+            function,
+            HirDeclId::new(854),
+            HirBodyId::new(855),
+            schema_origin,
+        );
+        let option = insert_layout(&mut builder, CompileTryFamily::Option, 860, schema_origin);
+        builder
+            .insert_try_target(
+                function,
+                expression,
+                CompileTryTarget::Dynamic {
+                    option,
+                    result: CompileTryLayoutTarget {
+                        family: CompileTryFamily::Result,
+                        ..option
+                    },
+                },
+                target_origin,
+            )
+            .expect("try target fixture should be unique");
+
+        assert_input_error(
+            builder
+                .build()
+                .expect_err("aliased dynamic family layouts must fail closure"),
+            target_origin,
+            "distinct types",
+        );
+    }
 }

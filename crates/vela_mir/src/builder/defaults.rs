@@ -1,9 +1,8 @@
 use vela_hir::body::{HirBody, HirBodyOwner, HirBodyRoot};
 
 use crate::{
-    CompileGuardTarget, MirBuildError, MirEffect, MirGuard, MirGuardAssumption, MirImmediate,
-    MirOperand, MirPlace, MirRvalue, MirSourceOrigin, MirStatement, MirStatementKind,
-    MirTerminator, MirTerminatorKind, MirValueType,
+    MirBuildError, MirEffect, MirImmediate, MirOperand, MirPlace, MirRvalue, MirSourceOrigin,
+    MirStatement, MirTerminator, MirTerminatorKind, MirValueType,
 };
 
 use super::core::FunctionBuilder;
@@ -87,11 +86,8 @@ impl<'a> FunctionBuilder<'a> {
         let previous = std::mem::replace(&mut self.body, body);
         let lowered = self.lower_default_body_value(parameter);
         self.body = previous;
-        let (value, value_origin, guard) = lowered?;
+        let (value, value_origin) = lowered?;
         if !self.current_is_terminated()? {
-            if let Some(guard) = guard {
-                self.append_default_guard(value.clone(), guard, value_origin)?;
-            }
             self.function.append_statement(
                 self.current_block,
                 MirStatement::assign(
@@ -117,13 +113,12 @@ impl<'a> FunctionBuilder<'a> {
     fn lower_default_body_value(
         &mut self,
         parameter: &crate::MirFunctionParameter,
-    ) -> Result<(MirOperand, MirSourceOrigin, Option<CompileGuardTarget>), MirBuildError> {
+    ) -> Result<(MirOperand, MirSourceOrigin), MirBuildError> {
         match self.body.root {
             HirBodyRoot::Expr(expression) => {
                 let origin = self.expression_origin(expression)?;
                 let value = self.lower_expression(expression)?;
-                let guard = self.input.targets().expression_guard(expression).cloned();
-                Ok((value, origin, guard))
+                Ok((value, origin))
             }
             HirBodyRoot::Block(block) => {
                 let value_type = self
@@ -138,38 +133,13 @@ impl<'a> FunctionBuilder<'a> {
                     .function
                     .add_synthetic_local(value_type, self.body_origin());
                 self.lower_block_value_into(block, result, self.body_origin())?;
-                Ok((MirOperand::Local(result), self.body_origin(), None))
+                Ok((MirOperand::Local(result), self.body_origin()))
             }
             HirBodyRoot::Empty => Ok((
                 MirOperand::Immediate(MirImmediate::Unit),
                 self.body_origin(),
-                None,
             )),
         }
-    }
-
-    fn append_default_guard(
-        &mut self,
-        value: MirOperand,
-        target: CompileGuardTarget,
-        origin: MirSourceOrigin,
-    ) -> Result<(), MirBuildError> {
-        let guard = self.function.add_guard(MirGuard {
-            assumption: MirGuardAssumption::Type(target.contract),
-            context: Some(target.context),
-            origin,
-        });
-        self.function.append_statement(
-            self.current_block,
-            MirStatement::new(
-                origin,
-                None,
-                MirStatementKind::GuardTrap { value, guard },
-                MirEffect::may_trap(),
-                None,
-            ),
-        )?;
-        Ok(())
     }
 
     pub(super) fn lower_owning_body(&mut self) -> Result<(), MirBuildError> {

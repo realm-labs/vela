@@ -9,14 +9,14 @@ use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
 use crate::{
     CompileCallTarget, CompileCalleeTarget, CompileFieldAccess, CompileFieldDescriptor,
     CompileFunctionAccess, CompileFunctionClass, CompileFunctionDescriptor,
-    CompileFunctionIdentity, CompileHostIndexCapability, CompileHostPathSegment,
-    CompileHostPathTarget, CompileMemberTarget, CompileMethodAccess, CompileMethodClass,
-    CompileMethodDescriptor, CompileParameter, CompileParameterDefault, CompilePositionalPolicy,
-    CompileSignature, CompileTargetSnapshot, CompileTargetSnapshotBuilder, CompileTypeClass,
-    CompileTypeDescriptor, HostFieldTarget, HostMethodTarget, HostTypeTarget, MirBuildError,
-    MirEffect, MirHostMutation, MirHostOperation, MirHostPathSegment, MirLoweringConfig,
-    MirLoweringInput, MirOperand, MirPlace, MirProgram, MirSourceOrigin, MirStatementKind,
-    MirTypeContract, MirValueType,
+    CompileFunctionIdentity, CompileGuardKey, CompileGuardTarget, CompileHostIndexCapability,
+    CompileHostPathSegment, CompileHostPathTarget, CompileMemberTarget, CompileMethodAccess,
+    CompileMethodClass, CompileMethodDescriptor, CompileParameter, CompileParameterDefault,
+    CompilePositionalPolicy, CompileSignature, CompileTargetSnapshot, CompileTargetSnapshotBuilder,
+    CompileTypeClass, CompileTypeDescriptor, HostFieldTarget, HostMethodTarget, HostTypeTarget,
+    MirBuildError, MirEffect, MirEvaluatedConstant, MirGuardLocation, MirHostMutation,
+    MirHostOperation, MirHostPathSegment, MirLoweringConfig, MirLoweringInput, MirOperand,
+    MirPlace, MirProgram, MirSourceOrigin, MirStatementKind, MirTypeContract, MirValueType,
 };
 
 const ROOT_FUNCTION: FunctionId = FunctionId::new(9_100);
@@ -38,6 +38,8 @@ const SCRIPT_ENUM_TYPE_ID: TypeId = TypeId::new(9_115);
 const RECORD_FIELD: FieldId = FieldId::new(9_116);
 const STATE_FIELD: FieldId = FieldId::new(9_117);
 const NOTHING_FIELD: FieldId = FieldId::new(9_118);
+const MIX_METHOD: MethodId = MethodId::new(9_119);
+const MIX_RUNTIME: HostMethodId = HostMethodId::new(9_120);
 
 const ROOT_TYPE: HostTypeTarget = HostTypeTarget {
     semantic: ROOT_TYPE_ID,
@@ -53,12 +55,20 @@ const ITEM_TYPE: HostTypeTarget = HostTypeTarget {
 };
 
 fn build_host(source: &str) -> Result<MirProgram, MirBuildError> {
-    build_host_with_path_mutator(source, |_, _| {})
+    build_host_with_configuration(source, |_, _| {}, |_, _| Ok(()))
 }
 
 fn build_host_with_path_mutator(
     source: &str,
+    mutate_path: impl FnMut(HirExprId, &mut CompileHostPathTarget),
+) -> Result<MirProgram, MirBuildError> {
+    build_host_with_configuration(source, mutate_path, |_, _| Ok(()))
+}
+
+fn build_host_with_configuration(
+    source: &str,
     mut mutate_path: impl FnMut(HirExprId, &mut CompileHostPathTarget),
+    configure: impl FnOnce(&HirBody, &mut CompileTargetSnapshotBuilder) -> Result<(), MirBuildError>,
 ) -> Result<MirProgram, MirBuildError> {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
@@ -90,6 +100,7 @@ fn build_host_with_path_mutator(
     )?;
     insert_host_descriptors(&mut targets, body_origin)?;
     insert_host_placements(body, &mut targets, &mut mutate_path)?;
+    configure(body, &mut targets)?;
     let targets = targets.build()?;
     let input = MirLoweringInput::new(
         &graph,
@@ -280,6 +291,20 @@ fn insert_host_descriptors(
         },
         origin,
     )?;
+    targets.insert_method_descriptor(
+        CompileMethodDescriptor {
+            id: MIX_METHOD,
+            owner: ITEM_TYPE_ID,
+            member_name: "mix".to_owned(),
+            debug_name: "host::Item::mix".to_owned(),
+            class: CompileMethodClass::Host {
+                runtime: MIX_RUNTIME,
+            },
+            signature: mix_signature(),
+            access: host_method_access(),
+        },
+        origin,
+    )?;
     Ok(())
 }
 
@@ -332,6 +357,7 @@ fn insert_host_placements(
                 let callee = match field.name.as_str() {
                     "grant" => CompileCalleeTarget::HostMethod(host_method_target()),
                     "touch" => CompileCalleeTarget::HostMethod(touch_method_target()),
+                    "mix" => CompileCalleeTarget::HostMethod(mix_method_target()),
                     "remove" => CompileCalleeTarget::HostRemove { path },
                     "push" => CompileCalleeTarget::HostPush { path },
                     name => panic!("unexpected host fixture call {name:?}"),
@@ -459,6 +485,16 @@ fn touch_method_target() -> HostMethodTarget {
     }
 }
 
+fn mix_method_target() -> HostMethodTarget {
+    HostMethodTarget {
+        owner: ITEM_TYPE,
+        semantic: MIX_METHOD,
+        runtime: MIX_RUNTIME,
+        signature: mix_signature(),
+        access: host_method_access(),
+    }
+}
+
 fn grant_signature() -> CompileSignature {
     CompileSignature {
         parameters: vec![CompileParameter {
@@ -479,6 +515,28 @@ fn touch_signature() -> CompileSignature {
         positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
         return_contract: None,
         effect: MirEffect::host_read(),
+    }
+}
+
+fn mix_signature() -> CompileSignature {
+    CompileSignature {
+        parameters: vec![
+            CompileParameter {
+                name: "first".to_owned(),
+                contract: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
+                default: CompileParameterDefault::Required,
+                origin: None,
+            },
+            CompileParameter {
+                name: "second".to_owned(),
+                contract: None,
+                default: CompileParameterDefault::Required,
+                origin: None,
+            },
+        ],
+        positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
+        return_contract: None,
+        effect: MirEffect::host_write(),
     }
 }
 
@@ -577,6 +635,76 @@ fn main(host, key, rhs) {
             | MirStatementKind::WriteField { .. }
             | MirStatementKind::Index(_)
     )));
+}
+
+#[test]
+fn host_argument_guard_traps_before_a_later_allocating_argument() {
+    let source = r#"
+fn main(host, first) {
+    return host.items[1].mix(first, "later");
+}
+"#;
+    let program = build_host_with_configuration(
+        source,
+        |_, _| {},
+        |body, targets| {
+            let first = body
+                .expressions
+                .values()
+                .find_map(|expression| {
+                    let HirExprKind::Call(call) = &expression.kind else {
+                        return None;
+                    };
+                    let field = body.field(call.callee)?;
+                    (field.name == "mix")
+                        .then(|| call.arguments[0].value.expect("first host argument"))
+                })
+                .expect("mix call");
+            targets.insert_guard(
+                CompileGuardKey::Expression {
+                    function: ROOT_FUNCTION,
+                    expression: first,
+                },
+                CompileGuardTarget::new(
+                    MirTypeContract::Primitive(PrimitiveTag::I64),
+                    MirGuardLocation::Parameter { index: 0 },
+                    "first",
+                ),
+                expression_origin(body, first),
+            )
+        },
+    )
+    .expect("guarded host call");
+    let function = only_function(&program);
+    let statements = function
+        .statements()
+        .map(|(_, statement)| statement)
+        .collect::<Vec<_>>();
+    let guard = statements
+        .iter()
+        .position(|statement| matches!(statement.kind, MirStatementKind::GuardTrap { .. }))
+        .expect("first argument guard");
+    let later = statements
+        .iter()
+        .position(|statement| {
+            matches!(
+                &statement.kind,
+                MirStatementKind::MaterializeConstant(MirEvaluatedConstant::String(value))
+                    if value == "later"
+            )
+        })
+        .expect("later argument allocation");
+    let call = statements
+        .iter()
+        .position(|statement| {
+            matches!(
+                statement.kind,
+                MirStatementKind::Host(MirHostOperation::Call { .. })
+            )
+        })
+        .expect("host call");
+    assert!(guard < later && later < call, "{}", program.dump());
+    assert_eq!(function.guards().count(), 1);
 }
 
 #[test]

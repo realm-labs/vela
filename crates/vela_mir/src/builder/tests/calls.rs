@@ -1,5 +1,5 @@
 use vela_analysis::executable::{ExecutableAnalysisGeneration, ExecutableAnalysisInput};
-use vela_common::SourceId;
+use vela_common::{PrimitiveTag, SourceId};
 use vela_def::{FunctionId, MethodId, TypeId};
 use vela_hir::body::{HirBody, HirExprKind};
 use vela_hir::ids::{HirExprId, HirNodeId};
@@ -7,12 +7,13 @@ use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
 
 use crate::{
     CompileCallTarget, CompileCalleeTarget, CompileDynamicCallArgument, CompileFunctionAccess,
-    CompileFunctionClass, CompileFunctionDescriptor, CompileFunctionIdentity, CompileMethodAccess,
-    CompileMethodClass, CompileMethodDescriptor, CompileParameter, CompileParameterDefault,
-    CompilePlacedCallArgument, CompilePositionalPolicy, CompileSignature, CompileTargetSnapshot,
-    CompileTargetSnapshotBuilder, CompileTypeClass, CompileTypeDescriptor, DynamicMethodTarget,
-    MethodExecutableTarget, MirBuildError, MirEffect, MirLoweringConfig, MirLoweringInput,
-    MirProgram, MirSourceOrigin,
+    CompileFunctionClass, CompileFunctionDescriptor, CompileFunctionIdentity, CompileGuardKey,
+    CompileGuardTarget, CompileMethodAccess, CompileMethodClass, CompileMethodDescriptor,
+    CompileParameter, CompileParameterDefault, CompilePlacedCallArgument, CompilePositionalPolicy,
+    CompileSignature, CompileTargetSnapshot, CompileTargetSnapshotBuilder, CompileTypeClass,
+    CompileTypeDescriptor, DynamicMethodTarget, MethodExecutableTarget, MirBuildError, MirCall,
+    MirEffect, MirEvaluatedConstant, MirGuardLocation, MirLoweringConfig, MirLoweringInput,
+    MirProgram, MirScriptParameterGuardMode, MirSourceOrigin, MirStatementKind, MirTypeContract,
 };
 
 const ROOT_FUNCTION: FunctionId = FunctionId::new(700);
@@ -349,6 +350,168 @@ fn mir_builder_lowers_native_named_arguments_from_stable_descriptor() {
         "{dump}"
     );
     assert!(dump.contains("(t1, t0)"), "{dump}");
+}
+
+#[test]
+fn native_argument_guard_traps_before_a_later_allocating_argument() {
+    let source = r#"fn main(first) { return external(first, "later"); }"#;
+    let program = try_build_calls(source, |_graph, body, targets| {
+        let external = FunctionId::new(703);
+        let (expression, call) = only_call(body);
+        let values = argument_values(&call);
+        let origin =
+            MirSourceOrigin::expression(body.id, expression, call_origin(body, expression));
+        targets.insert_function_descriptor(
+            function_descriptor(
+                external,
+                CompileFunctionClass::Native,
+                "host::external",
+                vec![required("first"), required("second")],
+            ),
+            origin,
+        )?;
+        targets.insert_guard(
+            CompileGuardKey::Expression {
+                function: ROOT_FUNCTION,
+                expression: values[0],
+            },
+            CompileGuardTarget::new(
+                MirTypeContract::Primitive(PrimitiveTag::I64),
+                MirGuardLocation::Parameter { index: 0 },
+                "first",
+            ),
+            MirSourceOrigin::expression(body.id, values[0], call_origin(body, values[0])),
+        )?;
+        targets.insert_call(
+            ROOT_FUNCTION,
+            expression,
+            CompileCallTarget::positional(
+                CompileCalleeTarget::NativeFunction {
+                    function: external,
+                    debug_name: "host::external".to_owned(),
+                },
+                values,
+            ),
+            origin,
+        )
+    })
+    .expect("guarded native call");
+    let (_, function) = program.functions().next().expect("main function");
+    let statements = function
+        .statements()
+        .map(|(_, statement)| statement)
+        .collect::<Vec<_>>();
+    let guard = statements
+        .iter()
+        .position(|statement| matches!(statement.kind, MirStatementKind::GuardTrap { .. }))
+        .expect("argument guard");
+    let later = statements
+        .iter()
+        .position(|statement| {
+            matches!(
+                &statement.kind,
+                MirStatementKind::MaterializeConstant(MirEvaluatedConstant::String(value))
+                    if value == "later"
+            )
+        })
+        .expect("later allocation");
+    let call = statements
+        .iter()
+        .position(|statement| {
+            matches!(
+                statement.kind,
+                MirStatementKind::Call(MirCall::NativeFunction { .. })
+            )
+        })
+        .expect("native call");
+    assert!(guard < later && later < call, "{}", program.dump());
+    assert_eq!(function.guards().count(), 1);
+}
+
+#[test]
+fn guarded_script_argument_keeps_checked_callee_parameter_policy() {
+    let source = "fn target(value: i64) {} fn main(value) { return target(value); }";
+    let program = try_build_calls(source, |graph, body, targets| {
+        let target_declaration = graph
+            .declarations()
+            .find(|declaration| declaration.name == "target")
+            .expect("target declaration");
+        let target_body = graph
+            .function_body(target_declaration.id)
+            .expect("target body");
+        let target_function = FunctionId::new(704);
+        let target_origin = MirSourceOrigin::body(target_body.id, target_body.origin.span);
+        let parameter = CompileParameter {
+            name: "value".to_owned(),
+            contract: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
+            default: CompileParameterDefault::Required,
+            origin: Some(MirSourceOrigin::body(
+                target_body.id,
+                target_body.params[0].origin.span,
+            )),
+        };
+        targets.insert_script_function_descriptor(
+            target_declaration.id,
+            function_descriptor(
+                target_function,
+                CompileFunctionClass::Script,
+                "calls::target",
+                vec![parameter.clone()],
+            ),
+            target_origin,
+        )?;
+        targets.insert_guard(
+            CompileGuardKey::Parameter {
+                function: target_function,
+                parameter: 0,
+            },
+            CompileGuardTarget::new(
+                parameter.contract.clone().expect("parameter contract"),
+                MirGuardLocation::Parameter { index: 0 },
+                "value",
+            ),
+            parameter.origin.expect("parameter origin"),
+        )?;
+        let (expression, call) = only_call(body);
+        let values = argument_values(&call);
+        let origin =
+            MirSourceOrigin::expression(body.id, expression, call_origin(body, expression));
+        targets.insert_guard(
+            CompileGuardKey::Expression {
+                function: ROOT_FUNCTION,
+                expression: values[0],
+            },
+            CompileGuardTarget::new(
+                MirTypeContract::Primitive(PrimitiveTag::I64),
+                MirGuardLocation::Parameter { index: 0 },
+                "value",
+            ),
+            MirSourceOrigin::expression(body.id, values[0], call_origin(body, values[0])),
+        )?;
+        targets.insert_call(
+            ROOT_FUNCTION,
+            expression,
+            CompileCallTarget::script(
+                CompileCalleeTarget::ScriptFunction {
+                    function: target_function,
+                    debug_name: "calls::target".to_owned(),
+                },
+                values.clone(),
+                vec![CompilePlacedCallArgument::placed(0, 0, values[0])],
+            ),
+            origin,
+        )
+    })
+    .expect("guarded script call");
+    let (_, function) = program.functions().next().expect("main function");
+    assert_eq!(function.guards().count(), 1);
+    assert!(function.statements().any(|(_, statement)| matches!(
+        statement.kind,
+        MirStatementKind::Call(MirCall::ScriptFunction {
+            parameter_guards: MirScriptParameterGuardMode::CheckCalleeParameterContracts,
+            ..
+        })
+    )));
 }
 
 #[test]

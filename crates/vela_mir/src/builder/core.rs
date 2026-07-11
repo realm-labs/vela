@@ -599,48 +599,58 @@ impl<'a> FunctionBuilder<'a> {
         })?;
         let kind = record.kind.clone();
         let origin = MirSourceOrigin::expression(self.body.id, expression, record.origin.span);
-        if let Some(value) = self.lower_aggregate_expression(expression, origin)? {
-            return Ok(value);
-        }
-        match kind {
-            HirExprKind::Literal(literal) => self.lower_literal(expression, &literal, origin),
-            HirExprKind::Path(_) => self.lower_path(expression, origin),
-            HirExprKind::Paren {
-                expression: Some(inner),
-            } => self.lower_expression(inner),
-            HirExprKind::Unit => Ok(MirOperand::Immediate(MirImmediate::Unit)),
-            HirExprKind::Missing => {
-                Err(self.inconsistent(origin, "missing expression reached MIR lowering"))
-            }
-            HirExprKind::Paren { expression: None } => {
-                Err(self.inconsistent(origin, "empty parenthesized expression reached MIR"))
-            }
-            HirExprKind::Tuple { .. } => Err(self.unsupported(origin, "tuple expression")),
-            HirExprKind::Unary { op, operand } => self.lower_unary(expression, op, operand, origin),
-            HirExprKind::Binary { op, lhs, rhs } => {
-                self.lower_binary(expression, op, lhs, rhs, origin)
-            }
-            HirExprKind::Assign { op, target, value } => {
-                self.lower_assignment(expression, op, target, value, origin)
-            }
-            HirExprKind::Field(field) => self.lower_field(expression, &field, origin),
-            HirExprKind::Call(call) => {
-                if self.input.targets().constructor(expression).is_some() {
-                    self.lower_constructor(expression, origin)
-                } else {
-                    self.lower_call(expression, &call, origin)
+        let value = if let Some(value) = self.lower_aggregate_expression(expression, origin)? {
+            value
+        } else {
+            match kind {
+                HirExprKind::Literal(literal) => self.lower_literal(expression, &literal, origin),
+                HirExprKind::Path(_) => self.lower_path(expression, origin),
+                HirExprKind::Paren {
+                    expression: Some(inner),
+                } => self.lower_expression(inner),
+                HirExprKind::Unit => Ok(MirOperand::Immediate(MirImmediate::Unit)),
+                HirExprKind::Missing => {
+                    Err(self.inconsistent(origin, "missing expression reached MIR lowering"))
                 }
-            }
-            HirExprKind::Index(index) => self.lower_index(expression, &index, origin),
-            HirExprKind::Try { .. } => Err(self.unsupported(origin, "try expression")),
-            HirExprKind::Array { .. } => Err(self.unsupported(origin, "array expression")),
-            HirExprKind::Map { .. } => Err(self.unsupported(origin, "map expression")),
-            HirExprKind::Record { .. } => self.lower_constructor(expression, origin),
-            HirExprKind::Lambda { body } => self.lower_lambda(expression, body, origin),
-            HirExprKind::Block { block } => self.lower_block_expression(expression, block, origin),
-            HirExprKind::If(value) => self.lower_if_expression(expression, &value, origin),
-            HirExprKind::Match(value) => self.lower_match_expression(expression, &value, origin),
-        }
+                HirExprKind::Paren { expression: None } => {
+                    Err(self.inconsistent(origin, "empty parenthesized expression reached MIR"))
+                }
+                HirExprKind::Tuple { .. } => Err(self.unsupported(origin, "tuple expression")),
+                HirExprKind::Unary { op, operand } => {
+                    self.lower_unary(expression, op, operand, origin)
+                }
+                HirExprKind::Binary { op, lhs, rhs } => {
+                    self.lower_binary(expression, op, lhs, rhs, origin)
+                }
+                HirExprKind::Assign { op, target, value } => {
+                    self.lower_assignment(expression, op, target, value, origin)
+                }
+                HirExprKind::Field(field) => self.lower_field(expression, &field, origin),
+                HirExprKind::Call(call) => {
+                    if self.input.targets().constructor(expression).is_some() {
+                        self.lower_constructor(expression, origin)
+                    } else {
+                        self.lower_call(expression, &call, origin)
+                    }
+                }
+                HirExprKind::Index(index) => self.lower_index(expression, &index, origin),
+                HirExprKind::Try {
+                    expression: operand,
+                } => self.lower_try_expression(expression, operand, origin),
+                HirExprKind::Array { .. } => Err(self.unsupported(origin, "array expression")),
+                HirExprKind::Map { .. } => Err(self.unsupported(origin, "map expression")),
+                HirExprKind::Record { .. } => self.lower_constructor(expression, origin),
+                HirExprKind::Lambda { body } => self.lower_lambda(expression, body, origin),
+                HirExprKind::Block { block } => {
+                    self.lower_block_expression(expression, block, origin)
+                }
+                HirExprKind::If(value) => self.lower_if_expression(expression, &value, origin),
+                HirExprKind::Match(value) => {
+                    self.lower_match_expression(expression, &value, origin)
+                }
+            }?
+        };
+        self.apply_expression_guard(expression, value, origin)
     }
 
     fn lower_path(
