@@ -84,7 +84,7 @@ fn invoke(callback, value: i64) -> i64 { return callback(value); }
         .apply_hot_update(update)
         .expect("closure reload should apply at the safe point");
 
-    let mut old_args = CallArgs::from_values([old_closure]);
+    let mut old_args = CallArgs::from_values([old_closure.clone()]);
     old_args.push(5_i64);
     let old_result = runtime
         .call("invoke", old_args, CallOptions::unbounded())
@@ -103,6 +103,23 @@ fn invoke(callback, value: i64) -> i64 { return callback(value); }
         runtime.value_to_owned(&new_result),
         Ok(OwnedValue::i64(125))
     );
+
+    let mut budgeted_args = CallArgs::from_values([old_closure]);
+    budgeted_args.push(5_i64);
+    let error = runtime
+        .call(
+            "invoke",
+            budgeted_args,
+            CallOptions::new(1, usize::MAX, usize::MAX),
+        )
+        .expect_err("nested old-generation call needs two semantic call units");
+    assert!(matches!(
+        error.kind(),
+        vela_vm::error::VmErrorKind::BudgetExceeded {
+            budget: vela_vm::budget::ExecutionBudgetKind::ExecutionUnits,
+            limit: 1
+        }
+    ));
 }
 
 #[test]

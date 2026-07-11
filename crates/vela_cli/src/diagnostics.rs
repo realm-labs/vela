@@ -25,7 +25,7 @@ pub(crate) fn render_vm_error(path: &Path, error: &VmError) -> String {
 fn render_compile_error(path: &Path, error: &CompileError) -> String {
     let diagnostics = compile_diagnostics(error);
     if diagnostics.is_empty() {
-        return format!("{error:?}");
+        return "compilation failed without a projected diagnostic".to_owned();
     }
 
     let source = std::fs::read_to_string(path)
@@ -40,15 +40,8 @@ fn compile_diagnostics(error: &CompileError) -> Vec<Diagnostic> {
         | CompileErrorKind::SemanticDiagnostics(diagnostics) => diagnostics.clone(),
         CompileErrorKind::FunctionNotFound(_)
         | CompileErrorKind::UnknownLocal(_)
-        | CompileErrorKind::RegisterOverflow
-        | CompileErrorKind::BytecodeVerification(_)
-        | CompileErrorKind::MirVerification(_)
-        | CompileErrorKind::MirBackend(_)
         | CompileErrorKind::UnsupportedSyntax(_) => Vec::new(),
-        CompileErrorKind::InvalidIntLiteral { .. }
-        | CompileErrorKind::InvalidFloatLiteral { .. }
-        | CompileErrorKind::MirInput(_)
-        | CompileErrorKind::RegistrySnapshot(_) => error.to_diagnostic().into_iter().collect(),
+        _ => error.to_diagnostic().into_iter().collect(),
     }
 }
 

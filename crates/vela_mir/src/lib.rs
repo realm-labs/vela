@@ -5,6 +5,7 @@
 //! serialization identities.
 
 mod arena;
+mod budget;
 mod builder;
 mod cfg;
 mod contract;
@@ -14,6 +15,7 @@ mod facts;
 mod function;
 mod ids;
 mod input;
+mod jit;
 mod liveness;
 mod operations;
 mod origin;
@@ -24,6 +26,7 @@ mod verifier;
 #[cfg(test)]
 mod tests;
 
+pub use budget::{MirBudgetClass, MirBudgetPoint, MirBudgetSchedule};
 pub use builder::build_mir;
 pub use cfg::{
     MirBasicBlock, MirRangeStepMode, MirSwitchCase, MirSwitchValue, MirTerminator,
@@ -57,6 +60,7 @@ pub use input::{
     CompileTryLayoutTarget, CompileTryTarget, DynamicMethodTarget, HostFieldTarget,
     HostMethodTarget, MethodExecutableTarget, MirBuildError, MirLoweringConfig, MirLoweringInput,
 };
+pub use jit::{MirJitEligibility, MirJitIneligibility, restricted_jit_eligibility};
 pub use operations::{
     MirAggregate, MirCall, MirContextualBinaryOp, MirContextualNumericLiteral, MirDynamicArgument,
     MirDynamicBinaryOp, MirDynamicUnaryOp, MirFieldTarget, MirFormatPart, MirGlobalOperation,

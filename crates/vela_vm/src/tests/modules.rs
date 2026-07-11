@@ -275,7 +275,7 @@ fn main() {
     ])
     .expect("qualified record-pattern compatibility fixture should compile");
 
-    let mut exact = ExecutionBudget::new(10, usize::MAX, usize::MAX);
+    let mut exact = ExecutionBudget::new(1, usize::MAX, usize::MAX);
     assert_eq!(
         run_linked_test_program_with_budget(
             &Vm::new(),
@@ -286,9 +286,9 @@ fn main() {
         ),
         Ok(OwnedValue::i64(0))
     );
-    assert_eq!(exact.instructions_executed(), 10);
+    assert_eq!(exact.execution_units_consumed(), 1);
 
-    let mut short = ExecutionBudget::new(9, usize::MAX, usize::MAX);
+    let mut short = ExecutionBudget::new(0, usize::MAX, usize::MAX);
     let error = run_linked_test_program_with_budget(
         &Vm::new(),
         &program,
@@ -296,12 +296,12 @@ fn main() {
         &[],
         &mut short,
     )
-    .expect_err("one fewer instruction must exhaust the compatibility edge");
+    .expect_err("one fewer execution unit must exhaust the compatibility edge");
     assert_eq!(
         error.kind(),
         VmErrorKind::BudgetExceeded {
-            budget: ExecutionBudgetKind::Instructions,
-            limit: 9,
+            budget: ExecutionBudgetKind::ExecutionUnits,
+            limit: 0,
         }
     );
 }

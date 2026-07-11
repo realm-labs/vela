@@ -92,24 +92,21 @@ impl Vm {
             );
             execute_unlinked_param_guards(code, &frame, &mut guard_context)?;
         }
-        let charges_instructions = budget
-            .as_deref()
-            .is_some_and(ExecutionBudget::charges_instructions);
         let mut ip = 0_usize;
 
         while ip < code.instructions.len() {
             let instruction_offset = InstructionOffset(ip);
             let instruction = &code.instructions[ip];
-            if charges_instructions {
-                budget
-                    .as_deref_mut()
-                    .expect("instruction budget mode requires a budget")
-                    .charge_instruction()
-                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-            }
             ip = ip.saturating_add(1);
 
             match &instruction.kind {
+                UnlinkedInstructionKind::ChargeExecutionUnits { units } => {
+                    if let Some(budget) = budget.as_deref_mut() {
+                        budget
+                            .charge_execution_units(u64::from(*units))
+                            .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    }
+                }
                 UnlinkedInstructionKind::LoadConst { dst, constant } => {
                     let constant_value = code.constants.get(constant.0).ok_or_else(|| {
                         VmError::new(VmErrorKind::ConstantOutOfBounds {

@@ -328,7 +328,7 @@ fn context_host_native_can_charge_execution_budget_before_host_access() {
                 .effects(EffectSet::host_write())
                 .access(FunctionAccess::public()),
             |args, ctx| {
-                ctx.charge_instructions(100)?;
+                ctx.charge_execution_units(100)?;
                 let player = args.required::<HostRef>(0)?;
                 let level = args.required::<i64>(1)?;
                 ctx.set_path(
@@ -370,7 +370,7 @@ fn main(player) {
     assert_eq!(
         error.kind(),
         VmErrorKind::BudgetExceeded {
-            budget: ExecutionBudgetKind::Instructions,
+            budget: ExecutionBudgetKind::ExecutionUnits,
             limit: 50
         }
     );

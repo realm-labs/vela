@@ -1073,7 +1073,7 @@ pub struct EventCallSafePointReport {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CallOptions {
-    pub instruction_budget: u64,
+    pub execution_unit_budget: u64,
     pub memory_budget: usize,
     pub call_depth: usize,
     pub managed_heap: bool,
@@ -1081,9 +1081,9 @@ pub struct CallOptions {
 
 impl CallOptions {
     #[must_use]
-    pub const fn new(instruction_budget: u64, memory_budget: usize, call_depth: usize) -> Self {
+    pub const fn new(execution_unit_budget: u64, memory_budget: usize, call_depth: usize) -> Self {
         Self {
-            instruction_budget,
+            execution_unit_budget,
             memory_budget,
             call_depth,
             managed_heap: true,
@@ -1102,6 +1102,10 @@ impl CallOptions {
     }
 
     fn budget(&self) -> ExecutionBudget {
-        ExecutionBudget::new(self.instruction_budget, self.memory_budget, self.call_depth)
+        ExecutionBudget::new(
+            self.execution_unit_budget,
+            self.memory_budget,
+            self.call_depth,
+        )
     }
 }

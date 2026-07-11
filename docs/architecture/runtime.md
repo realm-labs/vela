@@ -219,11 +219,11 @@ specialized arrays
 
 ### Execution Budget
 
-The VM charges an instruction budget while executing:
+The VM charges backend-neutral execution units at explicit MIR semantic points:
 
 ```rust
 pub struct ExecutionLimits {
-    pub instruction_limit: u64,
+    pub execution_unit_limit: u64,
     pub memory_limit_bytes: usize,
     pub max_call_depth: usize,
     pub collection_limits: CollectionLimits,
@@ -235,6 +235,14 @@ pub struct ExecutionBudget {
     flags: BudgetFlags,
 }
 ```
+
+Verified MIR records positive execution-unit points for CFG backedges,
+iterator steps, calls, dynamic work, allocations, HostAccess, and reflection.
+The bytecode backend lowers those points to `ChargeExecutionUnits`; the VM does
+not charge implicitly per dispatched opcode. Runtime-sized callback, iterator,
+and container-guard work adds units through the same counter. A charge traps
+before its associated effect, while effects completed before a later charge
+trap remain committed.
 
 Budgets prevent:
 

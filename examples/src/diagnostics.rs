@@ -43,29 +43,17 @@ pub fn render_hot_reload_error(label: &str, source: &str, error: &HotReloadError
 }
 
 fn render_compile_error(label: &str, source: &str, error: &CompileError) -> String {
-    let Some(diagnostics) = compile_diagnostics(error) else {
-        return format!("{error:?}");
-    };
+    let diagnostics = compile_diagnostics(error);
 
     let source = DiagnosticSource::new(SourceId::new(1), label.to_owned(), source.to_owned());
-    render_diagnostics(diagnostics, source)
+    render_diagnostics(&diagnostics, source)
 }
 
-fn compile_diagnostics(error: &CompileError) -> Option<&[Diagnostic]> {
+fn compile_diagnostics(error: &CompileError) -> Vec<Diagnostic> {
     match &error.kind {
         CompileErrorKind::SyntaxDiagnostics(diagnostics)
-        | CompileErrorKind::SemanticDiagnostics(diagnostics) => Some(diagnostics),
-        CompileErrorKind::FunctionNotFound(_)
-        | CompileErrorKind::UnknownLocal(_)
-        | CompileErrorKind::InvalidIntLiteral { .. }
-        | CompileErrorKind::InvalidFloatLiteral { .. }
-        | CompileErrorKind::RegisterOverflow
-        | CompileErrorKind::BytecodeVerification(_)
-        | CompileErrorKind::MirVerification(_)
-        | CompileErrorKind::MirBackend(_)
-        | CompileErrorKind::UnsupportedSyntax(_)
-        | CompileErrorKind::MirInput(_)
-        | CompileErrorKind::RegistrySnapshot(_) => None,
+        | CompileErrorKind::SemanticDiagnostics(diagnostics) => diagnostics.clone(),
+        _ => error.to_diagnostic().into_iter().collect(),
     }
 }
 

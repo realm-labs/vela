@@ -695,7 +695,7 @@ fn main() {
 }
 
 #[test]
-fn iterator_instruction_budget_traps_keep_source_spans() {
+fn iterator_execution_unit_budget_traps_keep_source_spans() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
@@ -713,12 +713,12 @@ fn main() {
     let mut budget = ExecutionBudget::new(32, usize::MAX, usize::MAX);
 
     let error = run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget)
-        .expect_err("iterator pipeline should exceed the instruction budget");
+        .expect_err("iterator pipeline should exceed the execution-unit budget");
 
     assert_eq!(
         error.kind(),
         VmErrorKind::BudgetExceeded {
-            budget: ExecutionBudgetKind::Instructions,
+            budget: ExecutionBudgetKind::ExecutionUnits,
             limit: 32,
         }
     );

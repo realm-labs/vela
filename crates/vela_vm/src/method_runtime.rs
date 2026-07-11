@@ -80,6 +80,9 @@ pub(crate) fn call_callback_with_protected_values<'value>(
     args: &[Value],
     protected_values: impl IntoIterator<Item = &'value Value>,
 ) -> VmResult<Value> {
+    if let Some(budget) = runtime.budget.as_deref_mut() {
+        budget.charge_execution_units(1)?;
+    }
     let (code, captures) = {
         let closure = expect_closure_ref(callback, runtime.heap.as_deref(), operation)?;
         let captures = closure.captures.clone();

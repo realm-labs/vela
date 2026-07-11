@@ -189,6 +189,42 @@ fn mir_verifier_accepts_full_builder_control_flow_and_loop_fixtures() {
 }
 
 #[test]
+fn verified_mir_seals_semantic_budget_points_for_iterator_steps() {
+    let program = build(
+        "fn main() { for value in 1..=3 { if value { continue; } } return 9; }",
+        &[],
+    );
+    let owned = crate::verify_owned_mir(program).expect("budget fixture verifies");
+    let (function, _) = owned.program().functions().next().expect("main function");
+    let analyses = owned.analyses(function).expect("sealed analyses");
+    let statement_classes = analyses
+        .budget
+        .statement_points()
+        .map(|(_, point)| point.class)
+        .collect::<Vec<_>>();
+    let terminator_classes = analyses
+        .budget
+        .terminator_points()
+        .map(|(_, point)| point.class)
+        .collect::<Vec<_>>();
+
+    assert!(statement_classes.is_empty());
+    assert!(terminator_classes.contains(&crate::MirBudgetClass::IteratorStep));
+    assert!(
+        analyses
+            .budget
+            .statement_points()
+            .all(|(_, point)| point.units > 0)
+    );
+    assert!(
+        analyses
+            .budget
+            .terminator_points()
+            .all(|(_, point)| point.units > 0)
+    );
+}
+
+#[test]
 fn mir_verifier_rejects_undefined_function_reservations() {
     let mut program = crate::MirProgram::new(target_table());
     let reservation = program

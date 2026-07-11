@@ -52,11 +52,11 @@ impl Vm {
                 .first()
                 .and_then(|instruction| instruction.span)
         });
-        let charges_instructions = budget
+        let charges_execution_units = budget
             .as_deref()
-            .is_some_and(ExecutionBudget::charges_instructions);
+            .is_some_and(ExecutionBudget::charges_execution_units);
         let has_profiler = call.bytecode_profiler.is_some();
-        let result = match (charges_instructions, has_profiler) {
+        let result = match (charges_execution_units, has_profiler) {
             (false, false) => {
                 self.execute_linked_body::<false, false>(call, host, heap, budget.as_deref_mut())
             }
@@ -183,13 +183,6 @@ impl Vm {
         while ip < code.instructions.len() {
             let instruction_offset = InstructionOffset(ip);
             let instruction = &code.instructions[ip];
-            if CHARGE_BUDGET {
-                budget
-                    .as_deref_mut()
-                    .expect("budget execution mode requires a budget")
-                    .charge_instruction()
-                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-            }
             if PROFILE {
                 call.bytecode_profiler
                     .expect("profile execution mode requires a profiler")
@@ -198,6 +191,15 @@ impl Vm {
             ip = ip.saturating_add(1);
 
             match &instruction.kind {
+                InstructionKind::ChargeExecutionUnits { units } => {
+                    if CHARGE_BUDGET {
+                        budget
+                            .as_deref_mut()
+                            .expect("execution-unit budget mode requires a budget")
+                            .charge_execution_units(u64::from(*units))
+                            .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    }
+                }
                 InstructionKind::LoadConst { dst, constant } => {
                     let constant_value = code.constants.get(constant.0).ok_or_else(|| {
                         VmError::new(VmErrorKind::ConstantOutOfBounds {

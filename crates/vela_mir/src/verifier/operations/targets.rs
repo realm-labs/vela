@@ -352,7 +352,7 @@ pub(super) fn verify_guard_use(
             !recoverable
                 && record.kind == crate::MirGuardKind::Contract
                 && record.context.is_none()
-                && (actual == MirValueType::Dynamic
+                && (matches!(actual, MirValueType::Dynamic)
                     || matches!(actual, MirValueType::Tuple(actual) if actual == *arity))
         }
     };

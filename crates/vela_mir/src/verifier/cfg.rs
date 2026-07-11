@@ -13,6 +13,7 @@ pub(crate) struct StatementLocation {
 #[derive(Clone, Debug)]
 pub(crate) struct FunctionGraph {
     blocks: BTreeSet<MirBlockId>,
+    successors: BTreeMap<MirBlockId, Vec<MirBlockId>>,
     predecessors: BTreeMap<MirBlockId, BTreeSet<MirBlockId>>,
     statement_locations: BTreeMap<MirStatementId, StatementLocation>,
     dominators: BTreeMap<MirBlockId, BTreeSet<MirBlockId>>,
@@ -41,6 +42,13 @@ impl FunctionGraph {
         self.dominators
             .get(&block)
             .is_some_and(|values| values.contains(&dominator))
+    }
+
+    pub(crate) fn successors(&self, block: MirBlockId) -> impl Iterator<Item = MirBlockId> + '_ {
+        self.successors
+            .get(&block)
+            .into_iter()
+            .flat_map(|values| values.iter().copied())
     }
 }
 
@@ -157,6 +165,7 @@ pub(crate) fn analyze(verifier: &FunctionVerifier<'_>) -> Result<FunctionGraph, 
     let dominators = compute_dominators(entry, &blocks, &predecessors);
     Ok(FunctionGraph {
         blocks,
+        successors,
         predecessors,
         statement_locations,
         dominators,

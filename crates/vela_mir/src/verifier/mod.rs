@@ -4,7 +4,7 @@
 //! consults HIR or analysis again. A physical backend additionally requests a
 //! handoff that requires computed liveness/debug/safepoint metadata.
 
-mod cfg;
+pub(crate) mod cfg;
 pub(crate) mod dataflow;
 mod liveness;
 mod operations;
@@ -100,6 +100,7 @@ pub struct MirFunctionAnalyses {
     pub root_liveness: MirRootLiveness,
     pub debug_availability: MirDebugAvailability,
     pub facts: crate::MirProgramPointFacts,
+    pub budget: crate::MirBudgetSchedule,
 }
 
 impl OwnedVerifiedMirProgram {
@@ -425,6 +426,10 @@ pub fn verify_owned_mir(program: MirProgram) -> Result<OwnedVerifiedMirProgram, 
         .map(|(id, function)| {
             let mut analyses = crate::liveness::sealed_analyses(function);
             analyses.facts = crate::facts::analyze(&program, function);
+            let verifier = FunctionVerifier::new(&program, id, function);
+            let graph = cfg::analyze(&verifier)
+                .expect("owned MIR was structurally verified before analyses were sealed");
+            analyses.budget = crate::budget::analyze(function, &graph);
             (id, analyses)
         })
         .collect();

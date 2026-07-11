@@ -1005,22 +1005,22 @@ bytecode execution, diagnostics, examples, and tests move together. Intermediate
 commits may be red, but the completed batch must not keep old instruction-count
 and new execution-unit modes selectable in production.
 
-- [ ] Record the execution-unit table and trap-order contract in decisions and
+- [x] Record the execution-unit table and trap-order contract in decisions and
   runtime architecture docs.
-- [ ] Add explicit MIR budget points and verifier coverage.
-- [ ] Insert deterministic charges at loops, calls, dynamic work, allocation,
+- [x] Add explicit MIR budget points and verifier coverage.
+- [x] Insert deterministic charges at loops, calls, dynamic work, allocation,
   HostAccess, reflection, and other specified boundaries.
-- [ ] Lower the schedule to bytecode without deriving units from emitted
+- [x] Lower the schedule to bytecode without deriving units from emitted
   instruction count.
-- [ ] Rename public instruction-limit/counter terminology to execution units
+- [x] Rename public instruction-limit/counter terminology to execution units
   across Rust APIs, C API if present, diagnostics, examples, reports, and docs.
-- [ ] Preserve separate memory, collection, and call-depth counters.
-- [ ] Remove per-dispatch implicit bytecode instruction charging.
-- [ ] Add exact threshold tests for loops, calls, guards, try, allocation,
+- [x] Preserve separate memory, collection, and call-depth counters.
+- [x] Remove per-dispatch implicit bytecode instruction charging.
+- [x] Add exact threshold tests for loops, calls, guards, try, allocation,
   callbacks, host writes, reflection, and nested old-generation closures.
-- [ ] Prove successful HostAccess writes before a later charge trap remain
+- [x] Prove successful HostAccess writes before a later charge trap remain
   committed and later effects do not execute.
-- [ ] Add backend conformance helpers that future JIT tests can reuse.
+- [x] Add backend conformance helpers that future JIT tests can reuse.
 
 Validation:
 
@@ -1043,24 +1043,24 @@ bytecode layout, and all runtime boundaries consume the same execution units.
 
 Purpose: close remaining user-facing and M22-input contract gaps.
 
-- [ ] Replace stringly backend errors with structured variants carrying source
+- [x] Replace stringly backend errors with structured variants carrying source
   origin and executable identity.
-- [ ] Restore stable register-overflow and physical-limit diagnostics.
-- [ ] Move unsupported record-pattern validation to its semantic owner with a
+- [x] Restore stable register-overflow and physical-limit diagnostics.
+- [x] Move unsupported record-pattern validation to its semantic owner with a
   source-spanned diagnostic and delete the legacy no-span exception.
-- [ ] Ensure MirBuild/MirVerify/backend/bytecode-verification errors remain
+- [x] Ensure MirBuild/MirVerify/backend/bytecode-verification errors remain
   distinct through CLI and Engine rendering.
-- [ ] Expose read-only ProgramVersion access to verified MIR for an internal
+- [x] Expose read-only ProgramVersion access to verified MIR for an internal
   future JIT backend without exposing mutable/public script APIs.
-- [ ] Define restricted-function JIT eligibility queries over verified MIR,
+- [x] Define restricted-function JIT eligibility queries over verified MIR,
   effects, safepoints, budget points, and linked identity without compiling
   machine code.
-- [ ] Verify that eligibility never reruns HIR/analysis or queries current
+- [x] Verify that eligibility never reruns HIR/analysis or queries current
   registry state from a different generation.
-- [ ] Document future compiled-artifact publication, generation invalidation,
+- [x] Document future compiled-artifact publication, generation invalidation,
   runtime-local tier selection, GC-root reporting, and debugger side-exit
   requirements.
-- [ ] Do not add Cranelift, machine code, JIT runtime options, or placeholder
+- [x] Do not add Cranelift, machine code, JIT runtime options, or placeholder
   compiled artifact stores in this phase.
 
 Validation:

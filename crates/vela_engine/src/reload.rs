@@ -43,7 +43,9 @@ impl Engine {
         .map_err(|error| HotReloadError {
             kind: HotReloadErrorKind::Compile(error),
         })?;
-        let linked_program = self.link_program(&program).map_err(HotReloadError::from)?;
+        let linked_program = self
+            .link_compiled_program(&program)
+            .map_err(HotReloadError::from)?;
         Ok(initial_version_from_linked_program(
             program,
             self.hot_reload_abi(),
@@ -74,7 +76,9 @@ impl Engine {
         .map_err(|error| HotReloadError {
             kind: HotReloadErrorKind::Compile(error),
         })?;
-        let linked_program = self.link_program(&program).map_err(HotReloadError::from)?;
+        let linked_program = self
+            .link_compiled_program(&program)
+            .map_err(HotReloadError::from)?;
         update_from_linked_program(
             previous,
             program,
@@ -120,7 +124,7 @@ impl Engine {
             })
         })?;
         let linked_program = self
-            .link_program(&program)
+            .link_compiled_program(&program)
             .map_err(HotReloadError::from)
             .map_err(EngineHotReloadSourceError::hot_reload)?;
         Ok(initial_version_from_linked_program(
@@ -148,7 +152,7 @@ impl Engine {
             })
         })?;
         let linked_program = self
-            .link_program(&program)
+            .link_compiled_program(&program)
             .map_err(HotReloadError::from)
             .map_err(EngineHotReloadSourceError::hot_reload)?;
         update_from_linked_program(
@@ -180,7 +184,7 @@ impl Engine {
             })
         })?;
         let linked_program = self
-            .link_program(&program)
+            .link_compiled_program(&program)
             .map_err(HotReloadError::from)
             .map_err(EngineHotReloadSourceError::hot_reload)?;
         update_from_linked_program(

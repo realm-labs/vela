@@ -60,6 +60,14 @@ impl<'registry> Linker<'registry> {
         let linked = LinkContext::new(self, &image).link_program(&image)?;
         crate::LinkedArtifact::finish(image, linked).map_err(LinkError::Verification)
     }
+
+    pub fn link_compiled_program(
+        &self,
+        program: &crate::compiler::CompiledProgram,
+    ) -> Result<crate::LinkedArtifact, LinkError> {
+        self.link_program(program.bytecode())?
+            .attach_verified_mir(program.verified_mir())
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -76,6 +84,14 @@ pub enum LinkError {
     MissingScriptFunction {
         name: String,
         id: FunctionId,
+    },
+    MissingMirExecutableMapping {
+        name: String,
+    },
+    MirBudgetScheduleMismatch {
+        name: String,
+        expected_units: u64,
+        actual_units: u64,
     },
     InvalidNestedFunction {
         function: String,
@@ -118,6 +134,20 @@ impl fmt::Display for LinkError {
             Self::MissingScriptFunction { name, id } => {
                 write!(formatter, "missing script function {name} ({id:?})")
             }
+            Self::MissingMirExecutableMapping { name } => {
+                write!(
+                    formatter,
+                    "linked executable {name} has no verified MIR owner"
+                )
+            }
+            Self::MirBudgetScheduleMismatch {
+                name,
+                expected_units,
+                actual_units,
+            } => write!(
+                formatter,
+                "linked executable {name} has {actual_units} execution units, expected {expected_units} from verified MIR"
+            ),
             Self::InvalidNestedFunction { function, index } => {
                 write!(
                     formatter,
@@ -327,6 +357,9 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
         let linked_code = context.linked_code;
         let instruction_offset = context.instruction_offset;
         let kind = match &instruction.kind {
+            UnlinkedInstructionKind::ChargeExecutionUnits { units } => {
+                InstructionKind::ChargeExecutionUnits { units: *units }
+            }
             UnlinkedInstructionKind::LoadConst { dst, constant } => InstructionKind::LoadConst {
                 dst: *dst,
                 constant: *constant,

@@ -153,16 +153,22 @@ fn branches_on_false_conditions() {
 }
 
 #[test]
-fn linked_program_execution_charges_instruction_budget() {
+fn linked_program_execution_charges_execution_unit_budget() {
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");
     let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 1);
     let value = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(1)));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::ChargeExecutionUnits { units: 1 },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::LoadConst {
             dst: Register(0),
             constant: value,
         },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::ChargeExecutionUnits { units: 1 },
     ));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::Return { src: Register(0) },
@@ -173,19 +179,19 @@ fn linked_program_execution_charges_instruction_budget() {
 
     let error = Vm::new()
         .run_linked_program_with_budget(&program, "main", &[], &mut budget)
-        .expect_err("second instruction should exceed the budget");
+        .expect_err("second semantic charge should exceed the budget");
 
     assert_eq!(
         error.kind(),
         VmErrorKind::BudgetExceeded {
-            budget: ExecutionBudgetKind::Instructions,
+            budget: ExecutionBudgetKind::ExecutionUnits,
             limit: 1,
         }
     );
 }
 
 #[test]
-fn unbounded_budget_skips_instruction_counting() {
+fn unbounded_budget_skips_execution_unit_counting() {
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");
     let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 1);
@@ -207,7 +213,7 @@ fn unbounded_budget_skips_instruction_counting() {
         Vm::new().run_linked_program_with_budget(&program, "main", &[], &mut budget),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
-    assert_eq!(budget.instructions_executed(), 0);
+    assert_eq!(budget.execution_units_consumed(), 0);
 }
 
 #[test]
@@ -251,35 +257,44 @@ fn calls_registered_native_functions() {
 }
 
 #[test]
-fn instruction_budget_stops_dispatch_before_next_instruction() {
+fn execution_unit_budget_stops_dispatch_before_next_instruction() {
     let mut code = UnlinkedCodeObject::new("budgeted", 2);
     let one = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(1)));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::ChargeExecutionUnits { units: 1 },
+    ));
     code.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::LoadConst {
             dst: Register(0),
             constant: one,
         },
     ));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::ChargeExecutionUnits { units: 1 },
+    ));
     code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Move {
         dst: Register(1),
         src: Register(0),
     }));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::ChargeExecutionUnits { units: 1 },
+    ));
     code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(1),
     }));
     let mut budget = ExecutionBudget::new(2, usize::MAX, usize::MAX);
 
     let error = run_linked_test_code_with_budget(code, &mut budget)
-        .expect_err("third instruction exceeds budget");
+        .expect_err("third semantic charge exceeds budget");
 
     assert_eq!(
         error.kind(),
         VmErrorKind::BudgetExceeded {
-            budget: ExecutionBudgetKind::Instructions,
+            budget: ExecutionBudgetKind::ExecutionUnits,
             limit: 2,
         }
     );
-    assert_eq!(budget.instructions_executed(), 2);
+    assert_eq!(budget.execution_units_consumed(), 2);
     assert_eq!(budget.current_call_depth(), 0);
 }
 

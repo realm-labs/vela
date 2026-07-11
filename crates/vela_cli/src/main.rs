@@ -42,7 +42,7 @@ fn run_script(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
         .with_stdio()
         .with_fs_io(fs_root)
         .build()
-        .map_err(|error| format!("{error:?}"))?;
+        .map_err(|error| error.to_string())?;
     let program = engine
         .compile_file(path)
         .map_err(|error| diagnostics::render_engine_source_error(path, &error))?;

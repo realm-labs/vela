@@ -66,6 +66,7 @@ struct FunctionBackend<'a> {
     function: &'a MirFunction,
     analyses: &'a BTreeMap<MirFunctionId, MirFunctionAnalyses>,
     facts: &'a vela_mir::MirProgramPointFacts,
+    budget: &'a vela_mir::MirBudgetSchedule,
     code: UnlinkedCodeObject,
     locals: BTreeMap<vela_mir::MirLocalId, Register>,
     temps: BTreeMap<vela_mir::MirTempId, Register>,
@@ -210,6 +211,10 @@ impl<'a> FunctionBackend<'a> {
                 .get(&function_id)
                 .ok_or(MirBackendError::MissingMirFunction(function_id))?
                 .facts,
+            budget: &analyses
+                .get(&function_id)
+                .ok_or(MirBackendError::MissingMirFunction(function_id))?
+                .budget,
             function_id,
             function,
             code,
@@ -241,12 +246,18 @@ impl<'a> FunctionBackend<'a> {
                     .statement(*statement_id)
                     .ok_or(MirBackendError::MissingStatement)?;
                 self.current_statement = Some(*statement_id);
+                if let Some(point) = self.budget.statement_before(*statement_id) {
+                    self.emit_execution_units(point, statement.origin.span);
+                }
                 self.statement(statement)?;
             }
             self.current_statement = None;
             let terminator = block
                 .terminator()
                 .ok_or(MirBackendError::MissingBlock(block_id))?;
+            if let Some(point) = self.budget.terminator_before(block_id) {
+                self.emit_execution_units(point, terminator.origin.span);
+            }
             self.terminator(&terminator.kind, terminator.origin.span, next)?;
         }
         self.patch_targets()?;
@@ -526,6 +537,13 @@ impl<'a> FunctionBackend<'a> {
             }
         }
         Ok(())
+    }
+
+    fn emit_execution_units(&mut self, point: vela_mir::MirBudgetPoint, span: vela_common::Span) {
+        self.emit(
+            UnlinkedInstructionKind::ChargeExecutionUnits { units: point.units },
+            span,
+        );
     }
 
     fn assign(

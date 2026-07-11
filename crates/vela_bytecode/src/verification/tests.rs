@@ -1256,3 +1256,20 @@ fn rejects_frame_metadata_registers_outside_frame() {
         ))
     );
 }
+
+#[test]
+fn rejects_zero_execution_unit_charge() {
+    let mut code = UnlinkedCodeObject::new("main", 0);
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::ChargeExecutionUnits { units: 0 },
+    ));
+
+    assert_eq!(
+        verify_code_object(&code),
+        Err(error(
+            "main",
+            Some(0),
+            VerificationErrorKind::InvalidExecutionUnits { units: 0 }
+        ))
+    );
+}

@@ -2,7 +2,7 @@ use crate::{VmError, VmErrorKind, VmResult};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ExecutionBudgetKind {
-    Instructions,
+    ExecutionUnits,
     MemoryBytes,
     CallDepth,
 }
@@ -27,7 +27,7 @@ impl CollectionLimits {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ExecutionLimits {
-    pub instruction_limit: u64,
+    pub execution_unit_limit: u64,
     pub memory_limit_bytes: usize,
     pub max_call_depth: usize,
     pub collection_limits: CollectionLimits,
@@ -36,12 +36,12 @@ pub struct ExecutionLimits {
 impl ExecutionLimits {
     #[must_use]
     pub const fn new(
-        instruction_limit: u64,
+        execution_unit_limit: u64,
         memory_limit_bytes: usize,
         max_call_depth: usize,
     ) -> Self {
         Self {
-            instruction_limit,
+            execution_unit_limit,
             memory_limit_bytes,
             max_call_depth,
             collection_limits: CollectionLimits::unbounded(),
@@ -62,15 +62,15 @@ impl ExecutionLimits {
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct ExecutionCounters {
-    instructions_executed: u64,
+    execution_units_consumed: u64,
     memory_bytes_allocated: usize,
     current_call_depth: usize,
 }
 
 impl ExecutionCounters {
     #[must_use]
-    pub fn instructions_executed(self) -> u64 {
-        self.instructions_executed
+    pub fn execution_units_consumed(self) -> u64 {
+        self.execution_units_consumed
     }
 
     #[must_use]
@@ -90,7 +90,7 @@ struct BudgetFlags {
 }
 
 impl BudgetFlags {
-    const INSTRUCTIONS: u8 = 0b0001;
+    const EXECUTION_UNITS: u8 = 0b0001;
     const MEMORY: u8 = 0b0010;
     const CALL_DEPTH: u8 = 0b0100;
     const COLLECTION_LIMITS: u8 = 0b1000;
@@ -98,8 +98,8 @@ impl BudgetFlags {
     #[must_use]
     const fn from_limits(limits: &ExecutionLimits) -> Self {
         let mut bits = 0;
-        if limits.instruction_limit != u64::MAX {
-            bits |= Self::INSTRUCTIONS;
+        if limits.execution_unit_limit != u64::MAX {
+            bits |= Self::EXECUTION_UNITS;
         }
         if limits.memory_limit_bytes != usize::MAX {
             bits |= Self::MEMORY;
@@ -132,9 +132,13 @@ pub struct ExecutionBudget {
 
 impl ExecutionBudget {
     #[must_use]
-    pub fn new(instruction_limit: u64, memory_limit_bytes: usize, max_call_depth: usize) -> Self {
+    pub fn new(
+        execution_unit_limit: u64,
+        memory_limit_bytes: usize,
+        max_call_depth: usize,
+    ) -> Self {
         Self::with_limits(ExecutionLimits::new(
-            instruction_limit,
+            execution_unit_limit,
             memory_limit_bytes,
             max_call_depth,
         ))
@@ -165,8 +169,8 @@ impl ExecutionBudget {
     }
 
     #[must_use]
-    pub fn instructions_executed(&self) -> u64 {
-        self.counters.instructions_executed()
+    pub fn execution_units_consumed(&self) -> u64 {
+        self.counters.execution_units_consumed()
     }
 
     #[must_use]
@@ -191,33 +195,25 @@ impl ExecutionBudget {
         self
     }
 
-    pub fn charge_instructions(&mut self, instructions: u64) -> VmResult<()> {
-        if !self.charges_instructions() {
+    pub fn charge_execution_units(&mut self, units: u64) -> VmResult<()> {
+        if !self.charges_execution_units() {
             return Ok(());
         }
-        let next = self
-            .counters
-            .instructions_executed
-            .saturating_add(instructions);
-        if next > self.limits.instruction_limit {
+        let next = self.counters.execution_units_consumed.saturating_add(units);
+        if next > self.limits.execution_unit_limit {
             return Err(VmError::new(VmErrorKind::BudgetExceeded {
-                budget: ExecutionBudgetKind::Instructions,
-                limit: self.limits.instruction_limit,
+                budget: ExecutionBudgetKind::ExecutionUnits,
+                limit: self.limits.execution_unit_limit,
             }));
         }
-        self.counters.instructions_executed = next;
-        Ok(())
-    }
-
-    pub(crate) fn charge_instruction(&mut self) -> VmResult<()> {
-        self.charge_instructions(1)?;
+        self.counters.execution_units_consumed = next;
         Ok(())
     }
 
     #[must_use]
     #[inline(always)]
-    pub(crate) fn charges_instructions(&self) -> bool {
-        self.flags.contains(BudgetFlags::INSTRUCTIONS)
+    pub(crate) fn charges_execution_units(&self) -> bool {
+        self.flags.contains(BudgetFlags::EXECUTION_UNITS)
     }
 
     #[must_use]
@@ -299,36 +295,36 @@ mod tests {
     fn unbounded_budget_disables_all_runtime_flags() {
         let mut budget = ExecutionBudget::unbounded();
 
-        assert!(!budget.charges_instructions());
+        assert!(!budget.charges_execution_units());
         assert!(!budget.charges_memory());
         assert!(!budget.limits_call_depth());
         assert!(!budget.limits_collections());
         assert!(!budget.tracks_collection_growth());
 
-        budget.charge_instructions(10).expect("unbounded charge");
+        budget.charge_execution_units(10).expect("unbounded charge");
         budget.charge_memory_bytes(128).expect("unbounded memory");
         budget.enter_call().expect("unbounded call depth");
         budget.exit_call();
 
-        assert_eq!(budget.instructions_executed(), 0);
+        assert_eq!(budget.execution_units_consumed(), 0);
         assert_eq!(budget.memory_bytes_allocated(), 0);
         assert_eq!(budget.current_call_depth(), 0);
     }
 
     #[test]
     fn finite_limits_enable_independent_budget_flags() {
-        let instruction_only = ExecutionBudget::new(10, usize::MAX, usize::MAX);
-        assert!(instruction_only.charges_instructions());
-        assert!(!instruction_only.charges_memory());
-        assert!(!instruction_only.limits_call_depth());
+        let execution_units_only = ExecutionBudget::new(10, usize::MAX, usize::MAX);
+        assert!(execution_units_only.charges_execution_units());
+        assert!(!execution_units_only.charges_memory());
+        assert!(!execution_units_only.limits_call_depth());
 
         let memory_only = ExecutionBudget::new(u64::MAX, 1024, usize::MAX);
-        assert!(!memory_only.charges_instructions());
+        assert!(!memory_only.charges_execution_units());
         assert!(memory_only.charges_memory());
         assert!(!memory_only.limits_call_depth());
 
         let call_depth_only = ExecutionBudget::new(u64::MAX, usize::MAX, 4);
-        assert!(!call_depth_only.charges_instructions());
+        assert!(!call_depth_only.charges_execution_units());
         assert!(!call_depth_only.charges_memory());
         assert!(call_depth_only.limits_call_depth());
     }

@@ -105,7 +105,7 @@ impl RuntimeImage {
         program: vela_bytecode::compiler::CompiledProgram,
     ) -> Result<Self, LinkError> {
         let verified_mir = Some(Arc::clone(program.verified_mir()));
-        let artifact = Arc::new(engine.link_program(&program)?);
+        let artifact = Arc::new(engine.link_compiled_program(&program)?);
         let layout = RuntimeImageLayout::from_global_names(artifact.image().global_names());
         Ok(Self {
             engine,

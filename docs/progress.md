@@ -70,9 +70,19 @@ ProgramVersion owns that bundle and the same-generation linked artifact, while
 runtime-local cache/profile state lives in generation-keyed weakly pruned
 sidecars. Linked closures and frames pin their immutable executable owner, so
 old retained closures keep old nested/native dispatch after accepted reloads,
-new entries use new code, and rejected reloads preserve ownership. Batch C
-(Phases 7-8), the backend-neutral execution-unit and retained M22-input hard
-switch, is next.
+new entries use new code, and rejected reloads preserve ownership.
+
+Batch C (Phases 7-8) is complete. Verified MIR now seals a deterministic,
+backend-neutral execution-unit schedule for CFG backedges, iterator steps,
+calls, dynamic work, allocation, HostAccess, reflection, and guards. Bytecode
+contains explicit verified charges and no longer charges per dispatch; public
+limits and counters use execution-unit terminology, with exact trap-edge and
+committed-host-write tests. ProgramVersion exposes same-generation linked/MIR
+input and restricted eligibility to M22 without rerunning HIR or analysis.
+Backend and unsupported-pattern failures are structured and source-spanned,
+and future publication, GC-root, debugger-side-exit, and runtime-local tier
+requirements are durable policy. Batch D (Phase 9 final acceptance,
+performance, memory, and zero-hit audits) is next.
 
 The Heavy HIR hard switch and D1-D3 close-out are complete.
 `vela_hir` owns executable body and stable semantic identity, bytecode consumes
@@ -1836,20 +1846,11 @@ callable parameter facts, stable `TypeFact`s, `Any`/unknown suppression, and
 
 ### Remaining Gaps
 
-The executable-generation architecture track is planned and not complete. Its
-blocking correctness and ownership gaps are:
-
-- CFG joins can leak record-shape and immediate facts through bytecode emission
-  order;
-- callable guards lose accepted-kind direction and positional arity;
-- nested functions can retain colliding local cache-site IDs;
-- retained closures can resolve old dense handles against a new linked program;
-- verified MIR does not yet fully prove typed/refined operands, unique
-  safepoints, or separate debug/root/value liveness;
-- ProgramVersion does not retain same-generation verified MIR for M22;
-- execution budgets remain coupled to emitted bytecode instruction count;
-- MIR/backend diagnostic and formal performance/memory close-out gates remain
-  incomplete.
+The executable-generation architecture track has completed implementation
+Batches A-C. The remaining blocking work is Batch D: the complete behavior
+matrix, same-toolchain performance and retained-generation memory comparisons,
+final examples/bench validation, architectural zero-hit audits, and the final
+acceptance checklist. No ownership or execution-unit migration remains open.
 
 Use the phased checks in
 [mir-executable-generation-architecture-plan.md](mir-executable-generation-architecture-plan.md)
@@ -1910,10 +1911,10 @@ diagnostics.
 
 ## Next Up
 
-- Start Phase 0 of
+- Execute Phase 9 of
   [mir-executable-generation-architecture-plan.md](mir-executable-generation-architecture-plan.md):
-  close architecture contracts, inventories, regression fixtures, and the
-  same-toolchain performance/memory baseline before implementation.
+  close the behavior matrix, same-toolchain performance/memory comparison,
+  final validation, and architectural zero-hit audits.
 - Audit M20 cache families and classify each as complete, incomplete, or
   deferred before starting more implementation.
 - Close only named cache-family gaps with focused tests and paired benchmark

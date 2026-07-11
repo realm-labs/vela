@@ -39,7 +39,7 @@ impl<'a, 'heap> GuardExecutionContext<'a, 'heap> {
 
     fn charge_scan_item(&mut self) -> VmResult<()> {
         if let Some(budget) = self.budget.as_deref_mut() {
-            budget.charge_instructions(1)?;
+            budget.charge_execution_units(1)?;
         }
         Ok(())
     }
@@ -1945,7 +1945,7 @@ mod tests {
         execute_linked_guard_plan(&array, &plan, &program, &mut context, "values")
             .expect("summary should prove array element contract");
 
-        assert_eq!(budget.instructions_executed(), 0);
+        assert_eq!(budget.execution_units_consumed(), 0);
     }
 
     #[test]
@@ -1974,7 +1974,7 @@ mod tests {
         execute_linked_guard_plan(&value, &plan, &program, &mut context, "players")
             .expect("record shape summary should prove set element contract");
 
-        assert_eq!(budget.instructions_executed(), 0);
+        assert_eq!(budget.execution_units_consumed(), 0);
     }
 
     #[test]
@@ -2008,7 +2008,7 @@ mod tests {
         execute_linked_guard_plan(&value, &plan, &program, &mut context, "scores")
             .expect("record shape summary should prove map key contract");
 
-        assert_eq!(budget.instructions_executed(), 0);
+        assert_eq!(budget.execution_units_consumed(), 0);
     }
 
     #[test]
@@ -2037,7 +2037,7 @@ mod tests {
         execute_linked_guard_plan(&value, &plan, &program, &mut context, "players")
             .expect("host-ref summary should prove set element contract");
 
-        assert_eq!(budget.instructions_executed(), 0);
+        assert_eq!(budget.execution_units_consumed(), 0);
     }
 
     #[test]
@@ -2071,7 +2071,7 @@ mod tests {
         execute_linked_guard_plan(&value, &plan, &program, &mut context, "scores")
             .expect("host-ref summary should prove map key contract");
 
-        assert_eq!(budget.instructions_executed(), 0);
+        assert_eq!(budget.execution_units_consumed(), 0);
     }
 
     #[test]
@@ -2098,7 +2098,7 @@ mod tests {
             execute_linked_guard_plan(&outer, &plan, &program, &mut context, "values")
                 .expect("matching stamp should skip second scan");
         }
-        assert_eq!(budget.instructions_executed(), 1);
+        assert_eq!(budget.execution_units_consumed(), 1);
 
         let bad = heap.allocate(HeapValue::String("bad".to_owned()));
         {
@@ -2211,7 +2211,7 @@ mod tests {
         execute_linked_guard_plan(&value, &plan, &program, &mut context, "scores")
             .expect("empty map should satisfy a different key contract after clear");
 
-        assert_eq!(budget.instructions_executed(), 0);
+        assert_eq!(budget.execution_units_consumed(), 0);
     }
 
     #[test]
@@ -2274,7 +2274,7 @@ mod tests {
         execute_linked_guard_plan(&value, &plan, &program, &mut context, "values")
             .expect("empty set should satisfy a different element contract after clear");
 
-        assert_eq!(budget.instructions_executed(), 0);
+        assert_eq!(budget.execution_units_consumed(), 0);
     }
 
     #[test]

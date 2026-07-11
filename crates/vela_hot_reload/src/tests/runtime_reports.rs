@@ -37,6 +37,59 @@ fn program_version_shares_owned_artifact_and_verified_mir_generation() {
 }
 
 #[test]
+fn restricted_jit_input_is_same_generation_verified_mir_without_reanalysis() {
+    let version = compile_initial(
+        SourceId::new(1),
+        "fn main(value: i64) -> i64 { return value + 1; }",
+    )
+    .expect("compile restricted JIT input");
+    let input = version
+        .restricted_entry_jit_input("main")
+        .expect("main has linked and MIR identities");
+
+    assert_eq!(input.generation, version.executable_generation_id());
+    assert_eq!(
+        input.linked.debug_name,
+        version
+            .linked_program()
+            .function(input.handle)
+            .expect("same handle")
+            .debug_name
+    );
+    assert!(
+        input
+            .mir_owner
+            .program()
+            .function(input.mir_function)
+            .is_some()
+    );
+    assert!(input.eligibility.is_eligible());
+    assert_eq!(
+        version.linked_artifact().mir_executables().len(),
+        version.linked_program().function_count()
+    );
+}
+
+#[test]
+fn restricted_jit_eligibility_rejects_generation_owned_allocations() {
+    let version = compile_initial(SourceId::new(1), "fn main() { return [1, 2, 3]; }")
+        .expect("compile allocation JIT input");
+    let input = version
+        .restricted_entry_jit_input("main")
+        .expect("main has retained JIT input");
+
+    assert!(!input.eligibility.is_eligible());
+    assert!(
+        input
+            .eligibility
+            .reasons()
+            .contains(&vela_mir::MirJitIneligibility::Allocation)
+    );
+    assert!(input.eligibility.safepoint_count > 0);
+    assert!(input.eligibility.budget_point_count > 0);
+}
+
+#[test]
 fn new_calls_enter_new_code_after_update() {
     let initial =
         compile_initial(SourceId::new(1), "fn main() { return 20; }").expect("compile initial");

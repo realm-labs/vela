@@ -77,6 +77,55 @@ fn exec_reflection_value_runtime(
 }
 
 #[test]
+fn reflection_execution_unit_limit_has_a_stable_edge() {
+    let program = compile_reflection_value_source(
+        SourceId::new(90),
+        "fn main() { return reflect::name(reflect::type_info(\"Player\")); }",
+    )
+    .expect("compile reflection execution-unit fixture");
+    let mut vm = Vm::new();
+    vm.register_reflection_natives(Arc::new(script_reflection_registry()));
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = HostAccess::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        access: &mut tx,
+        script_globals: None,
+    };
+    let mut exact = ExecutionBudget::new(3, usize::MAX, usize::MAX);
+    assert_eq!(
+        exec_reflection_value_program_with_budget(
+            &vm,
+            &program,
+            "main",
+            &[],
+            &mut host,
+            &mut exact,
+        ),
+        Ok(OwnedValue::String("Player".to_owned()))
+    );
+    assert_eq!(exact.execution_units_consumed(), 3);
+
+    let mut short = ExecutionBudget::new(2, usize::MAX, usize::MAX);
+    let error = exec_reflection_value_program_with_budget(
+        &vm,
+        &program,
+        "main",
+        &[],
+        &mut host,
+        &mut short,
+    )
+    .expect_err("one fewer reflection execution unit traps at the second boundary");
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::BudgetExceeded {
+            budget: ExecutionBudgetKind::ExecutionUnits,
+            limit: 2,
+        }
+    );
+}
+
+#[test]
 fn reflect_conversion_preserves_owned_map_key_values() {
     let value = OwnedValue::map([
         (

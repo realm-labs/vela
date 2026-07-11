@@ -1,7 +1,9 @@
+use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use crate::linked::InstructionKind;
 use crate::{CacheSiteDesc, CacheSiteId, ExecutableGenerationId, LinkedProgram, ProgramImage};
 
 static NEXT_EXECUTABLE_GENERATION: AtomicU64 = AtomicU64::new(1);
@@ -13,6 +15,7 @@ pub struct LinkedArtifact {
     image: ProgramImage,
     cache_layout: Box<[CacheSiteDesc]>,
     profile_layout: ProfileLayout,
+    mir_executables: Box<[MirExecutableLayout]>,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -25,6 +28,13 @@ pub struct ProfileFunctionLayout {
     pub handle: crate::ScriptFunctionHandle,
     pub debug_name: crate::DebugNameId,
     pub instruction_count: usize,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct MirExecutableLayout {
+    pub root: vela_def::FunctionId,
+    pub function: vela_mir::MirFunctionId,
+    pub handle: crate::ScriptFunctionHandle,
 }
 
 impl LinkedArtifact {
@@ -52,9 +62,69 @@ impl LinkedArtifact {
             image,
             cache_layout,
             profile_layout,
+            mir_executables: Box::new([]),
         };
         artifact.verify()?;
         Ok(artifact)
+    }
+
+    pub fn attach_verified_mir(
+        mut self,
+        bundle: &vela_mir::OwnedVerifiedMirBundle,
+    ) -> Result<Self, crate::linker::LinkError> {
+        let mut by_symbol = BTreeMap::new();
+        for (root, owned) in bundle.roots() {
+            for (function, body) in owned.program().functions() {
+                by_symbol.insert(body.code_symbol().to_owned(), (root, function));
+            }
+        }
+        let mut layouts = Vec::with_capacity(self.program.function_count());
+        for (handle, code) in self.program.functions() {
+            let name = self.program.debug_name(code.debug_name);
+            let (root, function) = by_symbol.get(name).copied().ok_or_else(|| {
+                crate::linker::LinkError::MissingMirExecutableMapping {
+                    name: name.to_owned(),
+                }
+            })?;
+            let owner = bundle
+                .root(root)
+                .expect("MIR symbol map retains its root owner");
+            let analyses = owner
+                .analyses(function)
+                .expect("verified MIR function retains sealed analyses");
+            let expected_units = analyses
+                .budget
+                .statement_points()
+                .map(|(_, point)| u64::from(point.units))
+                .sum::<u64>()
+                + analyses
+                    .budget
+                    .terminator_points()
+                    .map(|(_, point)| u64::from(point.units))
+                    .sum::<u64>();
+            let actual_units = code
+                .instructions
+                .iter()
+                .filter_map(|instruction| match instruction.kind {
+                    InstructionKind::ChargeExecutionUnits { units } => Some(u64::from(units)),
+                    _ => None,
+                })
+                .sum::<u64>();
+            if expected_units != actual_units {
+                return Err(crate::linker::LinkError::MirBudgetScheduleMismatch {
+                    name: name.to_owned(),
+                    expected_units,
+                    actual_units,
+                });
+            }
+            layouts.push(MirExecutableLayout {
+                root,
+                function,
+                handle,
+            });
+        }
+        self.mir_executables = layouts.into_boxed_slice();
+        Ok(self)
     }
 
     #[must_use]
@@ -85,6 +155,20 @@ impl LinkedArtifact {
     #[must_use]
     pub const fn profile_layout(&self) -> &ProfileLayout {
         &self.profile_layout
+    }
+
+    #[must_use]
+    pub fn mir_executable(
+        &self,
+        handle: crate::ScriptFunctionHandle,
+    ) -> Option<&MirExecutableLayout> {
+        self.mir_executables
+            .iter()
+            .find(|layout| layout.handle == handle)
+    }
+
+    pub fn mir_executables(&self) -> &[MirExecutableLayout] {
+        &self.mir_executables
     }
 
     #[must_use]

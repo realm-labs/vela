@@ -709,9 +709,10 @@ fn dynamic_pattern_constructor(
     })?;
     let fields = pattern_field_names(pattern);
     if owner.is_empty() {
-        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            "match pattern",
-        )));
+        return Err(
+            CompileError::new(CompileErrorKind::UnsupportedRecordPattern)
+                .with_span(pattern.origin.span),
+        );
     }
     Ok(CompilePatternConstructorTarget::DynamicVariant {
         owner_name: owner.join("::"),
@@ -735,9 +736,10 @@ fn reject_unqualified_record_pattern(
     }
     .and_then(|path| body.paths.get(&path));
     if path.is_some_and(|path| path.path.len() == 1) {
-        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            "match pattern",
-        )));
+        return Err(
+            CompileError::new(CompileErrorKind::UnsupportedRecordPattern)
+                .with_span(pattern.origin.span),
+        );
     }
     Ok(())
 }

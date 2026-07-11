@@ -1,6 +1,7 @@
 //! Register VM for Vela bytecode.
 
 mod array_methods;
+pub mod backend_conformance;
 pub mod budget;
 mod bytes_methods;
 mod callback_method_dispatch;

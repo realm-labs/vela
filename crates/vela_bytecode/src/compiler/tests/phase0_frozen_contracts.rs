@@ -457,20 +457,20 @@ fn negated_float_const_and_schema_default_keep_literal_origins() {
     }
 }
 
-fn assert_legacy_unqualified_record_pattern_error(error: CompileError) {
+fn assert_unqualified_record_pattern_diagnostic(error: CompileError) {
+    assert_eq!(error.kind, CompileErrorKind::UnsupportedRecordPattern);
+    assert!(error.span.is_some());
+    let diagnostic = error
+        .to_diagnostic()
+        .expect("record-pattern validation is source-spanned");
     assert_eq!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("match pattern")
-    );
-    assert_eq!(error.span, None);
-    assert!(
-        error.to_diagnostic().is_none(),
-        "the legacy unsupported-pattern error has no diagnostic projection"
+        diagnostic.code.as_deref(),
+        Some("compiler::unqualified_record_pattern")
     );
 }
 
 #[test]
-fn unqualified_record_patterns_keep_the_legacy_unspanned_error() {
+fn unqualified_record_patterns_have_structured_source_diagnostics() {
     let error = compile_program_source(
         SourceId::new(728),
         r#"
@@ -482,18 +482,18 @@ fn main() {
 "#,
     )
     .expect_err("an unqualified source-record pattern is unsupported by the baseline");
-    assert_legacy_unqualified_record_pattern_error(error);
+    assert_unqualified_record_pattern_diagnostic(error);
 
     let error = compile_program_source(
         SourceId::new(729),
         "fn main(value) { return match value { Missing { amount } => amount, _ => 0 }; }",
     )
     .expect_err("an unresolved one-segment record pattern is unsupported by the baseline");
-    assert_legacy_unqualified_record_pattern_error(error);
+    assert_unqualified_record_pattern_diagnostic(error);
 }
 
 #[test]
-fn imported_one_segment_record_pattern_keeps_the_legacy_unspanned_error() {
+fn imported_one_segment_record_pattern_has_a_structured_source_diagnostic() {
     let error = compile_module_sources(&[
         ModuleSource::new(
             SourceId::new(730),
@@ -513,7 +513,7 @@ fn main() {
         ),
     ])
     .expect_err("an imported one-segment record pattern is unsupported by the baseline");
-    assert_legacy_unqualified_record_pattern_error(error);
+    assert_unqualified_record_pattern_diagnostic(error);
 }
 
 #[test]

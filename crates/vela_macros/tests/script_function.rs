@@ -60,7 +60,7 @@ fn grant_bonus_v2(amount: i64) -> i64 {
 /// Sets a copied player level through HostAccess.
 #[script_context_function(name = "game::set_level", effect = "write_host", reflect = true)]
 fn set_level(ctx: &mut NativeCallContext<'_, '_>, player: HostRef, level: i64) -> VmResult<bool> {
-    ctx.charge_instructions(3)?;
+    ctx.charge_execution_units(3)?;
     ctx.set_path(
         HostPath::new(player).field(FieldId::new(1)),
         HostValue::Scalar(vela_common::ScalarValue::I64(level)),

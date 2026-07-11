@@ -651,6 +651,9 @@ impl Instruction {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum InstructionKind {
+    ChargeExecutionUnits {
+        units: u32,
+    },
     LoadConst {
         dst: Register,
         constant: ConstantId,

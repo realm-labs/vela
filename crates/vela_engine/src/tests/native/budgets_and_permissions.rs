@@ -218,12 +218,12 @@ fn main() {
             &mut adapter,
             &mut tx,
         )
-        .expect_err("runtime call should exhaust instruction budget");
+        .expect_err("runtime call should exhaust execution-unit budget");
 
     assert_eq!(
         error,
         VmError::new(VmErrorKind::BudgetExceeded {
-            budget: ExecutionBudgetKind::Instructions,
+            budget: ExecutionBudgetKind::ExecutionUnits,
             limit: 4
         })
         .with_call_stack(Arc::from([vela_vm::error::VmStackFrame {
@@ -276,12 +276,12 @@ fn main() {
     assert_eq!(error.call_stack[0].function, "recurse");
     assert_eq!(
         error.call_stack[0].bytecode_offset,
-        Some(vela_bytecode::InstructionOffset(0))
+        Some(vela_bytecode::InstructionOffset(1))
     );
     assert_eq!(error.call_stack[1].function, "recurse");
     assert_eq!(
         error.call_stack[1].bytecode_offset,
-        Some(vela_bytecode::InstructionOffset(0))
+        Some(vela_bytecode::InstructionOffset(1))
     );
     assert_eq!(error.call_stack[2].function, "main");
     assert_eq!(error.call_stack[2].bytecode_offset, None);

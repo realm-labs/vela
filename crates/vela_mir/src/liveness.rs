@@ -104,6 +104,7 @@ pub(crate) fn sealed_analyses(function: &MirFunction) -> crate::MirFunctionAnaly
         },
         debug_availability,
         facts: crate::MirProgramPointFacts::default(),
+        budget: crate::MirBudgetSchedule::default(),
     }
 }
 

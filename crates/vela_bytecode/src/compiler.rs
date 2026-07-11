@@ -145,9 +145,9 @@ fn compile_function_source_inner(
     let (mut code, _) = compile_mir_roots(&input, semantic.script_metadata_graph())?;
     match code.len() {
         1 => Ok(code.pop().expect("one checked MIR root")),
-        count => Err(CompileError::new(CompileErrorKind::MirBackend(format!(
-            "selected function produced {count} MIR roots"
-        )))),
+        count => Err(CompileError::new(CompileErrorKind::InvalidMirRootCount {
+            count,
+        })),
     }
 }
 
@@ -374,16 +374,68 @@ fn compile_mir_roots(
     let code = bundle
         .roots()
         .map(|(_, verified)| {
-            let handoff = verified.backend_handoff().map_err(|error| {
-                CompileError::new(CompileErrorKind::MirBackend(error.to_string()))
-            })?;
-            let code = mir_backend::compile(handoff).map_err(|error| {
-                CompileError::new(CompileErrorKind::MirBackend(format!("{error:?}")))
-            })?;
+            let handoff = verified
+                .backend_handoff()
+                .map_err(|error| CompileError::new(CompileErrorKind::MirBackendHandoff(error)))?;
+            let code = mir_backend::compile(handoff)
+                .map_err(|error| mir_backend_compile_error(verified, error))?;
             verify_code_object(code)
         })
         .collect::<CompileResult<Vec<_>>>()?;
     Ok((code, bundle))
+}
+
+fn mir_backend_compile_error(
+    verified: &vela_mir::OwnedVerifiedMirProgram,
+    error: mir_backend::MirBackendError,
+) -> CompileError {
+    let (root, root_body) = verified
+        .program()
+        .functions()
+        .next()
+        .expect("verified MIR backend input has a root function");
+    if matches!(error, mir_backend::MirBackendError::RegisterOverflow) {
+        return CompileError::new(CompileErrorKind::RegisterOverflow)
+            .with_span(root_body.origin().span);
+    }
+    let function = match error {
+        mir_backend::MirBackendError::MissingMirFunction(function) => function,
+        _ => root,
+    };
+    let origin = verified
+        .program()
+        .function(function)
+        .map_or(root_body.origin(), vela_mir::MirFunction::origin);
+    let kind = match error {
+        mir_backend::MirBackendError::MissingRoot => error::MirBackendFailureKind::MissingRoot,
+        mir_backend::MirBackendError::MissingMirFunction(function) => {
+            error::MirBackendFailureKind::MissingFunction(function)
+        }
+        mir_backend::MirBackendError::MissingBlock(block) => {
+            error::MirBackendFailureKind::MissingBlock(block)
+        }
+        mir_backend::MirBackendError::MissingStatement => {
+            error::MirBackendFailureKind::MissingStatement
+        }
+        mir_backend::MirBackendError::MissingDestination => {
+            error::MirBackendFailureKind::MissingDestination
+        }
+        mir_backend::MirBackendError::MissingTarget(target) => {
+            error::MirBackendFailureKind::MissingTarget(target)
+        }
+        mir_backend::MirBackendError::DynamicHostArgumentOverflow => {
+            error::MirBackendFailureKind::DynamicHostArgumentOverflow
+        }
+        mir_backend::MirBackendError::RegisterOverflow => unreachable!("handled above"),
+    };
+    CompileError::new(CompileErrorKind::MirBackend(Box::new(
+        error::MirBackendFailure {
+            function,
+            origin,
+            kind,
+        },
+    )))
+    .with_span(origin.span)
 }
 
 fn global_names(global_symbols: &BTreeMap<HirDeclId, String>) -> Vec<String> {

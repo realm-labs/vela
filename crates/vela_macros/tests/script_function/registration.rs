@@ -608,7 +608,7 @@ fn main(player) {
 }
 
 #[test]
-fn script_context_function_charges_runtime_instruction_budget_before_patching() {
+fn script_context_function_charges_runtime_execution_unit_budget_before_patching() {
     let engine = vela_register_context_native_function_set_level(
         Engine::builder().capability(Capability::HostWrite),
     )
@@ -641,7 +641,7 @@ fn main(player) {
     assert_eq!(
         error.kind(),
         VmErrorKind::BudgetExceeded {
-            budget: ExecutionBudgetKind::Instructions,
+            budget: ExecutionBudgetKind::ExecutionUnits,
             limit: 2,
         },
     );

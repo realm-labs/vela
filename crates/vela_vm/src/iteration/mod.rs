@@ -130,7 +130,7 @@ fn next_iterator_value(
             inline_caches: runtime.inline_caches,
             bytecode_profiler: runtime.bytecode_profiler,
         };
-        iterator_state.next_with_runtime(&mut method_runtime, "iterator", &[])
+        iterator_state.next_with_runtime_precharged(&mut method_runtime, "iterator", &[])
     };
     methods::restore_iterator_to_heap(receiver, &mut runtime.heap, iterator_state, "iterator")?;
     result

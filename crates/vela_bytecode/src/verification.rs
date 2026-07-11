@@ -24,6 +24,9 @@ pub struct VerificationError {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum VerificationErrorKind {
+    InvalidExecutionUnits {
+        units: u32,
+    },
     RegisterOutOfBounds {
         register: Register,
         register_count: u16,
@@ -381,6 +384,9 @@ fn verify_instruction(
 ) -> Result<(), VerificationError> {
     let instruction_index = Some(index);
     match &instruction.kind {
+        UnlinkedInstructionKind::ChargeExecutionUnits { units } => {
+            verify_execution_units(function, instruction_index, *units)
+        }
         UnlinkedInstructionKind::LoadConst { dst, constant } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_constant(function, instruction_index, code, *constant)
@@ -779,6 +785,21 @@ fn verify_instruction(
             verify_register(function, instruction_index, code, *src)
         }
     }
+}
+
+fn verify_execution_units(
+    function: &str,
+    instruction: Option<usize>,
+    units: u32,
+) -> Result<(), VerificationError> {
+    if units == 0 {
+        return Err(VerificationError {
+            function: function.to_owned(),
+            instruction,
+            kind: VerificationErrorKind::InvalidExecutionUnits { units },
+        });
+    }
+    Ok(())
 }
 
 fn verify_registers(

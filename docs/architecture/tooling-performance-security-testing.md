@@ -359,7 +359,7 @@ reflect_write = disabled by default or tightly controlled
 ### Budgets
 
 ```text
-instruction budget
+execution-unit budget
 memory budget
 max call depth
 max reflection lookup count

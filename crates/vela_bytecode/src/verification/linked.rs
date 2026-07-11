@@ -174,6 +174,9 @@ fn verify_linked_instruction(
 ) -> Result<(), VerificationError> {
     let instruction_index = Some(index);
     match &instruction.kind {
+        InstructionKind::ChargeExecutionUnits { units } => {
+            super::verify_execution_units(function, instruction_index, *units)
+        }
         InstructionKind::LoadConst { dst, constant } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_constant(function, instruction_index, code, *constant)

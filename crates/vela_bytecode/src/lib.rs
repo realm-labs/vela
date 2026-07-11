@@ -10,7 +10,7 @@ mod script_metadata;
 pub mod script_methods;
 pub mod verification;
 
-pub use artifact::{LinkedArtifact, ProfileFunctionLayout, ProfileLayout};
+pub use artifact::{LinkedArtifact, MirExecutableLayout, ProfileFunctionLayout, ProfileLayout};
 
 use std::collections::BTreeMap;
 
@@ -687,6 +687,9 @@ impl UnlinkedInstruction {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum UnlinkedInstructionKind {
+    ChargeExecutionUnits {
+        units: u32,
+    },
     LoadConst {
         dst: Register,
         constant: ConstantId,

@@ -189,7 +189,7 @@ without moving references or owning host state.
 Scope:
 
 ```text
-ExecutionBudget for instruction count, memory bytes, and call depth
+ExecutionBudget for execution units, memory bytes, and call depth
 budget charging in VM dispatch, native calls, and reflection
 script heap with stable GcRef handles
 non-moving mark-sweep collector
@@ -203,7 +203,7 @@ Acceptance:
 
 ```text
 recursive scripts stop at max_call_depth
-infinite loops stop at instruction budget once loops exist
+infinite loops stop at the execution-unit budget once loops exist
 live script objects survive GC
 cyclic script objects are reclaimed
 host refs are never traced as Rust-owned objects

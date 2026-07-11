@@ -59,9 +59,9 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
             .read_diagnostic_path_at(self.host.adapter, path, source_span)?)
     }
 
-    pub fn charge_instructions(&mut self, instructions: u64) -> VmResult<()> {
+    pub fn charge_execution_units(&mut self, units: u64) -> VmResult<()> {
         if let Some(budget) = self.budget.as_deref_mut() {
-            budget.charge_instructions(instructions)?;
+            budget.charge_execution_units(units)?;
         }
         Ok(())
     }

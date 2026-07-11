@@ -316,6 +316,7 @@ fn assert_has_opcode(counts: &BTreeMap<&'static str, usize>, opcode: &'static st
 
 fn opcode_label(kind: &InstructionKind) -> &'static str {
     match kind {
+        InstructionKind::ChargeExecutionUnits { .. } => "ChargeExecutionUnits",
         InstructionKind::LoadConst { .. } => "LoadConst",
         InstructionKind::Move { .. } => "Move",
         InstructionKind::Not { .. } => "Not",

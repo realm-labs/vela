@@ -1556,6 +1556,50 @@ diagnostics, examples, and exact-edge tests move together, with no dual legacy
 instruction-count mode. The concrete work-unit table is recorded when the
 budget phase activates.
 
+The execution-unit contract is now active and versioned by the bytecode/MIR
+format generation. Each listed boundary costs one unit unless the operation
+records an explicit positive unit count:
+
+| MIR/runtime boundary | Unit rule |
+|---|---|
+| CFG backedge | one before taking the backedge |
+| iterator/range step | one before requesting the next item |
+| script, closure, native, stdlib, value-method, or dynamic call | one before dispatch |
+| callback invocation | one before each callback entry |
+| aggregate/closure/iterator/format allocation | one before allocation |
+| dynamic operator, index, or runtime guard work | one before work; bounded container scans add one per inspected item |
+| HostAccess read/write/mutate/remove/call | one before the host boundary |
+| reflection read/write/call | one before the reflection boundary |
+
+Pure register moves, constants that require no allocation, static scalar
+arithmetic, branches, and returns cost no unit. Memory, collection-growth, and
+call-depth limits remain separate. The VM charges only explicit lowered
+`ChargeExecutionUnits` operations plus runtime-sized scan/iterator/callback
+work; it never derives cost from opcode dispatch count.
+
+Trap ordering is part of the language contract. A charge preceding an effect
+must succeed before that effect begins. Effects completed before a later charge
+trap remain committed, including HostAccess writes. Backends may coalesce
+charges only across pure, non-trapping, non-allocating regions without calls,
+host/reflection effects, safepoints, or debugger boundaries.
+
+### Retained M22 Input And Publication Boundary
+
+`LinkedArtifact` stores an explicit mapping from each generation-local MIR
+function identity to its linked executable handle. `ProgramVersion` exposes a
+read-only restricted-JIT input view containing the same-generation verified MIR,
+linked code, budget schedule, effects, liveness, safepoints, and eligibility
+result. Eligibility reads no HIR, analysis service, source text, or current
+registry state.
+
+M22 may publish an immutable compiled artifact only into its owning
+ProgramVersion generation. Runtime-local tier selection, hotness, counters,
+and caches remain RuntimeState sidecars. Reload activates a new generation and
+never rebases compiled handles. Compiled frames must report GC roots from the
+verified root-live map, preserve debugger/source side exits, and exit through
+the same HostAccess, reflection, budget, and diagnostic helpers. This track
+does not create a compiled-artifact store or a JIT runtime option.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

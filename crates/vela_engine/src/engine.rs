@@ -233,6 +233,17 @@ impl Engine {
         linker.link_program(program)
     }
 
+    pub fn link_compiled_program(
+        &self,
+        program: &vela_bytecode::compiler::CompiledProgram,
+    ) -> Result<LinkedArtifact, LinkError> {
+        let mut linker = Linker::with_registry(&self.definition_registry);
+        for id in self.native_implementation_ids() {
+            linker.add_native_implementation(id);
+        }
+        linker.link_compiled_program(program)
+    }
+
     pub fn install(&self, vm: &mut Vm) {
         self.install_with_registry(vm, Arc::clone(&self.registry));
     }

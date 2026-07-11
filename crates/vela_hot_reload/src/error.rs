@@ -340,15 +340,8 @@ fn compile_diagnostics(error: &CompileError) -> Vec<Diagnostic> {
         | CompileErrorKind::SemanticDiagnostics(diagnostics) => diagnostics.clone(),
         CompileErrorKind::FunctionNotFound(_)
         | CompileErrorKind::UnknownLocal(_)
-        | CompileErrorKind::RegisterOverflow
-        | CompileErrorKind::BytecodeVerification(_)
-        | CompileErrorKind::MirVerification(_)
-        | CompileErrorKind::MirBackend(_)
         | CompileErrorKind::UnsupportedSyntax(_) => Vec::new(),
-        CompileErrorKind::InvalidIntLiteral { .. }
-        | CompileErrorKind::InvalidFloatLiteral { .. }
-        | CompileErrorKind::MirInput(_)
-        | CompileErrorKind::RegistrySnapshot(_) => error.to_diagnostic().into_iter().collect(),
+        _ => error.to_diagnostic().into_iter().collect(),
     }
 }
 

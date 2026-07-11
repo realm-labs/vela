@@ -18,7 +18,7 @@ fn run_fixture(program: &UnlinkedProgram, entry: &str) -> VmResult<OwnedValue> {
     run_linked_test_program_with_budget(&standard_vm(), program, entry, &[], &mut budget)
 }
 
-fn assert_instruction_edge(
+fn assert_execution_unit_edge(
     program: &UnlinkedProgram,
     entry: &str,
     args: &[OwnedValue],
@@ -31,22 +31,22 @@ fn assert_instruction_edge(
         run_linked_test_program_with_budget(&vm, program, entry, args, &mut exact),
         Ok(expected)
     );
-    assert_eq!(exact.instructions_executed(), exact_limit);
+    assert_eq!(exact.execution_units_consumed(), exact_limit);
 
     let failing_limit = exact_limit
         .checked_sub(1)
-        .expect("instruction edge must include at least one charge");
+        .expect("execution-unit edge must include at least one charge");
     let mut short = ExecutionBudget::new(failing_limit, usize::MAX, usize::MAX);
     let error = run_linked_test_program_with_budget(&vm, program, entry, args, &mut short)
-        .expect_err("one fewer instruction must exhaust the budget");
+        .expect_err("one fewer execution unit must exhaust the budget");
     assert_eq!(
         error.kind(),
         VmErrorKind::BudgetExceeded {
-            budget: ExecutionBudgetKind::Instructions,
+            budget: ExecutionBudgetKind::ExecutionUnits,
             limit: failing_limit,
         }
     );
-    assert_eq!(short.instructions_executed(), failing_limit);
+    assert_eq!(short.execution_units_consumed(), failing_limit);
 }
 
 #[test]
@@ -211,7 +211,7 @@ fn main() {
 }
 
 #[test]
-fn loop_instruction_limit_has_a_stable_edge() {
+fn loop_execution_unit_limit_has_a_stable_edge() {
     let program = compile_fixture(
         r#"
 fn main() {
@@ -224,11 +224,11 @@ fn main() {
 "#,
     );
 
-    assert_instruction_edge(&program, "main", &[], 34, OwnedValue::i64(10));
+    assert_execution_unit_edge(&program, "main", &[], 11, OwnedValue::i64(10));
 }
 
 #[test]
-fn script_call_instruction_limit_has_a_stable_edge() {
+fn script_call_execution_unit_limit_has_a_stable_edge() {
     let program = compile_fixture(
         r#"
 fn add_one(value) {
@@ -241,11 +241,39 @@ fn main() {
 "#,
     );
 
-    assert_instruction_edge(&program, "main", &[], 5, OwnedValue::i64(5));
+    assert_execution_unit_edge(&program, "main", &[], 1, OwnedValue::i64(5));
 }
 
 #[test]
-fn container_guard_scan_instruction_limit_has_a_stable_edge() {
+fn allocation_execution_unit_limit_has_a_stable_edge() {
+    let program = compile_fixture("fn main() { return [1, 2, 3]; }");
+    assert_execution_unit_edge(
+        &program,
+        "main",
+        &[],
+        1,
+        OwnedValue::Array(vec![
+            OwnedValue::i64(1),
+            OwnedValue::i64(2),
+            OwnedValue::i64(3),
+        ]),
+    );
+}
+
+#[test]
+fn callback_execution_unit_limit_has_a_stable_edge() {
+    let program = compile_fixture("fn main() { return [1, 2].map(|value| value + 1); }");
+    assert_execution_unit_edge(
+        &program,
+        "main",
+        &[],
+        11,
+        OwnedValue::Array(vec![OwnedValue::i64(2), OwnedValue::i64(3)]),
+    );
+}
+
+#[test]
+fn container_guard_scan_execution_unit_limit_has_a_stable_edge() {
     let program = compile_program_source(
         SourceId::new(1),
         r#"
@@ -273,11 +301,11 @@ fn main(values: Array<i64>) -> i64 {
     assert_eq!(
         error.kind(),
         VmErrorKind::BudgetExceeded {
-            budget: ExecutionBudgetKind::Instructions,
+            budget: ExecutionBudgetKind::ExecutionUnits,
             limit: 1,
         }
     );
-    assert_eq!(short.instructions_executed(), 1);
+    assert_eq!(short.execution_units_consumed(), 1);
 
     let mut exact = ExecutionBudget::new(2, usize::MAX, usize::MAX);
     let error = run_linked_test_program_with_budget(&vm, &program, "main", &[values], &mut exact)
@@ -290,11 +318,11 @@ fn main(values: Array<i64>) -> i64 {
             debug_name: "values".to_owned(),
         }
     );
-    assert_eq!(exact.instructions_executed(), 2);
+    assert_eq!(exact.execution_units_consumed(), 2);
 }
 
 #[test]
-fn try_propagation_instruction_limit_has_stable_edges() {
+fn try_propagation_execution_unit_limit_has_stable_edges() {
     let program = compile_fixture(
         r#"
 enum Option {
@@ -317,18 +345,18 @@ fn absent() {
 "#,
     );
 
-    assert_instruction_edge(
+    assert_execution_unit_edge(
         &program,
         "present",
         &[],
-        11,
+        3,
         OwnedValue::enum_variant("Option", "Some", [("0", OwnedValue::i64(5))]),
     );
-    assert_instruction_edge(
+    assert_execution_unit_edge(
         &program,
         "absent",
         &[],
-        4,
+        2,
         OwnedValue::enum_variant("Option", "None", Vec::<(&str, OwnedValue)>::new()),
     );
 }
@@ -337,14 +365,14 @@ fn run_host_compound_fixture(
     program: &UnlinkedProgram,
     host_ref: HostRef,
     initial: i64,
-    instruction_limit: u64,
+    execution_unit_limit: u64,
 ) -> (VmResult<OwnedValue>, MockStateAdapter, ExecutionBudget) {
     let mut adapter = host_adapter(
         host_ref,
         HostValue::Scalar(vela_common::ScalarValue::I64(initial)),
     );
     let mut access = HostAccess::new();
-    let mut budget = ExecutionBudget::new(instruction_limit, usize::MAX, usize::MAX);
+    let mut budget = ExecutionBudget::new(execution_unit_limit, usize::MAX, usize::MAX);
     let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
@@ -364,7 +392,7 @@ fn run_host_compound_fixture(
 }
 
 #[test]
-fn host_compound_write_instruction_limit_has_a_stable_edge() {
+fn host_compound_write_execution_unit_limit_has_a_stable_edge() {
     let host_ref = player_ref(1);
     let program = compile_host_program_source(
         SourceId::new(1),
@@ -382,16 +410,16 @@ fn main(player: Player) {
     )
     .expect("host boundary fixture should compile");
 
-    let exact_limit = 6;
+    let exact_limit = 2;
     let (result, adapter, budget) = run_host_compound_fixture(&program, host_ref, 10, exact_limit);
     assert_eq!(result, Ok(OwnedValue::i64(11)));
-    assert_eq!(budget.instructions_executed(), exact_limit);
+    assert_eq!(budget.execution_units_consumed(), exact_limit);
     assert_eq!(
         adapter.read_diagnostic_path(&level_path(host_ref)),
         Ok(HostValue::Scalar(vela_common::ScalarValue::I64(11)))
     );
 
-    let failing_limit = 2;
+    let failing_limit = 0;
     let (result, adapter, budget) =
         run_host_compound_fixture(&program, host_ref, 10, failing_limit);
     assert_eq!(
@@ -399,27 +427,27 @@ fn main(player: Player) {
             .expect_err("budget must stop execution before the host mutation")
             .kind(),
         VmErrorKind::BudgetExceeded {
-            budget: ExecutionBudgetKind::Instructions,
+            budget: ExecutionBudgetKind::ExecutionUnits,
             limit: failing_limit,
         }
     );
-    assert_eq!(budget.instructions_executed(), failing_limit);
+    assert_eq!(budget.execution_units_consumed(), failing_limit);
     assert_eq!(
         adapter.read_diagnostic_path(&level_path(host_ref)),
         Ok(HostValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
 
-    let (result, adapter, budget) = run_host_compound_fixture(&program, host_ref, 10, 3);
+    let (result, adapter, budget) = run_host_compound_fixture(&program, host_ref, 10, 1);
     assert_eq!(
         result
             .expect_err("budget must stop execution after the completed host mutation")
             .kind(),
         VmErrorKind::BudgetExceeded {
-            budget: ExecutionBudgetKind::Instructions,
-            limit: 3,
+            budget: ExecutionBudgetKind::ExecutionUnits,
+            limit: 1,
         }
     );
-    assert_eq!(budget.instructions_executed(), 3);
+    assert_eq!(budget.execution_units_consumed(), 1);
     assert_eq!(
         adapter.read_diagnostic_path(&level_path(host_ref)),
         Ok(HostValue::Scalar(vela_common::ScalarValue::I64(11)))

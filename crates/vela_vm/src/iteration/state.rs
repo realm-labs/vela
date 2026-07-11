@@ -312,6 +312,28 @@ impl IteratorState {
         operation: &'static str,
         protected_values: &[Value],
     ) -> VmResult<Option<Value>> {
+        self.next_with_runtime_inner(runtime, operation, protected_values, true)
+    }
+
+    pub(crate) fn next_with_runtime_precharged(
+        &mut self,
+        runtime: &mut MethodRuntime<'_, '_, '_>,
+        operation: &'static str,
+        protected_values: &[Value],
+    ) -> VmResult<Option<Value>> {
+        self.next_with_runtime_inner(runtime, operation, protected_values, false)
+    }
+
+    fn next_with_runtime_inner(
+        &mut self,
+        runtime: &mut MethodRuntime<'_, '_, '_>,
+        operation: &'static str,
+        protected_values: &[Value],
+        charge_step: bool,
+    ) -> VmResult<Option<Value>> {
+        if charge_step && let Some(budget) = runtime.budget.as_deref_mut() {
+            budget.charge_execution_units(1)?;
+        }
         let next = match &mut self.cursor {
             IteratorCursor::Values { .. } | IteratorCursor::Range(_) => self.next_without_runtime(),
             IteratorCursor::Array { source, next, len } => next_indexed_heap_value(

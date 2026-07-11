@@ -321,9 +321,9 @@ pub fn update_from_linked_program(
 }
 
 fn link_standalone_program(
-    program: &UnlinkedProgram,
+    program: &CompiledProgram,
 ) -> Result<LinkedArtifact, vela_bytecode::linker::LinkError> {
-    Linker::new().link_program(program)
+    Linker::new().link_compiled_program(program)
 }
 
 fn module_changes(

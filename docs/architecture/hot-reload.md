@@ -68,6 +68,12 @@ remain available while an old owner is retained and are pruned through weak
 generation tokens at later safe points; a sidecar never retains executable
 code by itself.
 
+The same immutable artifact also maps verified MIR functions to linked handles.
+Future M22 compilation may consume the read-only restricted-JIT input on a
+ProgramVersion without rebuilding HIR or analysis. Published machine code must
+belong to that generation; tier selection remains runtime-local, and old code
+is invalidated by owner lifetime rather than name rebasing.
+
 The first version does not switch bytecode in the middle of an executing function.
 
 ### Safe Points

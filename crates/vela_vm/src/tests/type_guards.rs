@@ -276,19 +276,22 @@ fn main(values: Array<i64>) {
         &Vm::new(),
         &program,
         "main",
-        &[OwnedValue::array([OwnedValue::i64(1), OwnedValue::i64(2)])],
+        &[OwnedValue::array([
+            OwnedValue::i64(1),
+            OwnedValue::String("bad".to_owned()),
+        ])],
         &mut budget,
     )
-    .expect_err("array guard scan should consume instruction budget");
+    .expect_err("array guard scan should consume execution-unit budget");
 
     assert_eq!(
         error.kind(),
         VmErrorKind::BudgetExceeded {
-            budget: ExecutionBudgetKind::Instructions,
+            budget: ExecutionBudgetKind::ExecutionUnits,
             limit: 1,
         }
     );
-    assert_eq!(budget.instructions_executed(), 1);
+    assert_eq!(budget.execution_units_consumed(), 1);
 }
 
 #[test]

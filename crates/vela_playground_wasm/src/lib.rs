@@ -163,17 +163,26 @@ fn compile_error_response(error: CompileError) -> PlaygroundResponse {
             single_error_response(format!("invalid float literal `{literal}`: {error}"))
         }
         CompileErrorKind::RegisterOverflow => single_error_response("register overflow"),
+        CompileErrorKind::InvalidMirRootCount { count } => {
+            single_error_response(format!("invalid verified MIR root count: {count}"))
+        }
         CompileErrorKind::BytecodeVerification(error) => {
             single_error_response(format!("bytecode verification failed: {error:?}"))
         }
         CompileErrorKind::MirVerification(error) => {
             single_error_response(format!("MIR verification failed: {error}"))
         }
+        CompileErrorKind::MirBackendHandoff(error) => {
+            single_error_response(format!("MIR backend handoff failed: {error}"))
+        }
         CompileErrorKind::MirBackend(message) => {
             single_error_response(format!("MIR bytecode backend failed: {message}"))
         }
         CompileErrorKind::UnsupportedSyntax(message) => {
             single_error_response(format!("unsupported syntax: {message}"))
+        }
+        CompileErrorKind::UnsupportedRecordPattern => {
+            single_error_response("record pattern requires an owner-qualified path")
         }
         CompileErrorKind::MirInput(error) => {
             single_error_response(format!("inconsistent compiler MIR input: {error}"))

@@ -539,7 +539,7 @@ fn typed_set_level(
     player: HostRef,
     level: i64,
 ) -> VmResult<bool> {
-    ctx.charge_instructions(10)?;
+    ctx.charge_execution_units(10)?;
     let has_permission = ctx.has_capability(Capability::HostWrite);
     ctx.set_path(
         HostPath::new(player).field(FieldId::new(1)),
@@ -712,7 +712,7 @@ fn typed_context_sum_level(
     b: i64,
     c: i64,
 ) -> VmResult<i64> {
-    ctx.charge_instructions(1)?;
+    ctx.charge_execution_units(1)?;
     let level = a + b + c;
     ctx.set_path(
         HostPath::new(player).field(FieldId::new(1)),
@@ -730,7 +730,7 @@ fn typed_context_sum5_level(
     c: i64,
     d: i64,
 ) -> VmResult<i64> {
-    ctx.charge_instructions(1)?;
+    ctx.charge_execution_units(1)?;
     let level = a + b + c + d;
     ctx.set_path(
         HostPath::new(player).field(FieldId::new(1)),
@@ -749,7 +749,7 @@ fn typed_context_sum6_level(
     d: i64,
     e: i64,
 ) -> VmResult<i64> {
-    ctx.charge_instructions(1)?;
+    ctx.charge_execution_units(1)?;
     let level = a + b + c + d + e;
     ctx.set_path(
         HostPath::new(player).field(FieldId::new(1)),

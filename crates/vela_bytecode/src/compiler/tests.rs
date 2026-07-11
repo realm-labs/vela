@@ -54,6 +54,73 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_verified_mir_budget_points_to_explicit_charges() {
+    let program = compile_program_source(
+        SourceId::new(3),
+        "fn helper(value) { return value + 1; } fn main() { return helper(4); }",
+    )
+    .expect("budget schedule should compile");
+    let main = program.function("main").expect("main function");
+    let charge = main
+        .instructions
+        .iter()
+        .position(|instruction| {
+            matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::ChargeExecutionUnits { units: 1 }
+            )
+        })
+        .expect("MIR call point lowers to an explicit charge");
+
+    assert!(matches!(
+        main.instructions
+            .get(charge + 1)
+            .map(|instruction| &instruction.kind),
+        Some(UnlinkedInstructionKind::CallFunction { .. })
+    ));
+    assert!(
+        !program
+            .function("helper")
+            .expect("helper function")
+            .instructions
+            .iter()
+            .any(|instruction| matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::ChargeExecutionUnits { .. }
+            ))
+    );
+}
+
+#[test]
+fn linked_artifact_rejects_bytecode_that_drops_verified_mir_budget_points() {
+    let mut program = compile_program_source(
+        SourceId::new(4),
+        "fn helper() { return 1; } fn main() { return helper(); }",
+    )
+    .expect("budget verification fixture compiles");
+    program
+        .bytecode
+        .function_mut("main")
+        .expect("main function")
+        .instructions
+        .retain(|instruction| {
+            !matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::ChargeExecutionUnits { .. }
+            )
+        });
+
+    assert!(matches!(
+        crate::Linker::new().link_compiled_program(&program),
+        Err(crate::linker::LinkError::MirBudgetScheduleMismatch {
+            expected_units: 1,
+            actual_units: 0,
+            ..
+        })
+    ));
+}
+
+#[test]
 fn compiler_boundary_rejects_invalid_program_bytecode() {
     let mut code = UnlinkedCodeObject::new("main", 1);
     code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {

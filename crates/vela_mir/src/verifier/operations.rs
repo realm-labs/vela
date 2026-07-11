@@ -800,7 +800,9 @@ fn verify_terminator(
                 crate::CompileTryTarget::Expected(_) => {
                     matches!(actual, MirValueType::Dynamic | MirValueType::Enum(_))
                 }
-                crate::CompileTryTarget::Dynamic { .. } => actual == MirValueType::Dynamic,
+                crate::CompileTryTarget::Dynamic { .. } => {
+                    matches!(actual, MirValueType::Dynamic)
+                }
             };
             if !valid {
                 return Err(type_error(
