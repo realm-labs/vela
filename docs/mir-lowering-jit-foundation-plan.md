@@ -777,9 +777,9 @@ bytecode integration.
   kinds, source spans, scopes, and live regions.
 - [x] Produce safepoint/live-value input for future compiled-frame work while
   preserving conservative VM root tracing.
-- [ ] Define the backend handoff for logical values, constants, calls, targets,
+- [x] Define the backend handoff for logical values, constants, calls, targets,
   source spans, frame/debug data, guards, effects, and CFG layout.
-- [ ] Do not implement generic optimization passes. Any canonicalization needed
+- [x] Do not implement generic optimization passes. Any canonicalization needed
   by all backends must be deterministic, semantics-preserving, and verified.
 
 Validation:

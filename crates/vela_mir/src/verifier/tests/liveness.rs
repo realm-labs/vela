@@ -191,3 +191,23 @@ fn mir_liveness_verifier_rejects_missing_or_partial_computed_metadata() {
         MirVerifyErrorKind::InvalidLivenessMetadata(_)
     ));
 }
+
+#[test]
+fn mir_backend_handoff_requires_computed_metadata() {
+    let computed = build("fn main() { return 1; }", &[]);
+    let handoff = verify_mir(&computed)
+        .expect("computed MIR verifies")
+        .into_backend_handoff()
+        .expect("computed MIR reaches backend handoff");
+    assert!(std::ptr::eq(handoff.program(), &computed));
+
+    let uncomputed = program(terminated_function());
+    let error = verify_mir(&uncomputed)
+        .expect("explicit test configuration may omit liveness")
+        .into_backend_handoff()
+        .expect_err("a physical backend may not consume uncomputed MIR");
+    assert!(matches!(
+        error,
+        crate::MirBackendHandoffError::MissingLiveness { .. }
+    ));
+}

@@ -1478,6 +1478,17 @@ blocks where their logical storage is live or defined, with parameter and
 capture storage beginning at entry. The verifier recomputes and compares every
 computed liveness, safepoint, and debug-region record.
 
+### MIR Physical Backend Handoff
+
+`verify_mir` proves structural and semantic MIR, including any explicitly
+computed live metadata. Physical code generation accepts only the separate
+borrowed `MirBackendHandoff`, which additionally requires computed liveness for
+every defined function. This keeps test-configured uncomputed MIR useful for
+isolated invariant tests without allowing it to reach register allocation or
+instruction selection. The handoff owns no fallback queries: physical backends
+consume its MIR target table, logical values, canonical CFG, effects, guards,
+origins, debug records, and safepoint metadata directly.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

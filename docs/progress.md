@@ -90,8 +90,13 @@ record-family enum assignment writes, specialization slow edges, and atomic
 try regions. Backward block/local/temp liveness handles joins, early returns,
 iterator/range edge definitions, calls, closures, and try edges; safepoints own
 operation live-before sets and debug locals own verified live block regions.
-Phase 4 backend-handoff definition is now active. No MIR backend selector or
-production MIR route exists.
+Phase 4 is complete. A physical backend can receive MIR only through the
+borrowed `MirBackendHandoff` returned after full verification and only when
+every function has computed liveness/debug/safepoint metadata. The handoff
+exposes the frozen target table, logical values, canonical CFG and effects; it
+does not expose HIR/analysis repair or an optimization pipeline. The next
+checkpoint is the atomic Phase 5 backend switch and direct-lowering deletion.
+No MIR backend selector or production MIR route exists.
 
 The Phase 1 semantic gate also fixes backend-bearing edge cases before a
 builder exists: owner-qualified executable method lookup preserves shared trait

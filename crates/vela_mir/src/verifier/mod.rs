@@ -1,8 +1,8 @@
 //! Structural and data-flow verification for backend-neutral MIR.
 //!
 //! Verification consumes MIR and its frozen target table only. It never
-//! consults HIR or analysis again, and it deliberately leaves liveness to the
-//! separate Phase 3 liveness pass.
+//! consults HIR or analysis again. A physical backend additionally requests a
+//! handoff that requires computed liveness/debug/safepoint metadata.
 
 mod cfg;
 pub(crate) mod dataflow;
@@ -34,11 +34,60 @@ pub struct VerifiedMirProgram<'a> {
 }
 
 impl<'a> VerifiedMirProgram<'a> {
+    pub fn into_backend_handoff(self) -> Result<MirBackendHandoff<'a>, MirBackendHandoffError> {
+        for (function, body) in self.program.functions() {
+            if !body.liveness().is_computed() {
+                return Err(MirBackendHandoffError::MissingLiveness {
+                    function,
+                    origin: body.origin(),
+                });
+            }
+        }
+        Ok(MirBackendHandoff {
+            program: self.program,
+        })
+    }
+}
+
+/// Complete verifier-proven MIR input for a physical backend.
+///
+/// The contained program owns backend-neutral targets, logical values, CFG,
+/// effects, guards, source/debug records, and computed live metadata. The
+/// wrapper cannot be constructed without first passing [`verify_mir`].
+#[derive(Clone, Copy, Debug)]
+pub struct MirBackendHandoff<'a> {
+    program: &'a MirProgram,
+}
+
+impl<'a> MirBackendHandoff<'a> {
     #[must_use]
     pub const fn program(self) -> &'a MirProgram {
         self.program
     }
 }
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum MirBackendHandoffError {
+    MissingLiveness {
+        function: MirFunctionId,
+        origin: MirSourceOrigin,
+    },
+}
+
+impl fmt::Display for MirBackendHandoffError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::MissingLiveness { function, .. } => {
+                write!(
+                    formatter,
+                    "MIR backend handoff requires computed liveness for {function}"
+                )
+            }
+        }
+    }
+}
+
+impl Error for MirBackendHandoffError {}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MirDestinationExpectation {

@@ -75,6 +75,6 @@ pub use value::{
     MirValueType,
 };
 pub use verifier::{
-    MirDestinationExpectation, MirVerifyError, MirVerifyErrorKind, MirVerifyTarget,
-    VerifiedMirProgram, verify_mir,
+    MirBackendHandoff, MirBackendHandoffError, MirDestinationExpectation, MirVerifyError,
+    MirVerifyErrorKind, MirVerifyTarget, VerifiedMirProgram, verify_mir,
 };
