@@ -862,10 +862,10 @@ fn main() {
 "#,
     )
     .expect("compile captured lambda");
-    let image = ProgramImage::from_program(&program);
     let linked = Linker::new()
         .link_program(&program)
         .expect("link captured lambda program");
+    let image = linked.image();
     let make_adder = image
         .function_by_name("make_adder")
         .expect("make_adder image function");

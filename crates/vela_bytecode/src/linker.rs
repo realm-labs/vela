@@ -52,13 +52,19 @@ impl<'registry> Linker<'registry> {
         self.native_implementations.insert(id);
     }
 
-    pub fn link_program(&self, program: &UnlinkedProgram) -> Result<LinkedProgram, LinkError> {
-        LinkContext::new(self, program).link_program(program)
+    pub fn link_program(
+        &self,
+        program: &UnlinkedProgram,
+    ) -> Result<crate::LinkedArtifact, LinkError> {
+        let image = crate::ProgramImage::from_program(program);
+        let linked = LinkContext::new(self, &image).link_program(&image)?;
+        crate::LinkedArtifact::finish(image, linked).map_err(LinkError::Verification)
     }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum LinkError {
+    Verification(crate::verification::VerificationError),
     UnresolvedNative {
         name: String,
         id: FunctionId,
@@ -99,6 +105,7 @@ pub enum LinkError {
 impl fmt::Display for LinkError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Verification(error) => write!(formatter, "{error}"),
             Self::UnresolvedNative { name, id } => {
                 write!(formatter, "unresolved native function {name} ({id:?})")
             }
@@ -156,24 +163,21 @@ struct LinkContext<'linker, 'registry> {
     script_variant_ids: BTreeMap<(String, String), VariantId>,
     type_handles: BTreeMap<TypeId, TypeHandle>,
     variant_handles: BTreeMap<VariantId, VariantHandle>,
-    next_function_index: usize,
-    extra_functions: Vec<LinkedCodeObject>,
 }
 
 struct LinkInstructionContext<'a> {
-    program: &'a UnlinkedProgram,
+    program: &'a crate::ProgramImage,
     code: &'a UnlinkedCodeObject,
-    nested_handles: &'a [ScriptFunctionHandle],
     host_target_map: &'a [HostTargetPlanId],
     linked_code: &'a mut LinkedCodeObject,
     instruction_offset: InstructionOffset,
 }
 
 impl<'linker, 'registry> LinkContext<'linker, 'registry> {
-    fn new(linker: &'linker Linker<'registry>, program: &UnlinkedProgram) -> Self {
+    fn new(linker: &'linker Linker<'registry>, program: &crate::ProgramImage) -> Self {
         let mut script_functions_by_name = BTreeMap::new();
         let mut script_functions_by_id = BTreeMap::new();
-        for (index, name) in program.function_names().enumerate() {
+        for (index, name) in program.entry_function_names().enumerate() {
             let handle = ScriptFunctionHandle::new(index);
             script_functions_by_name.insert(name.to_owned(), handle);
             script_functions_by_id.insert(script_function_id(name), handle);
@@ -202,29 +206,24 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
             script_variant_ids,
             type_handles: BTreeMap::new(),
             variant_handles: BTreeMap::new(),
-            next_function_index: program.function_count(),
-            extra_functions: Vec::new(),
         }
     }
 
-    fn link_program(mut self, program: &UnlinkedProgram) -> Result<LinkedProgram, LinkError> {
+    fn link_program(mut self, program: &crate::ProgramImage) -> Result<LinkedProgram, LinkError> {
         if let Some(metadata) = program.script_metadata() {
             self.linked.set_script_metadata(metadata.clone());
         }
-        let mut top_level = Vec::with_capacity(program.function_count());
-        for code in program.functions() {
-            top_level.push(self.link_code(program, code)?);
+        let mut functions = Vec::with_capacity(program.function_count());
+        for (_, code) in program.functions() {
+            functions.push(self.link_code(program, code)?);
         }
 
-        for code in top_level {
+        for code in functions {
             self.linked.push_function(code);
         }
         self.link_script_method_dispatches(program)?;
-        for code in self.extra_functions {
-            self.linked.push_function(code);
-        }
 
-        for name in program.function_names() {
+        for name in program.entry_function_names() {
             let debug_name = self.linked.intern_debug_name(name.to_owned());
             if let Some(function) = self.script_functions_by_name.get(name).copied() {
                 self.linked.set_entry_point(debug_name, function);
@@ -236,7 +235,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
 
     fn link_script_method_dispatches(
         &mut self,
-        program: &UnlinkedProgram,
+        program: &crate::ProgramImage,
     ) -> Result<(), LinkError> {
         for (type_name, method_name, method) in program.script_methods().methods() {
             let Some(function) = self.script_functions_by_name.get(&method.function).copied()
@@ -255,7 +254,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
 
     fn link_code(
         &mut self,
-        program: &UnlinkedProgram,
+        program: &crate::ProgramImage,
         code: &UnlinkedCodeObject,
     ) -> Result<LinkedCodeObject, LinkError> {
         let debug_name = self.linked.intern_debug_name(code.name.clone());
@@ -288,21 +287,11 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
             .map(|target| linked.intern_host_target(target))
             .collect::<Vec<_>>();
 
-        let mut nested_handles = Vec::with_capacity(code.nested_functions.len());
-        for nested in &code.nested_functions {
-            let linked_nested = self.link_code(program, nested)?;
-            let handle = ScriptFunctionHandle::new(self.next_function_index);
-            self.next_function_index += 1;
-            nested_handles.push(handle);
-            self.extra_functions.push(linked_nested);
-        }
-
         for (offset, instruction) in code.instructions.iter().enumerate() {
             let instruction = self.link_instruction(
                 LinkInstructionContext {
                     program,
                     code,
-                    nested_handles: &nested_handles,
                     host_target_map: &host_target_map,
                     linked_code: &mut linked,
                     instruction_offset: InstructionOffset(offset),
@@ -334,7 +323,6 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
     ) -> Result<Instruction, LinkError> {
         let program = context.program;
         let code = context.code;
-        let nested_handles = context.nested_handles;
         let host_target_map = context.host_target_map;
         let linked_code = context.linked_code;
         let instruction_offset = context.instruction_offset;
@@ -567,12 +555,13 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 function,
                 captures,
             } => {
-                let function = nested_handles.get(function.0).copied().ok_or_else(|| {
-                    LinkError::InvalidNestedFunction {
+                if program.function(*function).is_none() {
+                    return Err(LinkError::InvalidNestedFunction {
                         function: code.name.clone(),
                         index: *function,
-                    }
-                })?;
+                    });
+                }
+                let function = ScriptFunctionHandle::new(function.0);
                 InstructionKind::MakeClosure {
                     dst: *dst,
                     function,

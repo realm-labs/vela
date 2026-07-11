@@ -1,8 +1,8 @@
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use vela_bytecode::{
-    LinkedProgram, ProgramImage, UnlinkedCodeObject, UnlinkedProgram,
+    LinkedArtifact, LinkedProgram, ProgramImage, UnlinkedCodeObject,
+    compiler::CompiledProgram,
     script_methods::{ScriptMethod, ScriptMethodTable},
 };
 use vela_def::MethodId;
@@ -11,73 +11,71 @@ use vela_hir::module_graph::ModuleGraph;
 use crate::abi::HotReloadAbi;
 use crate::profile::{FunctionProfile, ProgramProfile};
 use crate::report::AcceptedHotReloadChanges;
-use crate::symbol::{FunctionSymbolId, ProgramVersionId};
+use crate::symbol::ProgramVersionId;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProgramVersion {
     pub id: ProgramVersionId,
-    pub(crate) functions: BTreeMap<FunctionSymbolId, Arc<UnlinkedCodeObject>>,
     pub(crate) abi: HotReloadAbi,
-    pub(crate) profile: ProgramProfile,
-    pub(crate) program_image: ProgramImage,
-    pub(crate) linked_program: LinkedProgram,
+    pub(crate) artifact: Arc<LinkedArtifact>,
+    pub(crate) verified_mir: Arc<vela_mir::OwnedVerifiedMirBundle>,
 }
 
 impl ProgramVersion {
     #[must_use]
     pub fn from_linked_program(
         id: ProgramVersionId,
-        program: UnlinkedProgram,
-        linked_program: LinkedProgram,
+        program: CompiledProgram,
+        artifact: LinkedArtifact,
     ) -> Self {
-        Self::from_linked_program_with_abi(id, program, HotReloadAbi::empty(), linked_program)
+        Self::from_linked_program_with_abi(id, program, HotReloadAbi::empty(), artifact)
     }
 
     #[must_use]
     pub fn from_linked_program_with_abi(
         id: ProgramVersionId,
-        program: UnlinkedProgram,
+        program: CompiledProgram,
         abi: HotReloadAbi,
-        linked_program: LinkedProgram,
+        artifact: LinkedArtifact,
     ) -> Self {
-        let program_image = ProgramImage::from_program(&program);
-        let functions = program
-            .into_functions()
-            .map(|(name, code)| (FunctionSymbolId::new(name), Arc::new(code)))
-            .collect();
-        let profile = ProgramProfile::from_functions(&functions);
+        let (_, verified_mir) = program.into_parts();
         Self {
             id,
-            functions,
             abi,
-            profile,
-            program_image,
-            linked_program,
+            artifact: Arc::new(artifact),
+            verified_mir,
         }
     }
 
     #[must_use]
     pub fn function(&self, name: &str) -> Option<Arc<UnlinkedCodeObject>> {
-        self.functions.get(&FunctionSymbolId::new(name)).cloned()
+        self.artifact
+            .image()
+            .function_by_name(name)
+            .cloned()
+            .map(Arc::new)
     }
 
     pub fn function_names(&self) -> impl Iterator<Item = &str> {
-        self.functions.keys().map(|name| name.0.as_str())
+        self.artifact.image().entry_function_names()
     }
 
     #[must_use]
     pub fn script_methods(&self) -> &ScriptMethodTable {
-        self.program_image.script_methods()
+        self.artifact.image().script_methods()
     }
 
     #[must_use]
     pub fn global_names(&self) -> &[String] {
-        self.program_image.global_names()
+        self.artifact.image().global_names()
     }
 
     #[must_use]
     pub fn script_method(&self, type_name: &str, method: &str) -> Option<&ScriptMethod> {
-        self.program_image.script_methods().get(type_name, method)
+        self.artifact
+            .image()
+            .script_methods()
+            .get(type_name, method)
     }
 
     #[must_use]
@@ -86,7 +84,8 @@ impl ProgramVersion {
         type_name: &str,
         method_id: MethodId,
     ) -> Option<&ScriptMethod> {
-        self.program_image
+        self.artifact
+            .image()
             .script_methods()
             .get_by_id(type_name, method_id)
     }
@@ -113,7 +112,7 @@ impl ProgramVersion {
 
     #[must_use]
     pub fn script_metadata(&self) -> Option<&ModuleGraph> {
-        self.program_image.script_metadata()
+        self.artifact.image().script_metadata()
     }
 
     #[must_use]
@@ -122,79 +121,75 @@ impl ProgramVersion {
     }
 
     #[must_use]
-    pub fn profile(&self) -> &ProgramProfile {
-        &self.profile
+    pub fn profile(&self) -> ProgramProfile {
+        ProgramProfile::from_artifact(&self.artifact)
     }
 
     #[must_use]
     pub fn program_image(&self) -> &ProgramImage {
-        &self.program_image
+        self.artifact.image()
     }
 
     #[must_use]
-    pub const fn linked_program(&self) -> &LinkedProgram {
-        &self.linked_program
+    pub fn linked_program(&self) -> &LinkedProgram {
+        self.artifact.program()
     }
 
     #[must_use]
-    pub fn function_profile(&self, name: &str) -> Option<&FunctionProfile> {
-        self.profile.function(name)
+    pub fn linked_artifact(&self) -> &Arc<LinkedArtifact> {
+        &self.artifact
     }
 
     #[must_use]
-    pub fn to_unlinked_program(&self) -> UnlinkedProgram {
-        let mut program = UnlinkedProgram::new();
-        for function in self.functions.values() {
-            program.insert_function((**function).clone());
-        }
-        program.set_global_layout(self.global_names().iter().cloned());
-        program.set_script_methods(self.script_methods().clone());
-        if let Some(graph) = self.script_metadata() {
-            program.set_script_metadata(graph.clone());
-        }
-        program
+    pub fn verified_mir(&self) -> &Arc<vela_mir::OwnedVerifiedMirBundle> {
+        &self.verified_mir
+    }
+
+    #[must_use]
+    pub fn executable_generation_id(&self) -> vela_bytecode::ExecutableGenerationId {
+        self.artifact.generation()
+    }
+
+    #[must_use]
+    pub fn function_profile(&self, name: &str) -> Option<FunctionProfile> {
+        self.profile().function(name).cloned()
     }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct HotUpdate {
-    pub(crate) functions: BTreeMap<FunctionSymbolId, Arc<UnlinkedCodeObject>>,
-    pub(crate) global_names: Vec<String>,
-    pub(crate) script_methods: ScriptMethodTable,
-    pub(crate) script_metadata: Option<ModuleGraph>,
     pub(crate) abi: HotReloadAbi,
     pub(crate) changes: AcceptedHotReloadChanges,
-    pub(crate) linked_program: LinkedProgram,
+    pub(crate) artifact: LinkedArtifact,
+    pub(crate) verified_mir: Arc<vela_mir::OwnedVerifiedMirBundle>,
 }
 
 impl HotUpdate {
     pub(crate) fn new(
-        functions: BTreeMap<FunctionSymbolId, Arc<UnlinkedCodeObject>>,
-        global_names: Vec<String>,
-        script_methods: ScriptMethodTable,
-        script_metadata: Option<ModuleGraph>,
         abi: HotReloadAbi,
         changes: AcceptedHotReloadChanges,
-        linked_program: LinkedProgram,
+        artifact: LinkedArtifact,
+        verified_mir: Arc<vela_mir::OwnedVerifiedMirBundle>,
     ) -> Self {
         Self {
-            functions,
-            global_names,
-            script_methods,
-            script_metadata,
             abi,
             changes,
-            linked_program,
+            artifact,
+            verified_mir,
         }
     }
 
     #[must_use]
     pub fn function(&self, name: &str) -> Option<Arc<UnlinkedCodeObject>> {
-        self.functions.get(&FunctionSymbolId::new(name)).cloned()
+        self.artifact
+            .image()
+            .function_by_name(name)
+            .cloned()
+            .map(Arc::new)
     }
 
     pub fn function_names(&self) -> impl Iterator<Item = &str> {
-        self.functions.keys().map(|name| name.0.as_str())
+        self.artifact.image().entry_function_names()
     }
 
     pub fn changed_function_names(&self) -> impl Iterator<Item = &str> {
@@ -205,8 +200,13 @@ impl HotUpdate {
     }
 
     #[must_use]
-    pub const fn linked_program(&self) -> &LinkedProgram {
-        &self.linked_program
+    pub fn linked_program(&self) -> &LinkedProgram {
+        self.artifact.program()
+    }
+
+    #[must_use]
+    pub fn linked_artifact(&self) -> &LinkedArtifact {
+        &self.artifact
     }
 
     #[must_use]
@@ -221,12 +221,12 @@ impl HotUpdate {
 
     #[must_use]
     pub fn script_methods(&self) -> &ScriptMethodTable {
-        &self.script_methods
+        self.artifact.image().script_methods()
     }
 
     #[must_use]
     pub fn script_method(&self, type_name: &str, method: &str) -> Option<&ScriptMethod> {
-        self.script_methods.get(type_name, method)
+        self.script_methods().get(type_name, method)
     }
 
     #[must_use]
@@ -235,7 +235,7 @@ impl HotUpdate {
         type_name: &str,
         method_id: MethodId,
     ) -> Option<&ScriptMethod> {
-        self.script_methods.get_by_id(type_name, method_id)
+        self.script_methods().get_by_id(type_name, method_id)
     }
 
     #[must_use]
@@ -260,26 +260,6 @@ impl HotUpdate {
 
     #[must_use]
     pub fn script_metadata(&self) -> Option<&ModuleGraph> {
-        self.script_metadata.as_ref()
-    }
-
-    #[must_use]
-    pub fn to_unlinked_program_with_previous(&self, previous: &ProgramVersion) -> UnlinkedProgram {
-        let mut functions = previous.functions.clone();
-        functions.extend(
-            self.functions
-                .iter()
-                .map(|(name, function)| (name.clone(), Arc::clone(function))),
-        );
-        let mut program = UnlinkedProgram::new();
-        for function in functions.values() {
-            program.insert_function((**function).clone());
-        }
-        program.set_global_layout(self.global_names.iter().cloned());
-        program.set_script_methods(self.script_methods.clone());
-        if let Some(graph) = &self.script_metadata {
-            program.set_script_metadata(graph.clone());
-        }
-        program
+        self.artifact.image().script_metadata()
     }
 }

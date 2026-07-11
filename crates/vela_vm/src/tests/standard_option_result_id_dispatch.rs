@@ -32,7 +32,8 @@ fn main() {
 }
 "#,
     )
-    .expect("standard option/result method source should compile");
+    .expect("standard option/result method source should compile")
+    .into_bytecode();
     replace_call_method_debug_names(
         &mut program,
         &[

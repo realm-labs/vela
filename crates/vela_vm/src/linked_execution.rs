@@ -108,7 +108,7 @@ impl Vm {
             }));
         }
 
-        let mut frame = CallFrame::new(code.register_count);
+        let mut frame = CallFrame::new_linked(code.register_count, call.program);
         for (index, capture) in call.captures.iter().enumerate() {
             frame.write(
                 Register(u16::try_from(index).map_err(|_| {
@@ -588,8 +588,8 @@ impl Vm {
                         &mut budget,
                         &mut frame,
                         native_function_calls::LinkedNativeFunctionCall {
-                            dst: *dst,
                             program: call.program,
+                            dst: *dst,
                             native: *native,
                             debug_name: *debug_name,
                             cache_site: *cache_site,
@@ -649,7 +649,7 @@ impl Vm {
                     closure_calls::dispatch_linked_closure_call(
                         self,
                         closure_calls::LinkedClosureCallContext {
-                            program: call.program,
+                            calling_generation: call.program.generation(),
                             inline_caches: call.inline_caches,
                             call_site: instruction.span,
                             call_site_offset: instruction_offset,

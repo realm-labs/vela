@@ -106,5 +106,8 @@ pub struct ClosureValue {
 #[derive(Clone, Debug, PartialEq)]
 pub enum ClosureCode {
     Unlinked(Arc<UnlinkedCodeObject>),
-    Linked(ScriptFunctionHandle),
+    Linked {
+        owner: Arc<vela_bytecode::LinkedProgram>,
+        function: ScriptFunctionHandle,
+    },
 }

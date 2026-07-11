@@ -54,7 +54,7 @@ fn read_level(player: ReloadHostPlayer) {
     assert!(
         runtime
             .state
-            .inline_caches
+            .inline_caches()
             .host_access(initial_site)
             .is_some(),
         "initial host read should populate its inline cache"
@@ -77,7 +77,10 @@ fn read_level(player: ReloadHostPlayer) {
     assert!(report.accepted);
 
     let reloaded_site = host_read_site(&runtime, "read_level");
-    assert_eq!(runtime.state.inline_caches.host_access(reloaded_site), None);
+    assert_eq!(
+        runtime.state.inline_caches().host_access(reloaded_site),
+        None
+    );
 
     adapter.insert_diagnostic_path_value(host_path, HostValue::Scalar(ScalarValue::I64(12)));
     let second = runtime
@@ -93,7 +96,7 @@ fn read_level(player: ReloadHostPlayer) {
     assert!(
         runtime
             .state
-            .inline_caches
+            .inline_caches()
             .host_access(reloaded_site)
             .is_some(),
         "reloaded host read should repopulate its inline cache"

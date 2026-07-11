@@ -1,5 +1,6 @@
 //! Register bytecode for Vela code objects.
 
+mod artifact;
 pub mod cache_site;
 pub mod compiler;
 pub mod linked;
@@ -8,6 +9,8 @@ pub mod program_image;
 mod script_metadata;
 pub mod script_methods;
 pub mod verification;
+
+pub use artifact::{LinkedArtifact, ProfileFunctionLayout, ProfileLayout};
 
 use std::collections::BTreeMap;
 
@@ -20,11 +23,11 @@ use vela_host::target::HostTargetPlan;
 
 pub use cache_site::{CacheSiteDesc, CacheSiteId, CacheSiteKind, CacheSiteLayout};
 pub use linked::{
-    FieldSlot, GuardContext, GuardKind, GuardLocation, Instruction, InstructionKind,
-    LinkedCodeObject, LinkedFrameDebugInfo, LinkedFrameSlotInfo, LinkedMethodDispatch,
-    LinkedMethodDispatchKind, LinkedNativeFunction, LinkedProgram, LinkedType, LinkedVariant,
-    MethodDispatchHandle, NativeHandle, ParameterTypeGuard, ScriptFunctionHandle, TypeGuard,
-    TypeGuardPlan, TypeGuardPlanId, TypeHandle, VariantHandle,
+    ExecutableGenerationId, FieldSlot, GuardContext, GuardKind, GuardLocation, Instruction,
+    InstructionKind, LinkedCodeObject, LinkedFrameDebugInfo, LinkedFrameSlotInfo,
+    LinkedMethodDispatch, LinkedMethodDispatchKind, LinkedNativeFunction, LinkedProgram,
+    LinkedType, LinkedVariant, MethodDispatchHandle, NativeHandle, ParameterTypeGuard,
+    ScriptFunctionHandle, TypeGuard, TypeGuardPlan, TypeGuardPlanId, TypeHandle, VariantHandle,
 };
 pub use linker::{LinkError, Linker};
 pub use program_image::ProgramImage;

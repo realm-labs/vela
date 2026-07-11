@@ -15,15 +15,15 @@ implicit closure-migration mechanism.
 
 ```rust
 pub struct Runtime {
-    pub current: ArcSwap<ProgramVersion>,
-    pub active_versions: VersionEpochs,
+    image: RuntimeImage,
+    hot_reload: HotReloadRuntime,
+    state: RuntimeState,
 }
 
 pub struct ProgramVersion {
-    pub id: VersionId,
-    pub registry: Arc<TypeRegistry>,
-    pub modules: HashMap<ModuleId, Module>,
-    pub functions: HashMap<FunctionSymbolId, Arc<CodeObject>>,
+    pub id: ProgramVersionId,
+    artifact: Arc<LinkedArtifact>,
+    verified_mir: Arc<OwnedVerifiedMirBundle>,
 }
 ```
 
@@ -41,13 +41,15 @@ Internally uses:
 FunctionSymbolId("billing.on_invoice_paid")
 ```
 
-At call time:
+At public entry-call time:
 
 ```text
-FunctionSymbolId -> current ProgramVersion -> CodeObject
+stable function name/ID -> active ProgramVersion -> owner-qualified handle
 ```
 
-Hot reload replaces the mapping.
+Hot reload replaces the active immutable generation at a safe point. Closure
+and nested calls do not repeat this lookup: they resolve their dense handle
+against the immutable linked owner pinned by the closure or active frame.
 
 ### Old Stack And New Stack
 
@@ -56,9 +58,15 @@ Rules:
 ```text
 currently executing old functions continue on old CodeObject values
 new calls use new CodeObject values
-old ProgramVersion values are released after all old stacks exit
+old generations are released after old frames, closures, and retained values exit
 updates take effect only at safe points
 ```
+
+Each runtime keeps cache entries and profile counters in generation-keyed
+sidecars. Accepted reload activates a fresh sidecar atomically. Old sidecars
+remain available while an old owner is retained and are pruned through weak
+generation tokens at later safe points; a sidecar never retains executable
+code by itself.
 
 The first version does not switch bytecode in the middle of an executing function.
 

@@ -1,10 +1,8 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use vela_bytecode::linked::InstructionKind;
 use vela_bytecode::linker::LinkError;
-use vela_bytecode::{LinkedProgram, ProgramImage, UnlinkedProgram};
-use vela_hot_reload::profile::ProgramProfile;
+use vela_bytecode::{LinkedArtifact, LinkedProgram, ProgramImage, UnlinkedProgram};
 use vela_hot_reload::symbol::ProgramVersionId;
 use vela_hot_reload::version::ProgramVersion;
 
@@ -12,12 +10,10 @@ use crate::engine::Engine;
 
 pub struct RuntimeImage {
     engine: Engine,
-    program_image: ProgramImage,
-    linked_program: LinkedProgram,
+    artifact: Arc<LinkedArtifact>,
+    _verified_mir: Option<Arc<vela_mir::OwnedVerifiedMirBundle>>,
     version_id: Option<ProgramVersionId>,
     layout: RuntimeImageLayout,
-    #[allow(dead_code)]
-    profile: Option<ProgramProfile>,
 }
 
 pub struct OwnedImage {
@@ -87,35 +83,50 @@ impl RuntimeImage {
     }
 
     pub fn try_new(engine: Engine, program: UnlinkedProgram) -> Result<Self, LinkError> {
-        let program_image = ProgramImage::from_program(&program);
-        let mut linked_program = engine.link_program(&program)?;
-        rebase_linked_cache_sites(&mut linked_program, &program_image);
-        let layout = RuntimeImageLayout::from_global_names(program_image.global_names());
+        let artifact = Arc::new(engine.link_program(&program)?);
+        let layout = RuntimeImageLayout::from_global_names(artifact.image().global_names());
         Ok(Self {
             engine,
-            program_image,
-            linked_program,
+            artifact,
+            _verified_mir: None,
             version_id: None,
             layout,
-            profile: None,
+        })
+    }
+
+    #[must_use]
+    pub fn new_compiled(engine: Engine, program: vela_bytecode::compiler::CompiledProgram) -> Self {
+        Self::try_new_compiled(engine, program)
+            .expect("compiled runtime image should link verified bytecode")
+    }
+
+    pub fn try_new_compiled(
+        engine: Engine,
+        program: vela_bytecode::compiler::CompiledProgram,
+    ) -> Result<Self, LinkError> {
+        let verified_mir = Some(Arc::clone(program.verified_mir()));
+        let artifact = Arc::new(engine.link_program(&program)?);
+        let layout = RuntimeImageLayout::from_global_names(artifact.image().global_names());
+        Ok(Self {
+            engine,
+            artifact,
+            _verified_mir: verified_mir,
+            version_id: None,
+            layout,
         })
     }
 
     #[must_use]
     pub fn from_program_version(engine: Engine, version: &ProgramVersion) -> Self {
         let version_id = Some(version.id);
-        let profile = Some(version.profile().clone());
-        let program_image = version.program_image().clone();
-        let mut linked_program = version.linked_program().clone();
-        rebase_linked_cache_sites(&mut linked_program, &program_image);
-        let layout = RuntimeImageLayout::from_global_names(program_image.global_names());
+        let artifact = Arc::clone(version.linked_artifact());
+        let layout = RuntimeImageLayout::from_global_names(artifact.image().global_names());
         Self {
             engine,
-            program_image,
-            linked_program,
+            artifact,
+            _verified_mir: Some(Arc::clone(version.verified_mir())),
             version_id,
             layout,
-            profile,
         }
     }
 
@@ -123,41 +134,25 @@ impl RuntimeImage {
         &self.engine
     }
 
-    pub(super) const fn program_image(&self) -> &ProgramImage {
-        &self.program_image
+    pub(super) fn program_image(&self) -> &ProgramImage {
+        self.artifact.image()
     }
 
-    pub const fn linked_program(&self) -> &LinkedProgram {
-        &self.linked_program
+    pub fn linked_program(&self) -> &LinkedProgram {
+        self.artifact.program()
     }
 
     pub(super) fn global_names(&self) -> &[String] {
         self.layout.global_names()
     }
 
+    #[cfg(test)]
     pub(super) fn cache_site_count(&self) -> usize {
-        self.program_image.cache_site_count()
+        self.artifact.cache_layout().len()
     }
 
     pub(super) fn current_program_version_id(&self) -> Option<ProgramVersionId> {
         self.version_id
-    }
-
-    #[cfg(test)]
-    pub(super) fn from_parts_for_test(
-        engine: Engine,
-        program_image: ProgramImage,
-        linked_program: LinkedProgram,
-    ) -> Self {
-        let layout = RuntimeImageLayout::from_global_names(program_image.global_names());
-        Self {
-            engine,
-            program_image,
-            linked_program,
-            version_id: None,
-            layout,
-            profile: None,
-        }
     }
 
     #[must_use]
@@ -178,75 +173,6 @@ impl RuntimeImageLayout {
     }
 }
 
-fn rebase_linked_cache_sites(linked_program: &mut LinkedProgram, image: &ProgramImage) {
-    let function_names = linked_program
-        .functions()
-        .map(|(_, code)| linked_program.debug_name(code.debug_name).to_owned())
-        .collect::<Vec<_>>();
-    for ((_, linked_code), function_name) in linked_program.functions_mut().zip(function_names) {
-        let Some(image_code) = image.function_by_name(&function_name) else {
-            continue;
-        };
-        let local_sites = linked_code.cache_sites.sites().to_vec();
-        let image_sites = image_code.cache_sites.sites().to_vec();
-        let mut remapped = vec![None; local_sites.len()];
-        for (local, image) in local_sites.iter().zip(image_sites.iter()) {
-            if let Some(slot) = remapped.get_mut(local.id.index()) {
-                *slot = Some(image.id);
-            }
-        }
-        rewrite_linked_instruction_cache_sites(linked_code, &remapped);
-        linked_code.cache_sites = image_code.cache_sites.clone();
-    }
-}
-
-fn rewrite_linked_instruction_cache_sites(
-    code: &mut vela_bytecode::LinkedCodeObject,
-    remapped: &[Option<vela_bytecode::CacheSiteId>],
-) {
-    for instruction in &mut code.instructions {
-        match &mut instruction.kind {
-            InstructionKind::LoadGlobal {
-                cache_site: Some(site),
-                ..
-            }
-            | InstructionKind::GetRecordSlot {
-                cache_site: Some(site),
-                ..
-            }
-            | InstructionKind::SetRecordSlot {
-                cache_site: Some(site),
-                ..
-            }
-            | InstructionKind::CallDynamicMethod {
-                cache_site: Some(site),
-                ..
-            }
-            | InstructionKind::CallMethod {
-                cache_site: Some(site),
-                ..
-            } => remap_cache_site(site, remapped),
-            InstructionKind::HostRead { cache_site, .. }
-            | InstructionKind::HostWrite { cache_site, .. }
-            | InstructionKind::HostMutate { cache_site, .. }
-            | InstructionKind::HostRemove { cache_site, .. }
-            | InstructionKind::HostCall { cache_site, .. } => {
-                remap_cache_site(cache_site, remapped);
-            }
-            _ => {}
-        }
-    }
-}
-
-fn remap_cache_site(
-    site: &mut vela_bytecode::CacheSiteId,
-    remapped: &[Option<vela_bytecode::CacheSiteId>],
-) {
-    if let Some(Some(rebased)) = remapped.get(site.index()) {
-        *site = *rebased;
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use vela_bytecode::linked::InstructionKind;
@@ -264,10 +190,32 @@ mod tests {
 
     #[test]
     fn runtime_image_builds_indexed_program_sidecar() {
-        let mut main = UnlinkedCodeObject::new("main", 0);
-        main.push_cache_site(CacheSiteKind::GlobalRead, InstructionOffset(0));
-        let mut helper = UnlinkedCodeObject::new("helper", 0);
-        helper.push_cache_site(CacheSiteKind::NativeCall, InstructionOffset(0));
+        let mut main = UnlinkedCodeObject::new("main", 1);
+        let main_site = main.push_cache_site(CacheSiteKind::GlobalRead, InstructionOffset(0));
+        main.push_instruction(UnlinkedInstruction::new(
+            UnlinkedInstructionKind::LoadGlobal {
+                dst: Register(0),
+                global: "main::state".to_owned(),
+                slot: Some(vela_common::GlobalSlot::new(0)),
+                cache_site: Some(main_site),
+            },
+        ));
+        main.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
+            src: Register(0),
+        }));
+        let mut helper = UnlinkedCodeObject::new("helper", 1);
+        let helper_site = helper.push_cache_site(CacheSiteKind::GlobalRead, InstructionOffset(0));
+        helper.push_instruction(UnlinkedInstruction::new(
+            UnlinkedInstructionKind::LoadGlobal {
+                dst: Register(0),
+                global: "main::state".to_owned(),
+                slot: Some(vela_common::GlobalSlot::new(0)),
+                cache_site: Some(helper_site),
+            },
+        ));
+        helper.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
+            src: Register(0),
+        }));
 
         let mut program = UnlinkedProgram::new();
         program.set_global_layout(["main::state".to_owned()]);
@@ -281,12 +229,12 @@ mod tests {
         assert_eq!(image.cache_site_count(), 2);
         assert_eq!(image.linked_program().function_count(), 2);
         let main_index = image
-            .program_image
+            .program_image()
             .function_index("main")
             .expect("main function should have image index");
         assert_eq!(
             image
-                .program_image
+                .program_image()
                 .function(main_index)
                 .expect("main index should resolve")
                 .name,
@@ -295,7 +243,7 @@ mod tests {
     }
 
     #[test]
-    fn runtime_image_rebases_linked_record_cache_site_operands() {
+    fn runtime_image_uses_linker_owned_record_cache_site_operands() {
         let mut first = UnlinkedCodeObject::new("first", 2);
         first.push_cache_site(CacheSiteKind::RecordFieldRead, InstructionOffset(0));
         first.push_instruction(UnlinkedInstruction::new(

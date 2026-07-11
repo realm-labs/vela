@@ -4,7 +4,7 @@ use crate::owned_value::OwnedValue;
 fn compile_reflection_member_source(
     source: SourceId,
     text: &str,
-) -> vela_bytecode::compiler::error::CompileResult<UnlinkedProgram> {
+) -> vela_bytecode::compiler::error::CompileResult<vela_bytecode::compiler::CompiledProgram> {
     compile_standard_program_source_with_native_functions(
         source,
         text,

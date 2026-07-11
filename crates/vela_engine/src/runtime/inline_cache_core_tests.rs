@@ -27,7 +27,7 @@ fn main() {
 "#,
         )
         .expect("program should compile");
-    let cached_image = RuntimeImage::new(engine.clone(), cached_program);
+    let cached_image = RuntimeImage::new_compiled(engine.clone(), cached_program);
     let mut caches = InlineCaches::for_image(&cached_image);
 
     assert!(cached_image.cache_site_count() > 0);
@@ -37,7 +37,7 @@ fn main() {
     let empty_program = engine
         .compile_source_with_id(SourceId::new(2), "fn main() { return 1; }")
         .expect("program should compile");
-    let empty_image = RuntimeImage::new(engine, empty_program);
+    let empty_image = RuntimeImage::new_compiled(engine, empty_program);
     caches.clear_for_image(&empty_image);
 
     assert_eq!(empty_image.cache_site_count(), 0);
@@ -110,7 +110,7 @@ fn read_second() {
         .expect("second global should insert");
 
     assert_eq!(
-        runtime.state.inline_caches.global_read_slot(first_site),
+        runtime.state.inline_caches().global_read_slot(first_site),
         None
     );
 
@@ -122,7 +122,7 @@ fn read_second() {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
     assert_eq!(
-        runtime.state.inline_caches.global_read_slot(first_site),
+        runtime.state.inline_caches().global_read_slot(first_site),
         Some(first_slot)
     );
 
@@ -134,11 +134,11 @@ fn read_second() {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(20)))
     );
     assert_eq!(
-        runtime.state.inline_caches.global_read_slot(second_site),
+        runtime.state.inline_caches().global_read_slot(second_site),
         Some(second_slot)
     );
     assert_eq!(
-        runtime.state.inline_caches.global_read_slot(first_site),
+        runtime.state.inline_caches().global_read_slot(first_site),
         Some(first_slot)
     );
 
@@ -172,7 +172,7 @@ fn main() {
 "#,
         )
         .expect("program should compile");
-    let image = RuntimeImage::new(engine, program);
+    let image = RuntimeImage::new_compiled(engine, program);
     let caches = InlineCaches::for_image(&image);
     let site = CacheSiteId::new(0);
     let entry = RecordFieldInlineCacheEntry {
@@ -201,7 +201,7 @@ fn main() {
 "#,
         )
         .expect("program should compile");
-    let image = RuntimeImage::new(engine, program);
+    let image = RuntimeImage::new_compiled(engine, program);
     let caches = InlineCaches::for_image(&image);
     let site = CacheSiteId::new(0);
     let method_id = HostMethodId::new(7);
@@ -286,7 +286,7 @@ fn read_value() {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
     assert_eq!(
-        runtime.state.inline_caches.global_read_slot(initial_site),
+        runtime.state.inline_caches().global_read_slot(initial_site),
         Some(first_slot)
     );
 
@@ -321,7 +321,10 @@ fn read_value() {
         .expect("reloaded read_value should have a global read site")
         .id;
     assert_eq!(
-        runtime.state.inline_caches.global_read_slot(reloaded_site),
+        runtime
+            .state
+            .inline_caches()
+            .global_read_slot(reloaded_site),
         None
     );
 
@@ -333,7 +336,10 @@ fn read_value() {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(20)))
     );
     assert_eq!(
-        runtime.state.inline_caches.global_read_slot(reloaded_site),
+        runtime
+            .state
+            .inline_caches()
+            .global_read_slot(reloaded_site),
         Some(second_slot)
     );
 }

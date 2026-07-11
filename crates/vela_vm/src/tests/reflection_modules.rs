@@ -13,7 +13,7 @@ fn exec_reflection_module_program(
 fn compile_reflection_module_source(
     source: SourceId,
     text: &str,
-) -> vela_bytecode::compiler::error::CompileResult<UnlinkedProgram> {
+) -> vela_bytecode::compiler::error::CompileResult<vela_bytecode::compiler::CompiledProgram> {
     compile_standard_program_source_with_native_functions(
         source,
         text,

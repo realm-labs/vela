@@ -21,7 +21,8 @@ fn main() {
 }
 "#,
     )
-    .expect("standard map transform source should compile");
+    .expect("standard map transform source should compile")
+    .into_bytecode();
     replace_call_method_debug_names(
         &mut program,
         &[
@@ -64,7 +65,8 @@ fn main() {
 }
 "#,
     )
-    .expect("standard set transform source should compile");
+    .expect("standard set transform source should compile")
+    .into_bytecode();
     replace_call_method_debug_names(
         &mut program,
         &[

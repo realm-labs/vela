@@ -1,4 +1,6 @@
-use vela_bytecode::Register;
+use std::sync::Arc;
+
+use vela_bytecode::{LinkedProgram, Register};
 
 use crate::heap::GcRef;
 use crate::{Value, VmError, VmErrorKind, VmResult};
@@ -12,13 +14,26 @@ pub(crate) struct FrameHeapRoot {
 #[derive(Clone, Debug)]
 pub(crate) struct CallFrame {
     registers: Vec<Value>,
+    linked_owner: Option<Arc<LinkedProgram>>,
 }
 
 impl CallFrame {
     pub(crate) fn new(register_count: u16) -> Self {
         Self {
             registers: vec![Value::Unit; usize::from(register_count)],
+            linked_owner: None,
         }
+    }
+
+    pub(crate) fn new_linked(register_count: u16, program: &LinkedProgram) -> Self {
+        Self {
+            registers: vec![Value::Unit; usize::from(register_count)],
+            linked_owner: Some(Arc::new(program.clone())),
+        }
+    }
+
+    pub(crate) fn linked_owner(&self) -> Option<&Arc<LinkedProgram>> {
+        self.linked_owner.as_ref()
     }
 
     #[inline(always)]

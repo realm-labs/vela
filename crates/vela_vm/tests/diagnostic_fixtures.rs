@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_registry};
 use vela_bytecode::{
-    CacheSiteKind, Constant, InstructionOffset, LinkedProgram, Linker, Register,
-    UnlinkedCodeObject, UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram,
+    CacheSiteKind, Constant, InstructionOffset, Linker, Register, UnlinkedCodeObject,
+    UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram,
 };
 use vela_common::{HostObjectId, HostTypeId, SourceId, Span};
 use vela_def::{DefPath, FieldId, TypeId};
@@ -413,13 +413,16 @@ fn diagnostic_source(name: &str, source: String) -> DiagnosticSource {
     DiagnosticSource::new(SourceId::new(1), name, source)
 }
 
-fn link_fixture_program(program: &UnlinkedProgram) -> LinkedProgram {
+fn link_fixture_program(program: &UnlinkedProgram) -> vela_bytecode::LinkedArtifact {
     Linker::new()
         .link_program(program)
         .expect("diagnostic fixture program should link")
 }
 
-fn link_fixture_program_with_vm(program: &UnlinkedProgram, vm: &Vm) -> LinkedProgram {
+fn link_fixture_program_with_vm(
+    program: &UnlinkedProgram,
+    vm: &Vm,
+) -> vela_bytecode::LinkedArtifact {
     let mut linker = Linker::new();
     for id in vm.native_implementation_ids() {
         linker.add_native_implementation(id);

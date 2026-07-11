@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::sync::{Arc, Weak};
 
 use vela_common::{GlobalSlot, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span};
 use vela_def::{FunctionId, MethodId, TypeId, VariantId};
@@ -48,8 +49,26 @@ dense_handle!(VariantHandle);
 dense_handle!(FieldSlot);
 dense_handle!(TypeGuardPlanId);
 
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct ExecutableGenerationId(u64);
+
+impl ExecutableGenerationId {
+    #[must_use]
+    pub const fn new(value: u64) -> Self {
+        Self(value)
+    }
+
+    #[must_use]
+    pub const fn get(self) -> u64 {
+        self.0
+    }
+}
+
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LinkedProgram {
+    generation: ExecutableGenerationId,
+    lifetime: Arc<()>,
     debug_names: DebugNameTable,
     native_functions: Vec<LinkedNativeFunction>,
     method_dispatches: Vec<LinkedMethodDispatch>,
@@ -65,6 +84,20 @@ impl LinkedProgram {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    #[must_use]
+    pub const fn generation(&self) -> ExecutableGenerationId {
+        self.generation
+    }
+
+    pub(crate) fn set_generation(&mut self, generation: ExecutableGenerationId) {
+        self.generation = generation;
+    }
+
+    #[must_use]
+    pub fn lifetime_token(&self) -> Weak<()> {
+        Arc::downgrade(&self.lifetime)
     }
 
     pub fn intern_debug_name(&mut self, name: impl Into<String>) -> DebugNameId {

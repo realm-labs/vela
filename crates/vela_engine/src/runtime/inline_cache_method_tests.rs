@@ -38,7 +38,10 @@ fn read_bonus() {
     let call = method_call_site(&runtime, "read_bonus");
 
     assert_eq!(
-        runtime.state.inline_caches.method_dispatch(call.cache_site),
+        runtime
+            .state
+            .inline_caches()
+            .method_dispatch(call.cache_site),
         None
     );
 
@@ -52,7 +55,7 @@ fn read_bonus() {
 
     let entry = runtime
         .state
-        .inline_caches
+        .inline_caches()
         .method_dispatch(call.cache_site)
         .expect("method call should populate inline cache");
     assert_eq!(entry.dispatch, call.dispatch);
@@ -86,7 +89,7 @@ fn read_bonus() {
         .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let call = method_call_site(&runtime, "read_bonus");
-    runtime.state.inline_caches.set_method_dispatch(
+    runtime.state.inline_caches().set_method_dispatch(
         call.cache_site,
         MethodInlineCacheEntry {
             dispatch: MethodDispatchHandle::new(call.dispatch.index() + 1),
@@ -108,7 +111,7 @@ fn read_bonus() {
 
     let entry = runtime
         .state
-        .inline_caches
+        .inline_caches()
         .method_dispatch(call.cache_site)
         .expect("wrong-dispatch entry should be replaced");
     assert_eq!(entry.dispatch, call.dispatch);
@@ -143,7 +146,7 @@ fn read_bonus() {
     let mut runtime = Runtime::new(engine, program);
     let call = method_call_site(&runtime, "read_bonus");
     let (method_id, function) = script_method_target(&runtime, call.dispatch);
-    runtime.state.inline_caches.set_method_dispatch(
+    runtime.state.inline_caches().set_method_dispatch(
         call.cache_site,
         MethodInlineCacheEntry {
             dispatch: call.dispatch,
@@ -165,7 +168,7 @@ fn read_bonus() {
 
     let entry = runtime
         .state
-        .inline_caches
+        .inline_caches()
         .method_dispatch(call.cache_site)
         .expect("wrong-target entry should be replaced");
     assert_eq!(entry.dispatch, call.dispatch);
@@ -213,7 +216,7 @@ fn read_bonus() {
     assert!(
         runtime
             .state
-            .inline_caches
+            .inline_caches()
             .method_dispatch(initial_call.cache_site)
             .is_some(),
         "initial method call should populate its inline cache"
@@ -247,7 +250,7 @@ fn read_bonus() {
     assert_eq!(
         runtime
             .state
-            .inline_caches
+            .inline_caches()
             .method_dispatch(reloaded_call.cache_site),
         None
     );
@@ -262,7 +265,7 @@ fn read_bonus() {
     assert!(
         runtime
             .state
-            .inline_caches
+            .inline_caches()
             .method_dispatch(reloaded_call.cache_site)
             .is_some(),
         "reloaded method call should repopulate its inline cache"
@@ -302,7 +305,7 @@ pub fn read_bonus() -> i64 {
     );
     let initial_entry = runtime
         .state
-        .inline_caches
+        .inline_caches()
         .method_dispatch(initial_call.cache_site)
         .expect("initial method call should populate its inline cache");
 
@@ -335,7 +338,7 @@ pub fn read_bonus() -> f64 {
     assert_eq!(
         runtime
             .state
-            .inline_caches
+            .inline_caches()
             .method_dispatch(active_call.cache_site),
         Some(initial_entry)
     );
@@ -350,7 +353,7 @@ pub fn read_bonus() -> f64 {
     assert_eq!(
         runtime
             .state
-            .inline_caches
+            .inline_caches()
             .method_dispatch(active_call.cache_site),
         Some(initial_entry)
     );
@@ -401,7 +404,7 @@ fn read_match() {
     assert_eq!(
         runtime
             .state
-            .inline_caches
+            .inline_caches()
             .method_dispatch(reloaded_call.cache_site),
         None
     );
@@ -473,7 +476,7 @@ fn read_total() {
     assert_eq!(
         runtime
             .state
-            .inline_caches
+            .inline_caches()
             .dynamic_method_dispatch(reloaded_site),
         None
     );
@@ -534,7 +537,7 @@ fn assert_callback_value_method_cache_target(
 ) {
     let entry = runtime
         .state
-        .inline_caches
+        .inline_caches()
         .method_dispatch(site)
         .expect("callback value method call should populate inline cache");
     let MethodInlineCacheTarget::CallbackValue {
@@ -554,7 +557,7 @@ fn assert_dynamic_iterator_value_method_cache(
 ) {
     let entry = runtime
         .state
-        .inline_caches
+        .inline_caches()
         .dynamic_method_dispatch(site)
         .expect("dynamic iterator method call should populate inline cache");
     assert!(matches!(

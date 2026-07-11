@@ -1,7 +1,5 @@
 use std::collections::BTreeMap;
-use std::sync::Arc;
-
-use vela_bytecode::{InstructionOffset, UnlinkedCodeObject};
+use vela_bytecode::{InstructionOffset, LinkedArtifact};
 
 use crate::symbol::FunctionSymbolId;
 
@@ -11,12 +9,18 @@ pub struct ProgramProfile {
 }
 
 impl ProgramProfile {
-    pub(crate) fn from_functions(
-        functions: &BTreeMap<FunctionSymbolId, Arc<UnlinkedCodeObject>>,
-    ) -> Self {
-        let functions = functions
+    pub(crate) fn from_artifact(artifact: &LinkedArtifact) -> Self {
+        let functions = artifact
+            .profile_layout()
+            .functions()
             .iter()
-            .map(|(name, code)| (name.clone(), FunctionProfile::from_code(code)))
+            .map(|layout| {
+                let name = artifact.debug_name(layout.debug_name);
+                (
+                    FunctionSymbolId::new(name),
+                    FunctionProfile::from_instruction_count(layout.instruction_count),
+                )
+            })
             .collect();
         Self { functions }
     }
@@ -42,10 +46,8 @@ pub struct FunctionProfile {
 }
 
 impl FunctionProfile {
-    fn from_code(code: &UnlinkedCodeObject) -> Self {
-        let instruction_offsets = (0..code.instructions.len())
-            .map(InstructionOffset)
-            .collect();
+    fn from_instruction_count(instruction_count: usize) -> Self {
+        let instruction_offsets = (0..instruction_count).map(InstructionOffset).collect();
         Self {
             instruction_offsets,
         }

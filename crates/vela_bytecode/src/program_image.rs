@@ -24,7 +24,7 @@ pub struct ProgramImage {
 
 impl ProgramImage {
     #[must_use]
-    pub fn from_program(program: &UnlinkedProgram) -> Self {
+    pub(crate) fn from_program(program: &UnlinkedProgram) -> Self {
         Self::from_parts(
             program.functions().cloned(),
             program.global_names().iter().cloned(),
@@ -34,24 +34,31 @@ impl ProgramImage {
     }
 
     #[must_use]
-    pub fn from_parts(
+    pub(crate) fn from_parts(
         functions: impl IntoIterator<Item = UnlinkedCodeObject>,
         global_names: impl IntoIterator<Item = String>,
         script_methods: ScriptMethodTable,
         script_metadata: Option<ModuleGraph>,
     ) -> Self {
-        let functions = functions.into_iter();
-        let mut indexed_functions = Vec::with_capacity(functions.size_hint().0);
+        let functions = functions.into_iter().collect::<Vec<_>>();
+        let mut indexed_functions = Vec::with_capacity(functions.len());
+        let mut nested_functions = Vec::new();
         let mut function_by_name = BTreeMap::new();
         let mut function_by_id = BTreeMap::new();
         for function in functions {
             let name = function.name.clone();
-            let function = flatten_function(function, &mut indexed_functions);
             let index = FunctionIndex(indexed_functions.len());
             function_by_id.insert(script_function_id(&name), index);
             function_by_name.insert(name, index);
             indexed_functions.push(function);
         }
+        let top_level_count = indexed_functions.len();
+        for function in indexed_functions.iter_mut().take(top_level_count) {
+            let nested = std::mem::take(&mut function.nested_functions);
+            let remapped = flatten_nested_functions(nested, top_level_count, &mut nested_functions);
+            rewrite_closure_function_indices(function, &remapped);
+        }
+        indexed_functions.extend(nested_functions);
         let cache_sites = rewrite_image_cache_sites(&mut indexed_functions);
 
         let global_names = global_names.into_iter().collect::<Vec<_>>();
@@ -100,6 +107,10 @@ impl ProgramImage {
             .map(|(index, function)| (FunctionIndex(index), function))
     }
 
+    pub fn entry_function_names(&self) -> impl Iterator<Item = &str> {
+        self.function_by_name.keys().map(String::as_str)
+    }
+
     #[must_use]
     pub fn function_count(&self) -> usize {
         self.functions.len()
@@ -138,6 +149,11 @@ impl ProgramImage {
     #[must_use]
     pub fn cache_site(&self, site: CacheSiteId) -> Option<&CacheSiteDesc> {
         self.cache_sites.get(site.index())
+    }
+
+    #[must_use]
+    pub fn cache_sites(&self) -> &[CacheSiteDesc] {
+        &self.cache_sites
     }
 
     pub fn verify(&self) -> Result<(), crate::verification::VerificationError> {
@@ -183,25 +199,21 @@ impl UnlinkedProgramCode for ProgramImage {
     }
 }
 
-fn flatten_function(
-    mut function: UnlinkedCodeObject,
-    indexed_functions: &mut Vec<UnlinkedCodeObject>,
-) -> UnlinkedCodeObject {
-    let nested_functions = std::mem::take(&mut function.nested_functions);
-    if nested_functions.is_empty() {
-        return function;
-    }
-
-    let mut remapped = Vec::with_capacity(nested_functions.len());
-    for nested in nested_functions {
-        let nested = flatten_function(nested, indexed_functions);
-        let index = FunctionIndex(indexed_functions.len());
-        indexed_functions.push(nested);
+fn flatten_nested_functions(
+    functions: Vec<UnlinkedCodeObject>,
+    top_level_count: usize,
+    flattened: &mut Vec<UnlinkedCodeObject>,
+) -> Vec<FunctionIndex> {
+    let mut remapped = Vec::with_capacity(functions.len());
+    for mut function in functions {
+        let nested = std::mem::take(&mut function.nested_functions);
+        let nested = flatten_nested_functions(nested, top_level_count, flattened);
+        rewrite_closure_function_indices(&mut function, &nested);
+        let index = FunctionIndex(top_level_count + flattened.len());
+        flattened.push(function);
         remapped.push(index);
     }
-
-    rewrite_closure_function_indices(&mut function, &remapped);
-    function
+    remapped
 }
 
 fn rewrite_closure_function_indices(function: &mut UnlinkedCodeObject, remapped: &[FunctionIndex]) {
@@ -247,14 +259,15 @@ fn rewrite_instruction_cache_sites(
     remapped: &[Option<CacheSiteId>],
 ) {
     for instruction in &mut function.instructions {
-        if let UnlinkedInstructionKind::LoadGlobal {
-            cache_site: Some(site),
-            ..
-        } = &mut instruction.kind
-        {
-            remap_cache_site(site, remapped);
-        }
         match &mut instruction.kind {
+            UnlinkedInstructionKind::LoadGlobal {
+                cache_site: Some(site),
+                ..
+            }
+            | UnlinkedInstructionKind::CallNative {
+                cache_site: Some(site),
+                ..
+            } => remap_cache_site(site, remapped),
             UnlinkedInstructionKind::HostRead { cache_site, .. }
             | UnlinkedInstructionKind::HostWrite { cache_site, .. }
             | UnlinkedInstructionKind::HostMutate { cache_site, .. }

@@ -68,7 +68,7 @@ fn run_script_inner(source: &str, entry: &str) -> PlaygroundResponse {
         Ok(program) => program,
         Err(error) => return source_error_response(error),
     };
-    let mut runtime = match Runtime::try_new(engine, program) {
+    let mut runtime = match Runtime::try_new_compiled(engine, program) {
         Ok(runtime) => runtime,
         Err(error) => return single_error_response(format!("failed to link program: {error}")),
     };
@@ -98,7 +98,7 @@ fn compile_and_link_program(source: &str) -> Result<(), PlaygroundResponse> {
     let program = engine
         .compile_source(source)
         .map_err(source_error_response)?;
-    Runtime::try_new(engine, program)
+    Runtime::try_new_compiled(engine, program)
         .map(drop)
         .map_err(link_error_response)
 }

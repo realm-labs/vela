@@ -1,7 +1,7 @@
 use std::fmt;
 use std::path::Path;
 
-use vela_bytecode::UnlinkedProgram;
+use vela_bytecode::compiler::CompiledProgram;
 use vela_bytecode::compiler::error::CompileError;
 use vela_bytecode::compiler::{
     compile_module_sources_with_options_and_registry,
@@ -81,7 +81,7 @@ impl fmt::Display for EngineSourceError {
 impl std::error::Error for EngineSourceError {}
 
 impl Engine {
-    pub fn compile_source(&self, text: &str) -> Result<UnlinkedProgram, EngineSourceError> {
+    pub fn compile_source(&self, text: &str) -> Result<CompiledProgram, EngineSourceError> {
         self.compile_source_with_id(SourceId::new(1), text)
     }
 
@@ -89,7 +89,7 @@ impl Engine {
         &self,
         source: SourceId,
         text: &str,
-    ) -> Result<UnlinkedProgram, EngineSourceError> {
+    ) -> Result<CompiledProgram, EngineSourceError> {
         compile_program_source_with_options_and_registry(
             source,
             text,
@@ -102,7 +102,7 @@ impl Engine {
     pub fn compile_file(
         &self,
         path: impl AsRef<Path>,
-    ) -> Result<UnlinkedProgram, EngineSourceError> {
+    ) -> Result<CompiledProgram, EngineSourceError> {
         let path = path.as_ref();
         let text = read_source_text(path)?;
         self.compile_source(&text)
@@ -111,7 +111,7 @@ impl Engine {
     pub fn compile_dir(
         &self,
         root: impl AsRef<Path>,
-    ) -> Result<UnlinkedProgram, EngineSourceError> {
+    ) -> Result<CompiledProgram, EngineSourceError> {
         let root = root.as_ref();
         let sources = load_module_sources(root)?;
         compile_module_sources_with_options_and_registry(

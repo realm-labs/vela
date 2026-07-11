@@ -882,21 +882,21 @@ flattening, and the second linked-layout builder must all be gone. Intermediate
 commits may be non-compiling while callers move; do not spend work preserving a
 green dual production path.
 
-- [ ] Define the canonical LinkedArtifact and immutable executable layout.
-- [ ] Flatten all top-level and nested executables before allocating dense
+- [x] Define the canonical LinkedArtifact and immutable executable layout.
+- [x] Flatten all top-level and nested executables before allocating dense
   handles and cache/profile IDs.
-- [ ] Build ProgramImage and LinkedProgram from the same handle/index records.
-- [ ] Allocate cache IDs generation-globally for every function and lambda.
-- [ ] Replace manual partial cache rewrite lists with one exhaustive mechanism.
-- [ ] Include native, global, record, method, host, and future cache-bearing
+- [x] Build ProgramImage and LinkedProgram from the same handle/index records.
+- [x] Allocate cache IDs generation-globally for every function and lambda.
+- [x] Replace manual partial cache rewrite lists with one exhaustive mechanism.
+- [x] Include native, global, record, method, host, and future cache-bearing
   instruction families in verification.
-- [ ] Generate profile layout for lambdas as well as top-level functions.
-- [ ] Add linked verification for cache descriptor kind/function/offset.
-- [ ] Delete RuntimeImage name-based cache rebasing.
-- [ ] Delete independent ProgramImage flatten/cache rewriting.
-- [ ] Update benchmark and test builders to consume LinkedArtifact rather than
+- [x] Generate profile layout for lambdas as well as top-level functions.
+- [x] Add linked verification for cache descriptor kind/function/offset.
+- [x] Delete RuntimeImage name-based cache rebasing.
+- [x] Delete independent ProgramImage flatten/cache rewriting.
+- [x] Update benchmark and test builders to consume LinkedArtifact rather than
   manually pairing separately built images/programs.
-- [ ] Add deterministic nested-lambda cache collision regressions and reload
+- [x] Add deterministic nested-lambda cache collision regressions and reload
   layout tests.
 
 Validation:
@@ -919,25 +919,25 @@ local site zero receive distinct linked IDs and cannot read each other's cache.
 
 Purpose: retain same-generation MIR and make layout/state ownership unambiguous.
 
-- [ ] Introduce a cohesive compiled-program artifact carrying unlinked bytecode
+- [x] Introduce a cohesive compiled-program artifact carrying unlinked bytecode
   and its owned verified MIR bundle.
-- [ ] Route every source/module/registry/engine/hot-reload compile API through
+- [x] Route every source/module/registry/engine/hot-reload compile API through
   that artifact without a bytecode-only MIR-dropping path.
-- [ ] Make ProgramVersion own `Arc<OwnedVerifiedMirBundle>` and
+- [x] Make ProgramVersion own `Arc<OwnedVerifiedMirBundle>` and
   `Arc<LinkedArtifact>`.
-- [ ] Remove independently authoritative ProgramVersion function/image/profile
+- [x] Remove independently authoritative ProgramVersion function/image/profile
   copies and transitional reconstruction paths.
-- [ ] Split immutable CacheLayout/ProfileLayout from mutable runtime entries and
+- [x] Split immutable CacheLayout/ProfileLayout from mutable runtime entries and
   counters in types and documentation.
-- [ ] Make RuntimeImage reference the accepted generation rather than clone
+- [x] Make RuntimeImage reference the accepted generation rather than clone
   linked/image data.
-- [ ] Store cache/profile/hotness/tier state in generation-keyed RuntimeState
+- [x] Store cache/profile/hotness/tier state in generation-keyed RuntimeState
   sidecars, activate a fresh sidecar atomically on reload, and prune dead weakly
   owned sidecars at safe points.
-- [ ] Keep multiple runtimes over a shared immutable generation isolated in
+- [x] Keep multiple runtimes over a shared immutable generation isolated in
   heap, globals, caches, counters, and hotness.
-- [ ] Add ProgramVersion/MIR memory-size and shared-runtime ownership tests.
-- [ ] Add accepted and rejected reload tests proving counters and caches never
+- [x] Add ProgramVersion/MIR memory-size and shared-runtime ownership tests.
+- [x] Add accepted and rejected reload tests proving counters and caches never
   mix generations.
 
 Validation:
@@ -960,24 +960,24 @@ RuntimeState.
 
 Purpose: make all callable executable handles owner-qualified.
 
-- [ ] Add lower-layer ExecutableGenerationId and map ProgramVersionId one-to-one
+- [x] Add lower-layer ExecutableGenerationId and map ProgramVersionId one-to-one
   to it.
-- [ ] Store immutable linked owner plus dense handle in linked closure code.
-- [ ] Make active frames pin the linked owner used at call entry.
-- [ ] Resolve closure calls and nested calls against their pinned owner.
-- [ ] Make profiler/cache/tier lookup owner-qualified and lazily create the
+- [x] Store immutable linked owner plus dense handle in linked closure code.
+- [x] Make active frames pin the linked owner used at call entry.
+- [x] Resolve closure calls and nested calls against their pinned owner.
+- [x] Make profiler/cache/tier lookup owner-qualified and lazily create the
   matching runtime generation sidecar when retained old code executes.
-- [ ] Preserve protected heap roots and call-site/source diagnostics while
+- [x] Preserve protected heap roots and call-site/source diagnostics while
   changing code ownership.
-- [ ] Test host-retained VelaValue closures across accepted reloads that add,
+- [x] Test host-retained VelaValue closures across accepted reloads that add,
   remove, or reorder private helpers and lambdas.
-- [ ] Test old closure -> old nested call, old closure -> host/native call, and
+- [x] Test old closure -> old nested call, old closure -> host/native call, and
   new entry -> new code in the same runtime after reload.
-- [ ] Test that rejected reload leaves current and retained closure ownership
+- [x] Test that rejected reload leaves current and retained closure ownership
   unchanged.
-- [ ] Test old generation release with Weak/ownership probes after frames,
+- [x] Test old generation release with Weak/ownership probes after frames,
   closures, retained values, and generation sidecars are dropped/pruned.
-- [ ] Document that retained closures intentionally retain old executable
+- [x] Document that retained closures intentionally retain old executable
   generations and are not automatically migrated.
 
 Validation:

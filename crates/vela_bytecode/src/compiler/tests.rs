@@ -29,7 +29,7 @@ fn stable_test_inherent_method_id(type_name: &str, method_name: &str) -> MethodI
 
 #[test]
 fn compiler_entry_points_return_unlinked_bytecode() {
-    let program: UnlinkedProgram = compile_program_source(
+    let program: super::CompiledProgram = compile_program_source(
         SourceId::new(1),
         r#"
 fn main() {

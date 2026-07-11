@@ -12,6 +12,8 @@ mod semantic;
 mod semantic_input;
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::ops::Deref;
+use std::sync::Arc;
 
 use vela_common::SourceId;
 #[cfg(test)]
@@ -30,6 +32,43 @@ use crate::{UnlinkedCodeObject, UnlinkedProgram};
 use error::{CompileError, CompileErrorKind, CompileResult};
 use options::CompilerOptions;
 use semantic::{parse_semantic_modules, parse_semantic_source};
+
+#[derive(Clone, Debug)]
+pub struct CompiledProgram {
+    bytecode: UnlinkedProgram,
+    verified_mir: Arc<vela_mir::OwnedVerifiedMirBundle>,
+}
+
+impl CompiledProgram {
+    #[must_use]
+    pub const fn bytecode(&self) -> &UnlinkedProgram {
+        &self.bytecode
+    }
+
+    #[must_use]
+    pub fn verified_mir(&self) -> &Arc<vela_mir::OwnedVerifiedMirBundle> {
+        &self.verified_mir
+    }
+
+    #[must_use]
+    pub fn into_parts(self) -> (UnlinkedProgram, Arc<vela_mir::OwnedVerifiedMirBundle>) {
+        (self.bytecode, self.verified_mir)
+    }
+
+    /// Extracts bytecode for verifier-corruption and low-level VM tests.
+    #[must_use]
+    pub fn into_bytecode(self) -> UnlinkedProgram {
+        self.bytecode
+    }
+}
+
+impl Deref for CompiledProgram {
+    type Target = UnlinkedProgram;
+
+    fn deref(&self) -> &Self::Target {
+        self.bytecode()
+    }
+}
 
 pub fn compile_function_source(
     source: SourceId,
@@ -103,7 +142,7 @@ fn compile_function_source_inner(
         options,
         registry,
     })?;
-    let mut code = compile_mir_roots(&input, semantic.script_metadata_graph())?;
+    let (mut code, _) = compile_mir_roots(&input, semantic.script_metadata_graph())?;
     match code.len() {
         1 => Ok(code.pop().expect("one checked MIR root")),
         count => Err(CompileError::new(CompileErrorKind::MirBackend(format!(
@@ -112,7 +151,7 @@ fn compile_function_source_inner(
     }
 }
 
-pub fn compile_program_source(source: SourceId, text: &str) -> CompileResult<UnlinkedProgram> {
+pub fn compile_program_source(source: SourceId, text: &str) -> CompileResult<CompiledProgram> {
     compile_program_source_with_options(source, text, &CompilerOptions::default())
 }
 
@@ -120,7 +159,7 @@ pub fn compile_program_source_with_registry(
     source: SourceId,
     text: &str,
     registry: RegistryCompileView<'_>,
-) -> CompileResult<UnlinkedProgram> {
+) -> CompileResult<CompiledProgram> {
     compile_program_source_with_options_and_registry(
         source,
         text,
@@ -133,7 +172,7 @@ pub fn compile_program_source_with_options(
     source: SourceId,
     text: &str,
     options: &CompilerOptions,
-) -> CompileResult<UnlinkedProgram> {
+) -> CompileResult<CompiledProgram> {
     compile_program_source_inner(source, text, options, None)
 }
 
@@ -142,7 +181,7 @@ pub fn compile_program_source_with_options_and_registry(
     text: &str,
     options: &CompilerOptions,
     registry: RegistryCompileView<'_>,
-) -> CompileResult<UnlinkedProgram> {
+) -> CompileResult<CompiledProgram> {
     compile_program_source_inner(source, text, options, Some(registry))
 }
 
@@ -151,26 +190,26 @@ fn compile_program_source_inner(
     text: &str,
     options: &CompilerOptions,
     registry: Option<RegistryCompileView<'_>>,
-) -> CompileResult<UnlinkedProgram> {
+) -> CompileResult<CompiledProgram> {
     let semantic = parse_semantic_source(source, text)?;
     compile_semantic_program(&semantic, options, registry)
 }
 
-pub fn compile_module_sources(sources: &[ModuleSource]) -> CompileResult<UnlinkedProgram> {
+pub fn compile_module_sources(sources: &[ModuleSource]) -> CompileResult<CompiledProgram> {
     compile_module_sources_with_options(sources, &CompilerOptions::default())
 }
 
 pub fn compile_module_sources_with_registry(
     sources: &[ModuleSource],
     registry: RegistryCompileView<'_>,
-) -> CompileResult<UnlinkedProgram> {
+) -> CompileResult<CompiledProgram> {
     compile_module_sources_with_options_and_registry(sources, &CompilerOptions::default(), registry)
 }
 
 pub fn compile_module_sources_with_options(
     sources: &[ModuleSource],
     options: &CompilerOptions,
-) -> CompileResult<UnlinkedProgram> {
+) -> CompileResult<CompiledProgram> {
     compile_module_sources_inner(sources, options, None)
 }
 
@@ -178,7 +217,7 @@ pub fn compile_module_sources_with_options_and_registry(
     sources: &[ModuleSource],
     options: &CompilerOptions,
     registry: RegistryCompileView<'_>,
-) -> CompileResult<UnlinkedProgram> {
+) -> CompileResult<CompiledProgram> {
     compile_module_sources_inner(sources, options, Some(registry))
 }
 
@@ -186,7 +225,7 @@ fn compile_module_sources_inner(
     sources: &[ModuleSource],
     options: &CompilerOptions,
     registry: Option<RegistryCompileView<'_>>,
-) -> CompileResult<UnlinkedProgram> {
+) -> CompileResult<CompiledProgram> {
     let semantic = parse_semantic_modules(sources)?;
     compile_semantic_program(&semantic, options, registry)
 }
@@ -265,7 +304,7 @@ fn compile_semantic_program(
     semantic: &impl SemanticProgram,
     options: &CompilerOptions,
     registry: Option<RegistryCompileView<'_>>,
-) -> CompileResult<UnlinkedProgram> {
+) -> CompileResult<CompiledProgram> {
     let script_function_symbols = semantic.function_symbols();
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
@@ -298,20 +337,27 @@ fn compile_semantic_program(
 
     let mut program = UnlinkedProgram::new();
     program.set_global_layout(global_names(&global_symbols));
-    for code in compile_mir_roots(&input, semantic.graph())? {
+    let (code, verified_mir) = compile_mir_roots(&input, semantic.graph())?;
+    for code in code {
         program.insert_function(code);
     }
     for (owner, name, method, symbol) in methods {
         program.insert_script_method(owner, name, method, symbol);
     }
     program.set_script_metadata(semantic.graph().clone());
-    verify_program(program)
+    Ok(CompiledProgram {
+        bytecode: verify_program(program)?,
+        verified_mir,
+    })
 }
 
 fn compile_mir_roots(
     input: &semantic_input::PreparedSemanticInput,
     graph: &ModuleGraph,
-) -> CompileResult<Vec<UnlinkedCodeObject>> {
+) -> CompileResult<(
+    Vec<UnlinkedCodeObject>,
+    Arc<vela_mir::OwnedVerifiedMirBundle>,
+)> {
     let programs = input
         .lowering_inputs(graph, vela_mir::MirLoweringConfig::default())?
         .into_iter()
@@ -324,8 +370,8 @@ fn compile_mir_roots(
             Ok(verified)
         })
         .collect::<CompileResult<Vec<_>>>()?;
-    let bundle = vela_mir::OwnedVerifiedMirBundle::new(programs);
-    bundle
+    let bundle = Arc::new(vela_mir::OwnedVerifiedMirBundle::new(programs));
+    let code = bundle
         .roots()
         .map(|(_, verified)| {
             let handoff = verified.backend_handoff().map_err(|error| {
@@ -336,7 +382,8 @@ fn compile_mir_roots(
             })?;
             verify_code_object(code)
         })
-        .collect()
+        .collect::<CompileResult<Vec<_>>>()?;
+    Ok((code, bundle))
 }
 
 fn global_names(global_symbols: &BTreeMap<HirDeclId, String>) -> Vec<String> {

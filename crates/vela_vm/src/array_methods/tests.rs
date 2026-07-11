@@ -21,7 +21,10 @@ fn compile_function_source(
     compile_function_source_with_registry(source, text, function_name, registry.compile_view())
 }
 
-fn compile_program_source(source: SourceId, text: &str) -> CompileResult<UnlinkedProgram> {
+fn compile_program_source(
+    source: SourceId,
+    text: &str,
+) -> CompileResult<vela_bytecode::compiler::CompiledProgram> {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     compile_program_source_with_registry(source, text, registry.compile_view())
 }

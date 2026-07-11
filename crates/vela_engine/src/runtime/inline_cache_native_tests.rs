@@ -39,7 +39,7 @@ fn main() {
     assert_eq!(
         runtime
             .state
-            .inline_caches
+            .inline_caches()
             .native_call(initial_site)
             .expect("initial native call should populate inline cache")
             .native_id(),
@@ -66,7 +66,7 @@ fn main() {
     assert!(
         runtime
             .state
-            .inline_caches
+            .inline_caches()
             .native_call(reloaded_site)
             .is_none()
     );
@@ -81,7 +81,7 @@ fn main() {
     assert_eq!(
         runtime
             .state
-            .inline_caches
+            .inline_caches()
             .native_call(reloaded_site)
             .expect("reloaded native call should repopulate inline cache")
             .native_id(),

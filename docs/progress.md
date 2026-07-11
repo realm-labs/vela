@@ -59,9 +59,20 @@ peepholes. Callable kind sets and positional arity survive analysis, MIR,
 linking, verification, and runtime guards, including forwarded closures.
 Negative verifier cases, CFG join regressions, source runtime coverage, focused
 workload coverage, the recorded release baseline, and the complete workspace
-format/clippy/test gate pass. Batch B (Phases 4-6), which makes the linker the
-single `LinkedArtifact` authority and moves generation ownership into
-`ProgramVersion`/runtime sidecars, is next.
+format/clippy/test gate pass.
+
+Batch B (Phases 4-6) is complete. The linker now emits one canonical
+`LinkedArtifact` whose flattened records jointly own `ProgramImage` indexes,
+linked handles, generation-global cache IDs, and lambda-inclusive profile
+layout; RuntimeImage name rebasing and transitional program reconstruction are
+gone. Whole-program compilation retains an owned verified-MIR bundle.
+ProgramVersion owns that bundle and the same-generation linked artifact, while
+runtime-local cache/profile state lives in generation-keyed weakly pruned
+sidecars. Linked closures and frames pin their immutable executable owner, so
+old retained closures keep old nested/native dispatch after accepted reloads,
+new entries use new code, and rejected reloads preserve ownership. Batch C
+(Phases 7-8), the backend-neutral execution-unit and retained M22-input hard
+switch, is next.
 
 The Heavy HIR hard switch and D1-D3 close-out are complete.
 `vela_hir` owns executable body and stable semantic identity, bytecode consumes

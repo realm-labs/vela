@@ -276,7 +276,7 @@ fn run_rhai_workload(
 fn link_program_for_vm(
     vm: &Vm,
     program: &UnlinkedProgram,
-) -> Result<vela_bytecode::LinkedProgram, Box<dyn std::error::Error>> {
+) -> Result<vela_bytecode::LinkedArtifact, Box<dyn std::error::Error>> {
     let mut linker = Linker::new();
     for id in vm.native_implementation_ids() {
         linker.add_native_implementation(id);

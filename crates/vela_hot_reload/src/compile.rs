@@ -6,7 +6,7 @@ use vela_bytecode::compiler::{
     compile_module_sources_with_options, compile_module_sources_with_options_and_registry,
     compile_program_source_with_options, compile_program_source_with_options_and_registry,
 };
-use vela_bytecode::{LinkedProgram, Linker, UnlinkedProgram};
+use vela_bytecode::{LinkedArtifact, Linker, UnlinkedProgram, compiler::CompiledProgram};
 use vela_common::SourceId;
 use vela_hir::ids::ModuleId;
 use vela_hir::module_graph::{ModuleGraph, ModuleSource};
@@ -225,7 +225,7 @@ pub fn compile_update_modules_with_abi_options_registry_and_policy(
 }
 
 fn initial_version_from_program(
-    program: UnlinkedProgram,
+    program: CompiledProgram,
     abi: HotReloadAbi,
 ) -> HotReloadResult<ProgramVersion> {
     let abi = abi_with_script_metadata(abi, &program);
@@ -240,9 +240,9 @@ fn initial_version_from_program(
 
 #[must_use]
 pub fn initial_version_from_linked_program(
-    program: UnlinkedProgram,
+    program: CompiledProgram,
     abi: HotReloadAbi,
-    linked_program: LinkedProgram,
+    linked_program: LinkedArtifact,
 ) -> ProgramVersion {
     let abi = abi_with_script_metadata(abi, &program);
     ProgramVersion::from_linked_program_with_abi(ProgramVersionId(0), program, abi, linked_program)
@@ -258,7 +258,7 @@ fn abi_with_script_metadata(abi: HotReloadAbi, program: &UnlinkedProgram) -> Hot
 
 fn update_from_program(
     previous: &ProgramVersion,
-    program: UnlinkedProgram,
+    program: CompiledProgram,
     abi: HotReloadAbi,
     policy: &HotReloadPolicy,
 ) -> HotReloadResult<HotUpdate> {
@@ -270,21 +270,21 @@ fn update_from_program(
 
 pub fn update_from_linked_program(
     previous: &ProgramVersion,
-    program: UnlinkedProgram,
+    program: CompiledProgram,
     abi: HotReloadAbi,
     policy: &HotReloadPolicy,
-    linked_program: LinkedProgram,
+    linked_program: LinkedArtifact,
 ) -> HotReloadResult<HotUpdate> {
     let abi = abi_with_script_metadata(abi, &program);
-    let global_names = program.global_names().to_vec();
-    let script_methods = program.script_methods().clone();
+    let verified_mir = Arc::clone(program.verified_mir());
     let script_metadata = program.script_metadata().cloned();
     let mut functions = BTreeMap::new();
     let mut changed_functions = Vec::new();
+    let (program, _) = program.into_parts();
     for (name, code) in program.into_functions() {
         let symbol = FunctionSymbolId::new(&name);
-        if let Some(old_code) = previous.functions.get(&symbol) {
-            ensure_compatible_function_signature(&name, old_code, &code, policy)?;
+        if let Some(old_code) = previous.function(&name) {
+            ensure_compatible_function_signature(&name, &old_code, &code, policy)?;
             if old_code.as_ref() != &code {
                 changed_functions.push(symbol.clone());
             }
@@ -301,13 +301,13 @@ pub fn update_from_linked_program(
         .script_methods()
         .function_names()
         .collect::<BTreeSet<_>>();
-    for old_name in previous.functions.keys() {
-        if previous_script_method_functions.contains(old_name.0.as_str()) {
+    for old_name in previous.function_names() {
+        if previous_script_method_functions.contains(old_name) {
             continue;
         }
-        if !functions.contains_key(old_name) {
+        if !functions.contains_key(&FunctionSymbolId::new(old_name)) {
             return Err(HotReloadError::new(HotReloadErrorKind::RemovedFunction {
-                function: old_name.0.clone(),
+                function: old_name.to_owned(),
             }));
         }
     }
@@ -316,21 +316,13 @@ pub fn update_from_linked_program(
         module_changes(previous.script_metadata(), script_metadata.as_ref());
     let changes =
         AcceptedHotReloadChanges::new(changed_functions, changed_modules, impacted_modules);
-    let update = HotUpdate::new(
-        functions,
-        global_names,
-        script_methods,
-        script_metadata,
-        abi,
-        changes,
-        linked_program,
-    );
+    let update = HotUpdate::new(abi, changes, linked_program, verified_mir);
     Ok(update)
 }
 
 fn link_standalone_program(
     program: &UnlinkedProgram,
-) -> Result<LinkedProgram, vela_bytecode::linker::LinkError> {
+) -> Result<LinkedArtifact, vela_bytecode::linker::LinkError> {
     Linker::new().link_program(program)
 }
 

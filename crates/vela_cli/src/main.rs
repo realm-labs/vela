@@ -46,7 +46,7 @@ fn run_script(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let program = engine
         .compile_file(path)
         .map_err(|error| diagnostics::render_engine_source_error(path, &error))?;
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new_compiled(engine, program);
     let output = runtime
         .call(
             "main",

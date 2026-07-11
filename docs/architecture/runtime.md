@@ -14,6 +14,13 @@ globals, cache entries, profile counters, hotness, active tier selection, and
 budget counters. A mutable sidecar is always qualified by its executable
 generation and is never stored in a shared `ProgramVersion`.
 
+The linker emits one `LinkedArtifact`. Its canonical flattened records allocate
+`ProgramImage` indexes, linked function handles, generation-global cache IDs,
+and profile layout together. `RuntimeImage` references that artifact; it does
+not rebuild or rebase cache operands by function name. Multiple runtimes may
+share the immutable artifact, while each owns isolated heap/global/cache/profile
+state.
+
 Stable semantic IDs (`FunctionId`, `MethodId`, `TypeId`, `FieldId`,
 `VariantId`, and schema/shape identities) may be compared across generations.
 Dense executable handles, MIR IDs, cache sites, profile slots, bytecode

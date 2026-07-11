@@ -448,7 +448,9 @@ fn execute_unlinked_callable_guard(
     if let Some(expected) = positional_arity {
         let actual = match &closure.code {
             ClosureCode::Unlinked(code) => u32::try_from(code.params.len()).ok(),
-            ClosureCode::Linked(_) => None,
+            ClosureCode::Linked { owner, function } => owner
+                .function(*function)
+                .and_then(|code| u32::try_from(code.params.len()).ok()),
         };
         if actual != Some(expected) {
             return Err(callable_contract_error(expected, actual, debug_name));
@@ -462,7 +464,7 @@ fn execute_linked_callable_guard(
     _accepts_direct_function: bool,
     accepts_closure: bool,
     positional_arity: Option<u32>,
-    program: &LinkedProgram,
+    _program: &LinkedProgram,
     heap: Option<&HeapExecution<'_>>,
     debug_name: &str,
 ) -> VmResult<()> {
@@ -478,8 +480,8 @@ fn execute_linked_callable_guard(
     }
     if let Some(expected) = positional_arity {
         let actual = match &closure.code {
-            ClosureCode::Linked(handle) => program
-                .function(*handle)
+            ClosureCode::Linked { owner, function } => owner
+                .function(*function)
                 .and_then(|code| u32::try_from(code.params.len()).ok()),
             ClosureCode::Unlinked(code) => u32::try_from(code.params.len()).ok(),
         };
@@ -1895,7 +1897,10 @@ mod tests {
         let mut heap = ScriptHeap::new();
         let value = Value::HeapRef(
             heap.allocate(HeapValue::Closure(ClosureValue {
-                code: ClosureCode::Linked(function),
+                code: ClosureCode::Linked {
+                    owner: std::sync::Arc::new(program.clone()),
+                    function,
+                },
                 captures: SmallStorage::try_from_slice_map(&[], 4, |value: &Value| {
                     Ok::<_, ()>(*value)
                 })

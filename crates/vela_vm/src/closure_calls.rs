@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
 use vela_bytecode::{
-    FunctionIndex, InstructionOffset, LinkedProgram, Register, UnlinkedCodeObject,
-    UnlinkedProgramCode,
+    FunctionIndex, InstructionOffset, Register, UnlinkedCodeObject, UnlinkedProgramCode,
 };
 use vela_common::Span;
 
@@ -76,7 +75,14 @@ pub(crate) fn make_linked_closure(
     })?;
     let value = allocate_heap_value(
         HeapValue::Closure(ClosureValue {
-            code: ClosureCode::Linked(closure.function),
+            code: ClosureCode::Linked {
+                owner: Arc::clone(frame.linked_owner().ok_or_else(|| {
+                    VmError::new(VmErrorKind::TypeMismatch {
+                        operation: "linked closure owner",
+                    })
+                })?),
+                function: closure.function,
+            },
             captures,
         }),
         heap,
@@ -156,7 +162,7 @@ pub(crate) fn dispatch_closure_call(
 }
 
 pub(crate) struct LinkedClosureCallContext<'a> {
-    pub(crate) program: &'a LinkedProgram,
+    pub(crate) calling_generation: vela_bytecode::ExecutableGenerationId,
     pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
     pub(crate) bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
     pub(crate) call_site: Option<Span>,
@@ -178,38 +184,53 @@ pub(crate) fn dispatch_linked_closure_call(
     frame: &mut CallFrame,
     call: LinkedClosureCall<'_>,
 ) -> VmResult<()> {
-    let (function, captures) = {
+    let (owner, function, captures) = {
         let closure =
             expect_closure_ref(&frame.read(call.callee)?, heap.as_deref(), "closure call")?;
-        let ClosureCode::Linked(function) = &closure.code else {
+        let ClosureCode::Linked { owner, function } = &closure.code else {
             return Err(VmError::new(VmErrorKind::TypeMismatch {
                 operation: "closure call",
             })
             .with_source_span_if_absent(context.call_site));
         };
+        let owner = Arc::clone(owner);
         let function = *function;
         let captures = closure.captures.clone();
-        (function, captures)
+        (owner, function, captures)
     };
-    let function_code = context.program.function(function).ok_or_else(|| {
+    let function_code = owner.function(function).ok_or_else(|| {
         VmError::new(VmErrorKind::UnknownFunction {
             name: format!("<linked closure#{}>", function.index()),
         })
         .with_source_span_if_absent(context.call_site)
     })?;
+    let inline_caches = if owner.generation() == context.calling_generation {
+        context.inline_caches
+    } else {
+        context
+            .inline_caches
+            .and_then(|caches| caches.for_generation(owner.generation()))
+    };
+    let bytecode_profiler = if owner.generation() == context.calling_generation {
+        context.bytecode_profiler
+    } else {
+        context
+            .bytecode_profiler
+            .and_then(|profiler| profiler.for_generation(owner.generation()))
+    };
     let values = script_call_args_from_registers(frame, call.args)?;
     let protected_root_len = heap.as_deref_mut().map(|heap| heap.push_frame_roots(frame));
     let result = vm.execute_linked_call(
         LinkedExecutionCall {
             code: function_code,
-            program: context.program,
+            program: &owner,
             captures: captures.as_slice(),
             args: values.as_slice(),
             check_param_guards: true,
             call_site: context.call_site,
             call_site_offset: Some(context.call_site_offset),
-            inline_caches: context.inline_caches,
-            bytecode_profiler: context.bytecode_profiler,
+            inline_caches,
+            bytecode_profiler,
         },
         host.as_deref_mut(),
         heap.as_deref_mut(),

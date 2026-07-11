@@ -9,7 +9,7 @@ use vela_bytecode::compiler::{
     compile_function_source_with_registry, compile_program_source_with_options_and_registry,
     compile_program_source_with_registry,
 };
-use vela_bytecode::{LinkedProgram, Linker, ProgramImage, UnlinkedCodeObject, UnlinkedProgram};
+use vela_bytecode::{LinkedArtifact, LinkedProgram, Linker, UnlinkedCodeObject, UnlinkedProgram};
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
 use vela_def::{DefPath, FieldId, FunctionId, TypeId};
 use vela_host::access::HostAccess;
@@ -37,9 +37,7 @@ mod workload_sources;
 #[path = "baseline/workloads.rs"]
 mod workloads;
 
-use cache_support::{
-    BenchBytecodeProfiler, BenchCacheStats, BenchInlineCaches, rebase_linked_cache_sites,
-};
+use cache_support::{BenchBytecodeProfiler, BenchCacheStats, BenchInlineCaches};
 use config::{BenchConfig, BenchParams};
 use workloads::{ExecutionMode, Workload, workloads};
 
@@ -245,19 +243,17 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
             )
             .map_err(|error| format!("{error:?}"))?;
             if matches!(workload.mode, ExecutionMode::HostAccessCacheEnabled) {
-                let image = ProgramImage::from_program(&program);
-                let mut linked = link_program_for_vm(vm, &program)?;
-                rebase_linked_cache_sites(&mut linked, &image);
+                let artifact = link_artifact_for_vm(vm, &program)?;
+                let cache_count = artifact.cache_layout().len();
+                let linked = artifact.into_program();
                 return Ok(CompiledWorkload::CacheEnabledHostAccess {
-                    caches: Some(BenchInlineCaches::new(image.cache_site_count())),
+                    caches: Some(BenchInlineCaches::new(cache_count)),
                     profiler: BenchBytecodeProfiler::default(),
                     program: Box::new(linked),
                 });
             }
             if matches!(workload.mode, ExecutionMode::HostAccessProfileOnly) {
-                let image = ProgramImage::from_program(&program);
-                let mut linked = link_program_for_vm(vm, &program)?;
-                rebase_linked_cache_sites(&mut linked, &image);
+                let linked = link_artifact_for_vm(vm, &program)?.into_program();
                 return Ok(CompiledWorkload::CacheEnabledHostAccess {
                     caches: None,
                     profiler: BenchBytecodeProfiler::default(),
@@ -313,9 +309,7 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
             )
             .map_err(|error| format!("{error:?}"))?;
             if matches!(workload.mode, ExecutionMode::ScriptProgramProfileOnly) {
-                let image = ProgramImage::from_program(&program);
-                let mut linked = link_program_for_vm(vm, &program)?;
-                rebase_linked_cache_sites(&mut linked, &image);
+                let linked = link_artifact_for_vm(vm, &program)?.into_program();
                 return Ok(CompiledWorkload::CacheEnabledFunction {
                     caches: None,
                     profiler: BenchBytecodeProfiler::default(),
@@ -323,11 +317,11 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
                 });
             }
             if matches!(workload.mode, ExecutionMode::ScriptProgramCacheEnabled) {
-                let image = ProgramImage::from_program(&program);
-                let mut linked = link_program_for_vm(vm, &program)?;
-                rebase_linked_cache_sites(&mut linked, &image);
+                let artifact = link_artifact_for_vm(vm, &program)?;
+                let cache_count = artifact.cache_layout().len();
+                let linked = artifact.into_program();
                 return Ok(CompiledWorkload::CacheEnabledFunction {
-                    caches: Some(BenchInlineCaches::new(image.cache_site_count())),
+                    caches: Some(BenchInlineCaches::new(cache_count)),
                     profiler: BenchBytecodeProfiler::default(),
                     program: Box::new(linked),
                 });
@@ -493,13 +487,16 @@ fn link_single_function_image_for_vm(
 ) -> Result<(LinkedProgram, usize), String> {
     let mut program = UnlinkedProgram::new();
     program.insert_function(code);
-    let image = ProgramImage::from_program(&program);
-    let mut linked = link_program_for_vm(vm, &program)?;
-    rebase_linked_cache_sites(&mut linked, &image);
-    Ok((linked, image.cache_site_count()))
+    let artifact = link_artifact_for_vm(vm, &program)?;
+    let cache_count = artifact.cache_layout().len();
+    Ok((artifact.into_program(), cache_count))
 }
 
 fn link_program_for_vm(vm: &Vm, program: &UnlinkedProgram) -> Result<LinkedProgram, String> {
+    link_artifact_for_vm(vm, program).map(LinkedArtifact::into_program)
+}
+
+fn link_artifact_for_vm(vm: &Vm, program: &UnlinkedProgram) -> Result<LinkedArtifact, String> {
     let mut linker = Linker::new();
     for id in vm.native_implementation_ids() {
         linker.add_native_implementation(id);

@@ -28,7 +28,7 @@ fn run_linked_stdlib_test_program_with_budget(
 fn compile_standard_program_source(
     source: SourceId,
     text: &str,
-) -> vela_bytecode::compiler::error::CompileResult<UnlinkedProgram> {
+) -> vela_bytecode::compiler::error::CompileResult<vela_bytecode::compiler::CompiledProgram> {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     compile_program_source_with_registry(source, text, registry.compile_view())
 }

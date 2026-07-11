@@ -13,6 +13,30 @@ const HOT_RELOAD_PARAMETER_ABI_EXPECTED: &str =
     include_str!("../../../../tests/fixtures/diagnostics/hot_reload_parameter_abi.expected");
 
 #[test]
+fn program_version_shares_owned_artifact_and_verified_mir_generation() {
+    let version = compile_initial(
+        SourceId::new(1),
+        "fn helper() { return 1; } fn main() { return helper(); }",
+    )
+    .expect("compile initial generation");
+    let clone = version.clone();
+
+    assert!(std::sync::Arc::ptr_eq(
+        version.linked_artifact(),
+        clone.linked_artifact()
+    ));
+    assert!(std::sync::Arc::ptr_eq(
+        version.verified_mir(),
+        clone.verified_mir()
+    ));
+    assert_eq!(version.verified_mir().roots().count(), 2);
+    assert!(
+        std::mem::size_of::<ProgramVersion>() <= 512,
+        "ProgramVersion should remain an Arc-owned generation header"
+    );
+}
+
+#[test]
 fn new_calls_enter_new_code_after_update() {
     let initial =
         compile_initial(SourceId::new(1), "fn main() { return 20; }").expect("compile initial");

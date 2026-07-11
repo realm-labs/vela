@@ -858,7 +858,10 @@ mod tests {
         let source = heap.allocate(HeapValue::Array(vec![Value::HeapRef(child)]));
         let captured = heap.allocate(HeapValue::String("captured".into()));
         let callback = heap.allocate(HeapValue::Closure(ClosureValue {
-            code: ClosureCode::Linked(vela_bytecode::ScriptFunctionHandle::new(0)),
+            code: ClosureCode::Linked {
+                owner: std::sync::Arc::new(vela_bytecode::LinkedProgram::new()),
+                function: vela_bytecode::ScriptFunctionHandle::new(0),
+            },
             captures: SmallStorage::try_from_slice_map(&[Value::HeapRef(captured)], 4, |value| {
                 Ok::<_, ()>(*value)
             })
@@ -896,7 +899,10 @@ mod tests {
         let source = heap.allocate(HeapValue::Array(vec![Value::HeapRef(child)]));
         let captured = heap.allocate(HeapValue::String("captured".into()));
         let callback = heap.allocate(HeapValue::Closure(ClosureValue {
-            code: ClosureCode::Linked(vela_bytecode::ScriptFunctionHandle::new(0)),
+            code: ClosureCode::Linked {
+                owner: std::sync::Arc::new(vela_bytecode::LinkedProgram::new()),
+                function: vela_bytecode::ScriptFunctionHandle::new(0),
+            },
             captures: SmallStorage::try_from_slice_map(&[Value::HeapRef(captured)], 4, |value| {
                 Ok::<_, ()>(*value)
             })

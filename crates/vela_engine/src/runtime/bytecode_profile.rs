@@ -4,8 +4,6 @@ use std::collections::BTreeMap;
 use vela_bytecode::{DebugNameId, InstructionOffset};
 use vela_vm::VmBytecodeProfiler;
 
-use super::image::RuntimeImage;
-
 #[derive(Debug, Default)]
 pub(super) struct RuntimeBytecodeProfile {
     functions: RefCell<Vec<FunctionCounters>>,
@@ -18,8 +16,7 @@ struct FunctionCounters {
 }
 
 impl RuntimeBytecodeProfile {
-    pub(super) fn for_image(image: &RuntimeImage) -> Self {
-        let program = image.linked_program();
+    pub(super) fn for_program(program: &vela_bytecode::LinkedProgram) -> Self {
         let functions = program
             .functions()
             .map(|(_, code)| {
@@ -44,10 +41,6 @@ impl RuntimeBytecodeProfile {
             functions: RefCell::new(functions),
             function_index,
         }
-    }
-
-    pub(super) fn clear_for_image(&mut self, image: &RuntimeImage) {
-        *self = Self::for_image(image);
     }
 
     #[cfg(test)]

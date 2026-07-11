@@ -89,7 +89,7 @@ impl CacheSiteLayout {
 
     #[must_use]
     pub fn get(&self, id: CacheSiteId) -> Option<&CacheSiteDesc> {
-        self.sites.get(id.index())
+        self.sites.iter().find(|site| site.id == id)
     }
 
     pub fn push(

@@ -251,6 +251,13 @@ pub struct PersistentHeapExecution<'heap, 'roots> {
 }
 
 pub trait VmInlineCaches {
+    fn for_generation(
+        &self,
+        _generation: vela_bytecode::ExecutableGenerationId,
+    ) -> Option<&dyn VmInlineCaches> {
+        None
+    }
+
     fn len(&self) -> usize;
 
     fn is_empty(&self) -> bool {
@@ -300,6 +307,13 @@ pub trait VmInlineCaches {
 }
 
 pub trait VmBytecodeProfiler {
+    fn for_generation(
+        &self,
+        _generation: vela_bytecode::ExecutableGenerationId,
+    ) -> Option<&dyn VmBytecodeProfiler> {
+        None
+    }
+
     fn record_instruction(&self, _function: DebugNameId, _offset: InstructionOffset) {}
 }
 

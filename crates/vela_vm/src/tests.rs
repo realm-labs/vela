@@ -9,7 +9,7 @@ use vela_bytecode::compiler::{
     compile_program_source_with_registry,
 };
 use vela_bytecode::{
-    CacheSiteKind, Constant, ConstantId, InstructionOffset, LinkedProgram, Linker, ProgramImage,
+    CacheSiteKind, Constant, ConstantId, InstructionOffset, LinkedProgram, Linker,
     UnlinkedInstruction,
 };
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
@@ -92,6 +92,7 @@ fn link_test_program(program: &UnlinkedProgram) -> LinkedProgram {
     Linker::new()
         .link_program(program)
         .expect("test program should link")
+        .into_program()
 }
 
 fn linked_dynamic_method_site(program: &LinkedProgram, entry: &str) -> CacheSiteId {
@@ -107,7 +108,8 @@ fn linked_dynamic_method_site(program: &LinkedProgram, entry: &str) -> CacheSite
 fn linked_cache_len(program: &LinkedProgram) -> usize {
     program
         .functions()
-        .map(|(_, code)| code.cache_sites.len())
+        .flat_map(|(_, code)| code.cache_sites.sites())
+        .map(|site| site.id.index() + 1)
         .max()
         .unwrap_or(0)
 }
@@ -530,14 +532,14 @@ fn compile_host_program_source(
     source: SourceId,
     text: &str,
     registry: vela_registry::DefinitionRegistry,
-) -> vela_bytecode::compiler::error::CompileResult<UnlinkedProgram> {
+) -> vela_bytecode::compiler::error::CompileResult<vela_bytecode::compiler::CompiledProgram> {
     compile_program_source_with_registry(source, text, registry.compile_view())
 }
 
 fn compile_standard_program_source(
     source: SourceId,
     text: &str,
-) -> vela_bytecode::compiler::error::CompileResult<UnlinkedProgram> {
+) -> vela_bytecode::compiler::error::CompileResult<vela_bytecode::compiler::CompiledProgram> {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     compile_program_source_with_registry(source, text, registry.compile_view())
 }
@@ -546,7 +548,7 @@ fn compile_standard_program_source_with_native_functions(
     source: SourceId,
     text: &str,
     natives: &[&str],
-) -> vela_bytecode::compiler::error::CompileResult<UnlinkedProgram> {
+) -> vela_bytecode::compiler::error::CompileResult<vela_bytecode::compiler::CompiledProgram> {
     let mut registry = vela_stdlib::standard_registry().expect("standard registry should build");
     for native in natives {
         let mut segments = native.split("::").collect::<Vec<_>>();
@@ -566,7 +568,7 @@ fn compile_host_program_source_with_options(
     text: &str,
     options: &CompilerOptions,
     registry: vela_registry::DefinitionRegistry,
-) -> vela_bytecode::compiler::error::CompileResult<UnlinkedProgram> {
+) -> vela_bytecode::compiler::error::CompileResult<vela_bytecode::compiler::CompiledProgram> {
     vela_bytecode::compiler::compile_program_source_with_options_and_registry(
         source,
         text,

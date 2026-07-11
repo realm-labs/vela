@@ -1,5 +1,5 @@
 use vela_engine::engine::Engine;
-use vela_engine::runtime::{CallOptions, Runtime};
+use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
 use vela_reflect::permissions::ReflectPolicy;
@@ -50,6 +50,104 @@ fn runtime_hot_reload_update_waits_for_explicit_reload_safe_point() {
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
+}
+
+#[test]
+fn retained_closure_pins_old_generation_across_handle_layout_reload() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial(
+            r#"
+fn helper(value: i64) -> i64 { return value + 1; }
+fn make() { return |value: i64| helper(value) + 10; }
+fn invoke(callback, value: i64) -> i64 { return callback(value); }
+"#,
+        )
+        .expect("initial closure generation should compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let old_closure = runtime
+        .call("make", CallArgs::new(), CallOptions::unbounded())
+        .expect("old closure should be retained");
+
+    let update = runtime
+        .compile_hot_reload_update(
+            r#"
+fn alpha_private(value: i64) -> i64 { return value * 1000; }
+fn helper(value: i64) -> i64 { return value + 100; }
+fn make() { return |value: i64| helper(value) + 20; }
+fn invoke(callback, value: i64) -> i64 { return callback(value); }
+"#,
+        )
+        .expect("runtime should compile closure reload")
+        .expect("closure reload should be compatible");
+    runtime
+        .apply_hot_update(update)
+        .expect("closure reload should apply at the safe point");
+
+    let mut old_args = CallArgs::from_values([old_closure]);
+    old_args.push(5_i64);
+    let old_result = runtime
+        .call("invoke", old_args, CallOptions::unbounded())
+        .expect("old closure should execute against its creation generation");
+    let new_closure = runtime
+        .call("make", CallArgs::new(), CallOptions::unbounded())
+        .expect("new closure should use the active generation");
+    let mut new_args = CallArgs::from_values([new_closure]);
+    new_args.push(5_i64);
+    let new_result = runtime
+        .call("invoke", new_args, CallOptions::unbounded())
+        .expect("new closure should execute active code");
+
+    assert_eq!(runtime.value_to_owned(&old_result), Ok(OwnedValue::i64(16)));
+    assert_eq!(
+        runtime.value_to_owned(&new_result),
+        Ok(OwnedValue::i64(125))
+    );
+}
+
+#[test]
+fn retained_old_closure_keeps_native_dispatch_and_rejected_reload_owner() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial(
+            r#"
+fn make() { return |value: String| value.starts_with("old"); }
+fn invoke(callback, value: String) -> bool { return callback(value); }
+"#,
+        )
+        .expect("initial native closure generation should compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let old_generation = runtime
+        .hot_reload_version()
+        .expect("hot reload version")
+        .executable_generation_id();
+    let old_closure = runtime
+        .call("make", CallArgs::new(), CallOptions::unbounded())
+        .expect("old closure should be retained");
+
+    let rejected = runtime
+        .compile_hot_reload_update(
+            r#"
+fn make(extra) { return |value: String| value.ends_with("new"); }
+fn invoke(callback, value: String) -> bool { return callback(value); }
+"#,
+        )
+        .expect("incompatible source should be reported, not fail compilation");
+    assert!(rejected.is_err());
+    assert_eq!(
+        runtime
+            .hot_reload_version()
+            .expect("rejected reload keeps version")
+            .executable_generation_id(),
+        old_generation
+    );
+
+    let mut args = CallArgs::from_values([old_closure]);
+    args.push("old-generation".to_owned());
+    let result = runtime
+        .call("invoke", args, CallOptions::unbounded())
+        .expect("old closure should retain native dispatch after rejection");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
 }
 
 #[test]

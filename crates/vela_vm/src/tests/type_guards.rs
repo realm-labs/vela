@@ -836,7 +836,8 @@ fn main() {
     .expect("program should compile");
     let mut linked = Linker::new()
         .link_program(&program)
-        .expect("program should link");
+        .expect("program should link")
+        .into_program();
     let helper_handle = linked
         .entry_point_by_name("require_i64")
         .expect("helper entry should exist");

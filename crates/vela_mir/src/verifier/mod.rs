@@ -38,7 +38,7 @@ pub struct VerifiedMirProgram<'a> {
 /// Immutable, generation-retainable MIR together with the analyses sealed by
 /// verification. Physical backends borrow this owner; they never receive the
 /// mutable program used during construction.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct OwnedVerifiedMirProgram {
     program: Arc<MirProgram>,
     analyses: Arc<BTreeMap<MirFunctionId, MirFunctionAnalyses>>,
@@ -46,7 +46,7 @@ pub struct OwnedVerifiedMirProgram {
 
 /// One compile generation's stable semantic roots mapped to their sealed,
 /// generation-local MIR programs (including nested lambdas).
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct OwnedVerifiedMirBundle {
     roots: BTreeMap<FunctionId, Arc<OwnedVerifiedMirProgram>>,
 }

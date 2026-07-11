@@ -327,7 +327,8 @@ fn main() {
 }
 "#,
     )
-    .expect("standard callback method source should compile");
+    .expect("standard callback method source should compile")
+    .into_bytecode();
     replace_call_method_debug_name(
         &mut program,
         "main",

@@ -37,7 +37,7 @@ fn read_value() {
     assert!(
         runtime
             .state
-            .inline_caches
+            .inline_caches()
             .record_field(initial_site)
             .is_some(),
         "initial record field read should populate its inline cache"
@@ -67,7 +67,7 @@ fn read_value() {
 
     let reloaded_site = record_field_read_site(&runtime, "read_value");
     assert_eq!(
-        runtime.state.inline_caches.record_field(reloaded_site),
+        runtime.state.inline_caches().record_field(reloaded_site),
         None
     );
 
@@ -81,7 +81,7 @@ fn read_value() {
     assert!(
         runtime
             .state
-            .inline_caches
+            .inline_caches()
             .record_field(reloaded_site)
             .is_some(),
         "reloaded record field read should repopulate its inline cache"
@@ -115,7 +115,7 @@ fn call_dynamic(value) {
     assert!(
         runtime
             .state
-            .inline_caches
+            .inline_caches()
             .dynamic_method_dispatch(initial_site)
             .is_some(),
         "initial dynamic method call should populate its inline cache"
@@ -141,7 +141,7 @@ fn call_dynamic(value) {
     assert_eq!(
         runtime
             .state
-            .inline_caches
+            .inline_caches()
             .dynamic_method_dispatch(reloaded_site),
         None
     );
@@ -157,7 +157,7 @@ fn call_dynamic(value) {
     assert!(
         runtime
             .state
-            .inline_caches
+            .inline_caches()
             .dynamic_method_dispatch(reloaded_site)
             .is_some(),
         "reloaded dynamic method call should repopulate its inline cache"

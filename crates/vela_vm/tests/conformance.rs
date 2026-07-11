@@ -1,5 +1,5 @@
 use vela_bytecode::{
-    LinkedProgram, Linker,
+    Linker,
     compiler::{
         compile_module_sources_with_registry, compile_program_source_with_registry,
         error::CompileErrorKind,
@@ -180,12 +180,12 @@ fn dynamic_method_dispatch_negative_entries_are_runtime_errors() {
 
 fn compile_standard_fixture(
     source: &str,
-) -> vela_bytecode::compiler::error::CompileResult<vela_bytecode::UnlinkedProgram> {
+) -> vela_bytecode::compiler::error::CompileResult<vela_bytecode::compiler::CompiledProgram> {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     compile_program_source_with_registry(SourceId::new(10), source, registry.compile_view())
 }
 
-fn link_standard_fixture(source: &str) -> LinkedProgram {
+fn link_standard_fixture(source: &str) -> vela_bytecode::LinkedArtifact {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     let program =
         compile_program_source_with_registry(SourceId::new(10), source, registry.compile_view())

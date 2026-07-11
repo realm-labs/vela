@@ -19,13 +19,13 @@ fn reflection_value_natives() -> &'static [&'static str] {
 fn compile_reflection_value_source(
     source: SourceId,
     text: &str,
-) -> vela_bytecode::compiler::error::CompileResult<UnlinkedProgram> {
+) -> vela_bytecode::compiler::error::CompileResult<vela_bytecode::compiler::CompiledProgram> {
     compile_standard_program_source_with_native_functions(source, text, reflection_value_natives())
 }
 
 fn compile_reflection_value_module_sources(
     sources: &[ModuleSource],
-) -> vela_bytecode::compiler::error::CompileResult<UnlinkedProgram> {
+) -> vela_bytecode::compiler::error::CompileResult<vela_bytecode::compiler::CompiledProgram> {
     let mut registry = vela_stdlib::standard_registry().expect("standard registry should build");
     for native in reflection_value_natives() {
         let mut segments = native.split("::").collect::<Vec<_>>();

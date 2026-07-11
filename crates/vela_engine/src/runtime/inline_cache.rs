@@ -7,8 +7,6 @@ use vela_vm::{
     NativeInlineCacheEntry, RecordFieldInlineCacheEntry,
 };
 
-use super::image::RuntimeImage;
-
 #[derive(Debug, Default)]
 pub(super) struct InlineCaches {
     global_reads: Vec<Cell<Option<GlobalSlot>>>,
@@ -20,8 +18,27 @@ pub(super) struct InlineCaches {
 }
 
 impl InlineCaches {
-    pub(super) fn for_image(image: &RuntimeImage) -> Self {
-        let len = image.cache_site_count();
+    #[cfg(test)]
+    pub(super) fn for_image(image: &super::image::RuntimeImage) -> Self {
+        Self::with_len(image.cache_site_count())
+    }
+
+    #[cfg(test)]
+    pub(super) fn clear_for_image(&mut self, image: &super::image::RuntimeImage) {
+        *self = Self::for_image(image);
+    }
+
+    pub(super) fn for_program(program: &vela_bytecode::LinkedProgram) -> Self {
+        let len = program
+            .functions()
+            .flat_map(|(_, code)| code.cache_sites.sites())
+            .map(|site| site.id.index() + 1)
+            .max()
+            .unwrap_or(0);
+        Self::with_len(len)
+    }
+
+    fn with_len(len: usize) -> Self {
         Self {
             global_reads: empty_cell_cache(len),
             host_accesses: empty_cell_cache(len),
@@ -30,10 +47,6 @@ impl InlineCaches {
             dynamic_method_dispatches: RefCell::new(vec![None; len]),
             native_calls: RefCell::new(vec![None; len]),
         }
-    }
-
-    pub(super) fn clear_for_image(&mut self, image: &RuntimeImage) {
-        *self = Self::for_image(image);
     }
 
     pub(super) fn len(&self) -> usize {

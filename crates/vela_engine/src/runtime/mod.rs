@@ -66,6 +66,29 @@ where
     state: RuntimeState,
 }
 
+#[doc(hidden)]
+pub enum RuntimeProgramInput {
+    Compiled(vela_bytecode::compiler::CompiledProgram),
+    Unlinked(UnlinkedProgram),
+}
+
+#[doc(hidden)]
+pub trait IntoRuntimeProgramInput {
+    fn into_runtime_program_input(self) -> RuntimeProgramInput;
+}
+
+impl IntoRuntimeProgramInput for vela_bytecode::compiler::CompiledProgram {
+    fn into_runtime_program_input(self) -> RuntimeProgramInput {
+        RuntimeProgramInput::Compiled(self)
+    }
+}
+
+impl IntoRuntimeProgramInput for UnlinkedProgram {
+    fn into_runtime_program_input(self) -> RuntimeProgramInput {
+        RuntimeProgramInput::Unlinked(self)
+    }
+}
+
 static NEXT_RUNTIME_ID: AtomicU64 = AtomicU64::new(1);
 
 fn next_runtime_id() -> u64 {
@@ -74,27 +97,56 @@ fn next_runtime_id() -> u64 {
 
 impl RuntimeImpl<OwnedImage> {
     #[must_use]
-    pub fn new(engine: Engine, program: UnlinkedProgram) -> Self {
-        let image = OwnedImage::from_image(RuntimeImage::new(engine, program));
+    pub fn new_compiled(engine: Engine, program: vela_bytecode::compiler::CompiledProgram) -> Self {
+        Self::try_new_compiled(engine, program)
+            .expect("compiled runtime image should link verified bytecode")
+    }
+
+    pub fn try_new_compiled(
+        engine: Engine,
+        program: vela_bytecode::compiler::CompiledProgram,
+    ) -> Result<Self, vela_bytecode::linker::LinkError> {
+        let image = OwnedImage::from_image(RuntimeImage::try_new_compiled(engine, program)?);
         let state = RuntimeState::for_image(&image);
-        Self {
+        Ok(Self {
             image,
-            hot_reload: None,
             state,
+            hot_reload: None,
+        })
+    }
+
+    #[must_use]
+    pub fn new(engine: Engine, program: impl IntoRuntimeProgramInput) -> Self {
+        match program.into_runtime_program_input() {
+            RuntimeProgramInput::Compiled(program) => Self::new_compiled(engine, program),
+            RuntimeProgramInput::Unlinked(program) => {
+                let image = OwnedImage::from_image(RuntimeImage::new(engine, program));
+                let state = RuntimeState::for_image(&image);
+                Self {
+                    image,
+                    hot_reload: None,
+                    state,
+                }
+            }
         }
     }
 
     pub fn try_new(
         engine: Engine,
-        program: UnlinkedProgram,
+        program: impl IntoRuntimeProgramInput,
     ) -> Result<Self, vela_bytecode::linker::LinkError> {
-        let image = OwnedImage::from_image(RuntimeImage::try_new(engine, program)?);
-        let state = RuntimeState::for_image(&image);
-        Ok(Self {
-            image,
-            hot_reload: None,
-            state,
-        })
+        match program.into_runtime_program_input() {
+            RuntimeProgramInput::Compiled(program) => Self::try_new_compiled(engine, program),
+            RuntimeProgramInput::Unlinked(program) => {
+                let image = OwnedImage::from_image(RuntimeImage::try_new(engine, program)?);
+                let state = RuntimeState::for_image(&image);
+                Ok(Self {
+                    image,
+                    hot_reload: None,
+                    state,
+                })
+            }
+        }
     }
 
     #[must_use]
@@ -459,8 +511,7 @@ where
             hot_reload: self.hot_reload.as_ref(),
             globals: &mut state.globals,
             script_globals: &mut state.script_globals,
-            inline_caches: &state.inline_caches,
-            bytecode_profile: &state.bytecode_profile,
+            sidecars: &state.sidecars,
             target,
             args: &mut args,
             options,
@@ -529,8 +580,8 @@ where
                 roots: &roots,
             },
             budget: &mut budget,
-            inline_caches: Some(&state.inline_caches),
-            bytecode_profiler: Some(&state.bytecode_profile),
+            inline_caches: Some(&state.sidecars),
+            bytecode_profiler: Some(&state.sidecars),
         })?;
         Ok(state.script_globals.retain(state.id, result))
     }
@@ -595,8 +646,8 @@ where
                     roots: &roots,
                 },
                 budget: &mut budget,
-                inline_caches: Some(&self.state.inline_caches),
-                bytecode_profiler: Some(&self.state.bytecode_profile),
+                inline_caches: Some(&self.state.sidecars),
+                bytecode_profiler: Some(&self.state.sidecars),
             })
         } else {
             vm.run_linked_program_host_budget_call(LinkedProgramHostBudgetCall {
@@ -605,8 +656,8 @@ where
                 args,
                 host: &mut host,
                 budget: &mut budget,
-                inline_caches: Some(&self.state.inline_caches),
-                bytecode_profiler: Some(&self.state.bytecode_profile),
+                inline_caches: Some(&self.state.sidecars),
+                bytecode_profiler: Some(&self.state.sidecars),
             })
         }
     }
@@ -672,8 +723,8 @@ where
                 roots: &roots,
             },
             budget: &mut budget,
-            inline_caches: Some(&self.state.inline_caches),
-            bytecode_profiler: Some(&self.state.bytecode_profile),
+            inline_caches: Some(&self.state.sidecars),
+            bytecode_profiler: Some(&self.state.sidecars),
         })?;
         persistent_value_to_owned(&value, &mut self.state.script_globals.heap)
     }
@@ -707,8 +758,8 @@ where
                 roots: &roots,
             },
             budget: &mut budget,
-            inline_caches: Some(call.inline_caches),
-            bytecode_profiler: Some(call.bytecode_profile),
+            inline_caches: Some(call.sidecars),
+            bytecode_profiler: Some(call.sidecars),
         })?;
         Ok(call.script_globals.retain(call.runtime_id, result))
     }
@@ -927,11 +978,9 @@ fn unknown_method(method: String) -> VmError {
 
 #[cfg(test)]
 mod tests {
-    use vela_bytecode::linked::{Instruction, InstructionKind};
-    use vela_bytecode::script_methods::ScriptMethodTable;
     use vela_bytecode::{
-        Constant, LinkedCodeObject, LinkedProgram, ProgramImage, Register, UnlinkedCodeObject,
-        UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram,
+        Constant, Register, UnlinkedCodeObject, UnlinkedInstruction, UnlinkedInstructionKind,
+        UnlinkedProgram,
     };
     use vela_host::access::HostAccess;
     use vela_host::mock::MockStateAdapter;
@@ -992,27 +1041,20 @@ mod tests {
 
     fn linked_only_runtime() -> RuntimeImpl<OwnedImage> {
         let engine = Engine::builder().build().expect("engine should build");
-        let program_image = ProgramImage::from_parts(
-            std::iter::empty::<vela_bytecode::UnlinkedCodeObject>(),
-            std::iter::empty::<String>(),
-            ScriptMethodTable::new(),
-            None,
-        );
-        let mut linked_program = LinkedProgram::new();
-        let main_name = linked_program.intern_debug_name("main");
-        let mut code = LinkedCodeObject::new(main_name, 1);
+        let mut code = vela_bytecode::UnlinkedCodeObject::new("main", 1);
         let value = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(7)));
-        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
-            dst: Register(0),
-            constant: value,
-        }));
-        code.push_instruction(Instruction::new(InstructionKind::Return {
-            src: Register(0),
-        }));
-        let main = linked_program.push_function(code);
-        linked_program.set_entry_point(main_name, main);
-
-        let image = RuntimeImage::from_parts_for_test(engine, program_image, linked_program);
+        code.push_instruction(vela_bytecode::UnlinkedInstruction::new(
+            vela_bytecode::UnlinkedInstructionKind::LoadConst {
+                dst: Register(0),
+                constant: value,
+            },
+        ));
+        code.push_instruction(vela_bytecode::UnlinkedInstruction::new(
+            vela_bytecode::UnlinkedInstructionKind::Return { src: Register(0) },
+        ));
+        let mut program = vela_bytecode::UnlinkedProgram::new();
+        program.insert_function(code);
+        let image = RuntimeImage::new(engine, program);
         let image = OwnedImage::from_image(image);
         let state = RuntimeState::for_image(&image);
         RuntimeImpl {

@@ -1,10 +1,5 @@
 use std::cell::{Cell, RefCell};
-use std::collections::BTreeMap;
-
-use vela_bytecode::linked::InstructionKind;
-use vela_bytecode::{
-    CacheSiteId, DebugNameId, InstructionOffset, LinkedCodeObject, LinkedProgram, ProgramImage,
-};
+use vela_bytecode::{CacheSiteId, DebugNameId, InstructionOffset};
 use vela_common::GlobalSlot;
 use vela_vm::{
     DynamicMethodInlineCacheEntry, HostInlineCacheEntry, MethodInlineCacheEntry,
@@ -276,86 +271,5 @@ impl BenchBytecodeProfiler {
 impl VmBytecodeProfiler for BenchBytecodeProfiler {
     fn record_instruction(&self, _function: DebugNameId, _offset: InstructionOffset) {
         self.hits.set(self.hits.get().saturating_add(1));
-    }
-}
-
-pub(crate) fn rebase_linked_cache_sites(linked_program: &mut LinkedProgram, image: &ProgramImage) {
-    let mut image_cache_sites_by_name = BTreeMap::<String, Vec<_>>::new();
-    for (_, image_code) in image.functions() {
-        image_cache_sites_by_name
-            .entry(image_code.name.clone())
-            .or_default()
-            .push(image_code.cache_sites.clone());
-    }
-
-    let function_names = linked_program
-        .functions()
-        .map(|(_, code)| linked_program.debug_name(code.debug_name).to_owned())
-        .collect::<Vec<_>>();
-    for ((_, linked_code), function_name) in linked_program.functions_mut().zip(function_names) {
-        let Some(image_cache_sites) = image_cache_sites_by_name
-            .get_mut(&function_name)
-            .and_then(|sites| (!sites.is_empty()).then(|| sites.remove(0)))
-        else {
-            continue;
-        };
-        let local_sites = linked_code.cache_sites.sites().to_vec();
-        let image_sites = image_cache_sites.sites().to_vec();
-        let mut remapped = vec![None; local_sites.len()];
-        for (local, image) in local_sites.iter().zip(image_sites.iter()) {
-            if let Some(slot) = remapped.get_mut(local.id.index()) {
-                *slot = Some(image.id);
-            }
-        }
-        rewrite_linked_instruction_cache_sites(linked_code, &remapped);
-        linked_code.cache_sites = image_cache_sites;
-    }
-}
-
-fn rewrite_linked_instruction_cache_sites(
-    code: &mut LinkedCodeObject,
-    remapped: &[Option<CacheSiteId>],
-) {
-    for instruction in &mut code.instructions {
-        match &mut instruction.kind {
-            InstructionKind::LoadGlobal {
-                cache_site: Some(site),
-                ..
-            }
-            | InstructionKind::CallNative {
-                cache_site: Some(site),
-                ..
-            }
-            | InstructionKind::GetRecordSlot {
-                cache_site: Some(site),
-                ..
-            }
-            | InstructionKind::SetRecordSlot {
-                cache_site: Some(site),
-                ..
-            }
-            | InstructionKind::CallMethod {
-                cache_site: Some(site),
-                ..
-            }
-            | InstructionKind::CallDynamicMethod {
-                cache_site: Some(site),
-                ..
-            } => remap_cache_site(site, remapped),
-            InstructionKind::HostRead { cache_site, .. }
-            | InstructionKind::HostWrite { cache_site, .. }
-            | InstructionKind::HostMutate { cache_site, .. }
-            | InstructionKind::HostRemove { cache_site, .. }
-            | InstructionKind::HostCall { cache_site, .. } => {
-                remap_cache_site(cache_site, remapped);
-            }
-            _ => {}
-        }
-    }
-}
-
-fn remap_cache_site(site: &mut CacheSiteId, remapped: &[Option<CacheSiteId>]) {
-    if let Some(Some(rebased)) = remapped.get(site.index()) {
-        *site = *rebased;
     }
 }

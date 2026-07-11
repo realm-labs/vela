@@ -296,7 +296,7 @@ fn read_name() {
 "#,
         )
         .expect("program should compile");
-    let shared_image = RuntimeImage::new(engine, program).into_shared();
+    let shared_image = RuntimeImage::new_compiled(engine, program).into_shared();
     let mut first = SharedRuntime::from_shared_image(shared_image.clone());
     let mut second = SharedRuntime::from_shared_image(shared_image);
 

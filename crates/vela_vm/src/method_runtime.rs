@@ -62,11 +62,8 @@ pub(crate) fn callback_param_len(
     let closure = expect_closure_ref(callback, runtime.heap.as_deref(), operation)?;
     match &closure.code {
         ClosureCode::Unlinked(code) => Ok(code.params.len()),
-        ClosureCode::Linked(function) => {
-            let program = runtime
-                .linked_program
-                .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
-            let code = program.function(*function).ok_or_else(|| {
+        ClosureCode::Linked { owner, function } => {
+            let code = owner.function(*function).ok_or_else(|| {
                 VmError::new(VmErrorKind::UnknownFunction {
                     name: format!("<linked closure#{}>", function.index()),
                 })
@@ -110,11 +107,8 @@ pub(crate) fn call_callback_with_protected_values<'value>(
             runtime.heap.as_deref_mut(),
             runtime.budget.as_deref_mut(),
         ),
-        ClosureCode::Linked(function) => {
-            let program = runtime
-                .linked_program
-                .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
-            let code = program.function(function).ok_or_else(|| {
+        ClosureCode::Linked { owner, function } => {
+            let code = owner.function(function).ok_or_else(|| {
                 VmError::new(VmErrorKind::UnknownFunction {
                     name: format!("<linked closure#{}>", function.index()),
                 })
@@ -122,7 +116,7 @@ pub(crate) fn call_callback_with_protected_values<'value>(
             runtime.vm.execute_linked_call(
                 LinkedExecutionCall {
                     code,
-                    program,
+                    program: &owner,
                     captures: captures.as_slice(),
                     args,
                     check_param_guards: true,

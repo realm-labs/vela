@@ -3,7 +3,7 @@ use std::hint::black_box;
 use std::time::Instant;
 
 use vela_bytecode::compiler::compile_program_source_with_registry;
-use vela_bytecode::{LinkedProgram, Linker, UnlinkedProgram};
+use vela_bytecode::{LinkedArtifact, LinkedProgram, Linker, UnlinkedProgram};
 use vela_common::SourceId;
 use vela_vm::Vm;
 use vela_vm::owned_value::OwnedValue;
@@ -75,7 +75,7 @@ fn run_iterations(
 pub(crate) fn link_program_for_vm(
     vm: &Vm,
     program: &UnlinkedProgram,
-) -> Result<LinkedProgram, Box<dyn Error>> {
+) -> Result<LinkedArtifact, Box<dyn Error>> {
     let mut linker = Linker::new();
     for id in vm.native_implementation_ids() {
         linker.add_native_implementation(id);

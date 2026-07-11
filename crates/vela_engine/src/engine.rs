@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use vela_bytecode::compiler::options::CompilerOptions;
-use vela_bytecode::{LinkError, LinkedProgram, Linker, ProgramImage, UnlinkedProgram};
+use vela_bytecode::{LinkError, LinkedArtifact, Linker, ProgramImage, UnlinkedProgram};
 use vela_common::HostMethodId;
 use vela_def::FunctionId;
 use vela_host::path::HostPath;
@@ -225,7 +225,7 @@ impl Engine {
         (entry.function)(receiver, args, host)
     }
 
-    pub fn link_program(&self, program: &UnlinkedProgram) -> Result<LinkedProgram, LinkError> {
+    pub fn link_program(&self, program: &UnlinkedProgram) -> Result<LinkedArtifact, LinkError> {
         let mut linker = Linker::with_registry(&self.definition_registry);
         for id in self.native_implementation_ids() {
             linker.add_native_implementation(id);

@@ -2,7 +2,7 @@ use super::*;
 
 const BUDGET_CEILING: u64 = 100_000;
 
-fn compile_fixture(source: &str) -> UnlinkedProgram {
+fn compile_fixture(source: &str) -> vela_bytecode::compiler::CompiledProgram {
     compile_standard_program_source(SourceId::new(1), source)
         .expect("runtime semantics fixture should compile")
 }

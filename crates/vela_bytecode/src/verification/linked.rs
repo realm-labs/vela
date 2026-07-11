@@ -155,7 +155,13 @@ fn verify_linked_code_object_with_context(
     for (index, instruction) in code.instructions.iter().enumerate() {
         verify_linked_instruction(function, code, index, instruction, context)?;
     }
-    verify_linked_cache_site_layout(function, code)?;
+    verify_linked_cache_site_layout(
+        function,
+        code,
+        context
+            .program
+            .is_some_and(|program| program.generation().get() != 0),
+    )?;
     Ok(())
 }
 
@@ -1200,11 +1206,12 @@ fn verify_linked_cache_site(
 fn verify_linked_cache_site_layout(
     function: &str,
     code: &LinkedCodeObject,
+    generation_global: bool,
 ) -> Result<(), VerificationError> {
     for (index, site) in code.cache_sites.sites().iter().enumerate() {
         let expected =
             CacheSiteId::new(u32::try_from(index).expect("cache site count exceeds u32::MAX"));
-        if site.id != expected {
+        if !generation_global && site.id != expected {
             return Err(error(
                 function,
                 None,

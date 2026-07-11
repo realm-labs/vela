@@ -18,7 +18,8 @@ fn main() {
 }
 "#,
     )
-    .expect("standard callback method source should compile");
+    .expect("standard callback method source should compile")
+    .into_bytecode();
     replace_call_method_id(
         &mut program,
         std_method_id("Array", "map"),
@@ -1004,6 +1005,7 @@ fn link_standard_native_test_program(program: &UnlinkedProgram) -> LinkedProgram
     linker
         .link_program(program)
         .expect("standard native test program should link")
+        .into_program()
 }
 
 impl VmInlineCaches for RecordingHostAccessCaches {

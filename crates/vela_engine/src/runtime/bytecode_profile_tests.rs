@@ -3,7 +3,7 @@ use vela_common::SourceId;
 use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
-use crate::runtime::{CallArgs, CallOptions, Runtime};
+use crate::runtime::{CallArgs, CallOptions, Runtime, RuntimeImage, SharedRuntime};
 
 #[test]
 fn runtime_bytecode_profile_counts_linked_instruction_offsets() {
@@ -24,7 +24,7 @@ fn main() {
     assert_eq!(
         runtime
             .state
-            .bytecode_profile
+            .bytecode_profile()
             .instruction_hit_count(main_name, InstructionOffset(0)),
         Some(0)
     );
@@ -39,7 +39,7 @@ fn main() {
     assert_eq!(
         runtime
             .state
-            .bytecode_profile
+            .bytecode_profile()
             .instruction_hit_count(main_name, InstructionOffset(0)),
         Some(1)
     );
@@ -50,7 +50,7 @@ fn main() {
     assert_eq!(
         runtime
             .state
-            .bytecode_profile
+            .bytecode_profile()
             .instruction_hit_count(main_name, InstructionOffset(0)),
         Some(2)
     );
@@ -82,7 +82,7 @@ fn main() {
     assert_eq!(
         runtime
             .state
-            .bytecode_profile
+            .bytecode_profile()
             .instruction_hit_count(initial_name, InstructionOffset(0)),
         Some(1)
     );
@@ -107,7 +107,7 @@ fn main() {
     assert_eq!(
         runtime
             .state
-            .bytecode_profile
+            .bytecode_profile()
             .instruction_hit_count(reloaded_name, InstructionOffset(0)),
         Some(0)
     );
@@ -122,9 +122,45 @@ fn main() {
     assert_eq!(
         runtime
             .state
-            .bytecode_profile
+            .bytecode_profile()
             .instruction_hit_count(reloaded_name, InstructionOffset(0)),
         Some(1)
+    );
+}
+
+#[test]
+fn shared_generation_keeps_runtime_profile_counters_isolated() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = engine
+        .compile_source_with_id(SourceId::new(1), "fn main() { return 7; }")
+        .expect("profile source should compile");
+    let shared = RuntimeImage::new_compiled(engine, program).into_shared();
+    let mut first = SharedRuntime::from_shared_image(shared.clone());
+    let second = SharedRuntime::from_shared_image(shared);
+    let main_name = first
+        .image
+        .linked_program()
+        .function(vela_bytecode::ScriptFunctionHandle::new(0))
+        .expect("main code")
+        .debug_name;
+
+    first
+        .call("main", CallArgs::new(), CallOptions::unbounded())
+        .expect("first runtime executes");
+
+    assert_eq!(
+        first
+            .state
+            .bytecode_profile()
+            .instruction_hit_count(main_name, InstructionOffset(0)),
+        Some(1)
+    );
+    assert_eq!(
+        second
+            .state
+            .bytecode_profile()
+            .instruction_hit_count(main_name, InstructionOffset(0)),
+        Some(0)
     );
 }
 
