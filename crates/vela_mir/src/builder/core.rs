@@ -18,6 +18,7 @@ pub(super) struct FunctionBuilder<'a> {
     pub(super) function: MirFunction,
     pub(super) current_block: crate::MirBlockId,
     locals: BTreeMap<HirLocalId, MirLocalId>,
+    pub(super) loop_stack: Vec<super::loops::LoopContext>,
 }
 
 impl<'a> FunctionBuilder<'a> {
@@ -63,6 +64,7 @@ impl<'a> FunctionBuilder<'a> {
             function,
             current_block,
             locals: BTreeMap::new(),
+            loop_stack: Vec::new(),
         })
     }
 
@@ -308,9 +310,13 @@ impl<'a> FunctionBuilder<'a> {
             HirStmtKind::Expr {
                 expression: None, ..
             } => Ok(()),
-            HirStmtKind::Break => Err(self.unsupported(origin, "break statement")),
-            HirStmtKind::Continue => Err(self.unsupported(origin, "continue statement")),
-            HirStmtKind::For { .. } => Err(self.unsupported(origin, "for statement")),
+            HirStmtKind::Break => self.lower_break(statement_id, origin),
+            HirStmtKind::Continue => self.lower_continue(statement_id, origin),
+            HirStmtKind::For {
+                patterns,
+                iterable,
+                body,
+            } => self.lower_for(statement_id, &patterns, iterable, body, origin),
             HirStmtKind::If(value) => self.lower_if_statement(&value, origin),
             HirStmtKind::Match(_) => Err(self.unsupported(origin, "match statement")),
         }
@@ -380,10 +386,12 @@ impl<'a> FunctionBuilder<'a> {
             HirExprKind::Binary { op, lhs, rhs } => {
                 self.lower_binary(expression, op, lhs, rhs, origin)
             }
-            HirExprKind::Assign { .. } => Err(self.unsupported(origin, "assignment expression")),
-            HirExprKind::Field(_) => Err(self.unsupported(origin, "field expression")),
+            HirExprKind::Assign { op, target, value } => {
+                self.lower_assignment(expression, op, target, value, origin)
+            }
+            HirExprKind::Field(field) => self.lower_field(expression, &field, origin),
             HirExprKind::Call(call) => self.lower_call(expression, &call, origin),
-            HirExprKind::Index(_) => Err(self.unsupported(origin, "index expression")),
+            HirExprKind::Index(index) => self.lower_index(expression, &index, origin),
             HirExprKind::Try { .. } => Err(self.unsupported(origin, "try expression")),
             HirExprKind::Array { .. } => Err(self.unsupported(origin, "array expression")),
             HirExprKind::Map { .. } => Err(self.unsupported(origin, "map expression")),
@@ -448,7 +456,7 @@ impl<'a> FunctionBuilder<'a> {
             })
     }
 
-    fn local(
+    pub(super) fn local(
         &self,
         local: HirLocalId,
         origin: MirSourceOrigin,

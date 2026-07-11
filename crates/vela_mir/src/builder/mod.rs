@@ -5,10 +5,12 @@
 //! semantic input boundary while Phase 2 grows by execution responsibility.
 
 mod aggregates;
+mod assignments;
 mod calls;
 mod control_flow;
 mod core;
 mod literals;
+mod loops;
 mod operators;
 
 use crate::{MirBuildError, MirFunctionOwner, MirLoweringInput, MirProgram, MirSourceOrigin};

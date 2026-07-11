@@ -1,4 +1,5 @@
 mod aggregate_patterns;
+mod assignments_builder;
 mod builder;
 mod call_guards;
 mod control;
@@ -7,6 +8,7 @@ mod dynamic_targets;
 mod evaluation_order;
 mod identity;
 mod lambda_targets;
+mod loops_builder;
 mod model;
 mod reservations;
 mod snapshot_validation;
