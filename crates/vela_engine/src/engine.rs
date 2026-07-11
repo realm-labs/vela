@@ -16,7 +16,7 @@ use vela_vm::owned_value::OwnedValue;
 use vela_vm::{HostExecution, Vm};
 
 use crate::builder::EngineBuilder;
-use crate::compiler_options::compiler_options_from_registry;
+use crate::compiler_options::{add_native_signature_hints, compiler_options_from_registry};
 use crate::method::{NativeMethodDesc, NativeMethodEntry};
 use crate::native::{
     ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
@@ -152,6 +152,19 @@ impl Engine {
     #[must_use]
     pub fn compiler_options(&self) -> CompilerOptions {
         let mut options = compiler_options_from_registry(&self.registry);
+        for desc in self
+            .native_functions
+            .values()
+            .map(|entry| &entry.desc)
+            .chain(self.host_native_functions.values().map(|entry| &entry.desc))
+            .chain(
+                self.context_host_native_functions
+                    .values()
+                    .map(|entry| &entry.desc),
+            )
+        {
+            options = add_native_signature_hints(options, desc);
+        }
         if self.reflection_policy.is_some() {
             options = options.with_native_module_root("reflect");
         }

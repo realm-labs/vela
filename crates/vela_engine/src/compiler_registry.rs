@@ -80,6 +80,7 @@ fn register_type_def(
 
 fn type_def(desc: &TypeDesc) -> TypeDef {
     let mut def = TypeDef::new(source_type_path("host", &desc.key.name))
+        .with_id(desc.key.id)
         .kind(definition_type_kind(desc.kind));
     if let Some(host_type_id) = desc.host_type_id {
         def = def.host_runtime_id(host_type_id.get().into());
@@ -211,7 +212,12 @@ fn source_function_path(package: &str, name: &str) -> DefPath {
 }
 
 fn source_type_path(package: &str, name: &str) -> DefPath {
-    DefPath::ty(package, std::iter::empty::<&str>(), name)
+    let mut parts = name
+        .split("::")
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>();
+    let type_name = parts.pop().unwrap_or(name);
+    DefPath::ty(package, parts, type_name)
 }
 
 fn source_field_path(package: &str, owner: &str, name: &str) -> DefPath {

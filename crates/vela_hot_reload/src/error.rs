@@ -342,6 +342,8 @@ fn compile_diagnostics(error: &CompileError) -> Vec<Diagnostic> {
         | CompileErrorKind::UnknownLocal(_)
         | CompileErrorKind::RegisterOverflow
         | CompileErrorKind::BytecodeVerification(_)
+        | CompileErrorKind::MirVerification(_)
+        | CompileErrorKind::MirBackend(_)
         | CompileErrorKind::UnsupportedSyntax(_) => Vec::new(),
         CompileErrorKind::InvalidIntLiteral { .. }
         | CompileErrorKind::InvalidFloatLiteral { .. }

@@ -61,7 +61,11 @@ fn compile_diagnostics(error: &CompileError) -> Option<&[Diagnostic]> {
         | CompileErrorKind::InvalidFloatLiteral { .. }
         | CompileErrorKind::RegisterOverflow
         | CompileErrorKind::BytecodeVerification(_)
-        | CompileErrorKind::UnsupportedSyntax(_) => None,
+        | CompileErrorKind::MirVerification(_)
+        | CompileErrorKind::MirBackend(_)
+        | CompileErrorKind::UnsupportedSyntax(_)
+        | CompileErrorKind::MirInput(_)
+        | CompileErrorKind::RegistrySnapshot(_) => None,
     }
 }
 

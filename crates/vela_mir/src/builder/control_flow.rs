@@ -1,6 +1,6 @@
 use vela_analysis::semantic_facts::OperatorTargetFact;
 use vela_common::PrimitiveTag;
-use vela_hir::body::{HirBinaryOp, HirElseBranch, HirIf, HirStmtKind};
+use vela_hir::body::{HirBinaryOp, HirElseBranch, HirExprKind, HirIf, HirStmtKind};
 use vela_hir::ids::{HirBlockId, HirExprId};
 
 use crate::{
@@ -55,8 +55,8 @@ impl FunctionBuilder<'_> {
         &mut self,
         expression: HirExprId,
         operation: HirBinaryOp,
-        left: HirExprId,
-        right: HirExprId,
+        _left: HirExprId,
+        _right: HirExprId,
         origin: MirSourceOrigin,
     ) -> Result<MirOperand, MirBuildError> {
         if !matches!(operation, HirBinaryOp::And | HirBinaryOp::Or) {
@@ -90,37 +90,93 @@ impl FunctionBuilder<'_> {
             }
         }
 
+        let mut pending = vec![expression];
+        let mut operands = Vec::new();
+        while let Some(candidate) = pending.pop() {
+            match self.body.expression(candidate).map(|record| &record.kind) {
+                Some(HirExprKind::Binary {
+                    op: Some(candidate_op),
+                    lhs: Some(lhs),
+                    rhs: Some(rhs),
+                }) if *candidate_op == operation => {
+                    pending.push(*rhs);
+                    pending.push(*lhs);
+                }
+                Some(_) => operands.push(candidate),
+                None => {
+                    return Err(self.inconsistent(
+                        origin,
+                        format!("logical chain contains missing expression {candidate:?}"),
+                    ));
+                }
+            }
+        }
+        if operands.len() < 2 {
+            return Err(self.inconsistent(origin, "logical chain has fewer than two operands"));
+        }
+
         let result = self
             .function
             .add_synthetic_local(MirValueType::Primitive(PrimitiveTag::Bool), origin);
-        let left_origin = self.expression_origin_for_control(left)?;
-        let left = self.lower_expression(left)?;
-        if self.current_is_terminated()? {
-            return Ok(MirOperand::Local(result));
-        }
-
-        let right_block = self.function.add_block();
+        // Allocate the first continuation before the shared exits. Besides
+        // retaining the canonical two-operand CFG, this lets longer chains
+        // append continuations without recursive lowering.
+        let first_next = self.function.add_block();
         let short_block = self.function.add_block();
         let join_block = self.function.add_block();
-        let (then_block, else_block, short_value) = match operation {
-            HirBinaryOp::And => (right_block, short_block, false),
-            HirBinaryOp::Or => (short_block, right_block, true),
-            _ => unreachable!("logical operator was checked above"),
-        };
-        self.function.set_terminator(
-            self.current_block,
-            MirTerminator::new(
-                left_origin,
-                MirTerminatorKind::Branch {
-                    condition: left,
-                    then_block,
-                    else_block,
-                },
-                MirEffect::PURE,
-                None,
-            ),
-        )?;
+        let short_value = operation == HirBinaryOp::Or;
 
+        for (index, operand) in operands[..operands.len() - 1].iter().enumerate() {
+            let operand_origin = self.expression_origin_for_control(*operand)?;
+            let value = self.lower_expression(*operand)?;
+            if self.current_is_terminated()? {
+                self.function.set_terminator(
+                    short_block,
+                    MirTerminator::new(
+                        origin,
+                        MirTerminatorKind::Unreachable,
+                        MirEffect::PURE,
+                        None,
+                    ),
+                )?;
+                self.function.set_terminator(
+                    join_block,
+                    MirTerminator::new(
+                        origin,
+                        MirTerminatorKind::Unreachable,
+                        MirEffect::PURE,
+                        None,
+                    ),
+                )?;
+                return Ok(MirOperand::Local(result));
+            }
+            let next = if index == 0 {
+                first_next
+            } else {
+                self.function.add_block()
+            };
+            let (then_block, else_block) = match operation {
+                HirBinaryOp::And => (next, short_block),
+                HirBinaryOp::Or => (short_block, next),
+                _ => unreachable!("logical operator was checked above"),
+            };
+            self.function.set_terminator(
+                self.current_block,
+                MirTerminator::new(
+                    operand_origin,
+                    MirTerminatorKind::Branch {
+                        condition: value,
+                        then_block,
+                        else_block,
+                    },
+                    MirEffect::PURE,
+                    None,
+                ),
+            )?;
+            self.current_block = next;
+        }
+
+        let last_block = self.current_block;
         self.current_block = short_block;
         self.assign_result(
             result,
@@ -129,11 +185,12 @@ impl FunctionBuilder<'_> {
         )?;
         self.jump_current_to(join_block, origin)?;
 
-        self.current_block = right_block;
-        let right_origin = self.expression_origin_for_control(right)?;
-        let right = self.lower_expression(right)?;
+        self.current_block = last_block;
+        let last = *operands.last().expect("logical chain is non-empty");
+        let last_origin = self.expression_origin_for_control(last)?;
+        let last = self.lower_expression(last)?;
         if !self.current_is_terminated()? {
-            self.assign_result(result, MirRvalue::Truthy { value: right }, right_origin)?;
+            self.assign_result(result, MirRvalue::Truthy { value: last }, last_origin)?;
             self.jump_current_to(join_block, origin)?;
         }
 
@@ -354,6 +411,11 @@ impl FunctionBuilder<'_> {
         expression: HirExprId,
         origin: MirSourceOrigin,
     ) -> Result<MirLocalId, MirBuildError> {
+        if self.input.targets().expression_guard(expression).is_some() {
+            return Ok(self
+                .function
+                .add_synthetic_local(MirValueType::Dynamic, origin));
+        }
         let analysis = self.input.analysis();
         let fact = analysis
             .expression(expression)

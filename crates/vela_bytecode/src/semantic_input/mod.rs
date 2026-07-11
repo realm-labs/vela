@@ -102,86 +102,12 @@ impl PreparedSemanticInput {
             .collect()
     }
 
-    pub(super) fn require_function_for_declaration(
-        &self,
-        declaration: HirDeclId,
-        origin: MirSourceOrigin,
-    ) -> CompileResult<FunctionId> {
-        let function = self
-            .targets
-            .function_for_declaration(declaration)
-            .ok_or_else(|| {
-                input_error(MirBuildError::InconsistentInput {
-                    origin,
-                    message: format!(
-                        "missing compile target for function declaration {declaration:?}"
-                    ),
-                })
-            })?;
-        let executable = self.targets.function(function).ok_or_else(|| {
-            input_error(MirBuildError::InconsistentInput {
-                origin,
-                message: format!(
-                    "function #{} is not a selected compile root",
-                    function.get()
-                ),
-            })
-        })?;
-        if executable.identity != vela_mir::CompileFunctionIdentity::Function(function) {
-            return Err(input_error(MirBuildError::InconsistentInput {
-                origin,
-                message: format!(
-                    "function declaration {declaration:?} maps to a method executable"
-                ),
-            }));
-        }
-        Ok(function)
-    }
-
-    pub(super) fn require_method_for_body_symbol(
-        &self,
-        body: HirBodyId,
-        symbol: &str,
-        method: MethodId,
-        origin: MirSourceOrigin,
-    ) -> CompileResult<MethodExecutableTarget> {
-        self.targets
-            .functions_for_body(body)
-            .iter()
-            .find_map(|function| {
-                if self
-                    .targets
-                    .function_descriptor(*function)
-                    .is_none_or(|descriptor| descriptor.canonical_symbol != symbol)
-                {
-                    return None;
-                }
-                let executable = self.targets.function(*function)?;
-                match executable.identity {
-                    vela_mir::CompileFunctionIdentity::Method(target)
-                        if target.method == method =>
-                    {
-                        Some(target)
-                    }
-                    vela_mir::CompileFunctionIdentity::Function(_)
-                    | vela_mir::CompileFunctionIdentity::Method(_) => None,
-                }
-            })
-            .ok_or_else(|| {
-                input_error(MirBuildError::InconsistentInput {
-                    origin,
-                    message: format!(
-                        "missing selected method target `{symbol}` ({method:?}) for HIR body {body:?}"
-                    ),
-                })
-            })
-    }
-
     #[cfg(test)]
     pub(super) const fn analysis(&self) -> &ExecutableAnalysisGeneration {
         &self.analysis
     }
 
+    #[cfg(test)]
     pub(super) const fn targets(&self) -> &CompileTargetSnapshot {
         &self.targets
     }

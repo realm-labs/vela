@@ -1489,6 +1489,31 @@ instruction selection. The handoff owns no fallback queries: physical backends
 consume its MIR target table, logical values, canonical CFG, effects, guards,
 origins, debug records, and safepoint metadata directly.
 
+### MIR Production Hard Switch
+
+Verified MIR is the sole production runtime body-lowering input. Every compile
+front door constructs Heavy HIR, one immutable analysis/compile-target
+generation, MIR, `MirBackendHandoff`, and existing bytecode. There is no
+backend selector, direct HIR body emitter, compatibility adapter, or fallback
+query. Source parsing and compile-target preparation remain a front-door
+service, while direct HIR traversal in `vela_bytecode` is limited to the
+compile-time const/schema evaluator and never emits runtime code.
+
+The bytecode MIR backend owns physical registers, constant/target interning,
+instruction selection, CFG layout, cache sites, guards, frame projection, and
+bytecode verification. MIR owns only logical liveness and safepoint/debug
+metadata; the VM continues conservative register root tracing. Existing VM
+instructions and instruction-budget observability are unchanged, MIR IDs stay
+generation-local, and Cranelift remains M22 work.
+
+Engine-owned reflection and native descriptors are authoritative compile-target
+inputs. Registered reflected types preserve their `TypeKey` ID and split
+qualified names into proper definition-path modules so exact host contracts
+resolve by short or qualified name. Descriptor types without a runtime
+`HostTypeId`, plus explicitly typed native boundary values, may be declared
+opaque through compiler options; arbitrary unresolved registry hints remain a
+compile-input error.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

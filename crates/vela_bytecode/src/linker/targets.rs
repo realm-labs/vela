@@ -63,6 +63,9 @@ impl LinkContext<'_, '_> {
         } else {
             if let Some(registry) = self.linker.registry
                 && registry.get(method_id.def_id()).and_then(Def::method_id) != Some(method_id)
+                && !vela_stdlib::STD_METHODS
+                    .iter()
+                    .any(|method| method.id() == method_id)
             {
                 return Err(LinkError::MissingMethodDefinition {
                     method: method.to_owned(),

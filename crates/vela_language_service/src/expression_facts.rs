@@ -36,7 +36,16 @@ pub(crate) fn fact_for_range(
     let graph = databases.hir_db().graph();
     let facts = AnalysisFacts::from_module_graph_and_schema(graph, databases.schema_db().facts());
     let expression = graph.expression_containing_span(span_for_range(source_id, range)?)?;
-    facts.expression(expression).cloned()
+    facts
+        .expression(expression)
+        .map(widen_public_expression_fact)
+}
+
+fn widen_public_expression_fact(fact: &TypeFact) -> TypeFact {
+    match fact {
+        TypeFact::OptionSome { some } => TypeFact::option((**some).clone()),
+        _ => fact.clone(),
+    }
 }
 
 #[derive(Clone, Debug, Default)]

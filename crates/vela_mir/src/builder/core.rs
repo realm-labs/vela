@@ -141,6 +141,7 @@ impl<'a> FunctionBuilder<'a> {
             self.install_body_locals(body, bindings)?;
         }
         self.install_body_locals(self.body, bindings)?;
+        self.widen_reassigned_locals(&default_bodies, bindings);
 
         if self.input.config().emit_debug_locals {
             self.install_capture_debug_locals(bindings)?;
@@ -168,6 +169,45 @@ impl<'a> FunctionBuilder<'a> {
             }
         }
         Ok(())
+    }
+
+    fn widen_reassigned_locals(
+        &mut self,
+        default_bodies: &[&HirBody],
+        bindings: &vela_hir::binding::BindingMap,
+    ) {
+        let bodies = default_bodies
+            .iter()
+            .copied()
+            .chain(std::iter::once(self.body));
+        for body in bodies {
+            for expression in body.expressions.values() {
+                let vela_hir::body::HirExprKind::Assign {
+                    target: Some(target),
+                    value: Some(value),
+                    ..
+                } = expression.kind
+                else {
+                    continue;
+                };
+                let Some(vela_hir::binding::BindingResolution::Local(hir_local)) =
+                    bindings.resolution(target)
+                else {
+                    continue;
+                };
+                let Some(storage) = self.locals.get(hir_local).copied() else {
+                    continue;
+                };
+                let assigned = value_type(self.input.analysis().expression(value));
+                let current = self
+                    .function
+                    .local(storage)
+                    .map_or(crate::MirValueType::Dynamic, |local| local.value_type);
+                if assigned != current {
+                    self.function.widen_local_to_dynamic(storage);
+                }
+            }
+        }
     }
 
     fn install_captures(

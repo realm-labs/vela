@@ -3,10 +3,8 @@
 > **Track:** middle IR, bytecode lowering architecture, optimizer/JIT
 > foundation after Heavy HIR
 > **Document status:** Codex goal-mode execution plan
-> **Execution status:** Phase 0 and the bytecode-independent Phase 1 model are
-> complete; production compilation builds and validates one immutable
-> executable-analysis/compile-target generation, and Phase 2 MIR builder work
-> is active
+> **Execution status:** Complete. Phases 0-7 are implemented and validated;
+> verified MIR is the only production runtime body-lowering input.
 > **Compatibility policy:** breaking pre-release MIR, bytecode-compiler, and
 > internal test APIs are allowed. Preserve Vela language semantics, evaluation
 > order, VM behavior, diagnostics, execution budgets, GC roots, HostAccess
@@ -804,47 +802,47 @@ this phase with two callable production backends.
 
 ### 12.1 Bytecode Backend
 
-- [ ] Add the focused directory module
+- [x] Add the focused directory module
   `vela_bytecode::compiler::mir_backend`; it consumes verified MIR and does not
   traverse HIR expression/statement/pattern kinds or AnalysisFacts.
-- [ ] Assign physical registers and preserve register-overflow diagnostics.
-- [ ] Emit existing unlinked instruction families, constants, host targets,
+- [x] Assign physical registers and preserve register-overflow diagnostics.
+- [x] Emit existing unlinked instruction families, constants, host targets,
   nested code objects, frame slots, parameter/return guards, source spans, and
   cache sites.
-- [ ] Linearize CFG and resolve jump targets without source-HIR traversal or
+- [x] Linearize CFG and resolve jump targets without source-HIR traversal or
   migration jump-patching helpers.
-- [ ] Preserve linker/verifier contracts, stable function/method identity,
+- [x] Preserve linker/verifier contracts, stable function/method identity,
   ProgramVersion ownership, cache/profile invalidation, and hot-reload ABI.
 
 ### 12.2 Behavior Comparison And Production Switch
 
-- [ ] Run frozen Phase 0 fixtures through the MIR backend and compare runtime
+- [x] Run frozen Phase 0 fixtures through the MIR backend and compare runtime
   values, side effects, diagnostics, spans, frame/debug metadata, guard
   behavior, cache-site families, and hot-reload identity.
-- [ ] Compare selected bytecode structure where an instruction or metadata
+- [x] Compare selected bytecode structure where an instruction or metadata
   family is contractually important. Do not require incidental register or
   block numbering to match.
-- [ ] Cover instruction-budget limit edges for loops, calls, guards, host
+- [x] Cover instruction-budget limit edges for loops, calls, guards, host
   boundaries, and try propagation; do not silently change budget observability.
-- [ ] Route every source/program/module/function/method/lambda production compile
+- [x] Route every source/program/module/function/method/lambda production compile
   API through Heavy HIR + analysis/target snapshot -> MIR -> bytecode.
-- [ ] Verify no production option, environment variable, test flag, or feature
+- [x] Verify no production option, environment variable, test flag, or feature
   can select the old backend.
 
 ### 12.3 Deletion
 
-- [ ] Delete `compiler/hir_lowering.rs` and its direct-lowering submodules.
-- [ ] Delete direct `compile_hir_expression`, statement/pattern/root/value-body
+- [x] Delete `compiler/hir_lowering.rs` and its direct-lowering submodules.
+- [x] Delete direct `compile_hir_expression`, statement/pattern/root/value-body
   dispatch and old `Compiler<'...>` body-emission state.
-- [ ] Delete old source-control-flow jump patching, direct register allocation,
+- [x] Delete old source-control-flow jump patching, direct register allocation,
   and emission helpers once the MIR backend owns their replacements.
-- [ ] Delete compiler-local semantic/type/shape/target flows whose facts moved
+- [x] Delete compiler-local semantic/type/shape/target flows whose facts moved
   to HIR, analysis, or MIR; retain only explicitly owned front-end/const/backend
   data.
-- [ ] Delete test-only dual-backend entry points, comparison flags, migration
+- [x] Delete test-only dual-backend entry points, comparison flags, migration
   adapters, aliases, temporary names, and tests that prove both backends remain
   callable.
-- [ ] Keep source parsing/HIR construction only at the compiler front door and
+- [x] Keep source parsing/HIR construction only at the compiler front door and
   const/schema HIR traversal only in the documented compile-time evaluator.
 
 Focused validation before committing the checkpoint:
@@ -872,28 +870,28 @@ const/schema evaluator; it must not emit runtime bytecode bodies.
 Purpose: remove migration residue and leave a clean internal API for debugger
 and M22 planning without implementing those milestones.
 
-- [ ] Ensure `vela_mir` contains no syntax, bytecode, VM, engine, LSP, or runtime
+- [x] Ensure `vela_mir` contains no syntax, bytecode, VM, engine, LSP, or runtime
   execution dependency.
-- [ ] Ensure the bytecode MIR backend consumes only verified MIR plus physical
+- [x] Ensure the bytecode MIR backend consumes only verified MIR plus physical
   backend context.
-- [ ] Ensure all body-semantic HIR traversal outside `vela_mir` is gone from
+- [x] Ensure all body-semantic HIR traversal outside `vela_mir` is gone from
   runtime bytecode lowering. Document the narrow source-front-door and
   const/schema evaluator allowlist.
-- [ ] Ensure exact GC roots are not inferred from pre-register-allocation MIR
+- [x] Ensure exact GC roots are not inferred from pre-register-allocation MIR
   liveness in the bytecode VM; conservative tracing remains intact.
-- [ ] Ensure guard metadata describes assumptions/slow paths, not implemented
+- [x] Ensure guard metadata describes assumptions/slow paths, not implemented
   runtime deoptimization.
-- [ ] Ensure no MIR storage, IDs, or snapshots leak into public engine/runtime
+- [x] Ensure no MIR storage, IDs, or snapshots leak into public engine/runtime
   APIs, serialized bytecode ABI, or hot-reload compatibility identity.
-- [ ] Split active MIR and touched bytecode compiler files below 1200 lines by
+- [x] Split active MIR and touched bytecode compiler files below 1200 lines by
   model, builder, verifier, analysis, backend, and tests.
-- [ ] Remove migration comments, temporary tests, compatibility helpers, and
+- [x] Remove migration comments, temporary tests, compatibility helpers, and
   transitional names such as `new_mir`, `mir_v2`, `legacy`, `compat`, or
   `temporary` where they describe the completed migration rather than domain
   behavior.
-- [ ] Update `docs/decisions.md` if implementation resolves a new MIR model,
+- [x] Update `docs/decisions.md` if implementation resolves a new MIR model,
   budget, debug, root-map, or backend decision not already recorded.
-- [ ] Update `docs/progress.md` only after focused and workspace validation pass.
+- [x] Update `docs/progress.md` only after focused and workspace validation pass.
 
 Architecture audits:
 
@@ -927,44 +925,44 @@ partial MIR implementation.
 
 ### 14.1 Required Behavior Matrix
 
-- [ ] Literals: all scalar widths/suffixes, invalid numeric diagnostics,
+- [x] Literals: all scalar widths/suffixes, invalid numeric diagnostics,
   strings/bytes/chars, interpolation ordering, unit/null/tuple distinctions.
-- [ ] Evaluation order: nested calls, short-circuit operators, side-effecting
+- [x] Evaluation order: nested calls, short-circuit operators, side-effecting
   receivers/indexes/RHS, compound assignment, aliasing, and single evaluation.
-- [ ] Control flow: if/else values, match/guards, loops, ranges, iterators,
+- [x] Control flow: if/else values, match/guards, loops, ranges, iterators,
   break/continue/return, unreachable paths, and try propagation.
-- [ ] Bindings: parameters, defaults, locals, destructuring, pattern bindings,
+- [x] Bindings: parameters, defaults, locals, destructuring, pattern bindings,
   captures, nested/transitive lambdas, and frame debug names/spans.
-- [ ] Calls: script, local closure, lambda, native, stdlib, value method, script
+- [x] Calls: script, local closure, lambda, native, stdlib, value method, script
   method, dynamic, named/default arguments, and return guards.
-- [ ] Values: arrays, maps, sets, records, enums, tuples, field/index access,
+- [x] Values: arrays, maps, sets, records, enums, tuples, field/index access,
   constructors, projections, and mutations.
-- [ ] Host/reflection: HostAccess read/write/mutate/remove/call, dynamic indexes,
+- [x] Host/reflection: HostAccess read/write/mutate/remove/call, dynamic indexes,
   permissions, read-only fields, stale refs, reflection policy, and error spans.
-- [ ] Runtime contracts: instruction/memory/call-depth budgets, GC under
+- [x] Runtime contracts: instruction/memory/call-depth budgets, GC under
   allocation/calls/closures, conservative roots, bytecode verification, cache
   sites, profile ownership, linking, hot reload identity/invalidation, and
   runnable examples.
-- [ ] Diagnostics: existing error code, message, primary span, labels, and
+- [x] Diagnostics: existing error code, message, primary span, labels, and
   candidate/repair behavior where currently asserted.
 
 ### 14.2 Completion Criteria
 
-- [ ] `vela_mir` model, builder, verifier, liveness, debug metadata, and tests
+- [x] `vela_mir` model, builder, verifier, liveness, debug metadata, and tests
   cover every emitted MIR form.
-- [ ] MIR-to-bytecode covers every currently executable language behavior.
-- [ ] Verified MIR is the single runtime body-lowering input.
-- [ ] The old direct Heavy-HIR-to-bytecode lowering path and migration oracle are
+- [x] MIR-to-bytecode covers every currently executable language behavior.
+- [x] Verified MIR is the single runtime body-lowering input.
+- [x] The old direct Heavy-HIR-to-bytecode lowering path and migration oracle are
   deleted.
-- [ ] No compatibility backend, fallback, feature flag, alias, temporary helper,
+- [x] No compatibility backend, fallback, feature flag, alias, temporary helper,
   transitional test, or migration naming remains.
-- [ ] MIR IDs remain internal/generation-local and stable runtime identities are
+- [x] MIR IDs remain internal/generation-local and stable runtime identities are
   preserved.
-- [ ] VM instructions and semantics remain unchanged; any separately approved
+- [x] VM instructions and semantics remain unchanged; any separately approved
   metadata-only change is documented.
-- [ ] JIT implementation remains deferred to M22.
-- [ ] All active affected source/test files satisfy the 1200-line guideline.
-- [ ] `docs/progress.md` describes MIR as complete only after all final commands
+- [x] JIT implementation remains deferred to M22.
+- [x] All active affected source/test files satisfy the 1200-line guideline.
+- [x] `docs/progress.md` describes MIR as complete only after all final commands
   and audits pass.
 
 Final validation:

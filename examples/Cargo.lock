@@ -179,13 +179,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
 
 [[package]]
-name = "vela_bytecode"
+name = "vela_analysis"
 version = "0.1.0"
 dependencies = [
  "vela_common",
  "vela_def",
  "vela_hir",
+ "vela_reflect",
+ "vela_registry",
+ "vela_syntax",
+]
+
+[[package]]
+name = "vela_bytecode"
+version = "0.1.0"
+dependencies = [
+ "vela_analysis",
+ "vela_common",
+ "vela_def",
+ "vela_hir",
  "vela_host",
+ "vela_mir",
  "vela_registry",
  "vela_stdlib",
  "vela_syntax",
@@ -243,6 +257,7 @@ name = "vela_hir"
 version = "0.1.0"
 dependencies = [
  "vela_common",
+ "vela_def",
  "vela_syntax",
 ]
 
@@ -275,6 +290,16 @@ dependencies = [
  "syn",
  "vela_common",
  "vela_def",
+]
+
+[[package]]
+name = "vela_mir"
+version = "0.1.0"
+dependencies = [
+ "vela_analysis",
+ "vela_common",
+ "vela_def",
+ "vela_hir",
 ]
 
 [[package]]

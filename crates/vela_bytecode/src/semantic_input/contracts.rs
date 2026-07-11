@@ -6,7 +6,8 @@ use vela_analysis::contracts::{
     check_expected_contract, check_expected_contract_at,
 };
 use vela_analysis::literals::{
-    LiteralPrimitiveContext, NumericLiteralUse, supports_deferred_numeric_literal,
+    LiteralPrimitiveContext, NumericLiteralKind, NumericLiteralUse,
+    supports_deferred_numeric_literal,
 };
 use vela_analysis::semantic_facts::OperatorTargetFact;
 use vela_analysis::type_fact::TypeFact;
@@ -372,13 +373,24 @@ impl GenerationBuilder<'_, '_> {
                     (Some(literal), None) => (rhs, literal),
                     (Some(_), Some(_)) | (None, None) => continue,
                 };
-                let context = match analysis.expression(peer) {
-                    Some(TypeFact::Primitive(primitive)) if primitive.numeric_tag().is_some() => {
-                        LiteralPrimitiveContext::Expected(*primitive)
+                let operator = analysis.operator_target(expression.id);
+                let context = match (operator, analysis.expression(peer)) {
+                    (Some(OperatorTargetFact::Binary(_)), Some(TypeFact::Primitive(primitive)))
+                        if primitive.numeric_tag().is_some()
+                            && matches!(literal.kind(), NumericLiteralKind::Float)
+                                == matches!(primitive, PrimitiveTag::F32 | PrimitiveTag::F64) =>
+                    {
+                        if operation == HirBinaryOp::Add
+                            && matches!(literal.kind(), NumericLiteralKind::Float)
+                            && literal.supports_deferred_operation(operation)
+                        {
+                            LiteralPrimitiveContext::DeferredDynamic
+                        } else {
+                            LiteralPrimitiveContext::Expected(*primitive)
+                        }
                     }
-                    _ if analysis.operator_target(expression.id)
-                        == Some(OperatorTargetFact::Dynamic)
-                        && literal.supports_deferred_operation(operation) =>
+                    (Some(OperatorTargetFact::Dynamic), _)
+                        if literal.supports_deferred_operation(operation) =>
                     {
                         LiteralPrimitiveContext::DeferredDynamic
                     }
@@ -432,6 +444,9 @@ impl GenerationBuilder<'_, '_> {
                     ),
                 ..
             } => ContractActual::Exact(TypeFact::BOOL),
+            HirExprKind::Tuple { .. } | HirExprKind::Array { .. } | HirExprKind::Map { .. } => {
+                analyzed_contract_actual(analysis.expression(expression))
+            }
             _ => ContractActual::Dynamic,
         })
     }

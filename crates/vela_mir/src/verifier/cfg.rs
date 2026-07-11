@@ -133,11 +133,15 @@ pub(crate) fn analyze(verifier: &FunctionVerifier<'_>) -> Result<FunctionGraph, 
     }
 
     let reachable = reachable_blocks(entry, &successors);
-    if let Some(block) = blocks
-        .iter()
-        .copied()
-        .find(|block| !reachable.contains(block))
-    {
+    if let Some(block) = blocks.iter().copied().find(|block| {
+        if reachable.contains(block) {
+            return false;
+        }
+        !matches!(
+            function.block(*block).and_then(|block| block.terminator()),
+            Some(terminator) if matches!(terminator.kind, MirTerminatorKind::Unreachable)
+        )
+    }) {
         let origin = function
             .block(block)
             .and_then(|block| block.terminator())

@@ -74,6 +74,14 @@ impl GenerationBuilder<'_, '_> {
         origin: MirSourceOrigin,
     ) -> CompileResult<Vec<CompileDynamicCallArgument>> {
         require_mode(placement, CallPlacementModeFact::Dynamic, origin)?;
+        self.dynamic_argument_values_from_source(placement, origin)
+    }
+
+    pub(super) fn dynamic_argument_values_from_source(
+        &self,
+        placement: &CallArgumentPlacementFact,
+        origin: MirSourceOrigin,
+    ) -> CompileResult<Vec<CompileDynamicCallArgument>> {
         placement
             .source_order
             .iter()

@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 pub struct CompilerOptions {
     pub(super) host_index_capabilities: HashMap<String, HostIndexCapabilityInfo>,
     pub(super) native_module_roots: HashSet<String>,
+    pub(super) opaque_external_type_hints: HashSet<String>,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -39,8 +40,19 @@ impl CompilerOptions {
         self
     }
 
+    /// Allows an engine-owned native signature to name an opaque boundary type.
+    #[must_use]
+    pub fn with_opaque_external_type_hint(mut self, name: impl Into<String>) -> Self {
+        self.opaque_external_type_hints.insert(name.into());
+        self
+    }
+
     #[must_use]
     pub fn host_index_capability(&self, type_name: &str) -> Option<&HostIndexCapabilityInfo> {
         self.host_index_capabilities.get(type_name)
+    }
+
+    pub(super) fn allows_opaque_external_type_hint(&self, name: &str) -> bool {
+        self.opaque_external_type_hints.contains(name)
     }
 }

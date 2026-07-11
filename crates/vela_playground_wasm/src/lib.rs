@@ -166,6 +166,12 @@ fn compile_error_response(error: CompileError) -> PlaygroundResponse {
         CompileErrorKind::BytecodeVerification(error) => {
             single_error_response(format!("bytecode verification failed: {error:?}"))
         }
+        CompileErrorKind::MirVerification(error) => {
+            single_error_response(format!("MIR verification failed: {error}"))
+        }
+        CompileErrorKind::MirBackend(message) => {
+            single_error_response(format!("MIR bytecode backend failed: {message}"))
+        }
         CompileErrorKind::UnsupportedSyntax(message) => {
             single_error_response(format!("unsupported syntax: {message}"))
         }

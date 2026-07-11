@@ -37,6 +37,8 @@ impl CompileError {
             | CompileErrorKind::UnknownLocal(_)
             | CompileErrorKind::RegisterOverflow
             | CompileErrorKind::BytecodeVerification(_)
+            | CompileErrorKind::MirVerification(_)
+            | CompileErrorKind::MirBackend(_)
             | CompileErrorKind::UnsupportedSyntax(_) => return None,
             CompileErrorKind::MirInput(error) => {
                 Diagnostic::error(format!("inconsistent compiler MIR input: {error}"))
@@ -64,6 +66,8 @@ pub enum CompileErrorKind {
     InvalidFloatLiteral { literal: String, error: String },
     RegisterOverflow,
     BytecodeVerification(VerificationError),
+    MirVerification(Box<vela_mir::MirVerifyError>),
+    MirBackend(String),
     UnsupportedSyntax(&'static str),
     MirInput(Box<vela_mir::MirBuildError>),
     RegistrySnapshot(String),

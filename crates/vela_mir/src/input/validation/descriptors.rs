@@ -331,19 +331,6 @@ fn validate_fields(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildErro
                 &format!("field #{} contract", field.get()),
             )?;
         }
-        match (owner.class, descriptor.host_runtime) {
-            (CompileTypeClass::Host { .. }, _) | (_, None) => {}
-            (_, Some(runtime)) => {
-                return Err(validator.error(
-                    origin,
-                    format!(
-                        "non-host field #{} carries runtime host field #{}",
-                        field.get(),
-                        runtime.get()
-                    ),
-                ));
-            }
-        }
     }
     Ok(())
 }

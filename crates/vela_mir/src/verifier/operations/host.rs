@@ -126,14 +126,7 @@ pub(super) fn verify_host(
             target, arguments, ..
         } => {
             verify_host_method(verifier, origin, target)?;
-            let receiver_readable = match result.terminal {
-                TerminalAccess::Root => true,
-                TerminalAccess::Field { readable, .. } | TerminalAccess::Index { readable, .. } => {
-                    readable
-                }
-            };
-            if !receiver_readable
-                || !matches!(result.state, HostState::Exact(owner) if owner == target.owner)
+            if !matches!(result.state, HostState::Exact(owner) if owner == target.owner)
                 || !arity_accepts(&target.signature, arguments.len())
             {
                 return Err(host_error(
@@ -256,7 +249,13 @@ fn verify_prefix_access(
             MirHostPathSegment::Index { capability, .. }
             | MirHostPathSegment::Key { capability, .. }
             | MirHostPathSegment::ConstantIndex { capability, .. }
-            | MirHostPathSegment::ConstantKey { capability, .. } => capability.readable,
+            | MirHostPathSegment::ConstantKey { capability, .. } => {
+                capability.readable
+                    || capability.writable
+                    || capability.mutable
+                    || capability.removable
+                    || capability.value.is_some()
+            }
         };
         if !readable {
             return Err(host_error(
@@ -297,7 +296,12 @@ fn require_terminal(
             },
         ) => writable || variant,
         (HostAccessKind::Write, TerminalAccess::Index { writable, .. }) => writable,
-        (HostAccessKind::Mutate, TerminalAccess::Field { writable, .. }) => writable,
+        (
+            HostAccessKind::Mutate,
+            TerminalAccess::Field {
+                writable, variant, ..
+            },
+        ) => writable || variant,
         (HostAccessKind::Mutate, TerminalAccess::Index { mutable, .. }) => mutable,
         (HostAccessKind::Remove, TerminalAccess::Index { removable, .. }) => removable,
         (HostAccessKind::Read, TerminalAccess::Root)

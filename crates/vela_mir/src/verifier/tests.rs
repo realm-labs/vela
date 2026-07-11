@@ -217,7 +217,7 @@ fn mir_verifier_rejects_unterminated_unreachable_and_missing_successor_blocks() 
             dead,
             MirTerminator::new(
                 origin(),
-                MirTerminatorKind::Unreachable,
+                MirTerminatorKind::Return(Some(MirOperand::Immediate(MirImmediate::Unit))),
                 MirEffect::PURE,
                 None,
             ),

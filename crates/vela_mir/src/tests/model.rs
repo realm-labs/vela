@@ -479,7 +479,8 @@ fn mir_model_keeps_contextual_literals_static_keys_and_traps_explicit() {
             .expect("valid contextual integer")
             .deferred()
             .expect("contextual integer remains deferred")
-            .clone(),
+            .clone()
+            .into(),
             literal_side: MirLiteralSide::Right,
         },
         MirEffect::PURE,

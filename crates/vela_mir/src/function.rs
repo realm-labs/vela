@@ -572,6 +572,12 @@ impl MirFunction {
         self.locals.iter()
     }
 
+    pub(crate) fn widen_local_to_dynamic(&mut self, local: MirLocalId) {
+        if let Some(local) = self.locals.get_mut(local) {
+            local.value_type = MirValueType::Dynamic;
+        }
+    }
+
     #[must_use]
     pub fn parameters(&self) -> &[MirFunctionParameter] {
         &self.parameters

@@ -186,6 +186,7 @@ pub(super) fn field_fact(
             if matches!(receiver, TypeFact::Host { .. }) {
                 schema
                     .host_field_fact(owner, name)
+                    .or_else(|| schema.field_fact(owner, name))
                     .or_else(|| schema.method_fact(owner, name))
             } else {
                 schema

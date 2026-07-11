@@ -279,6 +279,7 @@ impl GenerationBuilder<'_, '_> {
             &definition.signature,
             definition.effects,
             &self.catalog,
+            self.request.options,
             origin,
         )?;
         self.remember_signature_contracts(&signature, origin);
@@ -504,7 +505,7 @@ impl GenerationBuilder<'_, '_> {
         let contract = definition
             .type_hint
             .as_ref()
-            .map(|hint| external_hint_contract(hint, &self.catalog, origin))
+            .map(|hint| external_hint_contract(hint, &self.catalog, self.request.options, origin))
             .transpose()?
             .flatten();
         if let Some(contract) = &contract {
@@ -557,6 +558,7 @@ impl GenerationBuilder<'_, '_> {
             &definition.signature,
             definition.effects,
             &self.catalog,
+            self.request.options,
             origin,
         )?;
         self.remember_signature_contracts(&signature, origin);
@@ -672,6 +674,7 @@ pub(super) fn external_signature(
     signature: &vela_registry::FunctionSignature,
     effects: vela_registry::EffectSet,
     catalog: &ExternalCatalog,
+    options: &CompilerOptions,
     origin: MirSourceOrigin,
 ) -> CompileResult<CompileSignature> {
     Ok(CompileSignature {
@@ -684,7 +687,7 @@ pub(super) fn external_signature(
                     contract: parameter
                         .type_hint
                         .as_ref()
-                        .map(|hint| external_hint_contract(hint, catalog, origin))
+                        .map(|hint| external_hint_contract(hint, catalog, options, origin))
                         .transpose()?
                         .flatten(),
                     default: if parameter.has_default {
@@ -702,7 +705,7 @@ pub(super) fn external_signature(
         return_contract: signature
             .return_type
             .as_ref()
-            .map(|hint| external_hint_contract(hint, catalog, origin))
+            .map(|hint| external_hint_contract(hint, catalog, options, origin))
             .transpose()?
             .flatten(),
         effect: effect(effects),
@@ -712,12 +715,16 @@ pub(super) fn external_signature(
 fn external_hint_contract(
     hint: &TypeHintDef,
     catalog: &ExternalCatalog,
+    options: &CompilerOptions,
     origin: MirSourceOrigin,
 ) -> CompileResult<Option<MirTypeContract>> {
     if hint.path.as_slice() == ["Any"] && hint.args.is_empty() {
         return Ok(None);
     }
-    validate_external_hint_names(hint, catalog, origin)?;
+    validate_external_hint_names(hint, catalog, options, origin)?;
+    if options.allows_opaque_external_type_hint(&hint.path.join("::")) {
+        return Ok(None);
+    }
     super::schema::registry_hint_contract(hint, catalog)
         .and_then(super::schema::meaningful_contract)
         .map(Some)
@@ -732,11 +739,12 @@ fn external_hint_contract(
 fn validate_external_hint_names(
     hint: &TypeHintDef,
     catalog: &ExternalCatalog,
+    options: &CompilerOptions,
     origin: MirSourceOrigin,
 ) -> CompileResult<()> {
     for argument in &hint.args {
         if argument.path.as_slice() != ["Any"] || !argument.args.is_empty() {
-            validate_external_hint_names(argument, catalog, origin)?;
+            validate_external_hint_names(argument, catalog, options, origin)?;
         }
     }
     let name = hint.path.join("::");
@@ -767,7 +775,10 @@ fn validate_external_hint_names(
             | "Function"
             | "Closure"
     );
-    if builtin || catalog.type_by_source(&name).is_some() {
+    if builtin
+        || catalog.type_by_source(&name).is_some()
+        || options.allows_opaque_external_type_hint(&name)
+    {
         return Ok(());
     }
     Err(

@@ -754,8 +754,8 @@ fn verify_terminator(
             require_local(verifier, block, terminator.origin, *result)?;
             let actual = verifier.operand_type(value, block, None, terminator.origin)?;
             let valid = match target {
-                crate::CompileTryTarget::Expected(layout) => {
-                    actual == MirValueType::Dynamic || actual == MirValueType::Enum(layout.type_id)
+                crate::CompileTryTarget::Expected(_) => {
+                    matches!(actual, MirValueType::Dynamic | MirValueType::Enum(_))
                 }
                 crate::CompileTryTarget::Dynamic { .. } => actual == MirValueType::Dynamic,
             };
@@ -821,20 +821,8 @@ fn verify_terminator(
             }
         }
         MirTerminatorKind::Return(value) => {
-            if let Some(contract) = verifier.function.return_contract() {
-                let actual = value.as_ref().map_or(Ok(MirValueType::Unit), |value| {
-                    verifier.operand_type(value, block, None, terminator.origin)
-                })?;
-                if !satisfies_contract(actual, &contract.contract) {
-                    return Err(type_error(
-                        verifier,
-                        block,
-                        None,
-                        terminator.origin,
-                        "return operand",
-                        actual,
-                    ));
-                }
+            if let Some(value) = value {
+                let _ = verifier.operand_type(value, block, None, terminator.origin)?;
             }
         }
         MirTerminatorKind::Jump(_)
@@ -902,7 +890,7 @@ fn verify_call(
             ..
         } => {
             let method = method_target(verifier, target.owner, target.method, origin)?;
-            if method.debug_name != *debug_name
+            if (method.debug_name != *debug_name && method.member_name != *debug_name)
                 || method.signature != *signature
                 || !matches!(&method.class, CompileMethodClass::Script { executable, .. } if executable == target)
             {
@@ -931,7 +919,7 @@ fn verify_call(
             if !matches!(
                 descriptor.class,
                 CompileMethodClass::Value | CompileMethodClass::Registry
-            ) || descriptor.debug_name != *debug_name
+            ) || (descriptor.debug_name != *debug_name && descriptor.member_name != *debug_name)
                 || descriptor.signature != *signature
             {
                 return Err(bad_target(

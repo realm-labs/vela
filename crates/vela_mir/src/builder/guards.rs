@@ -1,8 +1,8 @@
 use vela_hir::ids::HirExprId;
 
 use crate::{
-    MirBuildError, MirEffect, MirGuard, MirGuardAssumption, MirOperand, MirSourceOrigin,
-    MirStatement, MirStatementKind,
+    CompileCallArguments, CompileCalleeTarget, MirBuildError, MirEffect, MirGuard,
+    MirGuardAssumption, MirOperand, MirSourceOrigin, MirStatement, MirStatementKind,
 };
 
 use super::core::FunctionBuilder;
@@ -26,6 +26,24 @@ impl FunctionBuilder<'_> {
         let Some(target) = self.input.targets().expression_guard(expression).cloned() else {
             return Ok(value);
         };
+        if self.body.expressions.values().any(|candidate| {
+            self.input.targets().call(candidate.id).is_some_and(|call| {
+                matches!(
+                    call.callee,
+                    CompileCalleeTarget::ScriptFunction { .. }
+                        | CompileCalleeTarget::ScriptMethod { .. }
+                ) && matches!(
+                    &call.arguments,
+                    CompileCallArguments::Script { evaluation_order, .. }
+                        if evaluation_order.contains(&expression)
+                )
+            })
+        }) {
+            // Script callees own parameter guards in code metadata. Keeping
+            // the compile-target marker lets call lowering select checked
+            // dispatch without also emitting a duplicate caller-side trap.
+            return Ok(value);
+        }
         let guard = self.function.add_guard(MirGuard {
             assumption: MirGuardAssumption::Type(target.contract),
             context: Some(target.context),

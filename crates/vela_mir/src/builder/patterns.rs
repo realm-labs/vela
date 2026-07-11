@@ -184,6 +184,7 @@ impl FunctionBuilder<'_> {
 
         if unmatched_reachable {
             if let Some(destination) = destination {
+                self.function.widen_local_to_dynamic(destination);
                 self.function.append_statement(
                     self.current_block,
                     MirStatement::assign(

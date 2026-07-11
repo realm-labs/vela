@@ -57,8 +57,36 @@ pub enum MirLiteralSide {
     Right,
 }
 
-/// A contextual numeric literal validated by `vela_analysis` before MIR.
-pub type MirContextualNumericLiteral = DeferredNumericLiteral;
+/// A contextual numeric literal validated by analysis before MIR.
+#[derive(Clone, Eq, PartialEq)]
+pub struct MirContextualNumericLiteral(DeferredNumericLiteral);
+
+impl std::fmt::Debug for MirContextualNumericLiteral {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(formatter)
+    }
+}
+
+impl MirContextualNumericLiteral {
+    #[must_use]
+    pub fn text(&self) -> &str {
+        self.0.text()
+    }
+
+    #[must_use]
+    pub fn is_float(&self) -> bool {
+        matches!(
+            self.0.kind(),
+            vela_analysis::literals::NumericLiteralKind::Float
+        )
+    }
+}
+
+impl From<DeferredNumericLiteral> for MirContextualNumericLiteral {
+    fn from(value: DeferredNumericLiteral) -> Self {
+        Self(value)
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MirFieldTarget {

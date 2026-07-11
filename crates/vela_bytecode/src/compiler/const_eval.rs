@@ -1,10 +1,10 @@
 use std::collections::BTreeMap;
 
 use vela_analysis::literals::{
-    DeferredNumericLiteral, LiteralError, LiteralPrimitiveContext, LiteralSign,
-    ResolvedLiteralFact, resolve_numeric_literal,
+    LiteralError, LiteralPrimitiveContext, LiteralSign, ResolvedLiteralFact,
+    resolve_numeric_literal,
 };
-use vela_common::{PrimitiveTag, ScalarValue};
+use vela_common::ScalarValue;
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::body::{
     HirBinaryOp, HirBody, HirBodyRoot, HirExprKind, HirIntegerSuffix, HirLiteral, HirPatternKind,
@@ -13,140 +13,7 @@ use vela_hir::body::{
 use vela_hir::ids::{HirBlockId, HirDeclId, HirExprId, HirLocalId};
 use vela_mir::MirEvaluatedConstant;
 
-use crate::Constant;
-
 use super::{CompileError, CompileErrorKind, CompileResult};
-
-pub(super) fn compile_literal_constant(literal: &HirLiteral) -> CompileResult<Constant> {
-    Ok(match literal {
-        HirLiteral::Bool(value) => Constant::Bool(*value),
-        HirLiteral::Char(value) => Constant::Char(*value),
-        HirLiteral::Integer(_) | HirLiteral::Float(_) => Constant::Scalar(resolved_scalar(
-            literal,
-            LiteralPrimitiveContext::Default,
-            LiteralSign::Positive,
-        )?),
-        HirLiteral::String(value) => Constant::String(value.clone()),
-        HirLiteral::Bytes(value) => Constant::Bytes(value.clone()),
-        HirLiteral::Interpolated { .. } | HirLiteral::Invalid { .. } => {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "HIR literal",
-            )));
-        }
-    })
-}
-
-pub(super) fn compile_literal_constant_for_type(
-    literal: &HirLiteral,
-    expected: PrimitiveTag,
-) -> CompileResult<Option<Constant>> {
-    match literal {
-        HirLiteral::Integer(value)
-            if value.suffix.is_none()
-                && vela_analysis::literals::NumericLiteralKind::Integer
-                    .accepts_primitive(expected) =>
-        {
-            resolved_scalar(
-                literal,
-                LiteralPrimitiveContext::Expected(expected),
-                LiteralSign::Positive,
-            )
-            .map(|value| Some(Constant::Scalar(value)))
-        }
-        HirLiteral::Float(value)
-            if value.suffix.is_none()
-                && vela_analysis::literals::NumericLiteralKind::Float
-                    .accepts_primitive(expected) =>
-        {
-            resolved_scalar(
-                literal,
-                LiteralPrimitiveContext::Expected(expected),
-                LiteralSign::Positive,
-            )
-            .map(|value| Some(Constant::Scalar(value)))
-        }
-        _ => Ok(None),
-    }
-}
-
-pub(super) fn compile_negated_literal_constant(
-    literal: &HirLiteral,
-) -> CompileResult<Option<Constant>> {
-    match literal {
-        HirLiteral::Integer(value) => {
-            if matches!(
-                value.suffix,
-                Some(
-                    HirIntegerSuffix::U8
-                        | HirIntegerSuffix::U16
-                        | HirIntegerSuffix::U32
-                        | HirIntegerSuffix::U64
-                )
-            ) {
-                return Ok(None);
-            }
-            resolved_scalar(
-                literal,
-                LiteralPrimitiveContext::Default,
-                LiteralSign::Negated,
-            )
-            .map(|value| Some(Constant::Scalar(value)))
-        }
-        HirLiteral::Float(_) => resolved_scalar(
-            literal,
-            LiteralPrimitiveContext::Default,
-            LiteralSign::Negated,
-        )
-        .map(|value| Some(Constant::Scalar(value))),
-        _ => Ok(None),
-    }
-}
-
-pub(super) fn compile_negated_literal_constant_for_type(
-    literal: &HirLiteral,
-    expected: PrimitiveTag,
-) -> CompileResult<Option<Constant>> {
-    let compatible = match literal {
-        HirLiteral::Integer(value) => {
-            value.suffix.is_none()
-                && expected
-                    .numeric_tag()
-                    .is_some_and(|tag| tag.is_signed_integer())
-        }
-        HirLiteral::Float(value) => {
-            value.suffix.is_none()
-                && vela_analysis::literals::NumericLiteralKind::Float.accepts_primitive(expected)
-        }
-        _ => false,
-    };
-    if !compatible {
-        return Ok(None);
-    }
-    resolved_scalar(
-        literal,
-        LiteralPrimitiveContext::Expected(expected),
-        LiteralSign::Negated,
-    )
-    .map(|value| Some(Constant::Scalar(value)))
-}
-
-pub(super) fn validate_deferred_numeric_literal(
-    literal: &HirLiteral,
-) -> CompileResult<DeferredNumericLiteral> {
-    let resolved = resolve_numeric_literal(
-        literal,
-        LiteralPrimitiveContext::DeferredDynamic,
-        LiteralSign::Positive,
-    )
-    .expect("deferred literal validation requires a numeric literal")
-    .map_err(literal_compile_error)?;
-    match resolved {
-        ResolvedLiteralFact::Deferred(literal) => Ok(literal),
-        ResolvedLiteralFact::Scalar(_) => {
-            unreachable!("unsuffixed dynamic numeric literals always defer")
-        }
-    }
-}
 
 pub(super) fn evaluate_const_body(
     body: &HirBody,

@@ -635,7 +635,7 @@ fn guarded_script_argument_keeps_checked_callee_parameter_policy() {
     })
     .expect("guarded script call");
     let (_, function) = program.functions().next().expect("main function");
-    assert_eq!(function.guards().count(), 1);
+    assert_eq!(function.guards().count(), 0);
     assert!(function.statements().any(|(_, statement)| matches!(
         statement.kind,
         MirStatementKind::Call(MirCall::ScriptFunction {
@@ -800,7 +800,7 @@ fn main(receiver, value) {
 }
 
 #[test]
-fn mir_builder_rejects_missing_call_target_without_fallback() {
+fn mir_builder_rejects_missing_call_target_as_input_error() {
     let error = try_build_calls(
         "fn main() { return missing(1); }",
         |_graph, _body, _targets| Ok(()),

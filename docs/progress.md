@@ -40,66 +40,42 @@ completion tests prove HIR ownership while malformed source alone exercises
 syntax recovery. The directory-wide size audit is clean after focused module
 splits, every Phase 7 zero-hit search has its expected result, the remaining
 syntax-type hits are confined to documented editor lexical/recovery/folding
-boundaries, and full final validation passes. MIR work may now begin from the
-completed Heavy HIR contract; semantic gaps must still be fixed in HIR or
-analysis rather than repaired during MIR lowering.
+boundaries, and full final validation passes. Verified MIR now consumes the
+completed Heavy HIR contract; semantic gaps remain owned by HIR or analysis
+rather than repaired during MIR lowering.
 
-MIR Phase 0 is complete. Ordered interpolated-string text/expression parts are
-HIR-owned and runtime body lowering no longer re-lexes source. The frozen
-compiler/VM/host/reflection/reload/example behavior baseline is complete,
-including diagnostic/span contracts, single-evaluation and instruction-budget
-edges, emitted cache-site families, frame metadata, and stable reload identity.
-Every production compile entry builds and validates one immutable
-executable-analysis and compile-target generation from the authoritative
-source graph, registry, stdlib, host schema, and compiler options. Literal,
-call-placement, constructor, operator, loop-placement, and HostAccess
-diagnostics are owned before MIR construction; physical encoding remains in
-the direct backend until the atomic hard switch deletes that backend.
-That generation now also owns root-scoped nested-lambda symbols and ordered
-parameter contracts, recursive erased-contract refinement, typed binary
-literal contexts, typed container-mutation and script-field assignment
-boundaries, clean guard locations/names, and the canonical one-operand
-`set::from_array` intrinsic shape. Closed source-record member misses remain
-explicit dynamic targets rather than inconsistent-input errors. MIR therefore
-does not need to inspect type-hint strings, recover guard context, or repeat an
-old compiler-local expected-type decision.
+The MIR lowering and JIT-foundation hard switch is complete through Phase 7.
+Every production compile front door now builds Heavy HIR, one immutable
+`AnalysisFacts`/compile-target generation, verified non-SSA MIR, and existing
+bytecode. `vela_bytecode::compiler::mir_backend` is the only runtime body
+backend. The direct Heavy-HIR-to-bytecode compiler, its semantic/type/shape
+flows, source-control-flow patching, helpers, migration tests, and temporary
+names are deleted; no selector, fallback, compatibility backend, or dual route
+remains.
 
-The internal `vela_mir` Phase 1 model checkpoint exists without production
-routing: it depends only on HIR/analysis/stable-definition crates and defines
-generation-local CFG/function/block/local/temp IDs, mutable locals,
-single-assignment temporaries, source/debug/liveness/safepoint metadata,
-backend-neutral targets and contracts, explicit host/reflection/call/allocation
-operations, explicit recoverable-guard CFG edges, and stable human-readable
-dumps. Heap-backed evaluated constants materialize at explicit allocation
-safepoints, method receivers and default-delivery policies are explicit, and
-try propagation has no hidden statement edge. Phase 2 complete-function
-lowering is now complete: declarations and evaluated constants, assignments,
-all control flow and patterns, tuples/arrays/maps/sets/interpolation,
-records/enums, every call family, reflection, HostAccess, lambdas and captures,
-parameter-default prologues, loops/ranges/iterators, try propagation, and
-source-derived scalar evaluation points all lower without a bytecode fallback.
-Left-to-right evaluation and single evaluation are explicit throughout.
+`vela_mir` owns generation-local CFG/function/block/local/temp identities,
+mutable script locals, single-assignment temporaries, explicit effects and
+guards, HostAccess operations rather than host places, nested lambda functions,
+parameter-default prologues, source origins, logical liveness, debug regions,
+and safepoint metadata. `MirBackendHandoff` admits only fully verified MIR with
+computed liveness. The bytecode backend owns physical registers, constants,
+instruction selection, CFG layout, cache sites, frame projection, and bytecode
+verification. VM instructions, conservative frame root tracing, runtime
+budgets, hot-reload identity, and public engine/runtime APIs remain unchanged;
+Cranelift stays deferred to M22.
 
-Phase 3 verification is complete. CFG reachability, terminators, dominance,
-single-definition temps, definite local initialization, operation/target/type/
-effect/destination contracts, safepoints, source origins, debug metadata,
-HostAccess isolation, and guard contracts are verified with positive builder
-sweeps and malformed-MIR fixtures. Canonical compatibility forms now cover
-always-false qualified record patterns, tag-only dynamic variant predicates,
-record-family enum assignment writes, specialization slow edges, and atomic
-try regions. Backward block/local/temp liveness handles joins, early returns,
-iterator/range edge definitions, calls, closures, and try edges; safepoints own
-operation live-before sets and debug locals own verified live block regions.
-Phase 4 is complete. A physical backend can receive MIR only through the
-borrowed `MirBackendHandoff` returned after full verification and only when
-every function has computed liveness/debug/safepoint metadata. The handoff
-exposes the frozen target table, logical values, canonical CFG and effects; it
-does not expose HIR/analysis repair or an optimization pipeline. The next
-checkpoint is the atomic Phase 5 backend switch and direct-lowering deletion.
-No MIR backend selector or production MIR route exists.
+The source front door and compile-time const/schema evaluator are the only
+documented HIR consumers under `vela_bytecode`; runtime backend code consumes
+neither HIR kinds nor analysis queries. Engine reflection/native descriptors
+may explicitly declare opaque boundary type hints, while registered host types
+retain stable `TypeKey` IDs and exact module-qualified compile paths. Missing
+compiler inputs still fail rather than selecting dynamic or legacy lowering.
+All Phase 7 subsystem tests, workspace format/clippy/tests, 30 runnable
+examples, seven zero-hit architecture searches, dependency review, and the
+1200-line active-file audit pass.
 
-The Phase 1 semantic gate also fixes backend-bearing edge cases before a
-builder exists: owner-qualified executable method lookup preserves shared trait
+The closed semantic-input gate fixes backend-bearing edge cases before MIR
+construction: owner-qualified executable method lookup preserves shared trait
 `MethodId`; external positional arity policy is explicit; schema-default values
 and resolved constructor slots are owned input; reflection carries stable
 native IDs plus evaluated operands; set construction preserves its evaluated
@@ -114,7 +90,7 @@ declaration origins. Production source, module, registry, and host fixtures
 prove these indexes through the real compile front doors.
 Call targets now likewise own prevalidated script parameter slots, external
 positional order, and genuinely dynamic named order keyed by HIR expression;
-MIR will not repeat call-argument placement.
+MIR consumes that placement without repeating argument-name resolution.
 
 M0-M19 are complete enough as a runnable prototype, embedding surface,
 production hot-reload workflow, diagnostics/tooling foundation, runnable
@@ -469,8 +445,8 @@ the bytecode syntax payload/dispatcher are deleted, and D1 stable identity,
 D2 nested-body query selection, and D3 architecture acceptance are complete.
 The Phase 7 searches, directory-wide file-size gate, workspace clippy/tests,
 and runnable examples named in
-[heavy-hir-hard-switch-plan.md](heavy-hir-hard-switch-plan.md) pass. MIR may
-now consume the completed Heavy HIR contract; M20 cache-family audit may
+[heavy-hir-hard-switch-plan.md](heavy-hir-hard-switch-plan.md) pass. Verified
+MIR now consumes that completed Heavy HIR contract; M20 cache-family audit may
 continue independently when it does not change lowering architecture.
 
 The lossless CST rowan refactor is complete as a breaking syntax foundation

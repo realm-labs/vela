@@ -60,7 +60,7 @@ impl AnalysisFacts {
         let mut facts = Self::default();
 
         for declaration in graph.declarations() {
-            if let Some(fact) = declaration_fact(graph, declaration.id) {
+            if let Some(fact) = declaration_fact(graph, schema, declaration.id) {
                 facts.declarations.insert(declaration.id, fact);
             }
         }
@@ -163,7 +163,11 @@ fn schema_fact_for_hint(schema: &RegistryFacts, path: &[String]) -> Option<TypeF
         .cloned()
 }
 
-fn declaration_fact(graph: &ModuleGraph, declaration: HirDeclId) -> Option<TypeFact> {
+fn declaration_fact(
+    graph: &ModuleGraph,
+    schema: Option<&RegistryFacts>,
+    declaration: HirDeclId,
+) -> Option<TypeFact> {
     let metadata = graph.declaration(declaration)?;
     if let Some(schema_fact) = declaration_schema_fact(graph, metadata) {
         return Some(schema_fact);
@@ -175,9 +179,25 @@ fn declaration_fact(graph: &ModuleGraph, declaration: HirDeclId) -> Option<TypeF
             .type_hint
             .as_ref()
             .map(|hint| type_fact_from_hint_in_module(graph, metadata.module, hint)),
-        DeclarationKind::Global => graph
-            .global_metadata(declaration)
-            .map(|global| type_fact_from_hint_in_module(graph, metadata.module, &global.type_hint)),
+        DeclarationKind::Global => graph.global_metadata(declaration).map(|global| {
+            let fact = type_fact_from_hint_in_module(graph, metadata.module, &global.type_hint);
+            if !matches!(fact, TypeFact::Unknown) {
+                return fact;
+            }
+            let qualified = global.type_hint.path.join("::");
+            schema
+                .and_then(|schema| {
+                    schema.type_fact(&qualified).or_else(|| {
+                        global
+                            .type_hint
+                            .path
+                            .last()
+                            .and_then(|name| schema.type_fact(name))
+                    })
+                })
+                .cloned()
+                .unwrap_or(TypeFact::Unknown)
+        }),
         DeclarationKind::Function => graph.function_signature(declaration).map(|signature| {
             let params = signature
                 .params

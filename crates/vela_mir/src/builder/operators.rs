@@ -277,7 +277,7 @@ impl FunctionBuilder<'_> {
             MirStatementKind::ContextualNumericBinary {
                 operation,
                 value,
-                literal,
+                literal: literal.into(),
                 literal_side,
             },
             MirEffect::may_trap(),

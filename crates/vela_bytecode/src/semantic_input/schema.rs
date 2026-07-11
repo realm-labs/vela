@@ -582,15 +582,37 @@ pub(super) fn hir_hint_contract(
     script_types: &BTreeMap<HirDeclId, TypeId>,
     script_shapes: &BTreeMap<TypeId, ShapeId>,
 ) -> Option<MirTypeContract> {
-    let mut fact = type_fact_from_hint_in_module(graph, module, hint);
-    if matches!(fact, TypeFact::Unknown) {
+    fn fact_with_registry(
+        graph: &ModuleGraph,
+        module: ModuleId,
+        hint: &HirTypeHint,
+        registry: &RegistryFacts,
+    ) -> TypeFact {
+        let nested = |hint: &HirTypeHint| fact_with_registry(graph, module, hint, registry);
+        let fact = match (hint.path.as_slice(), hint.args.as_slice()) {
+            ([name], [value]) if name == "Array" => TypeFact::array(nested(value)),
+            ([name], [key, value]) if name == "Map" => TypeFact::map(nested(key), nested(value)),
+            ([name], [value]) if name == "Set" => TypeFact::set(nested(value)),
+            ([name], [value]) if name == "Iterator" => TypeFact::iterator(nested(value)),
+            ([name], [value]) if name == "Option" => TypeFact::option(nested(value)),
+            ([name], [ok, err]) if name == "Result" => TypeFact::result(nested(ok), nested(err)),
+            ([name], values) if name == HirTypeHint::UNIT_PATH && values.len() >= 2 => {
+                TypeFact::tuple(values.iter().map(nested))
+            }
+            _ => type_fact_from_hint_in_module(graph, module, hint),
+        };
+        if !matches!(fact, TypeFact::Unknown) {
+            return fact;
+        }
         let qualified = hint.path.join("::");
-        fact = registry
+        registry
             .type_fact(&qualified)
             .or_else(|| hint.path.last().and_then(|name| registry.type_fact(name)))
             .cloned()
-            .unwrap_or(TypeFact::Unknown);
+            .unwrap_or(TypeFact::Unknown)
     }
+
+    let fact = fact_with_registry(graph, module, hint, registry);
     contract_from_fact(&fact, registry, graph, script_types, script_shapes)
 }
 

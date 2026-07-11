@@ -109,6 +109,10 @@ impl GenerationBuilder<'_, '_> {
             let Some(contract) = self.type_contract_for_hint(module, hint) else {
                 continue;
             };
+            let origin = self
+                .expression_origin(*initializer)
+                .unwrap_or_else(|| MirSourceOrigin::body(body.id, statement.origin.span));
+            self.remember_contract(&contract, origin);
             let name = body
                 .patterns
                 .get(pattern)

@@ -653,11 +653,18 @@ impl FunctionBuilder<'_> {
         if self.current_is_terminated()? {
             return Ok(MirOperand::Immediate(crate::MirImmediate::Unit));
         }
-        let analysis = self.input.analysis();
-        let result = analysis.expression(expression).ok_or_else(|| {
-            self.inconsistent(origin, "call expression has no analysis type fact")
-        })?;
-        let destination = self.function.add_temp(value_type(Some(result)), origin);
+        let result_type = call_return_contract(&call)
+            .map(super::constants::value_type_for_contract)
+            .or_else(|| {
+                self.input
+                    .analysis()
+                    .expression(expression)
+                    .map(|fact| value_type(Some(fact)))
+            })
+            .ok_or_else(|| {
+                self.inconsistent(origin, "call expression has no analysis type fact")
+            })?;
+        let destination = self.function.add_temp(result_type, origin);
         let safepoint = self.function.add_safepoint(MirSafepoint::new(origin));
         self.function.append_statement(
             self.current_block,
@@ -670,6 +677,19 @@ impl FunctionBuilder<'_> {
             ),
         )?;
         Ok(MirOperand::Temp(destination))
+    }
+}
+
+fn call_return_contract(call: &MirCall) -> Option<&crate::MirTypeContract> {
+    match call {
+        MirCall::ScriptFunction { signature, .. }
+        | MirCall::ScriptMethod { signature, .. }
+        | MirCall::NativeFunction { signature, .. }
+        | MirCall::StdlibFunction { signature, .. }
+        | MirCall::ValueMethod { signature, .. } => signature.return_contract.as_ref(),
+        MirCall::CallableValue { .. }
+        | MirCall::DynamicCallable { .. }
+        | MirCall::DynamicMethod { .. } => None,
     }
 }
 

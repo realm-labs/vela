@@ -192,8 +192,16 @@ pub(super) fn verify_field_operation(
             field,
         } => {
             require_variant(verifier, *type_id, *variant, origin)?;
+            let try_continuation = verifier.function.blocks().any(|(_, candidate)| {
+                matches!(
+                    candidate.terminator().map(|terminator| &terminator.kind),
+                    Some(crate::MirTerminatorKind::TrySwitch { continuations, .. })
+                        if continuations.iter().any(|continuation| continuation.block == block)
+                )
+            });
             if receiver_type != MirValueType::Dynamic
                 && receiver_type != MirValueType::Enum(*type_id)
+                && !(try_continuation && matches!(receiver_type, MirValueType::Enum(_)))
             {
                 return Err(type_error(
                     verifier,

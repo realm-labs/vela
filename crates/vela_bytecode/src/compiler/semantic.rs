@@ -1,24 +1,17 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use vela_common::SourceId;
-use vela_hir::binding::BindingMap;
-use vela_hir::body::HirBody;
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath, ModuleSource};
 use vela_hir::script_methods::{
     ScriptMethodCatalog, ScriptMethodCatalogError, ScriptMethodCatalogMode,
 };
-use vela_hir::type_hint::{FunctionSignature, ParamHint};
 use vela_mir::{MirBuildError, MirEvaluatedConstant, MirSourceOrigin};
 use vela_syntax::parse::parse_source_with_id;
 
 use super::const_eval::evaluate_const_body;
 use super::error::{CompileError, CompileErrorKind, CompileResult};
-use super::field_slots::ScriptFieldSlots;
-use super::function_inputs::FunctionCompileInput;
-use super::param_defaults::param_default_values;
 use super::schema_defaults::{EvaluatedSchemaDefaults, source_schema_defaults};
-use super::script_impls;
 
 pub(super) struct SemanticSource {
     graph: ModuleGraph,
@@ -37,37 +30,6 @@ impl SemanticSource {
         &self.graph
     }
 
-    pub(super) fn function(
-        &self,
-        name: &str,
-    ) -> Option<(
-        FunctionCompileInput,
-        &FunctionSignature,
-        &BindingMap,
-        Vec<&HirBody>,
-    )> {
-        let declaration = self.function_declaration(name)?;
-        let signature = self.graph.function_signature(declaration)?;
-        let bindings = self.graph.bindings(declaration)?;
-        let hir_body = self.graph.function_body(declaration)?;
-        let input = function_compile_input(&self.graph, hir_body, signature)?;
-        Some((input, signature, bindings, self.graph.bodies().collect()))
-    }
-
-    pub(super) fn script_function_names(&self) -> BTreeSet<String> {
-        let Some(declarations) = self.graph.module(self.module) else {
-            return BTreeSet::new();
-        };
-        declarations
-            .names()
-            .filter_map(|name| {
-                let declaration = declarations.get(name)?;
-                let declaration = self.graph.declaration(declaration)?;
-                (declaration.kind == DeclarationKind::Function).then(|| name.to_owned())
-            })
-            .collect()
-    }
-
     pub(super) fn script_function_symbols(&self) -> BTreeMap<HirDeclId, String> {
         let Some(declarations) = self.graph.module(self.module) else {
             return BTreeMap::new();
@@ -78,17 +40,6 @@ impl SemanticSource {
                 let declaration = declarations.get(name)?;
                 let metadata = self.graph.declaration(declaration)?;
                 (metadata.kind == DeclarationKind::Function).then(|| (declaration, name.to_owned()))
-            })
-            .collect()
-    }
-
-    pub(super) fn script_function_signatures(&self) -> BTreeMap<HirDeclId, Vec<ParamHint>> {
-        self.script_function_symbols()
-            .keys()
-            .filter_map(|declaration| {
-                self.graph
-                    .function_signature(*declaration)
-                    .map(|signature| (*declaration, signature.params.clone()))
             })
             .collect()
     }
@@ -104,17 +55,6 @@ impl SemanticSource {
                 let metadata = self.graph.declaration(declaration)?;
                 (metadata.kind == DeclarationKind::Global)
                     .then(|| (declaration, format!("main::{}", metadata.name)))
-            })
-            .collect()
-    }
-
-    pub(super) fn global_type_symbols(&self) -> BTreeMap<HirDeclId, String> {
-        self.global_symbols()
-            .keys()
-            .filter_map(|declaration| {
-                self.graph
-                    .global_metadata(*declaration)
-                    .map(|metadata| (*declaration, metadata.type_hint.display()))
             })
             .collect()
     }
@@ -135,13 +75,6 @@ impl SemanticSource {
                 .then(|| (declaration, name.to_owned()))
             })
             .collect()
-    }
-
-    pub(super) fn script_field_slots(
-        &self,
-        type_symbols: &BTreeMap<HirDeclId, String>,
-    ) -> ScriptFieldSlots {
-        ScriptFieldSlots::from_graph(&self.graph, type_symbols)
     }
 
     pub(super) fn schema_defaults(
@@ -174,12 +107,6 @@ impl SemanticSource {
         &self.script_methods
     }
 
-    pub(super) fn script_impl_methods(
-        &self,
-    ) -> CompileResult<Vec<script_impls::ScriptImplMethod<'_>>> {
-        script_impls::direct_methods(&self.graph, &self.script_methods)
-    }
-
     pub(super) fn function_declaration(&self, name: &str) -> Option<HirDeclId> {
         let declaration = self.graph.module(self.module)?.get(name)?;
         let metadata = self.graph.declaration(declaration)?;
@@ -190,36 +117,6 @@ impl SemanticSource {
 impl SemanticModules {
     pub(super) const fn script_metadata_graph(&self) -> &ModuleGraph {
         &self.graph
-    }
-
-    pub(super) fn function(
-        &self,
-        declaration: HirDeclId,
-    ) -> Option<(
-        FunctionCompileInput,
-        &FunctionSignature,
-        &BindingMap,
-        Vec<&HirBody>,
-    )> {
-        let signature = self.graph.function_signature(declaration)?;
-        let bindings = self.graph.bindings(declaration)?;
-        let hir_body = self.graph.function_body(declaration)?;
-        let input = function_compile_input(&self.graph, hir_body, signature)?;
-        Some((input, signature, bindings, self.graph.bodies().collect()))
-    }
-
-    pub(super) fn script_function_declarations(&self) -> BTreeSet<HirDeclId> {
-        self.modules
-            .iter()
-            .filter_map(|module| self.graph.module(*module))
-            .flat_map(|declarations| {
-                declarations.names().filter_map(|name| {
-                    let declaration = declarations.get(name)?;
-                    let metadata = self.graph.declaration(declaration)?;
-                    (metadata.kind == DeclarationKind::Function).then_some(declaration)
-                })
-            })
-            .collect()
     }
 
     pub(super) fn script_function_symbols(&self) -> BTreeMap<HirDeclId, String> {
@@ -241,17 +138,6 @@ impl SemanticModules {
             .collect()
     }
 
-    pub(super) fn script_function_signatures(&self) -> BTreeMap<HirDeclId, Vec<ParamHint>> {
-        self.script_function_symbols()
-            .keys()
-            .filter_map(|declaration| {
-                self.graph
-                    .function_signature(*declaration)
-                    .map(|signature| (*declaration, signature.params.clone()))
-            })
-            .collect()
-    }
-
     pub(super) fn global_symbols(&self) -> BTreeMap<HirDeclId, String> {
         self.modules
             .iter()
@@ -267,17 +153,6 @@ impl SemanticModules {
                     (metadata.kind == DeclarationKind::Global)
                         .then(|| (declaration, format!("{path}::{}", metadata.name)))
                 })
-            })
-            .collect()
-    }
-
-    pub(super) fn global_type_symbols(&self) -> BTreeMap<HirDeclId, String> {
-        self.global_symbols()
-            .keys()
-            .filter_map(|declaration| {
-                self.graph
-                    .global_metadata(*declaration)
-                    .map(|metadata| (*declaration, metadata.type_hint.display()))
             })
             .collect()
     }
@@ -302,13 +177,6 @@ impl SemanticModules {
                 })
             })
             .collect()
-    }
-
-    pub(super) fn script_field_slots(
-        &self,
-        type_symbols: &BTreeMap<HirDeclId, String>,
-    ) -> ScriptFieldSlots {
-        ScriptFieldSlots::from_graph(&self.graph, type_symbols)
     }
 
     pub(super) fn schema_defaults(
@@ -363,12 +231,6 @@ impl SemanticModules {
     pub(super) const fn script_method_catalog(&self) -> &ScriptMethodCatalog {
         &self.script_methods
     }
-
-    pub(super) fn script_impl_methods(
-        &self,
-    ) -> CompileResult<Vec<script_impls::ScriptImplMethod<'_>>> {
-        script_impls::direct_methods(&self.graph, &self.script_methods)
-    }
 }
 
 fn module_const_declarations(graph: &ModuleGraph, module: ModuleId) -> Vec<(HirDeclId, String)> {
@@ -385,29 +247,6 @@ fn module_const_declarations(graph: &ModuleGraph, module: ModuleId) -> Vec<(HirD
         .collect::<Vec<_>>();
     consts.sort_by_key(|(declaration, _)| *declaration);
     consts
-}
-
-fn function_compile_input(
-    graph: &ModuleGraph,
-    hir_body: &HirBody,
-    signature: &FunctionSignature,
-) -> Option<FunctionCompileInput> {
-    let param_defaults = param_default_values(hir_body, signature);
-    Some(FunctionCompileInput {
-        name: function_name_for_body(hir_body, graph)?,
-        body: hir_body.id,
-        origin: MirSourceOrigin::body(hir_body.id, hir_body.origin.span),
-        param_defaults,
-    })
-}
-
-fn function_name_for_body(hir_body: &HirBody, graph: &ModuleGraph) -> Option<String> {
-    let vela_hir::body::HirBodyOwner::Declaration(declaration) = hir_body.owner else {
-        return None;
-    };
-    graph
-        .declaration(declaration)
-        .map(|metadata| metadata.name.clone())
 }
 
 pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResult<SemanticSource> {

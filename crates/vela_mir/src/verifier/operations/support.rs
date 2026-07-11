@@ -319,9 +319,9 @@ pub(super) fn destination_contract(
     let Some(actual) = destination else {
         return Ok(());
     };
-    let valid = contract.map_or(actual == MirValueType::Dynamic, |contract| {
-        satisfies_contract(actual, contract)
-    });
+    // An absent runtime contract means analysis may retain any proven result
+    // type; it does not mean the result must be erased back to `Dynamic`.
+    let valid = contract.is_none_or(|contract| satisfies_contract(actual, contract));
     if valid {
         Ok(())
     } else {
@@ -345,7 +345,7 @@ pub(super) fn operand_is(
     expected: MirValueType,
 ) -> Result<(), MirVerifyError> {
     let actual = verifier.operand_type(operand, block, statement, origin)?;
-    if actual == expected {
+    if actual == expected || actual == MirValueType::Dynamic {
         Ok(())
     } else {
         Err(type_error(
@@ -615,12 +615,13 @@ pub(super) fn satisfies_contract(value: MirValueType, contract: &MirTypeContract
         }
         MirTypeContract::Variant { type_id, .. } => value == MirValueType::Enum(*type_id),
         MirTypeContract::Host(target) => value == MirValueType::Host(*target),
+        MirTypeContract::Option(_) | MirTypeContract::Result { .. } => {
+            matches!(value, MirValueType::Enum(_))
+        }
         MirTypeContract::Any
         | MirTypeContract::Array(_)
         | MirTypeContract::Map { .. }
-        | MirTypeContract::Set(_)
-        | MirTypeContract::Option(_)
-        | MirTypeContract::Result { .. } => false,
+        | MirTypeContract::Set(_) => false,
     }
 }
 

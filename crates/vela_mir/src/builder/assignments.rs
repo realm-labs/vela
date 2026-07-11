@@ -113,7 +113,13 @@ impl FunctionBuilder<'_> {
             .ok_or_else(|| self.inconsistent(origin, "assignment expression has no target"))?;
         let value =
             value.ok_or_else(|| self.inconsistent(origin, "assignment expression has no value"))?;
-        if let Some(path) = self.input.targets().host_path(expression).cloned() {
+        if let Some(path) = self
+            .input
+            .targets()
+            .host_path(target)
+            .filter(|path| !path.segments.is_empty())
+            .cloned()
+        {
             return self.lower_host_assignment(expression, operation, target, value, &path, origin);
         }
 

@@ -443,10 +443,24 @@ fn main(reward) {
             _ => None,
         })
         .expect("pattern field register");
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        instruction.kind,
-        UnlinkedInstructionKind::Return { src } if src == pattern_register
-    )));
+    assert!(
+        code.instructions
+            .iter()
+            .enumerate()
+            .any(|(return_index, instruction)| {
+                let UnlinkedInstructionKind::Return { mut src } = instruction.kind else {
+                    return false;
+                };
+                for instruction in code.instructions[..return_index].iter().rev() {
+                    if let UnlinkedInstructionKind::Move { dst, src: moved } = instruction.kind
+                        && dst == src
+                    {
+                        src = moved;
+                    }
+                }
+                src == pattern_register
+            })
+    );
 }
 #[test]
 fn compiler_uses_hir_callee_resolution_for_shadowed_function_names() {
