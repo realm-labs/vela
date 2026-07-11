@@ -4,8 +4,7 @@ use vela_hir::body::HirLiteral;
 use vela_hir::ids::HirExprId;
 
 use crate::{
-    MirBuildError, MirEffect, MirEvaluatedConstant, MirImmediate, MirOperand, MirPlace,
-    MirSafepoint, MirSourceOrigin, MirStatement, MirStatementKind, MirValueType,
+    MirBuildError, MirEvaluatedConstant, MirImmediate, MirOperand, MirSourceOrigin, MirValueType,
 };
 
 use super::core::FunctionBuilder;
@@ -42,15 +41,15 @@ impl FunctionBuilder<'_> {
                     )),
                 }
             }
-            HirLiteral::String(value) => self.materialize_constant(
-                origin,
+            HirLiteral::String(value) => self.lower_evaluated_constant(
                 MirEvaluatedConstant::String(value.clone()),
                 MirValueType::Primitive(PrimitiveTag::String),
-            ),
-            HirLiteral::Bytes(value) => self.materialize_constant(
                 origin,
+            ),
+            HirLiteral::Bytes(value) => self.lower_evaluated_constant(
                 MirEvaluatedConstant::Bytes(value.clone()),
                 MirValueType::Primitive(PrimitiveTag::Bytes),
+                origin,
             ),
             HirLiteral::Interpolated { .. } => {
                 Err(self.unsupported(origin, "interpolated string expression"))
@@ -60,26 +59,5 @@ impl FunctionBuilder<'_> {
                 "invalid literal reached MIR after semantic diagnostics",
             )),
         }
-    }
-
-    fn materialize_constant(
-        &mut self,
-        origin: MirSourceOrigin,
-        value: MirEvaluatedConstant,
-        value_type: MirValueType,
-    ) -> Result<MirOperand, MirBuildError> {
-        let temp = self.function.add_temp(value_type, origin);
-        let safepoint = self.function.add_safepoint(MirSafepoint::new(origin));
-        self.function.append_statement(
-            self.current_block,
-            MirStatement::new(
-                origin,
-                Some(MirPlace::temp(temp)),
-                MirStatementKind::MaterializeConstant(value),
-                MirEffect::allocation(),
-                Some(safepoint),
-            ),
-        )?;
-        Ok(MirOperand::Temp(temp))
     }
 }

@@ -46,6 +46,9 @@ impl FunctionBuilder<'_> {
         ) {
             return self.lower_host_call(expression, call, &target, origin);
         }
+        if matches!(target.callee, CompileCalleeTarget::Reflection { .. }) {
+            return self.lower_reflection_call(expression, call, &target, origin);
+        }
 
         let (call, effect) = match target.callee {
             CompileCalleeTarget::ScriptFunction {
@@ -290,7 +293,7 @@ impl FunctionBuilder<'_> {
             | CompileCalleeTarget::HostRemove { .. }
             | CompileCalleeTarget::HostPush { .. } => unreachable!("host calls route above"),
             CompileCalleeTarget::Reflection { .. } => {
-                return Err(self.unsupported(origin, "reflection call"));
+                unreachable!("reflection calls route above")
             }
             CompileCalleeTarget::SetFromArray { .. } => {
                 return Err(self.unsupported(origin, "set-from-array intrinsic"));

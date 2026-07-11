@@ -11,8 +11,9 @@ use crate::{
     CompileFieldAccess, CompileFieldDescriptor, CompileFunctionAccess, CompileFunctionClass,
     CompileFunctionDescriptor, CompileFunctionIdentity, CompileGuardKey, CompileGuardTarget,
     CompilePositionalPolicy, CompileSignature, CompileTargetSnapshot, CompileTargetSnapshotBuilder,
-    CompileTypeClass, CompileTypeDescriptor, CompileVariantDescriptor, MirGuardAssumption,
-    MirGuardLocation, MirLoweringConfig, MirLoweringInput, MirProgram, MirTypeContract,
+    CompileTypeClass, CompileTypeDescriptor, CompileVariantDescriptor, MirEvaluatedConstant,
+    MirGuardAssumption, MirGuardLocation, MirLoweringConfig, MirLoweringInput, MirProgram,
+    MirTypeContract,
 };
 
 const ROOT_FUNCTION: FunctionId = FunctionId::new(8_500);

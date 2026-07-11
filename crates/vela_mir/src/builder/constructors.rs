@@ -1,14 +1,13 @@
 use std::collections::BTreeMap;
 
-use vela_common::PrimitiveTag;
 use vela_def::FieldId;
 use vela_hir::ids::{HirBodyId, HirExprId};
 
 use crate::{
     CompileConstructorField, CompileConstructorTarget, CompileConstructorValue,
-    CompileDynamicConstructorField, MirAggregate, MirBuildError, MirEffect, MirEvaluatedConstant,
-    MirImmediate, MirOperand, MirPlace, MirSafepoint, MirSourceOrigin, MirStatement,
-    MirStatementKind, MirValueType,
+    CompileDynamicConstructorField, MirAggregate, MirBuildError, MirEffect, MirImmediate,
+    MirOperand, MirPlace, MirSafepoint, MirSourceOrigin, MirStatement, MirStatementKind,
+    MirValueType,
 };
 
 use super::core::FunctionBuilder;
@@ -316,36 +315,10 @@ impl FunctionBuilder<'_> {
                     format!("constructor references missing evaluated default {body:?}"),
                 )
             })?;
-        match value {
-            MirEvaluatedConstant::Unit => Ok(MirOperand::Immediate(MirImmediate::Unit)),
-            MirEvaluatedConstant::Bool(value) => {
-                Ok(MirOperand::Immediate(MirImmediate::Bool(value)))
-            }
-            MirEvaluatedConstant::Char(value) => {
-                Ok(MirOperand::Immediate(MirImmediate::Char(value)))
-            }
-            MirEvaluatedConstant::Scalar(value) => {
-                Ok(MirOperand::Immediate(MirImmediate::Scalar(value)))
-            }
-            heap_value => {
-                let value_type = contract
-                    .map(value_type_for_contract)
-                    .unwrap_or_else(|| value_type_for_evaluated_constant(&heap_value));
-                let destination = self.function.add_temp(value_type, origin);
-                let safepoint = self.function.add_safepoint(MirSafepoint::new(origin));
-                self.function.append_statement(
-                    self.current_block,
-                    MirStatement::new(
-                        origin,
-                        Some(MirPlace::temp(destination)),
-                        MirStatementKind::MaterializeConstant(heap_value),
-                        MirEffect::allocation(),
-                        Some(safepoint),
-                    ),
-                )?;
-                Ok(MirOperand::Temp(destination))
-            }
-        }
+        let value_type = contract
+            .map(super::constants::value_type_for_contract)
+            .unwrap_or_else(|| super::constants::value_type_for_evaluated_constant(&value));
+        self.lower_evaluated_constant(value, value_type, origin)
     }
 
     fn append_constructor_allocation(
@@ -384,43 +357,6 @@ impl FunctionBuilder<'_> {
             expression,
             record.origin.span,
         ))
-    }
-}
-
-fn value_type_for_contract(contract: &crate::MirTypeContract) -> MirValueType {
-    match contract {
-        crate::MirTypeContract::Primitive(primitive) => MirValueType::Primitive(*primitive),
-        crate::MirTypeContract::Range => MirValueType::Range,
-        crate::MirTypeContract::Iterator(_) => MirValueType::Iterator,
-        crate::MirTypeContract::Tuple(elements) => {
-            MirValueType::Tuple(u32::try_from(elements.len()).unwrap_or(u32::MAX))
-        }
-        crate::MirTypeContract::Callable { .. } => MirValueType::Callable,
-        crate::MirTypeContract::Shape { type_id, shape } => MirValueType::ScriptType {
-            type_id: *type_id,
-            shape: *shape,
-        },
-        crate::MirTypeContract::Variant { type_id, .. } => MirValueType::Enum(*type_id),
-        crate::MirTypeContract::Host(target) => MirValueType::Host(*target),
-        crate::MirTypeContract::Any
-        | crate::MirTypeContract::Array(_)
-        | crate::MirTypeContract::Map { .. }
-        | crate::MirTypeContract::Set(_)
-        | crate::MirTypeContract::Option(_)
-        | crate::MirTypeContract::Result { .. }
-        | crate::MirTypeContract::Definition(_) => MirValueType::Dynamic,
-    }
-}
-
-fn value_type_for_evaluated_constant(value: &MirEvaluatedConstant) -> MirValueType {
-    match value {
-        MirEvaluatedConstant::Unit => MirValueType::Unit,
-        MirEvaluatedConstant::Bool(_) => MirValueType::Primitive(PrimitiveTag::Bool),
-        MirEvaluatedConstant::Char(_) => MirValueType::Primitive(PrimitiveTag::Char),
-        MirEvaluatedConstant::Scalar(value) => MirValueType::Primitive(value.primitive_tag()),
-        MirEvaluatedConstant::String(_) => MirValueType::Primitive(PrimitiveTag::String),
-        MirEvaluatedConstant::Bytes(_) => MirValueType::Primitive(PrimitiveTag::Bytes),
-        MirEvaluatedConstant::Array(_) | MirEvaluatedConstant::Map(_) => MirValueType::Dynamic,
     }
 }
 

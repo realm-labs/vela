@@ -11,6 +11,8 @@ use crate::{
 };
 
 use super::core::{FunctionBuilder, value_type};
+use super::host::PreparedHostValueWriteback;
+use super::tuple_assignments::PreparedTupleProjection;
 
 #[derive(Clone, Debug)]
 enum PreparedAssignmentTarget {
@@ -30,13 +32,27 @@ struct PreparedIndexTarget {
 struct PreparedFieldTarget {
     fields: Vec<PreparedFieldStep>,
     receivers: Vec<MirOperand>,
-    indexed_root: Option<PreparedIndexTarget>,
+    root: PreparedFieldRoot,
 }
 
 #[derive(Clone, Debug)]
 struct PreparedFieldStep {
     expression: HirExprId,
-    target: MirFieldTarget,
+    member: PreparedFieldMember,
+}
+
+#[derive(Clone, Debug)]
+enum PreparedFieldMember {
+    Field(MirFieldTarget),
+    Tuple(PreparedTupleProjection),
+}
+
+#[derive(Clone, Debug)]
+enum PreparedFieldRoot {
+    Value,
+    Local(crate::MirLocalId),
+    Index(PreparedIndexTarget),
+    Host(PreparedHostValueWriteback),
 }
 
 struct AssignmentValueInput {
@@ -291,40 +307,113 @@ impl FunctionBuilder<'_> {
             return Err(self.inconsistent(origin, "field assignment has no field steps"));
         }
 
-        let (root, indexed_root) = match self.expression_kind(base, origin)? {
-            HirExprKind::Index(index) => {
-                let target = match self.prepare_index_target(&index, origin)? {
-                    Prepared::Ready(target) => target,
-                    Prepared::Diverged => return Ok(Prepared::Diverged),
-                };
-                let root = self.append_index_read(&target, origin)?;
-                (root, Some(target))
-            }
-            _ => {
-                let root = self.lower_expression(base)?;
-                if self.current_is_terminated()? {
-                    return Ok(Prepared::Diverged);
-                }
-                let root = self.capture_operand(root, self.assignment_expression_origin(base)?)?;
-                (root, None)
-            }
-        };
+        let host_prefix_len = field_expressions
+            .iter()
+            .take_while(|expression| self.input.targets().host_path(**expression).is_some())
+            .count();
+        if field_expressions[host_prefix_len..]
+            .iter()
+            .any(|expression| self.input.targets().host_path(*expression).is_some())
+        {
+            return Err(self.inconsistent(
+                origin,
+                "host assignment path placements do not form one leading prefix",
+            ));
+        }
+        let host_prefix = host_prefix_len.checked_sub(1).map_or_else(
+            || {
+                self.input
+                    .targets()
+                    .host_path(base)
+                    .cloned()
+                    .map(|target| (base, target))
+            },
+            |index| {
+                let expression = field_expressions[index];
+                let target = self
+                    .input
+                    .targets()
+                    .host_path(expression)
+                    .expect("leading host prefix was checked")
+                    .clone();
+                Some((expression, target))
+            },
+        );
+        let field_expressions = field_expressions
+            .into_iter()
+            .skip(host_prefix_len)
+            .collect::<Vec<_>>();
+        if field_expressions.is_empty() {
+            return Err(self.inconsistent(
+                origin,
+                "host assignment prefix has no script-value projection suffix",
+            ));
+        }
 
         let mut fields = Vec::with_capacity(field_expressions.len());
         for expression in field_expressions {
-            let target = match self.member_target(expression, origin)? {
-                PreparedMemberTarget::Field(target) => target,
+            let member = match self.member_target(expression, origin)? {
+                PreparedMemberTarget::Field(target) => PreparedFieldMember::Field(target),
                 PreparedMemberTarget::Tuple(index) => {
-                    return Err(self.inconsistent(
-                        origin,
-                        format!(
-                            "MIR v1 has no tuple element write/rebuild form for projection {index} in assignment target {expression:?}"
-                        ),
-                    ));
+                    PreparedFieldMember::Tuple(self.prepare_tuple_assignment_projection(
+                        expression,
+                        index,
+                        self.assignment_expression_origin(expression)?,
+                    )?)
                 }
             };
-            fields.push(PreparedFieldStep { expression, target });
+            fields.push(PreparedFieldStep { expression, member });
         }
+
+        let (root, root_target) = if let Some((expression, target)) = host_prefix {
+            let prefix_origin = self.assignment_expression_origin(expression)?;
+            let Some((root, writeback)) =
+                self.prepare_host_value_writeback(expression, &target, prefix_origin)?
+            else {
+                return Ok(Prepared::Diverged);
+            };
+            (root, PreparedFieldRoot::Host(writeback))
+        } else {
+            let base_kind = self.expression_kind(base, origin)?;
+            let root_local = if matches!(base_kind, HirExprKind::Path(_)) {
+                self.assignment_root_local(base, origin)?
+            } else {
+                None
+            };
+            if matches!(
+                fields.first().map(|step| &step.member),
+                Some(PreparedFieldMember::Tuple(_))
+            ) && !matches!(base_kind, HirExprKind::Index(_))
+                && root_local.is_none()
+            {
+                return Err(self.inconsistent(
+                    origin,
+                    "tuple projection assignment requires a writable local, index, or HostAccess root",
+                ));
+            }
+            match base_kind {
+                HirExprKind::Index(index) => {
+                    let target = match self.prepare_index_target(&index, origin)? {
+                        Prepared::Ready(target) => target,
+                        Prepared::Diverged => return Ok(Prepared::Diverged),
+                    };
+                    let root = self.append_index_read(&target, origin)?;
+                    (root, PreparedFieldRoot::Index(target))
+                }
+                _ => {
+                    let root = self.lower_expression(base)?;
+                    if self.current_is_terminated()? {
+                        return Ok(Prepared::Diverged);
+                    }
+                    let root =
+                        self.capture_operand(root, self.assignment_expression_origin(base)?)?;
+                    (
+                        root,
+                        root_local.map_or(PreparedFieldRoot::Value, PreparedFieldRoot::Local),
+                    )
+                }
+            }
+        };
 
         let mut receivers = vec![root];
         for field in fields.iter().take(fields.len().saturating_sub(1)) {
@@ -332,23 +421,27 @@ impl FunctionBuilder<'_> {
                 .last()
                 .cloned()
                 .ok_or_else(|| self.inconsistent(origin, "field assignment lost its root"))?;
-            let field_origin = self.assignment_expression_origin(field.expression)?;
-            let value = self.append_value_statement(
-                field.expression,
-                field_origin,
-                MirStatementKind::ReadField {
-                    receiver,
-                    target: field.target.clone(),
-                },
-                MirEffect::may_trap(),
-            )?;
+            let value = match &field.member {
+                PreparedFieldMember::Field(target) => self.append_value_statement(
+                    field.expression,
+                    self.assignment_expression_origin(field.expression)?,
+                    MirStatementKind::ReadField {
+                        receiver,
+                        target: target.clone(),
+                    },
+                    MirEffect::may_trap(),
+                )?,
+                PreparedFieldMember::Tuple(projection) => {
+                    self.append_tuple_assignment_read(receiver, projection)?
+                }
+            };
             receivers.push(value);
         }
 
         Ok(Prepared::Ready(PreparedFieldTarget {
             fields,
             receivers,
-            indexed_root,
+            root: root_target,
         }))
     }
 
@@ -403,33 +496,58 @@ impl FunctionBuilder<'_> {
         let current = if rhs.operation == HirAssignOp::Set {
             unit()
         } else {
-            self.append_value_statement(
-                leaf.expression,
-                self.assignment_expression_origin(leaf.expression)?,
-                MirStatementKind::ReadField {
-                    receiver: leaf_receiver.clone(),
-                    target: leaf.target.clone(),
-                },
-                MirEffect::may_trap(),
-            )?
+            match &leaf.member {
+                PreparedFieldMember::Field(target) => self.append_value_statement(
+                    leaf.expression,
+                    self.assignment_expression_origin(leaf.expression)?,
+                    MirStatementKind::ReadField {
+                        receiver: leaf_receiver.clone(),
+                        target: target.clone(),
+                    },
+                    MirEffect::may_trap(),
+                )?,
+                PreparedFieldMember::Tuple(projection) => {
+                    self.append_tuple_assignment_read(leaf_receiver.clone(), projection)?
+                }
+            }
         };
         let assigned = self.assigned_value(rhs.with_current(current))?;
-        self.append_field_write(leaf_receiver, leaf.target.clone(), assigned.clone(), origin)?;
-
-        for index in (0..target.fields.len().saturating_sub(1)).rev() {
-            self.append_field_write(
-                target.receivers[index].clone(),
-                target.fields[index].target.clone(),
-                target.receivers[index + 1].clone(),
-                origin,
-            )?;
+        let mut rebuilt = assigned.clone();
+        for index in (0..target.fields.len()).rev() {
+            let receiver = target.receivers[index].clone();
+            match &target.fields[index].member {
+                PreparedFieldMember::Field(field) => {
+                    self.append_field_write(receiver.clone(), field.clone(), rebuilt, origin)?;
+                    rebuilt = receiver;
+                }
+                PreparedFieldMember::Tuple(projection) => {
+                    rebuilt = self.rebuild_tuple_assignment(receiver, rebuilt, projection)?;
+                }
+            }
         }
-        if let Some(indexed_root) = target.indexed_root {
-            let root =
-                target.receivers.first().cloned().ok_or_else(|| {
-                    self.inconsistent(origin, "indexed field assignment lost root")
-                })?;
-            self.append_index_write(&indexed_root, root, origin)?;
+        match target.root {
+            PreparedFieldRoot::Index(indexed_root) => {
+                self.append_index_write(&indexed_root, rebuilt, origin)?;
+            }
+            PreparedFieldRoot::Local(local)
+                if matches!(
+                    target.fields.first().map(|step| &step.member),
+                    Some(PreparedFieldMember::Tuple(_))
+                ) =>
+            {
+                self.function.append_statement(
+                    self.current_block,
+                    MirStatement::assign(
+                        origin,
+                        MirPlace::local(local),
+                        crate::MirRvalue::Use(rebuilt),
+                    ),
+                )?;
+            }
+            PreparedFieldRoot::Host(writeback) => {
+                self.write_host_value_back(writeback, rebuilt, origin)?;
+            }
+            PreparedFieldRoot::Value | PreparedFieldRoot::Local(_) => {}
         }
         Ok(assigned)
     }
@@ -538,6 +656,25 @@ impl FunctionBuilder<'_> {
         self.local(*local, origin)
     }
 
+    fn assignment_root_local(
+        &self,
+        expression: HirExprId,
+        origin: MirSourceOrigin,
+    ) -> Result<Option<crate::MirLocalId>, MirBuildError> {
+        let bindings = self
+            .input
+            .graph()
+            .bindings_for_body(self.body.id)
+            .ok_or_else(|| self.inconsistent(origin, "HIR body has no binding map"))?;
+        match bindings.resolution(expression) {
+            Some(BindingResolution::Local(local)) => self.local(*local, origin).map(Some),
+            Some(BindingResolution::Declaration(_)) => Ok(None),
+            Some(BindingResolution::Import(_) | BindingResolution::QualifiedPath(_)) | None => {
+                Ok(None)
+            }
+        }
+    }
+
     fn member_target(
         &self,
         expression: HirExprId,
@@ -583,10 +720,15 @@ impl FunctionBuilder<'_> {
             }
             CompileMemberTarget::HostField(_) => Err(self.host_read_route_error(origin)),
             CompileMemberTarget::ScriptMethod { .. } | CompileMemberTarget::ValueMethod { .. } => {
-                Err(self.inconsistent(
-                    origin,
-                    "method target reached field-value lowering outside a call",
-                ))
+                let HirExprKind::Field(field) = self.expression_kind(expression, origin)? else {
+                    return Err(self.inconsistent(
+                        origin,
+                        "non-call method member placement is not attached to a HIR field",
+                    ));
+                };
+                Ok(PreparedMemberTarget::Field(MirFieldTarget::Dynamic {
+                    name: field.name,
+                }))
             }
         }
     }

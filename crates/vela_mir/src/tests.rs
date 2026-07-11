@@ -16,3 +16,4 @@ mod reservations;
 mod snapshot_validation;
 mod targets;
 mod try_builder;
+mod tuple_assignments_builder;

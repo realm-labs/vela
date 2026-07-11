@@ -654,7 +654,7 @@ impl<'a> FunctionBuilder<'a> {
     }
 
     fn lower_path(
-        &self,
+        &mut self,
         expression: HirExprId,
         origin: MirSourceOrigin,
     ) -> Result<MirOperand, MirBuildError> {
@@ -667,8 +667,8 @@ impl<'a> FunctionBuilder<'a> {
             Some(BindingResolution::Local(local)) => {
                 Ok(MirOperand::Local(self.local(*local, origin)?))
             }
-            Some(BindingResolution::Declaration(_)) => {
-                Err(self.unsupported(origin, "declaration value path"))
+            Some(BindingResolution::Declaration(declaration)) => {
+                self.lower_declaration_path(expression, *declaration, origin)
             }
             Some(BindingResolution::Import(_) | BindingResolution::QualifiedPath(_)) => {
                 Err(self.inconsistent(origin, "unresolved import or qualified path reached MIR"))

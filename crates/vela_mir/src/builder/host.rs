@@ -17,7 +17,66 @@ enum PreparedHostPath {
     Diverged,
 }
 
+#[derive(Clone, Debug)]
+pub(super) struct PreparedHostValueWriteback {
+    root: MirOperand,
+    path: MirHostPath,
+}
+
 impl FunctionBuilder<'_> {
+    /// Read a host-owned value that will be rebuilt by ordinary MIR and then
+    /// written back through the exact same HostAccess prefix.
+    ///
+    /// This is used for immutable tuple projections below a host path. The
+    /// prefix remains an explicit HostAccess operation and never becomes a
+    /// MIR place or a dereferenced host reference.
+    pub(super) fn prepare_host_value_writeback(
+        &mut self,
+        expression: HirExprId,
+        target: &CompileHostPathTarget,
+        origin: MirSourceOrigin,
+    ) -> Result<Option<(MirOperand, PreparedHostValueWriteback)>, MirBuildError> {
+        if target.segments.is_empty() {
+            return Err(self.inconsistent(
+                origin,
+                "host tuple assignment prefix has an empty HostAccess path",
+            ));
+        }
+        self.validate_host_read_target(expression, target, origin)?;
+        self.validate_host_value_writeback_access(target, origin)?;
+        let PreparedHostPath::Ready { root, path } = self.prepare_host_path(target)? else {
+            return Ok(None);
+        };
+        let result_type = self.host_read_result_type(expression, target, origin)?;
+        let value = self.append_host_value(
+            origin,
+            result_type,
+            MirHostOperation::Read {
+                root: root.clone(),
+                path: path.clone(),
+            },
+            MirEffect::host_read(),
+        )?;
+        Ok(Some((value, PreparedHostValueWriteback { root, path })))
+    }
+
+    pub(super) fn write_host_value_back(
+        &mut self,
+        target: PreparedHostValueWriteback,
+        value: MirOperand,
+        origin: MirSourceOrigin,
+    ) -> Result<(), MirBuildError> {
+        self.append_host_effect(
+            origin,
+            MirHostOperation::Write {
+                root: target.root,
+                path: target.path,
+                value,
+            },
+            MirEffect::host_write(),
+        )
+    }
+
     /// Lower an exact host field or index read as one call-scoped HostAccess
     /// operation. Path prefixes are target-plan structure, not independently
     /// evaluated reads, and no host value becomes a MIR place.
@@ -311,6 +370,33 @@ impl FunctionBuilder<'_> {
         origin: MirSourceOrigin,
     ) -> Result<(), MirBuildError> {
         self.validate_host_path_expression(expression, target, origin)
+    }
+
+    fn validate_host_value_writeback_access(
+        &self,
+        target: &CompileHostPathTarget,
+        origin: MirSourceOrigin,
+    ) -> Result<(), MirBuildError> {
+        let (readable, writable) = match target.segments.last() {
+            Some(CompileHostPathSegment::Field(field)) => {
+                (field.access.readable, field.access.writable)
+            }
+            Some(CompileHostPathSegment::VariantField(field)) => (field.access.readable, true),
+            Some(CompileHostPathSegment::ConstantIndex { capability, .. })
+            | Some(CompileHostPathSegment::ConstantKey { capability, .. })
+            | Some(CompileHostPathSegment::DynamicIndex { capability, .. })
+            | Some(CompileHostPathSegment::DynamicKey { capability, .. }) => {
+                (capability.readable, capability.writable)
+            }
+            None => (false, false),
+        };
+        if !readable {
+            return Err(self.inconsistent(origin, "host tuple assignment prefix is not readable"));
+        }
+        if !writable {
+            return Err(self.inconsistent(origin, "host tuple assignment prefix is not writable"));
+        }
+        Ok(())
     }
 
     fn validate_host_path_expression(

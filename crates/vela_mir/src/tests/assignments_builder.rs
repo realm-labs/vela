@@ -1,15 +1,16 @@
 use vela_analysis::executable::{ExecutableAnalysisGeneration, ExecutableAnalysisInput};
 use vela_common::{ShapeId, SourceId};
-use vela_def::{FieldId, FunctionId, TypeId};
+use vela_def::{FieldId, FunctionId, MethodId, TypeId};
 use vela_hir::body::{HirExprKind, HirField};
-use vela_hir::ids::HirExprId;
+use vela_hir::ids::{HirExprId, HirNodeId};
 use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
 
 use crate::{
     CompileFieldAccess, CompileFieldDescriptor, CompileFieldTarget, CompileFunctionAccess,
     CompileFunctionClass, CompileFunctionDescriptor, CompileFunctionIdentity, CompileMemberTarget,
-    CompileParameter, CompileParameterDefault, CompilePositionalPolicy, CompileSignature,
-    CompileTargetSnapshot, CompileTypeClass, CompileTypeDescriptor, MirEffect, MirIndexKey,
+    CompileMethodAccess, CompileMethodClass, CompileMethodDescriptor, CompileParameter,
+    CompileParameterDefault, CompilePositionalPolicy, CompileSignature, CompileTargetSnapshot,
+    CompileTypeClass, CompileTypeDescriptor, MethodExecutableTarget, MirEffect, MirIndexKey,
     MirIndexOperation, MirLoweringConfig, MirLoweringInput, MirOperand, MirProgram,
     MirSourceOrigin, MirStatementKind,
 };
@@ -21,12 +22,23 @@ const PLAYER_OUTER: FieldId = FieldId::new(8_203);
 const STATS_TYPE: TypeId = TypeId::new(8_204);
 const STATS_SHAPE: ShapeId = ShapeId::new(8_205);
 const STATS_INNER: FieldId = FieldId::new(8_206);
+const METHOD_OWNER: TypeId = TypeId::new(8_207);
+const METHOD: MethodId = MethodId::new(8_208);
+const METHOD_FUNCTION: FunctionId = FunctionId::new(8_209);
+const METHOD_TARGET: MethodExecutableTarget = MethodExecutableTarget {
+    method: METHOD,
+    function: METHOD_FUNCTION,
+    owner: METHOD_OWNER,
+    node: HirNodeId::new(8_210),
+};
 
 #[derive(Clone, Copy)]
 enum MemberPolicy {
     Dynamic,
     Tuple,
     StableNested,
+    ScriptMethod,
+    ValueMethod,
 }
 
 #[derive(Clone, Copy)]
@@ -45,6 +57,14 @@ impl FixtureOptions {
 
     const STABLE_NESTED: Self = Self {
         members: MemberPolicy::StableNested,
+    };
+
+    const SCRIPT_METHOD: Self = Self {
+        members: MemberPolicy::ScriptMethod,
+    };
+
+    const VALUE_METHOD: Self = Self {
+        members: MemberPolicy::ValueMethod,
     };
 }
 
@@ -82,6 +102,12 @@ fn lower_selected(
     )?;
     if matches!(options.members, MemberPolicy::StableNested) {
         insert_stable_nested_descriptors(&mut targets, body_origin)?;
+    }
+    if matches!(
+        options.members,
+        MemberPolicy::ScriptMethod | MemberPolicy::ValueMethod
+    ) {
+        insert_non_call_method_descriptors(&mut targets, options.members, body_origin)?;
     }
     for field in body.expressions.values().filter_map(|expression| {
         let HirExprKind::Field(field) = &expression.kind else {
@@ -171,7 +197,85 @@ fn member_target(policy: MemberPolicy, field: &HirField) -> CompileMemberTarget 
             }),
             name => panic!("unexpected stable fixture field {name:?}"),
         },
+        MemberPolicy::ScriptMethod => CompileMemberTarget::ScriptMethod {
+            target: METHOD_TARGET,
+            debug_name: "deliberately-not-the-source-name".to_owned(),
+        },
+        MemberPolicy::ValueMethod => CompileMemberTarget::ValueMethod {
+            owner: METHOD_OWNER,
+            method: METHOD,
+            debug_name: "deliberately-not-the-source-name".to_owned(),
+        },
     }
+}
+
+fn insert_non_call_method_descriptors(
+    targets: &mut crate::CompileTargetSnapshotBuilder,
+    policy: MemberPolicy,
+    origin: MirSourceOrigin,
+) -> Result<(), crate::MirBuildError> {
+    targets.insert_type_descriptor(
+        CompileTypeDescriptor {
+            id: METHOD_OWNER,
+            canonical_name: "assignments::MethodOwner".to_owned(),
+            class: CompileTypeClass::OpaqueExternal,
+            shape: None,
+            fields: Vec::new(),
+            variants: Vec::new(),
+        },
+        origin,
+    )?;
+    let signature = CompileSignature {
+        parameters: Vec::new(),
+        positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
+        return_contract: None,
+        effect: MirEffect::PURE,
+    };
+    let class = match policy {
+        MemberPolicy::ScriptMethod => {
+            targets.insert_function_descriptor(
+                CompileFunctionDescriptor {
+                    id: METHOD_FUNCTION,
+                    class: CompileFunctionClass::Script,
+                    canonical_symbol: "assignments::MethodOwner::visible".to_owned(),
+                    debug_name: "visible".to_owned(),
+                    signature: CompileSignature {
+                        parameters: vec![CompileParameter {
+                            name: "self".to_owned(),
+                            contract: None,
+                            default: CompileParameterDefault::Required,
+                            origin: None,
+                        }],
+                        ..signature.clone()
+                    },
+                    access: CompileFunctionAccess::script(false),
+                },
+                origin,
+            )?;
+            targets.insert_script_method_target(METHOD_TARGET, origin)?;
+            CompileMethodClass::Script {
+                executable: METHOD_TARGET,
+                owner_name: "assignments::MethodOwner".to_owned(),
+                code_symbol: "assignments::MethodOwner::visible".to_owned(),
+            }
+        }
+        MemberPolicy::ValueMethod => CompileMethodClass::Value,
+        MemberPolicy::Dynamic | MemberPolicy::Tuple | MemberPolicy::StableNested => {
+            unreachable!("method descriptor helper requires a method policy")
+        }
+    };
+    targets.insert_method_descriptor(
+        CompileMethodDescriptor {
+            id: METHOD,
+            owner: METHOD_OWNER,
+            member_name: "visible".to_owned(),
+            debug_name: "assignments::MethodOwner::visible".to_owned(),
+            class,
+            signature,
+            access: CompileMethodAccess::script(),
+        },
+        origin,
+    )
 }
 
 fn insert_stable_nested_descriptors(
@@ -493,6 +597,37 @@ fn assignment_builder_uses_explicit_dynamic_fields_without_name_fallback() {
 }
 
 #[test]
+fn non_call_method_members_remain_exact_name_dynamic_field_reads() {
+    for options in [FixtureOptions::SCRIPT_METHOD, FixtureOptions::VALUE_METHOD] {
+        let program = lower_selected("fn main(receiver) { return receiver.visible; }", options)
+            .expect("non-call method member value");
+        let function = only_function(&program);
+        let reads = function
+            .statements()
+            .filter_map(|(_, statement)| match &statement.kind {
+                MirStatementKind::ReadField { target, .. } => Some(target),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            reads,
+            vec![&crate::MirFieldTarget::Dynamic {
+                name: "visible".to_owned(),
+            }],
+            "{}",
+            program.dump()
+        );
+        assert!(
+            !function
+                .statements()
+                .any(|(_, statement)| matches!(statement.kind, MirStatementKind::Call(_)))
+        );
+        assert!(!program.dump().contains("deliberately-not-the-source-name"));
+    }
+}
+
+#[test]
 fn assignment_builder_distinguishes_constant_string_and_dynamic_index_keys() {
     let constant = lower_selected(
         r#"fn main(values) { return values["score"]; }"#,
@@ -530,7 +665,7 @@ fn assignment_builder_distinguishes_constant_string_and_dynamic_index_keys() {
 }
 
 #[test]
-fn assignment_builder_lowers_tuple_projection_reads_but_rejects_tuple_writes() {
+fn assignment_builder_lowers_tuple_projection_reads() {
     let read = lower_selected("fn main(pair) { return pair.1; }", FixtureOptions::TUPLE)
         .expect("tuple projection read");
     assert!(
@@ -541,14 +676,4 @@ fn assignment_builder_lowers_tuple_projection_reads_but_rejects_tuple_writes() {
                 MirStatementKind::TupleField { index: 1, .. }
             ))
     );
-
-    let error = lower_selected(
-        "fn main(pair, rhs) { return pair.1 = rhs; }",
-        FixtureOptions::TUPLE,
-    )
-    .expect_err("tuple assignment requires an explicit rebuild form");
-    let crate::MirBuildError::InconsistentInput { message, .. } = error else {
-        panic!("unexpected tuple write error {error:?}")
-    };
-    assert!(message.contains("no tuple element write/rebuild form"));
 }

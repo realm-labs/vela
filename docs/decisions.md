@@ -138,6 +138,33 @@ alias write performed by the RHS is observable by the RMW. Host compounds keep
 `HostMutate` as that current-state boundary; they are not lowered through a
 detached host read or an ordinary MIR place.
 
+Tuple values are immutable. Assignment through a tuple projection therefore
+uses the exact receiver `TypeFact::Tuple` arity plus the authoritative
+`CompileMemberTarget::TupleIndex`, reads unchanged siblings, allocates a new
+tuple, and propagates rebuilt values outward in reverse through mixed
+tuple/record chains. The rebuilt root is written to the captured local or
+index; allocation and safepoint behavior stays explicit in MIR. A tuple target
+with unknown/dynamic arity, a non-tuple receiver fact, or an out-of-range or
+HIR-disagreeing index is inconsistent compiler input and has no fallback.
+
+When a tuple suffix follows a HostAccess path, MIR reads the longest exact
+host-path prefix once, rebuilds only the script-value suffix, and writes the
+rebuilt prefix through the same captured `HostRef` root and `HostPath`. The
+prefix must authorize both the required read and write; ordinary fields use
+their readable/writable access, variant fields retain their existing
+variant-write policy, and indexes require readable and writable capabilities.
+No host prefix becomes a MIR place or a dereferenced host reference. Current
+semantic input classifies that prefix as a read because the composite tuple
+suffix ends outside HostAccess; the MIR input boundary rechecks composite
+write authorization, while moving the same diagnostic fully into analysis is
+a focused follow-up rather than a reason to infer a path from names.
+
+Resolved methods do not become implicit bound-method values. A method member
+used outside call position remains an ordinary dynamic field read using the
+exact HIR member spelling, preserving the existing runtime lookup or missing-
+member failure. Stable method descriptors select call lowering only; they do
+not add hidden closure allocation, method binding, or monkey patching.
+
 ### Module Imports And Exports
 
 Vela has no source-level `module` declaration. `compile_file(path)` is a
