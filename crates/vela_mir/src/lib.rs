@@ -17,6 +17,7 @@ mod operations;
 mod origin;
 mod targets;
 mod value;
+mod verifier;
 
 #[cfg(test)]
 mod tests;
@@ -70,4 +71,8 @@ pub use targets::{
 pub use value::{
     MirBinaryOp, MirComparisonOp, MirEvaluatedConstant, MirImmediate, MirNumericBinaryOp,
     MirOperand, MirPatternPredicate, MirPlace, MirRvalue, MirUnaryOp, MirValueType,
+};
+pub use verifier::{
+    MirDestinationExpectation, MirVerifyError, MirVerifyErrorKind, MirVerifyTarget,
+    VerifiedMirProgram, verify_mir,
 };

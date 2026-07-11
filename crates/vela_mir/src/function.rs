@@ -602,6 +602,37 @@ impl MirFunction {
     pub fn set_liveness(&mut self, liveness: MirLiveness) {
         self.liveness = liveness;
     }
+
+    /// Installs a statement without enforcing construction-time invariants.
+    ///
+    /// This exists only so verifier tests can prove malformed MIR is rejected;
+    /// production construction must continue through [`Self::append_statement`].
+    #[cfg(test)]
+    pub(crate) fn verifier_test_append_statement_unchecked(
+        &mut self,
+        block: MirBlockId,
+        statement: MirStatement,
+    ) -> MirStatementId {
+        let statement = self.statements.allocate(statement);
+        self.blocks
+            .get_mut(block)
+            .expect("verifier corruption fixture block exists")
+            .push_statement(statement);
+        statement
+    }
+
+    /// Replaces a block terminator without construction-time validation.
+    #[cfg(test)]
+    pub(crate) fn verifier_test_set_terminator_unchecked(
+        &mut self,
+        block: MirBlockId,
+        terminator: MirTerminator,
+    ) {
+        self.blocks
+            .get_mut(block)
+            .expect("verifier corruption fixture block exists")
+            .set_terminator(terminator);
+    }
 }
 
 /// Identity reserved for one generation-local MIR function slot.
