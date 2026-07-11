@@ -43,6 +43,10 @@ facts backend-neutral, the linker the single executable-layout authority,
 ProgramVersion the owner of same-generation verified MIR and linked artifacts,
 closures/frames owners of their creation/entry generation, and execution
 budgets independent of bytecode layout.
+Goal execution for this track is intentionally throughput-first: Phases 0-3,
+4-6, 7-8, and 9 form four large commit/validation batches. Intermediate commits
+inside a batch may fail compilation or tests; only batch boundaries are required
+to restore the complete green validation gate.
 
 The Heavy HIR hard switch and D1-D3 close-out are complete.
 `vela_hir` owns executable body and stable semantic identity, bytecode consumes

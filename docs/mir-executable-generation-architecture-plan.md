@@ -5,6 +5,8 @@
 > **Document status:** Codex goal-mode execution plan
 > **Execution status:** Planned. No phase is complete until its checklist and
 > validation gate pass.
+> **Execution mode:** throughput-first large batches. Intermediate commits may
+> fail to compile or test; only batch-completion checkpoints must be green.
 > **Supersedes:** the future-ownership, closure, cache rebasing, profile, budget,
 > and JIT-input conclusions in
 > [mir-lowering-jit-foundation-plan.md](mir-lowering-jit-foundation-plan.md) and
@@ -36,7 +38,9 @@ long-term correctness and JIT-foundation architecture track. Treat docs/goal.md
 as the product roadmap, docs/architecture.md and docs/architecture/*.md as the
 technical contract, docs/decisions.md as durable design policy, and
 docs/progress.md as rolling status. Start from the first unchecked phase and
-continue through the smallest coherent green checkpoint.
+continue through the entire active execution batch. Do not stop after the
+smallest verifiable task and do not spend time restoring a temporarily green
+tree between tightly coupled ownership/type migrations.
 
 Do not apply short-term mitigations such as clearing all physical facts at
 basic-block boundaries, disabling specialization, rejecting every closure from
@@ -71,13 +75,15 @@ boundaries. Do not add Cranelift machine-code generation in this track, but
 leave ProgramVersion with an owned verified input and immutable layouts that
 M22 can consume without rerunning HIR/analysis.
 
-For each phase, add the required negative verifier tests, source-level runtime
-regressions, reload/cache identity tests, and focused benchmarks. Update the
-architecture and decision docs when the target contract becomes active. Run
-the declared focused validation, then the final workspace, example, audit, and
-benchmark gates. Commit only coherent green checkpoints with Conventional
-Commit messages. Do not mark the goal complete while any acceptance item,
-zero-hit audit, or ownership invariant remains unproven.
+Add the required negative verifier tests, source-level runtime regressions,
+reload/cache identity tests, and focused benchmarks as part of their large
+execution batch. Intermediate commits are recovery markers and may contain
+compile errors, failing tests, incomplete caller migration, or temporarily
+unused new types. Keep moving through the batch instead of repairing temporary
+states for commit cleanliness. Use Conventional Commit messages, keep unrelated
+work out, and make the batch-completion commit green. Do not mark the goal
+complete while any acceptance item, zero-hit audit, or ownership invariant
+remains unproven.
 ```
 
 ---
@@ -633,24 +639,60 @@ Status notation:
 
 ```text
 [ ] not started
-[~] in progress; do not advance past its atomic checkpoint
+[~] in progress inside the active batch; compilation/tests may be red
 [x] complete and validated
 ```
 
 Rules:
 
-1. Start from the first unchecked phase unless a failing regression requires a
-   prerequisite from the immediately following phase.
-2. A commit must leave one production path and pass its declared validation.
-3. Tests and their architectural fix land in the same green checkpoint; do not
-   commit knowingly failing tests or ignored regressions.
-4. Do not preserve old internal APIs, layout builders, budget counters, or
-   generation lookup paths for compatibility.
-5. Update `docs/progress.md` only when the active phase/status/gaps change.
-6. Update `docs/decisions.md` when a durable rule is activated or revised.
-7. Keep implementation/test files below 1200 lines or document a justified
+1. Start from the first incomplete execution batch and continue across all
+   phases assigned to that batch.
+2. Default commit granularity is one substantial commit per execution batch,
+   not one commit per phase, checklist item, module, or passing test group.
+3. Intermediate recovery commits are allowed when context, review safety, or
+   change volume requires them. They may fail compilation or tests and may
+   contain an incomplete caller migration.
+4. Do not pause merely because the worktree is red. Restore compilation and
+   tests at the batch boundary, not after every internal type/API change.
+5. Temporary incomplete states may exist inside a batch, but no selectable
+   compatibility backend, runtime mode, or dual semantic contract may survive
+   the completed batch.
+6. Phase validation commands are diagnostic during a batch. Their full union
+   becomes mandatory only at the batch-completion checkpoint.
+7. Update `docs/progress.md` at batch start, when the active batch genuinely
+   changes, and at batch completion; do not append per-phase implementation
+   narration.
+8. Update `docs/decisions.md` when a durable rule is activated or revised.
+9. Keep implementation/test files below 1200 lines or document a justified
    exception.
-8. Run focused tests before full workspace validation.
+
+### 9.1 Execution Batches
+
+The default execution shape is four large checkpoints:
+
+```text
+Batch A: MIR semantic contract
+  Phases 0-3
+  architecture/baseline + owned verified MIR + CFG facts + callable contracts
+
+Batch B: linked executable generation
+  Phases 4-6
+  LinkedArtifact + ProgramVersion/runtime sidecars + closure/frame ownership
+
+Batch C: backend-neutral runtime contract
+  Phases 7-8
+  execution units + structured diagnostics + retained M22 JIT input
+
+Batch D: acceptance close-out
+  Phase 9
+  behavior matrix + audits + full validation + performance/memory comparison
+```
+
+Aim for roughly these four substantial commits. Split a batch only when needed
+to preserve recoverability or reviewability; do not split it merely because one
+crate or checklist subsection has become green. A red intermediate commit is
+acceptable, but the final commit for each batch must pass all validations from
+its included phases and leave one coherent production architecture.
 
 ---
 
@@ -835,9 +877,10 @@ accepted with the right arity, while wrong kind/arity failures remain stable.
 Purpose: make the linker the only authority for executable, cache, profile, and
 ProgramImage layout.
 
-Atomic checkpoint rule: do not commit this phase with RuntimeImage rebasing,
-independent ProgramImage flattening, or a second linked-layout builder still in
-production.
+Batch B completion rule: RuntimeImage rebasing, independent ProgramImage
+flattening, and the second linked-layout builder must all be gone. Intermediate
+commits may be non-compiling while callers move; do not spend work preserving a
+green dual production path.
 
 - [ ] Define the canonical LinkedArtifact and immutable executable layout.
 - [ ] Flatten all top-level and nested executables before allocating dense
@@ -957,9 +1000,10 @@ and old closures cannot misdispatch into a new LinkedProgram.
 Purpose: make termination and charge ordering identical for interpreter and
 future JIT without bytecode-layout coupling.
 
-Atomic checkpoint rule: the public/runtime counter rename, MIR schedule,
-bytecode execution, diagnostics, examples, and tests move together. Do not keep
-old instruction-count and new execution-unit modes selectable in production.
+Batch C completion rule: the public/runtime counter rename, MIR schedule,
+bytecode execution, diagnostics, examples, and tests move together. Intermediate
+commits may be red, but the completed batch must not keep old instruction-count
+and new execution-unit modes selectable in production.
 
 - [ ] Record the execution-unit table and trap-order contract in decisions and
   runtime architecture docs.
