@@ -3,10 +3,10 @@ use vela_hir::body::{HirLiteral, HirMatch, HirMatchArmBody, HirPatternKind};
 use vela_hir::ids::{HirExprId, HirLocalId, HirPatternId};
 
 use crate::{
-    CompilePatternConstructorTarget, MirBuildError, MirDynamicBinaryOp, MirEffect,
-    MirEvaluatedConstant, MirFieldTarget, MirGuard, MirGuardAssumption, MirImmediate, MirOperand,
-    MirPatternPredicate, MirPlace, MirRvalue, MirSafepoint, MirSourceOrigin, MirStatement,
-    MirStatementKind, MirTerminator, MirTerminatorKind, MirValueType,
+    CompilePatternConstructorTarget, MirBuildError, MirConstantProvenance, MirDynamicBinaryOp,
+    MirEffect, MirEvaluatedConstant, MirFieldTarget, MirGuard, MirGuardAssumption, MirImmediate,
+    MirOperand, MirPatternPredicate, MirPlace, MirRvalue, MirSafepoint, MirSourceOrigin,
+    MirStatement, MirStatementKind, MirTerminator, MirTerminatorKind, MirValueType,
 };
 
 use super::core::{FunctionBuilder, value_type};
@@ -635,13 +635,23 @@ impl FunctionBuilder<'_> {
         origin: MirSourceOrigin,
     ) -> Result<MirOperand, MirBuildError> {
         match literal {
-            HirLiteral::Bool(value) => Ok(MirOperand::Immediate(MirImmediate::Bool(*value))),
-            HirLiteral::Char(value) => Ok(MirOperand::Immediate(MirImmediate::Char(*value))),
+            HirLiteral::Bool(value) => self.define_immediate_constant(
+                MirImmediate::Bool(*value),
+                MirConstantProvenance::PatternLiteral,
+                origin,
+            ),
+            HirLiteral::Char(value) => self.define_immediate_constant(
+                MirImmediate::Char(*value),
+                MirConstantProvenance::PatternLiteral,
+                origin,
+            ),
             HirLiteral::Integer(_) | HirLiteral::Float(_) => {
                 match self.input.analysis().pattern_literal(pattern) {
-                    Some(Ok(ResolvedLiteralFact::Scalar(value))) => {
-                        Ok(MirOperand::Immediate(MirImmediate::Scalar(value.value())))
-                    }
+                    Some(Ok(ResolvedLiteralFact::Scalar(value))) => self.define_immediate_constant(
+                        MirImmediate::Scalar(value.value()),
+                        MirConstantProvenance::PatternLiteral,
+                        origin,
+                    ),
                     Some(Ok(ResolvedLiteralFact::Deferred(_))) => Err(self.inconsistent(
                         origin,
                         "pattern literal unexpectedly retained dynamic contextualization",

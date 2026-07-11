@@ -69,8 +69,9 @@ pub use targets::{
     MirTargetTable,
 };
 pub use value::{
-    MirBinaryOp, MirComparisonOp, MirEvaluatedConstant, MirImmediate, MirNumericBinaryOp,
-    MirOperand, MirPatternPredicate, MirPlace, MirRvalue, MirUnaryOp, MirValueType,
+    MirBinaryOp, MirComparisonOp, MirConstantProvenance, MirEvaluatedConstant, MirImmediate,
+    MirNumericBinaryOp, MirOperand, MirPatternPredicate, MirPlace, MirRvalue, MirUnaryOp,
+    MirValueType,
 };
 pub use verifier::{
     MirDestinationExpectation, MirVerifyError, MirVerifyErrorKind, MirVerifyTarget,

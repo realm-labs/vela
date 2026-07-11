@@ -871,6 +871,16 @@ fn evaluated_constant(value: &MirEvaluatedConstant) -> String {
 fn rvalue(value: &MirRvalue) -> String {
     match value {
         MirRvalue::Use(operand) => operand_text(operand),
+        MirRvalue::Constant { value, provenance } => format!(
+            "constant.{} {}",
+            match provenance {
+                crate::MirConstantProvenance::Literal => "literal",
+                crate::MirConstantProvenance::FoldedLiteral => "folded-literal",
+                crate::MirConstantProvenance::EvaluatedConstant => "evaluated",
+                crate::MirConstantProvenance::PatternLiteral => "pattern-literal",
+            },
+            immediate(*value)
+        ),
         MirRvalue::Truthy { value } => format!("truthy {}", operand_text(value)),
         MirRvalue::IsMissing { value } => format!("is_missing {}", operand_text(value)),
         MirRvalue::PatternPredicate(predicate) => pattern_predicate(predicate),

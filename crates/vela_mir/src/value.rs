@@ -11,6 +11,31 @@ pub enum MirImmediate {
     Scalar(ScalarValue),
 }
 
+impl MirImmediate {
+    #[must_use]
+    pub fn value_type(self) -> MirValueType {
+        match self {
+            Self::Unit => MirValueType::Unit,
+            Self::Bool(_) => MirValueType::Primitive(PrimitiveTag::Bool),
+            Self::Char(_) => MirValueType::Primitive(PrimitiveTag::Char),
+            Self::Scalar(value) => MirValueType::Primitive(value.primitive_tag()),
+        }
+    }
+}
+
+/// The semantic source of an explicitly evaluated scalar constant.
+///
+/// This does not select a bytecode encoding. Physical backends may use it to
+/// distinguish source literals from folded or compile-time-evaluated values
+/// without traversing HIR or inferring provenance from the scalar payload.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum MirConstantProvenance {
+    Literal,
+    FoldedLiteral,
+    EvaluatedConstant,
+    PatternLiteral,
+}
+
 /// A fully evaluated, backend-neutral constant value.
 ///
 /// Evaluation happens before runtime MIR. Heap-backed variants are materialized
@@ -151,7 +176,15 @@ pub enum MirPatternPredicate {
 #[derive(Clone, Debug, PartialEq)]
 pub enum MirRvalue {
     Use(MirOperand),
-    Truthy { value: MirOperand },
-    IsMissing { value: MirOperand },
+    Constant {
+        value: MirImmediate,
+        provenance: MirConstantProvenance,
+    },
+    Truthy {
+        value: MirOperand,
+    },
+    IsMissing {
+        value: MirOperand,
+    },
     PatternPredicate(MirPatternPredicate),
 }

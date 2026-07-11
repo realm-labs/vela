@@ -193,20 +193,26 @@ fn mir_builder_match_literal_order_and_catch_all_snapshot() {
     local l0: Script(HirLocalId(0)) Dynamic @87:8..13/h0
     local l1: Synthetic Primitive(I64) @87:24..56/e0
     temp t0: Dynamic def=s0 @87:30..35/e1
-    temp t1: Primitive(Bool) def=s1 @87:38..39/p0
+    temp t1: Primitive(I64) def=s1 @87:38..39/p0
+    temp t2: Primitive(Bool) def=s2 @87:38..39/p0
+    temp t3: Primitive(I64) def=s3 @87:43..45/e2
+    temp t4: Primitive(I64) def=s5 @87:52..54/e3
     debug dl0: value -> l0 kind=Parameter hir=Some(0) scope=h0 live=[] @87:8..13/h0
     safepoint sp0: live={} @87:38..39/p0
     bb0:
       s0: t0 = l0 [pure] @87:30..35/e1
-      s1: t1 = dyn.Equal t0, 1i64 [trap|alloc|dynamic-call, sp0] @87:38..39/p0
-      -> branch t1 -> bb3, bb2 [pure] @87:38..39/p0
+      s1: t1 = constant.pattern-literal 1i64 [pure] @87:38..39/p0
+      s2: t2 = dyn.Equal t0, t1 [trap|alloc|dynamic-call, sp0] @87:38..39/p0
+      -> branch t2 -> bb3, bb2 [pure] @87:38..39/p0
     bb1:
       -> return l1 [pure] @87:17..57/s0
     bb2:
-      s3: l1 = 20i64 [pure] @87:52..54/e3
+      s5: t4 = constant.literal 20i64 [pure] @87:52..54/e3
+      s6: l1 = t4 [pure] @87:52..54/e3
       -> jump bb1 [pure] @87:24..56/e0
     bb3:
-      s2: l1 = 10i64 [pure] @87:43..45/e2
+      s3: t3 = constant.literal 10i64 [pure] @87:43..45/e2
+      s4: l1 = t3 [pure] @87:43..45/e2
       -> jump bb1 [pure] @87:24..56/e0
   }
 }
@@ -285,9 +291,10 @@ fn mir_builder_match_tuple_predicate_precedes_the_success_binding_guard() {
                 next.statements().iter().any(|statement| {
                     function.statement(*statement).is_some_and(|statement| matches!(
                         statement.kind,
-                        MirStatementKind::Assign(crate::MirRvalue::Use(
-                            crate::MirOperand::Immediate(crate::MirImmediate::Scalar(_))
-                        ))
+                        MirStatementKind::Assign(crate::MirRvalue::Constant {
+                            provenance: crate::MirConstantProvenance::Literal,
+                            ..
+                        })
                     ))
                 })
             })

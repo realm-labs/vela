@@ -608,7 +608,11 @@ impl<'a> FunctionBuilder<'a> {
                 HirExprKind::Paren {
                     expression: Some(inner),
                 } => self.lower_expression(inner),
-                HirExprKind::Unit => Ok(MirOperand::Immediate(MirImmediate::Unit)),
+                HirExprKind::Unit => self.define_immediate_constant(
+                    MirImmediate::Unit,
+                    crate::MirConstantProvenance::Literal,
+                    origin,
+                ),
                 HirExprKind::Missing => {
                     Err(self.inconsistent(origin, "missing expression reached MIR lowering"))
                 }

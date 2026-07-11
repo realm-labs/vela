@@ -1,8 +1,9 @@
 use vela_common::PrimitiveTag;
 
 use crate::{
-    MirBuildError, MirEffect, MirEvaluatedConstant, MirImmediate, MirOperand, MirPlace,
-    MirSafepoint, MirSourceOrigin, MirStatement, MirStatementKind, MirTypeContract, MirValueType,
+    MirBuildError, MirConstantProvenance, MirEffect, MirEvaluatedConstant, MirImmediate,
+    MirOperand, MirPlace, MirRvalue, MirSafepoint, MirSourceOrigin, MirStatement, MirStatementKind,
+    MirTypeContract, MirValueType,
 };
 
 use super::core::FunctionBuilder;
@@ -10,9 +11,9 @@ use super::core::FunctionBuilder;
 impl FunctionBuilder<'_> {
     /// Lower a value that was fully evaluated by the compile-time evaluator.
     ///
-    /// Scalar values stay immediate. Heap-backed values are materialized at
-    /// every runtime use so allocation, identity, GC, and budget behavior stay
-    /// explicit in MIR.
+    /// Scalar values receive an explicit pure definition at every use.
+    /// Heap-backed values are materialized at every runtime use so allocation,
+    /// identity, GC, and budget behavior stay explicit in MIR.
     pub(super) fn lower_evaluated_constant(
         &mut self,
         value: MirEvaluatedConstant,
@@ -20,16 +21,26 @@ impl FunctionBuilder<'_> {
         origin: MirSourceOrigin,
     ) -> Result<MirOperand, MirBuildError> {
         match value {
-            MirEvaluatedConstant::Unit => Ok(MirOperand::Immediate(MirImmediate::Unit)),
-            MirEvaluatedConstant::Bool(value) => {
-                Ok(MirOperand::Immediate(MirImmediate::Bool(value)))
-            }
-            MirEvaluatedConstant::Char(value) => {
-                Ok(MirOperand::Immediate(MirImmediate::Char(value)))
-            }
-            MirEvaluatedConstant::Scalar(value) => {
-                Ok(MirOperand::Immediate(MirImmediate::Scalar(value)))
-            }
+            MirEvaluatedConstant::Unit => self.define_immediate_constant(
+                MirImmediate::Unit,
+                MirConstantProvenance::EvaluatedConstant,
+                origin,
+            ),
+            MirEvaluatedConstant::Bool(value) => self.define_immediate_constant(
+                MirImmediate::Bool(value),
+                MirConstantProvenance::EvaluatedConstant,
+                origin,
+            ),
+            MirEvaluatedConstant::Char(value) => self.define_immediate_constant(
+                MirImmediate::Char(value),
+                MirConstantProvenance::EvaluatedConstant,
+                origin,
+            ),
+            MirEvaluatedConstant::Scalar(value) => self.define_immediate_constant(
+                MirImmediate::Scalar(value),
+                MirConstantProvenance::EvaluatedConstant,
+                origin,
+            ),
             heap_value => {
                 let destination = self.function.add_temp(value_type, origin);
                 let safepoint = self.function.add_safepoint(MirSafepoint::new(origin));
@@ -46,6 +57,24 @@ impl FunctionBuilder<'_> {
                 Ok(MirOperand::Temp(destination))
             }
         }
+    }
+
+    pub(super) fn define_immediate_constant(
+        &mut self,
+        value: MirImmediate,
+        provenance: MirConstantProvenance,
+        origin: MirSourceOrigin,
+    ) -> Result<MirOperand, MirBuildError> {
+        let destination = self.function.add_temp(value.value_type(), origin);
+        self.function.append_statement(
+            self.current_block,
+            MirStatement::assign(
+                origin,
+                MirPlace::temp(destination),
+                MirRvalue::Constant { value, provenance },
+            ),
+        )?;
+        Ok(MirOperand::Temp(destination))
     }
 }
 

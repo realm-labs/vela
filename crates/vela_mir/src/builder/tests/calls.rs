@@ -1,5 +1,5 @@
 use vela_analysis::executable::{ExecutableAnalysisGeneration, ExecutableAnalysisInput};
-use vela_common::{PrimitiveTag, SourceId};
+use vela_common::{PrimitiveTag, ScalarValue, SourceId};
 use vela_def::{FunctionId, MethodId, TypeId};
 use vela_hir::body::{HirBody, HirExprKind};
 use vela_hir::ids::{HirExprId, HirNodeId};
@@ -142,6 +142,137 @@ fn argument_values(call: &vela_hir::body::HirCall) -> Vec<HirExprId> {
         .iter()
         .map(|argument| argument.value.expect("valid call argument"))
         .collect()
+}
+
+#[test]
+fn source_literal_definition_precedes_a_later_effectful_argument() {
+    const EFFECT: FunctionId = FunctionId::new(705);
+    const SINK: FunctionId = FunctionId::new(706);
+
+    let source = "fn main() { return sink(1, effect()); }";
+    let program = try_build_calls(source, |_graph, body, targets| {
+        let mut calls = body
+            .expressions
+            .values()
+            .filter_map(|expression| match &expression.kind {
+                HirExprKind::Call(call) => Some((expression.id, call.clone())),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        calls.sort_by_key(|(expression, _)| {
+            body.expression(*expression)
+                .expect("call expression")
+                .origin
+                .span
+                .start
+        });
+        let [
+            (outer_expression, outer_call),
+            (effect_expression, effect_call),
+        ] = calls.as_slice()
+        else {
+            panic!("expected outer and nested calls: {calls:?}")
+        };
+        let effect_origin = MirSourceOrigin::expression(
+            body.id,
+            *effect_expression,
+            call_origin(body, *effect_expression),
+        );
+        let outer_origin = MirSourceOrigin::expression(
+            body.id,
+            *outer_expression,
+            call_origin(body, *outer_expression),
+        );
+        let mut effect_descriptor = function_descriptor(
+            EFFECT,
+            CompileFunctionClass::Native,
+            "calls::effect",
+            Vec::new(),
+        );
+        effect_descriptor.signature.effect = MirEffect {
+            reads_time: true,
+            ..MirEffect::PURE
+        };
+        targets.insert_function_descriptor(effect_descriptor, effect_origin)?;
+        targets.insert_function_descriptor(
+            function_descriptor(
+                SINK,
+                CompileFunctionClass::Native,
+                "calls::sink",
+                vec![required("first"), required("second")],
+            ),
+            outer_origin,
+        )?;
+        targets.insert_call(
+            ROOT_FUNCTION,
+            *effect_expression,
+            CompileCallTarget::positional(
+                CompileCalleeTarget::NativeFunction {
+                    function: EFFECT,
+                    debug_name: "calls::effect".to_owned(),
+                },
+                argument_values(effect_call),
+            ),
+            effect_origin,
+        )?;
+        targets.insert_call(
+            ROOT_FUNCTION,
+            *outer_expression,
+            CompileCallTarget::positional(
+                CompileCalleeTarget::NativeFunction {
+                    function: SINK,
+                    debug_name: "calls::sink".to_owned(),
+                },
+                argument_values(outer_call),
+            ),
+            outer_origin,
+        )
+    })
+    .expect("literal followed by nested effectful call");
+
+    let (_, function) = program.functions().next().expect("main function");
+    let statements = function
+        .statements()
+        .map(|(_, statement)| statement)
+        .collect::<Vec<_>>();
+    let literal_position = statements
+        .iter()
+        .position(|statement| {
+            matches!(
+                statement.kind,
+                MirStatementKind::Assign(crate::MirRvalue::Constant {
+                    value: crate::MirImmediate::Scalar(ScalarValue::I64(1)),
+                    provenance: crate::MirConstantProvenance::Literal,
+                })
+            )
+        })
+        .expect("literal definition");
+    let effect_position = statements
+        .iter()
+        .position(|statement| {
+            matches!(
+                statement.kind,
+                MirStatementKind::Call(MirCall::NativeFunction {
+                    function: EFFECT,
+                    ..
+                })
+            )
+        })
+        .expect("effectful nested call");
+    let sink_position = statements
+        .iter()
+        .position(|statement| {
+            matches!(
+                statement.kind,
+                MirStatementKind::Call(MirCall::NativeFunction { function: SINK, .. })
+            )
+        })
+        .expect("outer call");
+    assert!(
+        literal_position < effect_position && effect_position < sink_position,
+        "{}",
+        program.dump()
+    );
 }
 
 #[test]

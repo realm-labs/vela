@@ -1418,6 +1418,18 @@ construct or a current-line fallback. Broader AST-aware reflow remains a later
 formatter capability and must not be reached through whole-document edits while
 the user is typing.
 
+### Scalar Constant Evaluation in MIR
+
+Every source-derived unit, boolean, character, or numeric value has an explicit
+single-assignment MIR temp definition at its evaluation point. The definition
+records whether the value is a direct literal, a folded literal, an evaluated
+const/schema value, or a pattern literal. This provenance is semantic input to
+physical selection, not a bytecode opcode choice: the backend may select an
+inline immediate only from a verified eligible definition and must otherwise
+materialize the constant at that definition point. Compiler-synthesized CFG
+constants remain inline operands where their enclosing MIR operation already
+fixes the evaluation point.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

@@ -461,6 +461,21 @@ fn constructor_builder_does_not_reapply_field_guard_to_contextual_literal() {
 
     let function = only_function(&program);
     assert_eq!(function.guards().count(), 0);
+    let literal = function
+        .statements()
+        .find_map(
+            |(_, statement)| match (&statement.destination, &statement.kind) {
+                (
+                    Some(crate::MirPlace::Temp(temp)),
+                    MirStatementKind::Assign(crate::MirRvalue::Constant {
+                        value: MirImmediate::Scalar(vela_common::ScalarValue::U8(255)),
+                        provenance: crate::MirConstantProvenance::Literal,
+                    }),
+                ) => Some(*temp),
+                _ => None,
+            },
+        )
+        .expect("contextual literal definition");
     let allocation = function
         .statements()
         .find_map(|(_, statement)| match &statement.kind {
@@ -470,8 +485,7 @@ fn constructor_builder_does_not_reapply_field_guard_to_contextual_literal() {
         .expect("record allocation");
     assert!(matches!(
         allocation.as_slice(),
-        [(actual, MirOperand::Immediate(MirImmediate::Scalar(vela_common::ScalarValue::U8(255))))]
-            if *actual == field
+        [(actual, MirOperand::Temp(value))] if *actual == field && *value == literal
     ));
 }
 
@@ -676,5 +690,23 @@ fn constructor_builder_stops_before_guard_or_allocation_after_terminating_field(
         statement.kind,
         MirStatementKind::Allocate(_) | MirStatementKind::GuardTrap { .. }
     )));
-    assert!(program.dump().contains("-> return 9i64 [pure]"));
+    let returned = function
+        .blocks()
+        .find_map(
+            |(_, block)| match block.terminator().map(|value| &value.kind) {
+                Some(crate::MirTerminatorKind::Return(Some(MirOperand::Temp(temp)))) => Some(*temp),
+                _ => None,
+            },
+        )
+        .expect("terminating field return temp");
+    assert!(function.statements().any(|(_, statement)| matches!(
+        (&statement.destination, &statement.kind),
+        (
+            Some(crate::MirPlace::Temp(temp)),
+            MirStatementKind::Assign(crate::MirRvalue::Constant {
+                value: MirImmediate::Scalar(vela_common::ScalarValue::I64(9)),
+                provenance: crate::MirConstantProvenance::Literal,
+            })
+        ) if *temp == returned
+    )));
 }

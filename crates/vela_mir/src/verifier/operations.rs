@@ -14,10 +14,10 @@ use crate::operations::MirDestinationRequirement;
 use crate::{
     CompileFunctionClass, CompileMethodClass, CompileParameterDefault, CompilePositionalPolicy,
     CompileTypeClass, HostFieldTarget, HostMethodTarget, HostTypeTarget, MirAggregate, MirBinaryOp,
-    MirCall, MirContextualBinaryOp, MirDynamicBinaryOp, MirEffect, MirFieldTarget,
-    MirGlobalOperation, MirGuardAssumption, MirHostOperation, MirHostPath, MirHostPathSegment,
-    MirImmediate, MirIteratorOperation, MirOperand, MirPatternPredicate, MirPlace,
-    MirReflectionOperation, MirRvalue, MirSourceNode, MirSourceOrigin, MirStatementKind,
+    MirCall, MirConstantProvenance, MirContextualBinaryOp, MirDynamicBinaryOp, MirEffect,
+    MirFieldTarget, MirGlobalOperation, MirGuardAssumption, MirHostOperation, MirHostPath,
+    MirHostPathSegment, MirImmediate, MirIteratorOperation, MirOperand, MirPatternPredicate,
+    MirPlace, MirReflectionOperation, MirRvalue, MirSourceNode, MirSourceOrigin, MirStatementKind,
     MirSwitchValue, MirTerminatorKind, MirTypeContract, MirUnaryOp, MirValueType,
 };
 
@@ -446,6 +446,33 @@ fn verify_statement_kind(
         .transpose()?;
     match &statement.kind {
         MirStatementKind::Assign(value) => {
+            if let MirRvalue::Constant { provenance, .. } = value {
+                let destination_is_temp = matches!(statement.destination, Some(MirPlace::Temp(_)));
+                let origin_matches = matches!(
+                    (provenance, statement.origin.node),
+                    (
+                        MirConstantProvenance::Literal
+                            | MirConstantProvenance::FoldedLiteral
+                            | MirConstantProvenance::EvaluatedConstant,
+                        MirSourceNode::Expression(_)
+                    ) | (
+                        MirConstantProvenance::PatternLiteral,
+                        MirSourceNode::Pattern(_)
+                    )
+                );
+                if !destination_is_temp || !origin_matches {
+                    return Err(error(
+                        verifier,
+                        Some(block),
+                        Some(id),
+                        statement.origin,
+                        MirVerifyErrorKind::InvalidConstantDefinition(
+                            "constant provenance requires one temp definition at its source node"
+                                .to_owned(),
+                        ),
+                    ));
+                }
+            }
             let result = rvalue_type(verifier, block, id, statement.origin, value)?;
             destination_accepts(verifier, block, id, statement.origin, destination, result)?;
             verify_predicate_targets(verifier, statement.origin, value)?;

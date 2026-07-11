@@ -221,17 +221,35 @@ fn only_function(program: &MirProgram) -> &crate::MirFunction {
 #[test]
 fn aggregate_builder_keeps_unit_distinct_from_allocated_tuples() {
     let unit = lower("fn main() { return (); }", "()", false).expect("unit expression");
-    assert_eq!(only_function(&unit).statements().count(), 0);
-    assert!(unit.dump().contains("-> return unit [pure]"));
+    let unit_statements = only_function(&unit)
+        .statements()
+        .map(|(_, statement)| statement)
+        .collect::<Vec<_>>();
+    assert!(matches!(
+        unit_statements.as_slice(),
+        [crate::MirStatement {
+            kind: MirStatementKind::Assign(crate::MirRvalue::Constant {
+                value: crate::MirImmediate::Unit,
+                provenance: crate::MirConstantProvenance::Literal,
+            }),
+            ..
+        }]
+    ));
+    assert!(unit.dump().contains("constant.literal unit"));
 
     let tuple = lower("fn main() { return (1, 2); }", "(1, 2)", false).expect("tuple expression");
     let statements = only_function(&tuple)
         .statements()
         .map(|(_, statement)| statement)
         .collect::<Vec<_>>();
-    let [statement] = statements.as_slice() else {
-        panic!("tuple should allocate exactly once")
-    };
+    assert_eq!(
+        statements
+            .iter()
+            .filter(|statement| matches!(statement.kind, MirStatementKind::Assign(_)))
+            .count(),
+        2
+    );
+    let statement = statements.last().expect("tuple allocation");
     assert!(matches!(
         &statement.kind,
         MirStatementKind::Allocate(MirAggregate::Tuple(elements)) if elements.len() == 2
@@ -249,25 +267,29 @@ fn aggregate_builder_preserves_nested_array_map_and_logical_key_order() {
         .map(|(_, statement)| &statement.kind)
         .collect::<Vec<_>>();
 
-    assert_eq!(kinds.len(), 6);
-    assert!(matches!(kinds[0], MirStatementKind::FormatString { .. }));
+    assert_eq!(kinds.len(), 10);
+    assert!(matches!(kinds[0], MirStatementKind::Assign(_)));
+    assert!(matches!(kinds[1], MirStatementKind::FormatString { .. }));
+    assert!(matches!(kinds[2], MirStatementKind::Assign(_)));
     assert!(matches!(
-        kinds[1],
+        kinds[3],
         MirStatementKind::Allocate(MirAggregate::Array(values)) if values.len() == 2
     ));
+    assert!(matches!(kinds[4], MirStatementKind::Assign(_)));
     assert!(matches!(
-        kinds[2],
+        kinds[5],
         MirStatementKind::Allocate(MirAggregate::Array(values)) if values.len() == 1
     ));
-    assert!(matches!(kinds[3], MirStatementKind::FormatString { .. }));
+    assert!(matches!(kinds[6], MirStatementKind::Assign(_)));
+    assert!(matches!(kinds[7], MirStatementKind::FormatString { .. }));
     assert!(matches!(
-        kinds[4],
+        kinds[8],
         MirStatementKind::Allocate(MirAggregate::Map(entries))
             if entries.iter().map(|(key, _)| key.as_str()).collect::<Vec<_>>()
                 == ["alpha", "beta"]
     ));
     assert!(matches!(
-        kinds[5],
+        kinds[9],
         MirStatementKind::Allocate(MirAggregate::Tuple(values)) if values.len() == 2
     ));
 }
@@ -281,12 +303,19 @@ fn aggregate_builder_preserves_interpolation_part_and_value_evaluation_order() {
         .statements()
         .map(|(_, statement)| statement)
         .collect::<Vec<_>>();
-    assert_eq!(statements.len(), 2);
+    assert_eq!(statements.len(), 3);
     assert!(matches!(
         statements[0].kind,
         MirStatementKind::MaterializeConstant(_)
     ));
-    let MirStatementKind::FormatString { parts } = &statements[1].kind else {
+    assert!(matches!(
+        statements[1].kind,
+        MirStatementKind::Assign(crate::MirRvalue::Constant {
+            provenance: crate::MirConstantProvenance::Literal,
+            ..
+        })
+    ));
+    let MirStatementKind::FormatString { parts } = &statements[2].kind else {
         panic!("interpolation should end in one format operation")
     };
     assert!(matches!(&parts[0], crate::MirFormatPart::Text(text) if text == "left "));
@@ -297,9 +326,9 @@ fn aggregate_builder_preserves_interpolation_part_and_value_evaluation_order() {
     assert!(matches!(&parts[2], crate::MirFormatPart::Text(text) if text == " right "));
     assert!(matches!(
         &parts[3],
-        crate::MirFormatPart::Value(crate::MirOperand::Immediate(_))
+        crate::MirFormatPart::Value(crate::MirOperand::Temp(_))
     ));
-    assert!(statements[1].safepoint.is_some());
+    assert!(statements[2].safepoint.is_some());
 }
 
 #[test]
@@ -319,13 +348,15 @@ fn aggregate_builder_requires_the_explicit_set_compile_target() {
         .statements()
         .map(|(_, statement)| &statement.kind)
         .collect::<Vec<_>>();
-    assert_eq!(kinds.len(), 2);
+    assert_eq!(kinds.len(), 4);
+    assert!(matches!(kinds[0], MirStatementKind::Assign(_)));
+    assert!(matches!(kinds[1], MirStatementKind::Assign(_)));
     assert!(matches!(
-        kinds[0],
+        kinds[2],
         MirStatementKind::Allocate(MirAggregate::Array(values)) if values.len() == 2
     ));
     assert!(matches!(
-        kinds[1],
+        kinds[3],
         MirStatementKind::Allocate(MirAggregate::SetFromArray {
             source: crate::MirOperand::Temp(_)
         })

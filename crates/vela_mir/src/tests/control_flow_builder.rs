@@ -104,18 +104,22 @@ fn mir_builder_lowers_if_values_through_one_mutable_join_local() {
     local l2: Script(HirLocalId(2)) Primitive(I64) @71:115..121/h0
     local l3: Script(HirLocalId(3)) Primitive(I64) @71:29..35/h0
     local l4: Synthetic Primitive(I64) @71:38..147/e0
+    temp t0: Primitive(I64) def=s0 @71:73..74/e2
+    temp t1: Primitive(I64) def=s3 @71:124..125/e4
     bb0:
       -> branch l0 -> bb1, bb2 [pure] @71:41..50/e1
     bb1:
-      s0: l1 = 1i64 [pure] @71:61..75/s1
-      s1: l4 = l1 [pure] @71:84..89/e3
+      s0: t0 = constant.literal 1i64 [pure] @71:73..74/e2
+      s1: l1 = t0 [pure] @71:61..75/s1
+      s2: l4 = l1 [pure] @71:84..89/e3
       -> jump bb3 [pure] @71:38..147/e0
     bb2:
-      s2: l2 = 2i64 [pure] @71:111..126/s3
-      s3: l4 = l2 [pure] @71:135..141/e5
+      s3: t1 = constant.literal 2i64 [pure] @71:124..125/e4
+      s4: l2 = t1 [pure] @71:111..126/s3
+      s5: l4 = l2 [pure] @71:135..141/e5
       -> jump bb3 [pure] @71:38..147/e0
     bb3:
-      s4: l3 = l4 [pure] @71:25..148/s0
+      s6: l3 = l4 [pure] @71:25..148/s0
       -> return l3 [pure] @71:153..167/s5
   }
 }
@@ -173,10 +177,18 @@ fn mir_builder_marks_an_if_join_unreachable_when_both_arms_return() {
     let dump = program.dump();
 
     assert!(dump.contains("branch l0 -> bb1, bb2"), "{dump}");
-    assert!(dump.contains("bb1:\n      -> return 1i64"), "{dump}");
-    assert!(dump.contains("bb2:\n      -> return 2i64"), "{dump}");
+    assert!(
+        dump.contains("bb1:\n      s0: t0 = constant.literal 1i64"),
+        "{dump}"
+    );
+    assert!(dump.contains("-> return t0"), "{dump}");
+    assert!(
+        dump.contains("bb2:\n      s1: t1 = constant.literal 2i64"),
+        "{dump}"
+    );
+    assert!(dump.contains("-> return t1"), "{dump}");
     assert!(dump.contains("bb3:\n      -> unreachable"), "{dump}");
-    assert!(!dump.contains("return 3i64"), "{dump}");
+    assert!(!dump.contains("constant.literal 3i64"), "{dump}");
 }
 
 #[test]
@@ -188,8 +200,8 @@ fn mir_builder_gives_an_untaken_value_if_arm_unit() {
     let dump = program.dump();
 
     assert!(dump.contains("branch l0 -> bb1, bb2"), "{dump}");
-    assert!(dump.contains("= 7i64"), "{dump}");
-    assert!(dump.contains("= unit"), "{dump}");
+    assert!(dump.contains("constant.literal 7i64"), "{dump}");
+    assert!(dump.contains("l1 = unit"), "{dump}");
 }
 
 #[test]
@@ -201,13 +213,22 @@ fn mir_builder_nested_else_if_joins_only_fallthrough_arms() {
     let dump = program.dump();
 
     assert!(dump.contains("branch l0 -> bb1, bb2"), "{dump}");
-    assert!(dump.contains("bb1:\n      -> return 1i64"), "{dump}");
+    assert!(
+        dump.contains("bb1:\n      s0: t0 = constant.literal 1i64"),
+        "{dump}"
+    );
     assert!(
         dump.contains("bb2:\n      -> branch l1 -> bb4, bb5"),
         "{dump}"
     );
-    assert!(dump.contains("bb4:\n      s0: l2 = 2i64"), "{dump}");
-    assert!(dump.contains("bb5:\n      s1: l2 = 3i64"), "{dump}");
+    assert!(
+        dump.contains("bb4:\n      s1: t1 = constant.literal 2i64"),
+        "{dump}"
+    );
+    assert!(
+        dump.contains("bb5:\n      s3: t2 = constant.literal 3i64"),
+        "{dump}"
+    );
     assert!(dump.contains("bb3:\n      -> return l2"), "{dump}");
 }
 
@@ -219,16 +240,22 @@ fn mir_builder_captures_a_left_local_before_lowering_a_control_flow_rhs() {
     );
     let dump = program.dump();
 
-    assert!(dump.contains("s1: t0 = l1 [pure]"), "{dump}");
+    assert!(dump.contains("s2: t1 = l1 [pure]"), "{dump}");
     assert!(dump.contains("branch l0 -> bb1, bb2"), "{dump}");
-    assert!(dump.contains("bb1:\n      s2: l2 = 2i64"), "{dump}");
-    assert!(dump.contains("bb2:\n      s3: l2 = 3i64"), "{dump}");
     assert!(
-        dump.contains("Numeric { operation: Add, kind: I64 } t0, l2"),
+        dump.contains("bb1:\n      s3: t2 = constant.literal 2i64"),
+        "{dump}"
+    );
+    assert!(
+        dump.contains("bb2:\n      s5: t3 = constant.literal 3i64"),
+        "{dump}"
+    );
+    assert!(
+        dump.contains("Numeric { operation: Add, kind: I64 } t1, l2"),
         "{dump}"
     );
 
-    let capture = dump.find("s1: t0 = l1").expect("captured left local");
+    let capture = dump.find("s2: t1 = l1").expect("captured left local");
     let branch = dump.find("branch l0").expect("right-hand if branch");
     let addition = dump
         .find("Numeric { operation: Add")

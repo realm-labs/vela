@@ -79,6 +79,7 @@ pub enum MirVerifyErrorKind {
     InvalidDestination {
         expected: MirDestinationExpectation,
     },
+    InvalidConstantDefinition(String),
     IncompleteEffect {
         required: MirEffect,
         actual: MirEffect,

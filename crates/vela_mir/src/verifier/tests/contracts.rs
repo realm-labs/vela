@@ -10,6 +10,59 @@ use crate::{
     MirGuardLocation, MirHostPathSegment, MirTypeContract,
 };
 
+#[test]
+fn mir_verifier_rejects_constant_provenance_or_destination_mismatches() {
+    let expression_origin =
+        MirSourceOrigin::expression(BODY, vela_hir::ids::HirExprId::new(7_199), origin().span);
+    let mut wrong_provenance = function();
+    let temp = wrong_provenance.add_temp(
+        MirValueType::Primitive(PrimitiveTag::I64),
+        expression_origin,
+    );
+    wrong_provenance
+        .append_statement(
+            wrong_provenance.entry_block(),
+            MirStatement::assign(
+                expression_origin,
+                MirPlace::temp(temp),
+                MirRvalue::Constant {
+                    value: MirImmediate::Scalar(ScalarValue::I64(1)),
+                    provenance: crate::MirConstantProvenance::PatternLiteral,
+                },
+            ),
+        )
+        .expect("malformed provenance fixture");
+    finish(&mut wrong_provenance);
+    assert!(matches!(
+        verify_error(&program(wrong_provenance)).into_kind(),
+        MirVerifyErrorKind::InvalidConstantDefinition(_)
+    ));
+
+    let mut wrong_destination = function();
+    let local = wrong_destination.add_synthetic_local(
+        MirValueType::Primitive(PrimitiveTag::I64),
+        expression_origin,
+    );
+    wrong_destination
+        .append_statement(
+            wrong_destination.entry_block(),
+            MirStatement::assign(
+                expression_origin,
+                MirPlace::local(local),
+                MirRvalue::Constant {
+                    value: MirImmediate::Scalar(ScalarValue::I64(1)),
+                    provenance: crate::MirConstantProvenance::Literal,
+                },
+            ),
+        )
+        .expect("malformed destination fixture");
+    finish(&mut wrong_destination);
+    assert!(matches!(
+        verify_error(&program(wrong_destination)).into_kind(),
+        MirVerifyErrorKind::InvalidConstantDefinition(_)
+    ));
+}
+
 fn finish(function: &mut MirFunction) {
     function
         .set_terminator(

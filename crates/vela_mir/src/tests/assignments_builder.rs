@@ -1,5 +1,5 @@
 use vela_analysis::executable::{ExecutableAnalysisGeneration, ExecutableAnalysisInput};
-use vela_common::{ShapeId, SourceId};
+use vela_common::{ScalarValue, ShapeId, SourceId};
 use vela_def::{FieldId, FunctionId, MethodId, TypeId};
 use vela_hir::body::{HirExprKind, HirField};
 use vela_hir::ids::{HirExprId, HirNodeId};
@@ -359,12 +359,14 @@ fn assignment_builder_lowers_typed_local_compound_and_returns_the_result() {
   fn f0 body h0 owner function#8200 symbol="assignments::main" @82:20..42/h0 {
     param p0: value -> l0 kind=Explicit(HirParamId(0)) contract=None default=None hir=l0 @82:8..13/h0
     local l0: Script(HirLocalId(0)) Primitive(I64) @82:8..13/h0
-    temp t0: Primitive(I64) def=s0 @82:29..39/e0
+    temp t0: Primitive(I64) def=s0 @82:38..39/e2
+    temp t1: Primitive(I64) def=s1 @82:29..39/e0
     debug dl0: value -> l0 kind=Parameter hir=Some(0) scope=h0 live=[] @82:8..13/h0
     bb0:
-      s0: t0 = Numeric { operation: Add, kind: I64 } l0, 2i64 [trap] @82:29..39/e0
-      s1: l0 = t0 [pure] @82:29..39/e0
-      -> return t0 [pure] @82:22..40/s0
+      s0: t0 = constant.literal 2i64 [pure] @82:38..39/e2
+      s1: t1 = Numeric { operation: Add, kind: I64 } l0, t0 [trap] @82:29..39/e0
+      s2: l0 = t1 [pure] @82:29..39/e0
+      -> return t1 [pure] @82:22..40/s0
   }
 }
 "#
@@ -386,6 +388,7 @@ fn assignment_builder_captures_index_target_before_rhs_and_reads_after_rhs() {
         receiver_capture,
         index_capture,
         rhs_capture,
+        literal,
         rhs_add,
         current_read,
         compound,
@@ -397,12 +400,23 @@ fn assignment_builder_captures_index_target_before_rhs_and_reads_after_rhs() {
     let receiver = assigned_temp_from_local(receiver_capture);
     let index = assigned_temp_from_local(index_capture);
     let rhs = assigned_temp_from_local(rhs_capture);
+    let literal = match (&literal.destination, &literal.kind) {
+        (
+            Some(crate::MirPlace::Temp(temp)),
+            MirStatementKind::Assign(crate::MirRvalue::Constant {
+                value: crate::MirImmediate::Scalar(ScalarValue::I64(1)),
+                provenance: crate::MirConstantProvenance::Literal,
+            }),
+        ) => *temp,
+        other => panic!("rhs literal lost its explicit definition: {other:?}"),
+    };
     assert!(matches!(
         &rhs_add.kind,
         MirStatementKind::DynamicBinary {
             left: MirOperand::Temp(temp),
+            right: MirOperand::Temp(right),
             ..
-        } if *temp == rhs
+        } if *temp == rhs && *right == literal
     ));
     let current = match (&current_read.destination, &current_read.kind) {
         (

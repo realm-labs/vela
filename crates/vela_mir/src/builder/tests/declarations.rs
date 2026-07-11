@@ -205,9 +205,10 @@ fn main() {
             .statements()
             .filter(|(_, statement)| matches!(
                 statement.kind,
-                MirStatementKind::Assign(MirRvalue::Use(crate::MirOperand::Immediate(
-                    crate::MirImmediate::Scalar(ScalarValue::I64(3))
-                )))
+                MirStatementKind::Assign(MirRvalue::Constant {
+                    value: crate::MirImmediate::Scalar(ScalarValue::I64(3)),
+                    provenance: crate::MirConstantProvenance::EvaluatedConstant,
+                })
             ))
             .count(),
         2,
@@ -360,9 +361,10 @@ fn main() {
             .statements()
             .filter(|(_, statement)| matches!(
                 statement.kind,
-                MirStatementKind::Assign(MirRvalue::Use(crate::MirOperand::Immediate(
-                    crate::MirImmediate::Scalar(ScalarValue::I64(7))
-                )))
+                MirStatementKind::Assign(MirRvalue::Constant {
+                    value: crate::MirImmediate::Scalar(ScalarValue::I64(7)),
+                    provenance: crate::MirConstantProvenance::EvaluatedConstant,
+                })
             ))
             .count(),
         2,

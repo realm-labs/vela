@@ -161,11 +161,15 @@ fn mir_builder_lowers_literals_locals_nested_blocks_and_return() {
   fn f0 body h0 owner function#700 symbol="builder::main" @70:10..78/h0 {
     local l0: Script(HirLocalId(0)) Primitive(I64) @70:16..22/h0
     local l1: Script(HirLocalId(1)) Primitive(Bool) @70:35..42/h0
+    temp t0: Primitive(I64) def=s0 @70:25..27/e0
+    temp t1: Primitive(Bool) def=s2 @70:45..49/e1
     debug dl0: answer -> l0 kind=Local hir=Some(0) scope=h0 live=[] @70:16..22/h0
     debug dl1: enabled -> l1 kind=Local hir=Some(1) scope=h1 live=[] @70:35..42/h0
     bb0:
-      s0: l0 = 42i64 [pure] @70:12..28/s0
-      s1: l1 = true [pure] @70:31..50/s2
+      s0: t0 = constant.literal 42i64 [pure] @70:25..27/e0
+      s1: l0 = t0 [pure] @70:12..28/s0
+      s2: t1 = constant.literal true [pure] @70:45..49/e1
+      s3: l1 = t1 [pure] @70:31..50/s2
       -> return l0 [pure] @70:62..76/s4
   }
 }
@@ -223,17 +227,20 @@ fn mir_builder_lowers_proven_scalar_operators_in_left_to_right_order() {
     local l3: Script(HirLocalId(3)) Primitive(I32) @70:67..74/h0
     local l4: Script(HirLocalId(4)) Primitive(Bool) @70:92..100/h0
     local l5: Script(HirLocalId(5)) Range @70:128..132/h0
-    temp t0: Primitive(I32) def=s1 @70:77..82/e2
-    temp t1: Primitive(I32) def=s3 @70:105..117/e6
-    temp t2: Primitive(Bool) def=s4 @70:105..117/e6
-    temp t3: Primitive(Bool) def=s5 @70:103..118/e4
-    temp t4: Primitive(I32) def=s7 @70:135..147/e9
-    temp t5: Range def=s8 @70:135..147/e9
-    temp t6: Primitive(I32) def=s10 @70:161..172/e14
+    temp t0: Primitive(I8) def=s0 @70:51..57/e0
+    temp t1: Primitive(I32) def=s2 @70:77..82/e2
+    temp t2: Primitive(I32) def=s4 @70:105..117/e6
+    temp t3: Primitive(Bool) def=s5 @70:105..117/e6
+    temp t4: Primitive(Bool) def=s6 @70:103..118/e4
+    temp t5: Primitive(I32) def=s8 @70:135..147/e9
+    temp t6: Range def=s9 @70:135..147/e9
     temp t7: Primitive(I32) def=s11 @70:161..172/e14
-    temp t8: Primitive(I32) def=s12 @70:177..189/e18
-    temp t9: Primitive(I32) def=s13 @70:177..189/e18
-    temp t10: Primitive(I32) def=s14 @70:160..190/e12
+    temp t8: Primitive(I32) def=s12 @70:168..172/e16
+    temp t9: Primitive(I32) def=s13 @70:161..172/e14
+    temp t10: Primitive(I32) def=s14 @70:177..189/e18
+    temp t11: Primitive(I32) def=s15 @70:185..189/e20
+    temp t12: Primitive(I32) def=s16 @70:177..189/e18
+    temp t13: Primitive(I32) def=s17 @70:160..190/e12
     debug dl0: left -> l0 kind=Parameter hir=Some(0) scope=h0 live=[] @70:8..12/h0
     debug dl1: right -> l1 kind=Parameter hir=Some(1) scope=h0 live=[] @70:19..24/h0
     debug dl2: minimum -> l2 kind=Local hir=Some(2) scope=h0 live=[] @70:41..48/h0
@@ -241,22 +248,25 @@ fn mir_builder_lowers_proven_scalar_operators_in_left_to_right_order() {
     debug dl4: inverted -> l4 kind=Local hir=Some(4) scope=h0 live=[] @70:92..100/h0
     debug dl5: span -> l5 kind=Local hir=Some(5) scope=h0 live=[] @70:128..132/h0
     bb0:
-      s0: l2 = -128i8 [pure] @70:37..58/s0
-      s1: t0 = Negate(I32) l0 [trap] @70:77..82/e2
-      s2: l3 = t0 [pure] @70:63..83/s1
-      s3: t1 = l0 [pure] @70:105..117/e6
-      s4: t2 = Compare { operation: Less, kind: I32 } t1, l1 [trap] @70:105..117/e6
-      s5: t3 = NotBool t2 [trap] @70:103..118/e4
-      s6: l4 = t3 [pure] @70:88..119/s2
-      s7: t4 = l0 [pure] @70:135..147/e9
-      s8: t5 = range.make t4, l1 inclusive=true [trap] @70:135..147/e9
-      s9: l5 = t5 [pure] @70:124..148/s3
-      s10: t6 = l0 [pure] @70:161..172/e14
-      s11: t7 = Numeric { operation: Add, kind: I32 } t6, 1i32 [trap] @70:161..172/e14
-      s12: t8 = l1 [pure] @70:177..189/e18
-      s13: t9 = Numeric { operation: Subtract, kind: I32 } t8, 2i32 [trap] @70:177..189/e18
-      s14: t10 = Numeric { operation: Multiply, kind: I32 } t7, t9 [trap] @70:160..190/e12
-      -> return t10 [pure] @70:153..191/s4
+      s0: t0 = constant.folded-literal -128i8 [pure] @70:51..57/e0
+      s1: l2 = t0 [pure] @70:37..58/s0
+      s2: t1 = Negate(I32) l0 [trap] @70:77..82/e2
+      s3: l3 = t1 [pure] @70:63..83/s1
+      s4: t2 = l0 [pure] @70:105..117/e6
+      s5: t3 = Compare { operation: Less, kind: I32 } t2, l1 [trap] @70:105..117/e6
+      s6: t4 = NotBool t3 [trap] @70:103..118/e4
+      s7: l4 = t4 [pure] @70:88..119/s2
+      s8: t5 = l0 [pure] @70:135..147/e9
+      s9: t6 = range.make t5, l1 inclusive=true [trap] @70:135..147/e9
+      s10: l5 = t6 [pure] @70:124..148/s3
+      s11: t7 = l0 [pure] @70:161..172/e14
+      s12: t8 = constant.literal 1i32 [pure] @70:168..172/e16
+      s13: t9 = Numeric { operation: Add, kind: I32 } t7, t8 [trap] @70:161..172/e14
+      s14: t10 = l1 [pure] @70:177..189/e18
+      s15: t11 = constant.literal 2i32 [pure] @70:185..189/e20
+      s16: t12 = Numeric { operation: Subtract, kind: I32 } t10, t11 [trap] @70:177..189/e18
+      s17: t13 = Numeric { operation: Multiply, kind: I32 } t9, t12 [trap] @70:160..190/e12
+      -> return t13 [pure] @70:153..191/s4
   }
 }
 "#

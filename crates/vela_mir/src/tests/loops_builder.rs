@@ -104,7 +104,7 @@ fn mir_builder_lowers_generic_iteration_with_explicit_safepoints_and_exits() {
     assert!(dump.contains("iterator.next t0"), "{dump}");
     assert!(dump.contains("trap|alloc, sp0"), "{dump}");
     assert!(dump.contains("trap|alloc|dynamic-call, sp1"), "{dump}");
-    assert!(dump.contains("-> return 7i64"), "{dump}");
+    assert!(dump.contains("constant.literal 7i64"), "{dump}");
     assert!(!dump.contains("<unterminated>"), "{dump}");
 }
 
@@ -122,18 +122,24 @@ fn mir_builder_uses_proven_i64_range_steps_without_materializing_a_range() {
     local l1: Synthetic Primitive(I64) @76:25..30/e0
     local l2: Synthetic Primitive(Bool) @76:25..30/e0
     local l3: Synthetic Primitive(I64) @76:25..30/e0
+    temp t0: Primitive(I64) def=s0 @76:25..26/e1
+    temp t1: Primitive(I64) def=s1 @76:29..30/e2
+    temp t2: Primitive(I64) def=s5 @76:49..50/e4
     debug dl0: value -> l0 kind=LoopBinding hir=Some(0) scope=h1 live=[] @76:16..21/h0
     bb0:
-      s0: l1 = 1i64 [pure] @76:25..30/e0
-      s1: l2 = false [pure] @76:25..30/e0
+      s0: t0 = constant.literal 1i64 [pure] @76:25..26/e1
+      s1: t1 = constant.literal 3i64 [pure] @76:29..30/e2
+      s2: l1 = t0 [pure] @76:25..30/e0
+      s3: l2 = false [pure] @76:25..30/e0
       -> jump bb1 [pure] @76:12..41/s0
     bb1:
-      -> range.next cursor=l1 end=3i64 exhausted=l2 inclusive=true item=l3 mode=I64Proven -> next bb2, done bb3 [pure] @76:25..30/e0
+      -> range.next cursor=l1 end=t1 exhausted=l2 inclusive=true item=l3 mode=I64Proven -> next bb2, done bb3 [pure] @76:25..30/e0
     bb2:
-      s2: l0 = l3 [pure] @76:16..21/p0
+      s4: l0 = l3 [pure] @76:16..21/p0
       -> jump bb1 [pure] @76:12..41/s0
     bb3:
-      -> return 9i64 [pure] @76:42..51/s2
+      s5: t2 = constant.literal 9i64 [pure] @76:49..50/e4
+      -> return t2 [pure] @76:42..51/s2
   }
 }
 "#
@@ -249,7 +255,10 @@ fn mir_builder_stops_cleanly_when_loop_iterable_or_body_diverges() {
         &["values"],
     );
     let iterable_dump = iterable_return.dump();
-    assert!(iterable_dump.contains("-> return 5i64"), "{iterable_dump}");
+    assert!(
+        iterable_dump.contains("constant.literal 5i64"),
+        "{iterable_dump}"
+    );
     assert!(
         !iterable_dump.contains("iterator.create"),
         "{iterable_dump}"
@@ -263,7 +272,7 @@ fn mir_builder_stops_cleanly_when_loop_iterable_or_body_diverges() {
     let body_dump = body_return.dump();
     assert!(body_dump.contains("iterator.next"), "{body_dump}");
     assert!(body_dump.contains("-> return l"), "{body_dump}");
-    assert!(body_dump.contains("-> return 9i64"), "{body_dump}");
+    assert!(body_dump.contains("constant.literal 9i64"), "{body_dump}");
     assert!(!body_dump.contains("<unterminated>"), "{body_dump}");
 }
 

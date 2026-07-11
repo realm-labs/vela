@@ -4,7 +4,8 @@ use vela_hir::body::HirLiteral;
 use vela_hir::ids::HirExprId;
 
 use crate::{
-    MirBuildError, MirEvaluatedConstant, MirImmediate, MirOperand, MirSourceOrigin, MirValueType,
+    MirBuildError, MirConstantProvenance, MirEvaluatedConstant, MirImmediate, MirOperand,
+    MirSourceOrigin, MirValueType,
 };
 
 use super::core::FunctionBuilder;
@@ -17,17 +18,27 @@ impl FunctionBuilder<'_> {
         origin: MirSourceOrigin,
     ) -> Result<MirOperand, MirBuildError> {
         match literal {
-            HirLiteral::Bool(value) => Ok(MirOperand::Immediate(MirImmediate::Bool(*value))),
-            HirLiteral::Char(value) => Ok(MirOperand::Immediate(MirImmediate::Char(*value))),
+            HirLiteral::Bool(value) => self.define_immediate_constant(
+                MirImmediate::Bool(*value),
+                MirConstantProvenance::Literal,
+                origin,
+            ),
+            HirLiteral::Char(value) => self.define_immediate_constant(
+                MirImmediate::Char(*value),
+                MirConstantProvenance::Literal,
+                origin,
+            ),
             HirLiteral::Integer(_) | HirLiteral::Float(_) => {
                 let analysis = self.input.analysis();
                 let literal = analysis.literal(expression).ok_or_else(|| {
                     self.inconsistent(origin, "numeric literal has no validated analysis fact")
                 })?;
                 match literal {
-                    Ok(ResolvedLiteralFact::Scalar(value)) => {
-                        Ok(MirOperand::Immediate(MirImmediate::Scalar(value.value())))
-                    }
+                    Ok(ResolvedLiteralFact::Scalar(value)) => self.define_immediate_constant(
+                        MirImmediate::Scalar(value.value()),
+                        MirConstantProvenance::Literal,
+                        origin,
+                    ),
                     Ok(ResolvedLiteralFact::Deferred(_)) => Err(self.inconsistent(
                         origin,
                         "standalone literal unexpectedly retained dynamic contextualization",

@@ -498,17 +498,20 @@ fn visit_rvalue(
     value: &MirRvalue,
     visitor: &mut impl FnMut(&MirOperand) -> Result<(), MirVerifyError>,
 ) -> Result<(), MirVerifyError> {
-    let operand = match value {
+    let Some(operand) = (match value {
         MirRvalue::Use(value) | MirRvalue::Truthy { value } | MirRvalue::IsMissing { value } => {
-            value
+            Some(value)
         }
+        MirRvalue::Constant { .. } => None,
         MirRvalue::PatternPredicate(
             MirPatternPredicate::TupleArity { value, .. }
             | MirPatternPredicate::RecordShape { value, .. }
             | MirPatternPredicate::VariantShape { value, .. }
             | MirPatternPredicate::DynamicRecord { value, .. }
             | MirPatternPredicate::DynamicVariant { value, .. },
-        ) => value,
+        ) => Some(value),
+    }) else {
+        return Ok(());
     };
     visitor(operand)
 }

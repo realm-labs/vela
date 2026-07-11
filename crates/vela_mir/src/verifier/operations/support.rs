@@ -239,6 +239,7 @@ pub(super) fn rvalue_type(
 ) -> Result<MirValueType, MirVerifyError> {
     match value {
         MirRvalue::Use(value) => verifier.operand_type(value, block, Some(statement), origin),
+        MirRvalue::Constant { value, .. } => Ok(value.value_type()),
         MirRvalue::Truthy { .. } | MirRvalue::IsMissing { .. } | MirRvalue::PatternPredicate(_) => {
             Ok(MirValueType::Primitive(PrimitiveTag::Bool))
         }
@@ -583,12 +584,7 @@ pub(super) fn operand_value_type(
 }
 
 pub(super) fn immediate_type(value: MirImmediate) -> MirValueType {
-    match value {
-        MirImmediate::Unit => MirValueType::Unit,
-        MirImmediate::Bool(_) => MirValueType::Primitive(PrimitiveTag::Bool),
-        MirImmediate::Char(_) => MirValueType::Primitive(PrimitiveTag::Char),
-        MirImmediate::Scalar(value) => MirValueType::Primitive(value.primitive_tag()),
-    }
+    value.value_type()
 }
 
 pub(super) fn constant_type(value: &crate::MirEvaluatedConstant) -> Option<MirValueType> {

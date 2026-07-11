@@ -6,10 +6,10 @@ use vela_hir::body::{HirBinaryOp, HirUnaryOp};
 use vela_hir::ids::HirExprId;
 
 use crate::{
-    MirBinaryOp, MirBuildError, MirComparisonOp, MirContextualBinaryOp, MirDynamicBinaryOp,
-    MirDynamicUnaryOp, MirEffect, MirIdentityOp, MirImmediate, MirLiteralSide, MirNumericBinaryOp,
-    MirOperand, MirPlace, MirSafepoint, MirSourceOrigin, MirStatement, MirStatementKind,
-    MirUnaryOp,
+    MirBinaryOp, MirBuildError, MirComparisonOp, MirConstantProvenance, MirContextualBinaryOp,
+    MirDynamicBinaryOp, MirDynamicUnaryOp, MirEffect, MirIdentityOp, MirImmediate, MirLiteralSide,
+    MirNumericBinaryOp, MirOperand, MirPlace, MirSafepoint, MirSourceOrigin, MirStatement,
+    MirStatementKind, MirUnaryOp,
 };
 
 use super::core::{FunctionBuilder, value_type};
@@ -50,9 +50,11 @@ impl FunctionBuilder<'_> {
             && let Some(literal) = self.input.analysis().literal(expression)
         {
             return match literal {
-                Ok(ResolvedLiteralFact::Scalar(value)) => {
-                    Ok(MirOperand::Immediate(MirImmediate::Scalar(value.value())))
-                }
+                Ok(ResolvedLiteralFact::Scalar(value)) => self.define_immediate_constant(
+                    MirImmediate::Scalar(value.value()),
+                    MirConstantProvenance::FoldedLiteral,
+                    origin,
+                ),
                 Ok(ResolvedLiteralFact::Deferred(_)) => Err(self.inconsistent(
                     origin,
                     "negated literal unexpectedly retained dynamic contextualization",
