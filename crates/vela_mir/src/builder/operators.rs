@@ -12,7 +12,7 @@ use crate::{
     MirStatementKind, MirUnaryOp,
 };
 
-use super::core::{FunctionBuilder, value_type};
+use super::core::{FunctionBuilder, operand_value_type, value_type};
 
 impl FunctionBuilder<'_> {
     pub(super) fn lower_unary(
@@ -74,15 +74,31 @@ impl FunctionBuilder<'_> {
         if self.current_is_terminated()? {
             return Ok(MirOperand::Immediate(MirImmediate::Unit));
         }
+        let exact_operand = operand_value_type(&self.function, &operand);
         let kind = if proven {
             typed_unary(operation, &operand_fact).map_or_else(
                 || MirStatementKind::DynamicUnary {
                     operation: dynamic_unary(operation),
                     operand: operand.clone(),
                 },
-                |operation| MirStatementKind::Unary {
-                    operation,
-                    operand: operand.clone(),
+                |operation| {
+                    let expected = match operation {
+                        MirUnaryOp::NotBool => crate::MirValueType::Primitive(PrimitiveTag::Bool),
+                        MirUnaryOp::Negate(tag) => {
+                            crate::MirValueType::Primitive(tag.primitive_tag())
+                        }
+                    };
+                    if exact_operand == Some(expected) {
+                        MirStatementKind::Unary {
+                            operation,
+                            operand: operand.clone(),
+                        }
+                    } else {
+                        MirStatementKind::DynamicUnary {
+                            operation: dynamic_unary(operation_from_typed(operation)),
+                            operand: operand.clone(),
+                        }
+                    }
                 },
             )
         } else {
@@ -198,12 +214,15 @@ impl FunctionBuilder<'_> {
         if self.current_is_terminated()? {
             return Ok(MirOperand::Immediate(MirImmediate::Unit));
         }
-        if proven && let Some(operation) = typed_binary(operation, &left_fact, &right_fact) {
+        if proven
+            && let Some(typed) = typed_binary(operation, &left_fact, &right_fact)
+            && typed_binary_operands_are_exact(&self.function, &left, &right, &typed)
+        {
             return self.append_operator(
                 expression,
                 origin,
                 MirStatementKind::Binary {
-                    operation,
+                    operation: typed,
                     left,
                     right,
                 },
@@ -339,6 +358,27 @@ impl FunctionBuilder<'_> {
         )?;
         Ok(MirOperand::Temp(destination))
     }
+}
+
+fn operation_from_typed(operation: MirUnaryOp) -> HirUnaryOp {
+    match operation {
+        MirUnaryOp::NotBool => HirUnaryOp::Not,
+        MirUnaryOp::Negate(_) => HirUnaryOp::Negate,
+    }
+}
+
+fn typed_binary_operands_are_exact(
+    function: &crate::MirFunction,
+    left: &MirOperand,
+    right: &MirOperand,
+    operation: &MirBinaryOp,
+) -> bool {
+    let expected = match operation {
+        MirBinaryOp::Numeric { kind, .. } => crate::MirValueType::Primitive(kind.primitive_tag()),
+        MirBinaryOp::Compare { kind, .. } => crate::MirValueType::Primitive(*kind),
+    };
+    operand_value_type(function, left) == Some(expected)
+        && operand_value_type(function, right) == Some(expected)
 }
 
 fn typed_unary(operation: HirUnaryOp, operand: &TypeFact) -> Option<MirUnaryOp> {

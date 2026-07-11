@@ -1,10 +1,10 @@
 use crate::SyntaxKind;
 use crate::ast::{
     AssignOp, AstNode, BinaryOp, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxBlock,
-    SyntaxCallExpr, SyntaxExprStmt, SyntaxExpressionKind, SyntaxFieldExpr, SyntaxIndexExpr,
-    SyntaxLambdaBody, SyntaxLambdaExpr, SyntaxMapExpr, SyntaxMatchArmBody, SyntaxMatchExpr,
-    SyntaxParenExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxTryExpr, SyntaxTupleExpr,
-    SyntaxUnaryExpr, SyntaxUnitExpr, UnaryOp,
+    SyntaxCallExpr, SyntaxExprStmt, SyntaxExpressionKind, SyntaxFieldExpr, SyntaxIfExpr,
+    SyntaxIndexExpr, SyntaxLambdaBody, SyntaxLambdaExpr, SyntaxMapExpr, SyntaxMatchArmBody,
+    SyntaxMatchExpr, SyntaxParenExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxTryExpr,
+    SyntaxTupleExpr, SyntaxUnaryExpr, SyntaxUnitExpr, UnaryOp,
 };
 use crate::parse::parse_source;
 
@@ -1308,4 +1308,38 @@ fn ast_match_arm_missing_guard_does_not_capture_body() {
         arms[0].body().expect("expression body"),
         SyntaxMatchArmBody::Expression(_)
     ));
+}
+
+#[test]
+fn ast_if_expression_can_be_the_left_operand_of_a_binary_chain() {
+    let parse = parse_source("fn main() { let value = 1 + if true { 1 } else { 0 } + 2; }");
+    let body = parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function")
+        .body()
+        .expect("body");
+    let initializer = body
+        .let_statements()
+        .next()
+        .expect("let")
+        .initializer()
+        .expect("initializer");
+    let binary = SyntaxBinaryExpr::cast(initializer.syntax().clone()).expect("binary root");
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    let if_expression = binary
+        .syntax()
+        .descendants()
+        .find_map(SyntaxIfExpr::cast)
+        .expect("nested if expression");
+    assert_eq!(
+        if_expression
+            .condition()
+            .expect("condition")
+            .syntax()
+            .text(),
+        "true"
+    );
 }

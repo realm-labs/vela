@@ -1573,9 +1573,10 @@ records an explicit positive unit count:
 
 Pure register moves, constants that require no allocation, static scalar
 arithmetic, branches, and returns cost no unit. Memory, collection-growth, and
-call-depth limits remain separate. The VM charges only explicit lowered
-`ChargeExecutionUnits` operations plus runtime-sized scan/iterator/callback
-work; it never derives cost from opcode dispatch count.
+call-depth limits remain separate. The bytecode backend attaches each explicit
+MIR charge to the next semantic operation as instruction metadata; the VM also
+charges runtime-sized scan/iterator/callback work. It never derives cost from
+opcode dispatch count.
 
 Trap ordering is part of the language contract. A charge preceding an effect
 must succeed before that effect begins. Effects completed before a later charge
@@ -1599,6 +1600,29 @@ never rebases compiled handles. Compiled frames must report GC roots from the
 verified root-live map, preserve debugger/source side exits, and exit through
 the same HostAccess, reflection, budget, and diagnostic helpers. This track
 does not create a compiled-artifact store or a JIT runtime option.
+
+### Accepted Executable-Generation Interpreter Cost
+
+The executable-generation correctness hard switch removed layout-dependent
+bytecode peepholes and made verified MIR, CFG facts, liveness, safepoints,
+debug availability, and budget points generation-retained. The Phase 9 scalar
+comparison preserves the Phase 0 checksum but measures 18,688 ns per benchmark
+iteration versus 8,312 ns at the pre-change checkpoint. This 124.8% regression
+exceeds the normal threshold and is explicitly accepted for this architecture
+boundary because restoring emission-order inference or unverified peepholes
+would violate the correctness contract.
+
+Execution-unit charges are fused into operation metadata, so the unbounded
+interpreter does not execute separate charge opcodes. Paired quick scalar rows
+measure 196,646 ns unbounded and 209,813 ns budgeted for the same eight-call
+sample, a 6.7% bounded-budget premium with matching checksums.
+
+Named follow-up: M20 interpreter close-out must recover scalar and call
+throughput through verified-MIR instruction selection, superinstructions, or
+other backend-local transformations that consume sealed facts. M22 may consume
+the same retained MIR for machine code. Neither follow-up may reconstruct facts
+from bytecode layout, restore source/HIR queries in the backend, or weaken the
+execution-unit schedule.
 
 ## Validation Rules
 

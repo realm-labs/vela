@@ -130,6 +130,9 @@ adjust architecture when a feature can only be added through awkward patch code
 The 1200-line threshold applies to active implementation and test files.
 Generated files, archived documents, and dense fixture data may exceed it when
 splitting would reduce clarity, but those exceptions should be intentional.
+The reviewed exception list is maintained in
+[architecture/file-size-exceptions.md](architecture/file-size-exceptions.md);
+an over-threshold file absent from that list is an audit failure.
 
 Compatibility rules:
 

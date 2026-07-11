@@ -238,8 +238,9 @@ pub struct ExecutionBudget {
 
 Verified MIR records positive execution-unit points for CFG backedges,
 iterator steps, calls, dynamic work, allocations, HostAccess, and reflection.
-The bytecode backend lowers those points to `ChargeExecutionUnits`; the VM does
-not charge implicitly per dispatched opcode. Runtime-sized callback, iterator,
+The bytecode backend attaches those points to semantic operations as immutable
+execution-unit metadata; the VM does not charge implicitly per dispatched
+opcode. Runtime-sized callback, iterator,
 and container-guard work adds units through the same counter. A charge traps
 before its associated effect, while effects completed before a later charge
 trap remain committed.

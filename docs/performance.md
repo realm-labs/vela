@@ -200,6 +200,46 @@ The final gate repeats this exact command and checksum alongside the broader
 tracked baseline, hot-reload, compile/peak-memory, top-level-heavy,
 lambda-heavy, retained-generation, and shared-multi-runtime measurements.
 
+Executable-generation Phase 9 exit measurements (2026-07-11):
+
+```text
+commit_base=8f10aadf4 plus Phase 9 working changes
+rustc=1.96.0 (stable-aarch64-apple-darwin)
+target=macos/aarch64
+profile=release
+
+scalar_branch_loop per_iter_mean_ns=18688 p95_ns=188095250
+checksum=3828494456532927350
+phase0_per_iter_mean_ns=8312 delta=+124.8% (explicitly accepted decision)
+
+scalar quick, eight calls:
+unbounded mean_ns=196646
+budgeted mean_ns=209813
+budget premium=6.7%, checksum match=true
+
+clean cargo check -p vela_bytecode --release:
+wall_s=2.29 max_rss_bytes=280576000
+phase0 wall_s=5.14 max_rss_bytes=277463040
+
+generation_memory harness (200 functions or lambdas):
+top-level: roots=201 executables=201 max_rss_bytes=67158016
+lambda: roots=1 executables=201 max_rss_bytes=52477952
+32 shared runtimes over one lambda generation: max_rss_bytes=53264384
+16 retained lambda generations: max_rss_bytes=650117120
+
+hot_reload quick:
+accept mean_ns=23715729 checksum=6588661877666281699
+ABI reject mean_ns=18843916 checksum=6965985632367789055
+```
+
+The scalar regression is accepted only under the durable decision in
+`docs/decisions.md`: correctness-owned verified MIR replaced layout-dependent
+peepholes, and recovery belongs to verified-MIR instruction selection or M22,
+not fact reconstruction. Compile peak RSS changed by about 1.1%. The shared
+runtime measurement adds only about 0.8 MB over the one-generation lambda
+process, confirming immutable generation sharing; retained generations remain
+intentionally linear while closures, frames, or retained values pin them.
+
 Latest M19.5 prep checkpoint:
 
 ```text

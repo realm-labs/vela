@@ -318,12 +318,10 @@ impl GenerationBuilder<'_, '_> {
             else {
                 continue;
             };
-            let context = match boundary.expected {
-                MirTypeContract::Primitive(primitive) => {
-                    LiteralPrimitiveContext::Expected(primitive)
-                }
-                _ => LiteralPrimitiveContext::Expected(PrimitiveTag::Unit),
+            let MirTypeContract::Primitive(primitive) = boundary.expected else {
+                continue;
             };
+            let context = LiteralPrimitiveContext::Expected(primitive);
             let function_contexts = contexts.entry(boundary.function).or_default();
             if let Some(previous) =
                 function_contexts.insert(literal.resolution_expression(), context)

@@ -10,7 +10,7 @@ use crate::{
     MirOperand, MirPlace, MirSafepoint, MirSourceOrigin, MirStatement, MirStatementKind,
 };
 
-use super::core::{FunctionBuilder, value_type};
+use super::core::{FunctionBuilder, operand_value_type, value_type};
 use super::host::PreparedHostValueWriteback;
 use super::tuple_assignments::PreparedTupleProjection;
 
@@ -586,7 +586,14 @@ impl FunctionBuilder<'_> {
                 let value_fact = analysis.expression(value_expression);
                 match (target_fact, value_fact) {
                     (Some(target), Some(value_fact))
-                        if numeric_primitive_pair(target, value_fact).is_some() =>
+                        if numeric_primitive_pair(target, value_fact).is_some()
+                            && operands_have_exact_numeric_type(
+                                &self.function,
+                                &current,
+                                &value,
+                                numeric_primitive_pair(target, value_fact)
+                                    .expect("matching numeric facts were checked"),
+                            ) =>
                     {
                         let kind = numeric_primitive_pair(target, value_fact)
                             .expect("matching numeric facts were checked");
@@ -948,6 +955,18 @@ fn numeric_primitive_pair(left: &TypeFact, right: &TypeFact) -> Option<vela_comm
         return None;
     };
     (left == right).then(|| left.numeric_tag()).flatten()
+}
+
+fn operands_have_exact_numeric_type(
+    function: &crate::MirFunction,
+    left: &MirOperand,
+    right: &MirOperand,
+    expected: vela_common::NumericTag,
+) -> bool {
+    let expected = crate::MirValueType::Primitive(expected.primitive_tag());
+    [left, right]
+        .into_iter()
+        .all(|operand| operand_value_type(function, operand) == Some(expected))
 }
 
 fn numeric_assignment(

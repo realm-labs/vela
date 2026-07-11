@@ -276,12 +276,12 @@ fn main() {
     assert_eq!(error.call_stack[0].function, "recurse");
     assert_eq!(
         error.call_stack[0].bytecode_offset,
-        Some(vela_bytecode::InstructionOffset(1))
+        Some(vela_bytecode::InstructionOffset(0))
     );
     assert_eq!(error.call_stack[1].function, "recurse");
     assert_eq!(
         error.call_stack[1].bytecode_offset,
-        Some(vela_bytecode::InstructionOffset(1))
+        Some(vela_bytecode::InstructionOffset(0))
     );
     assert_eq!(error.call_stack[2].function, "main");
     assert_eq!(error.call_stack[2].bytecode_offset, None);

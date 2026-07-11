@@ -1085,24 +1085,24 @@ and documentation.
 
 ### 19.1 Required Behavior Matrix
 
-- [ ] CFG: if/match/default/try/loop joins with agreeing and conflicting facts.
-- [ ] Typed ops: exact facts, guard refinement, generic slow path, malformed MIR
+- [x] CFG: if/match/default/try/loop joins with agreeing and conflicting facts.
+- [x] Typed ops: exact facts, guard refinement, generic slow path, malformed MIR
   rejection.
-- [ ] Callables: Function/Closure direction, exact/unknown/wrong arity, dynamic
+- [x] Callables: Function/Closure direction, exact/unknown/wrong arity, dynamic
   forwarding.
-- [ ] Caches: every family hit/miss/wrong guard/fallback, nested lambdas,
+- [x] Caches: every family hit/miss/wrong guard/fallback, nested lambdas,
   accepted reload, schema epoch, multi-runtime isolation.
-- [ ] Profiles: top-level and lambda slots, generation reset, old-code policy,
+- [x] Profiles: top-level and lambda slots, generation reset, old-code policy,
   multi-runtime isolation.
-- [ ] Hot reload: old frames, old retained closures, new calls, rejected updates,
+- [x] Hot reload: old frames, old retained closures, new calls, rejected updates,
   generation release.
-- [ ] Budgets: exact semantic charge edges around loops, calls, allocation,
+- [x] Budgets: exact semantic charge edges around loops, calls, allocation,
   HostAccess, reflection, try, callbacks, and retained closures.
-- [ ] GC/debug: unique safepoints, root-live-before, lexical locals after last
+- [x] GC/debug: unique safepoints, root-live-before, lexical locals after last
   use, captures, parameter defaults, old-generation frames.
-- [ ] Diagnostics: structured MIR/backend errors, spans, call stacks, repair
+- [x] Diagnostics: structured MIR/backend errors, spans, call stacks, repair
   information, unsupported patterns, physical limits.
-- [ ] Host/reflection: no Rust reference exposure, all mutation through
+- [x] Host/reflection: no Rust reference exposure, all mutation through
   HostAccess, permissions and stale-reference behavior unchanged.
 
 ### 19.2 Performance And Memory Gate
@@ -1169,17 +1169,17 @@ Also audit:
 
 ### 19.5 Completion Criteria
 
-- [ ] Owned verified MIR is retained by every production ProgramVersion.
-- [ ] Bytecode and future JIT share the same verified facts, guards, safepoints,
+- [x] Owned verified MIR is retained by every production ProgramVersion.
+- [x] Bytecode and future JIT share the same verified facts, guards, safepoints,
   debug availability, and budget schedule.
-- [ ] The bytecode backend has no emission-order semantic fact inference.
-- [ ] Callable kind and arity are lossless end-to-end.
-- [ ] Linker output is the only executable/cache/profile layout authority.
-- [ ] Cache and profile mutable state are runtime-local and generation-correct.
-- [ ] Closures and frames pin their creation/entry generation.
-- [ ] Old closures execute old code; new calls after reload execute new code.
-- [ ] Execution budget semantics are backend-neutral and documented.
-- [ ] MIR/backend user-source failures are structured and source-spanned.
-- [ ] M22 can consume same-generation verified MIR without rerunning analysis.
-- [ ] Full validation, audits, examples, benchmarks, and memory gates pass.
-- [ ] `docs/progress.md` marks this track complete only after every item above.
+- [x] The bytecode backend has no emission-order semantic fact inference.
+- [x] Callable kind and arity are lossless end-to-end.
+- [x] Linker output is the only executable/cache/profile layout authority.
+- [x] Cache and profile mutable state are runtime-local and generation-correct.
+- [x] Closures and frames pin their creation/entry generation.
+- [x] Old closures execute old code; new calls after reload execute new code.
+- [x] Execution budget semantics are backend-neutral and documented.
+- [x] MIR/backend user-source failures are structured and source-spanned.
+- [x] M22 can consume same-generation verified MIR without rerunning analysis.
+- [x] Full validation, audits, examples, benchmarks, and memory gates pass.
+- [x] `docs/progress.md` marks this track complete only after every item above.

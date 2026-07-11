@@ -68,7 +68,13 @@ impl CstParser<'_, '_> {
     }
 
     fn binary_expression_body(&mut self, start: usize, end: usize) {
-        let Some(operator) = self.find_root_binary_op_before(start, end) else {
+        let operator = if self.at_kind(start, SyntaxKind::IfKw) {
+            let if_end = self.find_if_expression_end(start, end);
+            self.find_root_binary_op_before(if_end.saturating_sub(1), end)
+        } else {
+            self.find_root_binary_op_before(start, end)
+        };
+        let Some(operator) = operator else {
             self.emit_until(end);
             return;
         };
@@ -611,7 +617,13 @@ impl CstParser<'_, '_> {
             return SyntaxKind::LambdaExpr;
         }
         if self.at_kind(start, SyntaxKind::IfKw) {
-            return SyntaxKind::IfExpr;
+            let if_end = self.find_if_expression_end(start, end);
+            if self
+                .find_root_binary_op_before(if_end.saturating_sub(1), end)
+                .is_none()
+            {
+                return SyntaxKind::IfExpr;
+            }
         }
         if self.at_kind(start, SyntaxKind::MatchKw) {
             return SyntaxKind::MatchExpr;
@@ -769,10 +781,18 @@ impl CstParser<'_, '_> {
     fn find_root_binary_op_before(&self, start: usize, end: usize) -> Option<usize> {
         let mut depth = DelimiterDepth::default();
         let mut root_operator = None;
-        for cursor in start..end {
+        let mut cursor = start;
+        while cursor < end {
             let Some(current) = self.kind_at(cursor) else {
                 break;
             };
+            if depth.is_root() && current == SyntaxKind::IfKw {
+                let if_end = self.find_if_expression_end(cursor, end);
+                if if_end > cursor {
+                    cursor = if_end;
+                    continue;
+                }
+            }
             if depth.is_root()
                 && cursor > start
                 && Self::is_binary_operator(current)
@@ -784,6 +804,7 @@ impl CstParser<'_, '_> {
                 }
             }
             depth.bump(current);
+            cursor += 1;
         }
         root_operator.map(|(cursor, _)| cursor)
     }

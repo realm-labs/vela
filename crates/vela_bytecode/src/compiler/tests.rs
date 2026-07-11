@@ -109,6 +109,29 @@ fn linked_artifact_rejects_bytecode_that_drops_verified_mir_budget_points() {
 }
 
 #[test]
+fn contextual_compound_assignment_keeps_dynamic_call_results_generic() {
+    let program = compile_program_source(
+        SourceId::new(5),
+        r#"
+fn main() {
+    let total = 0;
+    let add = |value| value + 1;
+    total += add(2);
+    return total;
+}
+"#,
+    )
+    .expect("dynamic closure result must not become an unproved typed MIR operand");
+    let main = program.function("main").expect("main function");
+
+    assert!(
+        main.instructions
+            .iter()
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Add { .. }))
+    );
+}
+
+#[test]
 fn compiler_boundary_rejects_invalid_program_bytecode() {
     let mut code = UnlinkedCodeObject::new("main", 1);
     code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {

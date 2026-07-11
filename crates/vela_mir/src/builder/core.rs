@@ -882,3 +882,14 @@ pub(super) fn value_type(fact: Option<&TypeFact>) -> MirValueType {
         | None => MirValueType::Dynamic,
     }
 }
+
+pub(super) fn operand_value_type(
+    function: &MirFunction,
+    operand: &MirOperand,
+) -> Option<MirValueType> {
+    match operand {
+        MirOperand::Immediate(value) => Some(value.value_type()),
+        MirOperand::Local(local) => function.local(*local).map(|local| local.value_type),
+        MirOperand::Temp(temp) => function.temp(*temp).map(|temp| temp.value_type),
+    }
+}

@@ -46,6 +46,29 @@ fn main() {
 }
 
 #[test]
+fn erased_typed_let_does_not_contextualize_numeric_literals_as_unit() {
+    let fixture = prepare_source(
+        r#"
+fn main() {
+    let value: Any = 5;
+    return value;
+}
+"#,
+        FixtureRoots::Program,
+    )
+    .expect("Any boundary accepts a numeric literal without a fake unit context");
+    let literal = expression_exact(&fixture, "5");
+    let function = only_function(&fixture);
+    let analysis = fixture
+        .input
+        .analysis()
+        .view(function)
+        .expect("main analysis");
+
+    assert!(analysis.literal(literal).is_some_and(Result::is_ok));
+}
+
+#[test]
 fn script_field_assignment_records_dynamic_rhs_guard() {
     let fixture = prepare_source(
         r#"

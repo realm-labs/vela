@@ -81,8 +81,19 @@ committed-host-write tests. ProgramVersion exposes same-generation linked/MIR
 input and restricted eligibility to M22 without rerunning HIR or analysis.
 Backend and unsupported-pattern failures are structured and source-spanned,
 and future publication, GC-root, debugger-side-exit, and runtime-local tier
-requirements are durable policy. Batch D (Phase 9 final acceptance,
-performance, memory, and zero-hit audits) is next.
+requirements are durable policy.
+
+Batch D (Phase 9) is complete. The behavior matrix, ownership invariants,
+zero-hit searches, reviewed file-size exceptions, 30 runnable examples, full
+workspace format/clippy/tests, and benchmark compilation pass. The complete
+quick VM benchmark has 76 paired cache/profile rows with no checksum or profile
+mismatch; the exact Phase 0 scalar checksum is preserved. Compile and
+top-level/lambda/shared-runtime/retained-generation memory measurements are
+recorded in `docs/performance.md`. The scalar throughput regression is an
+explicit accepted decision with a named verified-MIR instruction-selection
+follow-up; no correctness or ownership contract was weakened. The
+executable-generation architecture track is complete and M22 has immutable
+same-generation verified input without HIR/analysis reconstruction.
 
 The Heavy HIR hard switch and D1-D3 close-out are complete.
 `vela_hir` owns executable body and stable semantic identity, bytecode consumes
@@ -1846,11 +1857,10 @@ callable parameter facts, stable `TypeFact`s, `Any`/unknown suppression, and
 
 ### Remaining Gaps
 
-The executable-generation architecture track has completed implementation
-Batches A-C. The remaining blocking work is Batch D: the complete behavior
-matrix, same-toolchain performance and retained-generation memory comparisons,
-final examples/bench validation, architectural zero-hit audits, and the final
-acceptance checklist. No ownership or execution-unit migration remains open.
+The executable-generation architecture track is complete. Its accepted scalar
+interpreter cost is assigned to the named M20 verified-MIR instruction-selection
+follow-up and later M22 backend work; it is not an open ownership or correctness
+gap in this track.
 
 Use the phased checks in
 [mir-executable-generation-architecture-plan.md](mir-executable-generation-architecture-plan.md)
@@ -1911,10 +1921,6 @@ diagnostics.
 
 ## Next Up
 
-- Execute Phase 9 of
-  [mir-executable-generation-architecture-plan.md](mir-executable-generation-architecture-plan.md):
-  close the behavior matrix, same-toolchain performance/memory comparison,
-  final validation, and architectural zero-hit audits.
 - Audit M20 cache families and classify each as complete, incomplete, or
   deferred before starting more implementation.
 - Close only named cache-family gaps with focused tests and paired benchmark
