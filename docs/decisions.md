@@ -1514,6 +1514,48 @@ resolve by short or qualified name. Descriptor types without a runtime
 opaque through compiler options; arbitrary unresolved registry hints remain a
 compile-input error.
 
+### Executable Generation Follow-On Contract
+
+Post-hard-switch execution uses one explicit immutable generation boundary.
+ProgramVersion owns same-generation verified MIR and one linker-produced linked
+artifact. The linker is the only authority for flattened executable handles,
+ProgramImage indexes, generation-global cache-site IDs, and immutable
+cache/profile layouts. RuntimeState owns generation-keyed mutable sidecars for
+cache entries, profile counters, hotness, and active tier selection, plus heap,
+roots, and globals. Sidecars never index a different generation's layout and
+are pruned through weak generation ownership at safe points.
+
+Dense executable identities such as `ScriptFunctionHandle`, `CacheSiteId`, and
+profile slots are valid only with their owner generation. Stable semantic IDs
+support ABI comparison but never implicitly migrate an old frame or closure to
+new code. Linked closures and active frames pin their immutable linked owner;
+old closures execute old code, and new entry calls after safe-point reload use
+the new ProgramVersion.
+
+Verified MIR is an owned retainable backend contract. CFG value facts and guard
+refinements are keyed by logical value and MIR program point, not physical
+register or emission order. Typed operations require exact proven or
+guard-refined facts. Safepoints are unique program points. Value liveness,
+GC-root liveness, and lexical debugger availability are distinct analyses.
+
+The detailed migration and acceptance gates are defined in
+`docs/mir-executable-generation-architecture-plan.md`. This contract supersedes
+earlier future-facing statements that ProgramVersion owns mutable inline-cache
+state, that raw bytecode instruction count must remain the permanent budget
+unit, or that generation-local closure handles may be resolved against the
+runtime's current program.
+
+### Backend-Neutral Execution Units
+
+The long-term execution-budget unit is a deterministic MIR semantic work unit,
+not emitted bytecode instruction count. Charges occur at verified program
+points such as loop backedges, calls, allocation/dynamic work, and observable
+host/reflection boundaries. Bytecode and future JIT consume the same schedule.
+The migration is one explicit pre-release breaking change: public counters,
+diagnostics, examples, and exact-edge tests move together, with no dual legacy
+instruction-count mode. The concrete work-unit table is recorded when the
+budget phase activates.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

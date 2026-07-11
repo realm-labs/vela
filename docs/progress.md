@@ -31,6 +31,19 @@ required.
 
 ## Current Focus
 
+Post-completion review of the MIR hard switch found cross-CFG physical-fact
+miscompilation, callable guard loss, nested-lambda cache-site collisions,
+generation-unsafe retained closures, and incomplete verifier/JIT-input/budget
+contracts. The completed MIR plan remains the historical proof that production
+lowering has one MIR route, but its JIT-foundation close-out is reopened as the
+long-term executable-generation architecture track in
+[mir-executable-generation-architecture-plan.md](mir-executable-generation-architecture-plan.md).
+The new track rejects short-term disabling or rejection patches: it makes CFG
+facts backend-neutral, the linker the single executable-layout authority,
+ProgramVersion the owner of same-generation verified MIR and linked artifacts,
+closures/frames owners of their creation/entry generation, and execution
+budgets independent of bytecode layout.
+
 The Heavy HIR hard switch and D1-D3 close-out are complete.
 `vela_hir` owns executable body and stable semantic identity, bytecode consumes
 `HirExprId` without span-to-ID reconstruction, and language-service local
@@ -44,7 +57,8 @@ boundaries, and full final validation passes. Verified MIR now consumes the
 completed Heavy HIR contract; semantic gaps remain owned by HIR or analysis
 rather than repaired during MIR lowering.
 
-The MIR lowering and JIT-foundation hard switch is complete through Phase 7.
+The production MIR routing hard switch is complete through its historical
+Phase 7; the follow-on executable-generation/JIT-foundation contract is not.
 Every production compile front door now builds Heavy HIR, one immutable
 `AnalysisFacts`/compile-target generation, verified non-SSA MIR, and existing
 bytecode. `vela_bytecode::compiler::mir_backend` is the only runtime body
@@ -1792,6 +1806,26 @@ callable parameter facts, stable `TypeFact`s, `Any`/unknown suppression, and
 
 ### Remaining Gaps
 
+The executable-generation architecture track is planned and not complete. Its
+blocking correctness and ownership gaps are:
+
+- CFG joins can leak record-shape and immediate facts through bytecode emission
+  order;
+- callable guards lose accepted-kind direction and positional arity;
+- nested functions can retain colliding local cache-site IDs;
+- retained closures can resolve old dense handles against a new linked program;
+- verified MIR does not yet fully prove typed/refined operands, unique
+  safepoints, or separate debug/root/value liveness;
+- ProgramVersion does not retain same-generation verified MIR for M22;
+- execution budgets remain coupled to emitted bytecode instruction count;
+- MIR/backend diagnostic and formal performance/memory close-out gates remain
+  incomplete.
+
+Use the phased checks in
+[mir-executable-generation-architecture-plan.md](mir-executable-generation-architecture-plan.md)
+for this track. Do not close individual defects with temporary fact clearing,
+cache disabling, stale-value rejection, or a second execution route.
+
 M20 should now be driven by close-out criteria instead of broad "continue
 guarded inline-cache specialization" tasks. A remaining cache task is valid
 only when it names the specific family and one missing proof:
@@ -1846,6 +1880,10 @@ diagnostics.
 
 ## Next Up
 
+- Start Phase 0 of
+  [mir-executable-generation-architecture-plan.md](mir-executable-generation-architecture-plan.md):
+  close architecture contracts, inventories, regression fixtures, and the
+  same-toolchain performance/memory baseline before implementation.
 - Audit M20 cache families and classify each as complete, incomplete, or
   deferred before starting more implementation.
 - Close only named cache-family gaps with focused tests and paired benchmark

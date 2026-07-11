@@ -1,5 +1,10 @@
 # Runtime Image and State Refactor Plan
 
+> **Historical status:** the first runtime image/state split described here is
+> implemented. The long-term linked-artifact, ProgramVersion, closure-generation,
+> cache/profile, budget, and JIT-input architecture is superseded by
+> [mir-executable-generation-architecture-plan.md](mir-executable-generation-architecture-plan.md).
+
 ## Purpose
 
 This document proposes a clean architecture refactor for Vela runtime ownership, shared immutable code, per-runtime inline caches, hot reload, and future JIT support.

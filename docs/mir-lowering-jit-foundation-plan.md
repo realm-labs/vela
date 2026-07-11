@@ -5,6 +5,10 @@
 > **Document status:** Codex goal-mode execution plan
 > **Execution status:** Complete. Phases 0-7 are implemented and validated;
 > verified MIR is the only production runtime body-lowering input.
+> **Follow-on:** post-completion review found CFG-fact, callable-guard,
+> linked-layout, closure-generation, budget, diagnostic, and retained-JIT-input
+> gaps. Their long-term correction is tracked in
+> [mir-executable-generation-architecture-plan.md](mir-executable-generation-architecture-plan.md).
 > **Compatibility policy:** breaking pre-release MIR, bytecode-compiler, and
 > internal test APIs are allowed. Preserve Vela language semantics, evaluation
 > order, VM behavior, diagnostics, execution budgets, GC roots, HostAccess
@@ -33,6 +37,11 @@ MIR v1 lowers to the existing bytecode and VM. It must not introduce
 Cranelift, machine code, speculative optimization, runtime deoptimization,
 exact compiled stack maps, or user-visible language behavior changes.
 Cranelift remains M22 work.
+
+This document remains the historical hard-switch record. Where its future JIT,
+cache/profile ownership, closure lifetime, budget, debug-liveness, or verified
+handoff conclusions conflict with the follow-on executable-generation plan,
+the follow-on plan is authoritative.
 
 The goal is complete only after every Phase 7 acceptance item and every final
 audit has passed. Creating `vela_mir`, lowering a representative subset, or
