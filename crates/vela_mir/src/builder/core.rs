@@ -118,12 +118,13 @@ impl<'a> FunctionBuilder<'a> {
     }
 
     pub(super) fn build(mut self) -> Result<MirFunction, MirBuildError> {
-        if self.input.config().compute_liveness {
-            return Err(self.unsupported(self.body_origin(), "MIR liveness computation"));
-        }
+        let compute_liveness = self.input.config().compute_liveness;
         self.install_locals()?;
         self.lower_parameter_defaults()?;
         self.lower_owning_body()?;
+        if compute_liveness {
+            crate::liveness::apply(&mut self.function);
+        }
         Ok(self.function)
     }
 

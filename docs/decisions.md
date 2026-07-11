@@ -1465,6 +1465,19 @@ deoptimization mechanism. Callable arity remains part of callable contracts,
 and truthiness remains an ordinary rvalue plus branch rather than separate
 guard-assumption kinds.
 
+### MIR Liveness Semantics
+
+MIR liveness is backward logical-value liveness before physical register
+allocation. Statement destinations kill their prior local value or define a
+single-assignment temp after operand uses. Iterator and range items are defined
+only on the `next` edge; range cursor/exhaustion state is redefined on both
+edges while its prior state remains a terminator use. Safepoint live sets are
+the live-before set for the allocating/calling operation, so an operation's
+result is never treated as live before it exists. Debug-local regions are the
+blocks where their logical storage is live or defined, with parameter and
+capture storage beginning at entry. The verifier recomputes and compares every
+computed liveness, safepoint, and debug-region record.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

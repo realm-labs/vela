@@ -80,16 +80,18 @@ parameter-default prologues, loops/ranges/iterators, try propagation, and
 source-derived scalar evaluation points all lower without a bytecode fallback.
 Left-to-right evaluation and single evaluation are explicit throughout.
 
-Phase 3 verification is active. CFG reachability, terminators, dominance,
+Phase 3 verification is complete. CFG reachability, terminators, dominance,
 single-definition temps, definite local initialization, operation/target/type/
 effect/destination contracts, safepoints, source origins, debug metadata,
 HostAccess isolation, and guard contracts are verified with positive builder
 sweeps and malformed-MIR fixtures. Canonical compatibility forms now cover
 always-false qualified record patterns, tag-only dynamic variant predicates,
 record-family enum assignment writes, specialization slow edges, and atomic
-try regions. Block/value liveness, safepoint live sets, and debug live regions
-remain the Phase 3 closure. No MIR backend selector or production MIR route
-exists.
+try regions. Backward block/local/temp liveness handles joins, early returns,
+iterator/range edge definitions, calls, closures, and try edges; safepoints own
+operation live-before sets and debug locals own verified live block regions.
+Phase 4 backend-handoff definition is now active. No MIR backend selector or
+production MIR route exists.
 
 The Phase 1 semantic gate also fixes backend-bearing edge cases before a
 builder exists: owner-qualified executable method lookup preserves shared trait

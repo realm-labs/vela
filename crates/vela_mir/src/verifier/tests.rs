@@ -19,6 +19,7 @@ use super::{MirVerifyErrorKind, MirVerifyTarget, verify_mir};
 
 mod builder_sweep;
 mod contracts;
+mod liveness;
 mod try_regions;
 
 const SOURCE: SourceId = SourceId::new(111);
@@ -151,7 +152,7 @@ fn build(source: &str, parameters: &[&str]) -> crate::MirProgram {
         &targets,
         MirLoweringConfig {
             emit_debug_locals: true,
-            compute_liveness: false,
+            compute_liveness: true,
         },
     )
     .expect("MIR lowering input");

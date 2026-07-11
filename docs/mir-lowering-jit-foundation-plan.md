@@ -748,7 +748,7 @@ explicit before code generation.
   effect, source-origin, and safepoint metadata.
 - [x] Verify source/debug coverage for every operation that can produce a user
   runtime error or debugger-visible step.
-- [ ] Compute block/local/temp liveness and test loops, joins, early returns,
+- [x] Compute block/local/temp liveness and test loops, joins, early returns,
   nested calls, closures, and try edges.
 - [x] Add one negative test per verifier invariant; malformed MIR must not reach
   bytecode code generation.
@@ -773,9 +773,9 @@ bytecode integration.
   paths explicitly.
 - [x] Represent guard assumptions and slow-path targets without runtime deopt or
   optimized-frame recovery state.
-- [ ] Produce logical debug-local/capture/parameter records with HIR IDs, names,
+- [x] Produce logical debug-local/capture/parameter records with HIR IDs, names,
   kinds, source spans, scopes, and live regions.
-- [ ] Produce safepoint/live-value input for future compiled-frame work while
+- [x] Produce safepoint/live-value input for future compiled-frame work while
   preserving conservative VM root tracing.
 - [ ] Define the backend handoff for logical values, constants, calls, targets,
   source spans, frame/debug data, guards, effects, and CFG layout.

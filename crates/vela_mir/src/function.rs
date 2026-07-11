@@ -130,10 +130,22 @@ pub struct MirDebugLocal {
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct MirLiveness {
+    pub(crate) computed: bool,
     pub block_live_in: BTreeMap<MirBlockId, BTreeSet<MirLiveValue>>,
     pub block_live_out: BTreeMap<MirBlockId, BTreeSet<MirLiveValue>>,
     pub statement_live_before: BTreeMap<MirStatementId, BTreeSet<MirLiveValue>>,
     pub statement_live_after: BTreeMap<MirStatementId, BTreeSet<MirLiveValue>>,
+}
+
+impl MirLiveness {
+    #[must_use]
+    pub const fn is_computed(&self) -> bool {
+        self.computed
+    }
+
+    pub(crate) fn mark_computed(&mut self) {
+        self.computed = true;
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -617,6 +629,19 @@ impl MirFunction {
 
     pub fn set_liveness(&mut self, liveness: MirLiveness) {
         self.liveness = liveness;
+    }
+
+    pub(crate) fn apply_live_metadata(
+        &mut self,
+        safepoints: &BTreeMap<MirSafepointId, BTreeSet<MirLiveValue>>,
+        debug_regions: &BTreeMap<MirDebugLocalId, MirLiveRegion>,
+    ) {
+        for (id, safepoint) in self.safepoints.iter_mut() {
+            safepoint.live_values = safepoints.get(&id).cloned().unwrap_or_default();
+        }
+        for (id, debug) in self.debug_locals.iter_mut() {
+            debug.live_region = debug_regions.get(&id).cloned().unwrap_or_default();
+        }
     }
 
     /// Installs a statement without enforcing construction-time invariants.

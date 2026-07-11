@@ -5,7 +5,8 @@
 //! separate Phase 3 liveness pass.
 
 mod cfg;
-mod dataflow;
+pub(crate) mod dataflow;
+mod liveness;
 mod operations;
 mod try_regions;
 
@@ -77,6 +78,7 @@ pub enum MirVerifyErrorKind {
     InvalidFunctionMetadata(String),
     InvalidSourceOrigin(String),
     InvalidDebugMetadata(String),
+    InvalidLivenessMetadata(String),
     InvalidDestination {
         expected: MirDestinationExpectation,
     },
@@ -228,6 +230,7 @@ pub fn verify_mir(program: &MirProgram) -> Result<VerifiedMirProgram<'_>, MirVer
         operations::verify_operations(&verifier, &graph)?;
         try_regions::verify(&verifier, &graph)?;
         dataflow::verify(&verifier, &graph)?;
+        liveness::verify(&verifier)?;
     }
 
     Ok(VerifiedMirProgram { program })

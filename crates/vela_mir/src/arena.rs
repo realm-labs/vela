@@ -44,6 +44,13 @@ impl<I: ArenaId, T> Arena<I, T> {
         })
     }
 
+    pub(crate) fn iter_mut(&mut self) -> impl Iterator<Item = (I, &mut T)> {
+        self.values.iter_mut().enumerate().map(|(index, value)| {
+            let index = u32::try_from(index).expect("MIR arena index was allocated as u32");
+            (I::from_arena_index(index), value)
+        })
+    }
+
     pub(crate) fn is_empty(&self) -> bool {
         self.values.is_empty()
     }

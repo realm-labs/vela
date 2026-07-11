@@ -12,7 +12,7 @@ use crate::{
     CompileHostPathSegment, CompileHostPathTarget, CompileLambdaParameterTarget,
     CompileLambdaTarget, CompileMemberTarget, CompileReflectionCall, CompileTargetSnapshotBuilder,
     CompileTryFamily, CompileTryLayoutTarget, CompileTryTarget, CompileTypeClass,
-    CompileTypeDescriptor, CompileVariantDescriptor, HostFieldTarget, MirBuildError,
+    CompileTypeDescriptor, CompileVariantDescriptor, HostFieldTarget, MirBuildError, MirLiveValue,
     MirTypeContract,
 };
 
@@ -96,7 +96,7 @@ fn build_configured(
         &targets,
         MirLoweringConfig {
             emit_debug_locals: true,
-            compute_liveness: false,
+            compute_liveness: true,
         },
     )
     .expect("sweep lowering input");
@@ -452,5 +452,20 @@ fn mir_verifier_sweeps_try_builder_output() {
             Ok(())
         },
     );
+    let (_, function) = program.functions().next().expect("try MIR function");
+    let (root, result, join) = function
+        .blocks()
+        .find_map(
+            |(block, data)| match data.terminator().map(|term| &term.kind) {
+                Some(MirTerminatorKind::TrySwitch { result, join, .. }) => {
+                    Some((block, *result, *join))
+                }
+                _ => None,
+            },
+        )
+        .expect("canonical try region");
+    let result = MirLiveValue::Local(result);
+    assert!(!function.liveness().block_live_in[&root].contains(&result));
+    assert!(function.liveness().block_live_in[&join].contains(&result));
     verify_mir(&program).expect("try builder output verifies");
 }
