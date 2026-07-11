@@ -78,6 +78,7 @@ struct FunctionBackend<'a> {
     try_join_blocks: BTreeSet<MirBlockId>,
     current_block: Option<MirBlockId>,
     current_statement: Option<MirStatementId>,
+    pending_execution_units: u32,
     unspanned_spans: Vec<vela_common::Span>,
 }
 
@@ -228,6 +229,7 @@ impl<'a> FunctionBackend<'a> {
             try_join_blocks,
             current_block: None,
             current_statement: None,
+            pending_execution_units: 0,
             unspanned_spans,
         })
     }
@@ -540,10 +542,11 @@ impl<'a> FunctionBackend<'a> {
     }
 
     fn emit_execution_units(&mut self, point: vela_mir::MirBudgetPoint, span: vela_common::Span) {
-        self.emit(
-            UnlinkedInstructionKind::ChargeExecutionUnits { units: point.units },
-            span,
-        );
+        let _ = span;
+        self.pending_execution_units = self
+            .pending_execution_units
+            .checked_add(point.units)
+            .expect("verified MIR execution-unit schedule fits u32");
     }
 
     fn assign(

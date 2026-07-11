@@ -30,5 +30,9 @@ vela_macros = { workspace = true }
 name = "hot_reload"
 harness = false
 
+[[bench]]
+name = "generation_memory"
+harness = false
+
 [lints]
 workspace = true

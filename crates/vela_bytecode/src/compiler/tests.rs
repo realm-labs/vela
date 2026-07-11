@@ -54,40 +54,32 @@ fn main() {
 }
 
 #[test]
-fn compiler_lowers_verified_mir_budget_points_to_explicit_charges() {
+fn compiler_lowers_verified_mir_budget_points_to_instruction_metadata() {
     let program = compile_program_source(
         SourceId::new(3),
         "fn helper(value) { return value + 1; } fn main() { return helper(4); }",
     )
     .expect("budget schedule should compile");
     let main = program.function("main").expect("main function");
-    let charge = main
+    let call = main
         .instructions
         .iter()
-        .position(|instruction| {
+        .find(|instruction| {
             matches!(
                 instruction.kind,
-                UnlinkedInstructionKind::ChargeExecutionUnits { units: 1 }
+                UnlinkedInstructionKind::CallFunction { .. }
             )
         })
-        .expect("MIR call point lowers to an explicit charge");
+        .expect("MIR call point lowers to bytecode");
 
-    assert!(matches!(
-        main.instructions
-            .get(charge + 1)
-            .map(|instruction| &instruction.kind),
-        Some(UnlinkedInstructionKind::CallFunction { .. })
-    ));
+    assert_eq!(call.execution_units, 1);
     assert!(
         !program
             .function("helper")
             .expect("helper function")
             .instructions
             .iter()
-            .any(|instruction| matches!(
-                instruction.kind,
-                UnlinkedInstructionKind::ChargeExecutionUnits { .. }
-            ))
+            .any(|instruction| instruction.execution_units != 0)
     );
 }
 
@@ -103,12 +95,8 @@ fn linked_artifact_rejects_bytecode_that_drops_verified_mir_budget_points() {
         .function_mut("main")
         .expect("main function")
         .instructions
-        .retain(|instruction| {
-            !matches!(
-                instruction.kind,
-                UnlinkedInstructionKind::ChargeExecutionUnits { .. }
-            )
-        });
+        .iter_mut()
+        .for_each(|instruction| instruction.execution_units = 0);
 
     assert!(matches!(
         crate::Linker::new().link_compiled_program(&program),

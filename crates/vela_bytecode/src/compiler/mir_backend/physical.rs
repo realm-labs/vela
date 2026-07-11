@@ -224,7 +224,8 @@ impl<'a> FunctionBackend<'a> {
         let unspanned = self.unspanned_spans.contains(&span)
             || (!self.unspanned_spans.is_empty()
                 && matches!(kind, UnlinkedInstructionKind::LoadConst { .. }));
-        let instruction = UnlinkedInstruction::new(kind);
+        let instruction = UnlinkedInstruction::new(kind)
+            .with_execution_units(std::mem::take(&mut self.pending_execution_units));
         self.code.push_instruction(if unspanned {
             instruction
         } else {

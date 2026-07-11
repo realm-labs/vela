@@ -105,9 +105,12 @@ impl LinkedArtifact {
             let actual_units = code
                 .instructions
                 .iter()
-                .filter_map(|instruction| match instruction.kind {
-                    InstructionKind::ChargeExecutionUnits { units } => Some(u64::from(units)),
-                    _ => None,
+                .map(|instruction| {
+                    u64::from(instruction.execution_units)
+                        + match instruction.kind {
+                            InstructionKind::ChargeExecutionUnits { units } => u64::from(units),
+                            _ => 0,
+                        }
                 })
                 .sum::<u64>();
             if expected_units != actual_units {

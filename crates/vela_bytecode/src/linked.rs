@@ -634,17 +634,28 @@ impl LinkedFrameSlotInfo {
 pub struct Instruction {
     pub kind: InstructionKind,
     pub span: Option<Span>,
+    pub execution_units: u32,
 }
 
 impl Instruction {
     #[must_use]
     pub fn new(kind: InstructionKind) -> Self {
-        Self { kind, span: None }
+        Self {
+            kind,
+            span: None,
+            execution_units: 0,
+        }
     }
 
     #[must_use]
     pub fn with_span(mut self, span: Span) -> Self {
         self.span = Some(span);
+        self
+    }
+
+    #[must_use]
+    pub const fn with_execution_units(mut self, units: u32) -> Self {
+        self.execution_units = units;
         self
     }
 }

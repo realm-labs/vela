@@ -99,6 +99,14 @@ impl Vm {
             let instruction = &code.instructions[ip];
             ip = ip.saturating_add(1);
 
+            if instruction.execution_units != 0
+                && let Some(budget) = budget.as_deref_mut()
+            {
+                budget
+                    .charge_execution_units(u64::from(instruction.execution_units))
+                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+            }
+
             match &instruction.kind {
                 UnlinkedInstructionKind::ChargeExecutionUnits { units } => {
                     if let Some(budget) = budget.as_deref_mut() {

@@ -1026,6 +1026,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
         Ok(Instruction {
             kind,
             span: instruction.span,
+            execution_units: instruction.execution_units,
         })
     }
 }

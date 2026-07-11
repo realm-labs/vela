@@ -183,6 +183,13 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<OwnedValue, Box<dyn 
             program,
         } => Ok(vm.run_linked_program(program, "main", &[])?),
         CompiledWorkload::Function {
+            mode: ExecutionMode::Budgeted,
+            program,
+        } => {
+            let mut budget = ExecutionBudget::new(1_000, usize::MAX, usize::MAX);
+            Ok(vm.run_linked_program_with_budget(program, "main", &[], &mut budget)?)
+        }
+        CompiledWorkload::Function {
             mode: ExecutionMode::CacheEnabled,
             ..
         } => unreachable!("cache-enabled workloads compile to cache-enabled functions"),
@@ -330,7 +337,10 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
                 program: Box::new(link_program_for_vm(vm, &program)?),
             })
         }
-        ExecutionMode::Inline | ExecutionMode::ProfileOnly | ExecutionMode::CacheEnabled => {
+        ExecutionMode::Inline
+        | ExecutionMode::Budgeted
+        | ExecutionMode::ProfileOnly
+        | ExecutionMode::CacheEnabled => {
             let registry = bench_compile_registry()?;
             let code = compile_function_source_with_registry(
                 SourceId::new(1),

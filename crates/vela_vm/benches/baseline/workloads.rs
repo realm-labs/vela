@@ -30,6 +30,7 @@ pub(crate) struct Workload {
 #[derive(Clone, Copy)]
 pub(crate) enum ExecutionMode {
     Inline,
+    Budgeted,
     ProfileOnly,
     CacheEnabled,
     ScriptProgram,
@@ -56,6 +57,7 @@ impl ExecutionMode {
     pub(crate) fn as_str(self) -> &'static str {
         match self {
             Self::Inline => "inline",
+            Self::Budgeted => "budgeted",
             Self::ProfileOnly => "profile_only",
             Self::CacheEnabled => "cache_enabled",
             Self::ScriptProgram => "script_program",
@@ -85,6 +87,26 @@ const PRE_COLLECTION_WORKLOADS: &[Workload] = &[
     Workload {
         name: "scalar_branch_loop",
         mode: ExecutionMode::Inline,
+        source: r#"
+fn main() {
+    let total = 0;
+    for value in 0..200 {
+        if value % 3 == 0 {
+            total += value * 2;
+            continue;
+        }
+        if value > 180 {
+            break;
+        }
+        total += (value * 5) % 17;
+    }
+    return total;
+}
+"#,
+    },
+    Workload {
+        name: "scalar_branch_loop_budgeted",
+        mode: ExecutionMode::Budgeted,
         source: r#"
 fn main() {
     let total = 0;

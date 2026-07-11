@@ -190,6 +190,14 @@ impl Vm {
             }
             ip = ip.saturating_add(1);
 
+            if CHARGE_BUDGET && instruction.execution_units != 0 {
+                budget
+                    .as_deref_mut()
+                    .expect("execution-unit budget mode requires a budget")
+                    .charge_execution_units(u64::from(instruction.execution_units))
+                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+            }
+
             match &instruction.kind {
                 InstructionKind::ChargeExecutionUnits { units } => {
                     if CHARGE_BUDGET {
