@@ -492,6 +492,70 @@ fn main() {
         UnlinkedInstructionKind::GetEnumField { .. }
     )));
 }
+
+#[test]
+fn compiler_keeps_enum_field_assignments_in_the_legacy_record_family() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+enum Damage { Physical { amount: i64 } }
+
+fn direct() {
+    let damage = Damage::Physical { amount: 7 };
+    damage.amount = 9;
+    return damage.amount;
+}
+
+fn compound() {
+    let damage = Damage::Physical { amount: 7 };
+    damage.amount += 2;
+    return damage.amount;
+}
+"#,
+    )
+    .expect("legacy enum field assignments should compile");
+
+    let direct = program.function("direct").expect("direct function");
+    assert_eq!(
+        direct
+            .instructions
+            .iter()
+            .filter(|instruction| matches!(
+                &instruction.kind,
+                UnlinkedInstructionKind::SetRecordField { field, .. } if field == "amount"
+            ))
+            .count(),
+        1
+    );
+    assert!(!direct.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::SetRecordSlot { .. }
+    )));
+
+    let compound = program.function("compound").expect("compound function");
+    let read = compound
+        .instructions
+        .iter()
+        .position(|instruction| matches!(
+            &instruction.kind,
+            UnlinkedInstructionKind::GetRecordField { field, .. } if field == "amount"
+        ))
+        .expect("compound enum assignment record-family read");
+    let write = compound
+        .instructions
+        .iter()
+        .position(|instruction| matches!(
+            &instruction.kind,
+            UnlinkedInstructionKind::SetRecordField { field, .. } if field == "amount"
+        ))
+        .expect("compound enum assignment record-family write");
+    assert!(read < write);
+    assert!(!compound.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::SetRecordSlot { .. }
+    )));
+}
+
 #[test]
 fn compiler_lowers_typed_record_field_reads_to_slots() {
     let program = compile_program_source(

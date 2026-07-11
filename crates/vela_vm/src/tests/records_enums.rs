@@ -715,6 +715,122 @@ fn main() {
 }
 
 #[test]
+fn qualified_registered_record_patterns_keep_the_legacy_false_arm_and_budget() {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let reward = registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty("host", ["game", "inventory"], "Reward"))
+                .kind(vela_registry::TypeKindDef::ScriptStruct),
+        )
+        .expect("registered Reward type");
+    registry
+        .register_field(vela_registry::FieldDef::new(
+            DefPath::field("host", ["game", "inventory"], "Reward", "amount"),
+            reward,
+        ))
+        .expect("registered Reward::amount field");
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let reward = game::inventory::Reward { amount: 7 };
+    return match reward { game::inventory::Reward { amount } => amount, _ => 0 };
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("qualified registered-record compatibility fixture should compile");
+
+    let mut exact = ExecutionBudget::new(8, usize::MAX, usize::MAX);
+    assert_eq!(
+        run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut exact),
+        Ok(OwnedValue::i64(0))
+    );
+    assert_eq!(exact.instructions_executed(), 8);
+
+    let mut short = ExecutionBudget::new(7, usize::MAX, usize::MAX);
+    let error = run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut short)
+        .expect_err("one fewer instruction must exhaust the compatibility edge");
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::BudgetExceeded {
+            budget: ExecutionBudgetKind::Instructions,
+            limit: 7,
+        }
+    );
+}
+
+#[test]
+fn enum_field_assignments_keep_the_legacy_record_write_failure() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+enum Damage { Physical { amount: i64 } }
+
+fn direct() {
+    let damage = Damage::Physical { amount: 7 };
+    damage.amount = 9;
+    return damage.amount;
+}
+
+fn compound() {
+    let damage = Damage::Physical { amount: 7 };
+    damage.amount += 2;
+    return damage.amount;
+}
+"#,
+    )
+    .expect("legacy enum field assignments compile as record writes");
+
+    for entry in ["direct", "compound"] {
+        let error = run_records_program(&program, entry, &[])
+            .expect_err("record-family writes reject enum values at runtime");
+        assert_eq!(
+            error.kind(),
+            VmErrorKind::TypeMismatch {
+                operation: "record field assignment",
+            },
+            "unexpected failure for {entry}"
+        );
+    }
+}
+
+#[test]
+fn dynamic_variant_patterns_check_the_tag_before_projecting_used_fields() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn wildcard() {
+    let value = Missing::Ready { present: 7 };
+    return match value { Missing::Ready { absent: _ } => 1, _ => 0 };
+}
+
+fn binding() {
+    let value = Missing::Ready { present: 7 };
+    return match value { Missing::Ready { absent } => absent, _ => 0 };
+}
+"#,
+    )
+    .expect("dynamic variant compatibility fixture should compile");
+
+    assert_eq!(
+        run_records_program(&program, "wildcard", &[]),
+        Ok(OwnedValue::i64(1)),
+        "an unused missing field must not participate in the tag predicate"
+    );
+    let error = run_records_program(&program, "binding", &[])
+        .expect_err("a used missing field is projected after the tag succeeds");
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::UnknownEnumField {
+            enum_name: "Missing".to_owned(),
+            variant: "Ready".to_owned(),
+            field: "absent".to_owned(),
+        }
+    );
+}
+
+#[test]
 fn returns_first_class_record_values() {
     let code = compile_function_source(
         SourceId::new(1),

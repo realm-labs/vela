@@ -456,3 +456,135 @@ fn negated_float_const_and_schema_default_keep_literal_origins() {
         );
     }
 }
+
+fn assert_legacy_unqualified_record_pattern_error(error: CompileError) {
+    assert_eq!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("match pattern")
+    );
+    assert_eq!(error.span, None);
+    assert!(
+        error.to_diagnostic().is_none(),
+        "the legacy unsupported-pattern error has no diagnostic projection"
+    );
+}
+
+#[test]
+fn unqualified_record_patterns_keep_the_legacy_unspanned_error() {
+    let error = compile_program_source(
+        SourceId::new(728),
+        r#"
+struct Reward { amount: i64 }
+fn main() {
+    let reward = Reward { amount: 7 };
+    return match reward { Reward { amount } => amount, _ => 0 };
+}
+"#,
+    )
+    .expect_err("an unqualified source-record pattern is unsupported by the baseline");
+    assert_legacy_unqualified_record_pattern_error(error);
+
+    let error = compile_program_source(
+        SourceId::new(729),
+        "fn main(value) { return match value { Missing { amount } => amount, _ => 0 }; }",
+    )
+    .expect_err("an unresolved one-segment record pattern is unsupported by the baseline");
+    assert_legacy_unqualified_record_pattern_error(error);
+}
+
+#[test]
+fn imported_one_segment_record_pattern_keeps_the_legacy_unspanned_error() {
+    let error = compile_module_sources(&[
+        ModuleSource::new(
+            SourceId::new(730),
+            ModulePath::from_qualified("game::main"),
+            r#"
+use game::reward::Reward as Prize
+fn main() {
+    let reward = Prize { amount: 7 };
+    return match reward { Prize { amount } => amount, _ => 0 };
+}
+"#,
+        ),
+        ModuleSource::new(
+            SourceId::new(731),
+            ModulePath::from_qualified("game::reward"),
+            "pub struct Reward { amount: i64 }",
+        ),
+    ])
+    .expect_err("an imported one-segment record pattern is unsupported by the baseline");
+    assert_legacy_unqualified_record_pattern_error(error);
+}
+
+#[test]
+fn qualified_record_patterns_keep_the_legacy_two_instruction_miss_test() {
+    let program = compile_module_sources(&[
+        ModuleSource::new(
+            SourceId::new(732),
+            ModulePath::from_qualified("game::main"),
+            r#"
+fn main() {
+    let reward = game::reward::Reward { amount: 7 };
+    return match reward { game::reward::Reward { amount } => amount, _ => 0 };
+}
+"#,
+        ),
+        ModuleSource::new(
+            SourceId::new(733),
+            ModulePath::from_qualified("game::reward"),
+            "pub struct Reward { amount: i64 }",
+        ),
+    ])
+    .expect("the qualified source-record baseline compiles without a diagnostic");
+    let main = program
+        .function("game::main::main")
+        .expect("qualified main function");
+    assert_eq!(main.instructions.len(), 11);
+    assert_eq!(
+        main.instructions
+            .iter()
+            .filter(|instruction| matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::JumpIfFalse { .. }
+            ))
+            .count(),
+        1
+    );
+
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let reward = registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty("host", ["game", "inventory"], "Reward"))
+                .kind(vela_registry::TypeKindDef::ScriptStruct),
+        )
+        .expect("registered Reward type");
+    registry
+        .register_field(vela_registry::FieldDef::new(
+            DefPath::field("host", ["game", "inventory"], "Reward", "amount"),
+            reward,
+        ))
+        .expect("registered Reward::amount field");
+    let program = compile_program_source_with_registry(
+        SourceId::new(734),
+        r#"
+fn main() {
+    let reward = game::inventory::Reward { amount: 7 };
+    return match reward { game::inventory::Reward { amount } => amount, _ => 0 };
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("the qualified registered-record baseline compiles without a diagnostic");
+    let main = program.function("main").expect("main function");
+    assert_eq!(main.instructions.len(), 11);
+    assert_eq!(
+        main.instructions
+            .iter()
+            .filter(|instruction| matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::JumpIfFalse { .. }
+            ))
+            .count(),
+        1
+    );
+}

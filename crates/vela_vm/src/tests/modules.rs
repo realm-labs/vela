@@ -255,6 +255,58 @@ pub enum Damage {
 }
 
 #[test]
+fn qualified_source_record_patterns_keep_the_legacy_false_arm_and_budget() {
+    let program = compile_module_sources(&[
+        ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_qualified("game::main"),
+            r#"
+fn main() {
+    let reward = game::reward::Reward { amount: 7 };
+    return match reward { game::reward::Reward { amount } => amount, _ => 0 };
+}
+"#,
+        ),
+        ModuleSource::new(
+            SourceId::new(2),
+            ModulePath::from_qualified("game::reward"),
+            "pub struct Reward { amount: i64 }",
+        ),
+    ])
+    .expect("qualified record-pattern compatibility fixture should compile");
+
+    let mut exact = ExecutionBudget::new(8, usize::MAX, usize::MAX);
+    assert_eq!(
+        run_linked_test_program_with_budget(
+            &Vm::new(),
+            &program,
+            "game::main::main",
+            &[],
+            &mut exact,
+        ),
+        Ok(OwnedValue::i64(0))
+    );
+    assert_eq!(exact.instructions_executed(), 8);
+
+    let mut short = ExecutionBudget::new(7, usize::MAX, usize::MAX);
+    let error = run_linked_test_program_with_budget(
+        &Vm::new(),
+        &program,
+        "game::main::main",
+        &[],
+        &mut short,
+    )
+    .expect_err("one fewer instruction must exhaust the compatibility edge");
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::BudgetExceeded {
+            budget: ExecutionBudgetKind::Instructions,
+            limit: 7,
+        }
+    );
+}
+
+#[test]
 fn runs_compiled_cross_module_qualified_function_and_const_paths() {
     let program = compile_module_sources(&[
         ModuleSource::new(
