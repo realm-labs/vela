@@ -177,6 +177,57 @@ fn mir_model_guards_expose_slow_paths_as_cfg_edges() {
 }
 
 #[test]
+fn mir_model_dump_preserves_trapping_tuple_arity_guards() {
+    let body = HirBodyId::new(227);
+    let origin = origin(body);
+    let mut function = test_function(
+        body,
+        MirFunctionOwner::Function(FunctionId::new(228)),
+        origin,
+    );
+    let value = function.add_synthetic_local(MirValueType::Dynamic, origin);
+    let guard = function.add_guard(MirGuard {
+        assumption: MirGuardAssumption::TupleArity { arity: 2 },
+        context: None,
+        origin,
+    });
+    function
+        .append_statement(
+            function.entry_block(),
+            MirStatement::new(
+                origin,
+                None,
+                MirStatementKind::GuardTrap {
+                    value: MirOperand::Local(value),
+                    guard,
+                },
+                MirEffect::may_trap(),
+                None,
+            ),
+        )
+        .expect("tuple destructuring guard should be a trapping statement");
+    function
+        .set_terminator(
+            function.entry_block(),
+            MirTerminator::new(
+                origin,
+                MirTerminatorKind::Return(None),
+                MirEffect::PURE,
+                None,
+            ),
+        )
+        .expect("tuple guard fixture should terminate");
+    let mut program = MirProgram::new(MirTargetTable::default());
+    program
+        .add_function(function)
+        .expect("tuple guard fixture should have unique identity");
+
+    let dump = program.dump();
+    assert!(dump.contains("guard g0: TupleArity { arity: 2 }"), "{dump}");
+    assert!(dump.contains("guard.trap l0 with g0 [trap]"), "{dump}");
+}
+
+#[test]
 fn mir_model_represents_ranges_formats_defaults_and_iterator_control() {
     let body = HirBodyId::new(22);
     let origin = origin(body);

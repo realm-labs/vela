@@ -277,7 +277,7 @@ impl FunctionBuilder<'_> {
         Ok(true)
     }
 
-    fn lower_block_value_into(
+    pub(super) fn lower_block_value_into(
         &mut self,
         block: HirBlockId,
         destination: MirLocalId,
@@ -341,8 +341,8 @@ impl FunctionBuilder<'_> {
             HirStmtKind::If(value) => {
                 self.lower_if_root(&value, Some(destination), tail_origin)?;
             }
-            HirStmtKind::Match(_) => {
-                return Err(self.unsupported(tail_origin, "match block value tail"));
+            HirStmtKind::Match(value) => {
+                self.lower_match_root(&value, Some(destination), tail_origin)?;
             }
             _ => unreachable!("block value tail was filtered above"),
         }

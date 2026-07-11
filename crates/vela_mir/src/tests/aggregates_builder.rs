@@ -127,7 +127,12 @@ fn lower_isolated_expression(
     let origin = expression_origin(body, expression);
     let owner = MirFunctionOwner::Function(ROOT_FUNCTION);
     let mut program = MirProgram::new(input.targets().target_table().clone());
-    let mut builder = FunctionBuilder::new(input, owner)?;
+    let reservation = program.reserve_function(body.id, owner.clone(), origin)?;
+    let mut builder = FunctionBuilder::new_root(
+        input,
+        owner,
+        std::collections::BTreeMap::from([(body.id, reservation)]),
+    )?;
     let value = match builder.lower_aggregate_expression(expression, origin)? {
         Some(value) => value,
         None => builder.lower_expression(expression)?,
@@ -141,7 +146,7 @@ fn lower_isolated_expression(
             None,
         ),
     )?;
-    program.add_function(builder.function)?;
+    program.define_function(reservation, builder.function)?;
     Ok(program)
 }
 

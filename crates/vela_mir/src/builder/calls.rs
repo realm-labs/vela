@@ -38,6 +38,15 @@ impl FunctionBuilder<'_> {
             .ok_or_else(|| self.inconsistent(origin, "call expression has no compile target"))?;
         self.validate_source_arguments(call, &target.arguments, origin)?;
 
+        if matches!(
+            target.callee,
+            CompileCalleeTarget::HostMethod(_)
+                | CompileCalleeTarget::HostRemove { .. }
+                | CompileCalleeTarget::HostPush { .. }
+        ) {
+            return self.lower_host_call(expression, call, &target, origin);
+        }
+
         let (call, effect) = match target.callee {
             CompileCalleeTarget::ScriptFunction {
                 function,
@@ -279,9 +288,7 @@ impl FunctionBuilder<'_> {
             }
             CompileCalleeTarget::HostMethod(_)
             | CompileCalleeTarget::HostRemove { .. }
-            | CompileCalleeTarget::HostPush { .. } => {
-                return Err(self.unsupported(origin, "HostAccess call"));
-            }
+            | CompileCalleeTarget::HostPush { .. } => unreachable!("host calls route above"),
             CompileCalleeTarget::Reflection { .. } => {
                 return Err(self.unsupported(origin, "reflection call"));
             }
@@ -400,7 +407,7 @@ impl FunctionBuilder<'_> {
         Ok((projected, parameter_guards))
     }
 
-    fn lower_external_arguments(
+    pub(super) fn lower_external_arguments(
         &mut self,
         arguments: &CompileCallArguments,
         signature: &CompileSignature,

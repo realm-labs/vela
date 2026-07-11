@@ -2,15 +2,21 @@ use std::collections::BTreeMap;
 
 use vela_analysis::type_fact::TypeFact;
 use vela_hir::binding::BindingResolution;
-use vela_hir::body::{HirBody, HirBodyRoot, HirExprKind, HirPatternKind, HirStmtKind};
-use vela_hir::ids::{HirBlockId, HirExprId, HirLocalId, HirStmtId};
+use vela_hir::body::{HirBody, HirExprKind, HirStmtKind};
+use vela_hir::ids::{HirBlockId, HirBodyId, HirExprId, HirLocalId, HirStmtId};
 
 use crate::{
-    DebugLocalKind, MirBuildError, MirDebugLocal, MirEffect, MirFunction, MirFunctionOwner,
-    MirFunctionReturn, MirImmediate, MirLiveRegion, MirLocalId, MirLoweringInput, MirOperand,
-    MirParameterKind, MirParameterSpec, MirPlace, MirRvalue, MirSourceOrigin, MirStatement,
-    MirTerminator, MirTerminatorKind, MirValueType,
+    CompileLambdaTarget, CompileParameter, DebugLocalKind, MirBuildError, MirDebugLocal, MirEffect,
+    MirFunction, MirFunctionId, MirFunctionOwner, MirFunctionReturn, MirImmediate, MirLiveRegion,
+    MirLocalId, MirLoweringInput, MirOperand, MirParameterKind, MirParameterSpec, MirPlace,
+    MirRvalue, MirSourceOrigin, MirStatement, MirTerminator, MirTerminatorKind, MirValueType,
 };
+
+#[derive(Clone, Debug)]
+enum BuilderFunctionKind {
+    Root { parameters: Vec<CompileParameter> },
+    Lambda { target: CompileLambdaTarget },
+}
 
 pub(super) struct FunctionBuilder<'a> {
     pub(super) input: MirLoweringInput<'a>,
@@ -18,13 +24,16 @@ pub(super) struct FunctionBuilder<'a> {
     pub(super) function: MirFunction,
     pub(super) current_block: crate::MirBlockId,
     locals: BTreeMap<HirLocalId, MirLocalId>,
+    nested_functions: BTreeMap<HirBodyId, MirFunctionId>,
+    kind: BuilderFunctionKind,
     pub(super) loop_stack: Vec<super::loops::LoopContext>,
 }
 
 impl<'a> FunctionBuilder<'a> {
-    pub(super) fn new(
+    pub(super) fn new_root(
         input: MirLoweringInput<'a>,
         owner: MirFunctionOwner,
+        nested_functions: BTreeMap<HirBodyId, MirFunctionId>,
     ) -> Result<Self, MirBuildError> {
         let body =
             input
@@ -64,6 +73,46 @@ impl<'a> FunctionBuilder<'a> {
             function,
             current_block,
             locals: BTreeMap::new(),
+            nested_functions,
+            kind: BuilderFunctionKind::Root {
+                parameters: descriptor.signature.parameters.clone(),
+            },
+            loop_stack: Vec::new(),
+        })
+    }
+
+    pub(super) fn new_lambda(
+        input: MirLoweringInput<'a>,
+        owner: MirFunctionOwner,
+        target: &CompileLambdaTarget,
+        nested_functions: BTreeMap<HirBodyId, MirFunctionId>,
+    ) -> Result<Self, MirBuildError> {
+        let body = input
+            .graph()
+            .body(target.body)
+            .ok_or(MirBuildError::MissingHirBody {
+                body: target.body,
+                origin: target.origin,
+            })?;
+        let origin = MirSourceOrigin::body(body.id, body.origin.span);
+        if target.origin != origin {
+            return Err(MirBuildError::InconsistentInput {
+                origin,
+                message: "lambda compile target origin disagrees with Heavy HIR".to_owned(),
+            });
+        }
+        let function = MirFunction::new(body.id, owner, target.code_symbol.clone(), None, origin);
+        let current_block = function.entry_block();
+        Ok(Self {
+            input,
+            body,
+            function,
+            current_block,
+            locals: BTreeMap::new(),
+            nested_functions,
+            kind: BuilderFunctionKind::Lambda {
+                target: target.clone(),
+            },
             loop_stack: Vec::new(),
         })
     }
@@ -72,56 +121,206 @@ impl<'a> FunctionBuilder<'a> {
         if self.input.config().compute_liveness {
             return Err(self.unsupported(self.body_origin(), "MIR liveness computation"));
         }
-        if self.function.return_contract().is_some() {
-            return Err(self.unsupported(self.body_origin(), "function return contract guard"));
-        }
         self.install_locals()?;
-        match self.body.root {
-            HirBodyRoot::Block(block) => {
-                self.lower_block(block)?;
-                self.finish_open_block(None, self.body_origin())?;
-            }
-            HirBodyRoot::Expr(expression) => {
-                let value = self.lower_expression(expression)?;
-                self.finish_open_block(Some(value), self.expression_origin(expression)?)?;
-            }
-            HirBodyRoot::Empty => {
-                self.finish_open_block(None, self.body_origin())?;
-            }
-        }
+        self.lower_parameter_defaults()?;
+        self.lower_owning_body()?;
         Ok(self.function)
     }
 
     fn install_locals(&mut self) -> Result<(), MirBuildError> {
-        let bindings = self
-            .input
-            .graph()
+        let graph = self.input.graph();
+        let bindings = graph
             .bindings_for_body(self.body.id)
             .ok_or_else(|| self.inconsistent(self.body_origin(), "HIR body has no binding map"))?;
-        let descriptor = self
-            .input
-            .targets()
-            .function_descriptor(self.input.function())
-            .ok_or_else(|| {
-                self.inconsistent(self.body_origin(), "function descriptor disappeared")
+        self.install_captures(bindings)?;
+        self.install_parameters(bindings)?;
+
+        let default_bodies = self.parameter_default_bodies()?;
+        for body in &default_bodies {
+            self.install_body_locals(body, bindings)?;
+        }
+        self.install_body_locals(self.body, bindings)?;
+
+        if self.input.config().emit_debug_locals {
+            self.install_capture_debug_locals(bindings)?;
+            let mut emitted = self
+                .body
+                .captures
+                .iter()
+                .map(|capture| capture.local)
+                .collect::<std::collections::BTreeSet<_>>();
+            for parameter in &self.body.params {
+                self.install_debug_local(self.body, parameter.local, bindings, None)?;
+                emitted.insert(parameter.local);
+            }
+            for body in &default_bodies {
+                for local in &body.locals {
+                    if emitted.insert(*local) {
+                        self.install_debug_local(body, *local, bindings, None)?;
+                    }
+                }
+            }
+            for local in &self.body.locals {
+                if emitted.insert(*local) {
+                    self.install_debug_local(self.body, *local, bindings, None)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn install_captures(
+        &mut self,
+        bindings: &vela_hir::binding::BindingMap,
+    ) -> Result<(), MirBuildError> {
+        if matches!(self.kind, BuilderFunctionKind::Root { .. }) {
+            if !self.body.captures.is_empty() {
+                return Err(self.inconsistent(
+                    self.body_origin(),
+                    "compilation-root HIR body unexpectedly owns lambda captures",
+                ));
+            }
+            return Ok(());
+        }
+        for capture in self.body.captures.clone() {
+            if capture.owner != self.body.id {
+                return Err(self.inconsistent(
+                    self.body_origin(),
+                    format!("capture {:?} belongs to a different HIR body", capture.id),
+                ));
+            }
+            let binding = bindings.local(capture.local).ok_or_else(|| {
+                self.inconsistent(
+                    self.body_origin(),
+                    format!("capture {:?} has no source-local binding", capture.id),
+                )
             })?;
-        if descriptor.signature.parameters.len() != self.body.params.len() {
+            let (use_body, use_expression) = self
+                .input
+                .graph()
+                .bodies()
+                .find_map(|body| {
+                    body.expression(capture.use_expression)
+                        .map(|expression| (body, expression))
+                })
+                .ok_or_else(|| {
+                    self.inconsistent(
+                        self.body_origin(),
+                        format!(
+                            "capture {:?} refers to missing use expression {:?}",
+                            capture.id, capture.use_expression
+                        ),
+                    )
+                })?;
+            if !self
+                .input
+                .graph()
+                .body_and_ancestors(use_body.id)
+                .any(|body| body.id == self.body.id)
+            {
+                return Err(self.inconsistent(
+                    self.body_origin(),
+                    format!(
+                        "capture {:?} use expression is outside its lambda subtree",
+                        capture.id
+                    ),
+                ));
+            }
+            if !matches!(
+                bindings.resolution(capture.use_expression),
+                Some(BindingResolution::Local(local)) if *local == capture.local
+            ) {
+                return Err(self.inconsistent(
+                    MirSourceOrigin::expression(
+                        use_body.id,
+                        capture.use_expression,
+                        use_expression.origin.span,
+                    ),
+                    format!(
+                        "capture {:?} disagrees with its binding resolution",
+                        capture.id
+                    ),
+                ));
+            }
+            let origin = MirSourceOrigin::expression(
+                use_body.id,
+                capture.use_expression,
+                use_expression.origin.span,
+            );
+            let storage = self.function.add_capture(
+                capture.id,
+                capture.local,
+                binding.name.clone(),
+                value_type(self.input.analysis().local(capture.local)),
+                origin,
+            );
+            if self.locals.insert(capture.local, storage).is_some() {
+                return Err(self.inconsistent(
+                    origin,
+                    format!("lambda repeats capture local {:?}", capture.local),
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    fn install_parameters(
+        &mut self,
+        bindings: &vela_hir::binding::BindingMap,
+    ) -> Result<(), MirBuildError> {
+        let targets = match &self.kind {
+            BuilderFunctionKind::Root { parameters } => parameters.clone(),
+            BuilderFunctionKind::Lambda { target } => {
+                if target.parameters.len() != self.body.params.len() {
+                    return Err(self.inconsistent(
+                        self.body_origin(),
+                        "lambda compile-target parameter count disagrees with Heavy HIR",
+                    ));
+                }
+                target
+                    .parameters
+                    .iter()
+                    .zip(&self.body.params)
+                    .map(|(target, parameter)| {
+                        if target.parameter != parameter.id
+                            || target.local != parameter.local
+                            || target.origin
+                                != MirSourceOrigin::body(self.body.id, parameter.origin.span)
+                        {
+                            return Err(self.inconsistent(
+                                target.origin,
+                                "lambda parameter target disagrees with Heavy HIR order or identity",
+                            ));
+                        }
+                        if parameter.default_body.is_some() {
+                            return Err(self.inconsistent(
+                                target.origin,
+                                "lambda parameter unexpectedly owns a default body",
+                            ));
+                        }
+                        Ok(CompileParameter {
+                            name: target.name.clone(),
+                            contract: target.contract.clone(),
+                            default: crate::CompileParameterDefault::Required,
+                            origin: Some(target.origin),
+                        })
+                    })
+                    .collect::<Result<Vec<_>, _>>()?
+            }
+        };
+        if targets.len() != self.body.params.len() {
             return Err(self.inconsistent(
                 self.body_origin(),
                 format!(
                     "function signature has {} parameters but HIR body has {}",
-                    descriptor.signature.parameters.len(),
+                    targets.len(),
                     self.body.params.len()
                 ),
             ));
         }
 
-        for (parameter_index, (parameter, target)) in self
-            .body
-            .params
-            .iter()
-            .zip(&descriptor.signature.parameters)
-            .enumerate()
+        for (parameter_index, (parameter, target)) in
+            self.body.params.iter().zip(&targets).enumerate()
         {
             let binding = bindings.local(parameter.local).ok_or_else(|| {
                 self.inconsistent(
@@ -129,26 +328,21 @@ impl<'a> FunctionBuilder<'a> {
                     format!("parameter {:?} has no local binding", parameter.id),
                 )
             })?;
+            let origin = MirSourceOrigin::body(self.body.id, parameter.origin.span);
             if binding.name != target.name {
                 return Err(self.inconsistent(
-                    MirSourceOrigin::body(self.body.id, parameter.origin.span),
+                    origin,
                     format!(
                         "parameter {} is named {:?} in HIR but {:?} in compile targets",
                         parameter_index, binding.name, target.name
                     ),
                 ));
             }
-            if target.contract.is_some() {
-                return Err(self.unsupported(
-                    MirSourceOrigin::body(self.body.id, parameter.origin.span),
-                    "function parameter contract guard",
-                ));
-            }
             let default_body = match target.default {
                 crate::CompileParameterDefault::Required => {
                     if parameter.default_body.is_some() {
                         return Err(self.inconsistent(
-                            MirSourceOrigin::body(self.body.id, parameter.origin.span),
+                            origin,
                             "HIR parameter default is missing from compile targets",
                         ));
                     }
@@ -157,27 +351,21 @@ impl<'a> FunctionBuilder<'a> {
                 crate::CompileParameterDefault::HirBody(default) => {
                     if parameter.default_body != Some(default) {
                         return Err(self.inconsistent(
-                            MirSourceOrigin::body(self.body.id, parameter.origin.span),
+                            origin,
                             "parameter default body disagrees with compile targets",
                         ));
                     }
-                    return Err(self.unsupported(
-                        MirSourceOrigin::body(self.body.id, parameter.origin.span),
-                        "parameter default prologue",
-                    ));
+                    Some(default)
                 }
                 crate::CompileParameterDefault::RuntimeProvided => {
                     return Err(self.inconsistent(
-                        MirSourceOrigin::body(self.body.id, parameter.origin.span),
+                        origin,
                         "script function parameter cannot have a runtime-provided default",
                     ));
                 }
             };
-            let origin = MirSourceOrigin::body(self.body.id, parameter.origin.span);
-            let kind = if matches!(
-                self.input.identity(),
-                crate::CompileFunctionIdentity::Method(_)
-            ) && self.body.self_binding == Some(parameter.local)
+            let kind = if matches!(self.function.owner(), MirFunctionOwner::Method(_))
+                && self.body.self_binding == Some(parameter.local)
             {
                 MirParameterKind::Receiver
             } else {
@@ -192,20 +380,51 @@ impl<'a> FunctionBuilder<'a> {
                 default_body,
                 origin,
             });
-            self.locals.insert(parameter.local, storage);
+            if self.locals.insert(parameter.local, storage).is_some() {
+                return Err(self.inconsistent(
+                    origin,
+                    format!("parameter repeats local {:?}", parameter.local),
+                ));
+            }
         }
+        Ok(())
+    }
 
-        for hir_local in &self.body.locals {
+    fn parameter_default_bodies(&self) -> Result<Vec<&'a HirBody>, MirBuildError> {
+        let mut bodies = Vec::new();
+        for parameter in self.function.parameters() {
+            let Some(body) = parameter.default_body else {
+                continue;
+            };
+            let body = self
+                .input
+                .graph()
+                .body(body)
+                .ok_or(MirBuildError::MissingHirBody {
+                    body,
+                    origin: parameter.origin,
+                })?;
+            bodies.push(body);
+        }
+        Ok(bodies)
+    }
+
+    fn install_body_locals(
+        &mut self,
+        body: &HirBody,
+        bindings: &vela_hir::binding::BindingMap,
+    ) -> Result<(), MirBuildError> {
+        for hir_local in &body.locals {
             if self.locals.contains_key(hir_local) {
                 continue;
             }
             let binding = bindings.local(*hir_local).ok_or_else(|| {
                 self.inconsistent(
-                    self.body_origin(),
+                    MirSourceOrigin::body(body.id, body.origin.span),
                     format!("HIR local {hir_local:?} has no binding record"),
                 )
             })?;
-            let origin = MirSourceOrigin::body(self.body.id, binding.span);
+            let origin = MirSourceOrigin::body(body.id, binding.span);
             let storage = self.function.add_script_local(
                 *hir_local,
                 value_type(self.input.analysis().local(*hir_local)),
@@ -213,39 +432,66 @@ impl<'a> FunctionBuilder<'a> {
             );
             self.locals.insert(*hir_local, storage);
         }
+        Ok(())
+    }
 
-        if self.input.config().emit_debug_locals {
-            for hir_local in &self.body.locals {
-                let binding = bindings.local(*hir_local).ok_or_else(|| {
-                    self.inconsistent(
-                        self.body_origin(),
-                        format!("HIR local {hir_local:?} has no binding record"),
-                    )
-                })?;
-                let storage = self.local(*hir_local, self.body_origin())?;
-                let scope = self
-                    .body
-                    .scopes
-                    .values()
-                    .find(|scope| scope.locals.contains(hir_local))
-                    .map(|scope| scope.id)
-                    .ok_or_else(|| {
-                        self.inconsistent(
-                            self.body_origin(),
-                            format!("HIR local {hir_local:?} has no owning scope"),
-                        )
-                    })?;
-                self.function.add_debug_local(MirDebugLocal {
-                    storage,
-                    name: binding.name.clone(),
-                    kind: DebugLocalKind::from(binding.kind),
-                    hir_local: Some(*hir_local),
-                    scope,
-                    origin: MirSourceOrigin::body(self.body.id, binding.span),
-                    live_region: MirLiveRegion::default(),
-                });
-            }
+    fn install_capture_debug_locals(
+        &mut self,
+        bindings: &vela_hir::binding::BindingMap,
+    ) -> Result<(), MirBuildError> {
+        for capture in self.function.captures().to_vec() {
+            let binding = bindings.local(capture.source_local).ok_or_else(|| {
+                self.inconsistent(self.body_origin(), "capture has no binding record")
+            })?;
+            let storage = self.local(capture.source_local, capture.origin)?;
+            self.function.add_debug_local(MirDebugLocal {
+                storage,
+                name: binding.name.clone(),
+                kind: DebugLocalKind::Capture,
+                hir_local: Some(capture.source_local),
+                scope: self.body.root_scope,
+                origin: capture.origin,
+                live_region: MirLiveRegion::default(),
+            });
         }
+        Ok(())
+    }
+
+    fn install_debug_local(
+        &mut self,
+        body: &HirBody,
+        hir_local: HirLocalId,
+        bindings: &vela_hir::binding::BindingMap,
+        kind: Option<DebugLocalKind>,
+    ) -> Result<(), MirBuildError> {
+        let origin = MirSourceOrigin::body(body.id, body.origin.span);
+        let binding = bindings.local(hir_local).ok_or_else(|| {
+            self.inconsistent(
+                origin,
+                format!("HIR local {hir_local:?} has no binding record"),
+            )
+        })?;
+        let storage = self.local(hir_local, origin)?;
+        let scope = body
+            .scopes
+            .values()
+            .find(|scope| scope.locals.contains(&hir_local))
+            .map(|scope| scope.id)
+            .ok_or_else(|| {
+                self.inconsistent(
+                    origin,
+                    format!("HIR local {hir_local:?} has no owning scope"),
+                )
+            })?;
+        self.function.add_debug_local(MirDebugLocal {
+            storage,
+            name: binding.name.clone(),
+            kind: kind.unwrap_or_else(|| DebugLocalKind::from(binding.kind)),
+            hir_local: Some(hir_local),
+            scope,
+            origin: MirSourceOrigin::body(body.id, binding.span),
+            live_region: MirLiveRegion::default(),
+        });
         Ok(())
     }
 
@@ -318,7 +564,7 @@ impl<'a> FunctionBuilder<'a> {
                 body,
             } => self.lower_for(statement_id, &patterns, iterable, body, origin),
             HirStmtKind::If(value) => self.lower_if_statement(&value, origin),
-            HirStmtKind::Match(_) => Err(self.unsupported(origin, "match statement")),
+            HirStmtKind::Match(value) => self.lower_match_statement(&value, origin),
         }
     }
 
@@ -338,19 +584,7 @@ impl<'a> FunctionBuilder<'a> {
         let Some(pattern) = pattern else {
             return Ok(());
         };
-        let pattern =
-            self.body.patterns.get(&pattern).ok_or_else(|| {
-                self.inconsistent(origin, format!("missing HIR pattern {pattern:?}"))
-            })?;
-        let HirPatternKind::Binding { local: Some(local) } = pattern.kind else {
-            return Err(self.unsupported(origin, "destructuring let pattern"));
-        };
-        let storage = self.local(local, origin)?;
-        self.function.append_statement(
-            self.current_block,
-            MirStatement::assign(origin, MirPlace::local(storage), MirRvalue::Use(value)),
-        )?;
-        Ok(())
+        self.lower_let_pattern(pattern, value, origin)
     }
 
     pub(super) fn lower_expression(
@@ -402,10 +636,10 @@ impl<'a> FunctionBuilder<'a> {
             HirExprKind::Array { .. } => Err(self.unsupported(origin, "array expression")),
             HirExprKind::Map { .. } => Err(self.unsupported(origin, "map expression")),
             HirExprKind::Record { .. } => self.lower_constructor(expression, origin),
-            HirExprKind::Lambda { .. } => Err(self.unsupported(origin, "lambda expression")),
+            HirExprKind::Lambda { body } => self.lower_lambda(expression, body, origin),
             HirExprKind::Block { block } => self.lower_block_expression(expression, block, origin),
             HirExprKind::If(value) => self.lower_if_expression(expression, &value, origin),
-            HirExprKind::Match(_) => Err(self.unsupported(origin, "match expression")),
+            HirExprKind::Match(value) => self.lower_match_expression(expression, &value, origin),
         }
     }
 
@@ -433,7 +667,7 @@ impl<'a> FunctionBuilder<'a> {
         }
     }
 
-    fn finish_open_block(
+    pub(super) fn finish_open_block(
         &mut self,
         value: Option<MirOperand>,
         origin: MirSourceOrigin,
@@ -506,11 +740,14 @@ impl<'a> FunctionBuilder<'a> {
         Ok(MirOperand::Temp(temp))
     }
 
-    fn body_origin(&self) -> MirSourceOrigin {
+    pub(super) fn body_origin(&self) -> MirSourceOrigin {
         MirSourceOrigin::body(self.body.id, self.body.origin.span)
     }
 
-    fn expression_origin(&self, expression: HirExprId) -> Result<MirSourceOrigin, MirBuildError> {
+    pub(super) fn expression_origin(
+        &self,
+        expression: HirExprId,
+    ) -> Result<MirSourceOrigin, MirBuildError> {
         let record = self.body.expression(expression).ok_or_else(|| {
             self.inconsistent(
                 self.body_origin(),
@@ -540,6 +777,19 @@ impl<'a> FunctionBuilder<'a> {
             origin,
             format!("{feature} is outside the current MIR builder slice"),
         )
+    }
+
+    pub(super) fn nested_function(
+        &self,
+        body: HirBodyId,
+        origin: MirSourceOrigin,
+    ) -> Result<MirFunctionId, MirBuildError> {
+        self.nested_functions.get(&body).copied().ok_or_else(|| {
+            self.inconsistent(
+                origin,
+                format!("missing generation-local MIR function for lambda body {body:?}"),
+            )
+        })
     }
 }
 

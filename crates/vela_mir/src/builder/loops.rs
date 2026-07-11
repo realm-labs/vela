@@ -2,7 +2,7 @@ use vela_analysis::semantic_facts::OperatorTargetFact;
 use vela_analysis::type_fact::TypeFact;
 use vela_analysis::validation::{LoopControlKind, LoopControlPlacement};
 use vela_common::{NumericTag, PrimitiveTag, ScalarValue};
-use vela_hir::body::{HirBinaryOp, HirExprKind, HirPatternKind};
+use vela_hir::body::{HirBinaryOp, HirExprKind};
 use vela_hir::ids::{HirBlockId, HirExprId, HirPatternId, HirStmtId};
 
 use crate::{
@@ -87,10 +87,6 @@ impl FunctionBuilder<'_> {
                 ),
             ));
         };
-        for pattern in patterns {
-            self.validate_loop_pattern(*pattern, origin)?;
-        }
-
         let iterable_origin = self.loop_expression_origin(iterable)?;
         let direct_range = self.direct_range(iterable, iterable_origin)?;
         let lowered = match direct_range {
@@ -192,10 +188,11 @@ impl FunctionBuilder<'_> {
 
         self.current_block = body_block;
         if let ([index_pattern, _], Some(counter)) = (patterns, index_counter) {
-            // Indexed iteration starts at zero. The counter is advanced before
-            // the user body, matching the existing loop behavior and ensuring
-            // that `continue` can jump directly to the step header.
-            self.bind_loop_pattern(*index_pattern, MirOperand::Local(counter), origin)?;
+            // Snapshot the source index, then advance the counter before any
+            // refutable index/value test. A mismatch therefore consumes one
+            // source item and the next iteration observes the next index.
+            let index_origin = self.pattern_origin(*index_pattern)?;
+            let index_value = self.capture_operand(MirOperand::Local(counter), index_origin)?;
             self.function.append_statement(
                 self.current_block,
                 MirStatement::new(
@@ -213,8 +210,9 @@ impl FunctionBuilder<'_> {
                     None,
                 ),
             )?;
+            self.lower_loop_pattern(*index_pattern, index_value, header)?;
         }
-        self.bind_loop_pattern(*value_pattern, MirOperand::Local(item), origin)?;
+        self.lower_loop_pattern(*value_pattern, MirOperand::Local(item), header)?;
 
         self.loop_stack.push(LoopContext::new(header, done));
         self.lower_block(body)?;
@@ -475,71 +473,6 @@ impl FunctionBuilder<'_> {
             ));
         }
         Ok(())
-    }
-
-    fn validate_loop_pattern(
-        &self,
-        pattern: HirPatternId,
-        origin: MirSourceOrigin,
-    ) -> Result<(), MirBuildError> {
-        if self.input.analysis().pattern(pattern).is_none() {
-            return Err(self.inconsistent(origin, "for-loop pattern has no analysis type fact"));
-        }
-        let pattern = self.body.patterns.get(&pattern).ok_or_else(|| {
-            self.inconsistent(origin, format!("missing HIR for-loop pattern {pattern:?}"))
-        })?;
-        match &pattern.kind {
-            HirPatternKind::Binding { local: Some(_) } | HirPatternKind::Wildcard => Ok(()),
-            HirPatternKind::Binding { local: None } | HirPatternKind::Missing => Err(self
-                .inconsistent(
-                    MirSourceOrigin::pattern(self.body.id, pattern.id, pattern.origin.span),
-                    "incomplete for-loop pattern reached MIR",
-                )),
-            HirPatternKind::TupleVariant { .. } | HirPatternKind::RecordVariant { .. } => Err(self
-                .unsupported(
-                    MirSourceOrigin::pattern(self.body.id, pattern.id, pattern.origin.span),
-                    "destructuring for-loop pattern",
-                )),
-            HirPatternKind::Path { .. } | HirPatternKind::Literal(_) => Err(self.unsupported(
-                MirSourceOrigin::pattern(self.body.id, pattern.id, pattern.origin.span),
-                "refutable for-loop pattern",
-            )),
-        }
-    }
-
-    fn bind_loop_pattern(
-        &mut self,
-        pattern: HirPatternId,
-        value: MirOperand,
-        statement_origin: MirSourceOrigin,
-    ) -> Result<(), MirBuildError> {
-        let pattern = self.body.patterns.get(&pattern).ok_or_else(|| {
-            self.inconsistent(
-                statement_origin,
-                format!("missing HIR for-loop pattern {pattern:?}"),
-            )
-        })?;
-        let origin = MirSourceOrigin::pattern(self.body.id, pattern.id, pattern.origin.span);
-        match &pattern.kind {
-            HirPatternKind::Binding { local: Some(local) } => {
-                let local = self.local(*local, origin)?;
-                self.function.append_statement(
-                    self.current_block,
-                    MirStatement::assign(origin, MirPlace::local(local), MirRvalue::Use(value)),
-                )?;
-                Ok(())
-            }
-            HirPatternKind::Wildcard => Ok(()),
-            HirPatternKind::Binding { local: None } | HirPatternKind::Missing => {
-                Err(self.inconsistent(origin, "incomplete for-loop pattern reached MIR"))
-            }
-            HirPatternKind::TupleVariant { .. } | HirPatternKind::RecordVariant { .. } => {
-                Err(self.unsupported(origin, "destructuring for-loop pattern"))
-            }
-            HirPatternKind::Path { .. } | HirPatternKind::Literal(_) => {
-                Err(self.unsupported(origin, "refutable for-loop pattern"))
-            }
-        }
     }
 
     fn loop_pattern_value_type(

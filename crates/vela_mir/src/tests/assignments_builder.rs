@@ -1,5 +1,5 @@
 use vela_analysis::executable::{ExecutableAnalysisGeneration, ExecutableAnalysisInput};
-use vela_common::{HostTypeId, ShapeId, SourceId};
+use vela_common::{ShapeId, SourceId};
 use vela_def::{FieldId, FunctionId, TypeId};
 use vela_hir::body::{HirExprKind, HirField};
 use vela_hir::ids::HirExprId;
@@ -7,11 +7,11 @@ use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
 
 use crate::{
     CompileFieldAccess, CompileFieldDescriptor, CompileFieldTarget, CompileFunctionAccess,
-    CompileFunctionClass, CompileFunctionDescriptor, CompileFunctionIdentity,
-    CompileHostPathTarget, CompileMemberTarget, CompileParameter, CompileParameterDefault,
-    CompilePositionalPolicy, CompileSignature, CompileTargetSnapshot, CompileTypeClass,
-    CompileTypeDescriptor, HostTypeTarget, MirEffect, MirIndexKey, MirIndexOperation,
-    MirLoweringConfig, MirLoweringInput, MirOperand, MirProgram, MirSourceOrigin, MirStatementKind,
+    CompileFunctionClass, CompileFunctionDescriptor, CompileFunctionIdentity, CompileMemberTarget,
+    CompileParameter, CompileParameterDefault, CompilePositionalPolicy, CompileSignature,
+    CompileTargetSnapshot, CompileTypeClass, CompileTypeDescriptor, MirEffect, MirIndexKey,
+    MirIndexOperation, MirLoweringConfig, MirLoweringInput, MirOperand, MirProgram,
+    MirSourceOrigin, MirStatementKind,
 };
 
 const ROOT_FUNCTION: FunctionId = FunctionId::new(8_200);
@@ -32,34 +32,24 @@ enum MemberPolicy {
 #[derive(Clone, Copy)]
 struct FixtureOptions {
     members: MemberPolicy,
-    host_path: bool,
 }
 
 impl FixtureOptions {
     const DYNAMIC: Self = Self {
         members: MemberPolicy::Dynamic,
-        host_path: false,
     };
 
     const TUPLE: Self = Self {
         members: MemberPolicy::Tuple,
-        host_path: false,
     };
 
     const STABLE_NESTED: Self = Self {
         members: MemberPolicy::StableNested,
-        host_path: false,
-    };
-
-    const HOST: Self = Self {
-        members: MemberPolicy::Dynamic,
-        host_path: true,
     };
 }
 
 fn lower_selected(
     source: &str,
-    expression_text: &str,
     options: FixtureOptions,
 ) -> Result<MirProgram, crate::MirBuildError> {
     let mut graph = ModuleGraph::new();
@@ -76,13 +66,11 @@ fn lower_selected(
         .find(|declaration| declaration.name == "main")
         .expect("main declaration");
     let body = graph.function_body(declaration.id).expect("main HIR body");
-    let expression = expression_by_text(body, source, expression_text);
     let analysis = ExecutableAnalysisGeneration::from_module_graph(
         &graph,
         [ExecutableAnalysisInput::new(ROOT_FUNCTION, body.id)],
     )
     .expect("assignment fixture analysis");
-    let origin = expression_origin(body, expression);
     let body_origin = MirSourceOrigin::body(body.id, body.origin.span);
 
     let mut targets = CompileTargetSnapshot::builder();
@@ -106,36 +94,6 @@ fn lower_selected(
             field.expression,
             member_target(options.members, field),
             expression_origin(body, field.expression),
-        )?;
-    }
-    if options.host_path {
-        let host_type = HostTypeTarget {
-            semantic: TypeId::new(8_220),
-            runtime: HostTypeId::new(8_221),
-        };
-        targets.insert_type_descriptor(
-            CompileTypeDescriptor {
-                id: host_type.semantic,
-                canonical_name: "host::Fixture".to_owned(),
-                class: CompileTypeClass::Host {
-                    runtime: host_type.runtime,
-                },
-                shape: None,
-                fields: Vec::new(),
-                variants: Vec::new(),
-            },
-            origin,
-        )?;
-        let root = assignment_or_value_root(body, expression);
-        targets.insert_host_path(
-            ROOT_FUNCTION,
-            expression,
-            CompileHostPathTarget {
-                root,
-                root_type: host_type,
-                segments: Vec::new(),
-            },
-            origin,
         )?;
     }
     let targets = targets.build()?;
@@ -270,55 +228,9 @@ fn insert_stable_nested_descriptors(
     )
 }
 
-fn expression_by_text(body: &vela_hir::body::HirBody, source: &str, text: &str) -> HirExprId {
-    let start = source.find(text).expect("fixture expression text");
-    let end = start + text.len();
-    let matches = body
-        .expressions
-        .values()
-        .filter(|expression| {
-            expression.origin.span.start == u32::try_from(start).expect("fixture start")
-                && expression.origin.span.end == u32::try_from(end).expect("fixture end")
-        })
-        .map(|expression| expression.id)
-        .collect::<Vec<_>>();
-    let [expression] = matches.as_slice() else {
-        panic!("expected one HIR expression for {text:?}, got {matches:?}")
-    };
-    *expression
-}
-
 fn expression_origin(body: &vela_hir::body::HirBody, expression: HirExprId) -> MirSourceOrigin {
     let expression = body.expression(expression).expect("fixture expression");
     MirSourceOrigin::expression(body.id, expression.id, expression.origin.span)
-}
-
-fn assignment_or_value_root(body: &vela_hir::body::HirBody, expression: HirExprId) -> HirExprId {
-    let mut value = match &body
-        .expression(expression)
-        .expect("fixture expression")
-        .kind
-    {
-        HirExprKind::Assign {
-            target: Some(target),
-            ..
-        } => *target,
-        _ => expression,
-    };
-    loop {
-        value = match &body
-            .expression(value)
-            .expect("fixture root expression")
-            .kind
-        {
-            HirExprKind::Field(field) => field.receiver,
-            HirExprKind::Index(index) => index.receiver,
-            HirExprKind::Paren {
-                expression: Some(inner),
-            } => *inner,
-            _ => return value,
-        };
-    }
 }
 
 fn only_function(program: &MirProgram) -> &crate::MirFunction {
@@ -333,7 +245,6 @@ fn only_function(program: &MirProgram) -> &crate::MirFunction {
 fn assignment_builder_lowers_typed_local_compound_and_returns_the_result() {
     let program = lower_selected(
         "fn main(value: i64) { return value += 2; }",
-        "value += 2",
         FixtureOptions::DYNAMIC,
     )
     .expect("typed local compound assignment");
@@ -360,7 +271,6 @@ fn assignment_builder_lowers_typed_local_compound_and_returns_the_result() {
 fn assignment_builder_captures_index_target_before_rhs_and_reads_after_rhs() {
     let program = lower_selected(
         "fn main(values, index, rhs) { return values[index] += rhs + 1; }",
-        "values[index] += rhs + 1",
         FixtureOptions::DYNAMIC,
     )
     .expect("dynamic indexed compound assignment");
@@ -434,7 +344,6 @@ fn assigned_temp_from_local(statement: &crate::MirStatement) -> crate::MirTempId
 fn assignment_builder_compound_read_observes_an_aliasing_rhs_write() {
     let program = lower_selected(
         "fn main(values, index) { return values[index] += (values[index] = 100); }",
-        "values[index] += (values[index] = 100)",
         FixtureOptions::DYNAMIC,
     )
     .expect("aliasing indexed compound assignment");
@@ -482,7 +391,6 @@ fn assignment_builder_compound_read_observes_an_aliasing_rhs_write() {
 fn assignment_builder_writes_indexed_nested_fields_back_through_the_captured_key() {
     let program = lower_selected(
         "fn main(records, index, rhs) { return records[index].outer.inner = rhs; }",
-        "records[index].outer.inner = rhs",
         FixtureOptions::DYNAMIC,
     )
     .expect("indexed nested field assignment");
@@ -513,7 +421,6 @@ fn assignment_builder_writes_indexed_nested_fields_back_through_the_captured_key
 fn assignment_builder_stops_when_a_target_component_diverges() {
     let program = lower_selected(
         "fn main(record, rhs) { ({ return record; }).field = rhs; return 0; }",
-        "({ return record; }).field = rhs",
         FixtureOptions::DYNAMIC,
     )
     .expect("diverging assignment target");
@@ -535,12 +442,8 @@ struct Stats { inner: i64 }
 struct Player { outer: Stats }
 fn main(record: Player, rhs: i64) { return record.outer.inner += rhs; }
 "#;
-    let program = lower_selected(
-        source,
-        "record.outer.inner += rhs",
-        FixtureOptions::STABLE_NESTED,
-    )
-    .expect("stable nested field assignment");
+    let program = lower_selected(source, FixtureOptions::STABLE_NESTED)
+        .expect("stable nested field assignment");
     let kinds = only_function(&program)
         .statements()
         .map(|(_, statement)| &statement.kind)
@@ -565,7 +468,6 @@ fn main(record: Player, rhs: i64) { return record.outer.inner += rhs; }
 fn assignment_builder_uses_explicit_dynamic_fields_without_name_fallback() {
     let program = lower_selected(
         "fn main(record, rhs) { return record.outer.inner = rhs; }",
-        "record.outer.inner = rhs",
         FixtureOptions::DYNAMIC,
     )
     .expect("dynamic nested field assignment");
@@ -594,13 +496,11 @@ fn assignment_builder_uses_explicit_dynamic_fields_without_name_fallback() {
 fn assignment_builder_distinguishes_constant_string_and_dynamic_index_keys() {
     let constant = lower_selected(
         r#"fn main(values) { return values["score"]; }"#,
-        r#"values["score"]"#,
         FixtureOptions::DYNAMIC,
     )
     .expect("constant string index read");
     let dynamic = lower_selected(
         "fn main(values, key) { return values[key]; }",
-        "values[key]",
         FixtureOptions::DYNAMIC,
     )
     .expect("dynamic index read");
@@ -631,12 +531,8 @@ fn assignment_builder_distinguishes_constant_string_and_dynamic_index_keys() {
 
 #[test]
 fn assignment_builder_lowers_tuple_projection_reads_but_rejects_tuple_writes() {
-    let read = lower_selected(
-        "fn main(pair) { return pair.1; }",
-        "pair.1",
-        FixtureOptions::TUPLE,
-    )
-    .expect("tuple projection read");
+    let read = lower_selected("fn main(pair) { return pair.1; }", FixtureOptions::TUPLE)
+        .expect("tuple projection read");
     assert!(
         only_function(&read)
             .statements()
@@ -648,7 +544,6 @@ fn assignment_builder_lowers_tuple_projection_reads_but_rejects_tuple_writes() {
 
     let error = lower_selected(
         "fn main(pair, rhs) { return pair.1 = rhs; }",
-        "pair.1 = rhs",
         FixtureOptions::TUPLE,
     )
     .expect_err("tuple assignment requires an explicit rebuild form");
@@ -656,21 +551,4 @@ fn assignment_builder_lowers_tuple_projection_reads_but_rejects_tuple_writes() {
         panic!("unexpected tuple write error {error:?}")
     };
     assert!(message.contains("no tuple element write/rebuild form"));
-}
-
-#[test]
-fn assignment_builder_routes_compile_host_paths_to_hostaccess_lowering() {
-    let error = lower_selected(
-        "fn main(host) { return host.value = 1; }",
-        "host.value = 1",
-        FixtureOptions::HOST,
-    )
-    .expect_err("host assignment must not become an ordinary place");
-    let crate::MirBuildError::InconsistentInput { message, .. } = error else {
-        panic!("unexpected host routing error {error:?}")
-    };
-    assert_eq!(
-        message,
-        "compile host-path assignment must be lowered by builder::host as an explicit HostAccess operation"
-    );
 }

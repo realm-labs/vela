@@ -268,19 +268,16 @@ fn mir_builder_stops_cleanly_when_loop_iterable_or_body_diverges() {
 }
 
 #[test]
-fn mir_builder_rejects_destructuring_loop_patterns_for_the_pattern_slice() {
-    let error = try_build(
+fn mir_builder_lowers_destructuring_loop_patterns_before_the_user_body() {
+    let program = build(
         "fn main(values) { for (left, right) in values { left; } }",
         &["values"],
-    )
-    .expect_err("destructuring belongs to the pattern-lowering slice");
-
-    assert!(
-        error
-            .to_string()
-            .contains("destructuring for-loop pattern is outside the current MIR builder slice"),
-        "{error}"
     );
+    let dump = program.dump();
+
+    assert!(dump.contains("pattern.tuple-arity"), "{dump}");
+    assert!(dump.contains("tuple.field"), "{dump}");
+    assert!(!dump.contains("<unterminated>"), "{dump}");
 }
 
 #[test]

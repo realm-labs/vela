@@ -270,6 +270,15 @@ later expression reassigns the local. A backend may coalesce a snapshot only
 when its allocation/liveness proof preserves the same observed value and
 instruction-budget contract.
 
+Pattern matching keeps checks and binding projection as separate ordered
+phases: every structural/literal check completes before binding-only fields are
+projected and written, then an arm guard runs with those bindings visible.
+Pathless tuple binding uses an explicit trapping arity guard, while its match
+test remains an ordinary predicate edge. `let` patterns preserve the current
+binding-only contract rather than adding refutability: pathless tuples guard
+arity, constructor patterns project declared bindings without a tag predicate,
+and literal/path/wildcard nonbindings are no-ops.
+
 Resolved method calls carry an already-evaluated receiver. Script calls retain
 a complete ordered parameter-slot vector and may use the Missing sentinel only
 for HIR-owned defaults evaluated by the callee prologue. External signatures

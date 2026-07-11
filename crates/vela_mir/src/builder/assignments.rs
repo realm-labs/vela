@@ -80,9 +80,9 @@ enum Prepared<T> {
 impl FunctionBuilder<'_> {
     /// Lower a script-local, script-field, or script-index assignment.
     ///
-    /// Host paths are deliberately rejected here with a routing error. They
-    /// must be lowered by the HostAccess builder as explicit host operations,
-    /// never as ordinary MIR places or script heap writes.
+    /// Exact host-path placements route directly to the HostAccess builder as
+    /// explicit operations; defensive routing errors below prevent a host
+    /// target from ever becoming an ordinary MIR place or script heap write.
     pub(super) fn lower_assignment(
         &mut self,
         expression: HirExprId,
@@ -97,11 +97,11 @@ impl FunctionBuilder<'_> {
             .ok_or_else(|| self.inconsistent(origin, "assignment expression has no target"))?;
         let value =
             value.ok_or_else(|| self.inconsistent(origin, "assignment expression has no value"))?;
-        let operator_mode = self.assignment_operator_mode(expression, operation, origin)?;
-
-        if self.input.targets().host_path(expression).is_some() {
-            return Err(self.host_assignment_route_error(origin));
+        if let Some(path) = self.input.targets().host_path(expression).cloned() {
+            return self.lower_host_assignment(expression, operation, target, value, &path, origin);
         }
+
+        let operator_mode = self.assignment_operator_mode(expression, operation, origin)?;
 
         let target = match self.prepare_assignment_target(target, origin)? {
             Prepared::Ready(target) => target,
@@ -133,8 +133,8 @@ impl FunctionBuilder<'_> {
         field: &HirField,
         origin: MirSourceOrigin,
     ) -> Result<MirOperand, MirBuildError> {
-        if self.input.targets().host_path(expression).is_some() {
-            return Err(self.host_read_route_error(origin));
+        if let Some(path) = self.input.targets().host_path(expression).cloned() {
+            return self.lower_host_read(expression, &path, origin);
         }
         let receiver = self.lower_expression(field.receiver)?;
         if self.current_is_terminated()? {
@@ -166,8 +166,8 @@ impl FunctionBuilder<'_> {
         index: &HirIndex,
         origin: MirSourceOrigin,
     ) -> Result<MirOperand, MirBuildError> {
-        if self.input.targets().host_path(expression).is_some() {
-            return Err(self.host_read_route_error(origin));
+        if let Some(path) = self.input.targets().host_path(expression).cloned() {
+            return self.lower_host_read(expression, &path, origin);
         }
         let receiver = self.lower_expression(index.receiver)?;
         if self.current_is_terminated()? {
