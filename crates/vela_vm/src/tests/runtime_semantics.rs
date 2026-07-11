@@ -185,6 +185,32 @@ fn main() {
 }
 
 #[test]
+fn non_fusible_i64_immediate_binary_evaluates_effectful_lhs_once() {
+    let program = compile_fixture(
+        r#"
+fn effectful(trace: Array<i64>) -> i64 {
+    trace.push(1);
+    return 8;
+}
+
+fn main() {
+    let trace = [];
+    let result = effectful(trace) / 2;
+    return [result, trace.len()];
+}
+"#,
+    );
+
+    assert_eq!(
+        run_fixture(&program, "main"),
+        Ok(OwnedValue::Array(vec![
+            OwnedValue::i64(4),
+            OwnedValue::i64(1),
+        ]))
+    );
+}
+
+#[test]
 fn loop_instruction_limit_has_a_stable_edge() {
     let program = compile_fixture(
         r#"

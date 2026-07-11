@@ -53,7 +53,7 @@ pub(super) fn i64_immediate_instruction(
     }
 }
 
-fn i64_immediate_op_supported(op: HirBinaryOp, imm: i64) -> bool {
+pub(super) fn i64_immediate_op_supported(op: HirBinaryOp, imm: i64) -> bool {
     matches!(
         op,
         HirBinaryOp::Add

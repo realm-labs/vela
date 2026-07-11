@@ -53,15 +53,15 @@ impl Compiler<'_, '_> {
         if i64_operands
             && !matches!(self.hir_expression_record(lhs)?.1, HirExprKind::Literal(_))
             && let Some(immediate) = self.hir_i64_literal(rhs)?
+            && crate::compiler::operators::i64_immediate_op_supported(op, immediate)
         {
             let lhs = self.compile_hir_expression(lhs)?;
             let dst = self.alloc_register()?;
-            if let Some(instruction) =
+            let instruction =
                 crate::compiler::operators::i64_immediate_instruction(op, dst, lhs, immediate)
-            {
-                self.emit_spanned(instruction, span);
-                return Ok(dst);
-            }
+                    .expect("supported i64 immediate operation has an instruction");
+            self.emit_spanned(instruction, span);
+            return Ok(dst);
         }
         let lhs = self.compile_hir_expression(lhs)?;
         let rhs = self.compile_hir_expression(rhs)?;

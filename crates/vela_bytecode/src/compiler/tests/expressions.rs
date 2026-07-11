@@ -26,6 +26,32 @@ fn main() {
 }
 
 #[test]
+fn compiler_evaluates_non_fusible_i64_immediate_lhs_once() {
+    for (name, expression) in [
+        ("division", "effectful() / 2"),
+        ("zero remainder", "effectful() % 0"),
+    ] {
+        let source = format!(
+            "fn effectful() -> i64 {{ return 8; }}\nfn main() -> i64 {{ return {expression}; }}"
+        );
+        let code = compile_function_source(SourceId::new(1), &source, "main")
+            .unwrap_or_else(|error| panic!("{name} should compile: {error:?}"));
+        assert_eq!(
+            code.instructions
+                .iter()
+                .filter(|instruction| matches!(
+                    instruction.kind,
+                    UnlinkedInstructionKind::CallFunction { .. }
+                ))
+                .count(),
+            1,
+            "{name} must evaluate its left operand exactly once: {:?}",
+            code.instructions
+        );
+    }
+}
+
+#[test]
 fn compiler_inverts_negated_equality_without_not_instruction() {
     let code = compile_function_source(
         SourceId::new(1),
