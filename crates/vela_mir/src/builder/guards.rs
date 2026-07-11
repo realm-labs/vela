@@ -45,6 +45,7 @@ impl FunctionBuilder<'_> {
             return Ok(value);
         }
         let guard = self.function.add_guard(MirGuard {
+            kind: crate::MirGuardKind::Contract,
             assumption: MirGuardAssumption::Type(target.contract),
             context: Some(target.context),
             origin,

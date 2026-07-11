@@ -411,15 +411,15 @@ fn mir_model_compile_snapshot_owns_source_identity_and_diagnostic_origins() {
 #[test]
 fn mir_input_callable_contracts_keep_kind_and_optional_arity_independent() {
     let function = MirTypeContract::Callable {
-        kind: MirCallableKind::Function,
+        accepted_kinds: crate::MirCallableKindSet::FUNCTION,
         positional_arity: None,
     };
     let zero_arg_function = MirTypeContract::Callable {
-        kind: MirCallableKind::Function,
+        accepted_kinds: crate::MirCallableKindSet::FUNCTION,
         positional_arity: Some(0),
     };
     let closure = MirTypeContract::Callable {
-        kind: MirCallableKind::Closure,
+        accepted_kinds: crate::MirCallableKindSet::CLOSURE,
         positional_arity: None,
     };
 
@@ -428,14 +428,14 @@ fn mir_input_callable_contracts_keep_kind_and_optional_arity_independent() {
     assert!(matches!(
         function,
         MirTypeContract::Callable {
-            kind: MirCallableKind::Function,
+            accepted_kinds: crate::MirCallableKindSet::FUNCTION,
             positional_arity: None,
         }
     ));
     assert!(matches!(
         closure,
         MirTypeContract::Callable {
-            kind: MirCallableKind::Closure,
+            accepted_kinds: crate::MirCallableKindSet::CLOSURE,
             positional_arity: None,
         }
     ));

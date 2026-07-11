@@ -16,8 +16,8 @@ use vela_def::FunctionId;
 use vela_hir::body::{HirBinaryOp, HirExprKind};
 use vela_hir::ids::HirExprId;
 use vela_mir::{
-    CompileGuardKey, CompileGuardTarget, MirBuildError, MirCallableKind, MirGuardContext,
-    MirGuardLocation, MirTypeContract,
+    CompileGuardKey, CompileGuardTarget, MirBuildError, MirGuardContext, MirGuardLocation,
+    MirTypeContract,
 };
 
 use super::{GenerationBuilder, input_error, registry_input_error};
@@ -164,14 +164,15 @@ impl GenerationBuilder<'_, '_> {
         };
         let result = match expected {
             MirTypeContract::Callable {
-                kind,
+                accepted_kinds,
                 positional_arity,
             } => check_expected_callable_contract(
                 actual,
                 ExpectedCallableContract::new(
-                    match kind {
-                        MirCallableKind::Function => ExpectedCallableKind::Function,
-                        MirCallableKind::Closure => ExpectedCallableKind::Closure,
+                    if accepted_kinds.accepts_direct_function() {
+                        ExpectedCallableKind::Function
+                    } else {
+                        ExpectedCallableKind::Closure
                     },
                     *positional_arity,
                 ),
@@ -229,15 +230,16 @@ impl GenerationBuilder<'_, '_> {
             let actual = self.contract_actual(boundary.function, boundary.expression)?;
             let validation = match &boundary.expected {
                 MirTypeContract::Callable {
-                    kind,
+                    accepted_kinds,
                     positional_arity,
                 } => check_expected_callable_contract_at(
                     boundary.expression,
                     actual,
                     ExpectedCallableContract::new(
-                        match kind {
-                            MirCallableKind::Function => ExpectedCallableKind::Function,
-                            MirCallableKind::Closure => ExpectedCallableKind::Closure,
+                        if accepted_kinds.accepts_direct_function() {
+                            ExpectedCallableKind::Function
+                        } else {
+                            ExpectedCallableKind::Closure
                         },
                         *positional_arity,
                     ),
@@ -516,18 +518,15 @@ impl GenerationBuilder<'_, '_> {
                     .unwrap_or(TypeFact::Unknown),
             ),
             MirTypeContract::Callable {
-                kind: MirCallableKind::Function,
+                accepted_kinds,
                 positional_arity,
-            } => TypeFact::function(
+            } if accepted_kinds.accepts_direct_function() => TypeFact::function(
                 positional_arity
                     .map(|arity| vec![TypeFact::Unknown; arity as usize])
                     .unwrap_or_default(),
                 TypeFact::Unknown,
             ),
-            MirTypeContract::Callable {
-                kind: MirCallableKind::Closure,
-                ..
-            } => TypeFact::Closure,
+            MirTypeContract::Callable { .. } => TypeFact::Closure,
             MirTypeContract::Definition(type_id) | MirTypeContract::Shape { type_id, .. } => {
                 let name = self.type_name(*type_id).ok_or_else(registry_input_error)?;
                 match self.catalog.ty(*type_id).map(|definition| definition.kind) {

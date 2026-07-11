@@ -45,35 +45,6 @@ fn binary_instruction(
     }
 }
 
-fn retarget_destination(
-    kind: &mut UnlinkedInstructionKind,
-    expected: Register,
-    replacement: Register,
-) -> bool {
-    let dst = match kind {
-        UnlinkedInstructionKind::LoadConst { dst, .. }
-        | UnlinkedInstructionKind::Add { dst, .. }
-        | UnlinkedInstructionKind::Sub { dst, .. }
-        | UnlinkedInstructionKind::Mul { dst, .. }
-        | UnlinkedInstructionKind::Div { dst, .. }
-        | UnlinkedInstructionKind::Rem { dst, .. }
-        | UnlinkedInstructionKind::I64Add { dst, .. }
-        | UnlinkedInstructionKind::I64Sub { dst, .. }
-        | UnlinkedInstructionKind::I64Mul { dst, .. }
-        | UnlinkedInstructionKind::I64Rem { dst, .. }
-        | UnlinkedInstructionKind::I64AddImm { dst, .. }
-        | UnlinkedInstructionKind::I64SubImm { dst, .. }
-        | UnlinkedInstructionKind::I64MulImm { dst, .. }
-        | UnlinkedInstructionKind::I64RemImm { dst, .. } => dst,
-        _ => return false,
-    };
-    if *dst != expected {
-        return false;
-    }
-    *dst = replacement;
-    true
-}
-
 fn mir_successors(kind: &MirTerminatorKind) -> Vec<MirBlockId> {
     match kind {
         MirTerminatorKind::Jump(target) => vec![*target],
@@ -257,10 +228,14 @@ fn type_guard_plan(
             ok: nested(ok)?,
             err: nested(err)?,
         },
-        MirTypeContract::Callable { kind, .. } => UnlinkedTypeGuardPlan::Standard(match kind {
-            vela_mir::MirCallableKind::Function => StandardTypeGuard::Function,
-            vela_mir::MirCallableKind::Closure => StandardTypeGuard::Closure,
-        }),
+        MirTypeContract::Callable {
+            accepted_kinds,
+            positional_arity,
+        } => UnlinkedTypeGuardPlan::Callable {
+            accepts_direct_function: accepted_kinds.accepts_direct_function(),
+            accepts_closure: accepted_kinds.accepts_closure(),
+            positional_arity: *positional_arity,
+        },
         MirTypeContract::Definition(type_id) => {
             let ty = program
                 .targets()

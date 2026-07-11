@@ -223,6 +223,49 @@ pub(crate) fn verify_function_metadata(
             }
         }
     }
+    let mut used_safepoints = BTreeSet::new();
+    for (block_id, block) in function.blocks() {
+        for statement_id in block.statements() {
+            let statement = function
+                .statement(*statement_id)
+                .expect("function metadata is checked before CFG placement");
+            if let Some(safepoint) = statement.safepoint
+                && !used_safepoints.insert(safepoint)
+            {
+                return Err(error(
+                    verifier,
+                    Some(block_id),
+                    Some(*statement_id),
+                    statement.origin,
+                    MirVerifyErrorKind::DuplicateSafepointUse { safepoint },
+                ));
+            }
+        }
+        if let Some(terminator) = block.terminator()
+            && let Some(safepoint) = terminator.safepoint
+            && !used_safepoints.insert(safepoint)
+        {
+            return Err(error(
+                verifier,
+                Some(block_id),
+                None,
+                terminator.origin,
+                MirVerifyErrorKind::DuplicateSafepointUse { safepoint },
+            ));
+        }
+    }
+    if let Some((safepoint, record)) = function
+        .safepoints()
+        .find(|(safepoint, _)| !used_safepoints.contains(safepoint))
+    {
+        return Err(error(
+            verifier,
+            None,
+            None,
+            record.origin,
+            MirVerifyErrorKind::OrphanSafepoint(safepoint),
+        ));
+    }
     for (_, debug) in function.debug_locals() {
         if debug.kind == crate::DebugLocalKind::Capture {
             verify_descendant_origin(verifier, debug.origin)?;

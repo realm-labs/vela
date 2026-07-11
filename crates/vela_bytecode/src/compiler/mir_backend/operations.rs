@@ -296,31 +296,10 @@ impl<'a> FunctionBackend<'a> {
                 then_block,
                 else_block,
             } => {
+                let missing_value = self.missing_test_value(condition);
                 let condition = self.operand(condition, span)?;
-                if self.known_false.contains(&condition) {
-                    self.skipped_blocks.insert(*then_block);
-                    self.unreachable_padding.get_or_insert(span);
-                    self.emit_patch(
-                        UnlinkedInstructionKind::JumpIfFalse {
-                            condition,
-                            target: InstructionOffset(0),
-                        },
-                        *else_block,
-                        span,
-                    );
-                    // Preserve the frozen two-edge branch encoding. The
-                    // second edge is physically unreachable because the
-                    // predicate is verifier-proven `NeverMatches`.
-                    self.emit_patch(
-                        UnlinkedInstructionKind::Jump {
-                            target: InstructionOffset(0),
-                        },
-                        *else_block,
-                        span,
-                    );
-                    return Ok(());
-                }
-                if let Some(value) = self.missing_tests.get(&condition).copied() {
+                if let Some(value) = missing_value {
+                    let value = self.operand(&value, span)?;
                     self.emit_patch(
                         UnlinkedInstructionKind::JumpIfNotMissing {
                             value,
@@ -329,11 +308,7 @@ impl<'a> FunctionBackend<'a> {
                         *else_block,
                         span,
                     );
-                } else if !(self
-                    .loop_blocks
-                    .contains(&self.current_block.expect("emitting block"))
-                    && self.fuse_i64_compare_branch(condition, *else_block))
-                {
+                } else {
                     self.emit_patch(
                         UnlinkedInstructionKind::JumpIfFalse {
                             condition,

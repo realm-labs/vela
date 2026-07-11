@@ -13,8 +13,10 @@ mod try_regions;
 #[cfg(test)]
 mod tests;
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
 use std::fmt;
+use std::sync::Arc;
 
 use vela_def::{FieldId, FunctionId, GlobalId, MethodId, TypeId, VariantId};
 
@@ -33,20 +35,110 @@ pub struct VerifiedMirProgram<'a> {
     program: &'a MirProgram,
 }
 
-impl<'a> VerifiedMirProgram<'a> {
-    pub fn into_backend_handoff(self) -> Result<MirBackendHandoff<'a>, MirBackendHandoffError> {
-        for (function, body) in self.program.functions() {
-            if !body.liveness().is_computed() {
-                return Err(MirBackendHandoffError::MissingLiveness {
-                    function,
-                    origin: body.origin(),
-                });
-            }
+/// Immutable, generation-retainable MIR together with the analyses sealed by
+/// verification. Physical backends borrow this owner; they never receive the
+/// mutable program used during construction.
+#[derive(Clone, Debug)]
+pub struct OwnedVerifiedMirProgram {
+    program: Arc<MirProgram>,
+    analyses: Arc<BTreeMap<MirFunctionId, MirFunctionAnalyses>>,
+}
+
+/// One compile generation's stable semantic roots mapped to their sealed,
+/// generation-local MIR programs (including nested lambdas).
+#[derive(Clone, Debug, Default)]
+pub struct OwnedVerifiedMirBundle {
+    roots: BTreeMap<FunctionId, Arc<OwnedVerifiedMirProgram>>,
+}
+
+impl OwnedVerifiedMirBundle {
+    #[must_use]
+    pub fn new(programs: impl IntoIterator<Item = OwnedVerifiedMirProgram>) -> Self {
+        let mut roots = BTreeMap::new();
+        for program in programs {
+            let root = program
+                .program()
+                .functions()
+                .find_map(|(_, function)| match function.owner() {
+                    crate::MirFunctionOwner::Function(id) => Some(*id),
+                    crate::MirFunctionOwner::Method(target) => Some(target.function),
+                    crate::MirFunctionOwner::Lambda { .. } => None,
+                })
+                .expect("verified production MIR has one stable executable root");
+            assert!(
+                roots.insert(root, Arc::new(program)).is_none(),
+                "verified MIR bundle contains duplicate stable root {root:?}"
+            );
         }
+        Self { roots }
+    }
+
+    pub fn roots(&self) -> impl Iterator<Item = (FunctionId, &Arc<OwnedVerifiedMirProgram>)> {
+        self.roots.iter().map(|(id, program)| (*id, program))
+    }
+
+    #[must_use]
+    pub fn root(&self, id: FunctionId) -> Option<&Arc<OwnedVerifiedMirProgram>> {
+        self.roots.get(&id)
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MirRootLiveness {
+    pub live_before_safepoint: BTreeMap<MirSafepointId, BTreeSet<crate::MirLiveValue>>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MirDebugAvailability {
+    pub locals: BTreeMap<crate::MirDebugLocalId, crate::MirLiveRegion>,
+    pub statement_before: BTreeMap<MirStatementId, BTreeSet<crate::MirDebugLocalId>>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct MirFunctionAnalyses {
+    pub value_liveness: crate::MirLiveness,
+    pub root_liveness: MirRootLiveness,
+    pub debug_availability: MirDebugAvailability,
+    pub facts: crate::MirProgramPointFacts,
+}
+
+impl OwnedVerifiedMirProgram {
+    #[must_use]
+    pub fn program(&self) -> &MirProgram {
+        &self.program
+    }
+
+    #[must_use]
+    pub fn analyses(&self, function: MirFunctionId) -> Option<&MirFunctionAnalyses> {
+        self.analyses.get(&function)
+    }
+
+    pub fn backend_handoff(&self) -> Result<MirBackendHandoff<'_>, MirBackendHandoffError> {
+        require_computed_liveness(&self.program)?;
         Ok(MirBackendHandoff {
-            program: self.program,
+            program: &self.program,
+            analyses: &self.analyses,
         })
     }
+}
+
+impl<'a> VerifiedMirProgram<'a> {
+    #[must_use]
+    pub const fn program(self) -> &'a MirProgram {
+        self.program
+    }
+}
+
+fn require_computed_liveness(program: &MirProgram) -> Result<(), MirBackendHandoffError> {
+    for (function, body) in program.functions() {
+        if !body.liveness().is_computed() {
+            return Err(MirBackendHandoffError::MissingLiveness {
+                function,
+                origin: body.origin(),
+            });
+        }
+    }
+    Ok(())
 }
 
 /// Complete verifier-proven MIR input for a physical backend.
@@ -57,12 +149,23 @@ impl<'a> VerifiedMirProgram<'a> {
 #[derive(Clone, Copy, Debug)]
 pub struct MirBackendHandoff<'a> {
     program: &'a MirProgram,
+    analyses: &'a BTreeMap<MirFunctionId, MirFunctionAnalyses>,
 }
 
 impl<'a> MirBackendHandoff<'a> {
     #[must_use]
     pub const fn program(self) -> &'a MirProgram {
         self.program
+    }
+
+    #[must_use]
+    pub fn analyses(self, function: MirFunctionId) -> Option<&'a MirFunctionAnalyses> {
+        self.analyses.get(&function)
+    }
+
+    #[must_use]
+    pub fn all_analyses(self) -> &'a BTreeMap<MirFunctionId, MirFunctionAnalyses> {
+        self.analyses
     }
 }
 
@@ -141,6 +244,10 @@ pub enum MirVerifyErrorKind {
     SafepointOriginMismatch {
         safepoint: MirSafepointId,
     },
+    DuplicateSafepointUse {
+        safepoint: MirSafepointId,
+    },
+    OrphanSafepoint(MirSafepointId),
     GuardOriginMismatch {
         guard: MirGuardId,
     },
@@ -219,6 +326,7 @@ pub(crate) struct FunctionVerifier<'a> {
     program: &'a MirProgram,
     function_id: MirFunctionId,
     function: &'a MirFunction,
+    facts: Option<&'a crate::MirProgramPointFacts>,
 }
 
 impl<'a> FunctionVerifier<'a> {
@@ -227,6 +335,21 @@ impl<'a> FunctionVerifier<'a> {
             program,
             function_id,
             function,
+            facts: None,
+        }
+    }
+
+    fn with_facts(
+        program: &'a MirProgram,
+        function_id: MirFunctionId,
+        function: &'a MirFunction,
+        facts: &'a crate::MirProgramPointFacts,
+    ) -> Self {
+        Self {
+            program,
+            function_id,
+            function,
+            facts: Some(facts),
         }
     }
 
@@ -253,6 +376,11 @@ impl<'a> FunctionVerifier<'a> {
         statement: Option<MirStatementId>,
         origin: MirSourceOrigin,
     ) -> Result<MirValueType, MirVerifyError> {
+        if let (Some(statement), Some(facts)) = (statement, self.facts)
+            && let Some(fact) = facts.operand_before(statement, operand)
+        {
+            return Ok(fact.value_type);
+        }
         dataflow::operand_type(self, operand, block, statement, origin)
     }
 }
@@ -273,9 +401,11 @@ pub fn verify_mir(program: &MirProgram) -> Result<VerifiedMirProgram<'_>, MirVer
     }
 
     for (function_id, function) in program.functions() {
-        let verifier = FunctionVerifier::new(program, function_id, function);
-        operations::verify_function_metadata(&verifier)?;
-        let graph = cfg::analyze(&verifier)?;
+        let structural = FunctionVerifier::new(program, function_id, function);
+        operations::verify_function_metadata(&structural)?;
+        let graph = cfg::analyze(&structural)?;
+        let facts = crate::facts::analyze(program, function);
+        let verifier = FunctionVerifier::with_facts(program, function_id, function, &facts);
         operations::verify_operations(&verifier, &graph)?;
         try_regions::verify(&verifier, &graph)?;
         dataflow::verify(&verifier, &graph)?;
@@ -283,4 +413,23 @@ pub fn verify_mir(program: &MirProgram) -> Result<VerifiedMirProgram<'_>, MirVer
     }
 
     Ok(VerifiedMirProgram { program })
+}
+
+/// Consumes a completed MIR program and seals the exact verified generation.
+/// This is the production backend boundary; the borrowed verifier remains
+/// useful to corruption tests that need to retain their fixture.
+pub fn verify_owned_mir(program: MirProgram) -> Result<OwnedVerifiedMirProgram, MirVerifyError> {
+    verify_mir(&program)?;
+    let analyses = program
+        .functions()
+        .map(|(id, function)| {
+            let mut analyses = crate::liveness::sealed_analyses(function);
+            analyses.facts = crate::facts::analyze(&program, function);
+            (id, analyses)
+        })
+        .collect();
+    Ok(OwnedVerifiedMirProgram {
+        program: Arc::new(program),
+        analyses: Arc::new(analyses),
+    })
 }

@@ -181,6 +181,25 @@ the profile should identify the dominant stack first.
 
 ## Current Baseline
 
+Executable-generation Phase 0 focused scalar checkpoint (2026-07-11):
+
+```text
+base_commit=9390cffc7
+rustc=1.96.0 (stable-aarch64-apple-darwin)
+target=macos/aarch64
+profile=release
+runtime=vela linked interpreter
+iterations=10000, repeats=3, warmup=1
+scalar_branch_loop mean_ns=83123000 per_iter_mean_ns=8312 p95_ns=83937292
+checksum=3828494456532927350
+clean_release_check_vela_bytecode_wall_s=5.14
+clean_release_check_vela_bytecode_max_rss_bytes=277463040
+```
+
+The final gate repeats this exact command and checksum alongside the broader
+tracked baseline, hot-reload, compile/peak-memory, top-level-heavy,
+lambda-heavy, retained-generation, and shared-multi-runtime measurements.
+
 Latest M19.5 prep checkpoint:
 
 ```text

@@ -517,7 +517,7 @@ fn main() {
 }
 
 #[test]
-fn qualified_record_patterns_keep_the_legacy_two_instruction_miss_test() {
+fn qualified_record_patterns_materialize_never_match_predicates() {
     let program = compile_module_sources(&[
         ModuleSource::new(
             SourceId::new(732),
@@ -539,7 +539,12 @@ fn main() {
     let main = program
         .function("game::main::main")
         .expect("qualified main function");
-    assert_eq!(main.instructions.len(), 11);
+    assert!(
+        main.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::LoadConst { .. }
+        ))
+    );
     assert_eq!(
         main.instructions
             .iter()
@@ -576,7 +581,12 @@ fn main() {
     )
     .expect("the qualified registered-record baseline compiles without a diagnostic");
     let main = program.function("main").expect("main function");
-    assert_eq!(main.instructions.len(), 11);
+    assert!(
+        main.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::LoadConst { .. }
+        ))
+    );
     assert_eq!(
         main.instructions
             .iter()

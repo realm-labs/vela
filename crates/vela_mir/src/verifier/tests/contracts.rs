@@ -4,6 +4,7 @@ use std::collections::BTreeSet;
 
 use vela_common::{HostTypeId, ShapeId};
 use vela_def::{FieldId, MethodId};
+use vela_hir::ids::{HirLocalId, HirParamId};
 
 use crate::{
     CompileFieldAccess, CompileFieldDescriptor, CompileFunctionAccess, CompileMethodAccess,
@@ -62,6 +63,81 @@ fn mir_verifier_rejects_constant_provenance_or_destination_mismatches() {
     assert!(matches!(
         verify_error(&program(wrong_destination)).into_kind(),
         MirVerifyErrorKind::InvalidConstantDefinition(_)
+    ));
+}
+
+#[test]
+fn mir_verifier_rejects_unrefined_dynamic_typed_operand() {
+    let mut function = function();
+    let parameter = function.add_parameter(crate::MirParameterSpec {
+        hir_local: HirLocalId::new(7_198),
+        kind: crate::MirParameterKind::Explicit(HirParamId::new(7_198)),
+        name: "value".to_owned(),
+        value_type: MirValueType::Dynamic,
+        contract: None,
+        default_body: None,
+        origin: origin(),
+    });
+    let result = function.add_temp(MirValueType::Primitive(PrimitiveTag::I64), origin());
+    function
+        .append_statement(
+            function.entry_block(),
+            MirStatement::new(
+                origin(),
+                Some(MirPlace::temp(result)),
+                MirStatementKind::Binary {
+                    operation: crate::MirBinaryOp::Numeric {
+                        operation: crate::MirNumericBinaryOp::Add,
+                        kind: vela_common::NumericTag::I64,
+                    },
+                    left: MirOperand::Local(parameter),
+                    right: scalar(1),
+                },
+                MirEffect::may_trap(),
+                None,
+            ),
+        )
+        .expect("malformed typed operation fixture");
+    finish(&mut function);
+    let parameter = CompileParameter {
+        name: "value".to_owned(),
+        contract: None,
+        default: CompileParameterDefault::Required,
+        origin: Some(origin()),
+    };
+    let mut targets = MirTargetTable::default();
+    assert!(targets.insert_function(descriptor(vec![parameter])));
+    let mut program = crate::MirProgram::new(targets);
+    program.add_function(function).expect("test function");
+    assert!(matches!(
+        verify_error(&program).into_kind(),
+        MirVerifyErrorKind::InvalidOperandType { .. }
+    ));
+}
+
+#[test]
+fn mir_verifier_rejects_safepoint_reuse() {
+    let mut function = function();
+    let safepoint = function.add_safepoint(MirSafepoint::new(origin()));
+    for _ in 0..2 {
+        let destination = function.add_synthetic_local(MirValueType::Dynamic, origin());
+        function
+            .append_statement(
+                function.entry_block(),
+                MirStatement::new(
+                    origin(),
+                    Some(MirPlace::local(destination)),
+                    MirStatementKind::Allocate(MirAggregate::Array(Vec::new())),
+                    MirEffect::allocation(),
+                    Some(safepoint),
+                ),
+            )
+            .expect("construction permits verifier corruption fixture");
+    }
+    finish(&mut function);
+    assert!(matches!(
+        verify_error(&program(function)).into_kind(),
+        MirVerifyErrorKind::DuplicateSafepointUse { .. }
     ));
 }
 
@@ -279,6 +355,7 @@ fn mir_verifier_rejects_incomplete_duplicate_and_mistyped_aggregates() {
 fn mir_verifier_rejects_guard_context_operand_and_recoverability_mismatches() {
     let mut trap = function();
     let guard = trap.add_guard(MirGuard {
+        kind: crate::MirGuardKind::Contract,
         assumption: MirGuardAssumption::Type(MirTypeContract::Primitive(PrimitiveTag::Bool)),
         context: None,
         origin: origin(),
@@ -305,6 +382,7 @@ fn mir_verifier_rejects_guard_context_operand_and_recoverability_mismatches() {
 
     let mut branch = function();
     let guard = branch.add_guard(MirGuard {
+        kind: crate::MirGuardKind::Specialization,
         assumption: MirGuardAssumption::TupleArity { arity: 1 },
         context: Some(MirGuardContext::new(MirGuardLocation::Local, "tuple")),
         origin: origin(),
@@ -348,6 +426,7 @@ fn mir_verifier_rejects_guard_context_operand_and_recoverability_mismatches() {
     let mut arity = function();
     let tuple = arity.add_synthetic_local(MirValueType::Tuple(1), origin());
     let guard = arity.add_guard(MirGuard {
+        kind: crate::MirGuardKind::Contract,
         assumption: MirGuardAssumption::TupleArity { arity: 2 },
         context: None,
         origin: origin(),
@@ -381,6 +460,7 @@ fn mir_verifier_rejects_guard_context_operand_and_recoverability_mismatches() {
         MirAggregate::Tuple(vec![scalar(1), scalar(2)]),
     );
     let guard = tuple_context.add_guard(MirGuard {
+        kind: crate::MirGuardKind::Contract,
         assumption: MirGuardAssumption::TupleArity { arity: 2 },
         context: Some(MirGuardContext::new(MirGuardLocation::Local, "tuple")),
         origin: origin(),
@@ -412,6 +492,7 @@ fn mir_verifier_accepts_type_specialization_slow_edges_and_rejects_aliasing_edge
     fn guarded_branch(alias_edges: bool) -> MirFunction {
         let mut function = function();
         let guard = function.add_guard(MirGuard {
+            kind: crate::MirGuardKind::Specialization,
             assumption: MirGuardAssumption::Type(MirTypeContract::Primitive(PrimitiveTag::Bool)),
             context: None,
             origin: origin(),

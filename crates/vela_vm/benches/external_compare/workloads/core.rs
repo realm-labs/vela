@@ -814,8 +814,8 @@ print(checksum)
 fn run_once() {
     let total = 0;
     for tick in 0..120 {
-        let add = |value| value + tick;
-        let mix = |left, right| left * 3 + right + tick - tick;
+        let add = |value: i64| value + tick;
+        let mix = |left: i64, right: i64| left * 3 + right + tick - tick;
         total += add(tick);
         total += add(total % 17);
         total += mix(tick, total % 23);

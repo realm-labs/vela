@@ -195,19 +195,84 @@ fn mir_liveness_verifier_rejects_missing_or_partial_computed_metadata() {
 #[test]
 fn mir_backend_handoff_requires_computed_metadata() {
     let computed = build("fn main() { return 1; }", &[]);
-    let handoff = verify_mir(&computed)
-        .expect("computed MIR verifies")
-        .into_backend_handoff()
+    let computed = crate::verify_owned_mir(computed).expect("computed MIR verifies");
+    let handoff = computed
+        .backend_handoff()
         .expect("computed MIR reaches backend handoff");
-    assert!(std::ptr::eq(handoff.program(), &computed));
+    assert!(std::ptr::eq(handoff.program(), computed.program()));
+    let function = handoff
+        .program()
+        .functions()
+        .next()
+        .expect("root function")
+        .0;
+    assert!(handoff.analyses(function).is_some());
 
     let uncomputed = program(terminated_function());
-    let error = verify_mir(&uncomputed)
-        .expect("explicit test configuration may omit liveness")
-        .into_backend_handoff()
+    let uncomputed =
+        crate::verify_owned_mir(uncomputed).expect("explicit test configuration may omit liveness");
+    let error = uncomputed
+        .backend_handoff()
         .expect_err("a physical backend may not consume uncomputed MIR");
     assert!(matches!(
         error,
         crate::MirBackendHandoffError::MissingLiveness { .. }
     ));
+}
+
+#[test]
+fn lexical_debug_availability_outlives_value_liveness() {
+    let program = build(
+        "fn main() { let visible = 1; let used = visible + 1; let after = 2; return after; }",
+        &[],
+    );
+    let owned = crate::verify_owned_mir(program).expect("debug fixture verifies");
+    let (function_id, function) = owned.program().functions().next().expect("root function");
+    let analyses = owned.analyses(function_id).expect("sealed analyses");
+    let (debug_id, debug) = function
+        .debug_locals()
+        .find(|(_, debug)| debug.name == "visible")
+        .expect("visible debug local");
+    let last_statement = function
+        .blocks()
+        .flat_map(|(_, block)| block.statements().iter().copied())
+        .last()
+        .expect("after assignment statement");
+    assert!(
+        analyses.debug_availability.statement_before[&last_statement].contains(&debug_id),
+        "lexically visible local remains debugger-available after its last value use"
+    );
+    assert!(
+        !analyses.value_liveness.statement_live_before[&last_statement]
+            .contains(&crate::MirLiveValue::Local(debug.storage)),
+        "register-allocation liveness is intentionally shorter"
+    );
+}
+
+#[test]
+fn root_liveness_filters_non_root_scalars_at_each_safepoint() {
+    let program = build(
+        "fn main() { let number = 1; let text = \"root\"; let values = [text, number]; return values; }",
+        &[],
+    );
+    let owned = crate::verify_owned_mir(program).expect("root fixture verifies");
+    let (function_id, function) = owned.program().functions().next().expect("root function");
+    let analyses = owned.analyses(function_id).expect("sealed analyses");
+    let number = function
+        .debug_locals()
+        .find(|(_, debug)| debug.name == "number")
+        .expect("number local")
+        .1
+        .storage;
+    let roots = analyses
+        .root_liveness
+        .live_before_safepoint
+        .values()
+        .max_by_key(|roots| roots.len())
+        .expect("allocation safepoints have root maps");
+    assert!(
+        !roots.is_empty(),
+        "array allocation retains its heap operand"
+    );
+    assert!(!roots.contains(&crate::MirLiveValue::Local(number)));
 }

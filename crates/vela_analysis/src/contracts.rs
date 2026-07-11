@@ -29,6 +29,31 @@ pub enum ExpectedCallableKind {
     Closure,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ExpectedCallableKindSet {
+    direct_function: bool,
+    closure: bool,
+}
+
+impl ExpectedCallableKindSet {
+    pub const FUNCTION: Self = Self {
+        direct_function: true,
+        closure: true,
+    };
+    pub const CLOSURE: Self = Self {
+        direct_function: false,
+        closure: true,
+    };
+
+    #[must_use]
+    pub const fn accepts(self, kind: ExpectedCallableKind) -> bool {
+        match kind {
+            ExpectedCallableKind::Function => self.direct_function,
+            ExpectedCallableKind::Closure => self.closure,
+        }
+    }
+}
+
 /// Callable contract semantics that cannot be represented losslessly by a
 /// [`TypeFact::Function`] parameter vector.
 ///
@@ -36,7 +61,7 @@ pub enum ExpectedCallableKind {
 /// proven zero-argument contract represented by `Some(0)`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ExpectedCallableContract {
-    kind: ExpectedCallableKind,
+    accepted_kinds: ExpectedCallableKindSet,
     positional_arity: Option<u32>,
 }
 
@@ -44,14 +69,26 @@ impl ExpectedCallableContract {
     #[must_use]
     pub const fn new(kind: ExpectedCallableKind, positional_arity: Option<u32>) -> Self {
         Self {
-            kind,
+            accepted_kinds: match kind {
+                ExpectedCallableKind::Function => ExpectedCallableKindSet::FUNCTION,
+                ExpectedCallableKind::Closure => ExpectedCallableKindSet::CLOSURE,
+            },
             positional_arity,
         }
     }
 
     #[must_use]
     pub const fn kind(self) -> ExpectedCallableKind {
-        self.kind
+        if self.accepted_kinds.direct_function {
+            ExpectedCallableKind::Function
+        } else {
+            ExpectedCallableKind::Closure
+        }
+    }
+
+    #[must_use]
+    pub const fn accepted_kinds(self) -> ExpectedCallableKindSet {
+        self.accepted_kinds
     }
 
     #[must_use]
@@ -60,7 +97,7 @@ impl ExpectedCallableContract {
     }
 
     fn projected_type_fact(self) -> TypeFact {
-        match self.kind {
+        match self.kind() {
             ExpectedCallableKind::Function => TypeFact::function(Vec::new(), TypeFact::Unknown),
             ExpectedCallableKind::Closure => TypeFact::Closure,
         }
@@ -376,9 +413,7 @@ fn check_expected_callable_contract_with_projection(
                     context,
                 ));
             };
-            let kind_matches = actual_kind == expected.kind
-                || (actual_kind == ExpectedCallableKind::Closure
-                    && expected.kind == ExpectedCallableKind::Function);
+            let kind_matches = expected.accepted_kinds.accepts(actual_kind);
             if !kind_matches {
                 return Err(contract_mismatch(
                     projected,

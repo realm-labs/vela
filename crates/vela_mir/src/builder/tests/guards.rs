@@ -169,7 +169,7 @@ fn main(value, target, condition) {
         (
             closure,
             MirTypeContract::Callable {
-                kind: crate::MirCallableKind::Closure,
+                accepted_kinds: crate::MirCallableKindSet::CLOSURE,
                 positional_arity: Some(1),
             },
             "closure",

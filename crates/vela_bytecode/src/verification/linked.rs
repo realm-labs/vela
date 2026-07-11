@@ -806,7 +806,9 @@ fn verify_linked_type_guard(
 ) -> Result<(), VerificationError> {
     verify_linked_debug_name(function, None, context, guard.context.debug_name)?;
     match guard.plan {
-        TypeGuardPlan::Primitive(_) | TypeGuardPlan::Standard(_) => Ok(()),
+        TypeGuardPlan::Primitive(_)
+        | TypeGuardPlan::Standard(_)
+        | TypeGuardPlan::Callable { .. } => Ok(()),
         TypeGuardPlan::Array { ref element } | TypeGuardPlan::Set { ref element } => {
             if let Some(element) = element {
                 verify_linked_type_guard_plan(function, context, element)?;
@@ -873,7 +875,9 @@ fn verify_linked_type_guard_plan(
         ),
     };
     match guard.plan {
-        TypeGuardPlan::Primitive(_) | TypeGuardPlan::Standard(_) => Ok(()),
+        TypeGuardPlan::Primitive(_)
+        | TypeGuardPlan::Standard(_)
+        | TypeGuardPlan::Callable { .. } => Ok(()),
         TypeGuardPlan::Array { ref element } | TypeGuardPlan::Set { ref element } => {
             if let Some(element) = element {
                 verify_linked_type_guard_plan(function, context, element)?;

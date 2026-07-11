@@ -256,11 +256,18 @@ impl MirGuardContext {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MirGuard {
+    pub kind: MirGuardKind,
     pub assumption: MirGuardAssumption,
     /// Contract guards carry the source boundary used by runtime diagnostics.
     /// Pure optimization/branch assumptions may have no user-facing context.
     pub context: Option<MirGuardContext>,
     pub origin: MirSourceOrigin,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum MirGuardKind {
+    Contract,
+    Specialization,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

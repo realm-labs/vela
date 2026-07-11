@@ -312,16 +312,23 @@ fn compile_mir_roots(
     input: &semantic_input::PreparedSemanticInput,
     graph: &ModuleGraph,
 ) -> CompileResult<Vec<UnlinkedCodeObject>> {
-    input
+    let programs = input
         .lowering_inputs(graph, vela_mir::MirLoweringConfig::default())?
         .into_iter()
         .map(|input| {
             let program = vela_mir::build_mir(input)
                 .map_err(|error| CompileError::new(CompileErrorKind::MirInput(Box::new(error))))?;
-            let verified = vela_mir::verify_mir(&program).map_err(|error| {
+            let verified = vela_mir::verify_owned_mir(program).map_err(|error| {
                 CompileError::new(CompileErrorKind::MirVerification(Box::new(error)))
             })?;
-            let handoff = verified.into_backend_handoff().map_err(|error| {
+            Ok(verified)
+        })
+        .collect::<CompileResult<Vec<_>>>()?;
+    let bundle = vela_mir::OwnedVerifiedMirBundle::new(programs);
+    bundle
+        .roots()
+        .map(|(_, verified)| {
+            let handoff = verified.backend_handoff().map_err(|error| {
                 CompileError::new(CompileErrorKind::MirBackend(error.to_string()))
             })?;
             let code = mir_backend::compile(handoff).map_err(|error| {

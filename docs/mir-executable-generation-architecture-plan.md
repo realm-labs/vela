@@ -701,21 +701,21 @@ its included phases and leave one coherent production architecture.
 Purpose: make the target and regression surface explicit before changing
 ownership or execution semantics.
 
-- [ ] Update runtime, hot-reload, guard, performance, and testing architecture
+- [x] Update runtime, hot-reload, guard, performance, and testing architecture
   docs with the target ownership table and identity classes.
-- [ ] Mark obsolete future sections of the completed MIR and runtime-image
+- [x] Mark obsolete future sections of the completed MIR and runtime-image
   plans as superseded by this plan without deleting their historical record.
-- [ ] Inventory compile APIs that currently discard MIR and every constructor
+- [x] Inventory compile APIs that currently discard MIR and every constructor
   of ProgramVersion, RuntimeImage, ProgramImage, and LinkedProgram.
-- [ ] Inventory all cache-bearing linked/unlinked instructions and compare them
+- [x] Inventory all cache-bearing linked/unlinked instructions and compare them
   with every cache rewrite and verifier match.
-- [ ] Inventory mutable cache/profile/hotness data and classify layout versus
+- [x] Inventory mutable cache/profile/hotness data and classify layout versus
   runtime state ownership.
-- [ ] Inventory closure/frame execution paths that accept the current linked
+- [x] Inventory closure/frame execution paths that accept the current linked
   program separately from closure/frame code ownership.
-- [ ] Record a pre-change benchmark and memory baseline using the same release
+- [x] Record a pre-change benchmark and memory baseline using the same release
   toolchain and tracked workloads used for final comparison.
-- [ ] Specify final regression fixtures for all confirmed review findings.
+- [x] Specify final regression fixtures for all confirmed review findings.
 
 Required fixture definitions:
 
@@ -765,21 +765,21 @@ records agree; no production behavior has two authorities.
 Purpose: make verification produce an immutable generation-retainable artifact
 that is sufficient for any backend.
 
-- [ ] Introduce owned verified program/bundle types without exposing mutation
+- [x] Introduce owned verified program/bundle types without exposing mutation
   after verification.
-- [ ] Preserve stable root FunctionId to generation-local MIR function mappings,
+- [x] Preserve stable root FunctionId to generation-local MIR function mappings,
   including nested lambdas, methods, and parameter-default prologues.
-- [ ] Make bytecode compilation borrow the owned verified artifact.
-- [ ] Make typed operation verification require exact or explicitly refined
+- [x] Make bytecode compilation borrow the owned verified artifact.
+- [x] Make typed operation verification require exact or explicitly refined
   facts; remove the blanket Dynamic acceptance.
-- [ ] Represent guard-success refinements in verifier CFG data flow.
-- [ ] Separate contract guards from specialization guards in the verified form.
-- [ ] Make safepoint identity one-to-one with a program point and reject reuse.
-- [ ] Derive and verify root-live-before data per safepoint.
-- [ ] Split value liveness, root liveness, and lexical debug availability.
-- [ ] Remove or verify every implicit backend peephole precondition.
-- [ ] Add negative verifier tests for every rejected malformed form.
-- [ ] Keep HostAccess/reflection operations explicit and outside ordinary MIR
+- [x] Represent guard-success refinements in verifier CFG data flow.
+- [x] Separate contract guards from specialization guards in the verified form.
+- [x] Make safepoint identity one-to-one with a program point and reject reuse.
+- [x] Derive and verify root-live-before data per safepoint.
+- [x] Split value liveness, root liveness, and lexical debug availability.
+- [x] Remove or verify every implicit backend peephole precondition.
+- [x] Add negative verifier tests for every rejected malformed form.
+- [x] Keep HostAccess/reflection operations explicit and outside ordinary MIR
   places.
 
 Validation:
@@ -802,25 +802,25 @@ safepoints, unproven typed operands, or value-liveness debugger substitution.
 Purpose: replace emission-order physical fact mutation with one verified
 backend-neutral data-flow result.
 
-- [ ] Implement fixed-point CFG facts for locals and temps across branches,
+- [x] Implement fixed-point CFG facts for locals and temps across branches,
   switches, loops, default prologues, try regions, and unreachable edges.
-- [ ] Carry constant provenance and only expose eligible non-allocating
+- [x] Carry constant provenance and only expose eligible non-allocating
   immediates at proven program points.
-- [ ] Carry stable type/shape/callable/family facts without physical registers
+- [x] Carry stable type/shape/callable/family facts without physical registers
   or bytecode slots.
-- [ ] Merge facts by reachable-predecessor intersection and prove convergence.
-- [ ] Make guard-success edges refine facts and slow edges retain the original
+- [x] Merge facts by reachable-predecessor intersection and prove convergence.
+- [x] Make guard-success edges refine facts and slow edges retain the original
   dynamic fact.
-- [ ] Replace `FunctionBackend` function-global shape/immediate inference with
+- [x] Replace `FunctionBackend` function-global shape/immediate inference with
   lookups into verified facts.
-- [ ] Select slot and immediate instructions only from the fact at the exact MIR
+- [x] Select slot and immediate instructions only from the fact at the exact MIR
   use point.
-- [ ] Materialize semantic Bool/predicate results before backend optimization.
-- [ ] Remove block-skipping and alias peepholes whose safety is not represented
+- [x] Materialize semantic Bool/predicate results before backend optimization.
+- [x] Remove block-skipping and alias peepholes whose safety is not represented
   by verified MIR/data flow.
-- [ ] Add CFG join regressions for if, match, default parameters, loop backedges,
+- [x] Add CFG join regressions for if, match, default parameters, loop backedges,
   try joins, unreachable predecessors, and nested branches.
-- [ ] Add wrong-guard and generic-slow-path tests proving Conflict/Unknown facts
+- [x] Add wrong-guard and generic-slow-path tests proving Conflict/Unknown facts
   never specialize.
 
 Validation:
@@ -843,18 +843,18 @@ independent of block arena order.
 
 Purpose: make callable kind and arity one lossless contract from analysis to VM.
 
-- [ ] Introduce accepted callable-kind sets and optional positional arity in the
+- [x] Introduce accepted callable-kind sets and optional positional arity in the
   authoritative contract model.
-- [ ] Update analysis outcomes and tests for Function/Closure directionality.
-- [ ] Preserve the contract through compile targets, MIR, unlinked guards,
+- [x] Update analysis outcomes and tests for Function/Closure directionality.
+- [x] Preserve the contract through compile targets, MIR, unlinked guards,
   linker conversion, linked guards, runtime checks, reflection, and ABI.
-- [ ] Validate direct functions, closures, erased callable values, wrong kinds,
+- [x] Validate direct functions, closures, erased callable values, wrong kinds,
   exact arity, unknown arity, and arity mismatch.
-- [ ] Ensure runtime diagnostics report the declared parameter/context and the
+- [x] Ensure runtime diagnostics report the declared parameter/context and the
   actual callable kind/arity.
-- [ ] Add forwarding tests for dynamic parameters into array/map/set/iterator
+- [x] Add forwarding tests for dynamic parameters into array/map/set/iterator
   callbacks and nested script calls.
-- [ ] Remove any StandardTypeGuard conversion that drops callable arity.
+- [x] Remove any StandardTypeGuard conversion that drops callable arity.
 
 Validation:
 

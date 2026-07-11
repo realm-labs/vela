@@ -48,6 +48,21 @@ Goal execution for this track is intentionally throughput-first: Phases 0-3,
 inside a batch may fail compilation or tests; only batch boundaries are required
 to restore the complete green validation gate.
 
+Batch A (Phases 0-3) is complete. Production bytecode compilation borrows an
+owned, sealed verified MIR generation with stable root mappings, distinct
+value/root/debug analyses, unique safepoints, and fixed-point program-point
+facts. Typed operations now require exact or guard-refined facts; shape,
+immediate, iterator, field, and callable facts join by CFG semantics rather
+than emission order. The bytecode backend no longer carries mutable physical
+fact maps or layout-dependent compare/branch, alias, and block-skipping
+peepholes. Callable kind sets and positional arity survive analysis, MIR,
+linking, verification, and runtime guards, including forwarded closures.
+Negative verifier cases, CFG join regressions, source runtime coverage, focused
+workload coverage, the recorded release baseline, and the complete workspace
+format/clippy/test gate pass. Batch B (Phases 4-6), which makes the linker the
+single `LinkedArtifact` authority and moves generation ownership into
+`ProgramVersion`/runtime sidecars, is next.
+
 The Heavy HIR hard switch and D1-D3 close-out are complete.
 `vela_hir` owns executable body and stable semantic identity, bytecode consumes
 `HirExprId` without span-to-ID reconstruction, and language-service local

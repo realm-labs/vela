@@ -560,6 +560,11 @@ impl UnlinkedTypeGuard {
 pub enum UnlinkedTypeGuardPlan {
     Primitive(PrimitiveTag),
     Standard(StandardTypeGuard),
+    Callable {
+        accepts_direct_function: bool,
+        accepts_closure: bool,
+        positional_arity: Option<u32>,
+    },
     Array {
         element: Option<Box<UnlinkedTypeGuardPlan>>,
     },

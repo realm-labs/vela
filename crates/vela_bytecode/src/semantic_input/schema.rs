@@ -19,7 +19,7 @@ use vela_mir::{
     CompileMethodAccess, CompileMethodClass, CompileMethodDescriptor, CompileParameter,
     CompileParameterDefault, CompilePositionalPolicy, CompileSignature, CompileTypeClass,
     CompileTypeDescriptor, CompileVariantDescriptor, HostTypeTarget, MethodExecutableTarget,
-    MirCallableKind, MirEffect, MirGuardLocation, MirSourceOrigin, MirTypeContract,
+    MirEffect, MirGuardLocation, MirSourceOrigin, MirTypeContract,
 };
 use vela_registry::{TypeHintDef, TypeKindDef};
 
@@ -755,7 +755,7 @@ fn structural_contract(
             err: contract_box(err, definition),
         },
         TypeFact::Function { params, returns } => MirTypeContract::Callable {
-            kind: MirCallableKind::Function,
+            accepted_kinds: vela_mir::MirCallableKindSet::FUNCTION,
             positional_arity: if params.is_empty()
                 && matches!(returns.as_ref(), TypeFact::Unknown | TypeFact::Any)
             {
@@ -765,7 +765,7 @@ fn structural_contract(
             },
         },
         TypeFact::Closure => MirTypeContract::Callable {
-            kind: MirCallableKind::Closure,
+            accepted_kinds: vela_mir::MirCallableKindSet::CLOSURE,
             positional_arity: None,
         },
         TypeFact::LogicalRecord(record) => MirTypeContract::Shape {

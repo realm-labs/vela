@@ -350,6 +350,11 @@ pub enum GuardKind {
 pub enum TypeGuardPlan {
     Primitive(PrimitiveTag),
     Standard(crate::StandardTypeGuard),
+    Callable {
+        accepts_direct_function: bool,
+        accepts_closure: bool,
+        positional_arity: Option<u32>,
+    },
     Array {
         element: Option<Box<TypeGuardPlan>>,
     },

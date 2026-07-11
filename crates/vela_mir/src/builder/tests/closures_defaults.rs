@@ -390,12 +390,12 @@ fn main(base, callback = (|seed: i64| base + seed)) {
         &[(
             "callback",
             MirTypeContract::Callable {
-                kind: crate::MirCallableKind::Closure,
+                accepted_kinds: crate::MirCallableKindSet::CLOSURE,
                 positional_arity: Some(1),
             },
         )],
         Some(MirTypeContract::Callable {
-            kind: crate::MirCallableKind::Closure,
+            accepted_kinds: crate::MirCallableKindSet::CLOSURE,
             positional_arity: Some(1),
         }),
         None,
@@ -575,7 +575,7 @@ fn terminating_default_branch_does_not_assign_or_fall_through() {
 #[test]
 fn guarded_lambda_default_emits_exactly_one_authoritative_guard() {
     let contract = MirTypeContract::Callable {
-        kind: crate::MirCallableKind::Closure,
+        accepted_kinds: crate::MirCallableKindSet::CLOSURE,
         positional_arity: Some(1),
     };
     let fixture = build_fixture(

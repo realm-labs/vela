@@ -9,7 +9,7 @@ use vela_mir::{
     MirGlobalOperation, MirGuardAssumption, MirGuardLocation, MirHostMutation, MirHostOperation,
     MirHostPath, MirHostPathSegment, MirIdentityOp, MirImmediate, MirIndexKey, MirIndexOperation,
     MirIteratorOperation, MirLiteralSide, MirNumericBinaryOp, MirOperand, MirPatternPredicate,
-    MirLiveValue, MirPlace, MirProgram, MirReflectionOperation, MirRvalue,
+    MirFunctionAnalyses, MirPlace, MirProgram, MirReflectionOperation, MirRvalue,
     MirScriptParameterGuardMode, MirStatementId, MirStatementKind, MirSwitchValue,
     MirTerminatorKind, MirTypeContract, MirUnaryOp,
 };
@@ -41,19 +41,21 @@ pub(crate) fn compile(
     handoff: MirBackendHandoff<'_>,
 ) -> Result<UnlinkedCodeObject, MirBackendError> {
     let program = handoff.program();
+    let analyses = handoff.all_analyses();
     let (root_id, root) = program
         .functions()
         .next()
         .ok_or(MirBackendError::MissingRoot)?;
-    compile_function(program, root_id, root)
+    compile_function(program, analyses, root_id, root)
 }
 
 fn compile_function(
     program: &MirProgram,
+    analyses: &BTreeMap<MirFunctionId, MirFunctionAnalyses>,
     function_id: MirFunctionId,
     function: &MirFunction,
 ) -> Result<UnlinkedCodeObject, MirBackendError> {
-    let mut backend = FunctionBackend::new(program, function_id, function)?;
+    let mut backend = FunctionBackend::new(program, analyses, function_id, function)?;
     backend.compile()?;
     Ok(backend.finish())
 }
@@ -62,6 +64,8 @@ struct FunctionBackend<'a> {
     program: &'a MirProgram,
     function_id: MirFunctionId,
     function: &'a MirFunction,
+    analyses: &'a BTreeMap<MirFunctionId, MirFunctionAnalyses>,
+    facts: &'a vela_mir::MirProgramPointFacts,
     code: UnlinkedCodeObject,
     locals: BTreeMap<vela_mir::MirLocalId, Register>,
     temps: BTreeMap<vela_mir::MirTempId, Register>,
@@ -69,31 +73,17 @@ struct FunctionBackend<'a> {
     patches: Vec<(usize, MirBlockId)>,
     next_register: u16,
     nested: BTreeMap<MirFunctionId, FunctionIndex>,
-    shapes: BTreeMap<Register, PhysicalShape>,
-    immediates: BTreeMap<Register, MirImmediate>,
-    missing_tests: BTreeMap<Register, Register>,
-    known_false: BTreeSet<Register>,
-    skipped_blocks: BTreeSet<MirBlockId>,
     loop_blocks: BTreeSet<MirBlockId>,
     try_join_blocks: BTreeSet<MirBlockId>,
-    temp_aliases: BTreeMap<vela_mir::MirTempId, Register>,
     current_block: Option<MirBlockId>,
     current_statement: Option<MirStatementId>,
-    last_statement: Option<(MirStatementId, Option<MirPlace>, usize, usize)>,
-    unreachable_padding: Option<vela_common::Span>,
     unspanned_spans: Vec<vela_common::Span>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-enum PhysicalShape {
-    Record(BTreeMap<String, (usize, Option<Box<PhysicalShape>>)>),
-    Variant(BTreeMap<String, (usize, Option<Box<PhysicalShape>>)>),
-    Array(Option<Box<PhysicalShape>>),
 }
 
 impl<'a> FunctionBackend<'a> {
     fn new(
         program: &'a MirProgram,
+        analyses: &'a BTreeMap<MirFunctionId, MirFunctionAnalyses>,
         function_id: MirFunctionId,
         function: &'a MirFunction,
     ) -> Result<Self, MirBackendError> {
@@ -215,6 +205,11 @@ impl<'a> FunctionBackend<'a> {
         }
         Ok(Self {
             program,
+            analyses,
+            facts: &analyses
+                .get(&function_id)
+                .ok_or(MirBackendError::MissingMirFunction(function_id))?
+                .facts,
             function_id,
             function,
             code,
@@ -224,18 +219,10 @@ impl<'a> FunctionBackend<'a> {
             patches: Vec::new(),
             next_register,
             nested: BTreeMap::new(),
-            shapes: BTreeMap::new(),
-            immediates: BTreeMap::new(),
-            missing_tests: BTreeMap::new(),
-            known_false: BTreeSet::new(),
-            skipped_blocks: BTreeSet::new(),
             loop_blocks,
             try_join_blocks,
-            temp_aliases: BTreeMap::new(),
             current_block: None,
             current_statement: None,
-            last_statement: None,
-            unreachable_padding: None,
             unspanned_spans,
         })
     }
@@ -244,9 +231,6 @@ impl<'a> FunctionBackend<'a> {
         self.compile_nested_functions()?;
         let blocks = self.function.blocks().collect::<Vec<_>>();
         for (index, (block_id, block)) in blocks.iter().copied().enumerate() {
-            if self.skipped_blocks.contains(&block_id) {
-                continue;
-            }
             self.current_block = Some(block_id);
             let next = blocks.get(index + 1).map(|(id, _)| *id);
             self.blocks
@@ -256,26 +240,14 @@ impl<'a> FunctionBackend<'a> {
                     .function
                     .statement(*statement_id)
                     .ok_or(MirBackendError::MissingStatement)?;
-                let start = self.code.instructions.len();
                 self.current_statement = Some(*statement_id);
                 self.statement(statement)?;
-                self.last_statement = Some((
-                    *statement_id,
-                    statement.destination,
-                    start,
-                    self.code.instructions.len(),
-                ));
             }
             self.current_statement = None;
             let terminator = block
                 .terminator()
                 .ok_or(MirBackendError::MissingBlock(block_id))?;
             self.terminator(&terminator.kind, terminator.origin.span, next)?;
-        }
-        if let Some(span) = self.unreachable_padding {
-            let src = self.alloc_register()?;
-            self.load_immediate(src, MirImmediate::Unit, span);
-            self.emit(UnlinkedInstructionKind::Return { src }, span);
         }
         self.patch_targets()?;
         self.attach_cache_sites();
@@ -290,7 +262,7 @@ impl<'a> FunctionBackend<'a> {
             .filter(|(_, function)| matches!(function.owner(), vela_mir::MirFunctionOwner::Lambda { parent, .. } if *parent == self.function_id))
             .collect::<Vec<_>>();
         for (id, function) in nested {
-            let code = compile_function(self.program, id, function)?;
+            let code = compile_function(self.program, self.analyses, id, function)?;
             let index = self.code.push_nested_function(code);
             self.nested.insert(id, index);
         }
@@ -303,13 +275,6 @@ impl<'a> FunctionBackend<'a> {
 
     fn statement(&mut self, statement: &vela_mir::MirStatement) -> Result<(), MirBackendError> {
         let dst = statement.destination.map(|place| self.place(place));
-        if let Some(dst) = dst {
-            self.materialize_aliases_before_write(dst, statement.origin.span);
-            self.immediates.remove(&dst);
-            self.shapes.remove(&dst);
-            self.missing_tests.remove(&dst);
-            self.known_false.remove(&dst);
-        }
         let span = statement.origin.span;
         match &statement.kind {
             MirStatementKind::Assign(value) => {
@@ -318,9 +283,6 @@ impl<'a> FunctionBackend<'a> {
             MirStatementKind::Unary { operation, operand } => {
                 let src = self.operand(operand, span)?;
                 let kind = match operation {
-                    MirUnaryOp::NotBool if self.invert_last_comparison(src, dst.ok_or(MirBackendError::MissingDestination)?) => {
-                        return Ok(());
-                    }
                     MirUnaryOp::NotBool => UnlinkedInstructionKind::Not {
                         dst: dst.ok_or(MirBackendError::MissingDestination)?,
                         src,
@@ -340,7 +302,7 @@ impl<'a> FunctionBackend<'a> {
                 let lhs = self.operand(left, span)?;
                 let rhs = self.operand(right, span)?;
                 let dst = dst.ok_or(MirBackendError::MissingDestination)?;
-                let kind = self.select_binary(*operation, dst, lhs, rhs);
+                let kind = self.select_binary(*operation, dst, lhs, rhs, right);
                 self.emit(kind, span);
             }
             MirStatementKind::DynamicUnary { operation, operand } => {
@@ -574,35 +536,10 @@ impl<'a> FunctionBackend<'a> {
     ) -> Result<(), MirBackendError> {
         match value {
             MirRvalue::Use(value) => {
-                if self
-                    .current_block
-                    .is_some_and(|block| self.try_join_blocks.contains(&block))
-                    && let Some(temp) = self.temp_for_register(dst)
-                {
-                    let src = self.operand(value, span)?;
-                    self.temp_aliases.insert(temp, src);
-                    self.copy_shape(dst, src);
-                    self.copy_immediate(dst, src);
-                    return Ok(());
-                }
-                if self.locals.values().any(|register| *register == dst)
-                    && let MirOperand::Temp(temp) = value
-                    && self.try_retarget_dead_temp(*temp, dst)
-                {
-                    return Ok(());
-                }
-                if self.locals.values().any(|register| *register == dst)
-                    && let MirOperand::Local(local) = value
-                    && self.try_retarget_try_result(*local, dst)
-                {
-                    return Ok(());
-                }
                 let src = self.operand(value, span)?;
                 if src != dst {
                     self.emit(UnlinkedInstructionKind::Move { dst, src }, span);
                 }
-                self.copy_shape(dst, src);
-                self.copy_immediate(dst, src);
             }
             MirRvalue::Constant { value, .. } => self.load_immediate(dst, *value, span),
             MirRvalue::Truthy { value } => {
@@ -610,8 +547,9 @@ impl<'a> FunctionBackend<'a> {
                 self.emit(UnlinkedInstructionKind::Truthy { dst, src }, span);
             }
             MirRvalue::IsMissing { value } => {
-                let src = self.operand(value, span)?;
-                self.missing_tests.insert(dst, src);
+                // The semantic predicate is consumed from its MIR definition
+                // by branch lowering; no emission-order register fact is kept.
+                let _ = self.operand(value, span)?;
             }
             MirRvalue::PatternPredicate(predicate) => {
                 self.pattern_predicate(dst, predicate, span)?
@@ -639,11 +577,8 @@ impl<'a> FunctionBackend<'a> {
                 );
             }
             MirPatternPredicate::NeverMatches { value } => {
-                if !self.remove_dead_temp_move(value) {
-                    let _ = self.operand(value, span)?;
-                }
+                let _ = self.operand(value, span)?;
                 self.load_immediate(dst, MirImmediate::Bool(false), span);
-                self.known_false.insert(dst);
             }
             MirPatternPredicate::VariantShape {
                 value,
@@ -704,16 +639,6 @@ impl<'a> FunctionBackend<'a> {
             },
             MirAggregate::Array(values) => {
                 let elements = self.operands(values, span)?;
-                let shape = elements
-                    .first()
-                    .and_then(|register| self.shapes.get(register).cloned())
-                    .filter(|shape| {
-                        elements
-                            .iter()
-                            .all(|register| self.shapes.get(register) == Some(shape))
-                    });
-                self.shapes
-                    .insert(dst, PhysicalShape::Array(shape.map(Box::new)));
                 UnlinkedInstructionKind::MakeArray { dst, elements }
             }
             MirAggregate::Map(entries) => UnlinkedInstructionKind::MakeMap {
@@ -748,7 +673,6 @@ impl<'a> FunctionBackend<'a> {
                         Ok((name, self.operand(value, span)?))
                     })
                     .collect::<Result<Vec<_>, MirBackendError>>()?;
-                self.install_record_shape(dst, &fields, false);
                 UnlinkedInstructionKind::MakeRecord {
                     dst,
                     type_name: ty.runtime_name.clone(),
@@ -760,7 +684,6 @@ impl<'a> FunctionBackend<'a> {
                     .iter()
                     .map(|(name, value)| Ok((name.clone(), self.operand(value, span)?)))
                     .collect::<Result<Vec<_>, MirBackendError>>()?;
-                self.install_record_shape(dst, &fields, false);
                 UnlinkedInstructionKind::MakeRecord {
                     dst,
                     type_name: type_name.clone(),
@@ -795,7 +718,6 @@ impl<'a> FunctionBackend<'a> {
                         Ok((name, self.operand(value, span)?))
                     })
                     .collect::<Result<Vec<_>, MirBackendError>>()?;
-                self.install_record_shape(dst, &fields, true);
                 UnlinkedInstructionKind::MakeEnum {
                     dst,
                     enum_name: ty.runtime_name.clone(),
@@ -812,7 +734,6 @@ impl<'a> FunctionBackend<'a> {
                     .iter()
                     .map(|(name, value)| Ok((name.clone(), self.operand(value, span)?)))
                     .collect::<Result<Vec<_>, MirBackendError>>()?;
-                self.install_record_shape(dst, &fields, true);
                 UnlinkedInstructionKind::MakeEnum {
                     dst,
                     enum_name: owner_name.clone(),
@@ -843,6 +764,7 @@ impl<'a> FunctionBackend<'a> {
         target: &MirFieldTarget,
         span: vela_common::Span,
     ) -> Result<(), MirBackendError> {
+        let shape = self.operand_shape(receiver);
         let receiver = self.operand(receiver, span)?;
         let kind = match target {
             MirFieldTarget::RecordSlot { field, .. } => {
@@ -872,20 +794,14 @@ impl<'a> FunctionBackend<'a> {
                 }
             }
             MirFieldTarget::DynamicRecord { name } => {
-                if let Some((slot, shape)) = self.shape_field(receiver, name, false) {
-                    if let Some(shape) = shape {
-                        self.shapes.insert(dst, shape);
-                    }
+                if let Some((slot, _)) = Self::shape_field(shape.as_ref(), name, false) {
                     UnlinkedInstructionKind::GetRecordSlot {
                         dst,
                         record: receiver,
                         field: name.clone(),
                         slot,
                     }
-                } else if let Some((slot, shape)) = self.shape_field(receiver, name, true) {
-                    if let Some(shape) = shape {
-                        self.shapes.insert(dst, shape);
-                    }
+                } else if let Some((slot, _)) = Self::shape_field(shape.as_ref(), name, true) {
                     UnlinkedInstructionKind::GetEnumSlot {
                         dst,
                         value: receiver,
@@ -901,10 +817,7 @@ impl<'a> FunctionBackend<'a> {
                 }
             }
             MirFieldTarget::DynamicVariant { name } => {
-                if let Some((slot, shape)) = self.shape_field(receiver, name, true) {
-                    if let Some(shape) = shape {
-                        self.shapes.insert(dst, shape);
-                    }
+                if let Some((slot, _)) = Self::shape_field(shape.as_ref(), name, true) {
                     UnlinkedInstructionKind::GetEnumSlot {
                         dst,
                         value: receiver,
@@ -931,6 +844,7 @@ impl<'a> FunctionBackend<'a> {
         value: &MirOperand,
         span: vela_common::Span,
     ) -> Result<(), MirBackendError> {
+        let shape = self.operand_shape(receiver);
         let record = self.operand(receiver, span)?;
         let src = self.operand(value, span)?;
         let kind = match target {
@@ -948,7 +862,7 @@ impl<'a> FunctionBackend<'a> {
                 }
             }
             MirFieldTarget::DynamicRecord { name } => {
-                if let Some((slot, _)) = self.shape_field(record, name, false) {
+                if let Some((slot, _)) = Self::shape_field(shape.as_ref(), name, false) {
                     UnlinkedInstructionKind::SetRecordSlot {
                         record,
                         field: name.clone(),
@@ -982,9 +896,6 @@ impl<'a> FunctionBackend<'a> {
         let kind = match operation {
             MirIndexOperation::Read { receiver, index } => {
                 let base = self.operand(receiver, span)?;
-                if let Some(PhysicalShape::Array(Some(element))) = self.shapes.get(&base).cloned() {
-                    self.shapes.insert(dst.ok_or(MirBackendError::MissingDestination)?, *element);
-                }
                 match index {
                     MirIndexKey::Value(index) => UnlinkedInstructionKind::GetIndex {
                         dst: dst.ok_or(MirBackendError::MissingDestination)?,

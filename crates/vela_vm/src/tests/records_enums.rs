@@ -741,21 +741,21 @@ fn main() {
     )
     .expect("qualified registered-record compatibility fixture should compile");
 
-    let mut exact = ExecutionBudget::new(8, usize::MAX, usize::MAX);
+    let mut exact = ExecutionBudget::new(10, usize::MAX, usize::MAX);
     assert_eq!(
         run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut exact),
         Ok(OwnedValue::i64(0))
     );
-    assert_eq!(exact.instructions_executed(), 8);
+    assert_eq!(exact.instructions_executed(), 10);
 
-    let mut short = ExecutionBudget::new(7, usize::MAX, usize::MAX);
+    let mut short = ExecutionBudget::new(9, usize::MAX, usize::MAX);
     let error = run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut short)
         .expect_err("one fewer instruction must exhaust the compatibility edge");
     assert_eq!(
         error.kind(),
         VmErrorKind::BudgetExceeded {
             budget: ExecutionBudgetKind::Instructions,
-            limit: 7,
+            limit: 9,
         }
     );
 }

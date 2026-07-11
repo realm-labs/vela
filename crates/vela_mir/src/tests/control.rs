@@ -141,6 +141,7 @@ fn mir_model_guards_expose_slow_paths_as_cfg_edges() {
         })
     );
     let trap_guard = function.add_guard(MirGuard {
+        kind: crate::MirGuardKind::Contract,
         assumption: MirGuardAssumption::Type(crate::MirTypeContract::Primitive(PrimitiveTag::Bool)),
         context: Some(crate::MirGuardContext::new(
             crate::MirGuardLocation::Local,
@@ -164,6 +165,7 @@ fn mir_model_guards_expose_slow_paths_as_cfg_edges() {
         )
         .expect("contract guards may trap without introducing a hidden edge");
     let branch_guard = function.add_guard(MirGuard {
+        kind: crate::MirGuardKind::Specialization,
         assumption: MirGuardAssumption::Type(crate::MirTypeContract::Primitive(PrimitiveTag::Bool)),
         context: None,
         origin,
@@ -195,6 +197,7 @@ fn mir_model_dump_preserves_trapping_tuple_arity_guards() {
     );
     let value = function.add_synthetic_local(MirValueType::Dynamic, origin);
     let guard = function.add_guard(MirGuard {
+        kind: crate::MirGuardKind::Specialization,
         assumption: MirGuardAssumption::TupleArity { arity: 2 },
         context: None,
         origin,

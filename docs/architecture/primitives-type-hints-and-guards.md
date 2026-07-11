@@ -4,6 +4,16 @@ This document is the active contract for primitive scalar values, `bytes`,
 type hints, and runtime guard metadata. It replaces the old two-type numeric
 model. Source type names `int` and `float` are removed; they are not aliases.
 
+## Callable Guard Contract
+
+Callable contracts preserve an accepted runtime-kind set plus optional
+positional arity from analysis through MIR, unlinked and linked guards,
+reflection/ABI metadata, and VM diagnostics. `Function` accepts direct
+functions and closures; `Closure` accepts closures only. `None` arity is
+erased and differs from `Some(0)`. Contract guards trap on mismatch;
+specialization guards refine only their success edge and retain an equivalent
+generic slow edge.
+
 ## Primitive Model
 
 Vela is dynamic by default, but primitive values use explicit concrete names:

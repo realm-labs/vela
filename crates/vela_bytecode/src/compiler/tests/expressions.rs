@@ -1,6 +1,56 @@
 use super::*;
 
 #[test]
+fn compiler_never_specializes_conflicting_record_shapes_at_cfg_join() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+struct Left { x: i64 }
+struct Right { a: i64, x: i64 }
+fn main(flag) {
+    let value = if flag { Left { x: 1 } } else { Right { a: 2, x: 3 } };
+    return value.x;
+}
+"#,
+        "main",
+    )
+    .expect("conflicting record-shape join should compile through the generic path");
+    assert!(code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::GetRecordField { ref field, .. } if field == "x"
+    )));
+    assert!(!code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::GetRecordSlot { ref field, .. } if field == "x"
+    )));
+}
+
+#[test]
+fn compiler_never_uses_one_predecessor_immediate_after_cfg_join() {
+    let code = compile_function_source(
+        SourceId::new(2),
+        r#"
+fn main(flag) -> i64 {
+    let step: i64 = if flag { 2 } else { 100 };
+    let total: i64 = 0;
+    for value in 0..3 {
+        total = total + step;
+    }
+    return total;
+}
+"#,
+        "main",
+    )
+    .expect("conflicting immediate join should compile");
+    assert!(!code.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::I64AddImm { imm: 2 | 100, .. }
+            | UnlinkedInstructionKind::I64SubImm { imm: 2 | 100, .. }
+            | UnlinkedInstructionKind::I64MulImm { imm: 2 | 100, .. }
+    )));
+}
+
+#[test]
 fn compiler_lowers_unary_operators() {
     let code = compile_function_source(
         SourceId::new(1),
@@ -52,7 +102,7 @@ fn compiler_evaluates_non_fusible_i64_immediate_lhs_once() {
 }
 
 #[test]
-fn compiler_inverts_negated_equality_without_not_instruction() {
+fn compiler_materializes_negated_equality_before_not() {
     let code = compile_function_source(
         SourceId::new(1),
         r#"
@@ -65,14 +115,11 @@ fn main() {
     )
     .expect("negated equality should compile");
 
+    assert!(code.instructions.iter().any(|instruction| {
+        matches!(instruction.kind, UnlinkedInstructionKind::NotEqual { .. })
+    }));
     assert!(
-        code.instructions.iter().any(|instruction| {
-            matches!(instruction.kind, UnlinkedInstructionKind::Equal { .. })
-        })
-    );
-    assert!(
-        !code
-            .instructions
+        code.instructions
             .iter()
             .any(|instruction| { matches!(instruction.kind, UnlinkedInstructionKind::Not { .. }) })
     );
@@ -205,7 +252,7 @@ fn main() {
 }
 
 #[test]
-fn compiler_inverts_negated_identity_equality_without_not_instruction() {
+fn compiler_materializes_negated_identity_equality_before_not() {
     let code = compile_function_source(
         SourceId::new(1),
         r#"
@@ -220,12 +267,11 @@ fn main(left, right) {
     assert!(code.instructions.iter().any(|instruction| {
         matches!(
             instruction.kind,
-            UnlinkedInstructionKind::IdentityNotEqual { .. }
+            UnlinkedInstructionKind::IdentityEqual { .. }
         )
     }));
     assert!(
-        !code
-            .instructions
+        code.instructions
             .iter()
             .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Not { .. }))
     );

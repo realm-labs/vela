@@ -345,7 +345,7 @@ pub(super) fn operand_is(
     expected: MirValueType,
 ) -> Result<(), MirVerifyError> {
     let actual = verifier.operand_type(operand, block, statement, origin)?;
-    if actual == expected || actual == MirValueType::Dynamic {
+    if actual == expected {
         Ok(())
     } else {
         Err(type_error(

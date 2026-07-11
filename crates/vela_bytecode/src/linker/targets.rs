@@ -211,6 +211,15 @@ impl LinkContext<'_, '_> {
         match plan {
             UnlinkedTypeGuardPlan::Primitive(tag) => Ok(TypeGuardPlan::Primitive(tag)),
             UnlinkedTypeGuardPlan::Standard(guard) => Ok(TypeGuardPlan::Standard(guard)),
+            UnlinkedTypeGuardPlan::Callable {
+                accepts_direct_function,
+                accepts_closure,
+                positional_arity,
+            } => Ok(TypeGuardPlan::Callable {
+                accepts_direct_function,
+                accepts_closure,
+                positional_arity,
+            }),
             UnlinkedTypeGuardPlan::Array { element } => Ok(TypeGuardPlan::Array {
                 element: element
                     .map(|plan| self.link_type_guard_plan(*plan).map(Box::new))

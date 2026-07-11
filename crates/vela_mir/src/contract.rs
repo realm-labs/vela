@@ -19,6 +19,44 @@ pub enum MirCallableKind {
     Closure,
 }
 
+/// Runtime callable representations accepted by one source contract.
+/// A `Function` contract accepts both direct functions and closures; a
+/// `Closure` contract accepts closures only.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct MirCallableKindSet {
+    direct_function: bool,
+    closure: bool,
+}
+
+impl MirCallableKindSet {
+    pub const FUNCTION: Self = Self {
+        direct_function: true,
+        closure: true,
+    };
+    pub const CLOSURE: Self = Self {
+        direct_function: false,
+        closure: true,
+    };
+
+    #[must_use]
+    pub const fn accepts(self, kind: MirCallableKind) -> bool {
+        match kind {
+            MirCallableKind::Function => self.direct_function,
+            MirCallableKind::Closure => self.closure,
+        }
+    }
+
+    #[must_use]
+    pub const fn accepts_direct_function(self) -> bool {
+        self.direct_function
+    }
+
+    #[must_use]
+    pub const fn accepts_closure(self) -> bool {
+        self.closure
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MirTypeContract {
     Any,
@@ -38,7 +76,7 @@ pub enum MirTypeContract {
         err: Option<Box<Self>>,
     },
     Callable {
-        kind: MirCallableKind,
+        accepted_kinds: MirCallableKindSet,
         positional_arity: Option<u32>,
     },
     Definition(TypeId),

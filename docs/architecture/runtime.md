@@ -1,3 +1,25 @@
+## Executable Generation Ownership
+
+Verified MIR is an immutable generation-owned backend contract. A
+`ProgramVersion` retains the exact owned verification seal used by bytecode
+emission; future JIT work consumes that seal without rebuilding HIR, analysis,
+or MIR from bytecode. The seal contains program-point facts, guard-success
+refinements, value liveness, root-live-before safepoints, lexical debug
+availability, and the backend-neutral execution schedule.
+
+Generation-owned immutable data consists of verified MIR, linked code,
+`ProgramImage` indexes, executable handles, cache/profile layouts, source maps,
+and future compiled artifacts. Runtime-local mutable data consists of heap,
+globals, cache entries, profile counters, hotness, active tier selection, and
+budget counters. A mutable sidecar is always qualified by its executable
+generation and is never stored in a shared `ProgramVersion`.
+
+Stable semantic IDs (`FunctionId`, `MethodId`, `TypeId`, `FieldId`,
+`VariantId`, and schema/shape identities) may be compared across generations.
+Dense executable handles, MIR IDs, cache sites, profile slots, bytecode
+offsets, and compiled-entry indexes are generation-local and are valid only
+with their immutable owner.
+
 ## Struct, Record, And Enum Memory Model
 
 ### Record

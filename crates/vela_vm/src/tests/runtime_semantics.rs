@@ -224,7 +224,7 @@ fn main() {
 "#,
     );
 
-    assert_instruction_edge(&program, "main", &[], 25, OwnedValue::i64(10));
+    assert_instruction_edge(&program, "main", &[], 34, OwnedValue::i64(10));
 }
 
 #[test]
@@ -321,7 +321,7 @@ fn absent() {
         &program,
         "present",
         &[],
-        8,
+        11,
         OwnedValue::enum_variant("Option", "Some", [("0", OwnedValue::i64(5))]),
     );
     assert_instruction_edge(

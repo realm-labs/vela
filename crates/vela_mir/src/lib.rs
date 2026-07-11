@@ -10,6 +10,7 @@ mod cfg;
 mod contract;
 mod dump;
 mod effects;
+mod facts;
 mod function;
 mod ids;
 mod input;
@@ -28,11 +29,12 @@ pub use cfg::{
     MirBasicBlock, MirRangeStepMode, MirSwitchCase, MirSwitchValue, MirTerminator,
     MirTerminatorKind, MirTryContinue,
 };
-pub use contract::{HostTypeTarget, MirCallableKind, MirTypeContract};
+pub use contract::{HostTypeTarget, MirCallableKind, MirCallableKindSet, MirTypeContract};
 pub use effects::{
-    MirEffect, MirGuard, MirGuardAssumption, MirGuardContext, MirGuardLocation, MirLiveValue,
-    MirSafepoint,
+    MirEffect, MirGuard, MirGuardAssumption, MirGuardContext, MirGuardKind, MirGuardLocation,
+    MirLiveValue, MirSafepoint,
 };
+pub use facts::{MirFamilyFact, MirProgramPointFacts, MirShapeFact, MirValueFact};
 pub use function::{
     DebugLocalKind, MirDebugLocal, MirFunction, MirFunctionCapture, MirFunctionOwner,
     MirFunctionParameter, MirFunctionReservation, MirFunctionReturn, MirLiveRegion, MirLiveness,
@@ -75,6 +77,8 @@ pub use value::{
     MirValueType,
 };
 pub use verifier::{
-    MirBackendHandoff, MirBackendHandoffError, MirDestinationExpectation, MirVerifyError,
-    MirVerifyErrorKind, MirVerifyTarget, VerifiedMirProgram, verify_mir,
+    MirBackendHandoff, MirBackendHandoffError, MirDebugAvailability, MirDestinationExpectation,
+    MirFunctionAnalyses, MirRootLiveness, MirVerifyError, MirVerifyErrorKind, MirVerifyTarget,
+    OwnedVerifiedMirBundle, OwnedVerifiedMirProgram, VerifiedMirProgram, verify_mir,
+    verify_owned_mir,
 };

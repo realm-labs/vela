@@ -1,5 +1,16 @@
 ## Hot Reload First
 
+### Immutable Generation Pins
+
+`ProgramVersion` owns one same-generation verified-MIR bundle and linked
+artifact. A closure stores its creation-generation executable owner together
+with its dense handle, and a frame pins the owner selected at call entry until
+that frame exits. An accepted safe-point reload changes only the generation
+used for subsequent entry calls. Existing frames and host-retained closures
+continue on their old code, including old nested calls and old cache/profile
+sidecars. Stable function names and IDs are ABI comparison keys, never an
+implicit closure-migration mechanism.
+
 ### Core Model
 
 ```rust

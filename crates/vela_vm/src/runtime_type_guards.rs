@@ -13,6 +13,7 @@ use crate::iteration::IteratorItemGuard;
 use crate::method_runtime::MethodRuntime;
 use crate::option_result::{StdEnumKind, StdEnumVariant, std_enum_tag};
 use crate::stored_runtime_value;
+use crate::value::ClosureCode;
 use crate::{CallFrame, HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
 pub(crate) struct GuardExecutionContext<'a, 'heap> {
@@ -62,6 +63,18 @@ pub(crate) fn execute_unlinked_guard(
         UnlinkedTypeGuardPlan::Standard(expected) => {
             execute_standard_guard(value, expected, heap, &guard.context.debug_name)
         }
+        UnlinkedTypeGuardPlan::Callable {
+            accepts_direct_function,
+            accepts_closure,
+            positional_arity,
+        } => execute_unlinked_callable_guard(
+            value,
+            accepts_direct_function,
+            accepts_closure,
+            positional_arity,
+            heap,
+            &guard.context.debug_name,
+        ),
         UnlinkedTypeGuardPlan::Array { ref element } => execute_array_guard(
             value,
             element.as_deref(),
@@ -161,6 +174,19 @@ pub(crate) fn execute_linked_guard(
         TypeGuardPlan::Standard(expected) => {
             execute_standard_guard(value, expected, heap, debug_name)
         }
+        TypeGuardPlan::Callable {
+            accepts_direct_function,
+            accepts_closure,
+            positional_arity,
+        } => execute_linked_callable_guard(
+            value,
+            accepts_direct_function,
+            accepts_closure,
+            positional_arity,
+            program,
+            heap,
+            debug_name,
+        ),
         TypeGuardPlan::Array { ref element } => {
             execute_linked_array_guard(value, element.as_deref(), program, context, debug_name)
         }
@@ -399,6 +425,80 @@ fn execute_standard_guard(
         heap,
         debug_name,
     ))
+}
+
+fn execute_unlinked_callable_guard(
+    value: &Value,
+    _accepts_direct_function: bool,
+    accepts_closure: bool,
+    positional_arity: Option<u32>,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    let closure = match value {
+        Value::HeapRef(reference) => heap.and_then(|heap| heap.heap.get(*reference)),
+        _ => None,
+    };
+    let Some(HeapValue::Closure(closure)) = closure else {
+        return Err(type_contract_error(value, "callable", heap, debug_name));
+    };
+    if !accepts_closure {
+        return Err(type_contract_error(value, "Function", heap, debug_name));
+    }
+    if let Some(expected) = positional_arity {
+        let actual = match &closure.code {
+            ClosureCode::Unlinked(code) => u32::try_from(code.params.len()).ok(),
+            ClosureCode::Linked(_) => None,
+        };
+        if actual != Some(expected) {
+            return Err(callable_contract_error(expected, actual, debug_name));
+        }
+    }
+    Ok(())
+}
+
+fn execute_linked_callable_guard(
+    value: &Value,
+    _accepts_direct_function: bool,
+    accepts_closure: bool,
+    positional_arity: Option<u32>,
+    program: &LinkedProgram,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    let closure = match value {
+        Value::HeapRef(reference) => heap.and_then(|heap| heap.heap.get(*reference)),
+        _ => None,
+    };
+    let Some(HeapValue::Closure(closure)) = closure else {
+        return Err(type_contract_error(value, "callable", heap, debug_name));
+    };
+    if !accepts_closure {
+        return Err(type_contract_error(value, "Function", heap, debug_name));
+    }
+    if let Some(expected) = positional_arity {
+        let actual = match &closure.code {
+            ClosureCode::Linked(handle) => program
+                .function(*handle)
+                .and_then(|code| u32::try_from(code.params.len()).ok()),
+            ClosureCode::Unlinked(code) => u32::try_from(code.params.len()).ok(),
+        };
+        if actual != Some(expected) {
+            return Err(callable_contract_error(expected, actual, debug_name));
+        }
+    }
+    Ok(())
+}
+
+fn callable_contract_error(expected: u32, actual: Option<u32>, debug_name: &str) -> VmError {
+    VmError::new(VmErrorKind::TypeContractViolation {
+        expected: format!("callable with {expected} positional parameters"),
+        actual: actual.map_or_else(
+            || "callable with unknown positional arity".to_owned(),
+            |actual| format!("closure with {actual} positional parameters"),
+        ),
+        debug_name: debug_name.to_owned(),
+    })
 }
 
 fn execute_iterator_guard(
@@ -996,6 +1096,18 @@ fn execute_unlinked_guard_plan(
         UnlinkedTypeGuardPlan::Standard(expected) => {
             execute_standard_guard(value, *expected, heap, debug_name)
         }
+        UnlinkedTypeGuardPlan::Callable {
+            accepts_direct_function,
+            accepts_closure,
+            positional_arity,
+        } => execute_unlinked_callable_guard(
+            value,
+            *accepts_direct_function,
+            *accepts_closure,
+            *positional_arity,
+            heap,
+            debug_name,
+        ),
         UnlinkedTypeGuardPlan::Array { element } => {
             execute_array_guard(value, element.as_deref(), context, debug_name)
         }
@@ -1256,6 +1368,19 @@ fn execute_linked_guard_plan(
         TypeGuardPlan::Standard(expected) => {
             execute_standard_guard(value, *expected, heap, debug_name)
         }
+        TypeGuardPlan::Callable {
+            accepts_direct_function,
+            accepts_closure,
+            positional_arity,
+        } => execute_linked_callable_guard(
+            value,
+            *accepts_direct_function,
+            *accepts_closure,
+            *positional_arity,
+            program,
+            heap,
+            debug_name,
+        ),
         TypeGuardPlan::Array { element } => {
             execute_linked_array_guard(value, element.as_deref(), program, context, debug_name)
         }
@@ -1514,6 +1639,7 @@ fn unlinked_plan_type_name(plan: &UnlinkedTypeGuardPlan) -> &'static str {
     match plan {
         UnlinkedTypeGuardPlan::Primitive(tag) => primitive_type_name(*tag),
         UnlinkedTypeGuardPlan::Standard(guard) => standard_type_name(*guard),
+        UnlinkedTypeGuardPlan::Callable { .. } => "callable",
         UnlinkedTypeGuardPlan::Array { .. } => "Array",
         UnlinkedTypeGuardPlan::Map { .. } => "Map",
         UnlinkedTypeGuardPlan::Set { .. } => "Set",
@@ -1532,6 +1658,7 @@ fn linked_plan_type_name(plan: &TypeGuardPlan) -> &'static str {
     match plan {
         TypeGuardPlan::Primitive(tag) => primitive_type_name(*tag),
         TypeGuardPlan::Standard(guard) => standard_type_name(*guard),
+        TypeGuardPlan::Callable { .. } => "callable",
         TypeGuardPlan::Array { .. } => "Array",
         TypeGuardPlan::Map { .. } => "Map",
         TypeGuardPlan::Set { .. } => "Set",
@@ -1741,7 +1868,7 @@ fn runtime_record_debug_shape<'a>(
 
 #[cfg(test)]
 mod tests {
-    use vela_bytecode::{LinkedProgram, LinkedType, TypeGuardPlan};
+    use vela_bytecode::{LinkedCodeObject, LinkedProgram, LinkedType, TypeGuardPlan};
     use vela_common::{HostObjectId, HostTypeId, PrimitiveTag};
     use vela_host::path::HostRef;
 
@@ -1753,7 +1880,49 @@ mod tests {
     use crate::script_map::ScriptMap;
     use crate::script_object::ScriptFields;
     use crate::script_set::ScriptSet;
+    use crate::small_storage::SmallStorage;
+    use crate::value::{ClosureCode, ClosureValue};
     use crate::value_key::ValueKey;
+
+    #[test]
+    fn callable_guard_accepts_function_closures_and_checks_exact_arity() {
+        let mut program = LinkedProgram::new();
+        let function_name = program.intern_debug_name("lambda");
+        let parameter_name = program.intern_debug_name("value");
+        let function = program.push_function(
+            LinkedCodeObject::new(function_name, 1).with_params(vec![parameter_name]),
+        );
+        let mut heap = ScriptHeap::new();
+        let value = Value::HeapRef(
+            heap.allocate(HeapValue::Closure(ClosureValue {
+                code: ClosureCode::Linked(function),
+                captures: SmallStorage::try_from_slice_map(&[], 4, |value: &Value| {
+                    Ok::<_, ()>(*value)
+                })
+                .expect("empty captures"),
+            })),
+        );
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let mut context = GuardExecutionContext::new(Some(&mut heap_execution), None);
+        let accepted = TypeGuardPlan::Callable {
+            accepts_direct_function: true,
+            accepts_closure: true,
+            positional_arity: Some(1),
+        };
+        execute_linked_guard_plan(&value, &accepted, &program, &mut context, "callback")
+            .expect("Function accepts a one-parameter closure");
+        let wrong_arity = TypeGuardPlan::Callable {
+            accepts_direct_function: true,
+            accepts_closure: true,
+            positional_arity: Some(2),
+        };
+        assert!(matches!(
+            execute_linked_guard_plan(&value, &wrong_arity, &program, &mut context, "callback")
+                .expect_err("wrong callable arity must fail")
+                .kind(),
+            VmErrorKind::TypeContractViolation { .. }
+        ));
+    }
 
     #[test]
     fn exact_container_summary_proves_simple_array_contract_without_scan() {

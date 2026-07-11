@@ -108,7 +108,8 @@ fn scalar_workloads_have_reproducible_opcode_count_reports() {
     let scalar = opcode_count_report(&vm, registry.compile_view(), "scalar_branch_loop");
     assert_has_opcode(&scalar, "I64RemImm");
     assert_has_opcode(&scalar, "I64MulImm");
-    assert_has_opcode(&scalar, "I64CmpImmJumpIfFalse");
+    assert_has_opcode(&scalar, "I64CmpImm");
+    assert_has_opcode(&scalar, "JumpIfFalse");
     assert_has_opcode(&scalar, "I64Add");
     assert_has_opcode(&scalar, "Jump");
     assert_has_opcode(&scalar, "I64RangeNext");

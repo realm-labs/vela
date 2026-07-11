@@ -82,6 +82,135 @@ pub(crate) fn analyze(function: &MirFunction) -> LivenessAnalysis {
     }
 }
 
+pub(crate) fn sealed_analyses(function: &MirFunction) -> crate::MirFunctionAnalyses {
+    let analysis = analyze(function);
+    let live_before_safepoint = analysis
+        .safepoints
+        .iter()
+        .map(|(safepoint, values)| {
+            let roots = values
+                .iter()
+                .copied()
+                .filter(|value| is_possible_root(function, *value))
+                .collect();
+            (*safepoint, roots)
+        })
+        .collect();
+    let debug_availability = lexical_debug_availability(function);
+    crate::MirFunctionAnalyses {
+        value_liveness: analysis.liveness,
+        root_liveness: crate::MirRootLiveness {
+            live_before_safepoint,
+        },
+        debug_availability,
+        facts: crate::MirProgramPointFacts::default(),
+    }
+}
+
+fn lexical_debug_availability(function: &MirFunction) -> crate::MirDebugAvailability {
+    let blocks = function
+        .blocks()
+        .map(|(block, _)| block)
+        .collect::<Vec<_>>();
+    let entry = function.entry_block();
+    let initial = function
+        .debug_locals()
+        .filter_map(|(id, debug)| {
+            matches!(
+                debug.kind,
+                crate::DebugLocalKind::Parameter | crate::DebugLocalKind::Capture
+            )
+            .then_some(id)
+        })
+        .collect::<BTreeSet<_>>();
+    let mut block_in = blocks
+        .iter()
+        .map(|block| (*block, (*block == entry).then_some(initial.clone())))
+        .collect::<BTreeMap<_, _>>();
+    loop {
+        let mut changed = false;
+        for block in blocks.iter().copied().filter(|block| *block != entry) {
+            let incoming = function.blocks().filter_map(|(predecessor, data)| {
+                let mut state = block_in.get(&predecessor)?.clone()?;
+                if !successors(&data.terminator()?.kind).contains(&block) {
+                    return None;
+                }
+                for statement in data.statements() {
+                    let destination = function.statement(*statement)?.destination;
+                    for (id, debug) in function.debug_locals() {
+                        if destination == Some(MirPlace::Local(debug.storage)) {
+                            state.insert(id);
+                        }
+                    }
+                }
+                Some(state)
+            });
+            let mut incoming = incoming.peekable();
+            let next = incoming.next().map(|mut values| {
+                for other in incoming {
+                    values.retain(|value| other.contains(value));
+                }
+                values
+            });
+            if block_in.get(&block) != Some(&next) {
+                block_in.insert(block, next);
+                changed = true;
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+    let mut statement_before = BTreeMap::new();
+    let mut regions = function
+        .debug_locals()
+        .map(|(id, _)| (id, MirLiveRegion::default()))
+        .collect::<BTreeMap<_, _>>();
+    for block in blocks {
+        let Some(mut state) = block_in.get(&block).cloned().flatten() else {
+            continue;
+        };
+        for id in &state {
+            regions.entry(*id).or_default().blocks.insert(block);
+        }
+        let data = function
+            .block(block)
+            .expect("debug availability block exists");
+        for statement in data.statements() {
+            statement_before.insert(*statement, state.clone());
+            let destination = function
+                .statement(*statement)
+                .expect("debug availability statement exists")
+                .destination;
+            for (id, debug) in function.debug_locals() {
+                if destination == Some(MirPlace::Local(debug.storage)) {
+                    state.insert(id);
+                    regions.entry(id).or_default().blocks.insert(block);
+                }
+            }
+        }
+    }
+    crate::MirDebugAvailability {
+        locals: regions,
+        statement_before,
+    }
+}
+
+fn is_possible_root(function: &MirFunction, value: MirLiveValue) -> bool {
+    let value_type = match value {
+        MirLiveValue::Local(local) => function.local(local).map(|local| local.value_type),
+        MirLiveValue::Temp(temp) => function.temp(temp).map(|temp| temp.value_type),
+    };
+    match value_type {
+        Some(crate::MirValueType::Unit | crate::MirValueType::Range) | None => false,
+        Some(crate::MirValueType::Primitive(tag)) => matches!(
+            tag,
+            vela_common::PrimitiveTag::String | vela_common::PrimitiveTag::Bytes
+        ),
+        Some(_) => true,
+    }
+}
+
 fn block_sets(
     function: &MirFunction,
     block: MirBlockId,

@@ -339,10 +339,18 @@ pub(super) fn verify_guard_use(
     let actual = verifier.operand_type(value, block, statement, origin)?;
     let valid = match &record.assumption {
         MirGuardAssumption::Type(contract) => {
-            record.context.is_some() != recoverable && satisfies_contract(actual, contract)
+            record.kind
+                == if recoverable {
+                    crate::MirGuardKind::Specialization
+                } else {
+                    crate::MirGuardKind::Contract
+                }
+                && record.context.is_some() != recoverable
+                && satisfies_contract(actual, contract)
         }
         MirGuardAssumption::TupleArity { arity } => {
             !recoverable
+                && record.kind == crate::MirGuardKind::Contract
                 && record.context.is_none()
                 && (actual == MirValueType::Dynamic
                     || matches!(actual, MirValueType::Tuple(actual) if actual == *arity))

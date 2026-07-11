@@ -854,6 +854,7 @@ impl FunctionBuilder<'_> {
         origin: MirSourceOrigin,
     ) -> Result<(), MirBuildError> {
         let guard = self.function.add_guard(MirGuard {
+            kind: crate::MirGuardKind::Contract,
             assumption: MirGuardAssumption::TupleArity { arity },
             context: None,
             origin,

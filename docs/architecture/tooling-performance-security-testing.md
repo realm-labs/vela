@@ -1,3 +1,13 @@
+## Executable-Generation Regression Matrix
+
+Backend acceptance tests cover CFG joins and loop backedges, exact versus
+guard-refined typed operations, unique safepoints, distinct value/root/debug
+analyses, callable kind/arity, nested-lambda cache identity, retained closures
+across reload, and backend-neutral budget thresholds. Performance comparisons
+use the same release toolchain, workload parameters, and checksums before and
+after the generation-ownership migration. ProgramVersion and retained-closure
+memory are measured separately from mutable runtime heap/cache/profile state.
+
 ## Diagnostics
 
 Errors must include:

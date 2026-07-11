@@ -1,6 +1,55 @@
 use super::*;
 
 #[test]
+fn linked_function_contract_accepts_forwarded_closure() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn forward(callback: Function, value) {
+    return [value].map(callback)[0];
+}
+fn main() {
+    return forward(|value| value + 1, 41);
+}
+"#,
+    )
+    .expect("Function contract should accept a closure and preserve callback forwarding");
+    let mut budget = ExecutionBudget::unbounded();
+    let value = run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget)
+        .expect("forwarded closure should pass the Function guard");
+    assert_eq!(value, OwnedValue::i64(42));
+}
+
+#[test]
+fn linked_function_contract_forwards_callbacks_across_container_families() {
+    let program = compile_program_source(
+        SourceId::new(2),
+        r#"
+fn forward(unary: Function, binary: Function) {
+    let array_total = [1, 2].map(unary).sum();
+    let set_total = set::from_array([1, 2]).map(unary).values().collect_array().sum();
+    let iterator_total = [1, 2].iter().map(unary).collect_array().sum();
+    let map_total = {"gold": 4, "xp": 6}.filter(binary).values().collect_array().sum();
+    return array_total + set_total + iterator_total + map_total;
+}
+fn main() {
+    return forward(|value| value + 1, |key, value| key == "xp" && value == 6);
+}
+"#,
+    )
+    .expect("dynamic Function parameters should forward into all callback families");
+    let value = run_linked_test_program_with_budget(
+        &Vm::new(),
+        &program,
+        "main",
+        &[],
+        &mut ExecutionBudget::unbounded(),
+    )
+    .expect("forwarded callbacks should retain callable contracts");
+    assert_eq!(value, OwnedValue::i64(21));
+}
+
+#[test]
 fn linked_guard_type_accepts_matching_primitive_contract() {
     let program = compile_program_source(
         SourceId::new(1),

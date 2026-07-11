@@ -766,11 +766,11 @@ fn mir_model_dump_distinguishes_callable_kinds_and_erased_arity() {
     let body = HirBodyId::new(223);
     let origin = origin(body);
     let function_contract = MirTypeContract::Callable {
-        kind: MirCallableKind::Function,
+        accepted_kinds: crate::MirCallableKindSet::FUNCTION,
         positional_arity: None,
     };
     let closure_contract = MirTypeContract::Callable {
-        kind: MirCallableKind::Closure,
+        accepted_kinds: crate::MirCallableKindSet::CLOSURE,
         positional_arity: Some(0),
     };
     let mut function = MirFunction::new(
@@ -793,6 +793,7 @@ fn mir_model_dump_distinguishes_callable_kinds_and_erased_arity() {
         origin,
     });
     function.add_guard(MirGuard {
+        kind: crate::MirGuardKind::Contract,
         assumption: MirGuardAssumption::Type(closure_contract),
         context: Some(MirGuardContext::new(
             MirGuardLocation::Parameter { index: 0 },
@@ -806,10 +807,14 @@ fn mir_model_dump_distinguishes_callable_kinds_and_erased_arity() {
         .expect("callable contract fixture should have unique identity");
 
     let dump = program.dump();
-    assert!(dump.contains("return: Callable { kind: Function, positional_arity: None }"));
-    assert!(dump.contains("contract=Some(Callable { kind: Closure, positional_arity: Some(0) })"));
     assert!(dump.contains(
-        "guard g0: Type(Callable { kind: Closure, positional_arity: Some(0) }) at Parameter { index: 0 } name=\"callback\""
+        "return: Callable { accepted_kinds: MirCallableKindSet { direct_function: true, closure: true }, positional_arity: None }"
+    ));
+    assert!(dump.contains(
+        "contract=Some(Callable { accepted_kinds: MirCallableKindSet { direct_function: false, closure: true }, positional_arity: Some(0) })"
+    ));
+    assert!(dump.contains(
+        "guard g0: Type(Callable { accepted_kinds: MirCallableKindSet { direct_function: false, closure: true }, positional_arity: Some(0) }) at Parameter { index: 0 } name=\"callback\""
     ));
 }
 
