@@ -213,10 +213,6 @@ impl MirEffect {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MirGuardAssumption {
     Type(MirTypeContract),
-    CallableArity {
-        positional: u32,
-        named: Vec<String>,
-    },
     /// A trapping tuple-destructuring boundary.
     ///
     /// Match and loop patterns use non-trapping structural predicates instead;
@@ -226,7 +222,6 @@ pub enum MirGuardAssumption {
     TupleArity {
         arity: u32,
     },
-    TruthyBoolean,
 }
 
 /// Backend-neutral source boundary described by a runtime guard.

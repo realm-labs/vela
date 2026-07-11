@@ -1,6 +1,7 @@
 use vela_def::{DefPath, FieldId, FunctionId, TypeId, VariantId};
 use vela_mir::{
-    CompileConstructorTarget, CompileConstructorValue, CompilePositionalPolicy, CompileTypeClass,
+    CompileConstructorTarget, CompileConstructorValue, CompilePatternConstructorTarget,
+    CompilePositionalPolicy, CompileTypeClass,
 };
 use vela_registry::{
     DefinitionRegistry, FieldDef, FunctionDef, FunctionSignature, ParamDef, TypeDef, TypeKindDef,
@@ -115,6 +116,58 @@ fn external_enum_descriptor_edges_are_complete() {
             .expect("external field descriptor")
             .variant,
         Some(variant)
+    );
+}
+
+#[test]
+fn qualified_registered_record_patterns_are_explicit_never_matches() {
+    let mut registry = DefinitionRegistry::new();
+    let ty = TypeId::new(8_050);
+    let field = FieldId::new(8_051);
+    registry
+        .register_type(
+            TypeDef::new(DefPath::ty("host", ["game", "inventory"], "Reward"))
+                .with_id(ty)
+                .kind(TypeKindDef::ScriptStruct),
+        )
+        .expect("registered Reward type");
+    registry
+        .register_field(
+            FieldDef::new(
+                DefPath::field("host", ["game", "inventory"], "Reward", "amount"),
+                ty,
+            )
+            .with_id(field),
+        )
+        .expect("registered Reward field");
+    let fixture = prepare_source_with_registry(
+        r#"
+fn main() {
+    let reward = game::inventory::Reward { amount: 7 };
+    return match reward { game::inventory::Reward { amount } => amount, _ => 0 };
+}
+"#,
+        FixtureRoots::Program,
+        registry.compile_view(),
+    )
+    .expect("qualified registered record semantic input");
+    let [(body, pattern, path)] = fixture.constructor_patterns.as_slice() else {
+        panic!("expected one qualified record pattern")
+    };
+    assert_eq!(path, &["game", "inventory", "Reward"]);
+    let targets = fixture.input.targets();
+    let function = targets
+        .compilation_roots()
+        .find_map(|(function, root)| (root.body == *body).then_some(function))
+        .expect("owning function root");
+    assert_eq!(
+        targets
+            .function_targets(function)
+            .and_then(|targets| targets.pattern_constructor(*pattern)),
+        Some(&CompilePatternConstructorTarget::NeverMatchesRecord {
+            type_id: ty,
+            fields: vec![field],
+        })
     );
 }
 

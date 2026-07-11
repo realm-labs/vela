@@ -353,7 +353,9 @@ impl FunctionBuilder<'_> {
         let mut fields = Vec::with_capacity(field_expressions.len());
         for expression in field_expressions {
             let member = match self.member_target(expression, origin)? {
-                PreparedMemberTarget::Field(target) => PreparedFieldMember::Field(target),
+                PreparedMemberTarget::Field(target) => {
+                    PreparedFieldMember::Field(self.assignment_field_target(target, origin)?)
+                }
                 PreparedMemberTarget::Tuple(index) => {
                     PreparedFieldMember::Tuple(self.prepare_tuple_assignment_projection(
                         expression,
@@ -707,14 +709,14 @@ impl FunctionBuilder<'_> {
                         variant: *variant,
                         field: *field,
                     },
-                    CompileFieldTarget::Dynamic { name } => {
-                        MirFieldTarget::Dynamic { name: name.clone() }
+                    CompileFieldTarget::DynamicRecord { name } => {
+                        MirFieldTarget::DynamicRecord { name: name.clone() }
                     }
                 }))
             }
             CompileMemberTarget::TupleIndex(index) => Ok(PreparedMemberTarget::Tuple(*index)),
             CompileMemberTarget::Dynamic { name } => {
-                Ok(PreparedMemberTarget::Field(MirFieldTarget::Dynamic {
+                Ok(PreparedMemberTarget::Field(MirFieldTarget::DynamicRecord {
                     name: name.clone(),
                 }))
             }
@@ -726,10 +728,33 @@ impl FunctionBuilder<'_> {
                         "non-call method member placement is not attached to a HIR field",
                     ));
                 };
-                Ok(PreparedMemberTarget::Field(MirFieldTarget::Dynamic {
+                Ok(PreparedMemberTarget::Field(MirFieldTarget::DynamicRecord {
                     name: field.name,
                 }))
             }
+        }
+    }
+
+    fn assignment_field_target(
+        &self,
+        target: MirFieldTarget,
+        origin: MirSourceOrigin,
+    ) -> Result<MirFieldTarget, MirBuildError> {
+        match target {
+            MirFieldTarget::VariantSlot { field, .. } => {
+                let name = self
+                    .input
+                    .targets()
+                    .field_descriptor(field)
+                    .ok_or_else(|| {
+                        self.inconsistent(origin, "assignment field descriptor disappeared")
+                    })?
+                    .name
+                    .clone();
+                Ok(MirFieldTarget::DynamicRecord { name })
+            }
+            MirFieldTarget::DynamicVariant { name } => Ok(MirFieldTarget::DynamicRecord { name }),
+            MirFieldTarget::RecordSlot { .. } | MirFieldTarget::DynamicRecord { .. } => Ok(target),
         }
     }
 

@@ -531,18 +531,10 @@ impl GenerationBuilder<'_, '_> {
         let origin = MirSourceOrigin::pattern(body.id, pattern, origin_record.origin.span);
         let placed = match target {
             ConstructorTargetFact::Declaration(declaration) => {
+                reject_unqualified_record_pattern(body, origin_record)?;
                 let type_id = self.type_ids[&declaration];
-                let shape = self.type_shapes.get(&type_id).copied().ok_or_else(|| {
-                    input_error(MirBuildError::InconsistentInput {
-                        origin,
-                        message: format!(
-                            "record pattern declaration {declaration:?} has no shape"
-                        ),
-                    })
-                })?;
-                CompilePatternConstructorTarget::Record {
+                CompilePatternConstructorTarget::NeverMatchesRecord {
                     type_id,
-                    shape,
                     fields: pattern_field_names(origin_record)
                         .iter()
                         .map(|name| {
@@ -584,8 +576,10 @@ impl GenerationBuilder<'_, '_> {
                     })
                     .collect::<CompileResult<Vec<_>>>()?,
             },
-            ConstructorTargetFact::RegistryType { path } => self
-                .external_pattern_constructor(&path, None, origin_record, origin)?,
+            ConstructorTargetFact::RegistryType { path } => {
+                reject_unqualified_record_pattern(body, origin_record)?;
+                self.external_pattern_constructor(&path, None, origin_record, origin)?
+            }
             ConstructorTargetFact::RegistryVariant { owner, variant } => self
                 .external_pattern_constructor(&owner, Some(&variant), origin_record, origin)?,
             ConstructorTargetFact::Dynamic => {
@@ -648,11 +642,8 @@ impl GenerationBuilder<'_, '_> {
                 variant: variant.id,
                 fields,
             }),
-            None => Ok(CompilePatternConstructorTarget::Record {
+            None => Ok(CompilePatternConstructorTarget::NeverMatchesRecord {
                 type_id: owner.id,
-                shape: self
-                    .external_shape(owner.id)
-                    .ok_or_else(registry_input_error)?,
                 fields,
             }),
         }
@@ -718,14 +709,35 @@ fn dynamic_pattern_constructor(
     })?;
     let fields = pattern_field_names(pattern);
     if owner.is_empty() {
-        return Ok(CompilePatternConstructorTarget::DynamicRecord {
-            type_name: name.clone(),
-            fields,
-        });
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "match pattern",
+        )));
     }
     Ok(CompilePatternConstructorTarget::DynamicVariant {
         owner_name: owner.join("::"),
         variant_name: name.clone(),
         fields,
     })
+}
+
+fn reject_unqualified_record_pattern(
+    body: &HirBody,
+    pattern: &vela_hir::body::HirPattern,
+) -> CompileResult<()> {
+    let path = match &pattern.kind {
+        HirPatternKind::Path { path }
+        | HirPatternKind::TupleVariant { path, .. }
+        | HirPatternKind::RecordVariant { path, .. } => *path,
+        HirPatternKind::Binding { .. }
+        | HirPatternKind::Wildcard
+        | HirPatternKind::Literal(_)
+        | HirPatternKind::Missing => None,
+    }
+    .and_then(|path| body.paths.get(&path));
+    if path.is_some_and(|path| path.path.len() == 1) {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "match pattern",
+        )));
+    }
+    Ok(())
 }

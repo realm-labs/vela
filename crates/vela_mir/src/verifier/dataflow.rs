@@ -120,9 +120,10 @@ pub(crate) fn verify(
             | MirTerminatorKind::Branch { .. }
             | MirTerminatorKind::Switch { .. }
             | MirTerminatorKind::GuardBranch { .. }
+            | MirTerminatorKind::TrySwitch { .. }
             | MirTerminatorKind::IteratorNext { .. }
             | MirTerminatorKind::Return(_)
-            | MirTerminatorKind::Fail { .. }
+            | MirTerminatorKind::TryTypeMismatch { .. }
             | MirTerminatorKind::Unreachable => {}
         }
     }
@@ -304,10 +305,11 @@ fn add_edge_definitions(
         | MirTerminatorKind::Branch { .. }
         | MirTerminatorKind::Switch { .. }
         | MirTerminatorKind::GuardBranch { .. }
+        | MirTerminatorKind::TrySwitch { .. }
         | MirTerminatorKind::IteratorNext { .. }
         | MirTerminatorKind::RangeNext { .. }
         | MirTerminatorKind::Return(_)
-        | MirTerminatorKind::Fail { .. }
+        | MirTerminatorKind::TryTypeMismatch { .. }
         | MirTerminatorKind::Unreachable => {}
     }
 }
@@ -483,12 +485,13 @@ pub(crate) fn visit_terminator_operands(
         MirTerminatorKind::Branch { condition, .. } => visitor(condition)?,
         MirTerminatorKind::Switch { discriminant, .. } => visitor(discriminant)?,
         MirTerminatorKind::GuardBranch { value, .. } => visitor(value)?,
+        MirTerminatorKind::TrySwitch { value, .. } => visitor(value)?,
         MirTerminatorKind::IteratorNext { iterator, .. } => visitor(iterator)?,
         MirTerminatorKind::RangeNext { end, .. } => visitor(end)?,
         MirTerminatorKind::Return(Some(value)) => visitor(value)?,
         MirTerminatorKind::Jump(_)
         | MirTerminatorKind::Return(None)
-        | MirTerminatorKind::Fail { .. }
+        | MirTerminatorKind::TryTypeMismatch { .. }
         | MirTerminatorKind::Unreachable => {}
     }
     Ok(())
@@ -505,9 +508,8 @@ fn visit_rvalue(
         MirRvalue::Constant { .. } => None,
         MirRvalue::PatternPredicate(
             MirPatternPredicate::TupleArity { value, .. }
-            | MirPatternPredicate::RecordShape { value, .. }
+            | MirPatternPredicate::NeverMatches { value, .. }
             | MirPatternPredicate::VariantShape { value, .. }
-            | MirPatternPredicate::DynamicRecord { value, .. }
             | MirPatternPredicate::DynamicVariant { value, .. },
         ) => Some(value),
     }) else {

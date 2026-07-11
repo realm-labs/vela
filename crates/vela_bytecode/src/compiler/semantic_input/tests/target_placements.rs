@@ -182,7 +182,6 @@ fn main(value) {
     let variant = Missing::Ready { label: "ready", amount: 3 };
     return match value {
         Missing::Ready { label, amount } => amount,
-        Missing { second, first } => first,
         _ => 0,
     };
 }
@@ -218,10 +217,6 @@ fn main(value) {
 
     for (_, pattern, path) in &fixture.constructor_patterns {
         let expected = match path.as_slice() {
-            [name] => CompilePatternConstructorTarget::DynamicRecord {
-                type_name: name.clone(),
-                fields: vec!["second".to_owned(), "first".to_owned()],
-            },
             [owner, variant] => CompilePatternConstructorTarget::DynamicVariant {
                 owner_name: owner.clone(),
                 variant_name: variant.clone(),

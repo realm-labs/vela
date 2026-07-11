@@ -3,7 +3,7 @@ use vela_hir::ids::HirExprId;
 use crate::{
     CompileTryLayoutTarget, CompileTryTarget, MirBuildError, MirEffect, MirFieldTarget,
     MirImmediate, MirOperand, MirPlace, MirSourceOrigin, MirStatement, MirStatementKind,
-    MirSwitchCase, MirSwitchValue, MirTerminator, MirTerminatorKind, MirTrapKind,
+    MirTerminator, MirTerminatorKind, MirTryContinue,
 };
 
 use super::core::{FunctionBuilder, value_type};
@@ -43,50 +43,50 @@ impl FunctionBuilder<'_> {
         let propagate = self.function.add_block();
         let invalid = self.function.add_block();
 
-        let (cases, continuations, expected) = match target {
+        let continuations = match target {
             CompileTryTarget::Expected(layout) => {
                 let success = self.function.add_block();
-                (
-                    vec![
-                        variant_case(layout, layout.continue_variant, success),
-                        variant_case(layout, layout.break_variant, propagate),
-                    ],
-                    vec![(success, layout)],
-                    format!("{:?}", layout.family),
-                )
+                vec![MirTryContinue {
+                    layout,
+                    block: success,
+                }]
             }
             CompileTryTarget::Dynamic { option, result } => {
                 let option_success = self.function.add_block();
                 let result_success = self.function.add_block();
-                (
-                    vec![
-                        variant_case(option, option.continue_variant, option_success),
-                        variant_case(option, option.break_variant, propagate),
-                        variant_case(result, result.continue_variant, result_success),
-                        variant_case(result, result.break_variant, propagate),
-                    ],
-                    vec![(option_success, option), (result_success, result)],
-                    "Option or Result".to_owned(),
-                )
+                vec![
+                    MirTryContinue {
+                        layout: option,
+                        block: option_success,
+                    },
+                    MirTryContinue {
+                        layout: result,
+                        block: result_success,
+                    },
+                ]
             }
         };
         self.function.set_terminator(
             self.current_block,
             MirTerminator::new(
                 origin,
-                MirTerminatorKind::Switch {
-                    discriminant: value.clone(),
-                    cases,
-                    otherwise: invalid,
+                MirTerminatorKind::TrySwitch {
+                    value: value.clone(),
+                    target,
+                    result,
+                    continuations: continuations.clone(),
+                    propagate,
+                    invalid,
+                    join: continuation,
                 },
                 MirEffect::PURE,
                 None,
             ),
         )?;
 
-        for (block, layout) in continuations {
-            self.current_block = block;
-            self.lower_try_continue(value.clone(), result, layout, continuation, origin)?;
+        for next in continuations {
+            self.current_block = next.block;
+            self.lower_try_continue(value.clone(), result, next.layout, continuation, origin)?;
         }
 
         self.current_block = propagate;
@@ -97,10 +97,7 @@ impl FunctionBuilder<'_> {
             invalid,
             MirTerminator::new(
                 origin,
-                MirTerminatorKind::Fail {
-                    kind: MirTrapKind::InvalidOperation,
-                    message: Some(format!("try propagation expected {expected}")),
-                },
+                MirTerminatorKind::TryTypeMismatch { target },
                 MirEffect::may_trap(),
                 None,
             ),
@@ -144,19 +141,5 @@ impl FunctionBuilder<'_> {
                 None,
             ),
         )
-    }
-}
-
-fn variant_case(
-    layout: CompileTryLayoutTarget,
-    variant: vela_def::VariantId,
-    target: crate::MirBlockId,
-) -> MirSwitchCase {
-    MirSwitchCase {
-        value: MirSwitchValue::Variant {
-            type_id: layout.type_id,
-            variant,
-        },
-        target,
     }
 }

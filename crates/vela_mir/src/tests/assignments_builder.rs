@@ -1,6 +1,6 @@
 use vela_analysis::executable::{ExecutableAnalysisGeneration, ExecutableAnalysisInput};
 use vela_common::{ScalarValue, ShapeId, SourceId};
-use vela_def::{FieldId, FunctionId, MethodId, TypeId};
+use vela_def::{FieldId, FunctionId, MethodId, TypeId, VariantId};
 use vela_hir::body::{HirExprKind, HirField};
 use vela_hir::ids::{HirExprId, HirNodeId};
 use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
@@ -10,9 +10,9 @@ use crate::{
     CompileFunctionClass, CompileFunctionDescriptor, CompileFunctionIdentity, CompileMemberTarget,
     CompileMethodAccess, CompileMethodClass, CompileMethodDescriptor, CompileParameter,
     CompileParameterDefault, CompilePositionalPolicy, CompileSignature, CompileTargetSnapshot,
-    CompileTypeClass, CompileTypeDescriptor, MethodExecutableTarget, MirEffect, MirIndexKey,
-    MirIndexOperation, MirLoweringConfig, MirLoweringInput, MirOperand, MirProgram,
-    MirSourceOrigin, MirStatementKind,
+    CompileTypeClass, CompileTypeDescriptor, CompileVariantDescriptor, MethodExecutableTarget,
+    MirEffect, MirIndexKey, MirIndexOperation, MirLoweringConfig, MirLoweringInput, MirOperand,
+    MirProgram, MirSourceOrigin, MirStatementKind,
 };
 
 const ROOT_FUNCTION: FunctionId = FunctionId::new(8_200);
@@ -31,12 +31,16 @@ const METHOD_TARGET: MethodExecutableTarget = MethodExecutableTarget {
     owner: METHOD_OWNER,
     node: HirNodeId::new(8_210),
 };
+const DAMAGE_TYPE: TypeId = TypeId::new(8_211);
+const PHYSICAL_VARIANT: VariantId = VariantId::new(8_212);
+const DAMAGE_AMOUNT: FieldId = FieldId::new(8_213);
 
 #[derive(Clone, Copy)]
 enum MemberPolicy {
     Dynamic,
     Tuple,
     StableNested,
+    VariantAssignment,
     ScriptMethod,
     ValueMethod,
 }
@@ -57,6 +61,10 @@ impl FixtureOptions {
 
     const STABLE_NESTED: Self = Self {
         members: MemberPolicy::StableNested,
+    };
+
+    const VARIANT_ASSIGNMENT: Self = Self {
+        members: MemberPolicy::VariantAssignment,
     };
 
     const SCRIPT_METHOD: Self = Self {
@@ -102,6 +110,9 @@ fn lower_selected(
     )?;
     if matches!(options.members, MemberPolicy::StableNested) {
         insert_stable_nested_descriptors(&mut targets, body_origin)?;
+    }
+    if matches!(options.members, MemberPolicy::VariantAssignment) {
+        insert_variant_descriptors(&mut targets, body_origin)?;
     }
     if matches!(
         options.members,
@@ -197,6 +208,13 @@ fn member_target(policy: MemberPolicy, field: &HirField) -> CompileMemberTarget 
             }),
             name => panic!("unexpected stable fixture field {name:?}"),
         },
+        MemberPolicy::VariantAssignment => {
+            CompileMemberTarget::ScriptField(CompileFieldTarget::VariantSlot {
+                type_id: DAMAGE_TYPE,
+                variant: PHYSICAL_VARIANT,
+                field: DAMAGE_AMOUNT,
+            })
+        }
         MemberPolicy::ScriptMethod => CompileMemberTarget::ScriptMethod {
             target: METHOD_TARGET,
             debug_name: "deliberately-not-the-source-name".to_owned(),
@@ -261,7 +279,10 @@ fn insert_non_call_method_descriptors(
             }
         }
         MemberPolicy::ValueMethod => CompileMethodClass::Value,
-        MemberPolicy::Dynamic | MemberPolicy::Tuple | MemberPolicy::StableNested => {
+        MemberPolicy::Dynamic
+        | MemberPolicy::Tuple
+        | MemberPolicy::StableNested
+        | MemberPolicy::VariantAssignment => {
             unreachable!("method descriptor helper requires a method policy")
         }
     };
@@ -274,6 +295,47 @@ fn insert_non_call_method_descriptors(
             class,
             signature,
             access: CompileMethodAccess::script(),
+        },
+        origin,
+    )
+}
+
+fn insert_variant_descriptors(
+    targets: &mut crate::CompileTargetSnapshotBuilder,
+    origin: MirSourceOrigin,
+) -> Result<(), crate::MirBuildError> {
+    targets.insert_type_descriptor(
+        CompileTypeDescriptor {
+            id: DAMAGE_TYPE,
+            canonical_name: "assignments::Damage".to_owned(),
+            runtime_name: "Damage".to_owned(),
+            class: CompileTypeClass::ScriptEnum,
+            shape: None,
+            fields: Vec::new(),
+            variants: vec![PHYSICAL_VARIANT],
+        },
+        origin,
+    )?;
+    targets.insert_variant_descriptor(
+        CompileVariantDescriptor {
+            id: PHYSICAL_VARIANT,
+            owner: DAMAGE_TYPE,
+            name: "Physical".to_owned(),
+            fields: vec![DAMAGE_AMOUNT],
+            declaration_order: 0,
+        },
+        origin,
+    )?;
+    targets.insert_field_descriptor(
+        CompileFieldDescriptor {
+            id: DAMAGE_AMOUNT,
+            owner: DAMAGE_TYPE,
+            variant: Some(PHYSICAL_VARIANT),
+            name: "amount".to_owned(),
+            contract: None,
+            declaration_order: 0,
+            access: CompileFieldAccess::script(),
+            host_runtime: None,
         },
         origin,
     )
@@ -586,6 +648,43 @@ fn main(record: Player, rhs: i64) { return record.outer.inner += rhs; }
 }
 
 #[test]
+fn assignment_builder_normalizes_enum_writes_to_the_record_family() {
+    let program = lower_selected(
+        "fn main(value, rhs) { value.amount += rhs; return value.amount; }",
+        FixtureOptions::VARIANT_ASSIGNMENT,
+    )
+    .expect("enum assignment compatibility MIR");
+    let function = only_function(&program);
+    let targets = function
+        .statements()
+        .filter_map(|(_, statement)| match &statement.kind {
+            MirStatementKind::ReadField { target, .. }
+            | MirStatementKind::WriteField { target, .. } => Some(target),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    assert!(targets.iter().any(|target| matches!(
+        target,
+        crate::MirFieldTarget::DynamicRecord { name } if name == "amount"
+    )));
+    assert!(targets.iter().any(|target| matches!(
+        target,
+        crate::MirFieldTarget::VariantSlot {
+            type_id: DAMAGE_TYPE,
+            variant: PHYSICAL_VARIANT,
+            field: DAMAGE_AMOUNT,
+        }
+    )));
+    assert!(
+        !targets
+            .iter()
+            .any(|target| matches!(target, crate::MirFieldTarget::DynamicVariant { .. }))
+    );
+    crate::verify_mir(&program).expect("normalized enum assignment MIR verifies");
+}
+
+#[test]
 fn assignment_builder_uses_explicit_dynamic_fields_without_name_fallback() {
     let program = lower_selected(
         "fn main(record, rhs) { return record.outer.inner = rhs; }",
@@ -603,10 +702,10 @@ fn assignment_builder_uses_explicit_dynamic_fields_without_name_fallback() {
     assert_eq!(
         writes,
         vec![
-            &crate::MirFieldTarget::Dynamic {
+            &crate::MirFieldTarget::DynamicRecord {
                 name: "inner".to_owned()
             },
-            &crate::MirFieldTarget::Dynamic {
+            &crate::MirFieldTarget::DynamicRecord {
                 name: "outer".to_owned()
             }
         ]
@@ -629,7 +728,7 @@ fn non_call_method_members_remain_exact_name_dynamic_field_reads() {
 
         assert_eq!(
             reads,
-            vec![&crate::MirFieldTarget::Dynamic {
+            vec![&crate::MirFieldTarget::DynamicRecord {
                 name: "visible".to_owned(),
             }],
             "{}",

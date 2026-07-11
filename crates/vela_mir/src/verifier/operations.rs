@@ -191,24 +191,10 @@ pub(crate) fn verify_function_metadata(
         verify_origin(verifier, None, None, value.origin)?;
         verify_contract(verifier, value.origin, &value.contract)?;
     }
-    for (guard_id, guard) in function.guards() {
+    for (_, guard) in function.guards() {
         verify_origin(verifier, None, None, guard.origin)?;
         if let MirGuardAssumption::Type(contract) = &guard.assumption {
             verify_contract(verifier, guard.origin, contract)?;
-        }
-        if let MirGuardAssumption::CallableArity { named, .. } = &guard.assumption {
-            let unique = named.iter().collect::<BTreeSet<_>>();
-            if unique.len() != named.len() {
-                return Err(error(
-                    verifier,
-                    None,
-                    None,
-                    guard.origin,
-                    MirVerifyErrorKind::InvalidFunctionMetadata(format!(
-                        "{guard_id} repeats a named callable argument"
-                    )),
-                ));
-            }
         }
     }
     for (_, safepoint) in function.safepoints() {
@@ -732,7 +718,23 @@ fn verify_terminator(
                 switch_case(verifier, terminator.origin, actual, &case.value)?;
             }
         }
-        MirTerminatorKind::GuardBranch { value, guard, .. } => {
+        MirTerminatorKind::GuardBranch {
+            value,
+            guard,
+            passed,
+            slow,
+        } => {
+            if passed == slow {
+                return Err(error(
+                    verifier,
+                    Some(block),
+                    None,
+                    terminator.origin,
+                    MirVerifyErrorKind::InvalidTerminatorContract(
+                        "guard branch passed and slow targets must differ".to_owned(),
+                    ),
+                ));
+            }
             verify_guard_use(
                 verifier,
                 block,
@@ -742,6 +744,31 @@ fn verify_terminator(
                 value,
                 true,
             )?;
+        }
+        MirTerminatorKind::TrySwitch {
+            value,
+            target,
+            result,
+            ..
+        } => {
+            require_local(verifier, block, terminator.origin, *result)?;
+            let actual = verifier.operand_type(value, block, None, terminator.origin)?;
+            let valid = match target {
+                crate::CompileTryTarget::Expected(layout) => {
+                    actual == MirValueType::Dynamic || actual == MirValueType::Enum(layout.type_id)
+                }
+                crate::CompileTryTarget::Dynamic { .. } => actual == MirValueType::Dynamic,
+            };
+            if !valid {
+                return Err(type_error(
+                    verifier,
+                    block,
+                    None,
+                    terminator.origin,
+                    "try operand",
+                    actual,
+                ));
+            }
         }
         MirTerminatorKind::IteratorNext { iterator, item, .. } => {
             let actual = verifier.operand_type(iterator, block, None, terminator.origin)?;
@@ -811,7 +838,7 @@ fn verify_terminator(
             }
         }
         MirTerminatorKind::Jump(_)
-        | MirTerminatorKind::Fail { .. }
+        | MirTerminatorKind::TryTypeMismatch { .. }
         | MirTerminatorKind::Unreachable => {}
     }
     Ok(())

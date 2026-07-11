@@ -1,5 +1,7 @@
 use super::*;
 
+use std::collections::BTreeSet;
+
 use vela_common::{HostTypeId, ShapeId};
 use vela_def::{FieldId, MethodId};
 
@@ -402,6 +404,89 @@ fn mir_verifier_rejects_guard_context_operand_and_recoverability_mismatches() {
     assert!(matches!(
         verify_error(&program(tuple_context)).into_kind(),
         MirVerifyErrorKind::InvalidTerminatorContract(_)
+    ));
+}
+
+#[test]
+fn mir_verifier_accepts_type_specialization_slow_edges_and_rejects_aliasing_edges() {
+    fn guarded_branch(alias_edges: bool) -> MirFunction {
+        let mut function = function();
+        let guard = function.add_guard(MirGuard {
+            assumption: MirGuardAssumption::Type(MirTypeContract::Primitive(PrimitiveTag::Bool)),
+            context: None,
+            origin: origin(),
+        });
+        let passed = function.add_block();
+        let slow = if alias_edges {
+            passed
+        } else {
+            function.add_block()
+        };
+        function
+            .set_terminator(
+                function.entry_block(),
+                MirTerminator::new(
+                    origin(),
+                    MirTerminatorKind::GuardBranch {
+                        value: MirOperand::Immediate(MirImmediate::Bool(true)),
+                        guard,
+                        passed,
+                        slow,
+                    },
+                    MirEffect::PURE,
+                    None,
+                ),
+            )
+            .expect("guard branch");
+        for block in [passed, slow].into_iter().collect::<BTreeSet<_>>() {
+            function
+                .set_terminator(
+                    block,
+                    MirTerminator::new(
+                        origin(),
+                        MirTerminatorKind::Return(None),
+                        MirEffect::PURE,
+                        None,
+                    ),
+                )
+                .expect("return");
+        }
+        function
+    }
+
+    verify_mir(&program(guarded_branch(false)))
+        .expect("a context-free type assumption may branch to an explicit slow edge");
+    assert!(matches!(
+        verify_error(&program(guarded_branch(true))).into_kind(),
+        MirVerifyErrorKind::InvalidTerminatorContract(_)
+    ));
+}
+
+#[test]
+fn mir_verifier_rejects_enum_family_field_writes() {
+    let mut function = function();
+    function
+        .append_statement(
+            function.entry_block(),
+            MirStatement::new(
+                origin(),
+                None,
+                MirStatementKind::WriteField {
+                    receiver: MirOperand::Immediate(MirImmediate::Unit),
+                    target: crate::MirFieldTarget::DynamicVariant {
+                        name: "amount".to_owned(),
+                    },
+                    value: scalar(1),
+                },
+                MirEffect::may_trap(),
+                None,
+            ),
+        )
+        .expect("malformed enum-family write");
+    finish(&mut function);
+    assert!(matches!(
+        verify_error(&program(function)).into_kind(),
+        MirVerifyErrorKind::InconsistentTarget { .. }
     ));
 }
 

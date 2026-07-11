@@ -444,7 +444,7 @@ fn validate_field_target(
                 ));
             }
         }
-        CompileFieldTarget::Dynamic { .. } => {}
+        CompileFieldTarget::DynamicRecord { .. } => {}
     }
     Ok(())
 }
@@ -642,16 +642,14 @@ fn validate_pattern_constructors(validator: &SnapshotValidator<'_>) -> Result<()
         );
         validator.require_root(*function, origin, "pattern constructor placement")?;
         match target {
-            CompilePatternConstructorTarget::Record {
-                type_id,
-                shape,
-                fields,
-            } => {
-                let owner = validator.require_type(*type_id, origin, "record pattern")?;
-                if owner.shape != Some(*shape) {
-                    return Err(
-                        validator.error(origin, "record pattern shape disagrees with its type")
-                    );
+            CompilePatternConstructorTarget::NeverMatchesRecord { type_id, fields } => {
+                let owner =
+                    validator.require_type(*type_id, origin, "never-match record pattern")?;
+                if owner.shape.is_none() || !owner.variants.is_empty() {
+                    return Err(validator.error(
+                        origin,
+                        "never-match record pattern target is not record-shaped",
+                    ));
                 }
                 validate_pattern_fields(validator, fields, &owner.fields, *type_id, None, origin)?;
             }
@@ -677,16 +675,6 @@ fn validate_pattern_constructors(validator: &SnapshotValidator<'_>) -> Result<()
                     *type_id,
                     Some(*variant),
                     origin,
-                )?;
-            }
-            CompilePatternConstructorTarget::DynamicRecord { type_name, fields } => {
-                validate_dynamic_pattern(
-                    validator,
-                    type_name,
-                    None,
-                    fields,
-                    origin,
-                    "dynamic record pattern",
                 )?;
             }
             CompilePatternConstructorTarget::DynamicVariant {

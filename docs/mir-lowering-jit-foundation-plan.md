@@ -670,27 +670,27 @@ All three searches must have zero hits.
 Purpose: build complete execution-shape MIR without creating a second
 production bytecode backend.
 
-- [ ] Lower literals, locals, declarations, assignment, blocks, returns,
+- [x] Lower literals, locals, declarations, assignment, blocks, returns,
   if/else, short-circuit operators, loops, ranges, iterators, break/continue,
   match, guards, try propagation, and unreachable paths.
-- [ ] Lower records, enums, arrays, maps, sets where language construction
+- [x] Lower records, enums, arrays, maps, sets where language construction
   exists, tuples, fields, indexes, tuple projections, constructors, and pattern
   destructuring.
-- [ ] Lower script, local/closure, native, stdlib, value-method, script-method,
+- [x] Lower script, local/closure, native, stdlib, value-method, script-method,
   dynamic, and host calls with resolved targets and explicit effects.
-- [ ] Lower HostAccess read/write/mutate/remove/call without HostRef dereference
+- [x] Lower HostAccess read/write/mutate/remove/call without HostRef dereference
   places or hidden permission bypasses.
-- [ ] Lower lambdas as nested MIR functions with HIR capture order and parameter
+- [x] Lower lambdas as nested MIR functions with HIR capture order and parameter
   identity.
-- [ ] Lower parameter defaults into the owning function prologue in declaration
+- [x] Lower parameter defaults into the owning function prologue in declaration
   order.
-- [ ] Preserve exact evaluation order and evaluate receiver/index/target/RHS
+- [x] Preserve exact evaluation order and evaluate receiver/index/target/RHS
   subexpressions once.
-- [ ] Preserve source origins and HIR IDs on all executable operations.
-- [ ] Represent proven typed operations and explicit generic dynamic operations;
+- [x] Preserve source origins and HIR IDs on all executable operations.
+- [x] Represent proven typed operations and explicit generic dynamic operations;
   never use `Unknown`, missing facts, or unsupported MIR as a reason to invoke
   old bytecode lowering.
-- [ ] Keep production compile APIs on the old backend throughout Phase 2. There
+- [x] Keep production compile APIs on the old backend throughout Phase 2. There
   must be no `use_mir` flag, runtime option, or fallback router.
 
 Organize builder code by execution responsibility, for example:
@@ -728,29 +728,29 @@ enum-construction tests.
 Purpose: make every assumption required by bytecode and future JIT backends
 explicit before code generation.
 
-- [ ] Verify every referenced function/block/local/temp/target/origin ID exists.
-- [ ] Verify every materialized block is reachable from entry and has exactly
+- [x] Verify every referenced function/block/local/temp/target/origin ID exists.
+- [x] Verify every materialized block is reachable from entry and has exactly
   one terminator with valid successors.
-- [ ] Verify mutable locals are definitely initialized on every path before use.
-- [ ] Verify every temp has exactly one definition that dominates all uses.
-- [ ] Verify there is no Rust-style move invalidation or implicit hidden read in
+- [x] Verify mutable locals are definitely initialized on every path before use.
+- [x] Verify every temp has exactly one definition that dominates all uses.
+- [x] Verify there is no Rust-style move invalidation or implicit hidden read in
   an operand/place.
-- [ ] Verify branch/switch destinations, return values, loop targets,
+- [x] Verify branch/switch destinations, return values, loop targets,
   break/continue scopes, and try propagation families.
-- [ ] Verify each effectful call statement has a valid target, arguments,
+- [x] Verify each effectful call statement has a valid target, arguments,
   destination, effect, safepoint, and source origin without a hidden
   continuation block or unwind edge.
-- [ ] Verify call target kind, arity, named/default argument placement, capture
+- [x] Verify call target kind, arity, named/default argument placement, capture
   placement, and result destination.
-- [ ] Verify type/guard consistency only from proven semantic facts; dynamic
+- [x] Verify type/guard consistency only from proven semantic facts; dynamic
   operations must remain explicitly dynamic.
-- [ ] Verify every may-allocate/call/host/reflection operation has required
+- [x] Verify every may-allocate/call/host/reflection operation has required
   effect, source-origin, and safepoint metadata.
-- [ ] Verify source/debug coverage for every operation that can produce a user
+- [x] Verify source/debug coverage for every operation that can produce a user
   runtime error or debugger-visible step.
 - [ ] Compute block/local/temp liveness and test loops, joins, early returns,
   nested calls, closures, and try edges.
-- [ ] Add one negative test per verifier invariant; malformed MIR must not reach
+- [x] Add one negative test per verifier invariant; malformed MIR must not reach
   bytecode code generation.
 
 Validation:
@@ -767,11 +767,11 @@ cargo test -p vela_mir mir_liveness
 Purpose: finish the verified backend-neutral MIR contract before production
 bytecode integration.
 
-- [ ] Represent proven scalar arithmetic/comparison, boolean branch, tuple
+- [x] Represent proven scalar arithmetic/comparison, boolean branch, tuple
   projection, and i64 range-loop operations without embedding bytecode enums.
-- [ ] Represent generic dynamic operation families and their equivalent slow
+- [x] Represent generic dynamic operation families and their equivalent slow
   paths explicitly.
-- [ ] Represent guard assumptions and slow-path targets without runtime deopt or
+- [x] Represent guard assumptions and slow-path targets without runtime deopt or
   optimized-frame recovery state.
 - [ ] Produce logical debug-local/capture/parameter records with HIR IDs, names,
   kinds, source spans, scopes, and live regions.

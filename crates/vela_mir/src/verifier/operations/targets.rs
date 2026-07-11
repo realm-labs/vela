@@ -212,7 +212,7 @@ pub(super) fn verify_field_operation(
                 origin,
             )?)
         }
-        MirFieldTarget::Dynamic { .. } => {
+        MirFieldTarget::DynamicRecord { .. } | MirFieldTarget::DynamicVariant { .. } => {
             if matches!(receiver_type, MirValueType::Host(_)) {
                 return Err(error(
                     verifier,
@@ -228,6 +228,19 @@ pub(super) fn verify_field_operation(
             None
         }
     };
+    if written.is_some()
+        && matches!(
+            target,
+            MirFieldTarget::VariantSlot { .. } | MirFieldTarget::DynamicVariant { .. }
+        )
+    {
+        return Err(bad_target(
+            verifier,
+            origin,
+            MirVerifyTarget::MirFunction(verifier.function_id),
+            "enum-family fields are read-only MIR targets; assignments use record-family writes",
+        ));
+    }
     if let Some(descriptor) = descriptor {
         if (written.is_some() && !descriptor.access.writable)
             || (written.is_none() && !descriptor.access.readable)
@@ -275,24 +288,13 @@ pub(super) fn verify_predicate_targets(
 ) -> Result<(), MirVerifyError> {
     if let MirRvalue::PatternPredicate(predicate) = value {
         match predicate {
-            MirPatternPredicate::RecordShape { type_id, shape, .. } => {
-                let descriptor = require_type(verifier, *type_id, origin)?;
-                if descriptor.shape != Some(*shape) {
-                    return Err(bad_target(
-                        verifier,
-                        origin,
-                        MirVerifyTarget::Type(*type_id),
-                        "record predicate shape disagrees with its descriptor",
-                    ));
-                }
-            }
             MirPatternPredicate::VariantShape {
                 type_id, variant, ..
             } => {
                 require_variant(verifier, *type_id, *variant, origin)?;
             }
             MirPatternPredicate::TupleArity { .. }
-            | MirPatternPredicate::DynamicRecord { .. }
+            | MirPatternPredicate::NeverMatches { .. }
             | MirPatternPredicate::DynamicVariant { .. } => {}
         }
     }
@@ -329,22 +331,13 @@ pub(super) fn verify_guard_use(
     let actual = verifier.operand_type(value, block, statement, origin)?;
     let valid = match &record.assumption {
         MirGuardAssumption::Type(contract) => {
-            record.context.is_some() && satisfies_contract(actual, contract)
+            record.context.is_some() != recoverable && satisfies_contract(actual, contract)
         }
         MirGuardAssumption::TupleArity { arity } => {
             !recoverable
                 && record.context.is_none()
                 && (actual == MirValueType::Dynamic
                     || matches!(actual, MirValueType::Tuple(actual) if actual == *arity))
-        }
-        MirGuardAssumption::CallableArity { .. } => {
-            matches!(actual, MirValueType::Dynamic | MirValueType::Callable)
-        }
-        MirGuardAssumption::TruthyBoolean => {
-            matches!(
-                actual,
-                MirValueType::Dynamic | MirValueType::Primitive(PrimitiveTag::Bool)
-            )
         }
     };
     if !valid {

@@ -15,7 +15,7 @@ use crate::{
     CompileTryLayoutTarget, CompileTryTarget, CompileTypeClass, CompileTypeDescriptor,
     CompileVariantDescriptor, MirBuildError, MirEffect, MirFieldTarget, MirFunction,
     MirLoweringConfig, MirLoweringInput, MirOperand, MirSourceOrigin, MirStatementKind,
-    MirSwitchValue, MirTerminatorKind, MirTrapKind,
+    MirTerminatorKind, MirTryContinue,
 };
 
 const SOURCE: SourceId = SourceId::new(92);
@@ -376,26 +376,43 @@ fn only_function(fixture: &BuiltFixture) -> &MirFunction {
         .expect("defined root function")
 }
 
-fn switch_cases(
-    function: &MirFunction,
-) -> Vec<(MirOperand, Vec<MirSwitchValue>, crate::MirBlockId)> {
+#[derive(Clone, Debug)]
+struct TryRegion {
+    value: MirOperand,
+    target: CompileTryTarget,
+    result: crate::MirLocalId,
+    continuations: Vec<MirTryContinue>,
+    propagate: crate::MirBlockId,
+    invalid: crate::MirBlockId,
+    join: crate::MirBlockId,
+}
+
+fn try_regions(function: &MirFunction) -> Vec<TryRegion> {
     function
         .blocks()
         .filter_map(|(_, block)| {
             let terminator = block.terminator()?;
-            let MirTerminatorKind::Switch {
-                discriminant,
-                cases,
-                otherwise,
+            let MirTerminatorKind::TrySwitch {
+                value,
+                target,
+                result,
+                continuations,
+                propagate,
+                invalid,
+                join,
             } = &terminator.kind
             else {
                 return None;
             };
-            Some((
-                discriminant.clone(),
-                cases.iter().map(|case| case.value.clone()).collect(),
-                *otherwise,
-            ))
+            Some(TryRegion {
+                value: value.clone(),
+                target: *target,
+                result: *result,
+                continuations: continuations.clone(),
+                propagate: *propagate,
+                invalid: *invalid,
+                join: *join,
+            })
         })
         .collect()
 }
@@ -423,14 +440,14 @@ fn mir_builder_expected_option_try_is_explicit_cfg() {
     debug dl0: value -> l0 kind=Parameter hir=Some(0) scope=h0 live=[] @92:8..13/h0
     debug dl1: inner -> l1 kind=Local hir=Some(1) scope=h0 live=[] @92:21..26/h0
     bb0:
-      -> switch l0 [MirSwitchCase { value: Variant { type_id: TypeId(9210), variant: VariantId(9211) }, target: MirBlockId(4) }, MirSwitchCase { value: Variant { type_id: TypeId(9210), variant: VariantId(9212) }, target: MirBlockId(2) }] otherwise bb3 [pure] @92:29..35/e0
+      -> try.switch l0 target=Expected(CompileTryLayoutTarget { family: Option, type_id: TypeId(9210), continue_variant: VariantId(9211), break_variant: VariantId(9212), continue_payload: FieldId(9213) }) result=l2 continuations=[MirTryContinue { layout: CompileTryLayoutTarget { family: Option, type_id: TypeId(9210), continue_variant: VariantId(9211), break_variant: VariantId(9212), continue_payload: FieldId(9213) }, block: MirBlockId(4) }] propagate=bb2 invalid=bb3 join=bb1 [pure] @92:29..35/e0
     bb1:
       s1: l1 = l2 [pure] @92:17..36/s0
       -> return l1 [pure] @92:37..50/s1
     bb2:
       -> return l0 [pure] @92:29..35/e0
     bb3:
-      -> fail InvalidOperation Some("try propagation expected Option") [trap] @92:29..35/e0
+      -> try.type-mismatch target=Expected(CompileTryLayoutTarget { family: Option, type_id: TypeId(9210), continue_variant: VariantId(9211), break_variant: VariantId(9212), continue_payload: FieldId(9213) }) [trap] @92:29..35/e0
     bb4:
       s0: l2 = field.read l0 VariantSlot { type_id: TypeId(9210), variant: VariantId(9211), field: FieldId(9213) } [trap] @92:29..35/e0
       -> jump bb1 [pure] @92:29..35/e0
@@ -439,34 +456,26 @@ fn mir_builder_expected_option_try_is_explicit_cfg() {
 "#
     );
     let function = only_function(&fixture);
-    let switches = switch_cases(function);
-    let [(discriminant, cases, invalid)] = switches.as_slice() else {
-        panic!("expected one try switch")
+    let regions = try_regions(function);
+    let [region] = regions.as_slice() else {
+        panic!("expected one canonical try region")
     };
-    assert_eq!(
-        cases,
-        &vec![
-            MirSwitchValue::Variant {
-                type_id: OPTION_TYPE,
-                variant: OPTION_SOME,
-            },
-            MirSwitchValue::Variant {
-                type_id: OPTION_TYPE,
-                variant: OPTION_NONE,
-            },
-        ]
-    );
-    assert!(matches!(discriminant, MirOperand::Local(_)));
+    assert_eq!(region.target, CompileTryTarget::Expected(OPTION_LAYOUT));
+    assert_eq!(region.continuations.len(), 1);
+    assert_eq!(region.continuations[0].layout, OPTION_LAYOUT);
+    assert!(matches!(region.value, MirOperand::Local(_)));
+    assert!(function.local(region.result).is_some());
+    assert!(function.block(region.join).is_some());
+    assert_ne!(region.join, region.propagate);
+    assert_ne!(region.join, region.invalid);
     let invalid = function
-        .block(*invalid)
+        .block(region.invalid)
         .and_then(|block| block.terminator())
         .expect("invalid try block");
     assert!(matches!(
         &invalid.kind,
-        MirTerminatorKind::Fail {
-            kind: MirTrapKind::InvalidOperation,
-            message: Some(message),
-        } if message == "try propagation expected Option"
+        MirTerminatorKind::TryTypeMismatch { target }
+            if *target == CompileTryTarget::Expected(OPTION_LAYOUT)
     ));
     assert_eq!(invalid.origin, fixture.tries[0].origin);
     assert!(invalid.effect.may_trap);
@@ -515,23 +524,12 @@ fn mir_builder_expected_result_uses_its_authoritative_layout() {
     )
     .expect("expected Result try MIR");
     let function = only_function(&fixture);
-    let switches = switch_cases(function);
-    let [(_, cases, _)] = switches.as_slice() else {
+    let regions = try_regions(function);
+    let [region] = regions.as_slice() else {
         panic!("expected one try switch")
     };
-    assert_eq!(
-        cases,
-        &vec![
-            MirSwitchValue::Variant {
-                type_id: RESULT_TYPE,
-                variant: RESULT_OK,
-            },
-            MirSwitchValue::Variant {
-                type_id: RESULT_TYPE,
-                variant: RESULT_ERR,
-            },
-        ]
-    );
+    assert_eq!(region.target, CompileTryTarget::Expected(RESULT_LAYOUT));
+    assert_eq!(region.continuations[0].layout, RESULT_LAYOUT);
     assert!(function.statements().any(|(_, statement)| matches!(
         statement.kind,
         MirStatementKind::ReadField {
@@ -558,48 +556,32 @@ fn mir_builder_dynamic_try_discriminates_both_families_explicitly() {
     )
     .expect("dynamic try MIR");
     let function = only_function(&fixture);
-    let dynamic_switches = switch_cases(function);
-    let [(discriminant, cases, _)] = dynamic_switches.as_slice() else {
+    let dynamic_regions = try_regions(function);
+    let [region] = dynamic_regions.as_slice() else {
         panic!("expected one dynamic try switch")
     };
     assert_eq!(
-        cases,
-        &vec![
-            MirSwitchValue::Variant {
-                type_id: OPTION_TYPE,
-                variant: OPTION_SOME,
-            },
-            MirSwitchValue::Variant {
-                type_id: OPTION_TYPE,
-                variant: OPTION_NONE,
-            },
-            MirSwitchValue::Variant {
-                type_id: RESULT_TYPE,
-                variant: RESULT_OK,
-            },
-            MirSwitchValue::Variant {
-                type_id: RESULT_TYPE,
-                variant: RESULT_ERR,
-            },
-        ]
+        region.target,
+        CompileTryTarget::Dynamic {
+            option: OPTION_LAYOUT,
+            result: RESULT_LAYOUT,
+        }
     );
-    let switches = function
-        .blocks()
-        .filter_map(|(_, block)| block.terminator())
-        .filter_map(|terminator| match &terminator.kind {
-            MirTerminatorKind::Switch { cases, .. } => Some(cases),
-            _ => None,
-        })
-        .next()
-        .expect("dynamic switch cases");
-    assert_eq!(switches[1].target, switches[3].target);
+    assert_eq!(
+        region
+            .continuations
+            .iter()
+            .map(|continuation| continuation.layout)
+            .collect::<Vec<_>>(),
+        [OPTION_LAYOUT, RESULT_LAYOUT]
+    );
     let propagation = function
-        .block(switches[1].target)
+        .block(region.propagate)
         .and_then(|block| block.terminator())
         .expect("shared propagation return");
     assert!(matches!(
         &propagation.kind,
-        MirTerminatorKind::Return(Some(value)) if value == discriminant
+        MirTerminatorKind::Return(Some(value)) if value == &region.value
     ));
     assert_eq!(
         function
@@ -617,7 +599,7 @@ fn mir_builder_nested_try_and_effectful_operand_are_evaluated_once() {
         |_, _| Some(CompileTryTarget::Expected(OPTION_LAYOUT)),
     )
     .expect("nested try MIR");
-    assert_eq!(switch_cases(only_function(&nested)).len(), 2);
+    assert_eq!(try_regions(only_function(&nested)).len(), 2);
     assert_eq!(nested.tries.len(), 2);
     assert_ne!(nested.tries[0].expression, nested.tries[1].expression);
     assert_ne!(nested.tries[0].origin.span, nested.tries[1].origin.span);
@@ -684,7 +666,9 @@ fn main(fallback, value = fallback?) {
         .blocks()
         .filter_map(|(_, block)| block.terminator())
         .filter_map(|terminator| match &terminator.kind {
-            MirTerminatorKind::Switch { cases, .. } => Some((terminator.origin, cases.len())),
+            MirTerminatorKind::TrySwitch { continuations, .. } => {
+                Some((terminator.origin, continuations.len()))
+            }
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -697,7 +681,7 @@ fn main(fallback, value = fallback?) {
                 .find(|try_expression| try_expression.body == fixture.defaults[0])
                 .expect("default try")
                 .origin,
-            2,
+            1,
         ))
     );
     assert!(
@@ -708,7 +692,7 @@ fn main(fallback, value = fallback?) {
                 .find(|try_expression| try_expression.body == fixture.root)
                 .expect("root try")
                 .origin,
-            2,
+            1,
         ))
     );
 
@@ -719,11 +703,11 @@ fn main(fallback, value = fallback?) {
         .program
         .function(*lambda)
         .expect("lambda MIR function");
-    let lambda_switches = switch_cases(lambda);
-    let [(_, dynamic_cases, _)] = lambda_switches.as_slice() else {
+    let lambda_switches = try_regions(lambda);
+    let [dynamic] = lambda_switches.as_slice() else {
         panic!("lambda should contain one dynamic try switch")
     };
-    assert_eq!(dynamic_cases.len(), 4);
+    assert_eq!(dynamic.continuations.len(), 2);
 }
 
 #[test]

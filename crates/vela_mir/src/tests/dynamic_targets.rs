@@ -84,8 +84,9 @@ fn dynamic_constructor_and_pattern_targets_are_scoped_and_ordered() {
         variant_name: "Granted".to_owned(),
         fields: vec![field("label", 908), field("amount", 909)],
     };
-    let first_pattern = CompilePatternConstructorTarget::DynamicRecord {
-        type_name: "Reward".to_owned(),
+    let first_pattern = CompilePatternConstructorTarget::DynamicVariant {
+        owner_name: "Reward".to_owned(),
+        variant_name: "Granted".to_owned(),
         fields: vec!["amount".to_owned(), "amount".to_owned()],
     };
     let second_pattern = CompilePatternConstructorTarget::DynamicVariant {
@@ -268,8 +269,9 @@ fn dynamic_targets_require_executable_roots_and_retain_origins() {
         .insert_pattern_constructor(
             function,
             HirPatternId::new(934),
-            CompilePatternConstructorTarget::DynamicRecord {
-                type_name: "Reward".to_owned(),
+            CompilePatternConstructorTarget::DynamicVariant {
+                owner_name: "Reward".to_owned(),
+                variant_name: "Granted".to_owned(),
                 fields: Vec::new(),
             },
             pattern_origin,
@@ -346,13 +348,6 @@ fn malformed_dynamic_constructor_names_fail_snapshot_closure() {
 fn malformed_dynamic_pattern_names_fail_without_a_uniqueness_rule() {
     let cases = vec![
         (
-            CompilePatternConstructorTarget::DynamicRecord {
-                type_name: String::new(),
-                fields: Vec::new(),
-            },
-            "empty owner/type name",
-        ),
-        (
             CompilePatternConstructorTarget::DynamicVariant {
                 owner_name: String::new(),
                 variant_name: "Granted".to_owned(),
@@ -369,8 +364,9 @@ fn malformed_dynamic_pattern_names_fail_without_a_uniqueness_rule() {
             "empty variant name",
         ),
         (
-            CompilePatternConstructorTarget::DynamicRecord {
-                type_name: "Reward".to_owned(),
+            CompilePatternConstructorTarget::DynamicVariant {
+                owner_name: "Reward".to_owned(),
+                variant_name: "Granted".to_owned(),
                 fields: vec![String::new()],
             },
             "empty field name",

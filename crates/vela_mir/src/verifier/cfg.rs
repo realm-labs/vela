@@ -175,10 +175,20 @@ fn terminator_successors(kind: &MirTerminatorKind) -> Vec<MirBlockId> {
             .chain(std::iter::once(*otherwise))
             .collect(),
         MirTerminatorKind::GuardBranch { passed, slow, .. } => vec![*passed, *slow],
+        MirTerminatorKind::TrySwitch {
+            continuations,
+            propagate,
+            invalid,
+            ..
+        } => continuations
+            .iter()
+            .map(|continuation| continuation.block)
+            .chain([*propagate, *invalid])
+            .collect(),
         MirTerminatorKind::IteratorNext { next, done, .. }
         | MirTerminatorKind::RangeNext { next, done, .. } => vec![*next, *done],
         MirTerminatorKind::Return(_)
-        | MirTerminatorKind::Fail { .. }
+        | MirTerminatorKind::TryTypeMismatch { .. }
         | MirTerminatorKind::Unreachable => Vec::new(),
     }
 }

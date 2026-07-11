@@ -1,8 +1,6 @@
-use vela_def::VariantId;
-
 use crate::{
-    MirBlockId, MirEffect, MirGuardId, MirLocalId, MirOperand, MirSafepointId, MirSourceOrigin,
-    MirStatementId, MirTrapKind,
+    CompileTryLayoutTarget, CompileTryTarget, MirBlockId, MirEffect, MirGuardId, MirLocalId,
+    MirOperand, MirSafepointId, MirSourceOrigin, MirStatementId,
 };
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -11,16 +9,18 @@ pub enum MirSwitchValue {
     Char(char),
     Signed(i64),
     Unsigned(u64),
-    Variant {
-        type_id: vela_def::TypeId,
-        variant: VariantId,
-    },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MirSwitchCase {
     pub value: MirSwitchValue,
     pub target: MirBlockId,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct MirTryContinue {
+    pub layout: CompileTryLayoutTarget,
+    pub block: MirBlockId,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -48,6 +48,15 @@ pub enum MirTerminatorKind {
         passed: MirBlockId,
         slow: MirBlockId,
     },
+    TrySwitch {
+        value: MirOperand,
+        target: CompileTryTarget,
+        result: MirLocalId,
+        continuations: Vec<MirTryContinue>,
+        propagate: MirBlockId,
+        invalid: MirBlockId,
+        join: MirBlockId,
+    },
     IteratorNext {
         iterator: MirOperand,
         item: MirLocalId,
@@ -65,9 +74,8 @@ pub enum MirTerminatorKind {
         done: MirBlockId,
     },
     Return(Option<MirOperand>),
-    Fail {
-        kind: MirTrapKind,
-        message: Option<String>,
+    TryTypeMismatch {
+        target: CompileTryTarget,
     },
     Unreachable,
 }
@@ -105,11 +113,12 @@ impl MirTerminatorKind {
                 mode: MirRangeStepMode::DynamicInteger,
                 ..
             }
-            | Self::Fail { .. } => MirEffect::may_trap(),
+            | Self::TryTypeMismatch { .. } => MirEffect::may_trap(),
             Self::Jump(_)
             | Self::Branch { .. }
             | Self::Switch { .. }
             | Self::GuardBranch { .. }
+            | Self::TrySwitch { .. }
             | Self::RangeNext {
                 mode: MirRangeStepMode::I64Proven,
                 ..

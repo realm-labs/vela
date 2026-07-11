@@ -1,7 +1,11 @@
 use vela_common::SourceId;
 use vela_def::{script_function_id, script_inherent_method_id, script_trait_method_id};
+use vela_hir::body::HirPatternKind;
 use vela_hir::module_graph::{ModulePath, ModuleSource};
-use vela_mir::{CompileFunctionIdentity, CompileMethodClass, CompileParameterDefault};
+use vela_mir::{
+    CompileFunctionIdentity, CompileMethodClass, CompileParameterDefault,
+    CompilePatternConstructorTarget,
+};
 
 use super::{FixtureRoots, prepare_source};
 use crate::compiler::options::CompilerOptions;
@@ -93,6 +97,83 @@ impl Player {
         "game::combat.__impl.game::combat::Player.bonus"
     );
     assert_eq!(executable.function, script_function_id(code_symbol));
+}
+
+#[test]
+fn qualified_record_patterns_are_placed_as_explicit_never_matches() {
+    let sources = [
+        ModuleSource::new(
+            SourceId::new(912),
+            ModulePath::from_qualified("game::main"),
+            r#"
+fn main() {
+    let reward = game::reward::Reward { amount: 7 };
+    return match reward { game::reward::Reward { amount } => amount, _ => 0 };
+}
+"#,
+        ),
+        ModuleSource::new(
+            SourceId::new(913),
+            ModulePath::from_qualified("game::reward"),
+            "pub struct Reward { amount: i64 }",
+        ),
+    ];
+    let semantic = parse_semantic_modules(&sources).expect("module semantic graph");
+    let (body, pattern) = semantic
+        .script_metadata_graph()
+        .bodies()
+        .find_map(|body| {
+            body.patterns.values().find_map(|pattern| {
+                matches!(pattern.kind, HirPatternKind::RecordVariant { .. })
+                    .then_some((body.id, pattern.id))
+            })
+        })
+        .expect("qualified record pattern");
+    let script_function_symbols = semantic.script_function_symbols();
+    let type_symbols = semantic.type_symbols();
+    let global_symbols = semantic.global_symbols();
+    let evaluated_constants = semantic.evaluated_constants().expect("module constants");
+    let schema_defaults = semantic
+        .schema_defaults(&type_symbols, &evaluated_constants)
+        .expect("module schema defaults");
+    let options = CompilerOptions::default();
+    let input = prepare_semantic_input(SemanticInputRequest {
+        graph: semantic.script_metadata_graph(),
+        roots: SemanticRoots::Program,
+        script_function_symbols: &script_function_symbols,
+        script_methods: semantic.script_method_catalog(),
+        type_symbols: &type_symbols,
+        global_symbols: &global_symbols,
+        evaluated_constants: &evaluated_constants,
+        schema_defaults: &schema_defaults,
+        options: &options,
+        registry: None,
+    })
+    .expect("qualified record semantic input");
+    let targets = input.targets();
+    let function = targets
+        .compilation_roots()
+        .find_map(|(function, root)| (root.body == body).then_some(function))
+        .expect("owning function root");
+    let target = targets
+        .function_targets(function)
+        .and_then(|targets| targets.pattern_constructor(pattern))
+        .expect("qualified record pattern target");
+    let CompilePatternConstructorTarget::NeverMatchesRecord { type_id, fields } = target else {
+        panic!("expected explicit never-match record placement, got {target:?}")
+    };
+    let descriptor = targets
+        .type_descriptor(*type_id)
+        .expect("record type descriptor");
+    assert_eq!(descriptor.runtime_name, "game::reward::Reward");
+    assert_eq!(fields.len(), 1);
+    assert_eq!(
+        targets
+            .field_descriptor(fields[0])
+            .expect("record field descriptor")
+            .name,
+        "amount"
+    );
 }
 
 #[test]

@@ -19,6 +19,7 @@ use super::{MirVerifyErrorKind, MirVerifyTarget, verify_mir};
 
 mod builder_sweep;
 mod contracts;
+mod try_regions;
 
 const SOURCE: SourceId = SourceId::new(111);
 const BODY: HirBodyId = HirBodyId::new(700);

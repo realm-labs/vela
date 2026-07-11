@@ -770,6 +770,19 @@ fn write_terminator(formatter: &mut fmt::Formatter<'_>, terminator: &MirTerminat
             "guard.branch {} with {guard} -> passed {passed}, slow {slow}",
             operand_text(value)
         )?,
+        MirTerminatorKind::TrySwitch {
+            value,
+            target,
+            result,
+            continuations,
+            propagate,
+            invalid,
+            join,
+        } => write!(
+            formatter,
+            "try.switch {} target={target:?} result={result} continuations={continuations:?} propagate={propagate} invalid={invalid} join={join}",
+            operand_text(value)
+        )?,
         MirTerminatorKind::IteratorNext {
             iterator,
             item,
@@ -801,8 +814,8 @@ fn write_terminator(formatter: &mut fmt::Formatter<'_>, terminator: &MirTerminat
                 .as_ref()
                 .map_or_else(|| "unit".to_owned(), operand_text)
         )?,
-        MirTerminatorKind::Fail { kind, message } => {
-            write!(formatter, "fail {kind:?} {message:?}")?;
+        MirTerminatorKind::TryTypeMismatch { target } => {
+            write!(formatter, "try.type-mismatch target={target:?}")?;
         }
         MirTerminatorKind::Unreachable => formatter.write_str("unreachable")?,
     }
@@ -892,16 +905,9 @@ fn pattern_predicate(predicate: &MirPatternPredicate) -> String {
         MirPatternPredicate::TupleArity { value, arity } => {
             format!("pattern.tuple-arity {} == {arity}", operand_text(value))
         }
-        MirPatternPredicate::RecordShape {
-            value,
-            type_id,
-            shape,
-        } => format!(
-            "pattern.record-shape {} type#{} shape#{}",
-            operand_text(value),
-            type_id.get(),
-            shape.get()
-        ),
+        MirPatternPredicate::NeverMatches { value } => {
+            format!("pattern.never {}", operand_text(value))
+        }
         MirPatternPredicate::VariantShape {
             value,
             type_id,
@@ -912,21 +918,12 @@ fn pattern_predicate(predicate: &MirPatternPredicate) -> String {
             type_id.get(),
             variant.get()
         ),
-        MirPatternPredicate::DynamicRecord {
-            value,
-            type_name,
-            required_fields,
-        } => format!(
-            "pattern.record.dynamic {} type={type_name:?} fields={required_fields:?}",
-            operand_text(value)
-        ),
         MirPatternPredicate::DynamicVariant {
             value,
             owner_name,
             variant_name,
-            required_fields,
         } => format!(
-            "pattern.variant.dynamic {} owner={owner_name:?} variant={variant_name:?} fields={required_fields:?}",
+            "pattern.variant.dynamic {} owner={owner_name:?} variant={variant_name:?}",
             operand_text(value)
         ),
     }

@@ -1,4 +1,4 @@
-use vela_common::{PrimitiveTag, ShapeId, SourceId, Span};
+use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_def::{FunctionId, TypeId, VariantId};
 use vela_hir::ids::HirBodyId;
 
@@ -94,7 +94,6 @@ fn mir_model_pattern_predicates_are_pure_and_projection_complete() {
     let scrutinee = function.add_synthetic_local(MirValueType::Dynamic, origin);
     let value = MirOperand::Local(scrutinee);
     let type_id = TypeId::new(703);
-    let shape = ShapeId::new(704);
     let variant = VariantId::new(705);
 
     let predicates = [
@@ -102,26 +101,18 @@ fn mir_model_pattern_predicates_are_pure_and_projection_complete() {
             value: value.clone(),
             arity: 2,
         },
-        MirPatternPredicate::RecordShape {
+        MirPatternPredicate::NeverMatches {
             value: value.clone(),
-            type_id,
-            shape,
         },
         MirPatternPredicate::VariantShape {
             value: value.clone(),
             type_id,
             variant,
         },
-        MirPatternPredicate::DynamicRecord {
-            value: value.clone(),
-            type_name: "ExternalRecord".to_owned(),
-            required_fields: vec!["name".to_owned(), "level".to_owned()],
-        },
         MirPatternPredicate::DynamicVariant {
             value,
             owner_name: "ExternalState".to_owned(),
             variant_name: "Ready".to_owned(),
-            required_fields: vec!["payload".to_owned()],
         },
     ];
 
@@ -147,10 +138,9 @@ fn mir_model_pattern_predicates_are_pure_and_projection_complete() {
 
     for expected in [
         "pattern.tuple-arity l0 == 2 [pure]",
-        "pattern.record-shape l0 type#703 shape#704 [pure]",
+        "pattern.never l0 [pure]",
         "pattern.variant-shape l0 type#703 variant#705 [pure]",
-        "pattern.record.dynamic l0 type=\"ExternalRecord\" fields=[\"name\", \"level\"] [pure]",
-        "pattern.variant.dynamic l0 owner=\"ExternalState\" variant=\"Ready\" fields=[\"payload\"] [pure]",
+        "pattern.variant.dynamic l0 owner=\"ExternalState\" variant=\"Ready\" [pure]",
     ] {
         assert!(dump.contains(expected), "missing `{expected}` in:\n{dump}");
     }

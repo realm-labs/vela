@@ -1,5 +1,5 @@
 use vela_analysis::executable::{ExecutableAnalysisGeneration, ExecutableAnalysisInput};
-use vela_common::SourceId;
+use vela_common::{ShapeId, SourceId};
 use vela_def::{FieldId, FunctionId, TypeId, VariantId};
 use vela_hir::body::{HirBody, HirPatternKind};
 use vela_hir::ids::HirPatternId;
@@ -305,7 +305,7 @@ fn mir_builder_match_tuple_predicate_precedes_the_success_binding_guard() {
 #[test]
 fn mir_builder_match_checks_precede_fresh_binding_projections_and_guard() {
     let program = build(
-        "fn main(value, gate) { return match value { (Packet(inner), 9) if gate => inner, _ => 0 }; }",
+        "fn main(value, gate) { return match value { (External::Packet(inner), 9) if gate => inner, _ => 0 }; }",
         &["value", "gate"],
         |body, targets| {
             let packet = body
@@ -321,8 +321,9 @@ fn mir_builder_match_checks_precede_fresh_binding_projections_and_guard() {
             targets.insert_pattern_constructor(
                 FUNCTION,
                 packet.id,
-                CompilePatternConstructorTarget::DynamicRecord {
-                    type_name: "Packet".to_owned(),
+                CompilePatternConstructorTarget::DynamicVariant {
+                    owner_name: "External".to_owned(),
+                    variant_name: "Packet".to_owned(),
                     fields: vec!["0".to_owned()],
                 },
                 pattern_origin(body, packet.id),
@@ -467,7 +468,7 @@ fn mir_builder_tuple_only_let_needs_no_generic_mismatch_block() {
     assert!(
         function.blocks().all(|(_, block)| !matches!(
             block.terminator().map(|terminator| &terminator.kind),
-            Some(MirTerminatorKind::Fail { .. })
+            Some(MirTerminatorKind::TryTypeMismatch { .. })
         )),
         "tuple arity guards carry their own trapping behavior\n{dump}"
     );
@@ -498,7 +499,7 @@ fn mir_builder_nonbinding_literal_let_is_a_noop() {
 #[test]
 fn mir_builder_constructor_let_projects_bindings_without_matching_the_tag() {
     let program = build(
-        "fn main(value) { let (Packet(inner), _) = value; return inner; }",
+        "fn main(value) { let (External::Packet(inner), _) = value; return inner; }",
         &["value"],
         |body, targets| {
             let packet = body
@@ -514,8 +515,9 @@ fn mir_builder_constructor_let_projects_bindings_without_matching_the_tag() {
             targets.insert_pattern_constructor(
                 FUNCTION,
                 packet.id,
-                CompilePatternConstructorTarget::DynamicRecord {
-                    type_name: "Packet".to_owned(),
+                CompilePatternConstructorTarget::DynamicVariant {
+                    owner_name: "External".to_owned(),
+                    variant_name: "Packet".to_owned(),
                     fields: vec!["0".to_owned()],
                 },
                 pattern_origin(body, packet.id),
@@ -537,7 +539,7 @@ fn mir_builder_constructor_let_projects_bindings_without_matching_the_tag() {
         "{dump}"
     );
     assert!(dump.contains("field.read"), "{dump}");
-    assert!(dump.contains("Dynamic { name: \"0\" }"), "{dump}");
+    assert!(dump.contains("DynamicVariant { name: \"0\" }"), "{dump}");
     assert!(!dump.contains("pattern.record.dynamic"), "{dump}");
     assert!(!dump.contains("-> fail"), "{dump}");
     assert!(function.statements().any(|(_, statement)| {
@@ -651,11 +653,11 @@ fn main(state, gate) {
 }
 
 #[test]
-fn mir_builder_consumes_dynamic_record_and_variant_pattern_targets() {
+fn mir_builder_consumes_dynamic_variant_pattern_targets() {
     let source = r#"
 fn main(value) {
     return match value {
-        Packet { payload } => payload,
+        External::Packet { payload } => payload,
         External::Ready(inner) => inner,
         _ => 0,
     };
@@ -671,15 +673,15 @@ fn main(value) {
         }) {
             let path = pattern_path(body, pattern.id);
             let target = match path.as_slice() {
-                [packet] if packet == "Packet" => CompilePatternConstructorTarget::DynamicRecord {
-                    type_name: packet.clone(),
-                    fields: vec!["payload".to_owned()],
-                },
-                [owner, variant] if owner == "External" && variant == "Ready" => {
+                [owner, variant] if owner == "External" => {
                     CompilePatternConstructorTarget::DynamicVariant {
                         owner_name: owner.clone(),
                         variant_name: variant.clone(),
-                        fields: vec!["0".to_owned()],
+                        fields: if variant == "Packet" {
+                            vec!["payload".to_owned()]
+                        } else {
+                            vec!["0".to_owned()]
+                        },
                     }
                 }
                 other => panic!("unexpected dynamic pattern {other:?}"),
@@ -696,26 +698,86 @@ fn main(value) {
     let dump = program.dump();
 
     assert!(
-        dump.contains("pattern.record.dynamic")
-            && dump.contains("type=\"Packet\"")
-            && dump.contains("fields=[\"payload\"]"),
+        dump.contains("pattern.variant.dynamic")
+            && dump.contains("owner=\"External\"")
+            && dump.contains("variant=\"Packet\""),
         "{dump}"
     );
     assert!(
         dump.contains("pattern.variant.dynamic")
             && dump.contains("owner=\"External\"")
-            && dump.contains("variant=\"Ready\"")
-            && dump.contains("fields=[\"0\"]"),
+            && dump.contains("variant=\"Ready\""),
         "{dump}"
     );
     assert!(dump.matches("field.read").count() >= 2, "{dump}");
 }
 
 #[test]
+fn mir_builder_lowers_qualified_record_compatibility_as_never_match() {
+    let record = TypeId::new(8_720);
+    let shape = ShapeId::new(8_721);
+    let payload = FieldId::new(8_722);
+    let program = build(
+        "fn main(value) { return match value { External::Packet { payload } => payload, _ => 0 }; }",
+        &["value"],
+        |body, targets| {
+            let pattern = body
+                .patterns
+                .values()
+                .find(|pattern| matches!(pattern.kind, HirPatternKind::RecordVariant { .. }))
+                .expect("qualified record pattern");
+            let origin = pattern_origin(body, pattern.id);
+            targets.insert_type_descriptor(
+                CompileTypeDescriptor {
+                    id: record,
+                    canonical_name: "script::External::Packet".to_owned(),
+                    runtime_name: "External::Packet".to_owned(),
+                    class: CompileTypeClass::ScriptRecord,
+                    shape: Some(shape),
+                    fields: vec![payload],
+                    variants: Vec::new(),
+                },
+                origin,
+            )?;
+            targets.insert_field_descriptor(
+                CompileFieldDescriptor {
+                    id: payload,
+                    owner: record,
+                    variant: None,
+                    name: "payload".to_owned(),
+                    contract: None,
+                    declaration_order: 0,
+                    access: CompileFieldAccess::script(),
+                    host_runtime: None,
+                },
+                origin,
+            )?;
+            targets.insert_pattern_constructor(
+                FUNCTION,
+                pattern.id,
+                CompilePatternConstructorTarget::NeverMatchesRecord {
+                    type_id: record,
+                    fields: vec![payload],
+                },
+                origin,
+            )
+        },
+    );
+    let dump = program.dump();
+
+    assert!(dump.contains("pattern.never"), "{dump}");
+    assert!(
+        dump.contains("field.read") && dump.contains("DynamicVariant { name: \"payload\" }"),
+        "{dump}"
+    );
+    crate::verify_mir(&program).expect("never-match record compatibility MIR verifies");
+}
+
+#[test]
 fn mir_builder_refutable_index_and_value_patterns_advance_the_source_index() {
     let source = r#"
 fn main(values) {
-    for 1, Pair(left, right) in values { return left; }
+    for 1, External::Pair(left, right) in values { return left; }
     return 0;
 }
 "#;
@@ -733,8 +795,9 @@ fn main(values) {
         targets.insert_pattern_constructor(
             FUNCTION,
             pattern.id,
-            CompilePatternConstructorTarget::DynamicRecord {
-                type_name: "Pair".to_owned(),
+            CompilePatternConstructorTarget::DynamicVariant {
+                owner_name: "External".to_owned(),
+                variant_name: "Pair".to_owned(),
                 fields: vec!["0".to_owned(), "1".to_owned()],
             },
             pattern_origin(body, pattern.id),
@@ -789,7 +852,7 @@ fn main(values) {
             matches!(
                 kind,
                 MirStatementKind::Assign(crate::MirRvalue::PatternPredicate(
-                    crate::MirPatternPredicate::DynamicRecord { .. }
+                    crate::MirPatternPredicate::DynamicVariant { .. }
                 ))
             )
         })

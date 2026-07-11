@@ -29,7 +29,7 @@ pub enum CompileFieldTarget {
         variant: VariantId,
         field: FieldId,
     },
-    Dynamic {
+    DynamicRecord {
         name: String,
     },
 }
@@ -100,19 +100,14 @@ pub enum CompileConstructorTarget {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompilePatternConstructorTarget {
-    Record {
+    NeverMatchesRecord {
         type_id: TypeId,
-        shape: ShapeId,
         fields: Vec<FieldId>,
     },
     Variant {
         type_id: TypeId,
         variant: VariantId,
         fields: Vec<FieldId>,
-    },
-    DynamicRecord {
-        type_name: String,
-        fields: Vec<String>,
     },
     DynamicVariant {
         owner_name: String,

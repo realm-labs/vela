@@ -365,9 +365,6 @@ pub(super) fn switch_case(
     actual: MirValueType,
     case: &MirSwitchValue,
 ) -> Result<(), MirVerifyError> {
-    if let MirSwitchValue::Variant { type_id, variant } = case {
-        require_variant(verifier, *type_id, *variant, origin)?;
-    }
     let compatible = match case {
         MirSwitchValue::Bool(_) => {
             matches!(
@@ -388,9 +385,6 @@ pub(super) fn switch_case(
         MirSwitchValue::Unsigned(_) => {
             matches!(actual, MirValueType::Dynamic)
                 || matches!(actual, MirValueType::Primitive(tag) if tag.numeric_tag().is_some_and(|tag| tag.is_unsigned_integer()))
-        }
-        MirSwitchValue::Variant { type_id, .. } => {
-            actual == MirValueType::Dynamic || actual == MirValueType::Enum(*type_id)
         }
     };
     if compatible {

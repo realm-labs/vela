@@ -25,7 +25,7 @@ mod tests;
 pub use builder::build_mir;
 pub use cfg::{
     MirBasicBlock, MirRangeStepMode, MirSwitchCase, MirSwitchValue, MirTerminator,
-    MirTerminatorKind,
+    MirTerminatorKind, MirTryContinue,
 };
 pub use contract::{HostTypeTarget, MirCallableKind, MirTypeContract};
 pub use effects::{
@@ -59,7 +59,7 @@ pub use operations::{
     MirDynamicBinaryOp, MirDynamicUnaryOp, MirFieldTarget, MirFormatPart, MirGlobalOperation,
     MirHostMutation, MirHostOperation, MirHostPath, MirHostPathSegment, MirIdentityOp, MirIndexKey,
     MirIndexOperation, MirIteratorOperation, MirLiteralSide, MirReflectionOperation,
-    MirScriptArgument, MirScriptParameterGuardMode, MirStatement, MirStatementKind, MirTrapKind,
+    MirScriptArgument, MirScriptParameterGuardMode, MirStatement, MirStatementKind,
 };
 pub use origin::{MirSourceNode, MirSourceOrigin};
 pub use targets::{

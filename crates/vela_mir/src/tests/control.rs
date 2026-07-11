@@ -140,9 +140,12 @@ fn mir_model_guards_expose_slow_paths_as_cfg_edges() {
             origin,
         })
     );
-    let guard = function.add_guard(MirGuard {
-        assumption: MirGuardAssumption::TruthyBoolean,
-        context: None,
+    let trap_guard = function.add_guard(MirGuard {
+        assumption: MirGuardAssumption::Type(crate::MirTypeContract::Primitive(PrimitiveTag::Bool)),
+        context: Some(crate::MirGuardContext::new(
+            crate::MirGuardLocation::Local,
+            "condition",
+        )),
         origin,
     });
     function
@@ -153,18 +156,23 @@ fn mir_model_guards_expose_slow_paths_as_cfg_edges() {
                 None,
                 MirStatementKind::GuardTrap {
                     value: MirOperand::Local(value),
-                    guard,
+                    guard: trap_guard,
                 },
                 MirEffect::may_trap(),
                 None,
             ),
         )
         .expect("contract guards may trap without introducing a hidden edge");
+    let branch_guard = function.add_guard(MirGuard {
+        assumption: MirGuardAssumption::Type(crate::MirTypeContract::Primitive(PrimitiveTag::Bool)),
+        context: None,
+        origin,
+    });
     let branch = MirTerminator::new(
         origin,
         MirTerminatorKind::GuardBranch {
             value: MirOperand::Local(value),
-            guard,
+            guard: branch_guard,
             passed,
             slow,
         },

@@ -7,6 +7,7 @@
 mod cfg;
 mod dataflow;
 mod operations;
+mod try_regions;
 
 #[cfg(test)]
 mod tests;
@@ -225,6 +226,7 @@ pub fn verify_mir(program: &MirProgram) -> Result<VerifiedMirProgram<'_>, MirVer
         operations::verify_function_metadata(&verifier)?;
         let graph = cfg::analyze(&verifier)?;
         operations::verify_operations(&verifier, &graph)?;
+        try_regions::verify(&verifier, &graph)?;
         dataflow::verify(&verifier, &graph)?;
     }
 

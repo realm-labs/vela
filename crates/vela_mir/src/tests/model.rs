@@ -172,7 +172,7 @@ fn mir_model_rejects_effect_and_destination_contradictions() {
         Some(MirPlace::temp(destination)),
         MirStatementKind::WriteField {
             receiver: MirOperand::Immediate(MirImmediate::Unit),
-            target: MirFieldTarget::Dynamic {
+            target: MirFieldTarget::DynamicRecord {
                 name: "value".to_owned(),
             },
             value: MirOperand::Immediate(MirImmediate::Unit),
@@ -190,7 +190,7 @@ fn mir_model_rejects_effect_and_destination_contradictions() {
         None,
         MirStatementKind::WriteField {
             receiver: MirOperand::Immediate(MirImmediate::Unit),
-            target: MirFieldTarget::Dynamic {
+            target: MirFieldTarget::DynamicRecord {
                 name: "value".to_owned(),
             },
             value: MirOperand::Immediate(MirImmediate::Unit),

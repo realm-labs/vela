@@ -72,20 +72,24 @@ backend-neutral targets and contracts, explicit host/reflection/call/allocation
 operations, explicit recoverable-guard CFG edges, and stable human-readable
 dumps. Heap-backed evaluated constants materialize at explicit allocation
 safepoints, method receivers and default-delivery policies are explicit, and
-try propagation has no hidden statement edge. Phase 2 is active. The initial
-complete-function builder slice maps parameters and mutable script locals,
-lowers scalar/string/bytes literals, nested blocks, explicit and implicit
-returns, typed and dynamic unary/binary operators, contextual numeric operands,
-identity comparison, and ranges while preserving left-to-right evaluation and
-explicit allocation/dynamic-comparison safepoints. Tuple, array, logical-key
-map, interpolated-string, and explicitly targeted set construction now lower at
-allocation safepoints. Block and if values, nested else-if, and short-circuit
-operators use explicit CFG edges, mutable join locals, and unreachable joins;
-earlier mutable-local operands are captured before later source expressions.
-The model also owns ordered dynamic record/variant aggregates and pure
-projection-safe pattern predicates. Unsupported execution families fail with
-`MirBuildError`; they never invoke direct bytecode lowering. No MIR backend
-selector or production MIR route exists.
+try propagation has no hidden statement edge. Phase 2 complete-function
+lowering is now complete: declarations and evaluated constants, assignments,
+all control flow and patterns, tuples/arrays/maps/sets/interpolation,
+records/enums, every call family, reflection, HostAccess, lambdas and captures,
+parameter-default prologues, loops/ranges/iterators, try propagation, and
+source-derived scalar evaluation points all lower without a bytecode fallback.
+Left-to-right evaluation and single evaluation are explicit throughout.
+
+Phase 3 verification is active. CFG reachability, terminators, dominance,
+single-definition temps, definite local initialization, operation/target/type/
+effect/destination contracts, safepoints, source origins, debug metadata,
+HostAccess isolation, and guard contracts are verified with positive builder
+sweeps and malformed-MIR fixtures. Canonical compatibility forms now cover
+always-false qualified record patterns, tag-only dynamic variant predicates,
+record-family enum assignment writes, specialization slow edges, and atomic
+try regions. Block/value liveness, safepoint live sets, and debug live regions
+remain the Phase 3 closure. No MIR backend selector or production MIR route
+exists.
 
 The Phase 1 semantic gate also fixes backend-bearing edge cases before a
 builder exists: owner-qualified executable method lookup preserves shared trait

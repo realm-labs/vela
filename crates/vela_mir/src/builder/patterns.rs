@@ -13,19 +13,13 @@ use super::core::{FunctionBuilder, value_type};
 
 #[derive(Clone)]
 enum PatternFieldLayout {
-    Record {
-        type_id: vela_def::TypeId,
-        shape: vela_common::ShapeId,
+    NeverMatchesRecord {
         fields: Vec<vela_def::FieldId>,
     },
     Variant {
         type_id: vela_def::TypeId,
         variant: vela_def::VariantId,
         fields: Vec<vela_def::FieldId>,
-    },
-    DynamicRecord {
-        type_name: String,
-        fields: Vec<String>,
     },
     DynamicVariant {
         owner_name: String,
@@ -721,15 +715,9 @@ impl FunctionBuilder<'_> {
                 )
             })?;
         Ok(match target {
-            CompilePatternConstructorTarget::Record {
-                type_id,
-                shape,
-                fields,
-            } => PatternFieldLayout::Record {
-                type_id,
-                shape,
-                fields,
-            },
+            CompilePatternConstructorTarget::NeverMatchesRecord { fields, .. } => {
+                PatternFieldLayout::NeverMatchesRecord { fields }
+            }
             CompilePatternConstructorTarget::Variant {
                 type_id,
                 variant,
@@ -739,9 +727,6 @@ impl FunctionBuilder<'_> {
                 variant,
                 fields,
             },
-            CompilePatternConstructorTarget::DynamicRecord { type_name, fields } => {
-                PatternFieldLayout::DynamicRecord { type_name, fields }
-            }
             CompilePatternConstructorTarget::DynamicVariant {
                 owner_name,
                 variant_name,
@@ -762,10 +747,9 @@ impl FunctionBuilder<'_> {
     ) -> Result<(), MirBuildError> {
         let origin = self.pattern_origin(pattern)?;
         let actual_len = match layout {
-            PatternFieldLayout::Record { fields, .. }
+            PatternFieldLayout::NeverMatchesRecord { fields, .. }
             | PatternFieldLayout::Variant { fields, .. } => fields.len(),
-            PatternFieldLayout::DynamicRecord { fields, .. }
-            | PatternFieldLayout::DynamicVariant { fields, .. } => fields.len(),
+            PatternFieldLayout::DynamicVariant { fields, .. } => fields.len(),
         };
         if actual_len != expected_names.len() {
             return Err(self.inconsistent(
@@ -777,7 +761,7 @@ impl FunctionBuilder<'_> {
             ));
         }
         match layout {
-            PatternFieldLayout::Record { fields, .. }
+            PatternFieldLayout::NeverMatchesRecord { fields, .. }
             | PatternFieldLayout::Variant { fields, .. } => {
                 for (field, expected) in fields.iter().zip(expected_names) {
                     let descriptor =
@@ -798,8 +782,7 @@ impl FunctionBuilder<'_> {
                     }
                 }
             }
-            PatternFieldLayout::DynamicRecord { fields, .. }
-            | PatternFieldLayout::DynamicVariant { fields, .. } => {
+            PatternFieldLayout::DynamicVariant { fields, .. } => {
                 if fields != expected_names {
                     return Err(
                         self.inconsistent(origin, "dynamic pattern field order disagrees with HIR")
@@ -818,11 +801,9 @@ impl FunctionBuilder<'_> {
         failure: crate::MirBlockId,
     ) -> Result<(), MirBuildError> {
         let predicate = match layout {
-            PatternFieldLayout::Record { type_id, shape, .. } => MirPatternPredicate::RecordShape {
-                value,
-                type_id: *type_id,
-                shape: *shape,
-            },
+            PatternFieldLayout::NeverMatchesRecord { .. } => {
+                MirPatternPredicate::NeverMatches { value }
+            }
             PatternFieldLayout::Variant {
                 type_id, variant, ..
             } => MirPatternPredicate::VariantShape {
@@ -830,22 +811,14 @@ impl FunctionBuilder<'_> {
                 type_id: *type_id,
                 variant: *variant,
             },
-            PatternFieldLayout::DynamicRecord {
-                type_name, fields, ..
-            } => MirPatternPredicate::DynamicRecord {
-                value,
-                type_name: type_name.clone(),
-                required_fields: fields.clone(),
-            },
             PatternFieldLayout::DynamicVariant {
                 owner_name,
                 variant_name,
-                fields,
+                ..
             } => MirPatternPredicate::DynamicVariant {
                 value,
                 owner_name: owner_name.clone(),
                 variant_name: variant_name.clone(),
-                required_fields: fields.clone(),
             },
         };
         self.emit_pattern_predicate(pattern, predicate, failure)
@@ -956,17 +929,21 @@ impl FunctionBuilder<'_> {
     ) -> Result<MirOperand, MirBuildError> {
         let origin = self.pattern_origin(nested)?;
         let target = match layout {
-            PatternFieldLayout::Record {
-                type_id,
-                shape,
-                fields,
-            } => MirFieldTarget::RecordSlot {
-                type_id: *type_id,
-                shape: *shape,
-                field: *fields.get(index).ok_or_else(|| {
-                    self.inconsistent(origin, "record pattern field index is out of bounds")
-                })?,
-            },
+            PatternFieldLayout::NeverMatchesRecord { fields, .. } => {
+                let field = fields.get(index).ok_or_else(|| {
+                    self.inconsistent(origin, "never-match record field index is out of bounds")
+                })?;
+                let name = self
+                    .input
+                    .targets()
+                    .field_descriptor(*field)
+                    .ok_or_else(|| {
+                        self.inconsistent(origin, "never-match record field descriptor disappeared")
+                    })?
+                    .name
+                    .clone();
+                MirFieldTarget::DynamicVariant { name }
+            }
             PatternFieldLayout::Variant {
                 type_id,
                 variant,
@@ -978,8 +955,7 @@ impl FunctionBuilder<'_> {
                     self.inconsistent(origin, "variant pattern field index is out of bounds")
                 })?,
             },
-            PatternFieldLayout::DynamicRecord { fields, .. }
-            | PatternFieldLayout::DynamicVariant { fields, .. } => MirFieldTarget::Dynamic {
+            PatternFieldLayout::DynamicVariant { fields, .. } => MirFieldTarget::DynamicVariant {
                 name: fields.get(index).cloned().ok_or_else(|| {
                     self.inconsistent(origin, "dynamic pattern field index is out of bounds")
                 })?,

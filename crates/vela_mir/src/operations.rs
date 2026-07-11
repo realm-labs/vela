@@ -72,7 +72,10 @@ pub enum MirFieldTarget {
         variant: VariantId,
         field: FieldId,
     },
-    Dynamic {
+    DynamicRecord {
+        name: String,
+    },
+    DynamicVariant {
         name: String,
     },
 }
@@ -343,17 +346,6 @@ pub enum MirIteratorOperation {
 pub enum MirFormatPart {
     Text(String),
     Value(MirOperand),
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum MirTrapKind {
-    TypeContract,
-    InvalidOperation,
-    MissingMember,
-    MissingIndex,
-    PermissionDenied,
-    BudgetExceeded,
-    ExplicitFailure,
 }
 
 #[derive(Clone, Debug, PartialEq)]

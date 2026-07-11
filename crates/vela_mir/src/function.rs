@@ -484,6 +484,22 @@ impl MirFunction {
                 require_block(*passed)?;
                 require_block(*slow)?;
             }
+            crate::MirTerminatorKind::TrySwitch {
+                result,
+                continuations,
+                propagate,
+                invalid,
+                join,
+                ..
+            } => {
+                require_local(*result)?;
+                for continuation in continuations {
+                    require_block(continuation.block)?;
+                }
+                require_block(*propagate)?;
+                require_block(*invalid)?;
+                require_block(*join)?;
+            }
             crate::MirTerminatorKind::IteratorNext {
                 item, next, done, ..
             } => {
@@ -506,7 +522,7 @@ impl MirFunction {
                 require_block(*done)?;
             }
             crate::MirTerminatorKind::Return(_)
-            | crate::MirTerminatorKind::Fail { .. }
+            | crate::MirTerminatorKind::TryTypeMismatch { .. }
             | crate::MirTerminatorKind::Unreachable => {}
         }
         let basic_block = self

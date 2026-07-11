@@ -1434,6 +1434,37 @@ materialize the constant at that definition point. Compiler-synthesized CFG
 constants remain inline operands where their enclosing MIR operation already
 fixes the evaluation point.
 
+### MIR Compatibility Canonical Forms
+
+Record-pattern compatibility is decided before MIR construction. Unqualified
+source, imported, and unresolved record patterns retain the legacy unspanned
+`UnsupportedSyntax("match pattern")` error. Qualified source and registered
+record patterns retain their legacy always-false behavior through an explicit
+`NeverMatchesRecord` compile target and pure `NeverMatches` MIR predicate;
+they are not represented as valid structural record matches. Dynamic variant
+predicates check only owner and variant tags. A field that is actually used is
+projected afterward through the enum-field family and may trap independently.
+
+MIR field targets distinguish record-name and variant-name reads. Ordinary
+dynamic member access uses the record family. Assignment preparation
+normalizes stable or dynamic enum-family steps to record-name steps, preserving
+the current `GetRecordField`/`SetRecordField` behavior and its runtime failure
+for enum writes; MIR has no `SetEnum*` fiction.
+
+Try propagation is a verifier-proven `TrySwitch` region with ordered
+Option/Result continuation layouts, one payload read per continuation, a
+shared return-original propagation edge, an owned type-mismatch edge, and an
+explicit join. `TryTypeMismatch` is invalid outside such a region. Physical
+backends consume the verified region atomically as the existing
+`TryPropagate` instruction so instruction-budget behavior remains unchanged.
+
+Recoverable specialization guards are context-free type assumptions with
+distinct passed and slow CFG edges. MIR v1 bytecode lowering always chooses the
+slow edge with an explicit jump; it does not invent a predicate, trap, or
+deoptimization mechanism. Callable arity remains part of callable contracts,
+and truthiness remains an ordinary rvalue plus branch rather than separate
+guard-assumption kinds.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:
