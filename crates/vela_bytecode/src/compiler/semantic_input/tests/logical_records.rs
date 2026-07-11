@@ -127,6 +127,7 @@ fn assert_standard_descriptor(
         .unwrap_or_else(|| panic!("{} type descriptor", kind.runtime_name()));
     assert_eq!(descriptor.class, CompileTypeClass::Standard);
     assert_eq!(descriptor.canonical_name, kind.canonical_name());
+    assert_eq!(descriptor.runtime_name, manifest.runtime_name());
     assert_eq!(descriptor.shape, Some(manifest.shape()));
     assert_eq!(
         descriptor.fields,

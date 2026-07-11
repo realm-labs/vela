@@ -332,6 +332,7 @@ fn mir_verifier_sweeps_hostaccess_builder_output() {
                 CompileTypeDescriptor {
                     id: HOST_TYPE_ID,
                     canonical_name: "host::Root".to_owned(),
+                    runtime_name: "host::Root".to_owned(),
                     class: CompileTypeClass::Host {
                         runtime: HOST_RUNTIME_ID,
                     },
@@ -397,6 +398,7 @@ fn mir_verifier_sweeps_try_builder_output() {
                 CompileTypeDescriptor {
                     id: OPTION_TYPE,
                     canonical_name: "std::Option".to_owned(),
+                    runtime_name: "Option".to_owned(),
                     class: CompileTypeClass::Standard,
                     shape: None,
                     fields: Vec::new(),

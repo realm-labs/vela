@@ -173,7 +173,13 @@ pub enum CompileTypeClass {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompileTypeDescriptor {
     pub id: TypeId,
+    /// Stable semantic lookup identity, including its definition package.
     pub canonical_name: String,
+    /// Exact name carried by runtime record/enum values and diagnostics.
+    ///
+    /// This is producer-owned runtime data, not a lookup alias. It may be
+    /// shared by descriptors whose canonical identities differ.
+    pub runtime_name: String,
     pub class: CompileTypeClass,
     pub shape: Option<ShapeId>,
     pub fields: Vec<FieldId>,

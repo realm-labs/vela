@@ -28,6 +28,14 @@ fn probe(value: Option<i64>) -> Option<i64> {
         only_try_target(&option),
         CompileTryTarget::Expected(option_layout())
     );
+    let option_descriptor = option
+        .input
+        .targets()
+        .type_descriptor(option_layout().type_id)
+        .expect("standard Option descriptor");
+    assert_eq!(option_descriptor.canonical_name, "std::Option");
+    assert_eq!(option_descriptor.runtime_name, "Option");
+    assert!(option.input.targets().type_by_name("Option").is_none());
 
     let result = prepare_source(
         r#"

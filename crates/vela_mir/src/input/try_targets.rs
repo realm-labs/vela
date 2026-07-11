@@ -137,6 +137,7 @@ mod tests {
                 CompileTypeDescriptor {
                     id: type_id,
                     canonical_name: format!("test::{family:?}_{seed}"),
+                    runtime_name: format!("test::{family:?}_{seed}"),
                     class: CompileTypeClass::Standard,
                     shape: None,
                     fields: Vec::new(),

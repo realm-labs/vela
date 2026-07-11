@@ -693,17 +693,19 @@ fn mutation_arg_role(method: &str, param_name: &str, position: usize) -> Mutatio
     }
 }
 
-fn constant_actual(value: &crate::Constant) -> ContractActual {
+fn constant_actual(value: &vela_mir::MirEvaluatedConstant) -> ContractActual {
     match value {
-        crate::Constant::Unit => ContractActual::Exact(TypeFact::UNIT),
-        crate::Constant::Bool(_) => ContractActual::Exact(TypeFact::BOOL),
-        crate::Constant::Char(_) => ContractActual::Exact(TypeFact::CHAR),
-        crate::Constant::Scalar(value) => {
+        vela_mir::MirEvaluatedConstant::Unit => ContractActual::Exact(TypeFact::UNIT),
+        vela_mir::MirEvaluatedConstant::Bool(_) => ContractActual::Exact(TypeFact::BOOL),
+        vela_mir::MirEvaluatedConstant::Char(_) => ContractActual::Exact(TypeFact::CHAR),
+        vela_mir::MirEvaluatedConstant::Scalar(value) => {
             ContractActual::Exact(TypeFact::primitive(value.primitive_tag()))
         }
-        crate::Constant::String(_) => ContractActual::Exact(TypeFact::STRING),
-        crate::Constant::Bytes(_) => ContractActual::Exact(TypeFact::BYTES),
-        crate::Constant::Array(_) | crate::Constant::Map(_) => ContractActual::Dynamic,
+        vela_mir::MirEvaluatedConstant::String(_) => ContractActual::Exact(TypeFact::STRING),
+        vela_mir::MirEvaluatedConstant::Bytes(_) => ContractActual::Exact(TypeFact::BYTES),
+        vela_mir::MirEvaluatedConstant::Array(_) | vela_mir::MirEvaluatedConstant::Map(_) => {
+            ContractActual::Dynamic
+        }
     }
 }
 

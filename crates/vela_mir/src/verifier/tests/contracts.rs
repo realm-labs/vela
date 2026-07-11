@@ -120,6 +120,7 @@ fn mir_verifier_accepts_registry_native_value_method_and_reflection_targets() {
     assert!(table.insert_type(CompileTypeDescriptor {
         id: owner,
         canonical_name: "registry::Value".to_owned(),
+        runtime_name: "registry::Value".to_owned(),
         class: CompileTypeClass::Registry,
         shape: None,
         fields: Vec::new(),
@@ -193,6 +194,7 @@ fn mir_verifier_rejects_incomplete_duplicate_and_mistyped_aggregates() {
     assert!(table.insert_type(CompileTypeDescriptor {
         id: record,
         canonical_name: "verifier::Record".to_owned(),
+        runtime_name: "verifier::Record".to_owned(),
         class: CompileTypeClass::ScriptRecord,
         shape: Some(shape),
         fields: vec![first, second],
@@ -414,6 +416,7 @@ fn mir_verifier_rejects_host_write_permission_bypass() {
     assert!(table.insert_type(CompileTypeDescriptor {
         id: semantic,
         canonical_name: "host::Readonly".to_owned(),
+        runtime_name: "host::Readonly".to_owned(),
         class: CompileTypeClass::Host { runtime },
         shape: None,
         fields: vec![field],

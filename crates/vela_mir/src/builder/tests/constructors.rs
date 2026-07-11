@@ -155,6 +155,7 @@ fn insert_record_layout(
         CompileTypeDescriptor {
             id: RECORD_TYPE,
             canonical_name: "constructors::Record".to_owned(),
+            runtime_name: "constructors::Record".to_owned(),
             class: CompileTypeClass::ScriptRecord,
             shape: Some(RECORD_SHAPE),
             fields: fields.iter().map(|(field, _, _)| *field).collect(),
@@ -503,6 +504,7 @@ fn constructor_builder_lowers_tuple_variants_with_enum_result_type() {
                 CompileTypeDescriptor {
                     id: ENUM_TYPE,
                     canonical_name: "constructors::Choice".to_owned(),
+                    runtime_name: "constructors::Choice".to_owned(),
                     class: CompileTypeClass::ScriptEnum,
                     shape: None,
                     fields: Vec::new(),

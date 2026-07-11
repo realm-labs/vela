@@ -714,6 +714,7 @@ impl Counter {
             CompileTypeDescriptor {
                 id: OWNER_TYPE,
                 canonical_name: owner_name.clone(),
+                runtime_name: owner_name.clone(),
                 class: CompileTypeClass::ScriptRecord,
                 shape: Some(ShapeId::new(8_892)),
                 fields: Vec::new(),

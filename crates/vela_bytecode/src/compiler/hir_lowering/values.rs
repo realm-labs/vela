@@ -166,10 +166,7 @@ impl Compiler<'_, '_> {
             .semantic_input
             .targets()
             .type_descriptor(type_id)
-            .is_some_and(|descriptor| {
-                descriptor.canonical_name == name
-                    || descriptor.canonical_name.ends_with(&format!("::{name}"))
-            });
+            .is_some_and(|descriptor| descriptor.runtime_name == name);
         if source_matches || descriptor_matches {
             Ok(())
         } else {
@@ -292,7 +289,9 @@ impl Compiler<'_, '_> {
                                 format!("constructor default {body:?} is missing"),
                             )
                         })?;
-                    self.emit_constant(constant_from_mir(value))?
+                    self.emit_constant(
+                        crate::compiler::constant_encoding::encode_evaluated_constant(&value),
+                    )?
                 }
             };
             compiled.push((field_name, register));
@@ -823,25 +822,5 @@ impl Compiler<'_, '_> {
             } => Some(expression),
             _ => None,
         }
-    }
-}
-
-pub(super) fn constant_from_mir(value: vela_mir::MirEvaluatedConstant) -> Constant {
-    match value {
-        vela_mir::MirEvaluatedConstant::Unit => Constant::Unit,
-        vela_mir::MirEvaluatedConstant::Bool(value) => Constant::Bool(value),
-        vela_mir::MirEvaluatedConstant::Char(value) => Constant::Char(value),
-        vela_mir::MirEvaluatedConstant::Scalar(value) => Constant::Scalar(value),
-        vela_mir::MirEvaluatedConstant::String(value) => Constant::String(value),
-        vela_mir::MirEvaluatedConstant::Bytes(value) => Constant::Bytes(value),
-        vela_mir::MirEvaluatedConstant::Array(values) => {
-            Constant::Array(values.into_iter().map(constant_from_mir).collect())
-        }
-        vela_mir::MirEvaluatedConstant::Map(entries) => Constant::Map(
-            entries
-                .into_iter()
-                .map(|(key, value)| (key, constant_from_mir(value)))
-                .collect(),
-        ),
     }
 }

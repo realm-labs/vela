@@ -11,6 +11,7 @@ use vela_hir::body::{
     HirStmtKind, HirUnaryOp,
 };
 use vela_hir::ids::{HirBlockId, HirDeclId, HirExprId, HirLocalId};
+use vela_mir::MirEvaluatedConstant;
 
 use crate::Constant;
 
@@ -150,8 +151,8 @@ pub(super) fn validate_deferred_numeric_literal(
 pub(super) fn evaluate_const_body(
     body: &HirBody,
     bindings: &BindingMap,
-    values: &BTreeMap<HirDeclId, Constant>,
-) -> CompileResult<Option<Constant>> {
+    values: &BTreeMap<HirDeclId, MirEvaluatedConstant>,
+) -> CompileResult<Option<MirEvaluatedConstant>> {
     let locals = BTreeMap::new();
     match body.root {
         HirBodyRoot::Expr(expression) => {
@@ -166,9 +167,9 @@ fn evaluate_const_expression(
     body: &HirBody,
     bindings: &BindingMap,
     expression: HirExprId,
-    values: &BTreeMap<HirDeclId, Constant>,
-    locals: &BTreeMap<HirLocalId, Constant>,
-) -> CompileResult<Option<Constant>> {
+    values: &BTreeMap<HirDeclId, MirEvaluatedConstant>,
+    locals: &BTreeMap<HirLocalId, MirEvaluatedConstant>,
+) -> CompileResult<Option<MirEvaluatedConstant>> {
     let Some(expression_record) = body.expression(expression) else {
         return Ok(None);
     };
@@ -191,7 +192,7 @@ fn evaluate_const_expression(
                 && let Some(operand) = body.expression(*operand)
                 && let HirExprKind::Literal(literal) = &operand.kind
             {
-                let value = compile_negated_literal_constant(literal)
+                let value = evaluated_negated_literal_constant(literal)
                     .map_err(|error| error.with_span(operand.origin.span))?;
                 if let Some(value) = value {
                     return Ok(Some(value));
@@ -222,7 +223,7 @@ fn evaluate_const_expression(
             .iter()
             .map(|element| evaluate_const_expression(body, bindings, *element, values, locals))
             .collect::<CompileResult<Option<Vec<_>>>>()
-            .map(|elements| elements.map(Constant::Array)),
+            .map(|elements| elements.map(MirEvaluatedConstant::Array)),
         HirExprKind::Map { entries } => entries
             .iter()
             .map(|entry| {
@@ -236,7 +237,7 @@ fn evaluate_const_expression(
                 Ok(Some((key, value)))
             })
             .collect::<CompileResult<Option<Vec<_>>>>()
-            .map(|entries| entries.map(Constant::Map)),
+            .map(|entries| entries.map(MirEvaluatedConstant::Map)),
         HirExprKind::Block { block } => {
             evaluate_const_block(body, bindings, *block, values, locals)
         }
@@ -262,9 +263,9 @@ fn evaluate_const_block(
     body: &HirBody,
     bindings: &BindingMap,
     block: HirBlockId,
-    values: &BTreeMap<HirDeclId, Constant>,
-    locals: &BTreeMap<HirLocalId, Constant>,
-) -> CompileResult<Option<Constant>> {
+    values: &BTreeMap<HirDeclId, MirEvaluatedConstant>,
+    locals: &BTreeMap<HirLocalId, MirEvaluatedConstant>,
+) -> CompileResult<Option<MirEvaluatedConstant>> {
     let Some(block) = body.blocks.get(&block) else {
         return Ok(None);
     };
@@ -295,7 +296,7 @@ fn evaluate_const_block(
             }
             HirStmtKind::Return { value } => {
                 let Some(value) = value else {
-                    return Ok(Some(Constant::Unit));
+                    return Ok(Some(MirEvaluatedConstant::Unit));
                 };
                 return evaluate_const_expression(body, bindings, *value, values, &locals);
             }
@@ -326,88 +327,146 @@ fn evaluate_const_block(
     Ok(tail_value)
 }
 
-fn hir_literal_constant(literal: &HirLiteral) -> CompileResult<Option<Constant>> {
+fn hir_literal_constant(literal: &HirLiteral) -> CompileResult<Option<MirEvaluatedConstant>> {
+    Ok(match literal {
+        HirLiteral::Bool(value) => Some(MirEvaluatedConstant::Bool(*value)),
+        HirLiteral::Char(value) => Some(MirEvaluatedConstant::Char(*value)),
+        HirLiteral::Integer(_) | HirLiteral::Float(_) => {
+            Some(MirEvaluatedConstant::Scalar(resolved_scalar(
+                literal,
+                LiteralPrimitiveContext::Default,
+                LiteralSign::Positive,
+            )?))
+        }
+        HirLiteral::String(value) => Some(MirEvaluatedConstant::String(value.clone())),
+        HirLiteral::Bytes(value) => Some(MirEvaluatedConstant::Bytes(value.clone())),
+        HirLiteral::Interpolated { .. } | HirLiteral::Invalid { .. } => None,
+    })
+}
+
+fn evaluated_negated_literal_constant(
+    literal: &HirLiteral,
+) -> CompileResult<Option<MirEvaluatedConstant>> {
     match literal {
-        HirLiteral::Interpolated { .. } | HirLiteral::Invalid { .. } => Ok(None),
-        literal => compile_literal_constant(literal).map(Some),
+        HirLiteral::Integer(value) => {
+            if matches!(
+                value.suffix,
+                Some(
+                    HirIntegerSuffix::U8
+                        | HirIntegerSuffix::U16
+                        | HirIntegerSuffix::U32
+                        | HirIntegerSuffix::U64
+                )
+            ) {
+                return Ok(None);
+            }
+            resolved_scalar(
+                literal,
+                LiteralPrimitiveContext::Default,
+                LiteralSign::Negated,
+            )
+            .map(|value| Some(MirEvaluatedConstant::Scalar(value)))
+        }
+        HirLiteral::Float(_) => resolved_scalar(
+            literal,
+            LiteralPrimitiveContext::Default,
+            LiteralSign::Negated,
+        )
+        .map(|value| Some(MirEvaluatedConstant::Scalar(value))),
+        _ => Ok(None),
     }
 }
 
-fn evaluate_unary_const(op: HirUnaryOp, value: Constant) -> Option<Constant> {
+fn evaluate_unary_const(
+    op: HirUnaryOp,
+    value: MirEvaluatedConstant,
+) -> Option<MirEvaluatedConstant> {
     match (op, value) {
-        (HirUnaryOp::Negate, Constant::Scalar(ScalarValue::I8(value))) => value
+        (HirUnaryOp::Negate, MirEvaluatedConstant::Scalar(ScalarValue::I8(value))) => value
             .checked_neg()
-            .map(|value| Constant::Scalar(value.into())),
-        (HirUnaryOp::Negate, Constant::Scalar(ScalarValue::I16(value))) => value
+            .map(|value| MirEvaluatedConstant::Scalar(value.into())),
+        (HirUnaryOp::Negate, MirEvaluatedConstant::Scalar(ScalarValue::I16(value))) => value
             .checked_neg()
-            .map(|value| Constant::Scalar(value.into())),
-        (HirUnaryOp::Negate, Constant::Scalar(ScalarValue::I32(value))) => value
+            .map(|value| MirEvaluatedConstant::Scalar(value.into())),
+        (HirUnaryOp::Negate, MirEvaluatedConstant::Scalar(ScalarValue::I32(value))) => value
             .checked_neg()
-            .map(|value| Constant::Scalar(value.into())),
-        (HirUnaryOp::Negate, Constant::Scalar(ScalarValue::I64(value))) => value
+            .map(|value| MirEvaluatedConstant::Scalar(value.into())),
+        (HirUnaryOp::Negate, MirEvaluatedConstant::Scalar(ScalarValue::I64(value))) => value
             .checked_neg()
-            .map(|value| Constant::Scalar(value.into())),
-        (HirUnaryOp::Negate, Constant::Scalar(ScalarValue::F32(value))) => {
-            Some(Constant::Scalar(ScalarValue::F32(-value)))
+            .map(|value| MirEvaluatedConstant::Scalar(value.into())),
+        (HirUnaryOp::Negate, MirEvaluatedConstant::Scalar(ScalarValue::F32(value))) => {
+            Some(MirEvaluatedConstant::Scalar(ScalarValue::F32(-value)))
         }
-        (HirUnaryOp::Negate, Constant::Scalar(ScalarValue::F64(value))) => {
-            Some(Constant::Scalar(ScalarValue::F64(-value)))
+        (HirUnaryOp::Negate, MirEvaluatedConstant::Scalar(ScalarValue::F64(value))) => {
+            Some(MirEvaluatedConstant::Scalar(ScalarValue::F64(-value)))
         }
-        (HirUnaryOp::Not, Constant::Bool(value)) => Some(Constant::Bool(!value)),
+        (HirUnaryOp::Not, MirEvaluatedConstant::Bool(value)) => {
+            Some(MirEvaluatedConstant::Bool(!value))
+        }
         _ => None,
     }
 }
 
-fn evaluate_binary_const(op: HirBinaryOp, left: Constant, right: Constant) -> Option<Constant> {
+fn evaluate_binary_const(
+    op: HirBinaryOp,
+    left: MirEvaluatedConstant,
+    right: MirEvaluatedConstant,
+) -> Option<MirEvaluatedConstant> {
     match op {
         HirBinaryOp::Add => evaluate_numeric_const(left, right, i64::checked_add, |a, b| a + b),
         HirBinaryOp::Sub => evaluate_numeric_const(left, right, i64::checked_sub, |a, b| a - b),
         HirBinaryOp::Mul => evaluate_numeric_const(left, right, i64::checked_mul, |a, b| a * b),
         HirBinaryOp::Div => match (left, right) {
             (
-                Constant::Scalar(vela_common::ScalarValue::I64(_)),
-                Constant::Scalar(vela_common::ScalarValue::I64(0)),
+                MirEvaluatedConstant::Scalar(vela_common::ScalarValue::I64(_)),
+                MirEvaluatedConstant::Scalar(vela_common::ScalarValue::I64(0)),
             ) => None,
             (
-                Constant::Scalar(vela_common::ScalarValue::I64(left)),
-                Constant::Scalar(vela_common::ScalarValue::I64(right)),
-            ) => left.checked_div(right).map(Constant::i64),
+                MirEvaluatedConstant::Scalar(vela_common::ScalarValue::I64(left)),
+                MirEvaluatedConstant::Scalar(vela_common::ScalarValue::I64(right)),
+            ) => left
+                .checked_div(right)
+                .map(|value| MirEvaluatedConstant::Scalar(value.into())),
             (
-                Constant::Scalar(vela_common::ScalarValue::F64(_)),
-                Constant::Scalar(vela_common::ScalarValue::F64(0.0)),
+                MirEvaluatedConstant::Scalar(vela_common::ScalarValue::F64(_)),
+                MirEvaluatedConstant::Scalar(vela_common::ScalarValue::F64(0.0)),
             ) => None,
             (
-                Constant::Scalar(vela_common::ScalarValue::F64(left)),
-                Constant::Scalar(vela_common::ScalarValue::F64(right)),
-            ) => Some(Constant::Scalar(vela_common::ScalarValue::F64(
+                MirEvaluatedConstant::Scalar(vela_common::ScalarValue::F64(left)),
+                MirEvaluatedConstant::Scalar(vela_common::ScalarValue::F64(right)),
+            ) => Some(MirEvaluatedConstant::Scalar(vela_common::ScalarValue::F64(
                 left / right,
             ))),
             _ => None,
         },
         HirBinaryOp::Rem => match (left, right) {
             (
-                Constant::Scalar(vela_common::ScalarValue::I64(_)),
-                Constant::Scalar(vela_common::ScalarValue::I64(0)),
+                MirEvaluatedConstant::Scalar(vela_common::ScalarValue::I64(_)),
+                MirEvaluatedConstant::Scalar(vela_common::ScalarValue::I64(0)),
             ) => None,
             (
-                Constant::Scalar(vela_common::ScalarValue::I64(left)),
-                Constant::Scalar(vela_common::ScalarValue::I64(right)),
-            ) => left.checked_rem(right).map(Constant::i64),
+                MirEvaluatedConstant::Scalar(vela_common::ScalarValue::I64(left)),
+                MirEvaluatedConstant::Scalar(vela_common::ScalarValue::I64(right)),
+            ) => left
+                .checked_rem(right)
+                .map(|value| MirEvaluatedConstant::Scalar(value.into())),
             (
-                Constant::Scalar(vela_common::ScalarValue::F64(_)),
-                Constant::Scalar(vela_common::ScalarValue::F64(0.0)),
+                MirEvaluatedConstant::Scalar(vela_common::ScalarValue::F64(_)),
+                MirEvaluatedConstant::Scalar(vela_common::ScalarValue::F64(0.0)),
             ) => None,
             (
-                Constant::Scalar(vela_common::ScalarValue::F64(left)),
-                Constant::Scalar(vela_common::ScalarValue::F64(right)),
-            ) => Some(Constant::Scalar(vela_common::ScalarValue::F64(
+                MirEvaluatedConstant::Scalar(vela_common::ScalarValue::F64(left)),
+                MirEvaluatedConstant::Scalar(vela_common::ScalarValue::F64(right)),
+            ) => Some(MirEvaluatedConstant::Scalar(vela_common::ScalarValue::F64(
                 left % right,
             ))),
             _ => None,
         },
-        HirBinaryOp::Equal => evaluate_equality_const(&left, &right).map(Constant::Bool),
+        HirBinaryOp::Equal => {
+            evaluate_equality_const(&left, &right).map(MirEvaluatedConstant::Bool)
+        }
         HirBinaryOp::NotEqual => {
-            evaluate_equality_const(&left, &right).map(|equal| Constant::Bool(!equal))
+            evaluate_equality_const(&left, &right).map(|equal| MirEvaluatedConstant::Bool(!equal))
         }
         HirBinaryOp::IdentityEqual | HirBinaryOp::IdentityNotEqual => None,
         HirBinaryOp::Less => evaluate_numeric_compare_const(left, right, |a, b| a < b),
@@ -415,11 +474,15 @@ fn evaluate_binary_const(op: HirBinaryOp, left: Constant, right: Constant) -> Op
         HirBinaryOp::Greater => evaluate_numeric_compare_const(left, right, |a, b| a > b),
         HirBinaryOp::GreaterEqual => evaluate_numeric_compare_const(left, right, |a, b| a >= b),
         HirBinaryOp::And => match (left, right) {
-            (Constant::Bool(left), Constant::Bool(right)) => Some(Constant::Bool(left && right)),
+            (MirEvaluatedConstant::Bool(left), MirEvaluatedConstant::Bool(right)) => {
+                Some(MirEvaluatedConstant::Bool(left && right))
+            }
             _ => None,
         },
         HirBinaryOp::Or => match (left, right) {
-            (Constant::Bool(left), Constant::Bool(right)) => Some(Constant::Bool(left || right)),
+            (MirEvaluatedConstant::Bool(left), MirEvaluatedConstant::Bool(right)) => {
+                Some(MirEvaluatedConstant::Bool(left || right))
+            }
             _ => None,
         },
         HirBinaryOp::Range | HirBinaryOp::RangeInclusive => None,
@@ -427,53 +490,67 @@ fn evaluate_binary_const(op: HirBinaryOp, left: Constant, right: Constant) -> Op
 }
 
 fn evaluate_numeric_const(
-    left: Constant,
-    right: Constant,
+    left: MirEvaluatedConstant,
+    right: MirEvaluatedConstant,
     int_op: impl FnOnce(i64, i64) -> Option<i64>,
     float_op: impl FnOnce(f64, f64) -> f64,
-) -> Option<Constant> {
+) -> Option<MirEvaluatedConstant> {
     match (left, right) {
         (
-            Constant::Scalar(vela_common::ScalarValue::I64(left)),
-            Constant::Scalar(vela_common::ScalarValue::I64(right)),
-        ) => int_op(left, right).map(Constant::i64),
+            MirEvaluatedConstant::Scalar(vela_common::ScalarValue::I64(left)),
+            MirEvaluatedConstant::Scalar(vela_common::ScalarValue::I64(right)),
+        ) => int_op(left, right).map(|value| MirEvaluatedConstant::Scalar(value.into())),
         (
-            Constant::Scalar(vela_common::ScalarValue::F64(left)),
-            Constant::Scalar(vela_common::ScalarValue::F64(right)),
-        ) => Some(Constant::f64(float_op(left, right))),
+            MirEvaluatedConstant::Scalar(vela_common::ScalarValue::F64(left)),
+            MirEvaluatedConstant::Scalar(vela_common::ScalarValue::F64(right)),
+        ) => Some(MirEvaluatedConstant::Scalar(ScalarValue::F64(float_op(
+            left, right,
+        )))),
         _ => None,
     }
 }
 
-fn evaluate_equality_const(left: &Constant, right: &Constant) -> Option<bool> {
+fn evaluate_equality_const(
+    left: &MirEvaluatedConstant,
+    right: &MirEvaluatedConstant,
+) -> Option<bool> {
     match (left, right) {
-        (Constant::Array(_) | Constant::Map(_), _) | (_, Constant::Array(_) | Constant::Map(_)) => {
-            None
+        (MirEvaluatedConstant::Array(_) | MirEvaluatedConstant::Map(_), _)
+        | (_, MirEvaluatedConstant::Array(_) | MirEvaluatedConstant::Map(_)) => None,
+        (MirEvaluatedConstant::Unit, MirEvaluatedConstant::Unit) => Some(true),
+        (MirEvaluatedConstant::Bool(left), MirEvaluatedConstant::Bool(right)) => {
+            Some(left == right)
         }
-        (Constant::Unit, Constant::Unit) => Some(true),
-        (Constant::Bool(left), Constant::Bool(right)) => Some(left == right),
-        (Constant::Char(left), Constant::Char(right)) => Some(left == right),
-        (Constant::Scalar(left), Constant::Scalar(right)) => Some(left == right),
-        (Constant::String(left), Constant::String(right)) => Some(left == right),
-        (Constant::Bytes(left), Constant::Bytes(right)) => Some(left == right),
+        (MirEvaluatedConstant::Char(left), MirEvaluatedConstant::Char(right)) => {
+            Some(left == right)
+        }
+        (MirEvaluatedConstant::Scalar(left), MirEvaluatedConstant::Scalar(right)) => {
+            Some(left == right)
+        }
+        (MirEvaluatedConstant::String(left), MirEvaluatedConstant::String(right)) => {
+            Some(left == right)
+        }
+        (MirEvaluatedConstant::Bytes(left), MirEvaluatedConstant::Bytes(right)) => {
+            Some(left == right)
+        }
         _ => Some(false),
     }
 }
 
 fn evaluate_numeric_compare_const(
-    left: Constant,
-    right: Constant,
+    left: MirEvaluatedConstant,
+    right: MirEvaluatedConstant,
     op: impl FnOnce(f64, f64) -> bool,
-) -> Option<Constant> {
+) -> Option<MirEvaluatedConstant> {
     match (left, right) {
         (
-            Constant::Scalar(vela_common::ScalarValue::I64(left)),
-            Constant::Scalar(vela_common::ScalarValue::I64(right)),
-        ) => Some(Constant::Bool(op(left as f64, right as f64))),
+            MirEvaluatedConstant::Scalar(vela_common::ScalarValue::I64(left)),
+            MirEvaluatedConstant::Scalar(vela_common::ScalarValue::I64(right)),
+        ) => Some(MirEvaluatedConstant::Bool(op(left as f64, right as f64))),
         (
-            Constant::Scalar(vela_common::ScalarValue::F64(left)),
-            Constant::Scalar(vela_common::ScalarValue::F64(right)),
-        ) => Some(Constant::Bool(op(left, right))),
+            MirEvaluatedConstant::Scalar(vela_common::ScalarValue::F64(left)),
+            MirEvaluatedConstant::Scalar(vela_common::ScalarValue::F64(right)),
+        ) => Some(MirEvaluatedConstant::Bool(op(left, right))),
         _ => None,
     }
 }

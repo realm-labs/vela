@@ -3,6 +3,7 @@
 mod cache_sites;
 mod calls;
 mod const_eval;
+mod constant_encoding;
 mod constructors;
 mod control_flow;
 pub mod error;
@@ -57,7 +58,7 @@ use lambdas::{LambdaCapture, LambdaParam};
 use options::CompilerOptions;
 use param_defaults::ParamDefaultValue;
 use record_shapes::ValueShapeFlow;
-use schema_defaults::ScriptSchemaDefaults;
+use schema_defaults::EvaluatedSchemaDefaults;
 use script_types::{ScriptTypeFlow, type_hint_script_type};
 use semantic::{parse_semantic_modules, parse_semantic_source};
 use value_types::{RuntimeTypeFact, StandardRuntimeType, ValueTypeFlow, type_hint_value_type};
@@ -70,12 +71,12 @@ struct CompilerFacts<'registry> {
     script_method_signatures: BTreeMap<(String, String), Vec<ParamHint>>,
     derived_operator_traits: BTreeMap<String, BTreeSet<String>>,
     script_field_slots: ScriptFieldSlots,
-    schema_defaults: ScriptSchemaDefaults,
+    schema_defaults: EvaluatedSchemaDefaults,
     type_symbols: BTreeMap<HirDeclId, String>,
     global_symbols: BTreeMap<HirDeclId, String>,
     global_slots: BTreeMap<String, GlobalSlot>,
     global_type_symbols: BTreeMap<HirDeclId, String>,
-    const_values: BTreeMap<HirDeclId, Constant>,
+    evaluated_constants: BTreeMap<HirDeclId, vela_mir::MirEvaluatedConstant>,
     options: CompilerOptions,
     registry: Option<RegistryCompileView<'registry>>,
     semantic_input: Arc<semantic_input::PreparedSemanticInput>,
@@ -155,8 +156,8 @@ fn compile_function_source_inner<'registry>(
     let script_field_slots = semantic.script_field_slots(&type_symbols);
     let derived_operator_traits =
         derived_operator_traits(semantic.script_metadata_graph(), &type_symbols);
-    let const_values = semantic.const_values()?;
-    let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values)?;
+    let evaluated_constants = semantic.evaluated_constants()?;
+    let schema_defaults = semantic.schema_defaults(&type_symbols, &evaluated_constants)?;
     let declaration = semantic
         .function_declaration(function_name)
         .ok_or_else(|| {
@@ -175,7 +176,7 @@ fn compile_function_source_inner<'registry>(
             script_methods,
             type_symbols: &type_symbols,
             global_symbols: &global_symbols,
-            constants: &const_values,
+            evaluated_constants: &evaluated_constants,
             schema_defaults: &schema_defaults,
             options,
             registry,
@@ -195,7 +196,7 @@ fn compile_function_source_inner<'registry>(
         global_symbols,
         global_slots,
         global_type_symbols,
-        const_values,
+        evaluated_constants,
         options: options.clone(),
         registry,
         semantic_input,
@@ -277,8 +278,8 @@ fn compile_program_source_inner<'registry>(
     let script_field_slots = semantic.script_field_slots(&type_symbols);
     let derived_operator_traits =
         derived_operator_traits(semantic.script_metadata_graph(), &type_symbols);
-    let const_values = semantic.const_values()?;
-    let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values)?;
+    let evaluated_constants = semantic.evaluated_constants()?;
+    let schema_defaults = semantic.schema_defaults(&type_symbols, &evaluated_constants)?;
     let semantic_input = Arc::new(semantic_input::prepare_semantic_input(
         semantic_input::SemanticInputRequest {
             graph: semantic.script_metadata_graph(),
@@ -287,7 +288,7 @@ fn compile_program_source_inner<'registry>(
             script_methods: script_method_catalog,
             type_symbols: &type_symbols,
             global_symbols: &global_symbols,
-            constants: &const_values,
+            evaluated_constants: &evaluated_constants,
             schema_defaults: &schema_defaults,
             options,
             registry,
@@ -305,7 +306,7 @@ fn compile_program_source_inner<'registry>(
         global_symbols,
         global_slots,
         global_type_symbols,
-        const_values,
+        evaluated_constants,
         options: options.clone(),
         registry,
         semantic_input,
@@ -405,8 +406,8 @@ fn compile_module_sources_inner<'registry>(
     let script_field_slots = semantic.script_field_slots(&type_symbols);
     let derived_operator_traits =
         derived_operator_traits(semantic.script_metadata_graph(), &type_symbols);
-    let const_values = semantic.const_values()?;
-    let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values)?;
+    let evaluated_constants = semantic.evaluated_constants()?;
+    let schema_defaults = semantic.schema_defaults(&type_symbols, &evaluated_constants)?;
     let semantic_input = Arc::new(semantic_input::prepare_semantic_input(
         semantic_input::SemanticInputRequest {
             graph: semantic.script_metadata_graph(),
@@ -415,7 +416,7 @@ fn compile_module_sources_inner<'registry>(
             script_methods: script_method_catalog,
             type_symbols: &type_symbols,
             global_symbols: &global_symbols,
-            constants: &const_values,
+            evaluated_constants: &evaluated_constants,
             schema_defaults: &schema_defaults,
             options,
             registry,
@@ -433,7 +434,7 @@ fn compile_module_sources_inner<'registry>(
         global_symbols,
         global_slots,
         global_type_symbols,
-        const_values,
+        evaluated_constants,
         options: options.clone(),
         registry,
         semantic_input,

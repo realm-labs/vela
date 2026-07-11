@@ -48,6 +48,78 @@ fn assert_input_error(error: MirBuildError, expected_origin: MirSourceOrigin, te
 }
 
 #[test]
+fn runtime_names_are_required_but_are_not_lookup_aliases_or_unique_keys() {
+    let descriptor_origin = origin(395);
+    let first = TypeId::new(396);
+    let second = TypeId::new(397);
+    let mut builder = CompileTargetSnapshot::builder();
+    for (id, canonical_name) in [
+        (first, "package_a::shared::Value"),
+        (second, "package_b::shared::Value"),
+    ] {
+        builder
+            .insert_type_descriptor(
+                CompileTypeDescriptor {
+                    id,
+                    canonical_name: canonical_name.to_owned(),
+                    runtime_name: "shared::Value".to_owned(),
+                    class: CompileTypeClass::OpaqueExternal,
+                    shape: None,
+                    fields: Vec::new(),
+                    variants: Vec::new(),
+                },
+                descriptor_origin,
+            )
+            .expect("distinct canonical type descriptor");
+    }
+
+    let snapshot = builder
+        .build()
+        .expect("a runtime name may be shared by distinct canonical types");
+    assert_eq!(
+        snapshot
+            .type_by_name("package_a::shared::Value")
+            .map(|descriptor| descriptor.id),
+        Some(first)
+    );
+    assert_eq!(
+        snapshot
+            .type_by_name("package_b::shared::Value")
+            .map(|descriptor| descriptor.id),
+        Some(second)
+    );
+    assert!(snapshot.type_by_name("shared::Value").is_none());
+}
+
+#[test]
+fn finalization_rejects_an_empty_runtime_type_name() {
+    let descriptor_origin = origin(398);
+    let mut builder = CompileTargetSnapshot::builder();
+    builder
+        .insert_type_descriptor(
+            CompileTypeDescriptor {
+                id: TypeId::new(399),
+                canonical_name: "package::Value".to_owned(),
+                runtime_name: String::new(),
+                class: CompileTypeClass::OpaqueExternal,
+                shape: None,
+                fields: Vec::new(),
+                variants: Vec::new(),
+            },
+            descriptor_origin,
+        )
+        .expect("empty runtime name is diagnosed during closure validation");
+
+    assert_input_error(
+        builder
+            .build()
+            .expect_err("empty runtime name must reject snapshot"),
+        descriptor_origin,
+        "empty runtime name",
+    );
+}
+
+#[test]
 fn schema_only_snapshot_finalization_proves_complete_descriptor_closure() {
     let external_type = TypeId::new(400);
     let record_type = TypeId::new(401);
@@ -70,6 +142,7 @@ fn schema_only_snapshot_finalization_proves_complete_descriptor_closure() {
             CompileTypeDescriptor {
                 id: external_type,
                 canonical_name: "host::Opaque".to_owned(),
+                runtime_name: "Opaque".to_owned(),
                 class: CompileTypeClass::OpaqueExternal,
                 shape: None,
                 fields: Vec::new(),
@@ -84,6 +157,7 @@ fn schema_only_snapshot_finalization_proves_complete_descriptor_closure() {
             CompileTypeDescriptor {
                 id: record_type,
                 canonical_name: "game::Record".to_owned(),
+                runtime_name: "game::Record".to_owned(),
                 class: CompileTypeClass::ScriptRecord,
                 shape: Some(record_shape),
                 fields: vec![record_field],
@@ -122,6 +196,7 @@ fn schema_only_snapshot_finalization_proves_complete_descriptor_closure() {
             CompileTypeDescriptor {
                 id: enum_type,
                 canonical_name: "game::State".to_owned(),
+                runtime_name: "game::State".to_owned(),
                 class: CompileTypeClass::ScriptEnum,
                 shape: None,
                 fields: Vec::new(),
@@ -320,6 +395,7 @@ fn finalization_rejects_constructor_defaults_missing_from_the_snapshot() {
             CompileTypeDescriptor {
                 id: type_id,
                 canonical_name: "game::Config".to_owned(),
+                runtime_name: "game::Config".to_owned(),
                 class: CompileTypeClass::ScriptRecord,
                 shape: Some(shape),
                 fields: vec![field],
@@ -387,6 +463,7 @@ fn finalization_rejects_unregistered_script_method_executables() {
             CompileTypeDescriptor {
                 id: owner,
                 canonical_name: "game::Owner".to_owned(),
+                runtime_name: "game::Owner".to_owned(),
                 class: CompileTypeClass::ScriptRecord,
                 shape: Some(ShapeId::new(455)),
                 fields: Vec::new(),
@@ -459,6 +536,7 @@ fn finalization_rejects_host_runtime_metadata_that_disagrees_at_use_site() {
             CompileTypeDescriptor {
                 id: host_type.semantic,
                 canonical_name: "host::Player".to_owned(),
+                runtime_name: "Player".to_owned(),
                 class: CompileTypeClass::Host {
                     runtime: host_type.runtime,
                 },

@@ -165,8 +165,8 @@ fn prepare_source_inner(
     let script_methods = semantic.script_method_catalog();
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
-    let constants = semantic.const_values()?;
-    let schema_defaults = semantic.schema_defaults(&type_symbols, &constants)?;
+    let evaluated_constants = semantic.evaluated_constants()?;
+    let schema_defaults = semantic.schema_defaults(&type_symbols, &evaluated_constants)?;
     let options = CompilerOptions::default();
     let input = prepare_semantic_input(SemanticInputRequest {
         graph: semantic.script_metadata_graph(),
@@ -175,7 +175,7 @@ fn prepare_source_inner(
         script_methods,
         type_symbols: &type_symbols,
         global_symbols: &global_symbols,
-        constants: &constants,
+        evaluated_constants: &evaluated_constants,
         schema_defaults: &schema_defaults,
         options: &options,
         registry,

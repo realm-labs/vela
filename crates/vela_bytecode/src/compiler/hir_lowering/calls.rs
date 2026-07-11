@@ -65,12 +65,7 @@ impl Compiler<'_, '_> {
                                         .semantic_input
                                         .targets()
                                         .type_descriptor(method_target.owner)
-                                        .is_none_or(|owner| {
-                                            owner.canonical_name != *type_name
-                                                && !owner
-                                                    .canonical_name
-                                                    .ends_with(&format!("::{type_name}"))
-                                        })
+                                        .is_none_or(|owner| owner.runtime_name != *type_name)
                             })
                     {
                         return Err(self.compile_target_input_error(
@@ -1100,7 +1095,9 @@ impl Compiler<'_, '_> {
                                     format!("tuple constructor default {body:?} is missing"),
                                 )
                             })?;
-                        self.emit_constant(super::values::constant_from_mir(value))?
+                        self.emit_constant(
+                            crate::compiler::constant_encoding::encode_evaluated_constant(&value),
+                        )?
                     }
                 };
                 Ok((field_name, register))

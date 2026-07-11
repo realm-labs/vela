@@ -401,6 +401,7 @@ fn global_read_operand_feeds_hostaccess_root_without_name_reresolution() {
             CompileTypeDescriptor {
                 id: HOST_TYPE_ID,
                 canonical_name: "declarations::HostRoot".to_owned(),
+                runtime_name: "declarations::HostRoot".to_owned(),
                 class: CompileTypeClass::Host {
                     runtime: HOST_RUNTIME_ID,
                 },

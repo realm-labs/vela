@@ -26,6 +26,7 @@ impl GenerationBuilder<'_, '_> {
                 CompileTypeDescriptor {
                     id: type_id,
                     canonical_name: kind.canonical_name(),
+                    runtime_name: manifest.runtime_name().to_owned(),
                     class: CompileTypeClass::Standard,
                     shape: Some(manifest.shape()),
                     fields: manifest.fields().map(|field| field.id()).collect(),

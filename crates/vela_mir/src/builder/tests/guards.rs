@@ -77,6 +77,7 @@ fn main(value, target, condition) {
             CompileTypeDescriptor {
                 id: GUARDED_RECORD,
                 canonical_name: "guards::Expected".to_owned(),
+                runtime_name: "guards::Expected".to_owned(),
                 class: CompileTypeClass::OpaqueExternal,
                 shape: None,
                 fields: Vec::new(),

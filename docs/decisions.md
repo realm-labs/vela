@@ -351,6 +351,10 @@ not source aliases or runtime display names. They use the same canonical
 `script::Result` may coexist in one closed generation. Source lookup spellings,
 runtime record/enum names, debug names, and shape-hash seeds remain explicit
 separate facts and must never be used to repair a missing stable identity.
+Every compile type descriptor carries a nonempty producer-owned runtime name;
+only its canonical name is indexed. Runtime names are neither lookup aliases
+nor unique keys, and consumers must not recover them by removing a canonical
+package prefix.
 
 Standard-library record values that are not source declarations—currently
 `MapEntry` and the `Reflect*` metadata records—are analysis-owned logical

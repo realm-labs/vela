@@ -9,17 +9,15 @@ use vela_hir::script_methods::{
     ScriptMethodCatalog, ScriptMethodCatalogError, ScriptMethodCatalogMode,
 };
 use vela_hir::type_hint::{FunctionSignature, ParamHint};
-use vela_mir::{MirBuildError, MirSourceOrigin};
+use vela_mir::{MirBuildError, MirEvaluatedConstant, MirSourceOrigin};
 use vela_syntax::parse::parse_source_with_id;
-
-use crate::Constant;
 
 use super::const_eval::evaluate_const_body;
 use super::error::{CompileError, CompileErrorKind, CompileResult};
 use super::field_slots::ScriptFieldSlots;
 use super::function_inputs::FunctionCompileInput;
 use super::param_defaults::param_default_values;
-use super::schema_defaults::{ScriptSchemaDefaults, source_schema_defaults};
+use super::schema_defaults::{EvaluatedSchemaDefaults, source_schema_defaults};
 use super::script_impls;
 
 pub(super) struct SemanticSource {
@@ -149,12 +147,14 @@ impl SemanticSource {
     pub(super) fn schema_defaults(
         &self,
         type_symbols: &BTreeMap<HirDeclId, String>,
-        const_values: &BTreeMap<HirDeclId, Constant>,
-    ) -> CompileResult<ScriptSchemaDefaults> {
-        source_schema_defaults(&self.graph, self.module, type_symbols, const_values)
+        evaluated_constants: &BTreeMap<HirDeclId, MirEvaluatedConstant>,
+    ) -> CompileResult<EvaluatedSchemaDefaults> {
+        source_schema_defaults(&self.graph, self.module, type_symbols, evaluated_constants)
     }
 
-    pub(super) fn const_values(&self) -> CompileResult<BTreeMap<HirDeclId, Constant>> {
+    pub(super) fn evaluated_constants(
+        &self,
+    ) -> CompileResult<BTreeMap<HirDeclId, MirEvaluatedConstant>> {
         let mut values_by_declaration = BTreeMap::new();
         for (declaration, _) in module_const_declarations(&self.graph, self.module) {
             let Some(body) = self.graph.const_initializer_body(declaration) else {
@@ -314,21 +314,23 @@ impl SemanticModules {
     pub(super) fn schema_defaults(
         &self,
         type_symbols: &BTreeMap<HirDeclId, String>,
-        const_values: &BTreeMap<HirDeclId, Constant>,
-    ) -> CompileResult<ScriptSchemaDefaults> {
-        let mut defaults = ScriptSchemaDefaults::default();
+        evaluated_constants: &BTreeMap<HirDeclId, MirEvaluatedConstant>,
+    ) -> CompileResult<EvaluatedSchemaDefaults> {
+        let mut defaults = EvaluatedSchemaDefaults::default();
         for module in &self.modules {
             defaults.merge(source_schema_defaults(
                 &self.graph,
                 *module,
                 type_symbols,
-                const_values,
+                evaluated_constants,
             )?);
         }
         Ok(defaults)
     }
 
-    pub(super) fn const_values(&self) -> CompileResult<BTreeMap<HirDeclId, Constant>> {
+    pub(super) fn evaluated_constants(
+        &self,
+    ) -> CompileResult<BTreeMap<HirDeclId, MirEvaluatedConstant>> {
         let mut values_by_declaration = BTreeMap::new();
         loop {
             let mut progressed = false;

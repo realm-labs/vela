@@ -674,6 +674,7 @@ fn mir_model_snapshot_owns_method_signatures_and_guard_contracts() {
             CompileTypeDescriptor {
                 id: type_id,
                 canonical_name: "game::Reward".to_owned(),
+                runtime_name: "game::Reward".to_owned(),
                 class: CompileTypeClass::ScriptEnum,
                 shape: None,
                 fields: Vec::new(),

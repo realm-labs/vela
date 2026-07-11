@@ -32,6 +32,7 @@ fn compile_targets_retain_opaque_external_dispatch_owners() {
             CompileTypeDescriptor {
                 id: owner,
                 canonical_name: "Player".to_owned(),
+                runtime_name: "Player".to_owned(),
                 class: CompileTypeClass::OpaqueExternal,
                 shape: None,
                 fields: Vec::new(),
@@ -311,6 +312,7 @@ fn mir_model_compile_snapshot_owns_source_identity_and_diagnostic_origins() {
             CompileTypeDescriptor {
                 id: type_id,
                 canonical_name: "game::Player".to_owned(),
+                runtime_name: "game::Player".to_owned(),
                 class: CompileTypeClass::ScriptRecord,
                 shape: Some(vela_common::ShapeId::new(328)),
                 fields: Vec::new(),

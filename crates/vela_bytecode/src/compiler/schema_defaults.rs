@@ -4,21 +4,20 @@ use vela_hir::body::HirBodyOwner;
 use vela_hir::ids::{HirBodyId, HirDeclId, ModuleId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
-
-use crate::Constant;
+use vela_mir::MirEvaluatedConstant;
 
 use super::const_eval::evaluate_const_body;
 use super::error::CompileResult;
 use super::value_types::{RuntimeTypeFact, type_hint_value_type};
 
 #[derive(Clone, Debug, Default, PartialEq)]
-pub(super) struct ScriptSchemaDefaults {
+pub(super) struct EvaluatedSchemaDefaults {
     record_shapes: BTreeMap<String, ConstructorShape>,
     enum_shapes: BTreeMap<(String, String), ConstructorShape>,
-    evaluated_defaults: BTreeMap<HirBodyId, Option<Constant>>,
+    evaluated_defaults: BTreeMap<HirBodyId, Option<MirEvaluatedConstant>>,
 }
 
-impl ScriptSchemaDefaults {
+impl EvaluatedSchemaDefaults {
     pub(super) fn merge(&mut self, other: Self) {
         self.record_shapes.extend(other.record_shapes);
         self.enum_shapes.extend(other.enum_shapes);
@@ -34,7 +33,7 @@ impl ScriptSchemaDefaults {
             .get(&(type_name.to_owned(), variant.to_owned()))
     }
 
-    pub(super) fn evaluated_defaults(&self) -> &BTreeMap<HirBodyId, Option<Constant>> {
+    pub(super) fn evaluated_defaults(&self) -> &BTreeMap<HirBodyId, Option<MirEvaluatedConstant>> {
         &self.evaluated_defaults
     }
 }
@@ -67,9 +66,9 @@ pub(super) fn source_schema_defaults(
     graph: &ModuleGraph,
     module: ModuleId,
     type_symbols: &BTreeMap<HirDeclId, String>,
-    constants: &BTreeMap<HirDeclId, Constant>,
-) -> CompileResult<ScriptSchemaDefaults> {
-    let mut defaults = ScriptSchemaDefaults::default();
+    evaluated_constants: &BTreeMap<HirDeclId, MirEvaluatedConstant>,
+) -> CompileResult<EvaluatedSchemaDefaults> {
+    let mut defaults = EvaluatedSchemaDefaults::default();
     let mut evaluated_defaults = BTreeMap::new();
     for body in graph.bodies() {
         let HirBodyOwner::SchemaFieldDefault(declaration) = body.owner else {
@@ -81,7 +80,10 @@ pub(super) fn source_schema_defaults(
         let Some(bindings) = graph.schema_field_default_bindings(body.id) else {
             continue;
         };
-        evaluated_defaults.insert(body.id, evaluate_const_body(body, bindings, constants)?);
+        evaluated_defaults.insert(
+            body.id,
+            evaluate_const_body(body, bindings, evaluated_constants)?,
+        );
     }
 
     for declaration in module_schema_declarations(graph, module) {

@@ -377,6 +377,7 @@ impl GenerationBuilder<'_, '_> {
                 CompileTypeDescriptor {
                     id: definition.id,
                     canonical_name,
+                    runtime_name: source_name,
                     class,
                     shape,
                     fields: fields
@@ -423,6 +424,7 @@ impl GenerationBuilder<'_, '_> {
                     CompileTypeDescriptor {
                         id: type_id,
                         canonical_name: path.canonical_name(),
+                        runtime_name: name.to_owned(),
                         class: CompileTypeClass::OpaqueExternal,
                         shape: None,
                         fields: Vec::new(),

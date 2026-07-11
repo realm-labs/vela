@@ -670,6 +670,7 @@ fn main(receiver, first, second) {
             CompileTypeDescriptor {
                 id: owner,
                 canonical_name: "calls::Receiver".to_owned(),
+                runtime_name: "calls::Receiver".to_owned(),
                 class: CompileTypeClass::OpaqueExternal,
                 shape: None,
                 fields: Vec::new(),

@@ -52,6 +52,12 @@ fn validate_types(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildError
                 ),
             ));
         }
+        if descriptor.runtime_name.is_empty() {
+            return Err(validator.error(
+                origin,
+                format!("type #{} has an empty runtime name", type_id.get()),
+            ));
+        }
         require_unique(
             validator,
             &descriptor.fields,

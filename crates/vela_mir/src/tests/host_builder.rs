@@ -157,6 +157,7 @@ fn insert_host_descriptors(
         CompileTypeDescriptor {
             id: ROOT_TYPE_ID,
             canonical_name: "host::Root".to_owned(),
+            runtime_name: "Root".to_owned(),
             class: CompileTypeClass::Host {
                 runtime: ROOT_RUNTIME_ID,
             },
@@ -167,6 +168,7 @@ fn insert_host_descriptors(
         CompileTypeDescriptor {
             id: COLLECTION_TYPE_ID,
             canonical_name: "host::Collection".to_owned(),
+            runtime_name: "Collection".to_owned(),
             class: CompileTypeClass::Host {
                 runtime: COLLECTION_RUNTIME_ID,
             },
@@ -177,6 +179,7 @@ fn insert_host_descriptors(
         CompileTypeDescriptor {
             id: SCRIPT_RECORD_TYPE_ID,
             canonical_name: "script::Record".to_owned(),
+            runtime_name: "Record".to_owned(),
             class: CompileTypeClass::ScriptRecord,
             shape: Some(SCRIPT_RECORD_SHAPE),
             fields: Vec::new(),
@@ -185,6 +188,7 @@ fn insert_host_descriptors(
         CompileTypeDescriptor {
             id: SCRIPT_ENUM_TYPE_ID,
             canonical_name: "script::State".to_owned(),
+            runtime_name: "State".to_owned(),
             class: CompileTypeClass::ScriptEnum,
             shape: None,
             fields: Vec::new(),
@@ -193,6 +197,7 @@ fn insert_host_descriptors(
         CompileTypeDescriptor {
             id: ITEM_TYPE_ID,
             canonical_name: "host::Item".to_owned(),
+            runtime_name: "Item".to_owned(),
             class: CompileTypeClass::Host {
                 runtime: ITEM_RUNTIME_ID,
             },

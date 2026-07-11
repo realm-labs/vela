@@ -556,6 +556,7 @@ fn insert_record_type(
             CompileTypeDescriptor {
                 id: type_id,
                 canonical_name: "test::Record".to_owned(),
+                runtime_name: "test::Record".to_owned(),
                 class: CompileTypeClass::ScriptRecord,
                 shape: Some(shape),
                 fields: fields.to_vec(),
@@ -580,6 +581,7 @@ fn insert_variant_type(
             CompileTypeDescriptor {
                 id: type_id,
                 canonical_name: "test::Enum".to_owned(),
+                runtime_name: "test::Enum".to_owned(),
                 class: CompileTypeClass::ScriptEnum,
                 shape: None,
                 fields: Vec::new(),

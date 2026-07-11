@@ -127,6 +127,7 @@ fn insert_static_enum_layout(
         CompileTypeDescriptor {
             id: STATIC_TYPE,
             canonical_name: "patterns_builder::State".to_owned(),
+            runtime_name: "patterns_builder::State".to_owned(),
             class: CompileTypeClass::ScriptEnum,
             shape: None,
             fields: Vec::new(),

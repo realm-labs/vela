@@ -202,6 +202,7 @@ fn insert_record_descriptors(
             CompileTypeDescriptor {
                 id: type_id,
                 canonical_name: name.to_owned(),
+                runtime_name: name.to_owned(),
                 class: CompileTypeClass::ScriptRecord,
                 shape: Some(shape),
                 fields: vec![field],
@@ -347,6 +348,7 @@ fn lower_host_tuple(
         CompileTypeDescriptor {
             id: HOST_TYPE_ID,
             canonical_name: "host::TupleRoot".to_owned(),
+            runtime_name: "TupleRoot".to_owned(),
             class: CompileTypeClass::Host {
                 runtime: HOST_RUNTIME_ID,
             },

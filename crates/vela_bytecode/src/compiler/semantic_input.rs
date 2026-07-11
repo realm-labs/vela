@@ -34,14 +34,13 @@ use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::script_methods::{ScriptMethod, ScriptMethodCatalog};
 use vela_mir::{
     CompileTargetSnapshot, CompileTargetSnapshotBuilder, MethodExecutableTarget, MirBuildError,
-    MirLoweringConfig, MirLoweringInput, MirSourceOrigin, MirTypeContract,
+    MirEvaluatedConstant, MirLoweringConfig, MirLoweringInput, MirSourceOrigin, MirTypeContract,
 };
 use vela_registry::RegistryCompileView;
 
 use super::error::{CompileError, CompileErrorKind, CompileResult};
 use super::options::CompilerOptions;
-use super::schema_defaults::ScriptSchemaDefaults;
-use crate::Constant;
+use super::schema_defaults::EvaluatedSchemaDefaults;
 
 use self::contracts::ContractBoundary;
 use self::external::ExternalCatalog;
@@ -60,8 +59,8 @@ pub(super) struct SemanticInputRequest<'graph, 'methods, 'registry> {
     pub(super) script_methods: &'methods ScriptMethodCatalog,
     pub(super) type_symbols: &'graph BTreeMap<HirDeclId, String>,
     pub(super) global_symbols: &'graph BTreeMap<HirDeclId, String>,
-    pub(super) constants: &'graph BTreeMap<HirDeclId, Constant>,
-    pub(super) schema_defaults: &'graph ScriptSchemaDefaults,
+    pub(super) evaluated_constants: &'graph BTreeMap<HirDeclId, MirEvaluatedConstant>,
+    pub(super) schema_defaults: &'graph EvaluatedSchemaDefaults,
     pub(super) options: &'graph CompilerOptions,
     pub(super) registry: Option<RegistryCompileView<'registry>>,
 }
@@ -282,7 +281,7 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
             script_methods: request.script_methods,
             type_symbols: request.type_symbols,
             global_symbols: request.global_symbols,
-            constants: request.constants,
+            evaluated_constants: request.evaluated_constants,
             schema_defaults: request.schema_defaults,
             options: request.options,
             registry: None,
@@ -317,14 +316,14 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
     }
 
     fn insert_compile_time_values(&mut self) -> CompileResult<()> {
-        for (declaration, value) in self.request.constants {
+        for (declaration, value) in self.request.evaluated_constants {
             let Some(body) = self.request.graph.const_initializer_body(*declaration) else {
                 continue;
             };
             self.targets
                 .insert_evaluated_constant(
                     *declaration,
-                    evaluated_constant(value),
+                    value.clone(),
                     MirSourceOrigin::body(body.id, body.origin.span),
                 )
                 .map_err(input_error)?;
@@ -339,7 +338,7 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
             self.targets
                 .insert_evaluated_schema_default(
                     *body,
-                    evaluated_constant(value),
+                    value.clone(),
                     MirSourceOrigin::body(*body, hir_body.origin.span),
                 )
                 .map_err(input_error)?;
@@ -714,26 +713,6 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
                 type_id.get()
             ),
         }))
-    }
-}
-
-fn evaluated_constant(value: &Constant) -> vela_mir::MirEvaluatedConstant {
-    match value {
-        Constant::Unit => vela_mir::MirEvaluatedConstant::Unit,
-        Constant::Bool(value) => vela_mir::MirEvaluatedConstant::Bool(*value),
-        Constant::Char(value) => vela_mir::MirEvaluatedConstant::Char(*value),
-        Constant::Scalar(value) => vela_mir::MirEvaluatedConstant::Scalar(*value),
-        Constant::String(value) => vela_mir::MirEvaluatedConstant::String(value.clone()),
-        Constant::Bytes(value) => vela_mir::MirEvaluatedConstant::Bytes(value.clone()),
-        Constant::Array(values) => {
-            vela_mir::MirEvaluatedConstant::Array(values.iter().map(evaluated_constant).collect())
-        }
-        Constant::Map(entries) => vela_mir::MirEvaluatedConstant::Map(
-            entries
-                .iter()
-                .map(|(key, value)| (key.clone(), evaluated_constant(value)))
-                .collect(),
-        ),
     }
 }
 

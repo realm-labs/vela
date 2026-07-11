@@ -252,6 +252,7 @@ impl GenerationBuilder<'_, '_> {
                 CompileTypeDescriptor {
                     id: type_id,
                     canonical_name: script_type_path(&type_name).canonical_name(),
+                    runtime_name: type_name,
                     class: match metadata.kind {
                         DeclarationKind::Struct => CompileTypeClass::ScriptRecord,
                         DeclarationKind::Enum => CompileTypeClass::ScriptEnum,

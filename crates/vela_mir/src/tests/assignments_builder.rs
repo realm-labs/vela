@@ -218,6 +218,7 @@ fn insert_non_call_method_descriptors(
         CompileTypeDescriptor {
             id: METHOD_OWNER,
             canonical_name: "assignments::MethodOwner".to_owned(),
+            runtime_name: "assignments::MethodOwner".to_owned(),
             class: CompileTypeClass::OpaqueExternal,
             shape: None,
             fields: Vec::new(),
@@ -286,6 +287,7 @@ fn insert_stable_nested_descriptors(
         CompileTypeDescriptor {
             id: PLAYER_TYPE,
             canonical_name: "assignments::Player".to_owned(),
+            runtime_name: "assignments::Player".to_owned(),
             class: CompileTypeClass::ScriptRecord,
             shape: Some(PLAYER_SHAPE),
             fields: vec![PLAYER_OUTER],
@@ -310,6 +312,7 @@ fn insert_stable_nested_descriptors(
         CompileTypeDescriptor {
             id: STATS_TYPE,
             canonical_name: "assignments::Stats".to_owned(),
+            runtime_name: "assignments::Stats".to_owned(),
             class: CompileTypeClass::ScriptRecord,
             shape: Some(STATS_SHAPE),
             fields: vec![STATS_INNER],

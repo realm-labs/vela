@@ -26,6 +26,9 @@ impl Player {
     let owner = targets
         .type_by_name("script::Player")
         .expect("single-source Player descriptor");
+    assert_eq!(owner.canonical_name, "script::Player");
+    assert_eq!(owner.runtime_name, "Player");
+    assert!(targets.type_by_name("Player").is_none());
     let method_id = script_inherent_method_id("main::Player", "bonus");
     let descriptor = targets
         .method_descriptor(owner.id, method_id)
@@ -68,6 +71,9 @@ impl Player {
     let owner = targets
         .type_by_name("script::game::combat::Player")
         .expect("qualified Player descriptor");
+    assert_eq!(owner.canonical_name, "script::game::combat::Player");
+    assert_eq!(owner.runtime_name, "game::combat::Player");
+    assert!(targets.type_by_name("game::combat::Player").is_none());
     let method_id = script_inherent_method_id("game::combat::Player", "bonus");
     let descriptor = targets
         .method_descriptor(owner.id, method_id)
@@ -137,9 +143,9 @@ fn prepare_modules(sources: &[ModuleSource]) -> PreparedSemanticInput {
     let script_function_symbols = semantic.script_function_symbols();
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
-    let constants = semantic.const_values().expect("module constants");
+    let evaluated_constants = semantic.evaluated_constants().expect("module constants");
     let schema_defaults = semantic
-        .schema_defaults(&type_symbols, &constants)
+        .schema_defaults(&type_symbols, &evaluated_constants)
         .expect("module schema defaults");
     let options = CompilerOptions::default();
     prepare_semantic_input(SemanticInputRequest {
@@ -149,7 +155,7 @@ fn prepare_modules(sources: &[ModuleSource]) -> PreparedSemanticInput {
         script_methods: semantic.script_method_catalog(),
         type_symbols: &type_symbols,
         global_symbols: &global_symbols,
-        constants: &constants,
+        evaluated_constants: &evaluated_constants,
         schema_defaults: &schema_defaults,
         options: &options,
         registry: None,

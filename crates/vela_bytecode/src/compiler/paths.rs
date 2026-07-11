@@ -2,8 +2,9 @@ use vela_common::Span;
 use vela_hir::binding::BindingResolution;
 use vela_hir::ids::HirExprId;
 
-use crate::{Constant, Register, UnlinkedInstructionKind};
+use crate::{Register, UnlinkedInstructionKind};
 
+use super::constant_encoding::encode_evaluated_constant;
 use super::host_paths::{HostPath, HostPathPart, HostPathRoot};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
@@ -15,7 +16,7 @@ impl Compiler<'_, '_> {
         path: &[String],
     ) -> CompileResult<Register> {
         if let Some(value) = self.const_value_at_expression(expression) {
-            return self.emit_constant(value);
+            return self.emit_constant(encode_evaluated_constant(&value));
         }
         if path.len() == 1 {
             return self.compile_local_path(expression, span, path);
@@ -53,8 +54,9 @@ impl Compiler<'_, '_> {
                     let dst = self.alloc_register()?;
                     self.emit_load_global(dst, global);
                     Ok(dst)
-                } else if let Some(value) = self.facts.const_values.get(declaration).cloned() {
-                    self.emit_constant(value)
+                } else if let Some(value) = self.facts.evaluated_constants.get(declaration).cloned()
+                {
+                    self.emit_constant(encode_evaluated_constant(&value))
                 } else {
                     Err(CompileError::new(CompileErrorKind::UnknownLocal(
                         name.to_owned(),
@@ -67,13 +69,16 @@ impl Compiler<'_, '_> {
         }
     }
 
-    pub(super) fn const_value_at_expression(&self, expression: HirExprId) -> Option<Constant> {
+    pub(super) fn const_value_at_expression(
+        &self,
+        expression: HirExprId,
+    ) -> Option<vela_mir::MirEvaluatedConstant> {
         let BindingResolution::Declaration(declaration) =
             self.binding_resolution_for_expression(expression)?
         else {
             return None;
         };
-        self.facts.const_values.get(declaration).cloned()
+        self.facts.evaluated_constants.get(declaration).cloned()
     }
 
     pub(super) fn script_record_field_slot_for_path_root(

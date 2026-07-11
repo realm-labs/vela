@@ -50,6 +50,9 @@ fn main(player) { return player.bonus(5); }
         .expect("opaque owner descriptor");
 
     assert_eq!(owner.class, CompileTypeClass::OpaqueExternal);
+    assert_eq!(owner.canonical_name, "host::Player");
+    assert_eq!(owner.runtime_name, "Player");
+    assert!(fixture.input.targets().type_by_name("Player").is_none());
     assert!(owner.fields.is_empty());
     assert!(owner.variants.is_empty());
 }
@@ -94,6 +97,9 @@ fn external_enum_descriptor_edges_are_complete() {
     let targets = fixture.input.targets();
     let descriptor = targets.type_descriptor(ty).expect("type descriptor");
 
+    assert_eq!(descriptor.canonical_name, "host::game::Outcome");
+    assert_eq!(descriptor.runtime_name, "game::Outcome");
+    assert!(targets.type_by_name("game::Outcome").is_none());
     assert!(descriptor.fields.is_empty());
     assert_eq!(descriptor.variants, [variant]);
     assert_eq!(
