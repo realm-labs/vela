@@ -390,12 +390,18 @@ impl<'a> FunctionBuilder<'a> {
                 self.lower_assignment(expression, op, target, value, origin)
             }
             HirExprKind::Field(field) => self.lower_field(expression, &field, origin),
-            HirExprKind::Call(call) => self.lower_call(expression, &call, origin),
+            HirExprKind::Call(call) => {
+                if self.input.targets().constructor(expression).is_some() {
+                    self.lower_constructor(expression, origin)
+                } else {
+                    self.lower_call(expression, &call, origin)
+                }
+            }
             HirExprKind::Index(index) => self.lower_index(expression, &index, origin),
             HirExprKind::Try { .. } => Err(self.unsupported(origin, "try expression")),
             HirExprKind::Array { .. } => Err(self.unsupported(origin, "array expression")),
             HirExprKind::Map { .. } => Err(self.unsupported(origin, "map expression")),
-            HirExprKind::Record { .. } => Err(self.unsupported(origin, "record expression")),
+            HirExprKind::Record { .. } => self.lower_constructor(expression, origin),
             HirExprKind::Lambda { .. } => Err(self.unsupported(origin, "lambda expression")),
             HirExprKind::Block { block } => self.lower_block_expression(expression, block, origin),
             HirExprKind::If(value) => self.lower_if_expression(expression, &value, origin),
