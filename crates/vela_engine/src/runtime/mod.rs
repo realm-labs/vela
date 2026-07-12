@@ -73,6 +73,20 @@ fn next_runtime_id() -> u64 {
 
 impl RuntimeImpl<OwnedImage> {
     #[must_use]
+    pub fn from_linked_artifact(
+        engine: Engine,
+        artifact: std::sync::Arc<vela_bytecode::LinkedArtifact>,
+    ) -> Self {
+        let image = OwnedImage::from_image(RuntimeImage::from_linked_artifact(engine, artifact));
+        let state = RuntimeState::for_image(&image);
+        Self {
+            image,
+            state,
+            hot_reload: None,
+        }
+    }
+
+    #[must_use]
     pub fn new_compiled(engine: Engine, program: vela_bytecode::compiler::CompiledProgram) -> Self {
         Self::try_new_compiled(engine, program)
             .expect("compiled runtime image should link verified bytecode")

@@ -911,37 +911,37 @@ cargo test -p vela_language_service
 
 ## 21. Phase 3: Ordinary Package Compilation Vertical Slice
 
-- [ ] Add `Engine::load_package_workspace` returning one sealed
+- [x] Add `Engine::load_package_workspace` returning one sealed
       `PackageCompilationSnapshot` without requiring provider discovery.
-- [ ] Add `PackageCompileRequest` bound to the snapshot ID with ordinary root
+- [x] Add `PackageCompileRequest` bound to the snapshot ID with ordinary root
       package IDs and no dependency on provider metadata or selection types.
-- [ ] Resolve every root to its complete transitive dependency closure.
-- [ ] Compile ordinary root and dependency packages through one HIR,
+- [x] Resolve every root to its complete transitive dependency closure.
+- [x] Compile ordinary root and dependency packages through one HIR,
       `ProgramCompilationRequest`, `CompiledProgram`, and Engine linker path.
-- [ ] Add `compile_packages` plus `compile_package` convenience API.
-- [ ] Add ordinary package hot-reload initial/update front doors using the same
+- [x] Add `compile_packages` plus `compile_package` convenience API.
+- [x] Add ordinary package hot-reload initial/update front doors using the same
       linked-artifact boundary.
-- [ ] Seal a stable request fingerprint containing root PackageIds even when no
+- [x] Seal a stable request fingerprint containing root PackageIds even when no
       providers are installed.
-- [ ] Keep ordinary artifacts' `InstalledProviderSet` empty.
-- [ ] Validate public/private cross-package imports and direct-alias rules.
-- [ ] Validate statically observed package capabilities against manifests and
+- [x] Keep ordinary artifacts' `InstalledProviderSet` empty.
+- [x] Validate public/private cross-package imports and direct-alias rules.
+- [x] Validate statically observed package capabilities against manifests and
       host grants without requiring provider metadata.
-- [ ] Construct a Runtime from an ordinary package artifact and call its linked
+- [x] Construct a Runtime from an ordinary package artifact and call its linked
       entry function.
 
 Focused tests:
 
-- [ ] `ordinary_package_imports_public_dependency_function`
-- [ ] `ordinary_package_imports_dependency_type_and_method`
-- [ ] `ordinary_package_rejects_private_dependency_declaration`
-- [ ] `ordinary_package_includes_transitive_dependencies_but_not_their_aliases`
-- [ ] `ordinary_package_compiles_and_runs_without_provider_catalog`
-- [ ] `ordinary_package_artifact_has_empty_installed_provider_set`
-- [ ] `ordinary_package_request_rejects_another_snapshot`
-- [ ] `ordinary_dependency_body_reload_updates_root_package_calls`
-- [ ] `ordinary_dependency_abi_change_is_rejected_without_image_advance`
-- [ ] `ordinary_package_capability_use_must_be_declared_and_granted`
+- [x] `ordinary_package_imports_public_dependency_function`
+- [x] `ordinary_package_imports_dependency_type_and_method`
+- [x] `ordinary_package_rejects_private_dependency_declaration`
+- [x] `ordinary_package_includes_transitive_dependencies_but_not_their_aliases`
+- [x] `ordinary_package_compiles_and_runs_without_provider_catalog`
+- [x] `ordinary_package_artifact_has_empty_installed_provider_set`
+- [x] `ordinary_package_request_rejects_another_snapshot`
+- [x] `ordinary_dependency_body_reload_updates_root_package_calls`
+- [x] `ordinary_dependency_abi_change_is_rejected_without_image_advance`
+- [x] `ordinary_package_capability_use_must_be_declared_and_granted`
 
 Validation:
 

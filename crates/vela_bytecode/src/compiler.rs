@@ -21,11 +21,13 @@ use std::sync::Arc;
 use vela_common::SourceId;
 #[cfg(test)]
 use vela_common::Span;
+use vela_common::{Capability, CapabilitySet};
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::ModuleGraph;
 #[cfg(test)]
 use vela_hir::module_graph::ModuleSource;
 use vela_hir::source_ingestion::{HirSourceFunction, HirSourceSet, HirSourceSetKind};
+use vela_package::PackageId;
 use vela_registry::RegistryCompileView;
 
 #[cfg(test)]
@@ -43,6 +45,7 @@ pub struct CompiledProgram {
     verified_mir: Arc<vela_mir::OwnedVerifiedMirBundle>,
     mir_executables: Box<[CompiledMirExecutable]>,
     budget_layouts: Box<[CompiledExecutableBudgetLayout]>,
+    package_metadata: Option<crate::PackageArtifactMetadata>,
 }
 
 pub(crate) struct CompiledProgramParts {
@@ -50,6 +53,7 @@ pub(crate) struct CompiledProgramParts {
     pub(crate) verified_mir: Arc<vela_mir::OwnedVerifiedMirBundle>,
     pub(crate) mir_executables: Box<[CompiledMirExecutable]>,
     pub(crate) budget_layouts: Box<[CompiledExecutableBudgetLayout]>,
+    pub(crate) package_metadata: Option<crate::PackageArtifactMetadata>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -92,12 +96,18 @@ impl CompiledProgram {
     }
 
     #[must_use]
+    pub const fn package_metadata(&self) -> Option<&crate::PackageArtifactMetadata> {
+        self.package_metadata.as_ref()
+    }
+
+    #[must_use]
     pub(crate) fn into_linker_parts(self) -> CompiledProgramParts {
         CompiledProgramParts {
             bytecode: self.bytecode,
             verified_mir: self.verified_mir,
             mir_executables: self.mir_executables,
             budget_layouts: self.budget_layouts,
+            package_metadata: self.package_metadata,
         }
     }
 
@@ -120,6 +130,14 @@ pub struct ProgramCompilationRequest<'a> {
     pub sources: &'a HirSourceSet,
     pub options: &'a CompilerOptions,
     pub registry: Option<RegistryCompileView<'a>>,
+}
+
+pub struct PackageProgramCompilationRequest<'a> {
+    pub sources: &'a HirSourceSet,
+    pub options: &'a CompilerOptions,
+    pub registry: Option<RegistryCompileView<'a>>,
+    pub roots: &'a BTreeSet<PackageId>,
+    pub packages: &'a [crate::PackageCompilationInput],
 }
 
 pub struct FunctionCompilationRequest<'a> {
@@ -163,10 +181,30 @@ pub fn compile_function(
 }
 
 pub fn compile_program(request: ProgramCompilationRequest<'_>) -> CompileResult<CompiledProgram> {
-    let graph = request.sources.graph();
+    compile_program_inner(request.sources, request.options, request.registry, None)
+}
+
+pub fn compile_package_program(
+    request: PackageProgramCompilationRequest<'_>,
+) -> CompileResult<CompiledProgram> {
+    compile_program_inner(
+        request.sources,
+        request.options,
+        request.registry,
+        Some((request.roots, request.packages)),
+    )
+}
+
+fn compile_program_inner(
+    sources: &HirSourceSet,
+    options: &CompilerOptions,
+    registry: Option<RegistryCompileView<'_>>,
+    package_request: Option<(&BTreeSet<PackageId>, &[crate::PackageCompilationInput])>,
+) -> CompileResult<CompiledProgram> {
+    let graph = sources.graph();
     reject_invalid_graph(graph)?;
-    validate_program_request(request.sources)?;
-    let semantic = SemanticCompilation::new(request.sources)?;
+    validate_program_request(sources)?;
+    let semantic = SemanticCompilation::new(sources)?;
     let script_function_symbols = semantic.function_symbols();
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
@@ -177,6 +215,7 @@ pub fn compile_program(request: ProgramCompilationRequest<'_>) -> CompileResult<
         .methods()
         .cloned()
         .collect::<Vec<_>>();
+    let executable_packages = executable_packages(graph, &script_function_symbols, &methods)?;
     let input = semantic_input::prepare_semantic_input(semantic_input::SemanticInputRequest {
         graph,
         roots: semantic_input::SemanticRoots::Program,
@@ -186,8 +225,8 @@ pub fn compile_program(request: ProgramCompilationRequest<'_>) -> CompileResult<
         global_symbols: &global_symbols,
         evaluated_constants: &evaluated_constants,
         schema_defaults: &schema_defaults,
-        options: request.options,
-        registry: request.registry,
+        options,
+        registry,
     })?;
 
     let mut program = UnlinkedProgram::new();
@@ -221,12 +260,94 @@ pub fn compile_program(request: ProgramCompilationRequest<'_>) -> CompileResult<
     }
     program.set_script_metadata(graph.clone());
     let bytecode = verify_program(program)?;
+    let observed = observed_capabilities(&verified_mir, &executable_packages)?;
+    let package_metadata = package_request
+        .map(|(roots, packages)| {
+            crate::PackageArtifactMetadata::ordinary(roots, packages, &observed)
+        })
+        .transpose()
+        .map_err(|message| CompileError::new(CompileErrorKind::RegistrySnapshot(message)))?;
     Ok(CompiledProgram {
         mir_executables: compiled_bytecode_layouts(&bytecode),
         budget_layouts: compiled_budget_layouts(&bytecode),
         bytecode,
         verified_mir,
+        package_metadata,
     })
+}
+
+fn executable_packages(
+    graph: &ModuleGraph,
+    function_symbols: &BTreeMap<HirDeclId, String>,
+    methods: &[vela_hir::script_methods::ScriptMethod],
+) -> CompileResult<BTreeMap<vela_def::FunctionId, PackageId>> {
+    let mut packages = BTreeMap::new();
+    for (declaration, symbol) in function_symbols {
+        let metadata = graph.declaration(*declaration).ok_or_else(|| {
+            CompileError::new(CompileErrorKind::RegistrySnapshot(
+                "script function has no declaration metadata".to_owned(),
+            ))
+        })?;
+        let package = graph.module_package(metadata.module).ok_or_else(|| {
+            CompileError::new(CompileErrorKind::RegistrySnapshot(
+                "script function has no package owner".to_owned(),
+            ))
+        })?;
+        packages.insert(
+            vela_def::script_function_id(package.as_str(), symbol),
+            package.clone(),
+        );
+    }
+    for method in methods {
+        packages.insert(
+            vela_def::script_function_id(method.owner().package().as_str(), &method.symbol_seed()),
+            method.owner().package().clone(),
+        );
+    }
+    Ok(packages)
+}
+
+fn observed_capabilities(
+    bundle: &vela_mir::OwnedVerifiedMirBundle,
+    executable_packages: &BTreeMap<vela_def::FunctionId, PackageId>,
+) -> CompileResult<BTreeMap<PackageId, CapabilitySet>> {
+    let mut observed = BTreeMap::<PackageId, CapabilitySet>::new();
+    for (root, owner) in bundle.roots() {
+        let package = executable_packages.get(&root).ok_or_else(|| {
+            CompileError::new(CompileErrorKind::RegistrySnapshot(format!(
+                "verified MIR root {root:?} has no package owner"
+            )))
+        })?;
+        let mut effect = vela_mir::MirEffect::PURE;
+        for (_, function) in owner.program().functions() {
+            for (_, statement) in function.statements() {
+                effect = effect.union(statement.effect);
+            }
+            for (_, block) in function.blocks() {
+                if let Some(terminator) = block.terminator() {
+                    effect = effect.union(terminator.effect);
+                }
+            }
+        }
+        let capabilities = observed.entry(package.clone()).or_default();
+        for (present, capability) in [
+            (effect.host_read, Capability::HostRead),
+            (effect.host_write, Capability::HostWrite),
+            (effect.emits_event, Capability::EventEmit),
+            (effect.reads_time, Capability::Time),
+            (effect.uses_random, Capability::Random),
+            (effect.reads_io, Capability::IoRead),
+            (effect.writes_io, Capability::IoWrite),
+            (effect.reflection_read, Capability::ReflectionRead),
+            (effect.reflection_write, Capability::ReflectionWrite),
+            (effect.reflection_call, Capability::ReflectionCall),
+        ] {
+            if present {
+                capabilities.insert(capability);
+            }
+        }
+    }
+    Ok(observed)
 }
 
 fn validate_program_request(sources: &HirSourceSet) -> CompileResult<()> {

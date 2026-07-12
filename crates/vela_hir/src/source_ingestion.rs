@@ -4,7 +4,9 @@ use vela_common::{Diagnostic, SourceId};
 use vela_syntax::parse::parse_source_with_id;
 
 use crate::ids::ModuleId;
-use vela_package::{ModuleKey, ModulePath};
+use std::collections::BTreeMap;
+
+use vela_package::{ModuleKey, ModulePath, PackageAlias, PackageId};
 
 use crate::module_graph::{DeclarationKind, ModuleGraph, ModuleSource};
 
@@ -110,18 +112,27 @@ pub fn build_single_source(
             text,
         )],
         HirSourceSetKind::SingleSource,
+        BTreeMap::new(),
     )
 }
 
 pub fn build_module_source_set(
     sources: &[ModuleSource],
 ) -> Result<HirSourceSet, HirSourceBuildError> {
-    build_source_set(sources, HirSourceSetKind::ModuleGraph)
+    build_source_set(sources, HirSourceSetKind::ModuleGraph, BTreeMap::new())
+}
+
+pub fn build_package_source_set(
+    sources: &[ModuleSource],
+    dependencies: BTreeMap<PackageId, BTreeMap<PackageAlias, PackageId>>,
+) -> Result<HirSourceSet, HirSourceBuildError> {
+    build_source_set(sources, HirSourceSetKind::ModuleGraph, dependencies)
 }
 
 fn build_source_set(
     sources: &[ModuleSource],
     kind: HirSourceSetKind,
+    dependencies: BTreeMap<PackageId, BTreeMap<PackageAlias, PackageId>>,
 ) -> Result<HirSourceSet, HirSourceBuildError> {
     let parsed_sources = sources
         .iter()
@@ -138,7 +149,7 @@ fn build_source_set(
         });
     }
 
-    let mut graph = ModuleGraph::new();
+    let mut graph = ModuleGraph::with_package_dependencies(dependencies);
     let modules = parsed_sources
         .into_iter()
         .map(|(source, parsed)| graph.add_parsed_source(source.clone(), &parsed))

@@ -1759,6 +1759,19 @@ indexes instead of replacing or aliasing semantic entries. Convenience source,
 file, directory, and scratch APIs use explicit reserved package IDs; linkers and
 semantic consumers never synthesize or fall back to an implicit package.
 
+### Sealed Package Compilation Requests
+
+Engine package loading produces one immutable `PackageCompilationSnapshot`
+that owns the package graph, deterministic source identities, and package-aware
+HIR generation. A `PackageCompileRequest` is bound to that snapshot ID and
+contains only canonical root `PackageId` values. Engine expands roots to their
+transitive closure, enters the existing compiler and linker once, and seals a
+generation-independent root fingerprint plus declared and statically observed
+package capabilities into `LinkedArtifact`. Ordinary artifacts carry an empty
+`InstalledProviderSet`; provider discovery is not an ordinary compilation
+prerequisite. Reload rebuilds the same roots against a new snapshot and rejects
+an incidental root-set change.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

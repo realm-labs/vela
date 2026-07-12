@@ -22,6 +22,10 @@ pub use crate::runtime::{
     RuntimeMethodTarget, VelaFunction, VelaMethod, VelaValue,
 };
 pub use crate::schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
+pub use crate::source::{
+    EnginePackageError, EnginePackageErrorKind, PackageCompilationSnapshot,
+    PackageCompilationSnapshotId, PackageCompileRequest,
+};
 pub use crate::source::{EngineSourceError, EngineSourceErrorKind};
 pub use crate::{args, host};
 pub use vela_bytecode::{

@@ -32,8 +32,9 @@ required.
 ## Current Focus
 
 The package and service-provider hard-switch track is active. Phase 0 inventory,
-Phase 1 package foundation, and the atomic Phase 2 package-identity cutover are
-complete and verified. `vela_package` now owns validated package/module
+Phase 1 package foundation, the atomic Phase 2 package-identity cutover, and
+Phase 3 ordinary package compilation are complete and verified. `vela_package`
+now owns validated package/module
 identity, structured spanned `vela.toml` parsing, path dependency/workspace
 graph construction, path authorization, and deterministic source discovery.
 `vela_common` owns the shared capability vocabulary, Engine and language
@@ -42,8 +43,12 @@ while preserving overlay precedence, and all repository manifest fixtures use
 `[package]` plus `[source].roots`. `PackageId + ModulePath` is now the sole
 script module identity across HIR, stable definitions, compilation, linking,
 runtime dispatch, reflection, hot reload, and tooling; convenience compilation
-uses explicit reserved packages. The next step is Phase 3 ordinary package
-compilation through one sealed snapshot and compile-request path.
+uses explicit reserved packages. Engine now loads a sealed package/HIR snapshot,
+binds root requests to its generation, compiles only each root's transitive
+dependency closure, seals package/capability/root metadata into the linked
+artifact, runs ordinary artifacts without provider state, and rebuilds the same
+root set for hot reload. The next step is Phase 4 structured provider HIR and
+read-only catalog discovery.
 
 The MIR/executable-generation implementation is complete through Batch F /
 Phase 11 in

@@ -9,6 +9,7 @@ pub mod cache_site;
 pub mod compiler;
 pub mod linked;
 pub mod linker;
+mod package_metadata;
 pub mod program_image;
 mod script_metadata;
 pub mod script_methods;
@@ -39,6 +40,10 @@ pub use linked::{
     ScriptFunctionHandle, TypeGuard, TypeGuardPlan, TypeGuardPlanId, TypeHandle, VariantHandle,
 };
 pub use linker::{LinkError, Linker};
+pub use package_metadata::{
+    CompiledPackageMetadata, InstalledProviderSet, PackageArtifactMetadata,
+    PackageCompilationInput, PackageCompileRequestFingerprint,
+};
 pub use program_image::ProgramImage;
 pub use script_metadata::{derived_linked_record_trait_fields, derived_record_trait_fields};
 pub use vela_registry::DebugNameId;

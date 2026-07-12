@@ -14,6 +14,12 @@ use vela_package::{PackageGraph, PackageGraphError, load_package_graph};
 use crate::engine::Engine;
 
 mod loader;
+mod package;
+
+pub use package::{
+    EnginePackageError, EnginePackageErrorKind, PackageCompilationSnapshot,
+    PackageCompilationSnapshotId, PackageCompileRequest,
+};
 
 pub(crate) use loader::{
     load_module_sources, load_module_sources_for_changed_file, read_source_text,

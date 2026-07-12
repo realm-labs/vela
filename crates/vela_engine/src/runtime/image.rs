@@ -77,6 +77,17 @@ impl RuntimeImageStorage for SharedImage {
 
 impl RuntimeImage {
     #[must_use]
+    pub fn from_linked_artifact(engine: Engine, artifact: Arc<LinkedArtifact>) -> Self {
+        let layout = RuntimeImageLayout::from_global_names(artifact.image().global_names());
+        Self {
+            engine,
+            artifact,
+            version_id: None,
+            layout,
+        }
+    }
+
+    #[must_use]
     pub fn new_compiled(engine: Engine, program: vela_bytecode::compiler::CompiledProgram) -> Self {
         Self::try_new_compiled(engine, program)
             .expect("compiled runtime image should link verified bytecode")
@@ -87,13 +98,7 @@ impl RuntimeImage {
         program: vela_bytecode::compiler::CompiledProgram,
     ) -> Result<Self, LinkError> {
         let artifact = engine.link_compiled_program(program)?;
-        let layout = RuntimeImageLayout::from_global_names(artifact.image().global_names());
-        Ok(Self {
-            engine,
-            artifact,
-            version_id: None,
-            layout,
-        })
+        Ok(Self::from_linked_artifact(engine, artifact))
     }
 
     #[must_use]

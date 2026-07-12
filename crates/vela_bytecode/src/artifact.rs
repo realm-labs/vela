@@ -17,6 +17,7 @@ pub struct LinkedArtifact {
     profile_layout: ProfileLayout,
     mir_executables: Box<[MirExecutableLayout]>,
     verified_mir: Arc<vela_mir::OwnedVerifiedMirBundle>,
+    package_metadata: Option<crate::PackageArtifactMetadata>,
 }
 
 /// Private staged linker output. It cannot cross the production runtime boundary.
@@ -83,6 +84,7 @@ pub mod test_support {
             profile_layout,
             mir_executables,
             verified_mir,
+            package_metadata: None,
         })
     }
 
@@ -128,6 +130,11 @@ impl LinkedArtifact {
         &self.verified_mir
     }
 
+    #[must_use]
+    pub const fn package_metadata(&self) -> Option<&crate::PackageArtifactMetadata> {
+        self.package_metadata.as_ref()
+    }
+
     pub fn verify(&self) -> Result<(), crate::verification::VerificationError> {
         self.image.verify()?;
         self.program.verify()?;
@@ -146,6 +153,7 @@ impl UnboundLinkedProgram {
             profile_layout: self.profile_layout,
             mir_executables,
             verified_mir,
+            package_metadata: None,
         }
     }
 
@@ -154,6 +162,7 @@ impl UnboundLinkedProgram {
         bundle: Arc<vela_mir::OwnedVerifiedMirBundle>,
         compiled_layouts: &[crate::compiler::CompiledMirExecutable],
         budget_layouts: &[crate::compiler::CompiledExecutableBudgetLayout],
+        package_metadata: Option<crate::PackageArtifactMetadata>,
     ) -> Result<LinkedArtifact, crate::linker::LinkError> {
         if compiled_layouts.len() != self.program.function_count() {
             return Err(crate::linker::LinkError::MirExecutableCountMismatch {
@@ -219,6 +228,7 @@ impl UnboundLinkedProgram {
             profile_layout: self.profile_layout,
             mir_executables,
             verified_mir: bundle,
+            package_metadata,
         })
     }
 

@@ -92,6 +92,7 @@ impl<'registry> Linker<'registry> {
                 parts.verified_mir,
                 &parts.mir_executables,
                 &parts.budget_layouts,
+                parts.package_metadata,
             )
             .map(Arc::new)
     }
