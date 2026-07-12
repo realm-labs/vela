@@ -5,11 +5,11 @@ use std::hint::black_box;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use vela_bytecode::compiler::options::CompilerOptions;
-use vela_bytecode::compiler::{
-    compile_function_source_with_registry, compile_program_source_with_options_and_registry,
-    compile_program_source_with_registry,
+use test_compile_support::{
+    compile_test_function_with_registry, compile_test_program_with_options_and_registry,
+    compile_test_program_with_registry,
 };
+use vela_bytecode::compiler::options::CompilerOptions;
 use vela_bytecode::{LinkedArtifact, Linker, UnlinkedCodeObject, UnlinkedProgram};
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
 use vela_def::{DefPath, FieldId, FunctionId, TypeId};
@@ -33,6 +33,9 @@ mod cache_support;
 mod config;
 #[path = "baseline/report.rs"]
 mod report;
+#[path = "../test_compile_support.rs"]
+#[allow(dead_code)]
+mod test_compile_support;
 #[path = "baseline/workload_sources.rs"]
 mod workload_sources;
 #[path = "baseline/workloads.rs"]
@@ -243,7 +246,7 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
         | ExecutionMode::HostAccessCacheEnabled
         | ExecutionMode::HostManagedHeapReadConversion
         | ExecutionMode::HostManagedHeapHostAccess => {
-            let program = compile_program_source_with_options_and_registry(
+            let program = compile_test_program_with_options_and_registry(
                 SourceId::new(1),
                 workload.source,
                 &host_access_compiler_options(),
@@ -281,7 +284,7 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
             })
         }
         ExecutionMode::GameplayHost => {
-            let program = compile_program_source_with_options_and_registry(
+            let program = compile_test_program_with_options_and_registry(
                 SourceId::new(1),
                 workload.source,
                 &host_access_compiler_options(),
@@ -294,7 +297,7 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
         }
         ExecutionMode::ManagedHeap | ExecutionMode::GcPacing => {
             let registry = bench_compile_registry()?;
-            let code = compile_function_source_with_registry(
+            let code = compile_test_function_with_registry(
                 SourceId::new(1),
                 workload.source,
                 "main",
@@ -310,7 +313,7 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
         | ExecutionMode::ScriptProgramProfileOnly
         | ExecutionMode::ScriptProgramCacheEnabled => {
             let registry = bench_compile_registry()?;
-            let program = compile_program_source_with_registry(
+            let program = compile_test_program_with_registry(
                 SourceId::new(1),
                 workload.source,
                 registry.compile_view(),
@@ -343,7 +346,7 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
         | ExecutionMode::ProfileOnly
         | ExecutionMode::CacheEnabled => {
             let registry = bench_compile_registry()?;
-            let code = compile_function_source_with_registry(
+            let code = compile_test_function_with_registry(
                 SourceId::new(1),
                 workload.source,
                 "main",

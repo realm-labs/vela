@@ -59,6 +59,9 @@ mod standard_method_cache;
 mod std_method_ids;
 mod stdlib;
 mod string_methods;
+#[cfg(test)]
+#[allow(dead_code)]
+pub(crate) mod test_support;
 mod try_propagation;
 mod tuple_fields;
 pub mod value;

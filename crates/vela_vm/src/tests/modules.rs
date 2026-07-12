@@ -13,7 +13,7 @@ fn run_module_program(
 
 #[test]
 fn runs_compiled_cross_module_imported_script_call() {
-    let program = compile_module_sources(&[
+    let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::main"),
@@ -45,7 +45,7 @@ pub fn grant(amount) {
 
 #[test]
 fn runs_compiled_same_named_cross_module_functions() {
-    let program = compile_module_sources(&[
+    let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::main"),
@@ -77,7 +77,7 @@ pub fn main() {
 
 #[test]
 fn runs_compiled_cross_module_imported_const_expression() {
-    let program = compile_module_sources(&[
+    let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::main"),
@@ -116,7 +116,7 @@ pub const BASE: i64 = 4;
 
 #[test]
 fn runs_compiled_cross_module_imported_type_constructors() {
-    let program = compile_module_sources(&[
+    let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::main"),
@@ -179,7 +179,7 @@ pub enum Damage { Physical { amount: i64 } }
 
 #[test]
 fn runs_cross_module_imported_constructor_defaults() {
-    let program = compile_module_sources(&[
+    let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::main"),
@@ -218,7 +218,7 @@ pub struct Reward {
 
 #[test]
 fn runs_compiled_cross_module_imported_match_patterns() {
-    let program = compile_module_sources(&[
+    let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::main"),
@@ -256,7 +256,7 @@ pub enum Damage {
 
 #[test]
 fn qualified_source_record_patterns_keep_the_legacy_false_arm_and_budget() {
-    let program = compile_module_sources(&[
+    let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::main"),
@@ -308,7 +308,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_cross_module_qualified_function_and_const_paths() {
-    let program = compile_module_sources(&[
+    let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::main"),

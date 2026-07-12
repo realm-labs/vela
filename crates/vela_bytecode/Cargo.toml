@@ -16,7 +16,6 @@ vela_hir = { workspace = true }
 vela_mir = { workspace = true }
 vela_registry = { workspace = true }
 vela_stdlib = { workspace = true }
-vela_syntax = { workspace = true }
 
 [dev-dependencies]
 vela_mir = { workspace = true, features = ["test-support"] }

@@ -1,11 +1,11 @@
 use super::*;
-use vela_bytecode::compiler::compile_program_source_with_registry;
+use crate::test_support::compile_test_program_with_registry;
 use vela_common::ScalarValue;
 
 fn run_conversion_source(source: &str) -> VmResult<OwnedValue> {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     let program =
-        compile_program_source_with_registry(SourceId::new(1), source, registry.compile_view())
+        compile_test_program_with_registry(SourceId::new(1), source, registry.compile_view())
             .expect("conversion source compiles");
     let mut linker = Linker::with_registry(&registry);
     let vm = Vm::new().with_standard_natives();

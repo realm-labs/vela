@@ -2,14 +2,16 @@ use vela_common::SourceId;
 use vela_def::{script_function_id, script_inherent_method_id, script_trait_method_id};
 use vela_hir::body::HirPatternKind;
 use vela_hir::module_graph::{ModulePath, ModuleSource};
+use vela_hir::source_ingestion::build_source_set;
 use vela_mir::{
     CompileFunctionIdentity, CompileMethodClass, CompileParameterDefault,
     CompilePatternConstructorTarget,
 };
 
 use super::{FixtureRoots, prepare_source};
+use crate::compiler::ProgramCompilationMode;
 use crate::compiler::options::CompilerOptions;
-use crate::compiler::semantic::parse_semantic_modules;
+use crate::compiler::semantic::SemanticCompilation;
 use crate::compiler::semantic_input::{
     PreparedSemanticInput, SemanticInputRequest, SemanticRoots, prepare_semantic_input,
 };
@@ -118,9 +120,13 @@ fn main() {
             "pub struct Reward { amount: i64 }",
         ),
     ];
-    let semantic = parse_semantic_modules(&sources).expect("module semantic graph");
+    let built = build_source_set(&sources).expect("module semantic graph");
+    let mode = ProgramCompilationMode::ModuleGraph {
+        modules: built.modules().into(),
+    };
+    let semantic = SemanticCompilation::new(built.graph(), &mode).expect("semantic compilation");
     let (body, pattern) = semantic
-        .script_metadata_graph()
+        .graph()
         .bodies()
         .find_map(|body| {
             body.patterns.values().find_map(|pattern| {
@@ -129,7 +135,7 @@ fn main() {
             })
         })
         .expect("qualified record pattern");
-    let script_function_symbols = semantic.script_function_symbols();
+    let script_function_symbols = semantic.function_symbols();
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
     let evaluated_constants = semantic.evaluated_constants().expect("module constants");
@@ -138,7 +144,7 @@ fn main() {
         .expect("module schema defaults");
     let options = CompilerOptions::default();
     let input = prepare_semantic_input(SemanticInputRequest {
-        graph: semantic.script_metadata_graph(),
+        graph: semantic.graph(),
         roots: SemanticRoots::Program,
         script_function_symbols: &script_function_symbols,
         script_methods: semantic.script_method_catalog(),
@@ -220,8 +226,12 @@ impl BonusSource for Monster {}
 }
 
 fn prepare_modules(sources: &[ModuleSource]) -> PreparedSemanticInput {
-    let semantic = parse_semantic_modules(sources).expect("module semantic graph");
-    let script_function_symbols = semantic.script_function_symbols();
+    let built = build_source_set(sources).expect("module semantic graph");
+    let mode = ProgramCompilationMode::ModuleGraph {
+        modules: built.modules().into(),
+    };
+    let semantic = SemanticCompilation::new(built.graph(), &mode).expect("semantic compilation");
+    let script_function_symbols = semantic.function_symbols();
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
     let evaluated_constants = semantic.evaluated_constants().expect("module constants");
@@ -230,7 +240,7 @@ fn prepare_modules(sources: &[ModuleSource]) -> PreparedSemanticInput {
         .expect("module schema defaults");
     let options = CompilerOptions::default();
     prepare_semantic_input(SemanticInputRequest {
-        graph: semantic.script_metadata_graph(),
+        graph: semantic.graph(),
         roots: SemanticRoots::Program,
         script_function_symbols: &script_function_symbols,
         script_methods: semantic.script_method_catalog(),

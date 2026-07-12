@@ -274,7 +274,7 @@ fn callback_execution_unit_limit_has_a_stable_edge() {
 
 #[test]
 fn container_guard_scan_execution_unit_limit_has_a_stable_edge() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main(values: Array<i64>) -> i64 {

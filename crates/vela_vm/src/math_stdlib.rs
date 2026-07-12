@@ -32,7 +32,7 @@ pub(super) fn expect_arity(name: &str, args: &[OwnedValue], expected: usize) -> 
 
 #[cfg(test)]
 mod tests {
-    use vela_bytecode::compiler::compile_function_source;
+    use crate::test_support::compile_test_function;
     use vela_bytecode::{Linker, UnlinkedCodeObject, UnlinkedProgram};
     use vela_common::SourceId;
 
@@ -66,7 +66,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("math distance2d source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -88,7 +88,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("math distance3d source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -109,7 +109,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("math pow source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -129,7 +129,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("math sqrt source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -149,7 +149,7 @@ fn main() {
         + math::sign(-0.0);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("math sign source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -173,7 +173,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("math move_towards source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -194,7 +194,7 @@ fn main() {
     return math::distance2d(2, 4, 8, 12) == 10.0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap math distance2d source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -212,7 +212,7 @@ fn main() {
     return math::distance3d(1, 2, 3, 4, 6, 15) == 13.0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap math distance3d source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -230,7 +230,7 @@ fn main() {
     return math::pow(16, 0.5) == 4.0 && math::pow(3, 4) == 81;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap math pow source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -248,7 +248,7 @@ fn main() {
     return math::sqrt(64) == 8.0 && math::sqrt(0.25) == 0.5;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap math sqrt source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -266,7 +266,7 @@ fn main() {
     return math::sign(-2.5) == -1 && math::sign(0.0) == 0 && math::sign(8) == 1;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap math sign source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -286,7 +286,7 @@ fn main() {
         && math::move_towards(5, 2, 10) == 2;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap math move_towards source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -304,7 +304,7 @@ fn main() {
     return math::distance2d(0, 0, "x", 1);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("math distance2d type error source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -327,7 +327,7 @@ fn main() {
     return math::pow("xp", 2);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("math pow type error source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -350,7 +350,7 @@ fn main() {
     return math::sqrt(-1);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("math sqrt negative source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -373,7 +373,7 @@ fn main() {
     return math::sqrt("xp");
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("math sqrt type error source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -396,7 +396,7 @@ fn main() {
     return math::sign("left");
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("math sign type error source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -419,7 +419,7 @@ fn main() {
     return math::move_towards(0, 10, -1);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("math move_towards negative delta source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -442,7 +442,7 @@ fn main() {
     return math::lerp(1.0e308, -1.0e308, 2.0);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("math lerp non-finite source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -465,7 +465,7 @@ fn main() {
     return math::move_towards(0, "target", 1);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("math move_towards type error source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -488,7 +488,7 @@ fn main() {
     return math::pow(0, -1);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("math pow non-finite source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -511,7 +511,7 @@ fn main() {
     return math::distance3d(0, 0, 0, 1, "y", 1);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("math distance3d type error source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();

@@ -102,7 +102,7 @@ impl VmInlineCaches for RecordingHostAccessCaches {
 
 #[test]
 fn heap_execution_enforces_memory_budget_for_bytecode_allocations() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         "fn main() { return \"this string is too large\"; }",
         "main",
@@ -137,7 +137,7 @@ fn heap_execution_enforces_memory_budget_for_bytecode_allocations() {
 
 #[test]
 fn runs_compiled_if_then_branch_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -160,7 +160,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_if_else_branch_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -183,7 +183,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_comparison_and_remainder_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {

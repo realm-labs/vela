@@ -272,7 +272,7 @@ fn main() {
     )
     .expect_err("duplicate stable ids should be rejected before reload ABI checks");
 
-    assert_eq!(error.code(), "reload.compile");
+    assert_eq!(error.code(), "reload.frontend");
     assert!(
         error
             .source_diagnostics()

@@ -3,6 +3,7 @@ use std::fmt;
 use vela_bytecode::compiler::error::{CompileError, CompileErrorKind};
 use vela_bytecode::linker::LinkError;
 use vela_common::{Diagnostic, Label, Span};
+use vela_hir::source_ingestion::HirSourceBuildError;
 
 use crate::abi::{AccessAbi, EffectAbi, ParamAbi, TraitMethodAbi};
 use crate::module_abi::ModuleExportAbi;
@@ -21,6 +22,7 @@ impl HotReloadError {
     #[must_use]
     pub const fn code(&self) -> &'static str {
         match &self.kind {
+            HotReloadErrorKind::Frontend(_) => "reload.frontend",
             HotReloadErrorKind::Compile(_) => "reload.compile",
             HotReloadErrorKind::Link(_) => "reload.link",
             HotReloadErrorKind::DeletedFunctionParameters { .. } => {
@@ -67,6 +69,7 @@ impl HotReloadError {
     #[must_use]
     pub fn target(&self) -> Option<String> {
         match &self.kind {
+            HotReloadErrorKind::Frontend(_) => None,
             HotReloadErrorKind::Compile(_) => None,
             HotReloadErrorKind::Link(_) => None,
             HotReloadErrorKind::DeletedFunctionParameters { function, .. }
@@ -109,6 +112,9 @@ impl HotReloadError {
     #[must_use]
     pub fn reason(&self) -> String {
         match &self.kind {
+            HotReloadErrorKind::Frontend(_) => {
+                "updated source failed front-end validation".to_owned()
+            }
             HotReloadErrorKind::Compile(_) => "updated source failed to compile".to_owned(),
             HotReloadErrorKind::Link(error) => format!("updated bytecode failed to link: {error}"),
             HotReloadErrorKind::DeletedFunctionParameters { function, .. } => {
@@ -199,6 +205,9 @@ impl HotReloadError {
     #[must_use]
     pub fn repair_hint(&self) -> Option<String> {
         match &self.kind {
+            HotReloadErrorKind::Frontend(_) => {
+                Some("fix source diagnostics and retry".to_owned())
+            }
             HotReloadErrorKind::Compile(_) => Some("fix compile diagnostics and retry".to_owned()),
             HotReloadErrorKind::Link(_) => {
                 Some("fix link diagnostics or register the required native implementation".to_owned())
@@ -277,6 +286,10 @@ impl HotReloadError {
     #[must_use]
     pub fn source_span(&self) -> Option<Span> {
         match &self.kind {
+            HotReloadErrorKind::Frontend(error) => error
+                .diagnostics()
+                .iter()
+                .find_map(|diagnostic| diagnostic.span),
             HotReloadErrorKind::Compile(error) => compile_diagnostics(error)
                 .into_iter()
                 .find_map(|diagnostic| diagnostic.span),
@@ -316,10 +329,12 @@ impl HotReloadError {
 
     #[must_use]
     pub fn labels(&self) -> Vec<Label> {
-        let HotReloadErrorKind::Compile(error) = &self.kind else {
-            return Vec::new();
+        let diagnostics = match &self.kind {
+            HotReloadErrorKind::Frontend(error) => error.diagnostics().to_vec(),
+            HotReloadErrorKind::Compile(error) => compile_diagnostics(error),
+            _ => return Vec::new(),
         };
-        compile_diagnostics(error)
+        diagnostics
             .into_iter()
             .flat_map(|diagnostic| diagnostic.labels.into_iter())
             .collect()
@@ -327,20 +342,19 @@ impl HotReloadError {
 
     #[must_use]
     pub fn source_diagnostics(&self) -> Vec<Diagnostic> {
-        let HotReloadErrorKind::Compile(error) = &self.kind else {
-            return Vec::new();
-        };
-        compile_diagnostics(error)
+        match &self.kind {
+            HotReloadErrorKind::Frontend(error) => error.diagnostics().to_vec(),
+            HotReloadErrorKind::Compile(error) => compile_diagnostics(error),
+            _ => Vec::new(),
+        }
     }
 }
 
 fn compile_diagnostics(error: &CompileError) -> Vec<Diagnostic> {
     match &error.kind {
-        CompileErrorKind::SyntaxDiagnostics(diagnostics)
+        CompileErrorKind::InvalidHirGraph(diagnostics)
         | CompileErrorKind::SemanticDiagnostics(diagnostics) => diagnostics.clone(),
-        CompileErrorKind::FunctionNotFound(_)
-        | CompileErrorKind::UnknownLocal(_)
-        | CompileErrorKind::UnsupportedSyntax(_) => Vec::new(),
+        CompileErrorKind::UnknownLocal(_) | CompileErrorKind::UnsupportedSyntax(_) => Vec::new(),
         _ => error.to_diagnostic().into_iter().collect(),
     }
 }
@@ -363,6 +377,7 @@ impl From<LinkError> for HotReloadError {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum HotReloadErrorKind {
+    Frontend(HirSourceBuildError),
     Compile(CompileError),
     Link(LinkError),
     DeletedFunctionParameters {

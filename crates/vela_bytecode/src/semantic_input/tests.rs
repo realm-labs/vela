@@ -12,12 +12,15 @@ use std::collections::BTreeMap;
 use vela_common::SourceId;
 use vela_hir::body::{HirBodyOwner, HirExprKind, HirPatternKind};
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirPatternId};
+use vela_hir::module_graph::{ModulePath, ModuleSource};
+use vela_hir::source_ingestion::build_source_set;
 use vela_registry::RegistryCompileView;
 
 use super::{PreparedSemanticInput, SemanticInputRequest, SemanticRoots, prepare_semantic_input};
+use crate::compiler::ProgramCompilationMode;
 use crate::compiler::error::CompileResult;
 use crate::compiler::options::CompilerOptions;
-use crate::compiler::semantic::parse_semantic_source;
+use crate::compiler::semantic::SemanticCompilation;
 
 pub(super) enum FixtureRoots<'a> {
     Program,
@@ -57,36 +60,46 @@ fn prepare_source_inner(
     roots: FixtureRoots<'_>,
     registry: Option<RegistryCompileView<'_>>,
 ) -> CompileResult<SemanticFixture> {
-    let semantic = parse_semantic_source(SourceId::new(900), text)?;
+    let sources = [ModuleSource::new(
+        SourceId::new(900),
+        ModulePath::new(Vec::<String>::new()),
+        text,
+    )];
+    let built = build_source_set(&sources).expect("semantic fixture source");
+    let module = built.modules()[0];
+    let mode = ProgramCompilationMode::SingleSource { root: module };
+    let semantic = SemanticCompilation::new(built.graph(), &mode)?;
     let roots = match roots {
         FixtureRoots::Program => SemanticRoots::Program,
         FixtureRoots::Function(name) => SemanticRoots::Function(
-            semantic
-                .function_declaration(name)
+            built
+                .graph()
+                .module(module)
+                .and_then(|declarations| declarations.get(name))
                 .expect("fixture function must exist"),
         ),
     };
     let mut declarations = BTreeMap::new();
-    for declaration in semantic.script_metadata_graph().declarations() {
-        // `parse_semantic_source` installs one source at `ModulePath::root()`.
+    for declaration in semantic.graph().declarations() {
+        // Single-source ingestion installs one source at the empty root path.
         // The graph's canonical qualified query therefore returns the bare
         // declaration name; there is no synthetic `main::` module segment.
         let name = semantic
-            .script_metadata_graph()
+            .graph()
             .qualified_declaration_name(declaration.id)
             .expect("fixture declaration must have a canonical graph name");
         debug_assert_eq!(name, declaration.name);
         declarations.insert(name, declaration.id);
     }
     let schema_default_bodies = semantic
-        .script_metadata_graph()
+        .graph()
         .bodies()
         .filter_map(|body| {
             matches!(body.owner, HirBodyOwner::SchemaFieldDefault(_)).then_some(body.id)
         })
         .collect();
     let call_expressions = semantic
-        .script_metadata_graph()
+        .graph()
         .bodies()
         .flat_map(|body| {
             body.calls()
@@ -95,7 +108,7 @@ fn prepare_source_inner(
         })
         .collect();
     let try_expressions = semantic
-        .script_metadata_graph()
+        .graph()
         .bodies()
         .flat_map(|body| {
             body.expressions.values().filter_map(|expression| {
@@ -105,7 +118,7 @@ fn prepare_source_inner(
         })
         .collect();
     let member_expressions = semantic
-        .script_metadata_graph()
+        .graph()
         .bodies()
         .flat_map(|body| {
             body.expressions.values().filter_map(|expression| {
@@ -117,7 +130,7 @@ fn prepare_source_inner(
         })
         .collect();
     let constructor_expressions = semantic
-        .script_metadata_graph()
+        .graph()
         .bodies()
         .flat_map(|body| {
             body.expressions.values().filter_map(|expression| {
@@ -133,7 +146,7 @@ fn prepare_source_inner(
         })
         .collect();
     let constructor_patterns = semantic
-        .script_metadata_graph()
+        .graph()
         .bodies()
         .flat_map(|body| {
             body.patterns.values().filter_map(|pattern| {
@@ -151,7 +164,7 @@ fn prepare_source_inner(
         })
         .collect();
     let expression_sources = semantic
-        .script_metadata_graph()
+        .graph()
         .bodies()
         .flat_map(|body| {
             body.expressions.values().filter_map(|expression| {
@@ -161,7 +174,7 @@ fn prepare_source_inner(
             })
         })
         .collect();
-    let script_function_symbols = semantic.script_function_symbols();
+    let script_function_symbols = semantic.function_symbols();
     let script_methods = semantic.script_method_catalog();
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
@@ -169,7 +182,7 @@ fn prepare_source_inner(
     let schema_defaults = semantic.schema_defaults(&type_symbols, &evaluated_constants)?;
     let options = CompilerOptions::default();
     let input = prepare_semantic_input(SemanticInputRequest {
-        graph: semantic.script_metadata_graph(),
+        graph: semantic.graph(),
         roots,
         script_function_symbols: &script_function_symbols,
         script_methods,

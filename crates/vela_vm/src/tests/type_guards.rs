@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn linked_function_contract_accepts_forwarded_closure() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn forward(callback: Function, value) {
@@ -22,7 +22,7 @@ fn main() {
 
 #[test]
 fn linked_function_contract_forwards_callbacks_across_container_families() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(2),
         r#"
 fn forward(unary: Function, binary: Function) {
@@ -51,7 +51,7 @@ fn main() {
 
 #[test]
 fn linked_guard_type_accepts_matching_primitive_contract() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main(value) {
@@ -77,7 +77,7 @@ fn main(value) {
 
 #[test]
 fn linked_guard_type_rejects_dynamic_contract_mismatch() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main(value) {
@@ -155,7 +155,7 @@ fn linked_specialization_guard_mismatch_falls_back_without_language_error() {
 
 #[test]
 fn linked_parameter_guard_rejects_public_entry_mismatch() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main(value: i64) {
@@ -187,7 +187,7 @@ fn main(value: i64) {
 
 #[test]
 fn linked_parameter_guard_rejects_nested_script_call_mismatch() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn require_i64(value: i64) {
@@ -223,7 +223,7 @@ fn main(value) {
 
 #[test]
 fn linked_parameter_guard_rejects_mixed_array_contents() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main(values: Array<i64>) {
@@ -262,7 +262,7 @@ fn main(values: Array<i64>) {
 
 #[test]
 fn linked_parameter_guard_charges_budget_for_array_scan() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main(values: Array<i64>) {
@@ -297,7 +297,7 @@ fn main(values: Array<i64>) {
 
 #[test]
 fn linked_parameter_guard_rejects_mixed_map_values() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main(values: Map<String, i64>) {
@@ -332,7 +332,7 @@ fn main(values: Map<String, i64>) {
 
 #[test]
 fn linked_local_guard_accepts_value_keyed_map_keys() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn accept(values) {
@@ -359,7 +359,7 @@ fn main() {
 
 #[test]
 fn linked_local_guard_rejects_mismatched_map_keys() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn accept(values) {
@@ -390,7 +390,7 @@ fn main() {
 
 #[test]
 fn linked_local_guard_accepts_record_identity_map_keys() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Player { id: i64, level: i64 }
@@ -421,7 +421,7 @@ fn main() {
 
 #[test]
 fn linked_local_guard_rejects_mismatched_record_map_keys() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Player { id: i64 }
@@ -542,7 +542,7 @@ fn main(monster: Monster) {
 
 #[test]
 fn linked_parameter_guard_rejects_mixed_set_values() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main(values: Set<String>) {
@@ -577,7 +577,7 @@ fn main(values: Set<String>) {
 
 #[test]
 fn linked_local_guard_accepts_record_identity_set_values() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Player { id: i64, level: i64 }
@@ -683,7 +683,7 @@ fn main(monster: Monster) {
 
 #[test]
 fn linked_local_guard_rejects_mismatched_record_set_values() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Player { id: i64 }
@@ -718,7 +718,7 @@ fn main() {
 
 #[test]
 fn linked_parameter_guard_marks_parameterized_iterators_without_consuming() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main(values: Iterator<i64>) {
@@ -743,7 +743,7 @@ fn main(values: Iterator<i64>) {
 
 #[test]
 fn linked_parameter_guard_rejects_parameterized_iterator_item_mismatch_when_yielded() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main(values: Iterator<i64>) {
@@ -775,7 +775,7 @@ fn main(values: Iterator<i64>) {
 
 #[test]
 fn linked_parameter_guard_does_not_consume_invalid_unread_iterator_items() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main(values: Iterator<i64>) {
@@ -800,7 +800,7 @@ fn main(values: Iterator<i64>) {
 
 #[test]
 fn linked_parameter_guard_accepts_erased_iterator_any_contract() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main(values: Iterator<Any>) {
@@ -825,7 +825,7 @@ fn main(values: Iterator<Any>) {
 
 #[test]
 fn linked_static_safe_script_call_uses_unchecked_entry() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn require_i64(value: i64) {
@@ -876,7 +876,7 @@ fn main() {
 
 #[test]
 fn linked_parameter_guard_accepts_string_and_bytes_primitive_tags() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn echo_text(value: String) {
@@ -914,7 +914,7 @@ fn echo_bytes(value: Bytes) {
 
 #[test]
 fn linked_parameter_guard_accepts_option_and_result_payload_contracts() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn maybe_amount(value: Option<i64>) {
@@ -978,7 +978,7 @@ fn grant(value: Result<i64, String>) {
 
 #[test]
 fn linked_parameter_guard_accepts_option_tuple_payload_contracts() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn split_pair(value: Option<(String, String)>) {
@@ -1025,7 +1025,7 @@ fn split_pair(value: Option<(String, String)>) {
 
 #[test]
 fn linked_parameter_guard_rejects_option_tuple_payload_mismatch() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn split_pair(value: Option<(String, String)>) {
@@ -1090,7 +1090,7 @@ fn split_pair(value: Option<(String, String)>) {
 
 #[test]
 fn linked_parameter_guard_checks_result_tuple_payload_contracts() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn split_pair(value: Result<(String, String), String>) {
@@ -1193,7 +1193,7 @@ fn split_pair(value: Result<(String, String), String>) {
 
 #[test]
 fn linked_parameter_guard_rejects_option_and_result_payload_mismatch() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn maybe_amount(value: Option<i64>) {
@@ -1253,7 +1253,7 @@ fn grant(value: Result<i64, String>) {
 
 #[test]
 fn linked_return_guard_rejects_dynamic_contract_mismatch() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main(value) -> i64 {
@@ -1586,7 +1586,7 @@ fn linked_guard_type_accepts_and_rejects_enum_variant_handles() {
 
 #[test]
 fn static_contract_mismatch_remains_compile_error() {
-    compile_program_source(
+    compile_test_program(
         SourceId::new(1),
         r#"
 fn require_i64(value: i64) {

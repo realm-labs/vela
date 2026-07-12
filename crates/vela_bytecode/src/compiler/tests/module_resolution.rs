@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn compiler_emits_script_calls_for_imported_aliases_across_modules() {
-    let program = compile_module_sources(&[
+    let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::main"),
@@ -39,7 +39,7 @@ pub fn grant(amount) {
 }
 #[test]
 fn compiler_keeps_same_named_functions_in_separate_modules() {
-    let program = compile_module_sources(&[
+    let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::main"),
@@ -73,7 +73,7 @@ pub fn main() {
 }
 #[test]
 fn compiler_uses_hir_type_symbols_for_imported_constructors() {
-    let program = compile_module_sources(&[
+    let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::main"),
@@ -139,7 +139,7 @@ fn compiler_lowers_imported_global_roots_to_qualified_host_globals() {
             .host_runtime_id(1),
         )
         .expect("Player::level should register");
-    let program = compile_module_sources_with_registry(
+    let program = compile_test_modules_with_registry(
         &[
             ModuleSource::new(
                 SourceId::new(1),
@@ -178,7 +178,7 @@ pub global state: Player;
 
 #[test]
 fn compiler_uses_hir_type_symbols_for_imported_match_patterns() {
-    let program = compile_module_sources(&[
+    let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::main"),
@@ -213,7 +213,7 @@ pub enum Damage { Physical { amount: i64 } }
 }
 #[test]
 fn compiler_uses_hir_facts_for_qualified_function_and_const_paths() {
-    let program = compile_module_sources(&[
+    let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::main"),

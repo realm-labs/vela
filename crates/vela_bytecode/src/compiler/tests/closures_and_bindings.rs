@@ -13,7 +13,7 @@ fn frame_slot<'a>(
 
 #[test]
 fn compiler_lowers_lambdas_with_captures() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn make_adder(base) {
@@ -44,7 +44,7 @@ fn main() {
 
 #[test]
 fn compiler_records_frame_metadata_for_named_slots() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main(player) {
@@ -90,7 +90,7 @@ fn main(player) {
 
 #[test]
 fn compiler_records_lambda_frame_metadata_for_captures_and_params() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn make_adder(base) {
@@ -127,7 +127,7 @@ fn make_adder(base) {
 }
 #[test]
 fn compiler_lowers_nested_lambda_transitive_captures() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn make_nested(base) {
@@ -157,7 +157,7 @@ fn main() {
 }
 #[test]
 fn compiler_lowers_try_propagation() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 enum Result {
@@ -182,7 +182,7 @@ fn main() {
 }
 #[test]
 fn compiler_lowers_range_expressions() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -203,7 +203,7 @@ fn main() {
 }
 #[test]
 fn compiler_uses_hir_declarations_for_literal_const_reads() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 const BONUS: i64 = 5;
@@ -235,7 +235,7 @@ fn main() {
 }
 #[test]
 fn compiler_evaluates_pure_scalar_const_expressions() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 const BASE: i64 = 10;
@@ -268,7 +268,7 @@ fn main() {
 }
 #[test]
 fn compiler_evaluates_imported_scalar_const_expressions_across_modules() {
-    let program = compile_module_sources(&[
+    let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::main"),
@@ -307,7 +307,7 @@ pub const BASE: i64 = 4;
 
 #[test]
 fn compiler_evaluates_const_map_key_paths_through_hir_facts() {
-    let program = compile_module_sources(&[
+    let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::main"),
@@ -358,7 +358,7 @@ pub const DEFAULTS = {
 
 #[test]
 fn compiler_uses_hir_local_bindings_for_shadowed_registers() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -384,7 +384,7 @@ fn main() {
 }
 #[test]
 fn compiler_uses_hir_bindings_for_record_shorthand_fields() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -412,7 +412,7 @@ fn main() {
 }
 #[test]
 fn compiler_uses_hir_bindings_for_match_pattern_fields() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main(reward) {
@@ -464,7 +464,7 @@ fn main(reward) {
 }
 #[test]
 fn compiler_uses_hir_callee_resolution_for_shadowed_function_names() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn helper() {
@@ -489,7 +489,7 @@ fn main() {
 }
 #[test]
 fn compiler_preserves_runtime_diagnostic_spans_for_calls_and_arithmetic() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(7),
         r#"
 fn helper() {

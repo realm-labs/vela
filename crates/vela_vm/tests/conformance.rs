@@ -1,10 +1,12 @@
-use vela_bytecode::{
-    Linker,
-    compiler::{
-        compile_module_sources_with_registry, compile_program_source_with_registry,
-        error::CompileErrorKind,
-    },
+#[path = "../test_compile_support.rs"]
+#[allow(dead_code)]
+mod test_compile_support;
+
+use test_compile_support::{
+    compile_test_modules_with_registry, compile_test_program_with_registry,
 };
+use vela_bytecode::Linker;
+use vela_bytecode::compiler::error::CompileErrorKind;
 use vela_common::SourceId;
 use vela_hir::module_graph::{ModulePath, ModuleSource};
 use vela_vm::Vm;
@@ -35,7 +37,7 @@ fn core_language_fixture_executes() {
     let core = include_str!("../../../tests/fixtures/conformance/core_language.vela");
     let reward = include_str!("../../../tests/fixtures/conformance/reward_module.vela");
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let program = compile_module_sources_with_registry(
+    let program = compile_test_modules_with_registry(
         &[
             ModuleSource::new(
                 SourceId::new(1),
@@ -182,13 +184,13 @@ fn compile_standard_fixture(
     source: &str,
 ) -> vela_bytecode::compiler::error::CompileResult<vela_bytecode::compiler::CompiledProgram> {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    compile_program_source_with_registry(SourceId::new(10), source, registry.compile_view())
+    compile_test_program_with_registry(SourceId::new(10), source, registry.compile_view())
 }
 
 fn link_standard_fixture(source: &str) -> std::sync::Arc<vela_bytecode::LinkedArtifact> {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     let program =
-        compile_program_source_with_registry(SourceId::new(10), source, registry.compile_view())
+        compile_test_program_with_registry(SourceId::new(10), source, registry.compile_view())
             .expect("conformance fixture should compile");
     let mut linker = Linker::with_registry(&registry);
     for spec in vela_stdlib::STD_FUNCTIONS {

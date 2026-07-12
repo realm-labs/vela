@@ -3,11 +3,10 @@ use std::path::Path;
 
 use vela_bytecode::compiler::CompiledProgram;
 use vela_bytecode::compiler::error::CompileError;
-use vela_bytecode::compiler::{
-    compile_module_sources_with_options_and_registry,
-    compile_program_source_with_options_and_registry,
-};
+use vela_bytecode::compiler::{ProgramCompilationMode, ProgramCompilationRequest, compile_program};
 use vela_common::SourceId;
+use vela_hir::module_graph::{ModulePath, ModuleSource};
+use vela_hir::source_ingestion::{HirSourceBuildError, build_source_set};
 
 use crate::engine::Engine;
 
@@ -46,9 +45,15 @@ impl EngineSourceError {
         }
     }
 
-    fn compile(error: CompileError) -> Self {
+    fn frontend(error: HirSourceBuildError) -> Self {
         Self {
-            kind: EngineSourceErrorKind::Compile(error),
+            kind: EngineSourceErrorKind::Frontend(error),
+        }
+    }
+
+    fn backend(error: CompileError) -> Self {
+        Self {
+            kind: EngineSourceErrorKind::Backend(error),
         }
     }
 }
@@ -58,7 +63,8 @@ pub enum EngineSourceErrorKind {
     Io { path: String, message: String },
     InvalidSourcePath { path: String },
     TooManySources { count: usize },
-    Compile(CompileError),
+    Frontend(HirSourceBuildError),
+    Backend(CompileError),
 }
 
 impl fmt::Display for EngineSourceError {
@@ -73,7 +79,8 @@ impl fmt::Display for EngineSourceError {
             EngineSourceErrorKind::TooManySources { count } => {
                 write!(formatter, "too many source files: {count}")
             }
-            EngineSourceErrorKind::Compile(error) => write!(formatter, "{error:?}"),
+            EngineSourceErrorKind::Frontend(error) => write!(formatter, "{error:?}"),
+            EngineSourceErrorKind::Backend(error) => write!(formatter, "{error:?}"),
         }
     }
 }
@@ -90,13 +97,12 @@ impl Engine {
         source: SourceId,
         text: &str,
     ) -> Result<CompiledProgram, EngineSourceError> {
-        compile_program_source_with_options_and_registry(
+        let sources = [ModuleSource::new(
             source,
+            ModulePath::new(Vec::<String>::new()),
             text,
-            &self.compiler_options(),
-            self.compiler_registry(),
-        )
-        .map_err(EngineSourceError::compile)
+        )];
+        self.compile_sources(&sources, true)
     }
 
     pub fn compile_file(
@@ -114,11 +120,31 @@ impl Engine {
     ) -> Result<CompiledProgram, EngineSourceError> {
         let root = root.as_ref();
         let sources = load_module_sources(root)?;
-        compile_module_sources_with_options_and_registry(
-            &sources,
-            &self.compiler_options(),
-            self.compiler_registry(),
-        )
-        .map_err(EngineSourceError::compile)
+        self.compile_sources(&sources, false)
+    }
+
+    pub(crate) fn compile_sources(
+        &self,
+        sources: &[ModuleSource],
+        single_source: bool,
+    ) -> Result<CompiledProgram, EngineSourceError> {
+        let built = build_source_set(sources).map_err(EngineSourceError::frontend)?;
+        let mode = if single_source {
+            ProgramCompilationMode::SingleSource {
+                root: built.modules()[0],
+            }
+        } else {
+            ProgramCompilationMode::ModuleGraph {
+                modules: built.modules().into(),
+            }
+        };
+        let options = self.compiler_options();
+        compile_program(ProgramCompilationRequest {
+            graph: built.graph(),
+            mode: &mode,
+            options: &options,
+            registry: Some(self.compiler_registry()),
+        })
+        .map_err(EngineSourceError::backend)
     }
 }

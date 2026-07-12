@@ -22,7 +22,7 @@ fn returned_constant(code: &UnlinkedCodeObject) -> Option<&Constant> {
 
 #[test]
 fn production_compile_respects_terminated_block_tail_semantics() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn terminated() {

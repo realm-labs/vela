@@ -1,13 +1,13 @@
 use super::*;
 use crate::budget::ExecutionBudgetKind;
 use crate::heap::{GcBudget, HeapValue, ScriptHeap};
+use crate::test_support::{
+    compile_test_function, compile_test_modules, compile_test_program,
+    compile_test_program_with_registry,
+};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use vela_bytecode::compiler::options::{CompilerOptions, HostIndexCapabilityInfo};
-use vela_bytecode::compiler::{
-    compile_function_source, compile_module_sources, compile_program_source,
-    compile_program_source_with_registry,
-};
 use vela_bytecode::{
     CacheSiteKind, Constant, ConstantId, InstructionOffset, LinkedArtifact, LinkedProgram, Linker,
     UnlinkedInstruction,
@@ -536,7 +536,7 @@ fn compile_host_program_source(
     text: &str,
     registry: vela_registry::DefinitionRegistry,
 ) -> vela_bytecode::compiler::error::CompileResult<vela_bytecode::compiler::CompiledProgram> {
-    compile_program_source_with_registry(source, text, registry.compile_view())
+    compile_test_program_with_registry(source, text, registry.compile_view())
 }
 
 fn compile_standard_program_source(
@@ -544,7 +544,7 @@ fn compile_standard_program_source(
     text: &str,
 ) -> vela_bytecode::compiler::error::CompileResult<vela_bytecode::compiler::CompiledProgram> {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    compile_program_source_with_registry(source, text, registry.compile_view())
+    compile_test_program_with_registry(source, text, registry.compile_view())
 }
 
 fn compile_standard_program_source_with_native_functions(
@@ -563,7 +563,7 @@ fn compile_standard_program_source_with_native_functions(
             ))
             .expect("test native function should register");
     }
-    compile_program_source_with_registry(source, text, registry.compile_view())
+    compile_test_program_with_registry(source, text, registry.compile_view())
 }
 
 fn compile_host_program_source_with_options(
@@ -572,7 +572,7 @@ fn compile_host_program_source_with_options(
     options: &CompilerOptions,
     registry: vela_registry::DefinitionRegistry,
 ) -> vela_bytecode::compiler::error::CompileResult<vela_bytecode::compiler::CompiledProgram> {
-    vela_bytecode::compiler::compile_program_source_with_options_and_registry(
+    crate::test_support::compile_test_program_with_options_and_registry(
         source,
         text,
         options,

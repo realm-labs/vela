@@ -1024,7 +1024,7 @@ fn rejected_compile_report_carries_source_span_and_labels() {
     assert!(!report.accepted);
     assert_eq!(report.errors.len(), 1);
     let diagnostic = &report.errors[0];
-    assert_eq!(diagnostic.code, "reload.compile");
+    assert_eq!(diagnostic.code, "reload.frontend");
     assert_eq!(diagnostic.target, None);
     assert_eq!(diagnostic.detail, None);
     assert_eq!(

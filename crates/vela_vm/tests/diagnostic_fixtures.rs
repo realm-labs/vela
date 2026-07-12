@@ -1,6 +1,10 @@
 use std::sync::Arc;
 
-use vela_bytecode::compiler::{compile_program_source, compile_program_source_with_registry};
+#[path = "../test_compile_support.rs"]
+#[allow(dead_code)]
+mod test_compile_support;
+
+use test_compile_support::{compile_test_program, compile_test_program_with_registry};
 use vela_bytecode::{
     CacheSiteKind, Constant, InstructionOffset, Linker, Register, UnlinkedCodeObject,
     UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram,
@@ -50,7 +54,7 @@ const REFLECTION_UNKNOWN_FIELD_EXPECTED: &str =
 #[test]
 fn runtime_division_by_zero_fixture_renders_source_span_and_call_stack() {
     let source = normalized_fixture(RUNTIME_DIVISION_BY_ZERO);
-    let program = compile_program_source(SourceId::new(1), &source)
+    let program = compile_test_program(SourceId::new(1), &source)
         .expect("runtime diagnostic fixture should compile");
     let linked = link_fixture_program(&program);
     let error = Vm::new()
@@ -156,7 +160,7 @@ fn compiled_host_permission_denied_fixture_renders_source_span_and_call_stack() 
         )
         .expect("Player::level host field should register");
     let program =
-        compile_program_source_with_registry(SourceId::new(1), &source, registry.compile_view())
+        compile_test_program_with_registry(SourceId::new(1), &source, registry.compile_view())
             .expect("compiled host diagnostic fixture should compile");
 
     let mut adapter = MockStateAdapter::new();
@@ -353,7 +357,7 @@ fn reflection_unknown_field_fixture_renders_candidates_and_source_span() {
     let level_path = HostPath::new(host_ref).field(level_field);
 
     let source = normalized_fixture(REFLECTION_UNKNOWN_FIELD);
-    let program = compile_program_source(SourceId::new(1), &source)
+    let program = compile_test_program(SourceId::new(1), &source)
         .expect("reflection diagnostic fixture should compile");
     let mut registry = TypeRegistry::new();
     registry.register(

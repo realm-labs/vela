@@ -53,6 +53,17 @@ jobs:
             exit 1
           fi
 
+      - name: Check bytecode source boundary
+        run: |
+          if grep -RIn 'vela_syntax' crates/vela_bytecode --include='*.rs' --include='Cargo.toml'; then
+            echo "vela_bytecode must not depend on or reference vela_syntax."
+            exit 1
+          fi
+          if grep -RInE 'compile_(function|program|module)_source|parse_semantic_(source|modules)|SemanticSource|SemanticModules' crates examples tests --include='*.rs'; then
+            echo "Deleted bytecode source compiler APIs must not return."
+            exit 1
+          fi
+
       - name: Run Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 

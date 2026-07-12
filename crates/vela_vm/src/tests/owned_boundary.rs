@@ -3,7 +3,7 @@ use crate::owned_value::OwnedValue;
 
 #[test]
 fn public_program_entrypoint_roundtrips_nested_owned_values() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn identity(value) {
@@ -33,7 +33,7 @@ fn identity(value) {
 
 #[test]
 fn public_program_entrypoint_preserves_owned_non_string_map_keys() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn identity(value) {
@@ -54,7 +54,7 @@ fn identity(value) {
 
 #[test]
 fn public_program_entrypoint_roundtrips_owned_tuple_values() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn identity(value) {
@@ -79,7 +79,7 @@ fn identity(value) {
 
 #[test]
 fn public_program_entrypoint_rejects_owned_map_non_keyable_keys() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn identity(value) {
@@ -103,7 +103,7 @@ fn identity(value) {
 
 #[test]
 fn public_program_entrypoint_rejects_owned_set_non_keyable_elements() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn identity(value) {
@@ -127,7 +127,7 @@ fn identity(value) {
 
 #[test]
 fn budgeted_public_program_entrypoint_releases_boundary_heap_memory() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn identity(value) {

@@ -14,7 +14,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array contains method should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
@@ -36,7 +36,7 @@ fn main() {
     return "";
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array contains method should compile");
     let mut budget = ExecutionBudget::unbounded();
     let mut vm = Vm::new();
@@ -61,7 +61,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array index_of method should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
@@ -83,7 +83,7 @@ fn main() {
     return "";
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array index_of method should compile");
     let mut budget = ExecutionBudget::unbounded();
     let mut vm = Vm::new();
@@ -109,7 +109,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array scalar lookup source should compile");
     let mut budget = ExecutionBudget::unbounded();
     let mut vm = Vm::new();
@@ -132,7 +132,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array contains source should compile");
 
     let mut vm = Vm::new();
@@ -147,7 +147,7 @@ fn main() {
     return option::unwrap_or(nested.index_of(["raid"]), -1);
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array index_of source should compile");
 
     let mut vm = Vm::new();
@@ -166,7 +166,7 @@ fn main() {
     return nested.distinct().len();
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array distinct source should compile");
 
     assert_eq!(
@@ -210,7 +210,7 @@ fn main() {
     return 0;
 }
 "#;
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_test_program(SourceId::new(1), source)
         .expect("array PartialEq method source should compile");
 
     let mut vm = Vm::new();
@@ -235,7 +235,7 @@ fn main() {
     return "";
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array distinct source should compile");
 
     let result = run_linked_array_test_code(&Vm::new(), code).expect("array distinct should run");
@@ -263,7 +263,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array distinct source should compile");
     let mut budget = ExecutionBudget::unbounded();
 
@@ -292,7 +292,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array reverse source should compile");
 
     let result = run_linked_array_test_code(&Vm::new(), code).expect("array reverse should run");
@@ -320,7 +320,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array reverse source should compile");
     let mut budget = ExecutionBudget::unbounded();
 
@@ -355,7 +355,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array slice source should compile");
 
     let result = run_linked_array_test_code(&Vm::new(), code).expect("array slice should run");
@@ -382,7 +382,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array slice source should compile");
     let mut budget = ExecutionBudget::unbounded();
 
@@ -398,7 +398,7 @@ fn main() {
     return [1, 2].slice(0, 3);
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array slice bounds source should compile");
 
     let error = run_linked_array_test_code(&Vm::new(), code)
@@ -420,7 +420,7 @@ fn main() {
     return "";
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array join method should compile");
 
     let result =
@@ -436,7 +436,7 @@ fn main() {
     return tags.join("|");
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array join method should compile");
     let mut budget = ExecutionBudget::unbounded();
 
@@ -452,7 +452,7 @@ fn main() {
     return ["boar", 1].join(",");
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array join type error source should compile");
 
     let error = run_linked_array_test_code(&Vm::new(), code)

@@ -984,7 +984,7 @@ pub fn grant() {
 
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
-    assert_eq!(report.errors[0].code, "reload.compile");
+    assert_eq!(report.errors[0].code, "reload.frontend");
     assert!(
         report.errors[0]
             .source_diagnostics

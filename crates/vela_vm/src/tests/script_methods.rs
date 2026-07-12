@@ -88,7 +88,7 @@ fn main() {
 
 #[test]
 fn runs_script_method_self_record_compound_assignment() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Counter { counter: i64 }
@@ -114,7 +114,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_script_impl_method_dispatch() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -142,7 +142,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_inherent_script_impl_method_dispatch() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Player { level: i64 }
@@ -169,7 +169,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_script_method_named_and_default_args() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource {
@@ -200,7 +200,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_typed_parameter_method_id_dispatch() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -237,7 +237,7 @@ fn main(player: Player) {
 
 #[test]
 fn runs_compiled_immediate_script_method_id_dispatch() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -264,7 +264,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_trait_default_method_dispatch() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource {
@@ -294,7 +294,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_self_method_id_dispatch() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource {
@@ -324,7 +324,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_captured_receiver_method_id_dispatch() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -353,7 +353,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_binding_pattern_receiver_method_id_dispatch() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -723,7 +723,7 @@ fn main(player) {
 
 #[test]
 fn runs_compiled_record_variant_field_method_id_dispatch() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -759,7 +759,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_tuple_variant_field_method_id_dispatch() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -795,7 +795,7 @@ fn main() {
 
 #[test]
 fn explicit_impl_method_overrides_trait_default_dispatch() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource {
@@ -825,7 +825,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_module_qualified_script_impl_method_dispatch() {
-    let program = compile_module_sources(&[ModuleSource::new(
+    let program = compile_test_modules(&[ModuleSource::new(
         SourceId::new(1),
         ModulePath::from_qualified("game::combat"),
         r#"
@@ -854,7 +854,7 @@ pub fn main() {
 
 #[test]
 fn runs_compiled_module_typed_parameter_method_id_dispatch() {
-    let program = compile_module_sources(&[
+    let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::model"),

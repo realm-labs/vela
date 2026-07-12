@@ -8,7 +8,10 @@ use vela_vm::error::VmError;
 
 pub(crate) fn render_engine_source_error(path: &Path, error: &EngineSourceError) -> String {
     match &error.kind {
-        EngineSourceErrorKind::Compile(error) => render_compile_error(path, error),
+        EngineSourceErrorKind::Frontend(error) => {
+            render_source_diagnostics(path, error.diagnostics())
+        }
+        EngineSourceErrorKind::Backend(error) => render_compile_error(path, error),
         EngineSourceErrorKind::Io { .. }
         | EngineSourceErrorKind::InvalidSourcePath { .. }
         | EngineSourceErrorKind::TooManySources { .. } => error.to_string(),
@@ -34,13 +37,18 @@ fn render_compile_error(path: &Path, error: &CompileError) -> String {
     render_diagnostics(&diagnostics, source)
 }
 
+fn render_source_diagnostics(path: &Path, diagnostics: &[Diagnostic]) -> String {
+    let source = std::fs::read_to_string(path)
+        .ok()
+        .map(|text| DiagnosticSource::new(SourceId::new(1), path.display().to_string(), text));
+    render_diagnostics(diagnostics, source)
+}
+
 fn compile_diagnostics(error: &CompileError) -> Vec<Diagnostic> {
     match &error.kind {
-        CompileErrorKind::SyntaxDiagnostics(diagnostics)
+        CompileErrorKind::InvalidHirGraph(diagnostics)
         | CompileErrorKind::SemanticDiagnostics(diagnostics) => diagnostics.clone(),
-        CompileErrorKind::FunctionNotFound(_)
-        | CompileErrorKind::UnknownLocal(_)
-        | CompileErrorKind::UnsupportedSyntax(_) => Vec::new(),
+        CompileErrorKind::UnknownLocal(_) | CompileErrorKind::UnsupportedSyntax(_) => Vec::new(),
         _ => error.to_diagnostic().into_iter().collect(),
     }
 }

@@ -8,10 +8,8 @@ struct ExpectedLabel<'a> {
     message: &'a str,
 }
 
-fn only_semantic_diagnostic(error: CompileError) -> Diagnostic {
-    let CompileErrorKind::SemanticDiagnostics(mut diagnostics) = error.kind else {
-        panic!("expected semantic diagnostics, got {error:?}");
-    };
+fn only_semantic_diagnostic(error: TestCompileError) -> Diagnostic {
+    let mut diagnostics = error.into_semantic_diagnostics();
     assert_eq!(
         diagnostics.len(),
         1,
@@ -102,7 +100,7 @@ fn loop_placement_failures_are_analysis_diagnostics_across_lambda_boundaries() {
     ];
 
     for (source, code, message, statement, context) in cases {
-        let error = match compile_program_source(SourceId::new(720), source) {
+        let error = match compile_test_program(SourceId::new(720), source) {
             Ok(_) => panic!("{context} should fail compilation"),
             Err(error) => error,
         };
@@ -126,14 +124,14 @@ fn nonconstant_schema_default_is_lazy_and_diagnosed_when_used() {
 struct Reward { amount: i64 = math::random() }
 fn main() { return 1; }
 "#;
-    compile_program_source(SOURCE_ID, UNUSED)
+    compile_test_program(SOURCE_ID, UNUSED)
         .expect("an unused nonconstant schema default is accepted by the current compiler");
 
     const USED: &str = r#"
 struct Reward { amount: i64 = math::random() }
 fn main() { return Reward {}; }
 "#;
-    let error = compile_program_source(SOURCE_ID, USED)
+    let error = compile_test_program(SOURCE_ID, USED)
         .expect_err("using an omitted nonconstant schema default should fail");
     let diagnostic = only_semantic_diagnostic(error);
     assert_diagnostic_contract(
@@ -157,7 +155,7 @@ fn set_from_array_accepts_one_positional_or_named_source_operand() {
         "fn main() { return set::from_array([1, 2]); }",
         "fn main() { return set::from_array(values = [1, 2]); }",
     ] {
-        let program = compile_program_source(SourceId::new(726), source)
+        let program = compile_test_program(SourceId::new(726), source)
             .expect("one set source operand should compile");
         let main = program.function("main").expect("main function");
         assert!(main.instructions.iter().any(|instruction| matches!(
@@ -171,7 +169,7 @@ fn set_from_array_accepts_one_positional_or_named_source_operand() {
 fn set_from_array_arity_failures_are_coded_call_diagnostics() {
     const SOURCE_ID: SourceId = SourceId::new(727);
     const MISSING: &str = "fn main() { return set::from_array(); }";
-    let error = compile_program_source(SOURCE_ID, MISSING)
+    let error = compile_test_program(SOURCE_ID, MISSING)
         .expect_err("set::from_array requires one source operand");
     let diagnostic = only_semantic_diagnostic(error);
     assert_diagnostic_contract(
@@ -189,7 +187,7 @@ fn set_from_array_arity_failures_are_coded_call_diagnostics() {
     );
 
     const EXTRA: &str = "fn main() { return set::from_array([1], [2]); }";
-    let error = compile_program_source(SOURCE_ID, EXTRA)
+    let error = compile_test_program(SOURCE_ID, EXTRA)
         .expect_err("set::from_array rejects extra source operands");
     let diagnostic = only_semantic_diagnostic(error);
     assert_diagnostic_contract(
@@ -212,7 +210,7 @@ fn known_receiver_missing_method_is_static_but_unknown_receiver_stays_dynamic() 
     const SOURCE_ID: SourceId = SourceId::new(722);
     const KNOWN: &str = "fn main() { return 42.trim(); }";
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let error = compile_program_source_with_registry(SOURCE_ID, KNOWN, registry.compile_view())
+    let error = compile_test_program_with_registry(SOURCE_ID, KNOWN, registry.compile_view())
         .expect_err("a known integer receiver has no trim method");
     let diagnostic = only_semantic_diagnostic(error);
     assert_diagnostic_contract(
@@ -230,7 +228,7 @@ fn known_receiver_missing_method_is_static_but_unknown_receiver_stays_dynamic() 
     );
 
     const UNKNOWN: &str = "fn main(value) { return value.trim(); }";
-    let program = compile_program_source_with_registry(SOURCE_ID, UNKNOWN, registry.compile_view())
+    let program = compile_test_program_with_registry(SOURCE_ID, UNKNOWN, registry.compile_view())
         .expect("an unknown receiver must retain dynamic method dispatch");
     let main = program.function("main").expect("main function");
     let dynamic_call = main
@@ -407,7 +405,7 @@ fn assert_host_index_diagnostic(
     let options = capability.map_or_else(options::CompilerOptions::new, |capability| {
         options::CompilerOptions::new().with_host_index_capability("Inventory", capability)
     });
-    let error = compile_program_source_with_options_and_registry(
+    let error = compile_test_program_with_options_and_registry(
         source_id,
         source,
         &options,
@@ -433,7 +431,7 @@ fn negated_float_const_and_schema_default_keep_literal_origins() {
         "const BAD = -3.5e38f32; fn main() { return BAD; }",
         "struct Reward { amount: f32 = -3.5e38f32 } fn main() { return Reward {}; }",
     ] {
-        let error = compile_program_source(SOURCE_ID, source)
+        let error = compile_test_program(SOURCE_ID, source)
             .expect_err("out-of-range negated f32 should fail compilation");
         assert_eq!(
             error.kind,
@@ -457,7 +455,7 @@ fn negated_float_const_and_schema_default_keep_literal_origins() {
     }
 }
 
-fn assert_unqualified_record_pattern_diagnostic(error: CompileError) {
+fn assert_unqualified_record_pattern_diagnostic(error: TestCompileError) {
     assert_eq!(error.kind, CompileErrorKind::UnsupportedRecordPattern);
     assert!(error.span.is_some());
     let diagnostic = error
@@ -471,7 +469,7 @@ fn assert_unqualified_record_pattern_diagnostic(error: CompileError) {
 
 #[test]
 fn unqualified_record_patterns_have_structured_source_diagnostics() {
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(728),
         r#"
 struct Reward { amount: i64 }
@@ -484,7 +482,7 @@ fn main() {
     .expect_err("an unqualified source-record pattern is unsupported by the baseline");
     assert_unqualified_record_pattern_diagnostic(error);
 
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(729),
         "fn main(value) { return match value { Missing { amount } => amount, _ => 0 }; }",
     )
@@ -494,7 +492,7 @@ fn main() {
 
 #[test]
 fn imported_one_segment_record_pattern_has_a_structured_source_diagnostic() {
-    let error = compile_module_sources(&[
+    let error = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(730),
             ModulePath::from_qualified("game::main"),
@@ -518,7 +516,7 @@ fn main() {
 
 #[test]
 fn qualified_record_patterns_materialize_never_match_predicates() {
-    let program = compile_module_sources(&[
+    let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(732),
             ModulePath::from_qualified("game::main"),
@@ -569,7 +567,7 @@ fn main() {
             reward,
         ))
         .expect("registered Reward::amount field");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(734),
         r#"
 fn main() {

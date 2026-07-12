@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn compiler_contextualizes_typed_record_constructor_literals_without_guard() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Reward {
@@ -35,7 +35,7 @@ fn main() {
 
 #[test]
 fn compiler_emits_field_guard_for_dynamic_typed_record_constructor() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Reward {
@@ -87,7 +87,7 @@ fn main(value) {
 
 #[test]
 fn compiler_rejects_static_typed_record_constructor_mismatches() {
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(1),
         r#"
 struct Reward {
@@ -108,7 +108,7 @@ fn main() {
 
 #[test]
 fn compiler_contextualizes_typed_enum_payload_literals_without_guard() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 enum Damage {
@@ -151,7 +151,7 @@ fn record_payload() {
 
 #[test]
 fn compiler_emits_field_guard_for_dynamic_typed_enum_payload() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 enum Damage {
@@ -201,7 +201,7 @@ fn main() {
 }
 "#,
     ] {
-        let error = compile_program_source(SourceId::new(1), source)
+        let error = compile_test_program(SourceId::new(1), source)
             .expect_err("static enum payload mismatch should fail before bytecode emission");
         assert_eq!(
             semantic_diagnostic_codes(error),

@@ -8,7 +8,7 @@ fn call(program: &UnlinkedProgram, entry: &str) -> VmResult<OwnedValue> {
 
 #[test]
 fn production_vm_respects_terminated_block_tail_semantics() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn terminated() {

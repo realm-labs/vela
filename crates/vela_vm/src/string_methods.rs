@@ -108,8 +108,8 @@ fn type_error<T>(operation: &'static str) -> VmResult<T> {
 
 #[cfg(test)]
 mod tests {
+    use crate::test_support::compile_test_function_with_registry;
     use std::sync::Arc;
-    use vela_bytecode::compiler::compile_function_source_with_registry;
     use vela_bytecode::compiler::error::{CompileErrorKind, CompileResult};
     use vela_bytecode::{LinkError, LinkedArtifact, Linker, UnlinkedCodeObject, UnlinkedProgram};
     use vela_common::SourceId;
@@ -117,13 +117,13 @@ mod tests {
     use crate::owned_value::OwnedValue;
     use crate::{ExecutionBudget, Vm, VmResult};
 
-    fn compile_function_source(
+    fn compile_test_function(
         source: SourceId,
         text: &str,
         function_name: &str,
     ) -> CompileResult<UnlinkedCodeObject> {
         let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-        compile_function_source_with_registry(source, text, function_name, registry.compile_view())
+        compile_test_function_with_registry(source, text, function_name, registry.compile_view())
     }
 
     fn run_linked_string_test_code(vm: &Vm, code: UnlinkedCodeObject) -> VmResult<OwnedValue> {
@@ -173,7 +173,7 @@ fn main() {
     return "";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("string utility method source should compile");
 
         let result = run_linked_string_test_code(&Vm::new(), code)
@@ -198,7 +198,7 @@ fn main() {
     return "";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap string utility method source should compile");
         let mut budget = ExecutionBudget::unbounded();
 
@@ -215,7 +215,7 @@ fn main() {
     return 42.trim();
 }
 "#;
-        let error = compile_function_source(SourceId::new(1), source, "main")
+        let error = compile_test_function(SourceId::new(1), source, "main")
             .expect_err("known non-string receiver should fail before execution");
         let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
             panic!("expected semantic diagnostics");
@@ -238,7 +238,7 @@ fn main() {
     return "";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("string repeat source should compile");
 
         let result =
@@ -253,7 +253,7 @@ fn main() {
     return "quest".repeat(-1);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("string repeat type error source should compile");
 
         let error = run_linked_string_test_code(&Vm::new(), code)
@@ -273,7 +273,7 @@ fn main() {
     return "xp奖励".slice(2, 8);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("unicode string slice source should compile");
 
         let result =
@@ -288,7 +288,7 @@ fn main() {
     return "quest".slice(0, 10);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("out of bounds string slice source should compile");
 
         let error = run_linked_string_test_code(&Vm::new(), code)
@@ -306,7 +306,7 @@ fn main() {
     return "xp奖励".slice(3, 8);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("non-boundary string slice source should compile");
 
         let error = run_linked_string_test_code(&Vm::new(), code)
@@ -334,7 +334,7 @@ fn main() {
     return -1;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("string find source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -351,7 +351,7 @@ fn main() {
     return option::unwrap_or(name.find("wolf"), -1);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap string find source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -369,7 +369,7 @@ fn main() {
     return "quest".find(1);
 }
 "#;
-        let error = compile_function_source(SourceId::new(1), source, "main")
+        let error = compile_test_function(SourceId::new(1), source, "main")
             .expect_err("statically known non-string find needle should fail before runtime");
         let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
             panic!("expected semantic diagnostics");
@@ -396,7 +396,7 @@ fn main() {
     return "";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("string strip affix source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -414,7 +414,7 @@ fn main() {
     return option::unwrap_or(option::unwrap_or(body, "").strip_suffix(".alpha"), "missing");
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap string strip affix source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -432,7 +432,7 @@ fn main() {
     return "quest.reward".strip_prefix(1);
 }
 "#;
-        let error = compile_function_source(SourceId::new(1), source, "main").expect_err(
+        let error = compile_test_function(SourceId::new(1), source, "main").expect_err(
             "statically known non-string strip_prefix affix should fail before runtime",
         );
         let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
@@ -460,7 +460,7 @@ fn main() {
     return "";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("string split_lines source should compile");
 
         let result =
@@ -480,7 +480,7 @@ fn main() {
     return "";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap string split_lines source should compile");
         let mut budget = ExecutionBudget::unbounded();
 
@@ -502,7 +502,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("string split_once source should compile");
 
         let result =
@@ -518,7 +518,7 @@ fn main() {
     return pair.0 == "count" && pair.1 == "3";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("tuple projection source should compile");
 
         let result =
@@ -534,7 +534,7 @@ fn main() {
     return kind == "item" && item == "gold";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap string split_once source should compile");
         let mut budget = ExecutionBudget::unbounded();
 
@@ -559,7 +559,7 @@ fn main() {
     return "";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("string split_whitespace source should compile");
 
         let mut vm = Vm::new();
@@ -584,7 +584,7 @@ fn main() {
     return "";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap string split_whitespace source should compile");
         let mut budget = ExecutionBudget::unbounded();
 
@@ -612,7 +612,7 @@ fn main() {
     return -1;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("string parse_i64 source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -647,7 +647,7 @@ fn main() {
     return ok;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("string parse scalar source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -666,7 +666,7 @@ fn main() {
     return option::unwrap_or(parsed, -1);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap string parse_i64 source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -698,7 +698,7 @@ fn main() {
     return 1.0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("string parse_f64 source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -719,7 +719,7 @@ fn main() {
     return math::floor(option::unwrap_or(parsed, -1.0));
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap string parse_f64 source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -748,7 +748,7 @@ fn main() {
     return true;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("string parse_bool source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -766,7 +766,7 @@ fn main() {
     return option::unwrap_or(parsed, false);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap string parse_bool source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();

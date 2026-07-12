@@ -62,7 +62,7 @@ fn linked_callback_methods_forward_inline_caches_to_callback_body() {
             .type_hint(Some("i64".to_owned())),
         )
         .expect("test host field should register");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main(player: Player) {

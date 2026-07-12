@@ -37,7 +37,7 @@ fn compile_reflection_value_module_sources(
             ))
             .expect("test native function should register");
     }
-    vela_bytecode::compiler::compile_module_sources_with_registry(sources, registry.compile_view())
+    crate::test_support::compile_test_modules_with_registry(sources, registry.compile_view())
 }
 
 fn exec_reflection_value_program(

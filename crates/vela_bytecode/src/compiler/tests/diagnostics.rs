@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn compiler_rejects_duplicate_declarations_from_hir() {
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(1),
         r#"
 fn main() { return 1; }
@@ -10,9 +10,7 @@ fn main() { return 2; }
 "#,
     )
     .expect_err("duplicate function should fail before bytecode generation");
-    let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
-        panic!("expected semantic diagnostics");
-    };
+    let diagnostics = error.into_semantic_diagnostics();
     assert!(
         diagnostics
             .iter()
@@ -21,7 +19,7 @@ fn main() { return 2; }
 }
 #[test]
 fn compiler_rejects_duplicate_parameters_from_hir() {
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(1),
         r#"
 fn main(amount, amount) {
@@ -30,9 +28,7 @@ fn main(amount, amount) {
 "#,
     )
     .expect_err("duplicate parameter should fail before bytecode generation");
-    let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
-        panic!("expected semantic diagnostics");
-    };
+    let diagnostics = error.into_semantic_diagnostics();
     assert!(
         diagnostics
             .iter()
@@ -41,7 +37,7 @@ fn main(amount, amount) {
 }
 #[test]
 fn compiler_rejects_duplicate_schema_members_from_hir() {
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(1),
         r#"
 struct Reward {
@@ -62,9 +58,7 @@ fn main() {
 "#,
     )
     .expect_err("duplicate schema members should fail before bytecode generation");
-    let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
-        panic!("expected semantic diagnostics");
-    };
+    let diagnostics = error.into_semantic_diagnostics();
     for code in [
         "hir::duplicate_field",
         "hir::duplicate_variant",
@@ -82,7 +76,7 @@ fn main() {
 
 #[test]
 fn compiler_rejects_invalid_and_duplicate_schema_ids_from_hir() {
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(1),
         r#"
 struct Reward {
@@ -119,9 +113,7 @@ fn main() {
 "#,
     )
     .expect_err("invalid and duplicate schema ids should fail before bytecode generation");
-    let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
-        panic!("expected semantic diagnostics");
-    };
+    let diagnostics = error.into_semantic_diagnostics();
     for code in [
         "hir::invalid_schema_id",
         "hir::duplicate_field_id",
@@ -140,7 +132,7 @@ fn main() {
 
 #[test]
 fn compiler_rejects_missing_required_constructor_fields() {
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(1),
         r#"
 struct Reward {
@@ -160,7 +152,7 @@ fn main() {
 }
 #[test]
 fn compiler_rejects_unknown_constructor_fields() {
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(1),
         r#"
 struct Reward {
@@ -180,7 +172,7 @@ fn main() {
 }
 #[test]
 fn compiler_rejects_duplicate_constructor_fields() {
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(1),
         r#"
 struct Reward {
@@ -200,7 +192,7 @@ fn main() {
 }
 #[test]
 fn compiler_rejects_invalid_tuple_constructor_arity() {
-    let missing = compile_program_source(
+    let missing = compile_test_program(
         SourceId::new(1),
         r#"
 enum Damage {
@@ -212,7 +204,7 @@ fn main() {
 "#,
     )
     .expect_err("missing tuple constructor field should fail");
-    let extra = compile_program_source(
+    let extra = compile_test_program(
         SourceId::new(2),
         r#"
 enum Damage {
@@ -235,7 +227,7 @@ fn main() {
 }
 #[test]
 fn compiler_rejects_unknown_constructor_variants() {
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(1),
         r#"
 enum Damage {
@@ -254,7 +246,7 @@ fn main() {
 }
 #[test]
 fn compiler_rejects_unresolved_names_from_hir_with_candidates() {
-    let error = compile_function_source(
+    let error = compile_test_function(
         SourceId::new(1),
         r#"
 fn main(player) {
@@ -264,9 +256,7 @@ fn main(player) {
         "main",
     )
     .expect_err("unresolved name should fail before bytecode generation");
-    let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
-        panic!("expected semantic diagnostics");
-    };
+    let diagnostics = error.into_semantic_diagnostics();
     let unresolved = diagnostics
         .iter()
         .find(|diagnostic| diagnostic.code.as_deref() == Some("hir::unresolved_name"))
@@ -280,7 +270,7 @@ fn main(player) {
 }
 #[test]
 fn compiler_rejects_unknown_schema_hints_from_hir_with_candidates() {
-    let error = compile_function_source(
+    let error = compile_test_function(
         SourceId::new(1),
         r#"
 struct Player { level: i64 }
@@ -291,9 +281,7 @@ fn main(player: Plyer) {
         "main",
     )
     .expect_err("unknown schema hint should fail before bytecode generation");
-    let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
-        panic!("expected semantic diagnostics");
-    };
+    let diagnostics = error.into_semantic_diagnostics();
     let unknown_schema = diagnostics
         .iter()
         .find(|diagnostic| diagnostic.code.as_deref() == Some("hir::unknown_schema"))
@@ -308,7 +296,7 @@ fn main(player: Plyer) {
 }
 #[test]
 fn compiler_rejects_private_imports_before_codegen() {
-    let error = compile_module_sources(&[
+    let error = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::main"),
@@ -330,9 +318,7 @@ fn secret() {
         ),
     ])
     .expect_err("private import should fail before bytecode generation");
-    let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
-        panic!("expected semantic diagnostics");
-    };
+    let diagnostics = error.into_semantic_diagnostics();
     assert!(
         diagnostics
             .iter()
@@ -341,7 +327,7 @@ fn secret() {
 }
 #[test]
 fn compiler_rejects_duplicate_imports_before_codegen() {
-    let error = compile_module_sources(&[
+    let error = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::reward"),
@@ -365,9 +351,7 @@ fn main() {
         ),
     ])
     .expect_err("duplicate import should fail before bytecode generation");
-    let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
-        panic!("expected semantic diagnostics");
-    };
+    let diagnostics = error.into_semantic_diagnostics();
     assert!(
         diagnostics
             .iter()
@@ -376,7 +360,7 @@ fn main() {
 }
 #[test]
 fn compiler_rejects_import_conflicts_before_codegen() {
-    let error = compile_module_sources(&[
+    let error = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::reward"),
@@ -394,9 +378,7 @@ fn grant() {
         ),
     ])
     .expect_err("import conflict should fail before bytecode generation");
-    let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
-        panic!("expected semantic diagnostics");
-    };
+    let diagnostics = error.into_semantic_diagnostics();
     assert!(
         diagnostics
             .iter()
@@ -405,7 +387,7 @@ fn grant() {
 }
 #[test]
 fn compiler_keeps_valid_program_bytecode_equivalent_after_hir_gate() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 const BONUS: i64 = 5;

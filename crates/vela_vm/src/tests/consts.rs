@@ -60,7 +60,7 @@ fn main() {
 
 #[test]
 fn compiled_aggregate_const_reads_emit_aggregate_constants() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 const VALUES = [1, 2, 3];
@@ -90,7 +90,7 @@ fn main() {
 #[test]
 fn runs_cross_module_imported_aggregate_const_reads() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let program = vela_bytecode::compiler::compile_module_sources_with_registry(
+    let program = crate::test_support::compile_test_modules_with_registry(
         &[
             ModuleSource::new(
                 SourceId::new(1),

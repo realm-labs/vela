@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn linked_deferred_int_literal_contextualizes_from_integer_operand() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn inc(x) {
@@ -36,7 +36,7 @@ fn inc(x) {
 
 #[test]
 fn linked_deferred_int_literal_does_not_contextualize_to_float() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn inc(x) {
@@ -66,7 +66,7 @@ fn inc(x) {
 
 #[test]
 fn linked_deferred_int_literal_checks_fit_for_operand_tag() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn add_large(x) {
@@ -96,7 +96,7 @@ fn add_large(x) {
 
 #[test]
 fn linked_deferred_float_literal_contextualizes_from_float_operand() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn scale(x) {
@@ -124,7 +124,7 @@ fn scale(x) {
 
 #[test]
 fn linked_deferred_float_literal_does_not_contextualize_to_integer() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn add_fraction(x) {
@@ -154,7 +154,7 @@ fn add_fraction(x) {
 
 #[test]
 fn linked_deferred_literal_preserves_left_side_for_non_commutative_ops() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn from_one(x) {

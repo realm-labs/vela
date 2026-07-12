@@ -4,7 +4,7 @@ use crate::value::Value as RuntimeValue;
 
 #[test]
 fn heap_safe_point_gc_preserves_caller_roots_during_nested_calls() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn allocate_garbage() {
@@ -63,7 +63,7 @@ fn main() {
 
 #[test]
 fn managed_heap_execution_materializes_return_and_releases_budget() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main() {
@@ -103,7 +103,7 @@ fn managed_heap_execution_preserves_path_proxy_slots() {
     vm.register_native("game::path", move |_| {
         Ok(OwnedValue::PathProxy(proxy.clone()))
     });
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn array_case() {

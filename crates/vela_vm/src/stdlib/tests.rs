@@ -1,4 +1,4 @@
-use vela_bytecode::compiler::compile_program_source_with_registry;
+use crate::test_support::compile_test_program_with_registry;
 use vela_bytecode::{Linker, UnlinkedProgram};
 use vela_common::SourceId;
 
@@ -30,5 +30,5 @@ fn compile_standard_program_source(
     text: &str,
 ) -> vela_bytecode::compiler::error::CompileResult<vela_bytecode::compiler::CompiledProgram> {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    compile_program_source_with_registry(source, text, registry.compile_view())
+    compile_test_program_with_registry(source, text, registry.compile_view())
 }

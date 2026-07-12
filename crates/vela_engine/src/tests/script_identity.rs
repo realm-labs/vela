@@ -1,16 +1,20 @@
 use vela_bytecode::Linker;
-use vela_bytecode::compiler::compile_module_sources;
 use vela_common::SourceId;
 use vela_def::{script_field_id, script_function_id, script_type_id, script_variant_id};
 use vela_hir::module_graph::{ModulePath, ModuleSource};
 use vela_reflect::registry::TypeRegistry;
 
+use crate::engine::Engine;
+
 #[test]
 fn linked_and_reflected_script_schema_ids_share_canonical_identity() {
-    let program = compile_module_sources(&[ModuleSource::new(
-        SourceId::new(81),
-        ModulePath::from_qualified("game::reward"),
-        r#"
+    let engine = Engine::builder().build().expect("engine");
+    let program = engine
+        .compile_sources(
+            &[ModuleSource::new(
+                SourceId::new(81),
+                ModulePath::from_qualified("game::reward"),
+                r#"
 #[id(101)]
 struct Reward {
     #[id(102)]
@@ -30,8 +34,10 @@ fn main() {
     return Outcome::Granted { value: reward.count };
 }
 "#,
-    )])
-    .expect("script schemas should compile");
+            )],
+            false,
+        )
+        .expect("script schemas should compile");
     let linked = Linker::new()
         .link_test_program(&program)
         .expect("script schemas should link");

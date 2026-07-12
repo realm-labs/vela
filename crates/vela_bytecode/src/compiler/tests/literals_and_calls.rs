@@ -55,7 +55,7 @@ fn primitive_for_std_type_name(type_name: &str) -> Option<vela_common::Primitive
 
 #[test]
 fn compiler_lowers_radix_ints_and_exponent_floats() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -86,7 +86,7 @@ fn main() {
 
 #[test]
 fn compiler_rejects_uppercase_radix_prefixes_before_codegen() {
-    let error = compile_function_source(
+    let error = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -96,9 +96,7 @@ fn main() {
         "main",
     )
     .expect_err("uppercase radix prefixes should be rejected by syntax validation");
-    let CompileErrorKind::SyntaxDiagnostics(diagnostics) = error.kind else {
-        panic!("expected syntax diagnostics");
-    };
+    let diagnostics = error.into_syntax_diagnostics();
     assert!(
         diagnostics
             .iter()
@@ -109,7 +107,7 @@ fn main() {
 
 #[test]
 fn compiler_lowers_suffixed_numeric_literals_to_scalar_constants() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -151,7 +149,7 @@ fn main() {
 
 #[test]
 fn compiler_accepts_signed_min_suffixed_literals() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -181,7 +179,7 @@ fn main() {
 
 #[test]
 fn compiler_rejects_out_of_range_suffixed_integer_literals() {
-    let error = compile_function_source(
+    let error = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -223,7 +221,7 @@ fn assert_error_span_text(source: &str, span: Option<vela_common::Span>, expecte
 
 #[test]
 fn compiler_accepts_leading_shebang() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         "#!/usr/bin/env vela\nfn main() { return 7; }\n",
         "main",
@@ -236,7 +234,7 @@ fn compiler_accepts_leading_shebang() {
 }
 #[test]
 fn compiler_lowers_unicode_string_escapes() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"fn main() { return "\u{41}\u{7a}"; }"#,
         "main",
@@ -247,7 +245,7 @@ fn compiler_lowers_unicode_string_escapes() {
 
 #[test]
 fn compiler_lowers_char_literals() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"fn main() { return '\u{5956}'; }"#,
         "main",
@@ -258,7 +256,7 @@ fn compiler_lowers_char_literals() {
 }
 #[test]
 fn compiler_lowers_script_value_method_calls() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -279,7 +277,7 @@ fn main() {
 #[test]
 fn compiler_lowers_unknown_receiver_method_to_dynamic_bytecode() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let code = compile_function_source_with_registry(
+    let code = compile_test_function_with_registry(
         SourceId::new(1),
         r#"
 fn f(value) {
@@ -298,7 +296,7 @@ fn f(value) {
 #[test]
 fn compiler_keeps_static_string_method_on_method_id_path() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let code = compile_function_source_with_registry(
+    let code = compile_test_function_with_registry(
         SourceId::new(1),
         r#"
 fn f() {
@@ -319,7 +317,7 @@ fn f() {
 #[test]
 fn compiler_rejects_static_known_receiver_missing_method() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let error = compile_function_source_with_registry(
+    let error = compile_test_function_with_registry(
         SourceId::new(1),
         r#"
 fn f() {
@@ -341,7 +339,7 @@ fn f() {
 }
 #[test]
 fn compiler_uses_hir_signatures_for_code_object_params() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main(player: game::Player, amount: i64) -> i64 {
@@ -355,7 +353,7 @@ fn main(player: game::Player, amount: i64) -> i64 {
 }
 #[test]
 fn compiler_lowers_parameter_defaults_and_named_script_args() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn grant(base, amount = 10, bonus = amount + 1) {
@@ -393,7 +391,7 @@ fn compiler_evaluates_named_script_args_in_source_order_then_projects_parameters
             ),
         ))
         .expect("mark native fixture");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn combine(first, second) { return first * 10 + second; }
@@ -451,7 +449,7 @@ fn main() { return combine(second = mark(2), first = mark(1)); }
 
 #[test]
 fn compiler_lowers_parameter_default_map_keys_through_hir_paths() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 const SMALL: i64 = 1;
@@ -481,7 +479,7 @@ fn grant(config = { SMALL: 10, "large": 20, 'x': 30, 0x10u8: 40, 3.5f32: 50 }) {
 
 #[test]
 fn compiler_lowers_parameter_default_index_reads_through_hir() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn grant(values = [2, 4, 8], amount = values[1]) {
@@ -501,7 +499,7 @@ fn grant(values = [2, 4, 8], amount = values[1]) {
 
 #[test]
 fn compiler_lowers_script_calls_inside_parameter_defaults() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn helper() {
@@ -539,7 +537,7 @@ fn compiler_lowers_named_native_args_from_registry() {
             .with_id(native_id),
         )
         .expect("test native function should register");
-    let program = compile_program_source_with_options_and_registry(
+    let program = compile_test_program_with_options_and_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -561,7 +559,7 @@ fn main() {
 
 #[test]
 fn compiler_lowers_named_stdlib_args_from_neutral_signature_without_registry() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         "fn main() { return math::clamp(max = 10, value = 12, min = 0); }",
     )
@@ -606,7 +604,7 @@ fn compiler_lowers_named_reflection_args_from_enabled_neutral_manifest() {
     let mut registry = vela_registry::DefinitionRegistry::new();
     vela_stdlib::register_reflection_natives(&mut registry)
         .expect("reflection manifest should register");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main(value) {
@@ -627,7 +625,7 @@ fn main(value) {
 
 #[test]
 fn compiler_lowers_named_reflection_args_from_policy_neutral_manifest() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main(value) {
@@ -648,7 +646,7 @@ fn main(value) {
 #[test]
 fn compiler_contextualizes_positional_native_args_from_registry() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -674,7 +672,7 @@ fn main() {
 #[test]
 fn compiler_contextualizes_numeric_bit_helper_args_from_registry() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -711,7 +709,7 @@ fn main() {
 #[test]
 fn compiler_rejects_static_native_arg_contract_mismatches() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let error = compile_program_source_with_registry(
+    let error = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -731,7 +729,7 @@ fn main() {
 #[test]
 fn compiler_emits_dynamic_native_arg_contract_guards() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main(value) {
@@ -773,7 +771,7 @@ fn compiler_allows_extra_positional_native_args_after_known_prefix() {
             ),
         ))
         .expect("test native function should register");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -808,7 +806,7 @@ fn compiler_allows_omitted_positional_native_prefix_args() {
             ),
         ))
         .expect("test native function should register");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -830,7 +828,7 @@ fn main() {
 #[test]
 fn compiler_reports_unresolved_native_from_registry() {
     let registry = vela_registry::DefinitionRegistry::new();
-    let error = compile_program_source_with_options_and_registry(
+    let error = compile_test_program_with_options_and_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -851,7 +849,7 @@ fn main() {
 #[test]
 fn compiler_lowers_named_value_method_args_from_registry() {
     let registry = value_method_registry(&[("Map", "get_or", &["key", "default"])]);
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -871,7 +869,7 @@ fn main() {
 
 #[test]
 fn compiler_lowers_named_stdlib_method_args_without_registry() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main() {
@@ -892,7 +890,7 @@ fn main() {
 #[test]
 fn compiler_reports_named_value_method_arg_diagnostics_from_registry() {
     let registry = value_method_registry(&[("Map", "get_or", &["key", "default"])]);
-    let error = compile_program_source_with_registry(
+    let error = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -918,7 +916,7 @@ fn compiler_lowers_named_value_method_args_by_receiver_type_from_registry() {
         ("String", "contains", &["needle"]),
         ("Array", "contains", &["value"]),
     ]);
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -965,7 +963,7 @@ fn compiler_lowers_named_value_method_args_and_id_from_registry() {
     let method = registry
         .register_method(method_def)
         .expect("String::contains method should register");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -999,7 +997,7 @@ fn compiler_lowers_named_value_method_args_from_local_value_type_flow() {
         ("String", "contains", &["needle"]),
         ("Array", "contains", &["value"]),
     ]);
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main(text: String) {
@@ -1039,7 +1037,7 @@ fn compiler_tracks_exact_primitive_value_type_flow() {
         ("String", "touch", &["arg"]),
         ("Bytes", "touch", &["arg"]),
     ]);
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main(i64_arg: i64, text: String, blob: Bytes) {
@@ -1077,7 +1075,7 @@ fn main(i64_arg: i64, text: String, blob: Bytes) {
 #[test]
 fn compiler_lowers_named_value_method_args_from_captured_value_type_flow() {
     let registry = value_method_registry(&[("String", "contains", &["needle"])]);
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -1110,7 +1108,7 @@ fn main() {
 #[test]
 fn compiler_lowers_value_method_ids_in_collection_callback_params() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -1136,7 +1134,7 @@ fn main() {
 #[test]
 fn compiler_lowers_value_method_ids_in_for_in_array_bindings() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -1163,7 +1161,7 @@ fn main() {
 #[test]
 fn compiler_lowers_value_method_ids_after_array_extrema_methods() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {

@@ -3,7 +3,6 @@ use std::hint::black_box;
 use std::sync::Arc;
 use std::time::Instant;
 
-use vela_bytecode::compiler::compile_program_source_with_registry;
 use vela_bytecode::{LinkedArtifact, Linker, UnlinkedProgram};
 use vela_common::SourceId;
 use vela_vm::Vm;
@@ -11,6 +10,7 @@ use vela_vm::owned_value::OwnedValue;
 
 use super::config::BenchParams;
 use super::support::{BenchResult, bytes_checksum, mix, summarize, value_checksum};
+use super::test_compile_support::compile_test_program_with_registry;
 use super::workloads::Workload;
 
 pub(crate) struct VelaRuntime {
@@ -31,7 +31,7 @@ impl VelaRuntime {
     ) -> Result<BenchResult, Box<dyn Error>> {
         let registry = vela_stdlib::standard_registry()
             .map_err(|error| format!("standard registry failed: {error}"))?;
-        let program = compile_program_source_with_registry(
+        let program = compile_test_program_with_registry(
             SourceId::new(1),
             workload.vela,
             registry.compile_view(),

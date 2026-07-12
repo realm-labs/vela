@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn compiler_registers_inherent_impl_methods_as_script_dispatch_targets() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Player { level: i64 }
@@ -43,7 +43,7 @@ fn main() {
 
 #[test]
 fn compiler_lowers_self_record_compound_assignment_in_script_method() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Counter { counter: i64 }
@@ -72,7 +72,7 @@ fn main() {
 
 #[test]
 fn compiler_lowers_expression_receiver_record_compound_assignment() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Counter { counter: i64 }
@@ -96,7 +96,7 @@ fn main() {
 
 #[test]
 fn compiler_keeps_static_script_receiver_on_method_id_path() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Label { text: String }
@@ -129,7 +129,7 @@ fn main() {
 
 #[test]
 fn compiler_registers_impl_methods_as_script_dispatch_targets() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -171,7 +171,7 @@ fn main() {
 
 #[test]
 fn compiler_registers_builtin_partial_eq_impl_without_source_trait_item() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct PlayerId { server: i64, id: i64 }
@@ -193,7 +193,7 @@ fn main() {
 
 #[test]
 fn compiler_specializes_module_inherent_method_calls_by_method_id() {
-    let program = compile_module_sources(&[
+    let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::model"),
@@ -233,7 +233,7 @@ pub fn main(player: Player) {
 
 #[test]
 fn compiler_rejects_duplicate_receiver_script_methods() {
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource { fn bonus(self) -> i64; }
@@ -256,7 +256,7 @@ impl BonusSource for Player {
 
 #[test]
 fn compiler_lowers_named_and_default_script_method_args() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource {
@@ -296,7 +296,7 @@ fn main() {
 }
 #[test]
 fn compiler_registers_host_target_impl_methods_as_script_dispatch_targets() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -320,7 +320,7 @@ fn main(player) {
 }
 #[test]
 fn compiler_registers_trait_default_methods_as_dispatch_targets() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource {
@@ -353,7 +353,7 @@ fn main() {
 }
 #[test]
 fn compiler_specializes_self_method_calls_by_method_id() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource {
@@ -386,7 +386,7 @@ fn main() {
 }
 #[test]
 fn compiler_specializes_captured_receiver_method_calls_by_method_id() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -426,7 +426,7 @@ fn main() {
 }
 #[test]
 fn compiler_specializes_binding_pattern_receiver_method_calls_by_method_id() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -457,7 +457,7 @@ fn main() {
 }
 #[test]
 fn compiler_specializes_record_variant_field_method_calls_by_method_id() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -493,7 +493,7 @@ fn main() {
 }
 #[test]
 fn compiler_specializes_tuple_variant_field_method_calls_by_method_id() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -529,7 +529,7 @@ fn main() {
 }
 #[test]
 fn compiler_specializes_let_record_method_calls_by_method_id() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -558,7 +558,7 @@ fn main() {
 }
 #[test]
 fn compiler_specializes_typed_parameter_method_calls_by_method_id() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -586,7 +586,7 @@ fn main(player: Player) {
 }
 #[test]
 fn compiler_specializes_typed_let_method_calls_by_method_id() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -618,7 +618,7 @@ fn main() {
 }
 #[test]
 fn compiler_specializes_module_typed_parameter_method_calls_by_method_id() {
-    let program = compile_module_sources(&[
+    let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::model"),
@@ -658,7 +658,7 @@ pub fn main(player: Player) {
 }
 #[test]
 fn compiler_indexes_script_methods_by_receiver_and_method_id() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource {

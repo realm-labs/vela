@@ -15,7 +15,7 @@ fn compiler_reports_named_native_arg_diagnostics_from_registry() {
             ),
         ))
         .expect("test native function should register");
-    let error = compile_program_source_with_registry(
+    let error = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -37,7 +37,7 @@ fn main() {
 
 #[test]
 fn compiler_reports_script_call_argument_diagnostics() {
-    let unknown = compile_program_source(
+    let unknown = compile_test_program(
         SourceId::new(1),
         r#"
 fn grant(base, amount = 10) {
@@ -49,7 +49,7 @@ fn main() {
 "#,
     )
     .expect_err("unknown named argument should fail");
-    let duplicate = compile_program_source(
+    let duplicate = compile_test_program(
         SourceId::new(2),
         r#"
 fn grant(base, amount = 10) {
@@ -61,7 +61,7 @@ fn main() {
 "#,
     )
     .expect_err("duplicate argument should fail");
-    let positional_after_named = compile_program_source(
+    let positional_after_named = compile_test_program(
         SourceId::new(3),
         r#"
 fn grant(base, amount = 10) {
@@ -73,7 +73,7 @@ fn main() {
 "#,
     )
     .expect_err("positional argument after named argument should fail");
-    let too_many = compile_program_source(
+    let too_many = compile_test_program(
         SourceId::new(4),
         r#"
 fn grant(base) {
@@ -85,7 +85,7 @@ fn main() {
 "#,
     )
     .expect_err("too many arguments should fail");
-    let missing = compile_program_source(
+    let missing = compile_test_program(
         SourceId::new(5),
         r#"
 fn grant(base, amount = 10) {

@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn compiler_delegates_typed_let_contract_outcomes() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn contextual() {
@@ -42,7 +42,7 @@ fn guarded(value) {
     assert_eq!(guard.context.location, crate::GuardLocation::Local);
     assert_eq!(guard.context.debug_name, "amount");
 
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(2),
         r#"fn main() { let amount: i64 = "x"; return amount; }"#,
     )
@@ -60,7 +60,7 @@ fn guarded(value) {
 
 #[test]
 fn compiler_delegates_parameter_default_contracts() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(3),
         "fn grant(amount: u8 = 12) { return amount; }",
     )
@@ -72,7 +72,7 @@ fn compiler_delegates_parameter_default_contracts() {
             .contains(&Constant::Scalar(vela_common::ScalarValue::U8(12)))
     );
 
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(4),
         r#"fn grant(amount: i64 = "x") { return amount; }"#,
     )
@@ -90,7 +90,7 @@ fn compiler_delegates_parameter_default_contracts() {
 
 #[test]
 fn compiler_delegates_script_argument_guard_selection() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(5),
         r#"
 fn grant(amount: i64) { return amount; }
@@ -120,7 +120,7 @@ fn guarded(value) { return grant(value); }
 
 #[test]
 fn compiler_delegates_erased_and_parameterized_container_contracts() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(6),
         r#"
 fn erase(values: Array<i64>) {
@@ -156,7 +156,7 @@ fn prove_at_runtime(values: Array) {
             ))
     );
 
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(7),
         r#"
 fn mismatch(values: Array<i64>) {
@@ -174,7 +174,7 @@ fn mismatch(values: Array<i64>) {
 
 #[test]
 fn compiler_preserves_directional_function_and_closure_contracts() {
-    compile_program_source(
+    compile_test_program(
         SourceId::new(8),
         r#"
 fn accepts(value: Closure) {
@@ -185,7 +185,7 @@ fn accepts(value: Closure) {
     )
     .expect("a concrete closure satisfies the erased Function contract");
 
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(9),
         r#"
 fn rejects(value: Function) {
@@ -202,10 +202,8 @@ fn rejects(value: Function) {
     );
 }
 
-fn only_contract_diagnostic(error: CompileError) -> vela_common::Diagnostic {
-    let CompileErrorKind::SemanticDiagnostics(mut diagnostics) = error.kind else {
-        panic!("expected semantic contract diagnostic");
-    };
+fn only_contract_diagnostic(error: TestCompileError) -> vela_common::Diagnostic {
+    let mut diagnostics = error.into_semantic_diagnostics();
     assert_eq!(diagnostics.len(), 1);
     let diagnostic = diagnostics.remove(0);
     assert_eq!(

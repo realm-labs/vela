@@ -2,7 +2,7 @@ use super::*;
 use vela_common::ScalarValue;
 
 fn compile(source: &str) -> vela_bytecode::compiler::CompiledProgram {
-    compile_program_source(SourceId::new(1), source).expect("program should compile")
+    compile_test_program(SourceId::new(1), source).expect("program should compile")
 }
 
 fn call(program: &UnlinkedProgram, entry: &str, args: &[OwnedValue]) -> VmResult<OwnedValue> {

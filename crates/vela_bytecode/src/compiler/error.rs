@@ -73,9 +73,8 @@ impl CompileError {
                 "selected function produced {count} verified MIR roots"
             ))
             .with_code("compiler::invalid_mir_root_count"),
-            CompileErrorKind::SyntaxDiagnostics(_)
+            CompileErrorKind::InvalidHirGraph(_)
             | CompileErrorKind::SemanticDiagnostics(_)
-            | CompileErrorKind::FunctionNotFound(_)
             | CompileErrorKind::UnknownLocal(_)
             | CompileErrorKind::UnsupportedSyntax(_) => return None,
             CompileErrorKind::RegisterOverflow => Diagnostic::error(
@@ -117,9 +116,8 @@ impl CompileError {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CompileErrorKind {
-    SyntaxDiagnostics(Vec<Diagnostic>),
+    InvalidHirGraph(Vec<Diagnostic>),
     SemanticDiagnostics(Vec<Diagnostic>),
-    FunctionNotFound(String),
     UnknownLocal(String),
     InvalidIntLiteral { literal: String, error: String },
     InvalidFloatLiteral { literal: String, error: String },

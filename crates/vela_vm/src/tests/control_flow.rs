@@ -12,7 +12,7 @@ fn run_control_program(
 
 #[test]
 fn runs_compiled_break_continue_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -41,7 +41,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_block_and_if_expression_values() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -69,7 +69,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_if_expression_without_else_can_be_discarded() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -95,7 +95,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_if_expression_without_else_false_branch_can_be_discarded() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -118,7 +118,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_returning_block_initializer() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -140,7 +140,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_returning_expression_operands() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn sink(value) {
@@ -204,7 +204,7 @@ fn match_value(value) {
 
 #[test]
 fn runs_compiled_returning_if_and_match_initializers() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn if_case(flag) {
@@ -255,7 +255,7 @@ fn match_case(value) {
 
 #[test]
 fn runs_compiled_match_expression_values() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 enum Damage {
@@ -286,7 +286,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_literal_match_patterns() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -310,7 +310,7 @@ fn main() {
 
 #[test]
 fn managed_heap_execution_runs_string_literal_match_patterns() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main() {
@@ -336,7 +336,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_binding_match_patterns() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -358,7 +358,7 @@ fn main() {
 
 #[test]
 fn binding_match_assignment_does_not_mutate_scrutinee() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -383,7 +383,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_match_guards() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -407,7 +407,7 @@ fn main() {
 
 #[test]
 fn match_guards_can_read_record_pattern_bindings() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 enum Damage {
@@ -434,7 +434,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_record_variant_field_patterns() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 enum Reward {
@@ -462,7 +462,7 @@ fn main() {
 
 #[test]
 fn managed_heap_execution_runs_nested_record_variant_field_patterns() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 enum Reward {
@@ -495,7 +495,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_tuple_variant_constructor_and_patterns() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 enum Damage {
@@ -523,7 +523,7 @@ fn main() {
 
 #[test]
 fn managed_heap_execution_runs_tuple_variant_literal_patterns() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 enum Damage {

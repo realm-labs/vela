@@ -3,7 +3,7 @@ use crate::owned_value::OwnedValue;
 
 #[test]
 fn runs_compiled_for_in_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -30,7 +30,7 @@ fn main() {
 
 #[test]
 fn for_in_evaluates_iterable_expression_once() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -55,7 +55,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_for_in_string_chars() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r##"
 fn main() {
@@ -86,7 +86,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_for_in_variant_patterns() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 enum Reward {
@@ -119,7 +119,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_indexed_for_in_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -142,7 +142,7 @@ fn main() {
 
 #[test]
 fn indexed_for_in_preserves_source_index_for_pattern_skips() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 enum Reward {
@@ -175,7 +175,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_statement_attributes_as_metadata() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -243,7 +243,7 @@ fn main() {
     return 0;
 }
 "#;
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_test_program(SourceId::new(1), source)
         .expect("unknown iterable expression should compile");
     let mut budget = ExecutionBudget::unbounded();
 
@@ -386,7 +386,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_range_for_in_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -423,7 +423,7 @@ fn main() {
 
 #[test]
 fn explicit_sequence_methods_create_iterators() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r##"
 fn main() {
@@ -466,7 +466,7 @@ fn main() {
 
 #[test]
 fn iterator_terminal_methods_consume_cursor() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -490,7 +490,7 @@ fn main() {
 
 #[test]
 fn iterator_lazy_adapters_collect_without_intermediate_arrays() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -515,7 +515,7 @@ fn main() {
 
 #[test]
 fn iterator_collect_set_consumes_lazy_pipeline() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -542,7 +542,7 @@ fn main() {
 
 #[test]
 fn iterator_collect_set_uses_record_identity_keys() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 struct Player {
@@ -576,7 +576,7 @@ fn main() {
 
 #[test]
 fn iterator_collect_map_consumes_map_entries() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -601,7 +601,7 @@ fn main() {
 
 #[test]
 fn iterator_collect_map_preserves_value_keyed_entries() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 struct Bucket {
@@ -637,7 +637,7 @@ fn main() {
 
 #[test]
 fn iterator_collect_map_limit_counts_unique_value_keys() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main() {
@@ -666,7 +666,7 @@ fn main() {
 
 #[test]
 fn iterator_collect_array_respects_array_collection_limit() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main() {
@@ -696,7 +696,7 @@ fn main() {
 
 #[test]
 fn iterator_execution_unit_budget_traps_keep_source_spans() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main() {
@@ -730,7 +730,7 @@ fn main() {
 
 #[test]
 fn iterator_array_sources_read_current_values_without_growth_snapshot() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -756,7 +756,7 @@ fn main() {
 
 #[test]
 fn array_value_views_read_current_values_without_growth_snapshot() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -783,7 +783,7 @@ fn main() {
 
 #[test]
 fn iterator_map_sources_yield_entries_and_read_current_values() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -809,7 +809,7 @@ fn main() {
 
 #[test]
 fn map_key_views_snapshot_keys_without_growth() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -835,7 +835,7 @@ fn main() {
 
 #[test]
 fn map_entry_views_snapshot_keys_but_read_current_values() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -862,7 +862,7 @@ fn main() {
 
 #[test]
 fn iterator_lazy_adapters_drive_for_in_and_consume_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -892,7 +892,7 @@ fn main() {
 
 #[test]
 fn for_in_over_iterator_consumes_original_cursor() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -916,7 +916,7 @@ fn main() {
 
 #[test]
 fn iterator_callback_terminals_short_circuit_and_leave_remainder() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {

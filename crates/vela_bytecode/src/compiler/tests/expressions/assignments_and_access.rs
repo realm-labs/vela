@@ -1,6 +1,6 @@
 #[test]
 fn compiler_lowers_local_assignment_operators() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -45,7 +45,7 @@ fn main() {
 }
 #[test]
 fn compiler_lowers_index_reads() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -75,7 +75,7 @@ fn main() {
 
 #[test]
 fn compiler_resolves_index_read_operands_from_hir() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -97,7 +97,7 @@ fn main() {
 
 #[test]
 fn compiler_keeps_call_result_index_reads_off_host_paths() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn values() {
@@ -125,7 +125,7 @@ fn main() {
 }
 #[test]
 fn compiler_lowers_index_writes() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -148,7 +148,7 @@ fn main() {
 
 #[test]
 fn compiler_resolves_index_assignment_operands_from_hir() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -177,7 +177,7 @@ fn main() {
 
 #[test]
 fn compiler_lowers_literal_string_map_index_writes() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -201,7 +201,7 @@ fn main() {
 }
 #[test]
 fn compiler_lowers_record_field_writes() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -244,7 +244,7 @@ fn main() {
 
 #[test]
 fn compiler_resolves_record_field_write_receiver_from_hir() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 struct Counter {
@@ -267,7 +267,7 @@ fn main(counter: Counter) {
 
 #[test]
 fn compiler_lowers_nested_record_field_writes() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -307,7 +307,7 @@ fn main() {
 }
 #[test]
 fn compiler_lowers_indexed_record_field_writes() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -346,7 +346,7 @@ fn main() {
 
 #[test]
 fn compiler_resolves_indexed_record_field_write_from_hir_index() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -383,7 +383,7 @@ fn main() {
 
 #[test]
 fn compiler_resolves_indexed_record_read_shape_from_hir() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -416,7 +416,7 @@ fn main() {
 
 #[test]
 fn compiler_lowers_immediate_record_field_reads_to_slots() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -439,7 +439,7 @@ fn main() {
 }
 #[test]
 fn compiler_lowers_immediate_enum_field_reads_to_slots() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -462,7 +462,7 @@ fn main() {
 }
 #[test]
 fn compiler_lowers_typed_enum_variant_field_reads_to_slots() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 enum Damage {
@@ -495,7 +495,7 @@ fn main() {
 
 #[test]
 fn compiler_lowers_typed_record_field_reads_to_slots() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Reward {
@@ -526,7 +526,7 @@ fn main() {
 }
 #[test]
 fn compiler_lowers_typed_record_field_writes_to_slots() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Reward {

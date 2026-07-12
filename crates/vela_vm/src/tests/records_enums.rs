@@ -35,7 +35,7 @@ fn run_records_program_with_standard_natives(
 
 #[test]
 fn passes_arguments_to_program_entry() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn double(OwnedValue) {
@@ -57,7 +57,7 @@ fn double(OwnedValue) {
 
 #[test]
 fn runs_compiled_array_literal_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         "fn main() { return [1, 2 + 3, \"gold\"]; }",
         "main",
@@ -76,7 +76,7 @@ fn runs_compiled_array_literal_source() {
 
 #[test]
 fn runs_compiled_unit_expression_source() {
-    let code = compile_function_source(SourceId::new(1), "fn main() { return (); }", "main")
+    let code = compile_test_function(SourceId::new(1), "fn main() { return (); }", "main")
         .expect("compile unit expression source");
 
     assert_eq!(run_linked_test_code(code), Ok(OwnedValue::Unit));
@@ -84,7 +84,7 @@ fn runs_compiled_unit_expression_source() {
 
 #[test]
 fn runs_compiled_tuple_expression_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         "fn main() { return (1, 2 + 3, \"gold\"); }",
         "main",
@@ -103,7 +103,7 @@ fn runs_compiled_tuple_expression_source() {
 
 #[test]
 fn runs_compiled_tuple_let_destructuring_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -120,7 +120,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_tuple_match_destructuring_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -140,7 +140,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_tuple_for_destructuring_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -161,7 +161,7 @@ fn main() {
 
 #[test]
 fn heap_execution_allocates_array_and_string_literals() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         "fn main() { return [1, 2 + 3, \"gold\"]; }",
         "main",
@@ -203,7 +203,7 @@ fn heap_execution_allocates_array_and_string_literals() {
 
 #[test]
 fn runs_compiled_map_literal_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         "fn main() { return {\"level\": 2, exp: 10 + 5}; }",
         "main",
@@ -222,7 +222,7 @@ fn runs_compiled_map_literal_source() {
 
 #[test]
 fn runs_record_constructor_and_field_reads() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Player { level: i64, exp: i64 }
@@ -244,7 +244,7 @@ fn main() {
 
 #[test]
 fn record_semantic_equality_requires_partial_eq() {
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(1),
         r#"
 struct Reward { code: String, amount: i64 }
@@ -266,7 +266,7 @@ fn main() {
 
 #[test]
 fn record_semantic_equality_uses_builtin_partial_eq_impl() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Reward { code: String, amount: i64 }
@@ -297,7 +297,7 @@ fn main() {
 
 #[test]
 fn record_semantic_equality_uses_derived_partial_eq() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 #[derive(PartialEq)]
@@ -324,7 +324,7 @@ fn main() {
 
 #[test]
 fn array_lookup_uses_value_key_not_derived_record_partial_eq() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 #[derive(PartialEq)]
@@ -369,7 +369,7 @@ fn main() {
 
 #[test]
 fn set_keys_ignore_derived_record_partial_eq() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 #[derive(PartialEq)]
@@ -396,7 +396,7 @@ fn main() {
 
 #[test]
 fn record_partial_eq_must_return_bool() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Reward { code: String }
@@ -427,7 +427,7 @@ fn main() {
 
 #[test]
 fn record_semantic_ordering_requires_partial_ord() {
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(1),
         r#"
 struct Score { value: i64 }
@@ -447,7 +447,7 @@ fn main() {
 
 #[test]
 fn record_semantic_ordering_uses_builtin_partial_ord_impl() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Score { value: i64 }
@@ -489,7 +489,7 @@ fn main() {
 
 #[test]
 fn record_semantic_ordering_uses_derived_partial_ord() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 #[derive(PartialEq, PartialOrd)]
@@ -521,7 +521,7 @@ fn main() {
 
 #[test]
 fn record_partial_ord_none_makes_ordering_operators_false() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Score { value: i64 }
@@ -555,7 +555,7 @@ fn main() {
 
 #[test]
 fn record_identity_comparison_uses_reference_identity() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Reward { code: String, amount: i64 }
@@ -578,7 +578,7 @@ fn main() {
 
 #[test]
 fn array_semantic_equality_is_not_implicit_structural_equality() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -602,7 +602,7 @@ fn main() {
 
 #[test]
 fn heap_execution_reads_record_fields_from_heap_records() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Player { level: i64, exp: i64 }
@@ -638,7 +638,7 @@ fn main() {
 
 #[test]
 fn linked_execution_reads_dynamic_record_fields_for_untyped_parameters() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Reward { base: int, multiplier: int }
@@ -663,7 +663,7 @@ fn main() {
 
 #[test]
 fn linked_execution_writes_dynamic_record_fields_for_untyped_parameters() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Reward { count: int }
@@ -689,7 +689,7 @@ fn main() {
 
 #[test]
 fn linked_execution_reads_dynamic_enum_fields_for_untyped_parameters() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 enum RewardResult {
@@ -729,7 +729,7 @@ fn qualified_registered_record_patterns_keep_the_legacy_false_arm_and_budget() {
             reward,
         ))
         .expect("registered Reward::amount field");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -762,7 +762,7 @@ fn main() {
 
 #[test]
 fn enum_field_assignments_keep_the_legacy_record_write_failure() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 enum Damage { Physical { amount: i64 } }
@@ -797,7 +797,7 @@ fn compound() {
 
 #[test]
 fn dynamic_variant_patterns_check_the_tag_before_projecting_used_fields() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn wildcard() {
@@ -832,7 +832,7 @@ fn binding() {
 
 #[test]
 fn returns_first_class_record_values() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -890,7 +890,7 @@ fn main() {
 
 #[test]
 fn record_constructors_use_stable_slot_shapes() {
-    let first = compile_function_source(
+    let first = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -900,7 +900,7 @@ fn main() {
         "main",
     )
     .expect("compile first record source");
-    let second = compile_function_source(
+    let second = compile_test_function(
         SourceId::new(2),
         r#"
 fn main() {
@@ -938,7 +938,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_immediate_slot_field_reads() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Reward { item_id: String, count: i64 }
@@ -960,7 +960,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_typed_record_slot_field_reads() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Reward {
@@ -1048,7 +1048,7 @@ fn main() {
 
 #[test]
 fn returns_first_class_enum_values() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -1109,7 +1109,7 @@ fn main() {
 
 #[test]
 fn matches_enum_tag_and_binds_variant_fields() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 enum Damage {
@@ -1137,7 +1137,7 @@ fn main() {
 
 #[test]
 fn heap_execution_matches_enum_tags_and_reads_fields() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 enum Damage {

@@ -10,6 +10,9 @@ mod process;
 mod report;
 #[path = "external_compare/support.rs"]
 mod support;
+#[path = "../test_compile_support.rs"]
+#[allow(dead_code)]
+mod test_compile_support;
 #[path = "external_compare/vela.rs"]
 mod vela;
 #[path = "external_compare/version.rs"]

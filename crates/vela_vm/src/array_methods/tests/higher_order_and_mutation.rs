@@ -21,7 +21,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array higher-order methods should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
@@ -52,7 +52,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array higher-order methods should compile");
     let mut budget = ExecutionBudget::unbounded();
     let mut vm = Vm::new();
@@ -70,7 +70,7 @@ fn main() {
     return [1, 2, 3].map(|value| value).len();
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array map limit source should compile");
     let mut budget =
         ExecutionBudget::unbounded().with_collection_limits(crate::budget::CollectionLimits {
@@ -107,7 +107,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array endpoint methods should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
@@ -132,7 +132,7 @@ fn main() {
     return "";
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array endpoint methods should compile");
     let mut budget = ExecutionBudget::unbounded();
     let mut vm = Vm::new();
@@ -161,7 +161,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array remove_at method should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
@@ -189,7 +189,7 @@ fn main() {
     return "";
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array remove_at method should compile");
     let mut budget = ExecutionBudget::unbounded();
     let mut vm = Vm::new();
@@ -218,7 +218,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array insert method should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
@@ -243,7 +243,7 @@ fn main() {
     return "";
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array insert method should compile");
     let mut budget = ExecutionBudget::unbounded();
     let mut vm = Vm::new();
@@ -263,7 +263,7 @@ fn main() {
     return values.len();
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array insert error source should compile");
 
     let error = run_linked_array_test_code(&Vm::new(), code)
@@ -290,7 +290,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array extend method should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
@@ -316,7 +316,7 @@ fn main() {
     return "";
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array extend method should compile");
     let mut budget = ExecutionBudget::unbounded();
     let mut vm = Vm::new();
@@ -336,7 +336,7 @@ fn main(other = 20) {
     return values.len();
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array extend error source should compile");
 
     let error = run_linked_array_test_code(&Vm::new(), code)
@@ -364,7 +364,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array clear method should compile");
     let mut vm = Vm::new();
     vm.register_standard_natives();
@@ -389,7 +389,7 @@ fn main() {
     return "";
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array clear method should compile");
     let mut budget = ExecutionBudget::unbounded();
     let mut vm = Vm::new();

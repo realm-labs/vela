@@ -20,10 +20,8 @@ struct ExpectedSpanOccurrence<'a> {
     occurrence: usize,
 }
 
-fn only_syntax_diagnostic(error: CompileError) -> Diagnostic {
-    let CompileErrorKind::SyntaxDiagnostics(mut diagnostics) = error.kind else {
-        panic!("expected syntax diagnostics, got {error:?}");
-    };
+fn only_syntax_diagnostic(error: TestCompileError) -> Diagnostic {
+    let mut diagnostics = error.into_syntax_diagnostics();
     assert_eq!(
         diagnostics.len(),
         1,
@@ -32,10 +30,8 @@ fn only_syntax_diagnostic(error: CompileError) -> Diagnostic {
     diagnostics.remove(0)
 }
 
-fn only_semantic_diagnostic(error: CompileError) -> Diagnostic {
-    let CompileErrorKind::SemanticDiagnostics(mut diagnostics) = error.kind else {
-        panic!("expected semantic diagnostics, got {error:?}");
-    };
+fn only_semantic_diagnostic(error: TestCompileError) -> Diagnostic {
+    let mut diagnostics = error.into_semantic_diagnostics();
     assert_eq!(
         diagnostics.len(),
         1,
@@ -209,7 +205,7 @@ fn internal_input_diagnostic_contracts_pin_projection_and_source_ownership() {
 fn syntax_diagnostic_contract_pins_removed_literal_guidance() {
     const SOURCE_ID: SourceId = SourceId::new(701);
     const SOURCE: &str = "fn main() { return null; }";
-    let error = compile_program_source(SOURCE_ID, SOURCE)
+    let error = compile_test_program(SOURCE_ID, SOURCE)
         .expect_err("removed null literal should fail at the syntax gate");
     let diagnostic = only_syntax_diagnostic(error);
 
@@ -231,7 +227,7 @@ fn syntax_diagnostic_contract_pins_removed_literal_guidance() {
 fn binding_diagnostic_contract_pins_candidate_locations() {
     const SOURCE_ID: SourceId = SourceId::new(702);
     const SOURCE: &str = "fn main(player) { return plaeyr; }";
-    let error = compile_function_source(SOURCE_ID, SOURCE, "main")
+    let error = compile_test_function(SOURCE_ID, SOURCE, "main")
         .expect_err("unresolved local should fail at the HIR binding gate");
     let diagnostic = only_semantic_diagnostic(error);
 
@@ -260,7 +256,7 @@ fn target_diagnostic_contract_pins_unresolved_compile_target() {
     const SOURCE_ID: SourceId = SourceId::new(703);
     const SOURCE: &str = "fn main() { return game::missing(1); }";
     let registry = vela_registry::DefinitionRegistry::new();
-    let error = compile_program_source_with_options_and_registry(
+    let error = compile_test_program_with_options_and_registry(
         SOURCE_ID,
         SOURCE,
         &CompilerOptions::new(),
@@ -314,7 +310,7 @@ fn target_diagnostic_contract_pins_analysis_host_access_denial() {
             .host_runtime_id(52),
         )
         .expect("ReadOnlyPlayer::level field should register");
-    let error = compile_program_source_with_registry(SOURCE_ID, SOURCE, registry.compile_view())
+    let error = compile_test_program_with_registry(SOURCE_ID, SOURCE, registry.compile_view())
         .expect_err("read-only host field assignment should fail during analysis");
     let diagnostic = only_semantic_diagnostic(error);
 
@@ -343,7 +339,7 @@ fn type_contract_diagnostic_contract_pins_expected_and_actual_types() {
     const SOURCE_ID: SourceId = SourceId::new(705);
     const SOURCE: &str =
         "fn grant(amount: i64) { return amount; }\nfn main() { return grant(\"x\"); }";
-    let error = compile_program_source(SOURCE_ID, SOURCE)
+    let error = compile_test_program(SOURCE_ID, SOURCE)
         .expect_err("statically incompatible script argument should fail compilation");
     let diagnostic = only_semantic_diagnostic(error);
 
@@ -365,7 +361,7 @@ fn type_contract_diagnostic_contract_pins_expected_and_actual_types() {
 fn literal_diagnostic_contract_pins_contextual_conversion_failure() {
     const SOURCE_ID: SourceId = SourceId::new(706);
     const SOURCE: &str = "fn main() { return 128i8; }";
-    let error = compile_function_source(SOURCE_ID, SOURCE, "main")
+    let error = compile_test_function(SOURCE_ID, SOURCE, "main")
         .expect_err("out-of-range suffixed literal should fail compilation");
     let diagnostic = only_semantic_diagnostic(error);
 
@@ -384,7 +380,7 @@ fn literal_diagnostic_contract_pins_contextual_conversion_failure() {
 fn literal_diagnostic_contract_pins_negated_const_origin() {
     const SOURCE_ID: SourceId = SourceId::new(710);
     const SOURCE: &str = "const BAD = -129i8;\nfn main() { return BAD; }";
-    let error = compile_program_source(SOURCE_ID, SOURCE)
+    let error = compile_test_program(SOURCE_ID, SOURCE)
         .expect_err("out-of-range negated const literal should fail compilation");
     let diagnostic = error
         .to_diagnostic()
@@ -405,7 +401,7 @@ fn literal_diagnostic_contract_pins_negated_const_origin() {
 fn named_argument_diagnostic_contract_pins_parameter_candidates() {
     const SOURCE_ID: SourceId = SourceId::new(707);
     const SOURCE: &str = "fn grant(base, amount = 10) { return base + amount; }\nfn main() { return grant(amunt = 2, base = 1); }";
-    let error = compile_program_source(SOURCE_ID, SOURCE)
+    let error = compile_test_program(SOURCE_ID, SOURCE)
         .expect_err("unknown named argument should fail compilation");
     let diagnostic = only_semantic_diagnostic(error);
 
@@ -433,7 +429,7 @@ fn named_argument_diagnostic_contract_pins_parameter_candidates() {
 fn call_placement_diagnostic_contracts_pin_messages_and_source_locations() {
     const POSITIONAL_SOURCE_ID: SourceId = SourceId::new(711);
     const POSITIONAL_SOURCE: &str = "fn grant(first = 0, second = 10) { return 0; }\nfn main() { return grant(second = 2, 3); }";
-    let error = compile_program_source(POSITIONAL_SOURCE_ID, POSITIONAL_SOURCE)
+    let error = compile_test_program(POSITIONAL_SOURCE_ID, POSITIONAL_SOURCE)
         .expect_err("a positional argument after a named argument should fail compilation");
     let diagnostic = only_semantic_diagnostic(error);
     assert_diagnostic_contract(
@@ -451,7 +447,7 @@ fn call_placement_diagnostic_contracts_pin_messages_and_source_locations() {
 
     const EXTRA_SOURCE_ID: SourceId = SourceId::new(712);
     const EXTRA_SOURCE: &str = "fn grant(only) { return 0; }\nfn main() { return grant(1, 2); }";
-    let error = compile_program_source(EXTRA_SOURCE_ID, EXTRA_SOURCE)
+    let error = compile_test_program(EXTRA_SOURCE_ID, EXTRA_SOURCE)
         .expect_err("an extra positional argument should fail compilation");
     let diagnostic = only_semantic_diagnostic(error);
     assert_diagnostic_contract(
@@ -470,7 +466,7 @@ fn call_placement_diagnostic_contracts_pin_messages_and_source_locations() {
     const DUPLICATE_SOURCE_ID: SourceId = SourceId::new(713);
     const DUPLICATE_SOURCE: &str =
         "fn grant(base, amount = 8) { return 0; }\nfn main() { return grant(41, base = 2); }";
-    let error = compile_program_source(DUPLICATE_SOURCE_ID, DUPLICATE_SOURCE)
+    let error = compile_test_program(DUPLICATE_SOURCE_ID, DUPLICATE_SOURCE)
         .expect_err("two arguments for the same parameter should fail compilation");
     let diagnostic = only_semantic_diagnostic(error);
     assert_diagnostic_contract(
@@ -495,7 +491,7 @@ fn call_placement_diagnostic_contracts_pin_messages_and_source_locations() {
     const MISSING_SOURCE_ID: SourceId = SourceId::new(714);
     const MISSING_SOURCE: &str =
         "fn grant(required, optional = 10) { return 0; }\nfn main() { return grant(); }";
-    let error = compile_program_source(MISSING_SOURCE_ID, MISSING_SOURCE)
+    let error = compile_test_program(MISSING_SOURCE_ID, MISSING_SOURCE)
         .expect_err("an omitted required argument should fail compilation");
     let diagnostic = only_semantic_diagnostic(error);
     assert_diagnostic_contract(
@@ -522,7 +518,7 @@ fn call_placement_diagnostic_contracts_pin_messages_and_source_locations() {
 fn comparison_trait_diagnostic_contracts_pin_required_traits() {
     const EQUALITY_SOURCE_ID: SourceId = SourceId::new(715);
     const EQUALITY_SOURCE: &str = "struct Reward { amount: i64 }\nfn main() { let left = Reward { amount: 1 }; let right = Reward { amount: 1 }; return left == right; }";
-    let error = compile_program_source(EQUALITY_SOURCE_ID, EQUALITY_SOURCE)
+    let error = compile_test_program(EQUALITY_SOURCE_ID, EQUALITY_SOURCE)
         .expect_err("record equality without PartialEq should fail compilation");
     let diagnostic = only_semantic_diagnostic(error);
     assert_diagnostic_contract(
@@ -546,7 +542,7 @@ fn comparison_trait_diagnostic_contracts_pin_required_traits() {
 
     const ORDERING_SOURCE_ID: SourceId = SourceId::new(716);
     const ORDERING_SOURCE: &str = "struct Score { value: i64 }\nfn main() { let low = Score { value: 1 }; let high = Score { value: 2 }; return low < high; }";
-    let error = compile_program_source(ORDERING_SOURCE_ID, ORDERING_SOURCE)
+    let error = compile_test_program(ORDERING_SOURCE_ID, ORDERING_SOURCE)
         .expect_err("record ordering without PartialOrd should fail compilation");
     let diagnostic = only_semantic_diagnostic(error);
     assert_diagnostic_contract(
@@ -574,7 +570,7 @@ fn array_ord_diagnostic_contract_pins_element_requirement() {
     const SOURCE_ID: SourceId = SourceId::new(717);
     const SOURCE: &str = "struct Score { value: i64 }\nfn main() { let values = [Score { value: 2 }, Score { value: 1 }]; return values.sort(); }";
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let error = compile_program_source_with_registry(SOURCE_ID, SOURCE, registry.compile_view())
+    let error = compile_test_program_with_registry(SOURCE_ID, SOURCE, registry.compile_view())
         .expect_err("sorting record values without Ord should fail compilation");
     let diagnostic = only_semantic_diagnostic(error);
 
@@ -602,7 +598,7 @@ fn array_ord_diagnostic_contract_pins_element_requirement() {
 fn constructor_diagnostic_contract_pins_available_fields() {
     const SOURCE_ID: SourceId = SourceId::new(708);
     const SOURCE: &str = "struct Reward { item_id: String, count: i64 }\nfn main() { return Reward { item_id: \"gold\", count: 2, bonus: 5 }; }";
-    let error = compile_program_source(SOURCE_ID, SOURCE)
+    let error = compile_test_program(SOURCE_ID, SOURCE)
         .expect_err("unknown record constructor field should fail compilation");
     let diagnostic = only_semantic_diagnostic(error);
 
@@ -630,7 +626,7 @@ fn constructor_diagnostic_contract_pins_available_fields() {
 fn constructor_diagnostic_contracts_pin_variant_duplicate_and_missing_fields() {
     const VARIANT_SOURCE_ID: SourceId = SourceId::new(718);
     const VARIANT_SOURCE: &str = "enum Damage { Physical { amount: i64 } }\nfn main() { return Damage::Magical { amount: 7 }; }";
-    let error = compile_program_source(VARIANT_SOURCE_ID, VARIANT_SOURCE)
+    let error = compile_test_program(VARIANT_SOURCE_ID, VARIANT_SOURCE)
         .expect_err("an unknown enum constructor variant should fail compilation");
     let diagnostic = only_semantic_diagnostic(error);
     assert_diagnostic_contract(
@@ -648,7 +644,7 @@ fn constructor_diagnostic_contracts_pin_variant_duplicate_and_missing_fields() {
 
     const DUPLICATE_SOURCE_ID: SourceId = SourceId::new(719);
     const DUPLICATE_SOURCE: &str = "struct Reward { item_id: String, count: i64 }\nfn main() { return Reward { item_id: \"gold\", item_id: \"xp\", count: 2 }; }";
-    let error = compile_program_source(DUPLICATE_SOURCE_ID, DUPLICATE_SOURCE)
+    let error = compile_test_program(DUPLICATE_SOURCE_ID, DUPLICATE_SOURCE)
         .expect_err("a duplicate record constructor field should fail compilation");
     let diagnostic = only_semantic_diagnostic(error);
     assert_diagnostic_contract_with_occurrences(
@@ -678,7 +674,7 @@ fn constructor_diagnostic_contracts_pin_variant_duplicate_and_missing_fields() {
     const MISSING_SOURCE_ID: SourceId = SourceId::new(720);
     const MISSING_SOURCE: &str =
         "struct Reward { item_id: String, count: i64 = 1 }\nfn main() { return Reward {}; }";
-    let error = compile_program_source(MISSING_SOURCE_ID, MISSING_SOURCE)
+    let error = compile_test_program(MISSING_SOURCE_ID, MISSING_SOURCE)
         .expect_err("an omitted required record constructor field should fail compilation");
     let diagnostic = only_semantic_diagnostic(error);
     assert_diagnostic_contract(
@@ -699,7 +695,7 @@ fn constructor_diagnostic_contracts_pin_variant_duplicate_and_missing_fields() {
 fn pattern_diagnostic_contract_pins_repair_guidance() {
     const SOURCE_ID: SourceId = SourceId::new(709);
     const SOURCE: &str = "fn main(value) { return match value { (item) => item, _ => 0 }; }";
-    let error = compile_program_source(SOURCE_ID, SOURCE)
+    let error = compile_test_program(SOURCE_ID, SOURCE)
         .expect_err("one-element tuple pattern should fail syntax validation");
     let diagnostic = only_syntax_diagnostic(error);
 

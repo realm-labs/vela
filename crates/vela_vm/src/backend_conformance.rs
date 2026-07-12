@@ -31,15 +31,15 @@ pub fn run_linked_interpreter_case(
 
 #[cfg(test)]
 mod tests {
+    use crate::test_support::compile_test_program;
     use vela_bytecode::Linker;
-    use vela_bytecode::compiler::compile_program_source;
     use vela_common::{ScalarValue, SourceId};
 
     use super::*;
 
     #[test]
     fn reference_case_reports_backend_neutral_result_and_units() {
-        let compiled = compile_program_source(
+        let compiled = compile_test_program(
             SourceId::new(1),
             r#"
 fn helper(value) { return value + 1; }

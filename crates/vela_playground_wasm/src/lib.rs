@@ -125,7 +125,16 @@ fn playground_engine() -> Result<vela_engine::prelude::Engine, EngineSourceError
 
 fn source_error_response(error: EngineSourceError) -> PlaygroundResponse {
     match error.kind {
-        EngineSourceErrorKind::Compile(error) => compile_error_response(error),
+        EngineSourceErrorKind::Frontend(error) => PlaygroundResponse {
+            ok: false,
+            value: None,
+            diagnostics: error
+                .into_diagnostics()
+                .into_iter()
+                .map(playground_diagnostic)
+                .collect(),
+        },
+        EngineSourceErrorKind::Backend(error) => compile_error_response(error),
         EngineSourceErrorKind::Io { path, message } => {
             single_error_response(format!("failed to read source {path}: {message}"))
         }
@@ -144,15 +153,12 @@ fn compile_error_response(error: CompileError) -> PlaygroundResponse {
     }
 
     match error.kind {
-        CompileErrorKind::SyntaxDiagnostics(diagnostics)
+        CompileErrorKind::InvalidHirGraph(diagnostics)
         | CompileErrorKind::SemanticDiagnostics(diagnostics) => PlaygroundResponse {
             ok: false,
             value: None,
             diagnostics: diagnostics.into_iter().map(playground_diagnostic).collect(),
         },
-        CompileErrorKind::FunctionNotFound(name) => {
-            single_error_response(format!("function `{name}` was not found"))
-        }
         CompileErrorKind::UnknownLocal(name) => {
             single_error_response(format!("unknown local `{name}`"))
         }

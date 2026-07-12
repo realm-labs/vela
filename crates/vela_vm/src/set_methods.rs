@@ -130,7 +130,7 @@ pub(super) fn type_error<T>(operation: &'static str) -> VmResult<T> {
 
 #[cfg(test)]
 mod tests {
-    use vela_bytecode::compiler::compile_function_source_with_registry;
+    use crate::test_support::compile_test_function_with_registry;
     use vela_bytecode::compiler::error::{CompileError, CompileErrorKind, CompileResult};
     use vela_bytecode::{Linker, UnlinkedCodeObject, UnlinkedProgram};
     use vela_common::SourceId;
@@ -138,13 +138,13 @@ mod tests {
     use crate::owned_value::OwnedValue;
     use crate::{ExecutionBudget, Vm, VmErrorKind, VmResult};
 
-    fn compile_function_source(
+    fn compile_test_function(
         source: SourceId,
         text: &str,
         function_name: &str,
     ) -> CompileResult<UnlinkedCodeObject> {
         let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-        compile_function_source_with_registry(source, text, function_name, registry.compile_view())
+        compile_test_function_with_registry(source, text, function_name, registry.compile_view())
     }
 
     fn semantic_diagnostic_codes(error: CompileError) -> Vec<String> {
@@ -207,7 +207,7 @@ fn main() {
     return "";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("set combination source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -238,7 +238,7 @@ fn main() {
         + changed.values().collect_array().sum();
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap set combination source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -276,7 +276,7 @@ fn main() {
     return "";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap string set predicate source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -302,7 +302,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap set has source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -338,7 +338,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("record identity set source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -383,7 +383,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("record identity set combination source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -407,7 +407,7 @@ fn main() {
     return "";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("set filter source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -425,7 +425,7 @@ fn main() {
     return filtered.values().collect_array().sum() + ids.values().collect_array().sum();
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap set filter source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -452,7 +452,7 @@ fn main() {
     return "";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("set map source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -471,7 +471,7 @@ fn main() {
     return doubled.values().collect_array().sum() + parity.values().collect_array().sum();
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap set map source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -500,7 +500,7 @@ fn main() {
     return "";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("set higher-order source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -525,7 +525,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap set higher-order source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -572,7 +572,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap set higher-order identity source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -597,7 +597,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("set value view should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -614,7 +614,7 @@ fn main() {
     return tags.filter("quest");
 }
 "#;
-        let error = compile_function_source(SourceId::new(1), source, "main")
+        let error = compile_test_function(SourceId::new(1), source, "main")
             .expect_err("set filter should reject non-callback args");
         assert_eq!(
             semantic_diagnostic_codes(error),
@@ -630,7 +630,7 @@ fn main() {
     return tags.union(["raid"]);
 }
 "#;
-        let error = compile_function_source(SourceId::new(1), source, "main")
+        let error = compile_test_function(SourceId::new(1), source, "main")
             .expect_err("set union should reject non-set args");
         assert_eq!(
             semantic_diagnostic_codes(error),
@@ -643,7 +643,7 @@ fn main() {
     return tags.symmetric_difference(["quest"]);
 }
 "#;
-        let error = compile_function_source(SourceId::new(1), source, "main")
+        let error = compile_test_function(SourceId::new(1), source, "main")
             .expect_err("set symmetric_difference should reject non-set args");
         assert_eq!(
             semantic_diagnostic_codes(error),
@@ -656,7 +656,7 @@ fn main() {
     return tags.is_subset(["quest"]);
 }
 "#;
-        let error = compile_function_source(SourceId::new(1), source, "main")
+        let error = compile_test_function(SourceId::new(1), source, "main")
             .expect_err("set predicate should reject non-set args");
         assert_eq!(
             semantic_diagnostic_codes(error),
@@ -678,7 +678,7 @@ fn main() {
     return "";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("set clear method should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -701,7 +701,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap set clear method should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -724,7 +724,7 @@ fn main() {
     return "";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("set extend method should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -746,7 +746,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap set extend method should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -769,7 +769,7 @@ fn main(other = ["raid"]) {
     return tags.len();
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("set extend error source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -793,7 +793,7 @@ fn main() {
     return set::from_array([1, 2, 3]).map(|value| value).len();
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("set map limit source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();

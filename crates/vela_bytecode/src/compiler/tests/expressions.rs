@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn compiler_never_specializes_conflicting_record_shapes_at_cfg_join() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 struct Left { x: i64 }
@@ -27,7 +27,7 @@ fn main(flag) {
 
 #[test]
 fn compiler_never_uses_one_predecessor_immediate_after_cfg_join() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(2),
         r#"
 fn main(flag) -> i64 {
@@ -52,7 +52,7 @@ fn main(flag) -> i64 {
 
 #[test]
 fn compiler_lowers_unary_operators() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -84,7 +84,7 @@ fn compiler_evaluates_non_fusible_i64_immediate_lhs_once() {
         let source = format!(
             "fn effectful() -> i64 {{ return 8; }}\nfn main() -> i64 {{ return {expression}; }}"
         );
-        let code = compile_function_source(SourceId::new(1), &source, "main")
+        let code = compile_test_function(SourceId::new(1), &source, "main")
             .unwrap_or_else(|error| panic!("{name} should compile: {error:?}"));
         assert_eq!(
             code.instructions
@@ -103,7 +103,7 @@ fn compiler_evaluates_non_fusible_i64_immediate_lhs_once() {
 
 #[test]
 fn compiler_materializes_negated_equality_before_not() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -127,7 +127,7 @@ fn main() {
 
 #[test]
 fn compiler_rejects_static_record_equality_without_partial_eq() {
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(1),
         r#"
 struct Reward { amount: i64 }
@@ -149,7 +149,7 @@ fn main() {
 
 #[test]
 fn compiler_accepts_static_record_equality_with_derived_partial_eq() {
-    compile_program_source(
+    compile_test_program(
         SourceId::new(1),
         r#"
 #[derive(PartialEq)]
@@ -167,7 +167,7 @@ fn main() {
 
 #[test]
 fn compiler_rejects_static_record_ordering_without_partial_ord() {
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(1),
         r#"
 struct Score { value: i64 }
@@ -189,7 +189,7 @@ fn main() {
 
 #[test]
 fn compiler_accepts_static_record_ordering_with_derived_partial_ord() {
-    compile_program_source(
+    compile_test_program(
         SourceId::new(1),
         r#"
 #[derive(PartialEq, PartialOrd)]
@@ -207,7 +207,7 @@ fn main() {
 
 #[test]
 fn compiler_lowers_identity_comparison_operators() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main(left, right) {
@@ -234,7 +234,7 @@ fn main(left, right) {
 
 #[test]
 fn compiler_rejects_static_non_reference_identity_comparison() {
-    let error = compile_function_source(
+    let error = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -253,7 +253,7 @@ fn main() {
 
 #[test]
 fn compiler_materializes_negated_identity_equality_before_not() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main(left, right) {
@@ -279,7 +279,7 @@ fn main(left, right) {
 
 #[test]
 fn compiler_lowers_logical_short_circuit_operators() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -316,7 +316,7 @@ fn main() {
 }
 #[test]
 fn compiler_lowers_block_and_if_expression_values() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -346,7 +346,7 @@ fn main() {
 }
 #[test]
 fn compiler_lowers_if_expression_without_else_to_unit() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -363,7 +363,7 @@ fn main() {
 }
 #[test]
 fn compiler_lowers_returning_block_initializers() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -384,7 +384,7 @@ fn main() {
 }
 #[test]
 fn compiler_lowers_returning_expression_operands() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main(kind) {
@@ -415,7 +415,7 @@ fn main(kind) {
 }
 #[test]
 fn compiler_lowers_returning_if_and_match_initializers() {
-    compile_function_source(
+    compile_test_function(
         SourceId::new(1),
         r#"
 fn main(flag) {
@@ -430,7 +430,7 @@ fn main(flag) {
         "main",
     )
     .expect("returning if initializer should compile");
-    compile_function_source(
+    compile_test_function(
         SourceId::new(2),
         r#"
 fn main(value) {
@@ -447,7 +447,7 @@ fn main(value) {
 }
 #[test]
 fn compiler_lowers_match_expression_values() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -477,7 +477,7 @@ fn main() {
 }
 #[test]
 fn compiler_lowers_literal_match_patterns() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -510,7 +510,7 @@ fn main() {
 }
 #[test]
 fn compiler_lowers_binding_match_patterns() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -540,7 +540,7 @@ fn main() {
 }
 #[test]
 fn compiler_lowers_match_guards() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -580,7 +580,7 @@ fn main() {
 }
 #[test]
 fn compiler_lowers_record_variant_field_patterns() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 enum Reward {
@@ -618,7 +618,7 @@ fn main() {
 }
 #[test]
 fn compiler_lowers_tuple_variant_constructors_and_patterns() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 enum Damage {
@@ -658,7 +658,7 @@ fn main() {
 
 #[test]
 fn compiler_lowers_unit_and_tuple_expressions() {
-    let unit = compile_function_source(
+    let unit = compile_test_function(
         SourceId::new(1),
         "fn unit_value() { return (); }",
         "unit_value",
@@ -666,7 +666,7 @@ fn compiler_lowers_unit_and_tuple_expressions() {
     .expect("unit expression should compile");
     assert!(unit.constants.contains(&Constant::Unit));
 
-    let tuple = compile_function_source(
+    let tuple = compile_test_function(
         SourceId::new(1),
         r#"fn pair() { return (1, "xp"); }"#,
         "pair",
@@ -682,7 +682,7 @@ fn compiler_lowers_unit_and_tuple_expressions() {
 
 #[test]
 fn compiler_lowers_tuple_destructuring_patterns() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -702,7 +702,7 @@ fn main() {
         UnlinkedInstructionKind::GetTupleField { index: 0, .. }
     )));
 
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -724,7 +724,7 @@ fn main() {
 
 #[test]
 fn compiler_lowers_tuple_projection_field_reads() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {

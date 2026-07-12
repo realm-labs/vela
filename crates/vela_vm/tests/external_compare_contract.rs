@@ -10,7 +10,11 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use mlua::{Function, Lua};
 use rhai::{Engine, Scope};
-use vela_bytecode::compiler::compile_program_source_with_registry;
+#[path = "../test_compile_support.rs"]
+#[allow(dead_code)]
+mod test_compile_support;
+
+use test_compile_support::compile_test_program_with_registry;
 use vela_bytecode::linked::InstructionKind;
 use vela_bytecode::{BinaryLiteralOp, BinaryLiteralSide};
 use vela_bytecode::{Linker, UnlinkedProgram};
@@ -89,7 +93,7 @@ fn external_compare_vela_sources_compile_and_link() {
     let vm = Vm::new().with_standard_natives();
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     for workload in workloads::all_workloads() {
-        let program = compile_program_source_with_registry(
+        let program = compile_test_program_with_registry(
             SourceId::new(1),
             workload.vela,
             registry.compile_view(),
@@ -239,7 +243,7 @@ fn run_vela_workload(
     workload: &workloads::Workload,
     iterations: i64,
 ) -> Result<i64, Box<dyn std::error::Error>> {
-    let program = compile_program_source_with_registry(SourceId::new(1), workload.vela, registry)
+    let program = compile_test_program_with_registry(SourceId::new(1), workload.vela, registry)
         .map_err(|error| format!("{error:?}"))?;
     let linked = link_program_for_vm(vm, &program)?;
     let value = vm.run_linked_program(
@@ -294,7 +298,7 @@ fn opcode_count_report(
     let workload = workloads::all_workloads()
         .find(|workload| workload.name == workload_name)
         .unwrap_or_else(|| panic!("{workload_name} workload should exist"));
-    let program = compile_program_source_with_registry(SourceId::new(1), workload.vela, registry)
+    let program = compile_test_program_with_registry(SourceId::new(1), workload.vela, registry)
         .unwrap_or_else(|error| panic!("{workload_name} should compile: {error:?}"));
     let linked = link_program_for_vm(vm, &program)
         .unwrap_or_else(|error| panic!("{workload_name} should link: {error}"));

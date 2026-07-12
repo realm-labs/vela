@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn compiler_lowers_for_in_loops() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -32,7 +32,7 @@ fn main() {
 
 #[test]
 fn compiler_lowers_direct_range_for_in_to_i64_range_next() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -63,7 +63,7 @@ fn main() {
 
 #[test]
 fn compiler_lowers_proven_i64_scalar_loop_ops_to_typed_bytecode() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -114,7 +114,7 @@ fn main() {
 
 #[test]
 fn compiler_keeps_dynamic_numeric_ops_generic() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn add(left, right) {
@@ -140,7 +140,7 @@ fn add(left, right) {
 
 #[test]
 fn compiler_lowers_for_in_patterns() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 enum Reward {
@@ -174,7 +174,7 @@ fn main() {
 }
 #[test]
 fn compiler_lowers_break_and_continue() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -210,7 +210,7 @@ fn main() {
 }
 #[test]
 fn compiler_rejects_break_and_continue_outside_loop() {
-    let break_error = compile_function_source(
+    let break_error = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -224,7 +224,7 @@ fn main() {
         semantic_diagnostic_codes(break_error),
         ["analysis::break_outside_loop"]
     );
-    let continue_error = compile_function_source(
+    let continue_error = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -242,7 +242,7 @@ fn main() {
 
 #[test]
 fn compiler_rejects_top_level_mutation_as_syntax_before_codegen() {
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(1),
         r#"
 player.level = 10;
@@ -250,9 +250,7 @@ fn main(player) { return player.level; }
 "#,
     )
     .expect_err("top-level mutation should not reach bytecode generation");
-    let CompileErrorKind::SyntaxDiagnostics(diagnostics) = error.kind else {
-        panic!("expected syntax diagnostics");
-    };
+    let diagnostics = error.into_syntax_diagnostics();
     assert!(
         diagnostics
             .iter()
@@ -262,7 +260,7 @@ fn main(player) { return player.level; }
 
 #[test]
 fn compiler_reports_parse_diagnostics_before_codegen() {
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(1),
         r#"
 fn () {}
@@ -270,9 +268,7 @@ fn main() { return 1; }
 "#,
     )
     .expect_err("missing function name should fail at the syntax gate");
-    let CompileErrorKind::SyntaxDiagnostics(diagnostics) = error.kind else {
-        panic!("expected syntax diagnostics");
-    };
+    let diagnostics = error.into_syntax_diagnostics();
     assert!(diagnostics.iter().any(|diagnostic| {
         diagnostic.code.as_deref() == Some("E_PARSE")
             && diagnostic.message == "expected function name"
@@ -281,7 +277,7 @@ fn main() { return 1; }
 
 #[test]
 fn compiler_rejects_top_level_const_side_effects_from_hir() {
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(1),
         r#"
 const BAD = register_event("monster.kill");
@@ -289,9 +285,7 @@ fn main() { return 1; }
 "#,
     )
     .expect_err("side-effecting const initializer should fail before bytecode generation");
-    let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
-        panic!("expected semantic diagnostics");
-    };
+    let diagnostics = error.into_semantic_diagnostics();
     assert!(
         diagnostics
             .iter()
@@ -300,7 +294,7 @@ fn main() { return 1; }
 }
 #[test]
 fn compiler_rejects_generic_type_hints_before_codegen() {
-    let error = compile_program_source(
+    let error = compile_test_program(
         SourceId::new(1),
         r#"
 fn main(values: Player<i64>) {
@@ -309,9 +303,7 @@ fn main(values: Player<i64>) {
 "#,
     )
     .expect_err("generic type hints should fail in syntax validation");
-    let CompileErrorKind::SyntaxDiagnostics(diagnostics) = error.kind else {
-        panic!("expected syntax diagnostics");
-    };
+    let diagnostics = error.into_syntax_diagnostics();
     assert!(
         diagnostics
             .iter()

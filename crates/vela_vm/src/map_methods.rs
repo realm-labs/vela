@@ -111,7 +111,7 @@ pub(super) fn type_error<T>(operation: &'static str) -> VmResult<T> {
 
 #[cfg(test)]
 mod tests {
-    use vela_bytecode::compiler::compile_function_source_with_registry;
+    use crate::test_support::compile_test_function_with_registry;
     use vela_bytecode::compiler::error::{CompileErrorKind, CompileResult};
     use vela_bytecode::{Linker, UnlinkedCodeObject, UnlinkedProgram};
     use vela_common::SourceId;
@@ -119,13 +119,13 @@ mod tests {
     use crate::owned_value::OwnedValue;
     use crate::{ExecutionBudget, Vm, VmErrorKind, VmResult};
 
-    fn compile_function_source(
+    fn compile_test_function(
         source: SourceId,
         text: &str,
         function_name: &str,
     ) -> CompileResult<UnlinkedCodeObject> {
         let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-        compile_function_source_with_registry(source, text, function_name, registry.compile_view())
+        compile_test_function_with_registry(source, text, function_name, registry.compile_view())
     }
 
     fn run_linked_map_test_code(vm: &Vm, code: UnlinkedCodeObject) -> VmResult<OwnedValue> {
@@ -173,7 +173,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("map higher-order methods should compile");
 
         let result = run_linked_map_test_code(&Vm::new(), code)
@@ -202,7 +202,7 @@ fn main() {
     return false;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap map higher-order methods should compile");
         let mut budget = ExecutionBudget::unbounded();
 
@@ -232,7 +232,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("scalar map key source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -274,7 +274,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("record identity map source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -293,7 +293,7 @@ fn main() {
     return rewards.map_values(|value| value).len();
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("map_values limit source should compile");
         let mut budget =
             ExecutionBudget::unbounded().with_collection_limits(crate::budget::CollectionLimits {
@@ -324,7 +324,7 @@ fn main() {
     return merged["gold"] * 100 + merged["xp"];
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("map merge duplicate key limit source should compile");
         let mut budget =
             ExecutionBudget::unbounded().with_collection_limits(crate::budget::CollectionLimits {
@@ -353,7 +353,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("map find source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -380,7 +380,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("map zero-arg callback source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -404,7 +404,7 @@ fn main() {
     return "";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap map find source should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -437,7 +437,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("map introspection methods should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -471,7 +471,7 @@ fn main() {
     return "";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap map introspection methods should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -500,7 +500,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap map lookup methods should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -529,7 +529,7 @@ fn main() {
     return "";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main").expect("merge source");
+        let code = compile_test_function(SourceId::new(1), source, "main").expect("merge source");
         let mut vm = Vm::new();
         vm.register_standard_natives();
 
@@ -555,7 +555,7 @@ fn main() {
 }
 "#;
         let code =
-            compile_function_source(SourceId::new(1), source, "main").expect("heap merge source");
+            compile_test_function(SourceId::new(1), source, "main").expect("heap merge source");
         let mut vm = Vm::new();
         vm.register_standard_natives();
         let mut budget = ExecutionBudget::unbounded();
@@ -572,7 +572,7 @@ fn main() {
     return {"gold": 4}.merge(["xp"]);
 }
 "#;
-        let error = compile_function_source(SourceId::new(1), source, "main")
+        let error = compile_test_function(SourceId::new(1), source, "main")
             .expect_err("statically known non-map merge argument should fail before runtime");
         let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
             panic!("expected semantic diagnostics");
@@ -599,7 +599,7 @@ fn main() {
     return 0;
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("map clear method should compile");
 
         let result =
@@ -623,7 +623,7 @@ fn main() {
     return "";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap map clear method should compile");
         let mut budget = ExecutionBudget::unbounded();
 
@@ -648,7 +648,7 @@ fn main() {
     return "";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("map extend method should compile");
         let mut vm = Vm::new();
         vm.register_standard_natives();
@@ -670,7 +670,7 @@ fn main() {
     return "";
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("heap map extend method should compile");
         let mut budget = ExecutionBudget::unbounded();
         let mut vm = Vm::new();
@@ -690,7 +690,7 @@ fn main(other = ["xp"]) {
     return rewards.len();
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
+        let code = compile_test_function(SourceId::new(1), source, "main")
             .expect("map extend error source should compile");
 
         let error = run_linked_map_test_code(&Vm::new(), code)

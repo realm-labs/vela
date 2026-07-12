@@ -47,7 +47,7 @@ fn expect_arity(method: &str, args: &[Value], expected: usize) -> VmResult<()> {
 
 #[cfg(test)]
 mod tests {
-    use vela_bytecode::compiler::compile_function_source_with_registry;
+    use crate::test_support::compile_test_function_with_registry;
     use vela_bytecode::{Linker, UnlinkedCodeObject, UnlinkedProgram};
     use vela_common::SourceId;
 
@@ -59,7 +59,7 @@ mod tests {
         function_name: &str,
     ) -> vela_bytecode::compiler::error::CompileResult<UnlinkedCodeObject> {
         let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-        compile_function_source_with_registry(source, text, function_name, registry.compile_view())
+        compile_test_function_with_registry(source, text, function_name, registry.compile_view())
     }
 
     fn run_linked_builtin_test_code(

@@ -10,20 +10,22 @@ mod schema_defaults;
 mod semantic;
 #[path = "semantic_input/mod.rs"]
 mod semantic_input;
+#[cfg(test)]
+#[allow(clippy::result_large_err)]
+mod test_support;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Deref;
 use std::sync::Arc;
 
+#[cfg(test)]
 use vela_common::SourceId;
 #[cfg(test)]
 use vela_common::Span;
-use vela_hir::ids::HirDeclId;
+use vela_hir::ids::{HirDeclId, ModuleId};
+use vela_hir::module_graph::ModuleGraph;
 #[cfg(test)]
-use vela_hir::module_graph::ModulePath;
-use vela_hir::module_graph::{ModuleGraph, ModuleSource};
-use vela_hir::script_methods::ScriptMethodCatalog;
-use vela_mir::MirEvaluatedConstant;
+use vela_hir::module_graph::{ModulePath, ModuleSource};
 use vela_registry::RegistryCompileView;
 
 #[cfg(test)]
@@ -31,7 +33,9 @@ use crate::{Constant, UnlinkedTypeGuardPlan};
 use crate::{UnlinkedCodeObject, UnlinkedProgram};
 use error::{CompileError, CompileErrorKind, CompileResult};
 use options::CompilerOptions;
-use semantic::{parse_semantic_modules, parse_semantic_source};
+use semantic::SemanticCompilation;
+#[cfg(test)]
+pub(crate) use test_support::*;
 
 #[derive(Debug)]
 pub struct CompiledProgram {
@@ -112,79 +116,53 @@ impl Deref for CompiledProgram {
     }
 }
 
-pub fn compile_function_source(
-    source: SourceId,
-    text: &str,
-    function_name: &str,
-) -> CompileResult<UnlinkedCodeObject> {
-    compile_function_source_with_options(source, text, function_name, &CompilerOptions::default())
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ProgramCompilationMode {
+    SingleSource { root: ModuleId },
+    ModuleGraph { modules: Box<[ModuleId]> },
 }
 
-pub fn compile_function_source_with_registry(
-    source: SourceId,
-    text: &str,
-    function_name: &str,
-    registry: RegistryCompileView<'_>,
-) -> CompileResult<UnlinkedCodeObject> {
-    compile_function_source_with_options_and_registry(
-        source,
-        text,
-        function_name,
-        &CompilerOptions::default(),
-        registry,
-    )
+pub struct ProgramCompilationRequest<'a> {
+    pub graph: &'a ModuleGraph,
+    pub mode: &'a ProgramCompilationMode,
+    pub options: &'a CompilerOptions,
+    pub registry: Option<RegistryCompileView<'a>>,
 }
 
-pub fn compile_function_source_with_options(
-    source: SourceId,
-    text: &str,
-    function_name: &str,
-    options: &CompilerOptions,
-) -> CompileResult<UnlinkedCodeObject> {
-    compile_function_source_inner(source, text, function_name, options, None)
+pub struct FunctionCompilationRequest<'a> {
+    pub graph: &'a ModuleGraph,
+    pub module: ModuleId,
+    pub function: HirDeclId,
+    pub options: &'a CompilerOptions,
+    pub registry: Option<RegistryCompileView<'a>>,
 }
 
-pub fn compile_function_source_with_options_and_registry(
-    source: SourceId,
-    text: &str,
-    function_name: &str,
-    options: &CompilerOptions,
-    registry: RegistryCompileView<'_>,
+pub fn compile_function(
+    request: FunctionCompilationRequest<'_>,
 ) -> CompileResult<UnlinkedCodeObject> {
-    compile_function_source_inner(source, text, function_name, options, Some(registry))
-}
-
-fn compile_function_source_inner(
-    source: SourceId,
-    text: &str,
-    function_name: &str,
-    options: &CompilerOptions,
-    registry: Option<RegistryCompileView<'_>>,
-) -> CompileResult<UnlinkedCodeObject> {
-    let semantic = parse_semantic_source(source, text)?;
-    let declaration = semantic
-        .function_declaration(function_name)
-        .ok_or_else(|| {
-            CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
-        })?;
-    let script_function_symbols = semantic.script_function_symbols();
+    reject_invalid_graph(request.graph)?;
+    let mode = ProgramCompilationMode::SingleSource {
+        root: request.module,
+    };
+    let semantic = SemanticCompilation::new(request.graph, &mode)?;
+    let script_function_symbols = semantic.function_symbols();
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
     let evaluated_constants = semantic.evaluated_constants()?;
     let schema_defaults = semantic.schema_defaults(&type_symbols, &evaluated_constants)?;
     let input = semantic_input::prepare_semantic_input(semantic_input::SemanticInputRequest {
-        graph: semantic.script_metadata_graph(),
-        roots: semantic_input::SemanticRoots::Function(declaration),
+        graph: semantic.graph(),
+        roots: semantic_input::SemanticRoots::Function(request.function),
         script_function_symbols: &script_function_symbols,
         script_methods: semantic.script_method_catalog(),
         type_symbols: &type_symbols,
         global_symbols: &global_symbols,
         evaluated_constants: &evaluated_constants,
         schema_defaults: &schema_defaults,
-        options,
-        registry,
+        options: request.options,
+        registry: request.registry,
     })?;
-    let (mut code, _) = compile_mir_roots(&input, semantic.script_metadata_graph())?;
+    let (mut code, _) = compile_mir_roots(&input, semantic.graph())?;
     match code.len() {
         1 => Ok(code.pop().expect("one checked MIR root")),
         count => Err(CompileError::new(CompileErrorKind::InvalidMirRootCount {
@@ -193,167 +171,16 @@ fn compile_function_source_inner(
     }
 }
 
-pub fn compile_program_source(source: SourceId, text: &str) -> CompileResult<CompiledProgram> {
-    compile_program_source_with_options(source, text, &CompilerOptions::default())
-}
-
-pub fn compile_program_source_with_registry(
-    source: SourceId,
-    text: &str,
-    registry: RegistryCompileView<'_>,
-) -> CompileResult<CompiledProgram> {
-    compile_program_source_with_options_and_registry(
-        source,
-        text,
-        &CompilerOptions::default(),
-        registry,
-    )
-}
-
-pub fn compile_program_source_with_options(
-    source: SourceId,
-    text: &str,
-    options: &CompilerOptions,
-) -> CompileResult<CompiledProgram> {
-    compile_program_source_inner(source, text, options, None)
-}
-
-pub fn compile_program_source_with_options_and_registry(
-    source: SourceId,
-    text: &str,
-    options: &CompilerOptions,
-    registry: RegistryCompileView<'_>,
-) -> CompileResult<CompiledProgram> {
-    compile_program_source_inner(source, text, options, Some(registry))
-}
-
-fn compile_program_source_inner(
-    source: SourceId,
-    text: &str,
-    options: &CompilerOptions,
-    registry: Option<RegistryCompileView<'_>>,
-) -> CompileResult<CompiledProgram> {
-    let semantic = parse_semantic_source(source, text)?;
-    compile_semantic_program(&semantic, options, registry)
-}
-
-pub fn compile_module_sources(sources: &[ModuleSource]) -> CompileResult<CompiledProgram> {
-    compile_module_sources_with_options(sources, &CompilerOptions::default())
-}
-
-pub fn compile_module_sources_with_registry(
-    sources: &[ModuleSource],
-    registry: RegistryCompileView<'_>,
-) -> CompileResult<CompiledProgram> {
-    compile_module_sources_with_options_and_registry(sources, &CompilerOptions::default(), registry)
-}
-
-pub fn compile_module_sources_with_options(
-    sources: &[ModuleSource],
-    options: &CompilerOptions,
-) -> CompileResult<CompiledProgram> {
-    compile_module_sources_inner(sources, options, None)
-}
-
-pub fn compile_module_sources_with_options_and_registry(
-    sources: &[ModuleSource],
-    options: &CompilerOptions,
-    registry: RegistryCompileView<'_>,
-) -> CompileResult<CompiledProgram> {
-    compile_module_sources_inner(sources, options, Some(registry))
-}
-
-fn compile_module_sources_inner(
-    sources: &[ModuleSource],
-    options: &CompilerOptions,
-    registry: Option<RegistryCompileView<'_>>,
-) -> CompileResult<CompiledProgram> {
-    let semantic = parse_semantic_modules(sources)?;
-    compile_semantic_program(&semantic, options, registry)
-}
-
-trait SemanticProgram {
-    fn graph(&self) -> &ModuleGraph;
-    fn function_symbols(&self) -> BTreeMap<HirDeclId, String>;
-    fn type_symbols(&self) -> BTreeMap<HirDeclId, String>;
-    fn global_symbols(&self) -> BTreeMap<HirDeclId, String>;
-    fn evaluated_constants(&self) -> CompileResult<BTreeMap<HirDeclId, MirEvaluatedConstant>>;
-    fn schema_defaults(
-        &self,
-        types: &BTreeMap<HirDeclId, String>,
-        constants: &BTreeMap<HirDeclId, MirEvaluatedConstant>,
-    ) -> CompileResult<schema_defaults::EvaluatedSchemaDefaults>;
-    fn methods(&self) -> &ScriptMethodCatalog;
-}
-
-impl SemanticProgram for semantic::SemanticSource {
-    fn graph(&self) -> &ModuleGraph {
-        self.script_metadata_graph()
-    }
-    fn function_symbols(&self) -> BTreeMap<HirDeclId, String> {
-        self.script_function_symbols()
-    }
-    fn type_symbols(&self) -> BTreeMap<HirDeclId, String> {
-        self.type_symbols()
-    }
-    fn global_symbols(&self) -> BTreeMap<HirDeclId, String> {
-        self.global_symbols()
-    }
-    fn evaluated_constants(&self) -> CompileResult<BTreeMap<HirDeclId, MirEvaluatedConstant>> {
-        self.evaluated_constants()
-    }
-    fn schema_defaults(
-        &self,
-        types: &BTreeMap<HirDeclId, String>,
-        constants: &BTreeMap<HirDeclId, MirEvaluatedConstant>,
-    ) -> CompileResult<schema_defaults::EvaluatedSchemaDefaults> {
-        self.schema_defaults(types, constants)
-    }
-    fn methods(&self) -> &ScriptMethodCatalog {
-        self.script_method_catalog()
-    }
-}
-
-impl SemanticProgram for semantic::SemanticModules {
-    fn graph(&self) -> &ModuleGraph {
-        self.script_metadata_graph()
-    }
-    fn function_symbols(&self) -> BTreeMap<HirDeclId, String> {
-        self.script_function_symbols()
-    }
-    fn type_symbols(&self) -> BTreeMap<HirDeclId, String> {
-        self.type_symbols()
-    }
-    fn global_symbols(&self) -> BTreeMap<HirDeclId, String> {
-        self.global_symbols()
-    }
-    fn evaluated_constants(&self) -> CompileResult<BTreeMap<HirDeclId, MirEvaluatedConstant>> {
-        self.evaluated_constants()
-    }
-    fn schema_defaults(
-        &self,
-        types: &BTreeMap<HirDeclId, String>,
-        constants: &BTreeMap<HirDeclId, MirEvaluatedConstant>,
-    ) -> CompileResult<schema_defaults::EvaluatedSchemaDefaults> {
-        self.schema_defaults(types, constants)
-    }
-    fn methods(&self) -> &ScriptMethodCatalog {
-        self.script_method_catalog()
-    }
-}
-
-fn compile_semantic_program(
-    semantic: &impl SemanticProgram,
-    options: &CompilerOptions,
-    registry: Option<RegistryCompileView<'_>>,
-) -> CompileResult<CompiledProgram> {
+pub fn compile_program(request: ProgramCompilationRequest<'_>) -> CompileResult<CompiledProgram> {
+    reject_invalid_graph(request.graph)?;
+    let semantic = SemanticCompilation::new(request.graph, request.mode)?;
     let script_function_symbols = semantic.function_symbols();
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
     let evaluated_constants = semantic.evaluated_constants()?;
     let schema_defaults = semantic.schema_defaults(&type_symbols, &evaluated_constants)?;
     let methods = semantic
-        .methods()
+        .script_method_catalog()
         .methods()
         .map(|method| {
             (
@@ -365,21 +192,21 @@ fn compile_semantic_program(
         })
         .collect::<Vec<_>>();
     let input = semantic_input::prepare_semantic_input(semantic_input::SemanticInputRequest {
-        graph: semantic.graph(),
+        graph: request.graph,
         roots: semantic_input::SemanticRoots::Program,
         script_function_symbols: &script_function_symbols,
-        script_methods: semantic.methods(),
+        script_methods: semantic.script_method_catalog(),
         type_symbols: &type_symbols,
         global_symbols: &global_symbols,
         evaluated_constants: &evaluated_constants,
         schema_defaults: &schema_defaults,
-        options,
-        registry,
+        options: request.options,
+        registry: request.registry,
     })?;
 
     let mut program = UnlinkedProgram::new();
     program.set_global_layout(global_names(&global_symbols));
-    let (mut code, verified_mir) = compile_mir_roots(&input, semantic.graph())?;
+    let (mut code, verified_mir) = compile_mir_roots(&input, request.graph)?;
     let mir_executables = compiled_mir_executables(&verified_mir);
     attach_compiled_mir_identities(&mut code, &mir_executables);
     for code in code {
@@ -388,7 +215,7 @@ fn compile_semantic_program(
     for (owner, name, method, symbol) in methods {
         program.insert_script_method(owner, name, method, symbol);
     }
-    program.set_script_metadata(semantic.graph().clone());
+    program.set_script_metadata(request.graph.clone());
     let bytecode = verify_program(program)?;
     Ok(CompiledProgram {
         mir_executables: compiled_bytecode_layouts(&bytecode),
@@ -396,6 +223,16 @@ fn compile_semantic_program(
         bytecode,
         verified_mir,
     })
+}
+
+fn reject_invalid_graph(graph: &ModuleGraph) -> CompileResult<()> {
+    if graph.diagnostics().is_empty() {
+        Ok(())
+    } else {
+        Err(CompileError::new(CompileErrorKind::InvalidHirGraph(
+            graph.diagnostics().to_vec(),
+        )))
+    }
 }
 
 fn compiled_budget_layouts(program: &UnlinkedProgram) -> Box<[CompiledExecutableBudgetLayout]> {

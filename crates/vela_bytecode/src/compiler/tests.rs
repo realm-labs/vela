@@ -9,11 +9,9 @@ use vela_def::{
 };
 use vela_host::target::HostPathPart;
 
-fn semantic_diagnostic_codes(error: CompileError) -> Vec<String> {
-    let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
-        panic!("expected semantic diagnostics");
-    };
-    diagnostics
+fn semantic_diagnostic_codes(error: TestCompileError) -> Vec<String> {
+    error
+        .into_semantic_diagnostics()
         .into_iter()
         .filter_map(|diagnostic| diagnostic.code)
         .collect()
@@ -29,7 +27,7 @@ fn stable_test_inherent_method_id(type_name: &str, method_name: &str) -> MethodI
 
 #[test]
 fn compiler_entry_points_return_unlinked_bytecode() {
-    let program: super::CompiledProgram = compile_program_source(
+    let program: super::CompiledProgram = compile_test_program(
         SourceId::new(1),
         r#"
 fn main() {
@@ -40,7 +38,7 @@ fn main() {
     .expect("program should compile");
     assert!(program.function("main").is_some());
 
-    let code: UnlinkedCodeObject = compile_function_source(
+    let code: UnlinkedCodeObject = compile_test_function(
         SourceId::new(2),
         r#"
 fn main() {
@@ -54,8 +52,45 @@ fn main() {
 }
 
 #[test]
+fn graph_requests_compile_program_and_stable_function_roots() {
+    let sources = [ModuleSource::new(
+        SourceId::new(3),
+        ModulePath::new(Vec::<String>::new()),
+        "fn helper() { return 2; } fn main() { return helper(); }",
+    )];
+    let built = vela_hir::source_ingestion::build_source_set(&sources).expect("HIR source set");
+    let module = built.modules()[0];
+    let function = built
+        .graph()
+        .module(module)
+        .and_then(|declarations| declarations.get("main"))
+        .expect("stable main declaration");
+    let options = CompilerOptions::default();
+    let mode = ProgramCompilationMode::SingleSource { root: module };
+
+    let program = compile_program(ProgramCompilationRequest {
+        graph: built.graph(),
+        mode: &mode,
+        options: &options,
+        registry: None,
+    })
+    .expect("graph program request");
+    let code = compile_function(FunctionCompilationRequest {
+        graph: built.graph(),
+        module,
+        function,
+        options: &options,
+        registry: None,
+    })
+    .expect("stable function request");
+
+    assert!(program.function("main").is_some());
+    assert_eq!(code.name, "main");
+}
+
+#[test]
 fn compiler_lowers_verified_mir_budget_points_to_instruction_metadata() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(3),
         "fn helper(value) { return value + 1; } fn main() { return helper(4); }",
     )
@@ -85,7 +120,7 @@ fn compiler_lowers_verified_mir_budget_points_to_instruction_metadata() {
 
 #[test]
 fn linked_artifact_rejects_bytecode_that_drops_verified_mir_budget_points() {
-    let mut program = compile_program_source(
+    let mut program = compile_test_program(
         SourceId::new(4),
         "fn helper() { return 1; } fn main() { return helper(); }",
     )
@@ -168,7 +203,7 @@ fn assert_moved_budget_charge_is_rejected(
 #[test]
 fn linked_artifact_rejects_equal_total_budget_charge_moves_across_boundaries() {
     assert_moved_budget_charge_is_rejected(
-        compile_program_source(
+        compile_test_program(
             SourceId::new(44),
             "fn helper() { return 1; } fn main() { let value = helper(); return value + 1; }",
         )
@@ -176,7 +211,7 @@ fn linked_artifact_rejects_equal_total_budget_charge_moves_across_boundaries() {
         vela_mir::MirBudgetClass::Call,
     );
     assert_moved_budget_charge_is_rejected(
-        compile_program_source(
+        compile_test_program(
             SourceId::new(45),
             "fn main() { let values = [1, 2]; return values.len(); }",
         )
@@ -184,7 +219,7 @@ fn linked_artifact_rejects_equal_total_budget_charge_moves_across_boundaries() {
         vela_mir::MirBudgetClass::Allocation,
     );
     assert_moved_budget_charge_is_rejected(
-        compile_program_source(
+        compile_test_program(
             SourceId::new(46),
             "fn main(value) { let checked: i64 = value; return checked + 1; }",
         )
@@ -192,7 +227,7 @@ fn linked_artifact_rejects_equal_total_budget_charge_moves_across_boundaries() {
         vela_mir::MirBudgetClass::DynamicWork,
     );
     assert_moved_budget_charge_is_rejected(
-        compile_program_source(
+        compile_test_program(
             SourceId::new(47),
             "fn main(value) { let field = reflect::get(value, \"name\"); return field; }",
         )
@@ -221,7 +256,7 @@ fn linked_artifact_rejects_equal_total_budget_charge_moves_across_boundaries() {
         )
         .expect("budget host field registers");
     assert_moved_budget_charge_is_rejected(
-        compile_program_source_with_registry(
+        compile_test_program_with_registry(
             SourceId::new(48),
             "fn main(player: BudgetPlayer) { let level = player.level; return level + 1; }",
             registry.compile_view(),
@@ -233,9 +268,9 @@ fn linked_artifact_rejects_equal_total_budget_charge_moves_across_boundaries() {
 
 #[test]
 fn compiled_linking_keeps_semantically_distinct_equal_budget_generations_sealed() {
-    let first = compile_program_source(SourceId::new(40), "fn main() { return 1; }")
+    let first = compile_test_program(SourceId::new(40), "fn main() { return 1; }")
         .expect("first generation compiles");
-    let second = compile_program_source(SourceId::new(40), "fn main() { return 2; }")
+    let second = compile_test_program(SourceId::new(40), "fn main() { return 2; }")
         .expect("second generation compiles");
     let first_mir = std::sync::Arc::clone(first.verified_mir());
     let second_mir = std::sync::Arc::clone(second.verified_mir());
@@ -276,7 +311,7 @@ fn compiled_linking_keeps_semantically_distinct_equal_budget_generations_sealed(
 #[test]
 fn compiled_linking_rejects_missing_added_and_reordered_executable_identities() {
     fn fixture() -> super::CompiledProgram {
-        compile_program_source(
+        compile_test_program(
             SourceId::new(41),
             "fn alpha() { return || 1; } fn beta() { return 2; }",
         )
@@ -313,7 +348,7 @@ fn compiled_linking_rejects_missing_added_and_reordered_executable_identities() 
 fn every_bound_handle_resolves_one_verified_mir_function() {
     let artifact = crate::Linker::new()
         .link_compiled_program(
-            compile_program_source(
+            compile_test_program(
                 SourceId::new(42),
                 "fn main() { let outer = || { let inner = || 1; return inner(); }; return outer(); }",
             )
@@ -335,7 +370,7 @@ fn every_bound_handle_resolves_one_verified_mir_function() {
 
 #[test]
 fn debug_availability_is_initialized_and_lexically_bounded_across_nested_regions() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(43),
         r#"
 fn main(value: i64 = 1) {
@@ -413,7 +448,7 @@ fn main(value: i64 = 1) {
 
 #[test]
 fn contextual_compound_assignment_keeps_dynamic_call_results_generic() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(5),
         r#"
 fn main() {
@@ -503,7 +538,7 @@ fn compiler_records_cache_site_metadata_for_cacheable_instructions() {
             .with_id(FunctionId::new(7)),
         )
         .expect("give_reward function should register");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 global bonus: i64;
@@ -596,7 +631,7 @@ fn main(player: Player) {
 
 #[test]
 fn compiler_evaluates_schema_default_block_lets_from_hir_locals() {
-    compile_program_source(
+    compile_test_program(
         SourceId::new(1),
         r#"
 struct Reward {
@@ -614,7 +649,7 @@ fn main() {
 
 #[test]
 fn compiler_uses_field_owned_bodies_for_enum_schema_defaults() {
-    compile_program_source(
+    compile_test_program(
         SourceId::new(1),
         r#"
 enum Reward {
@@ -700,7 +735,7 @@ fn compiler_resolves_host_field_after_dynamic_index_from_hir_receiver() {
         },
     );
 
-    let program = compile_program_source_with_options_and_registry(
+    let program = compile_test_program_with_options_and_registry(
         SourceId::new(1),
         r#"
 fn item_count(player: IndexedPlayer, item_id: String) {
@@ -787,7 +822,7 @@ fn compiler_checks_host_index_key_type_from_hir_operand() {
         },
     );
 
-    let error = compile_program_source_with_options_and_registry(
+    let error = compile_test_program_with_options_and_registry(
         SourceId::new(1),
         r#"
 fn item_count(player: KeyedPlayer) {
@@ -835,7 +870,7 @@ fn compiler_checks_read_only_host_field_from_hir_receiver() {
         )
         .expect("ReadOnlyPlayer::level field should register");
 
-    let error = compile_program_source_with_registry(
+    let error = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn bump(player: ReadOnlyPlayer) {
@@ -877,7 +912,7 @@ fn compiler_resolves_param_default_field_receiver_from_hir() {
         )
         .expect("DefaultPlayer::level field should register");
 
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn sample(player: DefaultPlayer, level = player.level) {
@@ -900,7 +935,7 @@ fn sample(player: DefaultPlayer, level = player.level) {
 
 #[test]
 fn compiler_resolves_method_call_receiver_from_hir() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Counter {
@@ -931,7 +966,7 @@ fn sample(counter: Counter) {
 
 #[test]
 fn compiler_resolves_record_field_read_receiver_from_hir() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 struct Counter {

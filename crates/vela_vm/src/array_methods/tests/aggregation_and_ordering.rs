@@ -15,7 +15,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array sum methods should compile");
 
     let result =
@@ -36,7 +36,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array sum methods should compile");
     let mut budget = ExecutionBudget::unbounded();
 
@@ -55,7 +55,7 @@ fn main() {
     return ["boar"].sum();
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array sum type error source should compile");
 
     let error = run_linked_array_test_code(&Vm::new(), code)
@@ -84,7 +84,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array group_by method should compile");
 
     let result =
@@ -108,7 +108,7 @@ fn main() {
     return "";
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array group_by method should compile");
     let mut budget = ExecutionBudget::unbounded();
 
@@ -131,7 +131,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array group_by numeric key source should compile");
 
     let result = run_linked_array_test_code(&Vm::new(), code)
@@ -159,7 +159,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array group_by identity key source should compile");
 
     let result = run_linked_array_test_code(&Vm::new(), code)
@@ -184,7 +184,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array sort_by method should compile");
 
     let result =
@@ -212,7 +212,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array sort method should compile");
 
     let result =
@@ -268,7 +268,7 @@ fn main() {
     return 0;
 }
 "#;
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_test_program(SourceId::new(1), source)
         .expect("array Ord sort source should compile");
 
     let result = run_linked_array_test_program(&Vm::new(), &program, "main")
@@ -303,7 +303,7 @@ fn main() {
     return 0;
 }
 "#;
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_test_program(SourceId::new(1), source)
         .expect("array derived Ord sort source should compile");
 
     let result = run_linked_array_test_program(&Vm::new(), &program, "main")
@@ -347,7 +347,7 @@ fn main() {
     return 0;
 }
 "#;
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_test_program(SourceId::new(1), source)
         .expect("array Ord sort_by key source should compile");
 
     let result = run_linked_array_test_program(&Vm::new(), &program, "main")
@@ -368,7 +368,7 @@ fn main() {
     return scores().sort();
 }
 "#;
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_test_program(SourceId::new(1), source)
         .expect("array record sort source should compile");
 
     let error = run_linked_array_test_program(&Vm::new(), &program, "main")
@@ -401,7 +401,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array extrema methods should compile");
 
     let result =
@@ -425,7 +425,7 @@ fn main() {
     return "";
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array sort_by method should compile");
     let mut budget = ExecutionBudget::unbounded();
 
@@ -454,7 +454,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array sort method should compile");
     let mut budget = ExecutionBudget::unbounded();
 
@@ -479,7 +479,7 @@ fn main() {
     return 0;
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("heap array extrema methods should compile");
     let mut budget = ExecutionBudget::unbounded();
 
@@ -495,7 +495,7 @@ fn main() {
     return [1, "two"].sort_by(|value| value);
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array sort_by type error source should compile");
 
     let error = run_linked_array_test_code(&Vm::new(), code)
@@ -519,7 +519,7 @@ fn main() {
     return values().sort();
 }
 "#;
-    let program = compile_program_source(SourceId::new(1), source)
+    let program = compile_test_program(SourceId::new(1), source)
         .expect("array float sort source should compile");
 
     let error = run_linked_array_test_program(&Vm::new(), &program, "main")
@@ -539,7 +539,7 @@ fn main() {
     return [1, 2].sort_by(|value| if value == 1 { 1.0 } else { 0.5 });
 }
 "#;
-    let error = compile_function_source(SourceId::new(1), source, "main")
+    let error = compile_test_function(SourceId::new(1), source, "main")
         .expect_err("static array sort_by float keys should be rejected before execution");
     let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
         panic!("expected array ordering semantic diagnostic");
@@ -560,7 +560,7 @@ fn main() {
     return [1, "two"].sort();
 }
 "#;
-    let code = compile_function_source(SourceId::new(1), source, "main")
+    let code = compile_test_function(SourceId::new(1), source, "main")
         .expect("array sort type error source should compile");
 
     let error = run_linked_array_test_code(&Vm::new(), code)
@@ -580,7 +580,7 @@ fn main() {
     return [1, "two"].min();
 }
 "#;
-    let min_code = compile_function_source(SourceId::new(1), min_source, "main")
+    let min_code = compile_test_function(SourceId::new(1), min_source, "main")
         .expect("array min type error source should compile");
 
     let min_error = run_linked_array_test_code(&Vm::new(), min_code)
@@ -597,7 +597,7 @@ fn main() {
     return [1, "two"].max();
 }
 "#;
-    let max_code = compile_function_source(SourceId::new(1), max_source, "main")
+    let max_code = compile_test_function(SourceId::new(1), max_source, "main")
         .expect("array max type error source should compile");
 
     let max_error = run_linked_array_test_code(&Vm::new(), max_code)

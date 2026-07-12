@@ -179,7 +179,7 @@ fn main() {
 "#,
         )
         .expect_err("unregistered native should fail during engine compilation");
-    let crate::source::EngineSourceErrorKind::Compile(error) = error.kind else {
+    let crate::source::EngineSourceErrorKind::Backend(error) = error.kind else {
         panic!("expected compile error");
     };
     let vela_bytecode::compiler::error::CompileErrorKind::SemanticDiagnostics(diagnostics) =

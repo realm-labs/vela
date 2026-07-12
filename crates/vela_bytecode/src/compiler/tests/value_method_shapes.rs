@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn compiler_lowers_value_method_ids_after_array_endpoint_methods() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -31,7 +31,7 @@ fn main() {
 #[test]
 fn compiler_lowers_value_method_ids_after_array_slice_method() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -57,7 +57,7 @@ fn main() {
 #[test]
 fn compiler_lowers_value_method_ids_after_computed_array_slice_method() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -98,7 +98,7 @@ fn main() {
 #[test]
 fn compiler_lowers_value_method_ids_after_map_get_or_method() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -127,7 +127,7 @@ fn main() {
 #[test]
 fn compiler_lowers_value_method_ids_after_set_combination_chains() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let main = compile_function_source_with_registry(
+    let main = compile_test_function_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -182,7 +182,7 @@ fn main() {
 #[test]
 fn compiler_lowers_value_method_ids_after_result_to_option_method() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -205,7 +205,7 @@ fn main() {
 #[test]
 fn compiler_uses_hir_receivers_for_callback_field_method_shapes() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 struct Bag {
@@ -241,7 +241,7 @@ fn main() {
 #[test]
 fn compiler_lowers_value_method_ids_in_option_result_helper_chains() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {

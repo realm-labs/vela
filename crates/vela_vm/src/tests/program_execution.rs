@@ -4,7 +4,7 @@ use crate::value::Value as RuntimeValue;
 
 #[test]
 fn managed_heap_execution_runs_for_in_source() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn sum() {
@@ -105,7 +105,7 @@ fn main() {
 
 #[test]
 fn managed_heap_execution_runs_range_for_in_source() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main() {
@@ -465,7 +465,7 @@ fn main() {
 
 #[test]
 fn managed_heap_execution_runs_script_impl_method_dispatch() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -527,7 +527,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_const_expression_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 const BASE: i64 = 10;
@@ -607,7 +607,7 @@ fn heap_execution_materializes_native_args_and_stores_result() {
 
 #[test]
 fn runs_compiled_script_function_calls() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn add_bonus(value) {
@@ -631,7 +631,7 @@ fn main() {
 
 #[test]
 fn runs_linked_compiled_script_function_calls() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn add_bonus(value) {
@@ -657,7 +657,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_named_args_and_parameter_defaults() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn grant(base, amount = 10, bonus = amount + 1) {
@@ -680,7 +680,7 @@ fn main() {
 
 #[test]
 fn runs_complex_parameter_default_expressions() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn double(value) {
@@ -707,7 +707,7 @@ fn main() {
 
 #[test]
 fn runs_logical_parameter_default_expressions() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn defaults(any_true = true || (1 / 0 == 0), all_false = false && (1 / 0 == 0)) {
@@ -733,7 +733,7 @@ fn main() {
 
 #[test]
 fn runs_simple_block_parameter_default_expressions() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn defaults(value = { 1 + 2 }, empty = {}, semicolon = { 9; }) {
@@ -758,7 +758,7 @@ fn main() {
 
 #[test]
 fn runs_if_parameter_default_expressions() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn defaults(value = if false { 1 } else if true { 2 } else { 3 }, missing = if false { 9 }) {
@@ -782,7 +782,7 @@ fn main() {
 
 #[test]
 fn runs_index_parameter_default_expressions() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn defaults(first = [10, 20][1], second = { "key": 7 }["key"], third = [[1], [2]][1][0]) {
@@ -805,7 +805,7 @@ fn main() {
 
 #[test]
 fn runs_entrypoint_parameter_defaults() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main(value = 7) {
@@ -824,7 +824,7 @@ fn main(value = 7) {
 
 #[test]
 fn runs_compiled_lambdas_with_captures_after_outer_return() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn make_adder(base) {
@@ -848,7 +848,7 @@ fn main() {
 
 #[test]
 fn program_image_flattens_lambdas_and_linked_program_runs_captures_after_outer_return() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn make_adder(base) {
@@ -896,7 +896,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_nested_lambdas_with_transitive_captures() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn make_nested(base) {
@@ -924,7 +924,7 @@ fn main() {
 
 #[test]
 fn runs_immediate_lambda_calls_and_block_returns() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -945,7 +945,7 @@ fn main() {
 
 #[test]
 fn runs_try_propagation_for_option_values() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 enum Option {
@@ -1000,7 +1000,7 @@ fn missing() {
 
 #[test]
 fn managed_heap_execution_runs_try_propagation_for_result_values() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 enum Result {
@@ -1060,7 +1060,7 @@ fn err_case() {
 
 #[test]
 fn typed_try_propagation_rejects_cross_family_option_result_values() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 enum Option {
@@ -1118,7 +1118,7 @@ fn option_none_in_result() -> Result<i64, String> {
 
 #[test]
 fn managed_heap_execution_runs_string_parameter_defaults() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn choose(prefix = "quest", suffix = "done") {
@@ -1141,7 +1141,7 @@ fn main() {
 
 #[test]
 fn managed_heap_execution_runs_interpolated_parameter_defaults() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn greet(name = "Ada", message = f"hello {name}") {
@@ -1164,7 +1164,7 @@ fn main() {
 
 #[test]
 fn managed_heap_execution_runs_range_parameter_defaults() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn sum(values = 2..=4) {

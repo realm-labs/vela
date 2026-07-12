@@ -5,7 +5,7 @@ use vela_host::target::HostTargetPlan;
 use vela_registry::{DefinitionRegistry, FunctionDef, FunctionSignature};
 
 use super::*;
-use crate::compiler::compile_function_source_with_registry;
+use crate::compiler::compile_test_function_with_registry;
 use crate::{CacheSiteKind, InstructionOffset, Register};
 
 #[test]
@@ -282,7 +282,7 @@ fn linker_links_unknown_receiver_source_dynamic_methods() {
 
 fn assert_linked_dynamic_method_source(method: &str, body: &str) {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let code = compile_function_source_with_registry(
+    let code = compile_test_function_with_registry(
         SourceId::new(1),
         &format!("fn f(value) {{ {body} }}"),
         "f",

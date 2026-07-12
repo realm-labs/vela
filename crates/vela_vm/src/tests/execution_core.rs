@@ -302,7 +302,7 @@ fn execution_unit_budget_stops_dispatch_before_next_instruction() {
 
 #[test]
 fn call_depth_budget_stops_recursive_scripts() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn recurse() {
@@ -472,7 +472,7 @@ fn enum_slot_bytecode_reads_by_slot() {
 
 #[test]
 fn runs_compiled_arithmetic_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         "fn main() { let base = 2; return base + 3 * 4; }",
         "main",
@@ -487,7 +487,7 @@ fn runs_compiled_arithmetic_source() {
 
 #[test]
 fn runs_compiled_radix_ints_and_exponent_floats() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -511,7 +511,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_large_int_comparisons_without_float_rounding() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -535,7 +535,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_scalar_equality_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -564,7 +564,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_shebang_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         "#!/usr/bin/env vela\nfn main() { return 7; }\n",
         "main",
@@ -579,7 +579,7 @@ fn runs_compiled_shebang_source() {
 
 #[test]
 fn runs_compiled_unicode_string_escapes() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"fn main() { return "\u{41}\u{7a}"; }"#,
         "main",
@@ -594,7 +594,7 @@ fn runs_compiled_unicode_string_escapes() {
 
 #[test]
 fn runs_compiled_unary_operator_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -616,7 +616,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_logical_short_circuit_source() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn and_case() {
@@ -675,7 +675,7 @@ fn or_case() {{
 "#
     );
     let program =
-        compile_program_source(SourceId::new(1), &source).expect("compile long logical chains");
+        compile_test_program(SourceId::new(1), &source).expect("compile long logical chains");
     let linked = link_test_program(&program);
 
     assert_eq!(
@@ -690,7 +690,7 @@ fn or_case() {{
 
 #[test]
 fn runs_compiled_local_assignment_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -716,7 +716,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_index_read_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -737,7 +737,7 @@ fn main() {
 
 #[test]
 fn managed_heap_execution_reads_heap_index_values() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn array_case() {
@@ -772,7 +772,7 @@ fn map_case() {
 
 #[test]
 fn runs_compiled_index_write_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -798,7 +798,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_record_field_write_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -823,7 +823,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_nested_record_field_write_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -850,7 +850,7 @@ fn main() {
 
 #[test]
 fn runs_compiled_indexed_record_field_write_source() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r#"
 fn main() {
@@ -875,7 +875,7 @@ fn main() {
 
 #[test]
 fn managed_heap_execution_writes_heap_index_values() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn array_case() {
@@ -913,7 +913,7 @@ fn map_case() {
 
 #[test]
 fn managed_heap_execution_writes_heap_record_fields() {
-    let program = compile_program_source(
+    let program = compile_test_program(
         SourceId::new(1),
         r#"
 fn main() {

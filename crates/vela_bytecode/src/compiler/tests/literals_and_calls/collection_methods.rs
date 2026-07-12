@@ -1,7 +1,7 @@
 #[test]
 fn compiler_rejects_static_record_array_sort_without_ord() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let error = compile_program_source_with_registry(
+    let error = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 struct Score { value: i64 }
@@ -24,7 +24,7 @@ fn main() {
 #[test]
 fn compiler_rejects_static_record_array_extrema_without_ord() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let error = compile_program_source_with_registry(
+    let error = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 struct Score { value: i64 }
@@ -47,7 +47,7 @@ fn main() {
 #[test]
 fn compiler_accepts_static_record_array_sort_with_derived_ord() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    compile_program_source_with_registry(
+    compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -66,7 +66,7 @@ fn main() {
 #[test]
 fn compiler_rejects_static_float_array_sort_without_ord() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let error = compile_program_source_with_registry(
+    let error = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -87,7 +87,7 @@ fn main() {
 #[test]
 fn compiler_rejects_static_float_array_sort_by_key_without_ord() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let error = compile_program_source_with_registry(
+    let error = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 struct Score { value: f64 }
@@ -110,7 +110,7 @@ fn main() {
 #[test]
 fn compiler_rejects_static_record_array_sort_by_key_without_ord() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let error = compile_program_source_with_registry(
+    let error = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 struct Rank { value: i64 }
@@ -134,7 +134,7 @@ fn main() {
 #[test]
 fn compiler_lowers_value_method_ids_after_set_values_method() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -164,7 +164,7 @@ fn main() {
 #[test]
 fn compiler_lowers_set_method_ids_after_mixed_string_shapes() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -187,7 +187,7 @@ fn main() {
 #[test]
 fn compiler_lowers_value_method_ids_after_string_find_method() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -207,7 +207,7 @@ fn main() {
 #[test]
 fn compiler_lowers_value_method_ids_for_string_sequence_methods() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r##"
 fn main() {
@@ -228,7 +228,7 @@ fn main() {
 
 #[test]
 fn compiler_uses_stable_std_value_method_targets_without_registry() {
-    let code = compile_function_source(
+    let code = compile_test_function(
         SourceId::new(1),
         r##"
 fn main() {
@@ -279,7 +279,7 @@ fn compiler_lowers_value_method_ids_after_reflection_metadata_collections() {
             ))
             .expect("test reflection native should register");
     }
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -342,7 +342,7 @@ fn main() {
 #[test]
 fn compiler_lowers_value_method_ids_in_option_result_callback_params() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -376,7 +376,7 @@ fn compiler_preserves_named_dynamic_method_args_after_for_body_receiver_fact_exp
         ("String", "contains", &["needle"]),
         ("Array", "contains", &["value"]),
     ]);
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -419,7 +419,7 @@ fn compiler_preserves_named_dynamic_method_args_after_match_arm_receiver_fact_ex
         ("String", "contains", &["needle"]),
         ("Array", "contains", &["value"]),
     ]);
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main() {
@@ -448,7 +448,7 @@ fn compiler_preserves_named_dynamic_method_args_without_receiver_type() {
         ("String", "contains", &["needle"]),
         ("Array", "contains", &["value"]),
     ]);
-    let program = compile_program_source_with_registry(
+    let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
 fn main(value) {
