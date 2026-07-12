@@ -8,7 +8,10 @@ use vela_vm::error::VmError;
 
 pub fn render_engine_source_error(label: &str, source: &str, error: &EngineSourceError) -> String {
     match &error.kind {
-        EngineSourceErrorKind::Compile(error) => render_compile_error(label, source, error),
+        EngineSourceErrorKind::Frontend(error) => {
+            render_source_diagnostics(label, source, error.diagnostics())
+        }
+        EngineSourceErrorKind::Backend(error) => render_compile_error(label, source, error),
         EngineSourceErrorKind::Io { .. }
         | EngineSourceErrorKind::InvalidSourcePath { .. }
         | EngineSourceErrorKind::TooManySources { .. } => error.to_string(),
@@ -37,6 +40,9 @@ pub fn render_hot_reload_report(label: &str, source: &str, report: &HotReloadRep
 
 pub fn render_hot_reload_error(label: &str, source: &str, error: &HotReloadError) -> String {
     match &error.kind {
+        HotReloadErrorKind::Frontend(error) => {
+            render_source_diagnostics(label, source, error.diagnostics())
+        }
         HotReloadErrorKind::Compile(error) => render_compile_error(label, source, error),
         _ => format!("{error:?}"),
     }
@@ -49,9 +55,14 @@ fn render_compile_error(label: &str, source: &str, error: &CompileError) -> Stri
     render_diagnostics(&diagnostics, source)
 }
 
+fn render_source_diagnostics(label: &str, source: &str, diagnostics: &[Diagnostic]) -> String {
+    let source = DiagnosticSource::new(SourceId::new(1), label.to_owned(), source.to_owned());
+    render_diagnostics(diagnostics, source)
+}
+
 fn compile_diagnostics(error: &CompileError) -> Vec<Diagnostic> {
     match &error.kind {
-        CompileErrorKind::SyntaxDiagnostics(diagnostics)
+        CompileErrorKind::InvalidHirGraph(diagnostics)
         | CompileErrorKind::SemanticDiagnostics(diagnostics) => diagnostics.clone(),
         _ => error.to_diagnostic().into_iter().collect(),
     }

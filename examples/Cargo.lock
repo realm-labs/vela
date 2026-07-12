@@ -202,7 +202,6 @@ dependencies = [
  "vela_mir",
  "vela_registry",
  "vela_stdlib",
- "vela_syntax",
 ]
 
 [[package]]
