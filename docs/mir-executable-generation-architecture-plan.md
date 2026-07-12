@@ -2,9 +2,9 @@
 
 > **Track:** verified MIR semantics, linked executable ownership, hot-reload
 > generation lifetime, backend-neutral budgets, and M22 JIT input
-> **Document status:** Complete
-> **Execution status:** Batches A-E complete. The post-implementation review
-> invariants are sealed and the Phase 10 final gate passed on 2026-07-12.
+> **Document status:** Active goal-mode execution plan
+> **Execution status:** Batches A-E landed; second post-implementation review
+> reopened completion. Batch F / Phase 11 is the active remaining goal.
 > **Execution mode:** throughput-first large batches. Intermediate commits may
 > fail to compile or test; only batch-completion checkpoints must be green.
 > **Supersedes:** the future-ownership, closure, cache rebasing, profile, budget,
@@ -33,35 +33,31 @@ owned verified MIR can be consumed by the bytecode backend and future M22 JIT.
 Use this prompt to execute the plan:
 
 ```text
-/goal Execute only Batch E / Phase 10 of
-docs/mir-executable-generation-architecture-plan.md. Batches A-D are historical
+/goal Execute only Batch F / Phase 11 of
+docs/mir-executable-generation-architecture-plan.md. Batches A-E are historical
 context, not work to repeat. Do not switch to the general long-term task in
 docs/goal.md and do not select unrelated M20, LSP, cleanup, or optimization
-work while any Phase 10 item remains unchecked.
+work while any Phase 11 item remains unchecked.
 
 This is one persistent, multi-turn implementation goal. Continue automatically
-across tasks, turns, and commits until every Phase 10.7 completion criterion is
+across tasks, turns, and commits until every Phase 11.5 completion criterion is
 checked and validated. Completing one small task, one commit, one test group,
 one documentation update, or the 1200-line audit is progress only; none is a
 valid stopping condition. The repository instruction to choose the smallest
 verifiable task controls the next unit of work, not when this goal ends. After
-each unit, immediately choose the next unchecked Phase 10 item and continue.
+each unit, immediately choose the next unchecked Phase 11 item and continue.
 
 Execute the architecture work in this order:
 
-1. Phase 10.1: make generation construction cohesive so compiled bytecode and
-   verified MIR cannot be independently supplied or cross-paired.
-2. Phase 10.2: carry one shared Arc<LinkedArtifact> through calls, frames, and
-   closures; remove every program-sized clone at call entry.
-3. Phase 10.3: retain and verify exact MIR-to-executable budget charge points,
-   classes, and observable trap ordering rather than only total units.
-4. Phase 10.4: enforce initialized lexical debug regions and remove physical
-   bytecode slot numbers from MIR shape facts.
-5. Phase 10.5: replace duplicated cache-family matches with one exhaustive
-   cache-site policy used by allocation, rewrite, link, and verification.
-6. Phase 10.6: only after the architecture work, run regressions, zero-hit
-   audits, file-size audit, examples, benchmarks, full validation, and update
-   durable documentation.
+1. Phase 11.1: make bound executable generation a distinct type; remove the
+   optional-MIR LinkedArtifact state and production unlinked compatibility path.
+2. Phase 11.2: make budget placement independently verifiable when charge and
+   origin metadata are moved together across an observable effect.
+3. Phase 11.3: generate cache policy and operand access from one exhaustive
+   authority, and project lexical debug scope as MIR program-point facts rather
+   than reconstructing it from source-span containment.
+4. Phase 11.4: only after the architecture work, rerun regressions, zero-hit
+   audits, examples, full validation, and same-toolchain performance checks.
 
 Implement the long-term target directly. Do not add compatibility constructors,
 parallel owners, generation fingerprints used merely to permit independently
@@ -70,32 +66,35 @@ backend, temporary dynamic/unspecialized fallbacks, cache-family duplicate
 matches, stale-closure rejection, name-based rebasing, or bytecode-to-MIR
 reconstruction. Do not add Cranelift or another execution path in this batch.
 
-Use the Phase 10 checklists as executable acceptance criteria. Add the specified
+Use the Phase 11 checklists as executable acceptance criteria. Add the specified
 negative tests before considering each invariant sealed. Check an item only
 after its implementation and relevant tests pass. Prefer one substantial Batch
-E commit; recovery commits may be larger or temporarily fail compilation and
+F commit; recovery commits may be larger or temporarily fail compilation and
 tests. Do not spend time making every intermediate state green, but keep moving
 until the batch-completion boundary is fully green.
 
 Never mark this goal complete while any of the following is true:
 
-- any Phase 10.1-10.7 checklist item is unchecked;
-- compiled bytecode and verified MIR can still be independently paired;
-- a frame or closure can deep-clone LinkedProgram/LinkedArtifact contents;
-- budget correctness is inferred only from function-wide total units;
-- debug availability ignores lexical scope exit;
-- vela_mir exposes a physical record/variant slot number;
-- cache-bearing instruction policy is duplicated across manual match lists;
+- any Phase 11.1-11.5 checklist item is unchecked;
+- one `LinkedArtifact` type can represent both bound and unbound execution;
+- a production Runtime/RuntimeImage/VM linked entry accepts an artifact without
+  verified MIR;
+- coordinated movement of charge, units, and origin metadata across an effect
+  can pass budget verification;
+- cache policy and cache operand access are maintained by separate wildcard
+  matches;
+- lexical debug scope is reconstructed from source-span containment rather than
+  owned MIR program-point scope facts;
 - any required source regression, zero-hit audit, full validation command,
   example test, benchmark build, performance/memory measurement, or file-size
   audit has not passed;
-- docs/progress.md still reports Batch E open or this document still reports
-  Batch E as the active remaining goal.
+- docs/progress.md still reports Batch F open or this document still reports
+  Batch F as the active remaining goal.
 
 If one implementation attempt fails, diagnose it and continue with another
 in-scope approach. Report blocked only when progress genuinely requires an
-external decision. Goal completion means Phase 10.7 is entirely checked,
-durable docs state Batch E complete, the work is committed with Conventional
+external decision. Goal completion means Phase 11.5 is entirely checked,
+durable docs state Batch F complete, the work is committed with Conventional
 Commits, and the final working tree is clean.
 ```
 
@@ -681,8 +680,8 @@ Rules:
 
 ### 9.1 Execution Batches
 
-The execution used five large checkpoints. Batches A-D record the landed first
-implementation; Batch E records the completed review-correction batch:
+The execution uses six large checkpoints. Batches A-E record landed work;
+Batch F is the active second review-correction batch:
 
 ```text
 Batch A: MIR semantic contract
@@ -705,9 +704,14 @@ Batch E: post-implementation architecture closure
   Phase 10
   cohesive generation identity + shared owners + exact budget placement
   + lexical debug scopes + backend-neutral shape facts + exhaustive cache API
+
+Batch F: sealed type and verifier close-out
+  Phase 11
+  bound artifact type + independent budget proof + generated cache access
+  + MIR program-point debug scopes + same-toolchain performance gate
 ```
 
-Aim for one substantial Batch E commit. Split it only when needed
+Aim for one substantial Batch F commit. Split it only when needed
 to preserve recoverability or reviewability; do not split it merely because one
 crate or checklist subsection has become green. A red intermediate commit is
 acceptable, but the final commit for each batch must pass all validations from
@@ -1460,3 +1464,205 @@ cargo bench --workspace --no-run
   audits pass.
 - [x] `docs/progress.md` reports Batch E complete and this document's execution
   status changes to complete only after every criterion above is satisfied.
+
+The Phase 10 checkmarks record the landed Batch E implementation. A second
+review found that two invariants remain bypassable and two others are enforced
+only by conventions that will not fail closed as the instruction set and MIR
+grow. Batch F therefore reopens overall track completion without rewriting the
+historical Batch E checklist.
+
+---
+
+## 21. Phase 11: Sealed Type And Verifier Close-Out
+
+Purpose: remove the remaining optional/compatibility states and make the budget,
+cache, and debug contracts fail closed. This is one throughput-first batch.
+Intermediate compilation or test failures are acceptable; Phase 11.5 is the
+only completion boundary.
+
+### 21.1 Bound Executable Generation As A Distinct Type
+
+Review finding:
+
+- `LinkedArtifact` still stores `verified_mir: Option<...>` and therefore
+  represents both bound and unbound artifacts.
+- Public `Linker::link_program`, `Engine::link_program`, `RuntimeImage::new`,
+  and the `RuntimeProgramInput::Unlinked` branch can publish and execute an
+  artifact without verified MIR.
+- `ProgramVersion` rejects the unbound state, but the ordinary Runtime/VM path
+  does not. The generation invariant is therefore checked at selected call
+  sites rather than encoded by the artifact type.
+
+Required architecture:
+
+- [ ] Make production `LinkedArtifact` always own a non-optional
+  `Arc<OwnedVerifiedMirBundle>` and complete MIR executable mapping at
+  construction.
+- [ ] If low-level linking needs a staged value, introduce a distinct private
+  `UnboundLinkedProgram`/builder type consumed by `link_compiled_program`; it
+  must not implement or expose the production artifact/runtime interfaces.
+- [ ] Remove or restrict `Linker::link_program` and `Engine::link_program` so
+  they cannot publish an unbound `LinkedArtifact` in production.
+- [ ] Remove `RuntimeProgramInput::Unlinked` and the unlinked branches of
+  `Runtime::new`/`try_new` and `RuntimeImage::new`/`try_new`. Production runtime
+  construction accepts a cohesive `CompiledProgram`, bound `LinkedArtifact`,
+  or `ProgramVersion` only.
+- [ ] Keep unlinked bytecode execution available only through clearly named
+  low-level verifier/VM test support that cannot flow into hot reload, runtime
+  images, retained closures, or JIT input.
+- [ ] Remove `Option` checks and `expect("... MIR-bound artifact")` assertions
+  made redundant by the sealed type.
+
+Tests:
+
+- [ ] Add compile-time/API tests proving no production constructor accepts
+  `UnlinkedProgram` or an unbound linked value.
+- [ ] Prove every RuntimeImage, ProgramVersion, frame, closure, and restricted
+  JIT input reaches the same non-optional verified-MIR owner.
+- [ ] Preserve explicit low-level bytecode verifier and VM conformance tests
+  without reintroducing a public compatibility execution route.
+
+Checkpoint: there is exactly one production linked-generation type and every
+value of that type is MIR-bound by construction.
+
+### 21.2 Independently Verifiable Budget Placement
+
+Review finding:
+
+- `verify_budget_mapping` treats instruction-owned `mir_origin` as proof of
+  placement, while `mir_origin`, `execution_units`, and `mir_budget_charges` are
+  written by the same backend and stored together on the instruction.
+- The current negative test moves units and charges but leaves origin metadata
+  behind. Moving the origin with the charge and clearing the original effect's
+  origin can satisfy `first_at_origin` even though the effect now executes
+  before the budget trap.
+
+Required architecture:
+
+- [ ] Seal a MIR-to-executable budget layout independently from mutable
+  instruction charge metadata. It records each MIR site, expected executable
+  offset/edge, class, units, and the semantic boundary kind needed to validate
+  calls, HostAccess, reflection, allocation, guards, and backedges.
+- [ ] Make instruction origin/charge metadata private or construction-sealed so
+  ordinary callers cannot coordinate forged placement after compilation.
+- [ ] Verify that the mapped instruction is the first operation for the MIR
+  point and that its instruction family implements the expected semantic
+  boundary; comparing site labels to themselves is insufficient.
+- [ ] Retain successor-specific edge stubs and prove edge charge/JIT mappings
+  remain backend-neutral.
+- [ ] Keep function-wide totals only as a secondary consistency check.
+
+Tests:
+
+- [ ] For call, HostAccess, reflection, allocation, and guard fixtures, move
+  units, charge metadata, and origin metadata together to a later instruction,
+  clear or retag the original effect, and prove publication is rejected.
+- [ ] Reject coordinated moves to another instruction with the same source span
+  or MIR source origin.
+- [ ] Preserve exact threshold, conditional backedge, committed-host-write, and
+  retained-old-generation budget behavior.
+
+Checkpoint: observable trap ordering is proven from a sealed semantic mapping,
+not from self-authenticating instruction annotations.
+
+### 21.3 Generated Cache Access And MIR Scope Facts
+
+Cache review finding:
+
+- `cache_site_policy` is exhaustive, but `cache_site` and `set_cache_site` are
+  separate matches with wildcard fallbacks for both unlinked and linked
+  instructions. A new optional-operand cache family can select a policy while
+  silently omitting operand access.
+- The current manually maintained row test does not automatically require a row
+  for every future cache-bearing variant.
+
+Required cache architecture:
+
+- [ ] Define cache kind, storage, immutable access, and mutable access from one
+  exhaustive declaration/match surface with no wildcard omission path for a
+  cache-bearing variant.
+- [ ] Generate or derive compiler allocation, remapping, linker projection, and
+  verifier access from that authority.
+- [ ] Make adding a cache-bearing opcode fail compilation until policy and
+  operand behavior are complete; do not rely on a manually updated test table.
+- [ ] Preserve explicit sidecar-only behavior without pretending it has an
+  instruction operand.
+
+Debug review finding:
+
+- Lexical availability currently reconstructs membership by checking whether a
+  statement's source span is contained by a stored scope span.
+- This is not the required owned MIR program-point/block scope projection and
+  is fragile for synthetic/desugared statements or origins reused from a parent
+  expression. Several tests assert the same span-containment rule rather than
+  independent semantic scope membership.
+
+Required debug architecture:
+
+- [ ] Project the active `HirScopeId` set or equivalent lexical-region identity
+  onto MIR blocks/statements/terminators during MIR construction.
+- [ ] Compute debug availability from definite initialization intersected with
+  those owned MIR scope facts; physical backends and liveness must not infer
+  scope from source-span containment or query HIR.
+- [ ] Preserve source spans for presentation only, not scope authority.
+- [ ] Add positive and negative entry/exit assertions for nested blocks, loop
+  bindings, every match arm, captures, and parameter-default prologues,
+  including synthetic/desugared MIR origins.
+
+Checkpoint: cache evolution fails closed at compile time, and debug scope is a
+semantic MIR fact rather than a source-layout heuristic.
+
+### 21.4 Validation And Same-Toolchain Performance Gate
+
+- [ ] Add zero-hit audits for the removed optional/unbound production state and
+  wildcard cache operand matches. Example starting points:
+
+```bash
+rg -n "verified_mir: Option|RuntimeProgramInput::Unlinked|IntoRuntimeProgramInput for UnlinkedProgram" crates
+rg -n "fn (cache_site|set_cache_site).*|_ => (None|\{\})" crates/vela_bytecode/src/cache_policy.rs
+```
+
+- [ ] Re-run all historical and Batch E zero-hit audits, the three motivating
+  source regressions, coordinated budget-corruption tests, ownership/reload
+  tests, lexical debug tests, and the cache-family matrix.
+- [ ] Run the complete validation gate:
+
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+cargo test --manifest-path examples/Cargo.toml --test runnable_examples
+cargo bench --workspace --no-run
+```
+
+- [ ] Correct the Batch E performance comparison: Phase 9 used Rust 1.96 while
+  Batch E used Rust 1.97, so the recorded `-15.6%` delta is not attributable to
+  the code change alone. Re-run both comparison endpoints with the same pinned
+  toolchain, machine, profile, workload, warmup, and checksum validation, or
+  remove the cross-toolchain percentage claim.
+- [ ] Run the focused call-heavy, scalar, budgeted/unbounded, shared-runtime,
+  retained-generation, and hot-reload measurements after Batch F. Investigate
+  repeatable regressions against the corrected same-toolchain baseline.
+- [ ] Re-run the active-file 1200-line audit and update durable decisions only
+  for representations actually activated by Batch F.
+- [ ] Update `docs/progress.md`, `docs/performance.md`, and this document only
+  after every Phase 11 checkpoint passes.
+
+### 21.5 Batch F Completion Criteria
+
+- [ ] Production `LinkedArtifact` is always MIR-bound and has no optional
+  verified-MIR state.
+- [ ] No production Runtime, RuntimeImage, Engine linker, VM linked entry, hot
+  reload, or JIT input accepts an unbound/unlinked compatibility artifact.
+- [ ] Coordinated movement of charge, units, and origin metadata across every
+  observable effect boundary is rejected.
+- [ ] Budget verification consumes an independently sealed semantic mapping.
+- [ ] Cache policy and operand access come from one compile-time exhaustive
+  authority without wildcard omission paths.
+- [ ] Debug lexical membership is owned at MIR program points and does not use
+  source-span containment as semantic authority.
+- [ ] Performance conclusions use same-toolchain measurements.
+- [ ] All regressions, zero-hit audits, workspace validation, examples,
+  benchmark build, measurements, and file-size audits pass.
+- [ ] `docs/progress.md` reports Batch F complete and this document returns to
+  complete status only after every criterion above is checked.

@@ -31,14 +31,15 @@ required.
 
 ## Current Focus
 
-The MIR/executable-generation architecture track is complete through Batch E.
-The cohesive compiled artifact is consumed once by the linker, ProgramVersion
-publishes one bound `Arc<LinkedArtifact>`, frames and closures share that owner,
-budget verification checks exact MIR sites/classes/units and trap placement,
-debug availability is initialized and lexically scoped, MIR shape facts are
-backend-neutral, and one exhaustive cache policy drives allocation, remapping,
-linking, and verification. M22 can consume the sealed same-generation input in
-future work; no M22 execution path was added here.
+The MIR/executable-generation implementation is landed through Batch E, but a
+second review reopened completion as Batch F / Phase 11 in
+[mir-executable-generation-architecture-plan.md](mir-executable-generation-architecture-plan.md).
+The remaining work must make bound `LinkedArtifact` a distinct non-optional
+type, remove production unlinked compatibility execution, reject coordinated
+budget charge/origin moves through an independently sealed mapping, generate
+cache policy and operand access from one exhaustive authority, project lexical
+scope as MIR program-point facts, and correct the mixed-toolchain performance
+comparison. No M22 execution path belongs in this batch.
 
 Batch A (Phases 0-3) is complete. Production bytecode compilation borrows an
 owned, sealed verified MIR generation with stable root mappings, distinct
@@ -97,6 +98,12 @@ families. The three motivating source regressions, zero-hit audits, focused
 ownership/budget/debug tests, measurements, 30 runnable examples, benchmark
 build, and full format/clippy/workspace test gate pass.
 
+Batch F (Phase 11) is active. Batch E remains the historical landed checkpoint,
+but overall executable-generation/JIT-foundation completion stays open until
+the optional/unbound artifact state, self-authenticating budget metadata,
+wildcard cache operand matches, source-span scope reconstruction, and
+cross-toolchain performance claim are removed and the complete gate passes.
+
 The Heavy HIR hard switch and D1-D3 close-out are complete.
 `vela_hir` owns executable body and stable semantic identity, bytecode consumes
 `HirExprId` without span-to-ID reconstruction, and language-service local
@@ -111,8 +118,8 @@ completed Heavy HIR contract; semantic gaps remain owned by HIR or analysis
 rather than repaired during MIR lowering.
 
 The production MIR routing hard switch is complete through its historical
-Phase 7; the follow-on executable-generation/JIT-foundation contract is landed
-and sealed through Batch E.
+Phase 7; the follow-on executable-generation/JIT-foundation implementation is
+landed through Batch E and reopened for the Batch F sealing corrections.
 Every production compile front door now builds Heavy HIR, one immutable
 `AnalysisFacts`/compile-target generation, verified non-SSA MIR, and existing
 bytecode. `vela_bytecode::compiler::mir_backend` is the only runtime body
