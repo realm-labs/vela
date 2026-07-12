@@ -229,14 +229,22 @@ backend errors. This boundary is implemented as a breaking internal hard switch
 without compatibility wrappers; the execution checklist is
 [bytecode-source-boundary-hard-switch-plan.md](bytecode-source-boundary-hard-switch-plan.md).
 
-The implemented HIR boundary is `source_ingestion::build_source_set`, which
-returns an ordered `HirSourceSet` or a `HirSourceBuildError` explicitly staged
-as syntax or semantic. The implemented bytecode boundary is
-`ProgramCompilationRequest` with `ProgramCompilationMode`, plus
-`FunctionCompilationRequest` rooted by `HirDeclId`. Engine source errors and
-hot-reload errors retain front-end failures separately from backend
-`CompileError`; bytecode does not translate parser failures into compiler error
-variants.
+The HIR boundary is `source_ingestion::build_source_set`, which returns an
+ordered `HirSourceSet` or a `HirSourceBuildError` explicitly staged as syntax or
+semantic. Bytecode compilation consumes that source set through a validated
+scope/request; callers cannot independently combine a graph, arbitrary module
+IDs, and a declaration. A selected function's owning module is derived from its
+`HirDeclId`, and whole-program symbols, methods, constants/defaults, executable
+roots, and retained metadata use the same scope.
+
+Engine is the only production source orchestrator. It owns source/file/directory
+ingestion, compiler options and registry input, bytecode compilation,
+registry-aware linking, and source-to-hot-reload error projection.
+`vela_hot_reload` begins at an Engine-linked `LinkedArtifact`; it owns version,
+ABI/policy comparison, and update generation, and exposes no production API
+that accepts source text, `ModuleSource`, HIR graphs/source sets, or
+`CompiledProgram`. Front-end diagnostics remain Engine errors rather than
+`HotReloadError` variants.
 
 Production parsing is rowan-backed and lossless. `vela_syntax` owns
 `SyntaxKind`, `VelaLanguage`, syntax node/token aliases, and `Parse<T>`

@@ -66,6 +66,13 @@ graph plus explicit compilation roots/mode. `vela_engine` orchestrates these
 layers for source, file, directory, and hot-reload APIs. The bytecode compiler
 must not parse source text or depend on `vela_syntax`.
 
+`vela_engine` is the only production source orchestrator and the owner of
+registry-aware linking. It passes a `LinkedArtifact` into `vela_hot_reload`;
+the hot-reload crate owns version construction, ABI/policy comparison, and
+update generation, but exposes no production source, HIR-graph, or
+`CompiledProgram` compilation entrypoint. Reading immutable script metadata
+carried by the linked artifact remains part of hot-reload ABI validation.
+
 ## File Extensions
 
 Vela source files use `.vela`.

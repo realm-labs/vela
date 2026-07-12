@@ -2,7 +2,8 @@
 
 > **Track:** compiler layering and source-front-door ownership
 > **Document status:** Codex goal-mode execution plan
-> **Execution status:** Complete (2026-07-12)
+> **Execution status:** Reopened after review. Checkpoints A-E landed on
+> 2026-07-12; Checkpoints F-I remain open.
 > **Compatibility policy:** This is a breaking pre-release internal API hard
 > switch. Preserve Vela language behavior, source identity, diagnostics,
 > generated MIR/bytecode, linking, execution budgets, hot reload, and public
@@ -15,8 +16,10 @@ This plan removes source parsing and module-graph construction from
 source text
   -> vela_syntax parsing
   -> vela_hir source-set ingestion and ModuleGraph construction
-  -> vela_bytecode graph compilation
-  -> verifier / linker / linked execution
+  -> vela_bytecode validated-scope compilation
+  -> vela_engine registry-aware linking
+  -> vela_hot_reload LinkedArtifact generation operations
+  -> linked execution
 ```
 
 The switch is deletion-first and atomic at its production boundary. Temporary
@@ -41,9 +44,10 @@ and import resolution behind a focused vela_hir source-ingestion API. Preserve
 the distinction and ordering between syntax and semantic diagnostics. Do not
 make vela_hir depend on bytecode compiler error types.
 
-Replace vela_bytecode compile_*_source entrypoints with graph-based compiler
-entrypoints whose cohesive request type explicitly identifies single-source
-versus module-graph compilation and function versus whole-program roots. Keep
+Replace vela_bytecode compile_*_source entrypoints with validated source-set or
+scope compiler entrypoints whose cohesive request type explicitly identifies
+single-source versus module-graph compilation and function versus whole-program
+roots without exposing independently combinable graph/module/declaration facts. Keep
 script method identity, symbol naming, evaluated constants, schema defaults,
 compiler options, registry input, verified MIR ownership, and bytecode output
 behavior unchanged. A bare HirBody is not sufficient for whole-program input.
@@ -69,6 +73,22 @@ coherent verified checkpoints using Conventional Commits. Do not mark the goal
 complete while vela_bytecode directly or transitively exposes parsing as one of
 its compiler responsibilities, while any old source-text compiler entrypoint
 remains, or while diagnostic-stage equivalence is unproven.
+
+After Checkpoints A-E, continue through the review close-out in Checkpoints
+F-I. Do not treat the first graph API as the final boundary: make invalid
+graph/scope/root combinations unrepresentable or reject them before semantic
+input construction. Then make vela_engine the only production source
+orchestrator. Delete source-text/module-source compile entrypoints from
+vela_hot_reload, remove its production source-ingestion and standalone-linking
+path, and feed hot reload generation operations with Engine-linked
+LinkedArtifact values. Move source-to-reload behavior coverage to Engine; any
+remaining source compilation inside vela_hot_reload must be cfg(test)-only
+artifact fixture setup, not a public or production path.
+
+Do not mark the goal complete until all Checkpoints F-I pass, the plan and
+progress documents no longer report the review close-out open, invalid request
+regressions are covered, vela_hot_reload has no production source compiler API,
+and the final zero-hit and workspace validation gates are green.
 ```
 
 ---
@@ -192,8 +212,9 @@ diagnostic strings or codes. Do not clone parsing logic into Engine or tests.
 
 ### 2.3 Bytecode Compiler Input
 
-Replace the source-text API family with graph-based requests. Exact public names
-may change during implementation, but the boundary must express:
+Checkpoints A-E replaced the source-text API family with the following
+graph-based request. This is the historical first shape and must be deleted by
+Checkpoint G, not preserved as the final API:
 
 ```rust
 pub enum ProgramCompilationMode {
@@ -234,6 +255,44 @@ Required invariants:
 - graph diagnostics are rejected before semantic-input/MIR construction;
 - bytecode compiler errors no longer contain or manufacture parser diagnostics.
 
+The first implementation of this shape exposed raw `ModuleId`/`HirDeclId`
+combinations and a caller-owned module list. Post-completion review proved that
+this leaves invalid states representable: an unknown root, an empty/partial or
+duplicate module list, or a function/module mismatch can be silently filtered
+or can mix full-graph method/metadata state with partial executable roots.
+
+The final boundary must instead use one validated source-set/scope value. A
+preferred shape is:
+
+```rust
+pub enum ProgramCompilationKind {
+    SingleSource,
+    ModuleGraph,
+}
+
+pub struct ProgramCompilationRequest<'a> {
+    pub sources: &'a HirSourceSet,
+    pub kind: ProgramCompilationKind,
+    pub options: &'a CompilerOptions,
+    pub registry: Option<RegistryCompileView<'a>>,
+}
+
+pub struct FunctionCompilationRequest<'a> {
+    pub sources: &'a HirSourceSet,
+    pub function: HirDeclId,
+    pub options: &'a CompilerOptions,
+    pub registry: Option<RegistryCompileView<'a>>,
+}
+```
+
+Exact names may follow local conventions. Equivalent private-field request
+constructors or a `ValidatedCompilationScope` are acceptable. The invariant is
+mandatory: callers cannot independently combine a graph, arbitrary module IDs,
+and a declaration. Single-source construction requires exactly one selected
+module; module-graph construction consumes the complete ordered module set;
+function construction derives and validates the owning module and executable
+function kind/body from the selected source set.
+
 ### 2.4 Public Product API
 
 Keep the embedding surface at `vela_engine`:
@@ -268,10 +327,42 @@ pub enum SourceCompilationErrorKind {
 }
 ```
 
-`EngineSourceError`, hot-reload errors, CLI diagnostics, and tests should
-project through this boundary without flattening diagnostics into strings.
+`EngineSourceError`, Engine hot-reload errors, CLI diagnostics, and tests
+should project through this boundary without flattening diagnostics into strings.
 Do not keep `CompileErrorKind::SyntaxDiagnostics` merely to avoid changing
 Engine or hot-reload error plumbing.
+
+### 2.5 Final Hot-Reload Boundary
+
+Post-completion review fixes source orchestration ownership as follows:
+
+```text
+vela_engine
+  source/file/directory
+  -> HirSourceSet
+  -> validated bytecode compilation request
+  -> registry-aware link
+  -> LinkedArtifact
+  -> vela_hot_reload generation operation
+
+vela_hot_reload
+  previous ProgramVersion + LinkedArtifact + ABI + policy
+  -> initial ProgramVersion / HotUpdate
+```
+
+`vela_hot_reload` must not expose production functions that accept `SourceId +
+&str`, `ModuleSource`, `HirSourceSet`, `ModuleGraph`, or `CompiledProgram` and
+then parse, compile, or link. Keep artifact/version operations such as
+`initial_version_from_linked_artifact` and `update_from_linked_artifact`.
+Registry-aware linking belongs to Engine because Engine owns registered native
+implementations, compiler options, and embedding policy; the standalone linker
+must not be a second source-to-generation route inside hot reload.
+
+Engine owns the structured composition error for source ingestion, bytecode
+compilation, linking, and hot-reload policy/ABI rejection. Do not retain a
+`HotReloadErrorKind::Frontend` variant after hot reload no longer consumes
+source. CLI, playground, examples, and public Engine results must still project
+front-end diagnostics with their existing codes, spans, labels, and ordering.
 
 ---
 
@@ -301,6 +392,8 @@ This plan does not include:
   dependency/ownership review;
 - preserving old internal compile APIs for downstream compatibility;
 - a new permanent `vela_compiler` facade crate by default.
+- preserving `vela_hot_reload` source compile convenience APIs for internal
+  compatibility.
 
 The count of internal dependencies is an audit signal, not proof that the other
 eight dependencies are invalid. Finish this confirmed boundary correction
@@ -313,7 +406,7 @@ before proposing a broader crate split.
 Use this checklist as the durable tracker:
 
 ```text
-[x] complete
+[ ] not started
 [~] in progress
 [x] complete
 ```
@@ -473,6 +566,143 @@ cargo test --workspace
 Run the complete example and benchmark-build subset from `docs/validation.md`
 as it exists at execution time.
 
+### Checkpoint F: Reopen And Freeze Review Findings
+
+- [ ] Record the current public compilation-request shape and every production
+      constructor/caller.
+- [ ] Record the negative acceptance matrix for an unknown single-source root,
+      empty/partial/duplicate module scope, a module ID from another graph, a
+      non-function declaration root, and a function/module mismatch; do not add
+      failing or ignored tests to the green characterization checkpoint.
+- [ ] Define the invariant fixture and expected outcome for a graph containing
+      an excluded function and script method; the passing regression lands with
+      the sealed request API in Checkpoint G.
+- [ ] Inventory every public and private `vela_hot_reload::compile_*` function
+      that accepts source text or `ModuleSource`, plus all external callers.
+- [ ] Classify source-to-reload tests: move embedding/end-to-end behavior to
+      Engine, and retain only ABI/policy/generation tests in hot reload.
+- [ ] Pin Engine source, file, directory, initial reload, update reload, staged
+      reload, and changed-file diagnostic behavior before API deletion.
+- [ ] Replace the bytecode linker metadata fixture's direct
+      `ModuleGraph::add_source` call with the production HIR ingestion boundary.
+
+Validation:
+
+```bash
+cargo test -p vela_hir
+cargo test -p vela_bytecode
+cargo test -p vela_hot_reload
+cargo test -p vela_engine
+```
+
+### Checkpoint G: Seal Compilation Request Invariants
+
+Perform this as a breaking request-API replacement, not a parallel wrapper:
+
+- [ ] Replace public raw graph + mode IDs with `HirSourceSet`, a validated
+      compilation scope, or equivalent private-field constructors.
+- [ ] Add passing negative tests proving every invalid case recorded in
+      Checkpoint F is rejected before semantic-input construction or cannot be
+      represented by the public API.
+- [ ] Add the passing scope-consistency regression recorded in Checkpoint F and
+      prove bytecode roots, method catalog, and retained metadata cannot observe
+      different module sets.
+- [ ] Derive the single-source root from a source set that contains exactly one
+      selected module.
+- [ ] Make module-graph compilation consume exactly the complete ordered module
+      set represented by the source-set/scope value; do not silently accept
+      arbitrary subsets or duplicate module IDs.
+- [ ] Derive a selected function's module from its declaration and reject
+      missing, wrong-kind, bodyless, or out-of-scope declarations before
+      semantic-input construction.
+- [ ] Ensure method catalog, symbol maps, constant evaluation, schema defaults,
+      semantic roots, retained script metadata, and executable roots all consume
+      the same validated scope.
+- [ ] Add a structured request-invariant error instead of returning an unrelated
+      registry/MIR inconsistency for malformed public input.
+- [ ] Delete the old public `ProgramCompilationMode` shape and every constructor
+      that can assemble independent graph/module/declaration facts.
+- [ ] Migrate bytecode, Engine, VM, integration, benchmark, and test-support
+      callers atomically; do not keep aliases or deprecated constructors.
+
+Focused validation:
+
+```bash
+cargo test -p vela_hir -p vela_bytecode -p vela_vm -p vela_engine
+cargo clippy -p vela_bytecode -p vela_engine --all-targets -- -D warnings
+```
+
+### Checkpoint H: Make Engine The Only Production Source Orchestrator
+
+Perform the source-to-hot-reload API deletion atomically:
+
+- [ ] Route every Engine source/file/directory compile and hot-reload entry
+      through one Engine-owned source-set -> compile -> registry-aware-link
+      helper or cohesive service.
+- [ ] Ensure Engine passes only `LinkedArtifact` plus ABI/policy/version inputs
+      into `vela_hot_reload` generation operations.
+- [ ] Delete public `vela_hot_reload::compile_initial*`, `compile_update*`, and
+      module-source variants that parse, compile, or link.
+- [ ] Delete `compile_single_program`, `compile_module_program`, the production
+      `build_source_set` import, source/model imports used only by those paths,
+      and the standalone source-linking helper from `vela_hot_reload`.
+- [ ] Delete `HotReloadErrorKind::Frontend` and project front-end failures from
+      an Engine-owned structured hot-reload compilation error instead.
+- [ ] Move source-to-reload and embedding behavior tests to `vela_engine`.
+- [ ] Convert remaining hot-reload unit fixtures to prebuilt `LinkedArtifact`
+      values. A single `#[cfg(test)]` source-to-artifact helper is acceptable
+      only when it calls the production HIR/bytecode/link boundaries and is not
+      exported or compiled in production.
+- [ ] Update CLI, playground, examples, C/public embedding surfaces, and docs
+      for the Engine-owned error/API shape without flattening diagnostics.
+- [ ] Do not add a permanent `vela_compiler` crate or move source orchestration
+      back into HIR, bytecode, or hot reload.
+
+Focused validation:
+
+```bash
+cargo test -p vela_hot_reload
+cargo test -p vela_engine
+cargo test -p vela_cli
+cargo test -p vela_playground_wasm
+cargo check -p vela_engine --benches
+```
+
+### Checkpoint I: Review Close-Out And Full Validation
+
+- [ ] Add CI zero-hit checks preventing production source ingestion/compilation
+      APIs from returning to `vela_hot_reload`.
+- [ ] Add CI or focused architecture tests for the sealed bytecode request
+      boundary and forbidden raw-mode constructors.
+- [ ] Prove `vela_bytecode` still has no syntax dependency or source-text API.
+- [ ] Prove only Engine production code calls `build_source_set` as part of
+      source-to-executable orchestration; HIR/LSP consumers and cfg(test)
+      fixtures must remain clearly scoped exceptions.
+- [ ] Prove `vela_hot_reload` production entrypoints accept linked artifacts
+      rather than source, graphs, source sets, or compiled programs. Reading
+      immutable script metadata carried inside an artifact for ABI comparison
+      remains valid.
+- [ ] Run the active-file size audit and review any newly oversized Engine or
+      hot-reload files.
+- [ ] Run all required examples, benchmark builds, fuzz build, formatting,
+      clippy, and workspace tests.
+- [ ] Update `docs/architecture.md`, `docs/decisions.md`, `docs/progress.md`, and
+      this plan to completed current truth.
+- [ ] Commit coherent hard-switch checkpoints and finish with a clean worktree.
+
+Additional zero-hit audits:
+
+```bash
+rg -n "build_source_set|ModuleSource|HirSourceSet|CompiledProgram" crates/vela_hot_reload/src --glob '*.rs'
+rg -n "pub fn compile_(initial|update)" crates/vela_hot_reload/src --glob '*.rs'
+rg -n "ProgramCompilationMode|ModuleGraph \{ modules|FunctionCompilationRequest.*module" crates --glob '*.rs'
+rg -n "\.add_source\(" crates/vela_bytecode --glob '*.rs'
+```
+
+Expected production results are zero. `#[cfg(test)]` artifact-fixture hits must
+be reviewed manually and cannot expose public APIs or duplicate production
+orchestration.
+
 ---
 
 ## 5. Required Test Matrix
@@ -507,13 +737,17 @@ test(compiler): freeze source boundary behavior
 feat(hir): add staged source-set graph construction
 refactor(bytecode): hard switch compiler to HIR graph input
 docs: close bytecode source boundary hard switch
+test(compiler): freeze source boundary review regressions
+refactor(bytecode)!: seal graph compilation scope
+refactor(reload)!: make Engine the source orchestrator
+docs: close bytecode source boundary review
 ```
 
-The third commit may be large because caller migration and deletion are one
-atomic architecture checkpoint. Do not split it into commits that leave a
-merged-compatible dual production API. Recovery commits are allowed while the
-goal is active, but the checkpoint is not complete until its declared tests are
-green.
+The original A-E hard-switch commit and the follow-up G/H commits may be large
+because caller migration and deletion are atomic architecture checkpoints. Do
+not split them into commits that leave a merged-compatible dual production API.
+Recovery commits are allowed while the goal is active, but a checkpoint is not
+complete until its declared tests are green.
 
 ---
 
@@ -522,11 +756,20 @@ green.
 Do not mark this goal complete while any of the following is true:
 
 - any Checkpoint A-E item is unchecked;
+- any Checkpoint F-I item is unchecked;
 - `vela_bytecode` depends on or references `vela_syntax` anywhere;
 - bytecode exposes an API accepting source text or performs parsing/module-graph
   construction;
 - old and new compiler entrypoints coexist for compatibility;
 - Engine or hot reload bypasses the HIR source-set boundary;
+- raw graph/module/declaration combinations can construct an inconsistent
+  bytecode compilation request;
+- executable roots, script methods, constants/defaults, and retained metadata
+  can observe different module scopes;
+- `vela_hot_reload` production code accepts source text, `ModuleSource`, HIR
+  graphs/source sets, or `CompiledProgram`, or performs standalone linking;
+- Engine is not the sole production owner of source/file/directory compilation
+  and source-to-hot-reload orchestration;
 - tests use a hidden parser/compiler implementation that production does not;
 - syntax and semantic diagnostics can change stage, order, code, span, or
   message without a reviewed intentional decision;
@@ -537,6 +780,6 @@ Do not mark this goal complete while any of the following is true:
 - this document or `docs/progress.md` still reports the hard switch unfinished;
 - required commits are missing or the final worktree is dirty.
 
-Completion means the repository has one source-to-executable route, each layer
-owns its correct abstraction, and `vela_bytecode` begins at an already-built
-HIR module graph.
+Completion means the repository has one Engine-owned source-to-executable
+route, each layer owns its correct abstraction, bytecode consumes a validated
+HIR compilation scope, and hot reload begins at an Engine-linked artifact.
