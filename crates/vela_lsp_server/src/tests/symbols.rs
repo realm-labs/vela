@@ -1,18 +1,14 @@
-use super::{
-    LspServer, handle_notification, handle_request, notification_value, notification_values,
-    response_value,
-};
+use super::{TestServer, notification_value, notification_values, notify, request, response_value};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[test]
 fn lsp_document_symbols_include_nested_script_members() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -27,9 +23,8 @@ pub enum Reward {
     Coins(amount: i64)
 }
 pub fn main(amount: i64) -> i64 { return amount }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": "file:///workspace/scripts/game/main.vela",
@@ -40,10 +35,9 @@ pub fn main(amount: i64) -> i64 { return amount }";
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::DocumentSymbolRequest>(
         &mut server,
         2,
-        "textDocument/documentSymbol",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" }
         }),
@@ -115,28 +109,25 @@ fn lsp_workspace_symbols_include_script_and_schema_symbols() {
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
     );
     let main_uri = file_uri(&root.join("scripts").join("game").join("reward.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -147,10 +138,9 @@ fn lsp_workspace_symbols_include_script_and_schema_symbols() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::WorkspaceSymbolRequest>(
         &mut server,
         2,
-        "workspace/symbol",
         serde_json::json!({ "query": "grant" }),
     ));
     let symbols = response["result"]
@@ -166,10 +156,9 @@ fn lsp_workspace_symbols_include_script_and_schema_symbols() {
         "{symbols:?}"
     );
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::WorkspaceSymbolRequest>(
         &mut server,
         3,
-        "workspace/symbol",
         serde_json::json!({ "query": "Player" }),
     ));
     let symbols = response["result"]
@@ -192,10 +181,9 @@ fn lsp_workspace_symbols_include_script_and_schema_symbols() {
         }),
         "{symbols:?}"
     );
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::WorkspaceSymbolRequest>(
         &mut server,
         4,
-        "workspace/symbol",
         serde_json::json!({ "query": "QuestState" }),
     ));
     let symbols = response["result"]
@@ -214,11 +202,10 @@ fn lsp_workspace_symbols_include_script_and_schema_symbols() {
 
 #[test]
 fn lsp_workspace_symbols_include_module_symbols() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -226,9 +213,8 @@ fn lsp_workspace_symbols_include_module_symbols() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/reward.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -239,10 +225,9 @@ fn lsp_workspace_symbols_include_module_symbols() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::WorkspaceSymbolRequest>(
         &mut server,
         2,
-        "workspace/symbol",
         serde_json::json!({ "query": "game::reward" }),
     ));
     let symbols = response["result"]
@@ -261,11 +246,10 @@ fn lsp_workspace_symbols_include_module_symbols() {
 
 #[test]
 fn lsp_workspace_symbols_include_file_symbols() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -273,9 +257,8 @@ fn lsp_workspace_symbols_include_file_symbols() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/reward.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -286,10 +269,9 @@ fn lsp_workspace_symbols_include_file_symbols() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::WorkspaceSymbolRequest>(
         &mut server,
         2,
-        "workspace/symbol",
         serde_json::json!({ "query": "reward.vela" }),
     ));
     let symbols = response["result"]
@@ -324,20 +306,18 @@ fn lsp_workspace_symbols_drop_deleted_files() {
         .expect("source should be writable");
     let source_uri = file_uri(&source_path);
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [
                 { "uri": file_uri(&config_path), "type": 1 },
@@ -356,9 +336,8 @@ fn lsp_workspace_symbols_drop_deleted_files() {
     );
 
     fs::remove_file(&source_path).expect("source should be removable");
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": source_uri.clone(), "type": 3 }]
         }),
@@ -396,27 +375,26 @@ fn lsp_workspace_symbols_degrade_to_source_only_when_schema_is_missing() {
         .expect("source should be writable");
     let source_uri = file_uri(&source_path);
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let notifications = notification_values(handle_notification(
-        &mut server,
-        "workspace/didChangeWatchedFiles",
-        serde_json::json!({
-            "changes": [
-                { "uri": file_uri(&config_path), "type": 1 },
-                { "uri": source_uri.clone(), "type": 1 }
-            ]
-        }),
-    ));
+    let notifications =
+        notification_values(notify::<lsp_types::notification::DidChangeWatchedFiles>(
+            &mut server,
+            serde_json::json!({
+                "changes": [
+                    { "uri": file_uri(&config_path), "type": 1 },
+                    { "uri": source_uri.clone(), "type": 1 }
+                ]
+            }),
+        ));
     assert!(
         notifications.iter().any(|notification| {
             notification["method"] == "textDocument/publishDiagnostics"
@@ -467,20 +445,18 @@ fn lsp_workspace_symbols_reindex_after_workspace_root_change() {
         .expect("source should be writable");
     let helper_uri = file_uri(&helper_path);
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&game_root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": helper_uri.clone(), "type": 1 }]
         }),
@@ -494,9 +470,8 @@ fn lsp_workspace_symbols_reindex_after_workspace_root_change() {
         "{before:?}"
     );
 
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWorkspaceFolders>(
         &mut server,
-        "workspace/didChangeWorkspaceFolders",
         serde_json::json!({
             "event": {
                 "added": [{ "uri": file_uri(&scripts_root), "name": "scripts" }],
@@ -518,11 +493,10 @@ fn lsp_workspace_symbols_reindex_after_workspace_root_change() {
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
-fn workspace_symbols(server: &mut LspServer, id: i32, query: &str) -> Vec<serde_json::Value> {
-    response_value(handle_request(
+fn workspace_symbols(server: &mut TestServer, id: i32, query: &str) -> Vec<serde_json::Value> {
+    response_value(request::<lsp_types::request::WorkspaceSymbolRequest>(
         server,
         id,
-        "workspace/symbol",
         serde_json::json!({ "query": query }),
     ))["result"]
         .as_array()

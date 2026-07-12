@@ -1,7 +1,4 @@
-use super::{
-    LspServer, assert_no_messages, handle_notification, handle_request, notification_value,
-    response_value,
-};
+use super::{TestServer, assert_no_messages, notification_value, notify, request, response_value};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -26,27 +23,24 @@ fn lsp_did_close_restores_disk_snapshot_completion_queries() {
     fs::write(&source_path, disk_source).expect("disk source should be writable");
     let source_uri = file_uri(&source_path);
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root.join("scripts")),
             "capabilities": {}
         }),
     ));
-    assert_no_messages(handle_notification(
+    assert_no_messages(notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": source_uri, "type": 1 }]
         }),
     ));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": source_uri,
@@ -57,18 +51,18 @@ fn lsp_did_close_restores_disk_snapshot_completion_queries() {
         }),
     ));
 
-    let overlay_completion = completion_labels(&response_value(handle_request(
-        &mut server,
-        2,
-        "textDocument/completion",
-        serde_json::json!({
-            "textDocument": { "uri": source_uri },
-            "position": {
-                "line": 1,
-                "character": completion_character(overlay_source, "ov")
-            }
-        }),
-    )));
+    let overlay_completion =
+        completion_labels(&response_value(request::<lsp_types::request::Completion>(
+            &mut server,
+            2,
+            serde_json::json!({
+                "textDocument": { "uri": source_uri },
+                "position": {
+                    "line": 1,
+                    "character": completion_character(overlay_source, "ov")
+                }
+            }),
+        )));
     assert!(
         overlay_completion
             .iter()
@@ -80,9 +74,8 @@ fn lsp_did_close_restores_disk_snapshot_completion_queries() {
         "{overlay_completion:?}"
     );
 
-    let close = notification_value(handle_notification(
+    let close = notification_value(notify::<lsp_types::notification::DidCloseTextDocument>(
         &mut server,
-        "textDocument/didClose",
         serde_json::json!({
             "textDocument": {
                 "uri": source_uri
@@ -92,18 +85,18 @@ fn lsp_did_close_restores_disk_snapshot_completion_queries() {
     assert_eq!(close["method"], "textDocument/publishDiagnostics");
     assert_eq!(close["params"]["uri"], source_uri);
 
-    let disk_completion = completion_labels(&response_value(handle_request(
-        &mut server,
-        3,
-        "textDocument/completion",
-        serde_json::json!({
-            "textDocument": { "uri": source_uri },
-            "position": {
-                "line": 1,
-                "character": completion_character(disk_source, "di")
-            }
-        }),
-    )));
+    let disk_completion =
+        completion_labels(&response_value(request::<lsp_types::request::Completion>(
+            &mut server,
+            3,
+            serde_json::json!({
+                "textDocument": { "uri": source_uri },
+                "position": {
+                    "line": 1,
+                    "character": completion_character(disk_source, "di")
+                }
+            }),
+        )));
     assert!(
         disk_completion.iter().any(|label| label == "disk_only"),
         "{disk_completion:?}"
@@ -131,11 +124,10 @@ pub fn main() -> i64 {
     fs::write(&source_path, disk_source).expect("disk source should be writable");
     let source_uri = file_uri(&source_path);
 
-    let mut server = LspServer::new();
-    let initialize = response_value(handle_request(
+    let mut server = TestServer::new();
+    let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root.join("scripts")),
@@ -143,16 +135,14 @@ pub fn main() -> i64 {
         }),
     ));
     let function = semantic_token_type_index(&initialize, "function");
-    assert_no_messages(handle_notification(
+    assert_no_messages(notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": source_uri, "type": 1 }]
         }),
     ));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": source_uri,
@@ -163,19 +153,19 @@ pub fn main() -> i64 {
         }),
     ));
 
-    let overlay_tokens = semantic_tokens(&response_value(handle_request(
+    let overlay_tokens = semantic_tokens(&response_value(request::<
+        lsp_types::request::SemanticTokensFullRequest,
+    >(
         &mut server,
         2,
-        "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": source_uri }
         }),
     )));
     assert_semantic_token_for_target(&overlay_tokens, overlay_source, "overlay_only", function);
 
-    let close = notification_value(handle_notification(
+    let close = notification_value(notify::<lsp_types::notification::DidCloseTextDocument>(
         &mut server,
-        "textDocument/didClose",
         serde_json::json!({
             "textDocument": {
                 "uri": source_uri
@@ -185,10 +175,11 @@ pub fn main() -> i64 {
     assert_eq!(close["method"], "textDocument/publishDiagnostics");
     assert_eq!(close["params"]["uri"], source_uri);
 
-    let disk_tokens = semantic_tokens(&response_value(handle_request(
+    let disk_tokens = semantic_tokens(&response_value(request::<
+        lsp_types::request::SemanticTokensFullRequest,
+    >(
         &mut server,
         3,
-        "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": source_uri }
         }),
@@ -213,27 +204,24 @@ pub fn main() -> String {
     fs::write(&source_path, disk_source).expect("disk source should be writable");
     let source_uri = file_uri(&source_path);
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root.join("scripts")),
             "capabilities": {}
         }),
     ));
-    assert_no_messages(handle_notification(
+    assert_no_messages(notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": source_uri, "type": 1 }]
         }),
     ));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": source_uri,
@@ -244,17 +232,15 @@ pub fn main() -> String {
         }),
     ));
 
-    let overlay_hints = response_value(handle_request(
+    let overlay_hints = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         inlay_hint_params(&source_uri, overlay_source),
     ));
     assert_inlay_hint_for_target(&overlay_hints, overlay_source, "\"quest\"", "reason:");
 
-    let close = notification_value(handle_notification(
+    let close = notification_value(notify::<lsp_types::notification::DidCloseTextDocument>(
         &mut server,
-        "textDocument/didClose",
         serde_json::json!({
             "textDocument": {
                 "uri": source_uri
@@ -264,10 +250,9 @@ pub fn main() -> String {
     assert_eq!(close["method"], "textDocument/publishDiagnostics");
     assert_eq!(close["params"]["uri"], source_uri);
 
-    let disk_hints = response_value(handle_request(
+    let disk_hints = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         3,
-        "textDocument/inlayHint",
         inlay_hint_params(&source_uri, disk_source),
     ));
     assert_inlay_hint_for_target(&disk_hints, disk_source, "7", "amount:");
@@ -304,27 +289,24 @@ fn main(player: Player) {
     fs::write(&source_path, disk_source).expect("disk source should be writable");
     let source_uri = file_uri(&source_path);
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root.join("scripts")),
             "capabilities": {}
         }),
     ));
-    assert_no_messages(handle_notification(
+    assert_no_messages(notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": source_uri, "type": 1 }]
         }),
     ));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": source_uri,
@@ -335,17 +317,15 @@ fn main(player: Player) {
         }),
     ));
 
-    let overlay_definition = response_value(handle_request(
+    let overlay_definition = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         type_definition_params(&source_uri, overlay_source),
     ));
     assert_type_definition_range(&overlay_definition, &source_uri, 7, 23);
 
-    let close = notification_value(handle_notification(
+    let close = notification_value(notify::<lsp_types::notification::DidCloseTextDocument>(
         &mut server,
-        "textDocument/didClose",
         serde_json::json!({
             "textDocument": {
                 "uri": source_uri
@@ -355,10 +335,9 @@ fn main(player: Player) {
     assert_eq!(close["method"], "textDocument/publishDiagnostics");
     assert_eq!(close["params"]["uri"], source_uri);
 
-    let disk_definition = response_value(handle_request(
+    let disk_definition = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         3,
-        "textDocument/typeDefinition",
         type_definition_params(&source_uri, disk_source),
     ));
     assert_type_definition_range(&disk_definition, &source_uri, 7, 20);
@@ -383,27 +362,24 @@ pub fn main() -> i64 {
     fs::write(&source_path, disk_source).expect("disk source should be writable");
     let source_uri = file_uri(&source_path);
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root.join("scripts")),
             "capabilities": {}
         }),
     ));
-    assert_no_messages(handle_notification(
+    assert_no_messages(notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": source_uri, "type": 1 }]
         }),
     ));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": source_uri,
@@ -414,12 +390,13 @@ pub fn main() -> i64 {
         }),
     ));
 
-    let overlay_hover = hover_value(&response_value(handle_request(
-        &mut server,
-        2,
-        "textDocument/hover",
-        hover_params(&source_uri, overlay_source, "overlay_only"),
-    )));
+    let overlay_hover = hover_value(&response_value(
+        request::<lsp_types::request::HoverRequest>(
+            &mut server,
+            2,
+            hover_params(&source_uri, overlay_source, "overlay_only"),
+        ),
+    ));
     assert!(
         overlay_hover.contains("game::main::overlay_only"),
         "{overlay_hover}"
@@ -430,9 +407,8 @@ pub fn main() -> i64 {
     );
     assert!(!overlay_hover.contains("disk_only"), "{overlay_hover}");
 
-    let close = notification_value(handle_notification(
+    let close = notification_value(notify::<lsp_types::notification::DidCloseTextDocument>(
         &mut server,
-        "textDocument/didClose",
         serde_json::json!({
             "textDocument": {
                 "uri": source_uri
@@ -442,12 +418,13 @@ pub fn main() -> i64 {
     assert_eq!(close["method"], "textDocument/publishDiagnostics");
     assert_eq!(close["params"]["uri"], source_uri);
 
-    let disk_hover = hover_value(&response_value(handle_request(
-        &mut server,
-        3,
-        "textDocument/hover",
-        hover_params(&source_uri, disk_source, "disk_only"),
-    )));
+    let disk_hover = hover_value(&response_value(
+        request::<lsp_types::request::HoverRequest>(
+            &mut server,
+            3,
+            hover_params(&source_uri, disk_source, "disk_only"),
+        ),
+    ));
     assert!(disk_hover.contains("game::main::disk_only"), "{disk_hover}");
     assert!(disk_hover.contains("Disk function"), "{disk_hover}");
     assert!(!disk_hover.contains("overlay_only"), "{disk_hover}");
@@ -470,27 +447,24 @@ pub fn main() -> i64 {
     fs::write(&source_path, disk_source).expect("disk source should be writable");
     let source_uri = file_uri(&source_path);
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root.join("scripts")),
             "capabilities": {}
         }),
     ));
-    assert_no_messages(handle_notification(
+    assert_no_messages(notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": source_uri, "type": 1 }]
         }),
     ));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": source_uri,
@@ -501,17 +475,15 @@ pub fn main() -> i64 {
         }),
     ));
 
-    let overlay_references = response_value(handle_request(
+    let overlay_references = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         references_params(&source_uri, overlay_source, "overlay_only"),
     ));
     assert_reference_ranges(&overlay_references, &source_uri, &[(0, 7, 19), (2, 11, 23)]);
 
-    let close = notification_value(handle_notification(
+    let close = notification_value(notify::<lsp_types::notification::DidCloseTextDocument>(
         &mut server,
-        "textDocument/didClose",
         serde_json::json!({
             "textDocument": {
                 "uri": source_uri
@@ -521,10 +493,9 @@ pub fn main() -> i64 {
     assert_eq!(close["method"], "textDocument/publishDiagnostics");
     assert_eq!(close["params"]["uri"], source_uri);
 
-    let disk_references = response_value(handle_request(
+    let disk_references = response_value(request::<lsp_types::request::References>(
         &mut server,
         3,
-        "textDocument/references",
         references_params(&source_uri, disk_source, "disk_only"),
     ));
     assert_reference_ranges(&disk_references, &source_uri, &[(0, 7, 16), (2, 11, 20)]);
@@ -547,27 +518,24 @@ pub fn main() -> i64 {
     fs::write(&source_path, disk_source).expect("disk source should be writable");
     let source_uri = file_uri(&source_path);
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root.join("scripts")),
             "capabilities": {}
         }),
     ));
-    assert_no_messages(handle_notification(
+    assert_no_messages(notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": source_uri, "type": 1 }]
         }),
     ));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": source_uri,
@@ -578,17 +546,16 @@ pub fn main() -> i64 {
         }),
     ));
 
-    let overlay_highlights = response_value(handle_request(
-        &mut server,
-        2,
-        "textDocument/documentHighlight",
-        document_highlight_params(&source_uri, overlay_source, "overlay_only"),
-    ));
+    let overlay_highlights =
+        response_value(request::<lsp_types::request::DocumentHighlightRequest>(
+            &mut server,
+            2,
+            document_highlight_params(&source_uri, overlay_source, "overlay_only"),
+        ));
     assert_document_highlight_ranges(&overlay_highlights, &[(0, 7, 19), (2, 11, 23)]);
 
-    let close = notification_value(handle_notification(
+    let close = notification_value(notify::<lsp_types::notification::DidCloseTextDocument>(
         &mut server,
-        "textDocument/didClose",
         serde_json::json!({
             "textDocument": {
                 "uri": source_uri
@@ -598,10 +565,9 @@ pub fn main() -> i64 {
     assert_eq!(close["method"], "textDocument/publishDiagnostics");
     assert_eq!(close["params"]["uri"], source_uri);
 
-    let disk_highlights = response_value(handle_request(
+    let disk_highlights = response_value(request::<lsp_types::request::DocumentHighlightRequest>(
         &mut server,
         3,
-        "textDocument/documentHighlight",
         document_highlight_params(&source_uri, disk_source, "disk_only"),
     ));
     assert_document_highlight_ranges(&disk_highlights, &[(0, 7, 16), (2, 11, 20)]);

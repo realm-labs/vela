@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
+use super::{TestServer, notification_value, notify, request, response_value};
 
 mod cross_file;
 mod degradation;
@@ -18,7 +18,7 @@ mod values;
 
 #[test]
 fn lsp_references_find_local_binding_uses() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let text = "\
 pub fn main(amount: i64) -> i64 {
@@ -28,10 +28,9 @@ pub fn main(amount: i64) -> i64 {
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -68,7 +67,7 @@ pub fn main(amount: i64) -> i64 {
 
 #[test]
 fn lsp_references_find_imported_function_uses() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let main_text = "\
 use game::reward::grant
@@ -82,10 +81,9 @@ pub fn main(amount: i64) -> i64 {
     open_document(&mut server, helper_uri, helper_text);
     open_document(&mut server, main_uri, main_text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -128,7 +126,7 @@ pub fn main(amount: i64) -> i64 {
 
 #[test]
 fn lsp_references_find_field_reads_and_writes() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let text = "\
 pub struct Reward {
@@ -143,10 +141,9 @@ pub fn main(reward: Reward) -> i64 {
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -189,7 +186,7 @@ pub fn main(reward: Reward) -> i64 {
 
 #[test]
 fn lsp_references_find_record_constructor_field_labels() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let text = "\
 pub struct Reward {
@@ -206,10 +203,9 @@ pub fn main(reward: Reward) -> i64 {
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -248,7 +244,7 @@ pub fn main(reward: Reward) -> i64 {
 
 #[test]
 fn lsp_references_find_record_constructor_shorthand_field_labels() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let text = "\
 pub struct Reward {
@@ -265,10 +261,9 @@ pub fn main(reward: Reward) -> i64 {
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -307,7 +302,7 @@ pub fn main(reward: Reward) -> i64 {
 
 #[test]
 fn lsp_references_find_enum_variant_constructors_and_patterns() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let text = "\
 pub enum QuestState {
@@ -328,10 +323,9 @@ pub fn main(state: QuestState) -> i64 {
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -370,7 +364,7 @@ pub fn main(state: QuestState) -> i64 {
 
 #[test]
 fn lsp_references_find_enum_record_variant_field_labels_and_patterns() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let text = "\
 pub enum QuestState {
@@ -391,10 +385,9 @@ pub fn main(state: QuestState) -> i64 {
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -433,7 +426,7 @@ pub fn main(state: QuestState) -> i64 {
 
 #[test]
 fn lsp_references_find_script_method_calls() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let text = "\
 pub struct Reward {
@@ -451,10 +444,9 @@ pub fn main(reward: Reward) -> i64 {
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -491,7 +483,7 @@ pub fn main(reward: Reward) -> i64 {
 
 #[test]
 fn lsp_references_find_trait_impl_uses() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let text = "\
 pub trait Rewardable {
@@ -516,10 +508,9 @@ impl Rewardable for Chest {
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -556,7 +547,7 @@ impl Rewardable for Chest {
 
 #[test]
 fn lsp_document_highlight_marks_local_declaration_and_reads() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let initialize = initialize(&mut server);
     assert_eq!(
         initialize["result"]["capabilities"]["documentHighlightProvider"],
@@ -570,10 +561,9 @@ pub fn main(amount: i64) -> i64 {
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::DocumentHighlightRequest>(
         &mut server,
         2,
-        "textDocument/documentHighlight",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -609,7 +599,7 @@ pub fn main(amount: i64) -> i64 {
 
 #[test]
 fn lsp_document_highlight_marks_import_and_calls_in_active_document() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let main_text = "\
 use game::reward::grant
@@ -623,10 +613,9 @@ pub fn main(amount: i64) -> i64 {
     open_document(&mut server, helper_uri, helper_text);
     open_document(&mut server, main_uri, main_text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::DocumentHighlightRequest>(
         &mut server,
         2,
-        "textDocument/documentHighlight",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -662,7 +651,7 @@ pub fn main(amount: i64) -> i64 {
 
 #[test]
 fn lsp_document_highlight_marks_read_write_call() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let text = "\
 pub fn grant(amount: i64) -> i64 { return amount }
@@ -674,10 +663,9 @@ pub fn main(amount: i64) -> i64 {
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
-    let score_response = response_value(handle_request(
+    let score_response = response_value(request::<lsp_types::request::DocumentHighlightRequest>(
         &mut server,
         2,
-        "textDocument/documentHighlight",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -710,10 +698,9 @@ pub fn main(amount: i64) -> i64 {
         2,
     );
 
-    let grant_response = response_value(handle_request(
+    let grant_response = response_value(request::<lsp_types::request::DocumentHighlightRequest>(
         &mut server,
         3,
-        "textDocument/documentHighlight",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -749,7 +736,7 @@ pub fn main(amount: i64) -> i64 {
 
 #[test]
 fn lsp_document_highlight_marks_script_method_calls() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let text = "\
 pub struct Reward {
@@ -767,10 +754,9 @@ pub fn main(reward: Reward) -> i64 {
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::DocumentHighlightRequest>(
         &mut server,
         2,
-        "textDocument/documentHighlight",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -806,7 +792,7 @@ pub fn main(reward: Reward) -> i64 {
 
 #[test]
 fn lsp_document_highlight_marks_trait_impl_uses() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let text = "\
 pub trait Rewardable {
@@ -821,10 +807,9 @@ impl Rewardable for Player {
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::DocumentHighlightRequest>(
         &mut server,
         2,
-        "textDocument/documentHighlight",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -852,11 +837,10 @@ impl Rewardable for Player {
     );
 }
 
-fn initialize(server: &mut LspServer) -> serde_json::Value {
-    response_value(handle_request(
+fn initialize(server: &mut TestServer) -> serde_json::Value {
+    response_value(request::<lsp_types::request::Initialize>(
         server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -865,10 +849,9 @@ fn initialize(server: &mut LspServer) -> serde_json::Value {
     ))
 }
 
-fn open_document(server: &mut LspServer, uri: &str, text: &str) {
-    let _ = notification_value(handle_notification(
+fn open_document(server: &mut TestServer, uri: &str, text: &str) {
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,

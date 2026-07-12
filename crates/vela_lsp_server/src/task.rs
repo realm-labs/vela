@@ -8,6 +8,8 @@ use lsp_types::{
 };
 use vela_language_service::GenerationToken;
 
+use crate::transport::ResultSummary;
+
 type TaskJob = Box<dyn FnOnce() -> TaskResult + Send + 'static>;
 
 #[derive(Debug, Clone)]
@@ -198,6 +200,25 @@ pub(crate) enum TaskOutcome {
     Cancelled,
     StaleDiscarded,
     Retried,
+}
+
+pub(crate) struct TaskSendSummary {
+    summary: ResultSummary,
+    outcome: TaskOutcome,
+}
+
+impl TaskSendSummary {
+    pub(crate) const fn new(summary: ResultSummary, outcome: TaskOutcome) -> Self {
+        Self { summary, outcome }
+    }
+
+    pub(crate) const fn summary(&self) -> &ResultSummary {
+        &self.summary
+    }
+
+    pub(crate) const fn outcome(&self) -> TaskOutcome {
+        self.outcome
+    }
 }
 
 #[derive(Debug, Clone)]

@@ -1,16 +1,13 @@
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 use super::{assert_highlight, assert_reference, line};
 
 #[test]
 fn lsp_document_highlight_returns_empty_for_dynamic_and_unresolved_targets() {
-    let mut server = LspServer::new();
-    let initialize = response_value(handle_request(
+    let mut server = TestServer::new();
+    let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -26,9 +23,8 @@ fn lsp_document_highlight_returns_empty_for_dynamic_and_unresolved_targets() {
 pub fn unresolved() { return missing }
 pub fn dynamic(value: Any) { return value.level }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -61,11 +57,10 @@ pub fn dynamic(value: Any) { return value.level }";
 
 #[test]
 fn lsp_document_highlight_returns_empty_for_source_any_return_receiver_member() {
-    let mut server = LspServer::new();
-    let initialize = response_value(handle_request(
+    let mut server = TestServer::new();
+    let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -82,9 +77,8 @@ struct Player { level: i64 }
 fn source_any() -> Any { return Player { level: 1 } }
 pub fn main() { return source_any().level }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -106,11 +100,10 @@ pub fn main() { return source_any().level }";
 
 #[test]
 fn lsp_document_highlight_imported_symbol_stays_in_active_document() {
-    let mut server = LspServer::new();
-    let initialize = response_value(handle_request(
+    let mut server = TestServer::new();
+    let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -131,9 +124,8 @@ pub fn main(amount: i64) -> i64 {
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let helper_uri = "file:///workspace/scripts/game/reward.vela";
     for (uri, text) in [(helper_uri, helper_text), (main_uri, main_text)] {
-        let _ = notification_value(handle_notification(
+        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
-            "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
                     "uri": uri,
@@ -145,10 +137,9 @@ pub fn main(amount: i64) -> i64 {
         ));
     }
 
-    let references = response_value(handle_request(
+    let references = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -187,10 +178,9 @@ pub fn main(amount: i64) -> i64 {
         line(main_text, 3).find("grant").expect("second call"),
     );
 
-    let highlights = response_value(handle_request(
+    let highlights = response_value(request::<lsp_types::request::DocumentHighlightRequest>(
         &mut server,
         3,
-        "textDocument/documentHighlight",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -233,11 +223,10 @@ pub fn main(amount: i64) -> i64 {
 
 #[test]
 fn lsp_document_highlight_imported_const_and_global_stays_in_active_document() {
-    let mut server = LspServer::new();
-    let initialize = response_value(handle_request(
+    let mut server = TestServer::new();
+    let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -261,9 +250,8 @@ pub global reward_scale: i64";
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let rewards_uri = "file:///workspace/scripts/game/rewards.vela";
     for (uri, text) in [(rewards_uri, rewards_text), (main_uri, main_text)] {
-        let _ = notification_value(handle_notification(
+        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
-            "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
                     "uri": uri,
@@ -275,10 +263,9 @@ pub global reward_scale: i64";
         ));
     }
 
-    let const_references = response_value(handle_request(
+    let const_references = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -303,10 +290,9 @@ pub global reward_scale: i64";
             .expect("const declaration should exist"),
     );
 
-    let const_highlights = response_value(handle_request(
+    let const_highlights = response_value(request::<lsp_types::request::DocumentHighlightRequest>(
         &mut server,
         3,
-        "textDocument/documentHighlight",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -345,10 +331,9 @@ pub global reward_scale: i64";
             .expect("const declaration should exist"),
     );
 
-    let global_references = response_value(handle_request(
+    let global_references = response_value(request::<lsp_types::request::References>(
         &mut server,
         4,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -377,20 +362,20 @@ pub global reward_scale: i64";
             .expect("global declaration should exist"),
     );
 
-    let global_highlights = response_value(handle_request(
-        &mut server,
-        5,
-        "textDocument/documentHighlight",
-        serde_json::json!({
-            "textDocument": { "uri": main_uri },
-            "position": {
-                "line": 4,
-                "character": line(main_text, 4)
-                    .find("reward_scale")
-                    .expect("global use should exist")
-            }
-        }),
-    ));
+    let global_highlights =
+        response_value(request::<lsp_types::request::DocumentHighlightRequest>(
+            &mut server,
+            5,
+            serde_json::json!({
+                "textDocument": { "uri": main_uri },
+                "position": {
+                    "line": 4,
+                    "character": line(main_text, 4)
+                        .find("reward_scale")
+                        .expect("global use should exist")
+                }
+            }),
+        ));
     let global_highlight_items = global_highlights["result"]
         .as_array()
         .expect("documentHighlight response should be an array");
@@ -426,11 +411,10 @@ pub global reward_scale: i64";
 
 #[test]
 fn lsp_document_highlight_imported_source_type_stays_in_active_document() {
-    let mut server = LspServer::new();
-    let initialize = response_value(handle_request(
+    let mut server = TestServer::new();
+    let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -457,9 +441,8 @@ pub struct Inventory {
     slots: i64
 }";
     for (uri, text) in [(inventory_uri, inventory_text), (main_uri, main_text)] {
-        let _ = notification_value(handle_notification(
+        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
-            "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
                     "uri": uri,
@@ -471,10 +454,9 @@ pub struct Inventory {
         ));
     }
 
-    let references = response_value(handle_request(
+    let references = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -499,10 +481,9 @@ pub struct Inventory {
             .expect("type declaration should exist"),
     );
 
-    let highlights = response_value(handle_request(
+    let highlights = response_value(request::<lsp_types::request::DocumentHighlightRequest>(
         &mut server,
         3,
-        "textDocument/documentHighlight",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -568,11 +549,10 @@ pub struct Inventory {
 
 #[test]
 fn lsp_document_highlight_imported_source_field_and_method_stays_in_active_document() {
-    let mut server = LspServer::new();
-    let initialize = response_value(handle_request(
+    let mut server = TestServer::new();
+    let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -602,9 +582,8 @@ impl Reward {
     pub fn total(self) -> i64 { return 1 }
 }";
     for (uri, text) in [(types_uri, types_text), (main_uri, main_text)] {
-        let _ = notification_value(handle_notification(
+        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
-            "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
                     "uri": uri,
@@ -616,10 +595,9 @@ impl Reward {
         ));
     }
 
-    let field_references = response_value(handle_request(
+    let field_references = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -644,10 +622,9 @@ impl Reward {
             .expect("field declaration should exist"),
     );
 
-    let field_highlights = response_value(handle_request(
+    let field_highlights = response_value(request::<lsp_types::request::DocumentHighlightRequest>(
         &mut server,
         3,
-        "textDocument/documentHighlight",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -686,10 +663,9 @@ impl Reward {
             .expect("field declaration should exist"),
     );
 
-    let method_references = response_value(handle_request(
+    let method_references = response_value(request::<lsp_types::request::References>(
         &mut server,
         4,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -718,20 +694,20 @@ impl Reward {
             .expect("method declaration should exist"),
     );
 
-    let method_highlights = response_value(handle_request(
-        &mut server,
-        5,
-        "textDocument/documentHighlight",
-        serde_json::json!({
-            "textDocument": { "uri": main_uri },
-            "position": {
-                "line": 4,
-                "character": line(main_text, 4)
-                    .find("total")
-                    .expect("first method call should exist")
-            }
-        }),
-    ));
+    let method_highlights =
+        response_value(request::<lsp_types::request::DocumentHighlightRequest>(
+            &mut server,
+            5,
+            serde_json::json!({
+                "textDocument": { "uri": main_uri },
+                "position": {
+                    "line": 4,
+                    "character": line(main_text, 4)
+                        .find("total")
+                        .expect("first method call should exist")
+                }
+            }),
+        ));
     let method_highlight_items = method_highlights["result"]
         .as_array()
         .expect("documentHighlight response should be an array");
@@ -766,16 +742,15 @@ impl Reward {
 }
 
 fn assert_empty_highlights(
-    server: &mut LspServer,
+    server: &mut TestServer,
     id: i32,
     uri: &str,
     line: usize,
     character: usize,
 ) {
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::DocumentHighlightRequest>(
         server,
         id,
-        "textDocument/documentHighlight",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {

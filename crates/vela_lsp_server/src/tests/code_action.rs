@@ -1,4 +1,4 @@
-use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
+use super::{TestServer, notification_value, notify, request, response_value};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -7,11 +7,10 @@ use std::{
 
 #[test]
 fn lsp_code_action_fixes_unknown_field_typo() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -20,9 +19,8 @@ fn lsp_code_action_fixes_unknown_field_typo() {
     ));
     let text = "pub fn main(scores: Array<i64>) { return scores.frist() }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -33,10 +31,9 @@ fn lsp_code_action_fixes_unknown_field_typo() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::CodeActionRequest>(
         &mut server,
         2,
-        "textDocument/codeAction",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -71,11 +68,10 @@ fn lsp_code_action_fixes_unknown_field_typo() {
 
 #[test]
 fn lsp_code_action_inserts_missing_import() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -83,9 +79,8 @@ fn lsp_code_action_inserts_missing_import() {
         }),
     ));
     let reward_uri = "file:///workspace/scripts/game/reward.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": reward_uri,
@@ -97,9 +92,8 @@ fn lsp_code_action_inserts_missing_import() {
     ));
     let text = "pub fn main() { return grant }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -111,10 +105,9 @@ fn lsp_code_action_inserts_missing_import() {
     ));
 
     let grant_start = text.find("grant").expect("unresolved symbol");
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::CodeActionRequest>(
         &mut server,
         2,
-        "textDocument/codeAction",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -143,11 +136,10 @@ fn lsp_code_action_inserts_missing_import() {
 
 #[test]
 fn lsp_code_action_removes_unused_import() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -155,9 +147,8 @@ fn lsp_code_action_removes_unused_import() {
         }),
     ));
     let reward_uri = "file:///workspace/scripts/game/reward.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": reward_uri,
@@ -169,9 +160,8 @@ fn lsp_code_action_removes_unused_import() {
     ));
     let text = "use game::reward::grant\npub fn main() { return 1 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -182,10 +172,9 @@ fn lsp_code_action_removes_unused_import() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::CodeActionRequest>(
         &mut server,
         2,
-        "textDocument/codeAction",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -214,11 +203,10 @@ fn lsp_code_action_removes_unused_import() {
 
 #[test]
 fn lsp_code_action_fills_enum_match_arms() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -232,9 +220,8 @@ pub fn main(maybe_name: Option<String>) {
     }
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -245,10 +232,9 @@ pub fn main(maybe_name: Option<String>) {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::CodeActionRequest>(
         &mut server,
         2,
-        "textDocument/codeAction",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -277,11 +263,10 @@ pub fn main(maybe_name: Option<String>) {
 
 #[test]
 fn lsp_code_action_adds_missing_record_fields() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -298,9 +283,8 @@ pub fn main() {
     return Reward { reason: \"bonus\" }
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -311,10 +295,9 @@ pub fn main() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::CodeActionRequest>(
         &mut server,
         2,
-        "textDocument/codeAction",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -343,11 +326,10 @@ pub fn main() {
 
 #[test]
 fn lsp_code_action_rejects_ambiguous_import_fix() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -364,9 +346,8 @@ fn lsp_code_action_rejects_ambiguous_import_fix() {
             "pub fn grant() { return 2 }",
         ),
     ] {
-        let _ = notification_value(handle_notification(
+        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
-            "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
                     "uri": uri,
@@ -379,9 +360,8 @@ fn lsp_code_action_rejects_ambiguous_import_fix() {
     }
     let text = "pub fn main() { return grant }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -393,10 +373,9 @@ fn lsp_code_action_rejects_ambiguous_import_fix() {
     ));
 
     let grant_start = text.find("grant").expect("unresolved symbol");
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::CodeActionRequest>(
         &mut server,
         2,
-        "textDocument/codeAction",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -412,11 +391,10 @@ fn lsp_code_action_rejects_ambiguous_import_fix() {
 
 #[test]
 fn lsp_code_action_rejects_dynamic_receiver_typo_fix() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -425,9 +403,8 @@ fn lsp_code_action_rejects_dynamic_receiver_typo_fix() {
     ));
     let text = "pub fn main(player) { return player.levle }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -439,10 +416,9 @@ fn lsp_code_action_rejects_dynamic_receiver_typo_fix() {
     ));
 
     let typo_start = text.find("levle").expect("dynamic receiver typo");
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::CodeActionRequest>(
         &mut server,
         2,
-        "textDocument/codeAction",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -458,11 +434,10 @@ fn lsp_code_action_rejects_dynamic_receiver_typo_fix() {
 
 #[test]
 fn lsp_code_action_rejects_source_any_return_receiver_typo_fix() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -475,9 +450,8 @@ pub fn main() {
     return source_any().levle
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -490,10 +464,9 @@ pub fn main() {
 
     let typo_line = text.lines().nth(2).expect("typo line");
     let typo_start = typo_line.find("levle").expect("source Any receiver typo");
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::CodeActionRequest>(
         &mut server,
         2,
-        "textDocument/codeAction",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -535,20 +508,18 @@ fn lsp_code_action_ranges_follow_open_overlay_text() {
     )
     .expect("disk source should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [
                 { "uri": file_uri(&config_path), "type": 1 },
@@ -559,9 +530,8 @@ fn lsp_code_action_ranges_follow_open_overlay_text() {
 
     let overlay_text = "\npub fn main(player: Player) {\n    return player.levle\n}";
     let main_uri = file_uri(&main_path);
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -574,10 +544,9 @@ fn lsp_code_action_ranges_follow_open_overlay_text() {
     let typo_line = overlay_text.lines().nth(2).expect("typo line");
     let typo_start = typo_line.find("levle").expect("overlay typo");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::CodeActionRequest>(
         &mut server,
         2,
-        "textDocument/codeAction",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "range": {

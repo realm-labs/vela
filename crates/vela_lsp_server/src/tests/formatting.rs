@@ -1,12 +1,11 @@
-use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
+use super::{TestServer, notification_value, notify, request, response_value};
 
 #[test]
 fn lsp_document_formatting_returns_full_document_edit() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -14,9 +13,8 @@ fn lsp_document_formatting_returns_full_document_edit() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -27,10 +25,9 @@ fn lsp_document_formatting_returns_full_document_edit() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Formatting>(
         &mut server,
         2,
-        "textDocument/formatting",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "options": { "tabSize": 4, "insertSpaces": true }
@@ -50,11 +47,10 @@ fn lsp_document_formatting_returns_full_document_edit() {
 
 #[test]
 fn lsp_document_formatting_returns_empty_edits_when_idempotent() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -62,9 +58,8 @@ fn lsp_document_formatting_returns_empty_edits_when_idempotent() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -75,10 +70,9 @@ fn lsp_document_formatting_returns_empty_edits_when_idempotent() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Formatting>(
         &mut server,
         2,
-        "textDocument/formatting",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "options": { "tabSize": 4, "insertSpaces": true }
@@ -90,11 +84,10 @@ fn lsp_document_formatting_returns_empty_edits_when_idempotent() {
 
 #[test]
 fn lsp_document_formatting_handles_malformed_source_without_panic() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -102,9 +95,8 @@ fn lsp_document_formatting_handles_malformed_source_without_panic() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -115,10 +107,9 @@ fn lsp_document_formatting_handles_malformed_source_without_panic() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Formatting>(
         &mut server,
         2,
-        "textDocument/formatting",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "options": { "tabSize": 4, "insertSpaces": true }
@@ -134,11 +125,10 @@ fn lsp_document_formatting_handles_malformed_source_without_panic() {
 
 #[test]
 fn lsp_document_formatting_formats_declarations() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -146,9 +136,8 @@ fn lsp_document_formatting_formats_declarations() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -159,10 +148,9 @@ fn lsp_document_formatting_formats_declarations() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Formatting>(
         &mut server,
         2,
-        "textDocument/formatting",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "options": { "tabSize": 4, "insertSpaces": true }
@@ -191,11 +179,10 @@ impl Player {
 
 #[test]
 fn lsp_document_formatting_formats_container_type_hint_example() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -203,9 +190,8 @@ fn lsp_document_formatting_formats_container_type_hint_example() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -220,10 +206,9 @@ fn main(){let scores:Array < i64 > = [1,2,3];let rewards:Map < String,i64 >={\"x
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Formatting>(
         &mut server,
         2,
-        "textDocument/formatting",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "options": { "tabSize": 4, "insertSpaces": true }
@@ -255,11 +240,10 @@ fn main() {
 
 #[test]
 fn lsp_document_formatting_compacts_container_type_arguments() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -267,9 +251,8 @@ fn lsp_document_formatting_compacts_container_type_arguments() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -280,10 +263,9 @@ fn lsp_document_formatting_compacts_container_type_arguments() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Formatting>(
         &mut server,
         2,
-        "textDocument/formatting",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "options": { "tabSize": 4, "insertSpaces": true }
@@ -306,11 +288,10 @@ fn score(scores: Array<i64>, rewards: Map<String, i64>, tags: Set<String>) -> Re
 
 #[test]
 fn lsp_document_formatting_handles_incomplete_container_type_arguments() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -318,9 +299,8 @@ fn lsp_document_formatting_handles_incomplete_container_type_arguments() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -331,10 +311,9 @@ fn lsp_document_formatting_handles_incomplete_container_type_arguments() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Formatting>(
         &mut server,
         2,
-        "textDocument/formatting",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "options": { "tabSize": 4, "insertSpaces": true }
@@ -357,11 +336,10 @@ fn load_rewards(rewards: Map<String,) {
 
 #[test]
 fn lsp_range_formatting_limits_edits_to_range() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -369,9 +347,8 @@ fn lsp_range_formatting_limits_edits_to_range() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -382,10 +359,9 @@ fn lsp_range_formatting_limits_edits_to_range() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::RangeFormatting>(
         &mut server,
         2,
-        "textDocument/rangeFormatting",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -409,11 +385,10 @@ fn lsp_range_formatting_limits_edits_to_range() {
 
 #[test]
 fn lsp_range_formatting_formats_selected_item() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -421,9 +396,8 @@ fn lsp_range_formatting_formats_selected_item() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -434,10 +408,9 @@ fn lsp_range_formatting_formats_selected_item() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::RangeFormatting>(
         &mut server,
         2,
-        "textDocument/rangeFormatting",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -461,11 +434,10 @@ fn lsp_range_formatting_formats_selected_item() {
 
 #[test]
 fn lsp_range_formatting_formats_item_with_leading_blank_selection() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -473,9 +445,8 @@ fn lsp_range_formatting_formats_item_with_leading_blank_selection() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -486,10 +457,9 @@ fn lsp_range_formatting_formats_item_with_leading_blank_selection() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::RangeFormatting>(
         &mut server,
         2,
-        "textDocument/rangeFormatting",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -513,11 +483,10 @@ fn lsp_range_formatting_formats_item_with_leading_blank_selection() {
 
 #[test]
 fn lsp_range_formatting_formats_selected_impl_method() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -525,9 +494,8 @@ fn lsp_range_formatting_formats_selected_impl_method() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -538,10 +506,9 @@ fn lsp_range_formatting_formats_selected_impl_method() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::RangeFormatting>(
         &mut server,
         2,
-        "textDocument/rangeFormatting",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -568,11 +535,10 @@ fn lsp_range_formatting_formats_selected_impl_method() {
 
 #[test]
 fn lsp_range_formatting_formats_selected_trait_method() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -583,9 +549,8 @@ fn lsp_range_formatting_formats_selected_trait_method() {
     let text = "pub trait Rewardable{fn preview(amount:i64)->i64 fn other(amount:i64)->i64}\n";
     let start = text.find("fn preview").expect("selected method");
     let end = start + "fn preview(amount:i64)->i64".len();
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -596,10 +561,9 @@ fn lsp_range_formatting_formats_selected_trait_method() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::RangeFormatting>(
         &mut server,
         2,
-        "textDocument/rangeFormatting",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -623,11 +587,10 @@ fn lsp_range_formatting_formats_selected_trait_method() {
 
 #[test]
 fn lsp_range_formatting_preserves_nested_method_indent() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -635,9 +598,8 @@ fn lsp_range_formatting_preserves_nested_method_indent() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -653,10 +615,9 @@ impl Player {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::RangeFormatting>(
         &mut server,
         2,
-        "textDocument/rangeFormatting",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -683,11 +644,10 @@ impl Player {
 
 #[test]
 fn lsp_range_formatting_preserves_struct_field_indent() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -695,9 +655,8 @@ fn lsp_range_formatting_preserves_struct_field_indent() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -713,10 +672,9 @@ pub struct Player {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::RangeFormatting>(
         &mut server,
         2,
-        "textDocument/rangeFormatting",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -740,11 +698,10 @@ pub struct Player {
 
 #[test]
 fn lsp_range_formatting_formats_selected_struct_field_group() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -752,9 +709,8 @@ fn lsp_range_formatting_formats_selected_struct_field_group() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -771,10 +727,9 @@ pub struct Player {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::RangeFormatting>(
         &mut server,
         2,
-        "textDocument/rangeFormatting",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -798,11 +753,10 @@ pub struct Player {
 
 #[test]
 fn lsp_range_formatting_formats_selected_enum_record_field_group() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -810,9 +764,8 @@ fn lsp_range_formatting_formats_selected_enum_record_field_group() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -832,10 +785,9 @@ pub enum Reward {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::RangeFormatting>(
         &mut server,
         2,
-        "textDocument/rangeFormatting",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -859,11 +811,10 @@ pub enum Reward {
 
 #[test]
 fn lsp_on_type_formatting_only_edits_current_construct() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -871,9 +822,8 @@ fn lsp_on_type_formatting_only_edits_current_construct() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -892,10 +842,9 @@ pub fn other() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::OnTypeFormatting>(
         &mut server,
         2,
-        "textDocument/onTypeFormatting",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": { "line": 2, "character": 1 },
@@ -917,11 +866,10 @@ pub fn other() {
 
 #[test]
 fn lsp_on_type_formatting_reflows_completed_item() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -929,9 +877,8 @@ fn lsp_on_type_formatting_reflows_completed_item() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -942,10 +889,9 @@ fn lsp_on_type_formatting_reflows_completed_item() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::OnTypeFormatting>(
         &mut server,
         2,
-        "textDocument/onTypeFormatting",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": { "line": 0, "character": 23 },
@@ -967,11 +913,10 @@ fn lsp_on_type_formatting_reflows_completed_item() {
 
 #[test]
 fn lsp_on_type_formatting_reflows_completed_multiline_item() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -979,9 +924,8 @@ fn lsp_on_type_formatting_reflows_completed_multiline_item() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -998,10 +942,9 @@ pub fn other(){return 2}
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::OnTypeFormatting>(
         &mut server,
         2,
-        "textDocument/onTypeFormatting",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": { "line": 2, "character": 1 },
@@ -1026,11 +969,10 @@ pub fn other(){return 2}
 
 #[test]
 fn lsp_on_type_formatting_reflows_completed_nested_method() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -1038,9 +980,8 @@ fn lsp_on_type_formatting_reflows_completed_nested_method() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -1056,10 +997,9 @@ impl Player {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::OnTypeFormatting>(
         &mut server,
         2,
-        "textDocument/onTypeFormatting",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": { "line": 1, "character": 43 },
@@ -1084,11 +1024,10 @@ impl Player {
 
 #[test]
 fn lsp_on_type_formatting_reflows_completed_enum_record_variant() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -1096,9 +1035,8 @@ fn lsp_on_type_formatting_reflows_completed_enum_record_variant() {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -1117,10 +1055,9 @@ pub enum Reward {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::OnTypeFormatting>(
         &mut server,
         2,
-        "textDocument/onTypeFormatting",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": { "line": 4, "character": 5 },

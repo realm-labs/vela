@@ -1,4 +1,4 @@
-use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
+use super::{TestServer, notification_value, notify, request, response_value};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -12,7 +12,7 @@ static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);
 
 #[test]
 fn lsp_prepare_rename_rejects_keywords_and_literals() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let text = "\
 pub fn main(amount: i64) -> i64 {
@@ -21,10 +21,9 @@ pub fn main(amount: i64) -> i64 {
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, 1, text);
 
-    let keyword_response = response_value(handle_request(
+    let keyword_response = response_value(request::<lsp_types::request::PrepareRenameRequest>(
         &mut server,
         2,
-        "textDocument/prepareRename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -35,10 +34,9 @@ pub fn main(amount: i64) -> i64 {
     ));
     assert_eq!(keyword_response["result"], serde_json::Value::Null);
 
-    let literal_response = response_value(handle_request(
+    let literal_response = response_value(request::<lsp_types::request::PrepareRenameRequest>(
         &mut server,
         3,
-        "textDocument/prepareRename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -52,7 +50,7 @@ pub fn main(amount: i64) -> i64 {
 
 #[test]
 fn lsp_local_rename_updates_all_function_uses() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let text = "\
 pub fn main(amount: i64) -> i64 {
@@ -63,10 +61,9 @@ pub fn main(amount: i64) -> i64 {
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, 1, text);
 
-    let prepare = response_value(handle_request(
+    let prepare = response_value(request::<lsp_types::request::PrepareRenameRequest>(
         &mut server,
         2,
-        "textDocument/prepareRename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -79,10 +76,9 @@ pub fn main(amount: i64) -> i64 {
     assert_eq!(prepare["result"]["range"]["start"]["line"], 2);
     assert_eq!(prepare["result"]["range"]["start"]["character"], 4);
 
-    let rename = response_value(handle_request(
+    let rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         3,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -104,7 +100,7 @@ pub fn main(amount: i64) -> i64 {
 
 #[test]
 fn lsp_rename_returns_versioned_document_changes() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let text = "\
 pub fn main(amount: i64) -> i64 {
@@ -114,10 +110,9 @@ pub fn main(amount: i64) -> i64 {
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, 2, text);
 
-    let rename = response_value(handle_request(
+    let rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         2,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -143,7 +138,7 @@ pub fn main(amount: i64) -> i64 {
 
 #[test]
 fn lsp_private_function_rename_updates_imports() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let main_text = "\
 use game::reward::grant
@@ -156,10 +151,9 @@ pub fn main(amount: i64) -> i64 {
     open_document(&mut server, helper_uri, 1, helper_text);
     open_document(&mut server, main_uri, 1, main_text);
 
-    let prepare = response_value(handle_request(
+    let prepare = response_value(request::<lsp_types::request::PrepareRenameRequest>(
         &mut server,
         2,
-        "textDocument/prepareRename",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -172,10 +166,9 @@ pub fn main(amount: i64) -> i64 {
     assert_eq!(prepare["result"]["range"]["start"]["line"], 2);
     assert_eq!(prepare["result"]["range"]["start"]["character"], 11);
 
-    let rename = response_value(handle_request(
+    let rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         3,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -201,7 +194,7 @@ pub fn main(amount: i64) -> i64 {
 
 #[test]
 fn lsp_private_value_declaration_rename_updates_uses() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let text = "\
 const BONUS: i64 = 5
@@ -211,10 +204,9 @@ pub fn main() -> i64 {
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, 1, text);
 
-    let prepare = response_value(handle_request(
+    let prepare = response_value(request::<lsp_types::request::PrepareRenameRequest>(
         &mut server,
         2,
-        "textDocument/prepareRename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -227,10 +219,9 @@ pub fn main() -> i64 {
     assert_eq!(prepare["result"]["range"]["start"]["line"], 2);
     assert_eq!(prepare["result"]["range"]["start"]["character"], 11);
 
-    let rename = response_value(handle_request(
+    let rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         3,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -252,7 +243,7 @@ pub fn main() -> i64 {
 
 #[test]
 fn lsp_private_type_declaration_rename_updates_type_hints() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let text = "\
 struct Reward {
@@ -266,10 +257,9 @@ fn grant(reward: Reward) -> Reward {
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, 1, text);
 
-    let prepare = response_value(handle_request(
+    let prepare = response_value(request::<lsp_types::request::PrepareRenameRequest>(
         &mut server,
         2,
-        "textDocument/prepareRename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -282,10 +272,9 @@ fn grant(reward: Reward) -> Reward {
     assert_eq!(prepare["result"]["range"]["start"]["line"], 4);
     assert_eq!(prepare["result"]["range"]["start"]["character"], 28);
 
-    let rename = response_value(handle_request(
+    let rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         3,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -308,7 +297,7 @@ fn grant(reward: Reward) -> Reward {
 
 #[test]
 fn lsp_private_struct_field_rename_updates_member_uses() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let text = "\
 struct Player {
@@ -323,10 +312,9 @@ fn bump(player: Player) -> i64 {
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, 1, text);
 
-    let prepare = response_value(handle_request(
+    let prepare = response_value(request::<lsp_types::request::PrepareRenameRequest>(
         &mut server,
         2,
-        "textDocument/prepareRename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -339,10 +327,9 @@ fn bump(player: Player) -> i64 {
     assert_eq!(prepare["result"]["range"]["start"]["line"], 6);
     assert_eq!(prepare["result"]["range"]["start"]["character"], 11);
 
-    let rename = response_value(handle_request(
+    let rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         3,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -364,7 +351,7 @@ fn bump(player: Player) -> i64 {
 
 #[test]
 fn lsp_private_method_rename_updates_typed_receiver_calls() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let text = "\
 struct Reward {
@@ -383,10 +370,9 @@ fn main(reward: Reward) -> i64 {
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, 1, text);
 
-    let prepare = response_value(handle_request(
+    let prepare = response_value(request::<lsp_types::request::PrepareRenameRequest>(
         &mut server,
         2,
-        "textDocument/prepareRename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -399,10 +385,9 @@ fn main(reward: Reward) -> i64 {
     assert_eq!(prepare["result"]["range"]["start"]["line"], 10);
     assert_eq!(prepare["result"]["range"]["start"]["character"], 23);
 
-    let rename = response_value(handle_request(
+    let rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         3,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -425,7 +410,7 @@ fn main(reward: Reward) -> i64 {
 
 #[test]
 fn lsp_private_enum_variant_rename_updates_constructors_and_patterns() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let text = "\
 enum QuestState {
@@ -446,10 +431,9 @@ fn main(state: QuestState) -> i64 {
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, 1, text);
 
-    let prepare = response_value(handle_request(
+    let prepare = response_value(request::<lsp_types::request::PrepareRenameRequest>(
         &mut server,
         2,
-        "textDocument/prepareRename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -462,10 +446,9 @@ fn main(state: QuestState) -> i64 {
     assert_eq!(prepare["result"]["range"]["start"]["line"], 6);
     assert_eq!(prepare["result"]["range"]["start"]["character"], 23);
 
-    let rename = response_value(handle_request(
+    let rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         3,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -505,11 +488,10 @@ fn lsp_host_schema_rename_is_not_editable() {
     .expect("vela.toml should be writable");
     fs::write(&schema_path, schema_artifact()).expect("schema should be writable");
 
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, file_uri(&root));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
@@ -518,10 +500,9 @@ fn lsp_host_schema_rename_is_not_editable() {
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     open_document(&mut server, &uri, 1, text);
 
-    let hover = response_value(handle_request(
+    let hover = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -535,10 +516,9 @@ fn lsp_host_schema_rename_is_not_editable() {
         .expect("schema hover should produce markdown");
     assert!(hover_value.contains("Player.level"), "{hover_value}");
 
-    let type_prepare = response_value(handle_request(
+    let type_prepare = response_value(request::<lsp_types::request::PrepareRenameRequest>(
         &mut server,
         3,
-        "textDocument/prepareRename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -549,10 +529,9 @@ fn lsp_host_schema_rename_is_not_editable() {
     ));
     assert_eq!(type_prepare["result"], serde_json::Value::Null);
 
-    let type_rename = response_value(handle_request(
+    let type_rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         4,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -564,10 +543,9 @@ fn lsp_host_schema_rename_is_not_editable() {
     ));
     assert_eq!(type_rename["result"], serde_json::Value::Null);
 
-    let field_prepare = response_value(handle_request(
+    let field_prepare = response_value(request::<lsp_types::request::PrepareRenameRequest>(
         &mut server,
         5,
-        "textDocument/prepareRename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -578,10 +556,9 @@ fn lsp_host_schema_rename_is_not_editable() {
     ));
     assert_eq!(field_prepare["result"], serde_json::Value::Null);
 
-    let field_rename = response_value(handle_request(
+    let field_rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         6,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -664,11 +641,10 @@ pub fn grant() { return 1 }";
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, file_uri(&root));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
@@ -686,10 +662,9 @@ pub fn main(player: Player) -> i64 {
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     open_document(&mut server, &uri, 1, text);
 
-    let field_rename = response_value(handle_request(
+    let field_rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         2,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -712,10 +687,9 @@ pub fn main(player: Player) -> i64 {
     assert_eq!(field_schema_edits.len(), 1);
     assert_text_edit(field_schema_edits, 0, 7, "rank");
 
-    let method_rename = response_value(handle_request(
+    let method_rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         3,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -783,11 +757,10 @@ fn lsp_source_backed_schema_type_rename_updates_type_hints() {
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, file_uri(&root));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
@@ -803,10 +776,9 @@ pub fn spawn(player: Player) -> Player {
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     open_document(&mut server, &uri, 1, text);
 
-    let prepare = response_value(handle_request(
+    let prepare = response_value(request::<lsp_types::request::PrepareRenameRequest>(
         &mut server,
         2,
-        "textDocument/prepareRename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -819,10 +791,9 @@ pub fn spawn(player: Player) -> Player {
     assert_eq!(prepare["result"]["range"]["start"]["line"], 0);
     assert_eq!(prepare["result"]["range"]["start"]["character"], 21);
 
-    let rename = response_value(handle_request(
+    let rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         3,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -850,16 +821,15 @@ pub fn spawn(player: Player) -> Player {
 
 #[test]
 fn lsp_public_export_rename_reports_hot_reload_risk() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let text = "pub fn grant(amount: i64) -> i64 { return amount }";
     let uri = "file:///workspace/scripts/game/reward.vela";
     open_document(&mut server, uri, 1, text);
 
-    let rename = response_value(handle_request(
+    let rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         2,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -889,11 +859,10 @@ fn lsp_public_export_rename_reports_hot_reload_risk() {
     );
 }
 
-fn initialize(server: &mut LspServer, root_uri: impl AsRef<str>) -> serde_json::Value {
-    response_value(handle_request(
+fn initialize(server: &mut TestServer, root_uri: impl AsRef<str>) -> serde_json::Value {
+    response_value(request::<lsp_types::request::Initialize>(
         server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": root_uri.as_ref(),
@@ -902,10 +871,9 @@ fn initialize(server: &mut LspServer, root_uri: impl AsRef<str>) -> serde_json::
     ))
 }
 
-fn open_document(server: &mut LspServer, uri: &str, version: i32, text: &str) {
-    let _ = notification_value(handle_notification(
+fn open_document(server: &mut TestServer, uri: &str, version: i32, text: &str) {
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,

@@ -5,8 +5,7 @@ use std::{
 };
 
 use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, notification_values,
-    response_value,
+    TestServer, notification_value, notification_values, notify, request, response_value,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -35,24 +34,23 @@ fn lsp_semantic_tokens_degrade_schema_type_hints_when_schema_is_missing() {
     )
     .expect("vela.toml should be writable");
 
-    let mut server = LspServer::new();
-    let initialize = response_value(handle_request(
+    let mut server = TestServer::new();
+    let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let notifications = notification_values(handle_notification(
-        &mut server,
-        "workspace/didChangeWatchedFiles",
-        serde_json::json!({
-            "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
-        }),
-    ));
+    let notifications =
+        notification_values(notify::<lsp_types::notification::DidChangeWatchedFiles>(
+            &mut server,
+            serde_json::json!({
+                "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+            }),
+        ));
     assert!(
         notifications.iter().any(|notification| {
             notification["method"] == "textDocument/publishDiagnostics"
@@ -91,9 +89,8 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
     return level
 }";
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -104,10 +101,9 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::SemanticTokensFullRequest>(
         &mut server,
         2,
-        "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),

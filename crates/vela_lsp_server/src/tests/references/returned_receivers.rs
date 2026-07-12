@@ -1,8 +1,6 @@
 use std::fs;
 
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 use super::{assert_reference, file_uri, line, temp_workspace};
 
@@ -73,29 +71,26 @@ fn lsp_references_find_schema_method_calls_on_schema_function_return_receivers()
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
     );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": schema_uri,
@@ -112,9 +107,8 @@ pub fn main() -> i64 {
     return current_player().grant(first)
 }";
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -125,10 +119,9 @@ pub fn main() -> i64 {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -234,29 +227,26 @@ fn lsp_references_find_schema_trait_method_calls_on_schema_function_return_recei
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
     );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": schema_uri,
@@ -273,9 +263,8 @@ pub fn main() -> i64 {
     return current_reward().preview(first)
 }";
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -286,10 +275,9 @@ pub fn main() -> i64 {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -395,29 +383,26 @@ fn lsp_document_highlight_marks_schema_method_calls_on_schema_function_return_re
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
     );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": schema_uri,
@@ -434,9 +419,8 @@ pub fn main() -> i64 {
     return current_player().grant(first)
 }";
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -447,10 +431,9 @@ pub fn main() -> i64 {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::DocumentHighlightRequest>(
         &mut server,
         2,
-        "textDocument/documentHighlight",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -547,29 +530,26 @@ fn lsp_document_highlight_marks_schema_trait_method_calls_on_schema_function_ret
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
     );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": schema_uri,
@@ -586,9 +566,8 @@ pub fn main() -> i64 {
     return current_reward().preview(first)
 }";
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -599,10 +578,9 @@ pub fn main() -> i64 {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::DocumentHighlightRequest>(
         &mut server,
         2,
-        "textDocument/documentHighlight",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -634,11 +612,10 @@ pub fn main() -> i64 {
 
 #[test]
 fn lsp_references_find_source_method_calls_on_source_function_return_receivers() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -662,9 +639,8 @@ pub fn main() -> i64 {
     return current_player().grant(first)
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -675,10 +651,9 @@ pub fn main() -> i64 {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -715,11 +690,10 @@ pub fn main() -> i64 {
 
 #[test]
 fn lsp_references_find_source_trait_default_method_calls_on_source_function_return_receivers() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -745,9 +719,8 @@ pub fn main() -> i64 {
     return current_player().grant(first)
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -758,10 +731,9 @@ pub fn main() -> i64 {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -804,11 +776,10 @@ pub fn main() -> i64 {
 
 #[test]
 fn lsp_document_highlight_marks_source_method_calls_on_source_function_return_receivers() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -832,9 +803,8 @@ pub fn main() -> i64 {
     return current_player().grant(first)
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -845,10 +815,9 @@ pub fn main() -> i64 {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::DocumentHighlightRequest>(
         &mut server,
         2,
-        "textDocument/documentHighlight",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -885,11 +854,10 @@ pub fn main() -> i64 {
 #[test]
 fn lsp_document_highlight_marks_source_trait_default_method_calls_on_source_function_return_receivers()
  {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -915,9 +883,8 @@ pub fn main() -> i64 {
     return current_player().grant(first)
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -928,10 +895,9 @@ pub fn main() -> i64 {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::DocumentHighlightRequest>(
         &mut server,
         2,
-        "textDocument/documentHighlight",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {

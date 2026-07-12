@@ -1,27 +1,42 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
+
+mod diagnostics;
+mod documents;
+mod project_state;
+mod request_queue;
+mod responses;
 
 use crossbeam_channel::Sender;
-use lsp_server::{Message, RequestId, Response, ResponseError};
+use lsp_server::{Message, RequestId};
 use lsp_types::{
     CallHierarchyIncomingCallsParams, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
     CodeActionParams, CompletionParams, DidChangeConfigurationParams, DidChangeTextDocumentParams,
     DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentFormattingParams,
-    DocumentHighlightParams, DocumentOnTypeFormattingParams, DocumentRangeFormattingParams,
-    DocumentSymbolParams, FoldingRangeParams, HoverParams, InlayHintParams, ReferenceParams,
-    RenameParams, SelectionRangeParams, SemanticTokensDeltaParams, SemanticTokensParams,
+    DidOpenTextDocumentParams, DocumentFormattingParams, DocumentHighlightParams,
+    DocumentOnTypeFormattingParams, DocumentRangeFormattingParams, DocumentSymbolParams,
+    FoldingRangeParams, HoverParams, InlayHintParams, ReferenceParams, RenameParams,
+    SelectionRangeParams, SemanticTokensDeltaParams, SemanticTokensParams,
     SemanticTokensRangeParams, SignatureHelpParams, TextDocumentPositionParams,
     WorkspaceSymbolParams,
 };
 use vela_language_service::{
-    CancellationHandle, DocumentId, GenerationToken, LanguageServiceDatabases,
-    LineIndex as ServiceLineIndex, WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot,
-    WorkspaceSnapshot,
+    DocumentId, GenerationToken, LanguageServiceDatabases, LineIndex as ServiceLineIndex,
+    WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot, WorkspaceSnapshot,
 };
 
+use self::{
+    diagnostics::{publish_diagnostics_notification, with_work_done_progress},
+    documents::{apply_document_changes, source_version},
+    project_state::ProjectState,
+    request_queue::RequestQueue,
+    responses::{
+        error as response_error_messages, ok as response_ok_messages,
+        ok_typed as response_ok_typed_messages,
+    },
+};
 use crate::lsp::{from_proto, to_proto};
 use crate::{
-    ErrorCode, LaunchConfiguration, LspServer, apply_lsp_document_changes,
+    ErrorCode, LaunchConfiguration,
     capabilities::initialize_result,
     completion::service_completion_resolve_payload,
     config::EditorConfiguration,
@@ -31,14 +46,12 @@ use crate::{
         lsp_semantic_token_projection, lsp_supports_watched_file_registration,
         lsp_supports_work_done_progress, workspace_roots_from_lsp_initialize,
     },
-    publish_diagnostics_notification,
     reload::{ReloadOperation, ReloadScheduler, ReloadWork},
     rpc::request_id_from_number_or_string,
     semantic_tokens::SemanticTokenProjection,
-    source_version,
-    task::{TaskOutcome, TaskResult, TaskScheduler},
+    task::{TaskOutcome, TaskResult, TaskScheduler, TaskSendSummary},
     transport::ResultSummary,
-    watching, with_work_done_progress_messages,
+    watching,
 };
 
 pub(crate) struct GlobalState {
@@ -47,13 +60,7 @@ pub(crate) struct GlobalState {
     request_queue: RequestQueue,
     reload_scheduler: ReloadScheduler,
     task_scheduler: TaskScheduler,
-    server: LspServer,
-    workspace_snapshot: WorkspaceSnapshot,
-    databases: LanguageServiceDatabases,
-    workspace_roots: BTreeSet<String>,
-    open_documents: BTreeSet<DocumentId>,
-    editor_config: Option<EditorConfiguration>,
-    workspace_config: Option<WorkspaceConfig>,
+    project: ProjectState,
     client_supports_work_done_progress: bool,
     client_supports_watched_file_registration: bool,
     semantic_token_projection: SemanticTokenProjection,
@@ -62,25 +69,6 @@ pub(crate) struct GlobalState {
     initialized: bool,
     shutdown_requested: bool,
     exited: bool,
-}
-
-pub(crate) struct TaskSendSummary {
-    summary: ResultSummary,
-    outcome: TaskOutcome,
-}
-
-impl TaskSendSummary {
-    pub(crate) const fn new(summary: ResultSummary, outcome: TaskOutcome) -> Self {
-        Self { summary, outcome }
-    }
-
-    pub(crate) const fn summary(&self) -> &ResultSummary {
-        &self.summary
-    }
-
-    pub(crate) const fn outcome(&self) -> TaskOutcome {
-        self.outcome
-    }
 }
 
 #[allow(dead_code)]
@@ -825,26 +813,14 @@ fn snapshot_document_text(snapshot: &GlobalStateSnapshot, document_id: &Document
 impl GlobalState {
     pub(crate) fn new(sender: Sender<Message>, launch_configuration: LaunchConfiguration) -> Self {
         let watch_files_enabled = launch_configuration.watch_files_enabled();
-        let server = LspServer::with_launch_configuration(launch_configuration.clone());
-        let workspace_snapshot = server.workspace.snapshot();
-        let databases = server.databases.clone();
-        let workspace_roots = server.workspace_roots.clone();
-        let open_documents = server.open_documents.clone();
-        let editor_config = server.editor_config.clone();
-        let workspace_config = server.config.clone();
+        let project = ProjectState::new(launch_configuration.clone());
         Self {
             sender,
             launch_configuration,
             request_queue: RequestQueue::default(),
             reload_scheduler: ReloadScheduler::default(),
             task_scheduler: TaskScheduler::default(),
-            server,
-            workspace_snapshot,
-            databases,
-            workspace_roots,
-            open_documents,
-            editor_config,
-            workspace_config,
+            project,
             client_supports_work_done_progress: false,
             client_supports_watched_file_registration: false,
             semantic_token_projection: SemanticTokenProjection::default(),
@@ -864,19 +840,19 @@ impl GlobalState {
     pub(crate) fn snapshot(&self) -> GlobalStateSnapshot {
         GlobalStateSnapshot {
             launch_configuration: self.launch_configuration.clone(),
-            workspace: self.workspace_snapshot.clone(),
-            databases: self.databases.clone(),
-            workspace_roots: self.workspace_roots.clone(),
-            open_documents: self.open_documents.clone(),
-            editor_config: self.editor_config.clone(),
-            workspace_config: self.workspace_config.clone(),
+            workspace: self.project.workspace_snapshot(),
+            databases: self.project.databases.clone(),
+            workspace_roots: self.project.workspace_roots.clone(),
+            open_documents: self.project.open_documents.clone(),
+            editor_config: self.project.editor_config.clone(),
+            workspace_config: self.project.config.clone(),
             client_supports_work_done_progress: self.client_supports_work_done_progress,
             client_supports_watched_file_registration: self
                 .client_supports_watched_file_registration,
             semantic_token_projection: self.semantic_token_projection.clone(),
             watched_files_registered: self.watched_files_registered,
             watch_files_enabled: self.watch_files_enabled,
-            generation: self.databases.generation(),
+            generation: self.project.databases.generation(),
             initialized: self.initialized,
             shutdown_requested: self.shutdown_requested,
         }
@@ -912,9 +888,9 @@ impl GlobalState {
         let is_cancelled = result
             .generation_token()
             .is_some_and(GenerationToken::is_cancelled);
-        let is_stale = result
-            .generation_token()
-            .is_some_and(|generation| generation.generation() != self.databases.generation());
+        let is_stale = result.generation_token().is_some_and(|generation| {
+            generation.generation() != self.project.databases.generation()
+        });
         let request_id = result.request_id().cloned();
         if let Some(request_id) = request_id.as_ref() {
             self.request_queue.finish_in_flight(request_id);
@@ -949,7 +925,10 @@ impl GlobalState {
     }
 
     pub(crate) fn register_in_flight_cancellation(&mut self, id: RequestId) -> GenerationToken {
-        let (token, handle) = self.databases.begin_cancellable_background_request();
+        let (token, handle) = self
+            .project
+            .databases
+            .begin_cancellable_background_request();
         self.request_queue.start_in_flight(id, handle);
         token
     }
@@ -972,11 +951,7 @@ impl GlobalState {
 
     pub(crate) fn apply_config_change(&mut self, change: ConfigChange) {
         let watch_files_enabled = change.watch_files_enabled();
-        self.server.apply_config_change(change);
-        self.sync_workspace_analysis_from_legacy_server();
-        self.workspace_roots = self.server.workspace_roots.clone();
-        self.editor_config = self.server.editor_config.clone();
-        self.workspace_config = self.server.config.clone();
+        self.project.apply_config_change(change);
         if let Some(enabled) = watch_files_enabled {
             self.watch_files_enabled = enabled;
         }
@@ -1012,22 +987,20 @@ impl GlobalState {
         };
 
         self.initialized = true;
-        self.server.initialized = true;
         self.apply_config_change(ConfigChange::from_initialize(
             workspace_roots_from_lsp_initialize(&params),
             editor_config,
         ));
+        self.project.refresh_databases();
         self.client_supports_work_done_progress = lsp_supports_work_done_progress(&params);
         self.client_supports_watched_file_registration =
             lsp_supports_watched_file_registration(&params);
         self.semantic_token_projection = lsp_semantic_token_projection(&params);
-        self.sync_client_capabilities_to_legacy_server();
         response_ok_messages(id, initialize_result(&self.semantic_token_projection))
     }
 
     pub(crate) fn shutdown(&mut self, id: lsp_server::RequestId, _params: ()) -> Vec<Message> {
         self.shutdown_requested = true;
-        self.server.shutdown_requested = true;
         response_ok_messages(id, serde_json::Value::Null)
     }
 
@@ -1037,7 +1010,6 @@ impl GlobalState {
 
     pub(crate) fn exit(&mut self, _params: ()) -> Vec<Message> {
         self.exited = true;
-        self.server.exited = true;
         Vec::new()
     }
 
@@ -1063,16 +1035,15 @@ impl GlobalState {
         };
 
         self.apply_config_change(ConfigChange::from_editor_settings(editor_config));
-        let messages = self.server.publish_open_diagnostics_messages();
-        self.sync_workspace_analysis_from_legacy_server();
-        messages
+        self.project.refresh_databases();
+        self.project.publish_open_diagnostics()
     }
 
     pub(crate) fn did_change_workspace_folders(
         &mut self,
         params: DidChangeWorkspaceFoldersParams,
     ) -> Vec<Message> {
-        let mut workspace_roots = self.workspace_roots.clone();
+        let mut workspace_roots = self.project.workspace_roots.clone();
         for folder in params.event.removed {
             let root = WorkspaceRoot::from(folder.uri.to_string());
             workspace_roots.remove(root.path());
@@ -1086,7 +1057,7 @@ impl GlobalState {
         for work in self.reload_scheduler.drain() {
             self.apply_reload_work(work);
         }
-        self.sync_workspace_analysis_from_legacy_server();
+        self.project.refresh_databases();
         self.publish_workspace_diagnostics()
     }
 
@@ -1094,38 +1065,33 @@ impl GlobalState {
         &mut self,
         params: DidChangeWatchedFilesParams,
     ) -> Vec<Message> {
-        let schema_path = self.schema_path().map(str::to_owned);
+        let schema_path = self.project.schema_path().map(str::to_owned);
         self.reload_scheduler.schedule_watched_files(
             params.changes,
             schema_path.as_deref(),
-            &self.open_documents,
+            &self.project.open_documents,
         );
         for work in self.reload_scheduler.drain() {
             self.apply_reload_work(work);
         }
+        self.project.refresh_databases();
         self.publish_workspace_diagnostics()
-    }
-
-    pub(crate) fn did_save(&mut self, _params: DidSaveTextDocumentParams) -> Vec<Message> {
-        Vec::new()
     }
 
     pub(crate) fn did_open(&mut self, params: DidOpenTextDocumentParams) -> Vec<Message> {
         let uri = params.text_document.uri.to_string();
         let document_id = DocumentId::from(uri.clone());
         let version = source_version(params.text_document.version);
-        self.server.workspace.open_document(
+        self.project.workspace.open_document(
             document_id.clone(),
             params.text_document.text,
             version,
         );
-        self.server.open_documents.insert(document_id.clone());
-        self.open_documents.insert(document_id.clone());
-
+        self.project.open_documents.insert(document_id.clone());
+        self.project.refresh_document_databases(&document_id);
         let message = self
-            .server
-            .publish_current_diagnostics_message(&uri, &document_id);
-        self.sync_workspace_analysis_from_legacy_server();
+            .project
+            .publish_document_diagnostics(&uri, &document_id);
         vec![message]
     }
 
@@ -1142,12 +1108,12 @@ impl GlobalState {
         let document_id = DocumentId::from(uri.clone());
         let version = source_version(params.text_document.version);
         let current_text = self
-            .server
+            .project
             .workspace
             .document_text(&document_id)
             .map(std::borrow::ToOwned::to_owned);
         let changes = params.content_changes;
-        let text = match apply_lsp_document_changes(current_text.as_deref(), changes) {
+        let text = match apply_document_changes(current_text.as_deref(), changes) {
             Ok(text) => text,
             Err(error) => {
                 return vec![publish_diagnostics_notification(
@@ -1158,66 +1124,32 @@ impl GlobalState {
             }
         };
 
-        self.server
+        self.project
             .workspace
             .change_document(document_id.clone(), text, version);
-        self.server.open_documents.insert(document_id.clone());
-        self.open_documents.insert(document_id.clone());
-
+        self.project.open_documents.insert(document_id.clone());
+        self.project.refresh_document_databases(&document_id);
         let message = self
-            .server
-            .publish_current_diagnostics_message(&uri, &document_id);
-        self.sync_workspace_analysis_from_legacy_server();
+            .project
+            .publish_document_diagnostics(&uri, &document_id);
         vec![message]
     }
 
     pub(crate) fn did_close(&mut self, params: DidCloseTextDocumentParams) -> Vec<Message> {
         let uri = params.text_document.uri.to_string();
         let document_id = DocumentId::from(uri.clone());
-        self.server.workspace.close_document(&document_id);
-        self.server.open_documents.remove(&document_id);
-        self.open_documents.remove(&document_id);
+        self.project.workspace.close_document(&document_id);
+        self.project.open_documents.remove(&document_id);
+        self.project.refresh_databases();
 
-        let messages = if self.server.disk_sources.contains_key(&document_id) {
+        if self.project.disk_sources.contains_key(&document_id) {
             vec![
-                self.server
-                    .publish_current_diagnostics_message(&uri, &document_id),
+                self.project
+                    .publish_document_diagnostics(&uri, &document_id),
             ]
         } else {
             vec![publish_diagnostics_notification(&uri, Vec::new(), None)]
-        };
-        self.sync_workspace_analysis_from_legacy_server();
-        messages
-    }
-
-    #[cfg(test)]
-    fn sync_from_legacy_server(&mut self) {
-        self.initialized |= self.server.initialized;
-        self.shutdown_requested |= self.server.shutdown_requested;
-        self.exited |= self.server.exited;
-        self.client_supports_work_done_progress |= self.server.client_supports_work_done_progress;
-        self.client_supports_watched_file_registration |=
-            self.server.client_supports_watched_file_registration;
-        self.semantic_token_projection = self.server.semantic_token_projection.clone();
-        self.watched_files_registered |= self.server.watched_files_registered;
-        self.watch_files_enabled = !self.server.file_watching_disabled;
-        self.sync_workspace_analysis_from_legacy_server();
-        self.workspace_roots = self.server.workspace_roots.clone();
-        self.open_documents = self.server.open_documents.clone();
-        self.editor_config = self.server.editor_config.clone();
-        self.workspace_config = self.server.config.clone();
-    }
-
-    fn sync_client_capabilities_to_legacy_server(&mut self) {
-        self.server.client_supports_work_done_progress = self.client_supports_work_done_progress;
-        self.server.client_supports_watched_file_registration =
-            self.client_supports_watched_file_registration;
-        self.server.semantic_token_projection = self.semantic_token_projection.clone();
-    }
-
-    fn sync_workspace_analysis_from_legacy_server(&mut self) {
-        self.workspace_snapshot = self.server.workspace.snapshot();
-        self.databases = self.server.databases.clone();
+        }
     }
 
     fn register_watched_files_after_initialized(&mut self) -> Vec<Message> {
@@ -1225,29 +1157,21 @@ impl GlobalState {
             && self.watch_files_enabled
             && !self.watched_files_registered
             && let Some(registration) = watching::registration_request(
-                self.workspace_config.as_ref(),
-                &self.workspace_roots,
+                self.project.config.as_ref(),
+                &self.project.workspace_roots,
             )
         {
             self.watched_files_registered = true;
-            self.server.watched_files_registered = true;
             return vec![registration];
         }
         Vec::new()
     }
 
-    fn schema_path(&self) -> Option<&str> {
-        self.workspace_config
-            .as_ref()
-            .and_then(|config| config.schema().path())
-    }
-
     fn publish_workspace_diagnostics(&mut self) -> Vec<Message> {
-        let has_open_documents = !self.open_documents.is_empty();
-        let messages = self.server.publish_open_diagnostics_messages();
-        self.sync_workspace_analysis_from_legacy_server();
+        let has_open_documents = !self.project.open_documents.is_empty();
+        let messages = self.project.publish_open_diagnostics();
         if has_open_documents && self.client_supports_work_done_progress {
-            with_work_done_progress_messages(messages, "Vela workspace diagnostics")
+            with_work_done_progress(messages, "Vela workspace diagnostics")
         } else {
             messages
         }
@@ -1257,8 +1181,8 @@ impl GlobalState {
         match work {
             ReloadWork::WatchedFile { uri, operation, .. } => {
                 let config_change = match operation {
-                    ReloadOperation::Upsert => self.server.upsert_watched_file(&uri),
-                    ReloadOperation::Remove => self.server.remove_watched_file(&uri),
+                    ReloadOperation::Upsert => self.project.upsert_watched_file(&uri),
+                    ReloadOperation::Remove => self.project.remove_watched_file(&uri),
                 };
                 if let Some(config_change) = config_change {
                     self.apply_config_change(config_change);
@@ -1271,2543 +1195,5 @@ impl GlobalState {
     }
 }
 
-fn response_ok_messages(id: lsp_server::RequestId, result: serde_json::Value) -> Vec<Message> {
-    vec![Message::Response(Response {
-        id,
-        result: Some(result),
-        error: None,
-    })]
-}
-
-fn response_ok_typed_messages<T>(
-    id: lsp_server::RequestId,
-    result: T,
-    context: &'static str,
-) -> Vec<Message>
-where
-    T: serde::Serialize,
-{
-    let result = serde_json::to_value(result)
-        .unwrap_or_else(|error| panic!("{context} should serialize: {error}"));
-    response_ok_messages(id, result)
-}
-
-fn response_error_messages(
-    id: lsp_server::RequestId,
-    code: ErrorCode,
-    message: impl Into<String>,
-) -> Vec<Message> {
-    vec![Message::Response(Response {
-        id,
-        result: None,
-        error: Some(ResponseError {
-            code: code.value(),
-            message: message.into(),
-            data: None,
-        }),
-    })]
-}
-
-#[derive(Debug, Default)]
-struct RequestQueue {
-    incoming: BTreeSet<RequestId>,
-    cancelled: BTreeSet<RequestId>,
-    in_flight: BTreeMap<RequestId, CancellationHandle>,
-}
-
-impl RequestQueue {
-    fn request_id(message: &Message) -> Option<RequestId> {
-        match message {
-            Message::Request(request) => Some(request.id.clone()),
-            Message::Response(_) | Message::Notification(_) => None,
-        }
-    }
-
-    fn start(&mut self, id: RequestId) {
-        self.incoming.insert(id);
-    }
-
-    fn finish(&mut self, id: &RequestId) {
-        self.incoming.remove(id);
-    }
-
-    fn start_in_flight(&mut self, id: RequestId, handle: CancellationHandle) {
-        self.in_flight.insert(id, handle);
-    }
-
-    fn finish_in_flight(&mut self, id: &RequestId) -> Option<CancellationHandle> {
-        self.in_flight.remove(id)
-    }
-
-    fn cancel(&mut self, id: RequestId) {
-        if let Some(handle) = self.in_flight.get(&id) {
-            handle.cancel();
-        } else if self.incoming.contains(&id) {
-            self.cancelled.insert(id);
-        }
-    }
-
-    fn take_cancelled(&mut self, id: &RequestId) -> bool {
-        self.cancelled.remove(id)
-    }
-}
-
 #[cfg(test)]
-mod tests {
-    use std::time::Duration;
-
-    use crossbeam_channel::{Receiver, TryRecvError, unbounded};
-    use vela_language_service::{
-        DocumentId, SchemaConfig, SourceVersion, WorkspaceConfig, WorkspaceRoot,
-    };
-
-    use crate::task::{TaskLane, TaskOutcome};
-
-    use super::*;
-
-    #[test]
-    fn snapshot_captures_read_only_global_state() {
-        let (sender, _receiver) = unbounded();
-        let mut launch_configuration = LaunchConfiguration::new();
-        launch_configuration.add_workspace_root("/workspace/scripts");
-        let mut state = GlobalState::new(sender, launch_configuration);
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-
-        state
-            .server
-            .workspace_roots
-            .insert("/workspace/scripts".to_owned());
-        state
-            .workspace_roots
-            .insert("/workspace/scripts".to_owned());
-        state.server.open_documents.insert(document.clone());
-        state.open_documents.insert(document.clone());
-        state.server.workspace.open_document(
-            document.clone(),
-            "fn main() { 1 }",
-            SourceVersion::new(3),
-        );
-        state.sync_from_legacy_server();
-        state.client_supports_work_done_progress = true;
-        state.client_supports_watched_file_registration = true;
-        state.editor_config = Some(
-            EditorConfiguration::from_settings(serde_json::json!({
-                "workspace": {
-                    "roots": ["/workspace/scripts"]
-                }
-            }))
-            .expect("editor config should deserialize"),
-        );
-        state.workspace_config = Some(workspace_config_with_schema(
-            "/workspace/scripts",
-            "/workspace/target/vela/schema.json",
-        ));
-        state.semantic_token_projection = SemanticTokenProjection::for_client(
-            Some(&["type".to_owned(), "function".to_owned()]),
-            Some(&["declaration".to_owned()]),
-        );
-        state.watched_files_registered = true;
-        state.watch_files_enabled = false;
-        state.initialized = true;
-        state.server.initialized = true;
-
-        let snapshot = state.snapshot();
-        state.server.workspace.change_document(
-            document.clone(),
-            "fn main() { 2 }",
-            SourceVersion::new(4),
-        );
-        state.server.open_documents.clear();
-        state.open_documents.clear();
-        state.editor_config = None;
-        state.workspace_config = None;
-        state.client_supports_work_done_progress = false;
-        state.client_supports_watched_file_registration = false;
-        state.semantic_token_projection = SemanticTokenProjection::default();
-        state.watched_files_registered = false;
-        state.watch_files_enabled = true;
-        state.server.shutdown_requested = true;
-
-        assert_eq!(
-            snapshot.launch_configuration().workspace_roots(),
-            ["/workspace/scripts"]
-        );
-        assert_eq!(
-            snapshot.workspace().document_text(&document),
-            Some("fn main() { 1 }")
-        );
-        assert_eq!(snapshot.generation(), snapshot.databases().generation());
-        assert!(snapshot.workspace_roots().contains("/workspace/scripts"));
-        assert!(snapshot.open_documents().contains(&document));
-        assert!(snapshot.editor_config().is_some());
-        assert_eq!(
-            snapshot
-                .workspace_config()
-                .and_then(|config| config.schema().path()),
-            Some("/workspace/target/vela/schema.json")
-        );
-        assert!(snapshot.client_supports_work_done_progress());
-        assert!(snapshot.client_supports_watched_file_registration());
-        assert_ne!(
-            snapshot.semantic_token_projection(),
-            &SemanticTokenProjection::default()
-        );
-        assert!(snapshot.watched_files_registered());
-        assert!(!snapshot.watch_files_enabled());
-        assert!(snapshot.is_initialized());
-        assert!(!snapshot.is_shutdown_requested());
-    }
-
-    #[test]
-    fn snapshot_uses_global_workspace_and_database_mirrors() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        state.server.workspace.open_document(
-            document.clone(),
-            "fn main() { 1 }",
-            SourceVersion::new(1),
-        );
-        state
-            .server
-            .databases
-            .mark_schema_missing("/schema/one.json");
-        state.sync_from_legacy_server();
-
-        state.server.workspace.change_document(
-            document.clone(),
-            "fn main() { 2 }",
-            SourceVersion::new(2),
-        );
-        state.server.databases.clear_schema();
-
-        let snapshot = state.snapshot();
-
-        assert_eq!(
-            snapshot.workspace().document_text(&document),
-            Some("fn main() { 1 }")
-        );
-        assert!(!snapshot.databases().schema_db().diagnostics().is_empty());
-    }
-
-    #[test]
-    fn client_capabilities_are_owned_by_global_state() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        let params = lsp_types::InitializeParams {
-            process_id: None,
-            capabilities: serde_json::from_value(serde_json::json!({
-                "window": {
-                    "workDoneProgress": true
-                },
-                "workspace": {
-                    "didChangeWatchedFiles": {
-                        "dynamicRegistration": true
-                    }
-                },
-                "textDocument": {
-                    "semanticTokens": {
-                        "dynamicRegistration": false,
-                        "requests": {
-                            "range": true,
-                            "full": {
-                                "delta": true
-                            }
-                        },
-                        "tokenTypes": ["type", "function"],
-                        "tokenModifiers": ["declaration"],
-                        "formats": ["relative"]
-                    }
-                }
-            }))
-            .expect("client capabilities should deserialize"),
-            ..lsp_types::InitializeParams::default()
-        };
-        let expected_projection = lsp_semantic_token_projection(&params);
-
-        let initialize = state.initialize(lsp_server::RequestId::from(1), params);
-
-        assert_has_messages(&initialize);
-        assert!(state.client_supports_work_done_progress);
-        assert!(state.client_supports_watched_file_registration);
-        assert_eq!(state.semantic_token_projection, expected_projection);
-        assert_eq!(
-            state.server.client_supports_work_done_progress,
-            state.client_supports_work_done_progress
-        );
-        assert_eq!(
-            state.server.client_supports_watched_file_registration,
-            state.client_supports_watched_file_registration
-        );
-        assert_eq!(
-            state.server.semantic_token_projection,
-            state.semantic_token_projection
-        );
-    }
-
-    #[test]
-    fn typed_initialized_uses_global_watcher_capability() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state
-            .server
-            .workspace_roots
-            .insert("/workspace/scripts".to_owned());
-        state
-            .workspace_roots
-            .insert("/workspace/scripts".to_owned());
-        state.client_supports_watched_file_registration = true;
-        state.server.client_supports_watched_file_registration = false;
-
-        let first = state.initialized(lsp_types::InitializedParams {});
-        let second = state.initialized(lsp_types::InitializedParams {});
-
-        let registration = single_message_value(first);
-        assert_eq!(
-            registration["method"],
-            serde_json::json!("client/registerCapability")
-        );
-        assert!(state.watched_files_registered);
-        assert!(state.server.watched_files_registered);
-        assert_no_messages(second);
-    }
-
-    #[test]
-    fn typed_initialized_uses_global_watch_setting() {
-        let (sender, _receiver) = unbounded();
-        let mut launch_configuration = LaunchConfiguration::new();
-        launch_configuration.set_watch_files_enabled(false);
-        let mut state = GlobalState::new(sender, launch_configuration);
-        state
-            .server
-            .workspace_roots
-            .insert("/workspace/scripts".to_owned());
-        state
-            .workspace_roots
-            .insert("/workspace/scripts".to_owned());
-        state.client_supports_watched_file_registration = true;
-        state.server.file_watching_disabled = false;
-
-        let result = state.initialized(lsp_types::InitializedParams {});
-
-        assert_no_messages(result);
-        assert!(!state.watch_files_enabled);
-        assert!(!state.watched_files_registered);
-        assert!(!state.server.watched_files_registered);
-    }
-
-    #[test]
-    fn typed_initialized_uses_global_workspace_config() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.workspace_config = Some(workspace_config_with_schema(
-            "/workspace/scripts",
-            "/workspace/target/vela/schema.json",
-        ));
-        state.server.config = None;
-        state.client_supports_watched_file_registration = true;
-
-        let result = state.initialized(lsp_types::InitializedParams {});
-
-        let registration = single_message_value(result);
-        let watchers = registration["params"]["registrations"][0]["registerOptions"]["watchers"]
-            .as_array()
-            .expect("watchers should be an array");
-        assert!(watchers.iter().any(|watcher| {
-            watcher["globPattern"] == serde_json::json!("/workspace/target/vela/schema.json")
-        }));
-        assert!(state.watched_files_registered);
-    }
-
-    #[test]
-    fn typed_workspace_folder_changes_use_global_roots() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state
-            .workspace_roots
-            .insert("/workspace/scripts".to_owned());
-        state
-            .server
-            .workspace_roots
-            .insert("/legacy/only".to_owned());
-
-        let result =
-            state.did_change_workspace_folders(lsp_types::DidChangeWorkspaceFoldersParams {
-                event: lsp_types::WorkspaceFoldersChangeEvent {
-                    added: vec![lsp_types::WorkspaceFolder {
-                        uri: lsp_types::Url::parse("file:///workspace/tools")
-                            .expect("workspace folder URI should parse"),
-                        name: "tools".to_owned(),
-                    }],
-                    removed: vec![lsp_types::WorkspaceFolder {
-                        uri: lsp_types::Url::parse("file:///workspace/scripts")
-                            .expect("workspace folder URI should parse"),
-                        name: "scripts".to_owned(),
-                    }],
-                },
-            });
-
-        assert_no_messages(result);
-        assert!(!state.workspace_roots.contains("/workspace/scripts"));
-        assert!(state.workspace_roots.contains("/workspace/tools"));
-        assert!(!state.server.workspace_roots.contains("/legacy/only"));
-        assert_eq!(state.server.workspace_roots, state.workspace_roots);
-    }
-
-    #[test]
-    fn typed_configuration_updates_global_editor_config() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-
-        let result = state.did_change_configuration(lsp_types::DidChangeConfigurationParams {
-            settings: serde_json::json!({
-                "vela": {
-                    "workspace": {
-                        "roots": ["/workspace/scripts"]
-                    }
-                }
-            }),
-        });
-
-        assert_no_messages(result);
-        assert!(state.editor_config.is_some());
-        assert!(state.workspace_config.is_some());
-        assert_eq!(
-            state.editor_config.is_some(),
-            state.server.editor_config.is_some()
-        );
-        assert_eq!(
-            state.workspace_config.as_ref().map(WorkspaceConfig::roots),
-            state.server.config.as_ref().map(WorkspaceConfig::roots)
-        );
-    }
-
-    #[test]
-    fn schema_path_is_owned_by_global_workspace_config() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.workspace_config = Some(workspace_config_with_schema(
-            "/workspace/scripts",
-            "/workspace/target/vela/schema.json",
-        ));
-        state.server.config = Some(workspace_config_with_schema(
-            "/legacy/scripts",
-            "/legacy/target/vela/schema.json",
-        ));
-
-        assert_eq!(
-            state.schema_path(),
-            Some("/workspace/target/vela/schema.json")
-        );
-    }
-
-    #[test]
-    fn typed_did_save_is_no_response_no_op() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        state.open_documents.insert(document.clone());
-        state.server.open_documents.clear();
-
-        let result = state.did_save(lsp_types::DidSaveTextDocumentParams {
-            text_document: lsp_types::TextDocumentIdentifier {
-                uri: lsp_types::Url::parse(document.as_str())
-                    .expect("document URI should parse as URL"),
-            },
-            text: Some("fn main() {}".to_owned()),
-        });
-
-        assert_no_messages(result);
-        assert!(state.open_documents.contains(&document));
-        assert!(state.server.open_documents.is_empty());
-    }
-
-    #[test]
-    fn typed_did_open_updates_global_workspace_and_diagnostics() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-
-        let result = state.did_open(lsp_types::DidOpenTextDocumentParams {
-            text_document: lsp_types::TextDocumentItem {
-                uri: lsp_types::Url::parse(document.as_str())
-                    .expect("document URI should parse as URL"),
-                language_id: "vela".to_owned(),
-                version: 3,
-                text: "fn main() {}".to_owned(),
-            },
-        });
-
-        assert_has_messages(&result);
-        assert!(state.open_documents.contains(&document));
-        assert_eq!(state.open_documents, state.server.open_documents);
-        assert_eq!(
-            state.snapshot().workspace().document_text(&document),
-            Some("fn main() {}")
-        );
-        assert_eq!(
-            state.snapshot().generation(),
-            state.snapshot().databases().generation()
-        );
-    }
-
-    #[test]
-    fn typed_did_change_applies_incremental_edit_and_syncs_snapshot() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        state
-            .server
-            .workspace
-            .open_document(document.clone(), "one\ntwo", SourceVersion::new(1));
-        state.server.open_documents.insert(document.clone());
-        state.sync_from_legacy_server();
-
-        let result = state.did_change(lsp_types::DidChangeTextDocumentParams {
-            text_document: lsp_types::VersionedTextDocumentIdentifier {
-                uri: lsp_types::Url::parse(document.as_str())
-                    .expect("document URI should parse as URL"),
-                version: 2,
-            },
-            content_changes: vec![lsp_types::TextDocumentContentChangeEvent {
-                range: Some(lsp_types::Range {
-                    start: lsp_types::Position {
-                        line: 1,
-                        character: 0,
-                    },
-                    end: lsp_types::Position {
-                        line: 1,
-                        character: 3,
-                    },
-                }),
-                range_length: None,
-                text: "three".to_owned(),
-            }],
-        });
-
-        assert_has_messages(&result);
-        assert_eq!(
-            state.snapshot().workspace().document_text(&document),
-            Some("one\nthree")
-        );
-        assert!(state.open_documents.contains(&document));
-        assert_eq!(state.open_documents, state.server.open_documents);
-    }
-
-    #[test]
-    fn typed_did_close_removes_open_overlay_and_clears_scratch_diagnostics() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        state.server.workspace.open_document(
-            document.clone(),
-            "fn main() {}",
-            SourceVersion::new(1),
-        );
-        state.server.open_documents.insert(document.clone());
-        state.sync_from_legacy_server();
-
-        let result = state.did_close(lsp_types::DidCloseTextDocumentParams {
-            text_document: lsp_types::TextDocumentIdentifier {
-                uri: lsp_types::Url::parse(document.as_str())
-                    .expect("document URI should parse as URL"),
-            },
-        });
-
-        assert_has_messages(&result);
-        assert!(!state.open_documents.contains(&document));
-        assert_eq!(state.open_documents, state.server.open_documents);
-        assert_eq!(state.snapshot().workspace().document_text(&document), None);
-    }
-
-    #[test]
-    fn typed_message_sync_updates_global_open_documents() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-
-        let result = state
-            .handle_message(&lsp_server::Message::Notification(
-                lsp_server::Notification {
-                    method: "textDocument/didOpen".to_owned(),
-                    params: serde_json::json!({
-                        "textDocument": {
-                            "uri": document.as_str(),
-                            "languageId": "vela",
-                            "version": 1,
-                            "text": "fn main() {}"
-                        }
-                    }),
-                },
-            ))
-            .expect("message should dispatch");
-
-        assert_has_messages(&result);
-        assert!(
-            result
-                .iter()
-                .all(|message| matches!(message, Message::Notification(_))),
-            "{result:?}"
-        );
-        assert!(state.open_documents.contains(&document));
-        assert_eq!(state.open_documents, state.server.open_documents);
-    }
-
-    #[test]
-    fn lifecycle_flags_are_owned_by_global_state() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-
-        let initialize = state.initialize(
-            lsp_server::RequestId::from(1),
-            lsp_types::InitializeParams {
-                process_id: None,
-                capabilities: lsp_types::ClientCapabilities::default(),
-                ..lsp_types::InitializeParams::default()
-            },
-        );
-        assert_has_messages(&initialize);
-        assert!(state.is_initialized());
-        assert!(state.server.initialized);
-
-        let shutdown = state.shutdown(lsp_server::RequestId::from(2), ());
-        assert_has_messages(&shutdown);
-        assert!(state.is_shutdown_requested());
-        assert!(state.server.shutdown_requested);
-
-        let exit = state.exit(());
-        assert_no_messages(exit);
-        assert!(state.is_exited());
-        assert!(state.server.exited);
-
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        let result = state
-            .handle_message(&lsp_server::Message::Request(lsp_server::Request {
-                id: lsp_server::RequestId::from(3),
-                method: "exit".to_owned(),
-                params: serde_json::Value::Null,
-            }))
-            .expect("message should dispatch");
-        let _response = response_message(result, "exit request should return a response");
-        assert!(state.is_exited());
-    }
-
-    #[test]
-    fn typed_completion_resolve_dispatch_projects_completion_item() {
-        let (sender, receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(7),
-            method: "completionItem/resolve".to_owned(),
-            params: serde_json::to_value(lsp_types::CompletionItem {
-                label: "plain".to_owned(),
-                kind: Some(lsp_types::CompletionItemKind::VARIABLE),
-                data: Some(serde_json::json!({ "source": "vela" })),
-                ..lsp_types::CompletionItem::default()
-            })
-            .expect("completion item should serialize"),
-        });
-
-        let result = state
-            .handle_message(&request)
-            .expect("message should dispatch");
-
-        assert_no_messages(result);
-        let task = state
-            .task_scheduler()
-            .latency_results()
-            .recv_timeout(Duration::from_secs(1))
-            .expect("completion resolve task should complete");
-        assert!(task.retry().is_some());
-        let task_summary = state
-            .send_task_result(task)
-            .expect("completion resolve task response should send");
-        assert_eq!(task_summary.outcome(), TaskOutcome::Completed);
-        let response = receiver
-            .recv_timeout(Duration::from_secs(1))
-            .expect("completion resolve should send response");
-        let Message::Response(response) = response else {
-            panic!("completion resolve should send response");
-        };
-        assert!(response.error.is_none(), "{response:?}");
-        let response = serde_json::to_value(response).expect("response should serialize");
-        assert_eq!(response["id"], 7);
-        assert_eq!(response["result"]["label"], "plain");
-        assert_eq!(response["result"]["kind"], 6);
-        assert!(response["result"].get("documentation").is_none());
-    }
-
-    #[test]
-    fn typed_hover_dispatch_projects_hover_response() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        let text = "pub fn main(amount: i64) -> i64 { return amount }";
-        state
-            .server
-            .workspace
-            .open_document(document.clone(), text, SourceVersion::new(1));
-        state.server.open_documents.insert(document.clone());
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(8),
-            method: "textDocument/hover".to_owned(),
-            params: serde_json::to_value(lsp_types::HoverParams {
-                text_document_position_params: lsp_types::TextDocumentPositionParams {
-                    text_document: lsp_types::TextDocumentIdentifier {
-                        uri: lsp_types::Url::parse(document.as_str())
-                            .expect("document URI should parse"),
-                    },
-                    position: lsp_types::Position::new(
-                        0,
-                        u32::try_from(
-                            text.rfind("amount")
-                                .expect("hover fixture should contain amount use"),
-                        )
-                        .expect("position should fit in u32"),
-                    ),
-                },
-                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-            })
-            .expect("hover params should serialize"),
-        });
-
-        let result = state
-            .handle_message(&request)
-            .expect("message should dispatch");
-
-        let response = response_message(result, "typed hover should return a response");
-        let response: serde_json::Value = response_json(response);
-        assert_eq!(response["id"], 8);
-        assert_eq!(response["result"]["contents"]["kind"], "markdown");
-        let value = response["result"]["contents"]["value"]
-            .as_str()
-            .expect("hover contents should be markdown");
-        assert!(value.contains("amount"), "{value}");
-        assert!(value.contains("_parameter_: i64"), "{value}");
-    }
-
-    #[test]
-    fn typed_signature_help_dispatch_projects_signature_response() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        let text = "pub fn grant(amount: i64, bonus: i64) -> bool { return true } pub fn main() { grant(1, 2) }";
-        state
-            .server
-            .workspace
-            .open_document(document.clone(), text, SourceVersion::new(1));
-        state.server.open_documents.insert(document.clone());
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(9),
-            method: "textDocument/signatureHelp".to_owned(),
-            params: serde_json::to_value(lsp_types::SignatureHelpParams {
-                text_document_position_params: lsp_types::TextDocumentPositionParams {
-                    text_document: lsp_types::TextDocumentIdentifier {
-                        uri: lsp_types::Url::parse(document.as_str())
-                            .expect("document URI should parse"),
-                    },
-                    position: lsp_types::Position::new(
-                        0,
-                        u32::try_from(
-                            text.find("2)")
-                                .expect("signature fixture should contain second argument"),
-                        )
-                        .expect("position should fit in u32"),
-                    ),
-                },
-                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-                context: None,
-            })
-            .expect("signatureHelp params should serialize"),
-        });
-
-        let result = state
-            .handle_message(&request)
-            .expect("message should dispatch");
-
-        let response = response_message(result, "typed signatureHelp should return a response");
-        let response: serde_json::Value = response_json(response);
-        assert_eq!(response["id"], 9);
-        assert_eq!(response["result"]["activeSignature"], 0);
-        assert_eq!(response["result"]["activeParameter"], 1);
-        assert_eq!(
-            response["result"]["signatures"][0]["label"],
-            "grant(amount: i64, bonus: i64) -> bool"
-        );
-        assert_eq!(
-            response["result"]["signatures"][0]["parameters"][1]["label"],
-            "bonus: i64"
-        );
-    }
-
-    #[test]
-    fn typed_navigation_dispatch_projects_location_responses() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        let text = "\
-struct Inventory {
-    slots: i64,
-}
-
-struct Player {
-    inventory: Inventory,
-}
-
-fn grant() -> i64 { return 1 }
-fn main(player: Player) { grant(); return player.inventory }";
-        state
-            .server
-            .workspace
-            .open_document(document.clone(), text, SourceVersion::new(1));
-        state.server.open_documents.insert(document.clone());
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-
-        for (id, method) in [
-            (10, "textDocument/definition"),
-            (11, "textDocument/declaration"),
-        ] {
-            let response = typed_navigation_response(
-                &mut state,
-                id,
-                method,
-                &document,
-                9,
-                text.lines()
-                    .nth(9)
-                    .expect("main line should exist")
-                    .find("grant")
-                    .expect("call should contain grant"),
-            );
-            assert_eq!(response["result"]["uri"], document.as_str());
-            assert_eq!(response["result"]["range"]["start"]["line"], 8);
-            assert_eq!(response["result"]["range"]["start"]["character"], 3);
-            assert_eq!(response["result"]["range"]["end"]["character"], 8);
-        }
-
-        let response = typed_navigation_response(
-            &mut state,
-            12,
-            "textDocument/typeDefinition",
-            &document,
-            9,
-            text.lines()
-                .nth(9)
-                .expect("main line should exist")
-                .rfind("inventory")
-                .expect("field use should contain inventory"),
-        );
-        assert_eq!(response["result"]["uri"], document.as_str());
-        assert_eq!(response["result"]["range"]["start"]["line"], 0);
-        assert_eq!(response["result"]["range"]["start"]["character"], 7);
-        assert_eq!(response["result"]["range"]["end"]["character"], 16);
-    }
-
-    #[test]
-    fn typed_references_dispatch_projects_location_array() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        let text = "\
-pub fn main(amount: i64) -> i64 {
-    let next = amount + 1
-    return next + amount
-}";
-        state
-            .server
-            .workspace
-            .open_document(document.clone(), text, SourceVersion::new(1));
-        state.server.open_documents.insert(document.clone());
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-        let line = text.lines().nth(2).expect("return line should exist");
-        let character = line
-            .find("amount")
-            .expect("return line should contain amount");
-
-        let response = typed_references_response(&mut state, 13, &document, 2, character, true);
-        let references = response["result"]
-            .as_array()
-            .expect("references response should be an array");
-        assert_eq!(references.len(), 3, "{references:?}");
-        assert_eq!(references[0]["uri"], document.as_str());
-        assert_eq!(references[0]["range"]["start"]["line"], 0);
-        assert_eq!(references[0]["range"]["start"]["character"], 12);
-        assert_eq!(references[2]["range"]["start"]["line"], 2);
-        assert_eq!(references[2]["range"]["start"]["character"], 18);
-
-        let response = typed_references_response(&mut state, 14, &document, 2, character, false);
-        let references = response["result"]
-            .as_array()
-            .expect("references response should be an array");
-        assert_eq!(references.len(), 2, "{references:?}");
-        assert!(
-            references
-                .iter()
-                .all(|reference| reference["range"]["start"]["line"] != 0)
-        );
-    }
-
-    #[test]
-    fn typed_document_highlight_dispatch_projects_highlights() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        let text = "\
-pub fn main(amount: i64) -> i64 {
-    let next = amount + 1
-    return next + amount
-}";
-        state
-            .server
-            .workspace
-            .open_document(document.clone(), text, SourceVersion::new(1));
-        state.server.open_documents.insert(document.clone());
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-        let line = text.lines().nth(2).expect("return line should exist");
-        let character = line
-            .find("amount")
-            .expect("return line should contain amount");
-
-        let response = typed_document_highlight_response(&mut state, 15, &document, 2, character);
-        let highlights = response["result"]
-            .as_array()
-            .expect("documentHighlight response should be an array");
-
-        assert_eq!(highlights.len(), 3, "{highlights:?}");
-        assert_eq!(highlights[0]["kind"], 1);
-        assert_eq!(highlights[1]["kind"], 2);
-        assert_eq!(highlights[0]["range"]["start"]["line"], 0);
-        assert_eq!(highlights[0]["range"]["start"]["character"], 12);
-        assert_eq!(highlights[2]["range"]["start"]["line"], 2);
-        assert_eq!(highlights[2]["range"]["start"]["character"], 18);
-    }
-
-    #[test]
-    fn typed_document_symbol_dispatch_projects_nested_symbols() {
-        let (sender, receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        let text = "\
-struct Player {
-    level: i64,
-}
-
-pub fn main(player: Player) -> i64 {
-    return player.level
-}";
-        state
-            .server
-            .workspace
-            .open_document(document.clone(), text, SourceVersion::new(1));
-        state.server.open_documents.insert(document.clone());
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-
-        let response = typed_document_symbol_response(&mut state, &receiver, 16, &document);
-        let symbols = response["result"]
-            .as_array()
-            .expect("documentSymbol response should be an array");
-
-        let player = symbols
-            .iter()
-            .find(|symbol| symbol["name"] == "Player")
-            .expect("Player symbol should project");
-        assert_eq!(player["kind"], 23);
-        assert!(
-            player["children"]
-                .as_array()
-                .expect("Player should include field children")
-                .iter()
-                .any(|child| child["name"] == "level" && child["kind"] == 8)
-        );
-        assert!(
-            symbols
-                .iter()
-                .any(|symbol| symbol["name"] == "main" && symbol["kind"] == 12)
-        );
-    }
-
-    #[test]
-    fn typed_workspace_symbol_dispatch_projects_symbols() {
-        let (sender, receiver) = unbounded();
-        let mut launch_configuration = LaunchConfiguration::new();
-        launch_configuration.add_workspace_root("/workspace/scripts");
-        let mut state = GlobalState::new(sender, launch_configuration);
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/game/reward.vela");
-        let text = "pub fn grant() -> i64 { return 1 }";
-        state
-            .server
-            .workspace
-            .open_document(document.clone(), text, SourceVersion::new(1));
-        state.server.open_documents.insert(document.clone());
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-
-        let response = typed_workspace_symbol_response(&mut state, &receiver, 17, "reward.vela");
-        let symbols = response["result"]
-            .as_array()
-            .expect("workspaceSymbol response should be an array");
-        let reward = symbols
-            .iter()
-            .find(|symbol| symbol["name"] == "reward.vela")
-            .expect("file symbol should project");
-
-        assert_eq!(reward["kind"], 1);
-        assert_eq!(reward["data"]["detail"], "game::reward");
-        assert_eq!(reward["location"]["uri"], document.as_str());
-    }
-
-    #[test]
-    fn typed_folding_range_dispatch_projects_ranges() {
-        let (sender, receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        let text = "\
-use game::reward
-use game::player
-
-pub fn main() {
-    if true {
-        return
-    }
-}";
-        state
-            .server
-            .workspace
-            .open_document(document.clone(), text, SourceVersion::new(1));
-        state.server.open_documents.insert(document.clone());
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-
-        let response = typed_folding_range_response(&mut state, &receiver, 18, &document);
-        let ranges = response["result"]
-            .as_array()
-            .expect("foldingRange response should be an array");
-
-        assert!(ranges.iter().any(|range| {
-            range["kind"] == "imports" && range["startLine"] == 0 && range["endLine"] == 1
-        }));
-        assert!(ranges.iter().any(|range| {
-            range["kind"] == "region" && range["startLine"] == 3 && range["endLine"] == 7
-        }));
-    }
-
-    #[test]
-    fn typed_selection_range_dispatch_projects_parent_chain() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        let text = "\
-pub fn main(player: Player) -> i64 {
-    let next = player.level + 1
-    return next
-}";
-        state
-            .server
-            .workspace
-            .open_document(document.clone(), text, SourceVersion::new(1));
-        state.server.open_documents.insert(document.clone());
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-
-        let response = typed_selection_range_response(&mut state, 19, &document, 1, 22);
-        let ranges = response["result"]
-            .as_array()
-            .expect("selectionRange response should be an array");
-        assert_eq!(ranges.len(), 1);
-        let chain = json_selection_chain(&ranges[0]);
-
-        assert!(chain.iter().any(|range| {
-            range["start"]["line"] == 1
-                && range["start"]["character"] == 22
-                && range["end"]["character"] == 27
-        }));
-        assert!(chain.iter().any(|range| {
-            range["start"]["line"] == 1
-                && range["start"]["character"] == 15
-                && range["end"]["character"] == 27
-        }));
-    }
-
-    #[test]
-    fn typed_semantic_token_dispatch_projects_full_delta_and_range() {
-        let (sender, receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        let text = "pub fn main() { let value = 1 return value }";
-        state
-            .server
-            .workspace
-            .open_document(document.clone(), text, SourceVersion::new(1));
-        state.server.open_documents.insert(document.clone());
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-
-        let full_response =
-            typed_semantic_tokens_full_response(&mut state, &receiver, 20, &document);
-        let full_data = full_response["result"]["data"]
-            .as_array()
-            .expect("semanticTokens/full response should include data");
-        assert!(!full_data.is_empty());
-        let result_id = full_response["result"]["resultId"]
-            .as_str()
-            .expect("semanticTokens/full response should include resultId")
-            .to_owned();
-
-        let delta_response =
-            typed_semantic_tokens_delta_response(&mut state, 21, &document, &result_id);
-        assert_eq!(delta_response["result"]["edits"], serde_json::json!([]));
-
-        let range_response = typed_semantic_tokens_range_response(&mut state, 22, &document);
-        let range_data = range_response["result"]["data"]
-            .as_array()
-            .expect("semanticTokens/range response should include data");
-        assert!(!range_data.is_empty());
-    }
-
-    #[test]
-    fn typed_code_action_dispatch_projects_quickfix_edits() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        let text = "pub fn main(scores: Array<i64>) { return scores.frist() }";
-        state
-            .server
-            .workspace
-            .open_document(document.clone(), text, SourceVersion::new(1));
-        state.server.open_documents.insert(document.clone());
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-        let typo_start = text.find("frist").expect("fixture should contain typo");
-
-        let response = typed_code_action_response(
-            &mut state,
-            23,
-            &document,
-            u32::try_from(typo_start).expect("position should fit in u32"),
-            u32::try_from(typo_start + "frist".len()).expect("position should fit in u32"),
-        );
-        let actions = response["result"]
-            .as_array()
-            .expect("codeAction response should be an array");
-        let action = actions
-            .iter()
-            .find(|action| action["title"] == "Replace with `first`")
-            .expect("quickfix should project");
-
-        assert_eq!(action["kind"], "quickfix");
-        assert_eq!(
-            action["edit"]["changes"][document.as_str()][0]["newText"],
-            "first"
-        );
-    }
-
-    #[test]
-    fn typed_inlay_hint_dispatch_projects_parameter_hints() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        let text = "pub fn grant(amount: i64, reason: String) -> i64 { return amount }\npub fn main() { return grant(10, \"quest\") }";
-        state
-            .server
-            .workspace
-            .open_document(document.clone(), text, SourceVersion::new(1));
-        state.server.open_documents.insert(document.clone());
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-
-        let response = typed_inlay_hint_response(&mut state, 24, &document);
-        let hints = response["result"]
-            .as_array()
-            .expect("inlayHint response should be an array");
-
-        assert_eq!(hints.len(), 2);
-        assert_eq!(hints[0]["label"], "amount:");
-        assert_eq!(hints[0]["kind"], 2);
-        assert_eq!(hints[0]["paddingRight"], true);
-        assert_eq!(hints[1]["label"], "reason:");
-    }
-
-    #[test]
-    fn typed_formatting_dispatch_projects_text_edits() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        let text = "pub fn main() {   \n    return 1   \n}\n";
-        state
-            .server
-            .workspace
-            .open_document(document.clone(), text, SourceVersion::new(1));
-        state.server.open_documents.insert(document.clone());
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-
-        let document_response = typed_formatting_response(&mut state, 20, &document);
-        let document_edits = document_response["result"]
-            .as_array()
-            .expect("formatting response should be an array");
-        assert_eq!(document_edits.len(), 1);
-        assert_eq!(
-            document_edits[0]["newText"],
-            "pub fn main() {\n    return 1\n}\n"
-        );
-
-        let range_response = typed_range_formatting_response(&mut state, 21, &document);
-        let range_edits = range_response["result"]
-            .as_array()
-            .expect("rangeFormatting response should be an array");
-        assert_eq!(range_edits.len(), 1);
-        assert_eq!(range_edits[0]["range"]["start"]["line"], 1);
-        assert_eq!(range_edits[0]["newText"], "");
-
-        let on_type_response = typed_on_type_formatting_response(&mut state, 22, &document);
-        let on_type_edits = on_type_response["result"]
-            .as_array()
-            .expect("onTypeFormatting response should be an array");
-        assert_eq!(on_type_edits.len(), 1);
-        assert_eq!(on_type_edits[0]["range"]["start"]["line"], 0);
-        assert_eq!(
-            on_type_edits[0]["newText"],
-            "pub fn main() {\n    return 1\n}\n"
-        );
-    }
-
-    #[test]
-    fn typed_formatting_dispatch_registers_in_flight_cancellation_handle() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        state.server.workspace.open_document(
-            document.clone(),
-            "pub fn main(){return 1}",
-            SourceVersion::new(1),
-        );
-        state.server.open_documents.insert(document.clone());
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-        let request_id = RequestId::from(30);
-
-        let result = state
-            .handle_message(&Message::Request(lsp_server::Request {
-                id: lsp_server::RequestId::from(30),
-                method: "textDocument/formatting".to_owned(),
-                params: serde_json::to_value(lsp_types::DocumentFormattingParams {
-                    text_document: lsp_types::TextDocumentIdentifier {
-                        uri: lsp_types::Url::parse(document.as_str())
-                            .expect("document URI should parse"),
-                    },
-                    options: lsp_formatting_options(),
-                    work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-                })
-                .expect("formatting params should serialize"),
-            }))
-            .expect("message should dispatch");
-
-        assert_no_messages(result);
-        assert!(state.request_queue.in_flight.contains_key(&request_id));
-        let task = state
-            .task_scheduler()
-            .formatting_results()
-            .recv_timeout(Duration::from_secs(1))
-            .expect("formatting task should complete");
-        assert_eq!(task.document_uri(), Some(document.as_str()));
-        assert_eq!(task.request_id(), Some(&request_id));
-        let generation = task
-            .generation_token()
-            .expect("formatting task should carry generation token");
-        assert_eq!(generation.generation(), state.databases.generation());
-        assert!(!generation.is_cancelled());
-
-        let task_summary = state
-            .send_task_result(task)
-            .expect("formatting task response should send");
-        assert_eq!(task_summary.outcome(), TaskOutcome::Completed);
-        assert!(!state.request_queue.in_flight.contains_key(&request_id));
-    }
-
-    #[test]
-    fn send_task_result_returns_content_modified_for_stale_non_retryable_response() {
-        let (sender, receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        state.server.workspace.open_document(
-            document.clone(),
-            "pub fn main(){return 1}",
-            SourceVersion::new(1),
-        );
-        state.server.open_documents.insert(document.clone());
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-        let request_id = RequestId::from(31);
-
-        let result = state
-            .handle_message(&Message::Request(lsp_server::Request {
-                id: lsp_server::RequestId::from(31),
-                method: "textDocument/formatting".to_owned(),
-                params: serde_json::to_value(lsp_types::DocumentFormattingParams {
-                    text_document: lsp_types::TextDocumentIdentifier {
-                        uri: lsp_types::Url::parse(document.as_str())
-                            .expect("document URI should parse"),
-                    },
-                    options: lsp_formatting_options(),
-                    work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-                })
-                .expect("formatting params should serialize"),
-            }))
-            .expect("message should dispatch");
-
-        assert_no_messages(result);
-        assert!(state.request_queue.in_flight.contains_key(&request_id));
-        let task = state
-            .task_scheduler()
-            .formatting_results()
-            .recv_timeout(Duration::from_secs(1))
-            .expect("formatting task should complete");
-        state.databases.invalidate_project_config();
-
-        let task_summary = state
-            .send_task_result(task)
-            .expect("stale formatting task response should be handled");
-        assert_eq!(task_summary.outcome(), TaskOutcome::StaleDiscarded);
-
-        assert!(!state.request_queue.in_flight.contains_key(&request_id));
-        let response = receiver
-            .recv_timeout(Duration::from_secs(1))
-            .expect("stale formatting should send ContentModified");
-        let Message::Response(response) = response else {
-            panic!("stale formatting should send response");
-        };
-        assert_eq!(response.id, lsp_server::RequestId::from(31));
-        let error = response
-            .error
-            .expect("stale formatting should return an error");
-        assert_eq!(error.code, -32801);
-        assert_eq!(
-            error.message,
-            "request result is stale because the document was modified"
-        );
-    }
-
-    #[test]
-    fn send_task_result_returns_request_cancelled_for_cancelled_in_flight_response() {
-        let (sender, receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        state.server.workspace.open_document(
-            document.clone(),
-            "pub fn main(){return 1}",
-            SourceVersion::new(1),
-        );
-        state.server.open_documents.insert(document.clone());
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-        let request_id = RequestId::from(33);
-
-        let result = state
-            .handle_message(&Message::Request(lsp_server::Request {
-                id: lsp_server::RequestId::from(33),
-                method: "textDocument/formatting".to_owned(),
-                params: serde_json::to_value(lsp_types::DocumentFormattingParams {
-                    text_document: lsp_types::TextDocumentIdentifier {
-                        uri: lsp_types::Url::parse(document.as_str())
-                            .expect("document URI should parse"),
-                    },
-                    options: lsp_formatting_options(),
-                    work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-                })
-                .expect("formatting params should serialize"),
-            }))
-            .expect("message should dispatch");
-
-        assert_no_messages(result);
-        assert!(state.request_queue.in_flight.contains_key(&request_id));
-        let task = state
-            .task_scheduler()
-            .formatting_results()
-            .recv_timeout(Duration::from_secs(1))
-            .expect("formatting task should complete");
-        let generation = task
-            .generation_token()
-            .expect("formatting task should carry generation token")
-            .clone();
-        assert!(!generation.is_cancelled());
-
-        assert_no_messages(state.cancel_request(lsp_types::CancelParams {
-            id: lsp_types::NumberOrString::Number(33),
-        }));
-        assert!(generation.is_cancelled());
-
-        let task_summary = state
-            .send_task_result(task)
-            .expect("cancelled formatting task response should be handled");
-        assert_eq!(task_summary.outcome(), TaskOutcome::Cancelled);
-
-        assert!(!state.request_queue.in_flight.contains_key(&request_id));
-        let response = receiver
-            .recv_timeout(Duration::from_secs(1))
-            .expect("cancelled formatting should send RequestCancelled");
-        let Message::Response(response) = response else {
-            panic!("cancelled formatting should send response");
-        };
-        assert_eq!(response.id, lsp_server::RequestId::from(33));
-        let error = response
-            .error
-            .expect("cancelled formatting should return an error");
-        assert_eq!(error.code, -32800);
-        assert_eq!(error.message, "request was cancelled before processing");
-    }
-
-    #[test]
-    fn send_task_result_retries_stale_retryable_completion_once() {
-        let (sender, receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        state.server.workspace.open_document(
-            document.clone(),
-            "pub fn old_only() { return 1 }",
-            SourceVersion::new(1),
-        );
-        state.server.open_documents.insert(document.clone());
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-        let request_id = RequestId::from(32);
-
-        let result = state
-            .handle_message(&Message::Request(lsp_server::Request {
-                id: lsp_server::RequestId::from(32),
-                method: "textDocument/completion".to_owned(),
-                params: serde_json::to_value(lsp_types::CompletionParams {
-                    text_document_position: lsp_types::TextDocumentPositionParams {
-                        text_document: lsp_types::TextDocumentIdentifier {
-                            uri: lsp_types::Url::parse(document.as_str())
-                                .expect("document URI should parse"),
-                        },
-                        position: lsp_types::Position {
-                            line: 0,
-                            character: 7,
-                        },
-                    },
-                    work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-                    partial_result_params: lsp_types::PartialResultParams::default(),
-                    context: None,
-                })
-                .expect("completion params should serialize"),
-            }))
-            .expect("message should dispatch");
-
-        assert_no_messages(result);
-        assert!(state.request_queue.in_flight.contains_key(&request_id));
-        let stale_task = state
-            .task_scheduler()
-            .latency_results()
-            .recv_timeout(Duration::from_secs(1))
-            .expect("completion task should complete");
-        assert_eq!(stale_task.request_id(), Some(&request_id));
-        assert!(stale_task.retry().is_some());
-
-        state.server.workspace.open_document(
-            document.clone(),
-            "pub fn new_only() { return 2 }",
-            SourceVersion::new(2),
-        );
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-
-        let stale_summary = state
-            .send_task_result(stale_task)
-            .expect("stale completion task should schedule retry");
-        assert_eq!(stale_summary.outcome(), TaskOutcome::Retried);
-
-        assert!(matches!(receiver.try_recv(), Err(TryRecvError::Empty)));
-        assert!(state.request_queue.in_flight.contains_key(&request_id));
-        let retry_task = state
-            .task_scheduler()
-            .latency_results()
-            .recv_timeout(Duration::from_secs(1))
-            .expect("retry completion task should complete");
-        assert_eq!(retry_task.request_id(), Some(&request_id));
-
-        let retry_summary = state
-            .send_task_result(retry_task)
-            .expect("fresh retry response should send");
-        assert_eq!(retry_summary.outcome(), TaskOutcome::Completed);
-
-        assert!(!state.request_queue.in_flight.contains_key(&request_id));
-        let response = receiver
-            .recv_timeout(Duration::from_secs(1))
-            .expect("retry should send completion response");
-        let Message::Response(response) = response else {
-            panic!("retry should send response");
-        };
-        assert!(response.error.is_none(), "{response:?}");
-        let result = response
-            .result
-            .expect("completion retry should contain result");
-        let labels: Vec<_> = result["items"]
-            .as_array()
-            .expect("completion response should contain items")
-            .iter()
-            .filter_map(|item| item["label"].as_str())
-            .collect();
-        assert!(labels.contains(&"new_only"), "{labels:?}");
-        assert!(!labels.contains(&"old_only"), "{labels:?}");
-    }
-
-    #[test]
-    fn typed_prepare_rename_dispatch_projects_placeholder_range() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        let text = "\
-pub fn main(amount: i64) -> i64 {
-    return amount
-}";
-        state
-            .server
-            .workspace
-            .open_document(document.clone(), text, SourceVersion::new(1));
-        state.server.open_documents.insert(document.clone());
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-        let line = text.lines().nth(1).expect("return line should exist");
-        let character = line
-            .find("amount")
-            .expect("return line should contain amount");
-
-        let response = typed_prepare_rename_response(&mut state, 15, &document, 1, character);
-
-        assert_eq!(response["result"]["placeholder"], "amount");
-        assert_eq!(response["result"]["range"]["start"]["line"], 1);
-        assert_eq!(response["result"]["range"]["start"]["character"], 11);
-        assert_eq!(response["result"]["range"]["end"]["character"], 17);
-    }
-
-    #[test]
-    fn typed_rename_dispatch_projects_workspace_edit() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        let text = "\
-pub fn main(amount: i64) -> i64 {
-    return amount
-}";
-        state
-            .server
-            .workspace
-            .open_document(document.clone(), text, SourceVersion::new(2));
-        state.server.open_documents.insert(document.clone());
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-        let line = text.lines().nth(1).expect("return line should exist");
-        let character = line
-            .find("amount")
-            .expect("return line should contain amount");
-
-        let response = typed_rename_response(&mut state, 16, &document, 1, character, "total");
-
-        let edits = response["result"]["changes"][document.as_str()]
-            .as_array()
-            .expect("rename changes should contain document edits");
-        assert_eq!(edits.len(), 2);
-        assert_eq!(edits[0]["newText"], "total");
-        assert_eq!(
-            response["result"]["documentChanges"][0]["textDocument"]["uri"],
-            document.as_str()
-        );
-        assert_eq!(
-            response["result"]["documentChanges"][0]["textDocument"]["version"],
-            2
-        );
-        assert_eq!(
-            response["result"]["documentChanges"][0]["edits"][0]["newText"],
-            "total"
-        );
-    }
-
-    #[test]
-    fn typed_prepare_call_hierarchy_dispatch_projects_items() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        let text = "pub fn grant() -> i64 { return 1 }\npub fn main() { return grant() }";
-        state
-            .server
-            .workspace
-            .open_document(document.clone(), text, SourceVersion::new(1));
-        state.server.open_documents.insert(document.clone());
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-        let line = text.lines().nth(1).expect("main line should exist");
-        let character = line.find("grant").expect("main line should contain grant");
-
-        let response =
-            typed_prepare_call_hierarchy_response(&mut state, 17, &document, 1, character);
-        let items = response["result"]
-            .as_array()
-            .expect("prepareCallHierarchy response should be an array");
-
-        assert_eq!(items.len(), 1, "{items:?}");
-        assert_eq!(items[0]["name"], "grant");
-        assert_eq!(items[0]["kind"], 12);
-        assert_eq!(items[0]["uri"], document.as_str());
-        assert_eq!(items[0]["selectionRange"]["start"]["line"], 0);
-        assert_eq!(items[0]["selectionRange"]["start"]["character"], 7);
-        assert!(items[0]["data"].is_object());
-    }
-
-    #[test]
-    fn typed_call_hierarchy_incoming_and_outgoing_dispatch_project_calls() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        state.initialized = true;
-        state.server.initialized = true;
-        let document = DocumentId::from("file:///workspace/scripts/main.vela");
-        let text = "pub fn grant() -> i64 { return 1 }\npub fn main() { return grant() }";
-        state
-            .server
-            .workspace
-            .open_document(document.clone(), text, SourceVersion::new(1));
-        state.server.open_documents.insert(document.clone());
-        let _ = state
-            .server
-            .publish_current_diagnostics(document.as_str(), &document);
-        state.sync_from_legacy_server();
-        let main_line = text.lines().nth(1).expect("main line should exist");
-        let grant_character = main_line
-            .find("grant")
-            .expect("main line should contain grant");
-        let main_character = main_line
-            .find("main")
-            .expect("main line should contain main");
-        let grant_item: lsp_types::CallHierarchyItem =
-            serde_json::from_value(
-                typed_prepare_call_hierarchy_response(
-                    &mut state,
-                    18,
-                    &document,
-                    1,
-                    grant_character,
-                )["result"][0]
-                    .clone(),
-            )
-            .expect("grant item should deserialize");
-        let main_item: lsp_types::CallHierarchyItem =
-            serde_json::from_value(
-                typed_prepare_call_hierarchy_response(&mut state, 19, &document, 1, main_character)
-                    ["result"][0]
-                    .clone(),
-            )
-            .expect("main item should deserialize");
-
-        let incoming = typed_incoming_calls_response(&mut state, 20, grant_item);
-        let outgoing = typed_outgoing_calls_response(&mut state, 21, main_item);
-
-        let incoming = incoming["result"]
-            .as_array()
-            .expect("incomingCalls response should be an array");
-        assert_eq!(incoming.len(), 1, "{incoming:?}");
-        assert_eq!(incoming[0]["from"]["name"], "main");
-        assert_eq!(
-            incoming[0]["fromRanges"]
-                .as_array()
-                .expect("incomingCalls should contain fromRanges")
-                .len(),
-            1
-        );
-
-        let outgoing = outgoing["result"]
-            .as_array()
-            .expect("outgoingCalls response should be an array");
-        assert_eq!(outgoing.len(), 1, "{outgoing:?}");
-        assert_eq!(outgoing[0]["to"]["name"], "grant");
-        assert_eq!(
-            outgoing[0]["fromRanges"]
-                .as_array()
-                .expect("outgoingCalls should contain fromRanges")
-                .len(),
-            1
-        );
-    }
-
-    #[test]
-    fn typed_cancellation_is_tracked_by_global_request_queue() {
-        let (sender, _receiver) = unbounded();
-        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        let request_id = RequestId::from(7);
-        state.request_queue.start(request_id.clone());
-
-        let result = state.cancel_request(lsp_types::CancelParams {
-            id: lsp_types::NumberOrString::Number(7),
-        });
-
-        assert_no_messages(result);
-        assert!(state.take_cancelled_request(&request_id));
-        assert!(!state.take_cancelled_request(&request_id));
-    }
-
-    #[test]
-    fn request_queue_tracks_typed_request_ids() {
-        let mut queue = RequestQueue::default();
-        let numeric = RequestId::from(7);
-        let string = RequestId::from("hover-1".to_owned());
-
-        queue.start(numeric.clone());
-        queue.start(string.clone());
-        assert!(queue.incoming.contains(&numeric));
-        assert!(queue.incoming.contains(&string));
-
-        queue.finish(&numeric);
-        assert!(!queue.incoming.contains(&numeric));
-        assert!(queue.incoming.contains(&string));
-
-        let message = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from("hover-1".to_owned()),
-            method: "textDocument/hover".to_owned(),
-            params: serde_json::json!({}),
-        });
-        assert_eq!(RequestQueue::request_id(&message), Some(string));
-    }
-
-    #[test]
-    fn request_queue_stores_in_flight_cancellation_handles() {
-        let mut queue = RequestQueue::default();
-        let id = RequestId::from(9);
-        let databases = LanguageServiceDatabases::new();
-        let (token, handle) = databases.begin_cancellable_background_request();
-
-        queue.start_in_flight(id.clone(), handle);
-        assert!(queue.in_flight.contains_key(&id));
-
-        queue.cancel(id.clone());
-        assert!(token.is_cancelled());
-        assert!(queue.finish_in_flight(&id).is_some());
-        assert!(!queue.in_flight.contains_key(&id));
-    }
-
-    #[test]
-    fn request_queue_ignores_unknown_and_completed_cancels() {
-        let mut queue = RequestQueue::default();
-        let unknown = RequestId::from(404);
-        let completed = RequestId::from("done".to_owned());
-
-        queue.cancel(unknown.clone());
-        assert!(!queue.take_cancelled(&unknown));
-
-        queue.start(completed.clone());
-        queue.finish(&completed);
-        queue.cancel(completed.clone());
-        assert!(!queue.take_cancelled(&completed));
-    }
-
-    fn typed_navigation_response(
-        state: &mut GlobalState,
-        id: i32,
-        method: &str,
-        document: &DocumentId,
-        line: u32,
-        character: usize,
-    ) -> serde_json::Value {
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(id),
-            method: method.to_owned(),
-            params: serde_json::to_value(lsp_types::GotoDefinitionParams {
-                text_document_position_params: lsp_types::TextDocumentPositionParams {
-                    text_document: lsp_types::TextDocumentIdentifier {
-                        uri: lsp_types::Url::parse(document.as_str())
-                            .expect("document URI should parse"),
-                    },
-                    position: lsp_types::Position::new(
-                        line,
-                        u32::try_from(character).expect("position should fit in u32"),
-                    ),
-                },
-                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-                partial_result_params: lsp_types::PartialResultParams::default(),
-            })
-            .expect("goto params should serialize"),
-        });
-        let result = state
-            .handle_message(&request)
-            .expect("message should dispatch");
-        let response = response_message(result, "typed navigation should return a response");
-        response_json(response)
-    }
-
-    fn typed_prepare_call_hierarchy_response(
-        state: &mut GlobalState,
-        id: i32,
-        document: &DocumentId,
-        line: u32,
-        character: usize,
-    ) -> serde_json::Value {
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(id),
-            method: "textDocument/prepareCallHierarchy".to_owned(),
-            params: serde_json::to_value(lsp_types::CallHierarchyPrepareParams {
-                text_document_position_params: lsp_types::TextDocumentPositionParams {
-                    text_document: lsp_types::TextDocumentIdentifier {
-                        uri: lsp_types::Url::parse(document.as_str())
-                            .expect("document URI should parse"),
-                    },
-                    position: lsp_types::Position::new(
-                        line,
-                        u32::try_from(character).expect("position should fit in u32"),
-                    ),
-                },
-                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-            })
-            .expect("prepareCallHierarchy params should serialize"),
-        });
-        let result = state
-            .handle_message(&request)
-            .expect("message should dispatch");
-        let response = response_message(
-            result,
-            "typed prepareCallHierarchy should return a response",
-        );
-        response_json(response)
-    }
-
-    fn typed_incoming_calls_response(
-        state: &mut GlobalState,
-        id: i32,
-        item: lsp_types::CallHierarchyItem,
-    ) -> serde_json::Value {
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(id),
-            method: "callHierarchy/incomingCalls".to_owned(),
-            params: serde_json::to_value(lsp_types::CallHierarchyIncomingCallsParams {
-                item,
-                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-                partial_result_params: lsp_types::PartialResultParams::default(),
-            })
-            .expect("incomingCalls params should serialize"),
-        });
-        let result = state
-            .handle_message(&request)
-            .expect("message should dispatch");
-        let response = response_message(result, "typed incomingCalls should return a response");
-        response_json(response)
-    }
-
-    fn typed_outgoing_calls_response(
-        state: &mut GlobalState,
-        id: i32,
-        item: lsp_types::CallHierarchyItem,
-    ) -> serde_json::Value {
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(id),
-            method: "callHierarchy/outgoingCalls".to_owned(),
-            params: serde_json::to_value(lsp_types::CallHierarchyOutgoingCallsParams {
-                item,
-                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-                partial_result_params: lsp_types::PartialResultParams::default(),
-            })
-            .expect("outgoingCalls params should serialize"),
-        });
-        let result = state
-            .handle_message(&request)
-            .expect("message should dispatch");
-        let response = response_message(result, "typed outgoingCalls should return a response");
-        response_json(response)
-    }
-
-    fn typed_rename_response(
-        state: &mut GlobalState,
-        id: i32,
-        document: &DocumentId,
-        line: u32,
-        character: usize,
-        new_name: &str,
-    ) -> serde_json::Value {
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(id),
-            method: "textDocument/rename".to_owned(),
-            params: serde_json::to_value(lsp_types::RenameParams {
-                text_document_position: lsp_types::TextDocumentPositionParams {
-                    text_document: lsp_types::TextDocumentIdentifier {
-                        uri: lsp_types::Url::parse(document.as_str())
-                            .expect("document URI should parse"),
-                    },
-                    position: lsp_types::Position::new(
-                        line,
-                        u32::try_from(character).expect("position should fit in u32"),
-                    ),
-                },
-                new_name: new_name.to_owned(),
-                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-            })
-            .expect("rename params should serialize"),
-        });
-        let result = state
-            .handle_message(&request)
-            .expect("message should dispatch");
-        let response = response_message(result, "typed rename should return a response");
-        response_json(response)
-    }
-
-    fn typed_prepare_rename_response(
-        state: &mut GlobalState,
-        id: i32,
-        document: &DocumentId,
-        line: u32,
-        character: usize,
-    ) -> serde_json::Value {
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(id),
-            method: "textDocument/prepareRename".to_owned(),
-            params: serde_json::to_value(lsp_types::TextDocumentPositionParams {
-                text_document: lsp_types::TextDocumentIdentifier {
-                    uri: lsp_types::Url::parse(document.as_str())
-                        .expect("document URI should parse"),
-                },
-                position: lsp_types::Position::new(
-                    line,
-                    u32::try_from(character).expect("position should fit in u32"),
-                ),
-            })
-            .expect("prepareRename params should serialize"),
-        });
-        let result = state
-            .handle_message(&request)
-            .expect("message should dispatch");
-        let response = response_message(result, "typed prepareRename should return a response");
-        response_json(response)
-    }
-
-    fn typed_references_response(
-        state: &mut GlobalState,
-        id: i32,
-        document: &DocumentId,
-        line: u32,
-        character: usize,
-        include_declaration: bool,
-    ) -> serde_json::Value {
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(id),
-            method: "textDocument/references".to_owned(),
-            params: serde_json::to_value(lsp_types::ReferenceParams {
-                text_document_position: lsp_types::TextDocumentPositionParams {
-                    text_document: lsp_types::TextDocumentIdentifier {
-                        uri: lsp_types::Url::parse(document.as_str())
-                            .expect("document URI should parse"),
-                    },
-                    position: lsp_types::Position::new(
-                        line,
-                        u32::try_from(character).expect("position should fit in u32"),
-                    ),
-                },
-                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-                partial_result_params: lsp_types::PartialResultParams::default(),
-                context: lsp_types::ReferenceContext {
-                    include_declaration,
-                },
-            })
-            .expect("reference params should serialize"),
-        });
-        let result = state
-            .handle_message(&request)
-            .expect("message should dispatch");
-        let response = response_message(result, "typed references should return a response");
-        response_json(response)
-    }
-
-    fn typed_document_highlight_response(
-        state: &mut GlobalState,
-        id: i32,
-        document: &DocumentId,
-        line: u32,
-        character: usize,
-    ) -> serde_json::Value {
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(id),
-            method: "textDocument/documentHighlight".to_owned(),
-            params: serde_json::to_value(lsp_types::DocumentHighlightParams {
-                text_document_position_params: lsp_types::TextDocumentPositionParams {
-                    text_document: lsp_types::TextDocumentIdentifier {
-                        uri: lsp_types::Url::parse(document.as_str())
-                            .expect("document URI should parse"),
-                    },
-                    position: lsp_types::Position::new(
-                        line,
-                        u32::try_from(character).expect("position should fit in u32"),
-                    ),
-                },
-                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-                partial_result_params: lsp_types::PartialResultParams::default(),
-            })
-            .expect("documentHighlight params should serialize"),
-        });
-        let result = state
-            .handle_message(&request)
-            .expect("message should dispatch");
-        let response = response_message(result, "typed documentHighlight should return a response");
-        response_json(response)
-    }
-
-    fn typed_scheduled_response(
-        state: &mut GlobalState,
-        receiver: &Receiver<Message>,
-        request: Message,
-        lane: TaskLane,
-        label: &str,
-    ) -> serde_json::Value {
-        let result = state
-            .handle_message(&request)
-            .expect("message should dispatch");
-        assert_no_messages(result);
-        let task = match lane {
-            TaskLane::Latency => state.task_scheduler().latency_results(),
-            TaskLane::Worker => state.task_scheduler().worker_results(),
-            TaskLane::Formatting => state.task_scheduler().formatting_results(),
-            TaskLane::Main => unreachable!("main-thread requests are not scheduled"),
-        }
-        .recv_timeout(Duration::from_secs(1))
-        .unwrap_or_else(|_| panic!("{label} task should complete"));
-        assert!(task.retry().is_some());
-        let task_summary = state
-            .send_task_result(task)
-            .unwrap_or_else(|error| panic!("{label} task response should send: {error}"));
-        assert_eq!(task_summary.outcome(), TaskOutcome::Completed);
-        let response = receiver
-            .recv_timeout(Duration::from_secs(1))
-            .unwrap_or_else(|_| panic!("{label} should send a response"));
-        let Message::Response(response) = response else {
-            panic!("{label} should send response");
-        };
-        assert!(response.error.is_none(), "{response:?}");
-        serde_json::to_value(response).expect("response should serialize")
-    }
-
-    fn typed_document_symbol_response(
-        state: &mut GlobalState,
-        receiver: &Receiver<Message>,
-        id: i32,
-        document: &DocumentId,
-    ) -> serde_json::Value {
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(id),
-            method: "textDocument/documentSymbol".to_owned(),
-            params: serde_json::to_value(lsp_types::DocumentSymbolParams {
-                text_document: lsp_types::TextDocumentIdentifier {
-                    uri: lsp_types::Url::parse(document.as_str())
-                        .expect("document URI should parse"),
-                },
-                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-                partial_result_params: lsp_types::PartialResultParams::default(),
-            })
-            .expect("documentSymbol params should serialize"),
-        });
-        typed_scheduled_response(
-            state,
-            receiver,
-            request,
-            TaskLane::Worker,
-            "typed documentSymbol",
-        )
-    }
-
-    fn typed_workspace_symbol_response(
-        state: &mut GlobalState,
-        receiver: &Receiver<Message>,
-        id: i32,
-        query: &str,
-    ) -> serde_json::Value {
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(id),
-            method: "workspace/symbol".to_owned(),
-            params: serde_json::to_value(lsp_types::WorkspaceSymbolParams {
-                query: query.to_owned(),
-                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-                partial_result_params: lsp_types::PartialResultParams::default(),
-            })
-            .expect("workspaceSymbol params should serialize"),
-        });
-        typed_scheduled_response(
-            state,
-            receiver,
-            request,
-            TaskLane::Worker,
-            "typed workspaceSymbol",
-        )
-    }
-
-    fn typed_folding_range_response(
-        state: &mut GlobalState,
-        receiver: &Receiver<Message>,
-        id: i32,
-        document: &DocumentId,
-    ) -> serde_json::Value {
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(id),
-            method: "textDocument/foldingRange".to_owned(),
-            params: serde_json::to_value(lsp_types::FoldingRangeParams {
-                text_document: lsp_types::TextDocumentIdentifier {
-                    uri: lsp_types::Url::parse(document.as_str())
-                        .expect("document URI should parse"),
-                },
-                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-                partial_result_params: lsp_types::PartialResultParams::default(),
-            })
-            .expect("foldingRange params should serialize"),
-        });
-        typed_scheduled_response(
-            state,
-            receiver,
-            request,
-            TaskLane::Worker,
-            "typed foldingRange",
-        )
-    }
-
-    fn typed_selection_range_response(
-        state: &mut GlobalState,
-        id: i32,
-        document: &DocumentId,
-        line: u32,
-        character: u32,
-    ) -> serde_json::Value {
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(id),
-            method: "textDocument/selectionRange".to_owned(),
-            params: serde_json::to_value(lsp_types::SelectionRangeParams {
-                text_document: lsp_types::TextDocumentIdentifier {
-                    uri: lsp_types::Url::parse(document.as_str())
-                        .expect("document URI should parse"),
-                },
-                positions: vec![lsp_types::Position::new(line, character)],
-                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-                partial_result_params: lsp_types::PartialResultParams::default(),
-            })
-            .expect("selectionRange params should serialize"),
-        });
-        let result = state
-            .handle_message(&request)
-            .expect("message should dispatch");
-        let response = response_message(result, "typed selectionRange should return a response");
-        response_json(response)
-    }
-
-    fn typed_semantic_tokens_full_response(
-        state: &mut GlobalState,
-        receiver: &Receiver<Message>,
-        id: i32,
-        document: &DocumentId,
-    ) -> serde_json::Value {
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(id),
-            method: "textDocument/semanticTokens/full".to_owned(),
-            params: serde_json::to_value(lsp_types::SemanticTokensParams {
-                text_document: lsp_types::TextDocumentIdentifier {
-                    uri: lsp_types::Url::parse(document.as_str())
-                        .expect("document URI should parse"),
-                },
-                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-                partial_result_params: lsp_types::PartialResultParams::default(),
-            })
-            .expect("semanticTokens/full params should serialize"),
-        });
-        typed_scheduled_response(
-            state,
-            receiver,
-            request,
-            TaskLane::Latency,
-            "typed semanticTokens/full",
-        )
-    }
-
-    fn typed_semantic_tokens_delta_response(
-        state: &mut GlobalState,
-        id: i32,
-        document: &DocumentId,
-        previous_result_id: &str,
-    ) -> serde_json::Value {
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(id),
-            method: "textDocument/semanticTokens/full/delta".to_owned(),
-            params: serde_json::to_value(lsp_types::SemanticTokensDeltaParams {
-                text_document: lsp_types::TextDocumentIdentifier {
-                    uri: lsp_types::Url::parse(document.as_str())
-                        .expect("document URI should parse"),
-                },
-                previous_result_id: previous_result_id.to_owned(),
-                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-                partial_result_params: lsp_types::PartialResultParams::default(),
-            })
-            .expect("semanticTokens/full/delta params should serialize"),
-        });
-        let result = state
-            .handle_message(&request)
-            .expect("message should dispatch");
-        let response = response_message(
-            result,
-            "typed semanticTokens/full/delta should return a response",
-        );
-        response_json(response)
-    }
-
-    fn typed_semantic_tokens_range_response(
-        state: &mut GlobalState,
-        id: i32,
-        document: &DocumentId,
-    ) -> serde_json::Value {
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(id),
-            method: "textDocument/semanticTokens/range".to_owned(),
-            params: serde_json::to_value(lsp_types::SemanticTokensRangeParams {
-                text_document: lsp_types::TextDocumentIdentifier {
-                    uri: lsp_types::Url::parse(document.as_str())
-                        .expect("document URI should parse"),
-                },
-                range: lsp_types::Range::new(
-                    lsp_types::Position::new(0, 0),
-                    lsp_types::Position::new(0, 42),
-                ),
-                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-                partial_result_params: lsp_types::PartialResultParams::default(),
-            })
-            .expect("semanticTokens/range params should serialize"),
-        });
-        let result = state
-            .handle_message(&request)
-            .expect("message should dispatch");
-        let response = response_message(
-            result,
-            "typed semanticTokens/range should return a response",
-        );
-        response_json(response)
-    }
-
-    fn typed_code_action_response(
-        state: &mut GlobalState,
-        id: i32,
-        document: &DocumentId,
-        start_character: u32,
-        end_character: u32,
-    ) -> serde_json::Value {
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(id),
-            method: "textDocument/codeAction".to_owned(),
-            params: serde_json::to_value(lsp_types::CodeActionParams {
-                text_document: lsp_types::TextDocumentIdentifier {
-                    uri: lsp_types::Url::parse(document.as_str())
-                        .expect("document URI should parse"),
-                },
-                range: lsp_types::Range::new(
-                    lsp_types::Position::new(0, start_character),
-                    lsp_types::Position::new(0, end_character),
-                ),
-                context: lsp_types::CodeActionContext::default(),
-                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-                partial_result_params: lsp_types::PartialResultParams::default(),
-            })
-            .expect("codeAction params should serialize"),
-        });
-        let result = state
-            .handle_message(&request)
-            .expect("message should dispatch");
-        let response = response_message(result, "typed codeAction should return a response");
-        response_json(response)
-    }
-
-    fn typed_inlay_hint_response(
-        state: &mut GlobalState,
-        id: i32,
-        document: &DocumentId,
-    ) -> serde_json::Value {
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(id),
-            method: "textDocument/inlayHint".to_owned(),
-            params: serde_json::to_value(lsp_types::InlayHintParams {
-                text_document: lsp_types::TextDocumentIdentifier {
-                    uri: lsp_types::Url::parse(document.as_str())
-                        .expect("document URI should parse"),
-                },
-                range: lsp_types::Range::new(
-                    lsp_types::Position::new(1, 0),
-                    lsp_types::Position::new(1, 80),
-                ),
-                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-            })
-            .expect("inlayHint params should serialize"),
-        });
-        let result = state
-            .handle_message(&request)
-            .expect("message should dispatch");
-        let response = response_message(result, "typed inlayHint should return a response");
-        response_json(response)
-    }
-
-    fn json_selection_chain(range: &serde_json::Value) -> Vec<&serde_json::Value> {
-        let mut ranges = Vec::new();
-        let mut current = Some(range);
-        while let Some(selection) = current {
-            ranges.push(&selection["range"]);
-            current = selection.get("parent");
-        }
-        ranges
-    }
-
-    fn typed_formatting_response(
-        state: &mut GlobalState,
-        id: i32,
-        document: &DocumentId,
-    ) -> serde_json::Value {
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(id),
-            method: "textDocument/formatting".to_owned(),
-            params: serde_json::to_value(lsp_types::DocumentFormattingParams {
-                text_document: lsp_types::TextDocumentIdentifier {
-                    uri: lsp_types::Url::parse(document.as_str())
-                        .expect("document URI should parse"),
-                },
-                options: lsp_formatting_options(),
-                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-            })
-            .expect("formatting params should serialize"),
-        });
-        let result = state
-            .handle_message(&request)
-            .expect("message should dispatch");
-        let response =
-            formatting_task_response(state, result, "typed formatting should return a response");
-        response_string_json(&response)
-    }
-
-    fn typed_range_formatting_response(
-        state: &mut GlobalState,
-        id: i32,
-        document: &DocumentId,
-    ) -> serde_json::Value {
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(id),
-            method: "textDocument/rangeFormatting".to_owned(),
-            params: serde_json::to_value(lsp_types::DocumentRangeFormattingParams {
-                text_document: lsp_types::TextDocumentIdentifier {
-                    uri: lsp_types::Url::parse(document.as_str())
-                        .expect("document URI should parse"),
-                },
-                range: lsp_types::Range::new(
-                    lsp_types::Position::new(1, 0),
-                    lsp_types::Position::new(2, 0),
-                ),
-                options: lsp_formatting_options(),
-                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
-            })
-            .expect("rangeFormatting params should serialize"),
-        });
-        let result = state
-            .handle_message(&request)
-            .expect("message should dispatch");
-        let response = formatting_task_response(
-            state,
-            result,
-            "typed rangeFormatting should return a response",
-        );
-        response_string_json(&response)
-    }
-
-    fn typed_on_type_formatting_response(
-        state: &mut GlobalState,
-        id: i32,
-        document: &DocumentId,
-    ) -> serde_json::Value {
-        let request = Message::Request(lsp_server::Request {
-            id: lsp_server::RequestId::from(id),
-            method: "textDocument/onTypeFormatting".to_owned(),
-            params: serde_json::to_value(lsp_types::DocumentOnTypeFormattingParams {
-                text_document_position: lsp_types::TextDocumentPositionParams {
-                    text_document: lsp_types::TextDocumentIdentifier {
-                        uri: lsp_types::Url::parse(document.as_str())
-                            .expect("document URI should parse"),
-                    },
-                    position: lsp_types::Position::new(2, 1),
-                },
-                ch: "}".to_owned(),
-                options: lsp_formatting_options(),
-            })
-            .expect("onTypeFormatting params should serialize"),
-        });
-        let result = state
-            .handle_message(&request)
-            .expect("message should dispatch");
-        let response = formatting_task_response(
-            state,
-            result,
-            "typed onTypeFormatting should return a response",
-        );
-        response_string_json(&response)
-    }
-
-    fn formatting_task_response(
-        state: &mut GlobalState,
-        result: Vec<Message>,
-        expected: &str,
-    ) -> String {
-        if let Some(response) = response_message_opt(result, expected) {
-            return crate::rpc::serialize_message(&Message::Response(response));
-        }
-        let task = state
-            .task_scheduler()
-            .formatting_results()
-            .recv_timeout(Duration::from_secs(1))
-            .expect(expected);
-        assert_eq!(task.lane(), TaskLane::Formatting);
-        let messages = task.into_messages();
-        let [message] = messages.as_slice() else {
-            panic!("{expected}");
-        };
-        crate::rpc::serialize_message(message)
-    }
-
-    fn response_message(messages: Vec<Message>, expected: &str) -> Response {
-        response_message_opt(messages, expected).expect(expected)
-    }
-
-    fn response_message_opt(messages: Vec<Message>, expected: &str) -> Option<Response> {
-        match messages.as_slice() {
-            [] => None,
-            [Message::Response(response)] => Some(response.clone()),
-            _ => panic!("{expected}: {messages:?}"),
-        }
-    }
-
-    fn response_json(response: Response) -> serde_json::Value {
-        serde_json::from_str(&crate::rpc::serialize_message(&Message::Response(response)))
-            .expect("response should be JSON")
-    }
-
-    fn response_string_json(response: &str) -> serde_json::Value {
-        serde_json::from_str(response).expect("response should be JSON")
-    }
-
-    fn assert_no_messages(messages: Vec<Message>) {
-        assert!(
-            messages.is_empty(),
-            "expected no messages, got {messages:?}"
-        );
-    }
-
-    fn assert_has_messages(messages: &[Message]) {
-        assert!(!messages.is_empty(), "expected at least one message");
-    }
-
-    fn single_message_value(messages: Vec<Message>) -> serde_json::Value {
-        let [message] = messages.as_slice() else {
-            panic!("expected exactly one message, got {messages:?}");
-        };
-        serde_json::from_str(&crate::rpc::serialize_message(message))
-            .expect("message should serialize as JSON")
-    }
-
-    fn lsp_formatting_options() -> lsp_types::FormattingOptions {
-        lsp_types::FormattingOptions {
-            tab_size: 4,
-            insert_spaces: true,
-            properties: Default::default(),
-            trim_trailing_whitespace: None,
-            insert_final_newline: None,
-            trim_final_newlines: None,
-        }
-    }
-
-    fn workspace_config_with_schema(root: &str, schema: &str) -> WorkspaceConfig {
-        let mut config = WorkspaceConfig::workspace([WorkspaceRoot::from(root)]);
-        config.set_schema(SchemaConfig::from_path(schema));
-        config
-    }
-}
+mod tests;

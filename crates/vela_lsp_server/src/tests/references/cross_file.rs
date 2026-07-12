@@ -3,19 +3,16 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 use super::{assert_reference, line};
 
 #[test]
 fn lsp_references_find_cross_file_imported_source_field_and_method_uses() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -41,9 +38,8 @@ impl Reward {
     pub fn total(self) -> i64 { return 1 }
 }";
     for (uri, text) in [(types_uri, types_text), (main_uri, main_text)] {
-        let _ = notification_value(handle_notification(
+        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
-            "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
                     "uri": uri,
@@ -55,10 +51,9 @@ impl Reward {
         ));
     }
 
-    let field_response = response_value(handle_request(
+    let field_response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -100,10 +95,9 @@ impl Reward {
             .expect("second field read should exist"),
     );
 
-    let method_response = response_value(handle_request(
+    let method_response = response_value(request::<lsp_types::request::References>(
         &mut server,
         3,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -175,20 +169,18 @@ pub fn main(amount: i64) -> i64 {
     return grant(amount)
 }";
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": root_uri,
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [
                 { "uri": file_uri(&config_path), "type": 1 },
@@ -196,9 +188,8 @@ pub fn main(amount: i64) -> i64 {
             ]
         }),
     );
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -209,10 +200,9 @@ pub fn main(amount: i64) -> i64 {
         }),
     ));
 
-    let before = response_value(handle_request(
+    let before = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -245,18 +235,16 @@ pub fn main(amount: i64) -> i64 {
     );
 
     fs::remove_file(&reward_path).expect("source should be removable");
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": reward_uri, "type": 3 }]
         }),
     );
 
-    let after = response_value(handle_request(
+    let after = response_value(request::<lsp_types::request::References>(
         &mut server,
         3,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -316,20 +304,18 @@ pub fn main(amount: i64) -> i64 {
     return grant(amount)
 }";
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": root_uri,
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [
                 { "uri": file_uri(&config_path), "type": 1 },
@@ -337,9 +323,8 @@ pub fn main(amount: i64) -> i64 {
             ]
         }),
     );
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -350,10 +335,9 @@ pub fn main(amount: i64) -> i64 {
         }),
     ));
 
-    let before = response_value(handle_request(
+    let before = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -371,9 +355,8 @@ pub fn main(amount: i64) -> i64 {
     assert_reference(before_references, &reward_uri, 0, "pub fn ".len());
 
     fs::rename(&reward_path, &bonus_path).expect("source should be renameable");
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [
                 { "uri": reward_uri.clone(), "type": 3 },
@@ -381,9 +364,8 @@ pub fn main(amount: i64) -> i64 {
             ]
         }),
     );
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidChangeTextDocument>(
         &mut server,
-        "textDocument/didChange",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -395,10 +377,9 @@ pub fn main(amount: i64) -> i64 {
         }),
     ));
 
-    let after = response_value(handle_request(
+    let after = response_value(request::<lsp_types::request::References>(
         &mut server,
         3,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -471,20 +452,18 @@ pub fn main(amount: i64) -> i64 {
 }";
     let overlay_text = "pub fn grant(amount: i64) -> i64 { return amount }";
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": root_uri,
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [
                 { "uri": file_uri(&config_path), "type": 1 },
@@ -492,9 +471,8 @@ pub fn main(amount: i64) -> i64 {
             ]
         }),
     );
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": reward_uri,
@@ -504,9 +482,8 @@ pub fn main(amount: i64) -> i64 {
             }
         }),
     ));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -517,10 +494,9 @@ pub fn main(amount: i64) -> i64 {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -602,20 +578,18 @@ pub fn main(amount: i64) -> i64 {
     return grant(amount)
 }";
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": root_uri,
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [
                 { "uri": file_uri(&config_path), "type": 1 },
@@ -624,9 +598,8 @@ pub fn main(amount: i64) -> i64 {
             ]
         }),
     );
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -637,10 +610,9 @@ pub fn main(amount: i64) -> i64 {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -679,11 +651,10 @@ pub fn main(amount: i64) -> i64 {
 
 #[test]
 fn lsp_references_find_cross_file_imported_source_enum_variant_uses() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -711,9 +682,8 @@ pub enum QuestState {
     Done
 }";
     for (uri, text) in [(types_uri, types_text), (main_uri, main_text)] {
-        let _ = notification_value(handle_notification(
+        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
-            "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
                     "uri": uri,
@@ -725,10 +695,9 @@ pub enum QuestState {
         ));
     }
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -773,11 +742,10 @@ pub enum QuestState {
 
 #[test]
 fn lsp_references_find_cross_file_imported_source_enum_record_variant_field_uses() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -805,9 +773,8 @@ pub enum QuestState {
     Done
 }";
     for (uri, text) in [(types_uri, types_text), (main_uri, main_text)] {
-        let _ = notification_value(handle_notification(
+        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
-            "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
                     "uri": uri,
@@ -819,10 +786,9 @@ pub enum QuestState {
         ));
     }
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {

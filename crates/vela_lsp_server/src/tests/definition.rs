@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
+use super::{TestServer, navigation_request, notification_value, notify, request, response_value};
 
 #[test]
 fn lsp_definition_follows_open_overlay_local_binding() {
@@ -17,11 +17,10 @@ fn lsp_declaration_follows_open_overlay_local_binding() {
 
 #[test]
 fn lsp_definition_follows_function_call_after_qualified_stdlib_call() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -39,9 +38,8 @@ fn main() {
     return add_mixed(1);
 }
 "#;
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -53,10 +51,9 @@ fn main() {
     ));
     let call_line = text.lines().nth(7).expect("call line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoDefinition>(
         &mut server,
         2,
-        "textDocument/definition",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -76,11 +73,10 @@ fn main() {
 
 #[test]
 fn lsp_definition_follows_imported_const_and_global_declarations() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -97,9 +93,8 @@ pub fn main() {
 }"#;
     let rewards_text = r#"pub const BASE_REWARD = 4
 pub global reward_scale: i64"#;
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": rewards_uri,
@@ -109,9 +104,8 @@ pub global reward_scale: i64"#;
             }
         }),
     ));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -123,10 +117,9 @@ pub global reward_scale: i64"#;
     ));
     let return_line = main_text.lines().nth(4).expect("return line should exist");
 
-    let const_response = response_value(handle_request(
+    let const_response = response_value(request::<lsp_types::request::GotoDefinition>(
         &mut server,
         2,
-        "textDocument/definition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -143,10 +136,9 @@ pub global reward_scale: i64"#;
     assert_eq!(const_response["result"]["range"]["start"]["character"], 10);
     assert_eq!(const_response["result"]["range"]["end"]["character"], 21);
 
-    let global_response = response_value(handle_request(
+    let global_response = response_value(request::<lsp_types::request::GotoDefinition>(
         &mut server,
         3,
-        "textDocument/definition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -215,11 +207,10 @@ fn lsp_type_definition_returns_null_for_unresolved_name() {
 
 #[test]
 fn lsp_declaration_returns_null_for_dynamic_member() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -228,9 +219,8 @@ fn lsp_declaration_returns_null_for_dynamic_member() {
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub fn main(value: Any) { return value.level }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -241,10 +231,9 @@ fn lsp_declaration_returns_null_for_dynamic_member() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoDeclaration>(
         &mut server,
         2,
-        "textDocument/declaration",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -265,11 +254,10 @@ mod source_return_receivers;
 mod type_definition;
 
 fn assert_unknown_source_member_navigation_null(method: &str) {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -284,9 +272,8 @@ fn assert_unknown_source_member_navigation_null(method: &str) {
 fn assign_cell(cell: Cell) {
     return cell.missing;
 }"#;
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -298,7 +285,7 @@ fn assign_cell(cell: Cell) {
     ));
     let use_line = text.lines().nth(5).expect("member use line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(navigation_request(
         &mut server,
         2,
         method,
@@ -317,11 +304,10 @@ fn assign_cell(cell: Cell) {
 }
 
 fn assert_unresolved_name_navigation_null(method: &str) {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -330,9 +316,8 @@ fn assert_unresolved_name_navigation_null(method: &str) {
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub fn main() { return missing }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -343,7 +328,7 @@ fn assert_unresolved_name_navigation_null(method: &str) {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(navigation_request(
         &mut server,
         2,
         method,
@@ -362,11 +347,10 @@ fn assert_unresolved_name_navigation_null(method: &str) {
 }
 
 fn assert_local_binding_navigation(method: &str) {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -374,9 +358,8 @@ fn assert_local_binding_navigation(method: &str) {
         }),
     ));
     let text = "pub fn main(amount: i64) -> i64 { return amount }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": "file:///workspace/scripts/game/main.vela",
@@ -387,7 +370,7 @@ fn assert_local_binding_navigation(method: &str) {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(navigation_request(
         &mut server,
         2,
         method,
@@ -414,11 +397,10 @@ fn assert_local_binding_navigation(method: &str) {
 }
 
 fn assert_source_struct_field_navigation(method: &str) {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -439,9 +421,8 @@ fn main() {
     let cell: Cell = Cell { value: 1 };
     return assign_cell(cell, "bad");
 }"#;
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -457,7 +438,7 @@ fn main() {
         .nth(1)
         .expect("field declaration line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(navigation_request(
         &mut server,
         2,
         method,
@@ -490,11 +471,10 @@ fn main() {
 }
 
 fn assert_source_trait_default_method_navigation_on_source_function_return_receiver(method: &str) {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -522,9 +502,8 @@ pub fn main() {
         .lines()
         .nth(2)
         .expect("trait method declaration line should exist");
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -535,7 +514,7 @@ pub fn main() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(navigation_request(
         &mut server,
         2,
         method,
@@ -611,28 +590,25 @@ fn assert_schema_source_navigation(method: &str) {
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
     );
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -643,7 +619,7 @@ fn assert_schema_source_navigation(method: &str) {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(navigation_request(
         &mut server,
         2,
         method,

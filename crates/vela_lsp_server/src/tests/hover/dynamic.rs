@@ -1,14 +1,11 @@
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 #[test]
 fn lsp_hover_returns_null_for_source_any_return_receiver_member() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -20,9 +17,8 @@ fn lsp_hover_returns_null_for_source_any_return_receiver_member() {
 struct Player { level: i64 }
 fn source_any() -> Any { return Player { level: 1 } }
 pub fn main() { return source_any().level }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -34,10 +30,9 @@ pub fn main() { return source_any().level }";
     ));
 
     let use_line = text.lines().nth(2).expect("member use line should exist");
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {

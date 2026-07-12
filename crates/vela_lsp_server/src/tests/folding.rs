@@ -1,12 +1,11 @@
-use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
+use super::{TestServer, notification_value, notify, request, response_value};
 
 #[test]
 fn lsp_folding_ranges_cover_items_and_blocks() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -35,9 +34,8 @@ pub fn main(player: Player) -> i64 {
     return 0
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -48,10 +46,9 @@ pub fn main(player: Player) -> i64 {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::FoldingRangeRequest>(
         &mut server,
         2,
-        "textDocument/foldingRange",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),
@@ -88,11 +85,10 @@ pub fn main(player: Player) -> i64 {
 
 #[test]
 fn lsp_folding_ranges_cover_multiline_literals_and_recovery() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -116,9 +112,8 @@ quest
     return scores[0]
 ";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -129,10 +124,9 @@ quest
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::FoldingRangeRequest>(
         &mut server,
         2,
-        "textDocument/foldingRange",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),

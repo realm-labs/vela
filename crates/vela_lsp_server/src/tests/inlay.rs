@@ -1,4 +1,4 @@
-use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
+use super::{TestServer, notification_value, notify, request, response_value};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -10,16 +10,15 @@ mod schema_method_return_receivers;
 
 #[test]
 fn lsp_inlay_hints_show_parameter_names() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub fn grant(amount: i64, reason: String) -> i64 { return amount }\npub fn main() { return grant(10, \"quest\") }";
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -44,16 +43,15 @@ fn lsp_inlay_hints_show_parameter_names() {
 
 #[test]
 fn lsp_inlay_hints_respect_requested_range() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub fn grant(amount: i64, reason: String) -> i64 { return amount }\npub fn main() { return grant(10, \"quest\") }";
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -76,16 +74,15 @@ fn lsp_inlay_hints_respect_requested_range() {
 
 #[test]
 fn lsp_inlay_hints_degrade_to_any_without_schema() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub fn main() { return host_grant(10) }";
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -100,7 +97,7 @@ fn lsp_inlay_hints_degrade_to_any_without_schema() {
 
 #[test]
 fn lsp_inlay_hints_show_source_method_parameter_names() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = r#"struct Player { level: i64 }
@@ -111,10 +108,9 @@ pub fn main(player: Player) { player.grant(1, 2) }"#;
     let main_line = text.lines().nth(4).expect("main line should exist");
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -145,7 +141,7 @@ pub fn main(player: Player) { player.grant(1, 2) }"#;
 
 #[test]
 fn lsp_inlay_hints_show_local_typefacts() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = r#"const BONUS: i64 = 10
@@ -157,10 +153,9 @@ pub fn main() {
 }"#;
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -197,7 +192,7 @@ pub fn main() {
 
 #[test]
 fn lsp_inlay_hints_show_lambda_parameter_facts() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = r#"pub fn main() {
@@ -209,10 +204,9 @@ fn lsp_inlay_hints_show_lambda_parameter_facts() {
 }"#;
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -310,11 +304,10 @@ fn lsp_inlay_hints_show_host_path_typefacts() {
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, file_uri(&root));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
@@ -328,10 +321,9 @@ fn lsp_inlay_hints_show_host_path_typefacts() {
 }"#;
     open_document(&mut server, &uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -446,11 +438,10 @@ fn lsp_inlay_hints_suppress_any_schema_function_parameters() {
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, file_uri(&root));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
@@ -463,10 +454,9 @@ fn lsp_inlay_hints_suppress_any_schema_function_parameters() {
 }"#;
     open_document(&mut server, &uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -511,7 +501,7 @@ fn lsp_inlay_hints_suppress_any_schema_function_parameters() {
 
 #[test]
 fn lsp_inlay_hints_suppress_any_source_function_and_method_parameters() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = r#"struct Player { level: i64 }
@@ -525,10 +515,9 @@ pub fn main(player: Player) {
 }"#;
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -559,7 +548,7 @@ pub fn main(player: Player) {
 
 #[test]
 fn lsp_inlay_hints_suppress_any_source_method_parameters_on_source_function_return_receiver() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = r#"struct Player { level: i64 }
@@ -575,10 +564,9 @@ pub fn main() {
     let second_call = text.lines().nth(7).expect("second call line");
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -615,7 +603,7 @@ pub fn main() {
 
 #[test]
 fn lsp_inlay_hints_show_enum_variant_payload_names() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = r#"enum QuestProgress {
@@ -627,10 +615,9 @@ pub fn main() {
 }"#;
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -668,11 +655,10 @@ fn lsp_inlay_hints_show_schema_tuple_variant_payload_names() {
     fs::write(&schema_path, schema_with_quest_state_tuple_variant())
         .expect("schema artifact should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
@@ -691,10 +677,9 @@ fn lsp_inlay_hints_show_schema_tuple_variant_payload_names() {
     let text = r#"pub fn main() { QuestState::Active("quest-1", 3) }"#;
     open_document(&mut server, &uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -731,7 +716,7 @@ fn lsp_inlay_hints_show_schema_tuple_variant_payload_names() {
 
 #[test]
 fn lsp_inlay_hints_suppress_any_enum_variant_payloads() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = r#"enum Payload {
@@ -744,10 +729,9 @@ pub fn main() {
 }"#;
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -794,11 +778,10 @@ fn lsp_inlay_hints_suppress_any_schema_enum_variant_payloads() {
     )
     .expect("schema artifact should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
@@ -821,10 +804,9 @@ fn lsp_inlay_hints_suppress_any_schema_enum_variant_payloads() {
     let stable_line = text.lines().nth(2).expect("stable line should exist");
     open_document(&mut server, &uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -867,11 +849,10 @@ fn lsp_inlay_hints_suppress_any_schema_enum_variant_payloads() {
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
-fn initialize(server: &mut LspServer, root_uri: impl AsRef<str>) -> serde_json::Value {
-    response_value(handle_request(
+fn initialize(server: &mut TestServer, root_uri: impl AsRef<str>) -> serde_json::Value {
+    response_value(request::<lsp_types::request::Initialize>(
         server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": root_uri.as_ref(),
@@ -880,10 +861,9 @@ fn initialize(server: &mut LspServer, root_uri: impl AsRef<str>) -> serde_json::
     ))
 }
 
-fn open_document(server: &mut LspServer, uri: &str, text: &str) {
-    let _ = notification_value(handle_notification(
+fn open_document(server: &mut TestServer, uri: &str, text: &str) {
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,

@@ -1,12 +1,11 @@
-use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
+use super::{TestServer, notification_value, notify, request, response_value};
 
 #[test]
 fn lsp_struct_body_completion_enters_field_declaration_context() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -15,9 +14,8 @@ fn lsp_struct_body_completion_enters_field_declaration_context() {
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub fn spawn_player() { return 1 }\npub struct Player {  }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -29,10 +27,9 @@ fn lsp_struct_body_completion_enters_field_declaration_context() {
     ));
     let struct_line = text.lines().nth(1).expect("struct line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         2,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -56,9 +53,8 @@ fn lsp_struct_body_completion_enters_field_declaration_context() {
     assert_no_completion(&response, "fn");
 
     let type_text = "pub struct Player { level: i }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidChangeTextDocument>(
         &mut server,
-        "textDocument/didChange",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -67,10 +63,9 @@ fn lsp_struct_body_completion_enters_field_declaration_context() {
             "contentChanges": [{ "text": type_text }]
         }),
     ));
-    let type_response = response_value(handle_request(
+    let type_response = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         3,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {

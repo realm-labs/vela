@@ -2,7 +2,7 @@ use std::fs;
 
 use super::{file_uri, temp_workspace};
 use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
+    TestServer, navigation_request, notification_value, notify, request, response_value,
 };
 
 #[test]
@@ -135,20 +135,18 @@ fn assert_navigation(method: &str, text: &str, expectation: NavigationExpectatio
     let root = temp_workspace();
     let root_uri = file_uri(&root.join("scripts"));
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": root_uri,
             "capabilities": {}
         }),
     ));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -167,7 +165,7 @@ fn assert_navigation(method: &str, text: &str, expectation: NavigationExpectatio
         .nth(expectation.declaration_line)
         .expect("declaration line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(navigation_request(
         &mut server,
         2,
         method,

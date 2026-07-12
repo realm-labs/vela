@@ -1,14 +1,11 @@
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 #[test]
 fn lsp_inlay_hints_show_imported_function_parameter_names() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -24,10 +21,9 @@ fn lsp_inlay_hints_show_imported_function_parameter_names() {
     let text = "use game::reward::grant\npub fn main() { return grant(10, \"quest\") }";
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -59,11 +55,10 @@ fn lsp_inlay_hints_show_imported_function_parameter_names() {
 
 #[test]
 fn lsp_inlay_hints_show_imported_const_and_global_typefacts() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -84,10 +79,9 @@ pub fn main() {
 }"#;
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -118,11 +112,10 @@ pub fn main() {
 
 #[test]
 fn lsp_inlay_hints_show_imported_enum_variant_payload_names() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -144,10 +137,9 @@ pub fn main() {
 }"#;
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -177,10 +169,9 @@ pub fn main() {
     );
 }
 
-fn open_document(server: &mut LspServer, uri: &str, text: &str) {
-    let diagnostics = notification_value(handle_notification(
+fn open_document(server: &mut TestServer, uri: &str, text: &str) {
+    let diagnostics = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,

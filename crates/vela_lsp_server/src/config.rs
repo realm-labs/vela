@@ -1,19 +1,11 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-#[cfg(test)]
-use lsp_server::{Message, RequestId};
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
 use vela_language_service::{SchemaConfig, WorkspaceConfig, WorkspaceRoot};
 
-#[cfg(test)]
-use crate::{ErrorCode, error_response_messages, publish_diagnostics_notification};
-use crate::{
-    LspServer,
-    config_change::{ConfigChange, WorkspaceConfigChange},
-    document_uri_path, normalized_path,
-};
+use crate::paths::{document_uri_path, normalized_path};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LaunchConfiguration {
@@ -188,102 +180,6 @@ pub(crate) fn workspace_config_from_roots_and_editor_config(
         config.set_schema(SchemaConfig::from_path(schema));
     }
     Some(config)
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg(test)]
-struct DidChangeConfigurationParams {
-    settings: JsonValue,
-}
-
-impl LspServer {
-    #[must_use]
-    pub fn with_launch_configuration(configuration: LaunchConfiguration) -> Self {
-        let mut server = Self::new();
-        server.apply_config_change(ConfigChange::from_launch(configuration));
-        server
-    }
-
-    pub(crate) fn apply_config_change(&mut self, mut change: ConfigChange) {
-        if let Some(enabled) = change.watch_files_enabled() {
-            self.file_watching_disabled = !enabled;
-        }
-        if let Some(workspace_roots) = change.take_workspace_roots() {
-            self.workspace_roots = workspace_roots;
-        }
-        if let Some(editor_config) = change.take_editor_config() {
-            self.editor_config = Some(editor_config);
-        }
-
-        match change.workspace_config_change() {
-            WorkspaceConfigChange::Unchanged => {}
-            WorkspaceConfigChange::RecomputeFromEditor => {
-                if !self.has_config_file {
-                    self.config = workspace_config_from_roots_and_editor_config(
-                        &self.workspace_roots,
-                        self.editor_config.as_ref(),
-                    );
-                    self.databases.invalidate_project_config();
-                    self.reload_schema_from_config();
-                }
-            }
-            WorkspaceConfigChange::WorkspaceFile(config) => {
-                self.has_config_file = true;
-                self.config = Some(config);
-                self.databases.invalidate_project_config();
-                self.reload_schema_from_config();
-            }
-            WorkspaceConfigChange::ClearWorkspaceFile => {
-                self.has_config_file = false;
-                self.config = workspace_config_from_roots_and_editor_config(
-                    &self.workspace_roots,
-                    self.editor_config.as_ref(),
-                );
-                self.databases.invalidate_project_config();
-                self.reload_schema_from_config();
-            }
-        }
-    }
-
-    #[cfg(test)]
-    pub(crate) fn did_change_configuration(
-        &mut self,
-        id: Option<RequestId>,
-        params: JsonValue,
-    ) -> Vec<Message> {
-        if let Some(id) = id {
-            return error_response_messages(
-                Some(id),
-                ErrorCode::InvalidRequest,
-                "`workspace/didChangeConfiguration` must be sent as a notification",
-            );
-        }
-
-        let params = match serde_json::from_value::<DidChangeConfigurationParams>(params) {
-            Ok(params) => params,
-            Err(error) => {
-                return vec![publish_diagnostics_notification(
-                    "",
-                    Vec::new(),
-                    Some(format!("invalid didChangeConfiguration params: {error}")),
-                )];
-            }
-        };
-        let editor_config = match EditorConfiguration::from_settings(params.settings) {
-            Ok(config) => config,
-            Err(error) => {
-                return vec![publish_diagnostics_notification(
-                    "",
-                    Vec::new(),
-                    Some(format!("invalid didChangeConfiguration settings: {error}")),
-                )];
-            }
-        };
-
-        self.apply_config_change(ConfigChange::from_editor_settings(editor_config));
-        self.publish_open_diagnostics()
-    }
 }
 
 fn normalize_roots(roots: &[String], lsp_roots: &BTreeSet<String>) -> BTreeSet<String> {

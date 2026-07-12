@@ -1,9 +1,7 @@
 use std::fs;
 
 use super::{file_uri, temp_workspace};
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 #[test]
 fn lsp_hover_reports_schema_method_on_schema_method_return_receiver() {
@@ -14,11 +12,10 @@ fn lsp_hover_reports_schema_method_on_schema_method_return_receiver() {
     fs::write(&schema_path, schema_with_inventory_method_return())
         .expect("schema artifact should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
@@ -35,9 +32,8 @@ fn lsp_hover_reports_schema_method_on_schema_method_return_receiver() {
     ));
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = "pub fn main(player: Player) { player.inventory().grant(1) }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -48,10 +44,9 @@ fn lsp_hover_reports_schema_method_on_schema_method_return_receiver() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -81,11 +76,10 @@ fn lsp_hover_reports_schema_trait_method_on_schema_method_return_receiver() {
     fs::write(&schema_path, schema_with_rewardable_method_return())
         .expect("schema artifact should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
@@ -102,9 +96,8 @@ fn lsp_hover_reports_schema_trait_method_on_schema_method_return_receiver() {
     ));
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = "pub fn main(player: Player) { player.rewardable().preview(1) }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -115,10 +108,9 @@ fn lsp_hover_reports_schema_trait_method_on_schema_method_return_receiver() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {

@@ -1,6 +1,4 @@
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 use super::{assert_call_range, assert_outgoing_call, line};
 
@@ -72,15 +70,14 @@ fn col(text: &str, line_number: usize, needle: &str) -> usize {
 }
 
 fn prepare_items(
-    server: &mut LspServer,
+    server: &mut TestServer,
     uri: &str,
     line: usize,
     character: usize,
 ) -> Vec<serde_json::Value> {
-    response_value(handle_request(
+    response_value(request::<lsp_types::request::CallHierarchyPrepare>(
         server,
         2,
-        "textDocument/prepareCallHierarchy",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": { "line": line, "character": character }
@@ -92,14 +89,13 @@ fn prepare_items(
 }
 
 fn assert_incoming_ranges(
-    server: &mut LspServer,
+    server: &mut TestServer,
     item: &serde_json::Value,
     expected: &[(usize, usize)],
 ) {
-    let incoming = response_value(handle_request(
+    let incoming = response_value(request::<lsp_types::request::CallHierarchyIncomingCalls>(
         server,
         3,
-        "callHierarchy/incomingCalls",
         serde_json::json!({ "item": item.clone() }),
     ));
     let incoming_calls = incoming["result"]
@@ -116,7 +112,7 @@ fn assert_incoming_ranges(
 }
 
 fn assert_main_outgoing(
-    server: &mut LspServer,
+    server: &mut TestServer,
     uri: &str,
     text: &str,
     main_line: usize,
@@ -125,10 +121,9 @@ fn assert_main_outgoing(
     let main_items = prepare_items(server, uri, main_line, col(text, main_line, "main"));
     assert_eq!(main_items.len(), 1);
 
-    let outgoing = response_value(handle_request(
+    let outgoing = response_value(request::<lsp_types::request::CallHierarchyOutgoingCalls>(
         server,
         4,
-        "callHierarchy/outgoingCalls",
         serde_json::json!({ "item": main_items[0].clone() }),
     ));
     let outgoing_calls = outgoing["result"]
@@ -140,7 +135,7 @@ fn assert_main_outgoing(
     }
 }
 
-fn open_source_method_return_method_fixture() -> (LspServer, &'static str, &'static str) {
+fn open_source_method_return_method_fixture() -> (TestServer, &'static str, &'static str) {
     let text = "\
 pub struct Player {
     level: i64
@@ -165,7 +160,7 @@ pub fn main(player: Player) -> i64 {
     open_fixture(text)
 }
 
-fn open_source_method_return_trait_fixture() -> (LspServer, &'static str, &'static str) {
+fn open_source_method_return_trait_fixture() -> (TestServer, &'static str, &'static str) {
     let text = "\
 pub trait Rewardable {
     fn preview(self, amount: i64) -> i64 { return amount }
@@ -192,12 +187,11 @@ pub fn main(player: Player) -> i64 {
     open_fixture(text)
 }
 
-fn open_fixture(text: &'static str) -> (LspServer, &'static str, &'static str) {
-    let mut server = LspServer::new();
-    let initialize = response_value(handle_request(
+fn open_fixture(text: &'static str) -> (TestServer, &'static str, &'static str) {
+    let mut server = TestServer::new();
+    let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -209,9 +203,8 @@ fn open_fixture(text: &'static str) -> (LspServer, &'static str, &'static str) {
         true
     );
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,

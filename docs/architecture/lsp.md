@@ -108,13 +108,26 @@ protocol shapes. Invalid params, method-not-found, cancellation, stale
 generations, handler panics, and response projection errors flow through the
 shared dispatcher/main-loop path.
 
-`GlobalState` is the only mutable protocol coordinator. It owns lifecycle
-flags, workspace roots, editor configuration, watcher settings, request queue
-state, generation checks, cancellation handles, and task scheduling. Request
-handlers receive typed params and either mutate `GlobalState` directly for
-coordinator work or take immutable snapshots for read-only language-service
-queries. Long-running or latency-sensitive work is scheduled through explicit
-main-loop lanes:
+`GlobalState` is the only mutable protocol coordinator. It owns lifecycle,
+capability, watcher, request, cancellation, reload, task, and outbound-message
+state exactly once. Its uniquely owned `ProjectState` groups the live
+workspace, language-service databases, disk sources, workspace roots, open
+documents, editor/workspace configuration, and schema/config diagnostic
+records. `ProjectState` is not a second coordinator and none of its live fields
+are mirrored elsewhere.
+
+Mutations apply to the live project state and refresh the corresponding
+language-service database generation at explicit commit points before a
+snapshot or diagnostic is published. Diagnostic collection and publication
+are read-only projections and cannot refresh analysis as a side effect.
+`GlobalStateSnapshot` captures immutable workspace and database snapshots plus
+coordinator projection state from one authoritative generation; workers never
+read live state after dispatch or write a snapshot back into `GlobalState`.
+
+Request handlers receive typed params and either mutate `GlobalState` directly
+for coordinator work or take an immutable snapshot for read-only
+language-service queries. Long-running or latency-sensitive work is scheduled
+through explicit main-loop lanes:
 
 ```text
 mutable notifications/lifecycle/config   main loop, ordered
@@ -132,6 +145,13 @@ flag defines that risk and its validation.
 Editor plugins should be thin launchers around the native LSP binary. They may
 provide configuration UI and binary discovery, but feature behavior should live
 in `vela_language_service` or `vela_lsp_server`.
+
+The in-memory `TestServer` owns a real `GlobalState` and sends typed
+`lsp_server::Message` values through the same lifecycle gates, request queue,
+`handlers::dispatch`, task-result handling, and response emission as the
+production main loop. Tests may construct raw protocol shapes only when the
+shape itself is under test, such as malformed parameters. There is no second
+test dispatcher or local JSON parameter model.
 
 ## Query And Projection Boundary
 

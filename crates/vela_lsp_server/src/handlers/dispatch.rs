@@ -52,6 +52,9 @@ fn dispatch_request(global_state: &mut GlobalState, request: Request) -> Vec<Mes
         let _ = global_state.exit(());
         return exit_must_be_notification(request.id);
     }
+    if is_notification_method(&request.method) {
+        return notification_must_be_notification(request.id, &request.method);
+    }
 
     let mut dispatcher = RequestDispatcher::new(global_state, request);
     dispatcher
@@ -687,6 +690,29 @@ fn exit_must_be_notification(id: lsp_server::RequestId) -> Vec<Message> {
         id,
         ErrorCode::InvalidRequest,
         "`exit` must be sent as a notification",
+    )
+}
+
+fn notification_must_be_notification(id: lsp_server::RequestId, method: &str) -> Vec<Message> {
+    error_message(
+        id,
+        ErrorCode::InvalidRequest,
+        format!("`{method}` must be sent as a notification"),
+    )
+}
+
+fn is_notification_method(method: &str) -> bool {
+    matches!(
+        method,
+        "initialized"
+            | "$/cancelRequest"
+            | "workspace/didChangeConfiguration"
+            | "workspace/didChangeWorkspaceFolders"
+            | "workspace/didChangeWatchedFiles"
+            | "textDocument/didSave"
+            | "textDocument/didOpen"
+            | "textDocument/didChange"
+            | "textDocument/didClose"
     )
 }
 

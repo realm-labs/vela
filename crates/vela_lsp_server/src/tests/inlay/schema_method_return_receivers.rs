@@ -1,8 +1,6 @@
 use std::fs;
 
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 use super::{file_uri, temp_workspace};
 
@@ -67,20 +65,18 @@ fn lsp_inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver() {
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
@@ -93,9 +89,8 @@ fn lsp_inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver() {
 }"#;
     let first_line = text.lines().nth(1).expect("first slots line");
     let second_line = text.lines().nth(2).expect("second slots line");
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -106,10 +101,9 @@ fn lsp_inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {

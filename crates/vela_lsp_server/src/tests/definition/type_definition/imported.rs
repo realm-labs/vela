@@ -1,6 +1,4 @@
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 #[test]
 fn lsp_type_definition_follows_imported_source_struct_field_type_alias() {
@@ -24,11 +22,10 @@ fn lsp_type_definition_follows_imported_local_source_type_hint() {
 
 #[test]
 fn lsp_type_definition_follows_imported_nested_container_source_type_hint() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -46,9 +43,8 @@ fn main() {
     let inventory_text = r#"pub struct Inventory {
     slots: i64,
 }"#;
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": inventory_uri,
@@ -58,9 +54,8 @@ fn main() {
             }
         }),
     ));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -72,10 +67,9 @@ fn main() {
     ));
     let annotation_line = main_text.lines().nth(3).expect("local annotation line");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -95,11 +89,10 @@ fn main() {
 
 #[test]
 fn lsp_type_definition_follows_imported_deep_container_source_type_hint() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -117,9 +110,8 @@ fn main() {
     let inventory_text = r#"pub struct Inventory {
     slots: i64,
 }"#;
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": inventory_uri,
@@ -129,9 +121,8 @@ fn main() {
             }
         }),
     ));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -143,10 +134,9 @@ fn main() {
     ));
     let annotation_line = main_text.lines().nth(3).expect("local annotation line");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -171,11 +161,10 @@ fn lsp_type_definition_follows_imported_parameter_source_type_hint() {
 
 #[test]
 fn lsp_type_definition_follows_imported_trait_source_type_hint() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -192,9 +181,8 @@ fn describe(value: Named) {
     let traits_text = r#"pub trait Describable {
     fn describe(self) -> String
 }"#;
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": traits_uri,
@@ -204,9 +192,8 @@ fn describe(value: Named) {
             }
         }),
     ));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -221,10 +208,9 @@ fn describe(value: Named) {
         .nth(2)
         .expect("parameter line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -249,11 +235,10 @@ fn lsp_type_definition_follows_imported_field_source_type_hint() {
 
 #[test]
 fn lsp_type_definition_follows_imported_enum_field_source_type_hint() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -271,9 +256,8 @@ enum Reward {
     let inventory_text = r#"pub struct Inventory {
     slots: i64,
 }"#;
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": inventory_uri,
@@ -283,9 +267,8 @@ enum Reward {
             }
         }),
     ));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -297,10 +280,9 @@ enum Reward {
     ));
     let field_line = main_text.lines().nth(3).expect("enum field line");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -360,11 +342,10 @@ fn lsp_type_definition_follows_imported_const_and_global_source_types() {
 
 #[test]
 fn lsp_type_definition_follows_imported_const_and_global_source_type_hints() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -380,9 +361,8 @@ pub global active_bag: Bag"#;
     let inventory_text = r#"pub struct Inventory {
     slots: i64,
 }"#;
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": inventory_uri,
@@ -392,9 +372,8 @@ pub global active_bag: Bag"#;
             }
         }),
     ));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -407,10 +386,9 @@ pub global active_bag: Bag"#;
     let const_line = main_text.lines().nth(2).expect("const line should exist");
     let global_line = main_text.lines().nth(3).expect("global line should exist");
 
-    let const_response = response_value(handle_request(
+    let const_response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -426,10 +404,9 @@ pub global active_bag: Bag"#;
     assert_eq!(const_response["result"]["range"]["start"]["character"], 11);
     assert_eq!(const_response["result"]["range"]["end"]["character"], 20);
 
-    let global_response = response_value(handle_request(
+    let global_response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         3,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {

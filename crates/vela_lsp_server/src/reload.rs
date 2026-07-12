@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use lsp_types::{FileChangeType, FileEvent};
 use vela_language_service::DocumentId;
 
-use crate::{CONFIG_FILE, SOURCE_EXTENSION, document_uri_path, normalized_path};
+use crate::paths::{CONFIG_FILE, SOURCE_EXTENSION, document_uri_path, normalized_path};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ReloadOperation {

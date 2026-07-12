@@ -1,8 +1,6 @@
 use std::{fs, path::PathBuf};
 
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 use super::{assert_call_range, assert_outgoing_call, file_uri, line, temp_workspace};
 
@@ -10,10 +8,9 @@ use super::{assert_call_range, assert_outgoing_call, file_uri, line, temp_worksp
 fn lsp_call_hierarchy_uses_schema_method_calls_on_schema_method_return_receivers() {
     let mut fixture = open_schema_method_return_fixture();
 
-    let prepare_grant = response_value(handle_request(
+    let prepare_grant = response_value(request::<lsp_types::request::CallHierarchyPrepare>(
         &mut fixture.server,
         2,
-        "textDocument/prepareCallHierarchy",
         serde_json::json!({
             "textDocument": { "uri": fixture.schema_uri },
             "position": {
@@ -31,10 +28,9 @@ fn lsp_call_hierarchy_uses_schema_method_calls_on_schema_method_return_receivers
     assert_eq!(grant_items[0]["name"], "grant");
     assert_eq!(grant_items[0]["uri"], fixture.schema_uri);
 
-    let prepare_grant_call = response_value(handle_request(
+    let prepare_grant_call = response_value(request::<lsp_types::request::CallHierarchyPrepare>(
         &mut fixture.server,
         3,
-        "textDocument/prepareCallHierarchy",
         serde_json::json!({
             "textDocument": { "uri": fixture.uri },
             "position": {
@@ -50,10 +46,9 @@ fn lsp_call_hierarchy_uses_schema_method_calls_on_schema_method_return_receivers
         grant_items
     );
 
-    let incoming = response_value(handle_request(
+    let incoming = response_value(request::<lsp_types::request::CallHierarchyIncomingCalls>(
         &mut fixture.server,
         4,
-        "callHierarchy/incomingCalls",
         serde_json::json!({ "item": grant_items[0].clone() }),
     ));
     let incoming_calls = incoming["result"]
@@ -80,10 +75,9 @@ fn lsp_call_hierarchy_uses_schema_method_calls_on_schema_method_return_receivers
     );
 
     let main_items = prepare_main_items(&mut fixture);
-    let outgoing = response_value(handle_request(
+    let outgoing = response_value(request::<lsp_types::request::CallHierarchyOutgoingCalls>(
         &mut fixture.server,
         5,
-        "callHierarchy/outgoingCalls",
         serde_json::json!({ "item": main_items[0].clone() }),
     ));
     let outgoing_calls = outgoing["result"]
@@ -134,10 +128,9 @@ fn lsp_call_hierarchy_uses_schema_method_calls_on_schema_method_return_receivers
 fn lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_method_return_receivers() {
     let mut fixture = open_schema_trait_method_return_fixture();
 
-    let prepare_preview = response_value(handle_request(
+    let prepare_preview = response_value(request::<lsp_types::request::CallHierarchyPrepare>(
         &mut fixture.server,
         2,
-        "textDocument/prepareCallHierarchy",
         serde_json::json!({
             "textDocument": { "uri": fixture.schema_uri },
             "position": {
@@ -155,10 +148,9 @@ fn lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_method_return_rec
     assert_eq!(preview_items[0]["name"], "preview");
     assert_eq!(preview_items[0]["uri"], fixture.schema_uri);
 
-    let prepare_preview_call = response_value(handle_request(
+    let prepare_preview_call = response_value(request::<lsp_types::request::CallHierarchyPrepare>(
         &mut fixture.server,
         3,
-        "textDocument/prepareCallHierarchy",
         serde_json::json!({
             "textDocument": { "uri": fixture.uri },
             "position": {
@@ -176,10 +168,9 @@ fn lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_method_return_rec
         preview_items
     );
 
-    let incoming = response_value(handle_request(
+    let incoming = response_value(request::<lsp_types::request::CallHierarchyIncomingCalls>(
         &mut fixture.server,
         4,
-        "callHierarchy/incomingCalls",
         serde_json::json!({ "item": preview_items[0].clone() }),
     ));
     let incoming_calls = incoming["result"]
@@ -206,10 +197,9 @@ fn lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_method_return_rec
     );
 
     let main_items = prepare_main_items(&mut fixture);
-    let outgoing = response_value(handle_request(
+    let outgoing = response_value(request::<lsp_types::request::CallHierarchyOutgoingCalls>(
         &mut fixture.server,
         5,
-        "callHierarchy/outgoingCalls",
         serde_json::json!({ "item": main_items[0].clone() }),
     ));
     let outgoing_calls = outgoing["result"]
@@ -257,7 +247,7 @@ fn lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_method_return_rec
 }
 
 struct SchemaReturnFixture {
-    server: LspServer,
+    server: TestServer,
     root: PathBuf,
     uri: String,
     schema_uri: String,
@@ -416,11 +406,10 @@ fn open_fixture(
     .expect("vela.toml should be writable");
     fs::write(&schema_path, schema_artifact).expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let initialize = response_value(handle_request(
+    let mut server = TestServer::new();
+    let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
@@ -431,18 +420,16 @@ fn open_fixture(
         initialize["result"]["capabilities"]["callHierarchyProvider"],
         true
     );
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
     );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": schema_uri,
@@ -454,9 +441,8 @@ fn open_fixture(
     ));
 
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -478,10 +464,9 @@ fn open_fixture(
 }
 
 fn prepare_main_items(fixture: &mut SchemaReturnFixture) -> Vec<serde_json::Value> {
-    let prepare_main = response_value(handle_request(
+    let prepare_main = response_value(request::<lsp_types::request::CallHierarchyPrepare>(
         &mut fixture.server,
         6,
-        "textDocument/prepareCallHierarchy",
         serde_json::json!({
             "textDocument": { "uri": fixture.uri },
             "position": {

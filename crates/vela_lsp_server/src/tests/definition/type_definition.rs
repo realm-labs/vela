@@ -1,6 +1,4 @@
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 mod dynamic;
 mod imported;
@@ -20,11 +18,10 @@ fn lsp_type_definition_returns_null_for_dynamic_local_value() {
     assert_dynamic_local_value_type_definition_null();
 }
 
-fn initialize(server: &mut LspServer) -> serde_json::Value {
-    response_value(handle_request(
+fn initialize(server: &mut TestServer) -> serde_json::Value {
+    response_value(request::<lsp_types::request::Initialize>(
         server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -33,11 +30,10 @@ fn initialize(server: &mut LspServer) -> serde_json::Value {
     ))
 }
 
-fn open_document(server: &mut LspServer, uri: impl AsRef<str>, text: &str) {
+fn open_document(server: &mut TestServer, uri: impl AsRef<str>, text: &str) {
     let uri = uri.as_ref();
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -50,7 +46,7 @@ fn open_document(server: &mut LspServer, uri: impl AsRef<str>, text: &str) {
 }
 
 fn assert_source_struct_field_type_definition() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = r#"struct Inventory {
@@ -67,10 +63,9 @@ fn main(player: Player) {
     open_document(&mut server, uri, text);
     let field_use_line = text.lines().nth(9).expect("field use line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -89,7 +84,7 @@ fn main(player: Player) {
 }
 
 fn assert_imported_source_struct_field_type_definition() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
@@ -112,10 +107,9 @@ fn main(player: Player) {
         .nth(7)
         .expect("field use line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -134,7 +128,7 @@ fn main(player: Player) {
 }
 
 fn assert_imported_parameter_source_type_definition() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
@@ -150,10 +144,9 @@ fn main(bag: Bag) {
     open_document(&mut server, main_uri, main_text);
     let return_line = main_text.lines().nth(3).expect("return line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -172,7 +165,7 @@ fn main(bag: Bag) {
 }
 
 fn assert_imported_local_source_type_definition() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
@@ -194,10 +187,9 @@ pub fn make_inventory() -> Inventory {
     open_document(&mut server, main_uri, main_text);
     let return_line = main_text.lines().nth(5).expect("return line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -216,7 +208,7 @@ pub fn make_inventory() -> Inventory {
 }
 
 fn assert_imported_local_source_type_hint_definition() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
@@ -241,10 +233,9 @@ pub fn make_inventory() -> Inventory {
         .nth(4)
         .expect("annotation line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -263,7 +254,7 @@ pub fn make_inventory() -> Inventory {
 }
 
 fn assert_imported_parameter_source_type_hint_definition() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
@@ -282,10 +273,9 @@ fn main(bag: Bag) {
         .nth(2)
         .expect("parameter line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -304,7 +294,7 @@ fn main(bag: Bag) {
 }
 
 fn assert_imported_field_source_type_hint_definition() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
@@ -324,10 +314,9 @@ fn main(player: Player) {
     open_document(&mut server, main_uri, main_text);
     let field_line = main_text.lines().nth(3).expect("field line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -346,7 +335,7 @@ fn main(player: Player) {
 }
 
 fn assert_imported_return_source_type_hint_definition() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
@@ -370,10 +359,9 @@ pub fn make_inventory() -> Inventory {
         .nth(3)
         .expect("return hint line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -392,7 +380,7 @@ pub fn make_inventory() -> Inventory {
 }
 
 fn assert_imported_function_return_source_type_definition() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
@@ -412,10 +400,9 @@ pub fn make_inventory() -> Inventory {
     open_document(&mut server, main_uri, main_text);
     let call_line = main_text.lines().nth(3).expect("call line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -434,7 +421,7 @@ pub fn make_inventory() -> Inventory {
 }
 
 fn assert_imported_source_member_type_definition() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
@@ -457,10 +444,9 @@ inventory: Inventory,
         .nth(3)
         .expect("field use line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -479,7 +465,7 @@ inventory: Inventory,
 }
 
 fn assert_imported_source_method_return_type_definition() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let rewards_uri = "file:///workspace/scripts/game/rewards.vela";
@@ -506,10 +492,9 @@ return RewardOutcome::Granted;
     open_document(&mut server, main_uri, main_text);
     let call_line = main_text.lines().nth(3).expect("method call line");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -528,7 +513,7 @@ return RewardOutcome::Granted;
 }
 
 fn assert_imported_source_trait_method_return_type_definition() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let traits_uri = "file:///workspace/scripts/game/traits.vela";
@@ -549,10 +534,9 @@ pub trait Describable {
     open_document(&mut server, main_uri, main_text);
     let call_line = main_text.lines().nth(3).expect("method call line");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -571,7 +555,7 @@ pub trait Describable {
 }
 
 fn assert_imported_enum_variant_constructor_type_definition() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let rewards_uri = "file:///workspace/scripts/game/rewards.vela";
@@ -591,10 +575,9 @@ fn main() {
         .nth(3)
         .expect("constructor line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -613,7 +596,7 @@ fn main() {
 }
 
 fn assert_imported_struct_constructor_type_definition() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
@@ -632,10 +615,9 @@ fn main() {
         .nth(3)
         .expect("constructor line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -654,7 +636,7 @@ fn main() {
 }
 
 fn assert_imported_const_and_global_source_type_definitions() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let rewards_uri = "file:///workspace/scripts/game/rewards.vela";
@@ -674,10 +656,9 @@ pub global active_config: RewardConfig"#;
     open_document(&mut server, main_uri, main_text);
     let return_line = main_text.lines().nth(4).expect("return line should exist");
 
-    let const_response = response_value(handle_request(
+    let const_response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -693,10 +674,9 @@ pub global active_config: RewardConfig"#;
     assert_eq!(const_response["result"]["range"]["start"]["character"], 11);
     assert_eq!(const_response["result"]["range"]["end"]["character"], 23);
 
-    let global_response = response_value(handle_request(
+    let global_response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         3,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -714,7 +694,7 @@ pub global active_config: RewardConfig"#;
 }
 
 fn assert_source_primitive_field_type_definition_null() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = r#"struct Cell {
@@ -727,10 +707,9 @@ fn main(cell: Cell) {
     open_document(&mut server, uri, text);
     let field_use_line = text.lines().nth(5).expect("field use line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -746,7 +725,7 @@ fn main(cell: Cell) {
 }
 
 fn assert_dynamic_local_value_type_definition_null() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = r#"fn main(value) {
@@ -755,10 +734,9 @@ fn assert_dynamic_local_value_type_definition_null() {
     open_document(&mut server, uri, text);
     let use_line = text.lines().nth(1).expect("value use line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {

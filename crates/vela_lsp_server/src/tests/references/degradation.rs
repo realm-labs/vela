@@ -1,16 +1,13 @@
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 use super::line;
 
 #[test]
 fn lsp_references_return_empty_for_dynamic_and_unresolved_targets() {
-    let mut server = LspServer::new();
-    let initialize = response_value(handle_request(
+    let mut server = TestServer::new();
+    let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -26,9 +23,8 @@ fn lsp_references_return_empty_for_dynamic_and_unresolved_targets() {
 pub fn unresolved() { return missing }
 pub fn dynamic(value: Any) { return value.level }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -61,11 +57,10 @@ pub fn dynamic(value: Any) { return value.level }";
 
 #[test]
 fn lsp_references_return_empty_for_source_any_return_receiver_member() {
-    let mut server = LspServer::new();
-    let initialize = response_value(handle_request(
+    let mut server = TestServer::new();
+    let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -82,9 +77,8 @@ struct Player { level: i64 }
 fn source_any() -> Any { return Player { level: 1 } }
 pub fn main() { return source_any().level }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -105,16 +99,15 @@ pub fn main() { return source_any().level }";
 }
 
 fn assert_empty_references(
-    server: &mut LspServer,
+    server: &mut TestServer,
     id: i32,
     uri: &str,
     line: usize,
     character: usize,
 ) {
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         server,
         id,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {

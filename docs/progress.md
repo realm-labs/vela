@@ -744,8 +744,7 @@ dispatcher so later input is ignored.
 M20.5 RA main-loop update: typed request and notification dispatch now catches
 handler panics at the dispatcher boundary, projecting request failures as
 JSON-RPC internal errors and notification failures as no-response events while
-keeping the main loop alive. Legacy feature-handler panic coverage remains
-part of the pending typed request migration.
+keeping the main loop alive. Typed production-path fixtures cover both cases.
 M20.5 RA main-loop update: task scheduling now records queued, started, and
 ended timestamps on background task results, and the typed main loop writes
 `request_queued`, `task_started`, and `task_ended` trace JSONL events with
@@ -776,38 +775,28 @@ M20.5 RA main-loop update: the obsolete test-only manual stdio transport and
 custom Content-Length harness were removed; stdio validation now uses the
 typed `lsp-server` binary smoke path.
 
-M20.5 RA main-loop update: client work-done progress support, dynamic watched
-file registration support, and semantic-token projection state now live in
-`GlobalState` and `GlobalStateSnapshot`, while the legacy LSP wrapper is kept
-mirrored only for request paths that have not yet moved to typed handlers.
-Typed `initialized` now performs dynamic watched-file registration through
-`GlobalState` capability state, and the obsolete typed legacy bridge has been
-removed.
-Typed `shutdown` and `exit` now update `GlobalState` directly while mirroring
-legacy lifecycle flags, and their obsolete typed legacy bridge methods have
-been removed.
-Dynamic watched-file registration state now lives in `GlobalState` and
-`GlobalStateSnapshot`, with mirroring to the legacy wrapper only for remaining
-legacy notification paths.
-The launch/config watcher-enabled setting now lives in `GlobalState` and
-`GlobalStateSnapshot`; typed watcher registration reads that owner while the
-legacy wrapper is kept synchronized for remaining legacy paths.
-Workspace roots now live in `GlobalState`, drive typed workspace-folder
-changes and watcher registration, and are mirrored back to the legacy wrapper
-for remaining non-typed handlers.
-Open document IDs now live in `GlobalState` and `GlobalStateSnapshot`; the
-temporary legacy document-sync path mirrors them back after legacy handling
-while typed watched-file scheduling and progress gating read the `GlobalState`
-owner.
-Editor configuration now lives in `GlobalState` and `GlobalStateSnapshot`
-after launch, initialize, and typed configuration changes, with temporary
-mirroring from legacy paths.
+M20.5 GlobalState hard-switch checkpoint: `GlobalState` is the sole mutable LSP
+coordinator. Its uniquely owned `ProjectState` contains the live workspace,
+language-service databases, disk sources, roots/open documents,
+editor/workspace configuration, and diagnostic records; lifecycle,
+capabilities, watcher, request/cancellation, reload/task, and outbound-message
+state remain directly owned by `GlobalState`. Project mutations refresh
+database generations at explicit commit points, diagnostics are read-only
+projections, and `GlobalStateSnapshot` captures one immutable authoritative
+generation for worker queries.
 
-M20.5 RA main-loop update: `GlobalStateSnapshot` now captures immutable launch
-configuration, workspace snapshot, language-service databases, workspace
-roots, open document IDs, generation, and lifecycle flags for future
-read-only request handlers. Routing read-only feature handlers through that
-snapshot remains pending with the task-lane migration.
+All LSP feature fixtures use the typed in-memory `TestServer`, which owns a real
+`GlobalState` and exercises the production lifecycle gates, request queue,
+typed dispatcher, task-result path, and response emission. The former mutable
+server wrapper, manual state synchronization, local JSON parameter model,
+test-only dispatcher, and obsolete wrapper-only modules are deleted.
+Architecture guards prevent those paths from returning and enforce the active
+1,200-line and JSON-boundary policies.
+
+The hard-switch acceptance gate passes focused LSP and language-service tests,
+stdio and loopback TCP coverage, binary version behavior, all zero-hit and
+architecture guards, full workspace format/Clippy/tests, examples
+Clippy/tests, and VS Code package validation plus release VSIX construction.
 
 M20.5 RA main-loop update: typed request parameter decode failures now use the
 shared dispatcher `InvalidParams` JSON-RPC projection (`-32602`), while
@@ -817,10 +806,6 @@ M20.5 RA main-loop update: typed queued-cancellation state now belongs to
 `GlobalState`'s `RequestQueue` instead of the legacy server wrapper. In-flight
 task cancellation handles remain pending for the task-pool and stale-result
 phases.
-
-M20.5 RA main-loop update: typed initialized, shutdown, and exited lifecycle
-flags now live in `GlobalState`, with temporary legacy-wrapper synchronization
-for paths still routed through `handle_legacy_json`.
 
 M20.5 RA main-loop update: `RequestQueue` now tracks incoming request IDs as
 typed `RequestId` values instead of stringified IDs, preparing the queue for
@@ -1256,13 +1241,9 @@ surface; separated completion display, insertion, and projection fields;
 native LSP JSON-RPC fixtures for the correction set; statement snippets; and
 syntax-owned compact type-hint formatting.
 
-M20.5 RA-style main-loop update: the native LSP server now depends on
-`lsp-server`, `lsp-types`, `anyhow`, and `crossbeam-channel`; the production
-stdio binary path starts through `lsp_server::Connection::stdio()` and enters a
-typed message bridge backed by an in-memory `lsp_server::Message` harness.
-The old manual stdio runner remains only as a temporary Phase 1 compatibility
-wrapper until the remaining main-loop phases delete custom JSON-RPC and
-Content-Length handling.
+M20.5 RA-style main-loop update: the native LSP server depends on `lsp-server`,
+`lsp-types`, `anyhow`, and `crossbeam-channel`; stdio and loopback TCP both
+enter the same typed `lsp_server::Message` main loop.
 
 M20.5 RA-style main-loop update: `vela_lsp_server --listen <host:port>` now
 provides an explicit TCP debug transport that binds only loopback addresses,
@@ -1271,40 +1252,22 @@ accepts one client connection, and routes it through the same typed
 fixtures cover binary stdio initialize/exit, typed in-memory initialize/exit,
 loopback TCP initialize/exit, and non-loopback rejection.
 
-M20.5 RA-style main-loop update: `global_state.rs` now owns the typed
-transport path's launch configuration, request queue, and current legacy
-server state wrapper. This is an in-progress Phase 2 boundary; lifecycle
-requests still need migration to typed dispatch before the checklist item can
-close.
-
 M20.5 RA-style main-loop update: `main_loop.rs` now owns the typed
 `lsp_server::Message` receive/dispatch/respond loop for stdio, TCP, and
-in-memory tests. Transport setup remains in `transport.rs`, while typed
-lifecycle dispatch is the next Phase 2 migration step.
+in-memory tests. Transport setup remains in `transport.rs`.
 
-M20.5 RA-style main-loop update: `handlers/dispatch.rs` now provides typed
+M20.5 RA-style main-loop update: `handlers/dispatch.rs` provides the sole typed
 `RequestDispatcher` and `NotificationDispatcher` entry points with
 `on_sync_mut`, `on_sync`, latency-sensitive, formatting-lane, and worker
-request categories. The categories currently delegate through the legacy
-handler bridge while lifecycle parameter/result migration remains the next
-Phase 2 task.
+request categories.
 
-M20.5 RA-style main-loop update: shared dispatch/main-loop error projection is
-now in progress. Post-initialize unknown requests are projected from
-`handlers/dispatch.rs`, unknown notifications are no-response no-ops at the
-dispatcher finish boundary, and cancelled request IDs are consumed before typed
-request dispatch so `RequestCancelled` wins over handler routing and
-method-not-found projection. Pre-initialize plus post-shutdown gates still
-delegate through the legacy lifecycle bridge until typed lifecycle migration
-lands.
+M20.5 RA-style main-loop update: shared dispatch/main-loop error projection
+handles unknown requests, no-response unknown notifications, lifecycle gates,
+and cancellation before typed handler routing.
 
-M20.5 RA-style main-loop update: typed lifecycle migration now covers
-`initialize`, `initialized`, `shutdown`, `exit`, and `$/cancelRequest` through
-`lsp-types` dispatch. Initialize keeps shared invalid-params projection and
-existing Vela initialization-options parsing, while request-shaped lifecycle
-notification misuse still delegates to the legacy bridge for the current
-invalid-request messages until notification migration removes that temporary
-path.
+M20.5 RA-style main-loop update: typed lifecycle handling covers `initialize`,
+`initialized`, `shutdown`, `exit`, and `$/cancelRequest`, including malformed
+params and request-shaped notification misuse.
 
 M20.5 RA-style main-loop update: Phase 2 lifecycle preservation is now
 covered on the typed main-loop path for malformed and repeated initialize,
@@ -1312,12 +1275,9 @@ shutdown-before-initialize, post-shutdown requests, request-shaped exit,
 cancelled request IDs, unsupported requests, `--no-watch-files`, and empty host
 schema watcher behavior.
 
-M20.5 RA-style main-loop update: `GlobalState` now owns the typed LSP sender
-and response sending helper used by `main_loop`, so outbound responses are
-routed through the central mutable server state. Workspace and language-service
-database ownership still sits behind the temporary legacy `LspServer` wrapper
-until the remaining protocol/config/reload migration moves those fields
-directly into `GlobalState`.
+M20.5 RA-style main-loop update: `GlobalState` owns the typed LSP sender and
+response helper used by `main_loop`, so outbound responses are routed through
+the sole mutable coordinator.
 
 M20.5 RA-style main-loop update: Phase 2.5 now has a `ConfigChange` pipeline
 for immutable launch flags, editor settings, initialize/workspace roots,
@@ -1328,14 +1288,10 @@ and watched `vela.toml` changes now apply those config changes through
 after editor settings and watched config updates. The next Phase 2.5 boundary
 is the shared `line_index.rs` position/range conversion layer.
 
-M20.5 RA-style main-loop update: Phase 2.5 line-index work is in progress.
-Ranged `didChange` edits now resolve UTF-16 LSP positions through
-`vela_lsp_server::line_index`, with focused coverage for surrogate-pair and
-CRLF edge cases. Legacy request parameter conversion in `queries.rs` and
-call-hierarchy item decoding now also go through the shared line-index
-boundary, including a native LSP regression for UTF-16 member completion after
-a non-BMP character. Response projection and negotiated position encoding still
-need to move behind this boundary before the checklist item can close.
+M20.5 RA-style main-loop update: ranged `didChange` edits resolve UTF-16 LSP
+positions through `vela_lsp_server::line_index`, with focused coverage for
+surrogate-pair, non-BMP, and CRLF edge cases. Typed parameter conversion and
+response projection share that boundary.
 
 M20.5 RA-style main-loop update: Phase 2.5 now has a `reload.rs` scheduler
 boundary. Typed watched-file batches are coalesced, classified as

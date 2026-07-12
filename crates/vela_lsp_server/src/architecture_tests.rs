@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+const MAX_RUST_FILE_LINES: usize = 1_200;
+
 #[test]
 fn serde_json_usage_stays_at_protocol_boundaries() {
     let source_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
@@ -21,34 +23,29 @@ fn serde_json_usage_stays_at_protocol_boundaries() {
             "JSON-RPC response boundary, initialize settings, completion resolve data, and tests",
         ),
         (
+            "global_state/diagnostics.rs",
+            "typed diagnostics and work-done progress protocol projection",
+        ),
+        (
+            "global_state/responses.rs",
+            "typed JSON-RPC response projection",
+        ),
+        (
             "handlers/dispatch.rs",
             "typed request and notification param decoding at the JSON-RPC boundary",
-        ),
-        (
-            "lib.rs",
-            "legacy tests plus diagnostic and work-done-progress extension payloads",
-        ),
-        (
-            "lifecycle.rs",
-            "legacy lifecycle compatibility tests compiled only in test builds",
         ),
         (
             "lsp/to_proto.rs",
             "diagnostic, workspace-symbol, and completion-resolve extension payloads",
         ),
         ("main_loop.rs", "inline typed main-loop tests"),
-        (
-            "queries.rs",
-            "legacy query compatibility module compiled only in test builds",
-        ),
         ("profile.rs", "profile JSONL events"),
         ("rpc.rs", "JSON-RPC wire serialization boundary"),
-        (
-            "stdio.rs",
-            "legacy stdio compatibility module compiled only in test builds",
-        ),
         ("task.rs", "inline task scheduler tests"),
-        ("tests.rs", "legacy JSON fixture tests"),
+        (
+            "tests.rs",
+            "typed protocol-boundary fixture decoding and final message-shape assertions",
+        ),
         ("tracing.rs", "trace JSONL events"),
         (
             "transport.rs",
@@ -70,7 +67,10 @@ fn serde_json_usage_stays_at_protocol_boundaries() {
             .strip_prefix(&source_root)
             .expect("source file should be under source root");
         let relative = relative.to_string_lossy().replace('\\', "/");
-        if relative.starts_with("tests/") {
+        if relative.starts_with("tests/")
+            || relative.contains("/tests/")
+            || relative.ends_with("/tests.rs")
+        {
             continue;
         }
 
@@ -90,6 +90,84 @@ fn serde_json_usage_stays_at_protocol_boundaries() {
         violations.is_empty(),
         "serde_json usage must stay at typed protocol boundaries, extension payloads, completion resolve data, configuration settings, schema artifact JSON, profiling/tracing JSONL, or tests; unexpected files: {violations:?}"
     );
+}
+
+#[test]
+fn single_owner_architecture_cannot_regress() {
+    let source_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let removed_owner = ["Lsp", "Server"].concat();
+    let delegated_owner = ["self", ".server"].concat();
+    let legacy_state = ["legacy", "_server"].concat();
+    let forbidden_prefix = "sync_";
+    let forbidden_suffix = "legacy";
+    let legacy_sync = [
+        forbidden_prefix,
+        "workspace_analysis_from_",
+        forbidden_suffix,
+    ]
+    .concat();
+    let mut violations = Vec::new();
+
+    for path in rust_files(&source_root) {
+        let relative = relative_path(&source_root, &path);
+        if relative == "architecture_tests.rs" {
+            continue;
+        }
+        let source = read_source(&path);
+        for forbidden in [
+            &removed_owner,
+            &delegated_owner,
+            &legacy_state,
+            &legacy_sync,
+        ] {
+            if source.contains(forbidden) {
+                violations.push(format!("{relative}: forbidden `{forbidden}`"));
+            }
+        }
+
+        if relative.starts_with("tests/")
+            && (source.contains("fn dispatch_request")
+                || source.contains("fn dispatch_notification")
+                || source.contains("match method.as_str()"))
+        {
+            violations.push(format!("{relative}: duplicate test dispatcher"));
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "GlobalState must remain the sole LSP coordinator and tests must use production dispatch: {violations:?}"
+    );
+}
+
+#[test]
+fn active_lsp_rust_files_stay_within_size_policy() {
+    let source_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let violations = rust_files(&source_root)
+        .into_iter()
+        .filter_map(|path| {
+            let line_count = read_source(&path).lines().count();
+            (line_count > MAX_RUST_FILE_LINES)
+                .then(|| format!("{}: {line_count} lines", relative_path(&source_root, &path)))
+        })
+        .collect::<Vec<_>>();
+
+    assert!(
+        violations.is_empty(),
+        "active LSP Rust files must not exceed {MAX_RUST_FILE_LINES} lines: {violations:?}"
+    );
+}
+
+fn relative_path(root: &Path, path: &Path) -> String {
+    path.strip_prefix(root)
+        .expect("source file should be under source root")
+        .to_string_lossy()
+        .replace('\\', "/")
+}
+
+fn read_source(path: &Path) -> String {
+    fs::read_to_string(path)
+        .unwrap_or_else(|error| panic!("failed to read {}: {error}", path.display()))
 }
 
 fn rust_files(root: &Path) -> Vec<PathBuf> {

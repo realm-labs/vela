@@ -1,14 +1,11 @@
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 #[test]
 fn lsp_private_function_rename_updates_aliased_import_path() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -24,9 +21,8 @@ pub fn main(amount: i64) -> i64 {
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let helper_uri = "file:///workspace/scripts/game/reward.vela";
     for (uri, text) in [(helper_uri, helper_text), (main_uri, main_text)] {
-        let _ = notification_value(handle_notification(
+        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
-            "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
                     "uri": uri,
@@ -38,10 +34,9 @@ pub fn main(amount: i64) -> i64 {
         ));
     }
 
-    let rename = response_value(handle_request(
+    let rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         2,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": helper_uri },
             "position": {

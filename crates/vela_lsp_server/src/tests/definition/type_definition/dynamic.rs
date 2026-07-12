@@ -1,14 +1,11 @@
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 #[test]
 fn lsp_type_definition_returns_null_for_dynamic_receiver_member() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -19,9 +16,8 @@ fn lsp_type_definition_returns_null_for_dynamic_receiver_member() {
     let text = r#"fn main(value: Any) {
     return value.level;
 }"#;
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -33,10 +29,9 @@ fn lsp_type_definition_returns_null_for_dynamic_receiver_member() {
     ));
     let member_line = text.lines().nth(1).expect("member use line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
         &mut server,
         2,
-        "textDocument/typeDefinition",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {

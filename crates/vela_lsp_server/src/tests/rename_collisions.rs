@@ -5,19 +5,16 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);
 
 #[test]
 fn lsp_rename_rejects_module_declaration_collision() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -28,9 +25,8 @@ fn lsp_rename_rejects_module_declaration_collision() {
 pub fn grant(amount: i64) -> i64 { return amount }
 pub fn award(amount: i64) -> i64 { return amount + 1 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -41,10 +37,9 @@ pub fn award(amount: i64) -> i64 { return amount + 1 }";
         }),
     ));
 
-    let prepare = response_value(handle_request(
+    let prepare = response_value(request::<lsp_types::request::PrepareRenameRequest>(
         &mut server,
         2,
-        "textDocument/prepareRename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -55,10 +50,9 @@ pub fn award(amount: i64) -> i64 { return amount + 1 }";
     ));
     assert_eq!(prepare["result"]["placeholder"], "grant");
 
-    let rename = response_value(handle_request(
+    let rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         3,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -73,11 +67,10 @@ pub fn award(amount: i64) -> i64 { return amount + 1 }";
 
 #[test]
 fn lsp_rename_rejects_import_alias_collision() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -100,9 +93,8 @@ pub fn main() -> i64 {
         (bonus_uri, bonus_text),
         (main_uri, main_text),
     ] {
-        let _ = notification_value(handle_notification(
+        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
-            "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
                     "uri": uri,
@@ -114,10 +106,9 @@ pub fn main() -> i64 {
         ));
     }
 
-    let rename = response_value(handle_request(
+    let rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         2,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -132,11 +123,10 @@ pub fn main() -> i64 {
 
 #[test]
 fn lsp_private_method_rename_rejects_trait_impl_collision() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -158,9 +148,8 @@ impl Rewardable for Reward {
     fn award(self) -> i64 { return self.amount + 1 }
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -171,10 +160,9 @@ impl Rewardable for Reward {
         }),
     ));
 
-    let rename = response_value(handle_request(
+    let rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         2,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -248,29 +236,26 @@ pub fn award() { return 4 }";
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
     );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": schema_uri,
@@ -287,9 +272,8 @@ pub fn main(player: Player) -> i64 {
     return player.grant(first)
 }";
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -300,10 +284,9 @@ pub fn main(player: Player) -> i64 {
         }),
     ));
 
-    let field_rename = response_value(handle_request(
+    let field_rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         2,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -315,10 +298,9 @@ pub fn main(player: Player) -> i64 {
     ));
     assert_eq!(field_rename["result"], serde_json::Value::Null);
 
-    let method_rename = response_value(handle_request(
+    let method_rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         3,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {

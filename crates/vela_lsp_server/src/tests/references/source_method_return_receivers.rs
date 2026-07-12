@@ -1,6 +1,4 @@
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 use super::{assert_highlight, assert_reference, line};
 
@@ -8,10 +6,9 @@ use super::{assert_highlight, assert_reference, line};
 fn lsp_references_find_source_method_calls_on_source_method_return_receivers() {
     let (mut server, uri, text) = open_source_method_return_method_fixture();
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -50,10 +47,9 @@ fn lsp_references_find_source_method_calls_on_source_method_return_receivers() {
 fn lsp_references_find_source_trait_default_method_calls_on_source_method_return_receivers() {
     let (mut server, uri, text) = open_source_method_return_trait_fixture();
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -98,10 +94,9 @@ fn lsp_references_find_source_trait_default_method_calls_on_source_method_return
 fn lsp_document_highlight_marks_source_method_calls_on_source_method_return_receivers() {
     let (mut server, uri, text) = open_source_method_return_method_fixture();
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::DocumentHighlightRequest>(
         &mut server,
         2,
-        "textDocument/documentHighlight",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -140,10 +135,9 @@ fn lsp_document_highlight_marks_source_trait_default_method_calls_on_source_meth
  {
     let (mut server, uri, text) = open_source_method_return_trait_fixture();
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::DocumentHighlightRequest>(
         &mut server,
         2,
-        "textDocument/documentHighlight",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -183,7 +177,7 @@ fn lsp_document_highlight_marks_source_trait_default_method_calls_on_source_meth
     );
 }
 
-fn open_source_method_return_method_fixture() -> (LspServer, &'static str, &'static str) {
+fn open_source_method_return_method_fixture() -> (TestServer, &'static str, &'static str) {
     let text = "\
 pub struct Player {
     level: i64
@@ -208,7 +202,7 @@ pub fn main(player: Player) -> i64 {
     open_fixture(text)
 }
 
-fn open_source_method_return_trait_fixture() -> (LspServer, &'static str, &'static str) {
+fn open_source_method_return_trait_fixture() -> (TestServer, &'static str, &'static str) {
     let text = "\
 pub trait Rewardable {
     fn preview(self, amount: i64) -> i64 { return amount }
@@ -235,12 +229,11 @@ pub fn main(player: Player) -> i64 {
     open_fixture(text)
 }
 
-fn open_fixture(text: &'static str) -> (LspServer, &'static str, &'static str) {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+fn open_fixture(text: &'static str) -> (TestServer, &'static str, &'static str) {
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -248,9 +241,8 @@ fn open_fixture(text: &'static str) -> (LspServer, &'static str, &'static str) {
         }),
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,

@@ -1,4 +1,4 @@
-use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
+use super::{TestServer, notification_value, notify, request, response_value};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -61,20 +61,18 @@ fn lsp_inlay_hints_suppress_any_lambda_parameter_facts() {
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
@@ -89,9 +87,8 @@ fn lsp_inlay_hints_suppress_any_lambda_parameter_facts() {
 }"#;
     let filter_line = text.lines().nth(2).expect("filter line");
     let mapped_line = text.lines().nth(4).expect("mapped line");
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -102,10 +99,9 @@ fn lsp_inlay_hints_suppress_any_lambda_parameter_facts() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -202,20 +198,18 @@ fn lsp_inlay_hints_suppress_schema_method_parameters_on_schema_any_return_receiv
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
@@ -225,9 +219,8 @@ fn lsp_inlay_hints_suppress_schema_method_parameters_on_schema_any_return_receiv
     let text = r#"pub fn main() {
     host_any().grant("raw", 1)
 }"#;
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -238,10 +231,9 @@ fn lsp_inlay_hints_suppress_schema_method_parameters_on_schema_any_return_receiv
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -314,20 +306,18 @@ fn lsp_inlay_hints_suppress_any_schema_method_parameters_on_schema_function_retu
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
@@ -340,9 +330,8 @@ fn lsp_inlay_hints_suppress_any_schema_method_parameters_on_schema_function_retu
 }"#;
     let first_call = text.lines().nth(1).expect("first call line");
     let second_call = text.lines().nth(2).expect("second call line");
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -353,10 +342,9 @@ fn lsp_inlay_hints_suppress_any_schema_method_parameters_on_schema_function_retu
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -454,20 +442,18 @@ fn lsp_inlay_hints_suppress_any_schema_method_parameters_on_schema_method_return
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
@@ -480,9 +466,8 @@ fn lsp_inlay_hints_suppress_any_schema_method_parameters_on_schema_method_return
 }"#;
     let first_call = text.lines().nth(1).expect("first call line");
     let second_call = text.lines().nth(2).expect("second call line");
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -493,10 +478,9 @@ fn lsp_inlay_hints_suppress_any_schema_method_parameters_on_schema_method_return
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -592,20 +576,18 @@ fn lsp_inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_functio
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
@@ -618,9 +600,8 @@ fn lsp_inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_functio
 }"#;
     let first_call = text.lines().nth(1).expect("first call line");
     let second_call = text.lines().nth(2).expect("second call line");
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -631,10 +612,9 @@ fn lsp_inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_functio
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -742,20 +722,18 @@ fn lsp_inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_method_
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
@@ -768,9 +746,8 @@ fn lsp_inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_method_
 }"#;
     let first_call = text.lines().nth(1).expect("first call line");
     let second_call = text.lines().nth(2).expect("second call line");
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -781,10 +758,9 @@ fn lsp_inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_method_
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -830,11 +806,10 @@ fn lsp_inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_method_
 #[test]
 fn lsp_inlay_hints_suppress_any_source_trait_default_method_parameters_on_source_function_return_receiver()
  {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -854,9 +829,8 @@ pub fn main() {
 }"#;
     let first_call = text.lines().nth(7).expect("first call line");
     let second_call = text.lines().nth(8).expect("second call line");
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -867,10 +841,9 @@ pub fn main() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -907,11 +880,10 @@ pub fn main() {
 
 #[test]
 fn lsp_inlay_hints_suppress_source_any_return_receiver() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -932,9 +904,8 @@ pub fn main() {
     current_player().grant("stable", 3)
 }"#;
     let stable_call = text.lines().nth(10).expect("stable call line");
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -945,10 +916,9 @@ pub fn main() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -976,11 +946,10 @@ pub fn main() {
 
 #[test]
 fn lsp_inlay_hints_suppress_any_source_method_parameters_on_source_method_return_receiver() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -1002,9 +971,8 @@ pub fn main(player: Player) {
 }"#;
     let first_call = text.lines().nth(9).expect("first call line");
     let second_call = text.lines().nth(10).expect("second call line");
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -1015,10 +983,9 @@ pub fn main(player: Player) {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {
@@ -1056,11 +1023,10 @@ pub fn main(player: Player) {
 #[test]
 fn lsp_inlay_hints_suppress_any_source_trait_default_method_parameters_on_source_method_return_receiver()
  {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -1083,9 +1049,8 @@ pub fn main(player: Player) {
 }"#;
     let first_call = text.lines().nth(10).expect("first call line");
     let second_call = text.lines().nth(11).expect("second call line");
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -1096,10 +1061,9 @@ pub fn main(player: Player) {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
-        "textDocument/inlayHint",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "range": {

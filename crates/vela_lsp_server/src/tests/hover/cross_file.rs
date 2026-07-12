@@ -1,14 +1,11 @@
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 #[test]
 fn lsp_hover_reports_imported_function_const_and_global_facts() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -35,9 +32,8 @@ pub fn reward_bonus(amount: i64, scale: i64 = reward_scale) -> i64 {
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let rewards_uri = "file:///workspace/scripts/game/rewards.vela";
     for (uri, text) in [(rewards_uri, rewards_text), (main_uri, main_text)] {
-        let _ = notification_value(handle_notification(
+        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
-            "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
                     "uri": uri,
@@ -107,11 +103,10 @@ pub fn reward_bonus(amount: i64, scale: i64 = reward_scale) -> i64 {
     );
 }
 
-fn hover_at(server: &mut LspServer, uri: &str, id: i32, line: usize, character: usize) -> String {
-    let response = response_value(handle_request(
+fn hover_at(server: &mut TestServer, uri: &str, id: i32, line: usize, character: usize) -> String {
+    let response = response_value(request::<lsp_types::request::HoverRequest>(
         server,
         id,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {

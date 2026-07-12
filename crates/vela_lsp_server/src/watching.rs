@@ -7,7 +7,7 @@ use lsp_types::{
 };
 use vela_language_service::WorkspaceConfig;
 
-use crate::{CONFIG_FILE, SOURCE_EXTENSION, document_path_uri, normalized_path};
+use crate::paths::{CONFIG_FILE, SOURCE_EXTENSION, document_path_uri, normalized_path};
 
 const WATCHED_FILES_REGISTRATION_ID: &str = "vela/watched-files";
 

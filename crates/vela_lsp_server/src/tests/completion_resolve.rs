@@ -1,10 +1,9 @@
-use super::{LspServer, handle_request, response_value};
+use super::{TestServer, request, response_value};
 
-fn initialize_server(server: &mut LspServer) {
-    let _ = response_value(handle_request(
+fn initialize_server(server: &mut TestServer) {
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         server,
         0,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": {}
@@ -14,12 +13,11 @@ fn initialize_server(server: &mut LspServer) {
 
 #[test]
 fn lsp_completion_resolve_rejects_unknown_payload_kind() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     initialize_server(&mut server);
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::ResolveCompletionItem>(
         &mut server,
         1,
-        "completionItem/resolve",
         serde_json::json!({
             "label": "Mystery",
             "data": {
@@ -43,12 +41,11 @@ fn lsp_completion_resolve_rejects_unknown_payload_kind() {
 
 #[test]
 fn lsp_completion_resolve_passes_through_items_without_payload() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     initialize_server(&mut server);
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::ResolveCompletionItem>(
         &mut server,
         2,
-        "completionItem/resolve",
         serde_json::json!({
             "label": "plain",
             "kind": 6,

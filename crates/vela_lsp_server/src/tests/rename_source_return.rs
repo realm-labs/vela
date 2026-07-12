@@ -1,14 +1,11 @@
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 #[test]
 fn lsp_rename_rejects_source_any_return_receiver_member() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -20,9 +17,8 @@ fn lsp_rename_rejects_source_any_return_receiver_member() {
 pub fn main() -> i64 {
     return source_any().level
 }"#;
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -40,10 +36,9 @@ pub fn main() -> i64 {
             .expect("source Any receiver member should exist")
     });
 
-    let prepare = response_value(handle_request(
+    let prepare = response_value(request::<lsp_types::request::PrepareRenameRequest>(
         &mut server,
         2,
-        "textDocument/prepareRename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": position
@@ -51,10 +46,9 @@ pub fn main() -> i64 {
     ));
     assert_eq!(prepare["result"], serde_json::Value::Null);
 
-    let rename = response_value(handle_request(
+    let rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         3,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": position,
@@ -66,11 +60,10 @@ pub fn main() -> i64 {
 
 #[test]
 fn lsp_source_trait_default_method_rename_updates_source_function_return_receiver_calls() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -90,9 +83,8 @@ pub fn main() -> i64 {
     let first = current_player().preview(1)
     return current_player().preview(first)
 }"#;
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -110,10 +102,9 @@ pub fn main() -> i64 {
             .expect("trait default method call should exist")
     });
 
-    let prepare = response_value(handle_request(
+    let prepare = response_value(request::<lsp_types::request::PrepareRenameRequest>(
         &mut server,
         2,
-        "textDocument/prepareRename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": position
@@ -128,10 +119,9 @@ pub fn main() -> i64 {
             .expect("trait default method call should exist")
     );
 
-    let rename = response_value(handle_request(
+    let rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         3,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": position,

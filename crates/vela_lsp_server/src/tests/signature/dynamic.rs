@@ -1,14 +1,11 @@
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 #[test]
 fn lsp_signature_help_returns_null_for_source_any_return_receiver_call() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -23,9 +20,8 @@ impl Player {
 }
 fn source_any() -> Any { return Player { level: 1 } }
 pub fn main() { source_any().grant(1, 2) }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -37,10 +33,9 @@ pub fn main() { source_any().grant(1, 2) }";
     ));
 
     let call_line = text.lines().nth(5).expect("call line should exist");
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::SignatureHelpRequest>(
         &mut server,
         2,
-        "textDocument/signatureHelp",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {

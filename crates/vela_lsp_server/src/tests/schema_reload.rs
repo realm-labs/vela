@@ -4,8 +4,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, notification_values,
-    response_value,
+    TestServer, notification_value, notification_values, notify, request, response_value,
 };
 
 static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);
@@ -31,29 +30,26 @@ fn schema_reload_updates_host_member_completion() {
     fs::write(&schema_path, schema_with_player_field("level", "i64"))
         .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
     );
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = "pub fn main(player: Player) { player. }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -65,10 +61,9 @@ fn schema_reload_updates_host_member_completion() {
     ));
     let position = text.find(". }").expect("member dot should exist") + 1;
 
-    let before = response_value(handle_request(
+    let before = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         2,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": { "line": 0, "character": position }
@@ -79,18 +74,16 @@ fn schema_reload_updates_host_member_completion() {
 
     fs::write(&schema_path, schema_with_player_field("rank", "string"))
         .expect("updated schema should be writable");
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&schema_path), "type": 2 }]
         }),
     );
 
-    let after = response_value(handle_request(
+    let after = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         3,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": { "line": 0, "character": position }
@@ -122,29 +115,26 @@ fn schema_delete_clears_stale_host_completion_and_publishes_diagnostic() {
     fs::write(&schema_path, schema_with_player_field("level", "i64"))
         .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
     );
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = "pub fn main(player: Player) { player. }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -156,10 +146,9 @@ fn schema_delete_clears_stale_host_completion_and_publishes_diagnostic() {
     ));
     let position = text.find(". }").expect("member dot should exist") + 1;
 
-    let before = response_value(handle_request(
+    let before = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         2,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": { "line": 0, "character": position }
@@ -168,19 +157,18 @@ fn schema_delete_clears_stale_host_completion_and_publishes_diagnostic() {
     assert_completion(&before, "level", 5, "i64");
 
     fs::remove_file(&schema_path).expect("schema should be removable");
-    let notifications = notification_values(handle_notification(
-        &mut server,
-        "workspace/didChangeWatchedFiles",
-        serde_json::json!({
-            "changes": [{ "uri": file_uri(&schema_path), "type": 3 }]
-        }),
-    ));
+    let notifications =
+        notification_values(notify::<lsp_types::notification::DidChangeWatchedFiles>(
+            &mut server,
+            serde_json::json!({
+                "changes": [{ "uri": file_uri(&schema_path), "type": 3 }]
+            }),
+        ));
     assert_document_has_diagnostic_code(&notifications, &main_uri, "schema::unavailable");
 
-    let after = response_value(handle_request(
+    let after = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         3,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": { "line": 0, "character": position }
@@ -199,11 +187,10 @@ fn editor_config_maps_to_workspace_config() {
     fs::write(&schema_path, schema_with_player_field("level", "i64"))
         .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
@@ -220,9 +207,8 @@ fn editor_config_maps_to_workspace_config() {
     ));
 
     let helper_uri = file_uri(&root.join("scripts").join("game").join("helper.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": helper_uri,
@@ -240,9 +226,8 @@ pub fn main(player: Player) {
     let score = grant()
     return player.level
 }";
-    let open = notification_value(handle_notification(
+    let open = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -254,10 +239,9 @@ pub fn main(player: Player) {
     ));
     assert_eq!(open["params"]["diagnostics"], serde_json::json!([]));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         2,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": { "line": 3, "character": "    return player.".len() }
@@ -277,11 +261,10 @@ fn lsp_workspace_configuration_request_updates_workspace_config() {
     fs::write(&schema_path, schema_with_player_field("rank", "string"))
         .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
@@ -290,9 +273,8 @@ fn lsp_workspace_configuration_request_updates_workspace_config() {
     ));
 
     let helper_uri = file_uri(&root.join("scripts").join("game").join("helper.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": helper_uri,
@@ -310,9 +292,8 @@ pub fn main(player: Player) {
     let score = grant()
     return player.rank
 }";
-    let before = notification_value(handle_notification(
+    let before = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -324,28 +305,27 @@ pub fn main(player: Player) {
     ));
     assert_has_diagnostic_code(&before, "hir::unresolved_module");
 
-    let notifications = notification_values(handle_notification(
-        &mut server,
-        "workspace/didChangeConfiguration",
-        serde_json::json!({
-            "settings": {
-                "vela": {
-                    "workspace": {
-                        "roots": [file_uri(&root.join("scripts"))]
-                    },
-                    "host": {
-                        "schema": file_uri(&schema_path)
+    let notifications =
+        notification_values(notify::<lsp_types::notification::DidChangeConfiguration>(
+            &mut server,
+            serde_json::json!({
+                "settings": {
+                    "vela": {
+                        "workspace": {
+                            "roots": [file_uri(&root.join("scripts"))]
+                        },
+                        "host": {
+                            "schema": file_uri(&schema_path)
+                        }
                     }
                 }
-            }
-        }),
-    ));
+            }),
+        ));
     assert_document_diagnostics(&notifications, &main_uri, serde_json::json!([]));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         2,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": { "line": 3, "character": "    return player.".len() }

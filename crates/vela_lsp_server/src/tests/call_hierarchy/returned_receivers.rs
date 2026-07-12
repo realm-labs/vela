@@ -1,8 +1,6 @@
 use std::fs;
 
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 use super::{assert_call_range, assert_outgoing_call, file_uri, line, temp_workspace};
 
@@ -70,11 +68,10 @@ fn lsp_call_hierarchy_uses_schema_method_calls_on_schema_function_return_receive
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let initialize = response_value(handle_request(
+    let mut server = TestServer::new();
+    let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
@@ -85,18 +82,16 @@ fn lsp_call_hierarchy_uses_schema_method_calls_on_schema_function_return_receive
         initialize["result"]["capabilities"]["callHierarchyProvider"],
         true
     );
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
     );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": schema_uri,
@@ -113,9 +108,8 @@ pub fn main() -> i64 {
     return current_player().grant(first)
 }";
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -126,10 +120,9 @@ pub fn main() -> i64 {
         }),
     ));
 
-    let prepare_grant = response_value(handle_request(
+    let prepare_grant = response_value(request::<lsp_types::request::CallHierarchyPrepare>(
         &mut server,
         2,
-        "textDocument/prepareCallHierarchy",
         serde_json::json!({
             "textDocument": { "uri": schema_uri },
             "position": {
@@ -145,10 +138,9 @@ pub fn main() -> i64 {
     assert_eq!(grant_items[0]["name"], "grant");
     assert_eq!(grant_items[0]["uri"], schema_uri);
 
-    let prepare_grant_call = response_value(handle_request(
+    let prepare_grant_call = response_value(request::<lsp_types::request::CallHierarchyPrepare>(
         &mut server,
         3,
-        "textDocument/prepareCallHierarchy",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -164,10 +156,9 @@ pub fn main() -> i64 {
         grant_items
     );
 
-    let incoming = response_value(handle_request(
+    let incoming = response_value(request::<lsp_types::request::CallHierarchyIncomingCalls>(
         &mut server,
         4,
-        "callHierarchy/incomingCalls",
         serde_json::json!({ "item": grant_items[0].clone() }),
     ));
     let incoming_calls = incoming["result"]
@@ -189,10 +180,9 @@ pub fn main() -> i64 {
         line(text, 2).find("grant").expect("second grant call"),
     );
 
-    let prepare_main = response_value(handle_request(
+    let prepare_main = response_value(request::<lsp_types::request::CallHierarchyPrepare>(
         &mut server,
         5,
-        "textDocument/prepareCallHierarchy",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -206,10 +196,9 @@ pub fn main() -> i64 {
         .expect("prepareCallHierarchy response should be an array");
     assert_eq!(main_items.len(), 1);
 
-    let outgoing = response_value(handle_request(
+    let outgoing = response_value(request::<lsp_types::request::CallHierarchyOutgoingCalls>(
         &mut server,
         6,
-        "callHierarchy/outgoingCalls",
         serde_json::json!({ "item": main_items[0].clone() }),
     ));
     let outgoing_calls = outgoing["result"]
@@ -298,11 +287,10 @@ fn lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_function_return_r
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let initialize = response_value(handle_request(
+    let mut server = TestServer::new();
+    let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
@@ -313,18 +301,16 @@ fn lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_function_return_r
         initialize["result"]["capabilities"]["callHierarchyProvider"],
         true
     );
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
     );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": schema_uri,
@@ -341,9 +327,8 @@ pub fn main() -> i64 {
     return current_reward().preview(first)
 }";
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -354,10 +339,9 @@ pub fn main() -> i64 {
         }),
     ));
 
-    let prepare_preview = response_value(handle_request(
+    let prepare_preview = response_value(request::<lsp_types::request::CallHierarchyPrepare>(
         &mut server,
         2,
-        "textDocument/prepareCallHierarchy",
         serde_json::json!({
             "textDocument": { "uri": schema_uri },
             "position": {
@@ -375,10 +359,9 @@ pub fn main() -> i64 {
     assert_eq!(preview_items[0]["name"], "preview");
     assert_eq!(preview_items[0]["uri"], schema_uri);
 
-    let prepare_preview_call = response_value(handle_request(
+    let prepare_preview_call = response_value(request::<lsp_types::request::CallHierarchyPrepare>(
         &mut server,
         3,
-        "textDocument/prepareCallHierarchy",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -394,10 +377,9 @@ pub fn main() -> i64 {
         preview_items
     );
 
-    let incoming = response_value(handle_request(
+    let incoming = response_value(request::<lsp_types::request::CallHierarchyIncomingCalls>(
         &mut server,
         4,
-        "callHierarchy/incomingCalls",
         serde_json::json!({ "item": preview_items[0].clone() }),
     ));
     let incoming_calls = incoming["result"]
@@ -419,10 +401,9 @@ pub fn main() -> i64 {
         line(text, 2).find("preview").expect("second preview call"),
     );
 
-    let prepare_main = response_value(handle_request(
+    let prepare_main = response_value(request::<lsp_types::request::CallHierarchyPrepare>(
         &mut server,
         5,
-        "textDocument/prepareCallHierarchy",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -436,10 +417,9 @@ pub fn main() -> i64 {
         .expect("prepareCallHierarchy response should be an array");
     assert_eq!(main_items.len(), 1);
 
-    let outgoing = response_value(handle_request(
+    let outgoing = response_value(request::<lsp_types::request::CallHierarchyOutgoingCalls>(
         &mut server,
         6,
-        "callHierarchy/outgoingCalls",
         serde_json::json!({ "item": main_items[0].clone() }),
     ));
     let outgoing_calls = outgoing["result"]

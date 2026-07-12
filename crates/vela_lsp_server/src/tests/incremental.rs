@@ -1,12 +1,11 @@
-use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
+use super::{TestServer, notification_value, notify, request, response_value};
 
 #[test]
 fn lsp_did_change_body_edit_preserves_project_and_rebuilds_hir() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -25,13 +24,12 @@ fn lsp_did_change_body_edit_preserves_project_and_rebuilds_hir() {
         "use game::reward::grant\npub fn main() { return grant() }",
     );
 
-    let before_parse_count = server.databases.parse_db().parse_count();
-    let before_project_rebuild_count = server.databases.project_db().rebuild_count();
-    let before_hir_rebuild_count = server.databases.hir_db().rebuild_count();
+    let before_parse_count = server.snapshot().databases().parse_db().parse_count();
+    let before_project_rebuild_count = server.snapshot().databases().project_db().rebuild_count();
+    let before_hir_rebuild_count = server.snapshot().databases().hir_db().rebuild_count();
 
-    let change = notification_value(handle_notification(
+    let change = notification_value(notify::<lsp_types::notification::DidChangeTextDocument>(
         &mut server,
-        "textDocument/didChange",
         serde_json::json!({
             "textDocument": {
                 "uri": reward_uri,
@@ -47,26 +45,25 @@ fn lsp_did_change_body_edit_preserves_project_and_rebuilds_hir() {
     assert_eq!(change["params"]["uri"], reward_uri);
     assert_eq!(change["params"]["diagnostics"], serde_json::json!([]));
     assert_eq!(
-        server.databases.parse_db().parse_count(),
+        server.snapshot().databases().parse_db().parse_count(),
         before_parse_count + 1,
         "body-only didChange should reparse only the edited document"
     );
     assert_eq!(
-        server.databases.project_db().rebuild_count(),
+        server.snapshot().databases().project_db().rebuild_count(),
         before_project_rebuild_count,
         "body-only didChange must preserve declaration/import indexes"
     );
     assert_eq!(
-        server.databases.hir_db().rebuild_count(),
+        server.snapshot().databases().hir_db().rebuild_count(),
         before_hir_rebuild_count + 1,
         "body-only didChange must rebuild Heavy HIR body facts"
     );
 }
 
-fn open_document(server: &mut LspServer, uri: &str, text: &str) {
-    let diagnostics = notification_value(handle_notification(
+fn open_document(server: &mut TestServer, uri: &str, text: &str) {
+    let diagnostics = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,

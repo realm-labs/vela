@@ -488,18 +488,27 @@ loaded.
 The native LSP server's stdio transport uses `lsp-server` as the production
 framing and typed message boundary. Normal stdio and optional TCP traffic enter
 the same rust-analyzer-style main loop as typed `lsp_server::Message` values;
-`GlobalState` owns lifecycle, request queue state, cancellation, workspace
-generations, configuration, task scheduling, and response emission. The old
-manual stdio runner, custom request/notification string builders, raw
-`LspServer::handle_json` compatibility harness, and raw JSON-RPC parser helpers
-are not durable architecture and have been removed. Remaining JSON handling is
-limited to protocol serialization/projection boundaries, tracing/profiling byte
-counts, and tests that inspect final protocol shapes.
+`GlobalState` is the sole mutable coordinator and owns lifecycle, capabilities,
+watchers, request/cancellation state, reload/task scheduling, response emission,
+and one `ProjectState`. That uniquely owned project state contains the live
+workspace, language-service databases, disk sources, roots/open documents,
+configuration, and diagnostic records. Project mutations refresh databases at
+explicit commit points; diagnostic publication is read-only.
+
+`GlobalStateSnapshot` is an immutable view bound to one authoritative project
+generation. Worker queries cannot read later live state or write snapshots
+back. The typed in-memory `TestServer` exercises the production lifecycle
+gates, request queue, `handlers::dispatch`, task-result path, and response
+emission. A second test dispatcher, local JSON parameter model, manual live
+state synchronization, and compatibility wrapper are prohibited. Remaining
+JSON handling is limited to protocol serialization/projection boundaries,
+extension payloads, tracing/profiling byte counts, and tests that inspect final
+protocol shapes.
 
 Workspace symbol detail metadata is a Vela protocol extension carried in
 `WorkspaceSymbol.data.detail`. Upstream `lsp_types::WorkspaceSymbol` has no
-top-level `detail` field, so both typed and transitional legacy projections
-must keep module/type detail there while preserving ordinary LSP symbol fields.
+top-level `detail` field, so typed projection keeps module/type detail there
+while preserving ordinary LSP symbol fields.
 
 The optional native LSP TCP transport is a debug/remote-integration extension,
 not the default editor transport. It must be selected explicitly with

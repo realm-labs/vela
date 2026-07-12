@@ -2,24 +2,22 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
+use super::{TestServer, notification_value, notify, request, response_value};
 
 #[test]
 fn lsp_completion_uses_open_overlay_declarations() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
     ));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": "file:///workspace/scripts/game/main.vela",
@@ -30,10 +28,9 @@ fn lsp_completion_uses_open_overlay_declarations() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         2,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
             "position": { "line": 0, "character": 7 }
@@ -45,11 +42,10 @@ fn lsp_completion_uses_open_overlay_declarations() {
 
 #[test]
 fn lsp_repeated_completion_queries_do_not_reparse_or_rebuild_hir() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -58,9 +54,8 @@ fn lsp_repeated_completion_queries_do_not_reparse_or_rebuild_hir() {
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub fn grant() { return 1 }\npub fn main() { gra }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -75,13 +70,12 @@ fn lsp_repeated_completion_queries_do_not_reparse_or_rebuild_hir() {
         "character": text.lines().nth(1).expect("main line").find("gra").expect("prefix") + "gra".len()
     });
 
-    let before_parse_count = server.databases.parse_db().parse_count();
-    let before_hir_rebuild_count = server.databases.hir_db().rebuild_count();
+    let before_parse_count = server.snapshot().databases().parse_db().parse_count();
+    let before_hir_rebuild_count = server.snapshot().databases().hir_db().rebuild_count();
     for id in 2..=3 {
-        let response = response_value(handle_request(
+        let response = response_value(request::<lsp_types::request::Completion>(
             &mut server,
             id,
-            "textDocument/completion",
             serde_json::json!({
                 "textDocument": { "uri": uri },
                 "position": position
@@ -91,22 +85,21 @@ fn lsp_repeated_completion_queries_do_not_reparse_or_rebuild_hir() {
     }
 
     assert_eq!(
-        server.databases.parse_db().parse_count(),
+        server.snapshot().databases().parse_db().parse_count(),
         before_parse_count
     );
     assert_eq!(
-        server.databases.hir_db().rebuild_count(),
+        server.snapshot().databases().hir_db().rebuild_count(),
         before_hir_rebuild_count
     );
 }
 
 #[test]
 fn lsp_expression_completion_projects_builtin_values() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -115,9 +108,8 @@ fn lsp_expression_completion_projects_builtin_values() {
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub fn main() { f }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -128,10 +120,9 @@ fn lsp_expression_completion_projects_builtin_values() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         2,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -151,11 +142,10 @@ fn lsp_expression_completion_projects_builtin_values() {
 
 #[test]
 fn lsp_statement_completion_offers_for_in_and_match_snippets() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -164,9 +154,8 @@ fn lsp_statement_completion_offers_for_in_and_match_snippets() {
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub fn main() { return 1 }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -177,10 +166,9 @@ fn lsp_statement_completion_offers_for_in_and_match_snippets() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         2,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -208,11 +196,10 @@ fn lsp_statement_completion_offers_for_in_and_match_snippets() {
 
 #[test]
 fn lsp_module_path_completion_snippets_stdlib_functions() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -221,9 +208,8 @@ fn lsp_module_path_completion_snippets_stdlib_functions() {
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub fn main() { math:: }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -234,10 +220,9 @@ fn lsp_module_path_completion_snippets_stdlib_functions() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         2,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -259,11 +244,10 @@ fn lsp_module_path_completion_snippets_stdlib_functions() {
 
 #[test]
 fn lsp_module_path_completion_projects_source_enum_variants() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -272,9 +256,8 @@ fn lsp_module_path_completion_projects_source_enum_variants() {
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub enum QuestState { Started, Completed }\npub fn main() { QuestState::Co }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -286,10 +269,9 @@ fn lsp_module_path_completion_projects_source_enum_variants() {
     ));
     let main_line = text.lines().nth(1).expect("main line");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         2,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -346,28 +328,25 @@ fn lsp_completion_uses_loaded_schema_facts() {
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
     );
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -378,10 +357,9 @@ fn lsp_completion_uses_loaded_schema_facts() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         2,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": { "line": 0, "character": 18 }
@@ -407,11 +385,10 @@ fn lsp_completion_uses_loaded_schema_facts() {
 
 #[test]
 fn lsp_item_boundary_completion_projects_snippet_items() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -420,9 +397,8 @@ fn lsp_item_boundary_completion_projects_snippet_items() {
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "f";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -433,10 +409,9 @@ fn lsp_item_boundary_completion_projects_snippet_items() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         2,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": { "line": 0, "character": text.len() }
@@ -469,11 +444,10 @@ fn lsp_item_boundary_completion_projects_snippet_items() {
 
 #[test]
 fn lsp_completion_projects_zed_style_client_fixture() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -496,9 +470,8 @@ fn lsp_completion_projects_zed_style_client_fixture() {
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "st";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -509,10 +482,9 @@ fn lsp_completion_projects_zed_style_client_fixture() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         2,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": { "line": 0, "character": text.len() }
@@ -545,11 +517,10 @@ fn lsp_completion_projects_zed_style_client_fixture() {
 
 #[test]
 fn lsp_statement_completion_projects_statement_keywords() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -558,9 +529,8 @@ fn lsp_statement_completion_projects_statement_keywords() {
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub fn helper() { return 1 }\npub fn main() { return 1 }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -572,10 +542,9 @@ fn lsp_statement_completion_projects_statement_keywords() {
     ));
     let main_line = text.lines().nth(1).expect("main line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         2,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -593,11 +562,10 @@ fn lsp_statement_completion_projects_statement_keywords() {
 
 #[test]
 fn lsp_record_field_completion_uses_known_constructor() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -606,9 +574,8 @@ fn lsp_record_field_completion_uses_known_constructor() {
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub struct Player { id: String level: i64 }\npub fn main() { let player = Player { id: \"p1\", le } }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -619,10 +586,9 @@ fn lsp_record_field_completion_uses_known_constructor() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         2,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -683,29 +649,26 @@ fn lsp_schema_record_field_completion_carries_schema_identity() {
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
     );
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = "pub fn main() { let player = Player { le } }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -716,10 +679,9 @@ fn lsp_schema_record_field_completion_carries_schema_identity() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         2,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -747,11 +709,10 @@ fn lsp_schema_record_field_completion_carries_schema_identity() {
 
 #[test]
 fn lsp_named_argument_completion_suggests_unused_script_parameters() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -763,9 +724,8 @@ fn lsp_named_argument_completion_suggests_unused_script_parameters() {
 pub fn grant(player: Player, amount: i64, reason: String = "quest") -> bool { return true }
 pub fn main(player: Player) { grant(player: player, ) }
 "#;
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -777,10 +737,9 @@ pub fn main(player: Player) { grant(player: player, ) }
     ));
     let main_line = text.lines().nth(2).expect("main line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         2,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -799,11 +758,10 @@ pub fn main(player: Player) { grant(player: player, ) }
 
 #[test]
 fn lsp_lambda_parameter_completion_uses_pipe_trigger_context() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -812,9 +770,8 @@ fn lsp_lambda_parameter_completion_uses_pipe_trigger_context() {
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub fn main(scores: Array<i64>) { scores.filter(|) }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -825,10 +782,9 @@ fn lsp_lambda_parameter_completion_uses_pipe_trigger_context() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         2,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -847,11 +803,10 @@ fn lsp_lambda_parameter_completion_uses_pipe_trigger_context() {
 
 #[test]
 fn lsp_type_hint_completion_uses_colon_trigger_context() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -860,9 +815,8 @@ fn lsp_type_hint_completion_uses_colon_trigger_context() {
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub struct Player { level: i64 }\npub fn helper() { return 1 }\npub fn main(player: Pl) { return 1 }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -874,10 +828,9 @@ fn lsp_type_hint_completion_uses_colon_trigger_context() {
     ));
     let main_line = text.lines().nth(2).expect("main line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         2,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -907,11 +860,10 @@ fn lsp_type_hint_completion_uses_colon_trigger_context() {
 
 #[test]
 fn lsp_qualified_type_hint_completion_projects_type_path_items() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -922,9 +874,8 @@ fn lsp_qualified_type_hint_completion_projects_type_path_items() {
     let reward_uri = "file:///workspace/scripts/game/reward.vela";
     let main_text = "pub fn main(item: game::reward::Re) { return 1 }";
     let reward_text = "pub struct Reward { amount: i64 }\npub fn redeem() { return 1 }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": main_uri,
@@ -934,9 +885,8 @@ fn lsp_qualified_type_hint_completion_projects_type_path_items() {
             }
         }),
     ));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": reward_uri,
@@ -947,10 +897,9 @@ fn lsp_qualified_type_hint_completion_projects_type_path_items() {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         2,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -966,11 +915,10 @@ fn lsp_qualified_type_hint_completion_projects_type_path_items() {
 
 #[test]
 fn lsp_pattern_completion_projects_enum_variants() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -990,9 +938,8 @@ pub fn main(state: QuestState) {
     }
 }
 "#;
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -1004,10 +951,9 @@ pub fn main(state: QuestState) {
     ));
     let pattern_line = text.lines().nth(8).expect("pattern line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::Completion>(
         &mut server,
         2,
-        "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -1108,14 +1054,13 @@ fn assert_completion_projection(
 }
 
 fn resolve_completion(
-    server: &mut LspServer,
+    server: &mut TestServer,
     id: i32,
     item: &serde_json::Value,
 ) -> serde_json::Value {
-    response_value(handle_request(
+    response_value(request::<lsp_types::request::ResolveCompletionItem>(
         server,
         id,
-        "completionItem/resolve",
         item.clone(),
     ))
 }

@@ -1,6 +1,6 @@
 # LSP GlobalState Single-Owner Hard-Switch Plan
 
-> Status: ready for execution
+> Status: completed on 2026-07-12
 >
 > Scope: `crates/vela_lsp_server`, its tests, and the active LSP architecture
 > documentation
@@ -284,18 +284,44 @@ boundary. They must not assert internal field mirroring after the hard switch.
 
 ### Tasks
 
-- [ ] Record the current focused and full LSP test baseline.
-- [ ] Inventory every production `self.server` access in `global_state.rs`.
-- [ ] Classify each non-test `LspServer` method as configuration, workspace
+- [x] Record the current focused and full LSP test baseline.
+- [x] Inventory every production `self.server` access in `global_state.rs`.
+- [x] Classify each non-test `LspServer` method as configuration, workspace
       mutation, reload, diagnostics, or shared utility.
-- [ ] Inventory every test file that constructs `LspServer` and group it by
+- [x] Inventory every test file that constructs `LspServer` and group it by
       feature family.
-- [ ] Identify tests that bypass typed `handlers::dispatch` or the main-loop
+- [x] Identify tests that bypass typed `handlers::dispatch` or the main-loop
       lifecycle gates.
-- [ ] Freeze the behavior matrix above with focused typed tests where coverage
+- [x] Freeze the behavior matrix above with focused typed tests where coverage
       currently exists only through the legacy harness.
-- [ ] Record file sizes for `lib.rs`, `global_state.rs`, and affected test
+- [x] Record file sizes for `lib.rs`, `global_state.rs`, and affected test
       families.
+
+### Phase 0 Inventory (2026-07-12)
+
+- Baseline: `cargo test -p vela_lsp_server` passes 530 library tests, 7 binary
+  tests, and 1 stdio integration test; `cargo clippy -p vela_lsp_server
+  --all-targets -- -D warnings` passes; `cargo test -p
+  vela_language_service` passes 520 tests with 2 explicit scale tests ignored.
+- Production ownership: `global_state.rs` contains 37 `self.server` accesses.
+  Configuration delegates through `apply_config_change`; document/workspace
+  mutation delegates through open/change/close and workspace-root updates;
+  reload delegates watched source/config/schema upsert and removal; diagnostics
+  delegate open/workspace publication; lifecycle and capabilities are mirrored
+  by initialize/shutdown/exit/watcher assignments and sync helpers.
+- Legacy test surface: 64 files under `src/tests` construct or name
+  `LspServer`. They cover every family in Phase 5 and route through the
+  test-only `handle_message`, `handle_request`, and `handle_notification`
+  dispatcher in `tests.rs`, bypassing the production request queue, task path,
+  and `handlers::dispatch`.
+- Typed-path coverage already present in `global_state.rs`, `handlers`,
+  `transport`, and `main_loop` freezes lifecycle, document sync,
+  configuration/reload, diagnostics, cancellation, stale-generation retry and
+  rejection, panic projection, stdio, and loopback TCP behavior before the
+  ownership move.
+- File sizes: `lib.rs` is 935 lines, `global_state.rs` is 3,813 lines, and
+  `tests.rs` is 1,241 lines. Additional active files above the 1,200-line limit
+  are `lsp/to_proto.rs` (1,619) and `tests/signature.rs` (1,251).
 
 ### Baseline commands
 
@@ -313,9 +339,9 @@ wc -l crates/vela_lsp_server/src/lib.rs \
 
 ### Exit gate
 
-- [ ] Every production delegation and every legacy test family has an owner in
+- [x] Every production delegation and every legacy test family has an owner in
       the migration checklist.
-- [ ] Typed-path tests cover lifecycle, document sync, configuration, reload,
+- [x] Typed-path tests cover lifecycle, document sync, configuration, reload,
       diagnostics, cancellation, and stale generations before ownership moves.
 
 ## 7. Phase 1: Introduce The Typed Production Test Harness
@@ -325,25 +351,25 @@ stdio/TCP without opening sockets.
 
 ### Tasks
 
-- [ ] Add one crate-private `TestServer` under `tests/support.rs`.
-- [ ] Make `TestServer` own a real `GlobalState`, typed message channel, and
+- [x] Add one crate-private `TestServer` under `tests/support.rs`.
+- [x] Make `TestServer` own a real `GlobalState`, typed message channel, and
       deterministic task draining controls.
-- [ ] Route request and notification helpers through the same lifecycle gates,
+- [x] Route request and notification helpers through the same lifecycle gates,
       request queue, `handlers::dispatch`, and response emission used by the
       production main loop.
-- [ ] Provide typed helpers for initialize, notify, request, drain tasks, and
+- [x] Provide typed helpers for initialize, notify, request, drain tasks, and
       collect outbound messages.
-- [ ] Keep raw JSON only for final protocol-shape assertions or extension
+- [x] Keep raw JSON only for final protocol-shape assertions or extension
       payloads that have no upstream typed representation.
-- [ ] Add parity tests proving the harness and the in-memory production main
+- [x] Add parity tests proving the harness and the in-memory production main
       loop produce the same initialize, document-sync, feature-request,
       cancellation, shutdown, and exit results.
-- [ ] Do not model the old `LspServer` API or reuse its name.
+- [x] Do not model the old `LspServer` API or reuse its name.
 
 ### Exit gate
 
-- [ ] New tests have no reason to instantiate `LspServer`.
-- [ ] The typed harness proves it executes production lifecycle and dispatch
+- [x] New tests have no reason to instantiate `LspServer`.
+- [x] The typed harness proves it executes production lifecycle and dispatch
       gates rather than calling `GlobalState` feature methods directly.
 
 ## 8. Phase 2: Move Workspace And Database Ownership
@@ -352,105 +378,105 @@ This phase removes the most dangerous mirrored state first.
 
 ### Tasks
 
-- [ ] Move the mutable `Workspace` into `GlobalState` or its uniquely owned
+- [x] Move the mutable `Workspace` into `GlobalState` or its uniquely owned
       `project_state` component.
-- [ ] Move `LanguageServiceDatabases` into the same authoritative owner.
-- [ ] Move disk source records, config diagnostic records, config documents,
+- [x] Move `LanguageServiceDatabases` into the same authoritative owner.
+- [x] Move disk source records, config diagnostic records, config documents,
       and schema documents out of `LspServer`.
-- [ ] Build `GlobalStateSnapshot` only from the authoritative workspace and
+- [x] Build `GlobalStateSnapshot` only from the authoritative workspace and
       databases after a mutation completes.
-- [ ] Replace persistent `workspace_snapshot` mirroring with either an
+- [x] Replace persistent `workspace_snapshot` mirroring with either an
       authoritative current snapshot updated at one explicit commit point or
       snapshot-on-demand. Do not retain a second mutable workspace.
-- [ ] Define one mutation commit helper if needed to advance workspace/database
+- [x] Define one mutation commit helper if needed to advance workspace/database
       generation atomically and invalidate stale tasks.
-- [ ] Route typed document open/change/close directly to this state.
-- [ ] Preserve overlay close behavior, source versions, UTF-16 ranged edits,
+- [x] Route typed document open/change/close directly to this state.
+- [x] Preserve overlay close behavior, source versions, UTF-16 ranged edits,
       and generation increments.
-- [ ] Delete `sync_workspace_analysis_from_legacy_server` as soon as all its
+- [x] Delete `sync_workspace_analysis_from_legacy_server` as soon as all its
       callers use the authoritative state.
 
 ### Required tests
 
-- [ ] open/change/close update one workspace and one database generation;
-- [ ] snapshots before a mutation remain immutable;
-- [ ] snapshots after a mutation see the complete update;
-- [ ] stale worker results are discarded after a document generation change;
-- [ ] close restores disk-backed content without a transient empty project;
-- [ ] ranged edits preserve existing UTF-16 and CRLF semantics.
+- [x] open/change/close update one workspace and one database generation;
+- [x] snapshots before a mutation remain immutable;
+- [x] snapshots after a mutation see the complete update;
+- [x] stale worker results are discarded after a document generation change;
+- [x] close restores disk-backed content without a transient empty project;
+- [x] ranged edits preserve existing UTF-16 and CRLF semantics.
 
 ### Exit gate
 
-- [ ] `GlobalState` no longer reads workspace or databases through
+- [x] `GlobalState` no longer reads workspace or databases through
       `LspServer`.
-- [ ] No production workspace/database synchronization helper remains.
+- [x] No production workspace/database synchronization helper remains.
 
 ## 9. Phase 3: Move Configuration, Reload, And Diagnostics
 
 ### Configuration tasks
 
-- [ ] Move effective editor/workspace configuration ownership into
+- [x] Move effective editor/workspace configuration ownership into
       `GlobalState`.
-- [ ] Apply `ConfigChange` directly to the authoritative state.
-- [ ] Preserve launch defaults, initialize options, editor settings,
+- [x] Apply `ConfigChange` directly to the authoritative state.
+- [x] Preserve launch defaults, initialize options, editor settings,
       `vela.toml` discovery, and authoritative config precedence.
-- [ ] Remove copies between `server.config`, `editor_config`,
+- [x] Remove copies between `server.config`, `editor_config`,
       `workspace_config`, and workspace roots.
 
 ### Reload tasks
 
-- [ ] Make `ReloadScheduler` produce work descriptions only.
-- [ ] Apply watched-file and workspace-root work directly through
+- [x] Make `ReloadScheduler` produce work descriptions only.
+- [x] Apply watched-file and workspace-root work directly through
       `GlobalState`/project-state mutation methods.
-- [ ] Move watched source upsert/remove and schema reload logic out of
+- [x] Move watched source upsert/remove and schema reload logic out of
       `LspServer`.
-- [ ] Ensure open overlays win over watched disk changes.
-- [ ] Commit generation changes once per logical reload batch.
+- [x] Ensure open overlays win over watched disk changes.
+- [x] Commit generation changes once per logical reload batch.
 
 ### Diagnostic tasks
 
-- [ ] Move diagnostic collection and publication to a focused diagnostics
+- [x] Move diagnostic collection and publication to a focused diagnostics
       module operating on explicit `GlobalState`/snapshot inputs.
-- [ ] Preserve config, schema, project, missing-import, and open-document
+- [x] Preserve config, schema, project, missing-import, and open-document
       diagnostics.
-- [ ] Preserve work-done progress wrapping and custom diagnostic error payloads.
-- [ ] Ensure diagnostic publication cannot refresh or mutate analysis as a
+- [x] Preserve work-done progress wrapping and custom diagnostic error payloads.
+- [x] Ensure diagnostic publication cannot refresh or mutate analysis as a
       hidden side effect.
 
 ### Exit gate
 
-- [ ] Production configuration, reload, and diagnostics no longer call
+- [x] Production configuration, reload, and diagnostics no longer call
       `LspServer`.
-- [ ] Workspace roots, open documents, config, watcher state, and diagnostic
+- [x] Workspace roots, open documents, config, watcher state, and diagnostic
       state each have one owner.
 
 ## 10. Phase 4: Remove Lifecycle And Capability Mirroring
 
 ### Tasks
 
-- [ ] Keep initialized, shutdown, and exited flags only in `GlobalState`.
-- [ ] Keep work-done progress, watched-file registration, semantic-token
+- [x] Keep initialized, shutdown, and exited flags only in `GlobalState`.
+- [x] Keep work-done progress, watched-file registration, semantic-token
       projection, and watcher enablement only in `GlobalState`.
-- [ ] Remove all direct assignments to corresponding `LspServer` fields.
-- [ ] Delete `sync_client_capabilities_to_legacy_server`.
-- [ ] Delete the test-only `sync_from_legacy_server` helper.
-- [ ] Rewrite tests that create impossible divergent state by mutating
+- [x] Remove all direct assignments to corresponding `LspServer` fields.
+- [x] Delete `sync_client_capabilities_to_legacy_server`.
+- [x] Delete the test-only `sync_from_legacy_server` helper.
+- [x] Rewrite tests that create impossible divergent state by mutating
       `state.server` directly; express those scenarios through typed messages.
 
 ### Required tests
 
-- [ ] repeated initialize and initialized behavior;
-- [ ] notification-shaped lifecycle misuse;
-- [ ] post-shutdown request rejection and final exit;
-- [ ] watcher registration capability and disable flag combinations;
-- [ ] semantic-token projection follows initialize capabilities;
-- [ ] no response is emitted for notification failures.
+- [x] repeated initialize and initialized behavior;
+- [x] notification-shaped lifecycle misuse;
+- [x] post-shutdown request rejection and final exit;
+- [x] watcher registration capability and disable flag combinations;
+- [x] semantic-token projection follows initialize capabilities;
+- [x] no response is emitted for notification failures.
 
 ### Exit gate
 
-- [ ] No lifecycle, capability, watcher, root, document, or config field is
+- [x] No lifecycle, capability, watcher, root, document, or config field is
       mirrored between objects.
-- [ ] No function name contains `legacy` or `sync_*server` in production LSP
+- [x] No function name contains `legacy` or `sync_*server` in production LSP
       code.
 
 ## 11. Phase 5: Migrate Legacy Test Families
@@ -460,27 +486,27 @@ behavior. Do not perform one unreviewable global textual replacement.
 
 ### Migration order
 
-- [ ] lifecycle, initialization, workspace folders, and file watching;
-- [ ] document sync, close overlay, incremental edits, config, and schema reload;
-- [ ] completion and completion resolve;
-- [ ] hover and signature help;
-- [ ] definition, declaration, type definition, references, and highlights;
-- [ ] document/workspace symbols, folding, selection, and formatting;
-- [ ] rename and code actions;
-- [ ] semantic tokens and inlay hints;
-- [ ] call hierarchy;
-- [ ] degradation, cancellation, panic, tracing, and protocol-shape fixtures.
+- [x] lifecycle, initialization, workspace folders, and file watching;
+- [x] document sync, close overlay, incremental edits, config, and schema reload;
+- [x] completion and completion resolve;
+- [x] hover and signature help;
+- [x] definition, declaration, type definition, references, and highlights;
+- [x] document/workspace symbols, folding, selection, and formatting;
+- [x] rename and code actions;
+- [x] semantic tokens and inlay hints;
+- [x] call hierarchy;
+- [x] degradation, cancellation, panic, tracing, and protocol-shape fixtures.
 
 ### Per-family rules
 
-- [ ] Replace `LspServer::new()` with the typed `TestServer` harness.
-- [ ] Send typed requests/notifications through production dispatch.
-- [ ] Assert outbound typed messages and language-service results.
-- [ ] Remove direct mutation/assertion of `LspServer` private fields.
-- [ ] Preserve all semantic assertions; do not weaken fixtures to make the
+- [x] Replace `LspServer::new()` with the typed `TestServer` harness.
+- [x] Send typed requests/notifications through production dispatch.
+- [x] Assert outbound typed messages and language-service results.
+- [x] Remove direct mutation/assertion of `LspServer` private fields.
+- [x] Preserve all semantic assertions; do not weaken fixtures to make the
       migration pass.
-- [ ] Split files that remain above 1,200 lines by feature responsibility.
-- [ ] Run the focused family tests before moving to the next family.
+- [x] Split files that remain above 1,200 lines by feature responsibility.
+- [x] Run the focused family tests before moving to the next family.
 
 ### Exit gate
 
@@ -494,19 +520,19 @@ The command must return no matches.
 
 ### Tasks
 
-- [ ] Delete the `LspServer` struct and implementation from `lib.rs`.
-- [ ] Delete test-only legacy request dispatch and local JSON parameter structs.
-- [ ] Delete legacy response/request/notification helper functions that are no
+- [x] Delete the `LspServer` struct and implementation from `lib.rs`.
+- [x] Delete test-only legacy request dispatch and local JSON parameter structs.
+- [x] Delete legacy response/request/notification helper functions that are no
       longer used by the typed harness.
-- [ ] Delete obsolete `client.rs`, `queries.rs`, or other modules only if their
+- [x] Delete obsolete `client.rs`, `queries.rs`, or other modules only if their
       remaining contents are exclusively legacy. Move still-valid focused
       utilities to their owning typed modules.
-- [ ] Remove legacy labels from `architecture_tests.rs`; replace them with
+- [x] Remove legacy labels from `architecture_tests.rs`; replace them with
       assertions for the final typed-only module boundary.
-- [ ] Reduce `lib.rs` to module declarations and deliberate public exports.
-- [ ] Split `global_state.rs` production logic and inline tests according to the
+- [x] Reduce `lib.rs` to module declarations and deliberate public exports.
+- [x] Split `global_state.rs` production logic and inline tests according to the
       target module layout.
-- [ ] Remove obsolete file-size exceptions if the final files no longer need
+- [x] Remove obsolete file-size exceptions if the final files no longer need
       them.
 
 ### Mandatory zero-hit gates
@@ -526,33 +552,33 @@ All commands must return no matches.
 
 ### Exit gate
 
-- [ ] The crate has one typed dispatcher and one mutable `GlobalState` owner.
-- [ ] Tests exercise that production architecture through the typed harness.
-- [ ] No compatibility wrapper, alias, duplicated dispatcher, or mirrored state
+- [x] The crate has one typed dispatcher and one mutable `GlobalState` owner.
+- [x] Tests exercise that production architecture through the typed harness.
+- [x] No compatibility wrapper, alias, duplicated dispatcher, or mirrored state
       remains.
 
 ## 13. Phase 7: Architecture And CI Close-Out
 
 ### Tasks
 
-- [ ] Update `docs/architecture/lsp.md` to describe the implemented ownership
+- [x] Update `docs/architecture/lsp.md` to describe the implemented ownership
       and snapshot commit model, not a future target.
-- [ ] Update `docs/decisions.md` with the final single-owner decision and typed
+- [x] Update `docs/decisions.md` with the final single-owner decision and typed
       test-harness rule.
-- [ ] Compact `docs/progress.md`: remove stale statements that temporary legacy
+- [x] Compact `docs/progress.md`: remove stale statements that temporary legacy
       synchronization remains and record the hard-switch checkpoint.
-- [ ] Add an architecture test or CI zero-hit gate preventing `LspServer`,
+- [x] Add an architecture test or CI zero-hit gate preventing `LspServer`,
       legacy sync helpers, and a second test dispatcher from returning.
-- [ ] Audit `serde_json` use again; allow it only at typed protocol projection,
+- [x] Audit `serde_json` use again; allow it only at typed protocol projection,
       extension payload, tracing/profiling, and final shape-test boundaries.
-- [ ] Audit all active LSP implementation/test files against the 1,200-line
+- [x] Audit all active LSP implementation/test files against the 1,200-line
       threshold.
 
 ### Exit gate
 
-- [ ] Documentation, architecture tests, and implementation describe the same
+- [x] Documentation, architecture tests, and implementation describe the same
       ownership model.
-- [ ] The repository prevents the deleted legacy architecture from returning.
+- [x] The repository prevents the deleted legacy architecture from returning.
 
 ## 14. Validation Gates
 
@@ -588,24 +614,46 @@ cargo test --manifest-path examples/Cargo.toml
 If the VS Code package is present in the checkout, also run its existing
 package validation and release build commands recorded by that package.
 
+### Final Validation (2026-07-12)
+
+- `cargo fmt --all -- --check`: passed.
+- `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`: passed.
+- `cargo test -p vela_lsp_server`: passed with 533 library tests, 7 binary
+  tests, 1 stdio integration test, and doctests.
+- `cargo test -p vela_language_service`: passed with 520 tests and 2 explicit
+  scale tests ignored, plus doctests.
+- `cargo test -p vela_lsp_server --test stdio_transport`: passed.
+- `cargo run -p vela_lsp_server -- --version`: passed and reported
+  `vela_lsp_server 0.1.0`.
+- All mandatory legacy zero-hit searches returned no matches; the architecture
+  guard, JSON-boundary guard, and 1,200-line file-size guard passed.
+- `cargo clippy --workspace --all-targets -- -D warnings`: passed.
+- `cargo test --workspace`: passed.
+- `cargo clippy --manifest-path examples/Cargo.toml --all-targets -- -D
+  warnings`: passed.
+- `cargo test --manifest-path examples/Cargo.toml`: passed, including all 30
+  runnable example tests.
+- `npm run validate` and `npm run package:release` under `editors/vscode`:
+  passed and produced the release VSIX.
+
 ## 15. Completion Criteria
 
 The plan is complete only when all of the following are true:
 
-- [ ] Production stdio and TCP enter the same typed main loop.
-- [ ] `GlobalState` is the sole mutable protocol coordinator.
-- [ ] Workspace, databases, disk sources, configuration, diagnostics,
+- [x] Production stdio and TCP enter the same typed main loop.
+- [x] `GlobalState` is the sole mutable protocol coordinator.
+- [x] Workspace, databases, disk sources, configuration, diagnostics,
       capabilities, watcher state, and lifecycle state each have one live owner.
-- [ ] `GlobalStateSnapshot` is immutable and generation-consistent.
-- [ ] No manual live-state synchronization helper remains.
-- [ ] `LspServer` no longer exists.
-- [ ] No legacy test dispatcher or compatibility wrapper remains.
-- [ ] All LSP feature tests use the typed production-path harness.
-- [ ] Lifecycle, cancellation, reload, diagnostics, stale generation, panic,
+- [x] `GlobalStateSnapshot` is immutable and generation-consistent.
+- [x] No manual live-state synchronization helper remains.
+- [x] `LspServer` no longer exists.
+- [x] No legacy test dispatcher or compatibility wrapper remains.
+- [x] All LSP feature tests use the typed production-path harness.
+- [x] Lifecycle, cancellation, reload, diagnostics, stale generation, panic,
       stdio, and TCP behavior remain covered.
-- [ ] LSP production and test files satisfy the active file-size policy.
-- [ ] Focused and full validation gates pass.
-- [ ] Architecture, decisions, progress, and CI gates reflect the final state.
+- [x] LSP production and test files satisfy the active file-size policy.
+- [x] Focused and full validation gates pass.
+- [x] Architecture, decisions, progress, and CI gates reflect the final state.
 
 ## 16. Atomic Commit Policy
 

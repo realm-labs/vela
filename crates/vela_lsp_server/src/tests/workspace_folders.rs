@@ -1,7 +1,6 @@
 use super::{
-    JsonValue, LspServer, assert_no_messages, assert_workspace_progress, handle_notification,
-    handle_request, notification_value, notification_values, publish_diagnostics_notifications,
-    response_value,
+    JsonValue, TestServer, assert_no_messages, assert_workspace_progress, notification_value,
+    notification_values, notify, publish_diagnostics_notifications, request, response_value,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -17,11 +16,10 @@ fn workspace_folder_removal_clears_disk_facts_but_keeps_open_overlay() {
     let helper_path = scripts_root.join("game").join("helper.vela");
     fs::write(&helper_path, "pub fn grant() { return 1 }").expect("source should be writable");
 
-    let mut server = LspServer::new();
-    let response = response_value(handle_request(
+    let mut server = TestServer::new();
+    let response = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&scripts_root),
@@ -34,9 +32,8 @@ fn workspace_folder_removal_clears_disk_facts_but_keeps_open_overlay() {
     ));
     assert_eq!(response["result"]["serverInfo"]["name"], "vela_lsp_server");
 
-    let watched = handle_notification(
+    let watched = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&helper_path), "type": 1 }]
         }),
@@ -46,9 +43,10 @@ fn workspace_folder_removal_clears_disk_facts_but_keeps_open_overlay() {
     let main = open_main(&mut server, &root, "game::helper");
     assert_no_unresolved_imports(&main);
 
-    let notifications = notification_values(handle_notification(
+    let notifications = notification_values(notify::<
+        lsp_types::notification::DidChangeWorkspaceFolders,
+    >(
         &mut server,
-        "workspace/didChangeWorkspaceFolders",
         serde_json::json!({
             "event": {
                 "added": [],
@@ -85,10 +83,9 @@ fn temp_workspace() -> PathBuf {
     root
 }
 
-fn open_main(server: &mut LspServer, root: &Path, import_module: &str) -> JsonValue {
-    notification_value(handle_notification(
+fn open_main(server: &mut TestServer, root: &Path, import_module: &str) -> JsonValue {
+    notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": file_uri(&root.join("scripts").join("game").join("main.vela")),

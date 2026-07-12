@@ -1,12 +1,11 @@
-use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
+use super::{TestServer, notification_value, notify, request, response_value};
 
 #[test]
 fn lsp_semantic_tokens_classify_source_method_on_source_function_return() {
-    let mut server = LspServer::new();
-    let initialize = response_value(handle_request(
+    let mut server = TestServer::new();
+    let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -35,9 +34,8 @@ fn current_player() -> Player { return Player { level: 1 } }
 pub fn main() -> i64 {
     return current_player().grant(1)
 }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -48,10 +46,9 @@ pub fn main() -> i64 {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::SemanticTokensFullRequest>(
         &mut server,
         2,
-        "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),
@@ -86,11 +83,10 @@ pub fn main() -> i64 {
 
 #[test]
 fn lsp_semantic_tokens_suppress_source_any_return_receiver_member() {
-    let mut server = LspServer::new();
-    let initialize = response_value(handle_request(
+    let mut server = TestServer::new();
+    let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -121,9 +117,8 @@ pub fn main() -> i64 {
     source_any().grant(1)
     return source_any().level
 }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -134,10 +129,9 @@ pub fn main() -> i64 {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::SemanticTokensFullRequest>(
         &mut server,
         2,
-        "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),
@@ -182,11 +176,10 @@ pub fn main() -> i64 {
 
 #[test]
 fn lsp_semantic_tokens_classify_imported_source_method_on_source_function_return() {
-    let mut server = LspServer::new();
-    let initialize = response_value(handle_request(
+    let mut server = TestServer::new();
+    let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -212,9 +205,8 @@ impl Player {
     fn grant(self, amount: i64) -> i64 { return amount }
 }
 pub fn current_player() -> Player { return Player { level: 1 } }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": player_uri,
@@ -230,9 +222,8 @@ use game::player::current_player
 pub fn main() -> i64 {
     return current_player().grant(1)
 }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -243,10 +234,9 @@ pub fn main() -> i64 {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::SemanticTokensFullRequest>(
         &mut server,
         2,
-        "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),
@@ -281,11 +271,10 @@ pub fn main() -> i64 {
 
 #[test]
 fn lsp_semantic_tokens_classify_imported_source_enum_variant_uses() {
-    let mut server = LspServer::new();
-    let initialize = response_value(handle_request(
+    let mut server = TestServer::new();
+    let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -309,9 +298,8 @@ pub enum Progress {
     Started
     Done(result: String)
 }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": quest_uri,
@@ -332,9 +320,8 @@ pub fn main(progress: Progress) -> Progress {
         Progress::Done(value) => done
     }
 }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -345,10 +332,9 @@ pub fn main(progress: Progress) -> Progress {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::SemanticTokensFullRequest>(
         &mut server,
         2,
-        "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),
@@ -375,11 +361,10 @@ pub fn main(progress: Progress) -> Progress {
 
 #[test]
 fn lsp_semantic_tokens_classify_source_method_on_source_method_return() {
-    let mut server = LspServer::new();
-    let initialize = response_value(handle_request(
+    let mut server = TestServer::new();
+    let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -410,9 +395,8 @@ impl Inventory {
 pub fn main(player: Player) -> i64 {
     return player.inventory().grant(1)
 }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -423,10 +407,9 @@ pub fn main(player: Player) -> i64 {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::SemanticTokensFullRequest>(
         &mut server,
         2,
-        "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),
@@ -461,11 +444,10 @@ pub fn main(player: Player) -> i64 {
 
 #[test]
 fn lsp_semantic_tokens_classify_source_trait_method_on_source_function_return() {
-    let mut server = LspServer::new();
-    let initialize = response_value(handle_request(
+    let mut server = TestServer::new();
+    let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -495,9 +477,8 @@ fn current_player() -> Player { return Player { level: 1 } }
 pub fn main() -> i64 {
     return current_player().preview(1)
 }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -508,10 +489,9 @@ pub fn main() -> i64 {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::SemanticTokensFullRequest>(
         &mut server,
         2,
-        "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),
@@ -546,11 +526,10 @@ pub fn main() -> i64 {
 
 #[test]
 fn lsp_semantic_tokens_classify_source_trait_method_on_source_method_return() {
-    let mut server = LspServer::new();
-    let initialize = response_value(handle_request(
+    let mut server = TestServer::new();
+    let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -582,9 +561,8 @@ impl Rewardable for Inventory {}
 pub fn main(player: Player) -> i64 {
     return player.inventory().preview(1)
 }";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -595,10 +573,9 @@ pub fn main(player: Player) -> i64 {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::SemanticTokensFullRequest>(
         &mut server,
         2,
-        "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),

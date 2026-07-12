@@ -1,12 +1,11 @@
-use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
+use super::{TestServer, notification_value, notify, request, response_value};
 
 #[test]
 fn lsp_selection_ranges_walk_syntax_ancestors() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -22,9 +21,8 @@ pub fn main(player: Player) -> i64 {
     return 0
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -35,10 +33,9 @@ pub fn main(player: Player) -> i64 {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::SelectionRangeRequest>(
         &mut server,
         2,
-        "textDocument/selectionRange",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "positions": [{ "line": 1, "character": 22 }]
@@ -85,11 +82,10 @@ fn flatten_selection_chain(range: &serde_json::Value) -> Vec<&serde_json::Value>
 
 #[test]
 fn lsp_selection_ranges_preserve_ancestors_under_parser_recovery() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -103,9 +99,8 @@ pub fn main(player: Player) -> i64 {
         return next
 ";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -116,10 +111,9 @@ pub fn main(player: Player) -> i64 {
         }),
     ));
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::SelectionRangeRequest>(
         &mut server,
         2,
-        "textDocument/selectionRange",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "positions": [{ "line": 1, "character": 22 }]

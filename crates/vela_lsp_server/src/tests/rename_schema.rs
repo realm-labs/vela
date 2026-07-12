@@ -5,9 +5,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);
 
@@ -58,29 +56,26 @@ fn lsp_source_backed_schema_function_rename_updates_call_sites() {
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
     );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": schema_uri,
@@ -97,9 +92,8 @@ pub fn main(amount: i64) -> i64 {
     return game::reward::grant(first)
 }";
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -110,10 +104,9 @@ pub fn main(amount: i64) -> i64 {
         }),
     ));
 
-    let prepare = response_value(handle_request(
+    let prepare = response_value(request::<lsp_types::request::PrepareRenameRequest>(
         &mut server,
         2,
-        "textDocument/prepareRename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -126,10 +119,9 @@ pub fn main(amount: i64) -> i64 {
     assert_eq!(prepare["result"]["range"]["start"]["line"], 1);
     assert_eq!(prepare["result"]["range"]["start"]["character"], 16);
 
-    let rename = response_value(handle_request(
+    let rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         3,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -225,29 +217,26 @@ fn lsp_source_backed_schema_variant_rename_updates_constructors_and_patterns() {
     )
     .expect("schema should be writable");
 
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
     ));
-    let _ = handle_notification(
+    let _ = notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
-        "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
     );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": schema_uri,
@@ -268,9 +257,8 @@ pub fn main(state: QuestState) -> i64 {
     return 0
 }";
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,
@@ -281,10 +269,9 @@ pub fn main(state: QuestState) -> i64 {
         }),
     ));
 
-    let prepare = response_value(handle_request(
+    let prepare = response_value(request::<lsp_types::request::PrepareRenameRequest>(
         &mut server,
         2,
-        "textDocument/prepareRename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -297,10 +284,9 @@ pub fn main(state: QuestState) -> i64 {
     assert_eq!(prepare["result"]["range"]["start"]["line"], 1);
     assert_eq!(prepare["result"]["range"]["start"]["character"], 27);
 
-    let rename = response_value(handle_request(
+    let rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
         3,
-        "textDocument/rename",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {

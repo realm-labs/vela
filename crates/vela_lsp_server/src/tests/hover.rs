@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
+use super::{TestServer, notification_value, notify, request, response_value};
 
 mod cross_file;
 mod dynamic;
@@ -14,7 +14,7 @@ static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);
 
 #[test]
 fn lsp_hover_reports_open_overlay_parameter_fact() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize_default(&mut server);
     let text = "pub fn main(amount: i64) -> i64 { return amount }";
     open_document(
@@ -23,10 +23,9 @@ fn lsp_hover_reports_open_overlay_parameter_fact() {
         text,
     );
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
             "position": {
@@ -52,7 +51,7 @@ fn lsp_hover_reports_open_overlay_parameter_fact() {
 
 #[test]
 fn lsp_hover_recovers_parameter_fact_after_body_parse_error() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize_default(&mut server);
     let text = "\
 pub fn main(amount: i64) -> i64 {
@@ -63,10 +62,9 @@ pub fn main(amount: i64) -> i64 {
     open_document(&mut server, uri, text);
     let return_line = text.lines().nth(2).expect("return line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -87,16 +85,15 @@ pub fn main(amount: i64) -> i64 {
 
 #[test]
 fn lsp_hover_degrades_to_any_without_schema() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize_default(&mut server);
     let text = "pub fn main(player: Player) { return player }";
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -115,7 +112,7 @@ fn lsp_hover_degrades_to_any_without_schema() {
 
 #[test]
 fn lsp_hover_returns_null_for_unresolved_and_dynamic_members() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize_default(&mut server);
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "\
@@ -127,10 +124,9 @@ pub fn dynamic(player) { return player.level }";
         .lines()
         .next()
         .expect("fixture should contain unresolved name");
-    let unresolved = response_value(handle_request(
+    let unresolved = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -147,10 +143,9 @@ pub fn dynamic(player) { return player.level }";
         .lines()
         .nth(1)
         .expect("fixture should contain dynamic member");
-    let dynamic = response_value(handle_request(
+    let dynamic = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         3,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -166,17 +161,16 @@ pub fn dynamic(player) { return player.level }";
 
 #[test]
 fn lsp_hover_reports_source_global_fact() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize_default(&mut server);
     let text = "global score: i64\npub fn main() -> i64 { return score }";
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
     let use_line = text.lines().nth(1).expect("global use line should exist");
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -197,7 +191,7 @@ fn lsp_hover_reports_source_global_fact() {
 
 #[test]
 fn lsp_hover_reports_stdlib_function_fact() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize_default(&mut server);
     let text = "pub fn main() { math::max(1, 2) }";
     open_document(
@@ -206,10 +200,9 @@ fn lsp_hover_reports_stdlib_function_fact() {
         text,
     );
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
             "position": {
@@ -233,7 +226,7 @@ fn lsp_hover_reports_stdlib_function_fact() {
 
 #[test]
 fn lsp_hover_reports_stdlib_method_fact() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize_default(&mut server);
     let text = "pub fn main(scores: Array<i64>) { scores.filter(|score| score > 0) }";
     open_document(
@@ -242,10 +235,9 @@ fn lsp_hover_reports_stdlib_method_fact() {
         text,
     );
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
             "position": {
@@ -269,7 +261,7 @@ fn lsp_hover_reports_stdlib_method_fact() {
 
 #[test]
 fn lsp_hover_reports_precise_stdlib_option_method_returns() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize_default(&mut server);
     let text = r#"pub fn main(scores: Array<i64>) {
         "123".parse_i64()
@@ -281,10 +273,9 @@ fn lsp_hover_reports_precise_stdlib_option_method_returns() {
         text,
     );
 
-    let parse_response = response_value(handle_request(
+    let parse_response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
             "position": {
@@ -304,10 +295,9 @@ fn lsp_hover_reports_precise_stdlib_option_method_returns() {
         "{parse_value}"
     );
 
-    let index_response = response_value(handle_request(
+    let index_response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         3,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
             "position": {
@@ -330,7 +320,7 @@ fn lsp_hover_reports_precise_stdlib_option_method_returns() {
 
 #[test]
 fn lsp_hover_reports_imported_module_path_fact() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize_default(&mut server);
     let reward_uri = "file:///workspace/scripts/game/reward.vela";
     let main_uri = "file:///workspace/scripts/game/main.vela";
@@ -342,10 +332,9 @@ fn lsp_hover_reports_imported_module_path_fact() {
     );
     open_document(&mut server, main_uri, main_text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -366,7 +355,7 @@ fn lsp_hover_reports_imported_module_path_fact() {
 
 #[test]
 fn lsp_hover_reports_source_struct_field_fact() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize_default(&mut server);
     let text = r#"struct Player {
     #[doc("Current level")]
@@ -382,10 +371,9 @@ pub fn main(player: Player) {
         text,
     );
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
             "position": {
@@ -407,7 +395,7 @@ pub fn main(player: Player) {
 
 #[test]
 fn lsp_hover_reports_source_method_fact() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize_default(&mut server);
     let text = r#"struct Player {
     level: i64,
@@ -427,10 +415,9 @@ pub fn main(player: Player) {
         text,
     );
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
             "position": {
@@ -451,7 +438,7 @@ pub fn main(player: Player) {
 
 #[test]
 fn lsp_hover_reports_source_trait_receiver_method_fact() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize_default(&mut server);
     let text = r#"trait Rewardable {
     #[doc("Preview reward")]
@@ -470,10 +457,9 @@ pub fn main(rewardable: Rewardable) {
         text,
     );
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
             "position": {
@@ -495,7 +481,7 @@ pub fn main(rewardable: Rewardable) {
 
 #[test]
 fn lsp_hover_reports_source_trait_default_method_on_source_function_return_receiver() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize_default(&mut server);
     let text = r#"trait Rewardable {
     #[doc("Preview reward")]
@@ -519,10 +505,9 @@ pub fn main() {
         text,
     );
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
             "position": {
@@ -547,7 +532,7 @@ pub fn main() {
 
 #[test]
 fn lsp_hover_reports_source_trait_fact() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize_default(&mut server);
     let text = r#"#[doc("Rewardable script trait")]
 trait Rewardable {
@@ -559,10 +544,9 @@ pub fn main(rewardable: Rewardable) {
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -582,7 +566,7 @@ pub fn main(rewardable: Rewardable) {
 
 #[test]
 fn lsp_hover_reports_source_enum_variant_fact() {
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize_default(&mut server);
     let text = r#"enum QuestState {
     Active(quest_id: String, count: i64),
@@ -598,10 +582,9 @@ pub fn main() {
         text,
     );
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
             "position": {
@@ -632,16 +615,15 @@ fn lsp_hover_reports_effects_and_permissions() {
     fs::write(&schema_path, schema_with_player_grant_method())
         .expect("schema artifact should be writable");
 
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize_with_schema(&mut server, &root, &schema_path);
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = "pub fn main(player: Player) { player.grant(1) }";
     open_document(&mut server, &main_uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -673,16 +655,15 @@ fn lsp_hover_reports_schema_trait_method_fact() {
     fs::write(&schema_path, schema_with_rewardable_trait_method())
         .expect("schema artifact should be writable");
 
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize_with_schema(&mut server, &root, &schema_path);
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = "pub fn main(rewardable: Rewardable) { rewardable.preview(1) }";
     open_document(&mut server, &main_uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -712,16 +693,15 @@ fn lsp_hover_reports_schema_trait_fact() {
     fs::write(&schema_path, schema_with_rewardable_trait())
         .expect("schema artifact should be writable");
 
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize_with_schema(&mut server, &root, &schema_path);
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = "pub fn main(rewardable: Rewardable) { return rewardable }";
     open_document(&mut server, &uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
@@ -751,16 +731,15 @@ fn lsp_hover_reports_schema_enum_variant_fact() {
     fs::write(&schema_path, schema_with_quest_state_variant())
         .expect("schema artifact should be writable");
 
-    let mut server = LspServer::new();
+    let mut server = TestServer::new();
     let _ = initialize_with_schema(&mut server, &root, &schema_path);
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = "pub fn main() { return QuestState::Active }";
     open_document(&mut server, &main_uri, text);
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::HoverRequest>(
         &mut server,
         2,
-        "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -781,11 +760,10 @@ fn lsp_hover_reports_schema_enum_variant_fact() {
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
-fn initialize_default(server: &mut LspServer) -> serde_json::Value {
-    response_value(handle_request(
+fn initialize_default(server: &mut TestServer) -> serde_json::Value {
+    response_value(request::<lsp_types::request::Initialize>(
         server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -795,14 +773,13 @@ fn initialize_default(server: &mut LspServer) -> serde_json::Value {
 }
 
 fn initialize_with_schema(
-    server: &mut LspServer,
+    server: &mut TestServer,
     root: &Path,
     schema_path: &Path,
 ) -> serde_json::Value {
-    response_value(handle_request(
+    response_value(request::<lsp_types::request::Initialize>(
         server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": file_uri(root),
@@ -819,11 +796,10 @@ fn initialize_with_schema(
     ))
 }
 
-fn open_document(server: &mut LspServer, uri: impl AsRef<str>, text: &str) {
+fn open_document(server: &mut TestServer, uri: impl AsRef<str>, text: &str) {
     let uri = uri.as_ref();
-    let _ = notification_value(handle_notification(
+    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         server,
-        "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
                 "uri": uri,

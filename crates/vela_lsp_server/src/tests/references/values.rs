@@ -1,16 +1,13 @@
-use crate::tests::{
-    LspServer, handle_notification, handle_request, notification_value, response_value,
-};
+use crate::tests::{TestServer, notification_value, notify, request, response_value};
 
 use super::{assert_reference, line};
 
 #[test]
 fn lsp_references_find_imported_const_and_global_uses() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -30,9 +27,8 @@ pub global reward_scale: i64";
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let rewards_uri = "file:///workspace/scripts/game/rewards.vela";
     for (uri, text) in [(rewards_uri, rewards_text), (main_uri, main_text)] {
-        let _ = notification_value(handle_notification(
+        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
-            "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
                     "uri": uri,
@@ -44,10 +40,9 @@ pub global reward_scale: i64";
         ));
     }
 
-    let const_response = response_value(handle_request(
+    let const_response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -89,10 +84,9 @@ pub global reward_scale: i64";
             .expect("const use should exist"),
     );
 
-    let global_response = response_value(handle_request(
+    let global_response = response_value(request::<lsp_types::request::References>(
         &mut server,
         3,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -137,11 +131,10 @@ pub global reward_scale: i64";
 
 #[test]
 fn lsp_references_find_imported_function_alias_uses() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -158,9 +151,8 @@ pub fn main(amount: i64) -> i64 {
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let helper_uri = "file:///workspace/scripts/game/reward.vela";
     for (uri, text) in [(helper_uri, helper_text), (main_uri, main_text)] {
-        let _ = notification_value(handle_notification(
+        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
-            "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
                     "uri": uri,
@@ -172,10 +164,9 @@ pub fn main(amount: i64) -> i64 {
         ));
     }
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
@@ -226,11 +217,10 @@ pub fn main(amount: i64) -> i64 {
 
 #[test]
 fn lsp_references_find_imported_source_type_uses() {
-    let mut server = LspServer::new();
-    let _ = response_value(handle_request(
+    let mut server = TestServer::new();
+    let _ = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
         1,
-        "initialize",
         serde_json::json!({
             "processId": null,
             "rootUri": "file:///workspace/scripts",
@@ -253,9 +243,8 @@ pub struct Inventory {
     slots: i64
 }";
     for (uri, text) in [(inventory_uri, inventory_text), (main_uri, main_text)] {
-        let _ = notification_value(handle_notification(
+        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
-            "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
                     "uri": uri,
@@ -267,10 +256,9 @@ pub struct Inventory {
         ));
     }
 
-    let response = response_value(handle_request(
+    let response = response_value(request::<lsp_types::request::References>(
         &mut server,
         2,
-        "textDocument/references",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
