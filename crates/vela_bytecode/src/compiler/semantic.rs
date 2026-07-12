@@ -5,10 +5,9 @@ use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::script_methods::{
     ScriptMethodCatalog, ScriptMethodCatalogError, ScriptMethodCatalogMode,
 };
-use vela_hir::source_ingestion::HirSourceSet;
+use vela_hir::source_ingestion::{HirSourceSet, HirSourceSetKind};
 use vela_mir::{MirBuildError, MirEvaluatedConstant, MirSourceOrigin};
 
-use super::ProgramCompilationKind;
 use super::const_eval::evaluate_const_body;
 use super::error::{CompileError, CompileErrorKind, CompileResult};
 use super::schema_defaults::{EvaluatedSchemaDefaults, source_schema_defaults};
@@ -16,22 +15,20 @@ use super::schema_defaults::{EvaluatedSchemaDefaults, source_schema_defaults};
 pub(super) struct SemanticCompilation<'a> {
     graph: &'a ModuleGraph,
     modules: &'a [ModuleId],
-    kind: ProgramCompilationKind,
+    kind: HirSourceSetKind,
     script_methods: ScriptMethodCatalog,
 }
 
 impl<'a> SemanticCompilation<'a> {
-    pub(super) fn new(
-        sources: &'a HirSourceSet,
-        kind: ProgramCompilationKind,
-    ) -> CompileResult<Self> {
+    pub(super) fn new(sources: &'a HirSourceSet) -> CompileResult<Self> {
         let graph = sources.graph();
         let modules = sources.modules();
+        let kind = sources.kind();
         let catalog_mode = match kind {
-            ProgramCompilationKind::SingleSource => {
+            HirSourceSetKind::SingleSource => {
                 ScriptMethodCatalogMode::single_source(modules[0], "main")
             }
-            ProgramCompilationKind::ModuleGraph => ScriptMethodCatalogMode::ModuleGraph,
+            HirSourceSetKind::ModuleGraph => ScriptMethodCatalogMode::ModuleGraph,
         };
         let script_methods = ScriptMethodCatalog::from_graph(graph, catalog_mode)
             .map_err(script_method_catalog_error)?;
@@ -54,8 +51,8 @@ impl<'a> SemanticCompilation<'a> {
 
     pub(super) fn global_symbols(&self) -> BTreeMap<HirDeclId, String> {
         match self.kind {
-            ProgramCompilationKind::SingleSource => self.symbols(DeclarationKind::Global, true),
-            ProgramCompilationKind::ModuleGraph => self.symbols(DeclarationKind::Global, false),
+            HirSourceSetKind::SingleSource => self.symbols(DeclarationKind::Global, true),
+            HirSourceSetKind::ModuleGraph => self.symbols(DeclarationKind::Global, false),
         }
     }
 
@@ -77,8 +74,8 @@ impl<'a> SemanticCompilation<'a> {
                     )
                     .then(|| {
                         let symbol = match self.kind {
-                            ProgramCompilationKind::SingleSource => name.to_owned(),
-                            ProgramCompilationKind::ModuleGraph => {
+                            HirSourceSetKind::SingleSource => name.to_owned(),
+                            HirSourceSetKind::ModuleGraph => {
                                 format!("{path}::{}", metadata.name)
                             }
                         };
@@ -93,7 +90,7 @@ impl<'a> SemanticCompilation<'a> {
         &self,
     ) -> CompileResult<BTreeMap<HirDeclId, MirEvaluatedConstant>> {
         let mut values_by_declaration = BTreeMap::new();
-        if self.kind == ProgramCompilationKind::SingleSource {
+        if self.kind == HirSourceSetKind::SingleSource {
             self.evaluate_module_constants(self.modules[0], &mut values_by_declaration)?;
             return Ok(values_by_declaration);
         }
@@ -177,11 +174,11 @@ impl<'a> SemanticCompilation<'a> {
                     let metadata = self.graph.declaration(declaration)?;
                     (metadata.kind == kind).then(|| {
                         let symbol = match self.kind {
-                            ProgramCompilationKind::SingleSource if single_source_main_prefix => {
+                            HirSourceSetKind::SingleSource if single_source_main_prefix => {
                                 format!("main::{}", metadata.name)
                             }
-                            ProgramCompilationKind::SingleSource => name.to_owned(),
-                            ProgramCompilationKind::ModuleGraph => {
+                            HirSourceSetKind::SingleSource => name.to_owned(),
+                            HirSourceSetKind::ModuleGraph => {
                                 format!("{path}::{}", metadata.name)
                             }
                         };

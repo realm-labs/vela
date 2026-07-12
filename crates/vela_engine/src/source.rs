@@ -3,10 +3,12 @@ use std::path::Path;
 
 use vela_bytecode::compiler::CompiledProgram;
 use vela_bytecode::compiler::error::CompileError;
-use vela_bytecode::compiler::{ProgramCompilationKind, ProgramCompilationRequest, compile_program};
+use vela_bytecode::compiler::{ProgramCompilationRequest, compile_program};
 use vela_common::SourceId;
-use vela_hir::module_graph::{ModulePath, ModuleSource};
-use vela_hir::source_ingestion::{HirSourceBuildError, build_source_set};
+use vela_hir::module_graph::ModuleSource;
+use vela_hir::source_ingestion::{
+    HirSourceBuildError, HirSourceSet, build_module_source_set, build_single_source,
+};
 
 use crate::engine::Engine;
 
@@ -97,12 +99,8 @@ impl Engine {
         source: SourceId,
         text: &str,
     ) -> Result<CompiledProgram, EngineSourceError> {
-        let sources = [ModuleSource::new(
-            source,
-            ModulePath::new(Vec::<String>::new()),
-            text,
-        )];
-        self.compile_sources(&sources, true)
+        let sources = build_single_source(source, text).map_err(EngineSourceError::frontend)?;
+        self.compile_source_set(&sources)
     }
 
     pub fn compile_file(
@@ -120,24 +118,24 @@ impl Engine {
     ) -> Result<CompiledProgram, EngineSourceError> {
         let root = root.as_ref();
         let sources = load_module_sources(root)?;
-        self.compile_sources(&sources, false)
+        self.compile_module_sources(&sources)
     }
 
-    pub(crate) fn compile_sources(
+    pub(crate) fn compile_module_sources(
         &self,
         sources: &[ModuleSource],
-        single_source: bool,
     ) -> Result<CompiledProgram, EngineSourceError> {
-        let built = build_source_set(sources).map_err(EngineSourceError::frontend)?;
-        let kind = if single_source {
-            ProgramCompilationKind::SingleSource
-        } else {
-            ProgramCompilationKind::ModuleGraph
-        };
+        let sources = build_module_source_set(sources).map_err(EngineSourceError::frontend)?;
+        self.compile_source_set(&sources)
+    }
+
+    fn compile_source_set(
+        &self,
+        sources: &HirSourceSet,
+    ) -> Result<CompiledProgram, EngineSourceError> {
         let options = self.compiler_options();
         compile_program(ProgramCompilationRequest {
-            sources: &built,
-            kind,
+            sources,
             options: &options,
             registry: Some(self.compiler_registry()),
         })

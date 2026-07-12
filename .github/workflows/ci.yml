@@ -63,8 +63,12 @@ jobs:
             echo "Deleted bytecode source compiler APIs must not return."
             exit 1
           fi
-          if grep -RIn 'ProgramCompilationMode' crates --include='*.rs'; then
-            echo "Raw graph/module compiler request modes must not return."
+          if grep -RInE 'ProgramCompilationMode|ProgramCompilationKind' crates --include='*.rs'; then
+            echo "Caller-owned bytecode compilation modes must not return."
+            exit 1
+          fi
+          if grep -RInE 'pub[[:space:]]+fn[[:space:]]+build_source_set' crates --include='*.rs'; then
+            echo "Generic public HIR source-set construction must not return."
             exit 1
           fi
           if find crates/vela_hot_reload/src -path '*/tests/*' -prune -o -name '*.rs' -print0 | xargs -0 grep -nE 'build_source_set|ModuleSource|HirSourceSet|CompiledProgram|pub fn compile_(initial|update)'; then

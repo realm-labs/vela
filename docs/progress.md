@@ -144,8 +144,10 @@ Cranelift stays deferred to M22.
 
 The bytecode source-boundary hard switch is complete through Checkpoint I.
 `vela_hir` owns staged source ingestion; bytecode consumes `HirSourceSet`
-through sealed program/function requests and rejects invalid cardinality or
-function roots before semantic-input construction. Engine is the only
+through sealed program/function requests. Single-source versus module-graph
+mode is fixed during HIR ingestion, including for one-module graphs, and a
+function root is a source-set-bound selection rather than a freely combinable
+`HirDeclId`. Engine is the only
 production source and source-to-reload orchestrator, owns registry-aware
 linking plus structured source/compile/link errors, and passes `LinkedArtifact`
 values into hot reload. `vela_hot_reload` owns only artifact generation,

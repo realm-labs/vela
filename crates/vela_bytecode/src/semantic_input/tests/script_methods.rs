@@ -2,14 +2,13 @@ use vela_common::SourceId;
 use vela_def::{script_function_id, script_inherent_method_id, script_trait_method_id};
 use vela_hir::body::HirPatternKind;
 use vela_hir::module_graph::{ModulePath, ModuleSource};
-use vela_hir::source_ingestion::build_source_set;
+use vela_hir::source_ingestion::build_module_source_set;
 use vela_mir::{
     CompileFunctionIdentity, CompileMethodClass, CompileParameterDefault,
     CompilePatternConstructorTarget,
 };
 
 use super::{FixtureRoots, prepare_source};
-use crate::compiler::ProgramCompilationKind;
 use crate::compiler::options::CompilerOptions;
 use crate::compiler::semantic::SemanticCompilation;
 use crate::compiler::semantic_input::{
@@ -120,9 +119,8 @@ fn main() {
             "pub struct Reward { amount: i64 }",
         ),
     ];
-    let built = build_source_set(&sources).expect("module semantic graph");
-    let semantic = SemanticCompilation::new(&built, ProgramCompilationKind::ModuleGraph)
-        .expect("semantic compilation");
+    let built = build_module_source_set(&sources).expect("module semantic graph");
+    let semantic = SemanticCompilation::new(&built).expect("semantic compilation");
     let (body, pattern) = semantic
         .graph()
         .bodies()
@@ -224,9 +222,8 @@ impl BonusSource for Monster {}
 }
 
 fn prepare_modules(sources: &[ModuleSource]) -> PreparedSemanticInput {
-    let built = build_source_set(sources).expect("module semantic graph");
-    let semantic = SemanticCompilation::new(&built, ProgramCompilationKind::ModuleGraph)
-        .expect("semantic compilation");
+    let built = build_module_source_set(sources).expect("module semantic graph");
+    let semantic = SemanticCompilation::new(&built).expect("semantic compilation");
     let script_function_symbols = semantic.function_symbols();
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();

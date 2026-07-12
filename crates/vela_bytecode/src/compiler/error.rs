@@ -4,23 +4,7 @@ use crate::verification::VerificationError;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompilationRequestError {
-    SingleSourceModuleCount {
-        count: usize,
-    },
     EmptyModuleGraph,
-    MissingFunctionDeclaration {
-        declaration: vela_hir::ids::HirDeclId,
-    },
-    InvalidFunctionDeclarationKind {
-        declaration: vela_hir::ids::HirDeclId,
-        kind: vela_hir::module_graph::DeclarationKind,
-    },
-    MissingFunctionBody {
-        declaration: vela_hir::ids::HirDeclId,
-    },
-    FunctionOutsideSourceSet {
-        declaration: vela_hir::ids::HirDeclId,
-    },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

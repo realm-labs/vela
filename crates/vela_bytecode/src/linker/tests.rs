@@ -1,7 +1,7 @@
 use vela_common::{HostTypeId, SourceId};
 use vela_def::{DefPath, FieldId};
 use vela_hir::module_graph::{ModulePath, ModuleSource};
-use vela_hir::source_ingestion::build_source_set;
+use vela_hir::source_ingestion::build_module_source_set;
 use vela_host::target::HostTargetPlan;
 use vela_registry::{DefinitionRegistry, FunctionDef, FunctionSignature};
 
@@ -442,7 +442,7 @@ enum Outcome {
 }
 "#,
     )];
-    let sources = build_source_set(&sources).expect("script metadata source set");
+    let sources = build_module_source_set(&sources).expect("script metadata source set");
 
     let mut code = UnlinkedCodeObject::new("game::reward::main", 2);
     code.push_instruction(UnlinkedInstruction::new(

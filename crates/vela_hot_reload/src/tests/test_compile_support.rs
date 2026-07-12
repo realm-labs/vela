@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use vela_bytecode::compiler::options::CompilerOptions;
-use vela_bytecode::compiler::{ProgramCompilationKind, ProgramCompilationRequest, compile_program};
+use vela_bytecode::compiler::{ProgramCompilationRequest, compile_program};
 use vela_bytecode::{LinkedArtifact, Linker};
 use vela_common::SourceId;
-use vela_hir::module_graph::{ModulePath, ModuleSource};
-use vela_hir::source_ingestion::build_source_set;
+use vela_hir::module_graph::ModuleSource;
+use vela_hir::source_ingestion::{HirSourceSet, build_module_source_set, build_single_source};
 
 use crate::abi::HotReloadAbi;
 use crate::compile::{initial_version_from_linked_artifact, update_from_linked_artifact};
@@ -22,10 +22,9 @@ pub(super) fn compile_initial_with_abi(
     text: &str,
     abi: HotReloadAbi,
 ) -> HotReloadResult<ProgramVersion> {
-    let sources = [ModuleSource::new(source, ModulePath::root(), text)];
     initial_version_from_linked_artifact(
         abi,
-        compile_artifact(&sources, true, &CompilerOptions::default()),
+        compile_single_artifact(source, text, &CompilerOptions::default()),
     )
 }
 
@@ -34,7 +33,7 @@ pub(super) fn compile_initial_modules_with_abi_and_options(
     abi: HotReloadAbi,
     options: &CompilerOptions,
 ) -> HotReloadResult<ProgramVersion> {
-    initial_version_from_linked_artifact(abi, compile_artifact(sources, false, options))
+    initial_version_from_linked_artifact(abi, compile_module_artifact(sources, options))
 }
 
 pub(super) fn compile_update(
@@ -70,12 +69,11 @@ fn compile_update_with_abi_and_policy(
     abi: HotReloadAbi,
     policy: &HotReloadPolicy,
 ) -> HotReloadResult<HotUpdate> {
-    let sources = [ModuleSource::new(source, ModulePath::root(), text)];
     update_from_linked_artifact(
         previous,
         abi,
         policy,
-        compile_artifact(&sources, true, &CompilerOptions::default()),
+        compile_single_artifact(source, text, &CompilerOptions::default()),
     )
 }
 
@@ -90,24 +88,30 @@ pub(super) fn compile_update_modules_with_abi_and_options_and_policy(
         previous,
         abi,
         policy,
-        compile_artifact(sources, false, options),
+        compile_module_artifact(sources, options),
     )
 }
 
-fn compile_artifact(
-    sources: &[ModuleSource],
-    single_source: bool,
+fn compile_single_artifact(
+    source: SourceId,
+    text: &str,
     options: &CompilerOptions,
 ) -> Arc<LinkedArtifact> {
-    let sources = build_source_set(sources).expect("hot-reload test source must build");
-    let kind = if single_source {
-        ProgramCompilationKind::SingleSource
-    } else {
-        ProgramCompilationKind::ModuleGraph
-    };
+    let sources = build_single_source(source, text).expect("hot-reload test source must build");
+    compile_artifact(&sources, options)
+}
+
+fn compile_module_artifact(
+    sources: &[ModuleSource],
+    options: &CompilerOptions,
+) -> Arc<LinkedArtifact> {
+    let sources = build_module_source_set(sources).expect("hot-reload test source must build");
+    compile_artifact(&sources, options)
+}
+
+fn compile_artifact(sources: &HirSourceSet, options: &CompilerOptions) -> Arc<LinkedArtifact> {
     let program = compile_program(ProgramCompilationRequest {
-        sources: &sources,
-        kind,
+        sources,
         options,
         registry: None,
     })

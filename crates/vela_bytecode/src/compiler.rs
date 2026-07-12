@@ -23,10 +23,10 @@ use vela_common::SourceId;
 #[cfg(test)]
 use vela_common::Span;
 use vela_hir::ids::HirDeclId;
-use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
+use vela_hir::module_graph::ModuleGraph;
 #[cfg(test)]
 use vela_hir::module_graph::{ModulePath, ModuleSource};
-use vela_hir::source_ingestion::HirSourceSet;
+use vela_hir::source_ingestion::{HirSourceFunction, HirSourceSet, HirSourceSetKind};
 use vela_registry::RegistryCompileView;
 
 #[cfg(test)]
@@ -117,22 +117,14 @@ impl Deref for CompiledProgram {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum ProgramCompilationKind {
-    SingleSource,
-    ModuleGraph,
-}
-
 pub struct ProgramCompilationRequest<'a> {
     pub sources: &'a HirSourceSet,
-    pub kind: ProgramCompilationKind,
     pub options: &'a CompilerOptions,
     pub registry: Option<RegistryCompileView<'a>>,
 }
 
 pub struct FunctionCompilationRequest<'a> {
-    pub sources: &'a HirSourceSet,
-    pub function: HirDeclId,
+    pub function: HirSourceFunction<'a>,
     pub options: &'a CompilerOptions,
     pub registry: Option<RegistryCompileView<'a>>,
 }
@@ -140,41 +132,11 @@ pub struct FunctionCompilationRequest<'a> {
 pub fn compile_function(
     request: FunctionCompilationRequest<'_>,
 ) -> CompileResult<UnlinkedCodeObject> {
-    let graph = request.sources.graph();
+    let sources = request.function.sources();
+    let graph = sources.graph();
+    let function = request.function.declaration();
     reject_invalid_graph(graph)?;
-    let declaration = graph.declaration(request.function).ok_or_else(|| {
-        invalid_compilation_request(CompilationRequestError::MissingFunctionDeclaration {
-            declaration: request.function,
-        })
-    })?;
-    if declaration.kind != DeclarationKind::Function {
-        return Err(invalid_compilation_request(
-            CompilationRequestError::InvalidFunctionDeclarationKind {
-                declaration: request.function,
-                kind: declaration.kind,
-            },
-        ));
-    }
-    if graph.function_body(request.function).is_none() {
-        return Err(invalid_compilation_request(
-            CompilationRequestError::MissingFunctionBody {
-                declaration: request.function,
-            },
-        ));
-    }
-    if !request.sources.modules().contains(&declaration.module) {
-        return Err(invalid_compilation_request(
-            CompilationRequestError::FunctionOutsideSourceSet {
-                declaration: request.function,
-            },
-        ));
-    }
-    let kind = if request.sources.modules().len() == 1 {
-        ProgramCompilationKind::SingleSource
-    } else {
-        ProgramCompilationKind::ModuleGraph
-    };
-    let semantic = SemanticCompilation::new(request.sources, kind)?;
+    let semantic = SemanticCompilation::new(sources)?;
     let script_function_symbols = semantic.function_symbols();
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
@@ -182,7 +144,7 @@ pub fn compile_function(
     let schema_defaults = semantic.schema_defaults(&type_symbols, &evaluated_constants)?;
     let input = semantic_input::prepare_semantic_input(semantic_input::SemanticInputRequest {
         graph,
-        roots: semantic_input::SemanticRoots::Function(request.function),
+        roots: semantic_input::SemanticRoots::Function(function),
         script_function_symbols: &script_function_symbols,
         script_methods: semantic.script_method_catalog(),
         type_symbols: &type_symbols,
@@ -204,8 +166,8 @@ pub fn compile_function(
 pub fn compile_program(request: ProgramCompilationRequest<'_>) -> CompileResult<CompiledProgram> {
     let graph = request.sources.graph();
     reject_invalid_graph(graph)?;
-    validate_program_request(request.sources, request.kind)?;
-    let semantic = SemanticCompilation::new(request.sources, request.kind)?;
+    validate_program_request(request.sources)?;
+    let semantic = SemanticCompilation::new(request.sources)?;
     let script_function_symbols = semantic.function_symbols();
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
@@ -257,19 +219,12 @@ pub fn compile_program(request: ProgramCompilationRequest<'_>) -> CompileResult<
     })
 }
 
-fn validate_program_request(
-    sources: &HirSourceSet,
-    kind: ProgramCompilationKind,
-) -> CompileResult<()> {
-    let count = sources.modules().len();
-    match kind {
-        ProgramCompilationKind::SingleSource if count != 1 => Err(invalid_compilation_request(
-            CompilationRequestError::SingleSourceModuleCount { count },
-        )),
-        ProgramCompilationKind::ModuleGraph if count == 0 => Err(invalid_compilation_request(
-            CompilationRequestError::EmptyModuleGraph,
-        )),
-        ProgramCompilationKind::SingleSource | ProgramCompilationKind::ModuleGraph => Ok(()),
+fn validate_program_request(sources: &HirSourceSet) -> CompileResult<()> {
+    match sources.kind() {
+        HirSourceSetKind::ModuleGraph if sources.modules().is_empty() => Err(
+            invalid_compilation_request(CompilationRequestError::EmptyModuleGraph),
+        ),
+        HirSourceSetKind::SingleSource | HirSourceSetKind::ModuleGraph => Ok(()),
     }
 }
 

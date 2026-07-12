@@ -221,21 +221,25 @@ diagnostics before bytecode compilation; the bytecode compiler consumes the
 validated HIR graph and metadata.
 
 Source-set parsing and `ModuleGraph` construction are HIR front-end
-responsibilities. The bytecode compiler accepts an ordered `HirSourceSet` plus
-a cohesive compilation kind/root request and must not accept source text or depend on
-`vela_syntax`. `vela_engine` owns the embedding-facing source/file/directory and
-hot-reload orchestration, including structured projection of front-end and
-backend errors. This boundary is implemented as a breaking internal hard switch
-without compatibility wrappers; the execution checklist is
+responsibilities. The bytecode compiler accepts an ordered `HirSourceSet`; the
+set records authoritative single-source or module-graph mode when it is built,
+so downstream callers cannot infer or override mode from module count. The
+compiler must not accept source text or depend on `vela_syntax`. `vela_engine`
+owns the embedding-facing source/file/directory and hot-reload orchestration,
+including structured projection of front-end and backend errors. This boundary
+is implemented as a breaking internal hard switch without compatibility
+wrappers; the execution checklist is
 [bytecode-source-boundary-hard-switch-plan.md](bytecode-source-boundary-hard-switch-plan.md).
 
-The HIR boundary is `source_ingestion::build_source_set`, which returns an
-ordered `HirSourceSet` or a `HirSourceBuildError` explicitly staged as syntax or
-semantic. Bytecode compilation consumes that source set through a validated
-scope/request; callers cannot independently combine a graph, arbitrary module
-IDs, and a declaration. A selected function's owning module is derived from its
-`HirDeclId`, and whole-program symbols, methods, constants/defaults, executable
-roots, and retained metadata use the same scope.
+The HIR boundaries are `source_ingestion::build_single_source` and
+`source_ingestion::build_module_source_set`. They return an ordered
+`HirSourceSet` or a `HirSourceBuildError` explicitly staged as syntax or
+semantic. Function compilation consumes a private-field `HirSourceFunction`
+resolved by its owning source set, never an independently supplied
+`HirDeclId`. This is required because declaration IDs are generation-local and
+may have equal numeric values in different graphs. Whole-program symbols,
+methods, constants/defaults, executable roots, and retained metadata use the
+same source set and its authoritative mode.
 
 Engine is the only production source orchestrator. It owns source/file/directory
 ingestion, compiler options and registry input, bytecode compilation,

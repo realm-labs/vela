@@ -1,10 +1,10 @@
 //! Production source-set ingestion into Heavy HIR.
 
-use vela_common::Diagnostic;
+use vela_common::{Diagnostic, SourceId};
 use vela_syntax::parse::parse_source_with_id;
 
 use crate::ids::ModuleId;
-use crate::module_graph::{ModuleGraph, ModuleSource};
+use crate::module_graph::{DeclarationKind, ModuleGraph, ModulePath, ModuleSource};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum HirSourceBuildErrorKind {
@@ -39,6 +39,19 @@ impl HirSourceBuildError {
 pub struct HirSourceSet {
     graph: ModuleGraph,
     modules: Box<[ModuleId]>,
+    kind: HirSourceSetKind,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum HirSourceSetKind {
+    SingleSource,
+    ModuleGraph,
+}
+
+#[derive(Clone, Copy)]
+pub struct HirSourceFunction<'source> {
+    sources: &'source HirSourceSet,
+    declaration: crate::ids::HirDeclId,
 }
 
 impl HirSourceSet {
@@ -53,12 +66,56 @@ impl HirSourceSet {
     }
 
     #[must_use]
-    pub fn into_parts(self) -> (ModuleGraph, Box<[ModuleId]>) {
-        (self.graph, self.modules)
+    pub const fn kind(&self) -> HirSourceSetKind {
+        self.kind
+    }
+
+    #[must_use]
+    pub fn function(&self, module_path: &ModulePath, name: &str) -> Option<HirSourceFunction<'_>> {
+        let module = self.graph.module_id(module_path)?;
+        let declaration = self.graph.module(module)?.get(name)?;
+        let metadata = self.graph.declaration(declaration)?;
+        (metadata.kind == DeclarationKind::Function
+            && self.graph.function_body(declaration).is_some())
+        .then_some(HirSourceFunction {
+            sources: self,
+            declaration,
+        })
     }
 }
 
-pub fn build_source_set(sources: &[ModuleSource]) -> Result<HirSourceSet, HirSourceBuildError> {
+impl<'source> HirSourceFunction<'source> {
+    #[must_use]
+    pub const fn sources(self) -> &'source HirSourceSet {
+        self.sources
+    }
+
+    #[must_use]
+    pub const fn declaration(self) -> crate::ids::HirDeclId {
+        self.declaration
+    }
+}
+
+pub fn build_single_source(
+    source: SourceId,
+    text: impl Into<String>,
+) -> Result<HirSourceSet, HirSourceBuildError> {
+    build_source_set(
+        &[ModuleSource::new(source, ModulePath::root(), text)],
+        HirSourceSetKind::SingleSource,
+    )
+}
+
+pub fn build_module_source_set(
+    sources: &[ModuleSource],
+) -> Result<HirSourceSet, HirSourceBuildError> {
+    build_source_set(sources, HirSourceSetKind::ModuleGraph)
+}
+
+fn build_source_set(
+    sources: &[ModuleSource],
+    kind: HirSourceSetKind,
+) -> Result<HirSourceSet, HirSourceBuildError> {
     let parsed_sources = sources
         .iter()
         .map(|source| (source, parse_source_with_id(source.id, &source.text)))
@@ -88,7 +145,11 @@ pub fn build_source_set(sources: &[ModuleSource]) -> Result<HirSourceSet, HirSou
         });
     }
 
-    Ok(HirSourceSet { graph, modules })
+    Ok(HirSourceSet {
+        graph,
+        modules,
+        kind,
+    })
 }
 
 #[cfg(test)]
@@ -107,13 +168,22 @@ mod tests {
     }
 
     #[test]
-    fn source_set_preserves_input_order_and_empty_root_path() {
-        let built = build_source_set(&[
+    fn source_set_preserves_mode_input_order_and_empty_root_path() {
+        let single = build_single_source(SourceId::new(1), "fn main() { return 1; }")
+            .expect("single source set");
+        assert_eq!(single.kind(), HirSourceSetKind::SingleSource);
+        assert_eq!(
+            single.graph().module_path(single.modules()[0]),
+            Some(&ModulePath::root())
+        );
+
+        let built = build_module_source_set(&[
             source(1, &[], "fn main() { return 1; }"),
             source(2, &["game", "reward"], "pub fn grant() { return 2; }"),
         ])
         .expect("source set");
 
+        assert_eq!(built.kind(), HirSourceSetKind::ModuleGraph);
         assert_eq!(built.modules().len(), 2);
         assert_eq!(
             built.graph().module_path(built.modules()[0]),
@@ -139,7 +209,7 @@ mod tests {
                     .to_vec()
             })
             .collect::<Vec<_>>();
-        let error = build_source_set(&sources).expect_err("syntax errors");
+        let error = build_module_source_set(&sources).expect_err("syntax errors");
 
         assert_eq!(error.kind(), HirSourceBuildErrorKind::Syntax);
         assert_eq!(error.diagnostics(), expected);
@@ -161,7 +231,7 @@ mod tests {
 
     #[test]
     fn duplicate_paths_are_semantic_diagnostics() {
-        let error = build_source_set(&[
+        let error = build_module_source_set(&[
             source(1, &["game", "reward"], "pub fn one() {}"),
             source(2, &["game", "reward"], "pub fn two() {}"),
         ])
@@ -187,7 +257,7 @@ mod tests {
         }
         expected_graph.resolve_imports();
         let expected = expected_graph.diagnostics().to_vec();
-        let error = build_source_set(&sources).expect_err("unresolved import");
+        let error = build_module_source_set(&sources).expect_err("unresolved import");
 
         assert_eq!(error.kind(), HirSourceBuildErrorKind::Semantic);
         assert_eq!(error.diagnostics(), expected);

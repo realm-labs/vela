@@ -10,11 +10,10 @@ use crate::engine::Engine;
 fn linked_and_reflected_script_schema_ids_share_canonical_identity() {
     let engine = Engine::builder().build().expect("engine");
     let program = engine
-        .compile_sources(
-            &[ModuleSource::new(
-                SourceId::new(81),
-                ModulePath::from_qualified("game::reward"),
-                r#"
+        .compile_module_sources(&[ModuleSource::new(
+            SourceId::new(81),
+            ModulePath::from_qualified("game::reward"),
+            r#"
 #[id(101)]
 struct Reward {
     #[id(102)]
@@ -34,9 +33,7 @@ fn main() {
     return Outcome::Granted { value: reward.count };
 }
 "#,
-            )],
-            false,
-        )
+        )])
         .expect("script schemas should compile");
     let linked = Linker::new()
         .link_test_program(&program)

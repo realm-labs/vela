@@ -12,12 +12,10 @@ use std::collections::BTreeMap;
 use vela_common::SourceId;
 use vela_hir::body::{HirBodyOwner, HirExprKind, HirPatternKind};
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirPatternId};
-use vela_hir::module_graph::{ModulePath, ModuleSource};
-use vela_hir::source_ingestion::build_source_set;
+use vela_hir::source_ingestion::build_single_source;
 use vela_registry::RegistryCompileView;
 
 use super::{PreparedSemanticInput, SemanticInputRequest, SemanticRoots, prepare_semantic_input};
-use crate::compiler::ProgramCompilationKind;
 use crate::compiler::error::CompileResult;
 use crate::compiler::options::CompilerOptions;
 use crate::compiler::semantic::SemanticCompilation;
@@ -60,14 +58,9 @@ fn prepare_source_inner(
     roots: FixtureRoots<'_>,
     registry: Option<RegistryCompileView<'_>>,
 ) -> CompileResult<SemanticFixture> {
-    let sources = [ModuleSource::new(
-        SourceId::new(900),
-        ModulePath::new(Vec::<String>::new()),
-        text,
-    )];
-    let built = build_source_set(&sources).expect("semantic fixture source");
+    let built = build_single_source(SourceId::new(900), text).expect("semantic fixture source");
     let module = built.modules()[0];
-    let semantic = SemanticCompilation::new(&built, ProgramCompilationKind::SingleSource)?;
+    let semantic = SemanticCompilation::new(&built)?;
     let roots = match roots {
         FixtureRoots::Program => SemanticRoots::Program,
         FixtureRoots::Function(name) => SemanticRoots::Function(

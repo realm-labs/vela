@@ -1,7 +1,9 @@
 use vela_common::{Diagnostic, SourceId, Span};
-use vela_hir::module_graph::{DeclarationKind, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModulePath, ModuleSource};
 use vela_hir::source_ingestion::HirSourceBuildErrorKind;
-use vela_hir::source_ingestion::{HirSourceBuildError, build_source_set};
+use vela_hir::source_ingestion::{
+    HirSourceBuildError, build_module_source_set, build_single_source,
+};
 
 use super::*;
 
@@ -106,23 +108,11 @@ fn compile_test_function_inner(
     options: &CompilerOptions,
     registry: Option<RegistryCompileView<'_>>,
 ) -> Result<UnlinkedCodeObject, TestCompileError> {
-    let sources = [single_source(source, text)];
-    let built = build_source_set(&sources).map_err(TestCompileError::from_frontend)?;
-    let module = built.modules()[0];
+    let built = build_single_source(source, text).map_err(TestCompileError::from_frontend)?;
     let function = built
-        .graph()
-        .module(module)
-        .and_then(|declarations| declarations.get(function_name))
-        .filter(|declaration| {
-            built
-                .graph()
-                .declaration(*declaration)
-                .map(|metadata| metadata.kind)
-                == Some(DeclarationKind::Function)
-        })
+        .function(&ModulePath::root(), function_name)
         .ok_or_else(|| TestCompileError::function_not_found(function_name))?;
     compile_function(FunctionCompilationRequest {
-        sources: &built,
         function,
         options,
         registry,
@@ -168,11 +158,9 @@ fn compile_test_program_inner(
     options: &CompilerOptions,
     registry: Option<RegistryCompileView<'_>>,
 ) -> Result<CompiledProgram, TestCompileError> {
-    let sources = [single_source(source, text)];
-    let built = build_source_set(&sources).map_err(TestCompileError::from_frontend)?;
+    let built = build_single_source(source, text).map_err(TestCompileError::from_frontend)?;
     compile_program(ProgramCompilationRequest {
         sources: &built,
-        kind: ProgramCompilationKind::SingleSource,
         options,
         registry,
     })
@@ -204,16 +192,11 @@ fn compile_test_modules_inner(
     options: &CompilerOptions,
     registry: Option<RegistryCompileView<'_>>,
 ) -> Result<CompiledProgram, TestCompileError> {
-    let built = build_source_set(sources).map_err(TestCompileError::from_frontend)?;
+    let built = build_module_source_set(sources).map_err(TestCompileError::from_frontend)?;
     compile_program(ProgramCompilationRequest {
         sources: &built,
-        kind: ProgramCompilationKind::ModuleGraph,
         options,
         registry,
     })
     .map_err(TestCompileError::from)
-}
-
-fn single_source(source: SourceId, text: &str) -> ModuleSource {
-    ModuleSource::new(source, ModulePath::new(Vec::<String>::new()), text)
 }

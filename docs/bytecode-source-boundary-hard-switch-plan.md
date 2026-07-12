@@ -261,37 +261,35 @@ this leaves invalid states representable: an unknown root, an empty/partial or
 duplicate module list, or a function/module mismatch can be silently filtered
 or can mix full-graph method/metadata state with partial executable roots.
 
-The final boundary must instead use one validated source-set/scope value. A
-preferred shape is:
+The final boundary uses one validated source-set/scope value. Its implemented
+shape is:
 
 ```rust
-pub enum ProgramCompilationKind {
+pub enum HirSourceSetKind {
     SingleSource,
     ModuleGraph,
 }
 
 pub struct ProgramCompilationRequest<'a> {
     pub sources: &'a HirSourceSet,
-    pub kind: ProgramCompilationKind,
     pub options: &'a CompilerOptions,
     pub registry: Option<RegistryCompileView<'a>>,
 }
 
 pub struct FunctionCompilationRequest<'a> {
-    pub sources: &'a HirSourceSet,
-    pub function: HirDeclId,
+    pub function: HirSourceFunction<'a>,
     pub options: &'a CompilerOptions,
     pub registry: Option<RegistryCompileView<'a>>,
 }
 ```
 
-Exact names may follow local conventions. Equivalent private-field request
-constructors or a `ValidatedCompilationScope` are acceptable. The invariant is
-mandatory: callers cannot independently combine a graph, arbitrary module IDs,
-and a declaration. Single-source construction requires exactly one selected
-module; module-graph construction consumes the complete ordered module set;
-function construction derives and validates the owning module and executable
-function kind/body from the selected source set.
+`HirSourceSetKind` is stored inside the private-field source set and is selected
+only by the distinct single-source and module-source-set ingestion functions.
+It is not a bytecode request field. Callers cannot independently combine a
+graph, arbitrary module IDs, and a declaration. `HirSourceFunction` also has
+private fields and is resolved by name/path through its source set, preventing
+equal-valued generation-local `HirDeclId` values from being substituted across
+graphs.
 
 ### 2.4 Public Product API
 
@@ -695,7 +693,8 @@ Additional zero-hit audits:
 ```bash
 rg -n "build_source_set|ModuleSource|HirSourceSet|CompiledProgram" crates/vela_hot_reload/src --glob '*.rs'
 rg -n "pub fn compile_(initial|update)" crates/vela_hot_reload/src --glob '*.rs'
-rg -n "ProgramCompilationMode|ModuleGraph \{ modules|FunctionCompilationRequest.*module" crates --glob '*.rs'
+rg -n "ProgramCompilationMode|ProgramCompilationKind|ModuleGraph \{ modules|FunctionCompilationRequest.*module" crates --glob '*.rs'
+rg -n "pub fn build_source_set" crates --glob '*.rs'
 rg -n "\.add_source\(" crates/vela_bytecode --glob '*.rs'
 ```
 
@@ -713,7 +712,7 @@ orchestration.
 | Module graph | deterministic paths, imports, qualified symbols, all roots |
 | Syntax errors | syntax stage, complete aggregation, stable order/code/span |
 | HIR errors | semantic stage, imports/duplicates, stable order/code/span |
-| Function compile | stable `HirDeclId` selection and not-found projection |
+| Function compile | source-set-bound selection, cross-graph ID collision, missing/non-function projection |
 | Constants/defaults | cross-module constants and schema defaults unchanged |
 | Registry | native/host/stdlib target resolution unchanged |
 | MIR/bytecode | verified bundle, executable IDs, budgets, verifier unchanged |

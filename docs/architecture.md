@@ -62,9 +62,11 @@ Rust World / ECS / Actor State / Database Adapter
 The source front door follows the same dependency direction as this pipeline.
 `vela_syntax` owns parsing, `vela_hir` owns source-set ingestion and
 `ModuleGraph` construction, and `vela_bytecode` accepts an already-built HIR
-graph plus explicit compilation roots/mode. `vela_engine` orchestrates these
-layers for source, file, directory, and hot-reload APIs. The bytecode compiler
-must not parse source text or depend on `vela_syntax`.
+source set. Source-set ingestion fixes single-source versus module-graph mode;
+function compilation accepts only a function selection bound to that same
+source set. `vela_engine` orchestrates these layers for source, file, directory,
+and hot-reload APIs. The bytecode compiler must not parse source text or depend
+on `vela_syntax`.
 
 `vela_engine` is the only production source orchestrator and the owner of
 registry-aware linking. It passes a `LinkedArtifact` into `vela_hot_reload`;
