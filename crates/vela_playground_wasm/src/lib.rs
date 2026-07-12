@@ -159,6 +159,9 @@ fn compile_error_response(error: CompileError) -> PlaygroundResponse {
             value: None,
             diagnostics: diagnostics.into_iter().map(playground_diagnostic).collect(),
         },
+        CompileErrorKind::InvalidCompilationRequest(error) => {
+            single_error_response(format!("invalid bytecode compilation request: {error:?}"))
+        }
         CompileErrorKind::UnknownLocal(name) => {
             single_error_response(format!("unknown local `{name}`"))
         }

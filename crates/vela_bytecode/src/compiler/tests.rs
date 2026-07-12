@@ -66,18 +66,15 @@ fn graph_requests_compile_program_and_stable_function_roots() {
         .and_then(|declarations| declarations.get("main"))
         .expect("stable main declaration");
     let options = CompilerOptions::default();
-    let mode = ProgramCompilationMode::SingleSource { root: module };
-
     let program = compile_program(ProgramCompilationRequest {
-        graph: built.graph(),
-        mode: &mode,
+        sources: &built,
+        kind: ProgramCompilationKind::SingleSource,
         options: &options,
         registry: None,
     })
     .expect("graph program request");
     let code = compile_function(FunctionCompilationRequest {
-        graph: built.graph(),
-        module,
+        sources: &built,
         function,
         options: &options,
         registry: None,
@@ -86,6 +83,129 @@ fn graph_requests_compile_program_and_stable_function_roots() {
 
     assert!(program.function("main").is_some());
     assert_eq!(code.name, "main");
+}
+
+#[test]
+fn compilation_requests_reject_invalid_scope_and_function_roots() {
+    let options = CompilerOptions::default();
+    let empty = vela_hir::source_ingestion::build_source_set(&[]).expect("empty source set");
+    let error = compile_program(ProgramCompilationRequest {
+        sources: &empty,
+        kind: ProgramCompilationKind::ModuleGraph,
+        options: &options,
+        registry: None,
+    })
+    .expect_err("empty module graph must be rejected");
+    assert_eq!(
+        error.kind,
+        CompileErrorKind::InvalidCompilationRequest(
+            error::CompilationRequestError::EmptyModuleGraph
+        )
+    );
+
+    let sources = [
+        ModuleSource::new(
+            SourceId::new(31),
+            ModulePath::from_qualified("game::one"),
+            "const VALUE = 1; fn first() { return VALUE; }",
+        ),
+        ModuleSource::new(
+            SourceId::new(32),
+            ModulePath::from_qualified("game::two"),
+            "fn second() { return 2; }",
+        ),
+    ];
+    let built = vela_hir::source_ingestion::build_source_set(&sources).expect("source set");
+    let error = compile_program(ProgramCompilationRequest {
+        sources: &built,
+        kind: ProgramCompilationKind::SingleSource,
+        options: &options,
+        registry: None,
+    })
+    .expect_err("multi-module source set is not a single source");
+    assert_eq!(
+        error.kind,
+        CompileErrorKind::InvalidCompilationRequest(
+            error::CompilationRequestError::SingleSourceModuleCount { count: 2 }
+        )
+    );
+
+    let constant = built
+        .graph()
+        .module(built.modules()[0])
+        .and_then(|declarations| declarations.get("VALUE"))
+        .expect("constant declaration");
+    let error = compile_function(FunctionCompilationRequest {
+        sources: &built,
+        function: constant,
+        options: &options,
+        registry: None,
+    })
+    .expect_err("non-function declaration must be rejected");
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::InvalidCompilationRequest(
+            error::CompilationRequestError::InvalidFunctionDeclarationKind {
+                declaration,
+                kind: vela_hir::module_graph::DeclarationKind::Const,
+            }
+        ) if declaration == constant
+    ));
+
+    let missing = HirDeclId::new(u32::MAX);
+    let error = compile_function(FunctionCompilationRequest {
+        sources: &built,
+        function: missing,
+        options: &options,
+        registry: None,
+    })
+    .expect_err("unknown function declaration must be rejected");
+    assert_eq!(
+        error.kind,
+        CompileErrorKind::InvalidCompilationRequest(
+            error::CompilationRequestError::MissingFunctionDeclaration {
+                declaration: missing,
+            }
+        )
+    );
+}
+
+#[test]
+fn module_graph_request_keeps_roots_methods_and_metadata_in_one_scope() {
+    let sources = [
+        ModuleSource::new(
+            SourceId::new(41),
+            ModulePath::from_qualified("game::one"),
+            "struct One {} impl One { fn value(self) { return 1; } } fn first() { return 1; }",
+        ),
+        ModuleSource::new(
+            SourceId::new(42),
+            ModulePath::from_qualified("game::two"),
+            "struct Two {} impl Two { fn value(self) { return 2; } } fn second() { return 2; }",
+        ),
+    ];
+    let built = vela_hir::source_ingestion::build_source_set(&sources).expect("source set");
+    let options = CompilerOptions::default();
+    let program = compile_program(ProgramCompilationRequest {
+        sources: &built,
+        kind: ProgramCompilationKind::ModuleGraph,
+        options: &options,
+        registry: None,
+    })
+    .expect("complete module scope compiles");
+
+    assert!(program.function("game::one::first").is_some());
+    assert!(program.function("game::two::second").is_some());
+    assert!(program.script_method("game::one::One", "value").is_some());
+    assert!(program.script_method("game::two::Two", "value").is_some());
+    assert_eq!(
+        program
+            .script_metadata()
+            .expect("retained graph")
+            .module_ids()
+            .count(),
+        2
+    );
 }
 
 #[test]

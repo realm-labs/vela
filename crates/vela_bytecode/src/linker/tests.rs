@@ -1,6 +1,7 @@
 use vela_common::{HostTypeId, SourceId};
 use vela_def::{DefPath, FieldId};
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModulePath, ModuleSource};
+use vela_hir::source_ingestion::build_source_set;
 use vela_host::target::HostTargetPlan;
 use vela_registry::{DefinitionRegistry, FunctionDef, FunctionSignature};
 
@@ -428,8 +429,7 @@ fn linker_maps_globals_map_keys_and_field_slots_without_instruction_names() {
 
 #[test]
 fn linker_uses_script_metadata_for_schema_identity_overrides() {
-    let mut graph = ModuleGraph::new();
-    graph.add_source(ModuleSource::new(
+    let sources = [ModuleSource::new(
         SourceId::new(31),
         ModulePath::from_qualified("game::reward"),
         r#"
@@ -441,9 +441,8 @@ enum Outcome {
     Granted { value: i64 },
 }
 "#,
-    ));
-    graph.resolve_imports();
-    assert_eq!(graph.diagnostics(), &[]);
+    )];
+    let sources = build_source_set(&sources).expect("script metadata source set");
 
     let mut code = UnlinkedCodeObject::new("game::reward::main", 2);
     code.push_instruction(UnlinkedInstruction::new(
@@ -463,7 +462,7 @@ enum Outcome {
     ));
     let mut program = UnlinkedProgram::new();
     program.insert_function(code);
-    program.set_script_metadata(graph);
+    program.set_script_metadata(sources.graph().clone());
 
     let linked = Linker::new()
         .link_test_program(&program)

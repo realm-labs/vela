@@ -17,7 +17,7 @@ use vela_hir::source_ingestion::build_source_set;
 use vela_registry::RegistryCompileView;
 
 use super::{PreparedSemanticInput, SemanticInputRequest, SemanticRoots, prepare_semantic_input};
-use crate::compiler::ProgramCompilationMode;
+use crate::compiler::ProgramCompilationKind;
 use crate::compiler::error::CompileResult;
 use crate::compiler::options::CompilerOptions;
 use crate::compiler::semantic::SemanticCompilation;
@@ -67,8 +67,7 @@ fn prepare_source_inner(
     )];
     let built = build_source_set(&sources).expect("semantic fixture source");
     let module = built.modules()[0];
-    let mode = ProgramCompilationMode::SingleSource { root: module };
-    let semantic = SemanticCompilation::new(built.graph(), &mode)?;
+    let semantic = SemanticCompilation::new(&built, ProgramCompilationKind::SingleSource)?;
     let roots = match roots {
         FixtureRoots::Program => SemanticRoots::Program,
         FixtureRoots::Function(name) => SemanticRoots::Function(

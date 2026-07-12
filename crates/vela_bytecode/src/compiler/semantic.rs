@@ -5,39 +5,45 @@ use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::script_methods::{
     ScriptMethodCatalog, ScriptMethodCatalogError, ScriptMethodCatalogMode,
 };
+use vela_hir::source_ingestion::HirSourceSet;
 use vela_mir::{MirBuildError, MirEvaluatedConstant, MirSourceOrigin};
 
-use super::ProgramCompilationMode;
+use super::ProgramCompilationKind;
 use super::const_eval::evaluate_const_body;
 use super::error::{CompileError, CompileErrorKind, CompileResult};
 use super::schema_defaults::{EvaluatedSchemaDefaults, source_schema_defaults};
 
 pub(super) struct SemanticCompilation<'a> {
     graph: &'a ModuleGraph,
-    mode: &'a ProgramCompilationMode,
+    modules: &'a [ModuleId],
+    kind: ProgramCompilationKind,
     script_methods: ScriptMethodCatalog,
 }
 
 impl<'a> SemanticCompilation<'a> {
     pub(super) fn new(
-        graph: &'a ModuleGraph,
-        mode: &'a ProgramCompilationMode,
+        sources: &'a HirSourceSet,
+        kind: ProgramCompilationKind,
     ) -> CompileResult<Self> {
-        let catalog_mode = match mode {
-            ProgramCompilationMode::SingleSource { root } => {
-                ScriptMethodCatalogMode::single_source(*root, "main")
+        let graph = sources.graph();
+        let modules = sources.modules();
+        let catalog_mode = match kind {
+            ProgramCompilationKind::SingleSource => {
+                ScriptMethodCatalogMode::single_source(modules[0], "main")
             }
-            ProgramCompilationMode::ModuleGraph { .. } => ScriptMethodCatalogMode::ModuleGraph,
+            ProgramCompilationKind::ModuleGraph => ScriptMethodCatalogMode::ModuleGraph,
         };
         let script_methods = ScriptMethodCatalog::from_graph(graph, catalog_mode)
             .map_err(script_method_catalog_error)?;
         Ok(Self {
             graph,
-            mode,
+            modules,
+            kind,
             script_methods,
         })
     }
 
+    #[cfg(test)]
     pub(super) const fn graph(&self) -> &ModuleGraph {
         self.graph
     }
@@ -47,13 +53,9 @@ impl<'a> SemanticCompilation<'a> {
     }
 
     pub(super) fn global_symbols(&self) -> BTreeMap<HirDeclId, String> {
-        match self.mode {
-            ProgramCompilationMode::SingleSource { .. } => {
-                self.symbols(DeclarationKind::Global, true)
-            }
-            ProgramCompilationMode::ModuleGraph { .. } => {
-                self.symbols(DeclarationKind::Global, false)
-            }
+        match self.kind {
+            ProgramCompilationKind::SingleSource => self.symbols(DeclarationKind::Global, true),
+            ProgramCompilationKind::ModuleGraph => self.symbols(DeclarationKind::Global, false),
         }
     }
 
@@ -74,9 +76,9 @@ impl<'a> SemanticCompilation<'a> {
                         DeclarationKind::Struct | DeclarationKind::Enum
                     )
                     .then(|| {
-                        let symbol = match self.mode {
-                            ProgramCompilationMode::SingleSource { .. } => name.to_owned(),
-                            ProgramCompilationMode::ModuleGraph { .. } => {
+                        let symbol = match self.kind {
+                            ProgramCompilationKind::SingleSource => name.to_owned(),
+                            ProgramCompilationKind::ModuleGraph => {
                                 format!("{path}::{}", metadata.name)
                             }
                         };
@@ -91,8 +93,8 @@ impl<'a> SemanticCompilation<'a> {
         &self,
     ) -> CompileResult<BTreeMap<HirDeclId, MirEvaluatedConstant>> {
         let mut values_by_declaration = BTreeMap::new();
-        if let ProgramCompilationMode::SingleSource { root } = self.mode {
-            self.evaluate_module_constants(*root, &mut values_by_declaration)?;
+        if self.kind == ProgramCompilationKind::SingleSource {
+            self.evaluate_module_constants(self.modules[0], &mut values_by_declaration)?;
             return Ok(values_by_declaration);
         }
         loop {
@@ -154,10 +156,7 @@ impl<'a> SemanticCompilation<'a> {
     }
 
     fn modules(&self) -> &[ModuleId] {
-        match self.mode {
-            ProgramCompilationMode::SingleSource { root } => std::slice::from_ref(root),
-            ProgramCompilationMode::ModuleGraph { modules } => modules,
-        }
+        self.modules
     }
 
     fn symbols(
@@ -177,14 +176,12 @@ impl<'a> SemanticCompilation<'a> {
                     let declaration = declarations.get(name)?;
                     let metadata = self.graph.declaration(declaration)?;
                     (metadata.kind == kind).then(|| {
-                        let symbol = match self.mode {
-                            ProgramCompilationMode::SingleSource { .. }
-                                if single_source_main_prefix =>
-                            {
+                        let symbol = match self.kind {
+                            ProgramCompilationKind::SingleSource if single_source_main_prefix => {
                                 format!("main::{}", metadata.name)
                             }
-                            ProgramCompilationMode::SingleSource { .. } => name.to_owned(),
-                            ProgramCompilationMode::ModuleGraph { .. } => {
+                            ProgramCompilationKind::SingleSource => name.to_owned(),
+                            ProgramCompilationKind::ModuleGraph => {
                                 format!("{path}::{}", metadata.name)
                             }
                         };

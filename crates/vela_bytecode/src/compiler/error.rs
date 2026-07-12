@@ -3,6 +3,27 @@ use vela_common::{Diagnostic, Span};
 use crate::verification::VerificationError;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CompilationRequestError {
+    SingleSourceModuleCount {
+        count: usize,
+    },
+    EmptyModuleGraph,
+    MissingFunctionDeclaration {
+        declaration: vela_hir::ids::HirDeclId,
+    },
+    InvalidFunctionDeclarationKind {
+        declaration: vela_hir::ids::HirDeclId,
+        kind: vela_hir::module_graph::DeclarationKind,
+    },
+    MissingFunctionBody {
+        declaration: vela_hir::ids::HirDeclId,
+    },
+    FunctionOutsideSourceSet {
+        declaration: vela_hir::ids::HirDeclId,
+    },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MirBackendFailureKind {
     MissingRoot,
     MissingFunction(vela_mir::MirFunctionId),
@@ -73,6 +94,10 @@ impl CompileError {
                 "selected function produced {count} verified MIR roots"
             ))
             .with_code("compiler::invalid_mir_root_count"),
+            CompileErrorKind::InvalidCompilationRequest(error) => {
+                Diagnostic::error(format!("invalid bytecode compilation request: {error:?}"))
+                    .with_code("compiler::invalid_compilation_request")
+            }
             CompileErrorKind::InvalidHirGraph(_)
             | CompileErrorKind::SemanticDiagnostics(_)
             | CompileErrorKind::UnknownLocal(_)
@@ -117,6 +142,7 @@ impl CompileError {
 #[derive(Clone, Debug, PartialEq)]
 pub enum CompileErrorKind {
     InvalidHirGraph(Vec<Diagnostic>),
+    InvalidCompilationRequest(CompilationRequestError),
     SemanticDiagnostics(Vec<Diagnostic>),
     UnknownLocal(String),
     InvalidIntLiteral { literal: String, error: String },

@@ -2,7 +2,7 @@ use vela_bytecode::UnlinkedCodeObject;
 use vela_bytecode::compiler::error::{CompileError, CompileErrorKind, CompileResult};
 use vela_bytecode::compiler::options::CompilerOptions;
 use vela_bytecode::compiler::{
-    CompiledProgram, FunctionCompilationRequest, ProgramCompilationMode, ProgramCompilationRequest,
+    CompiledProgram, FunctionCompilationRequest, ProgramCompilationKind, ProgramCompilationRequest,
     compile_function, compile_program,
 };
 use vela_common::{Diagnostic, SourceId};
@@ -62,8 +62,7 @@ fn compile_test_function_inner(
         })
         .ok_or_else(|| function_not_found(function_name))?;
     compile_function(FunctionCompilationRequest {
-        graph: built.graph(),
-        module,
+        sources: &built,
         function,
         options,
         registry,
@@ -99,12 +98,9 @@ fn compile_test_program_inner(
 ) -> CompileResult<CompiledProgram> {
     let sources = [single_source(source, text)];
     let built = build_source_set(&sources).map_err(frontend_error)?;
-    let mode = ProgramCompilationMode::SingleSource {
-        root: built.modules()[0],
-    };
     compile_program(ProgramCompilationRequest {
-        graph: built.graph(),
-        mode: &mode,
+        sources: &built,
+        kind: ProgramCompilationKind::SingleSource,
         options,
         registry,
     })
@@ -126,12 +122,9 @@ fn compile_test_modules_inner(
     registry: Option<RegistryCompileView<'_>>,
 ) -> CompileResult<CompiledProgram> {
     let built = build_source_set(sources).map_err(frontend_error)?;
-    let mode = ProgramCompilationMode::ModuleGraph {
-        modules: built.modules().into(),
-    };
     compile_program(ProgramCompilationRequest {
-        graph: built.graph(),
-        mode: &mode,
+        sources: &built,
+        kind: ProgramCompilationKind::ModuleGraph,
         options: &CompilerOptions::default(),
         registry,
     })

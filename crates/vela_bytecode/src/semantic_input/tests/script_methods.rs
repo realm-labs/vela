@@ -9,7 +9,7 @@ use vela_mir::{
 };
 
 use super::{FixtureRoots, prepare_source};
-use crate::compiler::ProgramCompilationMode;
+use crate::compiler::ProgramCompilationKind;
 use crate::compiler::options::CompilerOptions;
 use crate::compiler::semantic::SemanticCompilation;
 use crate::compiler::semantic_input::{
@@ -121,10 +121,8 @@ fn main() {
         ),
     ];
     let built = build_source_set(&sources).expect("module semantic graph");
-    let mode = ProgramCompilationMode::ModuleGraph {
-        modules: built.modules().into(),
-    };
-    let semantic = SemanticCompilation::new(built.graph(), &mode).expect("semantic compilation");
+    let semantic = SemanticCompilation::new(&built, ProgramCompilationKind::ModuleGraph)
+        .expect("semantic compilation");
     let (body, pattern) = semantic
         .graph()
         .bodies()
@@ -227,10 +225,8 @@ impl BonusSource for Monster {}
 
 fn prepare_modules(sources: &[ModuleSource]) -> PreparedSemanticInput {
     let built = build_source_set(sources).expect("module semantic graph");
-    let mode = ProgramCompilationMode::ModuleGraph {
-        modules: built.modules().into(),
-    };
-    let semantic = SemanticCompilation::new(built.graph(), &mode).expect("semantic compilation");
+    let semantic = SemanticCompilation::new(&built, ProgramCompilationKind::ModuleGraph)
+        .expect("semantic compilation");
     let script_function_symbols = semantic.function_symbols();
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();

@@ -3,7 +3,7 @@ use std::path::Path;
 
 use vela_bytecode::compiler::CompiledProgram;
 use vela_bytecode::compiler::error::CompileError;
-use vela_bytecode::compiler::{ProgramCompilationMode, ProgramCompilationRequest, compile_program};
+use vela_bytecode::compiler::{ProgramCompilationKind, ProgramCompilationRequest, compile_program};
 use vela_common::SourceId;
 use vela_hir::module_graph::{ModulePath, ModuleSource};
 use vela_hir::source_ingestion::{HirSourceBuildError, build_source_set};
@@ -129,19 +129,15 @@ impl Engine {
         single_source: bool,
     ) -> Result<CompiledProgram, EngineSourceError> {
         let built = build_source_set(sources).map_err(EngineSourceError::frontend)?;
-        let mode = if single_source {
-            ProgramCompilationMode::SingleSource {
-                root: built.modules()[0],
-            }
+        let kind = if single_source {
+            ProgramCompilationKind::SingleSource
         } else {
-            ProgramCompilationMode::ModuleGraph {
-                modules: built.modules().into(),
-            }
+            ProgramCompilationKind::ModuleGraph
         };
         let options = self.compiler_options();
         compile_program(ProgramCompilationRequest {
-            graph: built.graph(),
-            mode: &mode,
+            sources: &built,
+            kind,
             options: &options,
             registry: Some(self.compiler_registry()),
         })

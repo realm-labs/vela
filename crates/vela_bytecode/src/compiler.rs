@@ -22,16 +22,17 @@ use std::sync::Arc;
 use vela_common::SourceId;
 #[cfg(test)]
 use vela_common::Span;
-use vela_hir::ids::{HirDeclId, ModuleId};
-use vela_hir::module_graph::ModuleGraph;
+use vela_hir::ids::HirDeclId;
+use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 #[cfg(test)]
 use vela_hir::module_graph::{ModulePath, ModuleSource};
+use vela_hir::source_ingestion::HirSourceSet;
 use vela_registry::RegistryCompileView;
 
 #[cfg(test)]
 use crate::{Constant, UnlinkedTypeGuardPlan};
 use crate::{UnlinkedCodeObject, UnlinkedProgram};
-use error::{CompileError, CompileErrorKind, CompileResult};
+use error::{CompilationRequestError, CompileError, CompileErrorKind, CompileResult};
 use options::CompilerOptions;
 use semantic::SemanticCompilation;
 #[cfg(test)]
@@ -116,22 +117,21 @@ impl Deref for CompiledProgram {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum ProgramCompilationMode {
-    SingleSource { root: ModuleId },
-    ModuleGraph { modules: Box<[ModuleId]> },
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ProgramCompilationKind {
+    SingleSource,
+    ModuleGraph,
 }
 
 pub struct ProgramCompilationRequest<'a> {
-    pub graph: &'a ModuleGraph,
-    pub mode: &'a ProgramCompilationMode,
+    pub sources: &'a HirSourceSet,
+    pub kind: ProgramCompilationKind,
     pub options: &'a CompilerOptions,
     pub registry: Option<RegistryCompileView<'a>>,
 }
 
 pub struct FunctionCompilationRequest<'a> {
-    pub graph: &'a ModuleGraph,
-    pub module: ModuleId,
+    pub sources: &'a HirSourceSet,
     pub function: HirDeclId,
     pub options: &'a CompilerOptions,
     pub registry: Option<RegistryCompileView<'a>>,
@@ -140,18 +140,48 @@ pub struct FunctionCompilationRequest<'a> {
 pub fn compile_function(
     request: FunctionCompilationRequest<'_>,
 ) -> CompileResult<UnlinkedCodeObject> {
-    reject_invalid_graph(request.graph)?;
-    let mode = ProgramCompilationMode::SingleSource {
-        root: request.module,
+    let graph = request.sources.graph();
+    reject_invalid_graph(graph)?;
+    let declaration = graph.declaration(request.function).ok_or_else(|| {
+        invalid_compilation_request(CompilationRequestError::MissingFunctionDeclaration {
+            declaration: request.function,
+        })
+    })?;
+    if declaration.kind != DeclarationKind::Function {
+        return Err(invalid_compilation_request(
+            CompilationRequestError::InvalidFunctionDeclarationKind {
+                declaration: request.function,
+                kind: declaration.kind,
+            },
+        ));
+    }
+    if graph.function_body(request.function).is_none() {
+        return Err(invalid_compilation_request(
+            CompilationRequestError::MissingFunctionBody {
+                declaration: request.function,
+            },
+        ));
+    }
+    if !request.sources.modules().contains(&declaration.module) {
+        return Err(invalid_compilation_request(
+            CompilationRequestError::FunctionOutsideSourceSet {
+                declaration: request.function,
+            },
+        ));
+    }
+    let kind = if request.sources.modules().len() == 1 {
+        ProgramCompilationKind::SingleSource
+    } else {
+        ProgramCompilationKind::ModuleGraph
     };
-    let semantic = SemanticCompilation::new(request.graph, &mode)?;
+    let semantic = SemanticCompilation::new(request.sources, kind)?;
     let script_function_symbols = semantic.function_symbols();
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
     let evaluated_constants = semantic.evaluated_constants()?;
     let schema_defaults = semantic.schema_defaults(&type_symbols, &evaluated_constants)?;
     let input = semantic_input::prepare_semantic_input(semantic_input::SemanticInputRequest {
-        graph: semantic.graph(),
+        graph,
         roots: semantic_input::SemanticRoots::Function(request.function),
         script_function_symbols: &script_function_symbols,
         script_methods: semantic.script_method_catalog(),
@@ -162,7 +192,7 @@ pub fn compile_function(
         options: request.options,
         registry: request.registry,
     })?;
-    let (mut code, _) = compile_mir_roots(&input, semantic.graph())?;
+    let (mut code, _) = compile_mir_roots(&input, graph)?;
     match code.len() {
         1 => Ok(code.pop().expect("one checked MIR root")),
         count => Err(CompileError::new(CompileErrorKind::InvalidMirRootCount {
@@ -172,8 +202,10 @@ pub fn compile_function(
 }
 
 pub fn compile_program(request: ProgramCompilationRequest<'_>) -> CompileResult<CompiledProgram> {
-    reject_invalid_graph(request.graph)?;
-    let semantic = SemanticCompilation::new(request.graph, request.mode)?;
+    let graph = request.sources.graph();
+    reject_invalid_graph(graph)?;
+    validate_program_request(request.sources, request.kind)?;
+    let semantic = SemanticCompilation::new(request.sources, request.kind)?;
     let script_function_symbols = semantic.function_symbols();
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
@@ -192,7 +224,7 @@ pub fn compile_program(request: ProgramCompilationRequest<'_>) -> CompileResult<
         })
         .collect::<Vec<_>>();
     let input = semantic_input::prepare_semantic_input(semantic_input::SemanticInputRequest {
-        graph: request.graph,
+        graph,
         roots: semantic_input::SemanticRoots::Program,
         script_function_symbols: &script_function_symbols,
         script_methods: semantic.script_method_catalog(),
@@ -206,7 +238,7 @@ pub fn compile_program(request: ProgramCompilationRequest<'_>) -> CompileResult<
 
     let mut program = UnlinkedProgram::new();
     program.set_global_layout(global_names(&global_symbols));
-    let (mut code, verified_mir) = compile_mir_roots(&input, request.graph)?;
+    let (mut code, verified_mir) = compile_mir_roots(&input, graph)?;
     let mir_executables = compiled_mir_executables(&verified_mir);
     attach_compiled_mir_identities(&mut code, &mir_executables);
     for code in code {
@@ -215,7 +247,7 @@ pub fn compile_program(request: ProgramCompilationRequest<'_>) -> CompileResult<
     for (owner, name, method, symbol) in methods {
         program.insert_script_method(owner, name, method, symbol);
     }
-    program.set_script_metadata(request.graph.clone());
+    program.set_script_metadata(graph.clone());
     let bytecode = verify_program(program)?;
     Ok(CompiledProgram {
         mir_executables: compiled_bytecode_layouts(&bytecode),
@@ -223,6 +255,26 @@ pub fn compile_program(request: ProgramCompilationRequest<'_>) -> CompileResult<
         bytecode,
         verified_mir,
     })
+}
+
+fn validate_program_request(
+    sources: &HirSourceSet,
+    kind: ProgramCompilationKind,
+) -> CompileResult<()> {
+    let count = sources.modules().len();
+    match kind {
+        ProgramCompilationKind::SingleSource if count != 1 => Err(invalid_compilation_request(
+            CompilationRequestError::SingleSourceModuleCount { count },
+        )),
+        ProgramCompilationKind::ModuleGraph if count == 0 => Err(invalid_compilation_request(
+            CompilationRequestError::EmptyModuleGraph,
+        )),
+        ProgramCompilationKind::SingleSource | ProgramCompilationKind::ModuleGraph => Ok(()),
+    }
+}
+
+fn invalid_compilation_request(error: CompilationRequestError) -> CompileError {
+    CompileError::new(CompileErrorKind::InvalidCompilationRequest(error))
 }
 
 fn reject_invalid_graph(graph: &ModuleGraph) -> CompileResult<()> {
