@@ -8,7 +8,8 @@ fn origin(body: HirBodyId) -> MirSourceOrigin {
     MirSourceOrigin::body(body, Span::new(SourceId::new(7), 0, 5))
 }
 
-fn test_function(body: HirBodyId, owner: MirFunctionOwner, origin: MirSourceOrigin) -> MirFunction {
+fn test_function(body: HirBodyId, owner: MirFunctionOwner) -> MirFunction {
+    let origin = origin(body);
     MirFunction::new(
         body,
         owner,
@@ -33,11 +34,7 @@ fn mir_model_preserves_declaration_scoped_origins_without_fake_bodies() {
 fn mir_model_enforces_single_assignment_temps_and_mutable_locals() {
     let body = HirBodyId::new(1);
     let origin = origin(body);
-    let mut function = test_function(
-        body,
-        MirFunctionOwner::Function(FunctionId::new(10)),
-        origin,
-    );
+    let mut function = test_function(body, MirFunctionOwner::Function(FunctionId::new(10)));
     let local = function.add_script_local(
         HirLocalId::new(3),
         MirValueType::Primitive(PrimitiveTag::I64),
@@ -104,11 +101,7 @@ fn mir_model_enforces_single_assignment_temps_and_mutable_locals() {
 fn mir_model_requires_safepoints_for_calls_even_with_incomplete_effect_metadata() {
     let body = HirBodyId::new(2);
     let origin = origin(body);
-    let mut function = test_function(
-        body,
-        MirFunctionOwner::Function(FunctionId::new(20)),
-        origin,
-    );
+    let mut function = test_function(body, MirFunctionOwner::Function(FunctionId::new(20)));
     let entry = function.entry_block();
     let destination = function.add_temp(MirValueType::Dynamic, origin);
     let call = MirStatement::new(
@@ -160,11 +153,7 @@ fn mir_model_requires_safepoints_for_calls_even_with_incomplete_effect_metadata(
 fn mir_model_rejects_effect_and_destination_contradictions() {
     let body = HirBodyId::new(21);
     let origin = origin(body);
-    let mut function = test_function(
-        body,
-        MirFunctionOwner::Function(FunctionId::new(210)),
-        origin,
-    );
+    let mut function = test_function(body, MirFunctionOwner::Function(FunctionId::new(210)));
     let entry = function.entry_block();
     let destination = function.add_temp(MirValueType::Dynamic, origin);
     let write = MirStatement::new(
@@ -241,11 +230,7 @@ fn mir_model_rejects_effect_and_destination_contradictions() {
 fn mir_model_exposes_allocating_host_reflection_and_dynamic_boundaries() {
     let body = HirBodyId::new(28);
     let origin = origin(body);
-    let mut function = test_function(
-        body,
-        MirFunctionOwner::Function(FunctionId::new(280)),
-        origin,
-    );
+    let mut function = test_function(body, MirFunctionOwner::Function(FunctionId::new(280)));
     let entry = function.entry_block();
     let host_type = HostTypeTarget {
         semantic: TypeId::new(281),
@@ -453,11 +438,7 @@ fn mir_model_exposes_allocating_host_reflection_and_dynamic_boundaries() {
 fn mir_model_keeps_contextual_literals_static_keys_and_traps_explicit() {
     let body = HirBodyId::new(29);
     let origin = origin(body);
-    let mut function = test_function(
-        body,
-        MirFunctionOwner::Function(FunctionId::new(290)),
-        origin,
-    );
+    let mut function = test_function(body, MirFunctionOwner::Function(FunctionId::new(290)));
     let entry = function.entry_block();
     let value = function.add_synthetic_local(MirValueType::Dynamic, origin);
     let contextual_result = function.add_temp(MirValueType::Dynamic, origin);
@@ -867,11 +848,7 @@ fn mir_model_keeps_record_and_variant_field_slots_distinct() {
 fn mir_model_materializes_heap_constants_at_explicit_safepoints() {
     let body = HirBodyId::new(23);
     let origin = origin(body);
-    let mut function = test_function(
-        body,
-        MirFunctionOwner::Function(FunctionId::new(230)),
-        origin,
-    );
+    let mut function = test_function(body, MirFunctionOwner::Function(FunctionId::new(230)));
     let entry = function.entry_block();
     let destination = function.add_temp(MirValueType::Primitive(PrimitiveTag::String), origin);
     let statement = MirStatement::new(
@@ -1022,11 +999,7 @@ fn mir_model_owns_distinct_schema_defaults_and_resolved_constructor_slots() {
 fn mir_model_calls_encode_receivers_and_default_delivery_contracts() {
     let body = HirBodyId::new(24);
     let origin = origin(body);
-    let mut function = test_function(
-        body,
-        MirFunctionOwner::Function(FunctionId::new(240)),
-        origin,
-    );
+    let mut function = test_function(body, MirFunctionOwner::Function(FunctionId::new(240)));
     let entry = function.entry_block();
     let receiver = function.add_synthetic_local(MirValueType::Dynamic, origin);
     let method_result = function.add_temp(MirValueType::Dynamic, origin);
