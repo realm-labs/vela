@@ -29,27 +29,6 @@ pub(crate) struct LinkedEnumConstruction<'a> {
     pub(crate) fields: &'a [(FieldSlot, DebugNameId, Register)],
 }
 
-pub(crate) fn make_record(
-    frame: &mut CallFrame,
-    heap: Option<&mut HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
-    dst: Register,
-    type_name: &str,
-    fields: &[(String, Register)],
-) -> VmResult<()> {
-    make_record_with_identity(
-        frame,
-        heap,
-        budget,
-        dst,
-        RecordConstruction {
-            type_name,
-            type_id: None,
-            fields,
-        },
-    )
-}
-
 pub(crate) fn make_record_with_identity(
     frame: &mut CallFrame,
     heap: Option<&mut HeapExecution<'_>>,
@@ -103,29 +82,6 @@ pub(crate) fn make_linked_record(
             type_name,
             type_id: Some(linked_ty.id),
             fields: &fields,
-        },
-    )
-}
-
-pub(crate) fn make_enum(
-    frame: &mut CallFrame,
-    heap: Option<&mut HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
-    dst: Register,
-    enum_name: &str,
-    variant: &str,
-    fields: &[(String, Register)],
-) -> VmResult<()> {
-    make_enum_with_identity(
-        frame,
-        heap,
-        budget,
-        dst,
-        EnumConstruction {
-            enum_name,
-            variant,
-            identity: std_enum_identity_for_names(enum_name, variant),
-            fields,
         },
     )
 }

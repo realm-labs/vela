@@ -1,12 +1,11 @@
-use vela_bytecode::{LinkedProgram, UnlinkedProgramCode};
+use vela_bytecode::LinkedProgram;
 
 use crate::CallFrame;
 use crate::linked_execution::LinkedExecutionCall;
 use crate::runtime_checks::expect_closure_ref;
-use crate::value::ClosureCode;
 use crate::{
-    ExecutionBudget, ExecutionCall, HeapExecution, HostExecution, Value, Vm, VmBytecodeProfiler,
-    VmError, VmErrorKind, VmInlineCaches, VmResult,
+    ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmBytecodeProfiler, VmError,
+    VmErrorKind, VmInlineCaches, VmResult,
 };
 
 #[derive(Clone, Copy)]
@@ -41,8 +40,7 @@ impl<'a> CallerRoots<'a> {
 
 pub(crate) struct MethodRuntime<'a, 'host, 'heap> {
     pub(crate) vm: &'a Vm,
-    pub(crate) program: Option<&'a dyn UnlinkedProgramCode>,
-    pub(crate) linked_program: Option<&'a LinkedProgram>,
+    pub(crate) program: &'a LinkedProgram,
     pub(crate) host: Option<&'a mut HostExecution<'host>>,
     pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
     pub(crate) budget: Option<&'a mut ExecutionBudget>,
@@ -67,17 +65,12 @@ pub(crate) fn callback_param_len(
     callback: &Value,
 ) -> VmResult<usize> {
     let closure = expect_closure_ref(callback, runtime.heap.as_deref(), operation)?;
-    match &closure.code {
-        ClosureCode::Unlinked(code) => Ok(code.params.len()),
-        ClosureCode::Linked { owner, function } => {
-            let code = owner.function(*function).ok_or_else(|| {
-                VmError::new(VmErrorKind::UnknownFunction {
-                    name: format!("<linked closure#{}>", function.index()),
-                })
-            })?;
-            Ok(code.params.len())
-        }
-    }
+    let code = closure.owner.function(closure.function).ok_or_else(|| {
+        VmError::new(VmErrorKind::UnknownFunction {
+            name: format!("<linked closure#{}>", closure.function.index()),
+        })
+    })?;
+    Ok(code.params.len())
 }
 
 pub(crate) fn call_callback_with_protected_values<'value>(
@@ -90,10 +83,14 @@ pub(crate) fn call_callback_with_protected_values<'value>(
     if let Some(budget) = runtime.budget.as_deref_mut() {
         budget.charge_execution_units(1)?;
     }
-    let (code, captures) = {
+    let (owner, function, captures) = {
         let closure = expect_closure_ref(callback, runtime.heap.as_deref(), operation)?;
         let captures = closure.captures.clone();
-        (closure.code.clone(), captures)
+        (
+            std::sync::Arc::clone(&closure.owner),
+            closure.function,
+            captures,
+        )
     };
     let protected_root_len = runtime.heap.as_deref_mut().map(|heap| {
         let protected_root_len = runtime.caller_roots.push_to_heap(heap);
@@ -101,46 +98,27 @@ pub(crate) fn call_callback_with_protected_values<'value>(
         heap.protect_value_refs(protected_values);
         protected_root_len
     });
-    let result = match code {
-        ClosureCode::Unlinked(code) => runtime.vm.execute_call(
-            ExecutionCall {
-                code: &code,
-                program: runtime.program,
-                captures: captures.as_slice(),
-                args,
-                check_param_guards: true,
-                call_site: None,
-                call_site_offset: None,
-                inline_caches: runtime.inline_caches,
-            },
-            runtime.host.as_deref_mut(),
-            runtime.heap.as_deref_mut(),
-            runtime.budget.as_deref_mut(),
-        ),
-        ClosureCode::Linked { owner, function } => {
-            owner.function(function).ok_or_else(|| {
-                VmError::new(VmErrorKind::UnknownFunction {
-                    name: format!("<linked closure#{}>", function.index()),
-                })
-            })?;
-            runtime.vm.execute_linked_call(
-                LinkedExecutionCall {
-                    owner,
-                    function,
-                    captures: captures.as_slice(),
-                    args,
-                    check_param_guards: true,
-                    call_site: None,
-                    call_site_offset: None,
-                    inline_caches: runtime.inline_caches,
-                    bytecode_profiler: runtime.bytecode_profiler,
-                },
-                runtime.host.as_deref_mut(),
-                runtime.heap.as_deref_mut(),
-                runtime.budget.as_deref_mut(),
-            )
-        }
-    };
+    owner.function(function).ok_or_else(|| {
+        VmError::new(VmErrorKind::UnknownFunction {
+            name: format!("<linked closure#{}>", function.index()),
+        })
+    })?;
+    let result = runtime.vm.execute_linked_call(
+        LinkedExecutionCall {
+            owner,
+            function,
+            captures: captures.as_slice(),
+            args,
+            check_param_guards: true,
+            call_site: None,
+            call_site_offset: None,
+            inline_caches: runtime.inline_caches,
+            bytecode_profiler: runtime.bytecode_profiler,
+        },
+        runtime.host.as_deref_mut(),
+        runtime.heap.as_deref_mut(),
+        runtime.budget.as_deref_mut(),
+    );
     if let (Some(heap), Some(protected_root_len)) =
         (runtime.heap.as_deref_mut(), protected_root_len)
     {

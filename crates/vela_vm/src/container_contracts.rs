@@ -1,4 +1,4 @@
-use vela_bytecode::{StandardTypeGuard, TypeGuardPlan, UnlinkedTypeGuardPlan};
+use vela_bytecode::{StandardTypeGuard, TypeGuardPlan};
 use vela_common::{HostTypeId, PrimitiveTag};
 
 use crate::heap::{HeapValue, ScriptHeap};
@@ -144,13 +144,6 @@ impl ContainerTypeSummary {
         }
     }
 
-    pub(crate) fn prove_unlinked_plan(self, plan: &UnlinkedTypeGuardPlan) -> ContainerSummaryProof {
-        self.prove_plan(
-            unlinked_complete_shallow_key(plan),
-            unlinked_required_shallow_key(plan),
-        )
-    }
-
     pub(crate) fn prove_linked_plan(self, plan: &TypeGuardPlan) -> ContainerSummaryProof {
         self.prove_plan(
             linked_complete_shallow_key(plan),
@@ -192,10 +185,7 @@ pub(crate) enum ContainerSummaryProof {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) enum ContainerContractStamp {
-    Unlinked(UnlinkedTypeGuardPlan),
-    Linked(TypeGuardPlan),
-}
+pub(crate) struct ContainerContractStamp(pub(crate) TypeGuardPlan);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum ShallowTypeKey {
@@ -277,62 +267,6 @@ impl ShallowTypeKey {
     }
 }
 
-fn unlinked_complete_shallow_key(plan: &UnlinkedTypeGuardPlan) -> Option<ShallowTypeKey> {
-    match plan {
-        UnlinkedTypeGuardPlan::Primitive(tag) => Some(ShallowTypeKey::Primitive(*tag)),
-        UnlinkedTypeGuardPlan::Standard(guard) => Some(ShallowTypeKey::Standard(*guard)),
-        UnlinkedTypeGuardPlan::Array { element: None } => {
-            Some(ShallowTypeKey::Standard(StandardTypeGuard::Array))
-        }
-        UnlinkedTypeGuardPlan::Map {
-            key: None,
-            value: None,
-        } => Some(ShallowTypeKey::Standard(StandardTypeGuard::Map)),
-        UnlinkedTypeGuardPlan::Set { element: None } => {
-            Some(ShallowTypeKey::Standard(StandardTypeGuard::Set))
-        }
-        UnlinkedTypeGuardPlan::Iterator { item: None } => {
-            Some(ShallowTypeKey::Standard(StandardTypeGuard::Iterator))
-        }
-        UnlinkedTypeGuardPlan::Option { some: None } => {
-            Some(ShallowTypeKey::Standard(StandardTypeGuard::Option))
-        }
-        UnlinkedTypeGuardPlan::Result {
-            ok: None,
-            err: None,
-        } => Some(ShallowTypeKey::Standard(StandardTypeGuard::Result)),
-        UnlinkedTypeGuardPlan::HostType { host_type_id, .. } => {
-            Some(ShallowTypeKey::Host(*host_type_id))
-        }
-        _ => None,
-    }
-}
-
-fn unlinked_required_shallow_key(plan: &UnlinkedTypeGuardPlan) -> Option<ShallowTypeKey> {
-    match plan {
-        UnlinkedTypeGuardPlan::Primitive(tag) => Some(ShallowTypeKey::Primitive(*tag)),
-        UnlinkedTypeGuardPlan::Standard(guard) => Some(ShallowTypeKey::Standard(*guard)),
-        UnlinkedTypeGuardPlan::Array { .. } => {
-            Some(ShallowTypeKey::Standard(StandardTypeGuard::Array))
-        }
-        UnlinkedTypeGuardPlan::Map { .. } => Some(ShallowTypeKey::Standard(StandardTypeGuard::Map)),
-        UnlinkedTypeGuardPlan::Set { .. } => Some(ShallowTypeKey::Standard(StandardTypeGuard::Set)),
-        UnlinkedTypeGuardPlan::Iterator { .. } => {
-            Some(ShallowTypeKey::Standard(StandardTypeGuard::Iterator))
-        }
-        UnlinkedTypeGuardPlan::Option { .. } => {
-            Some(ShallowTypeKey::Standard(StandardTypeGuard::Option))
-        }
-        UnlinkedTypeGuardPlan::Result { .. } => {
-            Some(ShallowTypeKey::Standard(StandardTypeGuard::Result))
-        }
-        UnlinkedTypeGuardPlan::HostType { host_type_id, .. } => {
-            Some(ShallowTypeKey::Host(*host_type_id))
-        }
-        _ => None,
-    }
-}
-
 fn linked_complete_shallow_key(plan: &TypeGuardPlan) -> Option<ShallowTypeKey> {
     match plan {
         TypeGuardPlan::Primitive(tag) => Some(ShallowTypeKey::Primitive(*tag)),
@@ -404,14 +338,12 @@ mod tests {
             ContainerTypeSummary::Exact(ShallowTypeKey::Standard(StandardTypeGuard::Array));
 
         assert_eq!(
-            summary.prove_unlinked_plan(&UnlinkedTypeGuardPlan::Array { element: None }),
+            summary.prove_linked_plan(&TypeGuardPlan::Array { element: None }),
             ContainerSummaryProof::Proven
         );
         assert_eq!(
-            summary.prove_unlinked_plan(&UnlinkedTypeGuardPlan::Array {
-                element: Some(Box::new(UnlinkedTypeGuardPlan::Primitive(
-                    PrimitiveTag::I64
-                ))),
+            summary.prove_linked_plan(&TypeGuardPlan::Array {
+                element: Some(Box::new(TypeGuardPlan::Primitive(PrimitiveTag::I64))),
             }),
             ContainerSummaryProof::Unknown
         );

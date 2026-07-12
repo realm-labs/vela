@@ -101,20 +101,6 @@ pub(crate) fn string_bytes_method(
     )
 }
 
-pub(crate) fn next_method(
-    receiver: &Value,
-    args: &[Value],
-    heap: &mut Option<&mut HeapExecution<'_>>,
-    budget: &mut Option<&mut ExecutionBudget>,
-) -> VmResult<Value> {
-    runtime_checks::expect_arity("next", args, 0)?;
-    let next = with_iterator_mut(receiver, heap, "method next", IteratorState::next)?;
-    let Some(heap_ref) = heap.as_deref_mut() else {
-        return type_error("method next");
-    };
-    option_value(next, heap_ref, budget.as_deref_mut())
-}
-
 pub(crate) fn next_method_runtime(
     receiver: &Value,
     args: &[Value],
@@ -131,26 +117,6 @@ pub(crate) fn next_method_runtime(
         return type_error("method next");
     };
     option_value(next, heap_ref, runtime.budget.as_deref_mut())
-}
-
-pub(crate) fn count_method(
-    receiver: &Value,
-    args: &[Value],
-    heap: &mut Option<&mut HeapExecution<'_>>,
-) -> VmResult<Value> {
-    runtime_checks::expect_arity("count", args, 0)?;
-    let count = with_iterator_mut(receiver, heap, "method count", |iterator| {
-        let mut count = 0_i64;
-        while iterator.next()?.is_some() {
-            count = count.checked_add(1).ok_or_else(|| {
-                VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "method count",
-                })
-            })?;
-        }
-        Ok(count)
-    })?;
-    Ok(Value::i64(count))
 }
 
 pub(crate) fn count_method_runtime(
@@ -181,27 +147,6 @@ pub(crate) fn count_method_runtime(
     Ok(Value::i64(count))
 }
 
-pub(crate) fn collect_array_method(
-    receiver: &Value,
-    args: &[Value],
-    heap: &mut Option<&mut HeapExecution<'_>>,
-    budget: &mut Option<&mut ExecutionBudget>,
-) -> VmResult<Value> {
-    runtime_checks::expect_arity("collect_array", args, 0)?;
-    let values = with_iterator_mut(receiver, heap, "method collect_array", |iterator| {
-        let mut values = Vec::new();
-        while let Some(value) = iterator.next()? {
-            values.push(value);
-        }
-        Ok(values)
-    })?;
-    check_collect_array_len(values.len(), budget.as_deref())?;
-    let Some(heap_ref) = heap.as_deref_mut() else {
-        return type_error("method collect_array");
-    };
-    allocate_heap_value(HeapValue::Array(values), heap_ref, budget.as_deref_mut())
-}
-
 pub(crate) fn collect_array_method_runtime(
     receiver: &Value,
     args: &[Value],
@@ -225,28 +170,6 @@ pub(crate) fn collect_array_method_runtime(
     )
 }
 
-pub(crate) fn collect_set_method(
-    receiver: &Value,
-    args: &[Value],
-    heap: &mut Option<&mut HeapExecution<'_>>,
-    budget: &mut Option<&mut ExecutionBudget>,
-) -> VmResult<Value> {
-    runtime_checks::expect_arity("collect_set", args, 0)?;
-    let mut iterator = take_iterator_from_heap(receiver, heap, "method collect_set")?;
-    let values = collect_unique_values_without_callbacks(
-        &mut iterator,
-        heap.as_deref(),
-        "method collect_set",
-    );
-    restore_iterator_to_heap(*receiver, heap, iterator, "method collect_set")?;
-    let values = values?;
-    check_collect_set_len(values.len(), budget.as_deref())?;
-    let Some(heap_ref) = heap.as_deref_mut() else {
-        return type_error("method collect_set");
-    };
-    allocate_heap_value(HeapValue::Set(values), heap_ref, budget.as_deref_mut())
-}
-
 pub(crate) fn collect_set_method_runtime(
     receiver: &Value,
     args: &[Value],
@@ -268,26 +191,6 @@ pub(crate) fn collect_set_method_runtime(
         heap_ref,
         runtime.budget.as_deref_mut(),
     )
-}
-
-pub(crate) fn collect_map_method(
-    receiver: &Value,
-    args: &[Value],
-    heap: &mut Option<&mut HeapExecution<'_>>,
-    budget: &mut Option<&mut ExecutionBudget>,
-) -> VmResult<Value> {
-    runtime_checks::expect_arity("collect_map", args, 0)?;
-    let mut iterator = take_iterator_from_heap(receiver, heap, "method collect_map")?;
-    let values =
-        collect_map_entries_without_callbacks(&mut iterator, heap.as_deref(), "method collect_map");
-    restore_iterator_to_heap(*receiver, heap, iterator, "method collect_map")?;
-    let values = values?;
-    let Some(heap_ref) = heap.as_deref_mut() else {
-        return type_error("method collect_map");
-    };
-    let values = ScriptMap::from_entries(values, Some(&*heap_ref), "method collect_map")?;
-    check_collect_map_len(values.len(), budget.as_deref())?;
-    allocate_heap_value(HeapValue::Map(values), heap_ref, budget.as_deref_mut())
 }
 
 pub(crate) fn collect_map_method_runtime(
@@ -434,18 +337,6 @@ pub(crate) fn collect_values(
     Ok(values)
 }
 
-fn collect_unique_values_without_callbacks(
-    iterator: &mut IteratorState,
-    heap: Option<&HeapExecution<'_>>,
-    operation: &'static str,
-) -> VmResult<ScriptSet> {
-    let mut values = ScriptSet::new();
-    while let Some(value) = iterator.next()? {
-        values.insert(value, heap, operation)?;
-    }
-    Ok(values)
-}
-
 fn collect_unique_values(
     iterator: &mut IteratorState,
     runtime: &mut MethodRuntime<'_, '_, '_>,
@@ -457,19 +348,6 @@ fn collect_unique_values(
         if values.insert(value, runtime.heap.as_deref(), operation)? {
             protected.push(value);
         }
-    }
-    Ok(values)
-}
-
-fn collect_map_entries_without_callbacks(
-    iterator: &mut IteratorState,
-    heap: Option<&HeapExecution<'_>>,
-    operation: &'static str,
-) -> VmResult<Vec<(Value, Value)>> {
-    let mut values = Vec::new();
-    while let Some(value) = iterator.next()? {
-        let (key, value) = map_entry_value(&value, heap, operation)?;
-        values.push((key, value));
     }
     Ok(values)
 }
@@ -703,26 +581,6 @@ pub(crate) fn callback_count_over<T>(
         }
     }
     Ok(count)
-}
-
-fn with_iterator_mut<T>(
-    receiver: &Value,
-    heap: &mut Option<&mut HeapExecution<'_>>,
-    operation: &'static str,
-    f: impl FnOnce(&mut IteratorState) -> VmResult<T>,
-) -> VmResult<T> {
-    match receiver {
-        Value::HeapRef(reference) => {
-            let Some(HeapValue::Iterator(iterator)) = heap
-                .as_deref_mut()
-                .and_then(|heap| heap.heap.get_mut(*reference).ok())
-            else {
-                return type_error(operation);
-            };
-            f(iterator)
-        }
-        _ => type_error(operation),
-    }
 }
 
 pub(crate) fn take_iterator_from_heap(

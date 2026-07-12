@@ -24,11 +24,11 @@ decision history lives in
 - Ordinary active source files should stay under 1200 lines unless a clear
   exception is documented. Over-threshold implementation and test files should
   be reviewed and split by responsibility when no exception exists.
-- `crates/vela_vm/src/execution.rs` may exceed the ordinary 1200-line threshold
-  when it remains opcode dispatch glue. New semantic work should still move
-  into focused VM modules, and the dispatch loop should only decode operands,
-  charge budgets, preserve source spans, update control flow, and call those
-  boundaries.
+- `crates/vela_vm/src/linked_execution.rs` may exceed the ordinary 1200-line
+  threshold when it remains opcode dispatch glue. New semantic work should
+  still move into focused VM modules, and the dispatch loop should only decode
+  operands, charge budgets, preserve source spans, update control flow, and
+  call those boundaries.
 - Standard library and builtin APIs must remain domain-neutral. Game-specific,
   commerce-specific, or other business-domain capabilities belong in Engine
   host registration, native functions, schemas, or examples, not in builtin
@@ -43,6 +43,16 @@ decision history lives in
   registers.
 
 ## Active Architecture Decisions
+
+### Linked-Only VM Execution
+
+The compiler and verifier retain unlinked bytecode as a construction and
+validation format. Before execution, the linker consumes that representation
+and publishes a generation-owned `LinkedArtifact`. All VM entry calls, frames,
+closures, method callbacks, iterator callbacks, and runtime type guards execute
+against that artifact and its `LinkedProgram`; the VM has no unlinked
+interpreter or name-based execution fallback. Tests may construct unlinked
+fixtures, but they must link them before execution.
 
 ### Cursor-Specific HIR Query Bodies
 

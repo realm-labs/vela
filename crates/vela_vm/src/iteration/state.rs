@@ -6,7 +6,7 @@ use crate::ranges::RangeCursor;
 use crate::runtime_checks::is_truthy;
 use crate::value_key::ValueKey;
 use crate::{Value, VmError, VmErrorKind, VmResult};
-use vela_bytecode::{TypeGuardPlan, UnlinkedTypeGuardPlan};
+use vela_bytecode::TypeGuardPlan;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct IteratorState {
@@ -15,24 +15,14 @@ pub struct IteratorState {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) enum IteratorItemGuard {
-    Unlinked {
-        plan: UnlinkedTypeGuardPlan,
-        debug_name: String,
-    },
-    Linked {
-        plan: TypeGuardPlan,
-        debug_name: String,
-    },
+pub(crate) struct IteratorItemGuard {
+    pub(crate) plan: TypeGuardPlan,
+    pub(crate) debug_name: String,
 }
 
 impl IteratorItemGuard {
-    pub(crate) fn unlinked(plan: UnlinkedTypeGuardPlan, debug_name: String) -> Self {
-        Self::Unlinked { plan, debug_name }
-    }
-
     pub(crate) fn linked(plan: TypeGuardPlan, debug_name: String) -> Self {
-        Self::Linked { plan, debug_name }
+        Self { plan, debug_name }
     }
 }
 

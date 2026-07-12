@@ -1503,9 +1503,10 @@ Required architecture:
   `Runtime::new`/`try_new` and `RuntimeImage::new`/`try_new`. Production runtime
   construction accepts a cohesive `CompiledProgram`, bound `LinkedArtifact`,
   or `ProgramVersion` only.
-- [x] Keep unlinked bytecode execution available only through clearly named
-  low-level verifier/VM test support that cannot flow into hot reload, runtime
-  images, retained closures, or JIT input.
+- [x] Keep unlinked bytecode construction available only through compiler,
+  verifier, linker, and clearly named test support. Test fixtures must link to
+  a bound `LinkedArtifact` before VM execution; no unlinked interpreter can
+  flow into hot reload, runtime images, retained closures, or JIT input.
 - [x] Remove `Option` checks and `expect("... MIR-bound artifact")` assertions
   made redundant by the sealed type.
 

@@ -14,7 +14,7 @@ use crate::owned_value::{OwnedClosureValue, OwnedIteratorState, OwnedMapEntry, O
 use crate::script_map::ScriptMap;
 use crate::script_object::ScriptFields;
 use crate::script_set::ScriptSet;
-use crate::value::{ClosureCode, ClosureValue, Value};
+use crate::value::{ClosureValue, Value};
 
 pub(crate) fn value_from_constant(
     constant: &Constant,
@@ -258,7 +258,8 @@ pub(crate) fn owned_to_value(
             })?;
             allocate_heap_value(
                 HeapValue::Closure(ClosureValue {
-                    code: ClosureCode::Unlinked(Arc::clone(&closure.code)),
+                    owner: Arc::clone(&closure.owner),
+                    function: closure.function,
                     captures,
                 }),
                 heap,
@@ -366,25 +367,19 @@ fn heap_value_to_owned(
                 variant: variant.clone(),
                 fields: ScriptFields::from_pairs(&enum_variant_owner(enum_name, variant), fields),
             }),
-        HeapValue::Closure(closure) => {
-            let ClosureCode::Unlinked(code) = &closure.code else {
-                return Err(VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "linked closure materialization",
-                }));
-            };
-            closure
-                .captures
-                .as_slice()
-                .iter()
-                .map(|capture| value_to_owned(capture, heap))
-                .collect::<VmResult<Vec<_>>>()
-                .map(|captures| {
-                    OwnedValue::Closure(OwnedClosureValue {
-                        code: Arc::clone(code),
-                        captures,
-                    })
+        HeapValue::Closure(closure) => closure
+            .captures
+            .as_slice()
+            .iter()
+            .map(|capture| value_to_owned(capture, heap))
+            .collect::<VmResult<Vec<_>>>()
+            .map(|captures| {
+                OwnedValue::Closure(OwnedClosureValue {
+                    owner: Arc::clone(&closure.owner),
+                    function: closure.function,
+                    captures,
                 })
-        }
+            }),
         HeapValue::Iterator(iterator) => iterator
             .values()
             .iter()

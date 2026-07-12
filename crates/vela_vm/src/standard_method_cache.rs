@@ -953,18 +953,6 @@ pub(crate) fn call_standard_cached(
     Some(result)
 }
 
-pub(crate) fn call_standard_readonly_cached(
-    receiver: &Value,
-    cache: StandardMethodInlineCacheEntry,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> Option<VmResult<Value>> {
-    if array_target_requires_method_runtime(cache) {
-        return None;
-    }
-    call_readonly_cached(receiver, cache, args, heap)
-}
-
 fn array_target_requires_method_runtime(cache: StandardMethodInlineCacheEntry) -> bool {
     cache.receiver == StandardMethodReceiver::Array
         && matches!(

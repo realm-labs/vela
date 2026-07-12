@@ -15,26 +15,6 @@ pub(crate) fn is_bytes(value: &Value, heap: Option<&HeapExecution<'_>>) -> bool 
     }
 }
 
-pub(crate) fn len(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_arity("len", args, 0)?;
-    let value = bytes_value(receiver, heap, "method len")?;
-    Ok(Value::i64(usize_to_i64(value.len(), "method len")?))
-}
-
-pub(crate) fn is_empty(
-    receiver: &Value,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Value> {
-    expect_arity("is_empty", args, 0)?;
-    let value = bytes_value(receiver, heap, "method is_empty")?;
-    Ok(Value::Bool(value.is_empty()))
-}
-
 pub(crate) fn get(
     receiver: &Value,
     args: &[Value],
@@ -231,10 +211,6 @@ fn index_out_of_bounds(index: usize, len: usize) -> VmError {
         index: i64::try_from(index).unwrap_or(i64::MAX),
         len,
     })
-}
-
-fn usize_to_i64(value: usize, operation: &'static str) -> VmResult<i64> {
-    i64::try_from(value).map_err(|_| VmError::new(VmErrorKind::TypeMismatch { operation }))
 }
 
 fn expect_owned_arity(name: &str, args: &[OwnedValue], expected: usize) -> VmResult<()> {

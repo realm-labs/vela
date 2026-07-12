@@ -14,7 +14,6 @@ pub(crate) struct FrameHeapRoot {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::value::ClosureCode;
     use vela_bytecode::{Linker, ScriptFunctionHandle, UnlinkedCodeObject, UnlinkedProgram};
 
     #[test]
@@ -30,17 +29,8 @@ mod tests {
             &owner
         ));
 
-        let closure = ClosureCode::Linked {
-            owner: Arc::clone(entry.linked_owner().expect("closure owner")),
-            function: ScriptFunctionHandle::new(0),
-        };
-        let ClosureCode::Linked {
-            owner: closure_owner,
-            ..
-        } = closure
-        else {
-            unreachable!();
-        };
+        let closure_owner = Arc::clone(entry.linked_owner().expect("closure owner"));
+        let _function = ScriptFunctionHandle::new(0);
         let nested = CallFrame::new_linked(1, &closure_owner);
         assert!(Arc::ptr_eq(&owner, &closure_owner));
         assert!(Arc::ptr_eq(
@@ -64,6 +54,7 @@ pub(crate) struct CallFrame {
 }
 
 impl CallFrame {
+    #[cfg(test)]
     pub(crate) fn new(register_count: u16) -> Self {
         Self {
             registers: vec![Value::Unit; usize::from(register_count)],

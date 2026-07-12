@@ -811,7 +811,6 @@ mod tests {
         vela_bytecode::test_support::linked_artifact(vela_bytecode::LinkedProgram::new())
     }
     use crate::small_storage::SmallStorage;
-    use crate::value::ClosureCode;
     use vela_common::{HostObjectId, HostTypeId};
     use vela_def::FieldId;
     use vela_host::path::{HostPath, HostRef};
@@ -862,10 +861,8 @@ mod tests {
         let source = heap.allocate(HeapValue::Array(vec![Value::HeapRef(child)]));
         let captured = heap.allocate(HeapValue::String("captured".into()));
         let callback = heap.allocate(HeapValue::Closure(ClosureValue {
-            code: ClosureCode::Linked {
-                owner: empty_linked_owner(),
-                function: vela_bytecode::ScriptFunctionHandle::new(0),
-            },
+            owner: empty_linked_owner(),
+            function: vela_bytecode::ScriptFunctionHandle::new(0),
             captures: SmallStorage::try_from_slice_map(&[Value::HeapRef(captured)], 4, |value| {
                 Ok::<_, ()>(*value)
             })
@@ -903,10 +900,8 @@ mod tests {
         let source = heap.allocate(HeapValue::Array(vec![Value::HeapRef(child)]));
         let captured = heap.allocate(HeapValue::String("captured".into()));
         let callback = heap.allocate(HeapValue::Closure(ClosureValue {
-            code: ClosureCode::Linked {
-                owner: empty_linked_owner(),
-                function: vela_bytecode::ScriptFunctionHandle::new(0),
-            },
+            owner: empty_linked_owner(),
+            function: vela_bytecode::ScriptFunctionHandle::new(0),
             captures: SmallStorage::try_from_slice_map(&[Value::HeapRef(captured)], 4, |value| {
                 Ok::<_, ()>(*value)
             })

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use vela_bytecode::{ScriptFunctionHandle, UnlinkedCodeObject};
+use vela_bytecode::ScriptFunctionHandle;
 use vela_common::ScalarValue;
 use vela_host::path::HostRef;
 
@@ -99,15 +99,7 @@ impl Value {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ClosureValue {
-    pub(crate) code: ClosureCode,
+    pub(crate) owner: Arc<vela_bytecode::LinkedArtifact>,
+    pub(crate) function: ScriptFunctionHandle,
     pub(crate) captures: SmallStorage<Value>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum ClosureCode {
-    Unlinked(Arc<UnlinkedCodeObject>),
-    Linked {
-        owner: Arc<vela_bytecode::LinkedArtifact>,
-        function: ScriptFunctionHandle,
-    },
 }

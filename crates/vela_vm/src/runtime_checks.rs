@@ -1,4 +1,3 @@
-use vela_bytecode::UnlinkedCodeObject;
 use vela_host::path::HostRef;
 
 use crate::heap::HeapValue;
@@ -79,12 +78,4 @@ pub(crate) fn expect_arity<T>(name: &str, args: &[T], expected: usize) -> VmResu
 #[inline]
 pub(crate) fn is_truthy(value: &Value) -> bool {
     !matches!(value, Value::Missing | Value::Unit | Value::Bool(false))
-}
-
-pub(crate) fn validate_jump(code: &UnlinkedCodeObject, offset: usize) -> VmResult<()> {
-    if offset <= code.instructions.len() {
-        Ok(())
-    } else {
-        Err(VmError::new(VmErrorKind::InstructionOutOfBounds { offset }))
-    }
 }

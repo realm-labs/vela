@@ -4,10 +4,9 @@ mod state;
 mod step;
 
 pub(crate) use methods::{
-    all_method, any_method, chars_method, collect_array_method, collect_array_method_runtime,
-    collect_map_method, collect_map_method_runtime, collect_set_method, collect_set_method_runtime,
-    collect_values, collect_values_over, count_method, count_method_runtime, filter_items_over,
-    filter_method, find_method, is_iterator, iter_method, map_method, next_method,
+    all_method, any_method, chars_method, collect_array_method_runtime, collect_map_method_runtime,
+    collect_set_method_runtime, collect_values, collect_values_over, count_method_runtime,
+    filter_items_over, filter_method, find_method, is_iterator, iter_method, map_method,
     next_method_runtime, skip_method, string_bytes_method, take_method, try_for_each_over,
 };
 pub(crate) use methods::{
@@ -17,10 +16,7 @@ pub(crate) use methods::{
 pub(crate) use source::make_iterator;
 pub(crate) use state::IteratorItemGuard;
 pub use state::IteratorState;
-pub(crate) use step::{
-    RangeNextStep, dispatch_i64_range_next, dispatch_linked_i64_range_next,
-    dispatch_linked_range_next, dispatch_range_next,
-};
+pub(crate) use step::{RangeNextStep, dispatch_linked_i64_range_next, dispatch_linked_range_next};
 
 use crate::heap::HeapValue;
 use crate::heap_values::allocate_heap_value;
@@ -29,15 +25,11 @@ use crate::{
     CallFrame, ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmBytecodeProfiler,
     VmError, VmErrorKind, VmInlineCaches, VmResult,
 };
-use vela_bytecode::{
-    InstructionOffset, LinkedCodeObject, LinkedProgram, Register, UnlinkedCodeObject,
-    UnlinkedProgramCode,
-};
+use vela_bytecode::{InstructionOffset, LinkedCodeObject, LinkedProgram, Register};
 
 pub(crate) struct IterRuntime<'a, 'host, 'heap> {
     pub(crate) vm: &'a Vm,
-    pub(crate) program: Option<&'a dyn UnlinkedProgramCode>,
-    pub(crate) linked_program: Option<&'a LinkedProgram>,
+    pub(crate) program: &'a LinkedProgram,
     pub(crate) host: Option<&'a mut HostExecution<'host>>,
     pub(crate) frame: &'a mut CallFrame,
     pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
@@ -68,26 +60,6 @@ pub(crate) fn dispatch_iter_init(
         budget_ref(&mut runtime.budget),
     )?;
     runtime.frame.write(dst, value)
-}
-
-pub(crate) fn dispatch_iter_next(
-    mut runtime: IterRuntime<'_, '_, '_>,
-    code: &UnlinkedCodeObject,
-    iterator: Register,
-    dst: Register,
-    jump_if_done: InstructionOffset,
-) -> VmResult<Option<usize>> {
-    let next = next_iterator_value(&mut runtime, iterator)?;
-    match next {
-        Some(value) => {
-            runtime.frame.write(dst, value)?;
-            Ok(None)
-        }
-        None => {
-            crate::runtime_checks::validate_jump(code, jump_if_done.0)?;
-            Ok(Some(jump_if_done.0))
-        }
-    }
 }
 
 pub(crate) fn dispatch_linked_iter_next(
@@ -122,7 +94,6 @@ fn next_iterator_value(
         let mut method_runtime = MethodRuntime {
             vm: runtime.vm,
             program: runtime.program,
-            linked_program: runtime.linked_program,
             host: runtime.host.as_deref_mut(),
             heap: runtime.heap.as_deref_mut(),
             budget: runtime.budget.as_deref_mut(),

@@ -111,7 +111,6 @@ pub(crate) fn sort_by(
         let mut equality_runtime = EqualityRuntime {
             vm: runtime.vm,
             program: runtime.program,
-            linked_program: runtime.linked_program,
             host: runtime.host.as_deref_mut(),
             heap: runtime.heap.as_deref_mut(),
             budget: runtime.budget.as_deref_mut(),

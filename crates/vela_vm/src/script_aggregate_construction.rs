@@ -43,24 +43,6 @@ pub(crate) fn make_tuple(
     frame.write(dst, value)
 }
 
-pub(crate) fn make_map(
-    frame: &mut CallFrame,
-    heap: Option<&mut HeapExecution<'_>>,
-    mut budget: Option<&mut ExecutionBudget>,
-    dst: Register,
-    entries: &[(String, Register)],
-) -> VmResult<()> {
-    let Some(heap) = heap else {
-        return Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "map heap",
-        }));
-    };
-    let slots = runtime_map_from_registers(frame, entries, heap, budget_ref(&mut budget))?;
-    let slots = script_map_from_string_entries(slots, heap, budget_ref(&mut budget), "map heap")?;
-    let value = allocate_heap_value(HeapValue::Map(slots), heap, budget_ref(&mut budget))?;
-    frame.write(dst, value)
-}
-
 pub(crate) fn make_set_from_array(
     frame: &mut CallFrame,
     heap: Option<&mut HeapExecution<'_>>,
@@ -157,23 +139,6 @@ fn runtime_value_from_register(
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     store_runtime_value(&frame.read(register)?, heap, budget)
-}
-
-fn runtime_map_from_registers(
-    frame: &CallFrame,
-    entries: &[(String, Register)],
-    heap: &mut HeapExecution<'_>,
-    mut budget: Option<&mut ExecutionBudget>,
-) -> VmResult<Vec<(String, Value)>> {
-    entries
-        .iter()
-        .map(|(key, register)| {
-            Ok((
-                key.clone(),
-                store_runtime_value(&frame.read(*register)?, heap, budget.as_deref_mut())?,
-            ))
-        })
-        .collect()
 }
 
 fn runtime_linked_map_from_registers(

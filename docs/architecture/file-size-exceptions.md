@@ -14,7 +14,6 @@ clear; they are not permission for unrelated growth.
 | `vela_vm/src/runtime_type_guards.rs` | Mutually recursive exhaustive guard interpreter; container, sum, callable, and identity cases share cycle/stamp state. |
 | `vela_vm/src/script_method_calls.rs` | Exhaustive standard/dynamic method router with one fallback-order contract. |
 | `vela_vm/src/linked_execution.rs` | Exhaustive linked instruction dispatch loop; instruction ordering, safepoints, spans, profiling, and budget metadata are reviewed as one loop. |
-| `vela_vm/src/execution.rs` | Exhaustive unlinked reference dispatch loop used for conformance with linked execution. |
 | `vela_bytecode/src/linked.rs` | Declarative linked instruction and immutable layout definitions. |
 | `vela_bytecode/src/verification.rs` | Exhaustive unlinked instruction verifier and shared invariant helpers. |
 | `vela_bytecode/src/verification/linked.rs` | Exhaustive linked instruction verifier; every linked opcode must remain in the same match audit. |

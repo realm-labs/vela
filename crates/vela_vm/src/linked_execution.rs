@@ -322,8 +322,7 @@ impl Vm {
                             &rhs_value,
                             &mut EqualityRuntime {
                                 vm: self,
-                                program: None,
-                                linked_program: Some(program),
+                                program,
                                 host: host.as_deref_mut(),
                                 heap: heap.as_deref_mut(),
                                 budget: budget.as_deref_mut(),
@@ -347,8 +346,7 @@ impl Vm {
                             &rhs_value,
                             &mut EqualityRuntime {
                                 vm: self,
-                                program: None,
-                                linked_program: Some(program),
+                                program,
                                 host: host.as_deref_mut(),
                                 heap: heap.as_deref_mut(),
                                 budget: budget.as_deref_mut(),
@@ -385,8 +383,7 @@ impl Vm {
                         &rhs_value,
                         &mut EqualityRuntime {
                             vm: self,
-                            program: None,
-                            linked_program: Some(program),
+                            program,
                             host: host.as_deref_mut(),
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
@@ -408,8 +405,7 @@ impl Vm {
                         &rhs_value,
                         &mut EqualityRuntime {
                             vm: self,
-                            program: None,
-                            linked_program: Some(program),
+                            program,
                             host: host.as_deref_mut(),
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
@@ -431,8 +427,7 @@ impl Vm {
                         &rhs_value,
                         &mut EqualityRuntime {
                             vm: self,
-                            program: None,
-                            linked_program: Some(program),
+                            program,
                             host: host.as_deref_mut(),
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
@@ -454,8 +449,7 @@ impl Vm {
                         &rhs_value,
                         &mut EqualityRuntime {
                             vm: self,
-                            program: None,
-                            linked_program: Some(program),
+                            program,
                             host: host.as_deref_mut(),
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
@@ -1017,8 +1011,7 @@ impl Vm {
                     iteration::dispatch_iter_init(
                         iteration::IterRuntime {
                             vm: self,
-                            program: None,
-                            linked_program: Some(program),
+                            program,
                             host: host.as_deref_mut(),
                             frame: &mut frame,
                             heap: heap.as_deref_mut(),
@@ -1039,8 +1032,7 @@ impl Vm {
                     if let Some(target) = iteration::dispatch_linked_iter_next(
                         iteration::IterRuntime {
                             vm: self,
-                            program: None,
-                            linked_program: Some(program),
+                            program,
                             host: host.as_deref_mut(),
                             frame: &mut frame,
                             heap: heap.as_deref_mut(),
@@ -1067,8 +1059,7 @@ impl Vm {
                     if let Some(target) = iteration::dispatch_linked_range_next(
                         iteration::IterRuntime {
                             vm: self,
-                            program: None,
-                            linked_program: Some(program),
+                            program,
                             host: host.as_deref_mut(),
                             frame: &mut frame,
                             heap: heap.as_deref_mut(),

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use vela_bytecode::linked::{DynamicCallArgumentLinked, LinkedMethodDispatchKind};
 use vela_bytecode::{
     CacheSiteId, CallArgument, DebugNameId, InstructionOffset, LinkedProgram, MethodDispatchHandle,
-    Register, ScriptFunctionHandle, UnlinkedProgramCode,
+    Register, ScriptFunctionHandle,
 };
 use vela_common::Span;
 use vela_def::MethodId;
@@ -23,137 +23,7 @@ use crate::{
     callback_method_dispatch, host_access, script_builtin_methods, script_function_calls,
 };
 
-use crate::script_methods::{
-    ScriptMethodDispatch, call_method, call_method_id, call_non_mutating_method,
-    call_readonly_method_without_callbacks,
-};
-
-pub(crate) struct ScriptMethodCall<'a> {
-    pub(crate) dst: Register,
-    pub(crate) receiver: Register,
-    pub(crate) method: &'a str,
-    pub(crate) values: &'a [Value],
-}
-
-pub(crate) struct ScriptMethodRegisterCall<'a> {
-    pub(crate) dst: Register,
-    pub(crate) receiver: Register,
-    pub(crate) method: &'a str,
-    pub(crate) args: &'a [CallArgument],
-}
-
-pub(crate) fn dispatch_script_method_register_call(
-    vm: &Vm,
-    program: Option<&dyn UnlinkedProgramCode>,
-    host: &mut Option<&mut HostExecution<'_>>,
-    heap: &mut Option<&mut HeapExecution<'_>>,
-    budget: &mut Option<&mut ExecutionBudget>,
-    frame: &mut CallFrame,
-    call: ScriptMethodRegisterCall<'_>,
-) -> VmResult<()> {
-    if call.args.is_empty() {
-        return dispatch_script_method_call(
-            vm,
-            program,
-            host,
-            heap,
-            budget,
-            frame,
-            ScriptMethodCall {
-                dst: call.dst,
-                receiver: call.receiver,
-                method: call.method,
-                values: &[],
-            },
-        );
-    }
-    let values = script_function_calls::script_call_args_from_call_arguments(frame, call.args)?;
-    dispatch_script_method_call(
-        vm,
-        program,
-        host,
-        heap,
-        budget,
-        frame,
-        ScriptMethodCall {
-            dst: call.dst,
-            receiver: call.receiver,
-            method: call.method,
-            values: values.as_slice(),
-        },
-    )
-}
-
-pub(crate) fn dispatch_script_method_call(
-    vm: &Vm,
-    program: Option<&dyn UnlinkedProgramCode>,
-    host: &mut Option<&mut HostExecution<'_>>,
-    heap: &mut Option<&mut HeapExecution<'_>>,
-    budget: &mut Option<&mut ExecutionBudget>,
-    frame: &mut CallFrame,
-    call: ScriptMethodCall<'_>,
-) -> VmResult<()> {
-    if let Some(result) = call_readonly_method_without_callbacks(
-        &frame.read(call.receiver)?,
-        call.method,
-        None,
-        call.values,
-        heap.as_deref(),
-    ) {
-        let result =
-            store_value_in_heap_if_needed(result?, heap.as_deref_mut(), budget.as_deref_mut())?;
-        frame.write(call.dst, result)?;
-        return Ok(());
-    }
-
-    let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
-    if let Some(result) = call_non_mutating_method(
-        &frame.read(call.receiver)?,
-        call.method,
-        None,
-        call.values,
-        ScriptMethodDispatch {
-            vm,
-            program,
-            linked_program: None,
-            host: host.as_deref_mut(),
-            heap: heap.as_deref_mut(),
-            budget: budget.as_deref_mut(),
-            caller_roots,
-            inline_caches: None,
-            bytecode_profiler: None,
-        },
-    ) {
-        let result =
-            store_value_in_heap_if_needed(result?, heap.as_deref_mut(), budget.as_deref_mut())?;
-        frame.write(call.dst, result)?;
-    } else {
-        let mut receiver_value = frame.read(call.receiver)?;
-        let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
-        let result = call_method(
-            &mut receiver_value,
-            call.method,
-            None,
-            call.values,
-            ScriptMethodDispatch {
-                vm,
-                program,
-                linked_program: None,
-                host: host.as_deref_mut(),
-                heap: heap.as_deref_mut(),
-                budget: budget.as_deref_mut(),
-                caller_roots,
-                inline_caches: None,
-                bytecode_profiler: None,
-            },
-        )?;
-        let result =
-            store_value_in_heap_if_needed(result, heap.as_deref_mut(), budget.as_deref_mut())?;
-        frame.write(call.receiver, receiver_value)?;
-        frame.write(call.dst, result)?;
-    }
-    Ok(())
-}
+use crate::script_methods::{ScriptMethodDispatch, call_method_id};
 
 pub(crate) struct ScriptMethodIdCall<'a> {
     pub(crate) dst: Register,
@@ -161,91 +31,6 @@ pub(crate) struct ScriptMethodIdCall<'a> {
     pub(crate) method: &'a str,
     pub(crate) method_id: MethodId,
     pub(crate) values: &'a [Value],
-}
-
-pub(crate) struct ScriptMethodIdRegisterCall<'a> {
-    pub(crate) dst: Register,
-    pub(crate) receiver: Register,
-    pub(crate) method: &'a str,
-    pub(crate) method_id: MethodId,
-    pub(crate) args: &'a [CallArgument],
-}
-
-pub(crate) fn dispatch_script_method_id_register_call(
-    vm: &Vm,
-    program: Option<&dyn UnlinkedProgramCode>,
-    host: &mut Option<&mut HostExecution<'_>>,
-    heap: &mut Option<&mut HeapExecution<'_>>,
-    budget: &mut Option<&mut ExecutionBudget>,
-    frame: &mut CallFrame,
-    call: ScriptMethodIdRegisterCall<'_>,
-) -> VmResult<()> {
-    if call.args.is_empty() {
-        return dispatch_script_method_id_call(
-            vm,
-            program,
-            host,
-            heap,
-            budget,
-            frame,
-            ScriptMethodIdCall {
-                dst: call.dst,
-                receiver: call.receiver,
-                method: call.method,
-                method_id: call.method_id,
-                values: &[],
-            },
-        );
-    }
-    let values = script_function_calls::script_call_args_from_call_arguments(frame, call.args)?;
-    dispatch_script_method_id_call(
-        vm,
-        program,
-        host,
-        heap,
-        budget,
-        frame,
-        ScriptMethodIdCall {
-            dst: call.dst,
-            receiver: call.receiver,
-            method: call.method,
-            method_id: call.method_id,
-            values: values.as_slice(),
-        },
-    )
-}
-
-pub(crate) fn dispatch_script_method_id_call(
-    vm: &Vm,
-    program: Option<&dyn UnlinkedProgramCode>,
-    host: &mut Option<&mut HostExecution<'_>>,
-    heap: &mut Option<&mut HeapExecution<'_>>,
-    budget: &mut Option<&mut ExecutionBudget>,
-    frame: &mut CallFrame,
-    call: ScriptMethodIdCall<'_>,
-) -> VmResult<()> {
-    let mut receiver_value = frame.read(call.receiver)?;
-    let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
-    let result = call_method_id(
-        &mut receiver_value,
-        call.method,
-        call.method_id,
-        call.values,
-        ScriptMethodDispatch {
-            vm,
-            program,
-            linked_program: None,
-            host: host.as_deref_mut(),
-            heap: heap.as_deref_mut(),
-            budget: budget.as_deref_mut(),
-            caller_roots,
-            inline_caches: None,
-            bytecode_profiler: None,
-        },
-    )?;
-    let result = store_value_in_heap_if_needed(result, heap.as_deref_mut(), budget.as_deref_mut())?;
-    frame.write(call.receiver, receiver_value)?;
-    frame.write(call.dst, result)
 }
 
 pub(crate) fn dispatch_linked_method_id_call(
@@ -266,8 +51,7 @@ pub(crate) fn dispatch_linked_method_id_call(
         call.values,
         ScriptMethodDispatch {
             vm,
-            program: None,
-            linked_program: Some(context.program),
+            program: context.program,
             host: host.as_deref_mut(),
             heap: heap.as_deref_mut(),
             budget: budget.as_deref_mut(),
@@ -573,8 +357,7 @@ fn dispatch_linked_dynamic_method_call_inner(
                 let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
                 let mut runtime = EqualityRuntime {
                     vm,
-                    program: None,
-                    linked_program: Some(context.program),
+                    program: context.program,
                     host: host.as_deref_mut(),
                     heap: heap.as_deref_mut(),
                     budget: budget.as_deref_mut(),
@@ -617,8 +400,7 @@ fn dispatch_linked_dynamic_method_call_inner(
             let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
             let mut dispatch = callback_method_dispatch::CallbackMethodDispatch {
                 vm,
-                program: None,
-                linked_program: Some(context.program),
+                program: context.program,
                 host: host.as_deref_mut(),
                 heap: heap.as_deref_mut(),
                 budget: budget.as_deref_mut(),
@@ -1066,8 +848,7 @@ fn linked_standard_value_method_result(
         let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
         let mut runtime = EqualityRuntime {
             vm,
-            program: None,
-            linked_program: Some(context.program),
+            program: context.program,
             host: host.as_deref_mut(),
             heap: heap.as_deref_mut(),
             budget: budget.as_deref_mut(),
@@ -1237,8 +1018,7 @@ fn linked_callback_value_method_result(
     let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
     let mut dispatch = callback_method_dispatch::CallbackMethodDispatch {
         vm,
-        program: None,
-        linked_program: Some(context.program),
+        program: context.program,
         host: host.as_deref_mut(),
         heap: heap.as_deref_mut(),
         budget: budget.as_deref_mut(),

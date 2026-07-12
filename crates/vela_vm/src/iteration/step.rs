@@ -1,6 +1,6 @@
-use crate::runtime_checks::{expect_int, validate_jump};
+use crate::runtime_checks::expect_int;
 use crate::{CallFrame, Value, VmError, VmErrorKind, VmResult};
-use vela_bytecode::{InstructionOffset, LinkedCodeObject, Register, UnlinkedCodeObject};
+use vela_bytecode::{InstructionOffset, LinkedCodeObject, Register};
 
 use super::IterRuntime;
 
@@ -13,14 +13,6 @@ pub(crate) struct RangeNextStep {
     pub(crate) jump_if_done: InstructionOffset,
 }
 
-pub(crate) fn dispatch_range_next(
-    runtime: IterRuntime<'_, '_, '_>,
-    code: &UnlinkedCodeObject,
-    step: RangeNextStep,
-) -> VmResult<Option<usize>> {
-    dispatch_range_next_with(runtime.frame, step, |offset| validate_jump(code, offset))
-}
-
 pub(crate) fn dispatch_linked_range_next(
     runtime: IterRuntime<'_, '_, '_>,
     code: &LinkedCodeObject,
@@ -30,15 +22,6 @@ pub(crate) fn dispatch_linked_range_next(
         debug_assert!(offset <= code.instructions.len());
         Ok(())
     })
-}
-
-#[inline(always)]
-pub(crate) fn dispatch_i64_range_next(
-    frame: &mut CallFrame,
-    code: &UnlinkedCodeObject,
-    step: RangeNextStep,
-) -> VmResult<Option<usize>> {
-    dispatch_i64_range_next_with(frame, step, |offset| validate_jump(code, offset))
 }
 
 #[inline(always)]

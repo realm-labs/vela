@@ -13,7 +13,6 @@ mod container_contracts;
 mod dynamic_method_resolution;
 mod equality;
 pub mod error;
-mod execution;
 mod field_access;
 mod format_strings;
 mod frame;
@@ -59,7 +58,6 @@ mod small_storage;
 mod standard_method_cache;
 mod std_method_ids;
 mod stdlib;
-mod string_method_dispatch;
 mod string_methods;
 mod try_propagation;
 mod tuple_fields;
@@ -92,18 +90,17 @@ pub(crate) use reflection_values::{
     runtime_value_to_reflect, value_from_reflect, value_to_reflect,
 };
 pub(crate) use runtime_checks::{expect_arity, expect_host_ref, expect_string};
-use runtime_checks::{expect_int, is_truthy, validate_jump};
+use runtime_checks::{expect_int, is_truthy};
 #[cfg(test)]
 pub(crate) use script_object::ScriptFields;
 use small_storage::SmallStorage;
-#[cfg(test)]
-use vela_bytecode::UnlinkedProgram;
 use vela_bytecode::{
     CacheSiteId, DebugNameId, FieldSlot, HostTargetPlanId, InstructionOffset, LinkedArtifact,
-    LinkedProgram, MethodDispatchHandle, Register, ScriptFunctionHandle, UnlinkedCodeObject,
-    UnlinkedInstructionKind, UnlinkedProgramCode,
+    LinkedProgram, MethodDispatchHandle, ScriptFunctionHandle,
 };
-use vela_common::{GlobalSlot, HostMethodId, HostTypeId, ShapeId, Span};
+#[cfg(test)]
+use vela_bytecode::{Register, UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgram};
+use vela_common::{GlobalSlot, HostMethodId, HostTypeId, ShapeId};
 use vela_def::{DefPath, FunctionId, MethodId, TypeId};
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::resolved::{HostAccessOp, HostSchemaEpoch, ResolvedHostAccess};
@@ -113,24 +110,6 @@ use vela_reflect::registry::TypeRegistry;
 
 use budget::ExecutionBudget;
 use value::Value;
-
-pub(crate) struct ExecutionCall<'a> {
-    pub(crate) code: &'a UnlinkedCodeObject,
-    pub(crate) program: Option<&'a dyn UnlinkedProgramCode>,
-    pub(crate) captures: &'a [Value],
-    pub(crate) args: &'a [Value],
-    pub(crate) check_param_guards: bool,
-    pub(crate) call_site: Option<Span>,
-    pub(crate) call_site_offset: Option<InstructionOffset>,
-    pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
-}
-
-impl ExecutionCall<'_> {
-    fn stack_frame(&self) -> VmStackFrame {
-        VmStackFrame::new(self.code.name.clone(), self.call_site)
-            .with_bytecode_offset(self.call_site_offset)
-    }
-}
 
 pub type NativeFunction =
     Arc<dyn Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static>;
@@ -987,72 +966,6 @@ impl Vm {
             .heap
             .collect_full_with_budget(&roots, Some(call.budget));
         Ok(result)
-    }
-
-    pub(crate) fn execute_call(
-        &self,
-        call: ExecutionCall<'_>,
-        host: Option<&mut HostExecution<'_>>,
-        heap: Option<&mut HeapExecution<'_>>,
-        mut budget: Option<&mut ExecutionBudget>,
-    ) -> VmResult<Value> {
-        let limits_call_depth = budget
-            .as_deref()
-            .is_some_and(ExecutionBudget::limits_call_depth);
-        if limits_call_depth {
-            let budget = budget
-                .as_deref_mut()
-                .expect("call-depth budget mode requires a budget");
-            budget
-                .enter_call()
-                .map_err(|error| error.with_call_frame(call.stack_frame()))?;
-        }
-        let frame = call.stack_frame();
-        let fallback_span = call.call_site.or_else(|| {
-            call.code
-                .instructions
-                .first()
-                .and_then(|instruction| instruction.span)
-        });
-        let result = self
-            .execute_body(call, host, heap, budget.as_deref_mut())
-            .map_err(|error| {
-                error
-                    .with_source_span_if_absent(fallback_span)
-                    .with_call_frame(frame)
-            });
-        if limits_call_depth {
-            budget
-                .expect("call-depth budget mode requires a budget")
-                .exit_call();
-        }
-        result
-    }
-
-    pub(crate) fn execute_code_object(
-        &self,
-        code: &UnlinkedCodeObject,
-        program: Option<&dyn UnlinkedProgramCode>,
-        args: &[Value],
-        host: Option<&mut HostExecution<'_>>,
-        heap: Option<&mut HeapExecution<'_>>,
-        budget: Option<&mut ExecutionBudget>,
-    ) -> VmResult<Value> {
-        self.execute_call(
-            ExecutionCall {
-                code,
-                program,
-                captures: &[],
-                args,
-                check_param_guards: true,
-                call_site: None,
-                call_site_offset: None,
-                inline_caches: None,
-            },
-            host,
-            heap,
-            budget,
-        )
     }
 }
 

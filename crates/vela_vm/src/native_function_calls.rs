@@ -8,12 +8,12 @@ use crate::{
     VmError, VmErrorKind, VmInlineCaches, VmResult, owned_to_value, value::Value, value_to_owned,
 };
 
-pub(crate) struct NativeFunctionCall<'a> {
-    pub(crate) dst: Option<Register>,
-    pub(crate) name: &'a str,
-    pub(crate) native: FunctionId,
-    pub(crate) args: &'a [Register],
-    pub(crate) call_site: Option<Span>,
+struct NativeFunctionCall<'a> {
+    dst: Option<Register>,
+    name: &'a str,
+    native: FunctionId,
+    args: &'a [Register],
+    call_site: Option<Span>,
 }
 
 pub(crate) struct LinkedNativeFunctionCall<'a> {
@@ -44,23 +44,6 @@ impl NativeCallTarget {
             Self::BorrowedHost(_) => "borrowed_host",
         }
     }
-}
-
-pub(crate) fn dispatch_native_function_call(
-    vm: &Vm,
-    host: &mut Option<&mut HostExecution<'_>>,
-    heap: &mut Option<&mut HeapExecution<'_>>,
-    budget: &mut Option<&mut ExecutionBudget>,
-    frame: &mut CallFrame,
-    call: NativeFunctionCall<'_>,
-) -> VmResult<()> {
-    let Some(target) = resolve_native_call_target_by_id(vm, call.native) else {
-        return Err(VmError::new(VmErrorKind::UnknownNative {
-            name: call.name.to_owned(),
-        })
-        .with_source_span_if_absent(call.call_site));
-    };
-    dispatch_resolved_native_function_call(host, heap, budget, frame, &call, target)
 }
 
 pub(crate) fn dispatch_linked_native_function_call(

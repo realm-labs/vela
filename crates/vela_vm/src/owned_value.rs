@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use vela_bytecode::{Constant, UnlinkedCodeObject};
+use vela_bytecode::{Constant, LinkedArtifact, ScriptFunctionHandle};
 use vela_common::ScalarValue;
 use vela_host::path::HostRef;
 use vela_host::proxy::PathProxy;
@@ -337,7 +337,8 @@ impl OwnedMapEntry {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct OwnedClosureValue {
-    pub(crate) code: Arc<UnlinkedCodeObject>,
+    pub(crate) owner: Arc<LinkedArtifact>,
+    pub(crate) function: ScriptFunctionHandle,
     pub(crate) captures: Vec<OwnedValue>,
 }
 

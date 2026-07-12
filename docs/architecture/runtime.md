@@ -21,6 +21,12 @@ not rebuild or rebase cache operands by function name. Multiple runtimes may
 share the immutable artifact, while each owns isolated heap/global/cache/profile
 state.
 
+Unlinked bytecode is a compiler, verifier, linker, and test-fixture format. It
+is never interpreted. Every runtime entry links first, then executes through
+the single linked instruction loop; frames and closures retain an
+`Arc<LinkedArtifact>` so nested calls and retained closures cannot resolve
+generation-local handles against a different program version.
+
 Stable semantic IDs (`FunctionId`, `MethodId`, `TypeId`, `FieldId`,
 `VariantId`, and schema/shape identities) may be compared across generations.
 Dense executable handles, MIR IDs, cache sites, profile slots, bytecode

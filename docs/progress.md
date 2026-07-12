@@ -31,15 +31,15 @@ required.
 
 ## Current Focus
 
-The MIR/executable-generation implementation is landed through Batch E, but a
-second review reopened completion as Batch F / Phase 11 in
+The MIR/executable-generation implementation is complete through Batch F /
+Phase 11 in
 [mir-executable-generation-architecture-plan.md](mir-executable-generation-architecture-plan.md).
-The remaining work must make bound `LinkedArtifact` a distinct non-optional
-type, remove production unlinked compatibility execution, reject coordinated
-budget charge/origin moves through an independently sealed mapping, generate
-cache policy and operand access from one exhaustive authority, project lexical
-scope as MIR program-point facts, and correct the mixed-toolchain performance
-comparison. No M22 execution path belongs in this batch.
+`LinkedArtifact` is the sole production executable generation: compiler output
+remains unlinked only until verification and linking, while the VM, frames,
+closures, callbacks, iterator guards, and runtime container contracts execute
+through the single linked interpreter. The former unlinked compatibility
+interpreter and its duplicate dispatch APIs are removed. No M22 execution path
+belongs to this batch.
 
 Batch A (Phases 0-3) is complete. Production bytecode compilation borrows an
 owned, sealed verified MIR generation with stable root mappings, distinct

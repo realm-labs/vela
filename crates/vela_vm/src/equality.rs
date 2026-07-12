@@ -1,10 +1,7 @@
 use std::cmp::Ordering;
 use std::sync::Arc;
 use vela_bytecode::linked::LinkedMethodDispatchKind;
-use vela_bytecode::{
-    LinkedProgram, UnlinkedProgramCode, derived_linked_record_trait_fields,
-    derived_record_trait_fields,
-};
+use vela_bytecode::{LinkedProgram, derived_linked_record_trait_fields};
 use vela_def::{MethodId, script_trait_method_id};
 use vela_reflect::registry::TypeRegistry;
 
@@ -35,8 +32,7 @@ fn values_equal(lhs: &Value, rhs: &Value, heap: Option<&HeapExecution<'_>>) -> V
 
 pub(crate) struct EqualityRuntime<'a, 'host, 'heap> {
     pub(crate) vm: &'a Vm,
-    pub(crate) program: Option<&'a dyn UnlinkedProgramCode>,
-    pub(crate) linked_program: Option<&'a LinkedProgram>,
+    pub(crate) program: &'a LinkedProgram,
     pub(crate) host: Option<&'a mut HostExecution<'host>>,
     pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
     pub(crate) budget: Option<&'a mut ExecutionBudget>,
@@ -184,14 +180,8 @@ fn derived_record_field_pairs(
     type_name: &str,
     trait_name: &str,
 ) -> VmResult<Option<Vec<(Value, Value)>>> {
-    let Some(field_names) = runtime
-        .program
-        .and_then(|program| derived_record_trait_fields(program, type_name, trait_name))
-        .or_else(|| {
-            runtime.linked_program.and_then(|program| {
-                derived_linked_record_trait_fields(program, type_name, trait_name)
-            })
-        })
+    let Some(field_names) =
+        derived_linked_record_trait_fields(runtime.program, type_name, trait_name)
     else {
         return Ok(None);
     };
@@ -371,78 +361,50 @@ fn call_builtin_trait_method(
     method_id: MethodId,
     method_name: &'static str,
 ) -> VmResult<Option<Value>> {
-    if let Some(program) = runtime.program {
-        let Some(function) = program.script_method_by_id(type_name, method_id) else {
-            return Ok(None);
-        };
-        let args = SmallStorage::try_from_prefix_and_slice_map(*lhs, &[*rhs], 2, |arg| {
-            Ok::<_, VmError>(*arg)
-        })?;
-        let protected_root_len = runtime
-            .heap
-            .as_deref_mut()
-            .map(|heap| runtime.caller_roots.push_to_heap(heap));
-        let result = runtime.vm.execute_code_object(
-            function,
-            runtime.program,
-            args.as_slice(),
-            runtime.host.as_deref_mut(),
-            runtime.heap.as_deref_mut(),
-            runtime.budget.as_deref_mut(),
-        );
-        if let (Some(heap), Some(protected_root_len)) =
-            (runtime.heap.as_deref_mut(), protected_root_len)
-        {
-            heap.truncate_protected_roots(protected_root_len);
-        }
-        result.map(Some)
-    } else if let Some(program) = runtime.linked_program {
-        let Some(target) = linked_builtin_trait_target(program, type_name, method_name, method_id)
-        else {
-            return Ok(None);
-        };
-        program.function(target.function).ok_or_else(|| {
-            VmError::new(VmErrorKind::UnknownMethod {
-                method: method_name.to_owned(),
-            })
-        })?;
-        let args = SmallStorage::try_from_prefix_and_slice_map(*lhs, &[*rhs], 2, |arg| {
-            Ok::<_, VmError>(*arg)
-        })?;
-        let protected_root_len = runtime
-            .heap
-            .as_deref_mut()
-            .map(|heap| runtime.caller_roots.push_to_heap(heap));
-        let owner = Arc::clone(runtime.caller_roots.linked_owner().ok_or_else(|| {
-            VmError::new(VmErrorKind::UnknownMethod {
-                method: method_name.to_owned(),
-            })
-        })?);
-        let result = runtime.vm.execute_linked_call(
-            LinkedExecutionCall {
-                owner,
-                function: target.function,
-                captures: &[],
-                args: args.as_slice(),
-                check_param_guards: true,
-                call_site: None,
-                call_site_offset: None,
-                inline_caches: runtime.inline_caches,
-                bytecode_profiler: runtime.bytecode_profiler,
-            },
-            runtime.host.as_deref_mut(),
-            runtime.heap.as_deref_mut(),
-            runtime.budget.as_deref_mut(),
-        );
-        if let (Some(heap), Some(protected_root_len)) =
-            (runtime.heap.as_deref_mut(), protected_root_len)
-        {
-            heap.truncate_protected_roots(protected_root_len);
-        }
-        result.map(Some)
-    } else {
-        Ok(None)
+    let Some(target) =
+        linked_builtin_trait_target(runtime.program, type_name, method_name, method_id)
+    else {
+        return Ok(None);
+    };
+    runtime.program.function(target.function).ok_or_else(|| {
+        VmError::new(VmErrorKind::UnknownMethod {
+            method: method_name.to_owned(),
+        })
+    })?;
+    let args = SmallStorage::try_from_prefix_and_slice_map(*lhs, &[*rhs], 2, |arg| {
+        Ok::<_, VmError>(*arg)
+    })?;
+    let protected_root_len = runtime
+        .heap
+        .as_deref_mut()
+        .map(|heap| runtime.caller_roots.push_to_heap(heap));
+    let owner = Arc::clone(runtime.caller_roots.linked_owner().ok_or_else(|| {
+        VmError::new(VmErrorKind::UnknownMethod {
+            method: method_name.to_owned(),
+        })
+    })?);
+    let result = runtime.vm.execute_linked_call(
+        LinkedExecutionCall {
+            owner,
+            function: target.function,
+            captures: &[],
+            args: args.as_slice(),
+            check_param_guards: true,
+            call_site: None,
+            call_site_offset: None,
+            inline_caches: runtime.inline_caches,
+            bytecode_profiler: runtime.bytecode_profiler,
+        },
+        runtime.host.as_deref_mut(),
+        runtime.heap.as_deref_mut(),
+        runtime.budget.as_deref_mut(),
+    );
+    if let (Some(heap), Some(protected_root_len)) =
+        (runtime.heap.as_deref_mut(), protected_root_len)
+    {
+        heap.truncate_protected_roots(protected_root_len);
     }
+    result.map(Some)
 }
 
 #[derive(Clone, Copy)]

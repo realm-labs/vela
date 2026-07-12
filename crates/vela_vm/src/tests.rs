@@ -12,7 +12,7 @@ use vela_bytecode::{
     CacheSiteKind, Constant, ConstantId, InstructionOffset, LinkedArtifact, LinkedProgram, Linker,
     UnlinkedInstruction,
 };
-use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
+use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId, Span};
 use vela_def::{FieldId, FunctionId, MethodId, TypeId, VariantId};
 use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
 use vela_host::access::HostAccess;

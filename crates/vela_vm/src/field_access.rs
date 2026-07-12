@@ -19,18 +19,6 @@ pub(crate) fn dispatch_get_record_field(
     frame.write(dst, value)
 }
 
-pub(crate) fn dispatch_get_record_slot(
-    frame: &mut CallFrame,
-    heap: Option<&mut HeapExecution<'_>>,
-    dst: Register,
-    record: Register,
-    field: &str,
-    slot: usize,
-) -> VmResult<()> {
-    let value = get_record_slot_value(&frame.read(record)?, field, slot, heap.as_deref())?;
-    frame.write(dst, value)
-}
-
 pub(crate) fn dispatch_linked_get_record_slot(
     frame: &mut CallFrame,
     heap: Option<&mut HeapExecution<'_>>,
@@ -63,21 +51,6 @@ pub(crate) fn dispatch_set_record_field(
     let mut record_value = frame.read(record)?;
     let src = frame.read(src)?;
     record_fields::set_record_field_value(&mut record_value, field, &src, heap, budget)?;
-    frame.write(record, record_value)
-}
-
-pub(crate) fn dispatch_set_record_slot(
-    frame: &mut CallFrame,
-    heap: Option<&mut HeapExecution<'_>>,
-    budget: Option<&mut ExecutionBudget>,
-    record: Register,
-    field: &str,
-    slot: usize,
-    src: Register,
-) -> VmResult<()> {
-    let mut record_value = frame.read(record)?;
-    let src = frame.read(src)?;
-    record_fields::set_record_slot_value(&mut record_value, field, slot, &src, heap, budget)?;
     frame.write(record, record_value)
 }
 
@@ -178,18 +151,6 @@ pub(crate) fn dispatch_linked_get_enum_slot(
         program.debug_name(debug_name),
         field.index(),
     )
-}
-
-pub(crate) fn dispatch_enum_tag_equal(
-    frame: &mut CallFrame,
-    heap: Option<&HeapExecution<'_>>,
-    dst: Register,
-    value: Register,
-    enum_name: &str,
-    variant: &str,
-) -> VmResult<()> {
-    let matches = enum_tag_equal(&frame.read(value)?, enum_name, variant, heap);
-    frame.write(dst, Value::Bool(matches))
 }
 
 pub(crate) fn dispatch_linked_enum_tag_equal(
@@ -487,25 +448,6 @@ pub(crate) fn get_enum_slot_value(
                 })
         }
         _ => type_error("enum slot"),
-    }
-}
-
-pub(crate) fn enum_tag_equal(
-    value: &Value,
-    enum_name: &str,
-    variant: &str,
-    heap: Option<&HeapExecution<'_>>,
-) -> bool {
-    match value {
-        Value::HeapRef(reference) => matches!(
-            heap.and_then(|heap| heap.heap.get(*reference)),
-            Some(HeapValue::Enum {
-                enum_name: value_enum,
-                variant: value_variant,
-                ..
-            }) if value_enum == enum_name && value_variant == variant
-        ),
-        _ => false,
     }
 }
 
