@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), deny(clippy::wildcard_imports))]
+
 //! Register bytecode for Vela code objects.
 
 pub(crate) mod artifact;

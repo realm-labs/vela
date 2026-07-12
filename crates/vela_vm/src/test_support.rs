@@ -1,3 +1,5 @@
+//! Shared VM compilation support for unit tests, integration tests, and benchmarks.
+
 use vela_bytecode::UnlinkedCodeObject;
 use vela_bytecode::compiler::error::{CompileError, CompileErrorKind, CompileResult};
 use vela_bytecode::compiler::options::CompilerOptions;

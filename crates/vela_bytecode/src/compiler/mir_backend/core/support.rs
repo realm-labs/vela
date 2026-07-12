@@ -1,4 +1,17 @@
-use super::*;
+use std::collections::BTreeSet;
+
+use vela_host::resolved::HostMutationOp;
+use vela_mir::{
+    MirBinaryOp, MirBlockId, MirComparisonOp, MirDynamicBinaryOp, MirFunction, MirGuardLocation,
+    MirHostMutation, MirNumericBinaryOp, MirProgram, MirTerminatorKind, MirTypeContract,
+};
+
+use crate::{
+    GuardKind, GuardLocation, Register, StandardTypeGuard, UnlinkedGuardContext,
+    UnlinkedInstructionKind, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
+};
+
+use super::MirBackendError;
 
 pub(super) fn binary_instruction(
     operation: MirBinaryOp,

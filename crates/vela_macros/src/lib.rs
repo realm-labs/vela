@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), deny(clippy::wildcard_imports))]
+
 //! Derive macros for Vela host embedding metadata.
 
 mod attrs;

@@ -9,7 +9,12 @@ use vela_mir::{
     CompileDynamicCallArgument, CompilePlacedCallArgument, MirBuildError, MirSourceOrigin,
 };
 
-use super::*;
+use super::{
+    CompileCallArguments, CompileCallTarget, CompileCalleeTarget, CompileError,
+    CompilePlacedCallValue, CompileResult, ContractBoundary, FunctionId, GenerationBuilder,
+    checked_u32, input_error,
+};
+use crate::compiler::semantic_input::schema::registry_hint_contract;
 
 impl GenerationBuilder<'_, '_> {
     pub(super) fn checked_call_placement(

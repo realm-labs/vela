@@ -1,38 +1,34 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use vela_host::resolved::HostMutationOp;
 use vela_host::target::HostTargetPlan;
 use vela_mir::{
     CompileTryFamily, CompileTryTarget, DebugLocalKind, MirAggregate, MirBackendHandoff,
-    MirBinaryOp, MirBlockId, MirCall, MirComparisonOp, MirContextualBinaryOp, MirDynamicBinaryOp,
-    MirDynamicUnaryOp, MirFieldTarget, MirFormatPart, MirFunction, MirFunctionAnalyses,
-    MirFunctionId, MirGlobalOperation, MirGuardAssumption, MirGuardLocation, MirHostMutation,
-    MirHostOperation, MirHostPath, MirHostPathSegment, MirIdentityOp, MirImmediate, MirIndexKey,
-    MirIndexOperation, MirIteratorOperation, MirLiteralSide, MirNumericBinaryOp, MirOperand,
+    MirBinaryOp, MirBlockId, MirCall, MirContextualBinaryOp, MirDynamicUnaryOp, MirFieldTarget,
+    MirFormatPart, MirFunction, MirFunctionAnalyses, MirFunctionId, MirGlobalOperation,
+    MirGuardAssumption, MirHostOperation, MirHostPath, MirHostPathSegment, MirIdentityOp,
+    MirImmediate, MirIndexKey, MirIndexOperation, MirIteratorOperation, MirLiteralSide, MirOperand,
     MirPatternPredicate, MirPlace, MirProgram, MirReflectionOperation, MirRvalue,
     MirScriptParameterGuardMode, MirStatementId, MirStatementKind, MirSwitchValue,
-    MirTerminatorKind, MirTypeContract, MirUnaryOp,
+    MirTerminatorKind, MirUnaryOp,
 };
 
 use crate::{
     BinaryLiteralOp, BinaryLiteralSide, CacheSiteId, CallArgument, Constant, DynamicCallArgument,
     FormatStringPart, FrameSlotInfo, FrameSlotKind, FunctionIndex, GuardKind, GuardLocation,
-    InstructionOffset, Register, ScriptCallMode, StandardTypeGuard, TryPropagateFamily,
-    UnlinkedCodeObject, UnlinkedGuardContext, UnlinkedInstruction, UnlinkedInstructionKind,
-    UnlinkedParameterTypeGuard, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
+    InstructionOffset, Register, ScriptCallMode, TryPropagateFamily, UnlinkedCodeObject,
+    UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedParameterTypeGuard,
 };
 
 use crate::compiler::cache_sites::{attach_cache_site, cache_site_kind};
 use crate::compiler::constant_encoding::encode_evaluated_constant;
 
-#[path = "operations.rs"]
 mod operations;
-#[path = "physical.rs"]
 mod physical;
-#[path = "support.rs"]
 mod support;
 
-use support::*;
+use support::{
+    dynamic_binary_instruction, guard_kind, guard_location, mir_reaches, mir_successors, type_guard,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum MirBackendError {

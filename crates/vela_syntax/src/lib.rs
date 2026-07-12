@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), deny(clippy::wildcard_imports))]
+
 //! Lexer and parser for Vela source files.
 
 pub mod ast;

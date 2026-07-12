@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), deny(clippy::wildcard_imports))]
+
 //! Shared foundations for Vela crates.
 
 pub mod diagnostic_render;

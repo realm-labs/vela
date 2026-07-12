@@ -1,4 +1,17 @@
-use super::*;
+use std::collections::BTreeSet;
+
+use vela_common::{Diagnostic, SourceId, Span};
+
+use crate::attributes::HirAttribute;
+use crate::binding::BindingMap;
+use crate::body::{HirBody, HirField, HirIndex, HirPath, HirPathKind};
+use crate::ids::{HirBodyId, HirDeclId, HirExprId, HirLocalId, HirNodeId, HirPatternId, ModuleId};
+use crate::type_hint::{
+    ConstMetadata, EnumShape, FunctionSignature, GlobalMetadata, ImplMetadata, StructShape,
+    TraitShape,
+};
+
+use super::{Declaration, DeclarationIndex, DeclarationKind, Import, ModuleGraph, ModulePath};
 
 impl ModuleGraph {
     #[must_use]

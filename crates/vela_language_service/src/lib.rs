@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), deny(clippy::wildcard_imports))]
+
 //! Editor-neutral language-service workspace state.
 
 mod call_hierarchy;

@@ -1,4 +1,11 @@
-use super::*;
+use super::support::host_mutation;
+use super::{
+    CacheSiteId, CallArgument, CompileTryFamily, CompileTryTarget, DynamicCallArgument,
+    FunctionBackend, HostTargetPlan, InstructionOffset, MirBackendError, MirBlockId, MirCall,
+    MirHostOperation, MirHostPath, MirHostPathSegment, MirImmediate, MirReflectionOperation,
+    MirScriptParameterGuardMode, MirTerminatorKind, Register, ScriptCallMode, TryPropagateFamily,
+    UnlinkedInstructionKind,
+};
 
 impl<'a> FunctionBackend<'a> {
     pub(super) fn call(

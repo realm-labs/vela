@@ -140,6 +140,8 @@ keep ordinary source files under 1200 lines unless a clear exception is document
 review over-threshold active files and split them by responsibility when no exception exists
 split large files by crate/module responsibility
 use Rust `mod` boundaries for handwritten source; reserve `include!` for generated code
+use standard Rust module file resolution in production; reserve `#[path]` for justified test or cross-target sharing
+use explicit production imports; wildcard imports are allowed only in test code
 split large functions when control flow stops being locally understandable
 extract cohesive parameter structs when function signatures grow around one concept
 replace accumulating conditional branches with match, enum-driven dispatch, tables, or focused helper types

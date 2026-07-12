@@ -216,6 +216,10 @@ Handwritten Rust source uses real `mod` boundaries with the narrowest required
 `pub(super)` or `pub(crate)` surface. `include!` is reserved for generated code
 whose build-time origin is explicit; it must not be used to concatenate
 handwritten implementation or test fragments into one privacy scope.
+Production modules use standard Rust module file resolution and explicit
+imports. `#[path]` is reserved for justified test or cross-target code sharing,
+and production wildcard imports are denied at crate roots while test modules
+may use them for local fixtures.
 
 ### Source Pipeline
 

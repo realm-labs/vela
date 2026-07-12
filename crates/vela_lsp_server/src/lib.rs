@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), deny(clippy::wildcard_imports))]
+
 //! Native LSP protocol boundary for Vela editor tooling.
 
 #[cfg(test)]

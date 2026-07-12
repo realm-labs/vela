@@ -14,7 +14,6 @@ use crate::{
     symbol_ref::{qualified_source_declaration_path, source_symbol_for_declaration},
 };
 
-#[path = "diagnostics/syntax_analysis.rs"]
 mod syntax_analysis;
 
 pub(crate) const UNUSED_IMPORT_CODE: &str = "lsp::unused_import";

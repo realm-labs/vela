@@ -1,5 +1,12 @@
-use super::*;
 use vela_common::Diagnostic;
+use vela_hir::type_hint::EnumVariantFieldsHint;
+
+use super::{
+    CallTargetFact, CompileError, CompileErrorKind, CompileReflectionCall, CompileResult,
+    ContractBoundary, FieldId, FunctionId, GenerationBuilder, HirBody, HirExprId, HirExprKind,
+    HirPathKind, HirPathOwner, HirPatternKind, HirTypeHint, MirBuildError, MirSourceOrigin,
+    PrimitiveTag, StructFieldHint, TypeFact, TypeId, input_error, registry_input_error,
+};
 
 pub(super) fn require_analysis_call_target(
     target: Option<&CallTargetFact>,

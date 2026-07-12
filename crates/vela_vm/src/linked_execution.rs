@@ -4,7 +4,28 @@ use vela_bytecode::linked::InstructionKind;
 use vela_bytecode::{InstructionOffset, LinkedArtifact, Register, ScriptFunctionHandle};
 use vela_common::Span;
 
-use super::*;
+use crate::budget::ExecutionBudget;
+use crate::error::{VmError, VmErrorKind, VmResult, VmStackFrame};
+use crate::frame::CallFrame;
+use crate::heap_execution::HeapExecution;
+use crate::numeric_ops::{
+    add_numeric, binary_float_literal_numeric, binary_int_literal_numeric, div_numeric,
+    mul_numeric, negate_numeric, rem_numeric, sub_numeric,
+};
+use crate::runtime_checks::is_truthy;
+use crate::value::Value;
+use crate::{
+    EqualityRuntime, HostExecution, Vm, VmBytecodeProfiler, VmInlineCaches, identity_equal,
+    identity_not_equal, validate_inline_cache_layout, values_equal_with_traits,
+    values_greater_equal_with_traits, values_greater_with_traits, values_less_equal_with_traits,
+    values_less_with_traits, values_not_equal_with_traits,
+};
+use crate::{
+    closure_calls, constant_loads, field_access, format_strings, host_access, i64_ops, indexing,
+    iteration, native_function_calls, runtime_type_guards, script_aggregate_construction,
+    script_function_calls, script_method_calls, script_object_construction, try_propagation,
+    tuple_fields,
+};
 
 pub(crate) struct LinkedExecutionCall<'a> {
     pub(crate) owner: Arc<LinkedArtifact>,

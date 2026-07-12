@@ -4,21 +4,27 @@ mod host;
 mod support;
 mod targets;
 
-use host::*;
-use support::*;
-use targets::*;
+use host::verify_host;
+use support::{
+    arity_accepts, bad_target, constant_type, destination_accepts, destination_contract, error,
+    function_call_target, function_target, integer_or_dynamic, method_target, missing_target,
+    operand_is, place_type, require_local, require_type, rvalue_type, satisfies_contract,
+    switch_case, type_error, verify_abi, verify_contract, verify_descendant_origin, verify_origin,
+    verify_value_type,
+};
+use targets::{
+    verify_aggregate, verify_field_operation, verify_guard_use, verify_predicate_targets,
+};
 
 use vela_common::PrimitiveTag;
 
 use crate::operations::MirDestinationRequirement;
 use crate::{
-    CompileFunctionClass, CompileMethodClass, CompileParameterDefault, CompilePositionalPolicy,
-    CompileTypeClass, HostFieldTarget, HostMethodTarget, HostTypeTarget, MirAggregate, MirBinaryOp,
-    MirCall, MirConstantProvenance, MirContextualBinaryOp, MirDynamicBinaryOp, MirEffect,
-    MirFieldTarget, MirGlobalOperation, MirGuardAssumption, MirHostOperation, MirHostPath,
-    MirHostPathSegment, MirImmediate, MirIteratorOperation, MirOperand, MirPatternPredicate,
-    MirPlace, MirReflectionOperation, MirRvalue, MirSourceNode, MirSourceOrigin, MirStatementKind,
-    MirSwitchValue, MirTerminatorKind, MirTypeContract, MirUnaryOp, MirValueType,
+    CompileFunctionClass, CompileMethodClass, MirBinaryOp, MirCall, MirConstantProvenance,
+    MirContextualBinaryOp, MirDynamicBinaryOp, MirEffect, MirGlobalOperation, MirGuardAssumption,
+    MirIteratorOperation, MirOperand, MirPlace, MirReflectionOperation, MirRvalue, MirSourceNode,
+    MirSourceOrigin, MirStatementKind, MirTerminatorKind, MirTypeContract, MirUnaryOp,
+    MirValueType,
 };
 
 use super::cfg::FunctionGraph;

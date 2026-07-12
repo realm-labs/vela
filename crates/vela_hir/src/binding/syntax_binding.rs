@@ -3,19 +3,16 @@ use std::collections::BTreeMap;
 use vela_common::{Diagnostic, SourceId, Span};
 use vela_syntax::SyntaxToken;
 use vela_syntax::ast::{
-    AstNode, SyntaxArgument, SyntaxBlock, SyntaxElseBranch, SyntaxExpression, SyntaxExpressionKind,
-    SyntaxInterpolatedStringPart, SyntaxMapEntry, SyntaxParam, SyntaxPattern, SyntaxPatternKind,
-    SyntaxRecordExprField, SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
+    AstNode, SyntaxBlock, SyntaxExpression, SyntaxParam, SyntaxPattern, SyntaxPatternKind,
+    SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
 };
 
 use crate::binding::{
     BindingMap, BindingResolution, ImportBinding, LocalBinding, LocalBindingKind, PathUsage,
 };
 use crate::body::{
-    HirArgument, HirBody, HirBodyOwner, HirBodyRoot, HirCall, HirElseBranch, HirExprKind, HirField,
-    HirIf, HirIndex, HirLiteral, HirMapEntry, HirMatch, HirMatchArmBody, HirPathKind, HirPathOwner,
-    HirPatternKind, HirRecordField, HirRecordPatternField, HirScope, HirScopeKind, HirSourceOrigin,
-    HirStmtKind,
+    HirBody, HirBodyOwner, HirBodyRoot, HirPathKind, HirPathOwner, HirPatternKind,
+    HirRecordPatternField, HirScope, HirScopeKind, HirSourceOrigin, HirStmtKind,
 };
 use crate::ids::{
     HirBlockId, HirBodyId, HirCaptureId, HirDeclId, HirExprId, HirLocalId, HirPatternId,
@@ -29,9 +26,9 @@ mod lowering_values;
 mod resolution;
 mod scopes;
 
+use lowering_values::{hir_assign_op, hir_binary_op, hir_unary_op};
 use lowering_values::{
-    hir_assign_op, hir_binary_op, hir_literal, hir_path_kind_for_usage, hir_type_hint,
-    hir_unary_op, last_segment_span, span_for,
+    hir_literal, hir_path_kind_for_usage, hir_type_hint, last_segment_span, span_for,
 };
 
 pub(crate) struct SyntaxFunctionBindingInput<'a> {

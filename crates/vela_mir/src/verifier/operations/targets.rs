@@ -1,4 +1,16 @@
-use super::*;
+use std::collections::BTreeSet;
+
+use crate::verifier::{FunctionVerifier, MirVerifyError, MirVerifyErrorKind, MirVerifyTarget};
+use crate::{
+    MirAggregate, MirFieldTarget, MirGuardAssumption, MirOperand, MirPatternPredicate, MirRvalue,
+    MirSourceNode, MirSourceOrigin, MirValueType,
+};
+
+use super::support::{
+    bad_target, compatible, destination_accepts, destination_contract, error, missing_target,
+    operand_value_type, require_field, require_type, require_variant, satisfies_contract,
+    type_error,
+};
 
 pub(super) fn verify_aggregate(
     verifier: &FunctionVerifier<'_>,

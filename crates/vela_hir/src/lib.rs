@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), deny(clippy::wildcard_imports))]
+
 //! HIR and module graph for Vela source files.
 
 pub mod attributes;

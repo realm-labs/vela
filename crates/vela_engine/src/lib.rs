@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), deny(clippy::wildcard_imports))]
+
 //! Stable embedding API for installing schemas and native functions into Vela.
 
 #![allow(clippy::result_large_err)]

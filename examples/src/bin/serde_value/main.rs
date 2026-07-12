@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), deny(clippy::wildcard_imports))]
+
 use std::error::Error;
 
 use serde::{Deserialize, Serialize};

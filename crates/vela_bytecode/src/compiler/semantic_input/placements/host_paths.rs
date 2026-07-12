@@ -1,4 +1,11 @@
-use super::*;
+use super::{
+    CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget, CompileResult,
+    ConstantHostIndex, FunctionId, GenerationBuilder, HirBody, HirExprId, HirExprKind, HirLiteral,
+    HostFieldTarget, HostPathIndexKindFact, HostPathSegmentFact, MirSourceOrigin,
+    RegistryFieldTargetFact, RegistryIndexCapabilityFact, ScalarValue, TypeFact, input_error,
+    registry_input_error,
+};
+use crate::compiler::semantic_input::schema::contract_from_fact;
 
 impl GenerationBuilder<'_, '_> {
     pub(super) fn insert_host_path(

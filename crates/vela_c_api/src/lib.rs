@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), deny(clippy::wildcard_imports))]
+
 //! C ABI entrypoints for embedding Vela from non-Rust hosts.
 //!
 //! This crate is intentionally separate from `vela_hot_reload`: hot-reload ABI

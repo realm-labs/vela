@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), deny(clippy::wildcard_imports))]
+
 //! Runtime binding keys for standard-library implementations.
 //!
 //! This crate intentionally maps manifest-derived semantic IDs to implementation

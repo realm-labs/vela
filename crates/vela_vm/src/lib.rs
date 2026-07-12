@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), deny(clippy::wildcard_imports))]
+
 //! Register VM for Vela bytecode.
 
 mod array_methods;
@@ -61,7 +63,6 @@ mod stdlib;
 mod string_methods;
 #[cfg(test)]
 #[allow(dead_code)]
-#[path = "../test_compile_support.rs"]
 pub(crate) mod test_support;
 mod try_propagation;
 mod tuple_fields;
@@ -77,7 +78,7 @@ pub(crate) use equality::{
     values_greater_equal_with_traits, values_greater_with_traits, values_less_equal_with_traits,
     values_less_with_traits, values_not_equal_with_traits, values_total_cmp_with_traits,
 };
-use error::{VmError, VmErrorKind, VmResult, VmStackFrame};
+use error::{VmError, VmErrorKind, VmResult};
 pub(crate) use frame::CallFrame;
 use heap::{HeapValue, ScriptHeap};
 use heap_execution::HeapExecution;
@@ -85,16 +86,12 @@ use heap_values::{
     allocate_heap_value, enum_variant_owner, owned_to_value, store_runtime_value,
     store_value_in_heap_if_needed, stored_runtime_value, value_from_constant, value_to_owned,
 };
-use numeric_ops::{
-    add_numeric, binary_float_literal_numeric, binary_int_literal_numeric, div_numeric,
-    mul_numeric, negate_numeric, rem_numeric, sub_numeric,
-};
 use owned_value::OwnedValue;
 pub(crate) use reflection_values::{
     runtime_value_to_reflect, value_from_reflect, value_to_reflect,
 };
+use runtime_checks::expect_int;
 pub(crate) use runtime_checks::{expect_arity, expect_host_ref, expect_string};
-use runtime_checks::{expect_int, is_truthy};
 #[cfg(test)]
 pub(crate) use script_object::ScriptFields;
 use small_storage::SmallStorage;

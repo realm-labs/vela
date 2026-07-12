@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), deny(clippy::wildcard_imports))]
+
 use serde::Serialize;
 use serde_json::{Value as JsonValue, json};
 use vela_bytecode::compiler::error::{CompileError, CompileErrorKind};

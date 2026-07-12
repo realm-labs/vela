@@ -1,5 +1,6 @@
-use super::*;
 use crate::logical_records::{LogicalRecordKind, map_entry};
+
+use super::{StdlibMethodFact, TypeFact, numeric_return};
 
 pub(super) fn array_method_fact(
     element: TypeFact,

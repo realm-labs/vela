@@ -17,11 +17,9 @@ use crate::linked::{
 use crate::{
     CacheSiteInstruction, Constant, FieldSlot, FunctionIndex, HostTargetPlanId, InstructionOffset,
     MethodDispatchHandle, NativeHandle, ScriptFunctionHandle, TypeHandle, UnlinkedCodeObject,
-    UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram, UnlinkedTypeGuard,
-    UnlinkedTypeGuardPlan, VariantHandle,
+    UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram, VariantHandle,
 };
 
-#[path = "linker/support.rs"]
 mod support;
 mod targets;
 

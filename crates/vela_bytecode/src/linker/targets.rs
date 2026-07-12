@@ -1,9 +1,17 @@
+use std::collections::BTreeMap;
+
 use vela_def::{DefPath, script_type_id, script_type_path, script_variant_id, script_variant_path};
 use vela_hir::attributes::schema_id_attr;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_registry::Def;
 
-use super::*;
+use super::{
+    FunctionId, GuardContext, HostMethodId, HostTargetPlanId, LinkContext, LinkError,
+    LinkedCodeObject, LinkedMethodDispatch, LinkedMethodDispatchKind, LinkedNativeFunction,
+    LinkedType, LinkedVariant, MethodDispatchHandle, MethodDispatchKey, MethodId, NativeHandle,
+    ScriptFunctionHandle, TypeGuard, TypeGuardPlan, TypeHandle, TypeId, VariantHandle, VariantId,
+};
+use crate::{UnlinkedCodeObject, UnlinkedTypeGuard, UnlinkedTypeGuardPlan};
 
 impl LinkContext<'_, '_> {
     pub(super) fn resolve_script_function(

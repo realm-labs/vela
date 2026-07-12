@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use vela_common::{Diagnostic, Span};
 
 use super::names::{import_binding_name, import_binding_span};
-use super::*;
+use super::{HirModule, ModuleGraph};
 use crate::attributes::{HirAttribute, SchemaIdAttrError, parse_schema_id_attr};
 use crate::type_hint::{EnumShape, EnumVariantFieldsHint, ImplMetadata, StructShape, TraitShape};
 

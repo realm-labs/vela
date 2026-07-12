@@ -33,7 +33,7 @@ mod cache_support;
 mod config;
 #[path = "baseline/report.rs"]
 mod report;
-#[path = "../test_compile_support.rs"]
+#[path = "../src/test_support.rs"]
 #[allow(dead_code)]
 mod test_compile_support;
 #[path = "baseline/workload_sources.rs"]

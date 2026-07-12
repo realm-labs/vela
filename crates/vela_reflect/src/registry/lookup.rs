@@ -1,5 +1,8 @@
-use super::*;
 use crate::candidates::{candidate_names, ranked_candidates};
+use crate::error::{ReflectError, ReflectErrorKind, ReflectResult};
+use vela_def::TraitId;
+
+use super::{FieldDesc, MethodDesc, TypeDesc};
 
 pub(super) fn find_field<'a>(desc: &'a TypeDesc, field: &str) -> ReflectResult<&'a FieldDesc> {
     desc.fields

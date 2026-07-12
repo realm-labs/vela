@@ -49,7 +49,10 @@ pub struct MirExecutableLayout {
 #[cfg(feature = "test-support")]
 #[doc(hidden)]
 pub mod test_support {
-    use super::*;
+    use super::{
+        Arc, ExecutableGenerationId, LinkedArtifact, LinkedProgram, NEXT_EXECUTABLE_GENERATION,
+        Ordering, ProfileFunctionLayout, ProfileLayout, ProgramImage, test_mir_binding,
+    };
 
     #[must_use]
     pub fn linked_artifact(mut program: LinkedProgram) -> Arc<LinkedArtifact> {

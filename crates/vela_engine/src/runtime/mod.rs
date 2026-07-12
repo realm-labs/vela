@@ -33,7 +33,6 @@ use crate::reload::{
 
 mod bytecode_profile;
 #[cfg(test)]
-#[path = "bytecode_profile_tests.rs"]
 mod bytecode_profile_tests;
 mod call_args;
 mod global_store;

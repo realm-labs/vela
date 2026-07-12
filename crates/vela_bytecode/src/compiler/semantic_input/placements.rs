@@ -14,7 +14,7 @@ use vela_hir::body::{
     HirPatternKind,
 };
 use vela_hir::ids::{HirDeclId, HirExprId, HirPatternId};
-use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint, StructFieldHint};
+use vela_hir::type_hint::{HirTypeHint, StructFieldHint};
 use vela_mir::{
     CompileCallArguments, CompileCallTarget, CompileCalleeTarget, CompileConstructorField,
     CompileConstructorTarget, CompileConstructorValue, CompileDynamicConstructorField,
@@ -28,7 +28,7 @@ use super::contracts::{
     ContractBoundary, mutation_arg_debug_name, typed_container_mutation_arg_fact,
 };
 use super::external::{external_signature, unresolved_method, unresolved_native};
-use super::schema::{contract_from_fact, registry_hint_contract};
+use super::schema::contract_from_fact;
 use super::{GenerationBuilder, input_error, registry_input_error};
 use crate::compiler::error::{CompileError, CompileErrorKind, CompileResult};
 
@@ -1121,5 +1121,11 @@ mod constructor_arguments;
 mod constructors;
 mod helpers;
 mod host_paths;
-use self::constructor_arguments::*;
-use self::helpers::*;
+use self::constructor_arguments::{
+    require_constructor_slot_identity, unavailable_constructor_default,
+};
+use self::helpers::{
+    ConstantHostIndex, ConstructorFieldSpec, ConstructorSpec, callee_path, checked_u32,
+    constructor_variant_specs, field_is_call_callee, pattern_field_names, reflection_operation,
+    require_analysis_call_target, type_owner_name,
+};

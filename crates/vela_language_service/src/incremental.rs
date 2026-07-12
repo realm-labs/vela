@@ -17,7 +17,6 @@ use crate::{
     SourceVersion, SymbolRef, WorkspaceGeneration,
 };
 
-#[path = "incremental/parse_summary.rs"]
 mod parse_summary;
 
 use parse_summary::{ParseSummary, summarize_source};

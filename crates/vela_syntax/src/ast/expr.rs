@@ -3,11 +3,8 @@ use super::statements::SyntaxIfExpr;
 use super::{AstChildren, AstNode, SyntaxBlock, SyntaxParamList};
 use crate::{SyntaxKind, SyntaxNode, SyntaxToken};
 
-#[path = "expr/literals.rs"]
 mod literals;
-#[path = "expr/operators.rs"]
 mod operators;
-#[path = "expr/paren.rs"]
 mod paren;
 
 pub use literals::{SyntaxInterpolatedStringPart, SyntaxInterpolation, SyntaxLiteral};

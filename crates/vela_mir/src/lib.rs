@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), deny(clippy::wildcard_imports))]
+
 //! Backend-neutral mid-level representation for Vela executable bodies.
 //!
 //! MIR is generation-local compiler state. It preserves stable HIR and

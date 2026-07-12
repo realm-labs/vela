@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), deny(clippy::wildcard_imports))]
+
 //! Controlled reflection metadata and value access.
 
 pub mod access;

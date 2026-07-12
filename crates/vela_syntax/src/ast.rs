@@ -1,30 +1,18 @@
-#[path = "ast/attributes.rs"]
 mod attributes;
-#[path = "ast/control.rs"]
 mod control;
-#[path = "ast/expr.rs"]
 mod expr;
 #[cfg(test)]
-#[path = "ast/expr_lambda_tests.rs"]
 mod expr_lambda_tests;
 #[cfg(test)]
-#[path = "ast/expr_path_tests.rs"]
 mod expr_path_tests;
 #[cfg(test)]
-#[path = "ast/expr_tests.rs"]
 mod expr_tests;
-#[path = "ast/items.rs"]
 mod items;
 #[cfg(test)]
-#[path = "ast/items_tests.rs"]
 mod items_tests;
-#[path = "ast/literal_semantics.rs"]
 mod literal_semantics;
-#[path = "ast/patterns.rs"]
 mod patterns;
-#[path = "ast/statements.rs"]
 mod statements;
-#[path = "ast/syntax.rs"]
 mod syntax;
 
 pub use attributes::{

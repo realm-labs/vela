@@ -1,4 +1,15 @@
-use super::*;
+use std::collections::BTreeSet;
+
+use vela_common::PrimitiveTag;
+
+use crate::verifier::{FunctionVerifier, MirVerifyError, MirVerifyErrorKind, MirVerifyTarget};
+use crate::{
+    CompileFunctionClass, CompileParameterDefault, CompilePositionalPolicy, MirImmediate,
+    MirOperand, MirPlace, MirRvalue, MirSourceNode, MirSourceOrigin, MirSwitchValue,
+    MirTypeContract, MirValueType,
+};
+
+use super::host::verify_host_type;
 
 pub(super) fn verify_abi(
     verifier: &FunctionVerifier<'_>,

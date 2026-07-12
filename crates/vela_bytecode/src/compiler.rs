@@ -8,7 +8,6 @@ pub(crate) mod mir_backend;
 pub mod options;
 mod schema_defaults;
 mod semantic;
-#[path = "semantic_input/mod.rs"]
 mod semantic_input;
 #[cfg(test)]
 #[allow(clippy::result_large_err)]

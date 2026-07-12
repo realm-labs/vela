@@ -1233,5 +1233,4 @@ fn trait_or_unknown(registry: &TypeRegistry, name: &str) -> TypeFact {
 }
 
 #[cfg(test)]
-#[path = "registry/tests.rs"]
 mod registry_tests;

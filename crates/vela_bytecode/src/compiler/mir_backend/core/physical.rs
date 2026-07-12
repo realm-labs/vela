@@ -1,4 +1,10 @@
-use super::*;
+use super::support::{binary_instruction, i64_compare};
+use super::{
+    Constant, FunctionBackend, InstructionOffset, MirBackendError, MirBinaryOp, MirBlockId,
+    MirImmediate, MirOperand, MirPlace, MirSwitchValue, Register, UnlinkedInstruction,
+    UnlinkedInstructionKind, attach_cache_site, cache_site_kind,
+};
+use vela_mir::MirNumericBinaryOp;
 
 impl<'a> FunctionBackend<'a> {
     pub(super) fn operand(

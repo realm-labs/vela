@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), deny(clippy::wildcard_imports))]
+
 //! Host reference, path, and direct host access model.
 
 pub mod access;

@@ -1,4 +1,13 @@
-use super::*;
+use super::{
+    CompileConstructorField, CompileConstructorTarget, CompileConstructorValue,
+    CompileDynamicConstructorField, CompileError, CompileErrorKind,
+    CompilePatternConstructorTarget, CompileResult, ConstructorFieldSpec, ConstructorSpec,
+    ConstructorTargetFact, ContractBoundary, FunctionId, GenerationBuilder, HirBody, HirDeclId,
+    HirExprId, HirExprKind, HirPatternId, HirPatternKind, MirBuildError, MirSourceOrigin,
+    checked_u32, constructor_variant_specs, input_error, pattern_field_names, registry_input_error,
+    require_constructor_slot_identity, unavailable_constructor_default,
+};
+use crate::compiler::semantic_input::schema::registry_hint_contract;
 
 impl GenerationBuilder<'_, '_> {
     pub(super) fn insert_constructor(

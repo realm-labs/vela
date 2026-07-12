@@ -1,3 +1,5 @@
+//! Registry fact tests.
+
 #[cfg(test)]
 mod tests {
     use vela_common::{HostMethodId, HostTypeId, SourceId, Span};

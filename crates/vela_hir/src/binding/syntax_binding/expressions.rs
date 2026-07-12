@@ -1,4 +1,20 @@
-use super::*;
+use vela_syntax::ast::{
+    AstNode, SyntaxArgument, SyntaxElseBranch, SyntaxExpression, SyntaxExpressionKind,
+    SyntaxInterpolatedStringPart, SyntaxMapEntry, SyntaxRecordExprField,
+};
+
+use crate::binding::{LocalBindingKind, PathUsage};
+use crate::body::{
+    HirArgument, HirBodyOwner, HirBodyRoot, HirCall, HirElseBranch, HirExprKind, HirField, HirIf,
+    HirIndex, HirLiteral, HirMapEntry, HirMatch, HirMatchArmBody, HirPathKind, HirPathOwner,
+    HirRecordField, HirScopeKind, HirSourceOrigin,
+};
+use crate::ids::HirExprId;
+
+use super::{
+    SyntaxBindingLowerer, hir_assign_op, hir_binary_op, hir_literal, hir_path_kind_for_usage,
+    hir_type_hint, hir_unary_op, last_segment_span, span_for,
+};
 
 impl SyntaxBindingLowerer<'_> {
     pub(super) fn bind_expr(&mut self, expr: &SyntaxExpression, usage: PathUsage) -> HirExprId {

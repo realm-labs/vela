@@ -7,7 +7,7 @@ use vela_hir::body::{HirArgument, HirRecordField};
 use vela_hir::ids::HirExprId;
 use vela_mir::{MirBuildError, MirSourceOrigin};
 
-use super::*;
+use super::{CompileError, CompileResult, FunctionId, GenerationBuilder, input_error};
 
 impl GenerationBuilder<'_, '_> {
     pub(super) fn checked_record_constructor_placement(

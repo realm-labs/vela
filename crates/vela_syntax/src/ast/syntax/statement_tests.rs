@@ -1,8 +1,7 @@
-use super::{AstNode, SyntaxSourceFile};
 use crate::ast::{
-    SyntaxBreakStmt, SyntaxCallExpr, SyntaxContinueStmt, SyntaxElseBranch, SyntaxExprStmt,
+    AstNode, SyntaxBreakStmt, SyntaxCallExpr, SyntaxContinueStmt, SyntaxElseBranch, SyntaxExprStmt,
     SyntaxForStmt, SyntaxIfExpr, SyntaxMapExpr, SyntaxPatternKind, SyntaxReturnStmt,
-    SyntaxStatementKind,
+    SyntaxSourceFile, SyntaxStatementKind,
 };
 use crate::parse::parse_source;
 use crate::{SyntaxKind, SyntaxTreeBuilder};

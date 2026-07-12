@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), deny(clippy::wildcard_imports))]
+
 //! Analysis-only facts for diagnostics, completion, and stdlib metadata.
 
 pub mod callable;

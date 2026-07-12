@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), deny(clippy::wildcard_imports))]
+
 //! Semantic standard-library manifest and registry installation.
 
 mod ids;

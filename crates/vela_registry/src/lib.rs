@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), deny(clippy::wildcard_imports))]
+
 //! Central definition registry for semantic definitions.
 
 mod declaration_slots;

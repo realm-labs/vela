@@ -23,8 +23,8 @@ use names::{closest_name, import_binding_name};
 use self::body_binding::{FunctionBodySource, SchemaFieldDefaultBodySource};
 use crate::attributes::HirAttribute;
 use crate::binding::BindingMap;
-use crate::body::{HirBody, HirField, HirIndex, HirPath, HirPathKind};
-use crate::ids::{HirBodyId, HirDeclId, HirExprId, HirLocalId, HirNodeId, HirPatternId, ModuleId};
+use crate::body::HirBody;
+use crate::ids::{HirBodyId, HirDeclId, HirNodeId, ModuleId};
 #[cfg(test)]
 use crate::type_hint::HirTypeHint;
 use crate::type_hint::{

@@ -1,4 +1,4 @@
-use super::*;
+use super::{StdlibMethodFact, TypeFact, value_or_fallback};
 
 #[derive(Clone, Copy)]
 pub(super) enum OptionShape {

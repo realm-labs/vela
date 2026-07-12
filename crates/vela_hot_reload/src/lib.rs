@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), deny(clippy::wildcard_imports))]
+
 //! Function-level hot reload program versioning.
 
 pub mod abi;
