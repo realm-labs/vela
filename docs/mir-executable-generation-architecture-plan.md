@@ -3,8 +3,9 @@
 > **Track:** verified MIR semantics, linked executable ownership, hot-reload
 > generation lifetime, backend-neutral budgets, and M22 JIT input
 > **Document status:** Codex goal-mode execution plan
-> **Execution status:** Planned. No phase is complete until its checklist and
-> validation gate pass.
+> **Execution status:** Batches A-D landed; post-implementation review reopened
+> completion. Batch E is the active remaining goal and is authoritative over
+> earlier completion checkmarks where the review found an invariant unsealed.
 > **Execution mode:** throughput-first large batches. Intermediate commits may
 > fail to compile or test; only batch-completion checkpoints must be green.
 > **Supersedes:** the future-ownership, closure, cache rebasing, profile, budget,
@@ -668,7 +669,8 @@ Rules:
 
 ### 9.1 Execution Batches
 
-The default execution shape is four large checkpoints:
+The default execution shape is five large checkpoints. Batches A-D record the
+landed first implementation; Batch E is the active review-correction batch:
 
 ```text
 Batch A: MIR semantic contract
@@ -686,9 +688,14 @@ Batch C: backend-neutral runtime contract
 Batch D: acceptance close-out
   Phase 9
   behavior matrix + audits + full validation + performance/memory comparison
+
+Batch E: post-implementation architecture closure
+  Phase 10
+  cohesive generation identity + shared owners + exact budget placement
+  + lexical debug scopes + backend-neutral shape facts + exhaustive cache API
 ```
 
-Aim for roughly these four substantial commits. Split a batch only when needed
+Aim for one substantial Batch E commit. Split it only when needed
 to preserve recoverability or reviewability; do not split it merely because one
 crate or checklist subsection has become green. A red intermediate commit is
 acceptable, but the final commit for each batch must pass all validations from
@@ -1183,3 +1190,261 @@ Also audit:
 - [x] M22 can consume same-generation verified MIR without rerunning analysis.
 - [x] Full validation, audits, examples, benchmarks, and memory gates pass.
 - [x] `docs/progress.md` marks this track complete only after every item above.
+
+The Phase 9 checkmarks above record the first implementation's acceptance run.
+The post-implementation review below found that several underlying invariants
+were satisfied only by convention or current call paths, not enforced by the
+types and verifiers. Batch E therefore reopens overall track completion without
+rewriting the historical A-D checklist.
+
+---
+
+## 20. Phase 10: Post-Implementation Architecture Closure
+
+Purpose: close the gaps found by review after Batches A-D. This is one
+throughput-first correction batch, not a sequence of small green commits.
+Intermediate compilation errors, failing tests, and temporarily incomplete API
+migrations are acceptable. The batch is complete only when all six contracts
+below are enforced structurally and the final validation gate passes.
+
+### 20.1 Cohesive Same-Generation Construction
+
+Review finding:
+
+- `ProgramVersion::from_linked_program*` accepts an independently produced
+  `CompiledProgram` and `LinkedArtifact`.
+- `LinkedArtifact::attach_verified_mir` pairs them by code symbol and total
+  execution-unit count. Two different programs with the same symbols and
+  budget totals can therefore be accepted as one generation.
+- Failure through the public constructor panics through `expect` instead of
+  returning a structured construction/link error.
+
+Required architecture:
+
+- [ ] Make the linker consume the cohesive compiled artifact containing
+  unlinked bytecode and its owned verified MIR, and publish one already-bound
+  `LinkedArtifact`.
+- [ ] Make it impossible for `ProgramVersion` to accept independently supplied
+  bytecode and MIR owners. Its constructor accepts only the bound artifact and
+  ABI/version metadata.
+- [ ] Remove symbol-plus-budget-total matching as proof of generation identity.
+  If an internal staged representation is necessary, encode unbound/bound state
+  in distinct types and consume the unbound value exactly once.
+- [ ] Replace public/internal generation-pairing panics with structured errors
+  at the linker or publication boundary.
+- [ ] Ensure `jit_input` can only return MIR and linked code originating from
+  the same bound artifact.
+
+Tests:
+
+- [ ] Build two programs with identical executable symbols and execution-unit
+  totals but different semantics; prove they cannot be cross-paired.
+- [ ] Cover missing, reordered, added, and removed root/lambda executables at
+  the binding boundary without a panic.
+- [ ] Prove every linked handle has exactly one same-generation MIR identity and
+  every exposed JIT input resolves through that sealed mapping.
+
+Checkpoint: there is no API that can assemble a `ProgramVersion` from unrelated
+compiled and linked values, and generation correctness does not depend on names
+or coincidentally equal budget totals.
+
+### 20.2 Shared Immutable Frame And Closure Ownership
+
+Review finding:
+
+- `CallFrame::new_linked` performs `Arc::new(program.clone())` at every linked
+  call entry. `LinkedProgram::clone` deep-copies its function bodies,
+  instructions, constants, type tables, and dispatch maps.
+- This keeps old code alive but does not implement one shared immutable
+  generation owner and introduces work proportional to the whole program on
+  every function call.
+
+Required architecture:
+
+- [ ] Carry `Arc<LinkedArtifact>` as the owner through linked execution calls,
+  active frames, linked closures, and retained old-generation entry paths.
+- [ ] Use `Arc::clone` only when a frame or closure pins an existing generation;
+  never construct ownership by cloning `LinkedProgram` or `LinkedArtifact`
+  contents.
+- [ ] Resolve code, cache/profile layout identity, nested calls, and runtime
+  sidecars from that same artifact owner.
+- [ ] Remove redundant lifetime sentinels or parallel owners once the artifact
+  `Arc` is the single lifetime authority.
+
+Tests and measurements:
+
+- [ ] Assert pointer-identical artifact ownership across entry frame, nested
+  calls, closures, and retained old-generation calls.
+- [ ] Preserve old closure behavior and prove the old generation releases after
+  frames, closures, retained values, and weak sidecars are dropped.
+- [ ] Add a focused call-heavy measurement that detects program-sized copying
+  per call. Re-run the tracked scalar/call checkpoint and record the durable
+  result without requiring unrelated M20 optimization work in this batch.
+
+Checkpoint: call entry is O(frame size) plus `Arc` reference counting, never
+O(total linked-program size), and all executable handles remain owner-qualified.
+
+### 20.3 Exact MIR-To-Executable Budget Placement
+
+Review finding:
+
+- `LinkedArtifact::attach_verified_mir` verifies only the sum of MIR execution
+  units against the sum attached to bytecode instructions.
+- Moving a charge across a call, HostAccess write, reflection effect, trap, or
+  safepoint can preserve the total and still change observable semantics while
+  passing verification.
+
+Required architecture:
+
+- [ ] Retain an explicit mapping from each MIR budget program point to its
+  linked instruction/edge and charge class, including charges fused into
+  instruction metadata.
+- [ ] Verify units, class, executable identity, and exact placement for every
+  point; total-unit equality may remain only as an additional consistency
+  check.
+- [ ] Reject missing, duplicated, reordered, moved, or extra charges even when
+  the function-wide total is unchanged.
+- [ ] Prove backend coalescing occurs only across pure, non-trapping,
+  non-allocating regions without call, host/reflection, debug, or safepoint
+  boundaries.
+- [ ] Keep the mapping backend-neutral enough that M22 can prove the same
+  semantic charge edges for machine code.
+
+Tests:
+
+- [ ] Add malformed linked artifacts that move an equal-cost charge from before
+  to after HostAccess, reflection, allocation, call, and guard boundaries; each
+  must be rejected.
+- [ ] Pin the conditional/backedge case so an exit edge is not charged merely
+  because another successor is a loop backedge.
+- [ ] Preserve the committed-host-write-before-later-budget-trap behavior.
+
+Checkpoint: the verifier proves observable budget trap order at MIR program
+points; it does not infer correctness from function-wide arithmetic.
+
+### 20.4 Lexical Debug Availability And Backend-Neutral Shape Facts
+
+Review findings:
+
+- `MirDebugLocal` retains `HirScopeId`, but lexical debug availability never
+  reads it. Once initialized, a local can remain available after its block,
+  loop, or match-arm scope has ended.
+- `MirShapeFact` stores field names paired with `usize` slot numbers, and the
+  bytecode backend consumes those numbers as physical record/variant slots.
+  This leaks backend layout into the verified MIR contract.
+
+Required architecture:
+
+- [ ] Represent lexical scope coverage as owned MIR program-point/block facts
+  derived during MIR construction; the physical backend must not query HIR.
+- [ ] Define debug availability as both definitely initialized and inside the
+  local's lexical scope. Preserve visibility after last value use only while
+  the scope remains active.
+- [ ] Add explicit scope-exit behavior for nested blocks, loop bindings,
+  match-arm bindings, captures, and parameter-default prologues.
+- [ ] Replace raw shape slot numbers in `vela_mir` with stable field/shape
+  identity or an explicitly backend-neutral field ordinal contract.
+- [ ] Perform stable identity-to-physical-slot mapping inside each backend and
+  keep registers, constant indexes, cache IDs, and bytecode slots out of MIR
+  facts.
+
+Tests:
+
+- [ ] Prove a local remains debugger-visible after its final value use inside
+  its scope and disappears immediately after lexical scope exit.
+- [ ] Cover nested block, loop, match arm, capture, and default-parameter debug
+  availability across CFG joins.
+- [ ] Prove record/variant specialization survives joins without exposing a
+  bytecode slot type or raw physical slot number from `vela_mir`.
+
+Checkpoint: debug availability is lexical rather than monotonic initialization,
+and a second backend can consume shape facts without adopting bytecode layout.
+
+### 20.5 One Exhaustive Cache-Site Mechanism
+
+Review finding:
+
+- Cache-family knowledge is duplicated across compiler attachment,
+  `ProgramImage` rewriting, linker conversion, unlinked verification, and linked
+  verification. The landed rewrite still contains manual partial instruction
+  matches, so a new cache-bearing opcode can be omitted from one path.
+
+Required architecture:
+
+- [ ] Give unlinked and linked instruction representations one exhaustive
+  cache-site interface that exposes expected kind and, where physically stored,
+  immutable/mutable operands.
+- [ ] Reuse that interface for allocation, attachment, remapping, linking,
+  descriptor construction, and both verifier layers.
+- [ ] Model sidecar-only cache sites explicitly in the same mechanism rather
+  than recovering them through an unrelated manual match.
+- [ ] Delete duplicated cache-family match lists and retain one compile-time
+  exhaustive authority.
+
+Tests:
+
+- [ ] Table-drive every cache-bearing instruction family through local
+  allocation, generation-global linking, descriptor correspondence, wrong-kind
+  rejection, and runtime lookup.
+- [ ] Add a maintenance test or exhaustive type-level construction that fails
+  when a new cache-bearing variant has not selected a cache policy.
+
+Checkpoint: adding a cache-bearing instruction requires changing one exhaustive
+policy surface, after which every linker and verifier path observes it.
+
+### 20.6 Documentation And Final Gate
+
+- [ ] Update this document's execution status and `docs/progress.md` only after
+  all Batch E checkpoints pass; remove the stale statement that the follow-on
+  executable-generation contract is incomplete or replace it with the exact
+  remaining state while work is active.
+- [ ] Update `docs/decisions.md` if cohesive binding, artifact ownership,
+  budget-point mapping, lexical scope projection, shape identity, or cache policy
+  establishes a new durable representation.
+- [ ] Re-run the six historical zero-hit searches and add zero-hit audits for:
+
+```bash
+rg -n "Arc::new\(program\.clone\(\)\)|Arc::new\(.*LinkedProgram.*clone" crates/vela_vm crates/vela_engine
+rg -n "from_linked_program_with_abi|attach_verified_mir" crates
+rg -n "type MirShapeFields = .*usize|MirShapeFact.*usize" crates/vela_mir
+```
+
+- [ ] Audit cache policy call sites to confirm they all use the single
+  exhaustive interface; a zero-hit search for one old helper name is not enough.
+- [ ] Run the complete validation gate:
+
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+cargo test --manifest-path examples/Cargo.toml --test runnable_examples
+cargo bench --workspace --no-run
+```
+
+- [ ] Re-run the three source regressions that motivated this track: record
+  shape across a CFG join, immediate specialization across a loop join, and
+  dynamic callback forwarding.
+- [ ] Re-run the focused scalar, function/closure call, shared-runtime, retained
+  generation, and budgeted/unbounded measurements. Investigate any new
+  regression over the existing accepted baseline rather than hiding it behind
+  the earlier 124.8% decision.
+- [ ] Re-run the active-file 1200-line audit and update the reviewed exception
+  list only for justified cohesive files.
+
+### 20.7 Batch E Completion Criteria
+
+- [ ] Compiled bytecode and verified MIR cannot be cross-paired by any API.
+- [ ] ProgramVersion and JIT input expose one sealed same-generation artifact.
+- [ ] Frames and closures pin that artifact through shared `Arc` ownership with
+  no deep program clone at call entry.
+- [ ] Budget verification proves exact semantic placement and trap order, not
+  only equal totals.
+- [ ] Debug locals are available exactly within initialized lexical regions.
+- [ ] MIR shape facts contain no bytecode physical slot numbers.
+- [ ] Every cache-bearing instruction participates in one exhaustive cache
+  policy and verification mechanism.
+- [ ] Source regressions, full workspace validation, examples, benchmark build,
+  focused performance/memory measurements, zero-hit searches, and file-size
+  audits pass.
+- [ ] `docs/progress.md` reports Batch E complete and this document's execution
+  status changes to complete only after every criterion above is satisfied.

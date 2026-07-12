@@ -31,22 +31,16 @@ required.
 
 ## Current Focus
 
-Post-completion review of the MIR hard switch found cross-CFG physical-fact
-miscompilation, callable guard loss, nested-lambda cache-site collisions,
-generation-unsafe retained closures, and incomplete verifier/JIT-input/budget
-contracts. The completed MIR plan remains the historical proof that production
-lowering has one MIR route, but its JIT-foundation close-out is reopened as the
-long-term executable-generation architecture track in
+The first executable-generation implementation landed through Batches A-D, but
+post-implementation review found that several long-term invariants are not yet
+sealed by types and verifiers. The active Batch E correction target is
 [mir-executable-generation-architecture-plan.md](mir-executable-generation-architecture-plan.md).
-The new track rejects short-term disabling or rejection patches: it makes CFG
-facts backend-neutral, the linker the single executable-layout authority,
-ProgramVersion the owner of same-generation verified MIR and linked artifacts,
-closures/frames owners of their creation/entry generation, and execution
-budgets independent of bytecode layout.
-Goal execution for this track is intentionally throughput-first: Phases 0-3,
-4-6, 7-8, and 9 form four large commit/validation batches. Intermediate commits
-inside a batch may fail compilation or tests; only batch boundaries are required
-to restore the complete green validation gate.
+It must make compiled MIR/bytecode generation pairing structural, replace
+per-call deep `LinkedProgram` clones with shared artifact ownership, verify exact
+MIR budget charge placement, enforce lexical debug scope exit, remove physical
+slots from MIR shape facts, and centralize cache-site policy in one exhaustive
+mechanism. Batch E is intentionally throughput-first and may remain red inside
+the batch; its completion boundary must restore the full validation gate.
 
 Batch A (Phases 0-3) is complete. Production bytecode compilation borrows an
 owned, sealed verified MIR generation with stable root mappings, distinct
@@ -83,7 +77,8 @@ Backend and unsupported-pattern failures are structured and source-spanned,
 and future publication, GC-root, debugger-side-exit, and runtime-local tier
 requirements are durable policy.
 
-Batch D (Phase 9) is complete. The behavior matrix, ownership invariants,
+Batch D (Phase 9) is complete as the first implementation checkpoint. The
+behavior matrix, ownership invariants,
 zero-hit searches, reviewed file-size exceptions, 30 runnable examples, full
 workspace format/clippy/tests, and benchmark compilation pass. The complete
 quick VM benchmark has 76 paired cache/profile rows with no checksum or profile
@@ -91,9 +86,10 @@ mismatch; the exact Phase 0 scalar checksum is preserved. Compile and
 top-level/lambda/shared-runtime/retained-generation memory measurements are
 recorded in `docs/performance.md`. The scalar throughput regression is an
 explicit accepted decision with a named verified-MIR instruction-selection
-follow-up; no correctness or ownership contract was weakened. The
-executable-generation architecture track is complete and M22 has immutable
-same-generation verified input without HIR/analysis reconstruction.
+follow-up. Batch E reopens overall track completion because same-generation
+binding, shared frame/closure ownership, exact charge placement, lexical debug
+availability, backend-neutral shape facts, and exhaustive cache policy still
+require structural closure before M22 input can be considered sealed.
 
 The Heavy HIR hard switch and D1-D3 close-out are complete.
 `vela_hir` owns executable body and stable semantic identity, bytecode consumes
@@ -109,7 +105,8 @@ completed Heavy HIR contract; semantic gaps remain owned by HIR or analysis
 rather than repaired during MIR lowering.
 
 The production MIR routing hard switch is complete through its historical
-Phase 7; the follow-on executable-generation/JIT-foundation contract is not.
+Phase 7; the follow-on executable-generation/JIT-foundation contract is landed
+through Batch D but remains open for the Batch E review corrections.
 Every production compile front door now builds Heavy HIR, one immutable
 `AnalysisFacts`/compile-target generation, verified non-SSA MIR, and existing
 bytecode. `vela_bytecode::compiler::mir_backend` is the only runtime body
