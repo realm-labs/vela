@@ -432,30 +432,31 @@ fn engine_links_standard_methods_after_indexed_collection_shapes() {
         .reflection_policy(vela_reflect::permissions::ReflectPolicy::all())
         .build()
         .expect("engine should build with standard natives");
-    for (source, text) in [
-        (
+    let program = engine
+        .compile_source_with_id(
             SourceId::new(1),
-            include_str!("../../../../../examples/src/bin/gameplay_helpers/gameplay_helpers.vela"),
-        ),
-        (
-            SourceId::new(2),
-            include_str!(
-                "../../../../../examples/src/bin/random_reflect_allowed/random_reflect_allowed.vela"
-            ),
-        ),
-        (
-            SourceId::new(3),
-            include_str!("../../../../../examples/src/bin/reflect_debug/reflect_debug.vela"),
-        ),
-    ] {
-        let program = engine
-            .compile_source_with_id(source, text)
-            .expect("example stdlib method chain should compile");
+            r#"
+fn main() {
+    let words = "reward gold".split_whitespace();
+    let first = words[0].strip_prefix("reward").unwrap_or("");
+    let random = reflect::function("math::random");
+    let params = reflect::params(random);
+    let parameter_type = params[0].type.unwrap_or("");
+    let functions = reflect::functions();
+    return first.len() + parameter_type.len()
+        + if functions.any(|function| reflect::name(function) == "math::random") {
+            1
+        } else {
+            0
+        };
+}
+"#,
+        )
+        .expect("indexed collection method chains should compile");
 
-        engine
-            .link_test_program(&program)
-            .expect("example stdlib method chain should link");
-    }
+    engine
+        .link_test_program(&program)
+        .expect("indexed collection method chains should link");
 }
 
 #[test]
