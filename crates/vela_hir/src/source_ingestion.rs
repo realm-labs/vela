@@ -127,14 +127,22 @@ mod tests {
 
     #[test]
     fn source_set_aggregates_syntax_diagnostics_before_semantics() {
-        let error = build_source_set(&[
+        let sources = [
             source(7, &["game", "one"], "fn one( {"),
             source(8, &["game", "two"], "fn two( {"),
-        ])
-        .expect_err("syntax errors");
+        ];
+        let expected = sources
+            .iter()
+            .flat_map(|source| {
+                parse_source_with_id(source.id, &source.text)
+                    .diagnostics()
+                    .to_vec()
+            })
+            .collect::<Vec<_>>();
+        let error = build_source_set(&sources).expect_err("syntax errors");
 
         assert_eq!(error.kind(), HirSourceBuildErrorKind::Syntax);
-        assert!(!error.diagnostics().is_empty());
+        assert_eq!(error.diagnostics(), expected);
         let sources = error
             .diagnostics()
             .iter()
@@ -168,14 +176,20 @@ mod tests {
 
     #[test]
     fn unresolved_imports_are_semantic_diagnostics() {
-        let error = build_source_set(&[source(
+        let sources = [source(
             1,
             &["game", "main"],
             "use game::missing::run; fn main() {}",
-        )])
-        .expect_err("unresolved import");
+        )];
+        let mut expected_graph = ModuleGraph::new();
+        for source in &sources {
+            expected_graph.add_source(source.clone());
+        }
+        expected_graph.resolve_imports();
+        let expected = expected_graph.diagnostics().to_vec();
+        let error = build_source_set(&sources).expect_err("unresolved import");
 
         assert_eq!(error.kind(), HirSourceBuildErrorKind::Semantic);
-        assert!(!error.diagnostics().is_empty());
+        assert_eq!(error.diagnostics(), expected);
     }
 }
