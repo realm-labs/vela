@@ -37,7 +37,15 @@ Make PackageId + ModulePath the sole script module identity. Feed PackageId
 into every stable script definition path and eliminate the hard-coded `script`
 package namespace. Keep SourceId internal and generation-local. Preserve
 single-source and directory convenience APIs only as front doors that build an
-explicit reserved package graph before HIR ingestion.
+explicit reserved package graph before HIR ingestion. Make ordinary package
+compilation the foundation: a root package compiles with all transitive path
+dependencies and may import their public declarations without using providers.
+
+Expose one sealed PackageCompilationSnapshot, one base PackageCompileRequest,
+and a ProviderCompileRequest extension. Both enter the same HIR -> compiler ->
+linker pipeline, not parallel compilers. Persist a stable request fingerprint
+so ordinary package and provider hot reload rebuild the same roots and
+selection against a new snapshot.
 
 Implement providers as explicit trait impl exports using
 #[provider(id = "...")]. Preserve attribute arguments structurally in HIR;
@@ -66,8 +74,8 @@ existing ABI/schema checks.
 
 Close each phase only after its focused tests pass. Phase 1 may be committed as
 a package-foundation checkpoint before the identity cutover. Phase 2 must land
-as one coherent breaking hard-switch commit. Later provider discovery,
-runtime, reload, and tooling phases may use small verified Conventional Commit
+as one coherent breaking hard-switch commit. Later ordinary package, provider,
+reload, and tooling phases may use small verified Conventional Commit
 checkpoints, but no checkpoint may restore a compatibility path. Finish with
 full workspace, examples, manifest zero-hit, identity zero-hit, dependency,
 file-size, and documentation validation. Do not mark the plan complete while
@@ -82,8 +90,9 @@ artifact metadata, or unchecked task remains.
 
 Vela supports static multi-module source sets, directory compilation, stable
 script metadata, linked executable generations, safe-pointed hot reload, and a
-native language service. It does not yet have a shared package identity model
-or a host-controlled way to discover user-written plugin implementations.
+native language service. It does not yet have a shared package identity model,
+Cargo-like path dependencies for ordinary applications/libraries, or a
+host-controlled way to discover user-written plugin implementations.
 
 The target pipeline is:
 
@@ -92,11 +101,12 @@ host-configured manifest roots
   -> one structured vela.toml model
   -> PackageGraph and deterministic package sources
   -> package-aware HirSourceSet and ModuleGraph
-  -> read-only ProviderCatalog
-  -> selected package graph compilation
+  -> sealed PackageCompilationSnapshot
+  -> ordinary root packages + optional ProviderSelection
+  -> one PackageCompileRequest
   -> Engine registry-aware Arc<LinkedArtifact>
   -> optional ProgramVersion / HotUpdate construction
-  -> Runtime provider lookup and call
+  -> ordinary Runtime entry calls and optional provider calls
 ```
 
 Discovery parses manifests and source metadata but never executes Vela code.
@@ -137,6 +147,10 @@ These are migration inputs, not alternate architectures to preserve.
 - Make `PackageId + ModulePath` the only script module identity.
 - Resolve `crate::` within the current package and dependency aliases through
   direct package dependencies.
+- Compile an ordinary root package with all transitive path dependencies and
+  allow imports of public dependency declarations without provider metadata.
+- Provide ordinary package compile, Runtime, and hot-reload APIs independently
+  of provider discovery or selection.
 - Keep `SourceId`, `ModuleId`, and `HirDeclId` internal and generation-local.
 - Export providers only through `#[provider(id = "...")]` on trait impls.
 - Infer the service from the resolved trait implementation.
@@ -200,7 +214,8 @@ vela_bytecode
   provider compile metadata and same-generation linked provider records
 
 vela_engine
-  package discovery front door, provider selection, compilation/linking
+  package workspace loading, ordinary roots, provider selection,
+  one package compile request, compilation/linking
   Runtime provider lookup/call, host grants, installation helpers
 
 vela_hot_reload
@@ -461,58 +476,91 @@ inside the sealed HIR/package compilation request. Compiled metadata maps a
 `ProviderKey` to linked type and method-dispatch handles owned by the same
 `LinkedArtifact` generation.
 
-## 11. Discovery API
+## 11. Package Workspace And Provider Discovery API
 
-Discovery is host-controlled and read-only:
+Package loading is general-purpose and host-controlled:
 
 ```text
-manifest roots
+root manifest
   -> PackageGraph
   -> package-aware HirSourceSet
-  -> provider/service validation
-  -> ProviderCatalog
+  -> sealed PackageCompilationSnapshot
 ```
 
-Suggested API shape:
-
 ```rust
-let discovery = engine.discover_packages(["plugins/vela.toml"])?;
-let providers = discovery.catalog().providers_for(service_trait_id);
+let packages = engine.load_package_workspace("app/vela.toml")?;
+let artifact = engine.compile_package(&packages, &app_package_id)?;
 ```
 
-Discovery returns a sealed snapshot rather than exposing raw HIR ownership
-through the catalog:
+The sealed snapshot is provider-independent:
 
 ```rust
-pub struct DiscoverySnapshot {
-    id: DiscoverySnapshotId,
+pub struct PackageCompilationSnapshot {
+    id: PackageCompilationSnapshotId,
     package_graph: Arc<PackageGraph>,
     sources: Arc<HirSourceSet>,
-    catalog: ProviderCatalog,
 }
 ```
 
-`ProviderCatalog` is the lightweight metadata view. `ProviderSelection`
-records `DiscoverySnapshotId`, so a selection cannot be combined with a
-different package graph/HIR generation by matching strings. Public APIs do not
-expose mutable or independently replaceable HIR. Discovery errors preserve
-manifest and Vela source diagnostics separately.
+Its fields are not independently replaceable through public APIs. It may be
+used to compile any workspace member as an ordinary root package. Loading and
+compiling a package does not require a `ProviderCatalog` or
+`ProviderSelection`.
+
+Provider discovery is an optional read-only projection over the same snapshot:
+
+```rust
+let catalog = engine.discover_providers(&packages)?;
+let providers = catalog.providers_for(service_trait_id);
+```
+
+`ProviderCatalog` is lightweight metadata and records the source
+`PackageCompilationSnapshotId`. `ProviderSelection` records that same ID, so a
+selection cannot be combined with a different package graph/HIR generation by
+matching strings. Discovery errors preserve manifest and Vela source
+diagnostics separately and discovery never executes code.
 
 ## 12. Compilation And Artifact Boundary
 
-Provider selection uses complete stable keys:
+All package compilation uses one request:
 
 ```rust
-let selection = ProviderSelection::from_snapshot(&discovery, [provider_key]);
-let artifact = engine.compile_provider_selection(&discovery, &selection)?;
+pub struct PackageCompileRequest {
+    snapshot: PackageCompilationSnapshotId,
+    roots: BTreeSet<PackageId>,
+}
+
+pub struct ProviderCompileRequest {
+    packages: PackageCompileRequest,
+    providers: ProviderSelection,
+}
 ```
+
+Ordinary package compilation supplies only roots:
+
+```rust
+let request = PackageCompileRequest::for_root(&packages, app_package_id);
+let artifact = engine.compile_packages(&packages, &request)?;
+```
+
+Provider-only compilation supplies selected provider keys; their owning
+packages become compile roots:
+
+```rust
+let selection = ProviderSelection::from_catalog(&catalog, [provider_key]);
+let request = ProviderCompileRequest::for_selection(&packages, selection);
+let artifact = engine.compile_provider_selection(&packages, &request)?;
+```
+
+`compile_package` and `compile_provider_selection` are convenience APIs over
+one internal sealed compilation request, not separate compiler pipelines.
 
 The production pipeline remains:
 
 ```text
-sealed catalog/package selection
-  -> selected owning packages and transitive dependencies
-  -> package-aware HirSourceSet
+PackageCompilationSnapshot + base/provider compile request
+  -> root/provider owning packages and transitive dependencies
+  -> package-aware HirSourceSet selection
   -> ProgramCompilationRequest
   -> CompiledProgram
   -> Engine registry-aware linker
@@ -521,11 +569,15 @@ sealed catalog/package selection
 
 Rules:
 
-- selected providers include their owning package and transitive dependencies;
+- every ordinary root package pulls in direct and transitive dependencies;
+- ordinary source imports may use `crate::` and direct dependency aliases;
+- cross-package access requires public declarations;
+- provider selection adds provider-owning roots to the same compile closure;
 - the first slice compiles complete selected packages, not function-level
   tree-shaken fragments;
 - only explicitly selected provider keys enter the installed runtime table;
   other provider declarations in compiled packages remain discovery metadata;
+- an ordinary request has an empty `InstalledProviderSet`;
 - Engine remains the only production linker;
 - package/provider metadata is sealed into the same executable generation as
   verified MIR, linked bytecode, debug metadata, and cache layouts;
@@ -533,14 +585,20 @@ Rules:
   compile request; callers cannot attach an independently built catalog;
 - `ProgramImage`/linked records index providers by `ProviderKey` and linked
   handles, not source function names;
-- ordinary execution may construct a Runtime directly from the artifact;
+- ordinary execution constructs a Runtime from the artifact and calls normal
+  linked entry functions;
 - hot-reload initial/update APIs pass the artifact to `vela_hot_reload`, which
   alone constructs `ProgramVersion` or `HotUpdate`.
 
 Required API distinction:
 
 ```text
-compile_provider_selection(...) -> Arc<LinkedArtifact>
+load_package_workspace(...) -> PackageCompilationSnapshot
+compile_packages(snapshot, request) -> Arc<LinkedArtifact>
+compile_package(snapshot, root) -> Arc<LinkedArtifact>
+compile_provider_selection(snapshot, provider_request) -> Arc<LinkedArtifact>
+compile_package_hot_reload_initial(...) -> ProgramVersion
+compile_package_hot_reload_update(...) -> HotUpdate
 compile_provider_hot_reload_initial(...) -> ProgramVersion
 compile_provider_hot_reload_update(...) -> HotUpdate
 ```
@@ -568,12 +626,15 @@ linking. `ProviderReceiverPlan` is a closed linked enum whose only first-slice
 variant is `FreshZeroField`; this leaves an explicit extension point without
 changing first-slice object-identity semantics.
 
-`ProviderSelection` contains the source `DiscoverySnapshotId` to prevent
-cross-generation compilation. `ProviderSelectionFingerprint` does not contain
-that generation-local ID: it is derived from the canonical sorted set of
-selected `ProviderKey` values. Reload reconstructs a selection with those keys
-against the new discovery snapshot, then compares/installs the resulting
-artifact.
+`PackageCompileRequest`, `ProviderCompileRequest`, and `ProviderSelection`
+contain the source
+`PackageCompilationSnapshotId` to prevent cross-generation compilation. The
+artifact stores a `PackageCompileRequestFingerprint` derived only from the
+canonical sorted root `PackageId` and selected `ProviderKey` sets; it does not
+contain the generation-local snapshot ID. `ProviderSelectionFingerprint` is
+the provider subset of that request fingerprint. Reload reconstructs the same
+root/provider request against a new package snapshot, then compares/installs
+the resulting artifact.
 
 ## 13. Runtime Provider Calls
 
@@ -664,6 +725,7 @@ changed source or manifest
 Compatibility checks include:
 
 - root and dependency `PackageId` stability;
+- the ordinary root package set from `PackageCompileRequestFingerprint`;
 - stable definition paths affected by package/module changes;
 - service trait addition/removal/method/signature/effect changes;
 - every previously installed provider key still resolves in the rebuilt
@@ -675,12 +737,15 @@ Compatibility checks include:
 
 A selected provider removal, service ABI change, provider target-type change,
 or unapproved capability expansion is rejected. A provider body-only change is
-accepted. Ordinary source/manifest reload reapplies the previous artifact's
-`ProviderSelectionFingerprint`: a newly discovered but unselected provider is
-not installed and does not change runtime provider ABI. Changing the installed
-selection is an explicit host restage operation, not an incidental source
-reload. Rejected updates do not advance the active image. Reports carry
-package, module, service, provider, manifest span, and Vela source span context.
+accepted. An ordinary dependency body change follows the existing function and
+schema ABI rules and can update an application with no providers installed.
+Source/manifest reload reapplies the previous artifact's complete
+`PackageCompileRequestFingerprint`; a newly discovered but unselected provider
+is not installed and does not change runtime provider ABI. Changing root
+packages or the installed provider selection is an explicit host restage
+operation, not an incidental source reload. Rejected updates do not advance the
+active image. Reports carry package, module, service, provider, manifest span,
+and Vela source span context as applicable.
 
 ## 16. Language Service And LSP
 
@@ -716,7 +781,7 @@ cutover:
    may be committed when all existing consumers use it.
 3. Phase 2 is one atomic breaking package-identity hard switch. Intermediate
    compilation failures are allowed; no compatibility adapter may be added.
-4. Phases 3-6 add complete vertical behavior on top of the single identity
+4. Phases 3-7 add complete vertical behavior on top of the single identity
    model and may use small coherent commits.
 5. Each resume inspects and continues the dirty worktree; do not reset partial
    identity work or recreate old APIs.
@@ -844,7 +909,51 @@ cargo test -p vela_engine
 cargo test -p vela_language_service
 ```
 
-## 21. Phase 3: Structured Provider HIR And Catalog
+## 21. Phase 3: Ordinary Package Compilation Vertical Slice
+
+- [ ] Add `Engine::load_package_workspace` returning one sealed
+      `PackageCompilationSnapshot` without requiring provider discovery.
+- [ ] Add `PackageCompileRequest` bound to the snapshot ID with ordinary root
+      package IDs and no dependency on provider metadata or selection types.
+- [ ] Resolve every root to its complete transitive dependency closure.
+- [ ] Compile ordinary root and dependency packages through one HIR,
+      `ProgramCompilationRequest`, `CompiledProgram`, and Engine linker path.
+- [ ] Add `compile_packages` plus `compile_package` convenience API.
+- [ ] Add ordinary package hot-reload initial/update front doors using the same
+      linked-artifact boundary.
+- [ ] Seal a stable request fingerprint containing root PackageIds even when no
+      providers are installed.
+- [ ] Keep ordinary artifacts' `InstalledProviderSet` empty.
+- [ ] Validate public/private cross-package imports and direct-alias rules.
+- [ ] Validate statically observed package capabilities against manifests and
+      host grants without requiring provider metadata.
+- [ ] Construct a Runtime from an ordinary package artifact and call its linked
+      entry function.
+
+Focused tests:
+
+- [ ] `ordinary_package_imports_public_dependency_function`
+- [ ] `ordinary_package_imports_dependency_type_and_method`
+- [ ] `ordinary_package_rejects_private_dependency_declaration`
+- [ ] `ordinary_package_includes_transitive_dependencies_but_not_their_aliases`
+- [ ] `ordinary_package_compiles_and_runs_without_provider_catalog`
+- [ ] `ordinary_package_artifact_has_empty_installed_provider_set`
+- [ ] `ordinary_package_request_rejects_another_snapshot`
+- [ ] `ordinary_dependency_body_reload_updates_root_package_calls`
+- [ ] `ordinary_dependency_abi_change_is_rejected_without_image_advance`
+- [ ] `ordinary_package_capability_use_must_be_declared_and_granted`
+
+Validation:
+
+```bash
+cargo test -p vela_package
+cargo test -p vela_hir package
+cargo test -p vela_bytecode package
+cargo test -p vela_engine package
+cargo test -p vela_hot_reload package
+```
+
+## 22. Phase 4: Structured Provider HIR And Catalog
 
 - [ ] Replace flattened HIR attribute values with structured arguments without
       regressing existing `doc`, `derive`, `id`, event, or policy attributes.
@@ -854,10 +963,10 @@ cargo test -p vela_language_service
 - [ ] Validate method coverage, defaults, signatures, return hints, effects,
       access, and declared/statically-observed capabilities.
 - [ ] Reject duplicate provider keys and malformed/redundant arguments.
-- [ ] Add stable `ProviderKey`, public descriptors, source locations, a
-      lightweight catalog, and a sealed `DiscoverySnapshot` that pins one
-      package/HIR generation.
-- [ ] Add `Engine::discover_packages` without compilation or execution.
+- [ ] Add stable `ProviderKey`, public descriptors, source locations, and a
+      lightweight catalog bound to one `PackageCompilationSnapshotId`.
+- [ ] Add `Engine::discover_providers(&PackageCompilationSnapshot)` without
+      compilation or execution.
 - [ ] Prove discovery does not execute top-level code or native/HostAccess work.
 
 Focused tests:
@@ -881,10 +990,10 @@ cargo test -p vela_analysis provider
 cargo test -p vela_engine provider_catalog
 ```
 
-## 22. Phase 4: Linked Provider Runtime Vertical Slice
+## 23. Phase 5: Linked Provider Runtime Vertical Slice
 
 - [ ] Add provider selection by full `ProviderKey` bound to one
-      `DiscoverySnapshotId`.
+      `PackageCompilationSnapshotId`.
 - [ ] Resolve owning packages and transitive dependencies.
 - [ ] Compile complete selected packages through sealed HIR requests.
 - [ ] Seal only selected providers into an `InstalledProviderSet` carried from
@@ -924,13 +1033,15 @@ cargo test -p vela_engine provider
 cargo test -p vela_vm linked_execution
 ```
 
-## 23. Phase 5: Package And Provider Hot Reload
+## 24. Phase 6: Package And Provider Hot Reload
 
 - [ ] Add artifact-derived package/provider ABI records.
 - [ ] Persist the installed selection fingerprint in the artifact/version and
       reapply it during ordinary source/manifest reload.
 - [ ] Derive the fingerprint only from canonical selected ProviderKey values,
-      not the generation-local DiscoverySnapshotId.
+      not the generation-local PackageCompilationSnapshotId.
+- [ ] Persist and reapply ordinary root PackageIds through the complete
+      PackageCompileRequestFingerprint even when provider selection is empty.
 - [ ] Stage changed manifests and sources through Engine package graph rebuild.
 - [ ] Compute changed packages and affected dependents for reports.
 - [ ] Compare service trait, provider key/target/method, package identity,
@@ -947,6 +1058,7 @@ cargo test -p vela_vm linked_execution
 Focused tests:
 
 - [ ] `provider_body_change_is_accepted`
+- [ ] `ordinary_package_reload_reapplies_previous_root_set`
 - [ ] `unselected_provider_addition_does_not_change_runtime_abi`
 - [ ] `ordinary_reload_reapplies_previous_provider_selection`
 - [ ] `provider_removal_is_rejected_without_advancing_active_image`
@@ -964,7 +1076,7 @@ cargo test -p vela_engine provider
 cargo test -p vela_engine reload
 ```
 
-## 24. Phase 6: Tooling, Example, Docs, And Close-Out
+## 25. Phase 7: Tooling, Examples, Docs, And Close-Out
 
 - [ ] Load workspace/package manifests through `ProjectState` using
       `vela_package`.
@@ -974,6 +1086,8 @@ cargo test -p vela_engine reload
       risk metadata.
 - [ ] Publish manifest/package/provider diagnostics without running host code.
 - [ ] Add one standalone API-package + plugin-package example.
+- [ ] Add one standalone ordinary app-package + library-package example with no
+      provider declarations.
 - [ ] Document manifest schema, imports, discovery, selection, calls,
       capabilities, and reload.
 - [ ] Update `docs/architecture.md`, relevant subsystem architecture docs,
@@ -989,6 +1103,7 @@ Focused tests:
 - [ ] `references_find_service_provider_impls_across_packages`
 - [ ] `rename_provider_id_reports_hot_reload_risk`
 - [ ] `manifest_change_refreshes_one_project_generation`
+- [ ] `example_ordinary_package_dependency_compiles_runs_and_reloads`
 - [ ] `example_plugin_provider_discovers_compiles_runs_and_reloads`
 
 Validation:
@@ -999,6 +1114,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo clippy --manifest-path examples/Cargo.toml --all-targets -- -D warnings
 cargo test --manifest-path examples/Cargo.toml
+cargo run --manifest-path examples/Cargo.toml --bin package_dependency_demo
 cargo run --manifest-path examples/Cargo.toml --bin plugin_provider_demo
 ```
 
@@ -1010,6 +1126,7 @@ Final zero-hit and architecture gates must prove:
 - no package-unaware ModuleGraph index or import resolver remains;
 - Engine is the sole production compiler/linker orchestrator;
 - hot reload accepts artifacts, not manifests, HIR, or CompiledProgram;
+- ordinary package compilation does not require provider discovery or catalog;
 - provider runtime dispatch uses linked handles, not names;
 - provider metadata cannot be attached across executable generations;
 - only selected providers enter `InstalledProviderSet` and runtime ABI;
@@ -1019,7 +1136,7 @@ Final zero-hit and architecture gates must prove:
 - language service and Engine consume the same package graph model;
 - all active files satisfy the current file-size policy.
 
-## 25. Deferred Questions
+## 26. Deferred Questions
 
 These do not block the first slice:
 
@@ -1033,7 +1150,7 @@ These do not block the first slice:
 - provider enable/disable state independent of package selection;
 - foreign host-language package modules.
 
-## 26. Completion Criteria
+## 27. Completion Criteria
 
 The plan is complete only when:
 
@@ -1042,6 +1159,8 @@ The plan is complete only when:
 - [ ] `PackageId + ModulePath` is the only script module identity.
 - [ ] all stable script definitions include PackageId.
 - [ ] SourceId remains internal and deterministic.
+- [ ] an ordinary root package imports, compiles, runs, and hot reloads its path
+      dependencies without provider metadata.
 - [ ] provider attributes are structured and source-spanned in HIR.
 - [ ] discovery returns a sealed read-only catalog without execution.
 - [ ] selected packages compile and link through the existing artifact pipeline.
@@ -1061,6 +1180,9 @@ The plan is complete only when:
 The proving vertical slice is:
 
 ```text
+ordinary app package -> path library dependency -> public import
+Engine compiles and Runtime runs it without a ProviderCatalog
+dependency body reload is accepted and dependency ABI break is rejected
 one API package
 one plugin package with a direct path dependency
 one public service trait
