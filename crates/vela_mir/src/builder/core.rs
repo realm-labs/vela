@@ -1,9 +1,9 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use vela_analysis::type_fact::TypeFact;
 use vela_hir::binding::BindingResolution;
 use vela_hir::body::{HirBody, HirExprKind, HirStmtKind};
-use vela_hir::ids::{HirBlockId, HirBodyId, HirExprId, HirLocalId, HirStmtId};
+use vela_hir::ids::{HirBlockId, HirBodyId, HirExprId, HirLocalId, HirScopeId, HirStmtId};
 
 use crate::{
     CompileLambdaTarget, CompileParameter, DebugLocalKind, MirBuildError, MirDebugLocal, MirEffect,
@@ -26,6 +26,7 @@ pub(super) struct FunctionBuilder<'a> {
     locals: BTreeMap<HirLocalId, MirLocalId>,
     nested_functions: BTreeMap<HirBodyId, MirFunctionId>,
     kind: BuilderFunctionKind,
+    active_scope: HirScopeId,
     pub(super) loop_stack: Vec<super::loops::LoopContext>,
 }
 
@@ -66,11 +67,7 @@ impl<'a> FunctionBuilder<'a> {
             return_contract,
             origin,
         );
-        function.set_lexical_scopes(
-            body.scopes
-                .iter()
-                .map(|(id, scope)| (*id, MirSourceOrigin::body(body.id, scope.origin.span))),
-        );
+        function.set_active_lexical_scopes(scope_chain(body, body.root_scope));
         let current_block = function.entry_block();
         Ok(Self {
             input,
@@ -82,6 +79,7 @@ impl<'a> FunctionBuilder<'a> {
             kind: BuilderFunctionKind::Root {
                 parameters: descriptor.signature.parameters.clone(),
             },
+            active_scope: body.root_scope,
             loop_stack: Vec::new(),
         })
     }
@@ -108,11 +106,7 @@ impl<'a> FunctionBuilder<'a> {
         }
         let mut function =
             MirFunction::new(body.id, owner, target.code_symbol.clone(), None, origin);
-        function.set_lexical_scopes(
-            body.scopes
-                .iter()
-                .map(|(id, scope)| (*id, MirSourceOrigin::body(body.id, scope.origin.span))),
-        );
+        function.set_active_lexical_scopes(scope_chain(body, body.root_scope));
         let current_block = function.entry_block();
         Ok(Self {
             input,
@@ -124,6 +118,7 @@ impl<'a> FunctionBuilder<'a> {
             kind: BuilderFunctionKind::Lambda {
                 target: target.clone(),
             },
+            active_scope: body.root_scope,
             loop_stack: Vec::new(),
         })
     }
@@ -562,6 +557,25 @@ impl<'a> FunctionBuilder<'a> {
     }
 
     pub(super) fn lower_statement(&mut self, statement_id: HirStmtId) -> Result<(), MirBuildError> {
+        let scope = self
+            .body
+            .statements
+            .get(&statement_id)
+            .map(|statement| statement.scope)
+            .ok_or_else(|| {
+                self.inconsistent(
+                    self.body_origin(),
+                    format!("missing HIR statement {statement_id:?}"),
+                )
+            })?;
+        let previous = self.active_scope;
+        self.activate_scope(scope);
+        let result = self.lower_statement_in_scope(statement_id);
+        self.activate_scope(previous);
+        result
+    }
+
+    fn lower_statement_in_scope(&mut self, statement_id: HirStmtId) -> Result<(), MirBuildError> {
         if self.current_is_terminated()? {
             return Ok(());
         }
@@ -640,6 +654,27 @@ impl<'a> FunctionBuilder<'a> {
     }
 
     pub(super) fn lower_expression(
+        &mut self,
+        expression: HirExprId,
+    ) -> Result<MirOperand, MirBuildError> {
+        let scope = self
+            .body
+            .expression(expression)
+            .map(|expression| expression.scope)
+            .ok_or_else(|| {
+                self.inconsistent(
+                    self.body_origin(),
+                    format!("missing HIR expression {expression:?}"),
+                )
+            })?;
+        let previous = self.active_scope;
+        self.activate_scope(scope);
+        let result = self.lower_expression_in_scope(expression);
+        self.activate_scope(previous);
+        result
+    }
+
+    fn lower_expression_in_scope(
         &mut self,
         expression: HirExprId,
     ) -> Result<MirOperand, MirBuildError> {
@@ -810,6 +845,12 @@ impl<'a> FunctionBuilder<'a> {
         MirSourceOrigin::body(self.body.id, self.body.origin.span)
     }
 
+    fn activate_scope(&mut self, scope: HirScopeId) {
+        self.active_scope = scope;
+        self.function
+            .set_active_lexical_scopes(scope_chain(self.body, scope));
+    }
+
     pub(super) fn expression_origin(
         &self,
         expression: HirExprId,
@@ -857,6 +898,18 @@ impl<'a> FunctionBuilder<'a> {
             )
         })
     }
+}
+
+fn scope_chain(body: &HirBody, scope: HirScopeId) -> BTreeSet<HirScopeId> {
+    let mut scopes = BTreeSet::new();
+    let mut current = Some(scope);
+    while let Some(scope) = current {
+        if !scopes.insert(scope) {
+            break;
+        }
+        current = body.scopes.get(&scope).and_then(|scope| scope.parent);
+    }
+    scopes
 }
 
 pub(super) fn value_type(fact: Option<&TypeFact>) -> MirValueType {

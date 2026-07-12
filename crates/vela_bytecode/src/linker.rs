@@ -15,13 +15,19 @@ use crate::linked::{
     LinkedNativeFunction, LinkedProgram, LinkedType, LinkedVariant, TypeGuard, TypeGuardPlan,
 };
 use crate::{
-    CacheSiteId, CacheSiteInstruction, Constant, FieldSlot, FunctionIndex, HostTargetPlanId,
-    InstructionOffset, MethodDispatchHandle, NativeHandle, ScriptFunctionHandle, TypeHandle,
-    UnlinkedCodeObject, UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram,
-    UnlinkedTypeGuard, UnlinkedTypeGuardPlan, VariantHandle,
+    CacheSiteInstruction, Constant, FieldSlot, FunctionIndex, HostTargetPlanId, InstructionOffset,
+    MethodDispatchHandle, NativeHandle, ScriptFunctionHandle, TypeHandle, UnlinkedCodeObject,
+    UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram, UnlinkedTypeGuard,
+    UnlinkedTypeGuardPlan, VariantHandle,
 };
 
+#[path = "linker/support.rs"]
+mod support;
 mod targets;
+
+use support::{
+    LinkContext, LinkInstructionContext, MethodDispatchKey, cache_site_at, sorted_field_slots,
+};
 
 #[derive(Clone, Debug, Default)]
 pub struct Linker<'registry> {
@@ -53,26 +59,44 @@ impl<'registry> Linker<'registry> {
         self.native_implementations.insert(id);
     }
 
-    pub fn link_program(
+    #[cfg(any(test, feature = "test-support"))]
+    #[doc(hidden)]
+    pub fn link_test_program(
         &self,
         program: &UnlinkedProgram,
     ) -> Result<Arc<crate::LinkedArtifact>, LinkError> {
-        self.link_unowned(program).map(Arc::new)
+        Ok(Arc::new(self.link_unowned(program)?.into_test_artifact()))
     }
 
-    fn link_unowned(&self, program: &UnlinkedProgram) -> Result<crate::LinkedArtifact, LinkError> {
+    fn link_unowned(
+        &self,
+        program: &UnlinkedProgram,
+    ) -> Result<crate::artifact::UnboundLinkedProgram, LinkError> {
         let image = crate::ProgramImage::from_program(program);
         let linked = LinkContext::new(self, &image).link_program(&image)?;
-        crate::LinkedArtifact::finish(image, linked).map_err(LinkError::Verification)
+        crate::LinkedArtifact::finish_unbound(image, linked).map_err(LinkError::Verification)
     }
 
+    /// Links one cohesive bytecode and verified-MIR compile generation.
+    ///
+    /// Handcrafted bytecode cannot enter this production artifact path:
+    ///
+    /// ```compile_fail
+    /// use vela_bytecode::{Linker, UnlinkedProgram};
+    /// let program = UnlinkedProgram::new();
+    /// let _ = Linker::new().link_compiled_program(program);
+    /// ```
     pub fn link_compiled_program(
         &self,
         program: crate::compiler::CompiledProgram,
     ) -> Result<Arc<crate::LinkedArtifact>, LinkError> {
-        let (bytecode, verified_mir, mir_executables) = program.into_linker_parts();
-        self.link_unowned(&bytecode)?
-            .bind_compiled_mir(verified_mir, &mir_executables)
+        let parts = program.into_linker_parts();
+        self.link_unowned(&parts.bytecode)?
+            .bind_compiled_mir(
+                parts.verified_mir,
+                &parts.mir_executables,
+                &parts.budget_layouts,
+            )
             .map(Arc::new)
     }
 }
@@ -103,7 +127,6 @@ pub enum LinkError {
         actual_root: Option<FunctionId>,
         actual_function: Option<vela_mir::MirFunctionId>,
     },
-    MissingVerifiedMirGeneration,
     MissingMirRoot {
         root: FunctionId,
     },
@@ -114,6 +137,21 @@ pub enum LinkError {
     MissingMirBudgetCharge {
         executable: usize,
         site: vela_mir::MirBudgetSite,
+    },
+    MissingMirBudgetLayoutSite {
+        executable: usize,
+        site: vela_mir::MirBudgetSite,
+    },
+    ExtraMirBudgetLayoutSite {
+        executable: usize,
+    },
+    DuplicateMirBudgetLayoutSite {
+        executable: usize,
+    },
+    MirBudgetLayoutMismatch {
+        executable: usize,
+        site: vela_mir::MirBudgetSite,
+        offset: InstructionOffset,
     },
     ExtraMirBudgetCharge {
         executable: usize,
@@ -195,9 +233,6 @@ impl fmt::Display for LinkError {
                     "linked artifact has {actual} executables, expected {expected} from its compiled MIR generation"
                 )
             }
-            Self::MissingVerifiedMirGeneration => {
-                write!(formatter, "linked artifact has no verified MIR generation")
-            }
             Self::MirExecutableIdentityMismatch {
                 index,
                 expected_root,
@@ -218,6 +253,26 @@ impl fmt::Display for LinkError {
             Self::MissingMirBudgetCharge { executable, site } => write!(
                 formatter,
                 "linked executable {executable} is missing MIR budget charge {site:?}"
+            ),
+            Self::MissingMirBudgetLayoutSite { executable, site } => write!(
+                formatter,
+                "linked executable {executable} has no sealed layout for MIR budget site {site:?}"
+            ),
+            Self::ExtraMirBudgetLayoutSite { executable } => write!(
+                formatter,
+                "linked executable {executable} has an extra sealed MIR budget layout site"
+            ),
+            Self::DuplicateMirBudgetLayoutSite { executable } => write!(
+                formatter,
+                "linked executable {executable} has a duplicate sealed MIR budget layout site"
+            ),
+            Self::MirBudgetLayoutMismatch {
+                executable,
+                site,
+                offset,
+            } => write!(
+                formatter,
+                "linked executable {executable} does not implement sealed MIR budget site {site:?} at {offset:?}"
             ),
             Self::ExtraMirBudgetCharge {
                 executable,
@@ -300,28 +355,6 @@ impl fmt::Display for LinkError {
 }
 
 impl Error for LinkError {}
-
-struct LinkContext<'linker, 'registry> {
-    linker: &'linker Linker<'registry>,
-    linked: LinkedProgram,
-    script_functions_by_name: BTreeMap<String, ScriptFunctionHandle>,
-    script_functions_by_id: BTreeMap<FunctionId, ScriptFunctionHandle>,
-    script_methods_by_id: BTreeMap<MethodId, ScriptFunctionHandle>,
-    native_handles: BTreeMap<FunctionId, NativeHandle>,
-    method_handles: BTreeMap<MethodDispatchKey, MethodDispatchHandle>,
-    script_type_ids: BTreeMap<String, TypeId>,
-    script_variant_ids: BTreeMap<(String, String), VariantId>,
-    type_handles: BTreeMap<TypeId, TypeHandle>,
-    variant_handles: BTreeMap<VariantId, VariantHandle>,
-}
-
-struct LinkInstructionContext<'a> {
-    program: &'a crate::ProgramImage,
-    code: &'a UnlinkedCodeObject,
-    host_target_map: &'a [HostTargetPlanId],
-    linked_code: &'a mut LinkedCodeObject,
-    instruction_offset: InstructionOffset,
-}
 
 impl<'linker, 'registry> LinkContext<'linker, 'registry> {
     fn new(linker: &'linker Linker<'registry>, program: &crate::ProgramImage) -> Self {
@@ -476,7 +509,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
         let host_target_map = context.host_target_map;
         let linked_code = context.linked_code;
         let instruction_offset = context.instruction_offset;
-        let kind = match &instruction.kind {
+        let mut kind = match &instruction.kind {
             UnlinkedInstructionKind::ChargeExecutionUnits { units } => {
                 InstructionKind::ChargeExecutionUnits { units: *units }
             }
@@ -1139,6 +1172,14 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
             UnlinkedInstructionKind::Return { src } => InstructionKind::Return { src: *src },
         };
 
+        if let Some(cache_site) = instruction
+            .kind
+            .cache_site()
+            .or_else(|| cache_site_at(code, instruction_offset))
+        {
+            kind.set_cache_site(cache_site);
+        }
+
         Ok(Instruction {
             kind,
             span: instruction.span,
@@ -1147,43 +1188,6 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
             mir_budget_charges: instruction.mir_budget_charges.clone(),
         })
     }
-}
-
-fn cache_site_at(
-    code: &UnlinkedCodeObject,
-    instruction_offset: InstructionOffset,
-) -> Option<CacheSiteId> {
-    let kind = code
-        .instructions
-        .get(instruction_offset.0)?
-        .kind
-        .cache_site_policy()?
-        .kind;
-    code.cache_sites
-        .sites()
-        .iter()
-        .find(|site| site.instruction_offset == instruction_offset && site.kind == kind)
-        .map(|site| site.id)
-}
-
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-enum MethodDispatchKey {
-    Script(MethodId, ScriptFunctionHandle),
-    Value(MethodId),
-    Host(HostMethodId),
-}
-
-fn sorted_field_slots<'field>(
-    fields: impl IntoIterator<Item = &'field String>,
-) -> BTreeMap<String, usize> {
-    let mut fields = fields.into_iter().cloned().collect::<Vec<_>>();
-    fields.sort_unstable();
-    fields.dedup();
-    fields
-        .into_iter()
-        .enumerate()
-        .map(|(slot, field)| (field, slot))
-        .collect()
 }
 
 #[cfg(test)]

@@ -646,7 +646,7 @@ fn main() {
     )
     .expect("compile program source");
     let linked = Linker::new()
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("link compiled program");
 
     assert_eq!(
@@ -863,7 +863,7 @@ fn main() {
     )
     .expect("compile captured lambda");
     let linked = Linker::new()
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("link captured lambda program");
     let image = linked.image();
     let make_adder = image

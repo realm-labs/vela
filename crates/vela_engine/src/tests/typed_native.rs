@@ -20,7 +20,7 @@ fn run_linked_program(
     args: &[OwnedValue],
 ) -> VmResult<OwnedValue> {
     let linked = engine
-        .link_program(program)
+        .link_test_program(program)
         .expect("engine typed native test program should link");
     let mut budget = ExecutionBudget::unbounded();
     engine

@@ -839,7 +839,7 @@ fn main() {
     )
     .expect("program should compile");
     let linked = Linker::new()
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("program should link");
     let mut linked = vela_bytecode::test_support::into_linked_program(linked);
     let helper_handle = linked

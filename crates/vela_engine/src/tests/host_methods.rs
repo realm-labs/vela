@@ -31,7 +31,7 @@ fn run_linked_program_with_host(
     host: &mut HostExecution<'_>,
 ) -> VmResult<OwnedValue> {
     let linked = engine
-        .link_program(program)
+        .link_test_program(program)
         .expect("engine host method test program should link");
     let mut budget = ExecutionBudget::unbounded();
     engine

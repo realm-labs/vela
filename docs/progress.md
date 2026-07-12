@@ -98,11 +98,14 @@ families. The three motivating source regressions, zero-hit audits, focused
 ownership/budget/debug tests, measurements, 30 runnable examples, benchmark
 build, and full format/clippy/workspace test gate pass.
 
-Batch F (Phase 11) is active. Batch E remains the historical landed checkpoint,
-but overall executable-generation/JIT-foundation completion stays open until
-the optional/unbound artifact state, self-authenticating budget metadata,
-wildcard cache operand matches, source-span scope reconstruction, and
-cross-toolchain performance claim are removed and the complete gate passes.
+Batch F (Phase 11) is complete. Production linked artifacts are MIR-bound by
+construction; independently sealed executable budget layouts reject coordinated
+charge/origin moves; one exhaustive declaration owns cache policy and operand
+access; and MIR program points own lexical scope facts. Historical and Batch F
+audits, regressions, 30 runnable examples, full format/clippy/workspace tests,
+benchmark compilation, same-toolchain performance and memory checks, and the
+active-file size audit pass. The executable-generation/JIT-foundation track is
+complete through its non-JIT boundary.
 
 The Heavy HIR hard switch and D1-D3 close-out are complete.
 `vela_hir` owns executable body and stable semantic identity, bytecode consumes

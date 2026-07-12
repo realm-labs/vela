@@ -20,7 +20,7 @@ fn run_linked_stdlib_test_program_with_budget(
     vm.native_implementation_ids()
         .for_each(|id| linker.add_native_implementation(id));
     let linked = linker
-        .link_program(program)
+        .link_test_program(program)
         .expect("stdlib test program should link");
     vm.run_linked_program_with_budget(&linked, entry, args, budget)
 }

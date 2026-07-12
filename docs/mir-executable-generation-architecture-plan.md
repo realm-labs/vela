@@ -2,9 +2,9 @@
 
 > **Track:** verified MIR semantics, linked executable ownership, hot-reload
 > generation lifetime, backend-neutral budgets, and M22 JIT input
-> **Document status:** Active goal-mode execution plan
-> **Execution status:** Batches A-E landed; second post-implementation review
-> reopened completion. Batch F / Phase 11 is the active remaining goal.
+> **Document status:** Complete implementation record
+> **Execution status:** Batches A-F landed. Phase 11 sealed the remaining
+> executable-generation invariants and passed the complete validation gate.
 > **Execution mode:** throughput-first large batches. Intermediate commits may
 > fail to compile or test; only batch-completion checkpoints must be green.
 > **Supersedes:** the future-ownership, closure, cache rebasing, profile, budget,
@@ -88,8 +88,8 @@ Never mark this goal complete while any of the following is true:
 - any required source regression, zero-hit audit, full validation command,
   example test, benchmark build, performance/memory measurement, or file-size
   audit has not passed;
-- docs/progress.md still reports Batch F open or this document still reports
-  Batch F as the active remaining goal.
+- docs/progress.md still reports Batch F open or this document's execution
+  status still names Batch F as unfinished.
 
 If one implementation attempt fails, diagnose it and continue with another
 in-scope approach. Report blocked only when progress genuinely requires an
@@ -680,8 +680,7 @@ Rules:
 
 ### 9.1 Execution Batches
 
-The execution uses six large checkpoints. Batches A-E record landed work;
-Batch F is the active second review-correction batch:
+The execution used six large checkpoints. Batches A-F record landed work:
 
 ```text
 Batch A: MIR semantic contract
@@ -711,11 +710,8 @@ Batch F: sealed type and verifier close-out
   + MIR program-point debug scopes + same-toolchain performance gate
 ```
 
-Aim for one substantial Batch F commit. Split it only when needed
-to preserve recoverability or reviewability; do not split it merely because one
-crate or checklist subsection has become green. A red intermediate commit is
-acceptable, but the final commit for each batch must pass all validations from
-its included phases and leave one coherent production architecture.
+Batch F landed as one substantial commit after its complete validation boundary
+passed, preserving one coherent production architecture.
 
 ---
 
@@ -1495,31 +1491,31 @@ Review finding:
 
 Required architecture:
 
-- [ ] Make production `LinkedArtifact` always own a non-optional
+- [x] Make production `LinkedArtifact` always own a non-optional
   `Arc<OwnedVerifiedMirBundle>` and complete MIR executable mapping at
   construction.
-- [ ] If low-level linking needs a staged value, introduce a distinct private
+- [x] If low-level linking needs a staged value, introduce a distinct private
   `UnboundLinkedProgram`/builder type consumed by `link_compiled_program`; it
   must not implement or expose the production artifact/runtime interfaces.
-- [ ] Remove or restrict `Linker::link_program` and `Engine::link_program` so
+- [x] Remove or restrict `Linker::link_program` and `Engine::link_program` so
   they cannot publish an unbound `LinkedArtifact` in production.
-- [ ] Remove `RuntimeProgramInput::Unlinked` and the unlinked branches of
+- [x] Remove `RuntimeProgramInput::Unlinked` and the unlinked branches of
   `Runtime::new`/`try_new` and `RuntimeImage::new`/`try_new`. Production runtime
   construction accepts a cohesive `CompiledProgram`, bound `LinkedArtifact`,
   or `ProgramVersion` only.
-- [ ] Keep unlinked bytecode execution available only through clearly named
+- [x] Keep unlinked bytecode execution available only through clearly named
   low-level verifier/VM test support that cannot flow into hot reload, runtime
   images, retained closures, or JIT input.
-- [ ] Remove `Option` checks and `expect("... MIR-bound artifact")` assertions
+- [x] Remove `Option` checks and `expect("... MIR-bound artifact")` assertions
   made redundant by the sealed type.
 
 Tests:
 
-- [ ] Add compile-time/API tests proving no production constructor accepts
+- [x] Add compile-time/API tests proving no production constructor accepts
   `UnlinkedProgram` or an unbound linked value.
-- [ ] Prove every RuntimeImage, ProgramVersion, frame, closure, and restricted
+- [x] Prove every RuntimeImage, ProgramVersion, frame, closure, and restricted
   JIT input reaches the same non-optional verified-MIR owner.
-- [ ] Preserve explicit low-level bytecode verifier and VM conformance tests
+- [x] Preserve explicit low-level bytecode verifier and VM conformance tests
   without reintroducing a public compatibility execution route.
 
 Checkpoint: there is exactly one production linked-generation type and every
@@ -1539,27 +1535,27 @@ Review finding:
 
 Required architecture:
 
-- [ ] Seal a MIR-to-executable budget layout independently from mutable
+- [x] Seal a MIR-to-executable budget layout independently from mutable
   instruction charge metadata. It records each MIR site, expected executable
   offset/edge, class, units, and the semantic boundary kind needed to validate
   calls, HostAccess, reflection, allocation, guards, and backedges.
-- [ ] Make instruction origin/charge metadata private or construction-sealed so
+- [x] Make instruction origin/charge metadata private or construction-sealed so
   ordinary callers cannot coordinate forged placement after compilation.
-- [ ] Verify that the mapped instruction is the first operation for the MIR
+- [x] Verify that the mapped instruction is the first operation for the MIR
   point and that its instruction family implements the expected semantic
   boundary; comparing site labels to themselves is insufficient.
-- [ ] Retain successor-specific edge stubs and prove edge charge/JIT mappings
+- [x] Retain successor-specific edge stubs and prove edge charge/JIT mappings
   remain backend-neutral.
-- [ ] Keep function-wide totals only as a secondary consistency check.
+- [x] Keep function-wide totals only as a secondary consistency check.
 
 Tests:
 
-- [ ] For call, HostAccess, reflection, allocation, and guard fixtures, move
+- [x] For call, HostAccess, reflection, allocation, and guard fixtures, move
   units, charge metadata, and origin metadata together to a later instruction,
   clear or retag the original effect, and prove publication is rejected.
-- [ ] Reject coordinated moves to another instruction with the same source span
+- [x] Reject coordinated moves to another instruction with the same source span
   or MIR source origin.
-- [ ] Preserve exact threshold, conditional backedge, committed-host-write, and
+- [x] Preserve exact threshold, conditional backedge, committed-host-write, and
   retained-old-generation budget behavior.
 
 Checkpoint: observable trap ordering is proven from a sealed semantic mapping,
@@ -1578,14 +1574,14 @@ Cache review finding:
 
 Required cache architecture:
 
-- [ ] Define cache kind, storage, immutable access, and mutable access from one
+- [x] Define cache kind, storage, immutable access, and mutable access from one
   exhaustive declaration/match surface with no wildcard omission path for a
   cache-bearing variant.
-- [ ] Generate or derive compiler allocation, remapping, linker projection, and
+- [x] Generate or derive compiler allocation, remapping, linker projection, and
   verifier access from that authority.
-- [ ] Make adding a cache-bearing opcode fail compilation until policy and
+- [x] Make adding a cache-bearing opcode fail compilation until policy and
   operand behavior are complete; do not rely on a manually updated test table.
-- [ ] Preserve explicit sidecar-only behavior without pretending it has an
+- [x] Preserve explicit sidecar-only behavior without pretending it has an
   instruction operand.
 
 Debug review finding:
@@ -1599,13 +1595,13 @@ Debug review finding:
 
 Required debug architecture:
 
-- [ ] Project the active `HirScopeId` set or equivalent lexical-region identity
+- [x] Project the active `HirScopeId` set or equivalent lexical-region identity
   onto MIR blocks/statements/terminators during MIR construction.
-- [ ] Compute debug availability from definite initialization intersected with
+- [x] Compute debug availability from definite initialization intersected with
   those owned MIR scope facts; physical backends and liveness must not infer
   scope from source-span containment or query HIR.
-- [ ] Preserve source spans for presentation only, not scope authority.
-- [ ] Add positive and negative entry/exit assertions for nested blocks, loop
+- [x] Preserve source spans for presentation only, not scope authority.
+- [x] Add positive and negative entry/exit assertions for nested blocks, loop
   bindings, every match arm, captures, and parameter-default prologues,
   including synthetic/desugared MIR origins.
 
@@ -1614,7 +1610,7 @@ semantic MIR fact rather than a source-layout heuristic.
 
 ### 21.4 Validation And Same-Toolchain Performance Gate
 
-- [ ] Add zero-hit audits for the removed optional/unbound production state and
+- [x] Add zero-hit audits for the removed optional/unbound production state and
   wildcard cache operand matches. Example starting points:
 
 ```bash
@@ -1622,10 +1618,10 @@ rg -n "verified_mir: Option|RuntimeProgramInput::Unlinked|IntoRuntimeProgramInpu
 rg -n "fn (cache_site|set_cache_site).*|_ => (None|\{\})" crates/vela_bytecode/src/cache_policy.rs
 ```
 
-- [ ] Re-run all historical and Batch E zero-hit audits, the three motivating
+- [x] Re-run all historical and Batch E zero-hit audits, the three motivating
   source regressions, coordinated budget-corruption tests, ownership/reload
   tests, lexical debug tests, and the cache-family matrix.
-- [ ] Run the complete validation gate:
+- [x] Run the complete validation gate:
 
 ```bash
 cargo fmt --all -- --check
@@ -1635,34 +1631,34 @@ cargo test --manifest-path examples/Cargo.toml --test runnable_examples
 cargo bench --workspace --no-run
 ```
 
-- [ ] Correct the Batch E performance comparison: Phase 9 used Rust 1.96 while
+- [x] Correct the Batch E performance comparison: Phase 9 used Rust 1.96 while
   Batch E used Rust 1.97, so the recorded `-15.6%` delta is not attributable to
   the code change alone. Re-run both comparison endpoints with the same pinned
   toolchain, machine, profile, workload, warmup, and checksum validation, or
   remove the cross-toolchain percentage claim.
-- [ ] Run the focused call-heavy, scalar, budgeted/unbounded, shared-runtime,
+- [x] Run the focused call-heavy, scalar, budgeted/unbounded, shared-runtime,
   retained-generation, and hot-reload measurements after Batch F. Investigate
   repeatable regressions against the corrected same-toolchain baseline.
-- [ ] Re-run the active-file 1200-line audit and update durable decisions only
+- [x] Re-run the active-file 1200-line audit and update durable decisions only
   for representations actually activated by Batch F.
-- [ ] Update `docs/progress.md`, `docs/performance.md`, and this document only
+- [x] Update `docs/progress.md`, `docs/performance.md`, and this document only
   after every Phase 11 checkpoint passes.
 
 ### 21.5 Batch F Completion Criteria
 
-- [ ] Production `LinkedArtifact` is always MIR-bound and has no optional
+- [x] Production `LinkedArtifact` is always MIR-bound and has no optional
   verified-MIR state.
-- [ ] No production Runtime, RuntimeImage, Engine linker, VM linked entry, hot
+- [x] No production Runtime, RuntimeImage, Engine linker, VM linked entry, hot
   reload, or JIT input accepts an unbound/unlinked compatibility artifact.
-- [ ] Coordinated movement of charge, units, and origin metadata across every
+- [x] Coordinated movement of charge, units, and origin metadata across every
   observable effect boundary is rejected.
-- [ ] Budget verification consumes an independently sealed semantic mapping.
-- [ ] Cache policy and operand access come from one compile-time exhaustive
+- [x] Budget verification consumes an independently sealed semantic mapping.
+- [x] Cache policy and operand access come from one compile-time exhaustive
   authority without wildcard omission paths.
-- [ ] Debug lexical membership is owned at MIR program points and does not use
+- [x] Debug lexical membership is owned at MIR program points and does not use
   source-span containment as semantic authority.
-- [ ] Performance conclusions use same-toolchain measurements.
-- [ ] All regressions, zero-hit audits, workspace validation, examples,
+- [x] Performance conclusions use same-toolchain measurements.
+- [x] All regressions, zero-hit audits, workspace validation, examples,
   benchmark build, measurements, and file-size audits pass.
-- [ ] `docs/progress.md` reports Batch F complete and this document returns to
+- [x] `docs/progress.md` reports Batch F complete and this document returns to
   complete status only after every criterion above is checked.

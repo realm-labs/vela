@@ -90,7 +90,7 @@ mod type_guards;
 
 fn link_test_program(program: &UnlinkedProgram) -> Arc<LinkedArtifact> {
     Linker::new()
-        .link_program(program)
+        .link_test_program(program)
         .expect("test program should link")
 }
 
@@ -154,7 +154,7 @@ fn run_linked_test_program_with_budget(
     vm.native_implementation_ids()
         .for_each(|id| linker.add_native_implementation(id));
     let linked = linker
-        .link_program(program)
+        .link_test_program(program)
         .expect("test program should link");
     vm.run_linked_program_with_budget(&linked, entry, args, budget)
 }
@@ -234,7 +234,7 @@ fn run_linked_test_program_with_host_budget(
     vm.native_implementation_ids()
         .for_each(|id| linker.add_native_implementation(id));
     let linked = linker
-        .link_program(program)
+        .link_test_program(program)
         .expect("test program should link");
     vm.run_linked_program_with_host_budget_and_caches(&linked, entry, args, host, budget, None)
 }
@@ -251,7 +251,7 @@ fn run_linked_test_program_runtime_with_heap_and_budget(
     vm.native_implementation_ids()
         .for_each(|id| linker.add_native_implementation(id));
     let linked = linker
-        .link_program(program)
+        .link_test_program(program)
         .expect("test program should link");
     let function = linked
         .functions()
@@ -292,7 +292,7 @@ fn run_linked_test_program_runtime_with_host_heap_and_budget(
     vm.native_implementation_ids()
         .for_each(|id| linker.add_native_implementation(id));
     let linked = linker
-        .link_program(program)
+        .link_test_program(program)
         .expect("test program should link");
     let function = linked
         .functions()
@@ -329,7 +329,7 @@ fn run_linked_test_code_with_linker(
     let mut program = UnlinkedProgram::new();
     program.insert_function(code);
     let linked = linker
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("test code should link");
     vm.run_linked_program(&linked, &entry, &[])
 }

@@ -1003,7 +1003,7 @@ fn link_standard_native_test_program(program: &UnlinkedProgram) -> Arc<LinkedArt
         linker.add_native_implementation(id);
     }
     linker
-        .link_program(program)
+        .link_test_program(program)
         .expect("standard native test program should link")
 }
 

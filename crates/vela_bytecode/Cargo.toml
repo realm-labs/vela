@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [features]
-test-support = []
+test-support = ["vela_mir/test-support"]
 
 [dependencies]
 vela_analysis = { workspace = true }
@@ -17,6 +17,9 @@ vela_mir = { workspace = true }
 vela_registry = { workspace = true }
 vela_stdlib = { workspace = true }
 vela_syntax = { workspace = true }
+
+[dev-dependencies]
+vela_mir = { workspace = true, features = ["test-support"] }
 
 [lints]
 workspace = true

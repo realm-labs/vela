@@ -18,7 +18,7 @@ use crate::runtime::{CallArgs, CallOptions, Runtime};
 
 fn run_linked_program(engine: &Engine, program: &UnlinkedProgram) -> VmResult<OwnedValue> {
     let linked = engine
-        .link_program(program)
+        .link_test_program(program)
         .expect("engine io test program should link");
     engine
         .into_vm_for_program(program)
@@ -109,7 +109,7 @@ fn main() {
         )
         .expect("program should compile");
     engine
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("stdio plus fs program should link");
     let mut runtime = Runtime::new(engine, program);
 

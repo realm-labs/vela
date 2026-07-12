@@ -21,7 +21,9 @@ mod tests {
     fn linked_frames_and_closures_clone_one_artifact_owner() {
         let mut program = UnlinkedProgram::new();
         program.insert_function(UnlinkedCodeObject::new("main", 1));
-        let owner = Linker::new().link_program(&program).expect("fixture links");
+        let owner = Linker::new()
+            .link_test_program(&program)
+            .expect("fixture links");
         let entry = CallFrame::new_linked(1, &owner);
         assert!(Arc::ptr_eq(
             entry.linked_owner().expect("entry owner"),

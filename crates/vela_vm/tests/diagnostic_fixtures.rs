@@ -417,7 +417,7 @@ fn link_fixture_program(
     program: &UnlinkedProgram,
 ) -> std::sync::Arc<vela_bytecode::LinkedArtifact> {
     Linker::new()
-        .link_program(program)
+        .link_test_program(program)
         .expect("diagnostic fixture program should link")
 }
 
@@ -430,7 +430,7 @@ fn link_fixture_program_with_vm(
         linker.add_native_implementation(id);
     }
     linker
-        .link_program(program)
+        .link_test_program(program)
         .expect("diagnostic fixture program should link")
 }
 

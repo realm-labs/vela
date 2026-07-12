@@ -8,7 +8,7 @@ fn run_linked_program(engine: &Engine, source: &str) -> OwnedValue {
         .compile_source_with_id(SourceId::new(1), source)
         .expect("string test program should compile");
     let linked = engine
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("string test program should link");
     engine
         .into_vm_for_program(&program)

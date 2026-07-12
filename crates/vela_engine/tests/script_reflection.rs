@@ -74,9 +74,6 @@ fn main() {
         .build()
         .expect("build engine");
     let program = engine.compile_source(source).expect("compile script");
-    engine
-        .link_program(&program)
-        .expect("reflection script should link");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -137,9 +134,6 @@ fn main() {
         .build()
         .expect("build engine");
     let program = engine.compile_dir(root.path()).expect("compile modules");
-    engine
-        .link_program(&program)
-        .expect("reflection module script should link");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();

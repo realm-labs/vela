@@ -1,42 +1,40 @@
 use super::*;
-use vela_bytecode::UnlinkedProgram;
+use vela_bytecode::compiler::CompiledProgram;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::owned_value::OwnedValue;
 
 fn run_linked_program(
     engine: &Engine,
-    program: &UnlinkedProgram,
+    program: CompiledProgram,
     args: &[OwnedValue],
 ) -> VmResult<OwnedValue> {
+    let vm = engine.into_vm_for_program(program.bytecode());
     let linked = engine
-        .link_program(program)
+        .link_compiled_program(program)
         .expect("macro registration program should link");
     let mut budget = ExecutionBudget::unbounded();
-    engine
-        .into_vm_for_program(program)
-        .run_linked_program_with_budget(&linked, "main", args, &mut budget)
+    vm.run_linked_program_with_budget(&linked, "main", args, &mut budget)
 }
 
 fn run_linked_program_with_host(
     engine: &Engine,
-    program: &UnlinkedProgram,
+    program: CompiledProgram,
     args: &[OwnedValue],
     host: &mut HostExecution<'_>,
 ) -> VmResult<OwnedValue> {
+    let vm = engine.into_vm_for_program(program.bytecode());
     let linked = engine
-        .link_program(program)
+        .link_compiled_program(program)
         .expect("macro registration host program should link");
     let mut budget = ExecutionBudget::unbounded();
-    engine
-        .into_vm_for_program(program)
-        .run_linked_program_with_host_budget_and_caches(
-            &linked,
-            "main",
-            args,
-            host,
-            &mut budget,
-            None,
-        )
+    vm.run_linked_program_with_host_budget_and_caches(
+        &linked,
+        "main",
+        args,
+        host,
+        &mut budget,
+        None,
+    )
 }
 
 #[test]
@@ -55,7 +53,7 @@ fn main() {
     );
 
     assert_eq!(
-        run_linked_program(&engine, &program, &[]),
+        run_linked_program(&engine, program, &[]),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(42))),
     );
 }
@@ -82,7 +80,7 @@ fn main() {
         .expect("renamed function should be reflected");
     assert_eq!(registered.id, function_id("game::grant_bonus"));
     assert_eq!(
-        run_linked_program(&engine, &program, &[]),
+        run_linked_program(&engine, program, &[]),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7))),
     );
 }
@@ -105,7 +103,7 @@ fn main(labels) {
     assert_eq!(
         run_linked_program(
             &engine,
-            &program,
+            program,
             &[OwnedValue::Set(vec![
                 OwnedValue::String("raid".to_owned()),
                 OwnedValue::String("pvp".to_owned()),
@@ -134,7 +132,7 @@ fn main(labels) {
     assert_eq!(
         run_linked_program(
             &engine,
-            &program,
+            program,
             &[OwnedValue::Set(vec![
                 OwnedValue::String("raid".to_owned()),
                 OwnedValue::String("pvp".to_owned()),
@@ -165,7 +163,7 @@ fn main(weights) {
     assert_eq!(
         run_linked_program(
             &engine,
-            &program,
+            program,
             &[OwnedValue::Array(vec![
                 OwnedValue::Scalar(vela_common::ScalarValue::I64(3)),
                 OwnedValue::Scalar(vela_common::ScalarValue::I64(5)),
@@ -194,7 +192,7 @@ fn main(scores) {
     assert_eq!(
         run_linked_program(
             &engine,
-            &program,
+            program,
             &[OwnedValue::map([
                 (
                     "daily",
@@ -228,7 +226,7 @@ fn main(scores) {
     assert_eq!(
         run_linked_program(
             &engine,
-            &program,
+            program,
             &[OwnedValue::map([
                 (
                     "daily",
@@ -273,7 +271,7 @@ fn main() {
     );
 
     assert_eq!(
-        run_linked_program(&engine, &program, &[]),
+        run_linked_program(&engine, program, &[]),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::F32(3.0))),
     );
 }
@@ -297,7 +295,7 @@ fn main() {
     );
 
     assert_eq!(
-        run_linked_program(&engine, &program, &[]),
+        run_linked_program(&engine, program, &[]),
         Ok(OwnedValue::Bool(true)),
     );
 }
@@ -318,7 +316,7 @@ fn main() {
     );
 
     assert_eq!(
-        run_linked_program(&engine, &program, &[]),
+        run_linked_program(&engine, program, &[]),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(15))),
     );
 }
@@ -339,7 +337,7 @@ fn main() {
     );
 
     assert_eq!(
-        run_linked_program(&engine, &program, &[]),
+        run_linked_program(&engine, program, &[]),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(21))),
     );
 }
@@ -363,7 +361,7 @@ fn main() {
     );
 
     assert_eq!(
-        run_linked_program(&engine, &program, &[]),
+        run_linked_program(&engine, program, &[]),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(13))),
     );
 }
@@ -384,7 +382,7 @@ fn main() {
     );
 
     assert_eq!(
-        run_linked_program(&engine, &program, &[]),
+        run_linked_program(&engine, program, &[]),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11))),
     );
 }
@@ -411,7 +409,7 @@ fn main(path) {
     );
 
     assert_eq!(
-        run_linked_program(&engine, &program, &[OwnedValue::PathProxy(path)]),
+        run_linked_program(&engine, program, &[OwnedValue::PathProxy(path)]),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2))),
     );
 }
@@ -445,7 +443,7 @@ fn main() {
     };
 
     assert_eq!(
-        run_linked_program_with_host(&engine, &program, &[], &mut host),
+        run_linked_program_with_host(&engine, program, &[], &mut host),
         Ok(OwnedValue::Bool(true)),
     );
 }
@@ -476,7 +474,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host,),
+        run_linked_program_with_host(&engine, program, &[OwnedValue::HostRef(player)], &mut host,),
         Ok(OwnedValue::Bool(true)),
     );
 }
@@ -513,7 +511,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host,),
+        run_linked_program_with_host(&engine, program, &[OwnedValue::HostRef(player)], &mut host,),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11))),
     );
 }
@@ -673,7 +671,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host,),
+        run_linked_program_with_host(&engine, program, &[OwnedValue::HostRef(player)], &mut host,),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12))),
     );
 }
@@ -710,7 +708,7 @@ fn main(player) {
     };
 
     assert_eq!(
-        run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host,),
+        run_linked_program_with_host(&engine, program, &[OwnedValue::HostRef(player)], &mut host,),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(14))),
     );
 }

@@ -153,7 +153,7 @@ mod tests {
         for id in vm.native_implementation_ids() {
             linker.add_native_implementation(id);
         }
-        linker.link_program(&program)
+        linker.link_test_program(&program)
     }
 
     #[test]

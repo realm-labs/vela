@@ -34,9 +34,8 @@ impl ProgramVersion {
         id: ProgramVersionId,
         abi: HotReloadAbi,
         artifact: Arc<LinkedArtifact>,
-    ) -> Option<Self> {
-        artifact.verified_mir()?;
-        Some(Self { id, abi, artifact })
+    ) -> Self {
+        Self { id, abi, artifact }
     }
 
     #[must_use]
@@ -134,9 +133,7 @@ impl ProgramVersion {
 
     #[must_use]
     pub fn verified_mir(&self) -> &Arc<vela_mir::OwnedVerifiedMirBundle> {
-        self.artifact
-            .verified_mir()
-            .expect("ProgramVersion is constructed only from a MIR-bound artifact")
+        self.artifact.verified_mir()
     }
 
     #[must_use]

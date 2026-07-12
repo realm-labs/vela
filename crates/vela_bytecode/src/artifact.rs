@@ -16,7 +16,15 @@ pub struct LinkedArtifact {
     cache_layout: Box<[CacheSiteDesc]>,
     profile_layout: ProfileLayout,
     mir_executables: Box<[MirExecutableLayout]>,
-    verified_mir: Option<Arc<vela_mir::OwnedVerifiedMirBundle>>,
+    verified_mir: Arc<vela_mir::OwnedVerifiedMirBundle>,
+}
+
+/// Private staged linker output. It cannot cross the production runtime boundary.
+pub(crate) struct UnboundLinkedProgram {
+    program: Arc<LinkedProgram>,
+    image: ProgramImage,
+    cache_layout: Box<[CacheSiteDesc]>,
+    profile_layout: ProfileLayout,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -64,13 +72,14 @@ pub mod test_support {
                 .collect::<Vec<_>>()
                 .into_boxed_slice(),
         };
+        let (verified_mir, mir_executables) = test_mir_binding(&program);
         Arc::new(LinkedArtifact {
             program: Arc::new(program),
             image: ProgramImage::from_program(&crate::UnlinkedProgram::new()),
             cache_layout,
             profile_layout,
-            mir_executables: Box::new([]),
-            verified_mir: None,
+            mir_executables,
+            verified_mir,
         })
     }
 
@@ -82,10 +91,10 @@ pub mod test_support {
 }
 
 impl LinkedArtifact {
-    pub(crate) fn finish(
+    pub(crate) fn finish_unbound(
         image: ProgramImage,
         mut program: LinkedProgram,
-    ) -> Result<Self, crate::verification::VerificationError> {
+    ) -> Result<UnboundLinkedProgram, crate::verification::VerificationError> {
         program.set_generation(ExecutableGenerationId::new(
             NEXT_EXECUTABLE_GENERATION.fetch_add(1, Ordering::Relaxed),
         ));
@@ -101,27 +110,58 @@ impl LinkedArtifact {
                 .collect::<Vec<_>>()
                 .into_boxed_slice(),
         };
-        let artifact = Self {
+        let artifact = UnboundLinkedProgram {
             program: Arc::new(program),
             image,
             cache_layout,
             profile_layout,
-            mir_executables: Box::new([]),
-            verified_mir: None,
         };
         artifact.verify()?;
         Ok(artifact)
     }
 
+    #[must_use]
+    pub fn verified_mir(&self) -> &Arc<vela_mir::OwnedVerifiedMirBundle> {
+        &self.verified_mir
+    }
+
+    pub fn verify(&self) -> Result<(), crate::verification::VerificationError> {
+        self.image.verify()?;
+        self.program.verify()?;
+        verify_cache_correspondence(self)
+    }
+}
+
+impl UnboundLinkedProgram {
+    #[cfg(any(test, feature = "test-support"))]
+    pub(crate) fn into_test_artifact(self) -> LinkedArtifact {
+        let (verified_mir, mir_executables) = test_mir_binding(&self.program);
+        LinkedArtifact {
+            program: self.program,
+            image: self.image,
+            cache_layout: self.cache_layout,
+            profile_layout: self.profile_layout,
+            mir_executables,
+            verified_mir,
+        }
+    }
+
     pub(crate) fn bind_compiled_mir(
-        mut self,
+        self,
         bundle: Arc<vela_mir::OwnedVerifiedMirBundle>,
         compiled_layouts: &[crate::compiler::CompiledMirExecutable],
-    ) -> Result<Self, crate::linker::LinkError> {
+        budget_layouts: &[crate::compiler::CompiledExecutableBudgetLayout],
+    ) -> Result<LinkedArtifact, crate::linker::LinkError> {
         if compiled_layouts.len() != self.program.function_count() {
             return Err(crate::linker::LinkError::MirExecutableCountMismatch {
                 expected: compiled_layouts.len(),
                 actual: self.program.function_count(),
+            });
+        }
+        if budget_layouts.len() != compiled_layouts.len() {
+            return Err(crate::linker::LinkError::MirExecutableCountMismatch {
+                expected: compiled_layouts.len(),
+                actual: budget_layouts.len(),
             });
         }
         for (index, expected) in compiled_layouts.iter().enumerate() {
@@ -157,9 +197,9 @@ impl LinkedArtifact {
                     expected: compiled_layouts.len(),
                     actual: self.program.function_count(),
                 })?;
-            verify_budget_mapping(index, code, &analyses.budget)?;
+            verify_budget_mapping(index, code, &analyses.budget, &budget_layouts[index])?;
         }
-        self.mir_executables = compiled_layouts
+        let mir_executables = compiled_layouts
             .iter()
             .enumerate()
             .map(|(index, layout)| MirExecutableLayout {
@@ -169,10 +209,99 @@ impl LinkedArtifact {
             })
             .collect::<Vec<_>>()
             .into_boxed_slice();
-        self.verified_mir = Some(bundle);
-        Ok(self)
+        Ok(LinkedArtifact {
+            program: self.program,
+            image: self.image,
+            cache_layout: self.cache_layout,
+            profile_layout: self.profile_layout,
+            mir_executables,
+            verified_mir: bundle,
+        })
     }
 
+    fn program(&self) -> &LinkedProgram {
+        self.program.as_ref()
+    }
+
+    const fn image(&self) -> &ProgramImage {
+        &self.image
+    }
+
+    fn verify(&self) -> Result<(), crate::verification::VerificationError> {
+        self.image.verify()?;
+        self.program.verify()?;
+        verify_unbound_cache_correspondence(self)
+    }
+}
+
+#[cfg(any(test, feature = "test-support"))]
+fn test_mir_binding(
+    program: &LinkedProgram,
+) -> (
+    Arc<vela_mir::OwnedVerifiedMirBundle>,
+    Box<[MirExecutableLayout]>,
+) {
+    let mut owners = Vec::new();
+    let mut layouts = Vec::new();
+    for (handle, _) in program.functions() {
+        let root = vela_def::script_function_id(&format!("__low_level::{}", handle.index()));
+        let body = vela_hir::ids::HirBodyId::new(handle.index() as u32);
+        let origin = vela_mir::MirSourceOrigin::body(
+            body,
+            vela_common::Span::new(vela_common::SourceId::new(0), 0, 0),
+        );
+        let mut function = vela_mir::MirFunction::new(
+            body,
+            vela_mir::MirFunctionOwner::Function(root),
+            format!("__low_level::{}", handle.index()),
+            None,
+            origin,
+        );
+        function
+            .set_terminator(
+                function.entry_block(),
+                vela_mir::MirTerminator::new(
+                    origin,
+                    vela_mir::MirTerminatorKind::Return(None),
+                    vela_mir::MirEffect::PURE,
+                    None,
+                ),
+            )
+            .expect("low-level test MIR terminates");
+        let mut targets = vela_mir::MirTargetTable::default();
+        assert!(
+            targets.insert_test_function(vela_mir::CompileFunctionDescriptor {
+                id: root,
+                class: vela_mir::CompileFunctionClass::Script,
+                canonical_symbol: format!("__low_level::{}", handle.index()),
+                debug_name: format!("__low_level::{}", handle.index()),
+                signature: vela_mir::CompileSignature {
+                    parameters: Vec::new(),
+                    positional: vela_mir::CompilePositionalPolicy::ExactOrTrailingDefaults,
+                    return_contract: None,
+                    effect: vela_mir::MirEffect::PURE,
+                },
+                access: vela_mir::CompileFunctionAccess::script(false),
+            })
+        );
+        let mut mir = vela_mir::MirProgram::new(targets);
+        let function = mir
+            .add_function(function)
+            .expect("low-level test MIR has one function");
+        owners.push(vela_mir::verify_owned_mir(mir).expect("low-level test MIR verifies"));
+        layouts.push(MirExecutableLayout {
+            root,
+            function,
+            handle,
+        });
+    }
+    (
+        Arc::new(vela_mir::OwnedVerifiedMirBundle::new(owners)),
+        layouts.into_boxed_slice(),
+    )
+}
+
+impl LinkedArtifact {
     #[must_use]
     pub fn program(&self) -> &LinkedProgram {
         self.program.as_ref()
@@ -211,23 +340,13 @@ impl LinkedArtifact {
     pub fn mir_executables(&self) -> &[MirExecutableLayout] {
         &self.mir_executables
     }
-
-    #[must_use]
-    pub fn verified_mir(&self) -> Option<&Arc<vela_mir::OwnedVerifiedMirBundle>> {
-        self.verified_mir.as_ref()
-    }
-
-    pub fn verify(&self) -> Result<(), crate::verification::VerificationError> {
-        self.image.verify()?;
-        self.program.verify()?;
-        verify_cache_correspondence(self)
-    }
 }
 
 fn verify_budget_mapping(
     executable: usize,
     code: &crate::LinkedCodeObject,
     schedule: &vela_mir::MirBudgetSchedule,
+    layout: &crate::compiler::CompiledExecutableBudgetLayout,
 ) -> Result<(), crate::linker::LinkError> {
     let expected = schedule
         .points()
@@ -236,6 +355,46 @@ fn verify_budget_mapping(
     let mut seen_origins = BTreeSet::new();
     let mut expected_units = 0_u64;
     let mut actual_units = 0_u64;
+    let sealed = layout
+        .sites
+        .iter()
+        .map(|site| (site.site, *site))
+        .collect::<std::collections::BTreeMap<_, _>>();
+    if sealed.len() != layout.sites.len() {
+        return Err(crate::linker::LinkError::DuplicateMirBudgetLayoutSite { executable });
+    }
+    for (site, point) in &expected {
+        let Some(mapped) = sealed.get(site) else {
+            return Err(crate::linker::LinkError::MissingMirBudgetLayoutSite {
+                executable,
+                site: *site,
+            });
+        };
+        if mapped.class != point.class || mapped.units != point.units {
+            return Err(crate::linker::LinkError::MirBudgetLayoutMismatch {
+                executable,
+                site: *site,
+                offset: mapped.offset,
+            });
+        }
+        let Some(instruction) = code.instructions.get(mapped.offset.0) else {
+            return Err(crate::linker::LinkError::MirBudgetLayoutMismatch {
+                executable,
+                site: *site,
+                offset: mapped.offset,
+            });
+        };
+        if !instruction_implements_budget_boundary(instruction, *mapped) {
+            return Err(crate::linker::LinkError::MirBudgetLayoutMismatch {
+                executable,
+                site: *site,
+                offset: mapped.offset,
+            });
+        }
+    }
+    if sealed.keys().any(|site| !expected.contains_key(site)) {
+        return Err(crate::linker::LinkError::ExtraMirBudgetLayoutSite { executable });
+    }
     for (offset, instruction) in code.instructions.iter().enumerate() {
         let first_at_origin = instruction
             .mir_origin
@@ -318,6 +477,114 @@ fn verify_budget_mapping(
     Ok(())
 }
 
+fn instruction_implements_budget_boundary(
+    instruction: &crate::Instruction,
+    mapped: crate::compiler::ExecutableBudgetSite,
+) -> bool {
+    if instruction.mir_origin != Some(mapped.site)
+        || instruction.execution_units
+            + match instruction.kind {
+                InstructionKind::ChargeExecutionUnits { units } => units,
+                _ => 0,
+            }
+            != mapped.units
+        || instruction.mir_budget_charges.iter().all(|charge| {
+            charge.site != mapped.site
+                || charge.class != mapped.class
+                || charge.units != mapped.units
+        })
+    {
+        return false;
+    }
+    match mapped.boundary {
+        crate::compiler::ExecutableBudgetBoundary::EdgeStub => matches!(
+            instruction.kind,
+            InstructionKind::ChargeExecutionUnits { units } if units == mapped.units
+        ),
+        crate::compiler::ExecutableBudgetBoundary::Operation => {
+            !matches!(
+                instruction.kind,
+                InstructionKind::ChargeExecutionUnits { .. }
+                    | InstructionKind::Jump { .. }
+                    | InstructionKind::Return { .. }
+            ) && instruction_matches_budget_class(&instruction.kind, mapped.class)
+        }
+    }
+}
+
+fn instruction_matches_budget_class(
+    kind: &InstructionKind,
+    class: vela_mir::MirBudgetClass,
+) -> bool {
+    use vela_mir::MirBudgetClass as Class;
+
+    match class {
+        Class::LoopBackedge => false,
+        Class::IteratorStep => matches!(
+            kind,
+            InstructionKind::IterNext { .. }
+                | InstructionKind::RangeNext { .. }
+                | InstructionKind::I64RangeNext { .. }
+        ),
+        Class::Call => matches!(
+            kind,
+            InstructionKind::CallNative { .. }
+                | InstructionKind::CallFunction { .. }
+                | InstructionKind::CallClosure { .. }
+                | InstructionKind::CallMethod { .. }
+                | InstructionKind::CallDynamicMethod { .. }
+        ),
+        Class::HostAccess => matches!(
+            kind,
+            InstructionKind::HostRead { .. }
+                | InstructionKind::HostWrite { .. }
+                | InstructionKind::HostMutate { .. }
+                | InstructionKind::HostRemove { .. }
+                | InstructionKind::HostCall { .. }
+        ),
+        Class::Reflection => matches!(kind, InstructionKind::CallNative { .. }),
+        Class::Allocation => matches!(
+            kind,
+            InstructionKind::LoadConst { .. }
+                | InstructionKind::MakeClosure { .. }
+                | InstructionKind::MakeArray { .. }
+                | InstructionKind::MakeTuple { .. }
+                | InstructionKind::MakeSetFromArray { .. }
+                | InstructionKind::FormatString { .. }
+                | InstructionKind::MakeMap { .. }
+                | InstructionKind::MakeRecord { .. }
+                | InstructionKind::MakeEnum { .. }
+                | InstructionKind::IterInit { .. }
+        ),
+        Class::DynamicWork => matches!(
+            kind,
+            InstructionKind::Not { .. }
+                | InstructionKind::Negate { .. }
+                | InstructionKind::Add { .. }
+                | InstructionKind::Sub { .. }
+                | InstructionKind::Mul { .. }
+                | InstructionKind::Div { .. }
+                | InstructionKind::Rem { .. }
+                | InstructionKind::Equal { .. }
+                | InstructionKind::NotEqual { .. }
+                | InstructionKind::IdentityEqual { .. }
+                | InstructionKind::IdentityNotEqual { .. }
+                | InstructionKind::Less { .. }
+                | InstructionKind::LessEqual { .. }
+                | InstructionKind::Greater { .. }
+                | InstructionKind::GreaterEqual { .. }
+                | InstructionKind::BinaryIntLiteral { .. }
+                | InstructionKind::BinaryFloatLiteral { .. }
+                | InstructionKind::GuardType { .. }
+                | InstructionKind::GuardTupleArity { .. }
+                | InstructionKind::GetIndex { .. }
+                | InstructionKind::GetStringKeyIndex { .. }
+                | InstructionKind::SetIndex { .. }
+                | InstructionKind::SetStringKeyIndex { .. }
+        ),
+    }
+}
+
 impl ProfileLayout {
     #[must_use]
     pub fn functions(&self) -> &[ProfileFunctionLayout] {
@@ -346,6 +613,43 @@ fn verify_cache_correspondence(
                 kind: crate::verification::VerificationErrorKind::FunctionIndexOutOfBounds {
                     function: crate::FunctionIndex(handle.index()),
                     function_count: artifact.image.function_count(),
+                },
+            })?;
+        if code.cache_sites != image.cache_sites {
+            return Err(crate::verification::VerificationError {
+                function: image.name.clone(),
+                instruction: None,
+                kind: crate::verification::VerificationErrorKind::CacheSiteIdMismatch {
+                    expected: image
+                        .cache_sites
+                        .sites()
+                        .first()
+                        .map_or(CacheSiteId::new(0), |site| site.id),
+                    actual: code
+                        .cache_sites
+                        .sites()
+                        .first()
+                        .map_or(CacheSiteId::new(0), |site| site.id),
+                },
+            });
+        }
+    }
+    Ok(())
+}
+
+fn verify_unbound_cache_correspondence(
+    artifact: &UnboundLinkedProgram,
+) -> Result<(), crate::verification::VerificationError> {
+    for (handle, code) in artifact.program().functions() {
+        let image = artifact
+            .image()
+            .function(crate::FunctionIndex(handle.index()))
+            .ok_or_else(|| crate::verification::VerificationError {
+                function: "<artifact>".to_owned(),
+                instruction: None,
+                kind: crate::verification::VerificationErrorKind::FunctionIndexOutOfBounds {
+                    function: crate::FunctionIndex(handle.index()),
+                    function_count: artifact.image().function_count(),
                 },
             })?;
         if code.cache_sites != image.cache_sites {
@@ -407,7 +711,7 @@ mod tests {
         program.set_global_layout(["main::first".to_owned(), "main::second".to_owned()]);
         program.insert_function(main);
         let artifact = Linker::new()
-            .link_program(&program)
+            .link_test_program(&program)
             .expect("artifact should link");
 
         let first = artifact

@@ -635,8 +635,8 @@ pub struct Instruction {
     pub kind: InstructionKind,
     pub span: Option<Span>,
     pub execution_units: u32,
-    pub mir_origin: Option<vela_mir::MirBudgetSite>,
-    pub mir_budget_charges: Box<[crate::MirBudgetCharge]>,
+    pub(crate) mir_origin: Option<vela_mir::MirBudgetSite>,
+    pub(crate) mir_budget_charges: Box<[crate::MirBudgetCharge]>,
 }
 
 impl Instruction {

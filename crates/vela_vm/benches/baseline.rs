@@ -516,7 +516,7 @@ fn link_artifact_for_vm(vm: &Vm, program: &UnlinkedProgram) -> Result<Arc<Linked
         linker.add_native_implementation(id);
     }
     linker
-        .link_program(program)
+        .link_test_program(program)
         .map_err(|error| format!("{error:?}"))
 }
 

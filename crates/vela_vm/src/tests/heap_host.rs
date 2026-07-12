@@ -158,7 +158,7 @@ fn linked_execution_rejects_missing_native_before_heap_execution() {
     program.insert_function(code);
 
     let error = Linker::new()
-        .link_program(&program)
+        .link_test_program(&program)
         .expect_err("missing native should fail during linking");
 
     assert!(matches!(

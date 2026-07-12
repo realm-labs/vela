@@ -10,7 +10,7 @@ fn run_linked_program(
     args: &[OwnedValue],
 ) -> VmResult<OwnedValue> {
     let linked = engine
-        .link_program(program)
+        .link_test_program(program)
         .expect("engine compiler options test program should link");
     engine
         .into_vm_for_program(program)
@@ -453,7 +453,7 @@ fn engine_links_standard_methods_after_indexed_collection_shapes() {
             .expect("example stdlib method chain should compile");
 
         engine
-            .link_program(&program)
+            .link_test_program(&program)
             .expect("example stdlib method chain should link");
     }
 }
@@ -898,7 +898,7 @@ fn main() {
         )
     .expect("program should compile");
     engine
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("engine-compiled standard native program should link");
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();

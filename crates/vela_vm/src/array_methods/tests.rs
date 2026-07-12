@@ -49,7 +49,7 @@ fn run_linked_array_test_program_with_budget(
         linker.add_native_implementation(id);
     }
     let linked = linker
-        .link_program(program)
+        .link_test_program(program)
         .expect("array method test program should link");
 
     vm.run_linked_program_with_budget(&linked, entry, &[], budget)
@@ -74,7 +74,7 @@ fn run_linked_array_test_code_with_budget(
         linker.add_native_implementation(id);
     }
     let linked = linker
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("array method test code should link");
 
     vm.run_linked_program_with_budget(&linked, &entry, &[], budget)

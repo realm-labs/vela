@@ -20,31 +20,50 @@ pub trait CacheSiteInstruction {
     fn set_cache_site(&mut self, site: CacheSiteId);
 }
 
-macro_rules! policy {
-    ($kind:ident, $storage:ident) => {
-        Some(CacheSitePolicy {
-            kind: CacheSiteKind::$kind,
-            storage: CacheSiteStorage::$storage,
-        })
+macro_rules! impl_cache_sites {
+    (
+        $instruction:ty;
+        cache {
+            $(
+                $policy_pattern:pat => ($kind:ident, $storage:ident);
+                $access_pattern:pat => $read:expr, $write:expr;
+            )+
+        }
+        none { $($none_pattern:pat_param)|+ $(|)? }
+    ) => {
+        impl CacheSiteInstruction for $instruction {
+            fn cache_site_policy(&self) -> Option<CacheSitePolicy> {
+                match self {
+                    $(
+                        $policy_pattern => Some(CacheSitePolicy {
+                            kind: CacheSiteKind::$kind,
+                            storage: CacheSiteStorage::$storage,
+                        }),
+                    )+
+                    $($none_pattern)|+ => None,
+                }
+            }
+
+            fn cache_site(&self) -> Option<CacheSiteId> {
+                match self {
+                    $($access_pattern => $read,)+
+                    $($none_pattern)|+ => None,
+                }
+            }
+
+            fn set_cache_site(&mut self, site: CacheSiteId) {
+                match self {
+                    $($access_pattern => ($write)(site),)+
+                    $($none_pattern)|+ => {}
+                }
+            }
+        }
     };
 }
 
-impl CacheSiteInstruction for UnlinkedInstructionKind {
-    fn cache_site_policy(&self) -> Option<CacheSitePolicy> {
-        match self {
-            Self::LoadGlobal { .. } => policy!(GlobalRead, OptionalOperand),
-            Self::CallNative { .. } => policy!(NativeCall, OptionalOperand),
-            Self::CallDynamicMethod { .. } | Self::CallMethodId { .. } => {
-                policy!(MethodCall, Sidecar)
-            }
-            Self::GetRecordSlot { .. } => policy!(RecordFieldRead, Sidecar),
-            Self::SetRecordSlot { .. } => policy!(RecordFieldWrite, Sidecar),
-            Self::HostRead { .. } => policy!(HostPathRead, RequiredOperand),
-            Self::HostWrite { .. } => policy!(HostPathWrite, RequiredOperand),
-            Self::HostMutate { .. } => policy!(HostPathMutate, RequiredOperand),
-            Self::HostRemove { .. } => policy!(HostPathRemove, RequiredOperand),
-            Self::HostCall { .. } => policy!(HostPathCall, RequiredOperand),
-            Self::ChargeExecutionUnits { .. }
+macro_rules! non_cache_instructions {
+    () => {
+        Self::ChargeExecutionUnits { .. }
             | Self::LoadConst { .. }
             | Self::Move { .. }
             | Self::Not { .. }
@@ -107,154 +126,62 @@ impl CacheSiteInstruction for UnlinkedInstructionKind {
             | Self::RangeNext { .. }
             | Self::I64RangeNext { .. }
             | Self::EnumTagEqual { .. }
-            | Self::Return { .. } => None,
-        }
-    }
-
-    fn cache_site(&self) -> Option<CacheSiteId> {
-        match self {
-            Self::LoadGlobal { cache_site, .. } | Self::CallNative { cache_site, .. } => {
-                *cache_site
-            }
-            Self::HostRead { cache_site, .. }
-            | Self::HostWrite { cache_site, .. }
-            | Self::HostMutate { cache_site, .. }
-            | Self::HostRemove { cache_site, .. }
-            | Self::HostCall { cache_site, .. } => Some(*cache_site),
-            _ => None,
-        }
-    }
-
-    fn set_cache_site(&mut self, site: CacheSiteId) {
-        match self {
-            Self::LoadGlobal { cache_site, .. } | Self::CallNative { cache_site, .. } => {
-                *cache_site = Some(site);
-            }
-            Self::HostRead { cache_site, .. }
-            | Self::HostWrite { cache_site, .. }
-            | Self::HostMutate { cache_site, .. }
-            | Self::HostRemove { cache_site, .. }
-            | Self::HostCall { cache_site, .. } => *cache_site = site,
-            _ => {}
-        }
-    }
+            | Self::Return { .. }
+    };
 }
 
-impl CacheSiteInstruction for InstructionKind {
-    fn cache_site_policy(&self) -> Option<CacheSitePolicy> {
-        match self {
-            Self::LoadGlobal { .. } => policy!(GlobalRead, OptionalOperand),
-            Self::CallNative { .. } => policy!(NativeCall, OptionalOperand),
-            Self::CallDynamicMethod { .. } | Self::CallMethod { .. } => {
-                policy!(MethodCall, OptionalOperand)
-            }
-            Self::GetRecordSlot { .. } => policy!(RecordFieldRead, OptionalOperand),
-            Self::SetRecordSlot { .. } => policy!(RecordFieldWrite, OptionalOperand),
-            Self::HostRead { .. } => policy!(HostPathRead, RequiredOperand),
-            Self::HostWrite { .. } => policy!(HostPathWrite, RequiredOperand),
-            Self::HostMutate { .. } => policy!(HostPathMutate, RequiredOperand),
-            Self::HostRemove { .. } => policy!(HostPathRemove, RequiredOperand),
-            Self::HostCall { .. } => policy!(HostPathCall, RequiredOperand),
-            Self::ChargeExecutionUnits { .. }
-            | Self::LoadConst { .. }
-            | Self::Move { .. }
-            | Self::Not { .. }
-            | Self::Truthy { .. }
-            | Self::Negate { .. }
-            | Self::Add { .. }
-            | Self::Sub { .. }
-            | Self::Mul { .. }
-            | Self::Div { .. }
-            | Self::Rem { .. }
-            | Self::Equal { .. }
-            | Self::NotEqual { .. }
-            | Self::IdentityEqual { .. }
-            | Self::IdentityNotEqual { .. }
-            | Self::Less { .. }
-            | Self::LessEqual { .. }
-            | Self::Greater { .. }
-            | Self::GreaterEqual { .. }
-            | Self::I64Add { .. }
-            | Self::I64Sub { .. }
-            | Self::I64Mul { .. }
-            | Self::I64Rem { .. }
-            | Self::I64AddImm { .. }
-            | Self::I64SubImm { .. }
-            | Self::I64MulImm { .. }
-            | Self::I64RemImm { .. }
-            | Self::I64CmpImm { .. }
-            | Self::I64CmpImmJumpIfFalse { .. }
-            | Self::BinaryIntLiteral { .. }
-            | Self::BinaryFloatLiteral { .. }
-            | Self::GuardType { .. }
-            | Self::JumpIfFalse { .. }
-            | Self::JumpIfNotMissing { .. }
-            | Self::Jump { .. }
-            | Self::CallFunction { .. }
-            | Self::MakeClosure { .. }
-            | Self::CallClosure { .. }
-            | Self::TryPropagate { .. }
-            | Self::MakeArray { .. }
-            | Self::MakeTuple { .. }
-            | Self::MakeSetFromArray { .. }
-            | Self::FormatString { .. }
-            | Self::MakeMap { .. }
-            | Self::MakeRange { .. }
-            | Self::MakeRecord { .. }
-            | Self::MakeEnum { .. }
-            | Self::GetRecordField { .. }
-            | Self::SetRecordField { .. }
-            | Self::GetEnumField { .. }
-            | Self::GetEnumSlot { .. }
-            | Self::TupleArityEqual { .. }
-            | Self::GuardTupleArity { .. }
-            | Self::GetTupleField { .. }
-            | Self::GetIndex { .. }
-            | Self::GetStringKeyIndex { .. }
-            | Self::SetIndex { .. }
-            | Self::SetStringKeyIndex { .. }
-            | Self::IterInit { .. }
-            | Self::IterNext { .. }
-            | Self::RangeNext { .. }
-            | Self::I64RangeNext { .. }
-            | Self::EnumTagEqual { .. }
-            | Self::Return { .. } => None,
-        }
+impl_cache_sites! {
+    UnlinkedInstructionKind;
+    cache {
+        Self::LoadGlobal { .. } => (GlobalRead, OptionalOperand);
+        Self::LoadGlobal { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
+        Self::CallNative { .. } => (NativeCall, OptionalOperand);
+        Self::CallNative { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
+        Self::CallDynamicMethod { .. } | Self::CallMethodId { .. } => (MethodCall, Sidecar);
+        Self::CallDynamicMethod { .. } | Self::CallMethodId { .. } => None, |_| {};
+        Self::GetRecordSlot { .. } => (RecordFieldRead, Sidecar);
+        Self::GetRecordSlot { .. } => None, |_| {};
+        Self::SetRecordSlot { .. } => (RecordFieldWrite, Sidecar);
+        Self::SetRecordSlot { .. } => None, |_| {};
+        Self::HostRead { .. } => (HostPathRead, RequiredOperand);
+        Self::HostRead { cache_site, .. } => Some(*cache_site), |site| { *cache_site = site };
+        Self::HostWrite { .. } => (HostPathWrite, RequiredOperand);
+        Self::HostWrite { cache_site, .. } => Some(*cache_site), |site| { *cache_site = site };
+        Self::HostMutate { .. } => (HostPathMutate, RequiredOperand);
+        Self::HostMutate { cache_site, .. } => Some(*cache_site), |site| { *cache_site = site };
+        Self::HostRemove { .. } => (HostPathRemove, RequiredOperand);
+        Self::HostRemove { cache_site, .. } => Some(*cache_site), |site| { *cache_site = site };
+        Self::HostCall { .. } => (HostPathCall, RequiredOperand);
+        Self::HostCall { cache_site, .. } => Some(*cache_site), |site| { *cache_site = site };
     }
+    none { non_cache_instructions!() }
+}
 
-    fn cache_site(&self) -> Option<CacheSiteId> {
-        match self {
-            Self::LoadGlobal { cache_site, .. }
-            | Self::CallNative { cache_site, .. }
-            | Self::CallDynamicMethod { cache_site, .. }
-            | Self::CallMethod { cache_site, .. }
-            | Self::GetRecordSlot { cache_site, .. }
-            | Self::SetRecordSlot { cache_site, .. } => *cache_site,
-            Self::HostRead { cache_site, .. }
-            | Self::HostWrite { cache_site, .. }
-            | Self::HostMutate { cache_site, .. }
-            | Self::HostRemove { cache_site, .. }
-            | Self::HostCall { cache_site, .. } => Some(*cache_site),
-            _ => None,
-        }
+impl_cache_sites! {
+    InstructionKind;
+    cache {
+        Self::LoadGlobal { .. } => (GlobalRead, OptionalOperand);
+        Self::LoadGlobal { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
+        Self::CallNative { .. } => (NativeCall, OptionalOperand);
+        Self::CallNative { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
+        Self::CallDynamicMethod { .. } | Self::CallMethod { .. } => (MethodCall, OptionalOperand);
+        Self::CallDynamicMethod { cache_site, .. } | Self::CallMethod { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
+        Self::GetRecordSlot { .. } => (RecordFieldRead, OptionalOperand);
+        Self::GetRecordSlot { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
+        Self::SetRecordSlot { .. } => (RecordFieldWrite, OptionalOperand);
+        Self::SetRecordSlot { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
+        Self::HostRead { .. } => (HostPathRead, RequiredOperand);
+        Self::HostRead { cache_site, .. } => Some(*cache_site), |site| { *cache_site = site };
+        Self::HostWrite { .. } => (HostPathWrite, RequiredOperand);
+        Self::HostWrite { cache_site, .. } => Some(*cache_site), |site| { *cache_site = site };
+        Self::HostMutate { .. } => (HostPathMutate, RequiredOperand);
+        Self::HostMutate { cache_site, .. } => Some(*cache_site), |site| { *cache_site = site };
+        Self::HostRemove { .. } => (HostPathRemove, RequiredOperand);
+        Self::HostRemove { cache_site, .. } => Some(*cache_site), |site| { *cache_site = site };
+        Self::HostCall { .. } => (HostPathCall, RequiredOperand);
+        Self::HostCall { cache_site, .. } => Some(*cache_site), |site| { *cache_site = site };
     }
-
-    fn set_cache_site(&mut self, site: CacheSiteId) {
-        match self {
-            Self::LoadGlobal { cache_site, .. }
-            | Self::CallNative { cache_site, .. }
-            | Self::CallDynamicMethod { cache_site, .. }
-            | Self::CallMethod { cache_site, .. }
-            | Self::GetRecordSlot { cache_site, .. }
-            | Self::SetRecordSlot { cache_site, .. } => *cache_site = Some(site),
-            Self::HostRead { cache_site, .. }
-            | Self::HostWrite { cache_site, .. }
-            | Self::HostMutate { cache_site, .. }
-            | Self::HostRemove { cache_site, .. }
-            | Self::HostCall { cache_site, .. } => *cache_site = site,
-            _ => {}
-        }
-    }
+    none { non_cache_instructions!() }
 }
 
 #[cfg(test)]

@@ -1,28 +1,27 @@
 use super::*;
-use vela_bytecode::UnlinkedProgram;
+use vela_bytecode::compiler::CompiledProgram;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::owned_value::OwnedValue;
 
 fn run_linked_program_with_host(
     engine: &Engine,
-    program: &UnlinkedProgram,
+    program: CompiledProgram,
     args: &[OwnedValue],
     host: &mut HostExecution<'_>,
 ) -> VmResult<OwnedValue> {
+    let vm = engine.into_vm_for_program(program.bytecode());
     let linked = engine
-        .link_program(program)
+        .link_compiled_program(program)
         .expect("script method metadata program should link");
     let mut budget = ExecutionBudget::unbounded();
-    engine
-        .into_vm_for_program(program)
-        .run_linked_program_with_host_budget_and_caches(
-            &linked,
-            "main",
-            args,
-            host,
-            &mut budget,
-            None,
-        )
+    vm.run_linked_program_with_host_budget_and_caches(
+        &linked,
+        "main",
+        args,
+        host,
+        &mut budget,
+        None,
+    )
 }
 
 #[test]
@@ -356,7 +355,7 @@ fn main(player: Player) {
     };
 
     assert_eq!(
-        run_linked_program_with_host(&engine, &program, &[OwnedValue::HostRef(player)], &mut host),
+        run_linked_program_with_host(&engine, program, &[OwnedValue::HostRef(player)], &mut host),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1))),
     );
 }

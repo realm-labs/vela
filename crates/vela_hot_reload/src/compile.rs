@@ -239,11 +239,11 @@ pub fn initial_version_from_linked_artifact(
     artifact: Arc<LinkedArtifact>,
 ) -> HotReloadResult<ProgramVersion> {
     let abi = abi_with_script_metadata(abi, artifact.image().script_metadata());
-    ProgramVersion::from_linked_artifact(ProgramVersionId(0), abi, artifact).ok_or_else(|| {
-        HotReloadError::new(HotReloadErrorKind::Link(
-            vela_bytecode::linker::LinkError::MissingVerifiedMirGeneration,
-        ))
-    })
+    Ok(ProgramVersion::from_linked_artifact(
+        ProgramVersionId(0),
+        abi,
+        artifact,
+    ))
 }
 
 fn abi_with_script_metadata(abi: HotReloadAbi, graph: Option<&ModuleGraph>) -> HotReloadAbi {
@@ -272,11 +272,6 @@ pub fn update_from_linked_artifact(
     policy: &HotReloadPolicy,
     artifact: Arc<LinkedArtifact>,
 ) -> HotReloadResult<HotUpdate> {
-    if artifact.verified_mir().is_none() {
-        return Err(HotReloadError::new(HotReloadErrorKind::Link(
-            vela_bytecode::linker::LinkError::MissingVerifiedMirGeneration,
-        )));
-    }
     let abi = abi_with_script_metadata(abi, artifact.image().script_metadata());
     let script_metadata = artifact.image().script_metadata().cloned();
     let mut functions = BTreeMap::new();

@@ -31,7 +31,7 @@ pub(super) fn run_linked_standard_id_code(
     vm.native_implementation_ids()
         .for_each(|id| linker.add_native_implementation(id));
     let linked = linker
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("standard id dispatch test program should link");
     vm.run_linked_program(&linked, &entry, &[])
 }
@@ -48,7 +48,7 @@ fn run_linked_standard_id_code_with_host(
     vm.native_implementation_ids()
         .for_each(|id| linker.add_native_implementation(id));
     let linked = linker
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("standard host id dispatch test program should link");
     let mut budget = ExecutionBudget::unbounded();
     vm.run_linked_program_with_host_budget_and_caches(&linked, &entry, &[], host, &mut budget, None)
@@ -66,7 +66,7 @@ pub(super) fn run_linked_standard_id_code_with_caches(
     vm.native_implementation_ids()
         .for_each(|id| linker.add_native_implementation(id));
     let linked = linker
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("standard native cache test program should link");
     let function = linked_program_entry(linked.program(), &entry).expect("entry should exist");
     let mut heap = ScriptHeap::new();

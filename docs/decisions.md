@@ -1580,6 +1580,29 @@ localized ownership plumbing. Newly growing bytecode root and cache-fixture
 files were kept below 1200 lines by extracting budget metadata and fixture
 finalization.
 
+### Batch F Fail-Closed Executable Representations
+
+`LinkedArtifact` is the sole production linked-generation type and always owns
+non-optional verified MIR plus the complete executable mapping. Low-level
+linking stages through a private unbound value consumed by cohesive compiled
+program linking; production Runtime, RuntimeImage, Engine, hot-reload, and JIT
+input APIs cannot accept unlinked bytecode.
+
+Each linked artifact owns an independently sealed executable budget layout.
+Every row fixes the MIR site, exact instruction offset or edge, class, units,
+and semantic boundary family. Publication validates that layout against both
+verified MIR and the emitted operation, while instruction origin and charge
+metadata remain construction-sealed. Function totals are only a secondary
+consistency check.
+
+One macro-generated exhaustive declaration defines cache kind, storage, read
+access, and write access for linked and unlinked instructions; compiler
+attachment, image remapping, linker projection, and both verifiers consume that
+interface. MIR blocks, statements, and terminators likewise own active lexical
+scope sets projected during lowering. Debug availability intersects those
+program-point facts with definite initialization and never derives scope from
+source-span containment.
+
 ### Backend-Neutral Execution Units
 
 The long-term execution-budget unit is a deterministic MIR semantic work unit,

@@ -165,7 +165,10 @@ pub struct MirFunction {
     guards: Arena<MirGuardId, MirGuard>,
     safepoints: Arena<MirSafepointId, MirSafepoint>,
     debug_locals: Arena<MirDebugLocalId, MirDebugLocal>,
-    lexical_scopes: BTreeMap<HirScopeId, MirSourceOrigin>,
+    active_lexical_scopes: BTreeSet<HirScopeId>,
+    block_lexical_scopes: BTreeMap<MirBlockId, BTreeSet<HirScopeId>>,
+    statement_lexical_scopes: BTreeMap<MirStatementId, BTreeSet<HirScopeId>>,
+    terminator_lexical_scopes: BTreeMap<MirBlockId, BTreeSet<HirScopeId>>,
     liveness: MirLiveness,
 }
 
@@ -196,7 +199,10 @@ impl MirFunction {
             guards: Arena::default(),
             safepoints: Arena::default(),
             debug_locals: Arena::default(),
-            lexical_scopes: BTreeMap::new(),
+            active_lexical_scopes: BTreeSet::new(),
+            block_lexical_scopes: BTreeMap::from([(entry, BTreeSet::new())]),
+            statement_lexical_scopes: BTreeMap::new(),
+            terminator_lexical_scopes: BTreeMap::new(),
             liveness: MirLiveness::default(),
         }
     }
@@ -232,7 +238,10 @@ impl MirFunction {
     }
 
     pub fn add_block(&mut self) -> MirBlockId {
-        self.blocks.allocate(MirBasicBlock::default())
+        let block = self.blocks.allocate(MirBasicBlock::default());
+        self.block_lexical_scopes
+            .insert(block, self.active_lexical_scopes.clone());
+        block
     }
 
     pub fn add_script_local(
@@ -311,22 +320,31 @@ impl MirFunction {
     }
 
     pub fn add_debug_local(&mut self, local: MirDebugLocal) -> MirDebugLocalId {
-        self.lexical_scopes
-            .entry(local.scope)
-            .or_insert(self.origin);
         self.debug_locals.allocate(local)
     }
 
-    pub fn set_lexical_scopes(
-        &mut self,
-        scopes: impl IntoIterator<Item = (HirScopeId, MirSourceOrigin)>,
-    ) {
-        self.lexical_scopes = scopes.into_iter().collect();
+    pub fn set_active_lexical_scopes(&mut self, scopes: impl IntoIterator<Item = HirScopeId>) {
+        self.active_lexical_scopes = scopes.into_iter().collect();
+        self.block_lexical_scopes
+            .insert(self.entry, self.active_lexical_scopes.clone());
     }
 
     #[must_use]
-    pub fn lexical_scope(&self, scope: HirScopeId) -> Option<MirSourceOrigin> {
-        self.lexical_scopes.get(&scope).copied()
+    pub fn block_lexical_scopes(&self, block: MirBlockId) -> Option<&BTreeSet<HirScopeId>> {
+        self.block_lexical_scopes.get(&block)
+    }
+
+    #[must_use]
+    pub fn statement_lexical_scopes(
+        &self,
+        statement: MirStatementId,
+    ) -> Option<&BTreeSet<HirScopeId>> {
+        self.statement_lexical_scopes.get(&statement)
+    }
+
+    #[must_use]
+    pub fn terminator_lexical_scopes(&self, block: MirBlockId) -> Option<&BTreeSet<HirScopeId>> {
+        self.terminator_lexical_scopes.get(&block)
     }
 
     pub fn append_statement(
@@ -422,12 +440,18 @@ impl MirFunction {
 
         let destination = statement.destination;
         let statement_id = self.statements.allocate(statement);
+        self.statement_lexical_scopes
+            .insert(statement_id, self.active_lexical_scopes.clone());
         if let Some(crate::MirPlace::Temp(temp)) = destination
             && let Some(temp_data) = self.temps.get_mut(temp)
         {
             temp_data.definition = Some(statement_id);
         }
         if let Some(basic_block) = self.blocks.get_mut(block) {
+            if basic_block.statements().is_empty() {
+                self.block_lexical_scopes
+                    .insert(block, self.active_lexical_scopes.clone());
+            }
             basic_block.push_statement(statement_id);
         }
         Ok(statement_id)
@@ -567,7 +591,13 @@ impl MirFunction {
                 origin: terminator.origin,
             });
         }
+        if basic_block.statements().is_empty() {
+            self.block_lexical_scopes
+                .insert(block, self.active_lexical_scopes.clone());
+        }
         basic_block.set_terminator(terminator);
+        self.terminator_lexical_scopes
+            .insert(block, self.active_lexical_scopes.clone());
         Ok(())
     }
 

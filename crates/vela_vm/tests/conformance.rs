@@ -56,7 +56,7 @@ fn core_language_fixture_executes() {
         linker.add_native_implementation(spec.id());
     }
     let linked = linker
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("core language conformance fixture should link");
     let mut vm = Vm::new();
     vm.register_standard_natives();
@@ -195,7 +195,7 @@ fn link_standard_fixture(source: &str) -> std::sync::Arc<vela_bytecode::LinkedAr
         linker.add_native_implementation(spec.id());
     }
     linker
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("conformance fixture should link")
 }
 

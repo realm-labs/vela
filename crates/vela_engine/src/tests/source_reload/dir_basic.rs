@@ -11,7 +11,7 @@ fn run_linked_program(
     args: &[OwnedValue],
 ) -> VmResult<OwnedValue> {
     let linked = engine
-        .link_program(program)
+        .link_test_program(program)
         .expect("source reload directory test program should link");
     engine
         .into_vm_for_program(program)
@@ -26,7 +26,7 @@ fn run_linked_program_with_host(
     host: &mut HostExecution<'_>,
 ) -> VmResult<OwnedValue> {
     let linked = engine
-        .link_program(program)
+        .link_test_program(program)
         .expect("source reload directory host test program should link");
     let mut budget = ExecutionBudget::unbounded();
     engine

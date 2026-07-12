@@ -263,7 +263,7 @@ fn projected_score(snapshot: ServerState, bonus) {
         .expect("program should compile");
 
     engine
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("nested script global program should link");
 }
 

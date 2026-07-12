@@ -289,6 +289,12 @@ impl MirTargetTable {
         insert_unique(&mut self.functions, value.id, value)
     }
 
+    #[cfg(feature = "test-support")]
+    #[doc(hidden)]
+    pub fn insert_test_function(&mut self, value: CompileFunctionDescriptor) -> bool {
+        self.insert_function(value)
+    }
+
     pub(crate) fn insert_method(&mut self, value: CompileMethodDescriptor) -> bool {
         insert_unique(&mut self.methods, (value.owner, value.id), value)
     }

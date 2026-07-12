@@ -194,20 +194,17 @@ impl vela_vm::VmBytecodeProfiler for RuntimeSidecars {
 
 #[cfg(test)]
 mod tests {
-    use vela_bytecode::{UnlinkedCodeObject, UnlinkedProgram};
-
     use crate::engine::Engine;
     use crate::runtime::RuntimeImage;
 
     use super::RuntimeState;
 
     fn image(name: &str) -> RuntimeImage {
-        let mut program = UnlinkedProgram::new();
-        program.insert_function(UnlinkedCodeObject::new(name, 0));
-        RuntimeImage::new(
-            Engine::builder().build().expect("engine should build"),
-            program,
-        )
+        let engine = Engine::builder().build().expect("engine should build");
+        let program = engine
+            .compile_source(&format!("fn {name}() {{ return 0; }}"))
+            .expect("fixture compiles");
+        RuntimeImage::new_compiled(engine, program)
     }
 
     #[test]

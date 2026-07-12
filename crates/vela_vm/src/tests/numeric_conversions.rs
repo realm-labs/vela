@@ -12,7 +12,7 @@ fn run_conversion_source(source: &str) -> VmResult<OwnedValue> {
     vm.native_implementation_ids()
         .for_each(|id| linker.add_native_implementation(id));
     let linked = linker
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("conversion source should link");
     vm.run_linked_program(&linked, "main", &[])
 }

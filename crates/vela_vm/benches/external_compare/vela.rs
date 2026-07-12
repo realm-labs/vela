@@ -82,6 +82,6 @@ pub(crate) fn link_program_for_vm(
         linker.add_native_implementation(id);
     }
     linker
-        .link_program(program)
+        .link_test_program(program)
         .map_err(|error| format!("{error:?}").into())
 }

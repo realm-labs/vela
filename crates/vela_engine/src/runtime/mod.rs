@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use vela_bytecode::{ProgramImage, UnlinkedProgram};
+use vela_bytecode::ProgramImage;
 use vela_common::SourceId;
 use vela_hir::module_graph::DeclarationKind;
 use vela_host::access::HostAccess;
@@ -66,29 +66,6 @@ where
     state: RuntimeState,
 }
 
-#[doc(hidden)]
-pub enum RuntimeProgramInput {
-    Compiled(vela_bytecode::compiler::CompiledProgram),
-    Unlinked(UnlinkedProgram),
-}
-
-#[doc(hidden)]
-pub trait IntoRuntimeProgramInput {
-    fn into_runtime_program_input(self) -> RuntimeProgramInput;
-}
-
-impl IntoRuntimeProgramInput for vela_bytecode::compiler::CompiledProgram {
-    fn into_runtime_program_input(self) -> RuntimeProgramInput {
-        RuntimeProgramInput::Compiled(self)
-    }
-}
-
-impl IntoRuntimeProgramInput for UnlinkedProgram {
-    fn into_runtime_program_input(self) -> RuntimeProgramInput {
-        RuntimeProgramInput::Unlinked(self)
-    }
-}
-
 static NEXT_RUNTIME_ID: AtomicU64 = AtomicU64::new(1);
 
 fn next_runtime_id() -> u64 {
@@ -115,38 +92,26 @@ impl RuntimeImpl<OwnedImage> {
         })
     }
 
+    /// Creates a runtime from a cohesive compiled generation.
+    ///
+    /// Unlinked bytecode is deliberately not a runtime input:
+    ///
+    /// ```compile_fail
+    /// use vela_bytecode::UnlinkedProgram;
+    /// use vela_engine::{engine::Engine, runtime::Runtime};
+    /// let engine = Engine::builder().build().unwrap();
+    /// let _ = Runtime::new(engine, UnlinkedProgram::new());
+    /// ```
     #[must_use]
-    pub fn new(engine: Engine, program: impl IntoRuntimeProgramInput) -> Self {
-        match program.into_runtime_program_input() {
-            RuntimeProgramInput::Compiled(program) => Self::new_compiled(engine, program),
-            RuntimeProgramInput::Unlinked(program) => {
-                let image = OwnedImage::from_image(RuntimeImage::new(engine, program));
-                let state = RuntimeState::for_image(&image);
-                Self {
-                    image,
-                    hot_reload: None,
-                    state,
-                }
-            }
-        }
+    pub fn new(engine: Engine, program: vela_bytecode::compiler::CompiledProgram) -> Self {
+        Self::new_compiled(engine, program)
     }
 
     pub fn try_new(
         engine: Engine,
-        program: impl IntoRuntimeProgramInput,
+        program: vela_bytecode::compiler::CompiledProgram,
     ) -> Result<Self, vela_bytecode::linker::LinkError> {
-        match program.into_runtime_program_input() {
-            RuntimeProgramInput::Compiled(program) => Self::try_new_compiled(engine, program),
-            RuntimeProgramInput::Unlinked(program) => {
-                let image = OwnedImage::from_image(RuntimeImage::try_new(engine, program)?);
-                let state = RuntimeState::for_image(&image);
-                Ok(Self {
-                    image,
-                    hot_reload: None,
-                    state,
-                })
-            }
-        }
+        Self::try_new_compiled(engine, program)
     }
 
     #[must_use]
@@ -977,16 +942,11 @@ fn unknown_method(method: String) -> VmError {
 
 #[cfg(test)]
 mod tests {
-    use vela_bytecode::{
-        Constant, Register, UnlinkedCodeObject, UnlinkedInstruction, UnlinkedInstructionKind,
-        UnlinkedProgram,
-    };
     use vela_host::access::HostAccess;
     use vela_host::mock::MockStateAdapter;
     use vela_vm::owned_value::OwnedValue;
 
     use crate::engine::Engine;
-    use crate::native::NativeFunctionId;
 
     use super::{CallOptions, OwnedImage, RuntimeImage, RuntimeImpl, RuntimeState};
 
@@ -1010,50 +970,21 @@ mod tests {
     }
 
     #[test]
-    fn runtime_image_try_new_rejects_link_errors_before_execution() {
-        let native_id = NativeFunctionId::new(91);
-        let mut main = UnlinkedCodeObject::new("main", 1);
-        main.push_instruction(UnlinkedInstruction::new(
-            UnlinkedInstructionKind::CallNative {
-                dst: Some(Register(0)),
-                name: "test::answer".to_owned(),
-                native: native_id,
-                cache_site: None,
-                args: Vec::new(),
-            },
-        ));
-        main.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
-            src: Register(0),
-        }));
-        let mut program = UnlinkedProgram::new();
-        program.insert_function(main);
-
+    fn runtime_program_rejects_unresolved_natives_before_image_construction() {
         let engine = Engine::builder().build().expect("engine should build");
-        let result = RuntimeImage::try_new(engine, program);
-
-        assert!(matches!(
-            result,
-            Err(vela_bytecode::linker::LinkError::UnresolvedNative { name, .. })
-                if name == "test::answer"
-        ));
+        assert!(
+            engine
+                .compile_source("fn main() { return test::answer(); }")
+                .is_err()
+        );
     }
 
     fn linked_only_runtime() -> RuntimeImpl<OwnedImage> {
         let engine = Engine::builder().build().expect("engine should build");
-        let mut code = vela_bytecode::UnlinkedCodeObject::new("main", 1);
-        let value = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(7)));
-        code.push_instruction(vela_bytecode::UnlinkedInstruction::new(
-            vela_bytecode::UnlinkedInstructionKind::LoadConst {
-                dst: Register(0),
-                constant: value,
-            },
-        ));
-        code.push_instruction(vela_bytecode::UnlinkedInstruction::new(
-            vela_bytecode::UnlinkedInstructionKind::Return { src: Register(0) },
-        ));
-        let mut program = vela_bytecode::UnlinkedProgram::new();
-        program.insert_function(code);
-        let image = RuntimeImage::new(engine, program);
+        let program = engine
+            .compile_source("fn main() { return 7; }")
+            .expect("fixture compiles");
+        let image = RuntimeImage::new_compiled(engine, program);
         let image = OwnedImage::from_image(image);
         let state = RuntimeState::for_image(&image);
         RuntimeImpl {

@@ -27,7 +27,7 @@ fn linker_fails_on_unresolved_native_calls() {
 
     let error = Linker::with_registry(&registry)
         .with_native_implementation(native)
-        .link_program(&program)
+        .link_test_program(&program)
         .expect_err("native definition should be required");
 
     assert!(matches!(
@@ -59,7 +59,7 @@ fn linker_fails_on_missing_native_implementation() {
     program.insert_function(code);
 
     let error = Linker::with_registry(&registry)
-        .link_program(&program)
+        .link_test_program(&program)
         .expect_err("native implementation should be required");
 
     assert!(matches!(
@@ -93,7 +93,7 @@ fn linker_maps_native_functions_to_dense_handles() {
 
     let linked = Linker::with_registry(&registry)
         .with_native_implementation(native)
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("native should link");
 
     assert_eq!(linked.native_function_count(), 1);
@@ -142,7 +142,7 @@ fn linker_preserves_i64_typed_instructions() {
     program.insert_function(code);
 
     let linked = Linker::new()
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("typed scalar instructions should link");
     let main = linked
         .functions()
@@ -201,7 +201,7 @@ fn linker_maps_script_functions_and_methods_to_dense_handles() {
     program.insert_script_method("Player", "score", method, "helper");
 
     let linked = Linker::new()
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("script calls should link");
 
     let main = linked
@@ -257,7 +257,7 @@ fn linker_preserves_method_call_cache_site_operand() {
     program.insert_script_method("Player", "score", method, "main");
 
     let linked = Linker::new()
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("method call should link");
     let main = linked
         .functions()
@@ -292,7 +292,7 @@ fn assert_linked_dynamic_method_source(method: &str, body: &str) {
     let mut program = UnlinkedProgram::new();
     program.insert_function(code);
     let linked = Linker::new()
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("dynamic method source should link");
     let function = linked
         .entry_point_by_name("f")
@@ -330,7 +330,7 @@ fn linker_rejects_script_call_with_matching_name_and_wrong_id() {
     program.insert_function(main);
 
     let error = Linker::new()
-        .link_program(&program)
+        .link_test_program(&program)
         .expect_err("script calls should resolve by id, not matching debug name");
 
     assert!(matches!(
@@ -388,7 +388,7 @@ fn linker_maps_globals_map_keys_and_field_slots_without_instruction_names() {
     program.insert_function(code);
 
     let linked = Linker::new()
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("global and field slots should link");
     let main = linked
         .functions()
@@ -466,7 +466,7 @@ enum Outcome {
     program.set_script_metadata(graph);
 
     let linked = Linker::new()
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("script schema identities should link from metadata");
     let reward = linked
         .types()
@@ -501,7 +501,7 @@ fn linker_links_dynamic_method_and_field_fallbacks() {
     method_program.insert_function(method_code);
 
     let linked = Linker::new()
-        .link_program(&method_program)
+        .link_test_program(&method_program)
         .expect("dynamic method dispatch should link");
     let method = linked
         .entry_point_by_name("method")
@@ -525,7 +525,7 @@ fn linker_links_dynamic_method_and_field_fallbacks() {
     field_program.insert_function(field_code);
 
     let linked = Linker::new()
-        .link_program(&field_program)
+        .link_test_program(&field_program)
         .expect("name-only record field dispatch should link dynamically");
     let field = linked
         .entry_point_by_name("field")
@@ -574,7 +574,7 @@ fn linker_remaps_host_target_plans_and_host_methods_to_linked_handles() {
     program.insert_function(code);
 
     let linked = Linker::new()
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("host targets should link");
     let main = linked
         .functions()

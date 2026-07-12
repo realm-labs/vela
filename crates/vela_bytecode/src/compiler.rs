@@ -38,6 +38,14 @@ pub struct CompiledProgram {
     bytecode: UnlinkedProgram,
     verified_mir: Arc<vela_mir::OwnedVerifiedMirBundle>,
     mir_executables: Box<[CompiledMirExecutable]>,
+    budget_layouts: Box<[CompiledExecutableBudgetLayout]>,
+}
+
+pub(crate) struct CompiledProgramParts {
+    pub(crate) bytecode: UnlinkedProgram,
+    pub(crate) verified_mir: Arc<vela_mir::OwnedVerifiedMirBundle>,
+    pub(crate) mir_executables: Box<[CompiledMirExecutable]>,
+    pub(crate) budget_layouts: Box<[CompiledExecutableBudgetLayout]>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -47,6 +55,26 @@ pub(crate) struct CompiledMirExecutable {
 }
 
 pub(crate) type CompiledMirExecutableIdentity = CompiledMirExecutable;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct CompiledExecutableBudgetLayout {
+    pub(crate) sites: Box<[ExecutableBudgetSite]>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct ExecutableBudgetSite {
+    pub(crate) site: vela_mir::MirBudgetSite,
+    pub(crate) offset: crate::InstructionOffset,
+    pub(crate) class: vela_mir::MirBudgetClass,
+    pub(crate) units: u32,
+    pub(crate) boundary: ExecutableBudgetBoundary,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum ExecutableBudgetBoundary {
+    Operation,
+    EdgeStub,
+}
 
 impl CompiledProgram {
     #[must_use]
@@ -60,14 +88,13 @@ impl CompiledProgram {
     }
 
     #[must_use]
-    pub(crate) fn into_linker_parts(
-        self,
-    ) -> (
-        UnlinkedProgram,
-        Arc<vela_mir::OwnedVerifiedMirBundle>,
-        Box<[CompiledMirExecutable]>,
-    ) {
-        (self.bytecode, self.verified_mir, self.mir_executables)
+    pub(crate) fn into_linker_parts(self) -> CompiledProgramParts {
+        CompiledProgramParts {
+            bytecode: self.bytecode,
+            verified_mir: self.verified_mir,
+            mir_executables: self.mir_executables,
+            budget_layouts: self.budget_layouts,
+        }
     }
 
     /// Extracts bytecode for verifier-corruption and low-level VM tests.
@@ -365,9 +392,51 @@ fn compile_semantic_program(
     let bytecode = verify_program(program)?;
     Ok(CompiledProgram {
         mir_executables: compiled_bytecode_layouts(&bytecode),
+        budget_layouts: compiled_budget_layouts(&bytecode),
         bytecode,
         verified_mir,
     })
+}
+
+fn compiled_budget_layouts(program: &UnlinkedProgram) -> Box<[CompiledExecutableBudgetLayout]> {
+    fn layout(code: &UnlinkedCodeObject) -> CompiledExecutableBudgetLayout {
+        let sites = code
+            .instructions
+            .iter()
+            .enumerate()
+            .flat_map(|(offset, instruction)| {
+                instruction
+                    .mir_budget_charges
+                    .iter()
+                    .map(move |charge| ExecutableBudgetSite {
+                        site: charge.site,
+                        offset: crate::InstructionOffset(offset),
+                        class: charge.class,
+                        units: charge.units,
+                        boundary: if matches!(charge.site, vela_mir::MirBudgetSite::Edge { .. }) {
+                            ExecutableBudgetBoundary::EdgeStub
+                        } else {
+                            ExecutableBudgetBoundary::Operation
+                        },
+                    })
+            })
+            .collect::<Vec<_>>()
+            .into_boxed_slice();
+        CompiledExecutableBudgetLayout { sites }
+    }
+
+    fn append(code: &UnlinkedCodeObject, layouts: &mut Vec<CompiledExecutableBudgetLayout>) {
+        for nested in &code.nested_functions {
+            append(nested, layouts);
+            layouts.push(layout(nested));
+        }
+    }
+
+    let mut layouts = program.functions().map(layout).collect::<Vec<_>>();
+    for code in program.functions() {
+        append(code, &mut layouts);
+    }
+    layouts.into_boxed_slice()
 }
 
 fn compiled_bytecode_layouts(program: &UnlinkedProgram) -> Box<[CompiledMirExecutable]> {

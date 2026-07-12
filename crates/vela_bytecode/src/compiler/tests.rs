@@ -102,11 +102,7 @@ fn linked_artifact_rejects_bytecode_that_drops_verified_mir_budget_points() {
     assert!(
         matches!(
             result,
-            Err(crate::linker::LinkError::MirBudgetEncodingMismatch {
-                encoded_units: 0,
-                mapped_units: 1,
-                ..
-            })
+            Err(crate::linker::LinkError::MirBudgetLayoutMismatch { .. })
         ),
         "{result:?}"
     );
@@ -135,12 +131,16 @@ fn assert_moved_budget_charge_is_rejected(
         .expect("fixture has an instruction after the charged boundary");
     let units = code.instructions[source].execution_units;
     let charges = std::mem::take(&mut code.instructions[source].mir_budget_charges);
+    let origin = code.instructions[source].mir_origin.take();
+    let span = code.instructions[source].span;
     code.instructions[source].execution_units = 0;
     code.instructions[target].execution_units = code.instructions[target]
         .execution_units
         .checked_add(units)
         .expect("test charge units fit");
     code.instructions[target].mir_budget_charges = charges;
+    code.instructions[target].mir_origin = origin;
+    code.instructions[target].span = span;
 
     let native_ids = program
         .bytecode
@@ -159,7 +159,7 @@ fn assert_moved_budget_charge_is_rejected(
     assert!(
         matches!(
             result,
-            Err(crate::LinkError::MirBudgetPlacementMismatch { .. })
+            Err(crate::LinkError::MirBudgetLayoutMismatch { .. })
         ),
         "{result:?}"
     );
@@ -265,17 +265,11 @@ fn compiled_linking_keeps_semantically_distinct_equal_budget_generations_sealed(
     let second = crate::Linker::new()
         .link_compiled_program(second)
         .expect("second generation links");
-    assert!(std::sync::Arc::ptr_eq(
-        first.verified_mir().expect("first MIR owner"),
-        &first_mir
-    ));
-    assert!(std::sync::Arc::ptr_eq(
-        second.verified_mir().expect("second MIR owner"),
-        &second_mir
-    ));
+    assert!(std::sync::Arc::ptr_eq(first.verified_mir(), &first_mir));
+    assert!(std::sync::Arc::ptr_eq(second.verified_mir(), &second_mir));
     assert!(!std::sync::Arc::ptr_eq(
-        first.verified_mir().expect("first MIR owner"),
-        second.verified_mir().expect("second MIR owner")
+        first.verified_mir(),
+        second.verified_mir()
     ));
 }
 
@@ -333,7 +327,6 @@ fn every_bound_handle_resolves_one_verified_mir_function() {
             .expect("every linked handle has a MIR layout");
         let owner = artifact
             .verified_mir()
-            .expect("bound artifact owns verified MIR")
             .root(layout.root)
             .expect("layout root resolves");
         assert!(owner.program().function(layout.function).is_some());
@@ -357,7 +350,7 @@ fn main(value: i64 = 1) {
     }
     match value {
         1 => { let arm_local = 2; arm_local; },
-        _ => {},
+        _ => { let other_arm_local = 3; other_arm_local; },
     }
     return callback(value);
 }
@@ -371,24 +364,30 @@ fn main(value: i64 = 1) {
             let analyses = owner.analyses(function_id).expect("sealed analyses");
             for (debug_id, debug) in function.debug_locals() {
                 observed.insert(debug.name.clone());
-                let scope = function
-                    .lexical_scope(debug.scope)
-                    .expect("debug local has owned lexical scope coverage");
                 for (statement_id, available) in &analyses.debug_availability.statement_before {
-                    if !available.contains(&debug_id) {
-                        continue;
-                    }
-                    let origin = function
-                        .statement(*statement_id)
-                        .expect("availability statement exists")
-                        .origin;
-                    assert_eq!(origin.body, scope.body, "{} crossed a body", debug.name);
+                    let scopes = function
+                        .statement_lexical_scopes(*statement_id)
+                        .expect("availability statement owns MIR scope facts");
                     assert!(
-                        scope.span.start <= origin.span.start && origin.span.end <= scope.span.end,
-                        "{} remained visible outside {:?} at {:?}",
+                        !available.contains(&debug_id) || scopes.contains(&debug.scope),
+                        "{} remained visible outside MIR scope {:?}",
                         debug.name,
-                        scope.span,
-                        origin.span
+                        debug.scope,
+                    );
+                    assert!(
+                        scopes.contains(&debug.scope) || !available.contains(&debug_id),
+                        "{} leaked into a statement outside its MIR scope",
+                        debug.name,
+                    );
+                }
+                for (block, available) in &analyses.debug_availability.block_entry {
+                    let scopes = function
+                        .block_lexical_scopes(*block)
+                        .expect("availability block owns MIR scope facts");
+                    assert!(
+                        scopes.contains(&debug.scope) || !available.contains(&debug_id),
+                        "{} leaked into a block outside its MIR scope",
+                        debug.name,
                     );
                 }
             }
@@ -403,6 +402,7 @@ fn main(value: i64 = 1) {
         "item",
         "loop_local",
         "arm_local",
+        "other_arm_local",
     ] {
         assert!(
             observed.contains(expected),

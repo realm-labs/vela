@@ -408,7 +408,7 @@ mod tests {
         let mut program = UnlinkedProgram::new();
         program.insert_function(code);
         let linked = Linker::new()
-            .link_program(&program)
+            .link_test_program(&program)
             .expect("builtin method test program should link");
         Vm::new().run_linked_program_with_budget(&linked, &entry, &[], budget)
     }

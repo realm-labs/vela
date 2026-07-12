@@ -53,6 +53,18 @@ pub(crate) struct EngineParts {
 }
 
 impl Engine {
+    #[cfg(test)]
+    pub(crate) fn link_test_program(
+        &self,
+        program: &UnlinkedProgram,
+    ) -> Result<Arc<LinkedArtifact>, LinkError> {
+        let mut linker = Linker::with_registry(&self.definition_registry);
+        for id in self.native_implementation_ids() {
+            linker.add_native_implementation(id);
+        }
+        linker.link_test_program(program)
+    }
+
     #[must_use]
     pub fn builder() -> EngineBuilder {
         EngineBuilder::new()
@@ -223,17 +235,6 @@ impl Engine {
         })?;
         check_capabilities(&entry.desc.name, &entry.desc.effects, self.capabilities)?;
         (entry.function)(receiver, args, host)
-    }
-
-    pub fn link_program(
-        &self,
-        program: &UnlinkedProgram,
-    ) -> Result<Arc<LinkedArtifact>, LinkError> {
-        let mut linker = Linker::with_registry(&self.definition_registry);
-        for id in self.native_implementation_ids() {
-            linker.add_native_implementation(id);
-        }
-        linker.link_program(program)
     }
 
     pub fn link_compiled_program(

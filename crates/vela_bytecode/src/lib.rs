@@ -1,6 +1,6 @@
 //! Register bytecode for Vela code objects.
 
-mod artifact;
+pub(crate) mod artifact;
 mod budget_metadata;
 mod cache_policy;
 pub mod cache_site;
@@ -680,8 +680,8 @@ pub struct UnlinkedInstruction {
     pub kind: UnlinkedInstructionKind,
     pub span: Option<Span>,
     pub execution_units: u32,
-    pub mir_origin: Option<vela_mir::MirBudgetSite>,
-    pub mir_budget_charges: Box<[MirBudgetCharge]>,
+    pub(crate) mir_origin: Option<vela_mir::MirBudgetSite>,
+    pub(crate) mir_budget_charges: Box<[MirBudgetCharge]>,
 }
 
 impl UnlinkedInstruction {

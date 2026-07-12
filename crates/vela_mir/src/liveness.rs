@@ -109,40 +109,17 @@ pub(crate) fn sealed_analyses(function: &MirFunction) -> crate::MirFunctionAnaly
 }
 
 fn lexical_debug_availability(function: &MirFunction) -> crate::MirDebugAvailability {
-    fn scope_contains(
-        function: &MirFunction,
-        debug: &crate::MirDebugLocal,
-        origin: crate::MirSourceOrigin,
-    ) -> bool {
-        let Some(scope) = function.lexical_scope(debug.scope) else {
-            return false;
-        };
-        scope.body == origin.body
-            && scope.span.start <= origin.span.start
-            && origin.span.end <= scope.span.end
-    }
-
     fn project(
         function: &MirFunction,
         state: &mut BTreeSet<MirDebugLocalId>,
-        origin: crate::MirSourceOrigin,
+        scopes: &BTreeSet<vela_hir::ids::HirScopeId>,
     ) {
         state.retain(|id| {
             function
                 .debug_locals()
                 .find_map(|(candidate, debug)| (candidate == *id).then_some(debug))
-                .is_some_and(|debug| scope_contains(function, debug, origin))
+                .is_some_and(|debug| scopes.contains(&debug.scope))
         });
-    }
-
-    fn block_origin(function: &MirFunction, block: MirBlockId) -> Option<crate::MirSourceOrigin> {
-        let block = function.block(block)?;
-        block
-            .statements()
-            .first()
-            .and_then(|statement| function.statement(*statement))
-            .map(|statement| statement.origin)
-            .or_else(|| block.terminator().map(|terminator| terminator.origin))
     }
 
     let blocks = function
@@ -172,19 +149,20 @@ fn lexical_debug_availability(function: &MirFunction) -> crate::MirDebugAvailabi
                 if !successors(&data.terminator()?.kind).contains(&block) {
                     return None;
                 }
-                for statement in data.statements() {
-                    let statement = function.statement(*statement)?;
-                    project(function, &mut state, statement.origin);
+                for statement_id in data.statements() {
+                    let statement = function.statement(*statement_id)?;
+                    let scopes = function.statement_lexical_scopes(*statement_id)?;
+                    project(function, &mut state, scopes);
                     let destination = statement.destination;
                     for (id, debug) in function.debug_locals() {
                         if destination == Some(MirPlace::Local(debug.storage))
-                            && scope_contains(function, debug, statement.origin)
+                            && scopes.contains(&debug.scope)
                         {
                             state.insert(id);
                         }
                     }
                 }
-                project(function, &mut state, block_origin(function, block)?);
+                project(function, &mut state, function.block_lexical_scopes(block)?);
                 Some(state)
             });
             let mut incoming = incoming.peekable();
@@ -213,8 +191,8 @@ fn lexical_debug_availability(function: &MirFunction) -> crate::MirDebugAvailabi
         let Some(mut state) = block_in.get(&block).cloned().flatten() else {
             continue;
         };
-        if let Some(origin) = block_origin(function, block) {
-            project(function, &mut state, origin);
+        if let Some(scopes) = function.block_lexical_scopes(block) {
+            project(function, &mut state, scopes);
         }
         block_entry.insert(block, state.clone());
         for id in &state {
@@ -224,11 +202,10 @@ fn lexical_debug_availability(function: &MirFunction) -> crate::MirDebugAvailabi
             .block(block)
             .expect("debug availability block exists");
         for statement in data.statements() {
-            let origin = function
-                .statement(*statement)
-                .expect("debug availability statement exists")
-                .origin;
-            project(function, &mut state, origin);
+            let scopes = function
+                .statement_lexical_scopes(*statement)
+                .expect("debug availability statement owns lexical scopes");
+            project(function, &mut state, scopes);
             statement_before.insert(*statement, state.clone());
             let destination = function
                 .statement(*statement)
@@ -236,7 +213,7 @@ fn lexical_debug_availability(function: &MirFunction) -> crate::MirDebugAvailabi
                 .destination;
             for (id, debug) in function.debug_locals() {
                 if destination == Some(MirPlace::Local(debug.storage))
-                    && scope_contains(function, debug, origin)
+                    && scopes.contains(&debug.scope)
                 {
                     state.insert(id);
                     regions.entry(id).or_default().blocks.insert(block);

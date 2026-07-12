@@ -23,7 +23,7 @@ fn linked_vm(
     program: &UnlinkedProgram,
 ) -> (Vm, std::sync::Arc<vela_bytecode::LinkedArtifact>) {
     let linked = engine
-        .link_program(program)
+        .link_test_program(program)
         .expect("engine test program should link");
     (engine.into_vm_for_program(program), linked)
 }

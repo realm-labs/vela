@@ -33,7 +33,7 @@ fn main() {
     )])
     .expect("script schemas should compile");
     let linked = Linker::new()
-        .link_program(&program)
+        .link_test_program(&program)
         .expect("script schemas should link");
     let graph = program.script_metadata().expect("script metadata graph");
     let mut reflected = TypeRegistry::new();

@@ -99,7 +99,7 @@ fn linker_rejects_script_function_id_debug_name_mismatch() {
     program.insert_function(main);
 
     let error = Linker::new()
-        .link_program(&program)
+        .link_test_program(&program)
         .expect_err("matching debug name must not rescue wrong FunctionId");
 
     assert!(matches!(
