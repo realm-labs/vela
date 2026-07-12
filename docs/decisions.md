@@ -229,6 +229,15 @@ backend errors. This boundary is implemented as a breaking internal hard switch
 without compatibility wrappers; the execution checklist is
 [bytecode-source-boundary-hard-switch-plan.md](bytecode-source-boundary-hard-switch-plan.md).
 
+The implemented HIR boundary is `source_ingestion::build_source_set`, which
+returns an ordered `HirSourceSet` or a `HirSourceBuildError` explicitly staged
+as syntax or semantic. The implemented bytecode boundary is
+`ProgramCompilationRequest` with `ProgramCompilationMode`, plus
+`FunctionCompilationRequest` rooted by `HirDeclId`. Engine source errors and
+hot-reload errors retain front-end failures separately from backend
+`CompileError`; bytecode does not translate parser failures into compiler error
+variants.
+
 Production parsing is rowan-backed and lossless. `vela_syntax` owns
 `SyntaxKind`, `VelaLanguage`, syntax node/token aliases, and `Parse<T>`
 green-tree results; `vela_syntax::parse_source` returns the production syntax

@@ -2,7 +2,7 @@
 
 > **Track:** compiler layering and source-front-door ownership
 > **Document status:** Codex goal-mode execution plan
-> **Execution status:** Not started
+> **Execution status:** Complete (2026-07-12)
 > **Compatibility policy:** This is a breaking pre-release internal API hard
 > switch. Preserve Vela language behavior, source identity, diagnostics,
 > generated MIR/bytecode, linking, execution budgets, hot reload, and public
@@ -313,24 +313,24 @@ before proposing a broader crate split.
 Use this checklist as the durable tracker:
 
 ```text
-[ ] not started
+[x] complete
 [~] in progress
 [x] complete
 ```
 
 ### Checkpoint A: Freeze Behavior And Inventory Callers
 
-- [ ] Inventory every `compile_function_source*`, `compile_program_source*`,
+- [x] Inventory every `compile_function_source*`, `compile_program_source*`,
       `compile_module_sources*`, `parse_semantic_source`, and
       `parse_semantic_modules` definition/import/call.
-- [ ] Classify callers as production Engine/hot reload, bytecode tests, VM unit
+- [x] Classify callers as production Engine/hot reload, bytecode tests, VM unit
       tests, integration tests, examples, or benchmarks.
-- [ ] Add or identify fixtures for single-source success, multi-module success,
+- [x] Add or identify fixtures for single-source success, multi-module success,
       syntax failure, duplicate module, unresolved import, function-not-found,
       method identity, constants, schema defaults, and registry-aware calls.
-- [ ] Record current diagnostic kind, order, code, span, and message for syntax
+- [x] Record current diagnostic kind, order, code, span, and message for syntax
       versus semantic failures.
-- [ ] Record deterministic symbol names and compiled executable identities for
+- [x] Record deterministic symbol names and compiled executable identities for
       representative single-source and module inputs.
 
 Validation:
@@ -347,16 +347,16 @@ compiler path.
 
 ### Checkpoint B: Establish The HIR Source-Set Boundary
 
-- [ ] Add the HIR-owned source-set build result and staged error contract.
-- [ ] Make single-source and multi-module ingestion use the same implementation.
-- [ ] Preserve parse-all-before-lowering behavior for multi-module syntax
+- [x] Add the HIR-owned source-set build result and staged error contract.
+- [x] Make single-source and multi-module ingestion use the same implementation.
+- [x] Preserve parse-all-before-lowering behavior for multi-module syntax
       diagnostics.
-- [ ] Preserve deterministic source/module/diagnostic ordering.
-- [ ] Resolve imports once after all syntax-clean modules are present.
-- [ ] Add HIR tests for syntax-stage and semantic-stage separation.
-- [ ] Add tests for empty root path, relative-path module identity, duplicate
+- [x] Preserve deterministic source/module/diagnostic ordering.
+- [x] Resolve imports once after all syntax-clean modules are present.
+- [x] Add HIR tests for syntax-stage and semantic-stage separation.
+- [x] Add tests for empty root path, relative-path module identity, duplicate
       module paths, unresolved imports, and multiple-source diagnostics.
-- [ ] Keep existing lower-level `add_parsed_source` only if syntax/LSP callers
+- [x] Keep existing lower-level `add_parsed_source` only if syntax/LSP callers
       genuinely require it; do not use it to bypass the production build result.
 
 Validation:
@@ -368,21 +368,21 @@ cargo clippy -p vela_hir --all-targets -- -D warnings
 
 ### Checkpoint C: Build The Graph-Based Bytecode Boundary
 
-- [ ] Introduce cohesive program and selected-function compilation request
+- [x] Introduce cohesive program and selected-function compilation request
       types.
-- [ ] Collapse `SemanticSource` and `SemanticModules` into one graph-borrowing
+- [x] Collapse `SemanticSource` and `SemanticModules` into one graph-borrowing
       semantic compilation context plus explicit mode, or document why a smaller
       equivalent representation is clearer.
-- [ ] Resolve function names to `HirDeclId` outside the physical backend; prefer
+- [x] Resolve function names to `HirDeclId` outside the physical backend; prefer
       stable identity in the selected-function request.
-- [ ] Preserve single-source and module symbol qualification exactly.
-- [ ] Preserve method catalog modes and the single-source `main` identity
+- [x] Preserve single-source and module symbol qualification exactly.
+- [x] Preserve method catalog modes and the single-source `main` identity
       exception.
-- [ ] Preserve constant fixed-point evaluation and schema-default traversal.
-- [ ] Preserve `CompiledProgram` verified-MIR ownership, executable identity,
+- [x] Preserve constant fixed-point evaluation and schema-default traversal.
+- [x] Preserve `CompiledProgram` verified-MIR ownership, executable identity,
       budget layout, bytecode verification, and linker handoff.
-- [ ] Add graph-based compiler tests for every frozen fixture.
-- [ ] Do not yet commit a completed checkpoint with both public API families.
+- [x] Add graph-based compiler tests for every frozen fixture.
+- [x] Do not yet commit a completed checkpoint with both public API families.
 
 Focused validation:
 
@@ -395,26 +395,26 @@ cargo clippy -p vela_bytecode --all-targets -- -D warnings
 
 Perform these changes as one hard-switch checkpoint:
 
-- [ ] Migrate `Engine::compile_source`, `compile_file`, and `compile_dir`.
-- [ ] Migrate initial/update/staged hot reload for source, file, directory, and
+- [x] Migrate `Engine::compile_source`, `compile_file`, and `compile_dir`.
+- [x] Migrate initial/update/staged hot reload for source, file, directory, and
       changed-file paths.
-- [ ] Introduce or update the orchestration-layer source compilation error so
+- [x] Introduce or update the orchestration-layer source compilation error so
       HIR front-end failures and bytecode backend failures remain structured.
-- [ ] Migrate bytecode compiler tests to the HIR source-set boundary.
-- [ ] Migrate VM tests and test-local helpers using its existing HIR dev
+- [x] Migrate bytecode compiler tests to the HIR source-set boundary.
+- [x] Migrate VM tests and test-local helpers using its existing HIR dev
       dependency.
-- [ ] Migrate integration tests, conformance tests, examples, and all benchmarks.
-- [ ] Replace repeated test setup with a thin helper only when it removes real
+- [x] Migrate integration tests, conformance tests, examples, and all benchmarks.
+- [x] Replace repeated test setup with a thin helper only when it removes real
       duplication; the helper must call production HIR and bytecode APIs.
-- [ ] Delete every `compile_*_source*` function from `vela_bytecode`.
-- [ ] Delete `parse_semantic_source` and `parse_semantic_modules`.
-- [ ] Delete obsolete source-owning semantic containers and imports.
-- [ ] Remove `vela_syntax` entirely from `vela_bytecode/Cargo.toml`; do not move
+- [x] Delete every `compile_*_source*` function from `vela_bytecode`.
+- [x] Delete `parse_semantic_source` and `parse_semantic_modules`.
+- [x] Delete obsolete source-owning semantic containers and imports.
+- [x] Remove `vela_syntax` entirely from `vela_bytecode/Cargo.toml`; do not move
       it to dev-dependencies.
-- [ ] Remove syntax-diagnostic variants from bytecode `CompileError` if they no
+- [x] Remove syntax-diagnostic variants from bytecode `CompileError` if they no
       longer represent graph-to-bytecode failures; the orchestration-layer
       error must still expose the same user-visible diagnostics.
-- [ ] Do not leave deprecated wrappers, aliases, feature gates, fallback paths,
+- [x] Do not leave deprecated wrappers, aliases, feature gates, fallback paths,
       or commented migration code.
 
 Checkpoint D is incomplete if the tree is green only because both API families
@@ -434,19 +434,19 @@ cargo check -p vela_engine --benches
 
 ### Checkpoint E: Architecture Closure And Full Validation
 
-- [ ] Add a dependency/zero-hit test or CI audit that prevents
+- [x] Add a dependency/zero-hit test or CI audit that prevents
       `vela_bytecode -> vela_syntax` from returning.
-- [ ] Prove no source-text compilation API remains in `vela_bytecode`.
-- [ ] Prove bytecode tests do not own a hidden parser facade.
-- [ ] Compare frozen diagnostic stage/order/code/span/message fixtures.
-- [ ] Compare representative generated MIR, bytecode verification, executable
+- [x] Prove no source-text compilation API remains in `vela_bytecode`.
+- [x] Prove bytecode tests do not own a hidden parser facade.
+- [x] Compare frozen diagnostic stage/order/code/span/message fixtures.
+- [x] Compare representative generated MIR, bytecode verification, executable
       identities, and runtime results.
-- [ ] Run all examples required by `docs/validation.md`.
-- [ ] Run the active-file size audit and split migration-dense files when
+- [x] Run all examples required by `docs/validation.md`.
+- [x] Run the active-file size audit and split migration-dense files when
       ownership becomes unclear.
-- [ ] Update `docs/progress.md` with the completed boundary and validation.
-- [ ] Update this document's execution status and checklist.
-- [ ] Commit completed checkpoints with Conventional Commits and finish with a
+- [x] Update `docs/progress.md` with the completed boundary and validation.
+- [x] Update this document's execution status and checklist.
+- [x] Commit completed checkpoints with Conventional Commits and finish with a
       clean worktree.
 
 Zero-hit audits:
