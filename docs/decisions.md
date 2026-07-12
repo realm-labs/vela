@@ -216,8 +216,18 @@ imports should use explicit `crate::...` paths.
 
 The syntax layer owns tokens, AST, parser recovery, and source spans. HIR owns
 module graph resolution, declaration IDs, binding maps, type-hint metadata, and
-top-level semantic diagnostics. The bytecode compiler consumes HIR diagnostics
-and metadata before bytecode emission.
+top-level semantic diagnostics. The source front door rejects syntax and HIR
+diagnostics before bytecode compilation; the bytecode compiler consumes the
+validated HIR graph and metadata.
+
+Source-set parsing and `ModuleGraph` construction are HIR front-end
+responsibilities. The bytecode compiler accepts an already-built graph plus
+explicit compilation roots/mode and must not accept source text or depend on
+`vela_syntax`. `vela_engine` owns the embedding-facing source/file/directory and
+hot-reload orchestration, including structured projection of front-end and
+backend errors. This boundary is implemented as a breaking internal hard switch
+without compatibility wrappers; the execution checklist is
+[bytecode-source-boundary-hard-switch-plan.md](bytecode-source-boundary-hard-switch-plan.md).
 
 Production parsing is rowan-backed and lossless. `vela_syntax` owns
 `SyntaxKind`, `VelaLanguage`, syntax node/token aliases, and `Parse<T>`
