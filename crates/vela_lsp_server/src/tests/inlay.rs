@@ -257,7 +257,12 @@ fn lsp_inlay_hints_show_host_path_typefacts() {
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]
@@ -376,7 +381,12 @@ fn lsp_inlay_hints_suppress_any_schema_function_parameters() {
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]

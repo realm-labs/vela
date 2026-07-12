@@ -14,7 +14,12 @@ fn lsp_call_hierarchy_uses_schema_method_calls_on_schema_function_return_receive
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]
@@ -233,7 +238,12 @@ fn lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_function_return_r
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]

@@ -14,6 +14,7 @@ members = [
     "crates/vela_lsp_server",
     "crates/vela_macros",
     "crates/vela_mir",
+    "crates/vela_package",
     "crates/vela_playground_wasm",
     "crates/vela_registry",
     "crates/vela_reflect",
@@ -43,6 +44,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 syn = { version = "2", features = ["full"] }
 blake3 = "1"
+toml_edit = "0.23"
 vela_analysis = { path = "crates/vela_analysis" }
 vela_bytecode = { path = "crates/vela_bytecode" }
 vela_c_api = { path = "crates/vela_c_api" }
@@ -56,6 +58,7 @@ vela_host = { path = "crates/vela_host" }
 vela_language_service = { path = "crates/vela_language_service" }
 vela_macros = { path = "crates/vela_macros" }
 vela_mir = { path = "crates/vela_mir" }
+vela_package = { path = "crates/vela_package" }
 vela_playground_wasm = { path = "crates/vela_playground_wasm" }
 vela_registry = { path = "crates/vela_registry" }
 vela_reflect = { path = "crates/vela_reflect" }

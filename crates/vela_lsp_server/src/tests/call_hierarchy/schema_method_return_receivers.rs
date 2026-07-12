@@ -396,7 +396,12 @@ fn open_fixture(
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]

@@ -19,7 +19,12 @@ fn schema_reload_updates_host_member_completion() {
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]
@@ -104,7 +109,12 @@ fn schema_delete_clears_stale_host_completion_and_publishes_diagnostic() {
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]

@@ -148,7 +148,12 @@ fn lsp_references_drop_deleted_imported_source_file() {
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
         "#,
     )
@@ -276,7 +281,12 @@ fn lsp_references_refresh_renamed_imported_source_file() {
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
         "#,
     )
@@ -430,7 +440,12 @@ fn lsp_references_use_open_overlay_for_imported_defining_file() {
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
         "#,
     )
@@ -547,7 +562,12 @@ fn lsp_references_use_open_overlay_for_importing_file() {
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
         "#,
     )

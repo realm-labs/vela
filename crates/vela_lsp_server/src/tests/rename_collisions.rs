@@ -185,7 +185,12 @@ fn lsp_source_backed_schema_member_rename_rejects_same_kind_collisions() {
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]

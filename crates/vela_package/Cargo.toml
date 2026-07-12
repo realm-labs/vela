@@ -1,0 +1,12 @@
+[package]
+name = "vela_package"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+toml_edit.workspace = true
+vela_common.workspace = true
+
+[lints]
+workspace = true

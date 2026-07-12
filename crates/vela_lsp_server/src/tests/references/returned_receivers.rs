@@ -14,7 +14,12 @@ fn lsp_references_find_schema_method_calls_on_schema_function_return_receivers()
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]
@@ -170,7 +175,12 @@ fn lsp_references_find_schema_trait_method_calls_on_schema_function_return_recei
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]
@@ -326,7 +336,12 @@ fn lsp_document_highlight_marks_schema_method_calls_on_schema_function_return_re
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]
@@ -473,7 +488,12 @@ fn lsp_document_highlight_marks_schema_trait_method_calls_on_schema_function_ret
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]

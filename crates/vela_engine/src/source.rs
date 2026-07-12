@@ -1,5 +1,5 @@
 use std::fmt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use vela_bytecode::compiler::CompiledProgram;
 use vela_bytecode::compiler::error::CompileError;
@@ -9,6 +9,7 @@ use vela_hir::module_graph::ModuleSource;
 use vela_hir::source_ingestion::{
     HirSourceBuildError, HirSourceSet, build_module_source_set, build_single_source,
 };
+use vela_package::{PackageGraph, PackageGraphError, load_package_graph};
 
 use crate::engine::Engine;
 
@@ -90,6 +91,14 @@ impl fmt::Display for EngineSourceError {
 impl std::error::Error for EngineSourceError {}
 
 impl Engine {
+    pub fn load_package_graph(
+        &self,
+        manifest: impl AsRef<Path>,
+        authorized_roots: &[PathBuf],
+    ) -> Result<PackageGraph, PackageGraphError> {
+        load_package_graph(manifest, authorized_roots)
+    }
+
     pub fn compile_source(&self, text: &str) -> Result<CompiledProgram, EngineSourceError> {
         self.compile_source_with_id(SourceId::new(1), text)
     }
@@ -140,5 +149,44 @@ impl Engine {
             registry: Some(self.compiler_registry()),
         })
         .map_err(EngineSourceError::backend)
+    }
+}
+
+#[cfg(test)]
+mod package_tests {
+    use std::fs;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    use super::*;
+
+    static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(1);
+
+    #[test]
+    fn engine_and_language_service_assemble_the_same_package_graph() {
+        let root = std::env::temp_dir().join(format!(
+            "vela_shared_package_graph_{}_{}",
+            std::process::id(),
+            NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir_all(root.join("src")).expect("create package source root");
+        fs::write(
+            root.join("vela.toml"),
+            "[package]\nid=\"dev.vela.shared\"\nname=\"shared\"\nversion=\"0.1.0\"\n",
+        )
+        .expect("write manifest");
+        fs::write(root.join("src/main.vela"), "fn main() { return 1 }\n").expect("write source");
+
+        let engine = Engine::builder().build().expect("build engine");
+        let engine_graph = engine
+            .load_package_graph(root.join("vela.toml"), std::slice::from_ref(&root))
+            .expect("Engine graph");
+        let service_graph = vela_language_service::load_package_project(
+            root.join("vela.toml"),
+            std::slice::from_ref(&root),
+        )
+        .expect("language-service graph");
+
+        assert_eq!(engine_graph, service_graph);
+        fs::remove_dir_all(root).expect("remove package fixture");
     }
 }

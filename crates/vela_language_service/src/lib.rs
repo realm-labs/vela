@@ -60,8 +60,8 @@ pub use incremental::{
 pub use inlay::{InlayHint, InlayHintKind};
 pub use project::{
     ConfigParseResult, ProjectDiagnostic, ProjectMode, ProjectSources, SchemaConfig,
-    SourceFileSnapshot, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
-    missing_import_diagnostics,
+    SourceFileSnapshot, WorkspaceConfig, WorkspaceRoot, assemble_package_project_sources,
+    assemble_project_sources, load_package_project, missing_import_diagnostics,
 };
 pub use query_context::{CallArgumentFacts, QueryContext};
 pub use references::{

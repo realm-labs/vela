@@ -44,7 +44,12 @@ fn write_workspace(root: &Path, helper_name: &str) -> (PathBuf, PathBuf) {
     if let Err(error) = fs::write(
         &config_path,
         r#"
-                [workspace]
+                [package]
+                id = "dev.vela.workspace"
+                name = "workspace"
+                version = "0.1.0"
+
+                [source]
                 roots = ["scripts"]
             "#,
     ) {
@@ -147,7 +152,10 @@ fn valid_schema_artifact() -> &'static str {
 fn invalid_vela_toml_publishes_config_diagnostic() {
     let root = temp_workspace();
     let config_path = root.join("vela.toml");
-    fs::write(&config_path, "[workspace]\nroots = \"scripts\"\n")
+    fs::write(
+        &config_path,
+        "[package]\nid=\"dev.vela.workspace\"\nname=\"workspace\"\nversion=\"0.1.0\"\n[source]\nroots=\"scripts\"\n",
+    )
         .expect("invalid vela.toml should be writable");
     let mut server = TestServer::new();
     let _ = request::<lsp_types::request::Initialize>(
@@ -175,9 +183,12 @@ fn invalid_vela_toml_publishes_config_diagnostic() {
         diagnostic["code"] == "project::diagnostic"
             && diagnostic["message"]
                 .as_str()
-                .is_some_and(|message| message.contains("workspace.roots"))
+                .is_some_and(|message| message.contains("source.roots"))
     }));
-    fs::write(&config_path, "[workspace]\nroots = [\"scripts\"]\n")
+    fs::write(
+        &config_path,
+        "[package]\nid=\"dev.vela.workspace\"\nname=\"workspace\"\nversion=\"0.1.0\"\n[source]\nroots=[\"scripts\"]\n",
+    )
         .expect("valid vela.toml should be writable");
     let cleared = notification_values(notify::<lsp_types::notification::DidChangeWatchedFiles>(
         &mut server,
@@ -199,7 +210,10 @@ fn invalid_vela_toml_publishes_config_diagnostic() {
 fn deleting_vela_toml_clears_config_diagnostic() {
     let root = temp_workspace();
     let config_path = root.join("vela.toml");
-    fs::write(&config_path, "[workspace]\nroots = \"scripts\"\n")
+    fs::write(
+        &config_path,
+        "[package]\nid=\"dev.vela.workspace\"\nname=\"workspace\"\nversion=\"0.1.0\"\n[source]\nroots=\"scripts\"\n",
+    )
         .expect("invalid vela.toml should be writable");
     let mut server = TestServer::new();
     let _ = request::<lsp_types::request::Initialize>(
@@ -258,7 +272,12 @@ fn schema_watch_publishes_invalid_schema_diagnostic() {
     fs::write(
         &config_path,
         r#"
-                [workspace]
+                [package]
+                id = "dev.vela.workspace"
+                name = "workspace"
+                version = "0.1.0"
+
+                [source]
                 roots = ["scripts"]
 
                 [host]
@@ -310,7 +329,12 @@ fn schema_watch_clears_diagnostic_after_valid_reload() {
     fs::write(
         &config_path,
         r#"
-                [workspace]
+                [package]
+                id = "dev.vela.workspace"
+                name = "workspace"
+                version = "0.1.0"
+
+                [source]
                 roots = ["scripts"]
 
                 [host]
@@ -367,7 +391,12 @@ fn schema_delete_publishes_missing_schema_diagnostic() {
     fs::write(
         &config_path,
         r#"
-                [workspace]
+                [package]
+                id = "dev.vela.workspace"
+                name = "workspace"
+                version = "0.1.0"
+
+                [source]
                 roots = ["scripts"]
 
                 [host]

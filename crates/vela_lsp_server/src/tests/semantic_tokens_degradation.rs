@@ -25,7 +25,12 @@ fn lsp_semantic_tokens_degrade_schema_type_hints_when_schema_is_missing() {
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]

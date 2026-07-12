@@ -303,7 +303,12 @@ fn lsp_completion_uses_loaded_schema_facts() {
     fs::write(
         &config_path,
         r#"
-                [workspace]
+                [package]
+                id = "dev.vela.workspace"
+                name = "workspace"
+                version = "0.1.0"
+
+                [source]
                 roots = ["scripts"]
 
                 [host]
@@ -612,7 +617,12 @@ fn lsp_schema_record_field_completion_carries_schema_identity() {
     fs::write(
         &config_path,
         r#"
-                [workspace]
+                [package]
+                id = "dev.vela.workspace"
+                name = "workspace"
+                version = "0.1.0"
+
+                [source]
                 roots = ["scripts"]
 
                 [host]

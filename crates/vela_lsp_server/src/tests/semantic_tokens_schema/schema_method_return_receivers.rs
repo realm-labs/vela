@@ -17,7 +17,12 @@ fn lsp_semantic_tokens_classify_schema_method_on_schema_method_return() {
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]

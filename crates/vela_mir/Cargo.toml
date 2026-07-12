@@ -12,6 +12,7 @@ vela_analysis = { workspace = true }
 vela_common = { workspace = true }
 vela_def = { workspace = true }
 vela_hir = { workspace = true }
+vela_package = { workspace = true }
 
 [lints]
 workspace = true

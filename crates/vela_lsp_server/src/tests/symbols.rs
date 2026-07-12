@@ -74,7 +74,12 @@ fn lsp_workspace_symbols_include_script_and_schema_symbols() {
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]
@@ -296,7 +301,12 @@ fn lsp_workspace_symbols_drop_deleted_files() {
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
         "#,
     )
@@ -362,7 +372,12 @@ fn lsp_workspace_symbols_degrade_to_source_only_when_schema_is_missing() {
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]

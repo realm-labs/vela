@@ -1,10 +1,12 @@
 use std::collections::{BTreeMap, BTreeSet};
+use std::path::PathBuf;
 
 use vela_language_service::{
     DocumentId, LanguageServiceDatabases, ProjectDiagnostic, ProjectSources, SourceFileSnapshot,
-    Workspace, WorkspaceConfig, WorkspaceSnapshot, assemble_project_sources,
-    missing_import_diagnostics,
+    Workspace, WorkspaceConfig, WorkspaceSnapshot, assemble_package_project_sources,
+    assemble_project_sources, load_package_project, missing_import_diagnostics,
 };
+use vela_package::PackageGraph;
 
 use crate::{
     LaunchConfiguration,
@@ -18,6 +20,7 @@ pub(super) struct ProjectState {
     pub(super) workspace: Workspace,
     pub(super) databases: LanguageServiceDatabases,
     pub(super) config: Option<WorkspaceConfig>,
+    package_graph: Option<PackageGraph>,
     has_config_file: bool,
     project_config_update_pending: bool,
     pub(super) config_diagnostics: Vec<vela_language_service::ProjectDiagnostic>,
@@ -53,6 +56,7 @@ impl ProjectState {
             WorkspaceConfigChange::Unchanged => {}
             WorkspaceConfigChange::RecomputeFromEditor => {
                 if !self.has_config_file {
+                    self.package_graph = None;
                     self.config = workspace_config_from_roots_and_editor_config(
                         &self.workspace_roots,
                         self.editor_config.as_ref(),
@@ -69,6 +73,7 @@ impl ProjectState {
             }
             WorkspaceConfigChange::ClearWorkspaceFile => {
                 self.has_config_file = false;
+                self.package_graph = None;
                 self.config = workspace_config_from_roots_and_editor_config(
                     &self.workspace_roots,
                     self.editor_config.as_ref(),
@@ -83,7 +88,22 @@ impl ProjectState {
         if is_config_uri(uri) {
             let text = read_document_uri(uri)?;
             let document_id = DocumentId::from(uri.to_owned());
-            let result = WorkspaceConfig::from_vela_toml(uri, &text);
+            let mut result = WorkspaceConfig::from_vela_toml(uri, &text);
+            match load_package_project(document_uri_path(uri), &self.authorized_package_roots(uri))
+            {
+                Ok(graph) => {
+                    result.config =
+                        WorkspaceConfig::from_package_graph(&graph, result.config.schema().clone());
+                    self.package_graph = Some(graph);
+                }
+                Err(error) => {
+                    self.package_graph = None;
+                    result.diagnostics.push(ProjectDiagnostic::new(
+                        Some(document_id.clone()),
+                        error.to_string(),
+                    ));
+                }
+            }
             if !result.diagnostics.is_empty() || self.config_documents.contains(&document_id) {
                 self.config_documents.insert(document_id);
             }
@@ -107,6 +127,7 @@ impl ProjectState {
 
     pub(super) fn remove_watched_file(&mut self, uri: &str) -> Option<ConfigChange> {
         if is_config_uri(uri) {
+            self.package_graph = None;
             self.config_diagnostics.clear();
             self.config_documents
                 .insert(DocumentId::from(uri.to_owned()));
@@ -149,7 +170,11 @@ impl ProjectState {
 
     fn refresh_databases_with_config(&mut self, config: &WorkspaceConfig) {
         let files = self.disk_sources.values().cloned().collect::<Vec<_>>();
-        let project = assemble_project_sources(config, &files, &self.workspace.snapshot());
+        let snapshot = self.workspace.snapshot();
+        let project = self.package_graph.as_ref().map_or_else(
+            || assemble_project_sources(config, &files, &snapshot),
+            |graph| assemble_package_project_sources(graph, &files, &snapshot),
+        );
         if std::mem::take(&mut self.project_config_update_pending) {
             self.databases
                 .update_after_project_config_change_with_open_documents(
@@ -205,6 +230,22 @@ impl ProjectState {
         self.schema_path().is_some_and(|schema_path| {
             normalized_path(document_uri_path(uri)) == normalized_path(schema_path)
         })
+    }
+
+    fn authorized_package_roots(&self, config_uri: &str) -> Vec<PathBuf> {
+        let roots = self
+            .workspace_roots
+            .iter()
+            .map(|root| document_uri_path(root))
+            .collect::<Vec<_>>();
+        if roots.is_empty() {
+            document_uri_path(config_uri)
+                .parent()
+                .map(|parent| vec![parent.to_owned()])
+                .unwrap_or_default()
+        } else {
+            roots
+        }
     }
 }
 

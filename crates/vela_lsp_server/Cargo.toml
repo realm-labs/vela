@@ -12,6 +12,7 @@ lsp-types = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 vela_language_service = { workspace = true }
+vela_package = { workspace = true }
 
 [lints]
 workspace = true

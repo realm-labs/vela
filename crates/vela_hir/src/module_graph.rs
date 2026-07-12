@@ -10,13 +10,14 @@ mod syntax_summary;
 mod validation;
 
 use vela_common::{Diagnostic, SourceId, Span};
+pub use vela_package::ModulePath;
 use vela_syntax::ast::SyntaxSourceFile;
 use vela_syntax::parse::parse_source_with_id;
 use vela_syntax::{Parse as SyntaxParse, SyntaxKind};
 
 pub use model::{
-    Declaration, DeclarationIndex, DeclarationKind, Import, ImportResolution, ModulePath,
-    ModuleSource, ResolvedImport, Visibility,
+    Declaration, DeclarationIndex, DeclarationKind, Import, ImportResolution, ModuleSource,
+    ResolvedImport, Visibility,
 };
 use names::{closest_name, import_binding_name};
 

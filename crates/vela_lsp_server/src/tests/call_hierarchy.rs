@@ -685,7 +685,12 @@ fn lsp_call_hierarchy_uses_schema_method_and_trait_method_calls() {
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]

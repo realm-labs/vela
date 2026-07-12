@@ -10,6 +10,7 @@ serde_json.workspace = true
 vela_analysis.workspace = true
 vela_common.workspace = true
 vela_hir.workspace = true
+vela_package.workspace = true
 vela_syntax.workspace = true
 
 [lints]

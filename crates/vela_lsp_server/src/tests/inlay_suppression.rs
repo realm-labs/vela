@@ -18,7 +18,12 @@ fn lsp_inlay_hints_suppress_any_lambda_parameter_facts() {
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]
@@ -150,7 +155,12 @@ fn lsp_inlay_hints_suppress_schema_method_parameters_on_schema_any_return_receiv
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]
@@ -258,7 +268,12 @@ fn lsp_inlay_hints_suppress_any_schema_method_parameters_on_schema_function_retu
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]
@@ -391,7 +406,12 @@ fn lsp_inlay_hints_suppress_any_schema_method_parameters_on_schema_method_return
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]
@@ -528,7 +548,12 @@ fn lsp_inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_functio
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]
@@ -667,7 +692,12 @@ fn lsp_inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_method_
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]

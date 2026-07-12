@@ -4,11 +4,20 @@ use std::sync::Arc;
 
 use vela_common::SourceId;
 use vela_hir::module_graph::{ModulePath, ModuleSource};
+use vela_package::{ManifestFileId, parse_manifest};
+use vela_package::{PackageGraph, PackageGraphError};
 
 use crate::{DocumentId, SourceVersion, WorkspaceSnapshot};
 
 const SOURCE_EXTENSION: &str = "vela";
 const CONFIG_FILE: &str = "vela.toml";
+
+pub fn load_package_project(
+    manifest: impl AsRef<Path>,
+    authorized_roots: &[PathBuf],
+) -> Result<PackageGraph, PackageGraphError> {
+    vela_package::load_package_graph(manifest, authorized_roots)
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorkspaceRoot {
@@ -100,6 +109,21 @@ impl WorkspaceConfig {
                 document: document.into(),
             },
             schema: SchemaConfig::none(),
+        }
+    }
+
+    #[must_use]
+    pub fn from_package_graph(graph: &PackageGraph, schema: SchemaConfig) -> Self {
+        let roots = graph
+            .packages()
+            .values()
+            .flat_map(|package| package.source_roots.iter())
+            .map(|root| WorkspaceRoot::new(normalize_document_path(&root.display().to_string())))
+            .collect();
+        Self {
+            roots,
+            mode: ProjectMode::Workspace,
+            schema,
         }
     }
 
@@ -228,6 +252,16 @@ pub fn assemble_project_sources(
     }
 }
 
+#[must_use]
+pub fn assemble_package_project_sources(
+    graph: &PackageGraph,
+    files: &[SourceFileSnapshot],
+    snapshot: &WorkspaceSnapshot,
+) -> ProjectSources {
+    let config = WorkspaceConfig::from_package_graph(graph, SchemaConfig::none());
+    assemble_workspace_sources(&config, files, snapshot)
+}
+
 fn assemble_workspace_sources(
     config: &WorkspaceConfig,
     files: &[SourceFileSnapshot],
@@ -344,10 +378,20 @@ fn assemble_scratch_source(
 
 fn module_path_for_roots(roots: &[WorkspaceRoot], document_id: &DocumentId) -> Option<ModulePath> {
     let document_path = normalize_document_path(document_id.as_str());
+    let document_path = canonicalize_existing_ancestor(Path::new(&document_path))
+        .unwrap_or_else(|| PathBuf::from(&document_path))
+        .display()
+        .to_string()
+        .replace('\\', "/");
     roots
         .iter()
         .filter_map(|root| {
-            let relative = strip_root(root.path(), &document_path)?;
+            let root_path = canonicalize_existing_ancestor(Path::new(root.path()))
+                .unwrap_or_else(|| PathBuf::from(root.path()))
+                .display()
+                .to_string()
+                .replace('\\', "/");
+            let relative = strip_root(&root_path, &document_path)?;
             module_path_from_relative(relative)
         })
         .max_by_key(|path| path.segments().len())
@@ -381,101 +425,48 @@ fn module_path_from_relative(relative: &str) -> Option<ModulePath> {
 
 fn parse_config(config_root: &str, text: &str) -> ConfigParseResult {
     let base = config_root_from_document(config_root);
-    let mut diagnostics = Vec::new();
-    let mut section = String::new();
-    let mut roots = Vec::new();
-    let mut schema = SchemaConfig::none();
-    let mut seen_roots = false;
-    let mut seen_schema = false;
-
-    for (line_index, raw_line) in text.lines().enumerate() {
-        let line = raw_line.split('#').next().unwrap_or_default().trim();
-        if line.is_empty() {
-            continue;
-        }
-        if let Some(name) = line
-            .strip_prefix('[')
-            .and_then(|line| line.strip_suffix(']'))
-        {
-            section = name.trim().to_owned();
-            continue;
-        }
-        let Some((key, value)) = line.split_once('=') else {
-            diagnostics.push(config_diagnostic(
-                config_root,
-                line_index,
-                "expected `key = value` in vela.toml",
-            ));
-            continue;
+    let parsed = parse_manifest(ManifestFileId::new(1), text);
+    let diagnostics = parsed
+        .diagnostics
+        .into_iter()
+        .map(|diagnostic| {
+            ProjectDiagnostic::new(
+                Some(DocumentId::from(config_root.to_owned())),
+                format!(
+                    "{} at bytes {}..{}",
+                    diagnostic.message, diagnostic.span.start, diagnostic.span.end
+                ),
+            )
+        })
+        .collect::<Vec<_>>();
+    let Some(manifest) = parsed.manifest else {
+        return ConfigParseResult {
+            config: WorkspaceConfig::workspace([]),
+            diagnostics,
         };
-        match (section.as_str(), key.trim()) {
-            ("workspace", "roots") => match parse_string_array(value.trim()) {
-                Some(parsed_roots) => {
-                    roots = parsed_roots
-                        .into_iter()
-                        .map(|root| WorkspaceRoot::new(join_config_relative(&base, &root)))
-                        .collect();
-                    seen_roots = true;
-                }
-                None => diagnostics.push(config_diagnostic(
-                    config_root,
-                    line_index,
-                    "`workspace.roots` must be an array of strings",
-                )),
-            },
-            ("host", "schema") => match parse_string(value.trim()) {
-                Some(path) => {
-                    schema = SchemaConfig::from_path(join_config_relative(&base, &path));
-                    seen_schema = true;
-                }
-                None => diagnostics.push(config_diagnostic(
-                    config_root,
-                    line_index,
-                    "`host.schema` must be a string path",
-                )),
-            },
-            _ => {}
-        }
-    }
-
-    if !seen_roots {
-        roots.push(WorkspaceRoot::new(base));
-        diagnostics.push(ProjectDiagnostic::new(
-            Some(DocumentId::from(config_root.to_owned())),
-            "missing workspace.roots; using the config directory as the workspace root",
-        ));
-    }
+    };
+    let roots = manifest
+        .package
+        .as_ref()
+        .map(|_| {
+            manifest
+                .source
+                .roots
+                .iter()
+                .map(|root| WorkspaceRoot::new(join_config_relative(&base, root)))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
     let mut config = WorkspaceConfig::workspace(roots);
-    if seen_schema {
-        config.set_schema(schema);
+    if let Some(schema) = manifest.host.and_then(|host| host.schema) {
+        config.set_schema(SchemaConfig::from_path(join_config_relative(
+            &base, &schema,
+        )));
     }
     ConfigParseResult {
         config,
         diagnostics,
     }
-}
-
-fn parse_string_array(value: &str) -> Option<Vec<String>> {
-    let inner = value.strip_prefix('[')?.strip_suffix(']')?.trim();
-    if inner.is_empty() {
-        return Some(Vec::new());
-    }
-    inner
-        .split(',')
-        .map(|part| parse_string(part.trim()))
-        .collect()
-}
-
-fn parse_string(value: &str) -> Option<String> {
-    let inner = value.strip_prefix('"')?.strip_suffix('"')?;
-    Some(inner.replace("\\\"", "\"").replace("\\\\", "\\"))
-}
-
-fn config_diagnostic(config_root: &str, line: usize, message: &str) -> ProjectDiagnostic {
-    ProjectDiagnostic::new(
-        Some(DocumentId::from(config_root.to_owned())),
-        format!("{message} at line {}", line + 1),
-    )
 }
 
 fn source_id(index: usize) -> Option<SourceId> {
@@ -539,6 +530,14 @@ fn normalize_document_path(path: &str) -> String {
         }
     }
     normalized.display().to_string().replace('\\', "/")
+}
+
+fn canonicalize_existing_ancestor(path: &Path) -> Option<PathBuf> {
+    if path.exists() {
+        return std::fs::canonicalize(path).ok();
+    }
+    let parent = canonicalize_existing_ancestor(path.parent()?)?;
+    Some(parent.join(path.file_name()?))
 }
 
 fn is_absolute_document_path(path: &str) -> bool {
@@ -709,11 +708,16 @@ mod tests {
     }
 
     #[test]
-    fn vela_toml_parses_roots_and_schema() {
+    fn vela_toml_parses_package_sources_and_schema() {
         let result = WorkspaceConfig::from_vela_toml(
             "/workspace/vela.toml",
             r#"
-                [workspace]
+                [package]
+                id = "com.example.workspace"
+                name = "workspace"
+                version = "0.1.0"
+
+                [source]
                 roots = ["scripts", "shared/scripts"]
 
                 [host]

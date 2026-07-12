@@ -790,60 +790,60 @@ cutover:
 
 ## 18. Phase 0: Inventory And Baseline
 
-- [ ] Record current workspace format, Clippy, tests, examples, and package-
+- [x] Record current workspace format, Clippy, tests, examples, and package-
       relevant benchmark compilation status.
-- [ ] Inventory every handwritten `vela.toml` parser and config model.
-- [ ] Inventory every `ModulePath`-only module index and module lookup.
-- [ ] Inventory every hard-coded `script` DefPath/stable-ID call site.
-- [ ] Inventory every capability enum/set definition and effect-to-capability
+- [x] Inventory every handwritten `vela.toml` parser and config model.
+- [x] Inventory every `ModulePath`-only module index and module lookup.
+- [x] Inventory every hard-coded `script` DefPath/stable-ID call site.
+- [x] Inventory every capability enum/set definition and effect-to-capability
       mapping.
-- [ ] Inventory every Engine source/dir/hot-reload front door.
-- [ ] Inventory current HIR trait/impl/attribute metadata and validation gaps.
-- [ ] Inventory ProgramImage/LinkedArtifact metadata construction and Runtime
+- [x] Inventory every Engine source/dir/hot-reload front door.
+- [x] Inventory current HIR trait/impl/attribute metadata and validation gaps.
+- [x] Inventory ProgramImage/LinkedArtifact metadata construction and Runtime
       handle/version rules.
-- [ ] Freeze behavior tests for existing single-source, directory, hot-reload,
+- [x] Freeze behavior tests for existing single-source, directory, hot-reload,
       workspace overlay, schema, and stable-ID behavior.
-- [ ] Record current active-file sizes and dependency edges for affected crates.
+- [x] Record current active-file sizes and dependency edges for affected crates.
 
 Exit gate:
 
-- [ ] Every legacy surface has a named final owner and deletion phase.
-- [ ] Baseline failures, if any, are recorded before implementation edits.
+- [x] Every legacy surface has a named final owner and deletion phase.
+- [x] Baseline failures, if any, are recorded before implementation edits.
 
 ## 19. Phase 1: `vela_package` And Unified Manifest
 
-- [ ] Add `vela_package` to the workspace with the dependency rules above.
-- [ ] Move the capability vocabulary and bitset to the single
+- [x] Add `vela_package` to the workspace with the dependency rules above.
+- [x] Move the capability vocabulary and bitset to the single
       `vela_common::Capability` / `CapabilitySet` owner; update Engine and
       other consumers without retaining a duplicate Engine definition.
-- [ ] Add validated package/module identity types, manifest file spans, source
+- [x] Add validated package/module identity types, manifest file spans, source
       table, manifest model, and package graph diagnostics.
-- [ ] Move the existing `ModulePath` type mechanically into `vela_package` and
+- [x] Move the existing `ModulePath` type mechanically into `vela_package` and
       update imports to that one owner before adding package-aware indexes; do
       not create a duplicate package `ModulePath`.
-- [ ] Parse the unified root/package manifest with a structured TOML parser.
-- [ ] Resolve explicit workspace members and path dependencies.
-- [ ] Canonicalize and authorize manifest/source/dependency paths.
-- [ ] Detect duplicate package IDs, alias collisions, missing manifests, and
+- [x] Parse the unified root/package manifest with a structured TOML parser.
+- [x] Resolve explicit workspace members and path dependencies.
+- [x] Canonicalize and authorize manifest/source/dependency paths.
+- [x] Detect duplicate package IDs, alias collisions, missing manifests, and
       dependency cycles.
-- [ ] Discover deterministic package sources across `[source].roots`.
-- [ ] Replace the language-service handwritten parser and source assembly with
+- [x] Discover deterministic package sources across `[source].roots`.
+- [x] Replace the language-service handwritten parser and source assembly with
       `vela_package` results.
-- [ ] Route Engine package/project IO through the same graph builder.
-- [ ] Hard switch tests/docs from `[workspace].roots` to the unified schema.
-- [ ] Keep Vela parsing in `vela_hir`; do not parse source in `vela_package`.
+- [x] Route Engine package/project IO through the same graph builder.
+- [x] Hard switch tests/docs from `[workspace].roots` to the unified schema.
+- [x] Keep Vela parsing in `vela_hir`; do not parse source in `vela_package`.
 
 Focused tests:
 
-- [ ] `manifest_parses_workspace_package_sources_dependencies_and_capabilities`
-- [ ] `manifest_reports_unknown_keys_with_spans`
-- [ ] `manifest_and_engine_use_the_same_capability_ids`
-- [ ] `path_dependency_resolves_relative_to_manifest`
-- [ ] `source_root_cannot_escape_authorized_package_root`
-- [ ] `duplicate_package_id_at_different_manifests_is_rejected`
-- [ ] `dependency_cycle_reports_manifest_edge_chain`
-- [ ] `package_sources_are_deterministic`
-- [ ] `engine_and_language_service_assemble_the_same_package_graph`
+- [x] `manifest_parses_workspace_package_sources_dependencies_and_capabilities`
+- [x] `manifest_reports_unknown_keys_with_spans`
+- [x] `manifest_and_engine_use_the_same_capability_ids`
+- [x] `path_dependency_resolves_relative_to_manifest`
+- [x] `source_root_cannot_escape_authorized_package_root`
+- [x] `duplicate_package_id_at_different_manifests_is_rejected`
+- [x] `dependency_cycle_reports_manifest_edge_chain`
+- [x] `package_sources_are_deterministic`
+- [x] `engine_and_language_service_assemble_the_same_package_graph`
 
 Validation:
 

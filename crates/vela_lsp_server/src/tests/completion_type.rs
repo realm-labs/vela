@@ -14,7 +14,12 @@ fn lsp_completion_uses_short_type_labels_with_owner_details() {
     fs::write(
         &config_path,
         r#"
-                [workspace]
+                [package]
+                id = "dev.vela.workspace"
+                name = "workspace"
+                version = "0.1.0"
+
+                [source]
                 roots = ["scripts"]
 
                 [host]

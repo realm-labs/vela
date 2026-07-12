@@ -1,38 +1,9 @@
 use std::collections::{BTreeMap, btree_map::Entry};
 
 use vela_common::{SourceId, Span};
+use vela_package::ModulePath;
 
 use crate::ids::{HirDeclId, HirNodeId, ModuleId};
-
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct ModulePath(Vec<String>);
-
-impl ModulePath {
-    #[must_use]
-    pub fn root() -> Self {
-        Self(Vec::new())
-    }
-
-    #[must_use]
-    pub fn new(segments: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        Self(segments.into_iter().map(Into::into).collect())
-    }
-
-    #[must_use]
-    pub fn from_qualified(path: &str) -> Self {
-        Self::new(path.split("::").filter(|segment| !segment.is_empty()))
-    }
-
-    #[must_use]
-    pub fn segments(&self) -> &[String] {
-        &self.0
-    }
-
-    #[must_use]
-    pub fn join(&self) -> String {
-        self.0.join("::")
-    }
-}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ModuleSource {

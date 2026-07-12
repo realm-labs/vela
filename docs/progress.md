@@ -31,6 +31,18 @@ required.
 
 ## Current Focus
 
+The package and service-provider hard-switch track is active. Phase 0 inventory
+and baseline are complete, and Phase 1 is complete as a verified package
+foundation checkpoint. `vela_package` now owns validated package/module
+identity, structured spanned `vela.toml` parsing, path dependency/workspace
+graph construction, path authorization, and deterministic source discovery.
+`vela_common` owns the shared capability vocabulary, Engine and language
+service use the same package graph builder, `ProjectState` retains that graph
+while preserving overlay precedence, and all repository manifest fixtures use
+`[package]` plus `[source].roots`. The next step is the atomic Phase 2
+`PackageId + ModulePath` identity cutover; no intermediate compatibility path
+should be committed.
+
 The MIR/executable-generation implementation is complete through Batch F /
 Phase 11 in
 [mir-executable-generation-architecture-plan.md](mir-executable-generation-architecture-plan.md).

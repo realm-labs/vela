@@ -1138,6 +1138,12 @@ change host-visible SPI identity. First-slice package dependencies are path
 dependencies only; foreign host-language modules, remote registries, version
 solving, and script-side package loading are deferred.
 
+`vela_package` is the dependency-light owner of the structured manifest and
+package graph. `[host]` is accepted only in the root manifest; workspace member
+and path-dependency manifests that contain it are rejected so imported code
+cannot change host schema or grant policy. Engine and language-service IO front
+doors consume the same graph builder and manifest diagnostics.
+
 ### Opt-In IO Stdlib
 
 I/O is an Engine-side native stdlib extension, not a VM-default primitive.

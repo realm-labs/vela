@@ -14,7 +14,12 @@ fn lsp_references_find_schema_record_variant_field_labels_and_patterns() {
     fs::write(
         &config_path,
         r#"
-            [workspace]
+            [package]
+            id = "dev.vela.workspace"
+            name = "workspace"
+            version = "0.1.0"
+
+            [source]
             roots = ["scripts"]
 
             [host]

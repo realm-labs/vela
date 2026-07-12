@@ -24,6 +24,7 @@ mlua = { version = "0.11.4", features = ["lua54", "vendored"] }
 rhai = "1.25.1"
 serde_json = { workspace = true }
 vela_hir = { workspace = true }
+vela_package = { workspace = true }
 vela_registry = { workspace = true }
 
 [[bench]]

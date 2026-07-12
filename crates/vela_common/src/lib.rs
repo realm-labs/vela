@@ -2,9 +2,11 @@
 
 //! Shared foundations for Vela crates.
 
+pub mod capability;
 pub mod diagnostic_render;
 pub mod primitive;
 
+pub use capability::{Capability, CapabilitySet};
 pub use primitive::{NumericTag, PrimitiveTag, ScalarValue};
 pub use vela_def::stable_id;
 
