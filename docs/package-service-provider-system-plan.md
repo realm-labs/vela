@@ -1,162 +1,231 @@
-# Package And Service Provider System Implementation Plan
+# Package And Service Provider System Hard-Switch Plan
 
-> **Track:** package/module/SPI architecture continuation, M14/M15/M20.5
-> adjacent
-> **Document status:** Codex execution plan
-> **Compatibility policy:** breaking pre-release package, module graph,
-> engine, tooling, and hot-reload APIs are allowed. Do not preserve
-> single-directory-only compilation APIs or old import assumptions only for
-> compatibility. Preserve product contracts: no script-language generics beyond
-> restricted builtin type hints, no Rust `&mut` exposure, host mutation only
-> through `HostRef`/`HostPath`/`PathProxy`/`HostAccess`, no runtime `eval`,
-> no monkey patching, source-spanned diagnostics, execution budgets, GC roots,
-> reflection permissioning, and hot-reload ABI/schema checks.
+> **Track:** package/module/SPI architecture continuation, adjacent to
+> M14/M15/M20.5
+>
+> **Document status:** reviewed execution plan, updated for the linked-artifact,
+> source-boundary, executable-generation, and LSP ownership hard switches
+>
+> **Compatibility policy:** breaking pre-release package, module, Engine,
+> tooling, and hot-reload API changes are allowed. Do not preserve the global
+> `script` identity namespace, the handwritten `vela.toml` parser,
+> single-directory module identity, or parallel package-unaware compilation
+> paths for compatibility.
 
 ---
 
 ## 0. Codex Goal
 
 ```text
-/goal Implement Vela's package and trait-backed service provider system from
-docs/package-service-provider-system-plan.md. Treat docs/goal.md as the product
+/goal Execute docs/package-service-provider-system-plan.md end to end against
+the current linked-artifact architecture. Treat docs/goal.md as the product
 roadmap, docs/architecture.md and docs/architecture/*.md as the architecture
-contract, and docs/progress.md as the current milestone state. Build a package
-system that lets hosts discover user-written Vela plugin logic without runtime
-source execution: package manifests define source roots, path dependencies, and
-capability requirements; package-aware module graphs resolve `crate::` and
-dependency-alias imports; trait-backed providers are exported through
-`#[provider(id = "...")] impl ServiceTrait for ProviderType`; discovery builds
-a provider catalog without executing scripts; selected package graphs compile
-into normal ProgramVersion values; hot reload remains atomic, safe-pointed, and
-ABI/capability checked. Defer foreign host-language modules, remote registries,
-version solving, runtime `require`, and dynamic script-side package loading.
-Validate each checkpoint with focused parser/HIR/engine/hot-reload/tooling
-tests and commit small Conventional Commit checkpoints.
+contract, docs/decisions.md as durable design decisions, and docs/progress.md
+as the rolling milestone state.
+
+Begin with the read-only Phase 0 inventory and baseline. Create the dedicated
+dependency-light vela_package crate immediately; do not stage package types in
+vela_engine. Hard switch every vela.toml consumer to one structured manifest
+parser and one package/project source assembly model. Once the package-identity
+cutover begins, keep Phase 2 atomic across vela_package, vela_hir, vela_def,
+vela_analysis, vela_bytecode, vela_reflect, vela_hot_reload,
+vela_language_service, vela_lsp_server, vela_engine, examples, and tests. Do
+not add implicit-package adapters, dual ModulePath/ModuleKey indexes, fallback
+imports, or old script-ID aliases to keep intermediate revisions compatible.
+
+Make PackageId + ModulePath the sole script module identity. Feed PackageId
+into every stable script definition path and eliminate the hard-coded `script`
+package namespace. Keep SourceId internal and generation-local. Preserve
+single-source and directory convenience APIs only as front doors that build an
+explicit reserved package graph before HIR ingestion.
+
+Implement providers as explicit trait impl exports using
+#[provider(id = "...")]. Preserve attribute arguments structurally in HIR;
+infer the service from the resolved trait impl; validate one zero-field
+provider construction rule; build discovery metadata without executing code;
+and compile selected package graphs through the existing
+HirSourceSet -> CompiledProgram -> Engine link -> Arc<LinkedArtifact> pipeline.
+Attach same-generation package/provider metadata to LinkedArtifact. Create
+ProgramVersion and HotUpdate only through the existing hot-reload artifact
+boundary. Runtime provider lookup and calls belong to vela_engine Runtime and
+must resolve linked handles rather than dispatch by source names.
+
+Treat manifest capabilities as declared requirements, not optional flags.
+Require compiler-inferred package effects to be a subset of declared
+requirements and declared requirements to be a subset of host grants; never
+silently intersect away a missing grant. Preserve execution budgets, GC roots,
+HostAccess, reflection permissions, safe-point installation, retained old
+frames/closures, and existing ABI/schema checks.
+
+Close each phase only after its focused tests pass. Phase 1 may be committed as
+a package-foundation checkpoint before the identity cutover. Phase 2 must land
+as one coherent breaking hard-switch commit. Later provider discovery,
+runtime, reload, and tooling phases may use small verified Conventional Commit
+checkpoints, but no checkpoint may restore a compatibility path. Finish with
+full workspace, examples, manifest zero-hit, identity zero-hit, dependency,
+file-size, and documentation validation. Do not mark the plan complete while
+any handwritten vela.toml parser, global script package identity, package-
+unaware ModuleGraph index, provider name dispatch, independently assembled
+artifact metadata, or unchecked task remains.
 ```
 
 ---
 
 ## 1. Purpose
 
-Vela currently supports directory compilation and static module imports. That is
-enough for application scripts, but it does not give hosts a clean way to
-discover user-defined plugin logic such as Neovim-style commands, filters,
-providers, or hooks.
+Vela supports static multi-module source sets, directory compilation, stable
+script metadata, linked executable generations, safe-pointed hot reload, and a
+native language service. It does not yet have a shared package identity model
+or a host-controlled way to discover user-written plugin implementations.
 
-The target design is a package and service provider layer above the existing
-module graph:
+The target pipeline is:
 
 ```text
-package roots
-  -> package manifests
-  -> dependency graph
-  -> package-aware module graph
-  -> provider catalog
+host-configured manifest roots
+  -> one structured vela.toml model
+  -> PackageGraph and deterministic package sources
+  -> package-aware HirSourceSet and ModuleGraph
+  -> read-only ProviderCatalog
   -> selected package graph compilation
-  -> ProgramVersion install and hot reload
+  -> Engine registry-aware Arc<LinkedArtifact>
+  -> optional ProgramVersion / HotUpdate construction
+  -> Runtime provider lookup and call
 ```
 
-This keeps discovery host-controlled and static enough for tooling, diagnostics,
-capability review, and hot reload. It intentionally avoids Lua-style runtime
-`require`, arbitrary source execution, and directory-wide compilation as the
-only discovery mechanism.
+Discovery parses manifests and source metadata but never executes Vela code.
+Runtime loading remains static and host-controlled. There is no Lua-style
+`require`, runtime `eval`, script-side directory scanning, or monkey patching.
 
----
+## 2. Current Baseline
 
-## 2. Goals
+The implementation starts from these current contracts:
 
-- Add a first-class Vela package model with package identity, source roots, path
-  dependencies, and capability declarations.
-- Support third-party Vela packages that live outside the application source
-  directory.
-- Make module identity package-aware: a module is identified by
-  `PackageId + ModulePath`, not just by a path relative to one root.
-- Add package import roots:
-  `crate::` for the current package and dependency aliases such as
-  `nvim_api::CommandProvider` for dependencies.
-- Keep `SourceId` internal. Users and embedders should not choose source IDs.
-- Add trait-backed service providers as the SPI mechanism.
-- Use `#[provider(id = "...")]` on trait implementations as the explicit export
-  boundary. The service is inferred from `impl ServiceTrait for ProviderType`;
-  do not repeat `service = ...` in the attribute.
-- Build a provider catalog from manifests and parsed/HIR metadata without
-  executing scripts.
-- Let hosts query providers before compiling or installing a runtime program.
-- Compile selected packages and their dependencies into a normal linked
-  `ProgramVersion`.
-- Keep hot reload package-graph scoped, atomic, safe-pointed, and checked
-  against service/provider ABI, schema, effect, and capability compatibility.
-- Share package/project source assembly between engine and language-service
-  tooling rather than creating separate module models.
+- `vela_hir::source_ingestion` owns parsing and `HirSourceSet` construction.
+- `vela_engine` is the only production source orchestrator and owns
+  registry-aware linking.
+- `vela_bytecode` consumes sealed HIR source sets and produces
+  `CompiledProgram`; the linker produces the canonical `Arc<LinkedArtifact>`.
+- `ProgramVersion` owns one same-generation linked artifact and is constructed
+  only by `vela_hot_reload` from an artifact.
+- `RuntimeImage` owns immutable executable data; `RuntimeState` owns mutable
+  globals, heap roots, caches, and profiles.
+- `GlobalState -> ProjectState` is the only mutable LSP project owner.
+- source traits and impl metadata already exist in HIR.
+- the syntax CST already supports structured attribute arguments, but
+  `HirAttribute` currently flattens arguments into one string.
+- `DefPath` already contains a package string, while script identity helpers
+  currently hard-code the package name `script`.
+- the current language-service `vela.toml` parser recognizes only
+  `[workspace].roots` and `[host].schema` using handwritten line parsing.
 
----
+These are migration inputs, not alternate architectures to preserve.
 
-## 3. Non-Goals
+## 3. Goals
 
-This pass must not:
+- Add one dependency-light `vela_package` crate.
+- Define stable package identity, package manifests, path dependencies,
+  package source roots, workspace members, and requested capabilities.
+- Make `PackageId + ModulePath` the only script module identity.
+- Resolve `crate::` within the current package and dependency aliases through
+  direct package dependencies.
+- Keep `SourceId`, `ModuleId`, and `HirDeclId` internal and generation-local.
+- Export providers only through `#[provider(id = "...")]` on trait impls.
+- Infer the service from the resolved trait implementation.
+- Discover provider descriptors from package/HIR metadata without execution.
+- Compile selected package graphs into the existing linked artifact model.
+- Call providers through linked trait-implementation handles under normal VM,
+  budget, capability, HostAccess, and GC rules.
+- Include provider and package ABI metadata in the same executable generation.
+- Preserve atomic safe-point hot reload and explain rejected package/provider
+  changes.
+- Share manifest, package graph, source assembly, and source maps between
+  Engine and language-service tooling.
 
-- Add foreign host-language modules.
-- Add remote package registries, version solving, lockfiles, publishing, or
-  package signing in the first slice.
-- Add script-language generics or generic provider traits beyond existing
-  restricted builtin type-hint syntax.
-- Add runtime `require`, `eval`, `load_file`, or script-side package discovery.
-- Let scripts scan plugin directories or decide which source files are loaded.
-- Execute top-level Vela code during discovery.
-- Add dynamic monkey patching of packages, modules, traits, or providers.
-- Weaken HostAccess, execution budgets, reflection permissions, GC roots, or
-  hot-reload checks.
-- Treat every trait implementation as a provider automatically.
-- Derive provider identity from type names or file paths.
-- Preserve single-directory-only APIs as the long-term architecture if they
-  conflict with package graph semantics.
+## 4. Non-Goals
 
----
+This plan must not add:
 
-## 4. Architecture Summary
+- remote registries, version solving, lockfiles, publishing, or signing;
+- multiple versions of one `PackageId` in one package graph;
+- foreign host-language modules;
+- general script-language generics or provider trait generics;
+- runtime `require`, `eval`, `load_file`, or script-side package discovery;
+- top-level code execution during discovery;
+- provider factories or stateful provider construction in the first slice;
+- per-provider capability overrides;
+- dynamic package, trait, or provider monkey patching;
+- a new VM provider-dispatch system parallel to normal trait impl dispatch;
+- a second package/project model in the LSP;
+- JIT, DAP, async/coroutine reload, or moving GC work.
 
-The ownership split should be:
+The first slice also does not add a `network` capability. Unknown capability
+names are diagnostics. A capability may be added only with an implemented and
+tested runtime boundary.
+
+## 5. Ownership And Dependency Direction
+
+The final ownership split is mandatory:
 
 ```text
 vela_package
-  manifest parsing, package ids, dependency graph, package source assembly
+  PackageId, PackageName, PackageVersion, PackageAlias
+  ModulePath, ModuleKey, PackageSource, SourceTable
+  structured vela.toml parsing and manifest diagnostics
+  path dependency resolution and PackageGraph
+  deterministic source discovery and workspace-member assembly
 
 vela_hir
-  package-aware module graph, import resolution, declaration ownership,
-  provider metadata extraction
+  package-aware HirSourceSet and ModuleGraph
+  crate/dependency-alias import resolution
+  structured HIR attributes
+  provider/service declaration metadata
 
 vela_analysis
-  service trait/provider diagnostics, TypeFacts, tooling facts
+  provider trait/type/signature/effect validation facts
+
+vela_def
+  package-aware DefPath helpers and stable script IDs
 
 vela_bytecode
-  package-aware function/type/trait stable IDs and provider ABI metadata
+  provider compile metadata and same-generation linked provider records
 
 vela_engine
-  package discovery, provider catalog API, selected package compilation,
-  runtime install helpers
+  package discovery front door, provider selection, compilation/linking
+  Runtime provider lookup/call, host grants, installation helpers
 
 vela_hot_reload
-  package graph update reports, provider ABI/capability compatibility checks
+  artifact-derived package/provider ABI comparison and update reports
 
 vela_language_service / vela_lsp_server
-  package-aware workspace roots, dependency aliases, provider navigation,
-  diagnostics, and reload-risk metadata
+  shared package project loading, aliases, diagnostics, navigation, rename risk
 ```
 
-If adding a dedicated `vela_package` crate creates too much churn for the first
-slice, start with an internal `vela_engine::package` module, but keep data
-types dependency-light so they can move into a shared crate before LSP and
-engine models drift.
+Dependency rules:
 
----
+- `vela_package` depends only on general utilities such as `vela_common`,
+  serialization/TOML libraries, and the standard library.
+- `vela_package` must not depend on Engine, HIR, bytecode, VM, hot reload, or
+  LSP crates.
+- `vela_hir` consumes package source records; it remains the owner of Vela
+  parsing and semantic source-set construction.
+- `vela_engine` orchestrates package loading, HIR, compilation, and linking; it
+  does not become the owner of shared package data types.
+- `vela_language_service` consumes `vela_package` directly and must not depend
+  on `vela_engine`.
+- `vela_hot_reload` accepts linked artifacts and immutable artifact metadata;
+  it must not read manifests or compile package sources.
 
-## 5. Package Model
+## 6. Unified Manifest Model
 
-### 5.1 Manifest Shape
+### 6.1 One `vela.toml` Schema
 
-Use `vela.toml` as the package manifest. First-slice syntax:
+Use one structured parser and one manifest model for Engine and tooling. A
+root manifest may describe a package, a workspace, or both:
 
 ```toml
+[workspace]
+members = ["plugins/sort_inventory", "packages/nvim_api"]
+
 [package]
 id = "com.example.inventory-tools"
 name = "inventory_tools"
@@ -170,110 +239,116 @@ nvim_api = { path = "../nvim_api" }
 text_utils = { path = "../text_utils" }
 
 [capabilities]
-host_read = true
-host_write = false
-io_read = false
-io_write = false
-network = false
+requires = ["host_read"]
+
+[host]
+schema = "target/vela/schema.json"
 ```
 
 Rules:
 
-- `package.id` is the stable package identity used for ABI, provider identity,
-  diagnostics, and future package registries.
-- `package.name` is a display name and should not be used as a stable key.
-- `package.version` is recorded in metadata, but first-slice path dependencies
-  do not perform semantic version solving.
-- `source.roots` lists package-relative directories containing `.vela` files.
-- dependency table keys are import aliases.
-- dependency aliases must be unique within a package.
-- dependency paths are resolved relative to the manifest directory.
-- capability declarations are package maximum requirements. The host still
-  grants an allowed capability profile at runtime.
+- `[workspace].members` contains explicit paths in the first slice; workspace
+  glob patterns are deferred.
+- `[package]` is required for every compiled dependency and provider package.
+- `[source].roots` is package-relative and must not escape the package root.
+- dependency keys are direct import aliases; each path must resolve to a
+  manifest containing `[package]`.
+- `[host]` is root-workspace configuration and is ignored/rejected in
+  dependency manifests according to a documented diagnostic rule.
+- the old `[workspace].roots` form is deleted in the hard switch. CLI/editor
+  launch roots remain host inputs; source roots come from package manifests.
+- unknown tables, keys, capability names, duplicate keys, invalid paths, and
+  malformed values produce manifest-file spans.
+- use a real TOML parser with byte-range support. Do not extend the existing
+  line/split parser.
 
-### 5.2 Package Identity
+### 6.2 Manifest Diagnostics
 
-Add focused identity types:
+Manifest diagnostics are not Vela source spans. `vela_package` owns a
+dependency-light file/span model such as:
 
 ```rust
-pub struct PackageId(/* stable id from package.id */);
-pub struct PackageName(String);
-pub struct PackageAlias(String);
-pub struct PackageVersion(String);
+pub struct ManifestFileId(/* internal deterministic ID */);
 
-pub struct PackageKey {
-    pub id: PackageId,
+pub struct ManifestSpan {
+    pub file: ManifestFileId,
+    pub start: u32,
+    pub end: u32,
 }
 ```
 
-Do not use filesystem paths, package display names, or dependency aliases as
-stable ABI identity.
+The package source table maps manifest/source IDs to canonical paths for
+Engine errors and language-service diagnostics. Do not allocate fake Vela
+`SourceId` values for TOML files.
 
-### 5.3 Package Graph
+## 7. Package Identity And Graph
 
-The resolver produces:
+### 7.1 Identity Types
 
-```rust
-pub struct PackageGraph {
-    pub packages: BTreeMap<PackageId, PackageDescriptor>,
-    pub dependencies: BTreeMap<PackageId, BTreeMap<PackageAlias, PackageId>>,
-}
-```
-
-First-slice dependency behavior:
-
-- path dependencies only.
-- duplicate package IDs in the resolved graph are rejected unless they refer to
-  the same canonical manifest path.
-- cyclic dependencies are rejected with source-spanned or manifest-spanned
-  diagnostics.
-- transitive dependencies are visible only through direct dependency aliases
-  unless a package re-exports declarations explicitly in source.
-
-Remote registries, lockfiles, version constraints, and multiple versions of the
-same package are deferred.
-
----
-
-## 6. Package-Aware Module Identity
-
-### 6.1 Module Keys
-
-Keep `ModulePath` package-relative:
-
-```text
-src/commands/sort.vela -> commands::sort
-```
-
-Add a package-aware key:
+`PackageId` is the validated canonical manifest string and the stable ABI key;
+it is not derived from a path, alias, display name, or source ordering.
 
 ```rust
+pub struct PackageId(Arc<str>);
+pub struct PackageName(Arc<str>);
+pub struct PackageAlias(Arc<str>);
+pub struct PackageVersion(Arc<str>);
+
 pub struct ModuleKey {
     pub package: PackageId,
     pub path: ModulePath,
 }
 ```
 
-The module graph should index modules by `ModuleKey`, not by `ModulePath`
-alone. Existing single-package code can use an implicit root package during the
-transition, but the final architecture should not assume one directory equals
-one global module namespace.
+`PackageName` and `PackageVersion` are metadata. `PackageAlias` is local to the
+depending package. `PackageKey { id: PackageId }` is unnecessary.
 
-### 6.2 Source IDs
+`DefPath.package` must receive the canonical `PackageId` string. Package-aware
+helpers replace the global `script_*` identity helpers for functions, globals,
+types, fields, variants, traits, inherent methods, trait methods, impl method
+functions, lambdas where applicable, and provider keys.
 
-`SourceId` remains internal:
+### 7.2 Package Graph
 
-```text
-PackageGraph + source ordering -> deterministic SourceId allocation
+```rust
+pub struct PackageGraph {
+    packages: BTreeMap<PackageId, PackageDescriptor>,
+    dependencies: BTreeMap<PackageId, BTreeMap<PackageAlias, PackageId>>,
+    sources: SourceTable,
+}
 ```
 
-Users and embedders should pass package roots, manifests, package sources, or
-source records, not raw `SourceId`. Diagnostics map `SourceId` back to package
-and source path through a source table.
+Rules:
 
-### 6.3 Import Roots
+- path dependencies only;
+- canonicalize manifest paths before duplicate-ID comparison;
+- the same `PackageId` at different canonical manifests is an error;
+- dependency cycles are rejected with the full manifest edge chain;
+- transitive dependencies are not importable without a direct alias;
+- source file ordering and internal `SourceId` allocation are deterministic;
+- source roots and dependencies cannot escape host-authorized roots after
+  canonicalization;
+- package graph/source assembly performs filesystem work, not Vela parsing.
 
-Add package import roots:
+### 7.3 Convenience Front Doors
+
+`compile_source`, `compile_file`, and `compile_dir` may remain, but they must
+construct an explicit reserved package graph and then enter the same package-
+aware HIR pipeline. The reserved anonymous package ID must be documented and
+stable for the lifetime of one embedding API contract.
+
+Language-service scratch documents use their own explicit reserved scratch
+package identity. They do not enter a package-less ModuleGraph.
+
+There must be no package-unaware `ModuleGraph`, stable-ID helper, compiler
+request, or language-service project path behind these conveniences.
+
+## 8. Package-Aware HIR
+
+`ModulePath` remains package-relative. `ModuleGraph` indexes modules by
+`ModuleKey`, while `ModuleId` remains a dense generation-local handle.
+
+Imports:
 
 ```vela
 use crate::helpers::normalize_name
@@ -281,51 +356,41 @@ use nvim_api::CommandProvider
 use nvim_api::CommandContext
 ```
 
-Rules:
+Resolution rules:
 
-- `crate::` resolves within the current package.
-- a dependency alias resolves to that dependency package.
-- no unqualified cross-package imports.
-- no implicit transitive dependency imports.
-- native/std roots remain explicit reserved roots, such as `std::` or existing
-  native module roots.
+- `crate::` resolves from the importing module's `PackageId`;
+- the first segment matching a direct dependency alias enters that package;
+- native and std roots remain explicit reserved roots;
+- an unqualified path never crosses a package boundary;
+- transitive aliases are invisible unless directly declared;
+- unknown aliases, private cross-package declarations, and ambiguous reserved
+  roots are HIR diagnostics with source and manifest labels.
 
-The resolver must report ambiguous or unknown package roots as HIR diagnostics,
-not VM errors.
+The Phase 2 identity cutover must update HIR declarations, bindings,
+qualified-name queries, script method catalogs, compiler semantic input,
+reflection projection, hot-reload module changes, language-service symbols,
+and every stable-ID call site together.
 
----
+## 9. Structured Provider Attributes
 
-## 7. Service Trait Model
+The CST already supports structured attribute arguments. HIR must preserve
+that structure rather than reconstructing a comma-separated string:
 
-Service interfaces are ordinary Vela traits that are intended for host
-discovery:
+```rust
+pub struct HirAttribute {
+    pub path: Vec<String>,
+    pub args: Vec<HirAttributeArg>,
+    pub span: Span,
+}
 
-```vela
-pub trait CommandProvider {
-    fn run(self, ctx: CommandContext, args: Array<String>) -> Result<CommandResult, String>
+pub struct HirAttributeArg {
+    pub name: Option<String>,
+    pub value: HirAttributeValue,
+    pub span: Span,
 }
 ```
 
-First-slice rules:
-
-- service traits must be public if they are used across package boundaries.
-- service traits participate in stable trait IDs and hot-reload ABI checks.
-- service trait method names, parameter counts, type hints, return hints, and
-  effect/capability metadata are part of the service ABI.
-- service trait implementations use the normal script trait implementation
-  machinery; provider dispatch should not invent a separate call system.
-
-The provider system should not make every trait special. A trait becomes a
-service only when the host queries it as a service or when a package exports a
-provider implementation for it.
-
----
-
-## 8. Provider Export Model
-
-### 8.1 Attribute Syntax
-
-Use an attribute on trait implementations:
+Provider syntax:
 
 ```vela
 pub struct SortInventory {}
@@ -333,516 +398,569 @@ pub struct SortInventory {}
 #[provider(id = "sort_inventory")]
 impl CommandProvider for SortInventory {
     pub fn run(self, ctx: CommandContext, args: Array<String>) -> Result<CommandResult, String> {
-        // user plugin logic
+        return CommandResult::Ok;
     }
 }
 ```
 
-The service is inferred from the impl:
+Rules:
 
-```text
-impl CommandProvider for SortInventory
-     ^ service trait        ^ provider implementation type
-```
+- `provider` is valid only on a resolved trait impl;
+- exactly one named `id` string argument is required;
+- positional arguments, duplicate keys, `service = ...`, and unknown keys are
+  rejected with argument spans;
+- the service is the resolved trait declaration, not a textual trait name;
+- the target must resolve to a public zero-field script record in the first
+  slice;
+- provider ID uniqueness is scoped to `(PackageId, ServiceTraitId)`;
+- every required trait method must be implemented or have a valid default;
+- method signatures, type hints, effects, and access metadata must satisfy the
+  service trait contract;
+- discovery does not execute defaults, methods, globals, or native functions.
 
-Do not use:
+## 10. Provider Identity And Metadata
 
-```vela
-#[provider(service = CommandProvider, id = "sort_inventory")]
-```
-
-because `service = CommandProvider` duplicates information already present in
-the impl and creates an unnecessary source of mismatch.
-
-### 8.2 Provider Identity
-
-Provider identity is:
+Stable identity is:
 
 ```text
 ProviderKey = PackageId + ServiceTraitId + ProviderId
 ```
 
-`ProviderId` comes from `#[provider(id = "...")]` and is stable public ABI.
+`ProviderId` is a validated manifest/source string carried by the attribute.
+Renaming the provider type does not change `ProviderKey`; changing the ID is a
+provider removal plus addition.
 
-Rules:
-
-- `id` is required.
-- `id` must be unique for a service within one package.
-- renaming the provider type does not change provider identity.
-- changing the `id` is a provider removal plus provider addition for hot reload.
-- display names, descriptions, and ordering metadata may be added later, but
-  must not replace stable IDs.
-
-### 8.3 Provider Construction
-
-First slice should support stateless providers:
-
-```vela
-pub struct SortInventory {}
-```
-
-The runtime can construct a zero-field provider value for calls or use a
-runtime-owned singleton. This avoids adding provider factories before the SPI
-contract is proven.
-
-Future stateful providers may add explicit factories:
-
-```vela
-#[provider_factory(id = "sort_inventory")]
-pub fn create_sort_inventory(ctx) -> SortInventory {
-    return SortInventory { /* config */ }
-}
-```
-
-Do not add factory syntax in the first slice unless a test case proves it is
-needed. Module globals and host context are enough for the initial plugin use
-cases.
-
-### 8.4 Provider Descriptor
-
-Discovery should produce descriptors shaped like:
+The public discovery descriptor contains stable identities and source
+locations, not generation-local HIR IDs or live VM values:
 
 ```rust
 pub struct ProviderDescriptor {
-    pub package: PackageId,
-    pub service_trait: TraitId,
-    pub provider_id: ProviderId,
+    pub key: ProviderKey,
     pub provider_type: TypeId,
-    pub impl_id: ImplId,
     pub methods: Vec<ProviderMethodDescriptor>,
-    pub required_capabilities: CapabilitySet,
-    pub span: Span,
+    pub declared_capabilities: PackageCapabilitySet,
+    pub inferred_capabilities: PackageCapabilitySet,
+    pub source: ProviderSourceLocation,
 }
 ```
 
-Provider descriptors are metadata. They do not contain live VM values and do
-not execute script code.
+`ImplId` is not introduced. Internal discovery may retain a `HirDeclId` only
+inside the sealed HIR/package compilation request. Compiled metadata maps a
+`ProviderKey` to linked type and method-dispatch handles owned by the same
+`LinkedArtifact` generation.
 
----
+## 11. Discovery API
 
-## 9. Discovery Pipeline
-
-Discovery is host-controlled:
-
-```text
-host package roots
-  -> find vela.toml files
-  -> parse manifests
-  -> resolve path dependencies
-  -> collect package source records
-  -> parse/HIR declarations
-  -> collect #[provider] impl metadata
-  -> validate service impl contracts
-  -> return ProviderCatalog
-```
-
-Discovery may parse and lower enough HIR to validate declarations and trait
-implementations. It must not run bytecode, execute top-level expressions, call
-native functions, read host state, or perform HostAccess operations.
-
-The API should make this explicit:
-
-```rust
-let catalog = engine.discover_packages(["plugins", "vendor"])?;
-let providers = catalog.providers_for(command_provider_trait_id);
-```
-
-`ProviderCatalog` is safe to show in UIs, config screens, CLI listings, and
-LSP tooling.
-
----
-
-## 10. Compilation Pipeline
-
-Compilation should accept a resolved package graph or selected providers:
-
-```rust
-let selection = ProviderSelection::new()
-    .enable(command_provider_trait_id, ProviderId::new("sort_inventory"));
-
-let program = engine.compile_provider_selection(&catalog, selection)?;
-runtime.install(program)?;
-```
-
-Compilation rules:
-
-- selected providers pull in their owning packages.
-- selected packages pull in direct and transitive dependencies.
-- dependencies are compiled as normal package modules.
-- all selected code links into one `ProgramVersion` for the runtime image.
-- provider catalog metadata is embedded into the linked program image.
-- stable IDs use package-aware definition paths.
-
-`compile_dir(root)` may remain as a convenience for single-package applications,
-but it should become sugar over package source assembly, not a separate module
-model.
-
----
-
-## 11. Runtime Provider Calls
-
-The host should call providers by stable identity, not by raw function name:
-
-```rust
-let provider = runtime.provider(command_provider_trait_id, ProviderId::new("sort_inventory"))?;
-let result = provider.call("run", args)?;
-```
-
-Or with a direct helper:
-
-```rust
-runtime.call_provider(
-    command_provider_trait_id,
-    ProviderId::new("sort_inventory"),
-    "run",
-    args,
-)?;
-```
-
-Runtime behavior:
-
-- provider lookup resolves through the active `ProgramVersion`.
-- provider method calls route to the concrete script trait impl method.
-- execution budgets, call-depth budgets, GC roots, HostAccess, and capability
-  checks are unchanged.
-- missing provider, missing method, or disabled provider errors are
-  source/runtime diagnostics with provider identity context.
-- high-frequency callers may cache a provider handle, but the handle must be
-  invalidated or version-checked on hot reload just like cached function
-  handles.
-
----
-
-## 12. Hot Reload Model
-
-Package/provider hot reload remains ProgramVersion based:
+Discovery is host-controlled and read-only:
 
 ```text
-changed package file or manifest
-  -> rediscover affected package graph
-  -> recompile affected package graph
-  -> validate provider ABI and capabilities
-  -> stage ProgramVersion
-  -> install at safe point
+manifest roots
+  -> PackageGraph
+  -> package-aware HirSourceSet
+  -> provider/service validation
+  -> ProviderCatalog
 ```
 
-Compatibility checks must include:
+Suggested API shape:
 
-- package ID stability.
-- dependency alias and package ID changes that affect imports.
-- service trait method additions/removals/signature changes.
-- provider ID removals and additions.
-- provider target type changes.
-- provider method signature and effect changes.
-- package capability expansion.
-- script schema changes for public provider argument/return types.
+```rust
+let catalog = engine.discover_packages(["plugins/vela.toml"])?;
+let providers = catalog.providers_for(service_trait_id);
+```
 
-Rejected updates must not advance the active runtime image. Reports should name
-the package, module, provider, service trait, and source spans involved.
+`ProviderCatalog` owns or pins the exact package graph and HIR generation from
+which its descriptors were built. A selection cannot be combined with a
+different catalog/package graph by matching strings. Discovery errors preserve
+manifest and Vela source diagnostics separately.
 
----
+## 12. Compilation And Artifact Boundary
 
-## 13. Language Service And Tooling
+Provider selection uses complete stable keys:
 
-The language service should use the same package model:
+```rust
+let selection = ProviderSelection::from_keys([provider_key]);
+let artifact = engine.compile_provider_selection(&catalog, &selection)?;
+```
 
-- parse `vela.toml` package manifests.
-- index package roots and dependency package roots.
-- resolve `crate::` and dependency aliases.
-- provide completions for dependency aliases and imported service traits.
-- show provider descriptors in document/workspace symbols.
-- support go-to-definition from provider impl to service trait.
-- support references from service trait to provider implementations.
-- report missing dependency, duplicate package ID, duplicate provider ID, and
-  service impl mismatch diagnostics.
-- report hot-reload ABI risk when renaming provider IDs, service traits, or
-  public provider method signatures.
+The production pipeline remains:
 
-Editor tooling must not execute Vela programs or run the Rust host application
-to discover providers.
-
----
-
-## 14. Security And Capability Rules
-
-Package manifests declare requested capabilities. Hosts grant capabilities.
-The effective runtime capability set is the intersection of requested and
-granted capabilities.
+```text
+sealed catalog/package selection
+  -> selected owning packages and transitive dependencies
+  -> package-aware HirSourceSet
+  -> ProgramCompilationRequest
+  -> CompiledProgram
+  -> Engine registry-aware linker
+  -> Arc<LinkedArtifact>
+```
 
 Rules:
 
-- discovery may read manifests and source files from host-configured package
-  roots only.
-- scripts cannot add package roots at runtime.
-- scripts cannot load packages at runtime.
-- capability expansion during hot reload is rejected unless the host explicitly
-  approves and restages the update.
-- provider catalog queries are metadata reads, not reflection permission
-  bypasses.
-- provider calls follow normal call and HostAccess permissions.
+- selected providers include their owning package and transitive dependencies;
+- the first slice compiles complete selected packages, not function-level
+  tree-shaken fragments;
+- Engine remains the only production linker;
+- package/provider metadata is sealed into the same executable generation as
+  verified MIR, linked bytecode, debug metadata, and cache layouts;
+- `LinkedArtifact` construction must require metadata from the same sealed
+  compile request; callers cannot attach an independently built catalog;
+- `ProgramImage`/linked records index providers by `ProviderKey` and linked
+  handles, not source function names;
+- ordinary execution may construct a Runtime directly from the artifact;
+- hot-reload initial/update APIs pass the artifact to `vela_hot_reload`, which
+  alone constructs `ProgramVersion` or `HotUpdate`.
 
----
-
-## Phase Status
-
-Use this checklist as the durable execution tracker. Mark a task only after its
-focused tests and validation command pass.
+Required API distinction:
 
 ```text
-[ ] not started
-[~] in progress
-[x] complete
+compile_provider_selection(...) -> Arc<LinkedArtifact>
+compile_provider_hot_reload_initial(...) -> ProgramVersion
+compile_provider_hot_reload_update(...) -> HotUpdate
 ```
 
----
+## 13. Runtime Provider Calls
 
-## 15. Phase 1: Manifest And Package Graph
+Provider lookup/call is an Engine Runtime embedding API. The VM only executes
+the linked method target using existing call machinery.
 
-Purpose: introduce the package model without changing script semantics yet.
+```rust
+runtime.call_provider(&provider_key, "run", args, options)?;
+```
 
-- [ ] Add package manifest data types.
-- [ ] Parse `vela.toml` with `[package]`, `[source]`, `[dependencies]`, and
-  `[capabilities]`.
-- [ ] Resolve path dependencies relative to the manifest directory.
-- [ ] Detect duplicate package IDs and dependency cycles.
-- [ ] Assemble package source records from all source roots.
-- [ ] Allocate deterministic internal `SourceId` values for package sources.
-- [ ] Keep `SourceId` out of user-facing engine APIs.
+First-slice construction rule:
 
-Tests:
+- the provider target is a zero-field record;
+- each top-level provider call constructs a fresh zero-field receiver in the
+  active artifact generation;
+- no singleton, persistent provider object, factory, or provider-owned host
+  state exists;
+- method invocation routes through the concrete linked trait impl target.
 
-- [ ] `manifest_parses_package_source_dependencies_and_capabilities`
+Handle rule:
+
+- `ProviderHandle` contains `ProviderKey` plus the Runtime image/version token;
+- a handle from an old active image is rejected as stale after installation;
+- hosts re-query to obtain a current handle;
+- `call_provider(ProviderKey, ...)` resolves the current image each call;
+- old in-flight frames and closures continue on their pinned old artifact under
+  the existing retained-generation semantics.
+
+Provider calls keep normal execution-unit charging, call depth, GC rooting,
+HostAccess, native capability checks, reflection policy, tracing, profiling,
+and panic/error projection.
+
+## 14. Capability Contract
+
+The manifest declares requirements; the compiler derives actual requirements;
+the host grants runtime authority:
+
+```text
+compiler inferred requirements
+  subset of manifest declared requirements
+  subset of host grants
+```
+
+Rules:
+
+- an inferred capability missing from the manifest is a package compile
+  diagnostic;
+- a declared capability missing from host grants rejects compilation/install
+  of that selected package graph;
+- no intersection silently removes a requirement;
+- package capability expansion is part of hot-reload compatibility;
+- the first slice uses the existing capabilities only: host read/write, event
+  emit, time, random, IO read/write, and reflection read/write/call;
+- unknown capability names are manifest diagnostics;
+- catalog queries expose declared/inferred metadata but do not grant access or
+  bypass reflection permissions;
+- per-provider overrides and disabled-provider states are deferred.
+
+## 15. Hot Reload Contract
+
+Package/provider reload remains artifact- and `ProgramVersion`-based:
+
+```text
+changed source or manifest
+  -> rebuild affected PackageGraph and HirSourceSet
+  -> Engine compile and link Arc<LinkedArtifact>
+  -> vela_hot_reload ABI/capability comparison
+  -> HotUpdate
+  -> Runtime safe-point staging and install
+```
+
+Compatibility checks include:
+
+- root and dependency `PackageId` stability;
+- stable definition paths affected by package/module changes;
+- service trait addition/removal/method/signature/effect changes;
+- selected provider key addition/removal according to hot-reload policy;
+- provider target type changes;
+- provider method target/signature/effect changes;
+- declared and inferred capability expansion;
+- public script schema used by provider parameters and return values.
+
+A selected provider removal, service ABI change, provider target-type change,
+or unapproved capability expansion is rejected. A provider body-only change is
+accepted. Additions follow the existing explicit hot-reload addition policy.
+Rejected updates do not advance the active image. Reports carry package,
+module, service, provider, manifest span, and Vela source span context.
+
+## 16. Language Service And LSP
+
+Tooling uses the same `vela_package` manifest and graph model:
+
+- root `ProjectState` loads workspace members, packages, dependencies, source
+  roots, and root-only host schema configuration;
+- open overlays override package disk snapshots;
+- `crate::`, dependency aliases, and same-path modules in different packages
+  resolve through the package-aware HIR graph;
+- completion lists `crate` and direct dependency aliases;
+- hover/symbols expose package and provider identity;
+- definition navigates provider impl -> service trait and dependency imports ->
+  manifests/source declarations;
+- references find service provider impls across packages;
+- diagnostics cover manifests, dependency cycles, duplicate IDs, unknown
+  aliases, provider attributes, service mismatches, and capabilities;
+- rename reports package/provider/service hot-reload ABI risk;
+- editor tooling never executes scripts or loads the Rust host application.
+
+Manifest changes and package source changes advance one language-service
+generation at an explicit project refresh commit. Engine and tooling may have
+different IO front doors, but they must assemble the same package graph and HIR
+inputs from the same records.
+
+## 17. Execution Policy
+
+This plan combines independent verified checkpoints with one mandatory atomic
+cutover:
+
+1. Phase 0 is read-only inventory and baseline.
+2. Phase 1 introduces the shared crate and unified manifest/project model. It
+   may be committed when all existing consumers use it.
+3. Phase 2 is one atomic breaking package-identity hard switch. Intermediate
+   compilation failures are allowed; no compatibility adapter may be added.
+4. Phases 3-6 add complete vertical behavior on top of the single identity
+   model and may use small coherent commits.
+5. Each resume inspects and continues the dirty worktree; do not reset partial
+   identity work or recreate old APIs.
+6. No phase is complete based only on type definitions or zero-hit searches;
+   focused behavior tests must pass.
+
+## 18. Phase 0: Inventory And Baseline
+
+- [ ] Record current workspace format, Clippy, tests, examples, and package-
+      relevant benchmark compilation status.
+- [ ] Inventory every handwritten `vela.toml` parser and config model.
+- [ ] Inventory every `ModulePath`-only module index and module lookup.
+- [ ] Inventory every hard-coded `script` DefPath/stable-ID call site.
+- [ ] Inventory every Engine source/dir/hot-reload front door.
+- [ ] Inventory current HIR trait/impl/attribute metadata and validation gaps.
+- [ ] Inventory ProgramImage/LinkedArtifact metadata construction and Runtime
+      handle/version rules.
+- [ ] Freeze behavior tests for existing single-source, directory, hot-reload,
+      workspace overlay, schema, and stable-ID behavior.
+- [ ] Record current active-file sizes and dependency edges for affected crates.
+
+Exit gate:
+
+- [ ] Every legacy surface has a named final owner and deletion phase.
+- [ ] Baseline failures, if any, are recorded before implementation edits.
+
+## 19. Phase 1: `vela_package` And Unified Manifest
+
+- [ ] Add `vela_package` to the workspace with the dependency rules above.
+- [ ] Add validated package/module identity types, manifest file spans, source
+      table, manifest model, and package graph diagnostics.
+- [ ] Move the existing `ModulePath` type mechanically into `vela_package` and
+      update imports to that one owner before adding package-aware indexes; do
+      not create a duplicate package `ModulePath`.
+- [ ] Parse the unified root/package manifest with a structured TOML parser.
+- [ ] Resolve explicit workspace members and path dependencies.
+- [ ] Canonicalize and authorize manifest/source/dependency paths.
+- [ ] Detect duplicate package IDs, alias collisions, missing manifests, and
+      dependency cycles.
+- [ ] Discover deterministic package sources across `[source].roots`.
+- [ ] Replace the language-service handwritten parser and source assembly with
+      `vela_package` results.
+- [ ] Route Engine package/project IO through the same graph builder.
+- [ ] Hard switch tests/docs from `[workspace].roots` to the unified schema.
+- [ ] Keep Vela parsing in `vela_hir`; do not parse source in `vela_package`.
+
+Focused tests:
+
+- [ ] `manifest_parses_workspace_package_sources_dependencies_and_capabilities`
+- [ ] `manifest_reports_unknown_keys_with_spans`
 - [ ] `path_dependency_resolves_relative_to_manifest`
-- [ ] `duplicate_package_id_is_rejected`
-- [ ] `dependency_cycle_is_rejected`
-- [ ] `package_sources_get_deterministic_source_ids`
+- [ ] `source_root_cannot_escape_authorized_package_root`
+- [ ] `duplicate_package_id_at_different_manifests_is_rejected`
+- [ ] `dependency_cycle_reports_manifest_edge_chain`
+- [ ] `package_sources_are_deterministic`
+- [ ] `engine_and_language_service_assemble_the_same_package_graph`
 
 Validation:
 
 ```bash
-cargo test -p vela_engine package
+cargo test -p vela_package
 cargo test -p vela_language_service project
+cargo test -p vela_engine source
+cargo clippy -p vela_package -p vela_language_service -p vela_engine --all-targets -- -D warnings
 ```
 
----
+## 20. Phase 2: Package Identity Hard Switch
 
-## 16. Phase 2: Package-Aware Module Graph
+- [ ] Use the single `vela_package::ModulePath` owner established in Phase 1;
+      do not add an HIR alias or second module-path type.
+- [ ] Make `ModuleSource`/package source inputs carry `PackageId`.
+- [ ] Index HIR modules and children by `ModuleKey`.
+- [ ] Resolve `crate::` and direct dependency aliases.
+- [ ] Reject implicit transitive imports and unknown aliases.
+- [ ] Make declaration qualification and visibility package-aware.
+- [ ] Replace hard-coded `script` identity helpers with PackageId-aware DefPath
+      construction for every script definition kind.
+- [ ] Update HIR method catalogs, analysis facts, MIR/bytecode semantic input,
+      linker indexes, ProgramImage indexes, reflection, hot reload, Engine,
+      language service, LSP, examples, and tests in the same cutover.
+- [ ] Make convenience source/file/dir APIs build an explicit reserved package.
+- [ ] Delete package-unaware source-set, module lookup, and stable-ID paths.
+- [ ] Add architecture guards against the hard-coded script package and
+      ModulePath-only global indexes returning.
 
-Purpose: make imports and declarations package-aware.
-
-- [ ] Add `ModuleKey { package, path }`.
-- [ ] Extend `ModuleSource` or add package-aware source input records.
-- [ ] Index modules by `ModuleKey`.
-- [ ] Resolve `crate::` imports to the current package.
-- [ ] Resolve dependency alias imports to direct dependency packages.
-- [ ] Reject unknown dependency aliases and implicit transitive imports.
-- [ ] Preserve existing single-package compile behavior as sugar over an
-  implicit package graph.
-- [ ] Update stable definition paths to use package IDs consistently.
-
-Tests:
+Focused tests:
 
 - [ ] `crate_import_resolves_within_current_package`
-- [ ] `dependency_alias_import_resolves_to_dependency_package`
-- [ ] `transitive_dependency_import_requires_direct_alias`
+- [ ] `dependency_alias_resolves_to_direct_package`
+- [ ] `transitive_dependency_requires_direct_alias`
 - [ ] `same_module_path_in_two_packages_does_not_collide`
-- [ ] `single_package_compile_uses_implicit_package`
+- [ ] `same_symbol_path_in_two_packages_has_distinct_stable_ids`
+- [ ] `single_source_uses_reserved_explicit_package`
+- [ ] `language_service_scratch_document_uses_reserved_explicit_package`
+- [ ] `package_aware_identity_survives_compile_link_runtime_and_reload`
+- [ ] `language_service_symbols_keep_package_ownership`
+
+Mandatory zero-hit gates:
+
+```bash
+rg -n 'const SCRIPT_PACKAGE|DefPath::[a-z_]+\("script"' crates --glob '*.rs'
+rg -n 'BTreeMap<ModulePath, ModuleId>|module_by_path' crates/vela_hir --glob '*.rs'
+rg -n 'implicit package|legacy package|package_unaware|fallback.*package' crates --glob '*.rs'
+```
+
+Every hit must be eliminated or be an explicit assertion inside the guard that
+prevents regression.
 
 Validation:
 
 ```bash
 cargo test -p vela_hir module_graph
+cargo test -p vela_def
+cargo test -p vela_analysis
 cargo test -p vela_bytecode
+cargo test -p vela_reflect
+cargo test -p vela_hot_reload
+cargo test -p vela_engine
+cargo test -p vela_language_service
 ```
 
----
+## 21. Phase 3: Structured Provider HIR And Catalog
 
-## 17. Phase 3: Provider Metadata In HIR
+- [ ] Replace flattened HIR attribute values with structured arguments without
+      regressing existing `doc`, `derive`, `id`, event, or policy attributes.
+- [ ] Parse and validate `#[provider(id = "...")]` on trait impls.
+- [ ] Resolve service trait and provider target declarations package-aware.
+- [ ] Require a public zero-field provider target.
+- [ ] Validate method coverage, defaults, signatures, return hints, effects,
+      access, and declared/inferred capabilities.
+- [ ] Reject duplicate provider keys and malformed/redundant arguments.
+- [ ] Add stable `ProviderKey`, public descriptors, source locations, and a
+      catalog pinned to one package/HIR generation.
+- [ ] Add `Engine::discover_packages` without compilation or execution.
+- [ ] Prove discovery does not execute top-level code or native/HostAccess work.
 
-Purpose: collect trait-backed provider declarations without runtime execution.
+Focused tests:
 
-- [ ] Parse and preserve `#[provider(id = "...")]` attributes on impl items.
-- [ ] Reject `#[provider]` on non-trait impls.
-- [ ] Infer service trait from `impl ServiceTrait for ProviderType`.
-- [ ] Require a stable string `id`.
-- [ ] Reject duplicate provider IDs for the same package and service trait.
-- [ ] Validate provider method coverage against the service trait.
-- [ ] Validate provider method signatures, type hints, return hints, and
-  effects against the trait contract.
-- [ ] Emit source-spanned diagnostics for malformed provider attributes and
-  service mismatches.
-
-Tests:
-
-- [ ] `provider_impl_exports_trait_service`
-- [ ] `provider_service_is_inferred_from_impl_trait`
-- [ ] `provider_rejects_redundant_or_unknown_attribute_keys`
-- [ ] `provider_rejects_missing_id`
-- [ ] `provider_rejects_duplicate_id_for_same_service`
-- [ ] `provider_rejects_method_signature_mismatch`
+- [ ] `provider_service_is_inferred_from_resolved_impl_trait`
+- [ ] `provider_rejects_non_trait_impl_and_nonzero_field_target`
+- [ ] `provider_rejects_redundant_unknown_duplicate_or_missing_id`
+- [ ] `provider_rejects_method_signature_and_effect_mismatch`
+- [ ] `duplicate_provider_key_is_rejected`
+- [ ] `catalog_reports_stable_ids_and_source_spans`
+- [ ] `discovery_does_not_execute_script_or_host_code`
+- [ ] `catalog_cannot_mix_selection_from_another_generation`
 
 Validation:
 
 ```bash
-cargo test -p vela_syntax provider
+cargo test -p vela_syntax attribute
 cargo test -p vela_hir provider
-```
-
----
-
-## 18. Phase 4: Provider Catalog Discovery API
-
-Purpose: let hosts list available script plugin logic before compilation.
-
-- [ ] Add `ProviderDescriptor`, `ServiceDescriptor`, and `ProviderCatalog`.
-- [ ] Add engine discovery API for package roots.
-- [ ] Build provider descriptors from package graph and HIR metadata.
-- [ ] Include package, service trait, provider ID, provider type, method,
-  capability, and source-span metadata.
-- [ ] Return diagnostics without executing scripts.
-- [ ] Add catalog query helpers by service trait and provider ID.
-
-Tests:
-
-- [ ] `discover_packages_returns_provider_catalog`
-- [ ] `discovery_does_not_execute_top_level_code`
-- [ ] `catalog_filters_providers_by_service_trait`
-- [ ] `catalog_reports_provider_source_spans`
-- [ ] `catalog_includes_required_capabilities`
-
-Validation:
-
-```bash
+cargo test -p vela_analysis provider
 cargo test -p vela_engine provider_catalog
 ```
 
----
+## 22. Phase 4: Linked Provider Runtime Vertical Slice
 
-## 19. Phase 5: Compile Selected Package Graph
+- [ ] Add provider selection by full `ProviderKey`.
+- [ ] Resolve owning packages and transitive dependencies.
+- [ ] Compile complete selected packages through sealed HIR requests.
+- [ ] Seal provider metadata into `CompiledProgram` and `LinkedArtifact` from
+      the same compilation generation.
+- [ ] Link ProviderKey -> provider type handle -> method dispatch handles.
+- [ ] Reject missing native definitions or cross-generation metadata at link.
+- [ ] Add Runtime current-image lookup, fresh zero-field receiver construction,
+      and provider method calls.
+- [ ] Add version-checked `ProviderHandle` and stale-handle rejection.
+- [ ] Preserve normal budgets, GC roots, HostAccess, capabilities, tracing,
+      profiling, and errors.
+- [ ] Keep provider lookup out of the core VM public API.
 
-Purpose: compile provider selections into normal runtime programs.
+Focused tests:
 
-- [ ] Add provider selection data types.
-- [ ] Resolve selected providers to owning packages.
-- [ ] Include transitive dependencies in the compile set.
-- [ ] Embed provider metadata into linked program images.
-- [ ] Add runtime provider lookup by service trait and provider ID.
-- [ ] Add provider method call helper that routes to concrete trait impl
-  methods.
-- [ ] Keep cached provider handles version-checked across reload.
-
-Tests:
-
-- [ ] `compile_provider_selection_includes_dependencies`
-- [ ] `runtime_calls_provider_method`
-- [ ] `runtime_rejects_missing_provider`
-- [ ] `provider_call_uses_normal_budget_and_host_access_checks`
-- [ ] `cached_provider_handle_rejects_or_refreshes_after_reload`
+- [ ] `compile_provider_selection_includes_transitive_dependencies`
+- [ ] `linked_artifact_owns_same_generation_provider_metadata`
+- [ ] `runtime_calls_provider_trait_impl_method`
+- [ ] `runtime_rejects_missing_provider_or_method`
+- [ ] `provider_call_constructs_fresh_zero_field_receiver`
+- [ ] `provider_call_uses_normal_budget_host_access_and_capability_checks`
+- [ ] `provider_handle_rejects_stale_runtime_image`
 
 Validation:
 
 ```bash
+cargo test -p vela_bytecode provider
 cargo test -p vela_engine provider
-cargo test -p vela_vm provider
+cargo test -p vela_vm linked_execution
 ```
 
----
+## 23. Phase 5: Package And Provider Hot Reload
 
-## 20. Phase 6: Package And Provider Hot Reload
+- [ ] Add artifact-derived package/provider ABI records.
+- [ ] Stage changed manifests and sources through Engine package graph rebuild.
+- [ ] Compute changed packages and affected dependents for reports.
+- [ ] Compare service trait, provider key/target/method, package identity,
+      public schema, and capability ABI.
+- [ ] Accept provider body-only changes.
+- [ ] Reject selected provider removal, target changes, service ABI changes,
+      and unapproved capability expansion.
+- [ ] Apply the existing addition policy to new providers/services.
+- [ ] Keep old active frames/closures pinned and move new calls to the accepted
+      generation at the existing safe point.
+- [ ] Include manifest and source labels in rejection reports.
 
-Purpose: make provider updates safe and explainable.
-
-- [ ] Stage package graph updates from changed source files and manifest files.
-- [ ] Compute changed packages and affected dependent packages.
-- [ ] Check provider ABI compatibility.
-- [ ] Check service trait ABI compatibility.
-- [ ] Check package capability expansion.
-- [ ] Include provider and package details in hot-reload reports.
-- [ ] Reject updates without advancing active `ProgramVersion`.
-
-Tests:
+Focused tests:
 
 - [ ] `provider_body_change_is_accepted`
-- [ ] `provider_id_removal_is_rejected_when_active`
-- [ ] `service_trait_method_removal_is_rejected`
-- [ ] `provider_signature_change_is_rejected`
-- [ ] `capability_expansion_is_rejected_without_host_approval`
-- [ ] `dependency_package_change_invalidates_dependents`
+- [ ] `provider_removal_is_rejected_without_advancing_active_image`
+- [ ] `service_trait_method_change_is_rejected`
+- [ ] `provider_target_or_signature_change_is_rejected`
+- [ ] `capability_expansion_requires_host_approval`
+- [ ] `dependency_change_reports_impacted_packages`
+- [ ] `old_frame_keeps_old_provider_generation_and_new_call_uses_new_generation`
 
 Validation:
 
 ```bash
 cargo test -p vela_hot_reload provider
+cargo test -p vela_engine provider
 cargo test -p vela_engine reload
 ```
 
----
+## 24. Phase 6: Tooling, Example, Docs, And Close-Out
 
-## 21. Phase 7: Tooling, Examples, And Docs
+- [ ] Load workspace/package manifests through `ProjectState` using
+      `vela_package`.
+- [ ] Preserve overlay precedence and one-generation refresh commits.
+- [ ] Add completion for `crate` and direct dependency aliases.
+- [ ] Add package/provider symbols, hover, definition, references, and rename
+      risk metadata.
+- [ ] Publish manifest/package/provider diagnostics without running host code.
+- [ ] Add one standalone API-package + plugin-package example.
+- [ ] Document manifest schema, imports, discovery, selection, calls,
+      capabilities, and reload.
+- [ ] Update `docs/architecture.md`, relevant subsystem architecture docs,
+      `docs/decisions.md`, and `docs/progress.md` to final implemented truth.
+- [ ] Add dependency-direction, parser ownership, package identity, artifact
+      ownership, provider dispatch, and file-size architecture guards.
+- [ ] Remove stale plan wording and mark tasks complete only after validation.
 
-Purpose: make the package/SPI model usable.
+Focused tests:
 
-- [ ] Update language-service project loading to use package manifests and
-  dependency aliases.
-- [ ] Add completions for `crate::` and dependency aliases.
-- [ ] Add hover/definition/references support for service traits and provider
-  impls.
-- [ ] Add diagnostics for missing packages, duplicate package IDs, duplicate
-  provider IDs, and service mismatches.
-- [ ] Add a standalone example with an API package and a plugin package.
-- [ ] Document package manifests, imports, service traits, provider IDs,
-  discovery, compilation, and hot reload.
-
-Tests:
-
-- [ ] `lsp_completion_lists_dependency_aliases`
-- [ ] `definition_follows_provider_to_service_trait`
-- [ ] `references_find_service_provider_impls`
+- [ ] `lsp_completion_lists_crate_and_dependency_aliases`
+- [ ] `definition_follows_provider_to_service_trait_across_package`
+- [ ] `references_find_service_provider_impls_across_packages`
 - [ ] `rename_provider_id_reports_hot_reload_risk`
-- [ ] `example_plugin_provider_runs`
+- [ ] `manifest_change_refreshes_one_project_generation`
+- [ ] `example_plugin_provider_discovers_compiles_runs_and_reloads`
 
 Validation:
 
 ```bash
-cargo test -p vela_language_service package provider
-cargo test -p vela_lsp_server package provider
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+cargo clippy --manifest-path examples/Cargo.toml --all-targets -- -D warnings
+cargo test --manifest-path examples/Cargo.toml
 cargo run --manifest-path examples/Cargo.toml --bin plugin_provider_demo
 ```
 
----
+Final zero-hit and architecture gates must prove:
 
-## 22. Open Design Questions
+- one structured `vela.toml` parser exists;
+- `vela_package` owns package/project identity and graph assembly;
+- no hard-coded global script package identity remains;
+- no package-unaware ModuleGraph index or import resolver remains;
+- Engine is the sole production compiler/linker orchestrator;
+- hot reload accepts artifacts, not manifests, HIR, or CompiledProgram;
+- provider runtime dispatch uses linked handles, not names;
+- provider metadata cannot be attached across executable generations;
+- language service and Engine consume the same package graph model;
+- all active files satisfy the current file-size policy.
 
-Keep these out of the first slice unless they block implementation:
+## 25. Deferred Questions
 
-- Whether provider factories are needed before stateless providers are proven.
-- Whether multiple versions of the same package may coexist in one runtime
-  image.
-- Whether package manifests need lockfiles before public release.
-- Whether package registry metadata should share the future deployment package
-  artifact format.
-- Whether public service traits should require an explicit service attribute or
-  whether host queries are enough.
-- Whether providers should support host-approved per-provider capability
-  overrides in addition to package-level capabilities.
+These do not block the first slice:
 
----
+- stateful providers and explicit factories;
+- singleton provider lifetime;
+- multiple versions of one package in one runtime image;
+- remote registries, lockfiles, signatures, and publishing;
+- workspace member globs;
+- deployment bundles containing bytecode plus package ABI metadata;
+- per-provider host-approved capability subsets;
+- provider enable/disable state independent of package selection;
+- foreign host-language package modules.
 
-## 23. First Vertical Slice
+## 26. Completion Criteria
 
-The smallest useful slice is:
+The plan is complete only when:
+
+- [ ] `vela_package` is the single shared package/manifest owner.
+- [ ] Engine and language service use the same package graph/source assembly.
+- [ ] `PackageId + ModulePath` is the only script module identity.
+- [ ] all stable script definitions include PackageId.
+- [ ] SourceId remains internal and deterministic.
+- [ ] provider attributes are structured and source-spanned in HIR.
+- [ ] discovery returns a sealed read-only catalog without execution.
+- [ ] selected packages compile and link through the existing artifact pipeline.
+- [ ] linked provider metadata is same-generation by construction.
+- [ ] Runtime calls a zero-field provider through linked trait impl dispatch.
+- [ ] capability declarations, inferred effects, and host grants are checked by
+      subset relations rather than intersection.
+- [ ] provider hot reload preserves safe points, retained generations, and ABI
+      rejection semantics.
+- [ ] package/provider tooling works without executing scripts or host code.
+- [ ] all focused, workspace, examples, architecture, dependency, zero-hit, and
+      file-size gates pass.
+
+The proving vertical slice is:
 
 ```text
 one API package
-one plugin package with path dependency
-one service trait
-one stateless provider impl with #[provider(id = "...")]
-host discovery lists the provider
-host compiles selected provider package graph
-runtime calls provider.run(...)
-provider body hot reload is accepted
-provider signature change is rejected
+one plugin package with a direct path dependency
+one public service trait
+one zero-field provider exported with #[provider(id = "...")]
+host discovery lists the provider without execution
+Engine compiles and links the selected package graph
+Runtime calls provider.run(...) through linked trait dispatch
+provider body hot reload is accepted at a safe point
+provider signature or capability expansion is rejected without image advance
+language tooling resolves the dependency and provider/service navigation
 ```
-
-This proves the model without adding registries, factories, remote packages, or
-foreign-language module artifacts.
