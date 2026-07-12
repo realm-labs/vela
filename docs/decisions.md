@@ -221,8 +221,8 @@ diagnostics before bytecode compilation; the bytecode compiler consumes the
 validated HIR graph and metadata.
 
 Source-set parsing and `ModuleGraph` construction are HIR front-end
-responsibilities. The bytecode compiler accepts an already-built graph plus
-explicit compilation roots/mode and must not accept source text or depend on
+responsibilities. The bytecode compiler accepts an ordered `HirSourceSet` plus
+a cohesive compilation kind/root request and must not accept source text or depend on
 `vela_syntax`. `vela_engine` owns the embedding-facing source/file/directory and
 hot-reload orchestration, including structured projection of front-end and
 backend errors. This boundary is implemented as a breaking internal hard switch
@@ -244,7 +244,8 @@ registry-aware linking, and source-to-hot-reload error projection.
 ABI/policy comparison, and update generation, and exposes no production API
 that accepts source text, `ModuleSource`, HIR graphs/source sets, or
 `CompiledProgram`. Front-end diagnostics remain Engine errors rather than
-`HotReloadError` variants.
+`HotReloadError` variants and return immediately instead of being staged as
+artifact ABI/policy rejection reports.
 
 Production parsing is rowan-backed and lossless. `vela_syntax` owns
 `SyntaxKind`, `VelaLanguage`, syntax node/token aliases, and `Parse<T>`

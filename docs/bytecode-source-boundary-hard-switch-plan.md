@@ -2,8 +2,8 @@
 
 > **Track:** compiler layering and source-front-door ownership
 > **Document status:** Codex goal-mode execution plan
-> **Execution status:** Reopened after review. Checkpoints A-E landed on
-> 2026-07-12; Checkpoints F-I remain open.
+> **Execution status:** Complete. Checkpoints A-I landed and passed final
+> validation on 2026-07-12.
 > **Compatibility policy:** This is a breaking pre-release internal API hard
 > switch. Preserve Vela language behavior, source identity, diagnostics,
 > generated MIR/bytecode, linking, execution budgets, hot reload, and public
@@ -568,22 +568,22 @@ as it exists at execution time.
 
 ### Checkpoint F: Reopen And Freeze Review Findings
 
-- [ ] Record the current public compilation-request shape and every production
+- [x] Record the current public compilation-request shape and every production
       constructor/caller.
-- [ ] Record the negative acceptance matrix for an unknown single-source root,
+- [x] Record the negative acceptance matrix for an unknown single-source root,
       empty/partial/duplicate module scope, a module ID from another graph, a
       non-function declaration root, and a function/module mismatch; do not add
       failing or ignored tests to the green characterization checkpoint.
-- [ ] Define the invariant fixture and expected outcome for a graph containing
+- [x] Define the invariant fixture and expected outcome for a graph containing
       an excluded function and script method; the passing regression lands with
       the sealed request API in Checkpoint G.
-- [ ] Inventory every public and private `vela_hot_reload::compile_*` function
+- [x] Inventory every public and private `vela_hot_reload::compile_*` function
       that accepts source text or `ModuleSource`, plus all external callers.
-- [ ] Classify source-to-reload tests: move embedding/end-to-end behavior to
+- [x] Classify source-to-reload tests: move embedding/end-to-end behavior to
       Engine, and retain only ABI/policy/generation tests in hot reload.
-- [ ] Pin Engine source, file, directory, initial reload, update reload, staged
+- [x] Pin Engine source, file, directory, initial reload, update reload, staged
       reload, and changed-file diagnostic behavior before API deletion.
-- [ ] Replace the bytecode linker metadata fixture's direct
+- [x] Replace the bytecode linker metadata fixture's direct
       `ModuleGraph::add_source` call with the production HIR ingestion boundary.
 
 Validation:
@@ -599,30 +599,30 @@ cargo test -p vela_engine
 
 Perform this as a breaking request-API replacement, not a parallel wrapper:
 
-- [ ] Replace public raw graph + mode IDs with `HirSourceSet`, a validated
+- [x] Replace public raw graph + mode IDs with `HirSourceSet`, a validated
       compilation scope, or equivalent private-field constructors.
-- [ ] Add passing negative tests proving every invalid case recorded in
+- [x] Add passing negative tests proving every invalid case recorded in
       Checkpoint F is rejected before semantic-input construction or cannot be
       represented by the public API.
-- [ ] Add the passing scope-consistency regression recorded in Checkpoint F and
+- [x] Add the passing scope-consistency regression recorded in Checkpoint F and
       prove bytecode roots, method catalog, and retained metadata cannot observe
       different module sets.
-- [ ] Derive the single-source root from a source set that contains exactly one
+- [x] Derive the single-source root from a source set that contains exactly one
       selected module.
-- [ ] Make module-graph compilation consume exactly the complete ordered module
+- [x] Make module-graph compilation consume exactly the complete ordered module
       set represented by the source-set/scope value; do not silently accept
       arbitrary subsets or duplicate module IDs.
-- [ ] Derive a selected function's module from its declaration and reject
+- [x] Derive a selected function's module from its declaration and reject
       missing, wrong-kind, bodyless, or out-of-scope declarations before
       semantic-input construction.
-- [ ] Ensure method catalog, symbol maps, constant evaluation, schema defaults,
+- [x] Ensure method catalog, symbol maps, constant evaluation, schema defaults,
       semantic roots, retained script metadata, and executable roots all consume
       the same validated scope.
-- [ ] Add a structured request-invariant error instead of returning an unrelated
+- [x] Add a structured request-invariant error instead of returning an unrelated
       registry/MIR inconsistency for malformed public input.
-- [ ] Delete the old public `ProgramCompilationMode` shape and every constructor
+- [x] Delete the old public `ProgramCompilationMode` shape and every constructor
       that can assemble independent graph/module/declaration facts.
-- [ ] Migrate bytecode, Engine, VM, integration, benchmark, and test-support
+- [x] Migrate bytecode, Engine, VM, integration, benchmark, and test-support
       callers atomically; do not keep aliases or deprecated constructors.
 
 Focused validation:
@@ -636,26 +636,26 @@ cargo clippy -p vela_bytecode -p vela_engine --all-targets -- -D warnings
 
 Perform the source-to-hot-reload API deletion atomically:
 
-- [ ] Route every Engine source/file/directory compile and hot-reload entry
+- [x] Route every Engine source/file/directory compile and hot-reload entry
       through one Engine-owned source-set -> compile -> registry-aware-link
       helper or cohesive service.
-- [ ] Ensure Engine passes only `LinkedArtifact` plus ABI/policy/version inputs
+- [x] Ensure Engine passes only `LinkedArtifact` plus ABI/policy/version inputs
       into `vela_hot_reload` generation operations.
-- [ ] Delete public `vela_hot_reload::compile_initial*`, `compile_update*`, and
+- [x] Delete public `vela_hot_reload::compile_initial*`, `compile_update*`, and
       module-source variants that parse, compile, or link.
-- [ ] Delete `compile_single_program`, `compile_module_program`, the production
+- [x] Delete `compile_single_program`, `compile_module_program`, the production
       `build_source_set` import, source/model imports used only by those paths,
       and the standalone source-linking helper from `vela_hot_reload`.
-- [ ] Delete `HotReloadErrorKind::Frontend` and project front-end failures from
+- [x] Delete `HotReloadErrorKind::Frontend` and project front-end failures from
       an Engine-owned structured hot-reload compilation error instead.
-- [ ] Move source-to-reload and embedding behavior tests to `vela_engine`.
-- [ ] Convert remaining hot-reload unit fixtures to prebuilt `LinkedArtifact`
+- [x] Move source-to-reload and embedding behavior tests to `vela_engine`.
+- [x] Convert remaining hot-reload unit fixtures to prebuilt `LinkedArtifact`
       values. A single `#[cfg(test)]` source-to-artifact helper is acceptable
       only when it calls the production HIR/bytecode/link boundaries and is not
       exported or compiled in production.
-- [ ] Update CLI, playground, examples, C/public embedding surfaces, and docs
+- [x] Update CLI, playground, examples, C/public embedding surfaces, and docs
       for the Engine-owned error/API shape without flattening diagnostics.
-- [ ] Do not add a permanent `vela_compiler` crate or move source orchestration
+- [x] Do not add a permanent `vela_compiler` crate or move source orchestration
       back into HIR, bytecode, or hot reload.
 
 Focused validation:
@@ -670,25 +670,25 @@ cargo check -p vela_engine --benches
 
 ### Checkpoint I: Review Close-Out And Full Validation
 
-- [ ] Add CI zero-hit checks preventing production source ingestion/compilation
+- [x] Add CI zero-hit checks preventing production source ingestion/compilation
       APIs from returning to `vela_hot_reload`.
-- [ ] Add CI or focused architecture tests for the sealed bytecode request
+- [x] Add CI or focused architecture tests for the sealed bytecode request
       boundary and forbidden raw-mode constructors.
-- [ ] Prove `vela_bytecode` still has no syntax dependency or source-text API.
-- [ ] Prove only Engine production code calls `build_source_set` as part of
+- [x] Prove `vela_bytecode` still has no syntax dependency or source-text API.
+- [x] Prove only Engine production code calls `build_source_set` as part of
       source-to-executable orchestration; HIR/LSP consumers and cfg(test)
       fixtures must remain clearly scoped exceptions.
-- [ ] Prove `vela_hot_reload` production entrypoints accept linked artifacts
+- [x] Prove `vela_hot_reload` production entrypoints accept linked artifacts
       rather than source, graphs, source sets, or compiled programs. Reading
       immutable script metadata carried inside an artifact for ABI comparison
       remains valid.
-- [ ] Run the active-file size audit and review any newly oversized Engine or
+- [x] Run the active-file size audit and review any newly oversized Engine or
       hot-reload files.
-- [ ] Run all required examples, benchmark builds, fuzz build, formatting,
+- [x] Run all required examples, benchmark builds, fuzz build, formatting,
       clippy, and workspace tests.
-- [ ] Update `docs/architecture.md`, `docs/decisions.md`, `docs/progress.md`, and
+- [x] Update `docs/architecture.md`, `docs/decisions.md`, `docs/progress.md`, and
       this plan to completed current truth.
-- [ ] Commit coherent hard-switch checkpoints and finish with a clean worktree.
+- [x] Commit coherent hard-switch checkpoints and finish with a clean worktree.
 
 Additional zero-hit audits:
 

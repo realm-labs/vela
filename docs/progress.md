@@ -142,15 +142,17 @@ verification. VM instructions, conservative frame root tracing, runtime
 budgets, hot-reload identity, and public engine/runtime APIs remain unchanged;
 Cranelift stays deferred to M22.
 
-The bytecode source-boundary base hard switch landed through Checkpoint E:
-`vela_hir` owns staged source ingestion, bytecode source-text APIs and the
-direct `vela_syntax` dependency are deleted, and the recorded full validation
-passed. Post-completion review reopened the track for Checkpoints F-I in
-[bytecode-source-boundary-hard-switch-plan.md](bytecode-source-boundary-hard-switch-plan.md).
-The remaining gaps are to seal raw graph/module/declaration request invariants,
-make Engine the sole production source and source-to-reload orchestrator,
-remove source compilation and standalone linking from `vela_hot_reload`, and
-repeat the architecture/full-validation close-out.
+The bytecode source-boundary hard switch is complete through Checkpoint I.
+`vela_hir` owns staged source ingestion; bytecode consumes `HirSourceSet`
+through sealed program/function requests and rejects invalid cardinality or
+function roots before semantic-input construction. Engine is the only
+production source and source-to-reload orchestrator, owns registry-aware
+linking plus structured source/compile/link errors, and passes `LinkedArtifact`
+values into hot reload. `vela_hot_reload` owns only artifact generation,
+ABI/policy comparison, and version/update construction; its source compiler,
+standalone linker, and front-end/compiler error variants are deleted. Scope,
+diagnostic-stage, Engine reload, artifact-generation, dependency, zero-hit,
+example, benchmark/fuzz-build, file-size, and full workspace gates pass.
 
 The compile-time const/schema evaluator is the remaining documented HIR
 consumer under `vela_bytecode`; runtime backend code consumes neither HIR kinds

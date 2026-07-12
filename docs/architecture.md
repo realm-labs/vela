@@ -72,6 +72,9 @@ the hot-reload crate owns version construction, ABI/policy comparison, and
 update generation, but exposes no production source, HIR-graph, or
 `CompiledProgram` compilation entrypoint. Reading immutable script metadata
 carried by the linked artifact remains part of hot-reload ABI validation.
+Source-ingestion, bytecode-compilation, and link failures remain structured
+Engine errors and return immediately; only artifact ABI/policy outcomes enter
+the staged hot-reload report path.
 
 ## File Extensions
 
