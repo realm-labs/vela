@@ -98,14 +98,317 @@ fn linked_artifact_rejects_bytecode_that_drops_verified_mir_budget_points() {
         .iter_mut()
         .for_each(|instruction| instruction.execution_units = 0);
 
-    assert!(matches!(
-        crate::Linker::new().link_compiled_program(&program),
-        Err(crate::linker::LinkError::MirBudgetScheduleMismatch {
-            expected_units: 1,
-            actual_units: 0,
-            ..
+    let result = crate::Linker::new().link_compiled_program(program);
+    assert!(
+        matches!(
+            result,
+            Err(crate::linker::LinkError::MirBudgetEncodingMismatch {
+                encoded_units: 0,
+                mapped_units: 1,
+                ..
+            })
+        ),
+        "{result:?}"
+    );
+}
+
+fn assert_moved_budget_charge_is_rejected(
+    mut program: super::CompiledProgram,
+    class: vela_mir::MirBudgetClass,
+) {
+    let code = program
+        .bytecode
+        .function_mut("main")
+        .expect("budget fixture main");
+    let source = code
+        .instructions
+        .iter()
+        .position(|instruction| {
+            instruction
+                .mir_budget_charges
+                .iter()
+                .any(|charge| charge.class == class)
         })
+        .expect("fixture carries requested budget class");
+    let target = (source + 1..code.instructions.len())
+        .find(|index| code.instructions[*index].mir_budget_charges.is_empty())
+        .expect("fixture has an instruction after the charged boundary");
+    let units = code.instructions[source].execution_units;
+    let charges = std::mem::take(&mut code.instructions[source].mir_budget_charges);
+    code.instructions[source].execution_units = 0;
+    code.instructions[target].execution_units = code.instructions[target]
+        .execution_units
+        .checked_add(units)
+        .expect("test charge units fit");
+    code.instructions[target].mir_budget_charges = charges;
+
+    let native_ids = program
+        .bytecode
+        .functions()
+        .flat_map(|code| &code.instructions)
+        .filter_map(|instruction| match instruction.kind {
+            UnlinkedInstructionKind::CallNative { native, .. } => Some(native),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    let mut linker = crate::Linker::new();
+    for native in native_ids {
+        linker.add_native_implementation(native);
+    }
+    let result = linker.link_compiled_program(program);
+    assert!(
+        matches!(
+            result,
+            Err(crate::LinkError::MirBudgetPlacementMismatch { .. })
+        ),
+        "{result:?}"
+    );
+}
+
+#[test]
+fn linked_artifact_rejects_equal_total_budget_charge_moves_across_boundaries() {
+    assert_moved_budget_charge_is_rejected(
+        compile_program_source(
+            SourceId::new(44),
+            "fn helper() { return 1; } fn main() { let value = helper(); return value + 1; }",
+        )
+        .expect("call fixture compiles"),
+        vela_mir::MirBudgetClass::Call,
+    );
+    assert_moved_budget_charge_is_rejected(
+        compile_program_source(
+            SourceId::new(45),
+            "fn main() { let values = [1, 2]; return values.len(); }",
+        )
+        .expect("allocation fixture compiles"),
+        vela_mir::MirBudgetClass::Allocation,
+    );
+    assert_moved_budget_charge_is_rejected(
+        compile_program_source(
+            SourceId::new(46),
+            "fn main(value) { let checked: i64 = value; return checked + 1; }",
+        )
+        .expect("guard fixture compiles"),
+        vela_mir::MirBudgetClass::DynamicWork,
+    );
+    assert_moved_budget_charge_is_rejected(
+        compile_program_source(
+            SourceId::new(47),
+            "fn main(value) { let field = reflect::get(value, \"name\"); return field; }",
+        )
+        .expect("reflection fixture compiles"),
+        vela_mir::MirBudgetClass::Reflection,
+    );
+
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty(
+                "host",
+                std::iter::empty::<&str>(),
+                "BudgetPlayer",
+            ))
+            .host_runtime_id(910),
+        )
+        .expect("budget host type registers");
+    registry
+        .register_field(
+            vela_registry::FieldDef::new(
+                DefPath::field("host", std::iter::empty::<&str>(), "BudgetPlayer", "level"),
+                player,
+            )
+            .host_runtime_id(911),
+        )
+        .expect("budget host field registers");
+    assert_moved_budget_charge_is_rejected(
+        compile_program_source_with_registry(
+            SourceId::new(48),
+            "fn main(player: BudgetPlayer) { let level = player.level; return level + 1; }",
+            registry.compile_view(),
+        )
+        .expect("HostAccess fixture compiles"),
+        vela_mir::MirBudgetClass::HostAccess,
+    );
+}
+
+#[test]
+fn compiled_linking_keeps_semantically_distinct_equal_budget_generations_sealed() {
+    let first = compile_program_source(SourceId::new(40), "fn main() { return 1; }")
+        .expect("first generation compiles");
+    let second = compile_program_source(SourceId::new(40), "fn main() { return 2; }")
+        .expect("second generation compiles");
+    let first_mir = std::sync::Arc::clone(first.verified_mir());
+    let second_mir = std::sync::Arc::clone(second.verified_mir());
+    assert_eq!(
+        first.function_names().collect::<Vec<_>>(),
+        second.function_names().collect::<Vec<_>>()
+    );
+    let first_units = first
+        .function("main")
+        .expect("first main")
+        .instructions
+        .iter()
+        .map(|instruction| instruction.execution_units)
+        .sum::<u32>();
+    let second_units = second
+        .function("main")
+        .expect("second main")
+        .instructions
+        .iter()
+        .map(|instruction| instruction.execution_units)
+        .sum::<u32>();
+    assert_eq!(first_units, second_units);
+
+    let first = crate::Linker::new()
+        .link_compiled_program(first)
+        .expect("first generation links");
+    let second = crate::Linker::new()
+        .link_compiled_program(second)
+        .expect("second generation links");
+    assert!(std::sync::Arc::ptr_eq(
+        first.verified_mir().expect("first MIR owner"),
+        &first_mir
     ));
+    assert!(std::sync::Arc::ptr_eq(
+        second.verified_mir().expect("second MIR owner"),
+        &second_mir
+    ));
+    assert!(!std::sync::Arc::ptr_eq(
+        first.verified_mir().expect("first MIR owner"),
+        second.verified_mir().expect("second MIR owner")
+    ));
+}
+
+#[test]
+fn compiled_linking_rejects_missing_added_and_reordered_executable_identities() {
+    fn fixture() -> super::CompiledProgram {
+        compile_program_source(
+            SourceId::new(41),
+            "fn alpha() { return || 1; } fn beta() { return 2; }",
+        )
+        .expect("identity fixture compiles")
+    }
+
+    let mut missing = fixture();
+    missing.mir_executables = missing.mir_executables[..missing.mir_executables.len() - 1]
+        .to_vec()
+        .into_boxed_slice();
+    assert!(matches!(
+        crate::Linker::new().link_compiled_program(missing),
+        Err(crate::LinkError::MirExecutableCountMismatch { .. })
+    ));
+
+    let mut added = fixture();
+    let mut layouts = added.mir_executables.to_vec();
+    layouts.push(layouts[0]);
+    added.mir_executables = layouts.into_boxed_slice();
+    assert!(matches!(
+        crate::Linker::new().link_compiled_program(added),
+        Err(crate::LinkError::MirExecutableCountMismatch { .. })
+    ));
+
+    let mut reordered = fixture();
+    reordered.mir_executables.swap(0, 1);
+    assert!(matches!(
+        crate::Linker::new().link_compiled_program(reordered),
+        Err(crate::LinkError::MirExecutableIdentityMismatch { .. })
+    ));
+}
+
+#[test]
+fn every_bound_handle_resolves_one_verified_mir_function() {
+    let artifact = crate::Linker::new()
+        .link_compiled_program(
+            compile_program_source(
+                SourceId::new(42),
+                "fn main() { let outer = || { let inner = || 1; return inner(); }; return outer(); }",
+            )
+            .expect("nested identity fixture compiles"),
+        )
+        .expect("nested identity fixture links");
+    assert_eq!(artifact.mir_executables().len(), artifact.function_count());
+    for (handle, _) in artifact.functions() {
+        let layout = artifact
+            .mir_executable(handle)
+            .expect("every linked handle has a MIR layout");
+        let owner = artifact
+            .verified_mir()
+            .expect("bound artifact owns verified MIR")
+            .root(layout.root)
+            .expect("layout root resolves");
+        assert!(owner.program().function(layout.function).is_some());
+    }
+}
+
+#[test]
+fn debug_availability_is_initialized_and_lexically_bounded_across_nested_regions() {
+    let program = compile_program_source(
+        SourceId::new(43),
+        r#"
+fn main(value: i64 = 1) {
+    let captured = value;
+    let callback = |input: i64| {
+        let nested = input + 1;
+        return nested + captured;
+    };
+    for item in [1] {
+        let loop_local = item + 1;
+        callback(loop_local);
+    }
+    match value {
+        1 => { let arm_local = 2; arm_local; },
+        _ => {},
+    }
+    return callback(value);
+}
+"#,
+    )
+    .expect("lexical debug fixture compiles");
+
+    let mut observed = std::collections::BTreeSet::new();
+    for (_, owner) in program.verified_mir().roots() {
+        for (function_id, function) in owner.program().functions() {
+            let analyses = owner.analyses(function_id).expect("sealed analyses");
+            for (debug_id, debug) in function.debug_locals() {
+                observed.insert(debug.name.clone());
+                let scope = function
+                    .lexical_scope(debug.scope)
+                    .expect("debug local has owned lexical scope coverage");
+                for (statement_id, available) in &analyses.debug_availability.statement_before {
+                    if !available.contains(&debug_id) {
+                        continue;
+                    }
+                    let origin = function
+                        .statement(*statement_id)
+                        .expect("availability statement exists")
+                        .origin;
+                    assert_eq!(origin.body, scope.body, "{} crossed a body", debug.name);
+                    assert!(
+                        scope.span.start <= origin.span.start && origin.span.end <= scope.span.end,
+                        "{} remained visible outside {:?} at {:?}",
+                        debug.name,
+                        scope.span,
+                        origin.span
+                    );
+                }
+            }
+        }
+    }
+    for expected in [
+        "value",
+        "captured",
+        "callback",
+        "input",
+        "nested",
+        "item",
+        "loop_local",
+        "arm_local",
+    ] {
+        assert!(
+            observed.contains(expected),
+            "missing debug local {expected}"
+        );
+    }
 }
 
 #[test]

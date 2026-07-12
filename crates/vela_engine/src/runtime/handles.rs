@@ -1,4 +1,8 @@
-use vela_bytecode::{LinkedCodeObject, LinkedProgram, ProgramImage};
+use std::sync::Arc;
+
+use vela_bytecode::{
+    LinkedArtifact, LinkedCodeObject, LinkedProgram, ProgramImage, ScriptFunctionHandle,
+};
 use vela_def::MethodId;
 use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
@@ -69,25 +73,25 @@ impl VelaMethod {
 }
 
 pub trait RuntimeCallTarget {
-    fn resolve<'program>(
+    fn resolve(
         self,
         runtime_id: u64,
-        program: &'program LinkedProgram,
+        program: &LinkedProgram,
         version_id: Option<ProgramVersionId>,
-    ) -> VmResult<ResolvedRuntimeFunction<'program>>;
+    ) -> VmResult<ResolvedRuntimeFunction>;
 }
 
 impl RuntimeCallTarget for &str {
-    fn resolve<'program>(
+    fn resolve(
         self,
         _runtime_id: u64,
-        program: &'program LinkedProgram,
+        program: &LinkedProgram,
         _version_id: Option<ProgramVersionId>,
-    ) -> VmResult<ResolvedRuntimeFunction<'program>> {
-        let code = linked_function_by_name(program, self)?;
+    ) -> VmResult<ResolvedRuntimeFunction> {
+        let (function, code) = linked_function_by_name(program, self)?;
         Ok(ResolvedRuntimeFunction {
             name: self.to_owned(),
-            code,
+            function,
             params: linked_params(program, code),
             param_defaults: code.param_defaults.clone(),
         })
@@ -95,29 +99,29 @@ impl RuntimeCallTarget for &str {
 }
 
 impl RuntimeCallTarget for &String {
-    fn resolve<'program>(
+    fn resolve(
         self,
         runtime_id: u64,
-        program: &'program LinkedProgram,
+        program: &LinkedProgram,
         version_id: Option<ProgramVersionId>,
-    ) -> VmResult<ResolvedRuntimeFunction<'program>> {
+    ) -> VmResult<ResolvedRuntimeFunction> {
         RuntimeCallTarget::resolve(self.as_str(), runtime_id, program, version_id)
     }
 }
 
 impl RuntimeCallTarget for &VelaFunction {
-    fn resolve<'program>(
+    fn resolve(
         self,
         runtime_id: u64,
-        program: &'program LinkedProgram,
+        program: &LinkedProgram,
         version_id: Option<ProgramVersionId>,
-    ) -> VmResult<ResolvedRuntimeFunction<'program>> {
+    ) -> VmResult<ResolvedRuntimeFunction> {
         if self.runtime_id != runtime_id {
             return Err(call_args_type_error(
                 "VelaFunction belongs to another Runtime",
             ));
         }
-        let code = linked_function_by_name(program, &self.name)?;
+        let (function, code) = linked_function_by_name(program, &self.name)?;
         let (params, param_defaults) = if self.version_id == version_id {
             (self.params.clone(), self.param_defaults.clone())
         } else {
@@ -125,7 +129,7 @@ impl RuntimeCallTarget for &VelaFunction {
         };
         Ok(ResolvedRuntimeFunction {
             name: self.name.clone(),
-            code,
+            function,
             params,
             param_defaults,
         })
@@ -133,12 +137,12 @@ impl RuntimeCallTarget for &VelaFunction {
 }
 
 impl RuntimeCallTarget for VelaFunction {
-    fn resolve<'program>(
+    fn resolve(
         self,
         runtime_id: u64,
-        program: &'program LinkedProgram,
+        program: &LinkedProgram,
         version_id: Option<ProgramVersionId>,
-    ) -> VmResult<ResolvedRuntimeFunction<'program>> {
+    ) -> VmResult<ResolvedRuntimeFunction> {
         (&self).resolve(runtime_id, program, version_id)
     }
 }
@@ -147,7 +151,7 @@ pub trait RuntimeMethodTarget {
     fn resolve<'program>(
         self,
         context: RuntimeMethodResolveContext<'program, '_>,
-    ) -> VmResult<ResolvedRuntimeMethod<'program>>;
+    ) -> VmResult<ResolvedRuntimeMethod>;
 }
 
 #[doc(hidden)]
@@ -165,7 +169,7 @@ impl RuntimeMethodTarget for &str {
     fn resolve<'program>(
         self,
         context: RuntimeMethodResolveContext<'program, '_>,
-    ) -> VmResult<ResolvedRuntimeMethod<'program>> {
+    ) -> VmResult<ResolvedRuntimeMethod> {
         let receiver_type = value_type_name(
             &context.receiver.value,
             &context.script_globals.heap,
@@ -177,10 +181,10 @@ impl RuntimeMethodTarget for &str {
             .script_methods()
             .get(&receiver_type, self)
             .ok_or_else(|| unknown_method(self.to_owned()))?;
-        let code = linked_function_by_name(context.linked_program, &method.function)?;
+        let (function, code) = linked_function_by_name(context.linked_program, &method.function)?;
         Ok(ResolvedRuntimeMethod {
             name: self.to_owned(),
-            code,
+            function,
             params: linked_params(context.linked_program, code)
                 .into_iter()
                 .skip(1)
@@ -194,7 +198,7 @@ impl RuntimeMethodTarget for &VelaMethod {
     fn resolve<'program>(
         self,
         context: RuntimeMethodResolveContext<'program, '_>,
-    ) -> VmResult<ResolvedRuntimeMethod<'program>> {
+    ) -> VmResult<ResolvedRuntimeMethod> {
         if self.runtime_id != context.runtime_id {
             return Err(call_args_type_error(
                 "VelaMethod belongs to another Runtime",
@@ -216,7 +220,7 @@ impl RuntimeMethodTarget for &VelaMethod {
             .script_methods()
             .get_by_id(&self.receiver_type, self.method_id)
             .ok_or_else(|| unknown_method(self.name.clone()))?;
-        let code = linked_function_by_name(context.linked_program, &method.function)?;
+        let (function, code) = linked_function_by_name(context.linked_program, &method.function)?;
         let (params, param_defaults) = if self.version_id == context.version_id {
             (self.params.clone(), self.param_defaults.clone())
         } else {
@@ -230,7 +234,7 @@ impl RuntimeMethodTarget for &VelaMethod {
         };
         Ok(ResolvedRuntimeMethod {
             name: self.name.clone(),
-            code,
+            function,
             params,
             param_defaults,
         })
@@ -241,21 +245,21 @@ impl RuntimeMethodTarget for VelaMethod {
     fn resolve<'program>(
         self,
         context: RuntimeMethodResolveContext<'program, '_>,
-    ) -> VmResult<ResolvedRuntimeMethod<'program>> {
+    ) -> VmResult<ResolvedRuntimeMethod> {
         (&self).resolve(context)
     }
 }
 
-pub struct ResolvedRuntimeFunction<'program> {
+pub struct ResolvedRuntimeFunction {
     pub(super) name: String,
-    pub(super) code: &'program LinkedCodeObject,
+    pub(super) function: ScriptFunctionHandle,
     pub(super) params: Vec<String>,
     pub(super) param_defaults: Vec<bool>,
 }
 
-pub struct ResolvedRuntimeMethod<'program> {
+pub struct ResolvedRuntimeMethod {
     pub(super) name: String,
-    pub(super) code: &'program LinkedCodeObject,
+    pub(super) function: ScriptFunctionHandle,
     pub(super) params: Vec<String>,
     pub(super) param_defaults: Vec<bool>,
 }
@@ -264,12 +268,12 @@ pub(super) struct RuntimeCallExecution<'program, 'args, 'adapter, 'access, 'stat
     pub(super) runtime_id: u64,
     pub(super) engine: &'program Engine,
     pub(super) registry_image: &'program ProgramImage,
-    pub(super) program: &'program LinkedProgram,
+    pub(super) artifact: &'program Arc<LinkedArtifact>,
     pub(super) hot_reload: Option<&'program HotReloadRuntime>,
     pub(super) globals: &'program mut RuntimeGlobalStore,
     pub(super) script_globals: &'program mut RuntimeScriptGlobalStore,
     pub(super) sidecars: &'state RuntimeSidecars,
-    pub(super) target: ResolvedRuntimeFunction<'program>,
+    pub(super) target: ResolvedRuntimeFunction,
     pub(super) args: &'adapter mut CallArgs<'args>,
     pub(super) options: CallOptions,
     pub(super) adapter: &'adapter mut dyn ScriptStateAdapter,
@@ -279,12 +283,13 @@ pub(super) struct RuntimeCallExecution<'program, 'args, 'adapter, 'access, 'stat
 fn linked_function_by_name<'program>(
     program: &'program LinkedProgram,
     name: &str,
-) -> VmResult<&'program LinkedCodeObject> {
+) -> VmResult<(ScriptFunctionHandle, &'program LinkedCodeObject)> {
     let function = program
         .entry_point_by_name(name)
         .ok_or_else(|| unknown_function(name.to_owned()))?;
     program
         .function(function)
+        .map(|code| (function, code))
         .ok_or_else(|| unknown_function(name.to_owned()))
 }
 

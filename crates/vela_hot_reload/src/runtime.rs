@@ -62,13 +62,11 @@ impl HotReloadRuntime {
             abi,
             changes,
             artifact,
-            verified_mir,
         } = update;
         let next = Arc::new(ProgramVersion {
             id: ProgramVersionId(self.current.id.0.saturating_add(1)),
             abi,
-            artifact: Arc::new(artifact),
-            verified_mir,
+            artifact,
         });
         self.current = Arc::clone(&next);
         HotReloadReport::accepted(from_version, next, changes)

@@ -33,11 +33,20 @@ use error::{CompileError, CompileErrorKind, CompileResult};
 use options::CompilerOptions;
 use semantic::{parse_semantic_modules, parse_semantic_source};
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct CompiledProgram {
     bytecode: UnlinkedProgram,
     verified_mir: Arc<vela_mir::OwnedVerifiedMirBundle>,
+    mir_executables: Box<[CompiledMirExecutable]>,
 }
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct CompiledMirExecutable {
+    pub(crate) root: vela_def::FunctionId,
+    pub(crate) function: vela_mir::MirFunctionId,
+}
+
+pub(crate) type CompiledMirExecutableIdentity = CompiledMirExecutable;
 
 impl CompiledProgram {
     #[must_use]
@@ -51,8 +60,14 @@ impl CompiledProgram {
     }
 
     #[must_use]
-    pub fn into_parts(self) -> (UnlinkedProgram, Arc<vela_mir::OwnedVerifiedMirBundle>) {
-        (self.bytecode, self.verified_mir)
+    pub(crate) fn into_linker_parts(
+        self,
+    ) -> (
+        UnlinkedProgram,
+        Arc<vela_mir::OwnedVerifiedMirBundle>,
+        Box<[CompiledMirExecutable]>,
+    ) {
+        (self.bytecode, self.verified_mir, self.mir_executables)
     }
 
     /// Extracts bytecode for verifier-corruption and low-level VM tests.
@@ -337,7 +352,9 @@ fn compile_semantic_program(
 
     let mut program = UnlinkedProgram::new();
     program.set_global_layout(global_names(&global_symbols));
-    let (code, verified_mir) = compile_mir_roots(&input, semantic.graph())?;
+    let (mut code, verified_mir) = compile_mir_roots(&input, semantic.graph())?;
+    let mir_executables = compiled_mir_executables(&verified_mir);
+    attach_compiled_mir_identities(&mut code, &mir_executables);
     for code in code {
         program.insert_function(code);
     }
@@ -345,10 +362,114 @@ fn compile_semantic_program(
         program.insert_script_method(owner, name, method, symbol);
     }
     program.set_script_metadata(semantic.graph().clone());
+    let bytecode = verify_program(program)?;
     Ok(CompiledProgram {
-        bytecode: verify_program(program)?,
+        mir_executables: compiled_bytecode_layouts(&bytecode),
+        bytecode,
         verified_mir,
     })
+}
+
+fn compiled_bytecode_layouts(program: &UnlinkedProgram) -> Box<[CompiledMirExecutable]> {
+    fn append(code: &UnlinkedCodeObject, layouts: &mut Vec<CompiledMirExecutable>) {
+        for nested in &code.nested_functions {
+            append(nested, layouts);
+            layouts.push(
+                nested
+                    .compiled_mir
+                    .expect("production bytecode retains nested MIR identity"),
+            );
+        }
+    }
+
+    let mut layouts = program
+        .functions()
+        .map(|code| {
+            code.compiled_mir
+                .expect("production bytecode retains root MIR identity")
+        })
+        .collect::<Vec<_>>();
+    for code in program.functions() {
+        append(code, &mut layouts);
+    }
+    layouts.into_boxed_slice()
+}
+
+fn attach_compiled_mir_identities(
+    roots: &mut [UnlinkedCodeObject],
+    layouts: &[CompiledMirExecutable],
+) {
+    fn attach_nested(
+        code: &mut UnlinkedCodeObject,
+        layouts: &[CompiledMirExecutable],
+        next: &mut usize,
+    ) {
+        for nested in &mut code.nested_functions {
+            nested.compiled_mir = layouts.get(*next).copied();
+            *next += 1;
+            attach_nested(nested, layouts, next);
+        }
+    }
+
+    for (code, layout) in roots.iter_mut().zip(layouts) {
+        code.compiled_mir = Some(*layout);
+    }
+    let mut next = roots.len();
+    for root in roots {
+        attach_nested(root, layouts, &mut next);
+    }
+}
+
+fn compiled_mir_executables(
+    bundle: &vela_mir::OwnedVerifiedMirBundle,
+) -> Box<[CompiledMirExecutable]> {
+    fn append_children(
+        layouts: &mut Vec<CompiledMirExecutable>,
+        root: vela_def::FunctionId,
+        program: &vela_mir::MirProgram,
+        parent: vela_mir::MirFunctionId,
+    ) {
+        let children = program
+            .functions()
+            .filter_map(|(id, function)| {
+                matches!(
+                    function.owner(),
+                    vela_mir::MirFunctionOwner::Lambda { parent: owner, .. } if *owner == parent
+                )
+                .then_some(id)
+            })
+            .collect::<Vec<_>>();
+        for function in children {
+            layouts.push(CompiledMirExecutable { root, function });
+            append_children(layouts, root, program, function);
+        }
+    }
+
+    let roots = bundle
+        .roots()
+        .map(|(root, owned)| {
+            let function = owned
+                .program()
+                .functions()
+                .find_map(|(id, function)| {
+                    (!matches!(function.owner(), vela_mir::MirFunctionOwner::Lambda { .. }))
+                        .then_some(id)
+                })
+                .expect("verified MIR root retains its root executable");
+            (root, function, owned.as_ref())
+        })
+        .collect::<Vec<_>>();
+    let mut layouts = roots
+        .iter()
+        .map(|(root, function, _)| CompiledMirExecutable {
+            root: *root,
+            function: *function,
+        })
+        .collect::<Vec<_>>();
+    for (root, function, owned) in roots {
+        append_children(&mut layouts, root, owned.program(), function);
+    }
+    layouts.into_boxed_slice()
 }
 
 fn compile_mir_roots(

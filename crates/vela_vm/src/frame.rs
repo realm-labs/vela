@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use vela_bytecode::{LinkedProgram, Register};
+use vela_bytecode::{LinkedArtifact, Register};
 
 use crate::heap::GcRef;
 use crate::{Value, VmError, VmErrorKind, VmResult};
@@ -11,10 +11,54 @@ pub(crate) struct FrameHeapRoot {
     pub reference: GcRef,
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::value::ClosureCode;
+    use vela_bytecode::{Linker, ScriptFunctionHandle, UnlinkedCodeObject, UnlinkedProgram};
+
+    #[test]
+    fn linked_frames_and_closures_clone_one_artifact_owner() {
+        let mut program = UnlinkedProgram::new();
+        program.insert_function(UnlinkedCodeObject::new("main", 1));
+        let owner = Linker::new().link_program(&program).expect("fixture links");
+        let entry = CallFrame::new_linked(1, &owner);
+        assert!(Arc::ptr_eq(
+            entry.linked_owner().expect("entry owner"),
+            &owner
+        ));
+
+        let closure = ClosureCode::Linked {
+            owner: Arc::clone(entry.linked_owner().expect("closure owner")),
+            function: ScriptFunctionHandle::new(0),
+        };
+        let ClosureCode::Linked {
+            owner: closure_owner,
+            ..
+        } = closure
+        else {
+            unreachable!();
+        };
+        let nested = CallFrame::new_linked(1, &closure_owner);
+        assert!(Arc::ptr_eq(&owner, &closure_owner));
+        assert!(Arc::ptr_eq(
+            nested.linked_owner().expect("nested owner"),
+            &owner
+        ));
+
+        let weak = Arc::downgrade(&owner);
+        drop(entry);
+        drop(nested);
+        drop(closure_owner);
+        drop(owner);
+        assert!(weak.upgrade().is_none());
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct CallFrame {
     registers: Vec<Value>,
-    linked_owner: Option<Arc<LinkedProgram>>,
+    linked_owner: Option<Arc<LinkedArtifact>>,
 }
 
 impl CallFrame {
@@ -25,14 +69,14 @@ impl CallFrame {
         }
     }
 
-    pub(crate) fn new_linked(register_count: u16, program: &LinkedProgram) -> Self {
+    pub(crate) fn new_linked(register_count: u16, owner: &Arc<LinkedArtifact>) -> Self {
         Self {
             registers: vec![Value::Unit; usize::from(register_count)],
-            linked_owner: Some(Arc::new(program.clone())),
+            linked_owner: Some(Arc::clone(owner)),
         }
     }
 
-    pub(crate) fn linked_owner(&self) -> Option<&Arc<LinkedProgram>> {
+    pub(crate) fn linked_owner(&self) -> Option<&Arc<LinkedArtifact>> {
         self.linked_owner.as_ref()
     }
 

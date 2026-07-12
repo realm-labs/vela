@@ -3,14 +3,14 @@ use crate::value::Value as RuntimeValue;
 use std::cell::{Cell, RefCell};
 
 pub(super) fn run_linked_method_cache_program(
-    program: &vela_bytecode::LinkedProgram,
+    program: &Arc<vela_bytecode::LinkedArtifact>,
     caches: &RecordingMethodCaches,
 ) -> VmResult<RuntimeValue> {
     run_linked_method_cache_runtime_value(program, caches)
 }
 
 pub(super) fn run_linked_method_cache_owned_program(
-    program: &vela_bytecode::LinkedProgram,
+    program: &Arc<vela_bytecode::LinkedArtifact>,
     caches: &RecordingMethodCaches,
 ) -> VmResult<OwnedValue> {
     let mut budget = ExecutionBudget::unbounded();
@@ -18,7 +18,7 @@ pub(super) fn run_linked_method_cache_owned_program(
 }
 
 pub(super) fn run_linked_method_cache_owned_program_with_budget(
-    program: &vela_bytecode::LinkedProgram,
+    program: &Arc<vela_bytecode::LinkedArtifact>,
     caches: &RecordingMethodCaches,
     budget: &mut ExecutionBudget,
 ) -> VmResult<OwnedValue> {
@@ -30,17 +30,18 @@ pub(super) fn run_linked_method_cache_owned_program_with_budget(
 }
 
 pub(super) fn run_linked_method_cache_program_with_standard_natives(
-    program: &vela_bytecode::LinkedProgram,
+    program: &Arc<vela_bytecode::LinkedArtifact>,
     caches: &RecordingMethodCaches,
 ) -> VmResult<RuntimeValue> {
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
-    let code = main_code(program);
+    let function = program.entry_point_by_name("main").expect("main entry");
+    let owner = Arc::clone(program);
     let mut budget = ExecutionBudget::unbounded();
     Vm::new().with_standard_natives().execute_linked_call(
         crate::linked_execution::LinkedExecutionCall {
-            code,
-            program,
+            owner,
+            function,
             captures: &[],
             args: &[],
             check_param_guards: true,
@@ -56,7 +57,7 @@ pub(super) fn run_linked_method_cache_program_with_standard_natives(
 }
 
 fn run_linked_method_cache_runtime_value(
-    program: &vela_bytecode::LinkedProgram,
+    program: &Arc<vela_bytecode::LinkedArtifact>,
     caches: &RecordingMethodCaches,
 ) -> VmResult<RuntimeValue> {
     let mut heap = ScriptHeap::new();
@@ -65,7 +66,7 @@ fn run_linked_method_cache_runtime_value(
 }
 
 fn run_linked_method_cache_with_heap(
-    program: &vela_bytecode::LinkedProgram,
+    program: &Arc<vela_bytecode::LinkedArtifact>,
     caches: &RecordingMethodCaches,
     heap_execution: &mut HeapExecution<'_>,
 ) -> VmResult<RuntimeValue> {
@@ -74,16 +75,17 @@ fn run_linked_method_cache_with_heap(
 }
 
 fn run_linked_method_cache_with_heap_and_budget(
-    program: &vela_bytecode::LinkedProgram,
+    program: &Arc<vela_bytecode::LinkedArtifact>,
     caches: &RecordingMethodCaches,
     heap_execution: &mut HeapExecution<'_>,
     budget: &mut ExecutionBudget,
 ) -> VmResult<RuntimeValue> {
-    let code = main_code(program);
+    let function = program.entry_point_by_name("main").expect("main entry");
+    let owner = Arc::clone(program);
     Vm::new().execute_linked_call(
         crate::linked_execution::LinkedExecutionCall {
-            code,
-            program,
+            owner,
+            function,
             captures: &[],
             args: &[],
             check_param_guards: true,
@@ -96,14 +98,6 @@ fn run_linked_method_cache_with_heap_and_budget(
         Some(heap_execution),
         Some(budget),
     )
-}
-
-fn main_code(program: &vela_bytecode::LinkedProgram) -> &vela_bytecode::LinkedCodeObject {
-    program
-        .functions()
-        .find(|(_, code)| program.debug_name(code.debug_name) == "main")
-        .map(|(_, code)| code)
-        .expect("linked method cache fixture should have main")
 }
 
 pub(super) struct RecordingMethodCaches {

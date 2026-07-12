@@ -31,16 +31,14 @@ required.
 
 ## Current Focus
 
-The first executable-generation implementation landed through Batches A-D, but
-post-implementation review found that several long-term invariants are not yet
-sealed by types and verifiers. The active Batch E correction target is
-[mir-executable-generation-architecture-plan.md](mir-executable-generation-architecture-plan.md).
-It must make compiled MIR/bytecode generation pairing structural, replace
-per-call deep `LinkedProgram` clones with shared artifact ownership, verify exact
-MIR budget charge placement, enforce lexical debug scope exit, remove physical
-slots from MIR shape facts, and centralize cache-site policy in one exhaustive
-mechanism. Batch E is intentionally throughput-first and may remain red inside
-the batch; its completion boundary must restore the full validation gate.
+The MIR/executable-generation architecture track is complete through Batch E.
+The cohesive compiled artifact is consumed once by the linker, ProgramVersion
+publishes one bound `Arc<LinkedArtifact>`, frames and closures share that owner,
+budget verification checks exact MIR sites/classes/units and trap placement,
+debug availability is initialized and lexically scoped, MIR shape facts are
+backend-neutral, and one exhaustive cache policy drives allocation, remapping,
+linking, and verification. M22 can consume the sealed same-generation input in
+future work; no M22 execution path was added here.
 
 Batch A (Phases 0-3) is complete. Production bytecode compilation borrows an
 owned, sealed verified MIR generation with stable root mappings, distinct
@@ -86,10 +84,18 @@ mismatch; the exact Phase 0 scalar checksum is preserved. Compile and
 top-level/lambda/shared-runtime/retained-generation memory measurements are
 recorded in `docs/performance.md`. The scalar throughput regression is an
 explicit accepted decision with a named verified-MIR instruction-selection
-follow-up. Batch E reopens overall track completion because same-generation
-binding, shared frame/closure ownership, exact charge placement, lexical debug
-availability, backend-neutral shape facts, and exhaustive cache policy still
-require structural closure before M22 input can be considered sealed.
+follow-up.
+
+Batch E (Phase 10) is complete. Same-generation binding is structural and
+cannot be assembled from independent bytecode/MIR values; call entry only
+clones the artifact `Arc`; exact charge mappings reject equal-total moves
+across calls, allocation, guards, reflection, and HostAccess; conditional loop
+exit edges remain uncharged; lexical debug regions cover defaults, captures,
+nested blocks, loops, and match arms; stable field identities replace physical
+slots in MIR; and one compile-time exhaustive cache policy covers all current
+families. The three motivating source regressions, zero-hit audits, focused
+ownership/budget/debug tests, measurements, 30 runnable examples, benchmark
+build, and full format/clippy/workspace test gate pass.
 
 The Heavy HIR hard switch and D1-D3 close-out are complete.
 `vela_hir` owns executable body and stable semantic identity, bytecode consumes
@@ -106,7 +112,7 @@ rather than repaired during MIR lowering.
 
 The production MIR routing hard switch is complete through its historical
 Phase 7; the follow-on executable-generation/JIT-foundation contract is landed
-through Batch D but remains open for the Batch E review corrections.
+and sealed through Batch E.
 Every production compile front door now builds Heavy HIR, one immutable
 `AnalysisFacts`/compile-target generation, verified non-SSA MIR, and existing
 bytecode. `vela_bytecode::compiler::mir_backend` is the only runtime body

@@ -1,4 +1,6 @@
-use vela_bytecode::LinkedProgram;
+use std::sync::Arc;
+
+use vela_bytecode::LinkedArtifact;
 
 use crate::{ExecutionBudget, OwnedValue, Vm, VmError};
 
@@ -14,13 +16,13 @@ pub struct BackendConformanceResult {
 #[must_use]
 pub fn run_linked_interpreter_case(
     vm: &Vm,
-    program: &LinkedProgram,
+    artifact: &Arc<LinkedArtifact>,
     entry: &str,
     args: &[OwnedValue],
     execution_unit_limit: u64,
 ) -> BackendConformanceResult {
     let mut budget = ExecutionBudget::new(execution_unit_limit, usize::MAX, usize::MAX);
-    let result = vm.run_linked_program_with_budget(program, entry, args, &mut budget);
+    let result = vm.run_linked_program_with_budget(artifact, entry, args, &mut budget);
     BackendConformanceResult {
         result,
         execution_units_consumed: budget.execution_units_consumed(),
@@ -46,18 +48,18 @@ fn main() { return helper(41); }
         )
         .expect("source should compile");
         let artifact = Linker::new()
-            .link_compiled_program(&compiled)
+            .link_compiled_program(compiled)
             .expect("program should link");
         let vm = Vm::new();
 
-        let complete = run_linked_interpreter_case(&vm, artifact.program(), "main", &[], 1);
+        let complete = run_linked_interpreter_case(&vm, &artifact, "main", &[], 1);
         assert_eq!(
             complete.result,
             Ok(OwnedValue::Scalar(ScalarValue::I64(42)))
         );
         assert_eq!(complete.execution_units_consumed, 1);
 
-        let exhausted = run_linked_interpreter_case(&vm, artifact.program(), "main", &[], 0);
+        let exhausted = run_linked_interpreter_case(&vm, &artifact, "main", &[], 0);
         assert!(exhausted.result.is_err());
         assert_eq!(exhausted.execution_units_consumed, 0);
     }

@@ -474,5 +474,6 @@ fn run_linked_i64_code(code: vela_bytecode::LinkedCodeObject) -> VmResult<OwnedV
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
     program.verify().expect("linked i64 program should verify");
+    let program = linked_test_owner(program);
     Vm::new().run_linked_program(&program, "main", &[])
 }

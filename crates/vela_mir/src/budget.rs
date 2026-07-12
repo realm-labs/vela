@@ -23,6 +23,13 @@ pub struct MirBudgetPoint {
     pub class: MirBudgetClass,
 }
 
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum MirBudgetSite {
+    StatementBefore(MirStatementId),
+    TerminatorBefore(MirBlockId),
+    Edge { from: MirBlockId, to: MirBlockId },
+}
+
 impl MirBudgetPoint {
     #[must_use]
     pub const fn new(origin: crate::MirSourceOrigin, class: MirBudgetClass) -> Self {
@@ -38,6 +45,7 @@ impl MirBudgetPoint {
 pub struct MirBudgetSchedule {
     statement_before: BTreeMap<MirStatementId, MirBudgetPoint>,
     terminator_before: BTreeMap<MirBlockId, MirBudgetPoint>,
+    edges: BTreeMap<(MirBlockId, MirBlockId), MirBudgetPoint>,
 }
 
 impl MirBudgetSchedule {
@@ -49,6 +57,34 @@ impl MirBudgetSchedule {
     #[must_use]
     pub fn terminator_before(&self, block: MirBlockId) -> Option<MirBudgetPoint> {
         self.terminator_before.get(&block).copied()
+    }
+
+    #[must_use]
+    pub fn edge(&self, from: MirBlockId, to: MirBlockId) -> Option<MirBudgetPoint> {
+        self.edges.get(&(from, to)).copied()
+    }
+
+    #[must_use]
+    pub fn point(&self, site: MirBudgetSite) -> Option<MirBudgetPoint> {
+        match site {
+            MirBudgetSite::StatementBefore(statement) => self.statement_before(statement),
+            MirBudgetSite::TerminatorBefore(block) => self.terminator_before(block),
+            MirBudgetSite::Edge { from, to } => self.edge(from, to),
+        }
+    }
+
+    pub fn points(&self) -> impl Iterator<Item = (MirBudgetSite, MirBudgetPoint)> + '_ {
+        self.statement_points()
+            .map(|(id, point)| (MirBudgetSite::StatementBefore(id), point))
+            .chain(
+                self.terminator_points()
+                    .map(|(id, point)| (MirBudgetSite::TerminatorBefore(id), point)),
+            )
+            .chain(
+                self.edges
+                    .iter()
+                    .map(|(&(from, to), &point)| (MirBudgetSite::Edge { from, to }, point)),
+            )
     }
 
     pub fn statement_points(&self) -> impl Iterator<Item = (MirStatementId, MirBudgetPoint)> + '_ {
@@ -73,6 +109,7 @@ pub(crate) fn analyze(function: &MirFunction, graph: &FunctionGraph) -> MirBudge
         })
         .collect();
     let mut terminator_before = BTreeMap::new();
+    let mut edges = BTreeMap::new();
     for (block_id, block) in function.blocks() {
         let Some(terminator) = block.terminator() else {
             continue;
@@ -81,21 +118,25 @@ pub(crate) fn analyze(function: &MirFunction, graph: &FunctionGraph) -> MirBudge
             MirTerminatorKind::IteratorNext { .. } | MirTerminatorKind::RangeNext { .. } => {
                 Some(MirBudgetClass::IteratorStep)
             }
-            _ if graph
-                .successors(block_id)
-                .any(|target| graph.dominates(target, block_id)) =>
-            {
-                Some(MirBudgetClass::LoopBackedge)
-            }
             _ => None,
         };
         if let Some(class) = class {
             terminator_before.insert(block_id, MirBudgetPoint::new(terminator.origin, class));
         }
+        for target in graph
+            .successors(block_id)
+            .filter(|target| graph.dominates(*target, block_id))
+        {
+            edges.insert(
+                (block_id, target),
+                MirBudgetPoint::new(terminator.origin, MirBudgetClass::LoopBackedge),
+            );
+        }
     }
     MirBudgetSchedule {
         statement_before,
         terminator_before,
+        edges,
     }
 }
 

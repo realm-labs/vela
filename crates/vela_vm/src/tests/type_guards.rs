@@ -145,6 +145,7 @@ fn linked_specialization_guard_mismatch_falls_back_without_language_error() {
     program
         .verify()
         .expect("linked specialization guard fixture should verify");
+    let program = linked_test_owner(program);
 
     assert_eq!(
         Vm::new().run_linked_program(&program, "main", &[]),
@@ -837,10 +838,10 @@ fn main() {
 "#,
     )
     .expect("program should compile");
-    let mut linked = Linker::new()
+    let linked = Linker::new()
         .link_program(&program)
-        .expect("program should link")
-        .into_program();
+        .expect("program should link");
+    let mut linked = vela_bytecode::test_support::into_linked_program(linked);
     let helper_handle = linked
         .entry_point_by_name("require_i64")
         .expect("helper entry should exist");
@@ -851,6 +852,7 @@ fn main() {
     let guard = helper.param_guards[0].guard;
     helper.type_guards[guard.index()].plan =
         vela_bytecode::TypeGuardPlan::Primitive(vela_common::PrimitiveTag::String);
+    let linked = linked_test_owner(linked);
 
     let mut budget = ExecutionBudget::unbounded();
     let value = Vm::new()
@@ -1348,6 +1350,7 @@ fn linked_guard_type_accepts_record_type_and_shape_handles() {
     program
         .verify()
         .expect("linked record guard fixture should verify");
+    let program = linked_test_owner(program);
 
     assert_eq!(
         Vm::new().run_linked_program(&program, "main", &[]),
@@ -1408,6 +1411,7 @@ fn linked_guard_type_rejects_mismatched_record_type_handle() {
     program
         .verify()
         .expect("linked record mismatch fixture should verify");
+    let program = linked_test_owner(program);
 
     let error = Vm::new()
         .run_linked_program(&program, "main", &[])
@@ -1475,6 +1479,7 @@ fn linked_guard_type_rejects_mismatched_record_shape_handle() {
     program
         .verify()
         .expect("linked record shape mismatch fixture should verify");
+    let program = linked_test_owner(program);
 
     let error = Vm::new()
         .run_linked_program(&program, "main", &[])
@@ -1564,6 +1569,7 @@ fn linked_guard_type_accepts_and_rejects_enum_variant_handles() {
     program
         .verify()
         .expect("linked enum variant guard fixture should verify");
+    let program = linked_test_owner(program);
 
     let error = Vm::new()
         .run_linked_program(&program, "main", &[])

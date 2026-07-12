@@ -3,7 +3,7 @@ use super::*;
 use crate::budget::CollectionLimits;
 
 type LinkedMapCacheFixture = (
-    vela_bytecode::LinkedProgram,
+    Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     MethodId,
@@ -321,6 +321,7 @@ fn linked_map_no_arg_cache_program(method: &str) -> LinkedMapCacheFixture {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 
@@ -380,6 +381,7 @@ fn linked_map_view_collect_cache_program(method: &str) -> LinkedMapCacheFixture 
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 
@@ -429,6 +431,7 @@ fn linked_map_merge_cache_program() -> LinkedMapCacheFixture {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 
@@ -478,6 +481,7 @@ fn linked_map_set_cache_program() -> LinkedMapCacheFixture {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 
@@ -522,11 +526,12 @@ fn linked_map_remove_cache_program() -> LinkedMapCacheFixture {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 
 fn linked_map_i64_set_remove_cache_program() -> (
-    vela_bytecode::LinkedProgram,
+    Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     MethodId,
@@ -592,6 +597,7 @@ fn linked_map_i64_set_remove_cache_program() -> (
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (
         program,
         set_site,
@@ -661,6 +667,7 @@ fn linked_map_extend_cache_program_with_return(return_receiver: bool) -> LinkedM
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 
@@ -699,6 +706,7 @@ fn linked_map_self_extend_cache_program() -> LinkedMapCacheFixture {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 

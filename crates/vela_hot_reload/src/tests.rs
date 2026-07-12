@@ -35,6 +35,5 @@ fn run_linked_version(
     entry: &str,
     args: &[OwnedValue],
 ) -> vela_vm::error::VmResult<OwnedValue> {
-    let linked = version.linked_program();
-    Vm::new().run_linked_program(linked, entry, args)
+    Vm::new().run_linked_program(version.linked_artifact(), entry, args)
 }

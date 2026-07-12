@@ -93,6 +93,7 @@ impl<'a> FunctionBackend<'a> {
     }
 
     fn shape_field(
+        &self,
         shape: Option<&vela_mir::MirShapeFact>,
         name: &str,
         variant: bool,
@@ -104,8 +105,14 @@ impl<'a> FunctionBackend<'a> {
             }
             _ => return None,
         };
-        let (slot, shape) = fields.get(name)?;
-        Some((*slot, shape.as_deref().and_then(|fact| fact.shape.clone())))
+        let (identity, shape) = fields.get(name)?;
+        let slot = match identity {
+            vela_mir::MirShapeFieldIdentity::Stable(field) => {
+                self.stable_field_slot(*field).ok()?
+            }
+            vela_mir::MirShapeFieldIdentity::Ordinal(ordinal) => usize::try_from(*ordinal).ok()?,
+        };
+        Some((slot, shape.as_deref().and_then(|fact| fact.shape.clone())))
     }
 
     fn operand_shape(&self, operand: &MirOperand) -> Option<vela_mir::MirShapeFact> {
@@ -225,7 +232,16 @@ impl<'a> FunctionBackend<'a> {
             || (!self.unspanned_spans.is_empty()
                 && matches!(kind, UnlinkedInstructionKind::LoadConst { .. }));
         let instruction = UnlinkedInstruction::new(kind)
-            .with_execution_units(std::mem::take(&mut self.pending_execution_units));
+            .with_execution_units(std::mem::take(&mut self.pending_execution_units))
+            .with_mir_metadata(
+                self.current_statement
+                    .map(vela_mir::MirBudgetSite::StatementBefore)
+                    .or_else(|| {
+                        self.current_terminator
+                            .map(vela_mir::MirBudgetSite::TerminatorBefore)
+                    }),
+                std::mem::take(&mut self.pending_budget_charges),
+            );
         self.code.push_instruction(if unspanned {
             instruction
         } else {
@@ -241,16 +257,46 @@ impl<'a> FunctionBackend<'a> {
     ) {
         let index = self.code.instructions.len();
         self.emit(kind, span);
-        self.patches.push((index, target));
+        self.patches.push((
+            index,
+            self.current_block
+                .expect("CFG patch emission occurs inside one MIR block"),
+            target,
+        ));
     }
 
     fn patch_targets(&mut self) -> Result<(), MirBackendError> {
-        for (index, block) in &self.patches {
-            let target = *self
+        let patches = std::mem::take(&mut self.patches);
+        for (index, from, block) in patches {
+            let mut target = *self
                 .blocks
-                .get(block)
-                .ok_or(MirBackendError::MissingBlock(*block))?;
-            match &mut self.code.instructions[*index].kind {
+                .get(&block)
+                .ok_or(MirBackendError::MissingBlock(block))?;
+            if let Some(point) = self.budget.edge(from, block) {
+                let site = vela_mir::MirBudgetSite::Edge { from, to: block };
+                let stub = InstructionOffset(self.code.instructions.len());
+                self.code.push_instruction(
+                    UnlinkedInstruction::new(UnlinkedInstructionKind::ChargeExecutionUnits {
+                        units: point.units,
+                    })
+                    .with_span(point.origin.span)
+                    .with_mir_metadata(
+                        Some(site),
+                        vec![crate::MirBudgetCharge {
+                            site,
+                            class: point.class,
+                            units: point.units,
+                        }],
+                    ),
+                );
+                self.code.push_instruction(
+                    UnlinkedInstruction::new(UnlinkedInstructionKind::Jump { target })
+                        .with_span(point.origin.span)
+                        .with_mir_metadata(Some(site), Vec::new()),
+                );
+                target = stub;
+            }
+            match &mut self.code.instructions[index].kind {
                 UnlinkedInstructionKind::Jump { target: slot }
                 | UnlinkedInstructionKind::JumpIfFalse { target: slot, .. }
                 | UnlinkedInstructionKind::JumpIfNotMissing { target: slot, .. }

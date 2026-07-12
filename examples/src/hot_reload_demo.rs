@@ -66,6 +66,6 @@ fn run_version_main(
 ) -> Result<OwnedValue, Box<dyn Error>> {
     engine
         .into_vm()
-        .run_linked_program(version.linked_program(), "main", &[])
+        .run_linked_program(version.linked_artifact(), "main", &[])
         .map_err(|error| format!("{error:?}").into())
 }

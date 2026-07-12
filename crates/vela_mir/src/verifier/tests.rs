@@ -225,6 +225,57 @@ fn verified_mir_seals_semantic_budget_points_for_iterator_steps() {
 }
 
 #[test]
+fn loop_backedge_budget_charge_does_not_apply_to_conditional_exit_edge() {
+    let mut function = function();
+    let entry = function.entry_block();
+    let exit = function.add_block();
+    function
+        .set_terminator(
+            entry,
+            MirTerminator::new(
+                origin(),
+                MirTerminatorKind::Branch {
+                    condition: MirOperand::Immediate(MirImmediate::Bool(true)),
+                    then_block: entry,
+                    else_block: exit,
+                },
+                MirEffect::PURE,
+                None,
+            ),
+        )
+        .expect("conditional loop terminator");
+    function
+        .set_terminator(
+            exit,
+            MirTerminator::new(
+                origin(),
+                MirTerminatorKind::Return(None),
+                MirEffect::PURE,
+                None,
+            ),
+        )
+        .expect("loop exit terminator");
+
+    let owned = crate::verify_owned_mir(program(function)).expect("conditional loop verifies");
+    let (function_id, _) = owned.program().functions().next().expect("root function");
+    let budget = &owned.analyses(function_id).expect("sealed analyses").budget;
+    assert_eq!(
+        budget.edge(entry, entry).map(|point| point.class),
+        Some(crate::MirBudgetClass::LoopBackedge)
+    );
+    assert_eq!(
+        budget.edge(entry, exit),
+        None,
+        "the untaken loop successor must not charge the exit edge"
+    );
+    assert_eq!(
+        budget.terminator_before(entry),
+        None,
+        "a successor-specific backedge charge must not move before the branch"
+    );
+}
+
+#[test]
 fn mir_verifier_rejects_undefined_function_reservations() {
     let mut program = crate::MirProgram::new(target_table());
     let reservation = program

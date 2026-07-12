@@ -6,9 +6,10 @@ use crate::linked::{
     MethodDispatchHandle, NativeHandle, ScriptFunctionHandle, TypeHandle, VariantHandle,
 };
 use crate::{
-    CacheSiteId, CacheSiteKind, CallArgument, ConstantId, DynamicCallArgument, FormatStringPart,
-    HostTargetPlanId, InstructionOffset, ProgramImage, Register, TypeGuardPlanId,
-    UnlinkedCodeObject, UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram,
+    CacheSiteId, CacheSiteInstruction, CacheSiteKind, CacheSiteStorage, CallArgument, ConstantId,
+    DynamicCallArgument, FormatStringPart, HostTargetPlanId, InstructionOffset, ProgramImage,
+    Register, TypeGuardPlanId, UnlinkedCodeObject, UnlinkedInstruction, UnlinkedInstructionKind,
+    UnlinkedProgram,
 };
 
 mod linked;
@@ -383,6 +384,7 @@ fn verify_instruction(
     cache_scope: CacheIndexScope<'_>,
 ) -> Result<(), VerificationError> {
     let instruction_index = Some(index);
+    verify_instruction_cache_site(function, instruction_index, code, instruction, cache_scope)?;
     match &instruction.kind {
         UnlinkedInstructionKind::ChargeExecutionUnits { units } => {
             verify_execution_units(function, instruction_index, *units)
@@ -455,24 +457,11 @@ fn verify_instruction(
         UnlinkedInstructionKind::Jump { target } => {
             verify_jump(function, instruction_index, code, *target)
         }
-        UnlinkedInstructionKind::CallNative {
-            dst,
-            cache_site,
-            args,
-            ..
-        } => {
+        UnlinkedInstructionKind::CallNative { dst, args, .. } => {
             if let Some(dst) = dst {
                 verify_register(function, instruction_index, code, *dst)?;
             }
-            verify_registers(function, instruction_index, code, args)?;
-            verify_optional_cache_site(
-                function,
-                instruction_index,
-                code,
-                *cache_site,
-                CacheSiteKind::NativeCall,
-                cache_scope,
-            )
+            verify_registers(function, instruction_index, code, args)
         }
         UnlinkedInstructionKind::CallFunction { dst, args, .. } => {
             verify_register(function, instruction_index, code, *dst)?;
@@ -634,25 +623,15 @@ fn verify_instruction(
             verify_register(function, instruction_index, code, *dst)?;
             verify_register(function, instruction_index, code, *value)
         }
-        UnlinkedInstructionKind::LoadGlobal {
-            dst, cache_site, ..
-        } => {
-            verify_register(function, instruction_index, code, *dst)?;
-            verify_optional_cache_site(
-                function,
-                instruction_index,
-                code,
-                *cache_site,
-                CacheSiteKind::GlobalRead,
-                cache_scope,
-            )
+        UnlinkedInstructionKind::LoadGlobal { dst, .. } => {
+            verify_register(function, instruction_index, code, *dst)
         }
         UnlinkedInstructionKind::HostRead {
             dst,
             root,
             target,
             dynamic_args,
-            cache_site,
+            ..
         } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_register(function, instruction_index, code, *root)?;
@@ -663,14 +642,6 @@ fn verify_instruction(
                 code,
                 *target,
                 dynamic_args.len(),
-            )?;
-            verify_cache_site(
-                function,
-                instruction_index,
-                code,
-                *cache_site,
-                CacheSiteKind::HostPathRead,
-                cache_scope,
             )
         }
         UnlinkedInstructionKind::HostWrite {
@@ -678,7 +649,7 @@ fn verify_instruction(
             target,
             dynamic_args,
             src,
-            cache_site,
+            ..
         } => {
             verify_register(function, instruction_index, code, *root)?;
             verify_register(function, instruction_index, code, *src)?;
@@ -689,14 +660,6 @@ fn verify_instruction(
                 code,
                 *target,
                 dynamic_args.len(),
-            )?;
-            verify_cache_site(
-                function,
-                instruction_index,
-                code,
-                *cache_site,
-                CacheSiteKind::HostPathWrite,
-                cache_scope,
             )
         }
         UnlinkedInstructionKind::HostMutate {
@@ -704,7 +667,6 @@ fn verify_instruction(
             target,
             dynamic_args,
             rhs,
-            cache_site,
             ..
         } => {
             verify_register(function, instruction_index, code, *root)?;
@@ -716,21 +678,13 @@ fn verify_instruction(
                 code,
                 *target,
                 dynamic_args.len(),
-            )?;
-            verify_cache_site(
-                function,
-                instruction_index,
-                code,
-                *cache_site,
-                CacheSiteKind::HostPathMutate,
-                cache_scope,
             )
         }
         UnlinkedInstructionKind::HostRemove {
             root,
             target,
             dynamic_args,
-            cache_site,
+            ..
         } => {
             verify_register(function, instruction_index, code, *root)?;
             verify_registers(function, instruction_index, code, dynamic_args)?;
@@ -740,14 +694,6 @@ fn verify_instruction(
                 code,
                 *target,
                 dynamic_args.len(),
-            )?;
-            verify_cache_site(
-                function,
-                instruction_index,
-                code,
-                *cache_site,
-                CacheSiteKind::HostPathRemove,
-                cache_scope,
             )
         }
         UnlinkedInstructionKind::HostCall {
@@ -756,7 +702,6 @@ fn verify_instruction(
             target,
             dynamic_args,
             args,
-            cache_site,
             ..
         } => {
             if let Some(dst) = dst {
@@ -771,19 +716,45 @@ fn verify_instruction(
                 code,
                 *target,
                 dynamic_args.len(),
-            )?;
-            verify_cache_site(
-                function,
-                instruction_index,
-                code,
-                *cache_site,
-                CacheSiteKind::HostPathCall,
-                cache_scope,
             )
         }
         UnlinkedInstructionKind::Return { src } => {
             verify_register(function, instruction_index, code, *src)
         }
+    }
+}
+
+fn verify_instruction_cache_site(
+    function: &str,
+    instruction_index: Option<usize>,
+    code: &UnlinkedCodeObject,
+    instruction: &UnlinkedInstruction,
+    cache_scope: CacheIndexScope<'_>,
+) -> Result<(), VerificationError> {
+    let Some(policy) = instruction.kind.cache_site_policy() else {
+        return Ok(());
+    };
+    match policy.storage {
+        CacheSiteStorage::Sidecar => Ok(()),
+        CacheSiteStorage::OptionalOperand => verify_optional_cache_site(
+            function,
+            instruction_index,
+            code,
+            instruction.kind.cache_site(),
+            policy.kind,
+            cache_scope,
+        ),
+        CacheSiteStorage::RequiredOperand => verify_cache_site(
+            function,
+            instruction_index,
+            code,
+            instruction
+                .kind
+                .cache_site()
+                .expect("required cache policy exposes its operand"),
+            policy.kind,
+            cache_scope,
+        ),
     }
 }
 
@@ -1153,7 +1124,10 @@ fn verify_cache_site_layout(
                 },
             ));
         };
-        let actual = instruction_cache_site_kind(&instruction.kind);
+        let actual = instruction
+            .kind
+            .cache_site_policy()
+            .map(|policy| policy.kind);
         if actual != Some(site.kind) {
             return Err(error(
                 function,
@@ -1167,23 +1141,6 @@ fn verify_cache_site_layout(
         }
     }
     Ok(())
-}
-
-fn instruction_cache_site_kind(kind: &UnlinkedInstructionKind) -> Option<CacheSiteKind> {
-    match kind {
-        UnlinkedInstructionKind::LoadGlobal { .. } => Some(CacheSiteKind::GlobalRead),
-        UnlinkedInstructionKind::CallNative { .. } => Some(CacheSiteKind::NativeCall),
-        UnlinkedInstructionKind::CallDynamicMethod { .. }
-        | UnlinkedInstructionKind::CallMethodId { .. } => Some(CacheSiteKind::MethodCall),
-        UnlinkedInstructionKind::GetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldRead),
-        UnlinkedInstructionKind::SetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldWrite),
-        UnlinkedInstructionKind::HostRead { .. } => Some(CacheSiteKind::HostPathRead),
-        UnlinkedInstructionKind::HostWrite { .. } => Some(CacheSiteKind::HostPathWrite),
-        UnlinkedInstructionKind::HostMutate { .. } => Some(CacheSiteKind::HostPathMutate),
-        UnlinkedInstructionKind::HostRemove { .. } => Some(CacheSiteKind::HostPathRemove),
-        UnlinkedInstructionKind::HostCall { .. } => Some(CacheSiteKind::HostPathCall),
-        _ => None,
-    }
 }
 
 pub(super) fn error(

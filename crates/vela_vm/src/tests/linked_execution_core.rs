@@ -48,6 +48,7 @@ fn runs_linked_program_basic_arithmetic_without_unlinked_code() {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
 
     assert_eq!(
         Vm::new().run_linked_program(&program, "main", &[]),
@@ -82,13 +83,14 @@ fn linked_execution_rejects_undersized_inline_cache_provider() {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
-    let code = program.function(function).expect("main function");
+    program.function(function).expect("main function");
+    let program = linked_test_owner(program);
 
     let error = Vm::new()
         .execute_linked_call(
             crate::linked_execution::LinkedExecutionCall {
-                code,
-                program: &program,
+                owner: Arc::clone(&program),
+                function,
                 captures: &[],
                 args: &[],
                 check_param_guards: true,
@@ -142,6 +144,7 @@ fn linked_native_dispatch_uses_id_not_debug_name_fallback() {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
 
     let error = vm
         .run_linked_program(&program, "main", &[])
@@ -185,6 +188,7 @@ fn linked_program_calls_native_by_dense_handle() {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
 
     assert_eq!(
         vm.run_linked_program(&program, "main", &[]),
@@ -226,6 +230,7 @@ fn linked_program_calls_value_method_by_dispatch_handle() {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
 
     assert_eq!(
         Vm::new().run_linked_program(&program, "main", &[]),
@@ -268,6 +273,7 @@ fn linked_value_method_dispatch_uses_id_not_debug_name_fallback() {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
 
     let error = Vm::new()
         .run_linked_program(&program, "main", &[])
@@ -328,6 +334,7 @@ fn linked_program_calls_script_method_by_dispatch_handle() {
     let method_handle = program.push_function(method_code);
     assert_eq!(method_handle, method_function);
     program.set_entry_point(main_name, main);
+    let program = linked_test_owner(program);
 
     assert_eq!(
         Vm::new().run_linked_program(&program, "main", &[]),
@@ -372,6 +379,7 @@ fn linked_program_calls_host_method_by_dispatch_handle() {
     ));
     let main = program.push_function(code);
     program.set_entry_point(main_name, main);
+    let program = linked_test_owner(program);
 
     let mut adapter = host_adapter(
         host_ref,
@@ -389,11 +397,11 @@ fn linked_program_calls_host_method_by_dispatch_handle() {
             access: &mut access,
             script_globals: None,
         };
-        let code = program.function(main).expect("main linked code exists");
+        program.function(main).expect("main linked code exists");
         Vm::new().execute_linked_call(
             crate::linked_execution::LinkedExecutionCall {
-                code,
-                program: &program,
+                owner: Arc::clone(&program),
+                function: main,
                 captures: &[],
                 args: &[Value::HostRef(host_ref)],
                 check_param_guards: true,
@@ -456,6 +464,7 @@ fn linked_program_calls_script_function_by_dense_handle() {
     let helper_handle = program.push_function(helper_code);
     assert_eq!(helper_handle, helper);
     program.set_entry_point(main_name, main);
+    let program = linked_test_owner(program);
 
     assert_eq!(
         Vm::new().run_linked_program(&program, "main", &[]),
@@ -522,6 +531,7 @@ fn linked_program_executes_closure_creation_and_call() {
     let closure_handle = program.push_function(closure_code);
     assert_eq!(closure_handle, closure);
     program.set_entry_point(main_name, main);
+    let program = linked_test_owner(program);
 
     assert_eq!(
         Vm::new().run_linked_program(&program, "main", &[]),
@@ -573,6 +583,7 @@ fn linked_program_executes_array_and_index_ops() {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
 
     assert_eq!(
         Vm::new().run_linked_program(&program, "main", &[]),
@@ -640,6 +651,7 @@ fn linked_program_executes_record_slot_reads_and_writes() {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
 
     assert_eq!(
         Vm::new().run_linked_program(&program, "main", &[]),
@@ -746,7 +758,7 @@ fn linked_record_slot_inline_cache_miss_replaces_wrong_slot() {
 }
 
 fn linked_record_cache_program() -> (
-    vela_bytecode::LinkedProgram,
+    Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     CacheSiteId,
     vela_def::TypeId,
@@ -810,25 +822,26 @@ fn linked_record_cache_program() -> (
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, write_site, read_site, reward_type_id)
 }
 
 fn run_linked_record_cache_program(
-    program: &vela_bytecode::LinkedProgram,
+    program: &Arc<vela_bytecode::LinkedArtifact>,
     caches: &RecordingRecordFieldCaches,
 ) -> VmResult<Value> {
-    let code = program
+    let function = program
         .functions()
         .find(|(_, code)| program.debug_name(code.debug_name) == "main")
-        .map(|(_, code)| code)
+        .map(|(handle, _)| handle)
         .expect("linked record cache fixture should have main");
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
     let mut budget = ExecutionBudget::unbounded();
     Vm::new().execute_linked_call(
         crate::linked_execution::LinkedExecutionCall {
-            code,
-            program,
+            owner: Arc::clone(program),
+            function,
             captures: &[],
             args: &[],
             check_param_guards: true,
@@ -914,11 +927,13 @@ fn linked_record_construction_stores_type_and_shape_identity() {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     program
+        .program()
         .verify()
         .expect("linked record identity fixture should verify");
 
-    let code = program
+    program
         .function(function)
         .expect("linked function should exist");
     let mut heap = ScriptHeap::new();
@@ -927,8 +942,8 @@ fn linked_record_construction_stores_type_and_shape_identity() {
     let result = Vm::new()
         .execute_linked_call(
             crate::linked_execution::LinkedExecutionCall {
-                code,
-                program: &program,
+                owner: Arc::clone(&program),
+                function,
                 captures: &[],
                 args: &[],
                 check_param_guards: true,
@@ -1030,6 +1045,7 @@ fn linked_program_executes_enum_slot_reads_and_tag_checks() {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
 
     assert_eq!(
         Vm::new().run_linked_program(&program, "main", &[]),
@@ -1113,6 +1129,7 @@ fn linked_enum_tag_checks_use_ids_not_debug_names() {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
 
     assert_eq!(
         Vm::new().run_linked_program(&program, "main", &[]),

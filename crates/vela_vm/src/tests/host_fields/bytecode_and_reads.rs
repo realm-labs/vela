@@ -333,8 +333,9 @@ fn run_host_read_with_caches(
         access: &mut tx,
         script_globals: None,
     };
+    let owner = linked_test_owner(linked.clone());
     vm.run_linked_program_with_host_budget_and_caches(
-        linked,
+        &owner,
         "main",
         &[OwnedValue::HostRef(host_ref)],
         &mut host,

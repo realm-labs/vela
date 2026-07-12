@@ -99,7 +99,7 @@ use small_storage::SmallStorage;
 #[cfg(test)]
 use vela_bytecode::UnlinkedProgram;
 use vela_bytecode::{
-    CacheSiteId, DebugNameId, FieldSlot, HostTargetPlanId, InstructionOffset, LinkedCodeObject,
+    CacheSiteId, DebugNameId, FieldSlot, HostTargetPlanId, InstructionOffset, LinkedArtifact,
     LinkedProgram, MethodDispatchHandle, Register, ScriptFunctionHandle, UnlinkedCodeObject,
     UnlinkedInstructionKind, UnlinkedProgramCode,
 };
@@ -599,8 +599,8 @@ pub enum StandardMethodInlineCacheTarget {
 }
 
 pub struct LinkedRuntimeCodeCall<'program, 'args, 'host, 'heap, 'roots, 'budget, 'caches> {
-    pub program: &'program LinkedProgram,
-    pub code: &'program LinkedCodeObject,
+    pub artifact: &'program Arc<LinkedArtifact>,
+    pub function: ScriptFunctionHandle,
     pub args: &'args [Value],
     pub host: &'host mut HostExecution<'host>,
     pub persistent: PersistentHeapExecution<'heap, 'roots>,
@@ -610,7 +610,7 @@ pub struct LinkedRuntimeCodeCall<'program, 'args, 'host, 'heap, 'roots, 'budget,
 }
 
 pub struct LinkedProgramHostCall<'program, 'entry, 'args, 'host, 'heap, 'roots, 'budget, 'caches> {
-    pub program: &'program LinkedProgram,
+    pub artifact: &'program Arc<LinkedArtifact>,
     pub entry: &'entry str,
     pub args: &'args [OwnedValue],
     pub host: &'host mut HostExecution<'host>,
@@ -621,7 +621,7 @@ pub struct LinkedProgramHostCall<'program, 'entry, 'args, 'host, 'heap, 'roots, 
 }
 
 pub struct LinkedProgramHostBudgetCall<'program, 'entry, 'args, 'host, 'budget, 'caches> {
-    pub program: &'program LinkedProgram,
+    pub artifact: &'program Arc<LinkedArtifact>,
     pub entry: &'entry str,
     pub args: &'args [OwnedValue],
     pub host: &'host mut HostExecution<'host>,
@@ -794,29 +794,29 @@ impl Vm {
 
     pub fn run_linked_program(
         &self,
-        program: &LinkedProgram,
+        artifact: &Arc<LinkedArtifact>,
         entry: &str,
         args: &[OwnedValue],
     ) -> VmResult<OwnedValue> {
         let mut budget = ExecutionBudget::unbounded();
-        self.run_linked_program_with_budget(program, entry, args, &mut budget)
+        self.run_linked_program_with_budget(artifact, entry, args, &mut budget)
     }
 
     pub fn run_linked_program_with_budget(
         &self,
-        program: &LinkedProgram,
+        artifact: &Arc<LinkedArtifact>,
         entry: &str,
         args: &[OwnedValue],
         budget: &mut ExecutionBudget,
     ) -> VmResult<OwnedValue> {
-        let code = linked_program_entry(program, entry)?;
+        let function = linked_program_entry(artifact.program(), entry)?;
         let mut heap = ScriptHeap::new();
         let mut heap_execution = HeapExecution::new(&mut heap);
         let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
         let result = self.execute_linked_call(
             linked_execution::LinkedExecutionCall {
-                code,
-                program,
+                owner: Arc::clone(artifact),
+                function,
                 captures: &[],
                 args: &args,
                 check_param_guards: true,
@@ -834,17 +834,17 @@ impl Vm {
 
     pub fn run_linked_program_with_heap_and_budget(
         &self,
-        program: &LinkedProgram,
+        artifact: &Arc<LinkedArtifact>,
         entry: &str,
         args: &[Value],
         heap: &mut HeapExecution<'_>,
         budget: &mut ExecutionBudget,
     ) -> VmResult<Value> {
-        let code = linked_program_entry(program, entry)?;
+        let function = linked_program_entry(artifact.program(), entry)?;
         self.execute_linked_call(
             linked_execution::LinkedExecutionCall {
-                code,
-                program,
+                owner: Arc::clone(artifact),
+                function,
                 captures: &[],
                 args,
                 check_param_guards: true,
@@ -861,21 +861,21 @@ impl Vm {
 
     pub fn run_linked_program_with_host_budget_and_caches(
         &self,
-        program: &LinkedProgram,
+        artifact: &Arc<LinkedArtifact>,
         entry: &str,
         args: &[OwnedValue],
         host: &mut HostExecution<'_>,
         budget: &mut ExecutionBudget,
         inline_caches: Option<&dyn VmInlineCaches>,
     ) -> VmResult<OwnedValue> {
-        let code = linked_program_entry(program, entry)?;
+        let function = linked_program_entry(artifact.program(), entry)?;
         let mut heap = ScriptHeap::new();
         let mut heap_execution = HeapExecution::new(&mut heap);
         let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
         let result = self.execute_linked_call(
             linked_execution::LinkedExecutionCall {
-                code,
-                program,
+                owner: Arc::clone(artifact),
+                function,
                 captures: &[],
                 args: &args,
                 check_param_guards: true,
@@ -895,14 +895,14 @@ impl Vm {
         &self,
         call: LinkedProgramHostBudgetCall<'_, '_, '_, '_, '_, '_>,
     ) -> VmResult<OwnedValue> {
-        let code = linked_program_entry(call.program, call.entry)?;
+        let function = linked_program_entry(call.artifact.program(), call.entry)?;
         let mut heap = ScriptHeap::new();
         let mut heap_execution = HeapExecution::new(&mut heap);
         let args = owned_args_to_runtime(call.args, &mut heap_execution, Some(call.budget))?;
         let result = self.execute_linked_call(
             linked_execution::LinkedExecutionCall {
-                code,
-                program: call.program,
+                owner: Arc::clone(call.artifact),
+                function,
                 captures: &[],
                 args: &args,
                 check_param_guards: true,
@@ -922,14 +922,14 @@ impl Vm {
         &self,
         call: LinkedProgramHostCall<'_, '_, '_, '_, '_, '_, '_, '_>,
     ) -> VmResult<OwnedValue> {
-        let code = linked_program_entry(call.program, call.entry)?;
+        let function = linked_program_entry(call.artifact.program(), call.entry)?;
         let mut heap_execution = HeapExecution::new(call.persistent.heap);
         let args = owned_args_to_runtime(call.args, &mut heap_execution, Some(call.budget))?;
         heap_execution.protect_values(call.persistent.roots);
         let result = self.execute_linked_call(
             linked_execution::LinkedExecutionCall {
-                code,
-                program: call.program,
+                owner: Arc::clone(call.artifact),
+                function,
                 captures: &[],
                 args: &args,
                 check_param_guards: true,
@@ -963,8 +963,8 @@ impl Vm {
         heap_execution.protect_values(call.args);
         let result = self.execute_linked_call(
             linked_execution::LinkedExecutionCall {
-                code: call.code,
-                program: call.program,
+                owner: Arc::clone(call.artifact),
+                function: call.function,
                 captures: &[],
                 args: call.args,
                 check_param_guards: true,
@@ -1091,16 +1091,13 @@ pub fn persistent_value_to_owned(value: &Value, heap: &mut ScriptHeap) -> VmResu
     value_to_owned(value, Some(&heap_execution))
 }
 
-fn linked_program_entry<'program>(
-    program: &'program LinkedProgram,
-    entry: &str,
-) -> VmResult<&'program LinkedCodeObject> {
+fn linked_program_entry(program: &LinkedProgram, entry: &str) -> VmResult<ScriptFunctionHandle> {
     let function = program.entry_point_by_name(entry).ok_or_else(|| {
         VmError::new(VmErrorKind::UnknownFunction {
             name: entry.to_owned(),
         })
     })?;
-    program.function(function).ok_or_else(|| {
+    program.function(function).map(|_| function).ok_or_else(|| {
         VmError::new(VmErrorKind::UnknownFunction {
             name: entry.to_owned(),
         })

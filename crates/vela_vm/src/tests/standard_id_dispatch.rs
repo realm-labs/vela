@@ -68,14 +68,14 @@ pub(super) fn run_linked_standard_id_code_with_caches(
     let linked = linker
         .link_program(&program)
         .expect("standard native cache test program should link");
-    let code = linked_program_entry(&linked, &entry).expect("entry should exist");
+    let function = linked_program_entry(linked.program(), &entry).expect("entry should exist");
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
     let mut budget = ExecutionBudget::unbounded();
     let result = vm.execute_linked_call(
         crate::linked_execution::LinkedExecutionCall {
-            code,
-            program: &linked,
+            owner: Arc::clone(&linked),
+            function,
             captures: &[],
             args: &[],
             check_param_guards: true,

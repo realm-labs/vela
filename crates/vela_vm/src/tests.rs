@@ -9,7 +9,7 @@ use vela_bytecode::compiler::{
     compile_program_source_with_registry,
 };
 use vela_bytecode::{
-    CacheSiteKind, Constant, ConstantId, InstructionOffset, LinkedProgram, Linker,
+    CacheSiteKind, Constant, ConstantId, InstructionOffset, LinkedArtifact, LinkedProgram, Linker,
     UnlinkedInstruction,
 };
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
@@ -88,11 +88,14 @@ mod standard_option_result_id_dispatch;
 mod standard_string_id_dispatch;
 mod type_guards;
 
-fn link_test_program(program: &UnlinkedProgram) -> LinkedProgram {
+fn link_test_program(program: &UnlinkedProgram) -> Arc<LinkedArtifact> {
     Linker::new()
         .link_program(program)
         .expect("test program should link")
-        .into_program()
+}
+
+fn linked_test_owner(program: LinkedProgram) -> Arc<LinkedArtifact> {
+    vela_bytecode::test_support::linked_artifact(program)
 }
 
 fn linked_dynamic_method_site(program: &LinkedProgram, entry: &str) -> CacheSiteId {
@@ -158,20 +161,20 @@ fn run_linked_test_program_with_budget(
 
 fn run_linked_test_entry_with_caches(
     vm: &Vm,
-    linked: &LinkedProgram,
+    linked: &Arc<LinkedArtifact>,
     entry: &str,
     args: &[OwnedValue],
     budget: &mut ExecutionBudget,
     inline_caches: &dyn VmInlineCaches,
 ) -> VmResult<OwnedValue> {
-    let code = linked_program_entry(linked, entry)?;
+    let function = linked_program_entry(linked.program(), entry)?;
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
     let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
     let result = vm.execute_linked_call(
         crate::linked_execution::LinkedExecutionCall {
-            code,
-            program: linked,
+            owner: Arc::clone(linked),
+            function,
             captures: &[],
             args: &args,
             check_param_guards: true,
@@ -189,21 +192,21 @@ fn run_linked_test_entry_with_caches(
 
 fn run_linked_test_entry_with_host_and_caches(
     vm: &Vm,
-    linked: &LinkedProgram,
+    linked: &Arc<LinkedArtifact>,
     entry: &str,
     args: &[OwnedValue],
     host: &mut HostExecution<'_>,
     budget: &mut ExecutionBudget,
     inline_caches: &dyn VmInlineCaches,
 ) -> VmResult<OwnedValue> {
-    let code = linked_program_entry(linked, entry)?;
+    let function = linked_program_entry(linked.program(), entry)?;
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
     let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
     let result = vm.execute_linked_call(
         crate::linked_execution::LinkedExecutionCall {
-            code,
-            program: linked,
+            owner: Arc::clone(linked),
+            function,
             captures: &[],
             args: &args,
             check_param_guards: true,
@@ -250,9 +253,9 @@ fn run_linked_test_program_runtime_with_heap_and_budget(
     let linked = linker
         .link_program(program)
         .expect("test program should link");
-    let code = linked
+    let function = linked
         .functions()
-        .find_map(|(_, code)| (linked.debug_name(code.debug_name) == entry).then_some(code))
+        .find_map(|(handle, code)| (linked.debug_name(code.debug_name) == entry).then_some(handle))
         .ok_or_else(|| {
             VmError::new(VmErrorKind::UnknownFunction {
                 name: entry.to_owned(),
@@ -260,8 +263,8 @@ fn run_linked_test_program_runtime_with_heap_and_budget(
         })?;
     vm.execute_linked_call(
         crate::linked_execution::LinkedExecutionCall {
-            code,
-            program: &linked,
+            owner: Arc::clone(&linked),
+            function,
             captures: &[],
             args,
             check_param_guards: true,
@@ -291,9 +294,9 @@ fn run_linked_test_program_runtime_with_host_heap_and_budget(
     let linked = linker
         .link_program(program)
         .expect("test program should link");
-    let code = linked
+    let function = linked
         .functions()
-        .find_map(|(_, code)| (linked.debug_name(code.debug_name) == entry).then_some(code))
+        .find_map(|(handle, code)| (linked.debug_name(code.debug_name) == entry).then_some(handle))
         .ok_or_else(|| {
             VmError::new(VmErrorKind::UnknownFunction {
                 name: entry.to_owned(),
@@ -301,8 +304,8 @@ fn run_linked_test_program_runtime_with_host_heap_and_budget(
         })?;
     vm.execute_linked_call(
         crate::linked_execution::LinkedExecutionCall {
-            code,
-            program: &linked,
+            owner: Arc::clone(&linked),
+            function,
             captures: &[],
             args,
             check_param_guards: true,

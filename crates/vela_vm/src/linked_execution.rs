@@ -1,12 +1,14 @@
+use std::sync::Arc;
 use vela_bytecode::linked::InstructionKind;
-use vela_bytecode::{InstructionOffset, LinkedCodeObject, LinkedProgram, Register};
+
+use vela_bytecode::{InstructionOffset, LinkedArtifact, Register, ScriptFunctionHandle};
 use vela_common::Span;
 
 use super::*;
 
 pub(crate) struct LinkedExecutionCall<'a> {
-    pub(crate) code: &'a LinkedCodeObject,
-    pub(crate) program: &'a LinkedProgram,
+    pub(crate) owner: Arc<LinkedArtifact>,
+    pub(crate) function: ScriptFunctionHandle,
     pub(crate) captures: &'a [Value],
     pub(crate) args: &'a [Value],
     pub(crate) check_param_guards: bool,
@@ -18,11 +20,13 @@ pub(crate) struct LinkedExecutionCall<'a> {
 
 impl LinkedExecutionCall<'_> {
     fn stack_frame(&self) -> VmStackFrame {
-        VmStackFrame::new(
-            self.program.debug_name(self.code.debug_name),
-            self.call_site,
-        )
-        .with_bytecode_offset(self.call_site_offset)
+        let program = self.owner.program();
+        let Some(code) = program.function(self.function) else {
+            return VmStackFrame::new("<missing linked function>", self.call_site)
+                .with_bytecode_offset(self.call_site_offset);
+        };
+        VmStackFrame::new(program.debug_name(code.debug_name), self.call_site)
+            .with_bytecode_offset(self.call_site_offset)
     }
 }
 
@@ -34,6 +38,12 @@ impl Vm {
         heap: Option<&mut HeapExecution<'_>>,
         mut budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<Value> {
+        let program = call.owner.program();
+        let code = program.function(call.function).ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownFunction {
+                name: format!("<linked function#{}>", call.function.index()),
+            })
+        })?;
         let limits_call_depth = budget
             .as_deref()
             .is_some_and(ExecutionBudget::limits_call_depth);
@@ -47,8 +57,7 @@ impl Vm {
         }
         let frame = call.stack_frame();
         let fallback_span = call.call_site.or_else(|| {
-            call.code
-                .instructions
+            code.instructions
                 .first()
                 .and_then(|instruction| instruction.span)
         });
@@ -90,9 +99,14 @@ impl Vm {
         mut heap: Option<&mut HeapExecution<'_>>,
         mut budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<Value> {
-        let code = call.code;
+        let program = call.owner.program();
+        let code = program.function(call.function).ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownFunction {
+                name: format!("<linked function#{}>", call.function.index()),
+            })
+        })?;
         validate_inline_cache_layout(call.inline_caches, code.cache_sites.len())?;
-        let function_name = call.program.debug_name(code.debug_name);
+        let function_name = program.debug_name(code.debug_name);
         if call.captures.len() != usize::from(code.capture_count) {
             return Err(VmError::new(VmErrorKind::ArityMismatch {
                 name: function_name.to_owned(),
@@ -108,7 +122,7 @@ impl Vm {
             }));
         }
 
-        let mut frame = CallFrame::new_linked(code.register_count, call.program);
+        let mut frame = CallFrame::new_linked(code.register_count, &call.owner);
         for (index, capture) in call.captures.iter().enumerate() {
             frame.write(
                 Register(u16::try_from(index).map_err(|_| {
@@ -173,7 +187,7 @@ impl Vm {
             );
             runtime_type_guards::execute_linked_param_guards(
                 code,
-                call.program,
+                program,
                 &frame,
                 &mut guard_context,
             )?;
@@ -309,7 +323,7 @@ impl Vm {
                             &mut EqualityRuntime {
                                 vm: self,
                                 program: None,
-                                linked_program: Some(call.program),
+                                linked_program: Some(program),
                                 host: host.as_deref_mut(),
                                 heap: heap.as_deref_mut(),
                                 budget: budget.as_deref_mut(),
@@ -334,7 +348,7 @@ impl Vm {
                             &mut EqualityRuntime {
                                 vm: self,
                                 program: None,
-                                linked_program: Some(call.program),
+                                linked_program: Some(program),
                                 host: host.as_deref_mut(),
                                 heap: heap.as_deref_mut(),
                                 budget: budget.as_deref_mut(),
@@ -372,7 +386,7 @@ impl Vm {
                         &mut EqualityRuntime {
                             vm: self,
                             program: None,
-                            linked_program: Some(call.program),
+                            linked_program: Some(program),
                             host: host.as_deref_mut(),
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
@@ -395,7 +409,7 @@ impl Vm {
                         &mut EqualityRuntime {
                             vm: self,
                             program: None,
-                            linked_program: Some(call.program),
+                            linked_program: Some(program),
                             host: host.as_deref_mut(),
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
@@ -418,7 +432,7 @@ impl Vm {
                         &mut EqualityRuntime {
                             vm: self,
                             program: None,
-                            linked_program: Some(call.program),
+                            linked_program: Some(program),
                             host: host.as_deref_mut(),
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
@@ -441,7 +455,7 @@ impl Vm {
                         &mut EqualityRuntime {
                             vm: self,
                             program: None,
-                            linked_program: Some(call.program),
+                            linked_program: Some(program),
                             host: host.as_deref_mut(),
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
@@ -556,7 +570,7 @@ impl Vm {
                     );
                     runtime_type_guards::execute_linked_register_guard(
                         code,
-                        call.program,
+                        program,
                         &frame,
                         *src,
                         *guard,
@@ -598,7 +612,7 @@ impl Vm {
                         &mut budget,
                         &mut frame,
                         native_function_calls::LinkedNativeFunctionCall {
-                            program: call.program,
+                            program,
                             dst: *dst,
                             native: *native,
                             debug_name: *debug_name,
@@ -619,7 +633,7 @@ impl Vm {
                     script_function_calls::dispatch_linked_script_function_call(
                         self,
                         script_function_calls::LinkedScriptFunctionCallContext {
-                            program: call.program,
+                            program,
                             inline_caches: call.inline_caches,
                             call_site: instruction.span,
                             call_site_offset: Some(instruction_offset),
@@ -659,7 +673,7 @@ impl Vm {
                     closure_calls::dispatch_linked_closure_call(
                         self,
                         closure_calls::LinkedClosureCallContext {
-                            calling_generation: call.program.generation(),
+                            calling_generation: program.generation(),
                             inline_caches: call.inline_caches,
                             call_site: instruction.span,
                             call_site_offset: instruction_offset,
@@ -687,7 +701,7 @@ impl Vm {
                     script_method_calls::dispatch_linked_method_call(
                         self,
                         script_method_calls::LinkedScriptMethodCallContext {
-                            program: call.program,
+                            program,
                             inline_caches: call.inline_caches,
                             cache_site: *cache_site,
                             call_site: instruction.span,
@@ -717,7 +731,7 @@ impl Vm {
                     script_method_calls::dispatch_linked_dynamic_method_call(
                         self,
                         script_method_calls::LinkedScriptMethodCallContext {
-                            program: call.program,
+                            program,
                             inline_caches: call.inline_caches,
                             cache_site: *cache_site,
                             call_site: instruction.span,
@@ -750,7 +764,7 @@ impl Vm {
                         );
                         return runtime_type_guards::execute_linked_return_guard(
                             code,
-                            call.program,
+                            program,
                             value,
                             &mut guard_context,
                         );
@@ -821,7 +835,7 @@ impl Vm {
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                         *dst,
-                        call.program,
+                        program,
                         *ty,
                         fields,
                     )?;
@@ -836,7 +850,7 @@ impl Vm {
                         heap.as_deref_mut(),
                         *dst,
                         *record,
-                        call.program.debug_name(*debug_name),
+                        program.debug_name(*debug_name),
                     )?;
                 }
                 InstructionKind::GetRecordSlot {
@@ -849,7 +863,7 @@ impl Vm {
                     field_access::dispatch_linked_get_record_slot(
                         &mut frame,
                         heap.as_deref_mut(),
-                        call.program,
+                        program,
                         field_access::LinkedRecordSlotRead {
                             dst: *dst,
                             record: *record,
@@ -870,7 +884,7 @@ impl Vm {
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                         *record,
-                        call.program.debug_name(*debug_name),
+                        program.debug_name(*debug_name),
                         *src,
                     )?;
                 }
@@ -885,7 +899,7 @@ impl Vm {
                         &mut frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
-                        call.program,
+                        program,
                         field_access::LinkedRecordSlotWrite {
                             record: *record,
                             field: *field,
@@ -907,7 +921,7 @@ impl Vm {
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                         *dst,
-                        call.program,
+                        program,
                         script_object_construction::LinkedEnumConstruction {
                             enum_ty: *enum_ty,
                             variant: *variant,
@@ -925,7 +939,7 @@ impl Vm {
                         heap.as_deref_mut(),
                         *dst,
                         *value,
-                        call.program.debug_name(*debug_name),
+                        program.debug_name(*debug_name),
                     )?;
                 }
                 InstructionKind::GetEnumSlot {
@@ -937,7 +951,7 @@ impl Vm {
                     field_access::dispatch_linked_get_enum_slot(
                         &mut frame,
                         heap.as_deref_mut(),
-                        call.program,
+                        program,
                         *dst,
                         *value,
                         *field,
@@ -1004,7 +1018,7 @@ impl Vm {
                         iteration::IterRuntime {
                             vm: self,
                             program: None,
-                            linked_program: Some(call.program),
+                            linked_program: Some(program),
                             host: host.as_deref_mut(),
                             frame: &mut frame,
                             heap: heap.as_deref_mut(),
@@ -1026,7 +1040,7 @@ impl Vm {
                         iteration::IterRuntime {
                             vm: self,
                             program: None,
-                            linked_program: Some(call.program),
+                            linked_program: Some(program),
                             host: host.as_deref_mut(),
                             frame: &mut frame,
                             heap: heap.as_deref_mut(),
@@ -1054,7 +1068,7 @@ impl Vm {
                         iteration::IterRuntime {
                             vm: self,
                             program: None,
-                            linked_program: Some(call.program),
+                            linked_program: Some(program),
                             host: host.as_deref_mut(),
                             frame: &mut frame,
                             heap: heap.as_deref_mut(),
@@ -1107,7 +1121,7 @@ impl Vm {
                     field_access::dispatch_linked_enum_tag_equal(
                         &mut frame,
                         heap.as_deref(),
-                        call.program,
+                        program,
                         *dst,
                         *value,
                         *enum_ty,
@@ -1129,7 +1143,7 @@ impl Vm {
                             inline_caches: call.inline_caches,
                             source_span: instruction.span,
                         },
-                        call.program,
+                        program,
                         *debug_name,
                         Some(*slot),
                         *cache_site,
@@ -1263,7 +1277,7 @@ impl Vm {
                         },
                         *root,
                         host_access::LinkedCodeHostCallPlan {
-                            program: call.program,
+                            program,
                             target: host_access::CodeHostTargetPlan {
                                 targets: &code.host_targets,
                                 target_id: *target,
@@ -1286,7 +1300,7 @@ impl Vm {
                     );
                     return runtime_type_guards::execute_linked_return_guard(
                         code,
-                        call.program,
+                        program,
                         frame.read(*src)?,
                         &mut guard_context,
                     );

@@ -106,6 +106,7 @@ pub(in crate::tests) fn linked_array_join_cache_program() -> LinkedMethodCacheFi
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 
@@ -181,6 +182,7 @@ pub(in crate::tests) fn linked_array_values_collect_cache_program() -> LinkedMet
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 
@@ -240,6 +242,7 @@ fn linked_array_i64_call_cache_program(
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 

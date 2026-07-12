@@ -250,6 +250,57 @@ fn lexical_debug_availability_outlives_value_liveness() {
 }
 
 #[test]
+fn lexical_debug_availability_ends_at_nested_scope_exit() {
+    let program = build(
+        "fn main() { { let scoped = 1; let used = scoped + 1; let after_use = 2; } let outside = 3; return outside; }",
+        &[],
+    );
+    let owned = crate::verify_owned_mir(program).expect("nested debug fixture verifies");
+    let (function_id, function) = owned.program().functions().next().expect("root function");
+    let analyses = owned.analyses(function_id).expect("sealed analyses");
+    let (scoped_id, scoped) = function
+        .debug_locals()
+        .find(|(_, debug)| debug.name == "scoped")
+        .expect("scoped debug local");
+    let after_use = function
+        .debug_locals()
+        .find(|(_, debug)| debug.name == "after_use")
+        .expect("after-use debug local")
+        .1
+        .storage;
+    let outside = function
+        .debug_locals()
+        .find(|(_, debug)| debug.name == "outside")
+        .expect("outside debug local")
+        .1
+        .storage;
+    let after_use_statement = function
+        .statements()
+        .find(|(_, statement)| statement.destination == Some(crate::MirPlace::Local(after_use)))
+        .expect("after-use assignment")
+        .0;
+    let outside_statement = function
+        .statements()
+        .find(|(_, statement)| statement.destination == Some(crate::MirPlace::Local(outside)))
+        .expect("outside assignment")
+        .0;
+
+    assert!(
+        analyses.debug_availability.statement_before[&after_use_statement].contains(&scoped_id),
+        "the local remains visible after its final value use while its scope is active"
+    );
+    assert!(
+        !analyses.value_liveness.statement_live_before[&after_use_statement]
+            .contains(&crate::MirLiveValue::Local(scoped.storage)),
+        "the final value use precedes the lexical availability endpoint"
+    );
+    assert!(
+        !analyses.debug_availability.statement_before[&outside_statement].contains(&scoped_id),
+        "the local disappears at the first statement after lexical scope exit"
+    );
+}
+
+#[test]
 fn root_liveness_filters_non_root_scalars_at_each_safepoint() {
     let program = build(
         "fn main() { let number = 1; let text = \"root\"; let values = [text, number]; return values; }",

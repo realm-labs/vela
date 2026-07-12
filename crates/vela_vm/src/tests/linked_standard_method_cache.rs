@@ -595,12 +595,7 @@ fn linked_standard_value_method_caches_option_unwrap_or_target() {
 }
 
 fn assert_unwrap_or_cache(
-    fixture: (
-        vela_bytecode::LinkedProgram,
-        CacheSiteId,
-        vela_bytecode::MethodDispatchHandle,
-        MethodId,
-    ),
+    fixture: LinkedMethodCacheFixture,
     receiver: StandardMethodReceiver,
     expected: RuntimeValue,
 ) {

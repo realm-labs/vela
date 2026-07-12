@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use vela_bytecode::linked::{DynamicCallArgumentLinked, LinkedMethodDispatchKind};
 use vela_bytecode::{
     CacheSiteId, CallArgument, DebugNameId, InstructionOffset, LinkedProgram, MethodDispatchHandle,
@@ -1305,7 +1307,7 @@ fn dispatch_linked_script_method_call(
     frame: &mut CallFrame,
     call: ScriptLinkedMethodCall<'_>,
 ) -> VmResult<()> {
-    let function_code = context.program.function(call.function).ok_or_else(|| {
+    context.program.function(call.function).ok_or_else(|| {
         VmError::new(VmErrorKind::UnknownMethod {
             method: context.program.debug_name(call.debug_name).to_owned(),
         })
@@ -1317,10 +1319,15 @@ fn dispatch_linked_script_method_call(
             Ok::<_, VmError>(*value)
         })?;
     let protected_root_len = heap.as_deref_mut().map(|heap| heap.push_frame_roots(frame));
+    let owner = Arc::clone(frame.linked_owner().ok_or_else(|| {
+        VmError::new(VmErrorKind::UnknownMethod {
+            method: context.program.debug_name(call.debug_name).to_owned(),
+        })
+    })?);
     let result = vm.execute_linked_call(
         LinkedExecutionCall {
-            code: function_code,
-            program: context.program,
+            owner,
+            function: call.function,
             captures: &[],
             args: method_args.as_slice(),
             check_param_guards: true,

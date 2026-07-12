@@ -175,6 +175,7 @@ fn linked_program_execution_charges_execution_unit_budget() {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     let mut budget = ExecutionBudget::new(1, usize::MAX, usize::MAX);
 
     let error = Vm::new()
@@ -207,6 +208,7 @@ fn unbounded_budget_skips_execution_unit_counting() {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     let mut budget = ExecutionBudget::unbounded();
 
     assert_eq!(

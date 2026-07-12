@@ -232,6 +232,53 @@ accept mean_ns=23715729 checksum=6588661877666281699
 ABI reject mean_ns=18843916 checksum=6965985632367789055
 ```
 
+Executable-generation Batch E exit measurements (2026-07-12):
+
+```text
+rustc=1.97.0 (stable-aarch64-apple-darwin)
+target=macos/aarch64
+profile=release
+
+scalar_branch_loop per_iter_mean_ns=15771 p95_ns=166599209
+checksum=3828494456532927350
+phase9_per_iter_mean_ns=18688 delta=-15.6%
+
+scalar quick, eight calls:
+unbounded mean_ns=117312
+budgeted mean_ns=121374
+budget premium=3.5%, checksum match=true
+
+script_call_small_args quick mean_ns=768500
+direct_closure_calls quick mean_ns=1491520
+
+call-heavy ownership check, 2000 nested calls:
+2 executables=333208 ns
+201 executables=779125 ns
+ratio=2.338, result=Scalar(I64(0))
+
+clean release check vela_bytecode:
+wall_s=4.88 max_rss_bytes=282230784
+
+generation_memory harness (200 functions or lambdas):
+top-level max_rss_bytes=68288512
+lambda max_rss_bytes=53280768
+32 shared runtimes max_rss_bytes=54312960
+16 retained generations max_rss_bytes=655032320
+
+hot_reload quick repeat:
+accept mean_ns=21043708 checksum=6588661877666281699
+ABI reject mean_ns=19369291 checksum=6965985632367789055
+```
+
+The scalar checkpoint improved 15.6% from Phase 9 while preserving the exact
+checksum. Generation memory changed by roughly 0.8-2.0% across the four tracked
+shapes. The call-heavy large artifact completes 2000 nested calls in under one
+millisecond; the 2.34x small/large ratio is far below program-sized copying per
+call and accompanies pointer-identity tests proving a single shared artifact
+owner. Hot-reload repeats showed no stable regression over 5%. The clean-check
+wall time is below the Phase 0 5.14 s checkpoint and peak RSS is within 0.6% of
+Phase 9.
+
 The scalar regression is accepted only under the durable decision in
 `docs/decisions.md`: correctness-owned verified MIR replaced layout-dependent
 peepholes, and recovery belongs to verified-MIR instruction selection or M22,

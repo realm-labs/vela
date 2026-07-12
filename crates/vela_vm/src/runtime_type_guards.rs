@@ -1894,11 +1894,12 @@ mod tests {
         let function = program.push_function(
             LinkedCodeObject::new(function_name, 1).with_params(vec![parameter_name]),
         );
+        let owner = vela_bytecode::test_support::linked_artifact(program);
         let mut heap = ScriptHeap::new();
         let value = Value::HeapRef(
             heap.allocate(HeapValue::Closure(ClosureValue {
                 code: ClosureCode::Linked {
-                    owner: std::sync::Arc::new(program.clone()),
+                    owner: std::sync::Arc::clone(&owner),
                     function,
                 },
                 captures: SmallStorage::try_from_slice_map(&[], 4, |value: &Value| {
@@ -1914,7 +1915,7 @@ mod tests {
             accepts_closure: true,
             positional_arity: Some(1),
         };
-        execute_linked_guard_plan(&value, &accepted, &program, &mut context, "callback")
+        execute_linked_guard_plan(&value, &accepted, owner.program(), &mut context, "callback")
             .expect("Function accepts a one-parameter closure");
         let wrong_arity = TypeGuardPlan::Callable {
             accepts_direct_function: true,
@@ -1922,9 +1923,15 @@ mod tests {
             positional_arity: Some(2),
         };
         assert!(matches!(
-            execute_linked_guard_plan(&value, &wrong_arity, &program, &mut context, "callback")
-                .expect_err("wrong callable arity must fail")
-                .kind(),
+            execute_linked_guard_plan(
+                &value,
+                &wrong_arity,
+                owner.program(),
+                &mut context,
+                "callback"
+            )
+            .expect_err("wrong callable arity must fail")
+            .kind(),
             VmErrorKind::TypeContractViolation { .. }
         ));
     }

@@ -198,7 +198,7 @@ pub(crate) fn dispatch_linked_closure_call(
         let captures = closure.captures.clone();
         (owner, function, captures)
     };
-    let function_code = owner.function(function).ok_or_else(|| {
+    owner.function(function).ok_or_else(|| {
         VmError::new(VmErrorKind::UnknownFunction {
             name: format!("<linked closure#{}>", function.index()),
         })
@@ -222,8 +222,8 @@ pub(crate) fn dispatch_linked_closure_call(
     let protected_root_len = heap.as_deref_mut().map(|heap| heap.push_frame_roots(frame));
     let result = vm.execute_linked_call(
         LinkedExecutionCall {
-            code: function_code,
-            program: &owner,
+            owner,
+            function,
             captures: captures.as_slice(),
             args: values.as_slice(),
             check_param_guards: true,

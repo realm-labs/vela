@@ -6,8 +6,8 @@ use vela_hir::module_graph::ModuleGraph;
 
 use crate::script_methods::ScriptMethodTable;
 use crate::{
-    CacheSiteDesc, CacheSiteId, CacheSiteLayout, FunctionIndex, UnlinkedCodeObject,
-    UnlinkedInstructionKind, UnlinkedProgram, UnlinkedProgramCode,
+    CacheSiteDesc, CacheSiteId, CacheSiteInstruction, CacheSiteLayout, FunctionIndex,
+    UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgram, UnlinkedProgramCode,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -259,30 +259,11 @@ fn rewrite_instruction_cache_sites(
     remapped: &[Option<CacheSiteId>],
 ) {
     for instruction in &mut function.instructions {
-        match &mut instruction.kind {
-            UnlinkedInstructionKind::LoadGlobal {
-                cache_site: Some(site),
-                ..
-            }
-            | UnlinkedInstructionKind::CallNative {
-                cache_site: Some(site),
-                ..
-            } => remap_cache_site(site, remapped),
-            UnlinkedInstructionKind::HostRead { cache_site, .. }
-            | UnlinkedInstructionKind::HostWrite { cache_site, .. }
-            | UnlinkedInstructionKind::HostMutate { cache_site, .. }
-            | UnlinkedInstructionKind::HostRemove { cache_site, .. }
-            | UnlinkedInstructionKind::HostCall { cache_site, .. } => {
-                remap_cache_site(cache_site, remapped);
-            }
-            _ => {}
+        if let Some(site) = instruction.kind.cache_site()
+            && let Some(Some(remapped)) = remapped.get(site.index())
+        {
+            instruction.kind.set_cache_site(*remapped);
         }
-    }
-}
-
-fn remap_cache_site(site: &mut CacheSiteId, remapped: &[Option<CacheSiteId>]) {
-    if let Some(Some(id)) = remapped.get(site.index()) {
-        *site = *id;
     }
 }
 

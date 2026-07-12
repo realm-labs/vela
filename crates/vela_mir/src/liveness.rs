@@ -74,7 +74,7 @@ pub(crate) fn analyze(function: &MirFunction) -> LivenessAnalysis {
     };
     liveness.mark_computed();
     let safepoints = safepoint_sets(function, &liveness, &terminator_live_before);
-    let debug_regions = debug_regions(function, &liveness);
+    let debug_regions = lexical_debug_availability(function).locals;
     LivenessAnalysis {
         liveness,
         safepoints,
@@ -109,6 +109,42 @@ pub(crate) fn sealed_analyses(function: &MirFunction) -> crate::MirFunctionAnaly
 }
 
 fn lexical_debug_availability(function: &MirFunction) -> crate::MirDebugAvailability {
+    fn scope_contains(
+        function: &MirFunction,
+        debug: &crate::MirDebugLocal,
+        origin: crate::MirSourceOrigin,
+    ) -> bool {
+        let Some(scope) = function.lexical_scope(debug.scope) else {
+            return false;
+        };
+        scope.body == origin.body
+            && scope.span.start <= origin.span.start
+            && origin.span.end <= scope.span.end
+    }
+
+    fn project(
+        function: &MirFunction,
+        state: &mut BTreeSet<MirDebugLocalId>,
+        origin: crate::MirSourceOrigin,
+    ) {
+        state.retain(|id| {
+            function
+                .debug_locals()
+                .find_map(|(candidate, debug)| (candidate == *id).then_some(debug))
+                .is_some_and(|debug| scope_contains(function, debug, origin))
+        });
+    }
+
+    fn block_origin(function: &MirFunction, block: MirBlockId) -> Option<crate::MirSourceOrigin> {
+        let block = function.block(block)?;
+        block
+            .statements()
+            .first()
+            .and_then(|statement| function.statement(*statement))
+            .map(|statement| statement.origin)
+            .or_else(|| block.terminator().map(|terminator| terminator.origin))
+    }
+
     let blocks = function
         .blocks()
         .map(|(block, _)| block)
@@ -137,13 +173,18 @@ fn lexical_debug_availability(function: &MirFunction) -> crate::MirDebugAvailabi
                     return None;
                 }
                 for statement in data.statements() {
-                    let destination = function.statement(*statement)?.destination;
+                    let statement = function.statement(*statement)?;
+                    project(function, &mut state, statement.origin);
+                    let destination = statement.destination;
                     for (id, debug) in function.debug_locals() {
-                        if destination == Some(MirPlace::Local(debug.storage)) {
+                        if destination == Some(MirPlace::Local(debug.storage))
+                            && scope_contains(function, debug, statement.origin)
+                        {
                             state.insert(id);
                         }
                     }
                 }
+                project(function, &mut state, block_origin(function, block)?);
                 Some(state)
             });
             let mut incoming = incoming.peekable();
@@ -163,6 +204,7 @@ fn lexical_debug_availability(function: &MirFunction) -> crate::MirDebugAvailabi
         }
     }
     let mut statement_before = BTreeMap::new();
+    let mut block_entry = BTreeMap::new();
     let mut regions = function
         .debug_locals()
         .map(|(id, _)| (id, MirLiveRegion::default()))
@@ -171,6 +213,10 @@ fn lexical_debug_availability(function: &MirFunction) -> crate::MirDebugAvailabi
         let Some(mut state) = block_in.get(&block).cloned().flatten() else {
             continue;
         };
+        if let Some(origin) = block_origin(function, block) {
+            project(function, &mut state, origin);
+        }
+        block_entry.insert(block, state.clone());
         for id in &state {
             regions.entry(*id).or_default().blocks.insert(block);
         }
@@ -178,13 +224,20 @@ fn lexical_debug_availability(function: &MirFunction) -> crate::MirDebugAvailabi
             .block(block)
             .expect("debug availability block exists");
         for statement in data.statements() {
+            let origin = function
+                .statement(*statement)
+                .expect("debug availability statement exists")
+                .origin;
+            project(function, &mut state, origin);
             statement_before.insert(*statement, state.clone());
             let destination = function
                 .statement(*statement)
                 .expect("debug availability statement exists")
                 .destination;
             for (id, debug) in function.debug_locals() {
-                if destination == Some(MirPlace::Local(debug.storage)) {
+                if destination == Some(MirPlace::Local(debug.storage))
+                    && scope_contains(function, debug, origin)
+                {
                     state.insert(id);
                     regions.entry(id).or_default().blocks.insert(block);
                 }
@@ -193,6 +246,7 @@ fn lexical_debug_availability(function: &MirFunction) -> crate::MirDebugAvailabi
     }
     crate::MirDebugAvailability {
         locals: regions,
+        block_entry,
         statement_before,
     }
 }
@@ -372,50 +426,6 @@ fn safepoint_sets(
         }
     }
     sets
-}
-
-fn debug_regions(
-    function: &MirFunction,
-    liveness: &MirLiveness,
-) -> BTreeMap<MirDebugLocalId, MirLiveRegion> {
-    let entry = function.entry_block();
-    function
-        .debug_locals()
-        .map(|(id, debug)| {
-            let value = MirLiveValue::Local(debug.storage);
-            let mut blocks = function
-                .blocks()
-                .filter_map(|(block, data)| {
-                    let live = liveness
-                        .block_live_in
-                        .get(&block)
-                        .is_some_and(|values| values.contains(&value))
-                        || liveness
-                            .block_live_out
-                            .get(&block)
-                            .is_some_and(|values| values.contains(&value))
-                        || data.statements().iter().any(|statement| {
-                            function.statement(*statement).is_some_and(|statement| {
-                                statement.destination == Some(MirPlace::Local(debug.storage))
-                            })
-                        });
-                    live.then_some(block)
-                })
-                .collect::<BTreeSet<_>>();
-            if function
-                .parameters()
-                .iter()
-                .any(|parameter| parameter.storage == debug.storage)
-                || function
-                    .captures()
-                    .iter()
-                    .any(|capture| capture.storage == debug.storage)
-            {
-                blocks.insert(entry);
-            }
-            (id, MirLiveRegion { blocks })
-        })
-        .collect()
 }
 
 const fn place_value(place: MirPlace) -> MirLiveValue {

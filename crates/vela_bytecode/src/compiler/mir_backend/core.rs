@@ -71,14 +71,16 @@ struct FunctionBackend<'a> {
     locals: BTreeMap<vela_mir::MirLocalId, Register>,
     temps: BTreeMap<vela_mir::MirTempId, Register>,
     blocks: BTreeMap<MirBlockId, InstructionOffset>,
-    patches: Vec<(usize, MirBlockId)>,
+    patches: Vec<(usize, MirBlockId, MirBlockId)>,
     next_register: u16,
     nested: BTreeMap<MirFunctionId, FunctionIndex>,
     loop_blocks: BTreeSet<MirBlockId>,
     try_join_blocks: BTreeSet<MirBlockId>,
     current_block: Option<MirBlockId>,
     current_statement: Option<MirStatementId>,
+    current_terminator: Option<MirBlockId>,
     pending_execution_units: u32,
+    pending_budget_charges: Vec<crate::MirBudgetCharge>,
     unspanned_spans: Vec<vela_common::Span>,
 }
 
@@ -229,7 +231,9 @@ impl<'a> FunctionBackend<'a> {
             try_join_blocks,
             current_block: None,
             current_statement: None,
+            current_terminator: None,
             pending_execution_units: 0,
+            pending_budget_charges: Vec::new(),
             unspanned_spans,
         })
     }
@@ -249,7 +253,10 @@ impl<'a> FunctionBackend<'a> {
                     .ok_or(MirBackendError::MissingStatement)?;
                 self.current_statement = Some(*statement_id);
                 if let Some(point) = self.budget.statement_before(*statement_id) {
-                    self.emit_execution_units(point, statement.origin.span);
+                    self.emit_execution_units(
+                        vela_mir::MirBudgetSite::StatementBefore(*statement_id),
+                        point,
+                    );
                 }
                 self.statement(statement)?;
             }
@@ -257,10 +264,15 @@ impl<'a> FunctionBackend<'a> {
             let terminator = block
                 .terminator()
                 .ok_or(MirBackendError::MissingBlock(block_id))?;
+            self.current_terminator = Some(block_id);
             if let Some(point) = self.budget.terminator_before(block_id) {
-                self.emit_execution_units(point, terminator.origin.span);
+                self.emit_execution_units(
+                    vela_mir::MirBudgetSite::TerminatorBefore(block_id),
+                    point,
+                );
             }
             self.terminator(&terminator.kind, terminator.origin.span, next)?;
+            self.current_terminator = None;
         }
         self.patch_targets()?;
         self.attach_cache_sites();
@@ -541,12 +553,20 @@ impl<'a> FunctionBackend<'a> {
         Ok(())
     }
 
-    fn emit_execution_units(&mut self, point: vela_mir::MirBudgetPoint, span: vela_common::Span) {
-        let _ = span;
+    fn emit_execution_units(
+        &mut self,
+        site: vela_mir::MirBudgetSite,
+        point: vela_mir::MirBudgetPoint,
+    ) {
         self.pending_execution_units = self
             .pending_execution_units
             .checked_add(point.units)
             .expect("verified MIR execution-unit schedule fits u32");
+        self.pending_budget_charges.push(crate::MirBudgetCharge {
+            site,
+            class: point.class,
+            units: point.units,
+        });
     }
 
     fn assign(
@@ -815,14 +835,14 @@ impl<'a> FunctionBackend<'a> {
                 }
             }
             MirFieldTarget::DynamicRecord { name } => {
-                if let Some((slot, _)) = Self::shape_field(shape.as_ref(), name, false) {
+                if let Some((slot, _)) = self.shape_field(shape.as_ref(), name, false) {
                     UnlinkedInstructionKind::GetRecordSlot {
                         dst,
                         record: receiver,
                         field: name.clone(),
                         slot,
                     }
-                } else if let Some((slot, _)) = Self::shape_field(shape.as_ref(), name, true) {
+                } else if let Some((slot, _)) = self.shape_field(shape.as_ref(), name, true) {
                     UnlinkedInstructionKind::GetEnumSlot {
                         dst,
                         value: receiver,
@@ -838,7 +858,7 @@ impl<'a> FunctionBackend<'a> {
                 }
             }
             MirFieldTarget::DynamicVariant { name } => {
-                if let Some((slot, _)) = Self::shape_field(shape.as_ref(), name, true) {
+                if let Some((slot, _)) = self.shape_field(shape.as_ref(), name, true) {
                     UnlinkedInstructionKind::GetEnumSlot {
                         dst,
                         value: receiver,
@@ -883,7 +903,7 @@ impl<'a> FunctionBackend<'a> {
                 }
             }
             MirFieldTarget::DynamicRecord { name } => {
-                if let Some((slot, _)) = Self::shape_field(shape.as_ref(), name, false) {
+                if let Some((slot, _)) = self.shape_field(shape.as_ref(), name, false) {
                     UnlinkedInstructionKind::SetRecordSlot {
                         record,
                         field: name.clone(),

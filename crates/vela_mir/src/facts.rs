@@ -6,7 +6,13 @@ use crate::{
     MirTypeContract, MirValueType,
 };
 
-type MirShapeFields = BTreeMap<String, (usize, Option<Box<MirValueFact>>)>;
+type MirShapeFields = BTreeMap<String, (MirShapeFieldIdentity, Option<Box<MirValueFact>>)>;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum MirShapeFieldIdentity {
+    Stable(vela_def::FieldId),
+    Ordinal(u32),
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum MirShapeFact {
@@ -435,8 +441,14 @@ fn aggregate_fact(
             immediate: None,
             constant_provenance: None,
             shape: Some(MirShapeFact::Record(BTreeMap::from([
-                ("key".to_owned(), (0, Some(Box::new(key)))),
-                ("value".to_owned(), (1, value.map(Box::new))),
+                (
+                    "key".to_owned(),
+                    (MirShapeFieldIdentity::Ordinal(0), Some(Box::new(key))),
+                ),
+                (
+                    "value".to_owned(),
+                    (MirShapeFieldIdentity::Ordinal(1), value.map(Box::new)),
+                ),
             ]))),
             family: None,
         };
@@ -465,10 +477,15 @@ fn aggregate_fact(
         } => {
             let fields = fields
                 .iter()
-                .enumerate()
-                .filter_map(|(slot, (field, value))| {
+                .filter_map(|(field, value)| {
                     let name = program.targets().field(*field)?.name.clone();
-                    Some((name, (slot, operand_fact(state, value).map(Box::new))))
+                    Some((
+                        name,
+                        (
+                            MirShapeFieldIdentity::Stable(*field),
+                            operand_fact(state, value).map(Box::new),
+                        ),
+                    ))
                 })
                 .collect();
             (
@@ -489,10 +506,15 @@ fn aggregate_fact(
         } => {
             let fields = fields
                 .iter()
-                .enumerate()
-                .filter_map(|(slot, (field, value))| {
+                .filter_map(|(field, value)| {
                     let name = program.targets().field(*field)?.name.clone();
-                    Some((name, (slot, operand_fact(state, value).map(Box::new))))
+                    Some((
+                        name,
+                        (
+                            MirShapeFieldIdentity::Stable(*field),
+                            operand_fact(state, value).map(Box::new),
+                        ),
+                    ))
                 })
                 .collect();
             (MirValueType::Enum(*type_id), MirShapeFact::Variant(fields))
@@ -535,7 +557,7 @@ fn aggregate_fact(
 fn named_shapes(
     state: &BTreeMap<MirLiveValue, MirValueFact>,
     fields: &[(String, MirOperand)],
-) -> BTreeMap<String, (usize, Option<Box<MirValueFact>>)> {
+) -> MirShapeFields {
     let mut names = fields
         .iter()
         .map(|(name, _)| name.clone())
@@ -551,7 +573,15 @@ fn named_shapes(
                 .find(|(candidate, _)| candidate == &name)
                 .and_then(|(_, value)| operand_fact(state, value))
                 .map(Box::new);
-            (name, (slot, fact))
+            (
+                name,
+                (
+                    MirShapeFieldIdentity::Ordinal(
+                        u32::try_from(slot).expect("verified MIR shape field count fits u32"),
+                    ),
+                    fact,
+                ),
+            )
         })
         .collect()
 }

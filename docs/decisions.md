@@ -1545,6 +1545,41 @@ state, that raw bytecode instruction count must remain the permanent budget
 unit, or that generation-local closure handles may be resolved against the
 runtime's current program.
 
+### Batch E Sealed Generation Representations
+
+Whole-program compilation produces one non-cloneable `CompiledProgram` that
+owns unlinked bytecode, verified MIR, and the executable identity sequence.
+Only the linker can consume those parts, and it publishes a non-cloneable
+`LinkedArtifact` already bound to the exact MIR functions. ProgramVersion,
+restricted JIT input, RuntimeImage, linked calls, frames, and closures all carry
+the same `Arc<LinkedArtifact>`; no parallel `Arc<LinkedProgram>` owner or
+content-cloning publication path exists.
+
+Every MIR budget point retains a backend-neutral site, class, and unit count in
+linked instruction metadata. Backedges use successor-specific edge stubs, and
+binding rejects missing, duplicate, reordered, moved, extra, or incorrectly
+encoded charges before publication. Total units remain only a secondary
+consistency check.
+
+MIR functions own lexical scope origins derived during construction. Debug
+availability is the intersection of definite initialization and active lexical
+scope, independently of value liveness. Shape facts carry stable `FieldId` or
+backend-neutral ordinals; each backend maps those identities to physical slots.
+Cache-bearing opcodes select one compile-time exhaustive policy that defines
+kind and sidecar/optional/required storage for compiler allocation, image
+remapping, linking, and both verifier layers.
+
+The Batch E file-size audit introduced no new over-threshold active file.
+Pre-existing reviewed exceptions touched by the ownership migration remain
+`vela_vm/src/runtime_type_guards.rs`, `vela_vm/src/tests/type_guards.rs`,
+`vela_vm/src/script_method_calls.rs`, `vela_vm/src/linked_execution.rs`,
+`vela_bytecode/src/verification/linked.rs`, and
+`vela_bytecode/src/linked.rs`. They remain cohesive runtime contract,
+execution, verifier, or instruction-schema surfaces; Batch E changes there are
+localized ownership plumbing. Newly growing bytecode root and cache-fixture
+files were kept below 1200 lines by extracting budget metadata and fixture
+finalization.
+
 ### Backend-Neutral Execution Units
 
 The long-term execution-budget unit is a deterministic MIR semantic work unit,

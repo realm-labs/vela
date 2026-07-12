@@ -76,17 +76,18 @@ fn linked_bytecode_profiler_records_direct_closure_body_offsets() {
     let main_function = program.push_function(main);
     assert_eq!(program.push_function(closure), closure_function);
     program.set_entry_point(main_name, main_function);
+    let program = linked_test_owner(program);
 
     let profiler = RecordingBytecodeProfiler::default();
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
     let mut budget = ExecutionBudget::unbounded();
-    let code = program.function(main_function).expect("main function");
+    program.function(main_function).expect("main function");
     let result = Vm::new()
         .execute_linked_call(
             crate::linked_execution::LinkedExecutionCall {
-                code,
-                program: &program,
+                owner: Arc::clone(&program),
+                function: main_function,
                 captures: &[],
                 args: &[],
                 check_param_guards: true,
@@ -122,7 +123,7 @@ fn main() {
     .expect("standard callback method source should compile");
     let linked = link_test_program(&program);
     let main_function = linked.entry_point_by_name("main").expect("main entry");
-    let main_code = linked.function(main_function).expect("main function");
+    linked.function(main_function).expect("main function");
     let callback_function = linked
         .functions()
         .find_map(|(function, code)| (function != main_function).then_some(code.debug_name))
@@ -135,8 +136,8 @@ fn main() {
     let result = Vm::new()
         .execute_linked_call(
             crate::linked_execution::LinkedExecutionCall {
-                code: main_code,
-                program: &linked,
+                owner: Arc::clone(&linked),
+                function: main_function,
                 captures: &[],
                 args: &[],
                 check_param_guards: true,

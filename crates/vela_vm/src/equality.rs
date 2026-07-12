@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::sync::Arc;
 use vela_bytecode::linked::LinkedMethodDispatchKind;
 use vela_bytecode::{
     LinkedProgram, UnlinkedProgramCode, derived_linked_record_trait_fields,
@@ -400,7 +401,7 @@ fn call_builtin_trait_method(
         else {
             return Ok(None);
         };
-        let function_code = program.function(target.function).ok_or_else(|| {
+        program.function(target.function).ok_or_else(|| {
             VmError::new(VmErrorKind::UnknownMethod {
                 method: method_name.to_owned(),
             })
@@ -412,10 +413,15 @@ fn call_builtin_trait_method(
             .heap
             .as_deref_mut()
             .map(|heap| runtime.caller_roots.push_to_heap(heap));
+        let owner = Arc::clone(runtime.caller_roots.linked_owner().ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownMethod {
+                method: method_name.to_owned(),
+            })
+        })?);
         let result = runtime.vm.execute_linked_call(
             LinkedExecutionCall {
-                code: function_code,
-                program,
+                owner,
+                function: target.function,
                 captures: &[],
                 args: args.as_slice(),
                 check_param_guards: true,

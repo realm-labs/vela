@@ -1,8 +1,11 @@
 use std::error::Error;
 use std::hint::black_box;
+use std::time::Instant;
 
 use vela_engine::engine::Engine;
-use vela_engine::runtime::Runtime;
+use vela_engine::runtime::{CallOptions, Runtime};
+use vela_host::access::HostAccess;
+use vela_host::mock::MockStateAdapter;
 use vela_hot_reload::version::ProgramVersion;
 
 const FUNCTION_COUNT: usize = 200;
@@ -39,6 +42,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             black_box(&versions);
             report(shape.as_str(), version, 1, versions.len());
         }
+        "call-heavy" => call_heavy(&engine)?,
         _ => return Err(format!("unknown generation-memory shape `{shape}`").into()),
     }
 
@@ -59,6 +63,60 @@ fn top_level_source(generation: usize) -> String {
     }
     source.push_str("fn main() { return function_0(); }\n");
     source
+}
+
+fn call_heavy_source(function_count: usize) -> String {
+    let mut source = String::new();
+    for index in 0..function_count {
+        source.push_str(&format!("fn function_{index}() {{ return {index}; }}\n"));
+    }
+    source.push_str(
+        "fn main() { let total = 0; for index in 0..2000 { total += function_0() + index - index; } return total; }\n",
+    );
+    source
+}
+
+fn call_heavy(engine: &Engine) -> Result<(), Box<dyn Error>> {
+    let small = compile(engine, &call_heavy_source(1))?;
+    let large = compile(engine, &call_heavy_source(FUNCTION_COUNT))?;
+    let (small_elapsed, small_result) = measure_calls(engine, &small)?;
+    let (large_elapsed, large_result) = measure_calls(engine, &large)?;
+    assert_eq!(small_result, large_result);
+    println!(
+        "shape=call-heavy calls=2000 small_executables={} large_executables={} small_ns={} large_ns={} ratio={:.3} result={small_result:?}",
+        small.linked_program().function_count(),
+        large.linked_program().function_count(),
+        small_elapsed.as_nanos(),
+        large_elapsed.as_nanos(),
+        large_elapsed.as_secs_f64() / small_elapsed.as_secs_f64(),
+    );
+    black_box((small, large));
+    Ok(())
+}
+
+fn measure_calls(
+    engine: &Engine,
+    version: &ProgramVersion,
+) -> Result<(std::time::Duration, vela_vm::owned_value::OwnedValue), Box<dyn Error>> {
+    let mut runtime = Runtime::from_hot_reload_version(engine.clone(), version.clone());
+    let mut adapter = MockStateAdapter::new();
+    let mut access = HostAccess::new();
+    black_box(runtime.call_raw(
+        "main",
+        &[],
+        CallOptions::unbounded(),
+        &mut adapter,
+        &mut access,
+    )?);
+    let started = Instant::now();
+    let result = runtime.call_raw(
+        "main",
+        &[],
+        CallOptions::unbounded(),
+        &mut adapter,
+        &mut access,
+    )?;
+    Ok((started.elapsed(), result))
 }
 
 fn lambda_source(generation: usize) -> String {

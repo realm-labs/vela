@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use vela_bytecode::{
     LinkedArtifact, LinkedProgram, ProgramImage, UnlinkedCodeObject,
-    compiler::CompiledProgram,
     script_methods::{ScriptMethod, ScriptMethodTable},
 };
 use vela_def::MethodId;
@@ -28,36 +27,16 @@ pub struct ProgramVersion {
     pub id: ProgramVersionId,
     pub(crate) abi: HotReloadAbi,
     pub(crate) artifact: Arc<LinkedArtifact>,
-    pub(crate) verified_mir: Arc<vela_mir::OwnedVerifiedMirBundle>,
 }
 
 impl ProgramVersion {
-    #[must_use]
-    pub fn from_linked_program(
+    pub(crate) fn from_linked_artifact(
         id: ProgramVersionId,
-        program: CompiledProgram,
-        artifact: LinkedArtifact,
-    ) -> Self {
-        Self::from_linked_program_with_abi(id, program, HotReloadAbi::empty(), artifact)
-    }
-
-    #[must_use]
-    pub fn from_linked_program_with_abi(
-        id: ProgramVersionId,
-        program: CompiledProgram,
         abi: HotReloadAbi,
-        artifact: LinkedArtifact,
-    ) -> Self {
-        let (_, verified_mir) = program.into_parts();
-        let artifact = artifact
-            .attach_verified_mir(&verified_mir)
-            .expect("ProgramVersion linked artifact must match its verified MIR generation");
-        Self {
-            id,
-            abi,
-            artifact: Arc::new(artifact),
-            verified_mir,
-        }
+        artifact: Arc<LinkedArtifact>,
+    ) -> Option<Self> {
+        artifact.verified_mir()?;
+        Some(Self { id, abi, artifact })
     }
 
     #[must_use]
@@ -155,7 +134,9 @@ impl ProgramVersion {
 
     #[must_use]
     pub fn verified_mir(&self) -> &Arc<vela_mir::OwnedVerifiedMirBundle> {
-        &self.verified_mir
+        self.artifact
+            .verified_mir()
+            .expect("ProgramVersion is constructed only from a MIR-bound artifact")
     }
 
     #[must_use]
@@ -169,7 +150,7 @@ impl ProgramVersion {
         handle: vela_bytecode::ScriptFunctionHandle,
     ) -> Option<RestrictedJitInput<'_>> {
         let layout = self.artifact.mir_executable(handle)?;
-        let mir_owner = self.verified_mir.root(layout.root)?.as_ref();
+        let mir_owner = self.verified_mir().root(layout.root)?.as_ref();
         let linked = self.artifact.program().function(handle)?;
         Some(RestrictedJitInput {
             generation: self.artifact.generation(),
@@ -197,22 +178,19 @@ impl ProgramVersion {
 pub struct HotUpdate {
     pub(crate) abi: HotReloadAbi,
     pub(crate) changes: AcceptedHotReloadChanges,
-    pub(crate) artifact: LinkedArtifact,
-    pub(crate) verified_mir: Arc<vela_mir::OwnedVerifiedMirBundle>,
+    pub(crate) artifact: Arc<LinkedArtifact>,
 }
 
 impl HotUpdate {
     pub(crate) fn new(
         abi: HotReloadAbi,
         changes: AcceptedHotReloadChanges,
-        artifact: LinkedArtifact,
-        verified_mir: Arc<vela_mir::OwnedVerifiedMirBundle>,
+        artifact: Arc<LinkedArtifact>,
     ) -> Self {
         Self {
             abi,
             changes,
             artifact,
-            verified_mir,
         }
     }
 
@@ -242,7 +220,7 @@ impl HotUpdate {
     }
 
     #[must_use]
-    pub fn linked_artifact(&self) -> &LinkedArtifact {
+    pub fn linked_artifact(&self) -> &Arc<LinkedArtifact> {
         &self.artifact
     }
 

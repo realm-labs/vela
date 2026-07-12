@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
 use std::fmt;
+use std::sync::Arc;
 
 use vela_common::HostMethodId;
 use vela_def::{FunctionId, MethodId, TypeId, VariantId, script_function_id};
@@ -14,7 +15,7 @@ use crate::linked::{
     LinkedNativeFunction, LinkedProgram, LinkedType, LinkedVariant, TypeGuard, TypeGuardPlan,
 };
 use crate::{
-    CacheSiteId, CacheSiteKind, Constant, FieldSlot, FunctionIndex, HostTargetPlanId,
+    CacheSiteId, CacheSiteInstruction, Constant, FieldSlot, FunctionIndex, HostTargetPlanId,
     InstructionOffset, MethodDispatchHandle, NativeHandle, ScriptFunctionHandle, TypeHandle,
     UnlinkedCodeObject, UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram,
     UnlinkedTypeGuard, UnlinkedTypeGuardPlan, VariantHandle,
@@ -55,7 +56,11 @@ impl<'registry> Linker<'registry> {
     pub fn link_program(
         &self,
         program: &UnlinkedProgram,
-    ) -> Result<crate::LinkedArtifact, LinkError> {
+    ) -> Result<Arc<crate::LinkedArtifact>, LinkError> {
+        self.link_unowned(program).map(Arc::new)
+    }
+
+    fn link_unowned(&self, program: &UnlinkedProgram) -> Result<crate::LinkedArtifact, LinkError> {
         let image = crate::ProgramImage::from_program(program);
         let linked = LinkContext::new(self, &image).link_program(&image)?;
         crate::LinkedArtifact::finish(image, linked).map_err(LinkError::Verification)
@@ -63,10 +68,12 @@ impl<'registry> Linker<'registry> {
 
     pub fn link_compiled_program(
         &self,
-        program: &crate::compiler::CompiledProgram,
-    ) -> Result<crate::LinkedArtifact, LinkError> {
-        self.link_program(program.bytecode())?
-            .attach_verified_mir(program.verified_mir())
+        program: crate::compiler::CompiledProgram,
+    ) -> Result<Arc<crate::LinkedArtifact>, LinkError> {
+        let (bytecode, verified_mir, mir_executables) = program.into_linker_parts();
+        self.link_unowned(&bytecode)?
+            .bind_compiled_mir(verified_mir, &mir_executables)
+            .map(Arc::new)
     }
 }
 
@@ -85,11 +92,59 @@ pub enum LinkError {
         name: String,
         id: FunctionId,
     },
-    MissingMirExecutableMapping {
-        name: String,
+    MirExecutableCountMismatch {
+        expected: usize,
+        actual: usize,
     },
-    MirBudgetScheduleMismatch {
-        name: String,
+    MirExecutableIdentityMismatch {
+        index: FunctionIndex,
+        expected_root: FunctionId,
+        expected_function: vela_mir::MirFunctionId,
+        actual_root: Option<FunctionId>,
+        actual_function: Option<vela_mir::MirFunctionId>,
+    },
+    MissingVerifiedMirGeneration,
+    MissingMirRoot {
+        root: FunctionId,
+    },
+    MissingMirFunction {
+        root: FunctionId,
+        function: vela_mir::MirFunctionId,
+    },
+    MissingMirBudgetCharge {
+        executable: usize,
+        site: vela_mir::MirBudgetSite,
+    },
+    ExtraMirBudgetCharge {
+        executable: usize,
+        offset: InstructionOffset,
+        site: vela_mir::MirBudgetSite,
+    },
+    DuplicateMirBudgetCharge {
+        executable: usize,
+        site: vela_mir::MirBudgetSite,
+    },
+    MirBudgetChargeMismatch {
+        executable: usize,
+        site: vela_mir::MirBudgetSite,
+        expected: vela_mir::MirBudgetPoint,
+        actual_class: vela_mir::MirBudgetClass,
+        actual_units: u32,
+    },
+    MirBudgetPlacementMismatch {
+        executable: usize,
+        offset: InstructionOffset,
+        site: vela_mir::MirBudgetSite,
+        origin: Option<vela_mir::MirBudgetSite>,
+    },
+    MirBudgetEncodingMismatch {
+        executable: usize,
+        offset: InstructionOffset,
+        encoded_units: u64,
+        mapped_units: u64,
+    },
+    MirBudgetTotalMismatch {
+        executable: usize,
         expected_units: u64,
         actual_units: u64,
     },
@@ -134,19 +189,84 @@ impl fmt::Display for LinkError {
             Self::MissingScriptFunction { name, id } => {
                 write!(formatter, "missing script function {name} ({id:?})")
             }
-            Self::MissingMirExecutableMapping { name } => {
+            Self::MirExecutableCountMismatch { expected, actual } => {
                 write!(
                     formatter,
-                    "linked executable {name} has no verified MIR owner"
+                    "linked artifact has {actual} executables, expected {expected} from its compiled MIR generation"
                 )
             }
-            Self::MirBudgetScheduleMismatch {
-                name,
+            Self::MissingVerifiedMirGeneration => {
+                write!(formatter, "linked artifact has no verified MIR generation")
+            }
+            Self::MirExecutableIdentityMismatch {
+                index,
+                expected_root,
+                expected_function,
+                actual_root,
+                actual_function,
+            } => write!(
+                formatter,
+                "compiled executable {index:?} has MIR identity {actual_root:?}/{actual_function:?}, expected root {expected_root:?} function {expected_function:?}"
+            ),
+            Self::MissingMirRoot { root } => {
+                write!(formatter, "missing verified MIR root {root:?}")
+            }
+            Self::MissingMirFunction { root, function } => write!(
+                formatter,
+                "missing verified MIR function {function:?} in root {root:?}"
+            ),
+            Self::MissingMirBudgetCharge { executable, site } => write!(
+                formatter,
+                "linked executable {executable} is missing MIR budget charge {site:?}"
+            ),
+            Self::ExtraMirBudgetCharge {
+                executable,
+                offset,
+                site,
+            } => write!(
+                formatter,
+                "linked executable {executable} has extra MIR budget charge {site:?} at {offset:?}"
+            ),
+            Self::DuplicateMirBudgetCharge { executable, site } => write!(
+                formatter,
+                "linked executable {executable} duplicates MIR budget charge {site:?}"
+            ),
+            Self::MirBudgetChargeMismatch {
+                executable,
+                site,
+                expected,
+                actual_class,
+                actual_units,
+            } => write!(
+                formatter,
+                "linked executable {executable} maps MIR budget charge {site:?} as {actual_class:?}/{actual_units}, expected {:?}/{}",
+                expected.class, expected.units
+            ),
+            Self::MirBudgetPlacementMismatch {
+                executable,
+                offset,
+                site,
+                origin,
+            } => write!(
+                formatter,
+                "linked executable {executable} places MIR budget charge {site:?} at {offset:?} with origin {origin:?}"
+            ),
+            Self::MirBudgetEncodingMismatch {
+                executable,
+                offset,
+                encoded_units,
+                mapped_units,
+            } => write!(
+                formatter,
+                "linked executable {executable} encodes {encoded_units} units at {offset:?} but maps {mapped_units}"
+            ),
+            Self::MirBudgetTotalMismatch {
+                executable,
                 expected_units,
                 actual_units,
             } => write!(
                 formatter,
-                "linked executable {name} has {actual_units} execution units, expected {expected_units} from verified MIR"
+                "linked executable {executable} has {actual_units} execution units, expected {expected_units} from verified MIR"
             ),
             Self::InvalidNestedFunction { function, index } => {
                 write!(
@@ -629,7 +749,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     dst: *dst,
                     receiver: *receiver,
                     method_name,
-                    cache_site: cache_site_at(code, instruction_offset, CacheSiteKind::MethodCall),
+                    cache_site: cache_site_at(code, instruction_offset),
                     args,
                 }
             }
@@ -647,7 +767,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     receiver: *receiver,
                     dispatch,
                     debug_name,
-                    cache_site: cache_site_at(code, instruction_offset, CacheSiteKind::MethodCall),
+                    cache_site: cache_site_at(code, instruction_offset),
                     args: args.clone(),
                 }
             }
@@ -763,7 +883,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 record: *record,
                 field: FieldSlot::new(*slot),
                 debug_name: self.linked.intern_debug_name(field.clone()),
-                cache_site: cache_site_at(code, instruction_offset, CacheSiteKind::RecordFieldRead),
+                cache_site: cache_site_at(code, instruction_offset),
             },
             UnlinkedInstructionKind::SetRecordField { record, field, src } => {
                 InstructionKind::SetRecordField {
@@ -781,11 +901,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 record: *record,
                 field: FieldSlot::new(*slot),
                 debug_name: self.linked.intern_debug_name(field.clone()),
-                cache_site: cache_site_at(
-                    code,
-                    instruction_offset,
-                    CacheSiteKind::RecordFieldWrite,
-                ),
+                cache_site: cache_site_at(code, instruction_offset),
                 src: *src,
             },
             UnlinkedInstructionKind::GetEnumField { dst, value, field } => {
@@ -1027,6 +1143,8 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
             kind,
             span: instruction.span,
             execution_units: instruction.execution_units,
+            mir_origin: instruction.mir_origin,
+            mir_budget_charges: instruction.mir_budget_charges.clone(),
         })
     }
 }
@@ -1034,8 +1152,13 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
 fn cache_site_at(
     code: &UnlinkedCodeObject,
     instruction_offset: InstructionOffset,
-    kind: CacheSiteKind,
 ) -> Option<CacheSiteId> {
+    let kind = code
+        .instructions
+        .get(instruction_offset.0)?
+        .kind
+        .cache_site_policy()?
+        .kind;
     code.cache_sites
         .sites()
         .iter()

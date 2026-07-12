@@ -41,7 +41,7 @@ fn engine_compile_hot_reload_changed_file_reloads_module_root() {
     assert_eq!(
         engine
             .into_vm()
-            .run_linked_program(current.linked_program(), "game::main::main", &[]),
+            .run_linked_program(current.linked_artifact(), "game::main::main", &[]),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
 }
@@ -72,7 +72,7 @@ fn engine_compile_hot_reload_changed_file_accepts_normalized_root_paths() {
     assert_eq!(
         engine
             .into_vm()
-            .run_linked_program(current.linked_program(), "game::main::main", &[]),
+            .run_linked_program(current.linked_artifact(), "game::main::main", &[]),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(8)))
     );
 }
@@ -230,7 +230,7 @@ fn main(player: Player) {
         engine
             .into_vm()
             .run_linked_program_with_host_budget_and_caches(
-                version.linked_program(),
+                version.linked_artifact(),
                 "main",
                 &[OwnedValue::HostRef(host_ref)],
                 &mut host,

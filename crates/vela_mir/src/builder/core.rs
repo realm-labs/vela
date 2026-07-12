@@ -59,12 +59,17 @@ impl<'a> FunctionBuilder<'a> {
             .return_contract
             .clone()
             .map(|contract| MirFunctionReturn { contract, origin });
-        let function = MirFunction::new(
+        let mut function = MirFunction::new(
             body.id,
             owner,
             descriptor.canonical_symbol.clone(),
             return_contract,
             origin,
+        );
+        function.set_lexical_scopes(
+            body.scopes
+                .iter()
+                .map(|(id, scope)| (*id, MirSourceOrigin::body(body.id, scope.origin.span))),
         );
         let current_block = function.entry_block();
         Ok(Self {
@@ -101,7 +106,13 @@ impl<'a> FunctionBuilder<'a> {
                 message: "lambda compile target origin disagrees with Heavy HIR".to_owned(),
             });
         }
-        let function = MirFunction::new(body.id, owner, target.code_symbol.clone(), None, origin);
+        let mut function =
+            MirFunction::new(body.id, owner, target.code_symbol.clone(), None, origin);
+        function.set_lexical_scopes(
+            body.scopes
+                .iter()
+                .map(|(id, scope)| (*id, MirSourceOrigin::body(body.id, scope.origin.span))),
+        );
         let current_block = function.entry_block();
         Ok(Self {
             input,

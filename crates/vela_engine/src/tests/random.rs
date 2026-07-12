@@ -13,7 +13,10 @@ use crate::engine::Engine;
 use crate::permission::Capability;
 use crate::random::MATH_RANDOM_FUNCTION_ID;
 
-fn linked_vm(engine: &Engine, program: &UnlinkedProgram) -> (Vm, vela_bytecode::LinkedArtifact) {
+fn linked_vm(
+    engine: &Engine,
+    program: &UnlinkedProgram,
+) -> (Vm, std::sync::Arc<vela_bytecode::LinkedArtifact>) {
     let linked = engine
         .link_program(program)
         .expect("engine random test program should link");

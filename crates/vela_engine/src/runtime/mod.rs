@@ -507,7 +507,7 @@ where
             runtime_id: state.id,
             engine: self.image.engine(),
             registry_image: self.image.program_image(),
-            program: linked_program,
+            artifact: self.image.linked_artifact(),
             hot_reload: self.hot_reload.as_ref(),
             globals: &mut state.globals,
             script_globals: &mut state.script_globals,
@@ -571,8 +571,8 @@ where
         method_args.push(receiver.value);
         method_args.extend_from_slice(&resolved);
         let result = vm.run_linked_runtime_code_call(LinkedRuntimeCodeCall {
-            program: linked_program,
-            code: target.code,
+            artifact: self.image.linked_artifact(),
+            function: target.function,
             args: &method_args,
             host: &mut host,
             persistent: PersistentHeapExecution {
@@ -633,11 +633,10 @@ where
                 .engine()
                 .into_vm_for_program_image(self.image.program_image())
         };
-        let linked_program = self.image.linked_program();
         if options.managed_heap || !self.state.script_globals.is_empty() {
             let roots = self.state.script_globals.roots();
             vm.run_linked_program_host_call(LinkedProgramHostCall {
-                program: linked_program,
+                artifact: self.image.linked_artifact(),
                 entry,
                 args,
                 host: &mut host,
@@ -651,7 +650,7 @@ where
             })
         } else {
             vm.run_linked_program_host_budget_call(LinkedProgramHostBudgetCall {
-                program: linked_program,
+                artifact: self.image.linked_artifact(),
                 entry,
                 args,
                 host: &mut host,
@@ -714,8 +713,8 @@ where
                 .into_vm_for_program_image(self.image.program_image())
         };
         let value = vm.run_linked_runtime_code_call(LinkedRuntimeCodeCall {
-            program: linked_program,
-            code,
+            artifact: self.image.linked_artifact(),
+            function,
             args: &resolved,
             host: &mut host,
             persistent: PersistentHeapExecution {
@@ -749,8 +748,8 @@ where
         let vm = runtime_vm(call.engine, call.registry_image, call.hot_reload);
         let roots = call.script_globals.roots();
         let result = vm.run_linked_runtime_code_call(LinkedRuntimeCodeCall {
-            program: call.program,
-            code: call.target.code,
+            artifact: call.artifact,
+            function: call.target.function,
             args: &resolved,
             host: &mut host,
             persistent: PersistentHeapExecution {

@@ -108,9 +108,10 @@ fn type_error<T>(operation: &'static str) -> VmResult<T> {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
     use vela_bytecode::compiler::compile_function_source_with_registry;
     use vela_bytecode::compiler::error::{CompileErrorKind, CompileResult};
-    use vela_bytecode::{LinkError, LinkedProgram, Linker, UnlinkedCodeObject, UnlinkedProgram};
+    use vela_bytecode::{LinkError, LinkedArtifact, Linker, UnlinkedCodeObject, UnlinkedProgram};
     use vela_common::SourceId;
 
     use crate::owned_value::OwnedValue;
@@ -144,7 +145,7 @@ mod tests {
     fn link_string_test_code(
         vm: &Vm,
         code: UnlinkedCodeObject,
-    ) -> Result<LinkedProgram, LinkError> {
+    ) -> Result<Arc<LinkedArtifact>, LinkError> {
         let mut program = UnlinkedProgram::new();
         program.insert_function(code);
 
@@ -152,9 +153,7 @@ mod tests {
         for id in vm.native_implementation_ids() {
             linker.add_native_implementation(id);
         }
-        linker
-            .link_program(&program)
-            .map(|artifact| artifact.into_program())
+        linker.link_program(&program)
     }
 
     #[test]

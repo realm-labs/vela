@@ -6,7 +6,7 @@ use vela_bytecode::compiler::{
 };
 use vela_common::SourceId;
 use vela_hot_reload::abi::HotReloadAbi;
-use vela_hot_reload::compile::{initial_version_from_linked_program, update_from_linked_program};
+use vela_hot_reload::compile::{initial_version_from_linked_artifact, update_from_linked_artifact};
 use vela_hot_reload::error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
 use vela_hot_reload::version::{HotUpdate, ProgramVersion};
 
@@ -43,14 +43,10 @@ impl Engine {
         .map_err(|error| HotReloadError {
             kind: HotReloadErrorKind::Compile(error),
         })?;
-        let linked_program = self
-            .link_compiled_program(&program)
+        let artifact = self
+            .link_compiled_program(program)
             .map_err(HotReloadError::from)?;
-        Ok(initial_version_from_linked_program(
-            program,
-            self.hot_reload_abi(),
-            linked_program,
-        ))
+        initial_version_from_linked_artifact(self.hot_reload_abi(), artifact)
     }
 
     pub fn compile_hot_reload_update(
@@ -76,15 +72,14 @@ impl Engine {
         .map_err(|error| HotReloadError {
             kind: HotReloadErrorKind::Compile(error),
         })?;
-        let linked_program = self
-            .link_compiled_program(&program)
+        let artifact = self
+            .link_compiled_program(program)
             .map_err(HotReloadError::from)?;
-        update_from_linked_program(
+        update_from_linked_artifact(
             previous,
-            program,
             self.hot_reload_abi(),
             self.hot_reload_policy(),
-            linked_program,
+            artifact,
         )
     }
 
@@ -123,15 +118,12 @@ impl Engine {
                 kind: HotReloadErrorKind::Compile(error),
             })
         })?;
-        let linked_program = self
-            .link_compiled_program(&program)
+        let artifact = self
+            .link_compiled_program(program)
             .map_err(HotReloadError::from)
             .map_err(EngineHotReloadSourceError::hot_reload)?;
-        Ok(initial_version_from_linked_program(
-            program,
-            self.hot_reload_abi(),
-            linked_program,
-        ))
+        initial_version_from_linked_artifact(self.hot_reload_abi(), artifact)
+            .map_err(EngineHotReloadSourceError::hot_reload)
     }
 
     pub fn compile_hot_reload_update_dir(
@@ -151,16 +143,15 @@ impl Engine {
                 kind: HotReloadErrorKind::Compile(error),
             })
         })?;
-        let linked_program = self
-            .link_compiled_program(&program)
+        let artifact = self
+            .link_compiled_program(program)
             .map_err(HotReloadError::from)
             .map_err(EngineHotReloadSourceError::hot_reload)?;
-        update_from_linked_program(
+        update_from_linked_artifact(
             previous,
-            program,
             self.hot_reload_abi(),
             self.hot_reload_policy(),
-            linked_program,
+            artifact,
         )
         .map_err(EngineHotReloadSourceError::hot_reload)
     }
@@ -183,16 +174,15 @@ impl Engine {
                 kind: HotReloadErrorKind::Compile(error),
             })
         })?;
-        let linked_program = self
-            .link_compiled_program(&program)
+        let artifact = self
+            .link_compiled_program(program)
             .map_err(HotReloadError::from)
             .map_err(EngineHotReloadSourceError::hot_reload)?;
-        update_from_linked_program(
+        update_from_linked_artifact(
             previous,
-            program,
             self.hot_reload_abi(),
             self.hot_reload_policy(),
-            linked_program,
+            artifact,
         )
         .map_err(EngineHotReloadSourceError::hot_reload)
     }

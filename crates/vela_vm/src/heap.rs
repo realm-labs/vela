@@ -806,6 +806,10 @@ impl ScriptHeap {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn empty_linked_owner() -> std::sync::Arc<vela_bytecode::LinkedArtifact> {
+        vela_bytecode::test_support::linked_artifact(vela_bytecode::LinkedProgram::new())
+    }
     use crate::small_storage::SmallStorage;
     use crate::value::ClosureCode;
     use vela_common::{HostObjectId, HostTypeId};
@@ -859,7 +863,7 @@ mod tests {
         let captured = heap.allocate(HeapValue::String("captured".into()));
         let callback = heap.allocate(HeapValue::Closure(ClosureValue {
             code: ClosureCode::Linked {
-                owner: std::sync::Arc::new(vela_bytecode::LinkedProgram::new()),
+                owner: empty_linked_owner(),
                 function: vela_bytecode::ScriptFunctionHandle::new(0),
             },
             captures: SmallStorage::try_from_slice_map(&[Value::HeapRef(captured)], 4, |value| {
@@ -900,7 +904,7 @@ mod tests {
         let captured = heap.allocate(HeapValue::String("captured".into()));
         let callback = heap.allocate(HeapValue::Closure(ClosureValue {
             code: ClosureCode::Linked {
-                owner: std::sync::Arc::new(vela_bytecode::LinkedProgram::new()),
+                owner: empty_linked_owner(),
                 function: vela_bytecode::ScriptFunctionHandle::new(0),
             },
             captures: SmallStorage::try_from_slice_map(&[Value::HeapRef(captured)], 4, |value| {

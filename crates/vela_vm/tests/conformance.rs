@@ -185,7 +185,7 @@ fn compile_standard_fixture(
     compile_program_source_with_registry(SourceId::new(10), source, registry.compile_view())
 }
 
-fn link_standard_fixture(source: &str) -> vela_bytecode::LinkedArtifact {
+fn link_standard_fixture(source: &str) -> std::sync::Arc<vela_bytecode::LinkedArtifact> {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     let program =
         compile_program_source_with_registry(SourceId::new(10), source, registry.compile_view())

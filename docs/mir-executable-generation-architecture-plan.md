@@ -2,10 +2,9 @@
 
 > **Track:** verified MIR semantics, linked executable ownership, hot-reload
 > generation lifetime, backend-neutral budgets, and M22 JIT input
-> **Document status:** Codex goal-mode execution plan
-> **Execution status:** Batches A-D landed; post-implementation review reopened
-> completion. Batch E is the active remaining goal and is authoritative over
-> earlier completion checkmarks where the review found an invariant unsealed.
+> **Document status:** Complete
+> **Execution status:** Batches A-E complete. The post-implementation review
+> invariants are sealed and the Phase 10 final gate passed on 2026-07-12.
 > **Execution mode:** throughput-first large batches. Intermediate commits may
 > fail to compile or test; only batch-completion checkpoints must be green.
 > **Supersedes:** the future-ownership, closure, cache rebasing, profile, budget,
@@ -682,8 +681,8 @@ Rules:
 
 ### 9.1 Execution Batches
 
-The default execution shape is five large checkpoints. Batches A-D record the
-landed first implementation; Batch E is the active review-correction batch:
+The execution used five large checkpoints. Batches A-D record the landed first
+implementation; Batch E records the completed review-correction batch:
 
 ```text
 Batch A: MIR semantic contract
@@ -1207,8 +1206,8 @@ Also audit:
 The Phase 9 checkmarks above record the first implementation's acceptance run.
 The post-implementation review below found that several underlying invariants
 were satisfied only by convention or current call paths, not enforced by the
-types and verifiers. Batch E therefore reopens overall track completion without
-rewriting the historical A-D checklist.
+types and verifiers. Batch E reopened and then completed overall track
+completion without rewriting the historical A-D checklist.
 
 ---
 
@@ -1234,27 +1233,27 @@ Review finding:
 
 Required architecture:
 
-- [ ] Make the linker consume the cohesive compiled artifact containing
+- [x] Make the linker consume the cohesive compiled artifact containing
   unlinked bytecode and its owned verified MIR, and publish one already-bound
   `LinkedArtifact`.
-- [ ] Make it impossible for `ProgramVersion` to accept independently supplied
+- [x] Make it impossible for `ProgramVersion` to accept independently supplied
   bytecode and MIR owners. Its constructor accepts only the bound artifact and
   ABI/version metadata.
-- [ ] Remove symbol-plus-budget-total matching as proof of generation identity.
+- [x] Remove symbol-plus-budget-total matching as proof of generation identity.
   If an internal staged representation is necessary, encode unbound/bound state
   in distinct types and consume the unbound value exactly once.
-- [ ] Replace public/internal generation-pairing panics with structured errors
+- [x] Replace public/internal generation-pairing panics with structured errors
   at the linker or publication boundary.
-- [ ] Ensure `jit_input` can only return MIR and linked code originating from
+- [x] Ensure `jit_input` can only return MIR and linked code originating from
   the same bound artifact.
 
 Tests:
 
-- [ ] Build two programs with identical executable symbols and execution-unit
+- [x] Build two programs with identical executable symbols and execution-unit
   totals but different semantics; prove they cannot be cross-paired.
-- [ ] Cover missing, reordered, added, and removed root/lambda executables at
+- [x] Cover missing, reordered, added, and removed root/lambda executables at
   the binding boundary without a panic.
-- [ ] Prove every linked handle has exactly one same-generation MIR identity and
+- [x] Prove every linked handle has exactly one same-generation MIR identity and
   every exposed JIT input resolves through that sealed mapping.
 
 Checkpoint: there is no API that can assemble a `ProgramVersion` from unrelated
@@ -1274,23 +1273,23 @@ Review finding:
 
 Required architecture:
 
-- [ ] Carry `Arc<LinkedArtifact>` as the owner through linked execution calls,
+- [x] Carry `Arc<LinkedArtifact>` as the owner through linked execution calls,
   active frames, linked closures, and retained old-generation entry paths.
-- [ ] Use `Arc::clone` only when a frame or closure pins an existing generation;
+- [x] Use `Arc::clone` only when a frame or closure pins an existing generation;
   never construct ownership by cloning `LinkedProgram` or `LinkedArtifact`
   contents.
-- [ ] Resolve code, cache/profile layout identity, nested calls, and runtime
+- [x] Resolve code, cache/profile layout identity, nested calls, and runtime
   sidecars from that same artifact owner.
-- [ ] Remove redundant lifetime sentinels or parallel owners once the artifact
+- [x] Remove redundant lifetime sentinels or parallel owners once the artifact
   `Arc` is the single lifetime authority.
 
 Tests and measurements:
 
-- [ ] Assert pointer-identical artifact ownership across entry frame, nested
+- [x] Assert pointer-identical artifact ownership across entry frame, nested
   calls, closures, and retained old-generation calls.
-- [ ] Preserve old closure behavior and prove the old generation releases after
+- [x] Preserve old closure behavior and prove the old generation releases after
   frames, closures, retained values, and weak sidecars are dropped.
-- [ ] Add a focused call-heavy measurement that detects program-sized copying
+- [x] Add a focused call-heavy measurement that detects program-sized copying
   per call. Re-run the tracked scalar/call checkpoint and record the durable
   result without requiring unrelated M20 optimization work in this batch.
 
@@ -1309,28 +1308,28 @@ Review finding:
 
 Required architecture:
 
-- [ ] Retain an explicit mapping from each MIR budget program point to its
+- [x] Retain an explicit mapping from each MIR budget program point to its
   linked instruction/edge and charge class, including charges fused into
   instruction metadata.
-- [ ] Verify units, class, executable identity, and exact placement for every
+- [x] Verify units, class, executable identity, and exact placement for every
   point; total-unit equality may remain only as an additional consistency
   check.
-- [ ] Reject missing, duplicated, reordered, moved, or extra charges even when
+- [x] Reject missing, duplicated, reordered, moved, or extra charges even when
   the function-wide total is unchanged.
-- [ ] Prove backend coalescing occurs only across pure, non-trapping,
+- [x] Prove backend coalescing occurs only across pure, non-trapping,
   non-allocating regions without call, host/reflection, debug, or safepoint
   boundaries.
-- [ ] Keep the mapping backend-neutral enough that M22 can prove the same
+- [x] Keep the mapping backend-neutral enough that M22 can prove the same
   semantic charge edges for machine code.
 
 Tests:
 
-- [ ] Add malformed linked artifacts that move an equal-cost charge from before
+- [x] Add malformed linked artifacts that move an equal-cost charge from before
   to after HostAccess, reflection, allocation, call, and guard boundaries; each
   must be rejected.
-- [ ] Pin the conditional/backedge case so an exit edge is not charged merely
+- [x] Pin the conditional/backedge case so an exit edge is not charged merely
   because another successor is a loop backedge.
-- [ ] Preserve the committed-host-write-before-later-budget-trap behavior.
+- [x] Preserve the committed-host-write-before-later-budget-trap behavior.
 
 Checkpoint: the verifier proves observable budget trap order at MIR program
 points; it does not infer correctness from function-wide arithmetic.
@@ -1348,26 +1347,26 @@ Review findings:
 
 Required architecture:
 
-- [ ] Represent lexical scope coverage as owned MIR program-point/block facts
+- [x] Represent lexical scope coverage as owned MIR program-point/block facts
   derived during MIR construction; the physical backend must not query HIR.
-- [ ] Define debug availability as both definitely initialized and inside the
+- [x] Define debug availability as both definitely initialized and inside the
   local's lexical scope. Preserve visibility after last value use only while
   the scope remains active.
-- [ ] Add explicit scope-exit behavior for nested blocks, loop bindings,
+- [x] Add explicit scope-exit behavior for nested blocks, loop bindings,
   match-arm bindings, captures, and parameter-default prologues.
-- [ ] Replace raw shape slot numbers in `vela_mir` with stable field/shape
+- [x] Replace raw shape slot numbers in `vela_mir` with stable field/shape
   identity or an explicitly backend-neutral field ordinal contract.
-- [ ] Perform stable identity-to-physical-slot mapping inside each backend and
+- [x] Perform stable identity-to-physical-slot mapping inside each backend and
   keep registers, constant indexes, cache IDs, and bytecode slots out of MIR
   facts.
 
 Tests:
 
-- [ ] Prove a local remains debugger-visible after its final value use inside
+- [x] Prove a local remains debugger-visible after its final value use inside
   its scope and disappears immediately after lexical scope exit.
-- [ ] Cover nested block, loop, match arm, capture, and default-parameter debug
+- [x] Cover nested block, loop, match arm, capture, and default-parameter debug
   availability across CFG joins.
-- [ ] Prove record/variant specialization survives joins without exposing a
+- [x] Prove record/variant specialization survives joins without exposing a
   bytecode slot type or raw physical slot number from `vela_mir`.
 
 Checkpoint: debug availability is lexical rather than monotonic initialization,
@@ -1384,22 +1383,22 @@ Review finding:
 
 Required architecture:
 
-- [ ] Give unlinked and linked instruction representations one exhaustive
+- [x] Give unlinked and linked instruction representations one exhaustive
   cache-site interface that exposes expected kind and, where physically stored,
   immutable/mutable operands.
-- [ ] Reuse that interface for allocation, attachment, remapping, linking,
+- [x] Reuse that interface for allocation, attachment, remapping, linking,
   descriptor construction, and both verifier layers.
-- [ ] Model sidecar-only cache sites explicitly in the same mechanism rather
+- [x] Model sidecar-only cache sites explicitly in the same mechanism rather
   than recovering them through an unrelated manual match.
-- [ ] Delete duplicated cache-family match lists and retain one compile-time
+- [x] Delete duplicated cache-family match lists and retain one compile-time
   exhaustive authority.
 
 Tests:
 
-- [ ] Table-drive every cache-bearing instruction family through local
+- [x] Table-drive every cache-bearing instruction family through local
   allocation, generation-global linking, descriptor correspondence, wrong-kind
   rejection, and runtime lookup.
-- [ ] Add a maintenance test or exhaustive type-level construction that fails
+- [x] Add a maintenance test or exhaustive type-level construction that fails
   when a new cache-bearing variant has not selected a cache policy.
 
 Checkpoint: adding a cache-bearing instruction requires changing one exhaustive
@@ -1407,14 +1406,14 @@ policy surface, after which every linker and verifier path observes it.
 
 ### 20.6 Documentation And Final Gate
 
-- [ ] Update this document's execution status and `docs/progress.md` only after
+- [x] Update this document's execution status and `docs/progress.md` only after
   all Batch E checkpoints pass; remove the stale statement that the follow-on
   executable-generation contract is incomplete or replace it with the exact
   remaining state while work is active.
-- [ ] Update `docs/decisions.md` if cohesive binding, artifact ownership,
+- [x] Update `docs/decisions.md` if cohesive binding, artifact ownership,
   budget-point mapping, lexical scope projection, shape identity, or cache policy
   establishes a new durable representation.
-- [ ] Re-run the six historical zero-hit searches and add zero-hit audits for:
+- [x] Re-run the six historical zero-hit searches and add zero-hit audits for:
 
 ```bash
 rg -n "Arc::new\(program\.clone\(\)\)|Arc::new\(.*LinkedProgram.*clone" crates/vela_vm crates/vela_engine
@@ -1422,9 +1421,9 @@ rg -n "from_linked_program_with_abi|attach_verified_mir" crates
 rg -n "type MirShapeFields = .*usize|MirShapeFact.*usize" crates/vela_mir
 ```
 
-- [ ] Audit cache policy call sites to confirm they all use the single
+- [x] Audit cache policy call sites to confirm they all use the single
   exhaustive interface; a zero-hit search for one old helper name is not enough.
-- [ ] Run the complete validation gate:
+- [x] Run the complete validation gate:
 
 ```bash
 cargo fmt --all -- --check
@@ -1434,30 +1433,30 @@ cargo test --manifest-path examples/Cargo.toml --test runnable_examples
 cargo bench --workspace --no-run
 ```
 
-- [ ] Re-run the three source regressions that motivated this track: record
+- [x] Re-run the three source regressions that motivated this track: record
   shape across a CFG join, immediate specialization across a loop join, and
   dynamic callback forwarding.
-- [ ] Re-run the focused scalar, function/closure call, shared-runtime, retained
+- [x] Re-run the focused scalar, function/closure call, shared-runtime, retained
   generation, and budgeted/unbounded measurements. Investigate any new
   regression over the existing accepted baseline rather than hiding it behind
   the earlier 124.8% decision.
-- [ ] Re-run the active-file 1200-line audit and update the reviewed exception
+- [x] Re-run the active-file 1200-line audit and update the reviewed exception
   list only for justified cohesive files.
 
 ### 20.7 Batch E Completion Criteria
 
-- [ ] Compiled bytecode and verified MIR cannot be cross-paired by any API.
-- [ ] ProgramVersion and JIT input expose one sealed same-generation artifact.
-- [ ] Frames and closures pin that artifact through shared `Arc` ownership with
+- [x] Compiled bytecode and verified MIR cannot be cross-paired by any API.
+- [x] ProgramVersion and JIT input expose one sealed same-generation artifact.
+- [x] Frames and closures pin that artifact through shared `Arc` ownership with
   no deep program clone at call entry.
-- [ ] Budget verification proves exact semantic placement and trap order, not
+- [x] Budget verification proves exact semantic placement and trap order, not
   only equal totals.
-- [ ] Debug locals are available exactly within initialized lexical regions.
-- [ ] MIR shape facts contain no bytecode physical slot numbers.
-- [ ] Every cache-bearing instruction participates in one exhaustive cache
+- [x] Debug locals are available exactly within initialized lexical regions.
+- [x] MIR shape facts contain no bytecode physical slot numbers.
+- [x] Every cache-bearing instruction participates in one exhaustive cache
   policy and verification mechanism.
-- [ ] Source regressions, full workspace validation, examples, benchmark build,
+- [x] Source regressions, full workspace validation, examples, benchmark build,
   focused performance/memory measurements, zero-hit searches, and file-size
   audits pass.
-- [ ] `docs/progress.md` reports Batch E complete and this document's execution
+- [x] `docs/progress.md` reports Batch E complete and this document's execution
   status changes to complete only after every criterion above is satisfied.

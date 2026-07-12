@@ -225,7 +225,10 @@ impl Engine {
         (entry.function)(receiver, args, host)
     }
 
-    pub fn link_program(&self, program: &UnlinkedProgram) -> Result<LinkedArtifact, LinkError> {
+    pub fn link_program(
+        &self,
+        program: &UnlinkedProgram,
+    ) -> Result<Arc<LinkedArtifact>, LinkError> {
         let mut linker = Linker::with_registry(&self.definition_registry);
         for id in self.native_implementation_ids() {
             linker.add_native_implementation(id);
@@ -235,8 +238,8 @@ impl Engine {
 
     pub fn link_compiled_program(
         &self,
-        program: &vela_bytecode::compiler::CompiledProgram,
-    ) -> Result<LinkedArtifact, LinkError> {
+        program: vela_bytecode::compiler::CompiledProgram,
+    ) -> Result<Arc<LinkedArtifact>, LinkError> {
         let mut linker = Linker::with_registry(&self.definition_registry);
         for id in self.native_implementation_ids() {
             linker.add_native_implementation(id);

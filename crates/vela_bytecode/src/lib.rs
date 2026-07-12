@@ -1,6 +1,8 @@
 //! Register bytecode for Vela code objects.
 
 mod artifact;
+mod budget_metadata;
+mod cache_policy;
 pub mod cache_site;
 pub mod compiler;
 pub mod linked;
@@ -10,7 +12,12 @@ mod script_metadata;
 pub mod script_methods;
 pub mod verification;
 
+#[cfg(feature = "test-support")]
+#[doc(hidden)]
+pub use artifact::test_support;
 pub use artifact::{LinkedArtifact, MirExecutableLayout, ProfileFunctionLayout, ProfileLayout};
+pub use budget_metadata::MirBudgetCharge;
+pub(crate) use cache_policy::{CacheSiteInstruction, CacheSiteStorage};
 
 use std::collections::BTreeMap;
 
@@ -289,6 +296,7 @@ pub struct UnlinkedCodeObject {
     pub param_guards: Vec<UnlinkedParameterTypeGuard>,
     pub return_guard: Option<UnlinkedTypeGuard>,
     pub nested_functions: Vec<UnlinkedCodeObject>,
+    pub(crate) compiled_mir: Option<compiler::CompiledMirExecutableIdentity>,
     pub instructions: Vec<UnlinkedInstruction>,
 }
 
@@ -308,6 +316,7 @@ impl UnlinkedCodeObject {
             param_guards: Vec::new(),
             return_guard: None,
             nested_functions: Vec::new(),
+            compiled_mir: None,
             instructions: Vec::new(),
         }
     }
@@ -671,6 +680,8 @@ pub struct UnlinkedInstruction {
     pub kind: UnlinkedInstructionKind,
     pub span: Option<Span>,
     pub execution_units: u32,
+    pub mir_origin: Option<vela_mir::MirBudgetSite>,
+    pub mir_budget_charges: Box<[MirBudgetCharge]>,
 }
 
 impl UnlinkedInstruction {
@@ -680,18 +691,14 @@ impl UnlinkedInstruction {
             kind,
             span: None,
             execution_units: 0,
+            mir_origin: None,
+            mir_budget_charges: Box::new([]),
         }
     }
 
     #[must_use]
     pub fn with_span(mut self, span: Span) -> Self {
         self.span = Some(span);
-        self
-    }
-
-    #[must_use]
-    pub const fn with_execution_units(mut self, units: u32) -> Self {
-        self.execution_units = units;
         self
     }
 }

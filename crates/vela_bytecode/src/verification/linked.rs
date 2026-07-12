@@ -6,8 +6,8 @@ use crate::linked::{
     VariantHandle,
 };
 use crate::{
-    CacheSiteId, CacheSiteKind, CallArgument, Constant, ConstantId, FormatStringPart,
-    HostTargetPlanId, InstructionOffset, Register,
+    CacheSiteId, CacheSiteInstruction, CacheSiteKind, CacheSiteStorage, CallArgument, Constant,
+    ConstantId, FormatStringPart, HostTargetPlanId, InstructionOffset, Register,
 };
 
 use super::{VerificationError, VerificationErrorKind, constant_kind, error};
@@ -173,6 +173,7 @@ fn verify_linked_instruction(
     context: &LinkedVerificationContext<'_>,
 ) -> Result<(), VerificationError> {
     let instruction_index = Some(index);
+    verify_linked_instruction_cache_site(function, instruction_index, code, instruction)?;
     match &instruction.kind {
         InstructionKind::ChargeExecutionUnits { units } => {
             super::verify_execution_units(function, instruction_index, *units)
@@ -250,22 +251,15 @@ fn verify_linked_instruction(
             dst,
             native,
             debug_name,
-            cache_site,
             args,
+            ..
         } => {
             if let Some(dst) = dst {
                 verify_linked_register(function, instruction_index, code, *dst)?;
             }
             verify_linked_native_handle(function, instruction_index, context, *native)?;
             verify_linked_debug_name(function, instruction_index, context, *debug_name)?;
-            verify_linked_registers(function, instruction_index, code, args)?;
-            verify_linked_optional_cache_site(
-                function,
-                instruction_index,
-                code,
-                *cache_site,
-                CacheSiteKind::NativeCall,
-            )
+            verify_linked_registers(function, instruction_index, code, args)
         }
         InstructionKind::CallFunction {
             dst,
@@ -298,40 +292,26 @@ fn verify_linked_instruction(
             receiver,
             dispatch,
             debug_name,
-            cache_site,
             args,
+            ..
         } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_register(function, instruction_index, code, *receiver)?;
             verify_linked_method_handle(function, instruction_index, context, *dispatch)?;
             verify_linked_debug_name(function, instruction_index, context, *debug_name)?;
-            verify_linked_call_arguments(function, instruction_index, code, args)?;
-            verify_linked_optional_cache_site(
-                function,
-                instruction_index,
-                code,
-                *cache_site,
-                CacheSiteKind::MethodCall,
-            )
+            verify_linked_call_arguments(function, instruction_index, code, args)
         }
         InstructionKind::CallDynamicMethod {
             dst,
             receiver,
             method_name,
-            cache_site,
             args,
+            ..
         } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_register(function, instruction_index, code, *receiver)?;
             verify_linked_debug_name(function, instruction_index, context, *method_name)?;
-            verify_linked_dynamic_call_arguments(function, instruction_index, code, context, args)?;
-            verify_linked_optional_cache_site(
-                function,
-                instruction_index,
-                code,
-                *cache_site,
-                CacheSiteKind::MethodCall,
-            )
+            verify_linked_dynamic_call_arguments(function, instruction_index, code, context, args)
         }
         InstructionKind::MakeArray { dst, elements } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
@@ -393,19 +373,11 @@ fn verify_linked_instruction(
             dst,
             record,
             debug_name,
-            cache_site,
             ..
         } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_register(function, instruction_index, code, *record)?;
-            verify_linked_debug_name(function, instruction_index, context, *debug_name)?;
-            verify_linked_optional_cache_site(
-                function,
-                instruction_index,
-                code,
-                *cache_site,
-                CacheSiteKind::RecordFieldRead,
-            )
+            verify_linked_debug_name(function, instruction_index, context, *debug_name)
         }
         InstructionKind::SetRecordField {
             record,
@@ -419,20 +391,12 @@ fn verify_linked_instruction(
         InstructionKind::SetRecordSlot {
             record,
             debug_name,
-            cache_site,
             src,
             ..
         } => {
             verify_linked_register(function, instruction_index, code, *record)?;
             verify_linked_debug_name(function, instruction_index, context, *debug_name)?;
-            verify_linked_register(function, instruction_index, code, *src)?;
-            verify_linked_optional_cache_site(
-                function,
-                instruction_index,
-                code,
-                *cache_site,
-                CacheSiteKind::RecordFieldWrite,
-            )
+            verify_linked_register(function, instruction_index, code, *src)
         }
         InstructionKind::GetEnumField {
             dst,
@@ -531,27 +495,17 @@ fn verify_linked_instruction(
             verify_linked_variant_handle(function, instruction_index, context, *variant)
         }
         InstructionKind::LoadGlobal {
-            dst,
-            debug_name,
-            cache_site,
-            ..
+            dst, debug_name, ..
         } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
-            verify_linked_debug_name(function, instruction_index, context, *debug_name)?;
-            verify_linked_optional_cache_site(
-                function,
-                instruction_index,
-                code,
-                *cache_site,
-                CacheSiteKind::GlobalRead,
-            )
+            verify_linked_debug_name(function, instruction_index, context, *debug_name)
         }
         InstructionKind::HostRead {
             dst,
             root,
             target,
             dynamic_args,
-            cache_site,
+            ..
         } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_register(function, instruction_index, code, *root)?;
@@ -562,13 +516,6 @@ fn verify_linked_instruction(
                 code,
                 *target,
                 dynamic_args.len(),
-            )?;
-            verify_linked_cache_site(
-                function,
-                instruction_index,
-                code,
-                *cache_site,
-                CacheSiteKind::HostPathRead,
             )
         }
         InstructionKind::HostWrite {
@@ -576,7 +523,7 @@ fn verify_linked_instruction(
             target,
             dynamic_args,
             src,
-            cache_site,
+            ..
         } => {
             verify_linked_register(function, instruction_index, code, *root)?;
             verify_linked_register(function, instruction_index, code, *src)?;
@@ -587,13 +534,6 @@ fn verify_linked_instruction(
                 code,
                 *target,
                 dynamic_args.len(),
-            )?;
-            verify_linked_cache_site(
-                function,
-                instruction_index,
-                code,
-                *cache_site,
-                CacheSiteKind::HostPathWrite,
             )
         }
         InstructionKind::HostMutate {
@@ -601,7 +541,6 @@ fn verify_linked_instruction(
             target,
             dynamic_args,
             rhs,
-            cache_site,
             ..
         } => {
             verify_linked_register(function, instruction_index, code, *root)?;
@@ -613,20 +552,13 @@ fn verify_linked_instruction(
                 code,
                 *target,
                 dynamic_args.len(),
-            )?;
-            verify_linked_cache_site(
-                function,
-                instruction_index,
-                code,
-                *cache_site,
-                CacheSiteKind::HostPathMutate,
             )
         }
         InstructionKind::HostRemove {
             root,
             target,
             dynamic_args,
-            cache_site,
+            ..
         } => {
             verify_linked_register(function, instruction_index, code, *root)?;
             verify_linked_registers(function, instruction_index, code, dynamic_args)?;
@@ -636,13 +568,6 @@ fn verify_linked_instruction(
                 code,
                 *target,
                 dynamic_args.len(),
-            )?;
-            verify_linked_cache_site(
-                function,
-                instruction_index,
-                code,
-                *cache_site,
-                CacheSiteKind::HostPathRemove,
             )
         }
         InstructionKind::HostCall {
@@ -653,7 +578,7 @@ fn verify_linked_instruction(
             method,
             debug_name,
             args,
-            cache_site,
+            ..
         } => {
             if let Some(dst) = dst {
                 verify_linked_register(function, instruction_index, code, *dst)?;
@@ -669,18 +594,42 @@ fn verify_linked_instruction(
                 dynamic_args.len(),
             )?;
             verify_linked_method_handle(function, instruction_index, context, *method)?;
-            verify_linked_debug_name(function, instruction_index, context, *debug_name)?;
-            verify_linked_cache_site(
-                function,
-                instruction_index,
-                code,
-                *cache_site,
-                CacheSiteKind::HostPathCall,
-            )
+            verify_linked_debug_name(function, instruction_index, context, *debug_name)
         }
         InstructionKind::Return { src } => {
             verify_linked_register(function, instruction_index, code, *src)
         }
+    }
+}
+
+fn verify_linked_instruction_cache_site(
+    function: &str,
+    instruction_index: Option<usize>,
+    code: &LinkedCodeObject,
+    instruction: &Instruction,
+) -> Result<(), VerificationError> {
+    let Some(policy) = instruction.kind.cache_site_policy() else {
+        return Ok(());
+    };
+    match policy.storage {
+        CacheSiteStorage::Sidecar => Ok(()),
+        CacheSiteStorage::OptionalOperand => verify_linked_optional_cache_site(
+            function,
+            instruction_index,
+            code,
+            instruction.kind.cache_site(),
+            policy.kind,
+        ),
+        CacheSiteStorage::RequiredOperand => verify_linked_cache_site(
+            function,
+            instruction_index,
+            code,
+            instruction
+                .kind
+                .cache_site()
+                .expect("required cache policy exposes its operand"),
+            policy.kind,
+        ),
     }
 }
 
@@ -1235,7 +1184,10 @@ fn verify_linked_cache_site_layout(
                 },
             ));
         };
-        let actual = linked_instruction_cache_site_kind(&instruction.kind);
+        let actual = instruction
+            .kind
+            .cache_site_policy()
+            .map(|policy| policy.kind);
         if actual != Some(site.kind) {
             return Err(error(
                 function,
@@ -1249,24 +1201,6 @@ fn verify_linked_cache_site_layout(
         }
     }
     Ok(())
-}
-
-fn linked_instruction_cache_site_kind(kind: &InstructionKind) -> Option<CacheSiteKind> {
-    match kind {
-        InstructionKind::LoadGlobal { .. } => Some(CacheSiteKind::GlobalRead),
-        InstructionKind::CallNative { .. } => Some(CacheSiteKind::NativeCall),
-        InstructionKind::CallMethod { .. } | InstructionKind::CallDynamicMethod { .. } => {
-            Some(CacheSiteKind::MethodCall)
-        }
-        InstructionKind::GetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldRead),
-        InstructionKind::SetRecordSlot { .. } => Some(CacheSiteKind::RecordFieldWrite),
-        InstructionKind::HostRead { .. } => Some(CacheSiteKind::HostPathRead),
-        InstructionKind::HostWrite { .. } => Some(CacheSiteKind::HostPathWrite),
-        InstructionKind::HostMutate { .. } => Some(CacheSiteKind::HostPathMutate),
-        InstructionKind::HostRemove { .. } => Some(CacheSiteKind::HostPathRemove),
-        InstructionKind::HostCall { .. } => Some(CacheSiteKind::HostPathCall),
-        _ => None,
-    }
 }
 
 fn verify_linked_host_target(

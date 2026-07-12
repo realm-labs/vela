@@ -6,7 +6,7 @@ use vela_bytecode::compiler::{
     compile_module_sources_with_options, compile_module_sources_with_options_and_registry,
     compile_program_source_with_options, compile_program_source_with_options_and_registry,
 };
-use vela_bytecode::{LinkedArtifact, Linker, UnlinkedProgram, compiler::CompiledProgram};
+use vela_bytecode::{LinkedArtifact, Linker, compiler::CompiledProgram};
 use vela_common::SourceId;
 use vela_hir::ids::ModuleId;
 use vela_hir::module_graph::{ModuleGraph, ModuleSource};
@@ -228,28 +228,26 @@ fn initial_version_from_program(
     program: CompiledProgram,
     abi: HotReloadAbi,
 ) -> HotReloadResult<ProgramVersion> {
-    let abi = abi_with_script_metadata(abi, &program);
-    let linked_program = link_standalone_program(&program)
+    let abi = abi_with_script_metadata(abi, program.script_metadata());
+    let artifact = link_standalone_program(program)
         .map_err(|error| HotReloadError::new(HotReloadErrorKind::Link(error)))?;
-    Ok(initial_version_from_linked_program(
-        program,
-        abi,
-        linked_program,
-    ))
+    initial_version_from_linked_artifact(abi, artifact)
 }
 
-#[must_use]
-pub fn initial_version_from_linked_program(
-    program: CompiledProgram,
+pub fn initial_version_from_linked_artifact(
     abi: HotReloadAbi,
-    linked_program: LinkedArtifact,
-) -> ProgramVersion {
-    let abi = abi_with_script_metadata(abi, &program);
-    ProgramVersion::from_linked_program_with_abi(ProgramVersionId(0), program, abi, linked_program)
+    artifact: Arc<LinkedArtifact>,
+) -> HotReloadResult<ProgramVersion> {
+    let abi = abi_with_script_metadata(abi, artifact.image().script_metadata());
+    ProgramVersion::from_linked_artifact(ProgramVersionId(0), abi, artifact).ok_or_else(|| {
+        HotReloadError::new(HotReloadErrorKind::Link(
+            vela_bytecode::linker::LinkError::MissingVerifiedMirGeneration,
+        ))
+    })
 }
 
-fn abi_with_script_metadata(abi: HotReloadAbi, program: &UnlinkedProgram) -> HotReloadAbi {
-    if let Some(graph) = program.script_metadata() {
+fn abi_with_script_metadata(abi: HotReloadAbi, graph: Option<&ModuleGraph>) -> HotReloadAbi {
+    if let Some(graph) = graph {
         abi.with_script_metadata(graph)
     } else {
         abi
@@ -262,30 +260,33 @@ fn update_from_program(
     abi: HotReloadAbi,
     policy: &HotReloadPolicy,
 ) -> HotReloadResult<HotUpdate> {
-    let abi = abi_with_script_metadata(abi, &program);
-    let linked_program = link_standalone_program(&program)
+    let abi = abi_with_script_metadata(abi, program.script_metadata());
+    let artifact = link_standalone_program(program)
         .map_err(|error| HotReloadError::new(HotReloadErrorKind::Link(error)))?;
-    update_from_linked_program(previous, program, abi, policy, linked_program)
+    update_from_linked_artifact(previous, abi, policy, artifact)
 }
 
-pub fn update_from_linked_program(
+pub fn update_from_linked_artifact(
     previous: &ProgramVersion,
-    program: CompiledProgram,
     abi: HotReloadAbi,
     policy: &HotReloadPolicy,
-    linked_program: LinkedArtifact,
+    artifact: Arc<LinkedArtifact>,
 ) -> HotReloadResult<HotUpdate> {
-    let abi = abi_with_script_metadata(abi, &program);
-    let verified_mir = Arc::clone(program.verified_mir());
-    let script_metadata = program.script_metadata().cloned();
+    if artifact.verified_mir().is_none() {
+        return Err(HotReloadError::new(HotReloadErrorKind::Link(
+            vela_bytecode::linker::LinkError::MissingVerifiedMirGeneration,
+        )));
+    }
+    let abi = abi_with_script_metadata(abi, artifact.image().script_metadata());
+    let script_metadata = artifact.image().script_metadata().cloned();
     let mut functions = BTreeMap::new();
     let mut changed_functions = Vec::new();
-    let (program, _) = program.into_parts();
-    for (name, code) in program.into_functions() {
+    for (_, code) in artifact.image().functions() {
+        let name = code.name.clone();
         let symbol = FunctionSymbolId::new(&name);
         if let Some(old_code) = previous.function(&name) {
-            ensure_compatible_function_signature(&name, &old_code, &code, policy)?;
-            if old_code.as_ref() != &code {
+            ensure_compatible_function_signature(&name, &old_code, code, policy)?;
+            if old_code.as_ref() != code {
                 changed_functions.push(symbol.clone());
             }
         } else if !policy.allow_new_functions() {
@@ -295,7 +296,7 @@ pub fn update_from_linked_program(
         } else {
             changed_functions.push(symbol.clone());
         }
-        functions.insert(symbol, Arc::new(code));
+        functions.insert(symbol, Arc::new(code.clone()));
     }
     let previous_script_method_functions = previous
         .script_methods()
@@ -316,13 +317,13 @@ pub fn update_from_linked_program(
         module_changes(previous.script_metadata(), script_metadata.as_ref());
     let changes =
         AcceptedHotReloadChanges::new(changed_functions, changed_modules, impacted_modules);
-    let update = HotUpdate::new(abi, changes, linked_program, verified_mir);
+    let update = HotUpdate::new(abi, changes, artifact);
     Ok(update)
 }
 
 fn link_standalone_program(
-    program: &CompiledProgram,
-) -> Result<LinkedArtifact, vela_bytecode::linker::LinkError> {
+    program: CompiledProgram,
+) -> Result<Arc<LinkedArtifact>, vela_bytecode::linker::LinkError> {
     Linker::new().link_compiled_program(program)
 }
 

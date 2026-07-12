@@ -199,6 +199,7 @@ fn linked_bytes_no_arg_cache_program(method: &str, receiver: Vec<u8>) -> LinkedM
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 
@@ -237,6 +238,7 @@ fn linked_array_len_cache_program() -> LinkedMethodCacheFixture {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 
@@ -277,6 +279,7 @@ fn linked_map_len_cache_program() -> LinkedMethodCacheFixture {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 
@@ -329,6 +332,7 @@ fn linked_set_len_cache_program() -> LinkedMethodCacheFixture {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 
@@ -378,6 +382,7 @@ fn linked_map_i64_get_or_cache_program() -> LinkedMethodCacheFixture {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 
@@ -448,5 +453,6 @@ fn linked_range_no_arg_cache_program(
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }

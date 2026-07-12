@@ -5,7 +5,7 @@ use super::linked_standard_method_cache_support::{
 use super::standard_id_dispatch::std_method_id;
 use super::*;
 use std::cell::RefCell;
-use vela_bytecode::{CacheSiteId, DebugNameId, LinkedProgram, Linker, MethodDispatchHandle};
+use vela_bytecode::{CacheSiteId, DebugNameId, Linker, MethodDispatchHandle};
 
 #[test]
 fn linked_callback_method_id_rejects_receiver_owner_mismatch() {
@@ -996,7 +996,7 @@ fn assert_callback_cache_entry(
     assert_eq!(callback_method.target, expected_target);
 }
 
-fn link_standard_native_test_program(program: &UnlinkedProgram) -> LinkedProgram {
+fn link_standard_native_test_program(program: &UnlinkedProgram) -> Arc<LinkedArtifact> {
     let vm = Vm::new().with_standard_natives();
     let mut linker = Linker::new();
     for id in vm.native_implementation_ids() {
@@ -1005,7 +1005,6 @@ fn link_standard_native_test_program(program: &UnlinkedProgram) -> LinkedProgram
     linker
         .link_program(program)
         .expect("standard native test program should link")
-        .into_program()
 }
 
 impl VmInlineCaches for RecordingHostAccessCaches {

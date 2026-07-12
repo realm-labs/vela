@@ -91,6 +91,7 @@ pub struct MirRootLiveness {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MirDebugAvailability {
     pub locals: BTreeMap<crate::MirDebugLocalId, crate::MirLiveRegion>,
+    pub block_entry: BTreeMap<MirBlockId, BTreeSet<crate::MirDebugLocalId>>,
     pub statement_before: BTreeMap<MirStatementId, BTreeSet<crate::MirDebugLocalId>>,
 }
 

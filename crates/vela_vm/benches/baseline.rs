@@ -2,6 +2,7 @@
 
 use std::error::Error;
 use std::hint::black_box;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use vela_bytecode::compiler::options::CompilerOptions;
@@ -9,7 +10,7 @@ use vela_bytecode::compiler::{
     compile_function_source_with_registry, compile_program_source_with_options_and_registry,
     compile_program_source_with_registry,
 };
-use vela_bytecode::{LinkedArtifact, LinkedProgram, Linker, UnlinkedCodeObject, UnlinkedProgram};
+use vela_bytecode::{LinkedArtifact, Linker, UnlinkedCodeObject, UnlinkedProgram};
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
 use vela_def::{DefPath, FieldId, FunctionId, TypeId};
 use vela_host::access::HostAccess;
@@ -147,32 +148,32 @@ fn register_bench_natives(vm: &mut Vm) {
 enum CompiledWorkload {
     Function {
         mode: ExecutionMode,
-        program: Box<LinkedProgram>,
+        program: Arc<LinkedArtifact>,
     },
     CacheEnabledFunction {
-        program: Box<LinkedProgram>,
+        program: Arc<LinkedArtifact>,
         caches: Option<BenchInlineCaches>,
         profiler: BenchBytecodeProfiler,
     },
     ScriptProgram {
-        program: Box<LinkedProgram>,
+        program: Arc<LinkedArtifact>,
     },
     HostAccess {
-        program: Box<LinkedProgram>,
+        program: Arc<LinkedArtifact>,
     },
     CacheEnabledHostAccess {
-        program: Box<LinkedProgram>,
+        program: Arc<LinkedArtifact>,
         caches: Option<BenchInlineCaches>,
         profiler: BenchBytecodeProfiler,
     },
     HostManagedHeapReadConversion {
-        program: Box<LinkedProgram>,
+        program: Arc<LinkedArtifact>,
     },
     HostManagedHeapHostAccess {
-        program: Box<LinkedProgram>,
+        program: Arc<LinkedArtifact>,
     },
     GameplayHost {
-        program: Box<LinkedProgram>,
+        program: Arc<LinkedArtifact>,
     },
 }
 
@@ -252,22 +253,22 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
             if matches!(workload.mode, ExecutionMode::HostAccessCacheEnabled) {
                 let artifact = link_artifact_for_vm(vm, &program)?;
                 let cache_count = artifact.cache_layout().len();
-                let linked = artifact.into_program();
+                let linked = artifact;
                 return Ok(CompiledWorkload::CacheEnabledHostAccess {
                     caches: Some(BenchInlineCaches::new(cache_count)),
                     profiler: BenchBytecodeProfiler::default(),
-                    program: Box::new(linked),
+                    program: linked,
                 });
             }
             if matches!(workload.mode, ExecutionMode::HostAccessProfileOnly) {
-                let linked = link_artifact_for_vm(vm, &program)?.into_program();
+                let linked = link_artifact_for_vm(vm, &program)?;
                 return Ok(CompiledWorkload::CacheEnabledHostAccess {
                     caches: None,
                     profiler: BenchBytecodeProfiler::default(),
-                    program: Box::new(linked),
+                    program: linked,
                 });
             }
-            let linked = Box::new(link_program_for_vm(vm, &program)?);
+            let linked = link_program_for_vm(vm, &program)?;
             Ok(match workload.mode {
                 ExecutionMode::HostAccess => CompiledWorkload::HostAccess { program: linked },
                 ExecutionMode::HostManagedHeapHostAccess => {
@@ -288,7 +289,7 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
             )
             .map_err(|error| format!("{error:?}"))?;
             Ok(CompiledWorkload::GameplayHost {
-                program: Box::new(link_program_for_vm(vm, &program)?),
+                program: link_program_for_vm(vm, &program)?,
             })
         }
         ExecutionMode::ManagedHeap | ExecutionMode::GcPacing => {
@@ -302,7 +303,7 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
             .map_err(|error| format!("{error:?}"))?;
             Ok(CompiledWorkload::Function {
                 mode: workload.mode,
-                program: Box::new(link_single_function_for_vm(vm, code)?),
+                program: link_single_function_for_vm(vm, code)?,
             })
         }
         ExecutionMode::ScriptProgram
@@ -316,25 +317,25 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
             )
             .map_err(|error| format!("{error:?}"))?;
             if matches!(workload.mode, ExecutionMode::ScriptProgramProfileOnly) {
-                let linked = link_artifact_for_vm(vm, &program)?.into_program();
+                let linked = link_artifact_for_vm(vm, &program)?;
                 return Ok(CompiledWorkload::CacheEnabledFunction {
                     caches: None,
                     profiler: BenchBytecodeProfiler::default(),
-                    program: Box::new(linked),
+                    program: linked,
                 });
             }
             if matches!(workload.mode, ExecutionMode::ScriptProgramCacheEnabled) {
                 let artifact = link_artifact_for_vm(vm, &program)?;
                 let cache_count = artifact.cache_layout().len();
-                let linked = artifact.into_program();
+                let linked = artifact;
                 return Ok(CompiledWorkload::CacheEnabledFunction {
                     caches: Some(BenchInlineCaches::new(cache_count)),
                     profiler: BenchBytecodeProfiler::default(),
-                    program: Box::new(linked),
+                    program: linked,
                 });
             }
             Ok(CompiledWorkload::ScriptProgram {
-                program: Box::new(link_program_for_vm(vm, &program)?),
+                program: link_program_for_vm(vm, &program)?,
             })
         }
         ExecutionMode::Inline
@@ -354,7 +355,7 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
                 return Ok(CompiledWorkload::CacheEnabledFunction {
                     caches: Some(BenchInlineCaches::new(cache_site_count)),
                     profiler: BenchBytecodeProfiler::default(),
-                    program: Box::new(program),
+                    program,
                 });
             }
             if matches!(workload.mode, ExecutionMode::ProfileOnly) {
@@ -362,10 +363,10 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
                 return Ok(CompiledWorkload::CacheEnabledFunction {
                     caches: None,
                     profiler: BenchBytecodeProfiler::default(),
-                    program: Box::new(program),
+                    program,
                 });
             }
-            let program = Box::new(link_single_function_for_vm(vm, code)?);
+            let program = link_single_function_for_vm(vm, code)?;
             Ok(CompiledWorkload::Function {
                 mode: workload.mode,
                 program,
@@ -418,7 +419,7 @@ impl CompiledWorkload {
 
 fn run_instrumented_function(
     vm: &Vm,
-    program: &LinkedProgram,
+    program: &Arc<LinkedArtifact>,
     caches: Option<&BenchInlineCaches>,
     profiler: &BenchBytecodeProfiler,
 ) -> Result<OwnedValue, Box<dyn Error>> {
@@ -432,7 +433,7 @@ fn run_instrumented_function(
     let mut budget = ExecutionBudget::unbounded();
     Ok(
         vm.run_linked_program_host_budget_call(LinkedProgramHostBudgetCall {
-            program,
+            artifact: program,
             entry: "main",
             args: &[],
             host: &mut host,
@@ -485,7 +486,10 @@ fn function_id_for_native_name(name: &str) -> FunctionId {
     FunctionId::from_def_id(DefPath::function("host", segments, function).id())
 }
 
-fn link_single_function_for_vm(vm: &Vm, code: UnlinkedCodeObject) -> Result<LinkedProgram, String> {
+fn link_single_function_for_vm(
+    vm: &Vm,
+    code: UnlinkedCodeObject,
+) -> Result<Arc<LinkedArtifact>, String> {
     let mut program = UnlinkedProgram::new();
     program.insert_function(code);
     link_program_for_vm(vm, &program)
@@ -494,19 +498,19 @@ fn link_single_function_for_vm(vm: &Vm, code: UnlinkedCodeObject) -> Result<Link
 fn link_single_function_image_for_vm(
     vm: &Vm,
     code: UnlinkedCodeObject,
-) -> Result<(LinkedProgram, usize), String> {
+) -> Result<(Arc<LinkedArtifact>, usize), String> {
     let mut program = UnlinkedProgram::new();
     program.insert_function(code);
     let artifact = link_artifact_for_vm(vm, &program)?;
     let cache_count = artifact.cache_layout().len();
-    Ok((artifact.into_program(), cache_count))
+    Ok((artifact, cache_count))
 }
 
-fn link_program_for_vm(vm: &Vm, program: &UnlinkedProgram) -> Result<LinkedProgram, String> {
-    link_artifact_for_vm(vm, program).map(LinkedArtifact::into_program)
+fn link_program_for_vm(vm: &Vm, program: &UnlinkedProgram) -> Result<Arc<LinkedArtifact>, String> {
+    link_artifact_for_vm(vm, program)
 }
 
-fn link_artifact_for_vm(vm: &Vm, program: &UnlinkedProgram) -> Result<LinkedArtifact, String> {
+fn link_artifact_for_vm(vm: &Vm, program: &UnlinkedProgram) -> Result<Arc<LinkedArtifact>, String> {
     let mut linker = Linker::new();
     for id in vm.native_implementation_ids() {
         linker.add_native_implementation(id);
@@ -722,7 +726,7 @@ fn register_bench_host_method(
         .expect("bench host method should register");
 }
 
-fn run_gc_pacing(vm: &Vm, program: &LinkedProgram) -> Result<OwnedValue, Box<dyn Error>> {
+fn run_gc_pacing(vm: &Vm, program: &Arc<LinkedArtifact>) -> Result<OwnedValue, Box<dyn Error>> {
     let mut heap = ScriptHeap::new();
     heap.set_gc_config(GcConfig {
         max_pause_micros: 50,
@@ -768,7 +772,7 @@ fn seed_gc_garbage(heap: &mut ScriptHeap) {
 
 fn run_host_access(
     vm: &Vm,
-    program: &LinkedProgram,
+    program: &Arc<LinkedArtifact>,
     caches: Option<&BenchInlineCaches>,
     profiler: Option<&BenchBytecodeProfiler>,
 ) -> Result<OwnedValue, Box<dyn Error>> {
@@ -806,7 +810,7 @@ fn run_host_access(
         script_globals: None,
     };
     let value = vm.run_linked_program_host_budget_call(LinkedProgramHostBudgetCall {
-        program,
+        artifact: program,
         entry: "main",
         args: &[OwnedValue::HostRef(player)],
         host: &mut host,
@@ -819,7 +823,7 @@ fn run_host_access(
 
 fn run_managed_heap_host_conversion(
     vm: &Vm,
-    program: &LinkedProgram,
+    program: &Arc<LinkedArtifact>,
 ) -> Result<OwnedValue, Box<dyn Error>> {
     let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
     let level_path = HostPath::new(player).field(LEVEL_FIELD);
@@ -867,7 +871,7 @@ fn run_managed_heap_host_conversion(
 
 fn run_managed_heap_host_read_conversion(
     vm: &Vm,
-    program: &LinkedProgram,
+    program: &Arc<LinkedArtifact>,
 ) -> Result<OwnedValue, Box<dyn Error>> {
     let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
     let level_path = HostPath::new(player).field(LEVEL_FIELD);
@@ -915,7 +919,7 @@ fn run_managed_heap_host_read_conversion(
 
 fn run_gameplay_monster_kill(
     vm: &Vm,
-    program: &LinkedProgram,
+    program: &Arc<LinkedArtifact>,
 ) -> Result<OwnedValue, Box<dyn Error>> {
     let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
     let ctx = HostRef::new(CTX_TYPE, CTX_OBJECT, 1);

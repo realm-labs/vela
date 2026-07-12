@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -9,13 +9,14 @@ use crate::{CacheSiteDesc, CacheSiteId, ExecutableGenerationId, LinkedProgram, P
 static NEXT_EXECUTABLE_GENERATION: AtomicU64 = AtomicU64::new(1);
 
 /// One immutable linker output for every generation-local executable layout.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct LinkedArtifact {
     program: Arc<LinkedProgram>,
     image: ProgramImage,
     cache_layout: Box<[CacheSiteDesc]>,
     profile_layout: ProfileLayout,
     mir_executables: Box<[MirExecutableLayout]>,
+    verified_mir: Option<Arc<vela_mir::OwnedVerifiedMirBundle>>,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -35,6 +36,49 @@ pub struct MirExecutableLayout {
     pub root: vela_def::FunctionId,
     pub function: vela_mir::MirFunctionId,
     pub handle: crate::ScriptFunctionHandle,
+}
+
+#[cfg(feature = "test-support")]
+#[doc(hidden)]
+pub mod test_support {
+    use super::*;
+
+    #[must_use]
+    pub fn linked_artifact(mut program: LinkedProgram) -> Arc<LinkedArtifact> {
+        program.set_generation(ExecutableGenerationId::new(
+            NEXT_EXECUTABLE_GENERATION.fetch_add(1, Ordering::Relaxed),
+        ));
+        let cache_layout = program
+            .functions()
+            .flat_map(|(_, code)| code.cache_sites.sites().iter().cloned())
+            .collect::<Vec<_>>()
+            .into_boxed_slice();
+        let profile_layout = ProfileLayout {
+            functions: program
+                .functions()
+                .map(|(handle, code)| ProfileFunctionLayout {
+                    handle,
+                    debug_name: code.debug_name,
+                    instruction_count: code.instructions.len(),
+                })
+                .collect::<Vec<_>>()
+                .into_boxed_slice(),
+        };
+        Arc::new(LinkedArtifact {
+            program: Arc::new(program),
+            image: ProgramImage::from_program(&crate::UnlinkedProgram::new()),
+            cache_layout,
+            profile_layout,
+            mir_executables: Box::new([]),
+            verified_mir: None,
+        })
+    }
+
+    #[must_use]
+    pub fn into_linked_program(artifact: Arc<LinkedArtifact>) -> LinkedProgram {
+        let artifact = Arc::try_unwrap(artifact).expect("test artifact must have one owner");
+        Arc::try_unwrap(artifact.program).expect("test linked program must have one owner")
+    }
 }
 
 impl LinkedArtifact {
@@ -63,81 +107,75 @@ impl LinkedArtifact {
             cache_layout,
             profile_layout,
             mir_executables: Box::new([]),
+            verified_mir: None,
         };
         artifact.verify()?;
         Ok(artifact)
     }
 
-    pub fn attach_verified_mir(
+    pub(crate) fn bind_compiled_mir(
         mut self,
-        bundle: &vela_mir::OwnedVerifiedMirBundle,
+        bundle: Arc<vela_mir::OwnedVerifiedMirBundle>,
+        compiled_layouts: &[crate::compiler::CompiledMirExecutable],
     ) -> Result<Self, crate::linker::LinkError> {
-        let mut by_symbol = BTreeMap::new();
-        for (root, owned) in bundle.roots() {
-            for (function, body) in owned.program().functions() {
-                by_symbol.insert(body.code_symbol().to_owned(), (root, function));
-            }
-        }
-        let mut layouts = Vec::with_capacity(self.program.function_count());
-        for (handle, code) in self.program.functions() {
-            let name = self.program.debug_name(code.debug_name);
-            let (root, function) = by_symbol.get(name).copied().ok_or_else(|| {
-                crate::linker::LinkError::MissingMirExecutableMapping {
-                    name: name.to_owned(),
-                }
-            })?;
-            let owner = bundle
-                .root(root)
-                .expect("MIR symbol map retains its root owner");
-            let analyses = owner
-                .analyses(function)
-                .expect("verified MIR function retains sealed analyses");
-            let expected_units = analyses
-                .budget
-                .statement_points()
-                .map(|(_, point)| u64::from(point.units))
-                .sum::<u64>()
-                + analyses
-                    .budget
-                    .terminator_points()
-                    .map(|(_, point)| u64::from(point.units))
-                    .sum::<u64>();
-            let actual_units = code
-                .instructions
-                .iter()
-                .map(|instruction| {
-                    u64::from(instruction.execution_units)
-                        + match instruction.kind {
-                            InstructionKind::ChargeExecutionUnits { units } => u64::from(units),
-                            _ => 0,
-                        }
-                })
-                .sum::<u64>();
-            if expected_units != actual_units {
-                return Err(crate::linker::LinkError::MirBudgetScheduleMismatch {
-                    name: name.to_owned(),
-                    expected_units,
-                    actual_units,
-                });
-            }
-            layouts.push(MirExecutableLayout {
-                root,
-                function,
-                handle,
+        if compiled_layouts.len() != self.program.function_count() {
+            return Err(crate::linker::LinkError::MirExecutableCountMismatch {
+                expected: compiled_layouts.len(),
+                actual: self.program.function_count(),
             });
         }
-        self.mir_executables = layouts.into_boxed_slice();
+        for (index, expected) in compiled_layouts.iter().enumerate() {
+            let actual = self
+                .image
+                .function(crate::FunctionIndex(index))
+                .and_then(|code| code.compiled_mir);
+            if actual != Some(*expected) {
+                return Err(crate::linker::LinkError::MirExecutableIdentityMismatch {
+                    index: crate::FunctionIndex(index),
+                    expected_root: expected.root,
+                    expected_function: expected.function,
+                    actual_root: actual.map(|identity| identity.root),
+                    actual_function: actual.map(|identity| identity.function),
+                });
+            }
+            let owner =
+                bundle
+                    .root(expected.root)
+                    .ok_or(crate::linker::LinkError::MissingMirRoot {
+                        root: expected.root,
+                    })?;
+            let analyses = owner.analyses(expected.function).ok_or(
+                crate::linker::LinkError::MissingMirFunction {
+                    root: expected.root,
+                    function: expected.function,
+                },
+            )?;
+            let code = self
+                .program
+                .function(crate::ScriptFunctionHandle::new(index))
+                .ok_or(crate::linker::LinkError::MirExecutableCountMismatch {
+                    expected: compiled_layouts.len(),
+                    actual: self.program.function_count(),
+                })?;
+            verify_budget_mapping(index, code, &analyses.budget)?;
+        }
+        self.mir_executables = compiled_layouts
+            .iter()
+            .enumerate()
+            .map(|(index, layout)| MirExecutableLayout {
+                root: layout.root,
+                function: layout.function,
+                handle: crate::ScriptFunctionHandle::new(index),
+            })
+            .collect::<Vec<_>>()
+            .into_boxed_slice();
+        self.verified_mir = Some(bundle);
         Ok(self)
     }
 
     #[must_use]
     pub fn program(&self) -> &LinkedProgram {
         self.program.as_ref()
-    }
-
-    #[must_use]
-    pub fn program_owner(&self) -> Arc<LinkedProgram> {
-        Arc::clone(&self.program)
     }
 
     #[must_use]
@@ -175,8 +213,8 @@ impl LinkedArtifact {
     }
 
     #[must_use]
-    pub fn into_program(self) -> LinkedProgram {
-        Arc::try_unwrap(self.program).unwrap_or_else(|program| (*program).clone())
+    pub fn verified_mir(&self) -> Option<&Arc<vela_mir::OwnedVerifiedMirBundle>> {
+        self.verified_mir.as_ref()
     }
 
     pub fn verify(&self) -> Result<(), crate::verification::VerificationError> {
@@ -184,6 +222,100 @@ impl LinkedArtifact {
         self.program.verify()?;
         verify_cache_correspondence(self)
     }
+}
+
+fn verify_budget_mapping(
+    executable: usize,
+    code: &crate::LinkedCodeObject,
+    schedule: &vela_mir::MirBudgetSchedule,
+) -> Result<(), crate::linker::LinkError> {
+    let expected = schedule
+        .points()
+        .collect::<std::collections::BTreeMap<_, _>>();
+    let mut seen = BTreeSet::new();
+    let mut seen_origins = BTreeSet::new();
+    let mut expected_units = 0_u64;
+    let mut actual_units = 0_u64;
+    for (offset, instruction) in code.instructions.iter().enumerate() {
+        let first_at_origin = instruction
+            .mir_origin
+            .is_none_or(|origin| seen_origins.insert(origin));
+        let encoded_units = u64::from(instruction.execution_units)
+            + match instruction.kind {
+                InstructionKind::ChargeExecutionUnits { units } => u64::from(units),
+                _ => 0,
+            };
+        let charged_units = instruction
+            .mir_budget_charges
+            .iter()
+            .map(|charge| u64::from(charge.units))
+            .sum::<u64>();
+        actual_units = actual_units.saturating_add(encoded_units);
+        if encoded_units != charged_units {
+            return Err(crate::linker::LinkError::MirBudgetEncodingMismatch {
+                executable,
+                offset: crate::InstructionOffset(offset),
+                encoded_units,
+                mapped_units: charged_units,
+            });
+        }
+        for charge in &instruction.mir_budget_charges {
+            let Some(point) = expected.get(&charge.site) else {
+                return Err(crate::linker::LinkError::ExtraMirBudgetCharge {
+                    executable,
+                    offset: crate::InstructionOffset(offset),
+                    site: charge.site,
+                });
+            };
+            if !seen.insert(charge.site) {
+                return Err(crate::linker::LinkError::DuplicateMirBudgetCharge {
+                    executable,
+                    site: charge.site,
+                });
+            }
+            if charge.class != point.class || charge.units != point.units {
+                return Err(crate::linker::LinkError::MirBudgetChargeMismatch {
+                    executable,
+                    site: charge.site,
+                    expected: *point,
+                    actual_class: charge.class,
+                    actual_units: charge.units,
+                });
+            }
+            if instruction.mir_origin != Some(charge.site) || !first_at_origin {
+                return Err(crate::linker::LinkError::MirBudgetPlacementMismatch {
+                    executable,
+                    offset: crate::InstructionOffset(offset),
+                    site: charge.site,
+                    origin: instruction.mir_origin,
+                });
+            }
+            if matches!(charge.site, vela_mir::MirBudgetSite::Edge { .. })
+                && !matches!(instruction.kind, InstructionKind::ChargeExecutionUnits { units } if units == charge.units)
+            {
+                return Err(crate::linker::LinkError::MirBudgetPlacementMismatch {
+                    executable,
+                    offset: crate::InstructionOffset(offset),
+                    site: charge.site,
+                    origin: instruction.mir_origin,
+                });
+            }
+        }
+    }
+    for (site, point) in expected {
+        expected_units = expected_units.saturating_add(u64::from(point.units));
+        if !seen.contains(&site) {
+            return Err(crate::linker::LinkError::MissingMirBudgetCharge { executable, site });
+        }
+    }
+    if expected_units != actual_units {
+        return Err(crate::linker::LinkError::MirBudgetTotalMismatch {
+            executable,
+            expected_units,
+            actual_units,
+        });
+    }
+    Ok(())
 }
 
 impl ProfileLayout {

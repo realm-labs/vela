@@ -11,7 +11,6 @@ use crate::engine::Engine;
 pub struct RuntimeImage {
     engine: Engine,
     artifact: Arc<LinkedArtifact>,
-    _verified_mir: Option<Arc<vela_mir::OwnedVerifiedMirBundle>>,
     version_id: Option<ProgramVersionId>,
     layout: RuntimeImageLayout,
 }
@@ -83,12 +82,11 @@ impl RuntimeImage {
     }
 
     pub fn try_new(engine: Engine, program: UnlinkedProgram) -> Result<Self, LinkError> {
-        let artifact = Arc::new(engine.link_program(&program)?);
+        let artifact = engine.link_program(&program)?;
         let layout = RuntimeImageLayout::from_global_names(artifact.image().global_names());
         Ok(Self {
             engine,
             artifact,
-            _verified_mir: None,
             version_id: None,
             layout,
         })
@@ -104,13 +102,11 @@ impl RuntimeImage {
         engine: Engine,
         program: vela_bytecode::compiler::CompiledProgram,
     ) -> Result<Self, LinkError> {
-        let verified_mir = Some(Arc::clone(program.verified_mir()));
-        let artifact = Arc::new(engine.link_compiled_program(&program)?);
+        let artifact = engine.link_compiled_program(program)?;
         let layout = RuntimeImageLayout::from_global_names(artifact.image().global_names());
         Ok(Self {
             engine,
             artifact,
-            _verified_mir: verified_mir,
             version_id: None,
             layout,
         })
@@ -124,7 +120,6 @@ impl RuntimeImage {
         Self {
             engine,
             artifact,
-            _verified_mir: Some(Arc::clone(version.verified_mir())),
             version_id,
             layout,
         }
@@ -140,6 +135,10 @@ impl RuntimeImage {
 
     pub fn linked_program(&self) -> &LinkedProgram {
         self.artifact.program()
+    }
+
+    pub(super) fn linked_artifact(&self) -> &Arc<LinkedArtifact> {
+        &self.artifact
     }
 
     pub(super) fn global_names(&self) -> &[String] {

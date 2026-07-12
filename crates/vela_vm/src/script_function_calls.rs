@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use vela_bytecode::{
     CallArgument, DebugNameId, InstructionOffset, LinkedProgram, Register, ScriptCallMode,
     ScriptFunctionHandle, UnlinkedProgramCode,
@@ -97,7 +99,7 @@ pub(crate) fn dispatch_linked_script_function_call(
     frame: &mut CallFrame,
     call: LinkedScriptFunctionCall<'_>,
 ) -> VmResult<()> {
-    let function_code = context.program.function(call.function).ok_or_else(|| {
+    context.program.function(call.function).ok_or_else(|| {
         VmError::new(VmErrorKind::UnknownFunction {
             name: context.program.debug_name(call.debug_name).to_owned(),
         })
@@ -111,10 +113,15 @@ pub(crate) fn dispatch_linked_script_function_call(
         values_storage.as_slice()
     };
     let protected_root_len = heap.as_deref_mut().map(|heap| heap.push_frame_roots(frame));
+    let owner = Arc::clone(frame.linked_owner().ok_or_else(|| {
+        VmError::new(VmErrorKind::UnknownFunction {
+            name: context.program.debug_name(call.debug_name).to_owned(),
+        })
+    })?);
     let result = vm.execute_linked_call(
         LinkedExecutionCall {
-            code: function_code,
-            program: context.program,
+            owner,
+            function: call.function,
             captures: &[],
             args: values,
             check_param_guards: matches!(call.mode, ScriptCallMode::Checked),

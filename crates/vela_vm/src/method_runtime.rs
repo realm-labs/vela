@@ -30,6 +30,13 @@ impl<'a> CallerRoots<'a> {
             Self::Empty => heap.push_protected_roots(&[]),
         }
     }
+
+    pub(crate) fn linked_owner(self) -> Option<&'a std::sync::Arc<vela_bytecode::LinkedArtifact>> {
+        match self {
+            Self::Frame(frame) => frame.linked_owner(),
+            Self::Empty => None,
+        }
+    }
 }
 
 pub(crate) struct MethodRuntime<'a, 'host, 'heap> {
@@ -111,15 +118,15 @@ pub(crate) fn call_callback_with_protected_values<'value>(
             runtime.budget.as_deref_mut(),
         ),
         ClosureCode::Linked { owner, function } => {
-            let code = owner.function(function).ok_or_else(|| {
+            owner.function(function).ok_or_else(|| {
                 VmError::new(VmErrorKind::UnknownFunction {
                     name: format!("<linked closure#{}>", function.index()),
                 })
             })?;
             runtime.vm.execute_linked_call(
                 LinkedExecutionCall {
-                    code,
-                    program: &owner,
+                    owner,
+                    function,
                     captures: captures.as_slice(),
                     args,
                     check_param_guards: true,

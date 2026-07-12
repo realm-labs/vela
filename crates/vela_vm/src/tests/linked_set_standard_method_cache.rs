@@ -5,7 +5,7 @@ use crate::value::Value as RuntimeValue;
 use vela_stdlib_runtime::{StdFunctionImplementation, stdlib_function_runtime_bindings};
 
 type LinkedSetCacheFixture = (
-    vela_bytecode::LinkedProgram,
+    Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     MethodId,
@@ -367,6 +367,7 @@ fn linked_set_no_arg_cache_program(method: &str, receiver_values: &[i64]) -> Lin
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 
@@ -440,6 +441,7 @@ fn linked_set_values_cache_program() -> LinkedSetCacheFixture {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 
@@ -508,6 +510,7 @@ fn linked_set_mutator_cache_program(
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 
@@ -616,6 +619,7 @@ fn linked_set_combination_cache_program_with_return(
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 
@@ -670,11 +674,12 @@ fn linked_set_self_extend_cache_program() -> LinkedSetCacheFixture {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 
 fn run_linked_set_cache_owned_program(
-    program: &vela_bytecode::LinkedProgram,
+    program: &Arc<vela_bytecode::LinkedArtifact>,
     caches: &RecordingMethodCaches,
 ) -> VmResult<OwnedValue> {
     let mut heap = ScriptHeap::new();
@@ -684,7 +689,7 @@ fn run_linked_set_cache_owned_program(
 }
 
 fn run_linked_set_cache_program(
-    program: &vela_bytecode::LinkedProgram,
+    program: &Arc<vela_bytecode::LinkedArtifact>,
     caches: &RecordingMethodCaches,
     heap_execution: &mut HeapExecution<'_>,
 ) -> VmResult<RuntimeValue> {
@@ -693,16 +698,17 @@ fn run_linked_set_cache_program(
 }
 
 fn run_linked_set_cache_program_with_budget(
-    program: &vela_bytecode::LinkedProgram,
+    program: &Arc<vela_bytecode::LinkedArtifact>,
     caches: &RecordingMethodCaches,
     heap_execution: &mut HeapExecution<'_>,
     budget: &mut ExecutionBudget,
 ) -> VmResult<RuntimeValue> {
-    let code = main_code(program);
+    let function = program.entry_point_by_name("main").expect("main entry");
+    let owner = Arc::clone(program);
     Vm::new().with_standard_natives().execute_linked_call(
         crate::linked_execution::LinkedExecutionCall {
-            code,
-            program,
+            owner,
+            function,
             captures: &[],
             args: &[],
             check_param_guards: true,
@@ -715,14 +721,6 @@ fn run_linked_set_cache_program_with_budget(
         Some(heap_execution),
         Some(budget),
     )
-}
-
-fn main_code(program: &vela_bytecode::LinkedProgram) -> &vela_bytecode::LinkedCodeObject {
-    program
-        .functions()
-        .find(|(_, code)| program.debug_name(code.debug_name) == "main")
-        .map(|(_, code)| code)
-        .expect("linked set method cache fixture should have main")
 }
 
 fn std_function_id(implementation: StdFunctionImplementation) -> FunctionId {

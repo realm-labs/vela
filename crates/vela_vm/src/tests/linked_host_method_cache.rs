@@ -40,6 +40,7 @@ fn linked_host_method_cache_misses_wrong_method_target_guard() {
     ));
     let main = program.push_function(code);
     program.set_entry_point(main_name, main);
+    let program = linked_test_owner(program);
 
     let caches = RecordingMethodCaches::new(1);
     caches.prime(
@@ -72,11 +73,11 @@ fn linked_host_method_cache_misses_wrong_method_target_guard() {
             access: &mut access,
             script_globals: None,
         };
-        let code = program.function(main).expect("main linked code exists");
+        program.function(main).expect("main linked code exists");
         Vm::new().execute_linked_call(
             crate::linked_execution::LinkedExecutionCall {
-                code,
-                program: &program,
+                owner: Arc::clone(&program),
+                function: main,
                 captures: &[],
                 args: &[Value::HostRef(host_ref)],
                 check_param_guards: true,
@@ -131,11 +132,11 @@ fn linked_host_method_cache_misses_wrong_method_target_guard() {
             access: &mut access,
             script_globals: None,
         };
-        let code = program.function(main).expect("main linked code exists");
+        program.function(main).expect("main linked code exists");
         Vm::new().execute_linked_call(
             crate::linked_execution::LinkedExecutionCall {
-                code,
-                program: &program,
+                owner: Arc::clone(&program),
+                function: main,
                 captures: &[],
                 args: &[Value::HostRef(host_ref)],
                 check_param_guards: true,
@@ -162,11 +163,11 @@ fn linked_host_method_cache_misses_wrong_method_target_guard() {
             access: &mut access,
             script_globals: None,
         };
-        let code = program.function(main).expect("main linked code exists");
+        program.function(main).expect("main linked code exists");
         Vm::new().execute_linked_call(
             crate::linked_execution::LinkedExecutionCall {
-                code,
-                program: &program,
+                owner: Arc::clone(&program),
+                function: main,
                 captures: &[],
                 args: &[Value::HostRef(host_ref)],
                 check_param_guards: true,

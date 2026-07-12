@@ -165,6 +165,7 @@ pub struct MirFunction {
     guards: Arena<MirGuardId, MirGuard>,
     safepoints: Arena<MirSafepointId, MirSafepoint>,
     debug_locals: Arena<MirDebugLocalId, MirDebugLocal>,
+    lexical_scopes: BTreeMap<HirScopeId, MirSourceOrigin>,
     liveness: MirLiveness,
 }
 
@@ -195,6 +196,7 @@ impl MirFunction {
             guards: Arena::default(),
             safepoints: Arena::default(),
             debug_locals: Arena::default(),
+            lexical_scopes: BTreeMap::new(),
             liveness: MirLiveness::default(),
         }
     }
@@ -309,7 +311,22 @@ impl MirFunction {
     }
 
     pub fn add_debug_local(&mut self, local: MirDebugLocal) -> MirDebugLocalId {
+        self.lexical_scopes
+            .entry(local.scope)
+            .or_insert(self.origin);
         self.debug_locals.allocate(local)
+    }
+
+    pub fn set_lexical_scopes(
+        &mut self,
+        scopes: impl IntoIterator<Item = (HirScopeId, MirSourceOrigin)>,
+    ) {
+        self.lexical_scopes = scopes.into_iter().collect();
+    }
+
+    #[must_use]
+    pub fn lexical_scope(&self, scope: HirScopeId) -> Option<MirSourceOrigin> {
+        self.lexical_scopes.get(&scope).copied()
     }
 
     pub fn append_statement(

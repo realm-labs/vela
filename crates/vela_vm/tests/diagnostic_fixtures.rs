@@ -413,7 +413,9 @@ fn diagnostic_source(name: &str, source: String) -> DiagnosticSource {
     DiagnosticSource::new(SourceId::new(1), name, source)
 }
 
-fn link_fixture_program(program: &UnlinkedProgram) -> vela_bytecode::LinkedArtifact {
+fn link_fixture_program(
+    program: &UnlinkedProgram,
+) -> std::sync::Arc<vela_bytecode::LinkedArtifact> {
     Linker::new()
         .link_program(program)
         .expect("diagnostic fixture program should link")
@@ -422,7 +424,7 @@ fn link_fixture_program(program: &UnlinkedProgram) -> vela_bytecode::LinkedArtif
 fn link_fixture_program_with_vm(
     program: &UnlinkedProgram,
     vm: &Vm,
-) -> vela_bytecode::LinkedArtifact {
+) -> std::sync::Arc<vela_bytecode::LinkedArtifact> {
     let mut linker = Linker::new();
     for id in vm.native_implementation_ids() {
         linker.add_native_implementation(id);

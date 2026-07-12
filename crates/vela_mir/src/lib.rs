@@ -26,7 +26,7 @@ mod verifier;
 #[cfg(test)]
 mod tests;
 
-pub use budget::{MirBudgetClass, MirBudgetPoint, MirBudgetSchedule};
+pub use budget::{MirBudgetClass, MirBudgetPoint, MirBudgetSchedule, MirBudgetSite};
 pub use builder::build_mir;
 pub use cfg::{
     MirBasicBlock, MirRangeStepMode, MirSwitchCase, MirSwitchValue, MirTerminator,
@@ -37,7 +37,9 @@ pub use effects::{
     MirEffect, MirGuard, MirGuardAssumption, MirGuardContext, MirGuardKind, MirGuardLocation,
     MirLiveValue, MirSafepoint,
 };
-pub use facts::{MirFamilyFact, MirProgramPointFacts, MirShapeFact, MirValueFact};
+pub use facts::{
+    MirFamilyFact, MirProgramPointFacts, MirShapeFact, MirShapeFieldIdentity, MirValueFact,
+};
 pub use function::{
     DebugLocalKind, MirDebugLocal, MirFunction, MirFunctionCapture, MirFunctionOwner,
     MirFunctionParameter, MirFunctionReservation, MirFunctionReturn, MirLiveRegion, MirLiveness,

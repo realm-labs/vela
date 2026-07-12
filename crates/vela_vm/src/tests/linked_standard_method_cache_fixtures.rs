@@ -17,14 +17,23 @@ pub(super) use array::{
 };
 
 pub(super) type LinkedMethodCacheFixture = (
-    vela_bytecode::LinkedProgram,
+    std::sync::Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     vela_def::MethodId,
 );
 
+fn finish_fixture(
+    mut program: vela_bytecode::LinkedProgram,
+    name: DebugNameId,
+    function: vela_bytecode::ScriptFunctionHandle,
+) -> std::sync::Arc<vela_bytecode::LinkedArtifact> {
+    program.set_entry_point(name, function);
+    linked_test_owner(program)
+}
+
 pub(super) fn linked_standard_len_cache_program() -> (
-    vela_bytecode::LinkedProgram,
+    std::sync::Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     vela_def::MethodId,
@@ -61,7 +70,7 @@ pub(super) fn linked_standard_len_cache_program() -> (
         vela_bytecode::linked::InstructionKind::Return { src: Register(1) },
     ));
     let function = program.push_function(code);
-    program.set_entry_point(main_name, function);
+    let program = finish_fixture(program, main_name, function);
     (program, site, dispatch, method_id)
 }
 
@@ -139,7 +148,7 @@ pub(super) fn linked_iterator_adapter_cache_program(method: &str) -> LinkedMetho
         vela_bytecode::linked::InstructionKind::Return { src: Register(7) },
     ));
     let function = program.push_function(code);
-    program.set_entry_point(main_name, function);
+    let program = finish_fixture(program, main_name, function);
     (program, site, dispatch, method_id)
 }
 
@@ -147,7 +156,7 @@ pub(super) fn linked_string_no_arg_cache_program(
     method: &str,
     receiver: &str,
 ) -> (
-    vela_bytecode::LinkedProgram,
+    std::sync::Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     vela_def::MethodId,
@@ -184,7 +193,7 @@ pub(super) fn linked_string_no_arg_cache_program(
         vela_bytecode::linked::InstructionKind::Return { src: Register(1) },
     ));
     let function = program.push_function(code);
-    program.set_entry_point(main_name, function);
+    let program = finish_fixture(program, main_name, function);
     (program, site, dispatch, method_id)
 }
 
@@ -193,7 +202,7 @@ pub(super) fn linked_string_one_arg_cache_program(
     receiver: &str,
     arg: &str,
 ) -> (
-    vela_bytecode::LinkedProgram,
+    std::sync::Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     vela_def::MethodId,
@@ -206,7 +215,7 @@ pub(super) fn linked_string_one_constant_arg_cache_program(
     receiver: &str,
     arg: Constant,
 ) -> (
-    vela_bytecode::LinkedProgram,
+    std::sync::Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     vela_def::MethodId,
@@ -250,7 +259,7 @@ pub(super) fn linked_string_one_constant_arg_cache_program(
         vela_bytecode::linked::InstructionKind::Return { src: Register(2) },
     ));
     let function = program.push_function(code);
-    program.set_entry_point(main_name, function);
+    let program = finish_fixture(program, main_name, function);
     (program, site, dispatch, method_id)
 }
 
@@ -260,7 +269,7 @@ pub(super) fn linked_string_two_constant_arg_cache_program(
     first: Constant,
     second: Constant,
 ) -> (
-    vela_bytecode::LinkedProgram,
+    std::sync::Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     vela_def::MethodId,
@@ -314,12 +323,12 @@ pub(super) fn linked_string_two_constant_arg_cache_program(
         vela_bytecode::linked::InstructionKind::Return { src: Register(3) },
     ));
     let function = program.push_function(code);
-    program.set_entry_point(main_name, function);
+    let program = finish_fixture(program, main_name, function);
     (program, site, dispatch, method_id)
 }
 
 pub(super) fn linked_map_get_or_cache_program() -> (
-    vela_bytecode::LinkedProgram,
+    std::sync::Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     vela_def::MethodId,
@@ -379,7 +388,7 @@ pub(super) fn linked_map_get_or_cache_program() -> (
         vela_bytecode::linked::InstructionKind::Return { src: Register(4) },
     ));
     let function = program.push_function(code);
-    program.set_entry_point(main_name, function);
+    let program = finish_fixture(program, main_name, function);
     (program, site, dispatch, method_id)
 }
 
@@ -432,7 +441,7 @@ pub(super) fn linked_map_get_cache_program() -> LinkedMethodCacheFixture {
         vela_bytecode::linked::InstructionKind::Return { src: Register(3) },
     ));
     let function = program.push_function(code);
-    program.set_entry_point(main_name, function);
+    let program = finish_fixture(program, main_name, function);
     (program, site, dispatch, method_id)
 }
 
@@ -485,7 +494,7 @@ pub(super) fn linked_map_has_cache_program() -> LinkedMethodCacheFixture {
         vela_bytecode::linked::InstructionKind::Return { src: Register(3) },
     ));
     let function = program.push_function(code);
-    program.set_entry_point(main_name, function);
+    let program = finish_fixture(program, main_name, function);
     (program, site, dispatch, method_id)
 }
 
@@ -539,7 +548,7 @@ pub(super) fn linked_set_has_cache_program() -> LinkedMethodCacheFixture {
         vela_bytecode::linked::InstructionKind::Return { src: Register(4) },
     ));
     let function = program.push_function(code);
-    program.set_entry_point(main_name, function);
+    let program = finish_fixture(program, main_name, function);
     (program, site, dispatch, method_id)
 }
 
@@ -619,7 +628,7 @@ pub(super) fn linked_set_has_record_identity_cache_program() -> LinkedMethodCach
         vela_bytecode::linked::InstructionKind::Return { src: Register(5) },
     ));
     let function = program.push_function(code);
-    program.set_entry_point(main_name, function);
+    let program = finish_fixture(program, main_name, function);
     (program, site, dispatch, method_id)
 }
 
@@ -628,7 +637,7 @@ pub(super) fn linked_set_relation_cache_program(
     receiver_values: &[i64],
     other_values: &[i64],
 ) -> (
-    vela_bytecode::LinkedProgram,
+    std::sync::Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     vela_def::MethodId,
@@ -709,7 +718,7 @@ pub(super) fn linked_set_relation_cache_program(
         vela_bytecode::linked::InstructionKind::Return { src: result },
     ));
     let function = program.push_function(code);
-    program.set_entry_point(main_name, function);
+    let program = finish_fixture(program, main_name, function);
     (program, site, dispatch, method_id)
 }
 
@@ -800,12 +809,12 @@ fn linked_standard_enum_no_arg_cache_program(
         vela_bytecode::linked::InstructionKind::Return { src: Register(2) },
     ));
     let function = program.push_function(code);
-    program.set_entry_point(main_name, function);
+    let program = finish_fixture(program, main_name, function);
     (program, site, dispatch, method_id)
 }
 
 pub(super) fn linked_result_unwrap_or_cache_program() -> (
-    vela_bytecode::LinkedProgram,
+    std::sync::Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     vela_def::MethodId,
@@ -814,7 +823,7 @@ pub(super) fn linked_result_unwrap_or_cache_program() -> (
 }
 
 pub(super) fn linked_option_unwrap_or_cache_program() -> (
-    vela_bytecode::LinkedProgram,
+    std::sync::Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     vela_def::MethodId,
@@ -828,7 +837,7 @@ fn linked_enum_unwrap_or_cache_program(
     payload_value: i64,
     fallback_value: i64,
 ) -> (
-    vela_bytecode::LinkedProgram,
+    std::sync::Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     vela_def::MethodId,
@@ -888,7 +897,7 @@ fn linked_enum_unwrap_or_cache_program(
         vela_bytecode::linked::InstructionKind::Return { src: Register(3) },
     ));
     let function = program.push_function(code);
-    program.set_entry_point(main_name, function);
+    let program = finish_fixture(program, main_name, function);
     (program, site, dispatch, method_id)
 }
 
@@ -916,7 +925,7 @@ fn push_standard_variant(
 }
 
 pub(super) fn linked_bytes_get_cache_program() -> (
-    vela_bytecode::LinkedProgram,
+    std::sync::Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     vela_def::MethodId,
@@ -960,14 +969,14 @@ pub(super) fn linked_bytes_get_cache_program() -> (
         vela_bytecode::linked::InstructionKind::Return { src: Register(2) },
     ));
     let function = program.push_function(code);
-    program.set_entry_point(main_name, function);
+    let program = finish_fixture(program, main_name, function);
     (program, site, dispatch, method_id)
 }
 
 pub(super) fn linked_bytes_read_u32_cache_program(
     method: &str,
 ) -> (
-    vela_bytecode::LinkedProgram,
+    std::sync::Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     vela_def::MethodId,
@@ -1011,12 +1020,12 @@ pub(super) fn linked_bytes_read_u32_cache_program(
         vela_bytecode::linked::InstructionKind::Return { src: Register(2) },
     ));
     let function = program.push_function(code);
-    program.set_entry_point(main_name, function);
+    let program = finish_fixture(program, main_name, function);
     (program, site, dispatch, method_id)
 }
 
 pub(super) fn linked_bytes_slice_cache_program() -> (
-    vela_bytecode::LinkedProgram,
+    std::sync::Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     vela_def::MethodId,
@@ -1025,7 +1034,7 @@ pub(super) fn linked_bytes_slice_cache_program() -> (
 }
 
 pub(super) fn linked_bytes_slice_oob_cache_program() -> (
-    vela_bytecode::LinkedProgram,
+    std::sync::Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     vela_def::MethodId,
@@ -1037,7 +1046,7 @@ fn linked_bytes_slice_cache_program_with_bounds(
     start_index: i64,
     end_index: i64,
 ) -> (
-    vela_bytecode::LinkedProgram,
+    std::sync::Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     vela_def::MethodId,
@@ -1091,12 +1100,12 @@ fn linked_bytes_slice_cache_program_with_bounds(
         vela_bytecode::linked::InstructionKind::Return { src: Register(3) },
     ));
     let function = program.push_function(code);
-    program.set_entry_point(main_name, function);
+    let program = finish_fixture(program, main_name, function);
     (program, site, dispatch, method_id)
 }
 
 pub(super) fn linked_bytes_to_hex_cache_program() -> (
-    vela_bytecode::LinkedProgram,
+    std::sync::Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     vela_def::MethodId,
@@ -1133,12 +1142,12 @@ pub(super) fn linked_bytes_to_hex_cache_program() -> (
         vela_bytecode::linked::InstructionKind::Return { src: Register(1) },
     ));
     let function = program.push_function(code);
-    program.set_entry_point(main_name, function);
+    let program = finish_fixture(program, main_name, function);
     (program, site, dispatch, method_id)
 }
 
 pub(super) fn linked_string_contains_cache_program() -> (
-    vela_bytecode::LinkedProgram,
+    std::sync::Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     vela_def::MethodId,
@@ -1183,6 +1192,6 @@ pub(super) fn linked_string_contains_cache_program() -> (
         vela_bytecode::linked::InstructionKind::Return { src: Register(2) },
     ));
     let function = program.push_function(code);
-    program.set_entry_point(main_name, function);
+    let program = finish_fixture(program, main_name, function);
     (program, site, dispatch, method_id)
 }

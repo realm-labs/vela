@@ -2,7 +2,7 @@ use super::linked_standard_method_cache_support::*;
 use super::*;
 
 type LinkedOptionResultCacheFixture = (
-    vela_bytecode::LinkedProgram,
+    Arc<vela_bytecode::LinkedArtifact>,
     CacheSiteId,
     vela_bytecode::MethodDispatchHandle,
     MethodId,
@@ -205,6 +205,7 @@ fn linked_option_ok_or_cache_program() -> LinkedOptionResultCacheFixture {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 
@@ -256,6 +257,7 @@ fn linked_enum_no_arg_cache_program(
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 
@@ -319,6 +321,7 @@ fn linked_nested_enum_cache_program(
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 

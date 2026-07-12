@@ -424,6 +424,7 @@ fn linked_array_extend_cache_program_with_options(
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
 
@@ -473,5 +474,6 @@ fn linked_array_self_extend_cache_program() -> LinkedMethodCacheFixture {
     ));
     let function = program.push_function(code);
     program.set_entry_point(main_name, function);
+    let program = linked_test_owner(program);
     (program, site, dispatch, method_id)
 }
