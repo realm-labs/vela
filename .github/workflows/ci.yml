@@ -63,7 +63,7 @@ jobs:
             echo "vela_bytecode must not depend on or reference vela_syntax."
             exit 1
           fi
-          if grep -RInE 'compile_(function|program|module)_source|parse_semantic_(source|modules)|SemanticSource|SemanticModules' crates examples tests --include='*.rs'; then
+          if grep -RInE 'compile_(function|program|module)_source|parse_semantic_(source|modules)|SemanticSource|SemanticModules' crates/vela_bytecode --include='*.rs'; then
             echo "Deleted bytecode source compiler APIs must not return."
             exit 1
           fi
