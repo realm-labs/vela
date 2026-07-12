@@ -31,6 +31,37 @@ stdio or loopback TCP
 There must be no second mutable server object behind `GlobalState` and no test
 path that implements a separate request dispatcher.
 
+## Atomic Execution Mode
+
+This plan is not a sequence of compatibility-preserving commits. The numbered
+phases below are an implementation checklist and dependency order inside one
+hard-switch batch. They are not mergeable checkpoints.
+
+Execution rules:
+
+1. Phase 0 is read-only inventory and baseline measurement.
+2. After implementation begins, keep the work in one uncommitted cutover until
+   production ownership, typed tests, legacy deletion, documentation, and
+   architecture gates all reach the final shape.
+3. The worktree may temporarily fail to compile while fields, handlers, and
+   tests move together. Do not add adapters or dual-write compatibility code
+   merely to keep an intermediate state green.
+4. Do not commit a state containing both the new authoritative owner and a
+   functioning legacy `LspServer` path.
+5. Do not stop after introducing `TestServer`, moving one state category, or
+   migrating only some test families. Those are internal work steps, not
+   deliverables.
+6. Run focused compiler/tests opportunistically to diagnose the cutover, but
+   require the validation gates only after the legacy half has been deleted.
+7. Produce one coherent breaking implementation commit after all completion
+   criteria and zero-hit gates pass. Documentation and CI enforcement land in
+   that same commit so no committed revision claims an architecture it does
+   not have.
+
+This plan deliberately trades intermediate compatibility for a shorter,
+clearer migration. Git history already preserves the old implementation; the
+source tree does not need to preserve it in parallel.
+
 ## 2. Current Problem
 
 The typed production entry already runs through `main.rs`, `main_loop.rs`,
@@ -158,9 +189,9 @@ exception is explicitly reviewed and documented.
    contract. Record any intentional behavior correction separately.
 8. Do not broaden TCP exposure, change cancellation semantics, weaken stale
    generation checks, or alter language-service query semantics.
-9. Transitional code may exist inside an in-progress checkpoint, but no
-   checkpoint described as complete may retain a second mutable source of
-   truth.
+9. Transitional code may exist only as an uncommitted worktree state during the
+   atomic cutover. It must not be committed, released, or described as a
+   completed checkpoint.
 
 ## 5. Behavior Matrix To Preserve
 
@@ -466,7 +497,10 @@ All commands must return no matches.
 
 ## 14. Validation Gates
 
-Run focused checks after every phase:
+The phases are not required to remain independently green. During the atomic
+cutover, use focused `cargo check` or test filters only when they help diagnose
+the current edit. After all production and test references to the legacy half
+have been removed, run the focused gate:
 
 ```bash
 cargo fmt --all -- --check
@@ -475,7 +509,7 @@ cargo test -p vela_lsp_server
 cargo test -p vela_language_service
 ```
 
-Run transport and binary checks after lifecycle/main-loop changes:
+After the atomic cutover, also run the transport and binary checks:
 
 ```bash
 cargo test -p vela_lsp_server --test stdio_transport
@@ -514,20 +548,16 @@ The plan is complete only when all of the following are true:
 - [ ] Focused and full validation gates pass.
 - [ ] Architecture, decisions, progress, and CI gates reflect the final state.
 
-## 16. Suggested Verified Commits
+## 16. Atomic Commit Policy
 
-Keep checkpoints small enough to review and revert independently:
+Do not create per-phase implementation commits. Complete the ownership move,
+typed test migration, legacy deletion, file split, documentation update, and CI
+gates in one cutover, validate the final tree, then create one commit:
 
 ```text
-test(lsp): add typed production-path server harness
-refactor(lsp): make GlobalState own workspace analysis state
-refactor(lsp): move configuration reload and diagnostics state
-refactor(lsp): remove lifecycle and capability mirroring
-test(lsp): migrate feature fixtures to typed dispatch
-refactor(lsp)!: delete legacy LspServer implementation
-docs(lsp): seal the GlobalState single-owner architecture
+refactor(lsp)!: hard switch to GlobalState ownership
 ```
 
-The breaking marker belongs on the deletion checkpoint because internal tests
-and any accidental crate-internal consumers can no longer construct
-`LspServer`. No public compatibility shim should be added.
+The commit body should summarize the removed legacy surface, the new ownership
+model, typed test-harness migration, zero-hit results, and validation commands.
+No compatibility shim should be added before or after this commit.
