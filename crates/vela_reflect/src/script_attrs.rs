@@ -13,7 +13,7 @@ impl ReflectedScriptAttrs {
         let mut reflected = Self::default();
         for attr in attrs {
             if attr.name == "doc" {
-                reflected.docs = Some(attr.string_value().to_owned());
+                reflected.docs = Some(attr.string_value());
             } else if !attr.name.is_empty() {
                 reflected
                     .attrs

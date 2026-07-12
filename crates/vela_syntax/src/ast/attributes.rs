@@ -124,11 +124,7 @@ impl SyntaxAttributeArg {
 
     #[must_use]
     pub fn value_text(&self) -> Option<String> {
-        if self.equal_token().is_some() {
-            value_text_after_separator(&self.syntax, SyntaxKind::Equal)
-        } else {
-            significant_text(&self.syntax)
-        }
+        self.value().map(|value| value.text().trim().to_owned())
     }
 
     #[must_use]
@@ -157,11 +153,16 @@ impl SyntaxAttributeArg {
 
     #[must_use]
     pub fn value_array(&self) -> Option<SyntaxAttributeArray> {
-        child(&self.syntax)
+        self.value()?.array()
     }
 
     #[must_use]
     pub fn value_map(&self) -> Option<SyntaxAttributeMap> {
+        self.value()?.map()
+    }
+
+    #[must_use]
+    pub fn value(&self) -> Option<SyntaxAttributeValue> {
         child(&self.syntax)
     }
 }
@@ -199,6 +200,11 @@ impl SyntaxAttributeArray {
     #[must_use]
     pub fn separator_tokens(&self) -> Vec<SyntaxToken> {
         separator_tokens(&self.syntax, SyntaxKind::Comma)
+    }
+
+    #[must_use]
+    pub fn values(&self) -> AstChildren<SyntaxAttributeValue> {
+        AstChildren::new(&self.syntax)
     }
 }
 
@@ -280,7 +286,7 @@ impl SyntaxAttributeMapEntry {
 
     #[must_use]
     pub fn value_text(&self) -> Option<String> {
-        value_text_after_separator(&self.syntax, SyntaxKind::Colon)
+        self.value().map(|value| value.text().trim().to_owned())
     }
 
     #[must_use]
@@ -305,11 +311,16 @@ impl SyntaxAttributeMapEntry {
 
     #[must_use]
     pub fn value_array(&self) -> Option<SyntaxAttributeArray> {
-        child(&self.syntax)
+        self.value()?.array()
     }
 
     #[must_use]
     pub fn value_map(&self) -> Option<SyntaxAttributeMap> {
+        self.value()?.map()
+    }
+
+    #[must_use]
+    pub fn value(&self) -> Option<SyntaxAttributeValue> {
         child(&self.syntax)
     }
 }
@@ -317,6 +328,52 @@ impl SyntaxAttributeMapEntry {
 impl AstNode for SyntaxAttributeMapEntry {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == SyntaxKind::AttributeMapEntry
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxAttributeValue {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxAttributeValue {
+    #[must_use]
+    pub fn text(&self) -> String {
+        self.syntax.text().to_string()
+    }
+
+    #[must_use]
+    pub fn tokens(&self) -> Vec<SyntaxToken> {
+        significant_tokens(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn path_segments(&self) -> Vec<String> {
+        path_segments_from_tokens(&path_tokens_from_value_tokens(self.tokens()))
+    }
+
+    #[must_use]
+    pub fn array(&self) -> Option<SyntaxAttributeArray> {
+        child(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn map(&self) -> Option<SyntaxAttributeMap> {
+        child(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxAttributeValue {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::AttributeValue
     }
 
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -404,26 +461,6 @@ fn significant_tokens(parent: &SyntaxNode) -> Vec<SyntaxToken> {
         .collect()
 }
 
-fn value_text_after_separator(parent: &SyntaxNode, separator: SyntaxKind) -> Option<String> {
-    let mut seen_separator = false;
-    let mut parts = Vec::new();
-
-    for element in parent.children_with_tokens() {
-        if !seen_separator {
-            if element.kind() == separator {
-                seen_separator = true;
-            }
-            continue;
-        }
-        if parts.is_empty() && element.kind().is_trivia() {
-            continue;
-        }
-        parts.push((element.kind(), element_text(&element)));
-    }
-
-    joined_parts_without_trailing_trivia(parts)
-}
-
 fn value_tokens_after_separator(parent: &SyntaxNode, separator: SyntaxKind) -> Vec<SyntaxToken> {
     let mut seen_separator = false;
     let mut tokens = Vec::new();
@@ -450,32 +487,6 @@ fn collect_significant_tokens(element: SyntaxElement, tokens: &mut Vec<SyntaxTok
         ),
         rowan::NodeOrToken::Token(token) if !token.kind().is_trivia() => tokens.push(token),
         rowan::NodeOrToken::Token(_) => {}
-    }
-}
-
-fn significant_text(parent: &SyntaxNode) -> Option<String> {
-    let mut parts = Vec::new();
-    for element in parent.children_with_tokens() {
-        if parts.is_empty() && element.kind().is_trivia() {
-            continue;
-        }
-        parts.push((element.kind(), element_text(&element)));
-    }
-    joined_parts_without_trailing_trivia(parts)
-}
-
-fn joined_parts_without_trailing_trivia(mut parts: Vec<(SyntaxKind, String)>) -> Option<String> {
-    while parts.last().is_some_and(|(kind, _)| kind.is_trivia()) {
-        parts.pop();
-    }
-    let text = parts.into_iter().map(|(_, text)| text).collect::<String>();
-    (!text.is_empty()).then_some(text)
-}
-
-fn element_text(element: &crate::SyntaxElement) -> String {
-    match element {
-        rowan::NodeOrToken::Node(node) => node.text().to_string(),
-        rowan::NodeOrToken::Token(token) => token.text().to_owned(),
     }
 }
 

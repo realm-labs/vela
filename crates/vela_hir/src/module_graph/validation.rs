@@ -182,7 +182,7 @@ impl ModuleGraph {
     ) -> Option<(u64, Span)> {
         let mut found = None;
         for attr in attrs {
-            match parse_schema_id_attr(&attr.name, attr.value.as_deref()) {
+            match parse_schema_id_attr(attr) {
                 Ok(Some(id)) => {
                     if let Some((previous_id, previous_span)) = found {
                         self.diagnostics.push(

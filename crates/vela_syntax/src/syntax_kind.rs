@@ -144,6 +144,7 @@ pub enum SyntaxKind {
     Interpolation,
     UnitExpr,
     TupleExpr,
+    AttributeValue,
     Eof,
 }
 
@@ -220,6 +221,7 @@ impl SyntaxKind {
                 | Self::Interpolation
                 | Self::UnitExpr
                 | Self::TupleExpr
+                | Self::AttributeValue
                 | Self::Error
         )
     }
@@ -459,7 +461,8 @@ impl From<u16> for SyntaxKind {
             138 => Self::Interpolation,
             139 => Self::UnitExpr,
             140 => Self::TupleExpr,
-            141 => Self::Eof,
+            141 => Self::AttributeValue,
+            142 => Self::Eof,
             _ => unreachable!("raw syntax kind already checked against LAST_KIND"),
         }
     }
@@ -632,6 +635,7 @@ mod tests {
         SyntaxKind::Interpolation,
         SyntaxKind::UnitExpr,
         SyntaxKind::TupleExpr,
+        SyntaxKind::AttributeValue,
         SyntaxKind::Eof,
     ];
 

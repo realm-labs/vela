@@ -758,11 +758,17 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
         self.pos = start;
         let value_start = self.skip_trivia(start);
         self.emit_until(value_start);
+        if !self.has_significant_tokens(value_start, end) {
+            self.emit_tokens(value_start, end);
+            return;
+        }
+        self.builder.start_node(SyntaxKind::AttributeValue);
         match self.kind_at(value_start) {
             Some(SyntaxKind::LBracket) => self.attribute_array_range(value_start, end),
             Some(SyntaxKind::LBrace) => self.attribute_map_range(value_start, end),
             _ => self.emit_tokens(value_start, end),
         }
+        self.builder.finish_node();
     }
 
     fn attribute_array_range(&mut self, start: usize, end: usize) {

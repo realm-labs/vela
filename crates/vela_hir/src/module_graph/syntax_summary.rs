@@ -1,13 +1,16 @@
 use vela_common::{Diagnostic, SourceId, Span};
 use vela_syntax::ast::{
-    AstChildren, AstNode, SyntaxAttribute, SyntaxConstItem, SyntaxEnumItem, SyntaxEnumVariant,
-    SyntaxExpression, SyntaxFunctionItem, SyntaxGlobalItem, SyntaxImplItem, SyntaxImplMethod,
-    SyntaxItem, SyntaxParam, SyntaxParamList, SyntaxSourceFile, SyntaxStructField,
-    SyntaxStructItem, SyntaxTraitItem, SyntaxTraitMethod, SyntaxTypeHint, SyntaxUseItem,
+    AstChildren, AstNode, SyntaxAttribute, SyntaxAttributeValue, SyntaxConstItem, SyntaxEnumItem,
+    SyntaxEnumVariant, SyntaxExpression, SyntaxFunctionItem, SyntaxGlobalItem, SyntaxImplItem,
+    SyntaxImplMethod, SyntaxItem, SyntaxParam, SyntaxParamList, SyntaxSourceFile,
+    SyntaxStructField, SyntaxStructItem, SyntaxTraitItem, SyntaxTraitMethod, SyntaxTypeHint,
+    SyntaxUseItem,
 };
 use vela_syntax::{Parse as SyntaxParse, SyntaxKind, SyntaxToken, TextRange};
 
-use crate::attributes::HirAttribute;
+use crate::attributes::{
+    HirAttribute, HirAttributeArgument, HirAttributeMapEntry, HirAttributeValue,
+};
 use crate::ids::HirNodeId;
 use crate::top_level::validate_syntax_const_initializer;
 use crate::type_hint::{
@@ -721,23 +724,77 @@ fn attrs_from_cst(source: SourceId, attrs: AstChildren<SyntaxAttribute>) -> Vec<
 fn attr_from_cst(source: SourceId, attr: &SyntaxAttribute) -> Option<HirAttribute> {
     Some(HirAttribute {
         name: attr.path_text()?,
-        value: attr_value(attr),
+        arguments: attr
+            .arguments()
+            .filter_map(|argument| {
+                let value = argument.value()?;
+                Some(HirAttributeArgument {
+                    name: argument.name_text(),
+                    name_span: argument
+                        .name_token()
+                        .map(|token| span_for(source, token.text_range())),
+                    value: hir_attr_value(source, &value),
+                    span: span_for(source, argument.syntax().text_range()),
+                    value_span: span_for(source, value.syntax().text_range()),
+                })
+            })
+            .collect(),
         span: span_for(source, attr.syntax().text_range()),
     })
 }
 
-fn attr_value(attr: &SyntaxAttribute) -> Option<String> {
-    let values = attr
-        .arguments()
-        .filter_map(|arg| {
-            let value = normalize_attr_value(arg.value_text()?);
-            Some(match arg.name_text() {
-                Some(name) => format!("{name}={value}"),
-                None => value,
-            })
-        })
-        .collect::<Vec<_>>();
-    (!values.is_empty()).then(|| values.join(","))
+fn hir_attr_value(source: SourceId, value: &SyntaxAttributeValue) -> HirAttributeValue {
+    if let Some(array) = value.array() {
+        return HirAttributeValue::Array(
+            array
+                .values()
+                .map(|value| hir_attr_value(source, &value))
+                .collect(),
+        );
+    }
+    if let Some(map) = value.map() {
+        return HirAttributeValue::Map(
+            map.entries()
+                .filter_map(|entry| {
+                    let key = entry.key_token()?;
+                    let value = entry.value()?;
+                    Some(HirAttributeMapEntry {
+                        key: key.text().to_owned(),
+                        key_span: span_for(source, key.text_range()),
+                        value: hir_attr_value(source, &value),
+                        span: span_for(source, entry.syntax().text_range()),
+                        value_span: span_for(source, value.syntax().text_range()),
+                    })
+                })
+                .collect(),
+        );
+    }
+
+    let tokens = value.tokens();
+    let text = normalize_attr_value(value.text());
+    if tokens.len() == 1 {
+        return match tokens[0].kind() {
+            SyntaxKind::String | SyntaxKind::Char => HirAttributeValue::String(text),
+            SyntaxKind::TrueKw => HirAttributeValue::Bool(true),
+            SyntaxKind::FalseKw => HirAttributeValue::Bool(false),
+            SyntaxKind::Int => HirAttributeValue::Integer(text),
+            SyntaxKind::Float => HirAttributeValue::Float(text),
+            _ => {
+                let path = value.path_segments();
+                if path.is_empty() {
+                    HirAttributeValue::Raw(text)
+                } else {
+                    HirAttributeValue::Path(path)
+                }
+            }
+        };
+    }
+    let path = value.path_segments();
+    if path.is_empty() {
+        HirAttributeValue::Raw(text)
+    } else {
+        HirAttributeValue::Path(path)
+    }
 }
 
 fn normalize_attr_value(value: String) -> String {

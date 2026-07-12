@@ -58,15 +58,13 @@ fn core_language_fixture_resolves() {
     assert_eq!(reward.kind, DeclarationKind::Struct);
     let reward_attrs = graph.declaration_attrs(reward.id);
     assert_eq!(reward_attrs[0].name, "doc");
-    assert_eq!(reward_attrs[0].value.as_deref(), Some("Core reward"));
+    assert_eq!(reward_attrs[0].string_value(), "Core reward");
     assert_eq!(reward_attrs[1].name, "domain");
-    assert_eq!(reward_attrs[1].value.as_deref(), Some("conformance"));
+    assert_eq!(reward_attrs[1].string_value(), "conformance");
     assert_eq!(reward_attrs[2].name, "rule");
     assert_eq!(
-        reward_attrs[2].value.as_deref(),
-        Some(
-            "kind=conformance::reward::Rule,tags=[\"core\",\"fixture\"],config={enabled:true,limit:3}"
-        )
+        reward_attrs[2].string_value(),
+        "kind=conformance::reward::Rule,tags=[\"core\",\"fixture\"],config={enabled:true,limit:3}"
     );
     let reward_shape = graph
         .struct_shape(reward.id)
@@ -74,8 +72,8 @@ fn core_language_fixture_resolves() {
     assert_eq!(reward_shape.fields[0].name, "item");
     assert_eq!(reward_shape.fields[0].attrs[0].name, "doc");
     assert_eq!(
-        reward_shape.fields[0].attrs[0].value.as_deref(),
-        Some("Reward item")
+        reward_shape.fields[0].attrs[0].string_value(),
+        "Reward item"
     );
     assert_eq!(
         reward_shape.fields[0]
@@ -115,15 +113,15 @@ fn core_language_fixture_resolves() {
     assert_eq!(scored.kind, DeclarationKind::Trait);
     let scored_attrs = graph.declaration_attrs(scored.id);
     assert_eq!(scored_attrs[0].name, "doc");
-    assert_eq!(scored_attrs[0].value.as_deref(), Some("Scored contract"));
+    assert_eq!(scored_attrs[0].string_value(), "Scored contract");
     let scored_shape = graph
         .trait_shape(scored.id)
         .expect("Scored should have a trait shape");
     assert_eq!(scored_shape.methods[0].name, "score");
     assert_eq!(scored_shape.methods[0].attrs[0].name, "doc");
     assert_eq!(
-        scored_shape.methods[0].attrs[0].value.as_deref(),
-        Some("Score reward")
+        scored_shape.methods[0].attrs[0].string_value(),
+        "Score reward"
     );
     assert_eq!(
         scored_shape.methods[0]
@@ -153,10 +151,7 @@ fn core_language_fixture_resolves() {
     let main = declaration(&graph, "main");
     let main_attrs = graph.declaration_attrs(main.id);
     assert_eq!(main_attrs[0].name, "doc");
-    assert_eq!(
-        main_attrs[0].value.as_deref(),
-        Some("Core conformance entry")
-    );
+    assert_eq!(main_attrs[0].string_value(), "Core conformance entry");
     let imports = graph
         .imports(main.module)
         .expect("core imports should exist");

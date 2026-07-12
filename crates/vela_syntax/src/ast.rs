@@ -17,7 +17,7 @@ mod syntax;
 
 pub use attributes::{
     SyntaxAttribute, SyntaxAttributeArg, SyntaxAttributeArray, SyntaxAttributeMap,
-    SyntaxAttributeMapEntry,
+    SyntaxAttributeMapEntry, SyntaxAttributeValue,
 };
 pub use control::{SyntaxMatchArm, SyntaxMatchArmBody, SyntaxMatchArmList, SyntaxMatchExpr};
 pub use expr::{

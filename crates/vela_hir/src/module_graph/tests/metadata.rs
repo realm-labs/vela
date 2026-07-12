@@ -1,4 +1,5 @@
 use super::*;
+use crate::attributes::HirAttributeValue;
 use crate::binding::LocalBindingKind;
 use crate::body::{HirBodyOwner, HirBodyRoot};
 
@@ -631,21 +632,41 @@ trait Damageable {
     assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
     let grant_attrs = graph.declaration_attrs(grant);
     assert_eq!(grant_attrs[0].name, "event");
-    assert_eq!(grant_attrs[0].value.as_deref(), Some("monster.kill"));
+    assert_eq!(grant_attrs[0].string_value(), "monster.kill");
     let reward_attrs = graph.declaration_attrs(reward);
     assert_eq!(reward_attrs[0].name, "doc");
-    assert_eq!(reward_attrs[0].value.as_deref(), Some("Reward metadata"));
+    assert_eq!(reward_attrs[0].string_value(), "Reward metadata");
     assert_eq!(reward_attrs[1].name, "domain");
     assert_eq!(reward_attrs[2].name, "policy");
     assert_eq!(
-        reward_attrs[2].value.as_deref(),
-        Some("level=3,tags=[\"reward\",game::reward::Event]")
+        reward_attrs[2].string_value(),
+        "level=3,tags=[\"reward\",game::reward::Event]"
     );
+    assert_eq!(reward_attrs[2].arguments.len(), 2);
+    assert_eq!(reward_attrs[2].arguments[0].name.as_deref(), Some("level"));
+    assert!(matches!(
+        &reward_attrs[2].arguments[0].value,
+        HirAttributeValue::Integer(value) if value == "3"
+    ));
+    assert_eq!(reward_attrs[2].arguments[1].name.as_deref(), Some("tags"));
+    assert!(matches!(
+        &reward_attrs[2].arguments[1].value,
+        HirAttributeValue::Array(values)
+            if matches!(values.as_slice(), [
+                HirAttributeValue::String(value),
+                HirAttributeValue::Path(path),
+            ] if value == "reward" && path == &["game", "reward", "Event"])
+    ));
+    assert!(reward_attrs[2].arguments.iter().all(|argument| {
+        argument.span.source == SourceId::new(1)
+            && argument.value_span.start >= reward_attrs[2].span.start
+            && argument.value_span.end <= reward_attrs[2].span.end
+    }));
     let reward_shape = graph.struct_shape(reward).expect("Reward shape");
     assert_eq!(reward_shape.fields[0].attrs[0].name, "doc");
     assert_eq!(
-        reward_shape.fields[0].attrs[0].value.as_deref(),
-        Some("Reward item id")
+        reward_shape.fields[0].attrs[0].string_value(),
+        "Reward item id"
     );
     let progress_shape = graph.enum_shape(progress).expect("Progress shape");
     assert_eq!(progress_shape.variants[0].attrs[0].name, "terminal");
@@ -653,12 +674,12 @@ trait Damageable {
         panic!("expected record variant fields");
     };
     assert_eq!(fields[0].attrs[0].name, "doc");
-    assert_eq!(fields[0].attrs[0].value.as_deref(), Some("Quest id"));
+    assert_eq!(fields[0].attrs[0].string_value(), "Quest id");
     let trait_shape = graph.trait_shape(damageable).expect("Damageable shape");
     assert_eq!(trait_shape.methods[0].attrs[0].name, "doc");
     assert_eq!(
-        trait_shape.methods[0].attrs[0].value.as_deref(),
-        Some("Apply damage")
+        trait_shape.methods[0].attrs[0].string_value(),
+        "Apply damage"
     );
 }
 #[test]
