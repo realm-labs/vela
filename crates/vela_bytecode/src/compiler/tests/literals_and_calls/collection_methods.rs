@@ -1,3 +1,10 @@
+use crate::compiler::{compile_test_function, compile_test_program_with_registry};
+use crate::{DynamicCallArgument, UnlinkedCodeObject, UnlinkedInstructionKind};
+use vela_common::SourceId;
+
+use super::value_method_registry;
+use crate::compiler::tests::semantic_diagnostic_codes;
+
 #[test]
 fn compiler_rejects_static_record_array_sort_without_ord() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
@@ -396,7 +403,7 @@ fn main() {
     assert_eq!(args[0].name.as_deref(), Some("needle"));
 }
 
-fn nested_method_id_names(code: &UnlinkedCodeObject) -> Vec<String> {
+pub(super) fn nested_method_id_names(code: &UnlinkedCodeObject) -> Vec<String> {
     let mut methods = Vec::new();
     collect_nested_method_id_names(code, &mut methods);
     methods
@@ -464,7 +471,7 @@ fn main(value) {
     assert_eq!(args[0].name.as_deref(), Some("needle"));
 }
 
-fn dynamic_method_args<'a>(
+pub(super) fn dynamic_method_args<'a>(
     code: &'a UnlinkedCodeObject,
     name: &str,
 ) -> Option<&'a [DynamicCallArgument]> {

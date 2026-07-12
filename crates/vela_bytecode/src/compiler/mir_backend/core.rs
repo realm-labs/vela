@@ -5,11 +5,11 @@ use vela_host::target::HostTargetPlan;
 use vela_mir::{
     CompileTryFamily, CompileTryTarget, DebugLocalKind, MirAggregate, MirBackendHandoff,
     MirBinaryOp, MirBlockId, MirCall, MirComparisonOp, MirContextualBinaryOp, MirDynamicBinaryOp,
-    MirDynamicUnaryOp, MirFieldTarget, MirFormatPart, MirFunction, MirFunctionId,
-    MirGlobalOperation, MirGuardAssumption, MirGuardLocation, MirHostMutation, MirHostOperation,
-    MirHostPath, MirHostPathSegment, MirIdentityOp, MirImmediate, MirIndexKey, MirIndexOperation,
-    MirIteratorOperation, MirLiteralSide, MirNumericBinaryOp, MirOperand, MirPatternPredicate,
-    MirFunctionAnalyses, MirPlace, MirProgram, MirReflectionOperation, MirRvalue,
+    MirDynamicUnaryOp, MirFieldTarget, MirFormatPart, MirFunction, MirFunctionAnalyses,
+    MirFunctionId, MirGlobalOperation, MirGuardAssumption, MirGuardLocation, MirHostMutation,
+    MirHostOperation, MirHostPath, MirHostPathSegment, MirIdentityOp, MirImmediate, MirIndexKey,
+    MirIndexOperation, MirIteratorOperation, MirLiteralSide, MirNumericBinaryOp, MirOperand,
+    MirPatternPredicate, MirPlace, MirProgram, MirReflectionOperation, MirRvalue,
     MirScriptParameterGuardMode, MirStatementId, MirStatementKind, MirSwitchValue,
     MirTerminatorKind, MirTypeContract, MirUnaryOp,
 };
@@ -22,8 +22,17 @@ use crate::{
     UnlinkedParameterTypeGuard, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
 };
 
-use super::cache_sites::{attach_cache_site, cache_site_kind};
-use super::constant_encoding::encode_evaluated_constant;
+use crate::compiler::cache_sites::{attach_cache_site, cache_site_kind};
+use crate::compiler::constant_encoding::encode_evaluated_constant;
+
+#[path = "operations.rs"]
+mod operations;
+#[path = "physical.rs"]
+mod physical;
+#[path = "support.rs"]
+mod support;
+
+use support::*;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum MirBackendError {
@@ -427,9 +436,12 @@ impl<'a> FunctionBackend<'a> {
                     span,
                 );
             }
-            MirStatementKind::ReadField { receiver, target } => {
-                self.read_field(dst.ok_or(MirBackendError::MissingDestination)?, receiver, target, span)?
-            }
+            MirStatementKind::ReadField { receiver, target } => self.read_field(
+                dst.ok_or(MirBackendError::MissingDestination)?,
+                receiver,
+                target,
+                span,
+            )?,
             MirStatementKind::WriteField {
                 receiver,
                 target,
@@ -452,9 +464,11 @@ impl<'a> FunctionBackend<'a> {
                     span,
                 );
             }
-            MirStatementKind::Allocate(aggregate) => {
-                self.allocate(dst.ok_or(MirBackendError::MissingDestination)?, aggregate, span)?
-            }
+            MirStatementKind::Allocate(aggregate) => self.allocate(
+                dst.ok_or(MirBackendError::MissingDestination)?,
+                aggregate,
+                span,
+            )?,
             MirStatementKind::FormatString { parts } => {
                 let parts = parts
                     .iter()
@@ -503,9 +517,15 @@ impl<'a> FunctionBackend<'a> {
                     span,
                 );
             }
-            MirStatementKind::Call(call) => self.call(dst.ok_or(MirBackendError::MissingDestination)?, call, span)?,
+            MirStatementKind::Call(call) => {
+                self.call(dst.ok_or(MirBackendError::MissingDestination)?, call, span)?
+            }
             MirStatementKind::Host(operation) => self.host(dst, operation, span)?,
-            MirStatementKind::Reflect(operation) => self.reflect(dst.ok_or(MirBackendError::MissingDestination)?, operation, span)?,
+            MirStatementKind::Reflect(operation) => self.reflect(
+                dst.ok_or(MirBackendError::MissingDestination)?,
+                operation,
+                span,
+            )?,
             MirStatementKind::GuardTrap { value, guard } => {
                 let value = self.operand(value, span)?;
                 let guard = self
@@ -976,5 +996,4 @@ impl<'a> FunctionBackend<'a> {
         self.emit(kind, span);
         Ok(())
     }
-
 }

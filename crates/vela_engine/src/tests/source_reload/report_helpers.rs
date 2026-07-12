@@ -1,7 +1,15 @@
-fn private_helper_addition_report(test_name: &str, workflow: ScriptFunctionReloadWorkflow) {
+use super::*;
+
+pub(super) fn private_helper_addition_report(
+    test_name: &str,
+    workflow: ScriptFunctionReloadWorkflow,
+) {
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let engine = Engine::builder().execution_profile(ExecutionProfile::trusted()).build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -70,10 +78,16 @@ fn private_helper_addition_report(test_name: &str, workflow: ScriptFunctionReloa
     );
 }
 
-fn public_function_addition_report(test_name: &str, workflow: ScriptFunctionReloadWorkflow) {
+pub(super) fn public_function_addition_report(
+    test_name: &str,
+    workflow: ScriptFunctionReloadWorkflow,
+) {
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let engine = Engine::builder().execution_profile(ExecutionProfile::trusted()).build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -163,12 +177,12 @@ fn public_function_addition_report(test_name: &str, workflow: ScriptFunctionRelo
     );
 }
 
-enum EventReloadWorkflow {
+pub(super) enum EventReloadWorkflow {
     Directory,
     ChangedFile,
 }
 
-fn event_parameter_reorder_rejection(test_name: &str, workflow: EventReloadWorkflow) {
+pub(super) fn event_parameter_reorder_rejection(test_name: &str, workflow: EventReloadWorkflow) {
     let root = unique_test_dir(test_name);
     let game_dir = root.join("game");
     std::fs::create_dir_all(&game_dir).expect("create module dir");
@@ -183,7 +197,10 @@ fn on_kill(player_id: i64, monster_id: i64) {
 "#,
     )
     .expect("write event module");
-    let engine = Engine::builder().execution_profile(ExecutionProfile::trusted()).build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -194,7 +211,10 @@ fn on_kill(player_id: i64, monster_id: i64) {
     assert_eq!(
         runtime.call_raw(
             "game::events::on_kill",
-            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(7)), OwnedValue::Scalar(vela_common::ScalarValue::I64(11))],
+            &[
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(11))
+            ],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
@@ -225,7 +245,10 @@ fn on_kill(monster_id: i64, player_id: i64) {
     assert_eq!(
         runtime.call_raw(
             "game::events::on_kill",
-            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(7)), OwnedValue::Scalar(vela_common::ScalarValue::I64(11))],
+            &[
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(11))
+            ],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
@@ -252,7 +275,10 @@ fn on_kill(monster_id: i64, player_id: i64) {
     assert_eq!(
         runtime.call_raw(
             "game::events::on_kill",
-            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(7)), OwnedValue::Scalar(vela_common::ScalarValue::I64(11))],
+            &[
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(11))
+            ],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
@@ -261,7 +287,7 @@ fn on_kill(monster_id: i64, player_id: i64) {
     );
 }
 
-fn event_target_rejection(test_name: &str, workflow: EventReloadWorkflow) {
+pub(super) fn event_target_rejection(test_name: &str, workflow: EventReloadWorkflow) {
     let root = unique_test_dir(test_name);
     let game_dir = root.join("game");
     std::fs::create_dir_all(&game_dir).expect("create module dir");
@@ -276,7 +302,10 @@ fn on_kill(player_id: i64, monster_id: i64) {
 "#,
     )
     .expect("write event module");
-    let engine = Engine::builder().execution_profile(ExecutionProfile::trusted()).build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -287,7 +316,10 @@ fn on_kill(player_id: i64, monster_id: i64) {
     assert_eq!(
         runtime.call_raw(
             "game::events::on_kill",
-            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(7)), OwnedValue::Scalar(vela_common::ScalarValue::I64(11))],
+            &[
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(11))
+            ],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
@@ -318,7 +350,10 @@ fn on_kill(player_id: i64, monster_id: i64) {
     assert_eq!(
         runtime.call_raw(
             "game::events::on_kill",
-            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(7)), OwnedValue::Scalar(vela_common::ScalarValue::I64(11))],
+            &[
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(11))
+            ],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
@@ -350,7 +385,10 @@ fn on_kill(player_id: i64, monster_id: i64) {
     assert_eq!(
         runtime.call_raw(
             "game::events::on_kill",
-            &[OwnedValue::Scalar(vela_common::ScalarValue::I64(7)), OwnedValue::Scalar(vela_common::ScalarValue::I64(11))],
+            &[
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
+                OwnedValue::Scalar(vela_common::ScalarValue::I64(11))
+            ],
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx
@@ -359,7 +397,10 @@ fn on_kill(player_id: i64, monster_id: i64) {
     );
 }
 
-fn assert_changed_function_access_rejection(report: &HotReloadReport, expected_function: &str) {
+pub(super) fn assert_changed_function_access_rejection(
+    report: &HotReloadReport,
+    expected_function: &str,
+) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
         Some("preserve reflective access metadata or require host approval before reloading")
@@ -379,7 +420,9 @@ fn assert_changed_function_access_rejection(report: &HotReloadReport, expected_f
     assert!(source_span.is_some());
 }
 
-fn assert_top_level_side_effect_source_error(error: &crate::reload::EngineHotReloadSourceError) {
+pub(super) fn assert_top_level_side_effect_source_error(
+    error: &crate::reload::EngineHotReloadSourceError,
+) {
     let EngineHotReloadSourceErrorKind::Source(crate::source::EngineSourceError {
         kind: EngineSourceErrorKind::Frontend(error),
     }) = &error.kind
@@ -396,42 +439,42 @@ fn assert_top_level_side_effect_source_error(error: &crate::reload::EngineHotRel
     }));
 }
 
-fn assert_function_return_repair_hint(report: &HotReloadReport) {
+pub(super) fn assert_function_return_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
         Some("preserve the previous return type hint or restart with an explicit migration")
     );
 }
 
-fn assert_rendered_repair_hint(report: &HotReloadReport, expected: &str) {
+pub(super) fn assert_rendered_repair_hint(report: &HotReloadReport, expected: &str) {
     assert!(report.render_lines().iter().any(|line| {
         line.kind == HotReloadReportLineKind::RepairHint
             && line.text == format!("repair: {expected}")
     }));
 }
 
-fn assert_required_parameter_repair_hint(report: &HotReloadReport) {
+pub(super) fn assert_required_parameter_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
         Some("give every appended parameter a default value")
     );
 }
 
-fn assert_changed_schema_abi_repair_hint(report: &HotReloadReport) {
+pub(super) fn assert_changed_schema_abi_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
         Some("preserve existing schema members, or add only defaulted fields during reload")
     );
 }
 
-fn assert_removed_schema_repair_hint(report: &HotReloadReport) {
+pub(super) fn assert_removed_schema_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
         Some("restore the schema or restart with an explicit migration")
     );
 }
 
-fn assert_changed_trait_abi_repair_hint(report: &HotReloadReport) {
+pub(super) fn assert_changed_trait_abi_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
         Some(
@@ -440,70 +483,70 @@ fn assert_changed_trait_abi_repair_hint(report: &HotReloadReport) {
     );
 }
 
-fn assert_removed_trait_abi_repair_hint(report: &HotReloadReport) {
+pub(super) fn assert_removed_trait_abi_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
         Some("restore the trait ABI entry or restart with an explicit migration")
     );
 }
 
-fn assert_changed_module_abi_repair_hint(report: &HotReloadReport) {
+pub(super) fn assert_changed_module_abi_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
         Some("preserve existing module exports or restart with an explicit migration")
     );
 }
 
-fn assert_removed_module_abi_repair_hint(report: &HotReloadReport) {
+pub(super) fn assert_removed_module_abi_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
         Some("restore the module ABI entry or restart with an explicit migration")
     );
 }
 
-fn assert_parameter_abi_repair_hint(report: &HotReloadReport) {
+pub(super) fn assert_parameter_abi_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
         Some("preserve existing parameter names, order, type hints, and defaults")
     );
 }
 
-fn assert_method_parameter_abi_repair_hint(report: &HotReloadReport) {
+pub(super) fn assert_method_parameter_abi_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
         Some("preserve existing method parameter names, order, type hints, and defaults")
     );
 }
 
-fn assert_effect_abi_repair_hint(report: &HotReloadReport) {
+pub(super) fn assert_effect_abi_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
         Some("preserve the previous effect set or require host approval before reloading")
     );
 }
 
-fn assert_access_abi_repair_hint(report: &HotReloadReport) {
+pub(super) fn assert_access_abi_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
         Some("preserve reflective access metadata or require host approval before reloading")
     );
 }
 
-fn assert_removed_function_abi_repair_hint(report: &HotReloadReport) {
+pub(super) fn assert_removed_function_abi_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
         Some("restore the function ABI entry or restart with an explicit migration")
     );
 }
 
-fn assert_removed_method_abi_repair_hint(report: &HotReloadReport) {
+pub(super) fn assert_removed_method_abi_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
         Some("restore the method ABI entry or restart with an explicit migration")
     );
 }
 
-fn assert_method_return_repair_hint(report: &HotReloadReport) {
+pub(super) fn assert_method_return_repair_hint(report: &HotReloadReport) {
     assert_eq!(
         report.errors[0].repair_hint.as_deref(),
         Some("preserve the previous method return type hint or restart with an explicit migration")

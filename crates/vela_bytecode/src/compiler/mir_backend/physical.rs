@@ -1,5 +1,7 @@
+use super::*;
+
 impl<'a> FunctionBackend<'a> {
-    fn operand(
+    pub(super) fn operand(
         &mut self,
         operand: &MirOperand,
         span: vela_common::Span,
@@ -15,7 +17,7 @@ impl<'a> FunctionBackend<'a> {
         })
     }
 
-    fn operands(
+    pub(super) fn operands(
         &mut self,
         operands: &[MirOperand],
         span: vela_common::Span,
@@ -26,14 +28,14 @@ impl<'a> FunctionBackend<'a> {
             .collect()
     }
 
-    fn place(&self, place: MirPlace) -> Register {
+    pub(super) fn place(&self, place: MirPlace) -> Register {
         match place {
             MirPlace::Local(local) => self.locals[&local],
             MirPlace::Temp(temp) => self.temps[&temp],
         }
     }
 
-    fn missing_test_value(&self, condition: &MirOperand) -> Option<MirOperand> {
+    pub(super) fn missing_test_value(&self, condition: &MirOperand) -> Option<MirOperand> {
         let MirOperand::Temp(temp) = condition else {
             return None;
         };
@@ -46,7 +48,7 @@ impl<'a> FunctionBackend<'a> {
         }
     }
 
-    fn alloc_register(&mut self) -> Result<Register, MirBackendError> {
+    pub(super) fn alloc_register(&mut self) -> Result<Register, MirBackendError> {
         let register = Register(self.next_register);
         self.next_register = self
             .next_register
@@ -55,7 +57,10 @@ impl<'a> FunctionBackend<'a> {
         Ok(register)
     }
 
-    fn global_slot(&self, global: vela_def::GlobalId) -> Option<vela_common::GlobalSlot> {
+    pub(super) fn global_slot(
+        &self,
+        global: vela_def::GlobalId,
+    ) -> Option<vela_common::GlobalSlot> {
         let mut globals = self
             .program
             .targets()
@@ -70,7 +75,10 @@ impl<'a> FunctionBackend<'a> {
             .map(vela_common::GlobalSlot::new)
     }
 
-    fn stable_field_slot(&self, field: vela_def::FieldId) -> Result<usize, MirBackendError> {
+    pub(super) fn stable_field_slot(
+        &self,
+        field: vela_def::FieldId,
+    ) -> Result<usize, MirBackendError> {
         let descriptor = self
             .program
             .targets()
@@ -92,7 +100,7 @@ impl<'a> FunctionBackend<'a> {
             .ok_or(MirBackendError::MissingTarget("field slot"))
     }
 
-    fn shape_field(
+    pub(super) fn shape_field(
         &self,
         shape: Option<&vela_mir::MirShapeFact>,
         name: &str,
@@ -100,9 +108,7 @@ impl<'a> FunctionBackend<'a> {
     ) -> Option<(usize, Option<vela_mir::MirShapeFact>)> {
         let fields = match (shape?, variant) {
             (vela_mir::MirShapeFact::Record(fields), false)
-            | (vela_mir::MirShapeFact::Variant(fields), true) => {
-                fields
-            }
+            | (vela_mir::MirShapeFact::Variant(fields), true) => fields,
             _ => return None,
         };
         let (identity, shape) = fields.get(name)?;
@@ -115,12 +121,17 @@ impl<'a> FunctionBackend<'a> {
         Some((slot, shape.as_deref().and_then(|fact| fact.shape.clone())))
     }
 
-    fn operand_shape(&self, operand: &MirOperand) -> Option<vela_mir::MirShapeFact> {
+    pub(super) fn operand_shape(&self, operand: &MirOperand) -> Option<vela_mir::MirShapeFact> {
         let statement = self.current_statement?;
         self.facts.operand_before(statement, operand)?.shape
     }
 
-    fn load_immediate(&mut self, dst: Register, value: MirImmediate, span: vela_common::Span) {
+    pub(super) fn load_immediate(
+        &mut self,
+        dst: Register,
+        value: MirImmediate,
+        span: vela_common::Span,
+    ) {
         let constant = self.code.push_constant(match value {
             MirImmediate::Unit => Constant::Unit,
             MirImmediate::Bool(value) => Constant::Bool(value),
@@ -130,7 +141,7 @@ impl<'a> FunctionBackend<'a> {
         self.emit(UnlinkedInstructionKind::LoadConst { dst, constant }, span);
     }
 
-    fn select_binary(
+    pub(super) fn select_binary(
         &mut self,
         operation: MirBinaryOp,
         dst: Register,
@@ -138,21 +149,18 @@ impl<'a> FunctionBackend<'a> {
         rhs: Register,
         right: &MirOperand,
     ) -> UnlinkedInstructionKind {
-        if self
-            .current_block
-            .is_some_and(|block| {
-                self.loop_blocks.contains(&block) || self.try_join_blocks.contains(&block)
+        if self.current_block.is_some_and(|block| {
+            self.loop_blocks.contains(&block) || self.try_join_blocks.contains(&block)
+        }) && let Some(MirImmediate::Scalar(vela_common::ScalarValue::I64(imm))) = self
+            .current_statement
+            .and_then(|statement| self.facts.operand_before(statement, right))
+            .filter(|fact| {
+                !matches!(
+                    fact.constant_provenance,
+                    Some(vela_mir::MirConstantProvenance::PatternLiteral)
+                )
             })
-            && let Some(MirImmediate::Scalar(vela_common::ScalarValue::I64(imm))) =
-                self.current_statement
-                    .and_then(|statement| self.facts.operand_before(statement, right))
-                    .filter(|fact| {
-                        !matches!(
-                            fact.constant_provenance,
-                            Some(vela_mir::MirConstantProvenance::PatternLiteral)
-                        )
-                    })
-                    .and_then(|fact| fact.immediate)
+            .and_then(|fact| fact.immediate)
         {
             match operation {
                 MirBinaryOp::Numeric {
@@ -206,7 +214,7 @@ impl<'a> FunctionBackend<'a> {
         binary_instruction(operation, dst, lhs, rhs)
     }
 
-    fn load_switch(
+    pub(super) fn load_switch(
         &mut self,
         dst: Register,
         value: &MirSwitchValue,
@@ -227,7 +235,7 @@ impl<'a> FunctionBackend<'a> {
         Ok(())
     }
 
-    fn emit(&mut self, kind: UnlinkedInstructionKind, span: vela_common::Span) {
+    pub(super) fn emit(&mut self, kind: UnlinkedInstructionKind, span: vela_common::Span) {
         let unspanned = self.unspanned_spans.contains(&span)
             || (!self.unspanned_spans.is_empty()
                 && matches!(kind, UnlinkedInstructionKind::LoadConst { .. }));
@@ -249,7 +257,7 @@ impl<'a> FunctionBackend<'a> {
         });
     }
 
-    fn emit_patch(
+    pub(super) fn emit_patch(
         &mut self,
         kind: UnlinkedInstructionKind,
         target: MirBlockId,
@@ -265,7 +273,7 @@ impl<'a> FunctionBackend<'a> {
         ));
     }
 
-    fn patch_targets(&mut self) -> Result<(), MirBackendError> {
+    pub(super) fn patch_targets(&mut self) -> Result<(), MirBackendError> {
         let patches = std::mem::take(&mut self.patches);
         for (index, from, block) in patches {
             let mut target = *self
@@ -316,7 +324,7 @@ impl<'a> FunctionBackend<'a> {
         Ok(())
     }
 
-    fn attach_cache_sites(&mut self) {
+    pub(super) fn attach_cache_sites(&mut self) {
         for index in 0..self.code.instructions.len() {
             let kind = self.code.instructions[index].kind.clone();
             let Some(site_kind) = cache_site_kind(&kind) else {

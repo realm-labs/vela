@@ -9,7 +9,7 @@ mod tests {
         TypeKind, TypeRegistry, VariantDesc,
     };
 
-    use super::*;
+    use crate::registry::*;
 
     #[test]
     fn registry_facts_cover_types_fields_methods_functions_and_modules() {

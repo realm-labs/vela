@@ -52,6 +52,10 @@ jobs:
             echo "Rust import paths may not contain more than one super segment."
             exit 1
           fi
+          if grep -RIn 'include!' crates examples tests --include='*.rs'; then
+            echo "Handwritten Rust source must use real module boundaries, not include!."
+            exit 1
+          fi
 
       - name: Check bytecode source boundary
         run: |

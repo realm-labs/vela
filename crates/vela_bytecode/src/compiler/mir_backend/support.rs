@@ -1,13 +1,15 @@
-fn binary_instruction(
+use super::*;
+
+pub(super) fn binary_instruction(
     operation: MirBinaryOp,
     dst: Register,
     lhs: Register,
     rhs: Register,
 ) -> UnlinkedInstructionKind {
     match operation {
-                MirBinaryOp::Numeric {
-                    operation: MirNumericBinaryOp::Add,
-                    kind: vela_common::NumericTag::I64,
+        MirBinaryOp::Numeric {
+            operation: MirNumericBinaryOp::Add,
+            kind: vela_common::NumericTag::I64,
         } => UnlinkedInstructionKind::Add { dst, lhs, rhs },
         MirBinaryOp::Numeric {
             operation: MirNumericBinaryOp::Add,
@@ -45,7 +47,7 @@ fn binary_instruction(
     }
 }
 
-fn mir_successors(kind: &MirTerminatorKind) -> Vec<MirBlockId> {
+pub(super) fn mir_successors(kind: &MirTerminatorKind) -> Vec<MirBlockId> {
     match kind {
         MirTerminatorKind::Jump(target) => vec![*target],
         MirTerminatorKind::Branch {
@@ -80,7 +82,7 @@ fn mir_successors(kind: &MirTerminatorKind) -> Vec<MirBlockId> {
     }
 }
 
-fn mir_reaches(function: &MirFunction, start: MirBlockId, target: MirBlockId) -> bool {
+pub(super) fn mir_reaches(function: &MirFunction, start: MirBlockId, target: MirBlockId) -> bool {
     let mut pending = vec![start];
     let mut visited = BTreeSet::new();
     while let Some(block) = pending.pop() {
@@ -97,7 +99,7 @@ fn mir_reaches(function: &MirFunction, start: MirBlockId, target: MirBlockId) ->
     false
 }
 
-fn dynamic_binary_instruction(
+pub(super) fn dynamic_binary_instruction(
     operation: MirDynamicBinaryOp,
     dst: Register,
     lhs: Register,
@@ -134,7 +136,7 @@ fn comparison_instruction(
     }
 }
 
-const fn i64_compare(operation: MirComparisonOp) -> crate::I64CompareOp {
+pub(super) const fn i64_compare(operation: MirComparisonOp) -> crate::I64CompareOp {
     match operation {
         MirComparisonOp::Equal => crate::I64CompareOp::Equal,
         MirComparisonOp::NotEqual => crate::I64CompareOp::NotEqual,
@@ -145,7 +147,7 @@ const fn i64_compare(operation: MirComparisonOp) -> crate::I64CompareOp {
     }
 }
 
-fn host_mutation(operation: MirHostMutation) -> HostMutationOp {
+pub(super) fn host_mutation(operation: MirHostMutation) -> HostMutationOp {
     match operation {
         MirHostMutation::Add => HostMutationOp::Add,
         MirHostMutation::Subtract => HostMutationOp::Sub,
@@ -156,12 +158,12 @@ fn host_mutation(operation: MirHostMutation) -> HostMutationOp {
     }
 }
 
-fn guard_kind(location: MirGuardLocation) -> GuardKind {
+pub(super) fn guard_kind(location: MirGuardLocation) -> GuardKind {
     let _ = location;
     GuardKind::Contract
 }
 
-fn guard_location(location: MirGuardLocation) -> Result<GuardLocation, MirBackendError> {
+pub(super) fn guard_location(location: MirGuardLocation) -> Result<GuardLocation, MirBackendError> {
     Ok(match location {
         MirGuardLocation::Parameter { index } => GuardLocation::Parameter {
             index: u16::try_from(index).map_err(|_| MirBackendError::RegisterOverflow)?,
@@ -173,7 +175,7 @@ fn guard_location(location: MirGuardLocation) -> Result<GuardLocation, MirBacken
     })
 }
 
-fn type_guard(
+pub(super) fn type_guard(
     program: &MirProgram,
     contract: &MirTypeContract,
     kind: GuardKind,

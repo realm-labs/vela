@@ -1232,4 +1232,6 @@ fn trait_or_unknown(registry: &TypeRegistry, name: &str) -> TypeFact {
     }
 }
 
-include!("registry/tests.rs");
+#[cfg(test)]
+#[path = "registry/tests.rs"]
+mod registry_tests;

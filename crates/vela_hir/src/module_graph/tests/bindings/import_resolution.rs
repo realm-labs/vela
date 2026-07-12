@@ -1,3 +1,5 @@
+use super::*;
+
 #[test]
 fn function_bindings_resolve_import_aliases() {
     let mut graph = ModuleGraph::new();
@@ -253,9 +255,7 @@ pub enum State { Ready { amount: i64 }, Idle }
         match (path.kind, path.owner) {
             (HirPathKind::Constructor, HirPathOwner::Expression(expression)) => {
                 let expected = match path.path.join("::").as_str() {
-                    "Prize" | "game::schema::Reward" => {
-                        ConstructorResolution::Declaration(reward)
-                    }
+                    "Prize" | "game::schema::Reward" => ConstructorResolution::Declaration(reward),
                     "ImportedState::Ready" | "game::schema::State::Ready" => {
                         ConstructorResolution::Declaration(state)
                     }

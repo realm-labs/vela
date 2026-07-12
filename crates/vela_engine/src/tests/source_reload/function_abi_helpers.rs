@@ -1,11 +1,16 @@
-fn removed_script_function_rejection_kind(
+use super::*;
+
+pub(super) fn removed_script_function_rejection_kind(
     test_name: &str,
     workflow: ScriptFunctionReloadWorkflow,
 ) -> HotReloadErrorKind {
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
     write_reward_module_with_helper(&reward_file, 2);
-    let engine = Engine::builder().execution_profile(ExecutionProfile::trusted()).build().expect("engine should build");
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
@@ -71,18 +76,19 @@ fn removed_script_function_rejection_kind(
     report.errors[0].error.kind.clone()
 }
 
-enum NativeDescriptorReloadWorkflow {
+pub(super) enum NativeDescriptorReloadWorkflow {
     Directory,
     ChangedFile,
 }
 
-fn removed_native_descriptor_rejection_kind(
+pub(super) fn removed_native_descriptor_rejection_kind(
     test_name: &str,
     workflow: NativeDescriptorReloadWorkflow,
 ) -> HotReloadErrorKind {
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let old_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
+    let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .effects(EffectSet::host_read()),
@@ -93,7 +99,10 @@ fn removed_native_descriptor_rejection_kind(
     let initial = old_engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let new_engine = Engine::builder().execution_profile(ExecutionProfile::trusted()).build().expect("new engine should build");
+    let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .build()
+        .expect("new engine should build");
     let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -157,13 +166,14 @@ fn removed_native_descriptor_rejection_kind(
     report.errors[0].error.kind.clone()
 }
 
-fn native_stable_id_churn_rejection_kind(
+pub(super) fn native_stable_id_churn_rejection_kind(
     test_name: &str,
     workflow: NativeDescriptorReloadWorkflow,
 ) -> HotReloadErrorKind {
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let old_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
+    let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(22))
                 .effects(EffectSet::host_read()),
@@ -174,7 +184,8 @@ fn native_stable_id_churn_rejection_kind(
     let initial = old_engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let new_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
+    let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(
             NativeFunctionDesc::new("game::native::grant_bonus", NativeFunctionId::new(23))
                 .effects(EffectSet::host_read()),
@@ -245,7 +256,7 @@ fn native_stable_id_churn_rejection_kind(
     report.errors[0].error.kind.clone()
 }
 
-fn dir_native_rejection_kind(
+pub(super) fn dir_native_rejection_kind(
     test_name: &str,
     old_desc: NativeFunctionDesc,
     new_desc: NativeFunctionDesc,
@@ -253,14 +264,16 @@ fn dir_native_rejection_kind(
 ) -> HotReloadErrorKind {
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let old_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
+    let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(old_desc, |_| Ok(OwnedValue::Unit))
         .build()
         .expect("old engine should build");
     let initial = old_engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let new_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
+    let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_native_fn(new_desc, |_| Ok(OwnedValue::Unit))
         .build()
         .expect("new engine should build");
@@ -328,18 +341,19 @@ fn dir_native_rejection_kind(
     report.errors[0].error.kind.clone()
 }
 
-enum MethodDescriptorReloadWorkflow {
+pub(super) enum MethodDescriptorReloadWorkflow {
     Directory,
     ChangedFile,
 }
 
-fn removed_method_descriptor_rejection_kind(
+pub(super) fn removed_method_descriptor_rejection_kind(
     test_name: &str,
     workflow: MethodDescriptorReloadWorkflow,
 ) -> HotReloadErrorKind {
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let old_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
+    let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(type_with_reload_method(MethodDesc::new(
             HostMethodId::new(9),
             "grant_exp",
@@ -349,7 +363,8 @@ fn removed_method_descriptor_rejection_kind(
     let initial = old_engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let new_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
+    let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).host_type(HostTypeId::new(1)),
         )
@@ -415,13 +430,14 @@ fn removed_method_descriptor_rejection_kind(
     report.errors[0].error.kind.clone()
 }
 
-fn method_stable_id_churn_rejection_kind(
+pub(super) fn method_stable_id_churn_rejection_kind(
     test_name: &str,
     workflow: MethodDescriptorReloadWorkflow,
 ) -> HotReloadErrorKind {
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let old_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
+    let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(type_with_reload_method(MethodDesc::new(
             HostMethodId::new(9),
             "grant_exp",
@@ -431,7 +447,8 @@ fn method_stable_id_churn_rejection_kind(
     let initial = old_engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let new_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
+    let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(type_with_reload_method(MethodDesc::new(
             HostMethodId::new(10),
             "grant_exp",
@@ -498,7 +515,7 @@ fn method_stable_id_churn_rejection_kind(
     report.errors[0].error.kind.clone()
 }
 
-fn dir_method_rejection_kind(
+pub(super) fn dir_method_rejection_kind(
     test_name: &str,
     old_method: MethodDesc,
     new_method: MethodDesc,
@@ -506,14 +523,16 @@ fn dir_method_rejection_kind(
 ) -> HotReloadErrorKind {
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let old_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
+    let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(type_with_reload_method(old_method))
         .build()
         .expect("old engine should build");
     let initial = old_engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let new_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
+    let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(type_with_reload_method(new_method))
         .build()
         .expect("new engine should build");
@@ -581,7 +600,7 @@ fn dir_method_rejection_kind(
     report.errors[0].error.kind.clone()
 }
 
-fn changed_file_method_rejection_kind(
+pub(super) fn changed_file_method_rejection_kind(
     test_name: &str,
     old_method: MethodDesc,
     new_method: MethodDesc,
@@ -589,14 +608,16 @@ fn changed_file_method_rejection_kind(
 ) -> HotReloadErrorKind {
     let root = unique_test_dir(test_name);
     let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let old_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
+    let old_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(type_with_reload_method(old_method))
         .build()
         .expect("old engine should build");
     let initial = old_engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let new_engine = Engine::builder().execution_profile(ExecutionProfile::trusted())
+    let new_engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
         .register_type(type_with_reload_method(new_method))
         .build()
         .expect("new engine should build");
@@ -663,4 +684,3 @@ fn changed_file_method_rejection_kind(
     );
     report.errors[0].error.kind.clone()
 }
-

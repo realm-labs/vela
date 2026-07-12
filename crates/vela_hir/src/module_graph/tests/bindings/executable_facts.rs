@@ -1,3 +1,5 @@
+use super::*;
+
 #[test]
 fn function_bindings_resolve_imported_names() {
     let mut graph = ModuleGraph::new();
@@ -599,5 +601,3 @@ fn main(key) {
         .expect("recovered missing map key");
     assert_eq!(missing.logical_key(), None);
 }
-
-include!("import_resolution.rs");

@@ -212,6 +212,11 @@ Rust source may use one direct-parent `super::...` reference inside a local
 module group. Multi-level `super::super` paths are prohibited; cross-subsystem
 imports should use explicit `crate::...` paths.
 
+Handwritten Rust source uses real `mod` boundaries with the narrowest required
+`pub(super)` or `pub(crate)` surface. `include!` is reserved for generated code
+whose build-time origin is explicit; it must not be used to concatenate
+handwritten implementation or test fragments into one privacy scope.
+
 ### Source Pipeline
 
 The syntax layer owns tokens, AST, parser recovery, and source spans. HIR owns

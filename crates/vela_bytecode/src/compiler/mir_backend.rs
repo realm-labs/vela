@@ -4,7 +4,6 @@
 //! MIR handoff and bytecode-owned physical metadata. It must never inspect HIR,
 //! analysis facts, syntax, or a live registry.
 
-include!("mir_backend/core.rs");
-include!("mir_backend/operations.rs");
-include!("mir_backend/physical.rs");
-include!("mir_backend/support.rs");
+mod core;
+
+pub(crate) use core::{MirBackendError, compile};

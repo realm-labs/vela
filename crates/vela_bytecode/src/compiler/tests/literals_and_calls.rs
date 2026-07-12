@@ -1,5 +1,4 @@
 use super::*;
-use crate::DynamicCallArgument;
 
 fn value_method_registry(specs: &[(&str, &str, &[&str])]) -> vela_registry::DefinitionRegistry {
     let mut registry = vela_registry::DefinitionRegistry::new();
@@ -1186,4 +1185,6 @@ fn main() {
     );
 }
 
-include!("literals_and_calls/collection_methods.rs");
+mod collection_methods;
+
+use collection_methods::{dynamic_method_args, nested_method_id_names};

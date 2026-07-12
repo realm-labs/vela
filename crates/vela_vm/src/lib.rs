@@ -61,6 +61,7 @@ mod stdlib;
 mod string_methods;
 #[cfg(test)]
 #[allow(dead_code)]
+#[path = "../test_compile_support.rs"]
 pub(crate) mod test_support;
 mod try_propagation;
 mod tuple_fields;

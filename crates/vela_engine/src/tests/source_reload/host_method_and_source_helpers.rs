@@ -1,13 +1,15 @@
-fn type_with_reload_method(method: MethodDesc) -> TypeDesc {
+use super::*;
+
+pub(super) fn type_with_reload_method(method: MethodDesc) -> TypeDesc {
     TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
         .host_type(HostTypeId::new(1))
         .method(method)
 }
 
-fn assert_host_method_access(_access: &HostAccess, _method: HostMethodId, _amount: i64) {
+pub(super) fn assert_host_method_access(_access: &HostAccess, _method: HostMethodId, _amount: i64) {
 }
 
-fn write_host_method_reward_modules(
+pub(super) fn write_host_method_reward_modules(
     root: &std::path::Path,
     method_name: &str,
     reward: i64,
@@ -30,7 +32,11 @@ fn main(player: Player) {
     reward_file
 }
 
-fn write_host_method_reward_module(path: &std::path::Path, method_name: &str, reward: i64) {
+pub(super) fn write_host_method_reward_module(
+    path: &std::path::Path,
+    method_name: &str,
+    reward: i64,
+) {
     std::fs::write(
         path,
         format!(
@@ -45,7 +51,7 @@ pub fn grant(player: Player) {{
     .expect("write host method reward module");
 }
 
-fn write_typed_reward_modules(
+pub(super) fn write_typed_reward_modules(
     root: &std::path::Path,
     main_return: &str,
     return_type: &str,
@@ -71,11 +77,19 @@ fn main() {{
     reward_file
 }
 
-fn write_typed_reward_module(path: &std::path::Path, return_type: &str, reward_expr: &str) {
+pub(super) fn write_typed_reward_module(
+    path: &std::path::Path,
+    return_type: &str,
+    reward_expr: &str,
+) {
     write_reward_module_with_signature(path, &format!("() -> {return_type}"), reward_expr);
 }
 
-fn write_reward_module_with_signature(path: &std::path::Path, signature: &str, reward_expr: &str) {
+pub(super) fn write_reward_module_with_signature(
+    path: &std::path::Path,
+    signature: &str,
+    reward_expr: &str,
+) {
     std::fs::write(
         path,
         format!(
@@ -89,7 +103,7 @@ pub fn grant{signature} {{
     .expect("write reward module with signature");
 }
 
-fn write_reward_module_with_helper(path: &std::path::Path, reward: i64) {
+pub(super) fn write_reward_module_with_helper(path: &std::path::Path, reward: i64) {
     std::fs::write(
         path,
         format!(
@@ -107,7 +121,7 @@ fn helper() {{
     .expect("write reward module with helper");
 }
 
-fn write_reward_module_calling_helper(path: &std::path::Path, reward: i64) {
+pub(super) fn write_reward_module_calling_helper(path: &std::path::Path, reward: i64) {
     std::fs::write(
         path,
         format!(
@@ -125,7 +139,7 @@ fn helper() {{
     .expect("write reward module calling helper");
 }
 
-fn write_reward_module_calling_public_helper(path: &std::path::Path, reward: i64) {
+pub(super) fn write_reward_module_calling_public_helper(path: &std::path::Path, reward: i64) {
     std::fs::write(
         path,
         format!(

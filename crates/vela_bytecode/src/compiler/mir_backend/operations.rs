@@ -1,5 +1,7 @@
+use super::*;
+
 impl<'a> FunctionBackend<'a> {
-    fn call(
+    pub(super) fn call(
         &mut self,
         dst: Register,
         call: &MirCall,
@@ -124,7 +126,7 @@ impl<'a> FunctionBackend<'a> {
         Ok(())
     }
 
-    fn host(
+    pub(super) fn host(
         &mut self,
         dst: Option<Register>,
         operation: &MirHostOperation,
@@ -220,7 +222,7 @@ impl<'a> FunctionBackend<'a> {
         Ok((self.code.intern_host_target(plan), dynamic_args))
     }
 
-    fn reflect(
+    pub(super) fn reflect(
         &mut self,
         dst: Register,
         operation: &MirReflectionOperation,
@@ -276,7 +278,7 @@ impl<'a> FunctionBackend<'a> {
         Ok(())
     }
 
-    fn terminator(
+    pub(super) fn terminator(
         &mut self,
         terminator: &MirTerminatorKind,
         span: vela_common::Span,
@@ -514,5 +516,4 @@ impl<'a> FunctionBackend<'a> {
         }
         Ok(())
     }
-
 }

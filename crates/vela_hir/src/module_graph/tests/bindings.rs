@@ -1101,4 +1101,5 @@ fn main(reward) {
     assert!(duplicate.labels[1].message.contains("duplicate"));
     assert_ne!(duplicate.labels[0].span, duplicate.labels[1].span);
 }
-include!("bindings/executable_facts.rs");
+mod executable_facts;
+mod import_resolution;

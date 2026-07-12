@@ -1,3 +1,7 @@
+use crate::UnlinkedInstructionKind;
+use crate::compiler::{compile_test_function, compile_test_program};
+use vela_common::SourceId;
+
 #[test]
 fn compiler_lowers_local_assignment_operators() {
     let code = compile_test_function(

@@ -1,10 +1,6 @@
-struct TestDir(std::path::PathBuf);
+use super::*;
 
-impl TestDir {
-    fn join(&self, path: impl AsRef<std::path::Path>) -> std::path::PathBuf {
-        self.0.join(path)
-    }
-}
+pub(super) struct TestDir(std::path::PathBuf);
 
 impl AsRef<std::path::Path> for TestDir {
     fn as_ref(&self) -> &std::path::Path {
@@ -26,7 +22,7 @@ impl Drop for TestDir {
     }
 }
 
-fn unique_test_dir(name: &str) -> TestDir {
+pub(super) fn unique_test_dir(name: &str) -> TestDir {
     static NEXT_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
     let mut path = std::env::temp_dir();
@@ -43,12 +39,12 @@ fn unique_test_dir(name: &str) -> TestDir {
     TestDir(path)
 }
 
-fn runtime_from_hot_reload_source(engine: Engine, source: &str) -> Runtime {
+pub(super) fn runtime_from_hot_reload_source(engine: Engine, source: &str) -> Runtime {
     let initial = hot_reload_initial_from_source(&engine, source);
     Runtime::from_hot_reload_version(engine, initial)
 }
 
-fn hot_reload_initial_from_source(
+pub(super) fn hot_reload_initial_from_source(
     engine: &Engine,
     source: &str,
 ) -> vela_hot_reload::version::ProgramVersion {
@@ -57,7 +53,7 @@ fn hot_reload_initial_from_source(
         .expect("initial hot reload source compile")
 }
 
-fn stage_source_update(runtime: &mut Runtime, source: &str) {
+pub(super) fn stage_source_update(runtime: &mut Runtime, source: &str) {
     let update = runtime
         .compile_hot_reload_update_with_id(SourceId::new(2), source)
         .expect("runtime should be hot-reload enabled");
@@ -66,7 +62,7 @@ fn stage_source_update(runtime: &mut Runtime, source: &str) {
         .expect("source update should stage");
 }
 
-fn write_reward_modules(
+pub(super) fn write_reward_modules(
     root: &std::path::Path,
     main_return: &str,
     reward: i64,
@@ -91,7 +87,7 @@ fn main() {{
     reward_file
 }
 
-fn write_reward_module(path: &std::path::Path, reward: i64) {
+pub(super) fn write_reward_module(path: &std::path::Path, reward: i64) {
     std::fs::write(
         path,
         format!(
@@ -105,7 +101,7 @@ pub fn grant() {{
     .expect("write reward module");
 }
 
-fn write_native_reward_module(path: &std::path::Path, native_name: &str, suffix: &str) {
+pub(super) fn write_native_reward_module(path: &std::path::Path, native_name: &str, suffix: &str) {
     std::fs::write(
         path,
         format!(
@@ -119,7 +115,7 @@ pub fn grant() {{
     .expect("write native reward module");
 }
 
-fn write_schema_reward_modules(
+pub(super) fn write_schema_reward_modules(
     root: &std::path::Path,
     reward: i64,
     count_field: StructCountField,
@@ -143,7 +139,7 @@ fn main() {
 }
 
 #[derive(Clone, Copy)]
-enum StructCountField {
+pub(super) enum StructCountField {
     Absent,
     Defaulted,
     Required,
@@ -161,7 +157,11 @@ impl StructCountField {
     }
 }
 
-fn write_schema_reward_module(path: &std::path::Path, reward: i64, count_field: StructCountField) {
+pub(super) fn write_schema_reward_module(
+    path: &std::path::Path,
+    reward: i64,
+    count_field: StructCountField,
+) {
     let count_field = count_field.source();
     std::fs::write(
         path,
@@ -180,7 +180,7 @@ pub fn grant() {{
     .expect("write schema reward module");
 }
 
-fn write_stable_schema_rename_modules(
+pub(super) fn write_stable_schema_rename_modules(
     root: &std::path::Path,
     reward: i64,
     renamed: bool,
@@ -203,7 +203,11 @@ fn main() {
     reward_file
 }
 
-fn write_stable_schema_rename_module(path: &std::path::Path, reward: i64, renamed: bool) {
+pub(super) fn write_stable_schema_rename_module(
+    path: &std::path::Path,
+    reward: i64,
+    renamed: bool,
+) {
     let (item_field, count_field, active_variant, finished_variant) = if renamed {
         (
             "item",
@@ -239,7 +243,7 @@ pub fn grant() {{
     .expect("write stable schema rename module");
 }
 
-fn write_enum_reward_modules(
+pub(super) fn write_enum_reward_modules(
     root: &std::path::Path,
     reward: i64,
     count_field: EnumVariantCountField,
@@ -263,7 +267,7 @@ fn main() {
 }
 
 #[derive(Clone, Copy)]
-enum EnumVariantCountField {
+pub(super) enum EnumVariantCountField {
     Absent,
     Defaulted,
     Required,
@@ -281,7 +285,7 @@ impl EnumVariantCountField {
     }
 }
 
-fn write_enum_reward_module(
+pub(super) fn write_enum_reward_module(
     path: &std::path::Path,
     reward: i64,
     count_field: EnumVariantCountField,
@@ -306,7 +310,7 @@ pub fn grant() {{
     .expect("write enum reward module");
 }
 
-fn write_trait_impl_modules(
+pub(super) fn write_trait_impl_modules(
     root: &std::path::Path,
     reward: i64,
     implemented: bool,
@@ -329,7 +333,7 @@ fn main() {
     reward_file
 }
 
-fn write_trait_impl_module(path: &std::path::Path, reward: i64, implemented: bool) {
+pub(super) fn write_trait_impl_module(path: &std::path::Path, reward: i64, implemented: bool) {
     let impl_block = if implemented {
         "impl Damageable for Player {}\n"
     } else {
@@ -357,7 +361,7 @@ pub fn grant() {{
     .expect("write trait impl reward module");
 }
 
-fn write_trait_abi_modules(
+pub(super) fn write_trait_abi_modules(
     root: &std::path::Path,
     reward: i64,
     return_type: &str,
@@ -380,11 +384,11 @@ fn main() {
     reward_file
 }
 
-fn write_trait_abi_module(path: &std::path::Path, reward: i64, return_type: &str) {
+pub(super) fn write_trait_abi_module(path: &std::path::Path, reward: i64, return_type: &str) {
     write_trait_abi_module_with_methods(path, reward, return_type, "");
 }
 
-fn write_trait_abi_module_with_required_method(path: &std::path::Path, reward: i64) {
+pub(super) fn write_trait_abi_module_with_required_method(path: &std::path::Path, reward: i64) {
     write_trait_abi_module_with_methods(
         path,
         reward,
@@ -393,7 +397,7 @@ fn write_trait_abi_module_with_required_method(path: &std::path::Path, reward: i
     );
 }
 
-fn write_trait_abi_module_with_defaulted_method(path: &std::path::Path, reward: i64) {
+pub(super) fn write_trait_abi_module_with_defaulted_method(path: &std::path::Path, reward: i64) {
     write_trait_abi_module_with_methods(
         path,
         reward,
@@ -402,7 +406,7 @@ fn write_trait_abi_module_with_defaulted_method(path: &std::path::Path, reward: 
     );
 }
 
-fn write_trait_abi_module_with_methods(
+pub(super) fn write_trait_abi_module_with_methods(
     path: &std::path::Path,
     reward: i64,
     return_type: &str,
@@ -426,7 +430,7 @@ pub fn grant() {{
     .expect("write trait ABI reward module");
 }
 
-enum ScriptFunctionReloadWorkflow {
+pub(super) enum ScriptFunctionReloadWorkflow {
     Directory,
     ChangedFile,
 }

@@ -745,4 +745,4 @@ fn main() {
     )));
 }
 
-include!("expressions/assignments_and_access.rs");
+mod assignments_and_access;
