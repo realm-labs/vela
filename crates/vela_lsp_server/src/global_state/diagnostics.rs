@@ -8,7 +8,7 @@ use crate::{lsp::to_proto, paths::document_path_uri};
 const WORKSPACE_DIAGNOSTICS_PROGRESS_TOKEN: &str = "vela/workspace-diagnostics";
 
 impl ProjectState {
-    pub(super) fn publish_open_diagnostics(&mut self) -> Vec<Message> {
+    pub(super) fn publish_open_diagnostics(&self) -> Vec<Message> {
         let mut notifications = Vec::new();
         if !self.open_documents.is_empty() {
             notifications.extend(self.open_documents.iter().map(|document_id| {
@@ -28,7 +28,7 @@ impl ProjectState {
     }
 
     pub(super) fn publish_document_diagnostics(
-        &mut self,
+        &self,
         uri: &str,
         document_id: &DocumentId,
     ) -> Message {

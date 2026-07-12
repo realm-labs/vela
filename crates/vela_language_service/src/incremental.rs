@@ -773,12 +773,25 @@ impl LanguageServiceDatabases {
 
     pub fn invalidate_project_config(&mut self) {
         self.generation = WorkspaceGeneration::new(self.generation.get().saturating_add(1));
+        self.reset_project_config_caches();
+        self.analysis_db
+            .invalidate(self.generation, BTreeSet::new());
+    }
+
+    pub fn update_after_project_config_change_with_open_documents(
+        &mut self,
+        project: &ProjectSources,
+        open_documents: &BTreeSet<DocumentId>,
+    ) -> InvalidationReport {
+        self.reset_project_config_caches();
+        self.update_with_open_documents(project, open_documents)
+    }
+
+    fn reset_project_config_caches(&mut self) {
         self.source_db = SourceDb::default();
         self.project_db = ProjectDb::default();
         self.parse_db = ParseDb::default();
         self.hir_db = HirDb::default();
-        self.analysis_db
-            .invalidate(self.generation, BTreeSet::new());
     }
 
     pub fn update(&mut self, project: &ProjectSources) -> InvalidationReport {

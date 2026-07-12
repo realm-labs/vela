@@ -19,6 +19,7 @@ pub(super) struct ProjectState {
     pub(super) databases: LanguageServiceDatabases,
     pub(super) config: Option<WorkspaceConfig>,
     has_config_file: bool,
+    project_config_update_pending: bool,
     pub(super) config_diagnostics: Vec<vela_language_service::ProjectDiagnostic>,
     pub(super) analysis_diagnostics: Vec<ProjectDiagnostic>,
     pub(super) config_documents: BTreeSet<DocumentId>,
@@ -56,14 +57,14 @@ impl ProjectState {
                         &self.workspace_roots,
                         self.editor_config.as_ref(),
                     );
-                    self.databases.invalidate_project_config();
+                    self.project_config_update_pending = true;
                     self.reload_schema_from_config();
                 }
             }
             WorkspaceConfigChange::WorkspaceFile(config) => {
                 self.has_config_file = true;
                 self.config = Some(config);
-                self.databases.invalidate_project_config();
+                self.project_config_update_pending = true;
                 self.reload_schema_from_config();
             }
             WorkspaceConfigChange::ClearWorkspaceFile => {
@@ -72,7 +73,7 @@ impl ProjectState {
                     &self.workspace_roots,
                     self.editor_config.as_ref(),
                 );
-                self.databases.invalidate_project_config();
+                self.project_config_update_pending = true;
                 self.reload_schema_from_config();
             }
         }
@@ -149,8 +150,16 @@ impl ProjectState {
     fn refresh_databases_with_config(&mut self, config: &WorkspaceConfig) {
         let files = self.disk_sources.values().cloned().collect::<Vec<_>>();
         let project = assemble_project_sources(config, &files, &self.workspace.snapshot());
-        self.databases
-            .update_with_open_documents(&project, &self.open_documents);
+        if std::mem::take(&mut self.project_config_update_pending) {
+            self.databases
+                .update_after_project_config_change_with_open_documents(
+                    &project,
+                    &self.open_documents,
+                );
+        } else {
+            self.databases
+                .update_with_open_documents(&project, &self.open_documents);
+        }
         self.analysis_diagnostics = project_diagnostics(&project);
     }
 

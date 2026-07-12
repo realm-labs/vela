@@ -360,6 +360,30 @@ fn project_config_invalidation_rebuilds_module_paths() {
 }
 
 #[test]
+fn project_config_update_rebuilds_with_one_generation_commit() {
+    let files = [file(
+        "/workspace/scripts/game/main.vela",
+        "pub fn main() { return 1 }",
+    )];
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let mut db = LanguageServiceDatabases::new();
+    db.update(&project_with_roots(&files, &["/workspace"]));
+    let before_generation = db.generation();
+
+    db.update_after_project_config_change_with_open_documents(
+        &project_with_roots(&files, &["/workspace/scripts"]),
+        &BTreeSet::new(),
+    );
+
+    assert_eq!(db.generation().get(), before_generation.get() + 1);
+    assert_eq!(
+        db.project_db().module_by_document().get(&document),
+        Some(&module("game::main"))
+    );
+    assert_eq!(db.parse_db().parse_count(), 1);
+}
+
+#[test]
 fn stale_background_diagnostics_are_not_published() {
     let mut db = LanguageServiceDatabases::new();
     db.update(&project(&[file(

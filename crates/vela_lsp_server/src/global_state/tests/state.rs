@@ -260,6 +260,7 @@ fn typed_workspace_folder_changes_use_global_roots() {
 fn typed_configuration_updates_global_editor_config() {
     let (sender, _receiver) = unbounded();
     let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+    let before_generation = state.project.databases.generation();
 
     let result = state.did_change_configuration(lsp_types::DidChangeConfigurationParams {
         settings: serde_json::json!({
@@ -274,6 +275,10 @@ fn typed_configuration_updates_global_editor_config() {
     assert_no_messages(result);
     assert!(state.project.editor_config.is_some());
     assert!(state.project.config.is_some());
+    assert_eq!(
+        state.project.databases.generation().get(),
+        before_generation.get() + 1
+    );
 }
 
 #[test]
