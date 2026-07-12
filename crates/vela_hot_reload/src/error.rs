@@ -1,9 +1,6 @@
 use std::fmt;
 
-use vela_bytecode::compiler::error::{CompileError, CompileErrorKind};
-use vela_bytecode::linker::LinkError;
-use vela_common::{Diagnostic, Label, Span};
-use vela_hir::source_ingestion::HirSourceBuildError;
+use vela_common::Span;
 
 use crate::abi::{AccessAbi, EffectAbi, ParamAbi, TraitMethodAbi};
 use crate::module_abi::ModuleExportAbi;
@@ -22,9 +19,6 @@ impl HotReloadError {
     #[must_use]
     pub const fn code(&self) -> &'static str {
         match &self.kind {
-            HotReloadErrorKind::Frontend(_) => "reload.frontend",
-            HotReloadErrorKind::Compile(_) => "reload.compile",
-            HotReloadErrorKind::Link(_) => "reload.link",
             HotReloadErrorKind::DeletedFunctionParameters { .. } => {
                 "reload.function.deleted_parameters"
             }
@@ -69,9 +63,6 @@ impl HotReloadError {
     #[must_use]
     pub fn target(&self) -> Option<String> {
         match &self.kind {
-            HotReloadErrorKind::Frontend(_) => None,
-            HotReloadErrorKind::Compile(_) => None,
-            HotReloadErrorKind::Link(_) => None,
             HotReloadErrorKind::DeletedFunctionParameters { function, .. }
             | HotReloadErrorKind::ChangedFunctionParameters { function, .. }
             | HotReloadErrorKind::ChangedFunctionParameterAbi { function, .. }
@@ -112,11 +103,6 @@ impl HotReloadError {
     #[must_use]
     pub fn reason(&self) -> String {
         match &self.kind {
-            HotReloadErrorKind::Frontend(_) => {
-                "updated source failed front-end validation".to_owned()
-            }
-            HotReloadErrorKind::Compile(_) => "updated source failed to compile".to_owned(),
-            HotReloadErrorKind::Link(error) => format!("updated bytecode failed to link: {error}"),
             HotReloadErrorKind::DeletedFunctionParameters { function, .. } => {
                 format!("function `{function}` deleted existing parameters")
             }
@@ -205,13 +191,6 @@ impl HotReloadError {
     #[must_use]
     pub fn repair_hint(&self) -> Option<String> {
         match &self.kind {
-            HotReloadErrorKind::Frontend(_) => {
-                Some("fix source diagnostics and retry".to_owned())
-            }
-            HotReloadErrorKind::Compile(_) => Some("fix compile diagnostics and retry".to_owned()),
-            HotReloadErrorKind::Link(_) => {
-                Some("fix link diagnostics or register the required native implementation".to_owned())
-            }
             HotReloadErrorKind::DeletedFunctionParameters { .. } => {
                 Some("restore the previous parameter prefix or add a compatibility wrapper".to_owned())
             }
@@ -286,14 +265,6 @@ impl HotReloadError {
     #[must_use]
     pub fn source_span(&self) -> Option<Span> {
         match &self.kind {
-            HotReloadErrorKind::Frontend(error) => error
-                .diagnostics()
-                .iter()
-                .find_map(|diagnostic| diagnostic.span),
-            HotReloadErrorKind::Compile(error) => compile_diagnostics(error)
-                .into_iter()
-                .find_map(|diagnostic| diagnostic.span),
-            HotReloadErrorKind::Link(_) => None,
             HotReloadErrorKind::RemovedSchema { source_span, .. }
             | HotReloadErrorKind::ChangedSchema { source_span, .. }
             | HotReloadErrorKind::ChangedSchemaAbi { source_span, .. }
@@ -326,37 +297,6 @@ impl HotReloadError {
             | HotReloadErrorKind::RemovedFunction { .. } => None,
         }
     }
-
-    #[must_use]
-    pub fn labels(&self) -> Vec<Label> {
-        let diagnostics = match &self.kind {
-            HotReloadErrorKind::Frontend(error) => error.diagnostics().to_vec(),
-            HotReloadErrorKind::Compile(error) => compile_diagnostics(error),
-            _ => return Vec::new(),
-        };
-        diagnostics
-            .into_iter()
-            .flat_map(|diagnostic| diagnostic.labels.into_iter())
-            .collect()
-    }
-
-    #[must_use]
-    pub fn source_diagnostics(&self) -> Vec<Diagnostic> {
-        match &self.kind {
-            HotReloadErrorKind::Frontend(error) => error.diagnostics().to_vec(),
-            HotReloadErrorKind::Compile(error) => compile_diagnostics(error),
-            _ => Vec::new(),
-        }
-    }
-}
-
-fn compile_diagnostics(error: &CompileError) -> Vec<Diagnostic> {
-    match &error.kind {
-        CompileErrorKind::InvalidHirGraph(diagnostics)
-        | CompileErrorKind::SemanticDiagnostics(diagnostics) => diagnostics.clone(),
-        CompileErrorKind::UnknownLocal(_) | CompileErrorKind::UnsupportedSyntax(_) => Vec::new(),
-        _ => error.to_diagnostic().into_iter().collect(),
-    }
 }
 
 impl fmt::Display for HotReloadError {
@@ -367,19 +307,8 @@ impl fmt::Display for HotReloadError {
 
 impl std::error::Error for HotReloadError {}
 
-impl From<LinkError> for HotReloadError {
-    fn from(error: LinkError) -> Self {
-        Self {
-            kind: HotReloadErrorKind::Link(error),
-        }
-    }
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum HotReloadErrorKind {
-    Frontend(HirSourceBuildError),
-    Compile(CompileError),
-    Link(LinkError),
     DeletedFunctionParameters {
         function: String,
         old: Vec<String>,

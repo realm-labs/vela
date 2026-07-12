@@ -2,7 +2,7 @@ use vela_bytecode::compiler::error::{CompileError, CompileErrorKind};
 use vela_common::diagnostic_render::{DiagnosticRenderer, DiagnosticSource};
 use vela_common::{Diagnostic, SourceId};
 use vela_engine::source::{EngineSourceError, EngineSourceErrorKind};
-use vela_hot_reload::error::{HotReloadError, HotReloadErrorKind};
+use vela_engine::reload::{EngineHotReloadSourceError, EngineHotReloadSourceErrorKind};
 use vela_hot_reload::report::HotReloadReport;
 use vela_vm::error::VmError;
 
@@ -24,27 +24,27 @@ pub fn render_vm_error(label: &str, source: &str, error: &VmError) -> String {
 }
 
 pub fn render_hot_reload_report(label: &str, source: &str, report: &HotReloadReport) -> String {
-    let source = DiagnosticSource::new(SourceId::new(1), label.to_owned(), source.to_owned());
-    let mut lines = report
+    let _ = (label, source);
+    report
         .render_lines()
         .into_iter()
         .map(|line| line.text)
-        .collect::<Vec<_>>();
-    let source_diagnostics = report_source_diagnostics(report);
-    if !source_diagnostics.is_empty() {
-        lines.push(String::new());
-        lines.push(render_diagnostics(&source_diagnostics, source));
-    }
-    lines.join("\n")
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
-pub fn render_hot_reload_error(label: &str, source: &str, error: &HotReloadError) -> String {
+pub fn render_hot_reload_error(
+    label: &str,
+    source: &str,
+    error: &EngineHotReloadSourceError,
+) -> String {
     match &error.kind {
-        HotReloadErrorKind::Frontend(error) => {
-            render_source_diagnostics(label, source, error.diagnostics())
+        EngineHotReloadSourceErrorKind::Source(error) => {
+            render_engine_source_error(label, source, error)
         }
-        HotReloadErrorKind::Compile(error) => render_compile_error(label, source, error),
-        _ => format!("{error:?}"),
+        EngineHotReloadSourceErrorKind::Link(_) | EngineHotReloadSourceErrorKind::HotReload(_) => {
+            format!("{error:?}")
+        }
     }
 }
 
@@ -68,20 +68,6 @@ fn compile_diagnostics(error: &CompileError) -> Vec<Diagnostic> {
     }
 }
 
-fn report_source_diagnostics(report: &HotReloadReport) -> Vec<Diagnostic> {
-    report
-        .errors
-        .iter()
-        .filter_map(|error| {
-            let span = error.source_span?;
-            Some(
-                Diagnostic::error(error.reason.clone())
-                    .with_code(error.code)
-                    .with_span(span),
-            )
-        })
-        .collect()
-}
 
 fn render_diagnostics(diagnostics: &[Diagnostic], source: DiagnosticSource) -> String {
     let renderer = DiagnosticRenderer::new(Some(source));

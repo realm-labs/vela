@@ -219,9 +219,12 @@ where
         Ok(())
     }
 
-    pub fn stage_hot_reload_update(&mut self, text: &str) -> EngineResult<()> {
+    pub fn stage_hot_reload_update(
+        &mut self,
+        text: &str,
+    ) -> EngineResult<EngineHotReloadSourceResult<()>> {
         let update = self.compile_hot_reload_update(text)?;
-        self.stage_hot_update_result(update)
+        self.stage_hot_reload_source_update_result(update)
     }
 
     pub fn has_pending_hot_update(&self) -> EngineResult<bool> {
@@ -265,7 +268,7 @@ where
     pub fn compile_hot_reload_update(
         &self,
         text: &str,
-    ) -> EngineResult<HotReloadResult<HotUpdate>> {
+    ) -> EngineResult<EngineHotReloadSourceResult<HotUpdate>> {
         self.compile_hot_reload_update_with_id(SourceId::new(1), text)
     }
 
@@ -273,7 +276,7 @@ where
         &self,
         source: SourceId,
         text: &str,
-    ) -> EngineResult<HotReloadResult<HotUpdate>> {
+    ) -> EngineResult<EngineHotReloadSourceResult<HotUpdate>> {
         let previous = self.current_hot_reload_version()?;
         Ok(self
             .image
@@ -367,6 +370,11 @@ where
                 EngineHotReloadSourceErrorKind::Source(error) => {
                     Ok(Err(EngineHotReloadSourceError {
                         kind: EngineHotReloadSourceErrorKind::Source(error),
+                    }))
+                }
+                EngineHotReloadSourceErrorKind::Link(error) => {
+                    Ok(Err(EngineHotReloadSourceError {
+                        kind: EngineHotReloadSourceErrorKind::Link(error),
                     }))
                 }
                 EngineHotReloadSourceErrorKind::HotReload(error) => {

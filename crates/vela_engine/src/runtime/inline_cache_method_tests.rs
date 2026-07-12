@@ -11,6 +11,7 @@ use vela_vm::{
 };
 
 use crate::engine::Engine;
+use crate::reload::{EngineHotReloadSourceError, EngineHotReloadSourceErrorKind};
 use crate::runtime::{CallArgs, CallOptions, Runtime};
 
 #[test]
@@ -327,6 +328,13 @@ pub fn read_bonus() -> f64 {
 "#,
         )
         .expect("runtime should compile rejected method hot reload update");
+    let update = match update {
+        Err(EngineHotReloadSourceError {
+            kind: EngineHotReloadSourceErrorKind::HotReload(error),
+        }) => Err(error),
+        Ok(_) => panic!("method ABI update should be rejected"),
+        Err(error) => panic!("source compilation should succeed: {error}"),
+    };
     let report = runtime
         .apply_hot_update_result_report(update)
         .expect("rejected method hot reload update should report");

@@ -27,10 +27,11 @@ pub fn run(
         .ok_or("runtime must keep the initial hot reload version")?;
     let old_before = run_current_main(&mut runtime)?;
 
-    let update = runtime
-        .compile_hot_reload_update(updated_source)
-        .map_err(|error| format!("{error:?}"))?;
-    runtime.stage_hot_update_result(update)?;
+    runtime
+        .stage_hot_reload_update(updated_source)?
+        .map_err(|error| {
+            crate::diagnostics::render_hot_reload_error(updated_label, updated_source, &error)
+        })?;
     let report = runtime
         .check_reload_at_tick_boundary()?
         .ok_or("staged hot reload update was not consumed at the safe point")?;

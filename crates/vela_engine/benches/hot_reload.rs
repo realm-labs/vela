@@ -3,6 +3,7 @@ use std::hint::black_box;
 use std::time::{Duration, Instant};
 
 use vela_engine::engine::Engine;
+use vela_engine::reload::{EngineHotReloadSourceError, EngineHotReloadSourceErrorKind};
 use vela_engine::runtime::{CallOptions, Runtime};
 use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
@@ -165,6 +166,13 @@ fn run_accepted_update(engine: &Engine, initial: &ProgramVersion) -> Result<u64,
 
 fn run_abi_rejection(engine: &Engine, initial: &ProgramVersion) -> Result<u64, Box<dyn Error>> {
     let update = engine.compile_hot_reload_update(initial, ABI_REJECT_SOURCE);
+    let update = match update {
+        Err(EngineHotReloadSourceError {
+            kind: EngineHotReloadSourceErrorKind::HotReload(error),
+        }) => Err(error),
+        Ok(_) => return Err("ABI rejection benchmark update was accepted".into()),
+        Err(error) => return Err(error.into()),
+    };
     let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone());
     let report = runtime.apply_hot_update_result_report(update)?;
     let active_version = runtime

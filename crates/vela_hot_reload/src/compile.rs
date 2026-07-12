@@ -1,14 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use vela_bytecode::compiler::options::CompilerOptions;
-use vela_bytecode::compiler::{ProgramCompilationMode, ProgramCompilationRequest, compile_program};
-use vela_bytecode::{LinkedArtifact, Linker, compiler::CompiledProgram};
-use vela_common::SourceId;
+use vela_bytecode::LinkedArtifact;
 use vela_hir::ids::ModuleId;
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
-use vela_hir::source_ingestion::build_source_set;
-use vela_registry::RegistryCompileView;
+use vela_hir::module_graph::ModuleGraph;
 
 use crate::abi::HotReloadAbi;
 use crate::error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
@@ -17,256 +12,6 @@ use crate::policy::HotReloadPolicy;
 use crate::report::AcceptedHotReloadChanges;
 use crate::symbol::{FunctionSymbolId, ProgramVersionId};
 use crate::version::{HotUpdate, ProgramVersion};
-
-pub fn compile_initial(source: SourceId, text: &str) -> HotReloadResult<ProgramVersion> {
-    compile_initial_with_abi_and_options(
-        source,
-        text,
-        HotReloadAbi::empty(),
-        &CompilerOptions::default(),
-    )
-}
-
-pub fn compile_initial_with_options(
-    source: SourceId,
-    text: &str,
-    options: &CompilerOptions,
-) -> HotReloadResult<ProgramVersion> {
-    compile_initial_with_abi_and_options(source, text, HotReloadAbi::empty(), options)
-}
-
-pub fn compile_initial_with_abi(
-    source: SourceId,
-    text: &str,
-    abi: HotReloadAbi,
-) -> HotReloadResult<ProgramVersion> {
-    compile_initial_with_abi_and_options(source, text, abi, &CompilerOptions::default())
-}
-
-pub fn compile_initial_with_abi_and_options(
-    source: SourceId,
-    text: &str,
-    abi: HotReloadAbi,
-    options: &CompilerOptions,
-) -> HotReloadResult<ProgramVersion> {
-    let program = compile_single_program(source, text, options, None)?;
-    initial_version_from_program(program, abi)
-}
-
-pub fn compile_initial_with_abi_options_and_registry(
-    source: SourceId,
-    text: &str,
-    abi: HotReloadAbi,
-    options: &CompilerOptions,
-    registry: RegistryCompileView<'_>,
-) -> HotReloadResult<ProgramVersion> {
-    let program = compile_single_program(source, text, options, Some(registry))?;
-    initial_version_from_program(program, abi)
-}
-
-pub fn compile_initial_modules_with_abi_and_options(
-    sources: &[ModuleSource],
-    abi: HotReloadAbi,
-    options: &CompilerOptions,
-) -> HotReloadResult<ProgramVersion> {
-    let program = compile_module_program(sources, options, None)?;
-    initial_version_from_program(program, abi)
-}
-
-pub fn compile_initial_modules_with_abi_options_and_registry(
-    sources: &[ModuleSource],
-    abi: HotReloadAbi,
-    options: &CompilerOptions,
-    registry: RegistryCompileView<'_>,
-) -> HotReloadResult<ProgramVersion> {
-    let program = compile_module_program(sources, options, Some(registry))?;
-    initial_version_from_program(program, abi)
-}
-
-pub fn compile_update(
-    previous: &ProgramVersion,
-    source: SourceId,
-    text: &str,
-) -> HotReloadResult<HotUpdate> {
-    compile_update_with_policy(previous, source, text, &HotReloadPolicy::default())
-}
-
-pub fn compile_update_with_policy(
-    previous: &ProgramVersion,
-    source: SourceId,
-    text: &str,
-    policy: &HotReloadPolicy,
-) -> HotReloadResult<HotUpdate> {
-    compile_update_with_abi_and_options_and_policy(
-        previous,
-        source,
-        text,
-        previous.abi().clone(),
-        &CompilerOptions::default(),
-        policy,
-    )
-}
-
-pub fn compile_update_with_options(
-    previous: &ProgramVersion,
-    source: SourceId,
-    text: &str,
-    options: &CompilerOptions,
-) -> HotReloadResult<HotUpdate> {
-    compile_update_with_abi_and_options_and_policy(
-        previous,
-        source,
-        text,
-        previous.abi().clone(),
-        options,
-        &HotReloadPolicy::default(),
-    )
-}
-
-pub fn compile_update_with_abi(
-    previous: &ProgramVersion,
-    source: SourceId,
-    text: &str,
-    abi: HotReloadAbi,
-) -> HotReloadResult<HotUpdate> {
-    compile_update_with_abi_and_policy(previous, source, text, abi, &HotReloadPolicy::default())
-}
-
-pub fn compile_update_with_abi_and_policy(
-    previous: &ProgramVersion,
-    source: SourceId,
-    text: &str,
-    abi: HotReloadAbi,
-    policy: &HotReloadPolicy,
-) -> HotReloadResult<HotUpdate> {
-    compile_update_with_abi_and_options_and_policy(
-        previous,
-        source,
-        text,
-        abi,
-        &CompilerOptions::default(),
-        policy,
-    )
-}
-
-pub fn compile_update_with_abi_and_options(
-    previous: &ProgramVersion,
-    source: SourceId,
-    text: &str,
-    abi: HotReloadAbi,
-    options: &CompilerOptions,
-) -> HotReloadResult<HotUpdate> {
-    compile_update_with_abi_and_options_and_policy(
-        previous,
-        source,
-        text,
-        abi,
-        options,
-        &HotReloadPolicy::default(),
-    )
-}
-
-pub fn compile_update_with_abi_and_options_and_policy(
-    previous: &ProgramVersion,
-    source: SourceId,
-    text: &str,
-    abi: HotReloadAbi,
-    options: &CompilerOptions,
-    policy: &HotReloadPolicy,
-) -> HotReloadResult<HotUpdate> {
-    let program = compile_single_program(source, text, options, None)?;
-    update_from_program(previous, program, abi, policy)
-}
-
-pub fn compile_update_with_abi_options_registry_and_policy(
-    previous: &ProgramVersion,
-    source: SourceId,
-    text: &str,
-    abi: HotReloadAbi,
-    options: &CompilerOptions,
-    registry: RegistryCompileView<'_>,
-    policy: &HotReloadPolicy,
-) -> HotReloadResult<HotUpdate> {
-    let program = compile_single_program(source, text, options, Some(registry))?;
-    update_from_program(previous, program, abi, policy)
-}
-
-pub fn compile_update_modules_with_abi_and_options_and_policy(
-    previous: &ProgramVersion,
-    sources: &[ModuleSource],
-    abi: HotReloadAbi,
-    options: &CompilerOptions,
-    policy: &HotReloadPolicy,
-) -> HotReloadResult<HotUpdate> {
-    let program = compile_module_program(sources, options, None)?;
-    update_from_program(previous, program, abi, policy)
-}
-
-pub fn compile_update_modules_with_abi_options_registry_and_policy(
-    previous: &ProgramVersion,
-    sources: &[ModuleSource],
-    abi: HotReloadAbi,
-    options: &CompilerOptions,
-    registry: RegistryCompileView<'_>,
-    policy: &HotReloadPolicy,
-) -> HotReloadResult<HotUpdate> {
-    let program = compile_module_program(sources, options, Some(registry))?;
-    update_from_program(previous, program, abi, policy)
-}
-
-fn compile_single_program(
-    source: SourceId,
-    text: &str,
-    options: &CompilerOptions,
-    registry: Option<RegistryCompileView<'_>>,
-) -> HotReloadResult<CompiledProgram> {
-    let sources = [ModuleSource::new(
-        source,
-        ModulePath::new(Vec::<String>::new()),
-        text,
-    )];
-    let built = build_source_set(&sources)
-        .map_err(|error| HotReloadError::new(HotReloadErrorKind::Frontend(error)))?;
-    let mode = ProgramCompilationMode::SingleSource {
-        root: built.modules()[0],
-    };
-    compile_program(ProgramCompilationRequest {
-        graph: built.graph(),
-        mode: &mode,
-        options,
-        registry,
-    })
-    .map_err(|error| HotReloadError::new(HotReloadErrorKind::Compile(error)))
-}
-
-fn compile_module_program(
-    sources: &[ModuleSource],
-    options: &CompilerOptions,
-    registry: Option<RegistryCompileView<'_>>,
-) -> HotReloadResult<CompiledProgram> {
-    let built = build_source_set(sources)
-        .map_err(|error| HotReloadError::new(HotReloadErrorKind::Frontend(error)))?;
-    let mode = ProgramCompilationMode::ModuleGraph {
-        modules: built.modules().into(),
-    };
-    compile_program(ProgramCompilationRequest {
-        graph: built.graph(),
-        mode: &mode,
-        options,
-        registry,
-    })
-    .map_err(|error| HotReloadError::new(HotReloadErrorKind::Compile(error)))
-}
-
-fn initial_version_from_program(
-    program: CompiledProgram,
-    abi: HotReloadAbi,
-) -> HotReloadResult<ProgramVersion> {
-    let abi = abi_with_script_metadata(abi, program.script_metadata());
-    let artifact = link_standalone_program(program)
-        .map_err(|error| HotReloadError::new(HotReloadErrorKind::Link(error)))?;
-    initial_version_from_linked_artifact(abi, artifact)
-}
 
 pub fn initial_version_from_linked_artifact(
     abi: HotReloadAbi,
@@ -286,18 +31,6 @@ fn abi_with_script_metadata(abi: HotReloadAbi, graph: Option<&ModuleGraph>) -> H
     } else {
         abi
     }
-}
-
-fn update_from_program(
-    previous: &ProgramVersion,
-    program: CompiledProgram,
-    abi: HotReloadAbi,
-    policy: &HotReloadPolicy,
-) -> HotReloadResult<HotUpdate> {
-    let abi = abi_with_script_metadata(abi, program.script_metadata());
-    let artifact = link_standalone_program(program)
-        .map_err(|error| HotReloadError::new(HotReloadErrorKind::Link(error)))?;
-    update_from_linked_artifact(previous, abi, policy, artifact)
 }
 
 pub fn update_from_linked_artifact(
@@ -348,12 +81,6 @@ pub fn update_from_linked_artifact(
         AcceptedHotReloadChanges::new(changed_functions, changed_modules, impacted_modules);
     let update = HotUpdate::new(abi, changes, artifact);
     Ok(update)
-}
-
-fn link_standalone_program(
-    program: CompiledProgram,
-) -> Result<Arc<LinkedArtifact>, vela_bytecode::linker::LinkError> {
-    Linker::new().link_compiled_program(program)
 }
 
 fn module_changes(

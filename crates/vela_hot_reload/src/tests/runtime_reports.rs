@@ -1010,52 +1010,6 @@ fn main() {
 }
 
 #[test]
-fn rejected_compile_report_carries_source_span_and_labels() {
-    let initial = compile_initial(SourceId::new(1), "fn main(value) { return value; }")
-        .expect("compile initial");
-    let mut runtime = HotReloadRuntime::new(initial);
-
-    let report = runtime.apply_hot_update_result_report(compile_update(
-        &runtime.current(),
-        SourceId::new(2),
-        "fn main(value: Player<i64>) { return value; }",
-    ));
-
-    assert!(!report.accepted);
-    assert_eq!(report.errors.len(), 1);
-    let diagnostic = &report.errors[0];
-    assert_eq!(diagnostic.code, "reload.frontend");
-    assert_eq!(diagnostic.target, None);
-    assert_eq!(diagnostic.detail, None);
-    assert_eq!(
-        diagnostic.source_span.expect("compile source span").source,
-        SourceId::new(2)
-    );
-    assert!(diagnostic.source_diagnostics.iter().any(|diagnostic| {
-        diagnostic.message.contains(
-            "only builtin container, Option, and Result type hints support type arguments",
-        )
-    }));
-    assert!(diagnostic.labels.iter().any(|label| label.message
-        == "use a builtin parameterized type hint or remove these type arguments"));
-    let lines = report.render_lines();
-    assert!(lines.iter().any(|line| {
-        line.kind == HotReloadReportLineKind::SourceDiagnostic
-            && line.text.contains(
-                "only builtin container, Option, and Result type hints support type arguments",
-            )
-    }));
-    assert!(lines.iter().any(|line| {
-        line.kind == HotReloadReportLineKind::SourceLabel
-            && line
-                .text
-                .contains("use a builtin parameterized type hint or remove these type arguments")
-            && line.span.is_some()
-    }));
-    assert_eq!(runtime.current().id, ProgramVersionId(0));
-}
-
-#[test]
 fn rejected_reload_report_fixture_renders_parameter_abi_span_and_hint() {
     let initial_source = normalized_fixture(HOT_RELOAD_PARAMETER_ABI_V1);
     let updated_source = normalized_fixture(HOT_RELOAD_PARAMETER_ABI_V2);

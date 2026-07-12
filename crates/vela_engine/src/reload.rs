@@ -1,9 +1,11 @@
 use std::path::Path;
+use std::sync::Arc;
 
+use vela_bytecode::LinkedArtifact;
 use vela_common::SourceId;
+use vela_hir::module_graph::{ModulePath, ModuleSource};
 use vela_hot_reload::abi::HotReloadAbi;
 use vela_hot_reload::compile::{initial_version_from_linked_artifact, update_from_linked_artifact};
-use vela_hot_reload::error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
 use vela_hot_reload::version::{HotUpdate, ProgramVersion};
 
 pub use source_error::{
@@ -11,10 +13,7 @@ pub use source_error::{
 };
 
 use crate::engine::Engine;
-use crate::source::{
-    EngineSourceError, EngineSourceErrorKind, load_module_sources,
-    load_module_sources_for_changed_file, read_source_text,
-};
+use crate::source::{load_module_sources, load_module_sources_for_changed_file, read_source_text};
 
 mod source_error;
 
@@ -24,7 +23,10 @@ impl Engine {
         HotReloadAbi::from_registry(&self.registry())
     }
 
-    pub fn compile_hot_reload_initial(&self, text: &str) -> HotReloadResult<ProgramVersion> {
+    pub fn compile_hot_reload_initial(
+        &self,
+        text: &str,
+    ) -> EngineHotReloadSourceResult<ProgramVersion> {
         self.compile_hot_reload_initial_with_id(SourceId::new(1), text)
     }
 
@@ -32,21 +34,18 @@ impl Engine {
         &self,
         source: SourceId,
         text: &str,
-    ) -> HotReloadResult<ProgramVersion> {
-        let program = self
-            .compile_source_with_id(source, text)
-            .map_err(hot_reload_compile_error)?;
-        let artifact = self
-            .link_compiled_program(program)
-            .map_err(HotReloadError::from)?;
+    ) -> EngineHotReloadSourceResult<ProgramVersion> {
+        let sources = [ModuleSource::new(source, ModulePath::root(), text)];
+        let artifact = self.compile_and_link_sources(&sources, true)?;
         initial_version_from_linked_artifact(self.hot_reload_abi(), artifact)
+            .map_err(EngineHotReloadSourceError::hot_reload)
     }
 
     pub fn compile_hot_reload_update(
         &self,
         previous: &ProgramVersion,
         text: &str,
-    ) -> HotReloadResult<HotUpdate> {
+    ) -> EngineHotReloadSourceResult<HotUpdate> {
         self.compile_hot_reload_update_with_id(previous, SourceId::new(1), text)
     }
 
@@ -55,19 +54,16 @@ impl Engine {
         previous: &ProgramVersion,
         source: SourceId,
         text: &str,
-    ) -> HotReloadResult<HotUpdate> {
-        let program = self
-            .compile_source_with_id(source, text)
-            .map_err(hot_reload_compile_error)?;
-        let artifact = self
-            .link_compiled_program(program)
-            .map_err(HotReloadError::from)?;
+    ) -> EngineHotReloadSourceResult<HotUpdate> {
+        let sources = [ModuleSource::new(source, ModulePath::root(), text)];
+        let artifact = self.compile_and_link_sources(&sources, true)?;
         update_from_linked_artifact(
             previous,
             self.hot_reload_abi(),
             self.hot_reload_policy(),
             artifact,
         )
+        .map_err(EngineHotReloadSourceError::hot_reload)
     }
 
     pub fn compile_hot_reload_initial_file(
@@ -76,7 +72,6 @@ impl Engine {
     ) -> EngineHotReloadSourceResult<ProgramVersion> {
         let text = read_source_text(path.as_ref()).map_err(EngineHotReloadSourceError::source)?;
         self.compile_hot_reload_initial(&text)
-            .map_err(EngineHotReloadSourceError::hot_reload)
     }
 
     pub fn compile_hot_reload_update_file(
@@ -86,7 +81,6 @@ impl Engine {
     ) -> EngineHotReloadSourceResult<HotUpdate> {
         let text = read_source_text(path.as_ref()).map_err(EngineHotReloadSourceError::source)?;
         self.compile_hot_reload_update(previous, &text)
-            .map_err(EngineHotReloadSourceError::hot_reload)
     }
 
     pub fn compile_hot_reload_initial_dir(
@@ -95,14 +89,7 @@ impl Engine {
     ) -> EngineHotReloadSourceResult<ProgramVersion> {
         let sources =
             load_module_sources(root.as_ref()).map_err(EngineHotReloadSourceError::source)?;
-        let program = self
-            .compile_sources(&sources, false)
-            .map_err(hot_reload_compile_error)
-            .map_err(EngineHotReloadSourceError::hot_reload)?;
-        let artifact = self
-            .link_compiled_program(program)
-            .map_err(HotReloadError::from)
-            .map_err(EngineHotReloadSourceError::hot_reload)?;
+        let artifact = self.compile_and_link_sources(&sources, false)?;
         initial_version_from_linked_artifact(self.hot_reload_abi(), artifact)
             .map_err(EngineHotReloadSourceError::hot_reload)
     }
@@ -114,14 +101,7 @@ impl Engine {
     ) -> EngineHotReloadSourceResult<HotUpdate> {
         let sources =
             load_module_sources(root.as_ref()).map_err(EngineHotReloadSourceError::source)?;
-        let program = self
-            .compile_sources(&sources, false)
-            .map_err(hot_reload_compile_error)
-            .map_err(EngineHotReloadSourceError::hot_reload)?;
-        let artifact = self
-            .link_compiled_program(program)
-            .map_err(HotReloadError::from)
-            .map_err(EngineHotReloadSourceError::hot_reload)?;
+        let artifact = self.compile_and_link_sources(&sources, false)?;
         update_from_linked_artifact(
             previous,
             self.hot_reload_abi(),
@@ -139,14 +119,7 @@ impl Engine {
     ) -> EngineHotReloadSourceResult<HotUpdate> {
         let sources = load_module_sources_for_changed_file(root.as_ref(), changed_file.as_ref())
             .map_err(EngineHotReloadSourceError::source)?;
-        let program = self
-            .compile_sources(&sources, false)
-            .map_err(hot_reload_compile_error)
-            .map_err(EngineHotReloadSourceError::hot_reload)?;
-        let artifact = self
-            .link_compiled_program(program)
-            .map_err(HotReloadError::from)
-            .map_err(EngineHotReloadSourceError::hot_reload)?;
+        let artifact = self.compile_and_link_sources(&sources, false)?;
         update_from_linked_artifact(
             previous,
             self.hot_reload_abi(),
@@ -155,17 +128,16 @@ impl Engine {
         )
         .map_err(EngineHotReloadSourceError::hot_reload)
     }
-}
 
-fn hot_reload_compile_error(error: EngineSourceError) -> HotReloadError {
-    let kind = match error.kind {
-        EngineSourceErrorKind::Frontend(error) => HotReloadErrorKind::Frontend(error),
-        EngineSourceErrorKind::Backend(error) => HotReloadErrorKind::Compile(error),
-        EngineSourceErrorKind::Io { .. }
-        | EngineSourceErrorKind::InvalidSourcePath { .. }
-        | EngineSourceErrorKind::TooManySources { .. } => {
-            unreachable!("in-memory source compilation cannot fail source loading")
-        }
-    };
-    HotReloadError { kind }
+    fn compile_and_link_sources(
+        &self,
+        sources: &[ModuleSource],
+        single_source: bool,
+    ) -> EngineHotReloadSourceResult<Arc<LinkedArtifact>> {
+        let program = self
+            .compile_sources(sources, single_source)
+            .map_err(EngineHotReloadSourceError::source)?;
+        self.link_compiled_program(program)
+            .map_err(EngineHotReloadSourceError::link)
+    }
 }

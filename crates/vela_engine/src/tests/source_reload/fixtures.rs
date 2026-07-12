@@ -62,7 +62,7 @@ fn stage_source_update(runtime: &mut Runtime, source: &str) {
         .compile_hot_reload_update_with_id(SourceId::new(2), source)
         .expect("runtime should be hot-reload enabled");
     runtime
-        .stage_hot_update_result(update)
+        .stage_hot_update_result(hot_reload_result(update))
         .expect("source update should stage");
 }
 

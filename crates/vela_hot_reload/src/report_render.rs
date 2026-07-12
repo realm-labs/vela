@@ -39,8 +39,6 @@ pub enum HotReloadReportLineKind {
     Diagnostic,
     Detail,
     RepairHint,
-    SourceDiagnostic,
-    SourceLabel,
 }
 
 #[must_use]
@@ -128,32 +126,6 @@ fn push_diagnostic_lines(
             Some(index),
             None,
             format!("repair: {repair_hint}"),
-        ));
-    }
-
-    for source_diagnostic in &diagnostic.source_diagnostics {
-        let code = source_diagnostic
-            .code
-            .as_deref()
-            .map(|code| format!(" [{code}]"))
-            .unwrap_or_default();
-        lines.push(HotReloadReportLine::new(
-            HotReloadReportLineKind::SourceDiagnostic,
-            Some(index),
-            source_diagnostic.span,
-            format!(
-                "source {}{}: {}",
-                source_diagnostic.severity, code, source_diagnostic.message
-            ),
-        ));
-    }
-
-    for label in &diagnostic.labels {
-        lines.push(HotReloadReportLine::new(
-            HotReloadReportLineKind::SourceLabel,
-            Some(index),
-            Some(label.span),
-            format!("label {}: {}", render_span(label.span), label.message),
         ));
     }
 }
@@ -404,8 +376,4 @@ fn render_access_abi(access: &AccessAbi) -> String {
         "public={} reflective={} callable={}",
         access.public, access.reflective, access.callable
     )
-}
-
-fn render_span(span: Span) -> String {
-    format!("source {}:{}..{}", span.source.get(), span.start, span.end)
 }

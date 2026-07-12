@@ -6,7 +6,7 @@ use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
 use vela_host::value::HostValue;
 use vela_hot_reload::abi::{AccessAbi, EffectAbi, FunctionAbi, HotReloadAbi, MethodAbi};
-use vela_hot_reload::compile::{compile_initial_with_abi, compile_update_with_abi};
+use vela_hot_reload::compile::{initial_version_from_linked_artifact, update_from_linked_artifact};
 use vela_hot_reload::error::HotReloadErrorKind;
 use vela_hot_reload::module_abi::{ModuleAbi, ModuleExportAbi};
 use vela_hot_reload::policy::HotReloadPolicy;
@@ -29,6 +29,49 @@ use crate::source::EngineSourceErrorKind;
 
 use super::player_type;
 
+fn hot_reload_result<T>(
+    result: crate::reload::EngineHotReloadSourceResult<T>,
+) -> vela_hot_reload::error::HotReloadResult<T> {
+    match result {
+        Ok(value) => Ok(value),
+        Err(crate::reload::EngineHotReloadSourceError {
+            kind: EngineHotReloadSourceErrorKind::HotReload(error),
+        }) => Err(error),
+        Err(error) => panic!("source compilation and linking must succeed: {error}"),
+    }
+}
+
+fn compile_initial_with_abi(
+    source: SourceId,
+    text: &str,
+    abi: HotReloadAbi,
+) -> vela_hot_reload::error::HotReloadResult<vela_hot_reload::version::ProgramVersion> {
+    let engine = Engine::builder().build().expect("test engine");
+    let program = engine
+        .compile_source_with_id(source, text)
+        .expect("test source compiles");
+    let artifact = engine
+        .link_compiled_program(program)
+        .expect("test source links");
+    initial_version_from_linked_artifact(abi, artifact)
+}
+
+fn compile_update_with_abi(
+    previous: &vela_hot_reload::version::ProgramVersion,
+    source: SourceId,
+    text: &str,
+    abi: HotReloadAbi,
+) -> vela_hot_reload::error::HotReloadResult<vela_hot_reload::version::HotUpdate> {
+    let engine = Engine::builder().build().expect("test engine");
+    let program = engine
+        .compile_source_with_id(source, text)
+        .expect("test source compiles");
+    let artifact = engine
+        .link_compiled_program(program)
+        .expect("test source links");
+    update_from_linked_artifact(previous, abi, &HotReloadPolicy::default(), artifact)
+}
+
 mod changed_file_functions;
 mod changed_file_native_method;
 mod changed_file_schema_trait;
@@ -37,6 +80,7 @@ mod dir_function_abi;
 mod dir_schema_trait_abi;
 mod runtime_rejection_policy;
 mod runtime_safe_points;
+mod source_diagnostics;
 mod source_file_native_method;
 mod source_file_runtime;
 mod source_file_schema_trait;

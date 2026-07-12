@@ -1,5 +1,4 @@
 use crate::abi::*;
-use crate::compile::*;
 use crate::error::*;
 use crate::module_abi::*;
 use crate::policy::HotReloadPolicy;
@@ -9,6 +8,7 @@ use crate::report_render::{HotReloadReportLine, HotReloadReportLineKind};
 use crate::runtime::HotReloadRuntime;
 use crate::schema_abi::*;
 use crate::symbol::ProgramVersionId;
+use test_compile_support::*;
 use vela_common::{HostMethodId, SourceId, Span};
 use vela_def::{FieldId, FunctionId, MethodId, TypeId, VariantId};
 use vela_reflect::access::{FunctionAccess, FunctionEffectSet, MethodAccess, MethodEffectSet};
@@ -21,6 +21,8 @@ use vela_vm::Vm;
 use vela_vm::owned_value::OwnedValue;
 
 use crate::version::ProgramVersion;
+
+mod test_compile_support;
 
 mod function_abi;
 mod function_policy;

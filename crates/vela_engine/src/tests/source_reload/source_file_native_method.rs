@@ -941,7 +941,7 @@ fn main() {
 }
 
 #[test]
-fn runtime_stages_source_file_top_level_effect_rejection_until_safe_point() {
+fn runtime_returns_source_text_frontend_rejection_immediately() {
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .build()
@@ -950,36 +950,28 @@ fn runtime_stages_source_file_top_level_effect_rejection_until_safe_point() {
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
-    stage_source_update(
-        &mut runtime,
-        r#"
+    let error = runtime
+        .stage_hot_reload_update(
+            r#"
 const BAD = register_event("monster.kill");
 
 fn main() {
     return 2;
 }
 "#,
-    );
+        )
+        .expect("runtime should be hot-reload enabled")
+        .expect_err("front-end rejection should return immediately");
+    assert_top_level_side_effect_source_error(&error);
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
-    let report = runtime
-        .check_reload()
-        .expect("check reload at safe point")
-        .expect("staged compile rejection report");
-
-    assert!(!report.accepted);
-    assert_eq!(report.to_version, None);
-    assert_eq!(report.errors[0].code, "reload.frontend");
-    assert!(
-        report.errors[0]
-            .source_diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.code.as_deref() == Some("hir::top_level_side_effect"))
+    assert_eq!(
+        runtime.check_reload().expect("check reload at safe point"),
+        None
     );
-    assert_top_level_side_effect_repair_label(&report);
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))

@@ -28,7 +28,7 @@ fn main() {
     let mut tx = HostAccess::new();
 
     let report = runtime
-        .apply_hot_update_result_report(update)
+        .apply_hot_update_result_report(hot_reload_result(update))
         .expect("runtime should return rejection report");
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
@@ -93,11 +93,10 @@ fn engine_applies_configured_hot_reload_policy() {
         .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
 
-    let error = engine
-        .compile_hot_reload_update_with_id(
-            &initial,
-            SourceId::new(2),
-            r#"
+    let error = hot_reload_result(engine.compile_hot_reload_update_with_id(
+        &initial,
+        SourceId::new(2),
+        r#"
 fn helper() {
     return 2;
 }
@@ -106,8 +105,8 @@ fn main() {
     return helper();
 }
 "#,
-        )
-        .expect_err("locked-down policy should reject new helper functions");
+    ))
+    .expect_err("locked-down policy should reject new helper functions");
 
     assert_eq!(
         error.kind,

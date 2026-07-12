@@ -937,7 +937,7 @@ fn runtime_stages_changed_file_defaulted_trait_method_addition_until_safe_point(
 }
 
 #[test]
-fn runtime_stages_changed_file_compile_rejection_until_safe_point() {
+fn runtime_returns_changed_file_frontend_rejection_immediately() {
     let root = unique_test_dir("runtime_stage_changed_file_compile_rejection");
     let reward_file = write_reward_modules(&root, "return grant();", 2);
     let engine = Engine::builder()
@@ -962,10 +962,11 @@ pub fn grant() {
 "#,
     )
     .expect("write side-effecting changed file");
-    runtime
+    let error = runtime
         .stage_hot_reload_update_changed_file(&root, &reward_file)
         .expect("runtime should be hot-reload enabled")
-        .expect("compile rejection should be staged as a hot reload report");
+        .expect_err("front-end rejection should return immediately");
+    assert_top_level_side_effect_source_error(&error);
     assert_eq!(
         runtime.call_raw(
             "game::main::main",
@@ -977,21 +978,10 @@ pub fn grant() {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
-    let report = runtime
-        .check_reload()
-        .expect("check reload at safe point")
-        .expect("staged changed-file compile rejection report");
-
-    assert!(!report.accepted);
-    assert_eq!(report.to_version, None);
-    assert_eq!(report.errors[0].code, "reload.frontend");
-    assert!(
-        report.errors[0]
-            .source_diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.code.as_deref() == Some("hir::top_level_side_effect"))
+    assert_eq!(
+        runtime.check_reload().expect("check reload at safe point"),
+        None
     );
-    assert_top_level_side_effect_repair_label(&report);
     assert_eq!(
         runtime.call_raw(
             "game::main::main",

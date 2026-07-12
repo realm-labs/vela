@@ -336,6 +336,7 @@ fn bump(amount) {
 }
 "#,
         )
+        .expect("runtime supports source text update")
         .expect("stage source text update");
     let report = runtime
         .check_reload()
@@ -455,6 +456,7 @@ fn runtime_stages_source_text_hot_reload_until_check_reload_safe_point() {
 
     runtime
         .stage_hot_reload_update("fn main() { return 2; }")
+        .expect("runtime supports source text update")
         .expect("stage source text update");
     assert!(
         runtime
@@ -494,6 +496,7 @@ fn runtime_stages_source_text_hot_reload_rejection_until_check_reload_safe_point
 
     runtime
         .stage_hot_reload_update("pub fn main() -> f64 { return 2.0; }")
+        .expect("runtime supports source text update")
         .expect("stage rejected source text update");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
@@ -582,13 +585,12 @@ fn runtime_tick_boundary_safe_point_reports_staged_reload_rejection() {
     let initial = engine
         .compile_hot_reload_initial_with_id(SourceId::new(1), "pub fn main() -> i64 { return 1; }")
         .expect("initial hot reload compile");
-    let update = engine
-        .compile_hot_reload_update_with_id(
-            &initial,
-            SourceId::new(2),
-            "pub fn main() -> f64 { return 2.0; }",
-        )
-        .expect_err("return hint change should be rejected");
+    let update = hot_reload_result(engine.compile_hot_reload_update_with_id(
+        &initial,
+        SourceId::new(2),
+        "pub fn main() -> f64 { return 2.0; }",
+    ))
+    .expect_err("return hint change should be rejected");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -976,13 +978,12 @@ fn runtime_call_at_event_end_safe_point_reports_staged_reload_rejection() {
     let initial = engine
         .compile_hot_reload_initial_with_id(SourceId::new(1), "pub fn main() -> i64 { return 1; }")
         .expect("initial hot reload compile");
-    let update = engine
-        .compile_hot_reload_update_with_id(
-            &initial,
-            SourceId::new(2),
-            "pub fn main() -> f64 { return 2.0; }",
-        )
-        .expect_err("return hint change should be rejected");
+    let update = hot_reload_result(engine.compile_hot_reload_update_with_id(
+        &initial,
+        SourceId::new(2),
+        "pub fn main() -> f64 { return 2.0; }",
+    ))
+    .expect_err("return hint change should be rejected");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();

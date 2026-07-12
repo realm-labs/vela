@@ -1,5 +1,6 @@
 use std::fmt;
 
+use vela_bytecode::linker::LinkError;
 use vela_hot_reload::error::HotReloadError;
 
 use crate::source::EngineSourceError;
@@ -21,11 +22,18 @@ impl EngineHotReloadSourceError {
             kind: EngineHotReloadSourceErrorKind::HotReload(error),
         }
     }
+
+    pub(crate) fn link(error: LinkError) -> Self {
+        Self {
+            kind: EngineHotReloadSourceErrorKind::Link(error),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum EngineHotReloadSourceErrorKind {
     Source(EngineSourceError),
+    Link(LinkError),
     HotReload(HotReloadError),
 }
 
@@ -33,6 +41,7 @@ impl fmt::Display for EngineHotReloadSourceError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
             EngineHotReloadSourceErrorKind::Source(error) => write!(formatter, "{error}"),
+            EngineHotReloadSourceErrorKind::Link(error) => write!(formatter, "{error}"),
             EngineHotReloadSourceErrorKind::HotReload(error) => write!(formatter, "{error:?}"),
         }
     }

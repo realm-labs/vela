@@ -63,6 +63,14 @@ jobs:
             echo "Deleted bytecode source compiler APIs must not return."
             exit 1
           fi
+          if grep -RIn 'ProgramCompilationMode' crates --include='*.rs'; then
+            echo "Raw graph/module compiler request modes must not return."
+            exit 1
+          fi
+          if find crates/vela_hot_reload/src -path '*/tests/*' -prune -o -name '*.rs' -print0 | xargs -0 grep -nE 'build_source_set|ModuleSource|HirSourceSet|CompiledProgram|pub fn compile_(initial|update)'; then
+            echo "vela_hot_reload production code must begin at LinkedArtifact."
+            exit 1
+          fi
 
       - name: Run Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings

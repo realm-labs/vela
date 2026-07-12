@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use vela_common::{Diagnostic, Label, Span};
+use vela_common::Span;
 
 use crate::error::HotReloadError;
 use crate::report_detail::HotReloadDiagnosticDetail;
@@ -106,8 +106,6 @@ pub struct HotReloadDiagnostic {
     pub target: Option<String>,
     pub detail: Option<HotReloadDiagnosticDetail>,
     pub source_span: Option<Span>,
-    pub labels: Vec<Label>,
-    pub source_diagnostics: Vec<Diagnostic>,
     pub reason: String,
     pub repair_hint: Option<String>,
     pub error: HotReloadError,
@@ -122,8 +120,6 @@ impl HotReloadDiagnostic {
             target: error.target(),
             detail,
             source_span: error.source_span(),
-            labels: error.labels(),
-            source_diagnostics: error.source_diagnostics(),
             reason: error.reason(),
             repair_hint: error.repair_hint(),
             error,

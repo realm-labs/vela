@@ -50,7 +50,8 @@ fn main() {
     let rejected_update = runtime
         .compile_hot_reload_update_with_id(SourceId::new(3), "fn main() { return 3; }")
         .expect("runtime should be hot-reload enabled");
-    let error = rejected_update.expect_err("active helper removal should be rejected");
+    let error =
+        hot_reload_result(rejected_update).expect_err("active helper removal should be rejected");
     assert!(matches!(
         error.kind,
         HotReloadErrorKind::RemovedFunction { ref function } if function == "helper"

@@ -70,10 +70,7 @@ impl HotReloadDiagnosticDetail {
     #[must_use]
     pub fn from_error(error: &HotReloadError) -> Option<Self> {
         match &error.kind {
-            HotReloadErrorKind::Frontend(_)
-            | HotReloadErrorKind::Compile(_)
-            | HotReloadErrorKind::Link(_)
-            | HotReloadErrorKind::NewFunctionDenied { .. }
+            HotReloadErrorKind::NewFunctionDenied { .. }
             | HotReloadErrorKind::RemovedFunction { .. }
             | HotReloadErrorKind::RemovedFunctionAbi { .. }
             | HotReloadErrorKind::RemovedMethodAbi { .. }
