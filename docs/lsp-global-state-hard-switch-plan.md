@@ -8,6 +8,65 @@
 > Policy: this is a breaking internal refactor. Do not preserve `LspServer`,
 > state mirroring, or legacy test-dispatch APIs for compatibility.
 
+---
+
+## 0. Codex Goal
+
+Use this prompt to execute the hard switch:
+
+```text
+/goal Execute docs/lsp-global-state-hard-switch-plan.md end to end as one
+atomic breaking cutover. Treat docs/goal.md as the product roadmap,
+docs/architecture.md and docs/architecture/lsp.md as the architecture contract,
+docs/decisions.md as durable design decisions, docs/progress.md as the rolling
+status source, and this plan as the complete execution and acceptance contract.
+
+Begin with the read-only Phase 0 inventory and baseline. Once implementation
+edits begin, keep the entire ownership move in one uncommitted cutover across
+turns and resumes. Inspect and continue the existing dirty worktree on every
+resume. Do not create per-phase or small compatibility-preserving commits, do
+not reset partial work, and do not stop after adding a typed test harness,
+moving one state category, migrating only some tests, or making a focused test
+subset pass. Intermediate compilation failures are allowed while production
+state, handlers, tests, and modules move together.
+
+Make GlobalState the sole mutable LSP coordinator and sole owner of live
+workspace, language-service databases, disk sources, configuration,
+diagnostics, capabilities, watcher, lifecycle, request, cancellation, reload,
+task, and outbound-message state. Keep GlobalStateSnapshot immutable and bound
+to one authoritative generation. Split production logic by responsibility
+instead of moving the legacy implementation wholesale into global_state.rs.
+
+Add one typed in-memory TestServer harness that exercises the same lifecycle
+gates, request queue, handlers::dispatch, task/result path, and response
+emission as the production main loop. Migrate every legacy LSP test family to
+that harness without weakening semantic or protocol assertions. Then delete
+LspServer, its test-only dispatcher and local JSON parameter model, all manual
+state synchronization, all mirrored fields, obsolete legacy-only modules and
+helpers, and the oversized inline test block. Do not add traits, adapters,
+aliases, feature gates, dual writes, fallback dispatch, or renamed wrappers to
+keep the old and new architectures alive together.
+
+Preserve typed stdio and loopback TCP behavior, lifecycle and invalid-message
+semantics, cancellation and stale-generation handling, UTF-16/CRLF document
+edits, overlay and watched-file behavior, configuration precedence, schema
+reload, diagnostics and progress, all editor feature results, panic/error
+projection, profiling, and tracing. Keep editor tooling analysis-only and do
+not change Vela language or runtime semantics.
+
+After the legacy half is deleted, run every focused, transport, zero-hit,
+file-size, Clippy, workspace, and examples validation gate in this plan. Update
+docs/architecture/lsp.md, docs/decisions.md, docs/progress.md, architecture/CI
+guards, and this plan so documentation and implementation describe the same
+final state. Create exactly one implementation commit after all completion
+criteria pass: `refactor(lsp)!: hard switch to GlobalState ownership`. Do not
+mark the goal complete while any LspServer, self.server delegation, legacy sync
+helper, legacy test dispatcher, mirrored live state, oversized unreviewed LSP
+file, unchecked plan item, or failing validation remains.
+```
+
+---
+
 ## 1. Objective
 
 Finish the typed LSP migration by making `GlobalState` the only mutable server
