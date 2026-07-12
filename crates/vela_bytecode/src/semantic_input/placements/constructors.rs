@@ -216,7 +216,7 @@ impl GenerationBuilder<'_, '_> {
                         .type_hint
                         .as_ref()
                         .and_then(|hint| registry_hint_contract(hint, &self.catalog))
-                        .and_then(super::super::schema::meaningful_contract)
+                        .and_then(crate::compiler::semantic_input::schema::meaningful_contract)
                     {
                         self.boundaries.push(ContractBoundary::field(
                             executable,
@@ -494,7 +494,7 @@ impl GenerationBuilder<'_, '_> {
                         .hint
                         .as_ref()
                         .and_then(|hint| self.type_contract_for_hint(metadata.module, hint))
-                        .and_then(super::super::schema::meaningful_contract),
+                        .and_then(crate::compiler::semantic_input::schema::meaningful_contract),
                 }
             })
             .collect())

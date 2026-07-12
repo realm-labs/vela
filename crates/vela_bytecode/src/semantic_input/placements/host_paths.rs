@@ -60,7 +60,7 @@ impl GenerationBuilder<'_, '_> {
                         &self.type_shapes,
                     )
                 })
-                .and_then(super::super::schema::meaningful_contract),
+                .and_then(crate::compiler::semantic_input::schema::meaningful_contract),
             value: None,
         };
         let key_is_string = matches!(
@@ -179,7 +179,7 @@ impl GenerationBuilder<'_, '_> {
                 &self.type_ids,
                 &self.type_shapes,
             )
-            .and_then(super::super::schema::meaningful_contract),
+            .and_then(crate::compiler::semantic_input::schema::meaningful_contract),
             value: contract_from_fact(
                 &capability.value,
                 &self.registry_facts,
@@ -187,7 +187,7 @@ impl GenerationBuilder<'_, '_> {
                 &self.type_ids,
                 &self.type_shapes,
             )
-            .and_then(super::super::schema::meaningful_contract),
+            .and_then(crate::compiler::semantic_input::schema::meaningful_contract),
         };
         if let Some(contract) = &capability.key {
             self.remember_contract(contract, origin);

@@ -158,7 +158,7 @@ impl GenerationBuilder<'_, '_> {
         if ty.kind != vela_registry::TypeKindDef::ScriptStruct {
             return None;
         }
-        let name = super::super::external::source_name(&ty.path);
+        let name = crate::compiler::semantic_input::external::source_name(&ty.path);
         let mut fields = self
             .catalog
             .fields_for_owner(owner)

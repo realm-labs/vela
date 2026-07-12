@@ -12,7 +12,7 @@ use vela_hir::ids::{HirBodyId, HirExprId, HirLocalId};
 use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
 use vela_hir::script_methods::{ScriptMethodCatalog, ScriptMethodCatalogMode};
 
-use super::super::topological_lambdas;
+use crate::builder::topological_lambdas;
 use crate::{
     CompileConstructorTarget, CompileDynamicConstructorField, CompileFunctionAccess,
     CompileFunctionClass, CompileFunctionDescriptor, CompileFunctionIdentity, CompileGuardKey,
