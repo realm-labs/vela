@@ -34,57 +34,70 @@ owned verified MIR can be consumed by the bytecode backend and future M22 JIT.
 Use this prompt to execute the plan:
 
 ```text
-/goal Execute docs/mir-executable-generation-architecture-plan.md as the active
-long-term correctness and JIT-foundation architecture track. Treat docs/goal.md
-as the product roadmap, docs/architecture.md and docs/architecture/*.md as the
-technical contract, docs/decisions.md as durable design policy, and
-docs/progress.md as rolling status. Start from the first unchecked phase and
-continue through the entire active execution batch. Do not stop after the
-smallest verifiable task and do not spend time restoring a temporarily green
-tree between tightly coupled ownership/type migrations.
+/goal Execute only Batch E / Phase 10 of
+docs/mir-executable-generation-architecture-plan.md. Batches A-D are historical
+context, not work to repeat. Do not switch to the general long-term task in
+docs/goal.md and do not select unrelated M20, LSP, cleanup, or optimization
+work while any Phase 10 item remains unchecked.
 
-Do not apply short-term mitigations such as clearing all physical facts at
-basic-block boundaries, disabling specialization, rejecting every closure from
-an old reload generation, keeping RuntimeImage name-based cache rebasing, or
-reconstructing JIT input from source or linked bytecode. Implement the target
-ownership and verification model directly.
+This is one persistent, multi-turn implementation goal. Continue automatically
+across tasks, turns, and commits until every Phase 10.7 completion criterion is
+checked and validated. Completing one small task, one commit, one test group,
+one documentation update, or the 1200-line audit is progress only; none is a
+valid stopping condition. The repository instruction to choose the smallest
+verifiable task controls the next unit of work, not when this goal ends. After
+each unit, immediately choose the next unchecked Phase 10 item and continue.
 
-Make verified MIR an owned, generation-retainable backend contract. Compute
-CFG facts, guard refinements, value/root liveness, unique safepoints, lexical
-debug availability, and backend-neutral budget points from MIR program points.
-Typed operations require exact proven or guard-refined facts. Backends must not
-depend on builder layout, arena order, source HIR traversal, or unverified
-peephole conventions.
+Execute the architecture work in this order:
 
-Make the linker the single authority for flattened executable handles,
-generation-global cache-site IDs, ProgramImage indexes, cache/profile layouts,
-and linked verification. Produce one LinkedArtifact instead of independently
-building and later rebasing ProgramImage and LinkedProgram. Keep mutable cache
-entries, profile counters, hotness, heap, globals, and active tier selection in
-RuntimeState.
+1. Phase 10.1: make generation construction cohesive so compiled bytecode and
+   verified MIR cannot be independently supplied or cross-paired.
+2. Phase 10.2: carry one shared Arc<LinkedArtifact> through calls, frames, and
+   closures; remove every program-sized clone at call entry.
+3. Phase 10.3: retain and verify exact MIR-to-executable budget charge points,
+   classes, and observable trap ordering rather than only total units.
+4. Phase 10.4: enforce initialized lexical debug regions and remove physical
+   bytecode slot numbers from MIR shape facts.
+5. Phase 10.5: replace duplicated cache-family matches with one exhaustive
+   cache-site policy used by allocation, rewrite, link, and verification.
+6. Phase 10.6: only after the architecture work, run regressions, zero-hit
+   audits, file-size audit, examples, benchmarks, full validation, and update
+   durable documentation.
 
-Make ProgramVersion own the same-generation verified MIR and linked artifact.
-Closures and active frames pin their immutable linked executable generation;
-old closures execute old code, while new entry calls after a safe-point reload
-use the new generation. Never migrate a closure implicitly by resolving a
-stable function name into new code.
+Implement the long-term target directly. Do not add compatibility constructors,
+parallel owners, generation fingerprints used merely to permit independently
+paired artifacts, total-only budget verification, HIR queries from the physical
+backend, temporary dynamic/unspecialized fallbacks, cache-family duplicate
+matches, stale-closure rejection, name-based rebasing, or bytecode-to-MIR
+reconstruction. Do not add Cranelift or another execution path in this batch.
 
-Replace bytecode-instruction-count semantics with one explicitly recorded,
-backend-neutral execution-unit schedule at MIR program points. Preserve
-HostAccess, reflection, GC, call-depth, memory, source-span, and hot-reload
-boundaries. Do not add Cranelift machine-code generation in this track, but
-leave ProgramVersion with an owned verified input and immutable layouts that
-M22 can consume without rerunning HIR/analysis.
+Use the Phase 10 checklists as executable acceptance criteria. Add the specified
+negative tests before considering each invariant sealed. Check an item only
+after its implementation and relevant tests pass. Prefer one substantial Batch
+E commit; recovery commits may be larger or temporarily fail compilation and
+tests. Do not spend time making every intermediate state green, but keep moving
+until the batch-completion boundary is fully green.
 
-Add the required negative verifier tests, source-level runtime regressions,
-reload/cache identity tests, and focused benchmarks as part of their large
-execution batch. Intermediate commits are recovery markers and may contain
-compile errors, failing tests, incomplete caller migration, or temporarily
-unused new types. Keep moving through the batch instead of repairing temporary
-states for commit cleanliness. Use Conventional Commit messages, keep unrelated
-work out, and make the batch-completion commit green. Do not mark the goal
-complete while any acceptance item, zero-hit audit, or ownership invariant
-remains unproven.
+Never mark this goal complete while any of the following is true:
+
+- any Phase 10.1-10.7 checklist item is unchecked;
+- compiled bytecode and verified MIR can still be independently paired;
+- a frame or closure can deep-clone LinkedProgram/LinkedArtifact contents;
+- budget correctness is inferred only from function-wide total units;
+- debug availability ignores lexical scope exit;
+- vela_mir exposes a physical record/variant slot number;
+- cache-bearing instruction policy is duplicated across manual match lists;
+- any required source regression, zero-hit audit, full validation command,
+  example test, benchmark build, performance/memory measurement, or file-size
+  audit has not passed;
+- docs/progress.md still reports Batch E open or this document still reports
+  Batch E as the active remaining goal.
+
+If one implementation attempt fails, diagnose it and continue with another
+in-scope approach. Report blocked only when progress genuinely requires an
+external decision. Goal completion means Phase 10.7 is entirely checked,
+durable docs state Batch E complete, the work is committed with Conventional
+Commits, and the final working tree is clean.
 ```
 
 ---
