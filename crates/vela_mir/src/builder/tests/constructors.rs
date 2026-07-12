@@ -4,7 +4,8 @@ use vela_common::{PrimitiveTag, ShapeId, SourceId};
 use vela_def::{FieldId, FunctionId, TypeId, VariantId};
 use vela_hir::body::{HirBody, HirExprKind};
 use vela_hir::ids::{HirBodyId, HirExprId};
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
+use vela_package::ModulePath;
 
 use super::*;
 use crate::{
@@ -36,6 +37,7 @@ fn lower(
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(85),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("constructors"),
         source,
     ));

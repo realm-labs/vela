@@ -2,7 +2,8 @@ use vela_common::{SourceId, Span};
 use vela_def::{FieldId, FunctionId, TypeId};
 use vela_hir::body::HirExprKind;
 use vela_hir::ids::{HirDeclId, HirExprId};
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
+use vela_package::ModulePath;
 
 use super::{
     CallParameterSlotValueFact, ConstructorInputKindFact, ConstructorSlotValueFact,
@@ -287,11 +288,13 @@ fn main() {
     let mut graph = ModuleGraph::new();
     let main_module = graph.add_source(ModuleSource::new(
         main_source,
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::main"),
         main_text,
     ));
     graph.add_source(ModuleSource::new(
         SourceId::new(204),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::schema"),
         "pub struct Reward { amount: i64 }\npub enum State { Pair(amount: i64) }",
     ));
@@ -573,6 +576,7 @@ fn graph(source: SourceId, text: &str) -> (ModuleGraph, HirDeclId) {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         source,
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game"),
         text,
     ));

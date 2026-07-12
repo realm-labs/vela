@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use vela_common::GlobalSlot;
-use vela_def::{FunctionId, script_function_id};
+use vela_def::FunctionId;
 use vela_hir::module_graph::ModuleGraph;
 
 use crate::script_methods::ScriptMethodTable;
@@ -48,7 +48,9 @@ impl ProgramImage {
         for function in functions {
             let name = function.name.clone();
             let index = FunctionIndex(indexed_functions.len());
-            function_by_id.insert(script_function_id(&name), index);
+            if let Some(identity) = function.compiled_mir {
+                function_by_id.insert(identity.root, index);
+            }
             function_by_name.insert(name, index);
             indexed_functions.push(function);
         }
@@ -109,6 +111,10 @@ impl ProgramImage {
 
     pub fn entry_function_names(&self) -> impl Iterator<Item = &str> {
         self.function_by_name.keys().map(String::as_str)
+    }
+
+    pub fn entry_function_ids(&self) -> impl Iterator<Item = (FunctionId, FunctionIndex)> + '_ {
+        self.function_by_id.iter().map(|(id, index)| (*id, *index))
     }
 
     #[must_use]
@@ -178,24 +184,30 @@ impl UnlinkedProgramCode for ProgramImage {
         ProgramImage::function_by_id(self, id)
     }
 
-    fn script_method(&self, type_name: &str, method: &str) -> Option<&UnlinkedCodeObject> {
-        let method = self.script_methods.get(type_name, method)?;
-        self.function_by_name(&method.function)
+    fn script_method(&self, owner: vela_def::TypeId, method: &str) -> Option<&UnlinkedCodeObject> {
+        let method = self.script_methods.get(owner, method)?;
+        self.function_by_id(method.function_id)
+            .or_else(|| self.function_by_name(&method.function))
     }
 
-    fn script_method_id(&self, type_name: &str, method: &str) -> Option<vela_def::MethodId> {
+    fn script_method_id(
+        &self,
+        owner: vela_def::TypeId,
+        method: &str,
+    ) -> Option<vela_def::MethodId> {
         self.script_methods
-            .get(type_name, method)
+            .get(owner, method)
             .map(|method| method.id)
     }
 
     fn script_method_by_id(
         &self,
-        type_name: &str,
+        owner: vela_def::TypeId,
         method_id: vela_def::MethodId,
     ) -> Option<&UnlinkedCodeObject> {
-        let method = self.script_methods.get_by_id(type_name, method_id)?;
-        self.function_by_name(&method.function)
+        let method = self.script_methods.get_by_id(owner, method_id)?;
+        self.function_by_id(method.function_id)
+            .or_else(|| self.function_by_name(&method.function))
     }
 }
 
@@ -270,7 +282,7 @@ fn rewrite_instruction_cache_sites(
 #[cfg(test)]
 mod tests {
     use vela_common::{GlobalSlot, HostTypeId};
-    use vela_def::{FieldId, MethodId};
+    use vela_def::{FieldId, FunctionId, MethodId, TypeId};
     use vela_host::target::HostTargetPlan;
 
     use crate::{
@@ -308,7 +320,15 @@ mod tests {
         let mut program = UnlinkedProgram::new();
         program.set_global_layout(["main::first".to_owned(), "main::second".to_owned()]);
         program.insert_function(UnlinkedCodeObject::new("main", 0));
-        program.insert_script_method("Player", "bonus", MethodId::new(7), "main");
+        let owner = TypeId::new(11);
+        program.insert_script_method(
+            owner,
+            "Player",
+            "bonus",
+            MethodId::new(7),
+            FunctionId::new(8),
+            "main",
+        );
 
         let image = ProgramImage::from_program(&program);
 
@@ -318,7 +338,7 @@ mod tests {
         assert_eq!(
             image
                 .script_methods()
-                .get_by_id("Player", MethodId::new(7))
+                .get_by_id(owner, MethodId::new(7))
                 .map(|method| method.function.as_str()),
             Some("main")
         );

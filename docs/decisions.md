@@ -1748,6 +1748,17 @@ the same retained MIR for machine code. Neither follow-up may reconstruct facts
 from bytecode layout, restore source/HIR queries in the backend, or weaken the
 execution-unit schedule.
 
+### Package-Qualified Script Identity
+
+Script module identity is `PackageId + ModulePath`, and every stable script
+definition path includes its package. Linked and runtime function/type/method
+identity uses resolved `FunctionId`, `TypeId`, and related semantic IDs. Source
+names are display and debug metadata only: duplicate names from different
+packages remain distinct, and ambiguous names are omitted from name-based entry
+indexes instead of replacing or aliasing semantic entries. Convenience source,
+file, directory, and scratch APIs use explicit reserved package IDs; linkers and
+semantic consumers never synthesize or fall back to an implicit package.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

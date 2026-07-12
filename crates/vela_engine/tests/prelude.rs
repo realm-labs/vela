@@ -243,13 +243,15 @@ fn main() {
     let code = version.function("main");
     let metadata = version.script_metadata();
     let module_path = ModulePath::from_qualified("");
-    let module = metadata.and_then(|metadata| metadata.module_id(&module_path));
+    let module_key = ModuleKey::new(PackageId::anonymous(), module_path.clone());
+    let module = metadata.and_then(|metadata| metadata.module_id(&module_key));
     let declaration_index =
         module.and_then(|module| metadata.and_then(|metadata| metadata.module(module)));
     let declaration_id = declaration_index.and_then(|index| index.get("Player"));
     let declaration =
         declaration_id.and_then(|id| metadata.and_then(|metadata| metadata.declaration(id)));
-    let method = version.script_method("Player", "bonus");
+    let player = vela_def::script_type_id(PackageId::anonymous().as_str(), "Player", None);
+    let method = version.script_method(player, "bonus");
 
     assert!(code.is_some());
     assert!(metadata.is_some());
@@ -261,7 +263,7 @@ fn main() {
         Some(DeclarationKind::Struct)
     );
     assert!(method.is_some());
-    assert!(version.script_method_function("Player", "bonus").is_some());
+    assert!(version.script_method_function(player, "bonus").is_some());
 
     accepts_code_object(code);
     accepts_script_metadata(metadata);
@@ -273,7 +275,7 @@ fn main() {
     accepts_declaration_kind(DeclarationKind::Struct);
     accepts_script_methods(version.script_methods());
     accepts_script_method(method);
-    accepts_code_object(version.script_method_function("Player", "bonus"));
+    accepts_code_object(version.script_method_function(player, "bonus"));
 }
 
 struct TestDir(PathBuf);

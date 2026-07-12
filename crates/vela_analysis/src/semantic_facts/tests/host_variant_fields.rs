@@ -1,7 +1,8 @@
 use vela_common::SourceId;
 use vela_def::{DefPath, FunctionId};
 use vela_hir::body::HirExprKind;
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
+use vela_package::ModulePath;
 use vela_registry::{DefinitionRegistry, FieldDef, TypeDef, VariantDef};
 
 use crate::executable::{ExecutableAnalysisGeneration, ExecutableAnalysisInput};
@@ -197,6 +198,7 @@ fn graph(source: SourceId, text: &str) -> (ModuleGraph, vela_hir::ids::HirDeclId
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         source,
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game"),
         text,
     ));

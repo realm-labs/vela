@@ -4,10 +4,8 @@ use std::fmt;
 use std::sync::Arc;
 
 use vela_common::HostMethodId;
-use vela_def::{FunctionId, MethodId, TypeId, VariantId, script_function_id};
+use vela_def::{FunctionId, MethodId, TypeId, VariantId};
 use vela_registry::DefinitionRegistry;
-
-use self::targets::script_schema_identities;
 
 use crate::linked::{
     DynamicCallArgumentLinked, GuardContext, Instruction, InstructionKind, LinkedCodeObject,
@@ -357,24 +355,29 @@ impl Error for LinkError {}
 impl<'linker, 'registry> LinkContext<'linker, 'registry> {
     fn new(linker: &'linker Linker<'registry>, program: &crate::ProgramImage) -> Self {
         let mut script_functions_by_name = BTreeMap::new();
+        let mut script_function_name_counts = BTreeMap::<String, usize>::new();
         let mut script_functions_by_id = BTreeMap::new();
         for (index, name) in program.entry_function_names().enumerate() {
             let handle = ScriptFunctionHandle::new(index);
             script_functions_by_name.insert(name.to_owned(), handle);
-            script_functions_by_id.insert(script_function_id(name), handle);
+            *script_function_name_counts
+                .entry(name.to_owned())
+                .or_default() += 1;
+        }
+        script_functions_by_name.retain(|name, _| script_function_name_counts[name] == 1);
+        for (id, index) in program.entry_function_ids() {
+            script_functions_by_id.insert(id, ScriptFunctionHandle::new(index.0));
         }
 
         let mut script_methods_by_id = BTreeMap::new();
-        for (_, _, method) in program.script_methods().methods() {
-            if let Some(function) = script_functions_by_name.get(&method.function) {
+        for (_, _, _, method) in program.script_methods().methods() {
+            if let Some(function) = script_functions_by_id
+                .get(&method.function_id)
+                .or_else(|| script_functions_by_name.get(&method.function))
+            {
                 script_methods_by_id.insert(method.id, *function);
             }
         }
-        let (script_type_ids, script_variant_ids) = program
-            .script_metadata()
-            .map(script_schema_identities)
-            .unwrap_or_default();
-
         Self {
             linker,
             linked: LinkedProgram::new(),
@@ -383,8 +386,6 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
             script_methods_by_id,
             native_handles: BTreeMap::new(),
             method_handles: BTreeMap::new(),
-            script_type_ids,
-            script_variant_ids,
             type_handles: BTreeMap::new(),
             variant_handles: BTreeMap::new(),
         }
@@ -410,6 +411,9 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 self.linked.set_entry_point(debug_name, function);
             }
         }
+        for (id, function) in &self.script_functions_by_id {
+            self.linked.set_entry_point_id(*id, *function);
+        }
 
         Ok(self.linked)
     }
@@ -418,8 +422,12 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
         &mut self,
         program: &crate::ProgramImage,
     ) -> Result<(), LinkError> {
-        for (type_name, method_name, method) in program.script_methods().methods() {
-            let Some(function) = self.script_functions_by_name.get(&method.function).copied()
+        for (owner, _type_name, method_name, method) in program.script_methods().methods() {
+            let Some(function) = self
+                .script_functions_by_id
+                .get(&method.function_id)
+                .or_else(|| self.script_functions_by_name.get(&method.function))
+                .copied()
             else {
                 continue;
             };
@@ -428,7 +436,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 method_name.to_owned(),
             )?;
             self.linked
-                .insert_script_method_dispatch(type_name, method_name, dispatch);
+                .insert_script_method_dispatch(owner, method_name, dispatch);
         }
         Ok(())
     }
@@ -851,9 +859,10 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
             UnlinkedInstructionKind::MakeRecord {
                 dst,
                 type_name,
+                type_id,
                 fields,
             } => {
-                let ty = self.link_type(type_name)?;
+                let ty = self.link_type(type_name, *type_id)?;
                 let field_slots = sorted_field_slots(fields.iter().map(|(field, _)| field));
                 let fields = fields
                     .iter()
@@ -874,11 +883,13 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
             UnlinkedInstructionKind::MakeEnum {
                 dst,
                 enum_name,
+                type_id,
                 variant,
+                variant_id,
                 fields,
             } => {
-                let enum_ty = self.link_type(enum_name)?;
-                let variant = self.link_variant(enum_name, variant, enum_ty)?;
+                let enum_ty = self.link_type(enum_name, *type_id)?;
+                let variant = self.link_variant(enum_name, variant, *variant_id, enum_ty)?;
                 let field_slots = sorted_field_slots(fields.iter().map(|(field, _)| field));
                 let fields = fields
                     .iter()
@@ -1044,10 +1055,12 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 dst,
                 value,
                 enum_name,
+                type_id,
                 variant,
+                variant_id,
             } => {
-                let enum_ty = self.link_type(enum_name)?;
-                let variant = self.link_variant(enum_name, variant, enum_ty)?;
+                let enum_ty = self.link_type(enum_name, *type_id)?;
+                let variant = self.link_variant(enum_name, variant, *variant_id, enum_ty)?;
                 InstructionKind::EnumTagEqual {
                     dst: *dst,
                     value: *value,

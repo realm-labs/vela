@@ -342,7 +342,7 @@ impl LanguageServiceDatabases {
         }
 
         let graph = self.hir_db().graph();
-        let module = graph.module_id(query.module_path()?)?;
+        let module = graph.module_id(query.module_key()?)?;
         graph.imports(module)?.iter().find_map(|import| {
             let binding_name = import
                 .alias

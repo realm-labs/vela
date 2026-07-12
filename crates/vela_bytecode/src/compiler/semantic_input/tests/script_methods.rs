@@ -1,12 +1,13 @@
 use vela_common::SourceId;
 use vela_def::{script_function_id, script_inherent_method_id, script_trait_method_id};
 use vela_hir::body::HirPatternKind;
-use vela_hir::module_graph::{ModulePath, ModuleSource};
+use vela_hir::module_graph::ModuleSource;
 use vela_hir::source_ingestion::build_module_source_set;
 use vela_mir::{
     CompileFunctionIdentity, CompileMethodClass, CompileParameterDefault,
     CompilePatternConstructorTarget,
 };
+use vela_package::ModulePath;
 
 use super::{FixtureRoots, prepare_source};
 use crate::compiler::options::CompilerOptions;
@@ -28,13 +29,18 @@ impl Player {
     )
     .expect("single-source method semantic input");
     let targets = fixture.input.targets();
+    let canonical_owner = format!("{}::Player", vela_package::PackageId::anonymous());
     let owner = targets
-        .type_by_name("script::Player")
+        .type_by_name(&canonical_owner)
         .expect("single-source Player descriptor");
-    assert_eq!(owner.canonical_name, "script::Player");
+    assert_eq!(owner.canonical_name, canonical_owner);
     assert_eq!(owner.runtime_name, "Player");
     assert!(targets.type_by_name("Player").is_none());
-    let method_id = script_inherent_method_id("main::Player", "bonus");
+    let method_id = script_inherent_method_id(
+        vela_package::PackageId::anonymous().as_str(),
+        "main::Player",
+        "bonus",
+    );
     let descriptor = targets
         .method_descriptor(owner.id, method_id)
         .expect("single-source method descriptor");
@@ -51,7 +57,10 @@ impl Player {
     assert_eq!(code_symbol, "__impl.Player.bonus");
     assert_eq!(
         executable.function,
-        script_function_id("__impl.Player.bonus")
+        script_function_id(
+            vela_package::PackageId::anonymous().as_str(),
+            "__impl.Player.bonus",
+        )
     );
     assert_eq!(descriptor.signature.parameters.len(), 1);
     assert!(matches!(
@@ -64,6 +73,7 @@ impl Player {
 fn module_catalog_keeps_qualified_method_identity_and_source_symbol_seed() {
     let input = prepare_modules(&[ModuleSource::new(
         SourceId::new(911),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::combat"),
         r#"
 struct Player { level: i64 }
@@ -73,13 +83,21 @@ impl Player {
 "#,
     )]);
     let targets = input.targets();
+    let canonical_owner = format!(
+        "{}::game::combat::Player",
+        vela_package::PackageId::anonymous()
+    );
     let owner = targets
-        .type_by_name("script::game::combat::Player")
+        .type_by_name(&canonical_owner)
         .expect("qualified Player descriptor");
-    assert_eq!(owner.canonical_name, "script::game::combat::Player");
+    assert_eq!(owner.canonical_name, canonical_owner);
     assert_eq!(owner.runtime_name, "game::combat::Player");
     assert!(targets.type_by_name("game::combat::Player").is_none());
-    let method_id = script_inherent_method_id("game::combat::Player", "bonus");
+    let method_id = script_inherent_method_id(
+        vela_package::PackageId::anonymous().as_str(),
+        "game::combat::Player",
+        "bonus",
+    );
     let descriptor = targets
         .method_descriptor(owner.id, method_id)
         .expect("qualified method descriptor");
@@ -97,7 +115,10 @@ impl Player {
         code_symbol,
         "game::combat.__impl.game::combat::Player.bonus"
     );
-    assert_eq!(executable.function, script_function_id(code_symbol));
+    assert_eq!(
+        executable.function,
+        script_function_id(vela_package::PackageId::anonymous().as_str(), code_symbol,)
+    );
 }
 
 #[test]
@@ -105,6 +126,7 @@ fn qualified_record_patterns_are_placed_as_explicit_never_matches() {
     let sources = [
         ModuleSource::new(
             SourceId::new(912),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 fn main() {
@@ -115,6 +137,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(913),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             "pub struct Reward { amount: i64 }",
         ),
@@ -192,7 +215,11 @@ impl BonusSource for Monster {}
     )
     .expect("shared trait-default semantic input");
     let targets = fixture.input.targets();
-    let method_id = script_trait_method_id("main::BonusSource", "bonus");
+    let method_id = script_trait_method_id(
+        vela_package::PackageId::anonymous().as_str(),
+        "main::BonusSource",
+        "bonus",
+    );
     let roots = targets
         .compilation_roots()
         .filter_map(|(_, root)| match root.identity {
@@ -213,8 +240,14 @@ impl BonusSource for Monster {}
             .map(|(_, function, _)| *function)
             .collect::<std::collections::BTreeSet<_>>(),
         [
-            script_function_id("__impl.BonusSource.for.Player.bonus"),
-            script_function_id("__impl.BonusSource.for.Monster.bonus"),
+            script_function_id(
+                vela_package::PackageId::anonymous().as_str(),
+                "__impl.BonusSource.for.Player.bonus",
+            ),
+            script_function_id(
+                vela_package::PackageId::anonymous().as_str(),
+                "__impl.BonusSource.for.Monster.bonus",
+            ),
         ]
         .into_iter()
         .collect()

@@ -66,7 +66,7 @@ pub(super) fn hir_record_constructor_at(
             Some(RecordConstructor {
                 path: constructor.path.clone(),
                 field_names: fields.iter().map(|field| field.name.clone()).collect(),
-                current_module: Vec::new(),
+                current_module: None,
             })
         })
 }
@@ -246,7 +246,7 @@ fn record_constructor_for_expr(
                     .into_iter()
                     .filter_map(|field| field.label_text())
                     .collect(),
-                current_module: Vec::new(),
+                current_module: None,
             })
         }
         SyntaxExpressionKind::Literal | SyntaxExpressionKind::Path | SyntaxExpressionKind::Unit => {
@@ -442,7 +442,7 @@ fn script_record_constructor_declaration<'a>(
 ) -> Option<&'a vela_hir::module_graph::Declaration> {
     graph.declaration_by_type_path(
         &constructor.path,
-        &constructor.current_module,
+        constructor.current_module.as_ref()?,
         DeclarationKind::Struct,
     )
 }
@@ -499,7 +499,8 @@ fn field_label_matches(label: &str, prefix: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use vela_common::SourceId;
-    use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+    use vela_hir::module_graph::{ModuleGraph, ModuleSource};
+    use vela_package::ModulePath;
     use vela_syntax::parse::parse_source_with_id;
 
     use super::{hir_record_constructor_at, recover_record_constructor_from_incomplete_syntax};
@@ -513,6 +514,7 @@ mod tests {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             source_id,
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             text,
         ));

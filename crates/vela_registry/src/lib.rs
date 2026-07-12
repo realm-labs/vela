@@ -604,15 +604,18 @@ mod tests {
     use super::*;
 
     fn function_path(name: &str) -> DefPath {
-        DefPath::function("script", ["combat"], name)
+        DefPath::function("com.example.test", ["combat"], name)
     }
 
     fn type_def(name: &str) -> TypeDef {
-        TypeDef::new(DefPath::ty("script", ["combat"], name))
+        TypeDef::new(DefPath::ty("com.example.test", ["combat"], name))
     }
 
     fn primitive_type_def(name: &str, primitive: PrimitiveTag) -> TypeDef {
-        TypeDef::primitive(DefPath::ty("script", ["primitive"], name), primitive)
+        TypeDef::primitive(
+            DefPath::ty("com.example.test", ["primitive"], name),
+            primitive,
+        )
     }
 
     fn int_param(name: &str) -> ParamDef {
@@ -658,12 +661,12 @@ mod tests {
         let owner = type_def("Player").id;
 
         let first = MethodDef::new(
-            DefPath::method("script", ["combat"], "Player", "score"),
+            DefPath::method("com.example.test", ["combat"], "Player", "score"),
             owner,
             FunctionSignature::default(),
         );
         let second = MethodDef::new(
-            DefPath::method("script", ["hud"], "Player", "score"),
+            DefPath::method("com.example.test", ["hud"], "Player", "score"),
             owner,
             FunctionSignature::default(),
         );
@@ -702,8 +705,8 @@ mod tests {
         let owner = registry
             .register_type(type_def("Result"))
             .expect("type registration should succeed");
-        let ok_variant = DefPath::variant("script", ["combat"], "Result", "Ok");
-        let value_field = DefPath::field("script", ["combat"], "Result::Ok", "value");
+        let ok_variant = DefPath::variant("com.example.test", ["combat"], "Result", "Ok");
+        let value_field = DefPath::field("com.example.test", ["combat"], "Result::Ok", "value");
 
         let variant_id = registry
             .register_variant(VariantDef::new(ok_variant.clone(), owner))
@@ -800,7 +803,7 @@ mod tests {
         assert_eq!(debug_name_id.get(), 0);
         assert_eq!(
             registry.debug_name(debug_name_id),
-            "function script::combat::score"
+            "function com.example.test::combat::score"
         );
     }
 
@@ -868,7 +871,7 @@ mod tests {
         let owner = registry
             .register_type(type_def("Player"))
             .expect("type registration should succeed");
-        let method_path = DefPath::method("script", ["combat"], "Player", "grant_exp");
+        let method_path = DefPath::method("com.example.test", ["combat"], "Player", "grant_exp");
         let signature = FunctionSignature::new([int_param("amount")], None::<TypeHintDef>);
         let method_id = registry
             .register_method(MethodDef::new(method_path, owner, signature))
@@ -893,13 +896,13 @@ mod tests {
     #[test]
     fn compile_view_resolves_host_fields_and_types() {
         let mut registry = DefinitionRegistry::new();
-        let type_path = DefPath::ty("script", ["combat"], "Player");
+        let type_path = DefPath::ty("com.example.test", ["combat"], "Player");
         let owner = registry
             .register_type(TypeDef::new(type_path.clone()))
             .expect("type registration should succeed");
         let field_id = registry
             .register_field(FieldDef::new(
-                DefPath::field("script", ["combat"], "Player", "level"),
+                DefPath::field("com.example.test", ["combat"], "Player", "level"),
                 owner,
             ))
             .expect("field registration should succeed");
@@ -920,7 +923,7 @@ mod tests {
         registry
             .register_field(
                 FieldDef::new(
-                    DefPath::field("script", ["combat"], "Player", "level"),
+                    DefPath::field("com.example.test", ["combat"], "Player", "level"),
                     owner,
                 )
                 .writable(false)
@@ -929,7 +932,7 @@ mod tests {
             .expect("field registration should succeed");
         registry
             .register_method(MethodDef::new(
-                DefPath::method("script", ["combat"], "Player", "score"),
+                DefPath::method("com.example.test", ["combat"], "Player", "score"),
                 owner,
                 FunctionSignature::new([int_param("bonus")], Some("i64")),
             ))

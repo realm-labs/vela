@@ -1,7 +1,8 @@
 use vela_analysis::executable::{ExecutableAnalysisGeneration, ExecutableAnalysisInput};
 use vela_common::SourceId;
 use vela_def::FunctionId;
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
+use vela_package::ModulePath;
 
 use crate::{
     CompileFunctionAccess, CompileFunctionClass, CompileFunctionDescriptor,
@@ -14,6 +15,7 @@ fn build(source: &str, parameter_names: &[&str]) -> crate::MirProgram {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(71),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("control_flow_builder"),
         source,
     ));

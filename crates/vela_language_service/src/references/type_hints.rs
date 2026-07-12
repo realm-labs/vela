@@ -104,10 +104,8 @@ fn type_declaration_for_hint_path<'a>(
     .into_iter()
     .find_map(|kind| {
         graph
-            .module_path(owner.module)
-            .and_then(|module_path| {
-                graph.declaration_by_type_path(path, module_path.segments(), kind)
-            })
+            .module_key(owner.module)
+            .and_then(|module_key| graph.declaration_by_type_path(path, module_key, kind))
             .or_else(|| imported_type_declaration_for_hint_path(graph, owner, path, kind))
     })
 }

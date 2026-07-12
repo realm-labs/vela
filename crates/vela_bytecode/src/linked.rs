@@ -76,7 +76,8 @@ pub struct LinkedProgram {
     variants: Vec<LinkedVariant>,
     functions: Vec<LinkedCodeObject>,
     entry_points: BTreeMap<DebugNameId, ScriptFunctionHandle>,
-    script_method_dispatches_by_type_and_name: BTreeMap<(String, String), MethodDispatchHandle>,
+    entry_points_by_id: BTreeMap<FunctionId, ScriptFunctionHandle>,
+    script_method_dispatches_by_owner_and_name: BTreeMap<(TypeId, String), MethodDispatchHandle>,
     script_metadata: Option<ModuleGraph>,
 }
 
@@ -164,22 +165,22 @@ impl LinkedProgram {
 
     pub fn insert_script_method_dispatch(
         &mut self,
-        type_name: impl Into<String>,
+        owner: TypeId,
         method_name: impl Into<String>,
         dispatch: MethodDispatchHandle,
     ) {
-        self.script_method_dispatches_by_type_and_name
-            .insert((type_name.into(), method_name.into()), dispatch);
+        self.script_method_dispatches_by_owner_and_name
+            .insert((owner, method_name.into()), dispatch);
     }
 
     #[must_use]
     pub fn script_method_dispatch(
         &self,
-        type_name: &str,
+        owner: TypeId,
         method_name: &str,
     ) -> Option<MethodDispatchHandle> {
-        self.script_method_dispatches_by_type_and_name
-            .get(&(type_name.to_owned(), method_name.to_owned()))
+        self.script_method_dispatches_by_owner_and_name
+            .get(&(owner, method_name.to_owned()))
             .copied()
     }
 
@@ -281,6 +282,15 @@ impl LinkedProgram {
 
     pub fn set_entry_point(&mut self, debug_name: DebugNameId, function: ScriptFunctionHandle) {
         self.entry_points.insert(debug_name, function);
+    }
+
+    pub fn set_entry_point_id(&mut self, id: FunctionId, function: ScriptFunctionHandle) {
+        self.entry_points_by_id.insert(id, function);
+    }
+
+    #[must_use]
+    pub fn entry_point_by_id(&self, id: FunctionId) -> Option<ScriptFunctionHandle> {
+        self.entry_points_by_id.get(&id).copied()
     }
 
     #[must_use]

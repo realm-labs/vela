@@ -396,6 +396,7 @@ fn record_slot_bytecode_reads_and_writes_by_slot() {
         UnlinkedInstructionKind::MakeRecord {
             dst: Register(1),
             type_name: "Reward".into(),
+            type_id: Some(TypeId::new(900)),
             fields: vec![
                 ("item_id".into(), Register(0)),
                 ("count".into(), Register(0)),
@@ -448,7 +449,9 @@ fn enum_slot_bytecode_reads_by_slot() {
         UnlinkedInstructionKind::MakeEnum {
             dst: Register(1),
             enum_name: "Damage".into(),
+            type_id: Some(TypeId::new(901)),
             variant: "Physical".into(),
+            variant_id: Some(VariantId::new(902)),
             fields: vec![("amount".into(), Register(0))],
         },
     ));

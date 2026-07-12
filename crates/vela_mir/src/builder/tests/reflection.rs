@@ -3,7 +3,8 @@ use vela_common::{PrimitiveTag, SourceId};
 use vela_def::FunctionId;
 use vela_hir::body::{HirBody, HirExprKind};
 use vela_hir::ids::HirExprId;
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
+use vela_package::ModulePath;
 
 use crate::{
     CompileCallTarget, CompileCalleeTarget, CompileDynamicCallArgument, CompileFunctionAccess,
@@ -32,6 +33,7 @@ fn try_build_reflection(
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(100),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("reflection_builder"),
         source,
     ));

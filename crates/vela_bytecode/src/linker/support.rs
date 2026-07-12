@@ -17,8 +17,6 @@ pub(super) struct LinkContext<'linker, 'registry> {
     pub(super) script_methods_by_id: BTreeMap<MethodId, ScriptFunctionHandle>,
     pub(super) native_handles: BTreeMap<FunctionId, NativeHandle>,
     pub(super) method_handles: BTreeMap<MethodDispatchKey, MethodDispatchHandle>,
-    pub(super) script_type_ids: BTreeMap<String, TypeId>,
-    pub(super) script_variant_ids: BTreeMap<(String, String), VariantId>,
     pub(super) type_handles: BTreeMap<TypeId, TypeHandle>,
     pub(super) variant_handles: BTreeMap<VariantId, VariantHandle>,
 }

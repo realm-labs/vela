@@ -216,12 +216,14 @@ fn schema_path_matches(graph: &ModuleGraph, declaration: &Declaration, path: &[S
 mod tests {
     use super::*;
     use vela_common::{SourceId, Span};
-    use vela_hir::module_graph::{ModulePath, ModuleSource};
+    use vela_hir::module_graph::ModuleSource;
+    use vela_package::ModulePath;
 
     fn graph(source: &str) -> ModuleGraph {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game"),
             source,
         ));
@@ -391,6 +393,7 @@ mod tests {
         let mut graph = graph("struct Player { level: i64 }");
         graph.add_source(ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("arena"),
             "struct Player { level: i64 }",
         ));
@@ -412,6 +415,7 @@ mod tests {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
             use game::reward::Reward as Prize
@@ -422,6 +426,7 @@ mod tests {
         ));
         graph.add_source(ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             "pub struct Reward { count: i64 }",
         ));

@@ -1,9 +1,10 @@
 use std::collections::BTreeMap;
+use vela_package::ModulePath;
 
 use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_hir::body::{HirExprKind, HirLiteral};
 use vela_hir::ids::HirExprId;
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
 
 use super::*;
 use crate::facts::AnalysisFacts;
@@ -399,6 +400,7 @@ fn graph_with_source(source: SourceId, text: &str) -> ModuleGraph {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         source,
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified(""),
         text,
     ));

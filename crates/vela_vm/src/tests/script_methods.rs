@@ -827,6 +827,7 @@ fn main() {
 fn runs_compiled_module_qualified_script_impl_method_dispatch() {
     let program = compile_test_modules(&[ModuleSource::new(
         SourceId::new(1),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::combat"),
         r#"
 trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -857,6 +858,7 @@ fn runs_compiled_module_typed_parameter_method_id_dispatch() {
     let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::model"),
             r#"
 pub trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -871,6 +873,7 @@ impl BonusSource for Player {
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::combat"),
             r#"
 use game::model::Player

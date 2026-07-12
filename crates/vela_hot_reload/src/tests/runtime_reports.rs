@@ -1,8 +1,9 @@
 use super::*;
 use vela_bytecode::InstructionOffset;
 use vela_bytecode::compiler::options::CompilerOptions;
-use vela_def::script_function_id;
-use vela_hir::module_graph::{ModulePath, ModuleSource};
+use vela_def::{TypeId, script_function_id, script_type_id};
+use vela_hir::module_graph::ModuleSource;
+use vela_package::{ModuleKey, ModulePath, PackageId};
 use vela_vm::owned_value::OwnedValue;
 
 const HOT_RELOAD_PARAMETER_ABI_V1: &str =
@@ -11,6 +12,73 @@ const HOT_RELOAD_PARAMETER_ABI_V2: &str =
     include_str!("../../../../tests/fixtures/diagnostics/hot_reload_parameter_abi_v2.vela");
 const HOT_RELOAD_PARAMETER_ABI_EXPECTED: &str =
     include_str!("../../../../tests/fixtures/diagnostics/hot_reload_parameter_abi.expected");
+
+fn script_player_type_id() -> TypeId {
+    script_type_id(PackageId::anonymous().as_str(), "game::main::Player", None)
+}
+
+fn anonymous_module(path: &str) -> ModuleKey {
+    ModuleKey::new(PackageId::anonymous(), ModulePath::from_qualified(path))
+}
+
+#[test]
+fn package_aware_identity_survives_compile_link_runtime_and_reload() {
+    let package = PackageId::new("com.example.runtime").expect("package");
+    let sources = |value| {
+        vec![ModuleSource::new(
+            SourceId::new(1),
+            package.clone(),
+            ModulePath::from_qualified("game::main"),
+            format!("pub fn main() {{ return {value}; }}"),
+        )]
+    };
+    let initial = compile_initial_modules_with_abi_and_options(
+        &sources(1),
+        HotReloadAbi::empty(),
+        &CompilerOptions::default(),
+    )
+    .expect("initial package generation");
+    let function_id = script_function_id(package.as_str(), "game::main::main");
+    assert!(
+        initial
+            .program_image()
+            .function_by_id(function_id)
+            .is_some()
+    );
+    assert!(
+        initial
+            .linked_program()
+            .entry_point_by_id(function_id)
+            .is_some()
+    );
+    assert_eq!(
+        run_linked_version(&initial, "game::main::main", &[]),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
+    );
+
+    let mut runtime = HotReloadRuntime::new(initial);
+    let update = compile_update_modules_with_abi_and_options_and_policy(
+        &runtime.current(),
+        &sources(2),
+        HotReloadAbi::empty(),
+        &CompilerOptions::default(),
+        &HotReloadPolicy::default(),
+    )
+    .expect("package update");
+    let current = runtime
+        .apply_hot_update(update)
+        .expect("apply package update");
+    assert!(
+        current
+            .program_image()
+            .function_by_id(function_id)
+            .is_some()
+    );
+    assert_eq!(
+        run_linked_version(&current, "game::main::main", &[]),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
+    );
+}
 
 #[test]
 fn program_version_shares_owned_artifact_and_verified_mir_generation() {
@@ -523,26 +591,26 @@ fn program_version_exposes_read_only_module_and_script_method_metadata() {
     assert!(function_names.contains(&"game::main.__impl.BonusSource.for.game::main::Player.bonus"));
 
     let method = current
-        .script_method("game::main::Player", "bonus")
+        .script_method(script_player_type_id(), "bonus")
         .expect("compiled script method should be visible from version metadata");
     assert_eq!(
         method.function,
         "game::main.__impl.BonusSource.for.game::main::Player.bonus"
     );
     assert_eq!(
-        current.script_method_by_id("game::main::Player", method.id),
+        current.script_method_by_id(script_player_type_id(), method.id),
         Some(method)
     );
     assert_eq!(
         current
-            .script_method_function("game::main::Player", "bonus")
+            .script_method_function(script_player_type_id(), "bonus")
             .as_ref()
             .map(|function| function.name.as_str()),
         Some("game::main.__impl.BonusSource.for.game::main::Player.bonus")
     );
     assert_eq!(
         current
-            .script_method_function_by_id("game::main::Player", method.id)
+            .script_method_function_by_id(script_player_type_id(), method.id)
             .as_ref()
             .map(|function| function.name.as_str()),
         Some("game::main.__impl.BonusSource.for.game::main::Player.bonus")
@@ -552,7 +620,7 @@ fn program_version_exposes_read_only_module_and_script_method_metadata() {
         .script_metadata()
         .expect("compiled modules should preserve module metadata");
     let module = metadata
-        .module_id(&ModulePath::from_qualified("game::main"))
+        .module_id(&anonymous_module("game::main"))
         .expect("main module should be indexed");
     assert!(metadata.module_source_hash(module).is_some());
     assert_eq!(
@@ -576,16 +644,16 @@ fn program_version_exposes_inherent_script_method_metadata() {
     assert!(current.function_names().any(|name| name == function_name));
 
     let method = current
-        .script_method("game::main::Player", "bonus")
+        .script_method(script_player_type_id(), "bonus")
         .expect("compiled inherent script method should be visible");
     assert_eq!(method.function, function_name);
     assert_eq!(
-        current.script_method_by_id("game::main::Player", method.id),
+        current.script_method_by_id(script_player_type_id(), method.id),
         Some(method)
     );
     assert_eq!(
         current
-            .script_method_function_by_id("game::main::Player", method.id)
+            .script_method_function_by_id(script_player_type_id(), method.id)
             .as_ref()
             .map(|function| function.name.as_str()),
         Some(function_name)
@@ -631,22 +699,22 @@ fn hot_update_exposes_read_only_preflight_metadata() {
     assert_eq!(update.impacted_modules(), ["game::main"]);
 
     let method = update
-        .script_method("game::main::Player", "bonus")
+        .script_method(script_player_type_id(), "bonus")
         .expect("compiled script method should be visible from update metadata");
     assert_eq!(
-        update.script_method_by_id("game::main::Player", method.id),
+        update.script_method_by_id(script_player_type_id(), method.id),
         Some(method)
     );
     assert_eq!(
         update
-            .script_method_function("game::main::Player", "bonus")
+            .script_method_function(script_player_type_id(), "bonus")
             .as_ref()
             .map(|function| function.name.as_str()),
         Some("game::main.__impl.BonusSource.for.game::main::Player.bonus")
     );
     assert_eq!(
         update
-            .script_method_function_by_id("game::main::Player", method.id)
+            .script_method_function_by_id(script_player_type_id(), method.id)
             .as_ref()
             .map(|function| function.name.as_str()),
         Some("game::main.__impl.BonusSource.for.game::main::Player.bonus")
@@ -656,7 +724,7 @@ fn hot_update_exposes_read_only_preflight_metadata() {
         .expect("compiled update should preserve module metadata");
     assert!(
         metadata
-            .module_id(&ModulePath::from_qualified("game::main"))
+            .module_id(&anonymous_module("game::main"))
             .is_some()
     );
 }
@@ -673,10 +741,11 @@ fn accepted_update_preserves_stable_function_and_method_ids() {
     let old = runtime.current();
     let main_name = "game::main::main";
     let method_function_name = "game::main.__impl.BonusSource.for.game::main::Player.bonus";
-    let main_id = script_function_id(main_name);
-    let method_function_id = script_function_id(method_function_name);
+    let main_id = script_function_id(PackageId::anonymous().as_str(), main_name);
+    let method_function_id =
+        script_function_id(PackageId::anonymous().as_str(), method_function_name);
     let old_method_id = old
-        .script_method("game::main::Player", "bonus")
+        .script_method(script_player_type_id(), "bonus")
         .expect("initial script method metadata")
         .id;
 
@@ -703,7 +772,7 @@ fn accepted_update_preserves_stable_function_and_method_ids() {
     .expect("compile compatible body update");
     assert_eq!(
         update
-            .script_method("game::main::Player", "bonus")
+            .script_method(script_player_type_id(), "bonus")
             .expect("updated script method metadata")
             .id,
         old_method_id
@@ -713,7 +782,7 @@ fn accepted_update_preserves_stable_function_and_method_ids() {
         .apply_hot_update(update)
         .expect("apply compatible body update");
     assert_eq!(
-        new.script_method("game::main::Player", "bonus")
+        new.script_method(script_player_type_id(), "bonus")
             .expect("reloaded script method metadata")
             .id,
         old_method_id
@@ -758,11 +827,11 @@ fn hot_update_exposes_inherent_script_method_metadata() {
         ]
     );
     let method = update
-        .script_method("game::main::Player", "bonus")
+        .script_method(script_player_type_id(), "bonus")
         .expect("compiled inherent script method should be visible from update");
     assert_eq!(
         update
-            .script_method_function_by_id("game::main::Player", method.id)
+            .script_method_function_by_id(script_player_type_id(), method.id)
             .as_ref()
             .map(|function| function.name.as_str()),
         Some("game::main.__impl.game::main::Player.bonus")
@@ -1062,6 +1131,7 @@ fn module_sources(reward: i64) -> Vec<ModuleSource> {
     vec![
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 use game::reward::grant
@@ -1073,6 +1143,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             format!(
                 r#"
@@ -1092,6 +1163,7 @@ fn script_method_module_sources() -> Vec<ModuleSource> {
 fn script_method_module_sources_with_bonus(bonus_expression: &str) -> Vec<ModuleSource> {
     vec![ModuleSource::new(
         SourceId::new(1),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::main"),
         format!(
             r#"
@@ -1120,6 +1192,7 @@ fn inherent_script_method_module_sources() -> Vec<ModuleSource> {
 fn inherent_script_method_module_sources_with_bonus(bonus_expression: &str) -> Vec<ModuleSource> {
     vec![ModuleSource::new(
         SourceId::new(1),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::main"),
         format!(
             r#"

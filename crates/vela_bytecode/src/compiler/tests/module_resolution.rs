@@ -1,10 +1,58 @@
 use super::*;
+use vela_package::ModulePath;
+
+#[test]
+fn package_qualified_functions_and_types_survive_duplicate_source_paths() {
+    let first = vela_package::PackageId::new("com.example.first").expect("first package");
+    let second = vela_package::PackageId::new("com.example.second").expect("second package");
+    let program = compile_test_modules(&[
+        ModuleSource::new(
+            SourceId::new(1),
+            first.clone(),
+            ModulePath::from_qualified("shared"),
+            "pub struct State { value: i64 } pub fn run() { return State { value: 1 }; }",
+        ),
+        ModuleSource::new(
+            SourceId::new(2),
+            second.clone(),
+            ModulePath::from_qualified("shared"),
+            "pub struct State { value: i64 } pub fn run() { return State { value: 2 }; }",
+        ),
+    ])
+    .expect("duplicate source paths in distinct packages should compile");
+    let first_function = vela_def::script_function_id(first.as_str(), "shared::run");
+    let second_function = vela_def::script_function_id(second.as_str(), "shared::run");
+    let first_type = vela_def::script_type_id(first.as_str(), "shared::State", None);
+    let second_type = vela_def::script_type_id(second.as_str(), "shared::State", None);
+
+    assert!(program.function_by_id(first_function).is_some());
+    assert!(program.function_by_id(second_function).is_some());
+    assert!(program.function("shared::run").is_none());
+    let linked = crate::Linker::new()
+        .link_compiled_program(program)
+        .expect("package-qualified program should link");
+    assert!(linked.program().entry_point_by_id(first_function).is_some());
+    assert!(
+        linked
+            .program()
+            .entry_point_by_id(second_function)
+            .is_some()
+    );
+    let linked_types = linked
+        .program()
+        .types()
+        .map(|(_, ty)| ty.id)
+        .collect::<BTreeSet<_>>();
+    assert!(linked_types.contains(&first_type));
+    assert!(linked_types.contains(&second_type));
+}
 
 #[test]
 fn compiler_emits_script_calls_for_imported_aliases_across_modules() {
     let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 use game::reward::grant as give_reward
@@ -15,6 +63,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             r#"
 pub fn grant(amount) {
@@ -42,6 +91,7 @@ fn compiler_keeps_same_named_functions_in_separate_modules() {
     let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 use game::reward::main as reward_main
@@ -52,6 +102,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             r#"
 pub fn main() {
@@ -76,6 +127,7 @@ fn compiler_uses_hir_type_symbols_for_imported_constructors() {
     let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 use game::reward::Reward as Prize
@@ -90,6 +142,7 @@ fn make_damage() {
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             r#"
 pub struct Reward { count: i64 }
@@ -97,6 +150,7 @@ pub struct Reward { count: i64 }
         ),
         ModuleSource::new(
             SourceId::new(3),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::damage"),
             r#"
 pub enum Damage { Physical { amount: i64 } }
@@ -143,6 +197,7 @@ fn compiler_lowers_imported_global_roots_to_qualified_host_globals() {
         &[
             ModuleSource::new(
                 SourceId::new(1),
+                vela_package::PackageId::anonymous(),
                 ModulePath::from_qualified("game::main"),
                 r#"
 use game::state::state
@@ -154,6 +209,7 @@ fn main() {
             ),
             ModuleSource::new(
                 SourceId::new(2),
+                vela_package::PackageId::anonymous(),
                 ModulePath::from_qualified("game::state"),
                 r#"
 pub global state: Player;
@@ -181,6 +237,7 @@ fn compiler_uses_hir_type_symbols_for_imported_match_patterns() {
     let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 use game::damage::Damage as Hit
@@ -195,6 +252,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::damage"),
             r#"
 pub enum Damage { Physical { amount: i64 } }
@@ -216,6 +274,7 @@ fn compiler_uses_hir_facts_for_qualified_function_and_const_paths() {
     let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 fn main() {
@@ -225,6 +284,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             r#"
 pub fn grant() {
@@ -234,6 +294,7 @@ pub fn grant() {
         ),
         ModuleSource::new(
             SourceId::new(3),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::config"),
             r#"
 pub const BONUS: i64 = 5;

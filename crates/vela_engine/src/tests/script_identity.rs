@@ -1,7 +1,8 @@
 use vela_bytecode::Linker;
 use vela_common::SourceId;
 use vela_def::{script_field_id, script_function_id, script_type_id, script_variant_id};
-use vela_hir::module_graph::{ModulePath, ModuleSource};
+use vela_hir::module_graph::ModuleSource;
+use vela_package::{ModulePath, PackageId};
 use vela_reflect::registry::TypeRegistry;
 
 use crate::engine::Engine;
@@ -12,6 +13,7 @@ fn linked_and_reflected_script_schema_ids_share_canonical_identity() {
     let program = engine
         .compile_module_sources(&[ModuleSource::new(
             SourceId::new(81),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             r#"
 #[id(101)]
@@ -43,7 +45,8 @@ fn main() {
     reflected.register_script_types(graph);
     reflected.register_script_modules(graph);
 
-    let main_id = script_function_id("game::reward::main");
+    let package = PackageId::anonymous();
+    let main_id = script_function_id(package.as_str(), "game::reward::main");
     let reflected_main = reflected
         .function_by_name("game::reward::main")
         .expect("reflected main");
@@ -92,25 +95,42 @@ fn main() {
 
     assert_eq!(
         reward.key.id,
-        script_type_id("game::reward::Reward", Some(101))
+        script_type_id(package.as_str(), "game::reward::Reward", Some(101))
     );
     assert_eq!(
         outcome.key.id,
-        script_type_id("game::reward::Outcome", None)
+        script_type_id(package.as_str(), "game::reward::Outcome", None)
     );
     assert_eq!(linked_reward.id, reward.key.id);
     assert_eq!(linked_outcome.id, outcome.key.id);
     assert_eq!(
         reward.fields[0].id,
-        script_field_id("game::reward::Reward", None, "count", Some(102))
+        script_field_id(
+            package.as_str(),
+            "game::reward::Reward",
+            None,
+            "count",
+            Some(102),
+        )
     );
     assert_eq!(
         granted.id,
-        script_variant_id("game::reward::Outcome", "Granted", Some(201))
+        script_variant_id(
+            package.as_str(),
+            "game::reward::Outcome",
+            "Granted",
+            Some(201),
+        )
     );
     assert_eq!(linked_granted.id, granted.id);
     assert_eq!(
         granted.fields[0].id,
-        script_field_id("game::reward::Outcome", Some("Granted"), "value", Some(202),)
+        script_field_id(
+            package.as_str(),
+            "game::reward::Outcome",
+            Some("Granted"),
+            "value",
+            Some(202),
+        )
     );
 }

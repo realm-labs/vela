@@ -1,6 +1,7 @@
 use vela_common::{HostMethodId, SourceId};
 use vela_def::{FieldId, FunctionId, MethodId, TypeId, VariantId};
-use vela_hir::module_graph::{ModulePath, ModuleSource};
+use vela_hir::module_graph::ModuleSource;
+use vela_package::ModulePath;
 use vela_reflect::modules::FunctionDesc;
 use vela_reflect::registry::{
     FieldDesc, MethodDesc, MethodParamDesc, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey,
@@ -621,6 +622,7 @@ fn local_completions_include_function_scope_bindings() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(1),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game"),
         r#"
             struct Player { level: i64 }
@@ -677,6 +679,7 @@ fn declaration_completions_include_script_declarations() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(1),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::player"),
         r#"
             pub struct Player { level: i64 }
@@ -697,6 +700,7 @@ fn declaration_completions_include_script_declarations() {
     ));
     graph.add_source(ModuleSource::new(
         SourceId::new(2),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::reward"),
         r#"
             pub fn grant(amount: i64) -> i64 {
@@ -755,11 +759,13 @@ fn module_completions_include_module_paths_and_prefixes() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(1),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::player"),
         "pub fn level() { return 1; }",
     ));
     graph.add_source(ModuleSource::new(
         SourceId::new(2),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::reward"),
         "pub fn grant() { return 2; }",
     ));

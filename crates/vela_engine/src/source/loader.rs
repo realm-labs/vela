@@ -2,7 +2,8 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 
 use vela_common::SourceId;
-use vela_hir::module_graph::{ModulePath, ModuleSource};
+use vela_hir::module_graph::ModuleSource;
+use vela_package::{ModulePath, PackageId};
 
 use super::EngineSourceError;
 
@@ -22,7 +23,12 @@ pub(crate) fn load_module_sources(root: &Path) -> Result<Vec<ModuleSource>, Engi
         let source_id = source_id(index, files.len())?;
         let text = read_source_text(path)?;
         let module_path = module_path(root, path)?;
-        sources.push(ModuleSource::new(source_id, module_path, text));
+        sources.push(ModuleSource::new(
+            source_id,
+            PackageId::anonymous(),
+            module_path,
+            text,
+        ));
     }
     Ok(sources)
 }

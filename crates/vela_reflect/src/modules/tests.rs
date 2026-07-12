@@ -2,8 +2,9 @@ use std::collections::BTreeMap;
 
 use vela_common::{SourceId, Span};
 use vela_def::FunctionId;
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
 use vela_host::value::HostValue;
+use vela_package::ModulePath;
 
 use crate::access::{FunctionAccess, FunctionEffectSet};
 use crate::error::ReflectErrorKind;
@@ -27,6 +28,7 @@ fn registers_script_module_functions_and_exports() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(1),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::reward"),
         r#"
 pub fn grant(player: Player, amount: i64 = 1) -> bool {

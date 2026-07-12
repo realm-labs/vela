@@ -1,7 +1,8 @@
 use super::*;
 use vela_common::SourceId;
 use vela_hir::body::{HirExprKind, HirPatternKind};
-use vela_hir::module_graph::{ModulePath, ModuleSource};
+use vela_hir::module_graph::ModuleSource;
+use vela_package::ModulePath;
 
 use crate::facts::AnalysisFacts;
 use crate::type_fact::TypeFact;
@@ -271,6 +272,7 @@ fn facts_key_signed_minimum_by_literal_and_unary_but_not_unsigned_negation() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(1),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("main"),
         SOURCE,
     ));
@@ -329,6 +331,7 @@ fn negated_overflow_is_keyed_by_unary_with_operand_diagnostic_origin() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(9),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("main"),
         SOURCE,
     ));
@@ -377,6 +380,7 @@ fn contextual_facts_and_diagnostics_preserve_hir_ids_and_spans() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(7),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("main"),
         SOURCE,
     ));
@@ -456,6 +460,7 @@ fn main(value) {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(10),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("main"),
         SOURCE,
     ));
@@ -530,6 +535,7 @@ fn main(value) {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         source,
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("main"),
         SOURCE,
     ));

@@ -94,6 +94,7 @@ fn runs_cross_module_imported_aggregate_const_reads() {
         &[
             ModuleSource::new(
                 SourceId::new(1),
+                vela_package::PackageId::anonymous(),
                 ModulePath::from_qualified("game::main"),
                 r#"
 use game::tuning::REWARDS
@@ -109,6 +110,7 @@ fn main() {
             ),
             ModuleSource::new(
                 SourceId::new(2),
+                vela_package::PackageId::anonymous(),
                 ModulePath::from_qualified("game::tuning"),
                 r#"
 use game::base::BASE
@@ -119,6 +121,7 @@ pub const LABELS = {"xp": BASE + 5};
             ),
             ModuleSource::new(
                 SourceId::new(3),
+                vela_package::PackageId::anonymous(),
                 ModulePath::from_qualified("game::base"),
                 r#"
 pub const BASE = 3;

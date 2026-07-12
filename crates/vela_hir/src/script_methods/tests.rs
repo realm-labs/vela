@@ -1,5 +1,6 @@
 use vela_common::SourceId;
 use vela_def::{script_inherent_method_id, script_trait_method_id};
+use vela_package::PackageId;
 
 use super::*;
 use crate::module_graph::ModuleSource;
@@ -28,7 +29,7 @@ impl Player {
     assert_eq!(method.owner().identity().canonical_owner(), "main::Player");
     assert_eq!(
         method.method_id(),
-        script_inherent_method_id("main::Player", "bonus")
+        script_inherent_method_id(PackageId::anonymous().as_str(), "main::Player", "bonus")
     );
     assert_eq!(method.symbol_seed(), "__impl.Player.bonus");
     assert_eq!(method.module(), module);
@@ -66,7 +67,11 @@ impl Player {
     );
     assert_eq!(
         method.method_id(),
-        script_inherent_method_id("game::combat::Player", "bonus")
+        script_inherent_method_id(
+            PackageId::anonymous().as_str(),
+            "game::combat::Player",
+            "bonus",
+        )
     );
     assert_eq!(
         method.symbol_seed(),
@@ -109,7 +114,11 @@ impl BonusSource for Boss {
     assert_eq!(player.method_id(), boss.method_id());
     assert_eq!(
         player.method_id(),
-        script_trait_method_id("game::BonusSource", "bonus")
+        script_trait_method_id(
+            PackageId::anonymous().as_str(),
+            "game::BonusSource",
+            "bonus",
+        )
     );
     assert_eq!(player.signature_module(), module);
     assert_eq!(monster.signature_module(), module);
@@ -151,7 +160,7 @@ impl PartialEq for PlayerId {
     assert_eq!(method.owner().identity().canonical_owner(), "PartialEq");
     assert_eq!(
         method.method_id(),
-        script_trait_method_id("PartialEq", "eq")
+        script_trait_method_id(PackageId::anonymous().as_str(), "PartialEq", "eq")
     );
 }
 
@@ -180,14 +189,23 @@ impl BonusSource for Player {
     );
     assert_eq!(
         method.method_id(),
-        script_trait_method_id("main::BonusSource", "bonus")
+        script_trait_method_id(
+            PackageId::anonymous().as_str(),
+            "main::BonusSource",
+            "bonus",
+        )
     );
     assert_eq!(method.symbol_seed(), "__impl.BonusSource.for.Player.bonus");
 }
 
 fn graph(source: u32, path: ModulePath, text: &str) -> (ModuleGraph, ModuleId) {
     let mut graph = ModuleGraph::new();
-    let module = graph.add_source(ModuleSource::new(SourceId::new(source), path, text));
+    let module = graph.add_source(ModuleSource::new(
+        SourceId::new(source),
+        vela_package::PackageId::anonymous(),
+        path,
+        text,
+    ));
     graph.resolve_imports();
     assert_eq!(graph.diagnostics(), &[]);
     (graph, module)

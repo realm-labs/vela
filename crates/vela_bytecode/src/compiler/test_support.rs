@@ -1,9 +1,10 @@
 use vela_common::{Diagnostic, SourceId, Span};
-use vela_hir::module_graph::{ModulePath, ModuleSource};
+use vela_hir::module_graph::ModuleSource;
 use vela_hir::source_ingestion::HirSourceBuildErrorKind;
 use vela_hir::source_ingestion::{
     HirSourceBuildError, build_module_source_set, build_single_source,
 };
+use vela_package::{ModuleKey, ModulePath, PackageId};
 
 use super::*;
 
@@ -110,7 +111,10 @@ fn compile_test_function_inner(
 ) -> Result<UnlinkedCodeObject, TestCompileError> {
     let built = build_single_source(source, text).map_err(TestCompileError::from_frontend)?;
     let function = built
-        .function(&ModulePath::root(), function_name)
+        .function(
+            &ModuleKey::new(PackageId::anonymous(), ModulePath::root()),
+            function_name,
+        )
         .ok_or_else(|| TestCompileError::function_not_found(function_name))?;
     compile_function(FunctionCompilationRequest {
         function,

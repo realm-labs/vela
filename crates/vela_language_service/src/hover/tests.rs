@@ -624,7 +624,9 @@ fn hover_reports_imported_module_path_fact() {
     assert_eq!(hover.detail(), "module game::reward");
     assert_eq!(
         hover.symbol(),
-        Some(&SymbolRef::Source("game::reward".to_owned()))
+        Some(&SymbolRef::Source(
+            "dev.vela.anonymous::game::reward".to_owned()
+        ))
     );
 }
 

@@ -9,6 +9,7 @@ use vela_analysis::type_fact::TypeFact;
 use vela_common::SourceId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint, ImplMetadataKind};
+use vela_package::ModuleKey;
 
 use crate::query_context::type_fact_for_source_range;
 use crate::{
@@ -115,7 +116,7 @@ pub(crate) fn source_callable_facts(
 pub(crate) fn source_callable_facts_by_path(
     databases: &LanguageServiceDatabases,
     path: &[String],
-    current_module: &[String],
+    current_module: &ModuleKey,
 ) -> Vec<CallableFacts> {
     let graph = databases.hir_db().graph();
     let Some(declaration) =

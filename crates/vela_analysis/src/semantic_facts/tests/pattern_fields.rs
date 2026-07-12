@@ -1,8 +1,9 @@
 use vela_common::SourceId;
 use vela_def::{FunctionId, script_trait_method_id};
 use vela_hir::body::HirExprKind;
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
 use vela_hir::script_methods::{ScriptMethodCatalog, ScriptMethodCatalogMode};
+use vela_package::ModulePath;
 
 use crate::executable::{ExecutableAnalysisGeneration, ExecutableAnalysisInput};
 use crate::semantic_facts::{CallTargetFact, ConstructorTargetFact, ScriptTypeTargetFact};
@@ -13,6 +14,7 @@ fn executable_variant_pattern_fields_preserve_script_method_identity() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(95),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("main"),
         r#"
 trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -139,7 +141,11 @@ fn main() {
 
     let catalog = ScriptMethodCatalog::from_graph(&graph, ScriptMethodCatalogMode::ModuleGraph)
         .expect("script method catalog");
-    let expected_method = script_trait_method_id("main::BonusSource", "bonus");
+    let expected_method = script_trait_method_id(
+        vela_package::PackageId::anonymous().as_str(),
+        "main::BonusSource",
+        "bonus",
+    );
     for (call, receiver) in calls {
         assert_eq!(view.expression(receiver), Some(&player_fact));
         assert_eq!(view.script_type(receiver), Some(&player_target));

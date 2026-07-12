@@ -69,6 +69,11 @@ impl PackageGraph {
     }
 
     #[must_use]
+    pub const fn dependency_map(&self) -> &BTreeMap<PackageId, BTreeMap<PackageAlias, PackageId>> {
+        &self.dependencies
+    }
+
+    #[must_use]
     pub const fn sources(&self) -> &SourceTable {
         &self.sources
     }

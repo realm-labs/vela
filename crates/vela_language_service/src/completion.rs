@@ -111,7 +111,9 @@ impl LanguageServiceDatabases {
             CompletionContextKind::Expression => self.expression_completion_items(&query, &context),
             CompletionContextKind::Item => self.item_completion_items(&context),
             CompletionContextKind::Statement => self.statement_completion_items(&query, &context),
-            CompletionContextKind::ModulePath => self.module_path_completion_items(&context),
+            CompletionContextKind::ModulePath => {
+                self.module_path_completion_items(&query, &context)
+            }
             CompletionContextKind::Member => self.member_completion_items(&query, &context),
             CompletionContextKind::RecordField => self.record_field_completion_items(&context),
             CompletionContextKind::StructFieldDeclaration => {
@@ -125,7 +127,7 @@ impl LanguageServiceDatabases {
             CompletionContextKind::LambdaParameter => {
                 self.lambda_parameter_completion_items(&query, &context)
             }
-            CompletionContextKind::TypeHint => self.type_hint_completion_items(&context),
+            CompletionContextKind::TypeHint => self.type_hint_completion_items(&query, &context),
         };
         self.completion_query_is_current(token).then_some(())?;
         Some(CompletionList {
@@ -180,10 +182,18 @@ impl LanguageServiceDatabases {
         })
     }
 
-    fn module_path_completion_items(&self, context: &CompletionContext) -> Vec<CompletionItem> {
+    fn module_path_completion_items(
+        &self,
+        query: &QueryContext<'_>,
+        context: &CompletionContext,
+    ) -> Vec<CompletionItem> {
+        let Some(current_module) = query.module_key() else {
+            return Vec::new();
+        };
         module_path_context_completion_items(
             self.hir_db().graph(),
             self.schema_db().facts(),
+            current_module,
             context,
         )
     }
@@ -293,10 +303,18 @@ impl LanguageServiceDatabases {
         lambda_parameter_completion_items(&receiver_fact, lambda_parameter, context.prefix())
     }
 
-    fn type_hint_completion_items(&self, context: &CompletionContext) -> Vec<CompletionItem> {
+    fn type_hint_completion_items(
+        &self,
+        query: &QueryContext<'_>,
+        context: &CompletionContext,
+    ) -> Vec<CompletionItem> {
+        let Some(current_module) = query.module_key() else {
+            return Vec::new();
+        };
         type_hint_completion_items(
             self.hir_db().graph(),
             self.schema_db().facts(),
+            current_module,
             context.replace_range(),
             context.prefix(),
             context.module_base(),

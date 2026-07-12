@@ -7,7 +7,8 @@ use std::time::Instant;
 
 use vela_analysis::registry::RegistryFacts;
 use vela_common::{Diagnostic, SourceId};
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource, stable_source_hash};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource, stable_source_hash};
+use vela_package::{ModuleKey, ModulePath, PackageAlias, PackageId};
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::SyntaxSourceFile;
 use vela_syntax::parse::parse_source_with_id;
@@ -25,7 +26,7 @@ use parse_summary::{ParseSummary, summarize_source};
 pub struct SourceRecord {
     document_id: DocumentId,
     source_id: SourceId,
-    module_path: ModulePath,
+    module_key: ModuleKey,
     text: Arc<str>,
     version: SourceVersion,
     content_hash: u64,
@@ -43,8 +44,13 @@ impl SourceRecord {
     }
 
     #[must_use]
+    pub fn module_key(&self) -> &ModuleKey {
+        &self.module_key
+    }
+
+    #[must_use]
     pub fn module_path(&self) -> &ModulePath {
-        &self.module_path
+        &self.module_key.path
     }
 
     #[must_use]
@@ -100,7 +106,7 @@ impl ModuleFingerprint {
 #[derive(Debug, Clone)]
 struct ParseRecord {
     source: SourceId,
-    module_path: ModulePath,
+    module_key: ModuleKey,
     content_hash: u64,
     syntax: SyntaxParse<SyntaxSourceFile>,
     summary: ParseSummary,
@@ -141,10 +147,10 @@ impl ParseDb {
     }
 
     #[must_use]
-    pub fn module_fingerprint(&self, module_path: &ModulePath) -> Option<ModuleFingerprint> {
+    pub fn module_fingerprint(&self, module_key: &ModuleKey) -> Option<ModuleFingerprint> {
         self.records
             .values()
-            .find(|record| &record.module_path == module_path)
+            .find(|record| &record.module_key == module_key)
             .map(|record| ModuleFingerprint {
                 declaration: record.summary.declaration_fingerprint,
                 import: record.summary.import_fingerprint,
@@ -169,17 +175,17 @@ impl ParseDb {
                 && previous_record.source == source.source_id
             {
                 let mut record = previous_record.clone();
-                record.module_path.clone_from(&source.module_path);
+                record.module_key.clone_from(&source.module_key);
                 record
             } else {
                 reparsed_documents.insert(document_id.clone());
-                changed_modules.insert(source.module_path.clone());
+                changed_modules.insert(source.module_key.clone());
                 self.parse_count = self.parse_count.saturating_add(1);
                 let syntax = parse_source_with_id(source.source_id, source.text());
                 let summary = summarize_source(&syntax);
                 ParseRecord {
                     source: source.source_id,
-                    module_path: source.module_path.clone(),
+                    module_key: source.module_key.clone(),
                     content_hash: source.content_hash,
                     syntax,
                     summary,
@@ -187,31 +193,31 @@ impl ParseDb {
             };
 
             if let Some(previous_record) = previous_record {
-                let module_path_changed = previous_record.module_path != record.module_path;
-                if module_path_changed {
-                    changed_modules.insert(previous_record.module_path.clone());
-                    changed_modules.insert(record.module_path.clone());
+                let module_key_changed = previous_record.module_key != record.module_key;
+                if module_key_changed {
+                    changed_modules.insert(previous_record.module_key.clone());
+                    changed_modules.insert(record.module_key.clone());
                 }
                 if previous_record.summary.declaration_fingerprint
                     != record.summary.declaration_fingerprint
-                    || module_path_changed
+                    || module_key_changed
                 {
-                    if module_path_changed {
-                        declaration_changed_modules.insert(previous_record.module_path.clone());
+                    if module_key_changed {
+                        declaration_changed_modules.insert(previous_record.module_key.clone());
                     }
-                    declaration_changed_modules.insert(record.module_path.clone());
+                    declaration_changed_modules.insert(record.module_key.clone());
                 }
                 if previous_record.summary.import_fingerprint != record.summary.import_fingerprint
-                    || module_path_changed
+                    || module_key_changed
                 {
-                    if module_path_changed {
-                        import_changed_modules.insert(previous_record.module_path.clone());
+                    if module_key_changed {
+                        import_changed_modules.insert(previous_record.module_key.clone());
                     }
-                    import_changed_modules.insert(record.module_path.clone());
+                    import_changed_modules.insert(record.module_key.clone());
                 }
             } else {
-                declaration_changed_modules.insert(record.module_path.clone());
-                import_changed_modules.insert(record.module_path.clone());
+                declaration_changed_modules.insert(record.module_key.clone());
+                import_changed_modules.insert(record.module_key.clone());
             }
 
             self.records.insert(document_id.clone(), record);
@@ -219,9 +225,9 @@ impl ParseDb {
 
         for (document_id, previous_record) in previous {
             if !sources.contains_key(&document_id) {
-                changed_modules.insert(previous_record.module_path.clone());
-                declaration_changed_modules.insert(previous_record.module_path.clone());
-                import_changed_modules.insert(previous_record.module_path);
+                changed_modules.insert(previous_record.module_key.clone());
+                declaration_changed_modules.insert(previous_record.module_key.clone());
+                import_changed_modules.insert(previous_record.module_key);
             }
         }
 
@@ -236,29 +242,29 @@ impl ParseDb {
 
 #[derive(Debug, Clone, Default)]
 struct ParseUpdate {
-    changed_modules: BTreeSet<ModulePath>,
-    declaration_changed_modules: BTreeSet<ModulePath>,
-    import_changed_modules: BTreeSet<ModulePath>,
+    changed_modules: BTreeSet<ModuleKey>,
+    declaration_changed_modules: BTreeSet<ModuleKey>,
+    import_changed_modules: BTreeSet<ModuleKey>,
     reparsed_documents: BTreeSet<DocumentId>,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct ProjectDb {
-    module_by_document: BTreeMap<DocumentId, ModulePath>,
-    document_by_module: BTreeMap<ModulePath, DocumentId>,
-    imports_by_module: BTreeMap<ModulePath, BTreeSet<ModulePath>>,
-    reverse_dependencies: BTreeMap<ModulePath, BTreeSet<ModulePath>>,
+    module_by_document: BTreeMap<DocumentId, ModuleKey>,
+    document_by_module: BTreeMap<ModuleKey, DocumentId>,
+    imports_by_module: BTreeMap<ModuleKey, BTreeSet<ModuleKey>>,
+    reverse_dependencies: BTreeMap<ModuleKey, BTreeSet<ModuleKey>>,
     rebuild_count: usize,
 }
 
 impl ProjectDb {
     #[must_use]
-    pub fn module_by_document(&self) -> &BTreeMap<DocumentId, ModulePath> {
+    pub fn module_by_document(&self) -> &BTreeMap<DocumentId, ModuleKey> {
         &self.module_by_document
     }
 
     #[must_use]
-    pub fn reverse_dependencies(&self) -> &BTreeMap<ModulePath, BTreeSet<ModulePath>> {
+    pub fn reverse_dependencies(&self) -> &BTreeMap<ModuleKey, BTreeSet<ModuleKey>> {
         &self.reverse_dependencies
     }
 
@@ -267,7 +273,11 @@ impl ProjectDb {
         self.rebuild_count
     }
 
-    fn rebuild(&mut self, parse_db: &ParseDb) {
+    fn rebuild(
+        &mut self,
+        parse_db: &ParseDb,
+        dependencies: &BTreeMap<PackageId, BTreeMap<PackageAlias, PackageId>>,
+    ) {
         self.module_by_document.clear();
         self.document_by_module.clear();
         self.imports_by_module.clear();
@@ -276,11 +286,18 @@ impl ProjectDb {
 
         for (document_id, record) in &parse_db.records {
             self.module_by_document
-                .insert(document_id.clone(), record.module_path.clone());
+                .insert(document_id.clone(), record.module_key.clone());
             self.document_by_module
-                .insert(record.module_path.clone(), document_id.clone());
-            self.imports_by_module
-                .insert(record.module_path.clone(), record.summary.imports.clone());
+                .insert(record.module_key.clone(), document_id.clone());
+            self.imports_by_module.insert(
+                record.module_key.clone(),
+                record
+                    .summary
+                    .imports
+                    .iter()
+                    .map(|path| resolve_import_module(&record.module_key, path, dependencies))
+                    .collect(),
+            );
         }
 
         for (module, imports) in &self.imports_by_module {
@@ -293,7 +310,7 @@ impl ProjectDb {
         }
     }
 
-    fn transitive_dependents(&self, roots: &BTreeSet<ModulePath>) -> BTreeSet<ModulePath> {
+    fn transitive_dependents(&self, roots: &BTreeSet<ModuleKey>) -> BTreeSet<ModuleKey> {
         let mut impacted = roots.clone();
         let mut pending = roots.iter().cloned().collect::<Vec<_>>();
         while let Some(module) = pending.pop() {
@@ -326,8 +343,12 @@ impl HirDb {
         &self.graph
     }
 
-    fn rebuild(&mut self, sources: &[ModuleSource]) {
-        let mut graph = ModuleGraph::new();
+    fn rebuild(
+        &mut self,
+        sources: &[ModuleSource],
+        dependencies: BTreeMap<PackageId, BTreeMap<PackageAlias, PackageId>>,
+    ) {
+        let mut graph = ModuleGraph::with_package_dependencies(dependencies);
         for source in sources {
             graph.add_source(source.clone());
         }
@@ -339,13 +360,13 @@ impl HirDb {
 
 #[derive(Debug, Clone, Default)]
 pub struct AnalysisDb {
-    invalidated_modules: BTreeSet<ModulePath>,
+    invalidated_modules: BTreeSet<ModuleKey>,
     generation: WorkspaceGeneration,
 }
 
 impl AnalysisDb {
     #[must_use]
-    pub fn invalidated_modules(&self) -> &BTreeSet<ModulePath> {
+    pub fn invalidated_modules(&self) -> &BTreeSet<ModuleKey> {
         &self.invalidated_modules
     }
 
@@ -354,7 +375,7 @@ impl AnalysisDb {
         self.generation
     }
 
-    fn invalidate(&mut self, generation: WorkspaceGeneration, modules: BTreeSet<ModulePath>) {
+    fn invalidate(&mut self, generation: WorkspaceGeneration, modules: BTreeSet<ModuleKey>) {
         self.generation = generation;
         self.invalidated_modules = modules;
     }
@@ -526,18 +547,18 @@ pub enum WorkPriority {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ScheduledModule {
-    module: ModulePath,
+    module: ModuleKey,
     priority: WorkPriority,
 }
 
 impl ScheduledModule {
     #[must_use]
-    pub fn new(module: ModulePath, priority: WorkPriority) -> Self {
+    pub fn new(module: ModuleKey, priority: WorkPriority) -> Self {
         Self { module, priority }
     }
 
     #[must_use]
-    pub fn module(&self) -> &ModulePath {
+    pub fn module(&self) -> &ModuleKey {
         &self.module
     }
 
@@ -605,11 +626,11 @@ impl IndexingMetrics {
 pub struct InvalidationReport {
     generation: WorkspaceGeneration,
     reparsed_documents: BTreeSet<DocumentId>,
-    changed_modules: BTreeSet<ModulePath>,
-    declaration_changed_modules: BTreeSet<ModulePath>,
-    import_changed_modules: BTreeSet<ModulePath>,
-    hir_invalidated_modules: BTreeSet<ModulePath>,
-    analysis_invalidated_modules: BTreeSet<ModulePath>,
+    changed_modules: BTreeSet<ModuleKey>,
+    declaration_changed_modules: BTreeSet<ModuleKey>,
+    import_changed_modules: BTreeSet<ModuleKey>,
+    hir_invalidated_modules: BTreeSet<ModuleKey>,
+    analysis_invalidated_modules: BTreeSet<ModuleKey>,
     scheduled_modules: Vec<ScheduledModule>,
     metrics: IndexingMetrics,
 }
@@ -626,27 +647,27 @@ impl InvalidationReport {
     }
 
     #[must_use]
-    pub fn changed_modules(&self) -> &BTreeSet<ModulePath> {
+    pub fn changed_modules(&self) -> &BTreeSet<ModuleKey> {
         &self.changed_modules
     }
 
     #[must_use]
-    pub fn declaration_changed_modules(&self) -> &BTreeSet<ModulePath> {
+    pub fn declaration_changed_modules(&self) -> &BTreeSet<ModuleKey> {
         &self.declaration_changed_modules
     }
 
     #[must_use]
-    pub fn import_changed_modules(&self) -> &BTreeSet<ModulePath> {
+    pub fn import_changed_modules(&self) -> &BTreeSet<ModuleKey> {
         &self.import_changed_modules
     }
 
     #[must_use]
-    pub fn hir_invalidated_modules(&self) -> &BTreeSet<ModulePath> {
+    pub fn hir_invalidated_modules(&self) -> &BTreeSet<ModuleKey> {
         &self.hir_invalidated_modules
     }
 
     #[must_use]
-    pub fn analysis_invalidated_modules(&self) -> &BTreeSet<ModulePath> {
+    pub fn analysis_invalidated_modules(&self) -> &BTreeSet<ModuleKey> {
         &self.analysis_invalidated_modules
     }
 
@@ -814,7 +835,8 @@ impl LanguageServiceDatabases {
         let project_index_invalidated = !parse_update.declaration_changed_modules.is_empty()
             || !parse_update.import_changed_modules.is_empty();
         if project_index_invalidated {
-            self.project_db.rebuild(&self.parse_db);
+            self.project_db
+                .rebuild(&self.parse_db, project.package_dependencies());
         }
 
         let dependency_roots = parse_update
@@ -829,7 +851,8 @@ impl LanguageServiceDatabases {
             .invalidate(self.generation, analysis_invalidated_modules.clone());
 
         if !hir_invalidated_modules.is_empty() {
-            self.hir_db.rebuild(project.sources());
+            self.hir_db
+                .rebuild(project.sources(), project.package_dependencies().clone());
         }
         let scheduled_modules = schedule_modules(&hir_invalidated_modules, project, open_documents);
         let metrics = indexing_metrics(
@@ -862,7 +885,7 @@ impl LanguageServiceDatabases {
 }
 
 fn schedule_modules(
-    invalidated_modules: &BTreeSet<ModulePath>,
+    invalidated_modules: &BTreeSet<ModuleKey>,
     project: &ProjectSources,
     open_documents: &BTreeSet<DocumentId>,
 ) -> Vec<ScheduledModule> {
@@ -933,20 +956,25 @@ fn source_records(project: &ProjectSources) -> BTreeMap<DocumentId, SourceRecord
     let source_by_module = project
         .sources()
         .iter()
-        .map(|source| (source.path.clone(), source))
+        .map(|source| {
+            (
+                ModuleKey::new(source.package.clone(), source.path.clone()),
+                source,
+            )
+        })
         .collect::<BTreeMap<_, _>>();
     project
         .document_modules()
         .iter()
-        .filter_map(|(document_id, module_path)| {
-            let source = source_by_module.get(module_path)?;
+        .filter_map(|(document_id, module_key)| {
+            let source = source_by_module.get(module_key)?;
             let text = Arc::<str>::from(source.text.as_str());
             Some((
                 document_id.clone(),
                 SourceRecord {
                     document_id: document_id.clone(),
                     source_id: source.id,
-                    module_path: module_path.clone(),
+                    module_key: module_key.clone(),
                     content_hash: stable_source_hash(&text),
                     version: project
                         .document_versions()
@@ -958,6 +986,30 @@ fn source_records(project: &ProjectSources) -> BTreeMap<DocumentId, SourceRecord
             ))
         })
         .collect()
+}
+
+fn resolve_import_module(
+    current: &ModuleKey,
+    path: &ModulePath,
+    dependencies: &BTreeMap<PackageId, BTreeMap<PackageAlias, PackageId>>,
+) -> ModuleKey {
+    let Some((first, rest)) = path.segments().split_first() else {
+        return ModuleKey::new(current.package.clone(), ModulePath::root());
+    };
+    if first == "crate" {
+        return ModuleKey::new(
+            current.package.clone(),
+            ModulePath::new(rest.iter().cloned()),
+        );
+    }
+    let dependency = PackageAlias::new(first)
+        .ok()
+        .and_then(|alias| dependencies.get(&current.package)?.get(&alias))
+        .cloned();
+    dependency.map_or_else(
+        || ModuleKey::new(current.package.clone(), path.clone()),
+        |package| ModuleKey::new(package, ModulePath::new(rest.iter().cloned())),
+    )
 }
 
 #[cfg(test)]

@@ -1,6 +1,7 @@
 use vela_common::SourceId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::HirTypeHint;
+use vela_package::ModuleKey;
 use vela_syntax::ast::{
     AstNode, SyntaxLetStmt, SyntaxMapEntry, SyntaxMapExpr, SyntaxSourceFile, SyntaxTypeHint,
 };
@@ -19,7 +20,7 @@ use crate::{
 pub(super) struct MapKeyContext {
     pub(super) key_hint: Option<HirTypeHint>,
     pub(super) used_keys: Vec<Vec<String>>,
-    pub(super) current_module: Vec<String>,
+    pub(super) current_module: Option<ModuleKey>,
 }
 
 pub(super) fn map_key_completion_items(
@@ -58,7 +59,7 @@ pub(super) fn map_key_at(
     Some(MapKeyContext {
         key_hint: enclosing_let_map_key_hint(source_id, &map),
         used_keys: map_entry_path_keys(&map),
-        current_module: Vec::new(),
+        current_module: None,
     })
 }
 
@@ -183,7 +184,7 @@ fn script_enum_key_declaration<'a>(
 ) -> Option<&'a vela_hir::module_graph::Declaration> {
     graph.declaration_by_type_path(
         &key_hint.path,
-        &map_key.current_module,
+        map_key.current_module.as_ref()?,
         DeclarationKind::Enum,
     )
 }

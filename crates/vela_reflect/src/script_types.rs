@@ -17,6 +17,10 @@ use crate::script_attrs::ReflectedScriptAttrs;
 impl TypeRegistry {
     pub fn register_script_types(&mut self, graph: &ModuleGraph) {
         for declaration in graph.declarations() {
+            let Some(package) = graph.module_package(declaration.module) else {
+                continue;
+            };
+            let package = package.as_str();
             match declaration.kind {
                 DeclarationKind::Struct => {
                     let Some(shape) = graph.struct_shape(declaration.id) else {
@@ -28,6 +32,7 @@ impl TypeRegistry {
                     let mut desc = shape.fields.iter().fold(
                         TypeDesc::new(TypeKey::new(
                             script_type_id(
+                                package,
                                 &type_name,
                                 explicit_script_id(graph.declaration_attrs(declaration.id)),
                             ),
@@ -35,13 +40,14 @@ impl TypeRegistry {
                         ))
                         .kind(TypeKind::ScriptStruct)
                         .origin(DeclOrigin::Script)
-                        .schema_hash(struct_schema_hash(&type_name, shape))
+                        .schema_hash(struct_schema_hash(package, &type_name, shape))
                         .source_span(declaration.span),
                         |desc, field| {
                             desc.field(apply_field_attrs(
                                 apply_field_type_hint(
                                     FieldDesc::new(
                                         script_field_id(
+                                            package,
                                             &type_name,
                                             None,
                                             &field.name,
@@ -75,6 +81,7 @@ impl TypeRegistry {
                     let mut desc = shape.variants.iter().fold(
                         TypeDesc::new(TypeKey::new(
                             script_type_id(
+                                package,
                                 &type_name,
                                 explicit_script_id(graph.declaration_attrs(declaration.id)),
                             ),
@@ -82,10 +89,11 @@ impl TypeRegistry {
                         ))
                         .kind(TypeKind::ScriptEnum)
                         .origin(DeclOrigin::Script)
-                        .schema_hash(enum_schema_hash(&type_name, shape))
+                        .schema_hash(enum_schema_hash(package, &type_name, shape))
                         .source_span(declaration.span),
                         |desc, variant| {
                             let variant_id = script_variant_id(
+                                package,
                                 &type_name,
                                 &variant.name,
                                 explicit_script_id(&variant.attrs),
@@ -103,6 +111,7 @@ impl TypeRegistry {
                                             apply_field_type_hint_display(
                                                 FieldDesc::new(
                                                     script_field_id(
+                                                        package,
                                                         &type_name,
                                                         Some(&variant.name),
                                                         &field.name,
@@ -143,7 +152,7 @@ impl TypeRegistry {
                         |desc, method| {
                             desc.method(apply_trait_method_attrs(
                                 TraitMethodDesc::new(
-                                    script_trait_method_id(&trait_name, &method.name),
+                                    script_trait_method_id(package, &trait_name, &method.name),
                                     method.name.clone(),
                                 )
                                 .origin(DeclOrigin::Script)
@@ -194,6 +203,10 @@ fn inherent_methods_for_type(
     let type_name = graph
         .qualified_declaration_name(type_declaration.id)
         .expect("stored script type has a module path");
+    let package = graph
+        .module_package(type_declaration.module)
+        .expect("stored script type has a package")
+        .as_str();
     graph
         .declarations()
         .filter(|declaration| declaration.kind == DeclarationKind::Impl)
@@ -207,7 +220,7 @@ fn inherent_methods_for_type(
             metadata.methods.iter().map(|method| {
                 apply_method_signature(
                     MethodDesc::new(
-                        script_inherent_host_method_id(&type_name, &method.name),
+                        script_inherent_host_method_id(package, &type_name, &method.name),
                         method.name.clone(),
                     )
                     .origin(DeclOrigin::Script)
@@ -372,13 +385,18 @@ fn qualified_path_name(graph: &ModuleGraph, owner: &Declaration, path: &[String]
     }
 }
 
-fn struct_schema_hash(type_name: &str, shape: &vela_hir::type_hint::StructShape) -> SchemaHash {
+fn struct_schema_hash(
+    package: &str,
+    type_name: &str,
+    shape: &vela_hir::type_hint::StructShape,
+) -> SchemaHash {
     let members = shape
         .fields
         .iter()
         .map(|field| {
             (
                 script_field_id(
+                    package,
                     type_name,
                     None,
                     &field.name,
@@ -396,16 +414,25 @@ fn struct_schema_hash(type_name: &str, shape: &vela_hir::type_hint::StructShape)
     schema_hash("struct", type_name, members)
 }
 
-fn enum_schema_hash(type_name: &str, shape: &vela_hir::type_hint::EnumShape) -> SchemaHash {
+fn enum_schema_hash(
+    package: &str,
+    type_name: &str,
+    shape: &vela_hir::type_hint::EnumShape,
+) -> SchemaHash {
     let members = shape
         .variants
         .iter()
         .map(|variant| {
             (
-                script_variant_id(type_name, &variant.name, explicit_script_id(&variant.attrs))
-                    .get(),
+                script_variant_id(
+                    package,
+                    type_name,
+                    &variant.name,
+                    explicit_script_id(&variant.attrs),
+                )
+                .get(),
                 variant.name.clone(),
-                enum_variant_signature(type_name, variant),
+                enum_variant_signature(package, type_name, variant),
             )
         })
         .collect::<Vec<_>>();
@@ -413,6 +440,7 @@ fn enum_schema_hash(type_name: &str, shape: &vela_hir::type_hint::EnumShape) -> 
 }
 
 fn enum_variant_signature(
+    package: &str,
     type_name: &str,
     variant: &vela_hir::type_hint::EnumVariantHint,
 ) -> String {
@@ -421,6 +449,7 @@ fn enum_variant_signature(
         .map(|field| {
             (
                 script_field_id(
+                    package,
                     type_name,
                     Some(&variant.name),
                     &field.name,
@@ -469,8 +498,12 @@ fn hash_bytes(hash: &mut u64, bytes: &[u8]) {
     }
 }
 
-fn script_inherent_host_method_id(type_name: &str, method_name: &str) -> HostMethodId {
-    HostMethodId::new(script_inherent_method_id(type_name, method_name).get())
+fn script_inherent_host_method_id(
+    package: &str,
+    type_name: &str,
+    method_name: &str,
+) -> HostMethodId {
+    HostMethodId::new(script_inherent_method_id(package, type_name, method_name).get())
 }
 
 fn explicit_script_id(attrs: &[HirAttribute]) -> Option<u128> {
@@ -481,14 +514,15 @@ fn explicit_script_id(attrs: &[HirAttribute]) -> Option<u128> {
 mod tests {
     use super::*;
     use vela_common::SourceId;
-    use vela_def::{FieldId, VariantId};
-    use vela_hir::module_graph::{ModulePath, ModuleSource};
+    use vela_hir::module_graph::ModuleSource;
+    use vela_package::ModulePath;
 
     #[test]
     fn registers_script_struct_and_enum_metadata_from_hir() {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             r#"
 #[doc("Reward metadata.")]
@@ -639,7 +673,13 @@ enum QuestProgress {
                 .iter()
                 .find(|field| field.name == "count")
                 .map(|field| field.id),
-            Some(script_field_id("game::reward::Reward", None, "count", None,))
+            Some(script_field_id(
+                vela_package::PackageId::anonymous().as_str(),
+                "game::reward::Reward",
+                None,
+                "count",
+                None,
+            ))
         );
         assert_eq!(
             progress
@@ -648,6 +688,7 @@ enum QuestProgress {
                 .find(|variant| variant.name == "Active")
                 .map(|variant| variant.id),
             Some(script_variant_id(
+                vela_package::PackageId::anonymous().as_str(),
                 "game::reward::QuestProgress",
                 "Active",
                 None,
@@ -660,12 +701,14 @@ enum QuestProgress {
         let mut first = ModuleGraph::new();
         first.add_source(ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             "struct Reward { count, item_id }\nenum QuestProgress { None, Active }",
         ));
         let mut second = ModuleGraph::new();
         second.add_source(ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             "struct Reward { item_id, count }\nenum QuestProgress { Active, None }",
         ));
@@ -720,6 +763,7 @@ enum QuestProgress {
         let mut first = ModuleGraph::new();
         first.add_source(ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             r#"
 struct Reward {
@@ -738,6 +782,7 @@ enum QuestProgress {
         let mut second = ModuleGraph::new();
         second.add_source(ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             r#"
 struct Reward {
@@ -772,12 +817,16 @@ enum QuestProgress {
             .type_by_name("game::reward::QuestProgress")
             .expect("second QuestProgress");
 
-        assert_eq!(first_reward.fields[0].id, FieldId::new(101));
-        assert_eq!(second_reward.fields[0].id, FieldId::new(101));
-        assert_eq!(first_reward.fields[1].id, FieldId::new(102));
-        assert_eq!(second_reward.fields[1].id, FieldId::new(102));
-        assert_eq!(first_progress.variants[0].id, VariantId::new(201));
-        assert_eq!(second_progress.variants[0].id, VariantId::new(201));
+        let package = vela_package::PackageId::anonymous();
+        let field_101 = script_field_id(package.as_str(), "", None, "", Some(101));
+        let field_102 = script_field_id(package.as_str(), "", None, "", Some(102));
+        let variant_201 = script_variant_id(package.as_str(), "", "", Some(201));
+        assert_eq!(first_reward.fields[0].id, field_101);
+        assert_eq!(second_reward.fields[0].id, field_101);
+        assert_eq!(first_reward.fields[1].id, field_102);
+        assert_eq!(second_reward.fields[1].id, field_102);
+        assert_eq!(first_progress.variants[0].id, variant_201);
+        assert_eq!(second_progress.variants[0].id, variant_201);
         assert_ne!(first_reward.schema_hash, second_reward.schema_hash);
         assert_ne!(first_progress.schema_hash, second_progress.schema_hash);
     }
@@ -787,12 +836,14 @@ enum QuestProgress {
         let mut original = ModuleGraph::new();
         original.add_source(ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             "struct Reward { count: i64, item_id: String }\nenum QuestProgress { None, Active }",
         ));
         let mut changed = ModuleGraph::new();
         changed.add_source(ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             "struct Reward { count: f64, bonus: i64 }\nenum QuestProgress { None, Finished }",
         ));
@@ -824,6 +875,7 @@ enum QuestProgress {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::combat"),
             r#"
 struct Player { level: i64 }
@@ -852,7 +904,11 @@ impl Player {
         let method = &player.methods[0];
         assert_eq!(
             method.id,
-            script_inherent_host_method_id("game::combat::Player", "bonus")
+            script_inherent_host_method_id(
+                vela_package::PackageId::anonymous().as_str(),
+                "game::combat::Player",
+                "bonus",
+            )
         );
         assert_eq!(method.origin, DeclOrigin::Script);
         assert_eq!(method.return_type.as_deref(), Some("i64"));
@@ -871,6 +927,7 @@ impl Player {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::combat"),
             r#"
 #[doc("Damage protocol.")]
@@ -917,7 +974,11 @@ impl Damageable for Player {
         assert_eq!(damageable.methods[0].docs.as_deref(), Some("Apply damage."));
         assert_eq!(
             damageable.methods[0].id,
-            script_trait_method_id("game::combat::Damageable", "damage")
+            script_trait_method_id(
+                vela_package::PackageId::anonymous().as_str(),
+                "game::combat::Damageable",
+                "damage",
+            )
         );
         assert_eq!(damageable.methods[0].origin, DeclOrigin::Script);
         assert_eq!(damageable.methods[0].return_type.as_deref(), Some("i64"));

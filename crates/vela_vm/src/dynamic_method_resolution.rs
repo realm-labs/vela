@@ -129,13 +129,22 @@ fn resolve_script_dynamic_method(
     program: &LinkedProgram,
     heap: Option<&HeapExecution<'_>>,
 ) -> Option<DynamicMethodTarget> {
-    let type_name = match classify_dynamic_receiver(receiver, heap, None) {
-        DynamicReceiverKind::ScriptRecord { type_name }
-        | DynamicReceiverKind::ScriptEnum { type_name } => type_name,
+    let owner = match receiver {
+        Value::HeapRef(reference) => match heap?.heap.get(*reference)? {
+            HeapValue::Record {
+                identity: Some(identity),
+                ..
+            } => identity.type_id,
+            HeapValue::Enum {
+                identity: Some(identity),
+                ..
+            } => identity.type_id,
+            _ => return None,
+        },
         _ => return None,
     };
     program
-        .script_method_dispatch(&type_name, method)
+        .script_method_dispatch(owner, method)
         .and_then(|dispatch| {
             let function = match program.method_dispatch(dispatch)?.kind {
                 LinkedMethodDispatchKind::Script { function, .. } => function,

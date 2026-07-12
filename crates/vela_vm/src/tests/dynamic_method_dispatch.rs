@@ -490,7 +490,12 @@ impl Label {
     }
 }
 
-fn main(value) {
+fn main(use_label, text) {
+    let value = if use_label {
+        Label { text: text }
+    } else {
+        text
+    };
     return value.starts_with("q");
 }
 "#,
@@ -506,7 +511,10 @@ fn main(value) {
             &Vm::new(),
             &linked,
             "main",
-            &[OwnedValue::String("quest".to_owned())],
+            &[
+                OwnedValue::Bool(false),
+                OwnedValue::String("quest".to_owned()),
+            ],
             &mut budget,
             &caches,
         ),
@@ -517,10 +525,10 @@ fn main(value) {
             &Vm::new(),
             &linked,
             "main",
-            &[OwnedValue::record(
-                "Label",
-                [("text", OwnedValue::String("raid".to_owned()))],
-            )],
+            &[
+                OwnedValue::Bool(true),
+                OwnedValue::String("raid".to_owned()),
+            ],
             &mut budget,
             &caches,
         ),
@@ -540,10 +548,10 @@ fn main(value) {
             &Vm::new(),
             &linked,
             "main",
-            &[OwnedValue::record(
-                "Label",
-                [("text", OwnedValue::String("quest".to_owned()))],
-            )],
+            &[
+                OwnedValue::Bool(true),
+                OwnedValue::String("quest".to_owned()),
+            ],
             &mut budget,
             &caches,
         ),
@@ -577,7 +585,12 @@ impl LabelB {
     }
 }
 
-fn main(value) {
+fn main(use_a, text) {
+    let value = if use_a {
+        LabelA { text: text }
+    } else {
+        LabelB { text: text }
+    };
     return value.starts_with("q");
 }
 "#,
@@ -593,10 +606,10 @@ fn main(value) {
             &Vm::new(),
             &linked,
             "main",
-            &[OwnedValue::record(
-                "LabelA",
-                [("text", OwnedValue::String("quest".to_owned()))],
-            )],
+            &[
+                OwnedValue::Bool(true),
+                OwnedValue::String("quest".to_owned()),
+            ],
             &mut budget,
             &caches,
         ),
@@ -607,10 +620,10 @@ fn main(value) {
             &Vm::new(),
             &linked,
             "main",
-            &[OwnedValue::record(
-                "LabelB",
-                [("text", OwnedValue::String("raid".to_owned()))],
-            )],
+            &[
+                OwnedValue::Bool(false),
+                OwnedValue::String("raid".to_owned()),
+            ],
             &mut budget,
             &caches,
         ),

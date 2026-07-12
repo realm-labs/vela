@@ -500,6 +500,7 @@ fn main() {
 fn compiled_module_reflects_registered_script_trait_impls() {
     let sources = [ModuleSource::new(
         SourceId::new(1),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game"),
         r#"
 trait Damageable {

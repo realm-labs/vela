@@ -98,13 +98,13 @@ fn module_changes(
 fn changed_module_ids(previous: Option<&ModuleGraph>, next: &ModuleGraph) -> BTreeSet<ModuleId> {
     next.module_ids()
         .filter(|module| {
-            let Some(next_path) = next.module_path(*module) else {
+            let Some(next_key) = next.module_key(*module) else {
                 return false;
             };
             let Some(previous) = previous else {
                 return true;
             };
-            let Some(previous_module) = previous.module_id(next_path) else {
+            let Some(previous_module) = previous.module_id(next_key) else {
                 return true;
             };
             previous.module_source_hash(previous_module) != next.module_source_hash(*module)

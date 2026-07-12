@@ -1,13 +1,14 @@
 use vela_common::SourceId;
-use vela_hir::module_graph::{ModuleGraph, ModulePath};
+use vela_hir::module_graph::ModuleGraph;
 
-use crate::{LanguageServiceDatabases, symbol_ref::source_module_symbol_from_segments};
+use crate::{LanguageServiceDatabases, symbol_ref::source_module_symbol};
 
 use super::{Reference, ReferenceKind, ReferenceToken, diagnostic_range, span_text_range};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) struct ImportModuleTarget {
     path: Vec<String>,
+    key: vela_package::ModuleKey,
 }
 
 pub(super) fn import_module_target(
@@ -30,11 +31,12 @@ pub(super) fn import_module_target(
                 continue;
             }
             let path = import.path[..=segment_index].to_vec();
-            if graph
-                .module_id(&ModulePath::new(path.iter().cloned()))
-                .is_some()
+            if let Some(key) = graph
+                .module_key(module)
+                .and_then(|current| graph.resolve_module_path(current, &path))
+                .filter(|key| graph.module_id(key).is_some())
             {
-                return Some(ImportModuleTarget { path });
+                return Some(ImportModuleTarget { path, key });
             }
         }
     }
@@ -58,6 +60,15 @@ pub(super) fn import_module_references(
             {
                 continue;
             }
+            let Some(current) = graph.module_key(module) else {
+                continue;
+            };
+            let Some(key) = graph.resolve_module_path(current, &target.path) else {
+                continue;
+            };
+            if key != target.key {
+                continue;
+            }
             let Some(source) = databases
                 .source_db()
                 .records()
@@ -77,7 +88,7 @@ pub(super) fn import_module_references(
                 document_id: source.document_id().clone(),
                 range: diagnostic_range(source.text(), range),
                 kind: ReferenceKind::Import,
-                symbol: source_module_symbol_from_segments(target.path.iter()),
+                symbol: source_module_symbol(&target.key),
             });
         }
     }

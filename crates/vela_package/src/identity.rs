@@ -34,6 +34,18 @@ validated_identity!(PackageName, "package name", valid_identifier);
 validated_identity!(PackageAlias, "package alias", valid_identifier);
 validated_identity!(PackageVersion, "package version", valid_version);
 
+impl PackageId {
+    #[must_use]
+    pub fn anonymous() -> Self {
+        Self(Arc::from("dev.vela.anonymous"))
+    }
+
+    #[must_use]
+    pub fn scratch() -> Self {
+        Self(Arc::from("dev.vela.scratch"))
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct IdentityError {
     kind: &'static str,

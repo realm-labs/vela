@@ -209,7 +209,10 @@ fn type_guard_plan(
         value.as_deref().map(|value| type_guard_plan(program, value).map(Box::new)).transpose()
     };
     Ok(match contract {
-        MirTypeContract::Any => UnlinkedTypeGuardPlan::Type("Any".to_owned()),
+        MirTypeContract::Any => UnlinkedTypeGuardPlan::Type {
+            name: "Any".to_owned(),
+            type_id: None,
+        },
         MirTypeContract::Primitive(value) => UnlinkedTypeGuardPlan::Primitive(*value),
         MirTypeContract::Range => UnlinkedTypeGuardPlan::Standard(StandardTypeGuard::Range),
         MirTypeContract::Array(value) => UnlinkedTypeGuardPlan::Array {
@@ -256,7 +259,10 @@ fn type_guard_plan(
                 .targets()
                 .type_descriptor(*type_id)
                 .ok_or(MirBackendError::MissingTarget("type"))?;
-            UnlinkedTypeGuardPlan::Type(ty.runtime_name.clone())
+            UnlinkedTypeGuardPlan::Type {
+                name: ty.runtime_name.clone(),
+                type_id: Some(*type_id),
+            }
         }
         MirTypeContract::Shape { type_id, shape } => {
             let ty = program
@@ -265,6 +271,7 @@ fn type_guard_plan(
                 .ok_or(MirBackendError::MissingTarget("type"))?;
             UnlinkedTypeGuardPlan::Shape {
                 type_name: ty.runtime_name.clone(),
+                type_id: *type_id,
                 shape_id: *shape,
             }
         }
@@ -279,7 +286,9 @@ fn type_guard_plan(
                 .ok_or(MirBackendError::MissingTarget("variant"))?;
             UnlinkedTypeGuardPlan::Variant {
                 enum_name: ty.runtime_name.clone(),
+                type_id: Some(*type_id),
                 variant: variant.name.clone(),
+                variant_id: Some(variant.id),
             }
         }
         MirTypeContract::Host(target) => {
@@ -289,6 +298,7 @@ fn type_guard_plan(
                 .ok_or(MirBackendError::MissingTarget("host type"))?;
             UnlinkedTypeGuardPlan::HostType {
                 type_name: ty.runtime_name.clone(),
+                type_id: target.semantic,
                 host_type_id: target.runtime,
             }
         }

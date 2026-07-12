@@ -9,10 +9,11 @@ use std::collections::BTreeSet;
 use std::fmt;
 
 use vela_def::{MethodId, script_inherent_method_id, script_trait_method_id};
+use vela_package::{ModulePath, PackageId};
 
 use crate::body::{HirBody, HirSourceOrigin};
 use crate::ids::{HirBodyId, HirDeclId, HirNodeId, ModuleId};
-use crate::module_graph::{Declaration, DeclarationKind, ModuleGraph, ModulePath};
+use crate::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use crate::type_hint::{FunctionSignature, ImplMetadata, ImplMetadataKind};
 
 #[cfg(test)]
@@ -215,7 +216,9 @@ impl ScriptMethod {
 
     #[must_use]
     pub fn method_id(&self) -> MethodId {
-        self.owner.identity.method_id(&self.name)
+        self.owner
+            .identity
+            .method_id(self.owner.package.as_str(), &self.name)
     }
 
     /// Canonical source symbol seed used by compile-target and direct-lowering
@@ -228,12 +231,18 @@ impl ScriptMethod {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ScriptMethodOwner {
+    package: PackageId,
     target_type: String,
     actual_module: ModulePath,
     identity: ScriptMethodIdentity,
 }
 
 impl ScriptMethodOwner {
+    #[must_use]
+    pub const fn package(&self) -> &PackageId {
+        &self.package
+    }
+
     #[must_use]
     pub fn target_type(&self) -> &str {
         &self.target_type
@@ -289,10 +298,10 @@ impl ScriptMethodIdentity {
         }
     }
 
-    fn method_id(&self, method: &str) -> MethodId {
+    fn method_id(&self, package: &str, method: &str) -> MethodId {
         match self {
-            Self::Inherent { owner } => script_inherent_method_id(owner, method),
-            Self::Trait { trait_name, .. } => script_trait_method_id(trait_name, method),
+            Self::Inherent { owner } => script_inherent_method_id(package, owner, method),
+            Self::Trait { trait_name, .. } => script_trait_method_id(package, trait_name, method),
         }
     }
 }
@@ -312,6 +321,15 @@ struct MethodBuildInput<'graph> {
     body: &'graph HirBody,
     module: ModuleId,
     signature_module: ModuleId,
+}
+
+struct MethodBuildContext<'graph> {
+    declaration: HirDeclId,
+    actual_module: &'graph ModulePath,
+    package: &'graph PackageId,
+    identity_namespace: Option<&'graph str>,
+    impl_metadata: &'graph ImplMetadata,
+    owner_origin: HirSourceOrigin,
 }
 
 fn collect_impl_methods(
@@ -339,6 +357,17 @@ fn collect_impl_methods(
                 "impl declaration has no owning module path",
             )
         })?;
+    let package = graph
+        .module_package(declaration.module)
+        .cloned()
+        .ok_or_else(|| {
+            catalog_error(
+                declaration.id,
+                None,
+                origin(declaration.span),
+                "impl declaration has no owning package",
+            )
+        })?;
     let target_type = match qualification {
         TargetQualification::Local => impl_metadata.target_path.join("::"),
         TargetQualification::Module => {
@@ -358,11 +387,14 @@ fn collect_impl_methods(
         })?;
         methods.push(build_method(
             graph,
-            declaration.id,
-            &actual_module,
-            identity_namespace,
-            impl_metadata,
-            owner_origin,
+            MethodBuildContext {
+                declaration: declaration.id,
+                actual_module: &actual_module,
+                package: &package,
+                identity_namespace,
+                impl_metadata,
+                owner_origin,
+            },
             MethodBuildInput {
                 node: method.node,
                 target_type: target_type.clone(),
@@ -430,11 +462,14 @@ fn collect_impl_methods(
             })?;
             methods.push(build_method(
                 graph,
-                declaration.id,
-                &actual_module,
-                identity_namespace,
-                impl_metadata,
-                owner_origin,
+                MethodBuildContext {
+                    declaration: declaration.id,
+                    actual_module: &actual_module,
+                    package: &package,
+                    identity_namespace,
+                    impl_metadata,
+                    owner_origin,
+                },
                 MethodBuildInput {
                     node,
                     target_type: target_type.clone(),
@@ -453,11 +488,7 @@ fn collect_impl_methods(
 
 fn build_method(
     graph: &ModuleGraph,
-    declaration: HirDeclId,
-    actual_module: &ModulePath,
-    identity_namespace: Option<&str>,
-    impl_metadata: &ImplMetadata,
-    owner_origin: HirSourceOrigin,
+    context: MethodBuildContext<'_>,
     input: MethodBuildInput<'_>,
 ) -> Result<ScriptMethod, ScriptMethodCatalogError> {
     match input.body.owner {
@@ -466,7 +497,7 @@ fn build_method(
             if node == input.node => {}
         _ => {
             return Err(catalog_error(
-                declaration,
+                context.declaration,
                 Some(input.node),
                 input.body.origin,
                 "method body owner does not match its method node",
@@ -475,7 +506,7 @@ fn build_method(
     }
     if input.body.params.len() != input.signature.params.len() {
         return Err(catalog_error(
-            declaration,
+            context.declaration,
             Some(input.node),
             input.body.origin,
             format!(
@@ -494,7 +525,7 @@ fn build_method(
     for default_body in parameter_default_bodies.iter().flatten() {
         let default = graph.body(*default_body).ok_or_else(|| {
             catalog_error(
-                declaration,
+                context.declaration,
                 Some(input.node),
                 input.body.origin,
                 format!("parameter default body {default_body:?} is missing"),
@@ -506,25 +537,25 @@ fn build_method(
                 if parent == input.body.id
         ) {
             return Err(catalog_error(
-                declaration,
+                context.declaration,
                 Some(input.node),
                 default.origin,
                 format!("parameter default body {default_body:?} has the wrong owner"),
             ));
         }
     }
-    let identity = match &impl_metadata.kind {
+    let identity = match &context.impl_metadata.kind {
         ImplMetadataKind::Inherent => ScriptMethodIdentity::Inherent {
             owner: target_owner_name(
-                Some(actual_module),
-                identity_namespace,
-                &impl_metadata.target_path,
+                Some(context.actual_module),
+                context.identity_namespace,
+                &context.impl_metadata.target_path,
             ),
         },
         ImplMetadataKind::Trait { trait_path } => ScriptMethodIdentity::Trait {
             trait_name: trait_method_owner_name(
-                Some(actual_module),
-                identity_namespace,
+                Some(context.actual_module),
+                context.identity_namespace,
                 trait_path,
             ),
             source_trait_path: trait_path.join("::"),
@@ -532,8 +563,9 @@ fn build_method(
     };
     Ok(ScriptMethod {
         owner: ScriptMethodOwner {
+            package: context.package.clone(),
             target_type: input.target_type,
-            actual_module: actual_module.clone(),
+            actual_module: context.actual_module.clone(),
             identity,
         },
         node: input.node,
@@ -545,7 +577,7 @@ fn build_method(
         signature_module: input.signature_module,
         origin: input.body.origin,
         name_origin: input.name_origin,
-        owner_origin,
+        owner_origin: context.owner_origin,
     })
 }
 

@@ -444,7 +444,11 @@ mod tests {
             )
             .expect("Player registration");
         registry
-            .register_type(TypeDef::new(DefPath::ty("script", ["game"], "Reward")))
+            .register_type(TypeDef::new(DefPath::ty(
+                "com.example.test",
+                ["game"],
+                "Reward",
+            )))
             .expect("Reward registration");
         registry
             .register_field(
@@ -666,7 +670,8 @@ mod tests {
     fn compile_view_facts_feed_analysis_targets_without_reflection_descriptors() {
         use vela_def::DefPath;
         use vela_hir::body::HirExprKind;
-        use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+        use vela_hir::module_graph::{ModuleGraph, ModuleSource};
+        use vela_package::ModulePath;
         use vela_registry::{
             DefinitionRegistry, EffectSet, FieldDef, FunctionDef, FunctionSignature, MethodDef,
             ParamDef, TypeDef, TypeHintDef,
@@ -719,6 +724,7 @@ mod tests {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(91),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("test"),
             r#"
             fn main(player: game::Player) -> bool {

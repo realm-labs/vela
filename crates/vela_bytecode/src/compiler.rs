@@ -24,7 +24,7 @@ use vela_common::Span;
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::ModuleGraph;
 #[cfg(test)]
-use vela_hir::module_graph::{ModulePath, ModuleSource};
+use vela_hir::module_graph::ModuleSource;
 use vela_hir::source_ingestion::{HirSourceFunction, HirSourceSet, HirSourceSetKind};
 use vela_registry::RegistryCompileView;
 
@@ -175,14 +175,7 @@ pub fn compile_program(request: ProgramCompilationRequest<'_>) -> CompileResult<
     let methods = semantic
         .script_method_catalog()
         .methods()
-        .map(|method| {
-            (
-                method.owner().target_type().to_owned(),
-                method.name().to_owned(),
-                method.method_id(),
-                method.symbol_seed(),
-            )
-        })
+        .cloned()
         .collect::<Vec<_>>();
     let input = semantic_input::prepare_semantic_input(semantic_input::SemanticInputRequest {
         graph,
@@ -205,8 +198,26 @@ pub fn compile_program(request: ProgramCompilationRequest<'_>) -> CompileResult<
     for code in code {
         program.insert_function(code);
     }
-    for (owner, name, method, symbol) in methods {
-        program.insert_script_method(owner, name, method, symbol);
+    for method in methods {
+        let method_id = method.method_id();
+        let function_id =
+            vela_def::script_function_id(method.owner().package().as_str(), &method.symbol_seed());
+        let target = input
+            .script_method_target(method.node(), method_id, function_id)
+            .ok_or_else(|| {
+                CompileError::new(CompileErrorKind::RegistrySnapshot(format!(
+                    "missing resolved executable target for script method `{}`",
+                    method.name()
+                )))
+            })?;
+        program.insert_script_method(
+            target.owner,
+            method.owner().target_type(),
+            method.name(),
+            method_id,
+            target.function,
+            method.symbol_seed(),
+        );
     }
     program.set_script_metadata(graph.clone());
     let bytecode = verify_program(program)?;

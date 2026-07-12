@@ -658,7 +658,9 @@ impl<'a> FunctionBackend<'a> {
                         dst,
                         value,
                         enum_name: ty.runtime_name.clone(),
+                        type_id: Some(*type_id),
                         variant: variant.name.clone(),
+                        variant_id: Some(variant.id),
                     },
                     span,
                 );
@@ -674,7 +676,18 @@ impl<'a> FunctionBackend<'a> {
                         dst,
                         value,
                         enum_name: owner_name.clone(),
+                        type_id: Some(vela_def::script_type_id(
+                            vela_package::PackageId::anonymous().as_str(),
+                            owner_name,
+                            None,
+                        )),
                         variant: variant_name.clone(),
+                        variant_id: Some(vela_def::script_variant_id(
+                            vela_package::PackageId::anonymous().as_str(),
+                            owner_name,
+                            variant_name,
+                            None,
+                        )),
                     },
                     span,
                 );
@@ -733,6 +746,7 @@ impl<'a> FunctionBackend<'a> {
                 UnlinkedInstructionKind::MakeRecord {
                     dst,
                     type_name: ty.runtime_name.clone(),
+                    type_id: Some(*type_id),
                     fields,
                 }
             }
@@ -744,6 +758,11 @@ impl<'a> FunctionBackend<'a> {
                 UnlinkedInstructionKind::MakeRecord {
                     dst,
                     type_name: type_name.clone(),
+                    type_id: Some(vela_def::script_type_id(
+                        vela_package::PackageId::anonymous().as_str(),
+                        type_name,
+                        None,
+                    )),
                     fields,
                 }
             }
@@ -778,7 +797,9 @@ impl<'a> FunctionBackend<'a> {
                 UnlinkedInstructionKind::MakeEnum {
                     dst,
                     enum_name: ty.runtime_name.clone(),
+                    type_id: Some(*type_id),
                     variant: variant.name.clone(),
+                    variant_id: Some(variant.id),
                     fields,
                 }
             }
@@ -794,7 +815,18 @@ impl<'a> FunctionBackend<'a> {
                 UnlinkedInstructionKind::MakeEnum {
                     dst,
                     enum_name: owner_name.clone(),
+                    type_id: Some(vela_def::script_type_id(
+                        vela_package::PackageId::anonymous().as_str(),
+                        owner_name,
+                        None,
+                    )),
                     variant: variant_name.clone(),
+                    variant_id: Some(vela_def::script_variant_id(
+                        vela_package::PackageId::anonymous().as_str(),
+                        owner_name,
+                        variant_name,
+                        None,
+                    )),
                     fields,
                 }
             }

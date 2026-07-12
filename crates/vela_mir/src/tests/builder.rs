@@ -2,7 +2,8 @@ use vela_analysis::executable::{ExecutableAnalysisGeneration, ExecutableAnalysis
 use vela_analysis::literals::LiteralPrimitiveContext;
 use vela_common::SourceId;
 use vela_def::FunctionId;
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
+use vela_package::ModulePath;
 
 use crate::{
     CompileFunctionAccess, CompileFunctionClass, CompileFunctionDescriptor,
@@ -37,6 +38,7 @@ fn try_build_with_parameters_and_contexts(
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(70),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("builder"),
         source,
     ));

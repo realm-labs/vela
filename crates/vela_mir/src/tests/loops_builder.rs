@@ -1,7 +1,8 @@
 use vela_analysis::executable::{ExecutableAnalysisGeneration, ExecutableAnalysisInput};
 use vela_common::{SourceId, Span};
 use vela_def::FunctionId;
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
+use vela_package::ModulePath;
 
 use crate::{
     CompileFunctionAccess, CompileFunctionClass, CompileFunctionDescriptor,
@@ -20,6 +21,7 @@ fn try_build(source: &str, parameters: &[&str]) -> Result<MirProgram, crate::Mir
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         TEST_SOURCE_ID,
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("loops_builder"),
         source,
     ));

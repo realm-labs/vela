@@ -33,7 +33,7 @@ pub use vela_def::{FieldId, FunctionId, MethodId, TraitId, TypeId, VariantId};
 pub use vela_hir::ids::{HirDeclId, ModuleId};
 pub use vela_hir::module_graph::{
     Declaration, DeclarationIndex, DeclarationKind, Import, ImportResolution, ModuleGraph,
-    ModulePath, ModuleSource, ResolvedImport,
+    ModuleSource, ResolvedImport,
 };
 pub use vela_host::access::HostAccess;
 pub use vela_host::adapter::ScriptStateAdapter;
@@ -48,6 +48,7 @@ pub use vela_hot_reload::report_detail::HotReloadDiagnosticDetail;
 pub use vela_hot_reload::report_render::{HotReloadReportLine, HotReloadReportLineKind};
 pub use vela_hot_reload::symbol::ProgramVersionId;
 pub use vela_hot_reload::version::{HotUpdate, ProgramVersion};
+pub use vela_package::{ModuleKey, ModulePath, PackageId};
 pub use vela_reflect::permissions::{ReflectPermission, ReflectPermissionSet, ReflectPolicy};
 pub use vela_reflect::registry::{
     FieldDesc, HostIndexCapability, MethodDesc, MethodParamDesc, SchemaHash, TraitDesc,

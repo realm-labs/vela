@@ -37,11 +37,17 @@ impl TypeRegistry {
             let qualified_name = graph
                 .qualified_declaration_name(declaration.id)
                 .expect("stored script function has a module path");
+            let package = graph
+                .module_package(declaration.module)
+                .expect("stored script function has a package");
             let signature = graph.function_signature(declaration.id);
-            let mut desc = FunctionDesc::new(script_function_id(&qualified_name), qualified_name)
-                .public(declaration.visibility == Visibility::Public)
-                .origin(DeclOrigin::Script)
-                .source_span(declaration.span);
+            let mut desc = FunctionDesc::new(
+                script_function_id(package.as_str(), &qualified_name),
+                qualified_name,
+            )
+            .public(declaration.visibility == Visibility::Public)
+            .origin(DeclOrigin::Script)
+            .source_span(declaration.span);
             if !module_name.is_empty() {
                 desc = desc.module(module_name);
             }

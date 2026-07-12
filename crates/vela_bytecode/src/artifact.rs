@@ -247,7 +247,10 @@ fn test_mir_binding(
     let mut owners = Vec::new();
     let mut layouts = Vec::new();
     for (handle, _) in program.functions() {
-        let root = vela_def::script_function_id(&format!("__low_level::{}", handle.index()));
+        let root = vela_def::script_function_id(
+            vela_package::PackageId::anonymous().as_str(),
+            &format!("__low_level::{}", handle.index()),
+        );
         let body = vela_hir::ids::HirBodyId::new(handle.index() as u32);
         let origin = vela_mir::MirSourceOrigin::body(
             body,

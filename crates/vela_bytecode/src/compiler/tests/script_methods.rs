@@ -1,4 +1,5 @@
 use super::*;
+use vela_package::ModulePath;
 
 #[test]
 fn compiler_registers_inherent_impl_methods_as_script_dispatch_targets() {
@@ -18,14 +19,17 @@ fn main() {
     )
     .expect("inherent impl method should compile as hidden dispatch target");
     let method = program
-        .script_method("Player", "bonus")
+        .script_method(stable_test_type_id("Player"), "bonus")
         .expect("script inherent method dispatch target");
     assert_eq!(method.params, ["self", "amount"]);
     let method_id = stable_test_inherent_method_id("main::Player", "bonus");
-    assert_eq!(program.script_method_id("Player", "bonus"), Some(method_id));
+    assert_eq!(
+        program.script_method_id(stable_test_type_id("Player"), "bonus"),
+        Some(method_id)
+    );
     assert_eq!(
         program
-            .script_method_by_id("Player", method_id)
+            .script_method_by_id(stable_test_type_id("Player"), method_id)
             .expect("script method by stable id")
             .params,
         ["self", "amount"]
@@ -61,7 +65,7 @@ fn main() {
     )
     .expect("self record compound assignment should compile");
     let method = program
-        .script_method("Counter", "inc")
+        .script_method(stable_test_type_id("Counter"), "inc")
         .expect("script method dispatch target");
     assert!(method.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
@@ -146,14 +150,17 @@ fn main() {
     )
     .expect("impl method should compile as hidden dispatch target");
     let method = program
-        .script_method("Player", "bonus")
+        .script_method(stable_test_type_id("Player"), "bonus")
         .expect("script impl method dispatch target");
     assert_eq!(method.params, ["self", "amount"]);
     let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");
-    assert_eq!(program.script_method_id("Player", "bonus"), Some(method_id));
+    assert_eq!(
+        program.script_method_id(stable_test_type_id("Player"), "bonus"),
+        Some(method_id)
+    );
     assert_eq!(
         program
-            .script_method_by_id("Player", method_id)
+            .script_method_by_id(stable_test_type_id("Player"), method_id)
             .expect("script method by stable id")
             .params,
         ["self", "amount"]
@@ -187,8 +194,15 @@ fn main() {
     )
     .expect("builtin PartialEq impl should compile without declaring the trait");
     let method_id = stable_test_trait_method_id("PartialEq", "eq");
-    assert_eq!(program.script_method_id("PlayerId", "eq"), Some(method_id));
-    assert!(program.script_method_by_id("PlayerId", method_id).is_some());
+    assert_eq!(
+        program.script_method_id(stable_test_type_id("PlayerId"), "eq"),
+        Some(method_id)
+    );
+    assert!(
+        program
+            .script_method_by_id(stable_test_type_id("PlayerId"), method_id)
+            .is_some()
+    );
 }
 
 #[test]
@@ -196,6 +210,7 @@ fn compiler_specializes_module_inherent_method_calls_by_method_id() {
     let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::model"),
             r#"
 pub struct Player { level: i64 }
@@ -208,6 +223,7 @@ impl Player {
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::combat"),
             r#"
 use game::model::Player
@@ -312,11 +328,20 @@ fn main(player) {
     )
     .expect("host target impl method should compile as hidden dispatch target");
     let method = program
-        .script_method("Player", "bonus")
+        .script_method(
+            TypeId::from_def_id(DefPath::ty("host", std::iter::empty::<&str>(), "Player").id()),
+            "bonus",
+        )
         .expect("host target script impl method dispatch target");
     assert_eq!(method.params, ["self", "amount"]);
     let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");
-    assert_eq!(program.script_method_id("Player", "bonus"), Some(method_id));
+    assert_eq!(
+        program.script_method_id(
+            TypeId::from_def_id(DefPath::ty("host", std::iter::empty::<&str>(), "Player").id()),
+            "bonus",
+        ),
+        Some(method_id)
+    );
 }
 #[test]
 fn compiler_registers_trait_default_methods_as_dispatch_targets() {
@@ -335,12 +360,19 @@ fn main() {
     )
     .expect("trait default method should compile as hidden dispatch target");
     let method = program
-        .script_method("Player", "bonus")
+        .script_method(stable_test_type_id("Player"), "bonus")
         .expect("trait default method dispatch target");
     assert_eq!(method.params, ["self", "amount"]);
     let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");
-    assert_eq!(program.script_method_id("Player", "bonus"), Some(method_id));
-    assert!(program.script_method_by_id("Player", method_id).is_some());
+    assert_eq!(
+        program.script_method_id(stable_test_type_id("Player"), "bonus"),
+        Some(method_id)
+    );
+    assert!(
+        program
+            .script_method_by_id(stable_test_type_id("Player"), method_id)
+            .is_some()
+    );
     let main = program.function("main").expect("main function");
     assert!(main.instructions.iter().any(|instruction| matches!(
         instruction.kind,
@@ -374,7 +406,7 @@ fn main() {
     .expect("self method calls should specialize by method id");
     let label_id = stable_test_trait_method_id("main::BonusSource", "label");
     let summary = program
-        .script_method("Player", "summary")
+        .script_method(stable_test_type_id("Player"), "summary")
         .expect("trait default summary method");
     assert!(summary.instructions.iter().any(|instruction| matches!(
         instruction.kind,
@@ -621,6 +653,7 @@ fn compiler_specializes_module_typed_parameter_method_calls_by_method_id() {
     let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::model"),
             r#"
 pub trait BonusSource { fn bonus(self, amount) -> i64; }
@@ -634,6 +667,7 @@ impl BonusSource for Player {
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::combat"),
             r#"
 use game::model::Player
@@ -675,7 +709,19 @@ fn main() {
     )
     .expect("shared trait method id should index per receiver");
     let method_id = stable_test_trait_method_id("main::BonusSource", "bonus");
-    assert!(program.script_method_by_id("Player", method_id).is_some());
-    assert!(program.script_method_by_id("Monster", method_id).is_some());
-    assert!(program.script_method_by_id("Missing", method_id).is_none());
+    assert!(
+        program
+            .script_method_by_id(stable_test_type_id("Player"), method_id)
+            .is_some()
+    );
+    assert!(
+        program
+            .script_method_by_id(stable_test_type_id("Monster"), method_id)
+            .is_some()
+    );
+    assert!(
+        program
+            .script_method_by_id(stable_test_type_id("Missing"), method_id)
+            .is_none()
+    );
 }

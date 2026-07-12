@@ -51,7 +51,7 @@ fn ignored() { return |text: String| text; }
     assert!(inner.code_symbol.starts_with(&outer.code_symbol));
 
     let reward = scoped
-        .type_by_name("script::Reward")
+        .type_by_name(&format!("{}::Reward", vela_package::PackageId::anonymous()))
         .expect("script type descriptor");
     assert_eq!(
         scoped.type_for_declaration(fixture.declarations["Reward"]),

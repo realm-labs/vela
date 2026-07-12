@@ -300,7 +300,9 @@ impl ModuleGraph {
                 let name = import_binding_name(import)?;
                 let declaration = match import.resolution {
                     Some(ImportResolution::Declaration(declaration)) => Some(declaration),
-                    None => self.lookup_import_declaration(import.module, &import.path),
+                    None => {
+                        self.lookup_import_declaration(&module.key, import.module, &import.path)
+                    }
                 };
                 Some(ImportBinding { name, declaration })
             })
@@ -336,7 +338,7 @@ impl ModuleGraph {
                 if !self.declaration_visible_from(declaration, requesting_module) {
                     return None;
                 }
-                let mut path = module.path.segments().to_vec();
+                let mut path = module.key.path.segments().to_vec();
                 path.push(name.to_owned());
                 Some((path, declaration))
             })

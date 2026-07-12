@@ -4,7 +4,8 @@ use vela_def::{FunctionId, TypeId};
 use vela_hir::binding::BindingMap;
 use vela_hir::body::{HirBody, HirBodyRoot, HirExprKind, HirStmtKind};
 use vela_hir::ids::{HirExprId, HirLocalId};
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
+use vela_package::ModulePath;
 
 use crate::{
     CompileConstructorTarget, CompileDynamicConstructorField, CompileFunctionAccess,
@@ -357,6 +358,7 @@ fn graph(source: &str) -> ModuleGraph {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(98),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("guards"),
         source,
     ));

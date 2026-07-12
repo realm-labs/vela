@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use vela_package::ModulePath;
 
 use vela_analysis::executable::{
     ExecutableAnalysisGeneration, ExecutableAnalysisInput, ExecutableReceiverInput,
@@ -9,7 +10,7 @@ use vela_common::{PrimitiveTag, ShapeId, SourceId, Span};
 use vela_def::{FunctionId, TypeId};
 use vela_hir::body::{HirBody, HirBodyOwner, HirBodyRoot, HirExprKind};
 use vela_hir::ids::{HirBodyId, HirExprId, HirLocalId};
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
 use vela_hir::script_methods::{ScriptMethodCatalog, ScriptMethodCatalogMode};
 
 use crate::builder::topological_lambdas;
@@ -51,6 +52,7 @@ fn build_fixture(
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(88),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("closures_defaults"),
         source,
     ));
@@ -649,6 +651,7 @@ impl Counter {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(89),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("closures_defaults_method"),
         source,
     ));

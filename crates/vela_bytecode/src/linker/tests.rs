@@ -1,8 +1,9 @@
 use vela_common::{HostTypeId, SourceId};
 use vela_def::{DefPath, FieldId};
-use vela_hir::module_graph::{ModulePath, ModuleSource};
+use vela_hir::module_graph::ModuleSource;
 use vela_hir::source_ingestion::build_module_source_set;
 use vela_host::target::HostTargetPlan;
+use vela_package::ModulePath;
 use vela_registry::{DefinitionRegistry, FunctionDef, FunctionSignature};
 
 use super::*;
@@ -171,21 +172,12 @@ fn linker_preserves_i64_typed_instructions() {
 }
 
 #[test]
-fn linker_maps_script_functions_and_methods_to_dense_handles() {
+fn linker_maps_script_methods_to_dense_handles() {
     let mut helper = UnlinkedCodeObject::new("helper", 1);
     helper.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
         src: Register(0),
     }));
     let mut main = UnlinkedCodeObject::new("main", 2);
-    main.push_instruction(UnlinkedInstruction::new(
-        UnlinkedInstructionKind::CallFunction {
-            dst: Register(0),
-            target: script_function_id("helper"),
-            name: "helper".to_owned(),
-            mode: crate::ScriptCallMode::Unchecked,
-            args: Vec::new(),
-        },
-    ));
     let method = MethodId::new(200);
     main.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::CallMethodId {
@@ -199,7 +191,14 @@ fn linker_maps_script_functions_and_methods_to_dense_handles() {
     let mut program = UnlinkedProgram::new();
     program.insert_function(helper);
     program.insert_function(main);
-    program.insert_script_method("Player", "score", method, "helper");
+    program.insert_script_method(
+        TypeId::new(10),
+        "Player",
+        "score",
+        method,
+        FunctionId::new(20),
+        "helper",
+    );
 
     let linked = Linker::new()
         .link_test_program(&program)
@@ -217,13 +216,6 @@ fn linker_maps_script_functions_and_methods_to_dense_handles() {
         .expect("helper function should link");
     assert!(matches!(
         main.instructions[0].kind,
-        InstructionKind::CallFunction {
-            function,
-            ..
-        } if function == helper_handle
-    ));
-    assert!(matches!(
-        main.instructions[1].kind,
         InstructionKind::CallMethod {
             dispatch,
             ..
@@ -255,7 +247,14 @@ fn linker_preserves_method_call_cache_site_operand() {
     }));
     let mut program = UnlinkedProgram::new();
     program.insert_function(main);
-    program.insert_script_method("Player", "score", method, "main");
+    program.insert_script_method(
+        TypeId::new(10),
+        "Player",
+        "score",
+        method,
+        FunctionId::new(20),
+        "main",
+    );
 
     let linked = Linker::new()
         .link_test_program(&program)
@@ -360,6 +359,7 @@ fn linker_maps_globals_map_keys_and_field_slots_without_instruction_names() {
         UnlinkedInstructionKind::MakeRecord {
             dst: Register(2),
             type_name: "Player".to_owned(),
+            type_id: Some(TypeId::new(40)),
             fields: vec![
                 ("score".to_owned(), Register(0)),
                 ("level".to_owned(), Register(1)),
@@ -428,9 +428,10 @@ fn linker_maps_globals_map_keys_and_field_slots_without_instruction_names() {
 }
 
 #[test]
-fn linker_uses_script_metadata_for_schema_identity_overrides() {
+fn linker_uses_resolved_schema_identity_overrides() {
     let sources = [ModuleSource::new(
         SourceId::new(31),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::reward"),
         r#"
 #[id(101)]
@@ -449,6 +450,11 @@ enum Outcome {
         UnlinkedInstructionKind::MakeRecord {
             dst: Register(0),
             type_name: "game::reward::Reward".to_owned(),
+            type_id: Some(vela_def::script_type_id(
+                vela_package::PackageId::anonymous().as_str(),
+                "game::reward::Reward",
+                Some(101),
+            )),
             fields: vec![("count".to_owned(), Register(1))],
         },
     ));
@@ -456,7 +462,18 @@ enum Outcome {
         UnlinkedInstructionKind::MakeEnum {
             dst: Register(0),
             enum_name: "game::reward::Outcome".to_owned(),
+            type_id: Some(vela_def::script_type_id(
+                vela_package::PackageId::anonymous().as_str(),
+                "game::reward::Outcome",
+                None,
+            )),
             variant: "Granted".to_owned(),
+            variant_id: Some(vela_def::script_variant_id(
+                vela_package::PackageId::anonymous().as_str(),
+                "game::reward::Outcome",
+                "Granted",
+                Some(201),
+            )),
             fields: vec![("value".to_owned(), Register(1))],
         },
     ));
@@ -481,8 +498,23 @@ enum Outcome {
         })
         .expect("linked Granted variant");
 
-    assert_eq!(reward.id, TypeId::new(101));
-    assert_eq!(granted.id, VariantId::new(201));
+    assert_eq!(
+        reward.id,
+        vela_def::script_type_id(
+            vela_package::PackageId::anonymous().as_str(),
+            "game::reward::Reward",
+            Some(101),
+        )
+    );
+    assert_eq!(
+        granted.id,
+        vela_def::script_variant_id(
+            vela_package::PackageId::anonymous().as_str(),
+            "game::reward::Outcome",
+            "Granted",
+            Some(201),
+        )
+    );
 }
 
 #[test]

@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use vela_package::ModulePath;
 
 use super::*;
 
@@ -31,6 +32,7 @@ fn build_configured(
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SWEEP_SOURCE,
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("verifier_sweep"),
         source,
     ));

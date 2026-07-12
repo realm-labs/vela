@@ -2,7 +2,6 @@ use super::*;
 use crate::value::Value as RuntimeValue;
 use std::cell::{Cell, RefCell};
 use vela_bytecode::{CacheSiteId, CacheSiteKind, HostTargetPlanId};
-use vela_def::script_function_id;
 use vela_host::resolved::{HostAccessOp, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess};
 use vela_host::target::HostTargetPlan;
 
@@ -864,70 +863,27 @@ fn host_field_read_error_keeps_instruction_source_span() {
 
 #[test]
 fn runtime_errors_include_script_call_stack() {
-    let leaf_error_span = Span::new(SourceId::new(1), 80, 86);
-    let leaf_call_span = Span::new(SourceId::new(1), 44, 50);
-    let middle_call_span = Span::new(SourceId::new(1), 18, 26);
-    let mut program = UnlinkedProgram::new();
+    let source = r#"fn main() {
+    return middle();
+}
 
-    let mut main = UnlinkedCodeObject::new("main", 1);
-    main.push_instruction(
-        UnlinkedInstruction::new(UnlinkedInstructionKind::CallFunction {
-            dst: Register(0),
-            target: script_function_id("middle"),
-            name: "middle".to_owned(),
-            mode: vela_bytecode::ScriptCallMode::Checked,
-            args: Vec::new(),
-        })
-        .with_span(middle_call_span),
-    );
-    main.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
-        src: Register(0),
-    }));
-    program.insert_function(main);
+fn middle() {
+    return leaf();
+}
 
-    let mut middle = UnlinkedCodeObject::new("middle", 1);
-    middle.push_instruction(
-        UnlinkedInstruction::new(UnlinkedInstructionKind::CallFunction {
-            dst: Register(0),
-            target: script_function_id("leaf"),
-            name: "leaf".to_owned(),
-            mode: vela_bytecode::ScriptCallMode::Checked,
-            args: Vec::new(),
-        })
-        .with_span(leaf_call_span),
+fn leaf() {
+    return 10 / 0;
+}
+"#;
+    let source_id = SourceId::new(1);
+    let leaf_error_start = source.find("10 / 0").expect("leaf error expression");
+    let leaf_error_span = Span::new(
+        source_id,
+        leaf_error_start as u32,
+        (leaf_error_start + "10 / 0".len()) as u32,
     );
-    middle.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
-        src: Register(0),
-    }));
-    program.insert_function(middle);
-
-    let mut leaf = UnlinkedCodeObject::new("leaf", 3);
-    let ten = leaf.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(10)));
-    let zero = leaf.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(0)));
-    leaf.push_instruction(UnlinkedInstruction::new(
-        UnlinkedInstructionKind::LoadConst {
-            dst: Register(0),
-            constant: ten,
-        },
-    ));
-    leaf.push_instruction(UnlinkedInstruction::new(
-        UnlinkedInstructionKind::LoadConst {
-            dst: Register(1),
-            constant: zero,
-        },
-    ));
-    leaf.push_instruction(
-        UnlinkedInstruction::new(UnlinkedInstructionKind::Div {
-            dst: Register(2),
-            lhs: Register(0),
-            rhs: Register(1),
-        })
-        .with_span(leaf_error_span),
-    );
-    leaf.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
-        src: Register(2),
-    }));
-    program.insert_function(leaf);
+    let program = compile_standard_program_source(source_id, source)
+        .expect("call-stack source should compile");
 
     let linked = link_test_program(&program);
     let error = Vm::new()

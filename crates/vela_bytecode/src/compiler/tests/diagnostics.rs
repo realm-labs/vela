@@ -1,4 +1,5 @@
 use super::*;
+use vela_package::ModulePath;
 
 #[test]
 fn compiler_rejects_duplicate_declarations_from_hir() {
@@ -299,6 +300,7 @@ fn compiler_rejects_private_imports_before_codegen() {
     let error = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 use game::reward::secret
@@ -309,6 +311,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             r#"
 fn secret() {
@@ -330,16 +333,19 @@ fn compiler_rejects_duplicate_imports_before_codegen() {
     let error = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             "pub fn grant() { return 1; }",
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::config"),
             "pub const BONUS = 2",
         ),
         ModuleSource::new(
             SourceId::new(3),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 use game::reward::grant as reward
@@ -363,11 +369,13 @@ fn compiler_rejects_import_conflicts_before_codegen() {
     let error = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             "pub fn grant() { return 1; }",
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 use game::reward::grant

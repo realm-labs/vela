@@ -6,7 +6,8 @@ use vela_analysis::{
     registry::RegistryFacts,
     type_fact::TypeFact,
 };
-use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph, ModulePath};
+use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
+use vela_package::{ModuleKey, ModulePath};
 
 use super::{
     CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind,
@@ -20,6 +21,7 @@ use crate::symbol_ref::{schema_variant_symbol, source_enum_variant_symbol};
 pub(super) fn module_path_completion_items(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
+    current_module: &ModuleKey,
     context: &CompletionContext,
 ) -> Vec<CompletionItem> {
     let facts = AnalysisFacts::from_module_graph(graph);
@@ -29,7 +31,10 @@ pub(super) fn module_path_completion_items(
     let mut analysis_items = global_completions(schema);
     let mut service_items = Vec::new();
     let base_path = ModulePath::from_qualified(base);
-    if let Some(module) = graph.module_id(&base_path) {
+    let base_key = graph
+        .resolve_module_path(current_module, base_path.segments())
+        .unwrap_or_else(|| ModuleKey::new(current_module.package.clone(), base_path));
+    if let Some(module) = graph.module_id(&base_key) {
         analysis_items.extend(
             graph
                 .declarations_in_module(module)
@@ -39,7 +44,7 @@ pub(super) fn module_path_completion_items(
     }
     analysis_items.extend(
         graph
-            .module_child_segments(&base_path)
+            .module_child_segments(&base_key)
             .into_iter()
             .map(|segment| AnalysisCompletionItem {
                 label: format!("{base}::{segment}"),
@@ -49,6 +54,7 @@ pub(super) fn module_path_completion_items(
     );
     service_items.extend(script_enum_variant_path_completions(
         graph,
+        &current_module.package,
         base,
         context.prefix(),
     ));
@@ -110,11 +116,12 @@ fn service_item_for_module_path(
 
 fn script_enum_variant_path_completions(
     graph: &ModuleGraph,
+    package: &vela_package::PackageId,
     base: &str,
     prefix: &str,
 ) -> Vec<CompletionItem> {
     graph
-        .declarations_by_path_base(base, DeclarationKind::Enum)
+        .declarations_by_path_base(package, base, DeclarationKind::Enum)
         .into_iter()
         .filter_map(|declaration| {
             let owner = declaration_owner_label(graph, declaration)?;

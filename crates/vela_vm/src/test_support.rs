@@ -8,10 +8,11 @@ use vela_bytecode::compiler::{
     compile_program,
 };
 use vela_common::{Diagnostic, SourceId};
-use vela_hir::module_graph::{ModulePath, ModuleSource};
+use vela_hir::module_graph::ModuleSource;
 use vela_hir::source_ingestion::{
     HirSourceBuildError, build_module_source_set, build_single_source,
 };
+use vela_package::{ModuleKey, ModulePath, PackageId};
 use vela_registry::RegistryCompileView;
 
 pub(crate) fn compile_test_function(
@@ -52,7 +53,10 @@ fn compile_test_function_inner(
 ) -> CompileResult<UnlinkedCodeObject> {
     let built = build_single_source(source, text).map_err(frontend_error)?;
     let function = built
-        .function(&ModulePath::root(), function_name)
+        .function(
+            &ModuleKey::new(PackageId::anonymous(), ModulePath::root()),
+            function_name,
+        )
         .ok_or_else(|| function_not_found(function_name))?;
     compile_function(FunctionCompilationRequest {
         function,

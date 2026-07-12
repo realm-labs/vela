@@ -4,7 +4,8 @@ use vela_common::{HostMethodId, HostTypeId, PrimitiveTag, ShapeId, SourceId};
 use vela_def::{FieldId, FunctionId, MethodId, TypeId};
 use vela_hir::body::{HirBody, HirExprKind, HirLiteral};
 use vela_hir::ids::HirExprId;
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
+use vela_package::ModulePath;
 
 use crate::{
     CompileCallTarget, CompileCalleeTarget, CompileFieldAccess, CompileFieldDescriptor,
@@ -73,6 +74,7 @@ fn build_host_with_configuration(
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(91),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("host_builder"),
         source,
     ));
@@ -1141,6 +1143,7 @@ fn assignment_operator_target(source: &str) -> OperatorTargetFact {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(92),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("host_operator"),
         source,
     ));

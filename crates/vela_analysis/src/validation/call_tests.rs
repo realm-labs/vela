@@ -2,7 +2,8 @@ use vela_common::{SourceId, Span};
 use vela_def::FunctionId;
 use vela_hir::body::HirExprKind;
 use vela_hir::ids::{HirDeclId, HirExprId};
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
+use vela_package::ModulePath;
 
 use super::{CallParameterSlotValueFact, CallPlacementModeFact, CallSourceArgumentFact};
 use crate::callable::{
@@ -372,6 +373,7 @@ fn graph(source: SourceId, text: &str) -> (ModuleGraph, HirDeclId) {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         source,
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game"),
         text,
     ));

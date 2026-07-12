@@ -1,5 +1,6 @@
 use super::*;
 use crate::{FrameSlotInfo, FrameSlotKind};
+use vela_package::ModulePath;
 
 fn frame_slot<'a>(
     code: &'a UnlinkedCodeObject,
@@ -271,6 +272,7 @@ fn compiler_evaluates_imported_scalar_const_expressions_across_modules() {
     let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 use game::tuning::BONUS as REWARD
@@ -281,6 +283,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::tuning"),
             r#"
 use game::base::BASE as START
@@ -289,6 +292,7 @@ pub const BONUS: i64 = START + 1;
         ),
         ModuleSource::new(
             SourceId::new(3),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::base"),
             r#"
 pub const BASE: i64 = 4;
@@ -310,6 +314,7 @@ fn compiler_evaluates_const_map_key_paths_through_hir_facts() {
     let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 use game::config::DEFAULTS
@@ -320,6 +325,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::config"),
             r#"
 enum RewardKey { Small }

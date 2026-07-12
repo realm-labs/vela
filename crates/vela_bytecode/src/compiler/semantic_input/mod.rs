@@ -72,6 +72,19 @@ pub(super) struct PreparedSemanticInput {
 }
 
 impl PreparedSemanticInput {
+    pub(super) fn script_method_target(
+        &self,
+        node: HirNodeId,
+        method: MethodId,
+        function: FunctionId,
+    ) -> Option<MethodExecutableTarget> {
+        self.targets
+            .methods_for_node(node)
+            .iter()
+            .copied()
+            .find(|target| target.method == method && target.function == function)
+    }
+
     pub(super) fn lowering_inputs<'a>(
         &'a self,
         graph: &'a ModuleGraph,
@@ -322,12 +335,15 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
                         .ok_or_else(registry_input_error)?;
                     roots.push((*function, body));
                 }
-                roots.extend(
-                    self.request
-                        .script_methods
-                        .methods()
-                        .map(|method| (script_function_id(&method.symbol_seed()), method.body())),
-                );
+                roots.extend(self.request.script_methods.methods().map(|method| {
+                    (
+                        script_function_id(
+                            method.owner().package().as_str(),
+                            &method.symbol_seed(),
+                        ),
+                        method.body(),
+                    )
+                }));
             }
         }
         roots.sort_unstable();
@@ -413,12 +429,10 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
             .into_iter()
             .map(|(function, body)| {
                 let mut input = ExecutableAnalysisInput::new(function, body);
-                if let Some(method) = self
-                    .request
-                    .script_methods
-                    .methods()
-                    .find(|method| script_function_id(&method.symbol_seed()) == function)
-                {
+                if let Some(method) = self.request.script_methods.methods().find(|method| {
+                    script_function_id(method.owner().package().as_str(), &method.symbol_seed())
+                        == function
+                }) {
                     input = input.with_receiver(self.executable_receiver(method));
                 }
                 if let Some(contexts) = literal_contexts.get(&function) {

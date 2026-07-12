@@ -51,7 +51,7 @@ global current: Any;
 
     assert_eq!(targets.compilation_roots().count(), 0);
     let reward = targets
-        .type_by_name("script::Reward")
+        .type_by_name(&format!("{}::Reward", vela_package::PackageId::anonymous()))
         .expect("record descriptor");
     assert_eq!(reward.fields.len(), 1);
     assert!(
@@ -61,7 +61,7 @@ global current: Any;
             .all(|field| targets.field_descriptor(*field).is_some())
     );
     let state = targets
-        .type_by_name("script::State")
+        .type_by_name(&format!("{}::State", vela_package::PackageId::anonymous()))
         .expect("enum descriptor");
     assert_eq!(state.variants.len(), 2);
     for variant in &state.variants {
@@ -140,7 +140,7 @@ fn guarded(dynamic, required: i64, fallback: i64 = dynamic) -> i64 {
         "current",
     );
     let field = targets
-        .type_by_name("script::Reward")
+        .type_by_name(&format!("{}::Reward", vela_package::PackageId::anonymous()))
         .expect("Reward descriptor")
         .fields[0];
     assert_guard_context(
@@ -194,7 +194,7 @@ struct Reward { amount: i64 = BASE + 1 }
     let field = fixture
         .input
         .targets()
-        .type_by_name("script::Reward")
+        .type_by_name(&format!("{}::Reward", vela_package::PackageId::anonymous()))
         .expect("record descriptor")
         .fields[0];
     assert_eq!(

@@ -1,22 +1,29 @@
 use std::collections::{BTreeMap, btree_map::Entry};
 
 use vela_common::{SourceId, Span};
-use vela_package::ModulePath;
+use vela_package::{ModulePath, PackageId};
 
 use crate::ids::{HirDeclId, HirNodeId, ModuleId};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ModuleSource {
     pub id: SourceId,
+    pub package: PackageId,
     pub path: ModulePath,
     pub text: String,
 }
 
 impl ModuleSource {
     #[must_use]
-    pub fn new(id: SourceId, path: ModulePath, text: impl Into<String>) -> Self {
+    pub fn new(
+        id: SourceId,
+        package: PackageId,
+        path: ModulePath,
+        text: impl Into<String>,
+    ) -> Self {
         Self {
             id,
+            package,
             path,
             text: text.into(),
         }

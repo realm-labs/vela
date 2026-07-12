@@ -1,8 +1,9 @@
 use std::collections::BTreeMap;
+use vela_package::ModulePath;
 
 use vela_common::SourceId;
 use vela_hir::body::{HirBinaryOp, HirExprKind};
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
 
 use crate::facts::AnalysisFacts;
 use crate::semantic_facts::OperatorTargetFact;
@@ -20,6 +21,7 @@ fn main(unknown, dynamic: Any, typed: i64) {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         source,
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game"),
         text,
     ));

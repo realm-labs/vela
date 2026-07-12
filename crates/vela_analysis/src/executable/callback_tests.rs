@@ -2,7 +2,8 @@ use vela_common::SourceId;
 use vela_def::FunctionId;
 use vela_hir::body::{HirBody, HirBodyOwner, HirExpr, HirExprKind};
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId};
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
+use vela_package::ModulePath;
 
 use super::{
     ExecutableAnalysisGeneration, ExecutableAnalysisInput, ExecutableAnalysisView,
@@ -605,6 +606,7 @@ fn graph(source: u32, text: &str) -> (ModuleGraph, HirDeclId) {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(source),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game"),
         text,
     ));

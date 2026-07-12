@@ -1,8 +1,9 @@
 use vela_common::SourceId;
 use vela_hir::module_graph::{
-    Declaration, DeclarationKind, ImportResolution, ModuleGraph, ModulePath, ModuleSource,
+    Declaration, DeclarationKind, ImportResolution, ModuleGraph, ModuleSource,
 };
 use vela_hir::type_hint::EnumVariantFieldsHint;
+use vela_package::ModulePath;
 
 const CORE_LANGUAGE: &str = include_str!("../../../tests/fixtures/conformance/core_language.vela");
 const REWARD_MODULE: &str = include_str!("../../../tests/fixtures/conformance/reward_module.vela");
@@ -11,11 +12,13 @@ fn conformance_graph() -> ModuleGraph {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(1),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("conformance::core"),
         CORE_LANGUAGE,
     ));
     graph.add_source(ModuleSource::new(
         SourceId::new(2),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("conformance::reward"),
         REWARD_MODULE,
     ));

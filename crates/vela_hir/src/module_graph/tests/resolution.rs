@@ -1,6 +1,113 @@
 use super::*;
 
 #[test]
+fn crate_import_resolves_within_current_package() {
+    let package = PackageId::new("com.example.app").expect("package");
+    let mut graph = ModuleGraph::new();
+    graph.add_source(package_source(
+        1,
+        &package,
+        "helpers",
+        "pub fn normalize() { return 1; }",
+    ));
+    let main = graph.add_source(package_source(
+        2,
+        &package,
+        "main",
+        "use crate::helpers::normalize",
+    ));
+    graph.resolve_imports();
+
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+    assert!(matches!(
+        graph
+            .imports(main)
+            .and_then(|imports| imports[0].resolution),
+        Some(ImportResolution::Declaration(_))
+    ));
+}
+
+#[test]
+fn dependency_alias_resolves_to_direct_package() {
+    let app = PackageId::new("com.example.app").expect("app");
+    let library = PackageId::new("com.example.library").expect("library");
+    let alias = PackageAlias::new("lib").expect("alias");
+    let mut graph = ModuleGraph::with_package_dependencies(BTreeMap::from([(
+        app.clone(),
+        BTreeMap::from([(alias, library.clone())]),
+    )]));
+    graph.add_source(package_source(
+        1,
+        &library,
+        "api",
+        "pub fn value() { return 1; }",
+    ));
+    let main = graph.add_source(package_source(2, &app, "main", "use lib::api::value"));
+    graph.resolve_imports();
+
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+    assert!(
+        graph
+            .imports(main)
+            .is_some_and(|imports| imports[0].resolution.is_some())
+    );
+}
+
+#[test]
+fn transitive_dependency_requires_direct_alias() {
+    let app = PackageId::new("com.example.app").expect("app");
+    let middle = PackageId::new("com.example.middle").expect("middle");
+    let leaf = PackageId::new("com.example.leaf").expect("leaf");
+    let mut graph = ModuleGraph::with_package_dependencies(BTreeMap::from([
+        (
+            app.clone(),
+            BTreeMap::from([(PackageAlias::new("middle").expect("alias"), middle.clone())]),
+        ),
+        (
+            middle,
+            BTreeMap::from([(PackageAlias::new("leaf").expect("alias"), leaf.clone())]),
+        ),
+    ]));
+    graph.add_source(package_source(
+        1,
+        &leaf,
+        "api",
+        "pub fn value() { return 1; }",
+    ));
+    graph.add_source(package_source(2, &app, "main", "use leaf::api::value"));
+    graph.resolve_imports();
+
+    assert!(
+        graph
+            .diagnostics()
+            .iter()
+            .any(|diagnostic| { diagnostic.code.as_deref() == Some("hir::unresolved_module") })
+    );
+}
+
+#[test]
+fn same_module_path_in_two_packages_does_not_collide() {
+    let first = PackageId::new("com.example.first").expect("first");
+    let second = PackageId::new("com.example.second").expect("second");
+    let mut graph = ModuleGraph::new();
+    let first_module = graph.add_source(package_source(1, &first, "shared", "pub fn one() {}"));
+    let second_module = graph.add_source(package_source(2, &second, "shared", "pub fn two() {}"));
+
+    assert_ne!(first_module, second_module);
+    assert_eq!(
+        graph.module_id(&ModuleKey::new(first, ModulePath::from_qualified("shared"))),
+        Some(first_module)
+    );
+    assert_eq!(
+        graph.module_id(&ModuleKey::new(
+            second,
+            ModulePath::from_qualified("shared")
+        )),
+        Some(second_module)
+    );
+}
+
+#[test]
 fn indexes_top_level_declarations_with_stable_ids() {
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(source(
@@ -65,11 +172,14 @@ fn indexes_declarations_and_virtual_module_children_for_completion() {
     ));
 
     assert_eq!(
-        graph.module_child_segments(&ModulePath::root()),
+        graph.module_child_segments(&ModuleKey::new(PackageId::anonymous(), ModulePath::root())),
         vec!["game"]
     );
     assert_eq!(
-        graph.module_child_segments(&ModulePath::from_qualified("game")),
+        graph.module_child_segments(&ModuleKey::new(
+            PackageId::anonymous(),
+            ModulePath::from_qualified("game")
+        )),
         vec!["player", "quest", "reward"]
     );
     assert_eq!(
@@ -129,7 +239,7 @@ fn indexes_declarations_and_virtual_module_children_for_completion() {
                     "quest".to_owned(),
                     "QuestState".to_owned()
                 ],
-                &[],
+                &ModuleKey::new(PackageId::anonymous(), ModulePath::root()),
                 DeclarationKind::Enum,
             )
             .map(|declaration| declaration.name.as_str()),
@@ -137,7 +247,11 @@ fn indexes_declarations_and_virtual_module_children_for_completion() {
     );
     assert_eq!(
         graph
-            .declarations_by_path_base("QuestState", DeclarationKind::Enum)
+            .declarations_by_path_base(
+                &PackageId::anonymous(),
+                "QuestState",
+                DeclarationKind::Enum,
+            )
             .into_iter()
             .map(|declaration| declaration.name.as_str())
             .collect::<Vec<_>>(),

@@ -899,7 +899,14 @@ fn make_reward() {
         .expect("cached value method should run");
 
     assert_eq!(score_method.name(), "score");
-    assert_eq!(score_method.receiver_type(), "Reward");
+    assert_eq!(
+        score_method.receiver_type(),
+        vela_def::script_type_id(
+            vela_package::PackageId::anonymous().as_str(),
+            "Reward",
+            None,
+        )
+    );
     assert_eq!(
         runtime.value_to_owned(&score_by_name),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(17)))

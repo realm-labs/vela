@@ -647,7 +647,14 @@ fn program_verify_checks_all_functions() {
 #[test]
 fn program_verify_rejects_missing_script_method_function() {
     let mut program = UnlinkedProgram::new();
-    program.insert_script_method("Player", "bonus", vela_def::MethodId::new(7), "missing");
+    program.insert_script_method(
+        vela_def::TypeId::new(3),
+        "Player",
+        "bonus",
+        vela_def::MethodId::new(7),
+        vela_def::FunctionId::new(8),
+        "missing",
+    );
 
     assert_eq!(
         program.verify(),

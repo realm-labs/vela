@@ -410,23 +410,23 @@ where
         self.check_vela_value_runtime(receiver)?;
         let method = method.into();
         let receiver_type = self
-            .value_type_name(receiver)
+            .value_type_id(receiver)
             .ok_or_else(|| unknown_method(method.clone()))?;
         let method_id = self
             .image
             .program_image()
             .script_methods()
-            .get(&receiver_type, &method)
+            .get(receiver_type, &method)
             .map(|method| method.id)
             .ok_or_else(|| unknown_method(method.clone()))?;
         let code = self
             .image
             .program_image()
             .script_methods()
-            .get_by_id(&receiver_type, method_id)
+            .get_by_id(receiver_type, method_id)
             .and_then(|method| {
                 let linked_program = self.image.linked_program();
-                let function = linked_program.entry_point_by_name(&method.function)?;
+                let function = linked_program.entry_point_by_id(method.function_id)?;
                 linked_program.function(function)
             })
             .ok_or_else(|| unknown_method(method.clone()))?;
@@ -772,8 +772,8 @@ where
         self.image.current_program_version_id()
     }
 
-    fn value_type_name(&self, value: &VelaValue) -> Option<String> {
-        value_type_name(
+    fn value_type_id(&self, value: &VelaValue) -> Option<vela_def::TypeId> {
+        value_type_id(
             &value.value,
             &self.state.script_globals.heap,
             self.image.engine().registry().as_ref(),
@@ -921,20 +921,24 @@ fn runtime_vm(
     }
 }
 
-fn value_type_name(
+fn value_type_id(
     value: &Value,
     heap: &ScriptHeap,
     registry: &vela_reflect::registry::TypeRegistry,
-) -> Option<String> {
+) -> Option<vela_def::TypeId> {
     match value {
         Value::HeapRef(reference) => match heap.get(*reference)? {
-            HeapValue::Record { type_name, .. } => Some(type_name.clone()),
-            HeapValue::Enum { enum_name, .. } => Some(enum_name.clone()),
+            HeapValue::Record {
+                identity: Some(identity),
+                ..
+            } => Some(identity.type_id),
+            HeapValue::Enum {
+                identity: Some(identity),
+                ..
+            } => Some(identity.type_id),
             _ => None,
         },
-        Value::HostRef(reference) => registry
-            .type_of_host(*reference)
-            .map(|desc| desc.key.name.clone()),
+        Value::HostRef(reference) => registry.type_of_host(*reference).map(|desc| desc.key.id),
         _ => None,
     }
 }

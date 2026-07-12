@@ -378,7 +378,8 @@ mod tests {
     use vela_common::{HostMethodId, HostTypeId, SourceId};
     use vela_def::{FieldId, FunctionId, TypeId, VariantId};
     use vela_hir::body::HirExprKind;
-    use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+    use vela_hir::module_graph::{ModuleGraph, ModuleSource};
+    use vela_package::ModulePath;
     use vela_reflect::access::{FieldAccess, MethodAccess, MethodEffectSet};
     use vela_reflect::registry::{
         FieldDesc, HostIndexCapability, MethodDesc, TypeDesc, TypeKey, TypeKind, VariantDesc,
@@ -658,6 +659,7 @@ mod tests {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game"),
             "fn lookup(state: QuestIndex, key: i64) -> i64 { return state[key]; }",
         ));

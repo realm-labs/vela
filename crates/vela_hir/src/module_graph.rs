@@ -10,7 +10,7 @@ mod syntax_summary;
 mod validation;
 
 use vela_common::{Diagnostic, SourceId, Span};
-pub use vela_package::ModulePath;
+use vela_package::{ModuleKey, ModulePath, PackageAlias, PackageId};
 use vela_syntax::ast::SyntaxSourceFile;
 use vela_syntax::parse::parse_source_with_id;
 use vela_syntax::{Parse as SyntaxParse, SyntaxKind};
@@ -38,7 +38,7 @@ use self::syntax_summary::SyntaxModuleSummary;
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct HirModule {
     id: ModuleId,
-    path: ModulePath,
+    key: ModuleKey,
     source: SourceId,
     source_hash: Option<u64>,
     declarations: DeclarationIndex,
@@ -48,8 +48,9 @@ struct HirModule {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ModuleGraph {
     modules: Vec<HirModule>,
-    module_by_path: BTreeMap<ModulePath, ModuleId>,
-    module_children: BTreeMap<ModulePath, BTreeSet<String>>,
+    module_by_key: BTreeMap<ModuleKey, ModuleId>,
+    module_children: BTreeMap<ModuleKey, BTreeSet<String>>,
+    package_dependencies: BTreeMap<PackageId, BTreeMap<PackageAlias, PackageId>>,
     declarations: BTreeMap<HirDeclId, Declaration>,
     declarations_by_name: BTreeMap<String, BTreeSet<HirDeclId>>,
     declarations_by_kind: BTreeMap<DeclarationKind, BTreeSet<HirDeclId>>,
@@ -95,6 +96,16 @@ impl ModuleGraph {
         Self::default()
     }
 
+    #[must_use]
+    pub fn with_package_dependencies(
+        package_dependencies: BTreeMap<PackageId, BTreeMap<PackageAlias, PackageId>>,
+    ) -> Self {
+        Self {
+            package_dependencies,
+            ..Self::default()
+        }
+    }
+
     pub fn add_source(&mut self, source: ModuleSource) -> ModuleId {
         let parsed = parse_source_with_id(source.id, &source.text);
         self.add_parsed_source(source, &parsed)
@@ -110,6 +121,7 @@ impl ModuleGraph {
         let source_hash = stable_source_hash(&source.text);
         self.add_syntax_source(
             source.id,
+            source.package,
             source.path,
             diagnostics,
             Some(source_hash),
@@ -120,6 +132,7 @@ impl ModuleGraph {
     fn add_syntax_source(
         &mut self,
         source: SourceId,
+        package: PackageId,
         path: ModulePath,
         diagnostics: Vec<Diagnostic>,
         source_hash: Option<u64>,
@@ -128,25 +141,26 @@ impl ModuleGraph {
         let module = self.next_module_id();
         let module_span = syntax_summary.module_span();
 
-        if let Some(existing) = self.module_by_path.get(&path).copied() {
+        let key = ModuleKey::new(package, path);
+        if let Some(existing) = self.module_by_key.get(&key).copied() {
             self.diagnostics.push(
-                Diagnostic::error(format!("duplicate module `{}`", path.join()))
+                Diagnostic::error(format!("duplicate module `{}`", key.path.join()))
                     .with_code("hir::duplicate_module")
                     .with_label(
                         module_span,
-                        format!("module `{}` is declared more than once", path.join()),
+                        format!("module `{}` is declared more than once", key.path.join()),
                     ),
             );
             self.diagnostics.extend(diagnostics);
             return existing;
         }
-        self.module_by_path.insert(path.clone(), module);
-        self.index_module_path(&path);
+        self.module_by_key.insert(key.clone(), module);
+        self.index_module_path(&key);
         self.diagnostics.extend(diagnostics);
 
         let mut hir_module = HirModule {
             id: module,
-            path,
+            key,
             source,
             source_hash,
             declarations: DeclarationIndex::default(),
@@ -509,12 +523,12 @@ impl ModuleGraph {
         id
     }
 
-    fn index_module_path(&mut self, path: &ModulePath) {
-        let segments = path.segments();
+    fn index_module_path(&mut self, key: &ModuleKey) {
+        let segments = key.path.segments();
         for index in 0..segments.len() {
             let parent = ModulePath::new(segments[..index].iter().cloned());
             self.module_children
-                .entry(parent)
+                .entry(ModuleKey::new(key.package.clone(), parent))
                 .or_default()
                 .insert(segments[index].clone());
         }
@@ -522,7 +536,7 @@ impl ModuleGraph {
 
     fn collect_module_completion_labels(
         &self,
-        base: &ModulePath,
+        base: &ModuleKey,
         label_prefix: String,
         labels: &mut BTreeSet<String>,
     ) {
@@ -536,9 +550,13 @@ impl ModuleGraph {
                 format!("{label_prefix}::{child}")
             };
             labels.insert(label.clone());
-            let mut child_path = base.segments().to_vec();
+            let mut child_path = base.path.segments().to_vec();
             child_path.push(child.clone());
-            self.collect_module_completion_labels(&ModulePath::new(child_path), label, labels);
+            self.collect_module_completion_labels(
+                &ModuleKey::new(base.package.clone(), ModulePath::new(child_path)),
+                label,
+                labels,
+            );
         }
     }
 
@@ -697,12 +715,13 @@ impl ModuleGraph {
 
     fn lookup_import_declaration(
         &self,
+        requesting_key: &ModuleKey,
         requesting_module: ModuleId,
         path: &[String],
     ) -> Option<HirDeclId> {
         let (name, module_segments) = path.split_last()?;
-        let module_path = ModulePath::new(module_segments.iter().cloned());
-        let module_id = self.module_by_path.get(&module_path).copied()?;
+        let module_key = self.import_module_key_from(requesting_key, module_segments);
+        let module_id = self.module_by_key.get(&module_key).copied()?;
         let declaration = self
             .module(module_id)
             .and_then(|declarations| declarations.get(name))?;
@@ -724,13 +743,22 @@ impl ModuleGraph {
             );
             return None;
         };
-        let module_path = ModulePath::new(module_segments.iter().cloned());
-        let Some(module_id) = self.module_by_path.get(&module_path).copied() else {
+        let Some(module_key) = self.import_module_key(requesting_module, module_segments) else {
             self.diagnostics.push(
-                Diagnostic::error(format!("unresolved module `{}`", module_path.join()))
+                Diagnostic::error(
+                    "import does not name the current package or a direct dependency",
+                )
+                .with_code("hir::unknown_package_alias")
+                .with_span(span),
+            );
+            return None;
+        };
+        let Some(module_id) = self.module_by_key.get(&module_key).copied() else {
+            self.diagnostics.push(
+                Diagnostic::error(format!("unresolved module `{}`", module_key.path.join()))
                     .with_code("hir::unresolved_module")
                     .with_span(span)
-                    .with_label(span, self.module_candidate_label(&module_path)),
+                    .with_label(span, self.module_candidate_label(&module_key)),
             );
             return None;
         };
@@ -748,7 +776,7 @@ impl ModuleGraph {
                     Diagnostic::error(format!(
                         "declaration `{}` in module `{}` is private",
                         metadata.name,
-                        module_path.join()
+                        module_key.path.join()
                     ))
                     .with_code("hir::private_import")
                     .with_span(span)
@@ -765,7 +793,7 @@ impl ModuleGraph {
                     Diagnostic::error(format!(
                         "unresolved import `{}` in module `{}`",
                         name,
-                        module_path.join()
+                        module_key.path.join()
                     ))
                     .with_code("hir::unresolved_import")
                     .with_span(span)
@@ -797,18 +825,53 @@ impl ModuleGraph {
         }
     }
 
-    fn module_candidate_label(&self, path: &ModulePath) -> String {
-        let wanted = path.join();
+    fn module_candidate_label(&self, key: &ModuleKey) -> String {
+        let wanted = key.path.join();
         let candidates = self
-            .module_by_path
+            .module_by_key
             .keys()
-            .map(ModulePath::join)
+            .filter(|candidate| candidate.package == key.package)
+            .map(|candidate| candidate.path.join())
             .collect::<Vec<_>>();
         if let Some(candidate) = closest_name(&wanted, candidates.iter().map(String::as_str)) {
             format!("did you mean module `{candidate}`?")
         } else {
             "no similar modules found".to_owned()
         }
+    }
+
+    fn import_module_key(
+        &self,
+        requesting_module: ModuleId,
+        module_segments: &[String],
+    ) -> Option<ModuleKey> {
+        let requesting = self
+            .modules
+            .get(usize::try_from(requesting_module.get()).ok()?)?;
+        Some(self.import_module_key_from(&requesting.key, module_segments))
+    }
+
+    fn import_module_key_from(
+        &self,
+        requesting: &ModuleKey,
+        module_segments: &[String],
+    ) -> ModuleKey {
+        let (package, path_segments) = match module_segments.split_first() {
+            Some((first, rest)) if first == "crate" => (requesting.package.clone(), rest),
+            Some((first, rest)) => {
+                let alias = PackageAlias::new(first).ok();
+                match alias.and_then(|alias| {
+                    self.package_dependencies
+                        .get(&requesting.package)
+                        .and_then(|dependencies| dependencies.get(&alias))
+                }) {
+                    Some(package) => (package.clone(), rest),
+                    None => (requesting.package.clone(), module_segments),
+                }
+            }
+            None => (requesting.package.clone(), module_segments),
+        };
+        ModuleKey::new(package, ModulePath::new(path_segments.iter().cloned()))
     }
 
     fn next_module_id(&self) -> ModuleId {

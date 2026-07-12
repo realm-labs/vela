@@ -29,8 +29,43 @@ fn project_with_roots(files: &[SourceFileSnapshot], roots: &[&str]) -> ProjectSo
     assemble_project_sources(&config, files, &Workspace::new().snapshot())
 }
 
-fn module(name: &str) -> ModulePath {
-    ModulePath::from_qualified(name)
+#[test]
+fn language_service_symbols_keep_package_ownership() {
+    let first = PackageId::new("com.example.first").expect("first package");
+    let second = PackageId::new("com.example.second").expect("second package");
+    let config = WorkspaceConfig::workspace([
+        WorkspaceRoot::for_package("/workspace/first", first.clone()),
+        WorkspaceRoot::for_package("/workspace/second", second.clone()),
+    ]);
+    let project = assemble_project_sources(
+        &config,
+        &[
+            file(
+                "/workspace/first/shared.vela",
+                "pub fn value() { return 1; }",
+            ),
+            file(
+                "/workspace/second/shared.vela",
+                "pub fn value() { return 2; }",
+            ),
+        ],
+        &Workspace::new().snapshot(),
+    );
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project);
+
+    let module_symbols = databases
+        .workspace_symbols("shared")
+        .into_iter()
+        .filter(|symbol| symbol.name() == "shared")
+        .map(|symbol| symbol.symbol().clone())
+        .collect::<Vec<_>>();
+    assert!(module_symbols.contains(&SymbolRef::Source(format!("{first}::shared"))));
+    assert!(module_symbols.contains(&SymbolRef::Source(format!("{second}::shared"))));
+}
+
+fn module(name: &str) -> ModuleKey {
+    ModuleKey::new(PackageId::anonymous(), ModulePath::from_qualified(name))
 }
 
 #[test]

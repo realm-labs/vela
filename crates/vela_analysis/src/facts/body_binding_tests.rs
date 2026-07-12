@@ -1,7 +1,8 @@
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingResolution, LocalBindingKind};
 use vela_hir::body::HirBodyOwner;
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
+use vela_package::ModulePath;
 
 use super::AnalysisFacts;
 use crate::type_fact::TypeFact;
@@ -28,6 +29,7 @@ impl Reward {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         source,
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game"),
         text,
     ));

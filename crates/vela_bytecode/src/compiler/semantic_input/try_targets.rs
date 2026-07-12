@@ -263,12 +263,19 @@ mod tests {
     #[test]
     fn standard_and_script_try_family_ids_keep_package_qualified_identity() {
         let standard = DefPath::ty("std", std::iter::empty::<&str>(), "Result");
-        let script = script_type_path("Result");
+        let script = script_type_path(vela_package::PackageId::anonymous().as_str(), "Result");
         let standard_id = vela_stdlib::std_type_id("Result").expect("Result ID");
-        let script_id = script_type_id("Result", None);
+        let script_id = script_type_id(
+            vela_package::PackageId::anonymous().as_str(),
+            "Result",
+            None,
+        );
 
         assert_eq!(standard.canonical_name(), "std::Result");
-        assert_eq!(script.canonical_name(), "script::Result");
+        assert_eq!(
+            script.canonical_name(),
+            format!("{}::Result", vela_package::PackageId::anonymous())
+        );
         assert_eq!(
             crate::compiler::semantic_input::external::source_name(&standard),
             "Result"

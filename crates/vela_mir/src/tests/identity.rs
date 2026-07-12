@@ -2,7 +2,8 @@ use vela_analysis::executable::{ExecutableAnalysisGeneration, ExecutableAnalysis
 use vela_common::{PrimitiveTag, ScalarValue, SourceId, Span};
 use vela_def::{FunctionId, MethodId, TypeId};
 use vela_hir::ids::{HirBodyId, HirCaptureId, HirExprId, HirLocalId, HirNodeId, HirParamId};
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
+use vela_package::ModulePath;
 
 use crate::*;
 
@@ -204,6 +205,7 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(9),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game"),
         "fn main(value: i64) -> i64 { return value; } fn helper() {}",
     ));

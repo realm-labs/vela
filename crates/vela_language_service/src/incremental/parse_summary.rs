@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 
-use vela_hir::module_graph::{ModulePath, stable_source_hash};
+use vela_hir::module_graph::stable_source_hash;
+use vela_package::ModulePath;
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::{
     AstNode, SyntaxConstItem, SyntaxEnumItem, SyntaxEnumVariant, SyntaxFunctionItem,

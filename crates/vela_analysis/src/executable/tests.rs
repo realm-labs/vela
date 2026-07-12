@@ -2,7 +2,8 @@ use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_def::FunctionId;
 use vela_hir::body::{HirBinaryOp, HirBody, HirBodyOwner, HirExprKind, HirLiteral, HirPatternKind};
 use vela_hir::ids::HirExprId;
-use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModuleSource};
+use vela_package::ModulePath;
 
 use super::{ExecutableAnalysisGeneration, ExecutableAnalysisInput, ExecutableReceiverInput};
 use crate::facts::AnalysisFacts;
@@ -38,6 +39,7 @@ fn unrelated(hidden) { let outside = hidden; return 99; }
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         source,
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game"),
         text,
     ));
@@ -233,6 +235,7 @@ fn contextual_literals_rebuild_scoped_semantic_operator_facts() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         source,
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game"),
         text,
     ));
@@ -330,6 +333,7 @@ fn main(unresolved) {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         source,
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game"),
         text,
     ));
@@ -397,6 +401,7 @@ fn main(value) {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         source,
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game"),
         text,
     ));

@@ -3,9 +3,11 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use vela_common::SourceId;
-use vela_hir::module_graph::{ModulePath, ModuleSource};
+use vela_hir::module_graph::ModuleSource;
 use vela_package::{ManifestFileId, parse_manifest};
-use vela_package::{PackageGraph, PackageGraphError};
+use vela_package::{
+    ModuleKey, ModulePath, PackageAlias, PackageGraph, PackageGraphError, PackageId,
+};
 
 use crate::{DocumentId, SourceVersion, WorkspaceSnapshot};
 
@@ -22,17 +24,34 @@ pub fn load_package_project(
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorkspaceRoot {
     path: Arc<str>,
+    package: PackageId,
 }
 
 impl WorkspaceRoot {
     #[must_use]
     pub fn new(path: impl Into<Arc<str>>) -> Self {
-        Self { path: path.into() }
+        Self {
+            path: path.into(),
+            package: PackageId::anonymous(),
+        }
+    }
+
+    #[must_use]
+    pub fn for_package(path: impl Into<Arc<str>>, package: PackageId) -> Self {
+        Self {
+            path: path.into(),
+            package,
+        }
     }
 
     #[must_use]
     pub fn path(&self) -> &str {
         &self.path
+    }
+
+    #[must_use]
+    pub const fn package(&self) -> &PackageId {
+        &self.package
     }
 }
 
@@ -117,8 +136,14 @@ impl WorkspaceConfig {
         let roots = graph
             .packages()
             .values()
-            .flat_map(|package| package.source_roots.iter())
-            .map(|root| WorkspaceRoot::new(normalize_document_path(&root.display().to_string())))
+            .flat_map(|package| {
+                package.source_roots.iter().map(|root| {
+                    WorkspaceRoot::for_package(
+                        normalize_document_path(&root.display().to_string()),
+                        package.id.clone(),
+                    )
+                })
+            })
             .collect();
         Self {
             roots,
@@ -213,8 +238,9 @@ pub struct ConfigParseResult {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProjectSources {
     sources: Vec<ModuleSource>,
-    document_modules: BTreeMap<DocumentId, ModulePath>,
+    document_modules: BTreeMap<DocumentId, ModuleKey>,
     document_versions: BTreeMap<DocumentId, SourceVersion>,
+    package_dependencies: BTreeMap<PackageId, BTreeMap<PackageAlias, PackageId>>,
     diagnostics: Vec<ProjectDiagnostic>,
 }
 
@@ -225,13 +251,20 @@ impl ProjectSources {
     }
 
     #[must_use]
-    pub fn document_modules(&self) -> &BTreeMap<DocumentId, ModulePath> {
+    pub fn document_modules(&self) -> &BTreeMap<DocumentId, ModuleKey> {
         &self.document_modules
     }
 
     #[must_use]
     pub fn document_versions(&self) -> &BTreeMap<DocumentId, SourceVersion> {
         &self.document_versions
+    }
+
+    #[must_use]
+    pub const fn package_dependencies(
+        &self,
+    ) -> &BTreeMap<PackageId, BTreeMap<PackageAlias, PackageId>> {
+        &self.package_dependencies
     }
 
     #[must_use]
@@ -259,7 +292,9 @@ pub fn assemble_package_project_sources(
     snapshot: &WorkspaceSnapshot,
 ) -> ProjectSources {
     let config = WorkspaceConfig::from_package_graph(graph, SchemaConfig::none());
-    assemble_workspace_sources(&config, files, snapshot)
+    let mut sources = assemble_workspace_sources(&config, files, snapshot);
+    sources.package_dependencies = graph.dependency_map().clone();
+    sources
 }
 
 fn assemble_workspace_sources(
@@ -285,33 +320,33 @@ fn assemble_workspace_sources(
     }
 
     let mut diagnostics = Vec::new();
-    let mut module_inputs = BTreeMap::<ModulePath, (DocumentId, Arc<str>)>::new();
+    let mut module_inputs = BTreeMap::<ModuleKey, (DocumentId, Arc<str>)>::new();
     let mut document_modules = BTreeMap::new();
     for (document_id, text) in inputs {
-        let Some(module_path) = module_path_for_roots(config.roots(), &document_id) else {
+        let Some(module_key) = module_key_for_roots(config.roots(), &document_id) else {
             continue;
         };
         if let Some((previous, _)) =
-            module_inputs.insert(module_path.clone(), (document_id.clone(), text))
+            module_inputs.insert(module_key.clone(), (document_id.clone(), text))
         {
             diagnostics.push(ProjectDiagnostic::new(
                 Some(document_id.clone()),
                 format!(
                     "duplicate module `{}` also provided by `{}`",
-                    module_path.join(),
+                    module_key.path.join(),
                     previous.as_str()
                 ),
             ));
         }
-        document_modules.insert(document_id, module_path);
+        document_modules.insert(document_id, module_key);
     }
 
     let sources = module_inputs
         .into_iter()
         .enumerate()
-        .filter_map(|(index, (path, (_, text)))| {
+        .filter_map(|(index, (key, (_, text)))| {
             source_id(index)
-                .map(|id| ModuleSource::new(id, path, text.as_ref()))
+                .map(|id| ModuleSource::new(id, key.package, key.path, text.as_ref()))
                 .or_else(|| {
                     diagnostics.push(ProjectDiagnostic::new(
                         None,
@@ -326,6 +361,7 @@ fn assemble_workspace_sources(
         sources,
         document_modules,
         document_versions,
+        package_dependencies: BTreeMap::new(),
         diagnostics,
     }
 }
@@ -349,6 +385,7 @@ fn assemble_scratch_source(
             sources: Vec::new(),
             document_modules: BTreeMap::new(),
             document_versions: BTreeMap::new(),
+            package_dependencies: BTreeMap::new(),
             diagnostics: vec![ProjectDiagnostic::new(
                 Some(document.clone()),
                 "scratch source is missing",
@@ -356,9 +393,9 @@ fn assemble_scratch_source(
         };
     };
 
-    let module_path = ModulePath::from_qualified("main");
+    let module_key = ModuleKey::new(PackageId::scratch(), ModulePath::from_qualified("main"));
     let mut document_modules = BTreeMap::new();
-    document_modules.insert(document.clone(), module_path.clone());
+    document_modules.insert(document.clone(), module_key.clone());
     let mut document_versions = BTreeMap::new();
     let version = snapshot
         .document(document)
@@ -367,16 +404,18 @@ fn assemble_scratch_source(
     ProjectSources {
         sources: vec![ModuleSource::new(
             SourceId::new(1),
-            module_path,
+            module_key.package,
+            module_key.path,
             text.as_ref(),
         )],
         document_modules,
         document_versions,
+        package_dependencies: BTreeMap::new(),
         diagnostics: Vec::new(),
     }
 }
 
-fn module_path_for_roots(roots: &[WorkspaceRoot], document_id: &DocumentId) -> Option<ModulePath> {
+fn module_key_for_roots(roots: &[WorkspaceRoot], document_id: &DocumentId) -> Option<ModuleKey> {
     let document_path = normalize_document_path(document_id.as_str());
     let document_path = canonicalize_existing_ancestor(Path::new(&document_path))
         .unwrap_or_else(|| PathBuf::from(&document_path))
@@ -393,8 +432,9 @@ fn module_path_for_roots(roots: &[WorkspaceRoot], document_id: &DocumentId) -> O
                 .replace('\\', "/");
             let relative = strip_root(&root_path, &document_path)?;
             module_path_from_relative(relative)
+                .map(|path| ModuleKey::new(root.package().clone(), path))
         })
-        .max_by_key(|path| path.segments().len())
+        .max_by_key(|key| key.path.segments().len())
 }
 
 fn module_path_from_relative(relative: &str) -> Option<ModulePath> {
@@ -546,7 +586,9 @@ fn is_absolute_document_path(path: &str) -> bool {
 
 #[must_use]
 pub fn missing_import_diagnostics(project: &ProjectSources) -> Vec<ProjectDiagnostic> {
-    let mut graph = vela_hir::module_graph::ModuleGraph::new();
+    let mut graph = vela_hir::module_graph::ModuleGraph::with_package_dependencies(
+        project.package_dependencies().clone(),
+    );
     for source in project.sources() {
         graph.add_source(source.clone());
     }
@@ -554,7 +596,12 @@ pub fn missing_import_diagnostics(project: &ProjectSources) -> Vec<ProjectDiagno
     let source_ids = project
         .sources()
         .iter()
-        .map(|source| (source.id, source.path.clone()))
+        .map(|source| {
+            (
+                source.id,
+                ModuleKey::new(source.package.clone(), source.path.clone()),
+            )
+        })
         .collect::<BTreeMap<_, _>>();
     let document_by_module = project
         .document_modules()
@@ -635,6 +682,25 @@ mod tests {
         assert_eq!(project.sources().len(), 1);
         assert_eq!(project.sources()[0].path.join(), "main");
         assert_eq!(project.sources()[0].text, "pub fn main() { return 1 }");
+    }
+
+    #[test]
+    fn language_service_scratch_document_uses_reserved_explicit_package() {
+        let document = DocumentId::from("/scratch/current.vela");
+        let project = assemble_project_sources(
+            &WorkspaceConfig::scratch(document.clone()),
+            &[file(document.as_str(), "pub fn main() {}")],
+            &Workspace::new().snapshot(),
+        );
+
+        assert_eq!(project.sources()[0].package, PackageId::scratch());
+        assert_eq!(
+            project.document_modules().get(&document),
+            Some(&ModuleKey::new(
+                PackageId::scratch(),
+                ModulePath::from_qualified("main"),
+            ))
+        );
     }
 
     #[test]

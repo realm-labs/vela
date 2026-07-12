@@ -14,7 +14,7 @@ use vela_bytecode::{
 };
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId, Span};
 use vela_def::{FieldId, FunctionId, MethodId, TypeId, VariantId};
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
 use vela_host::access::HostAccess;
 use vela_host::error::HostErrorKind;
 use vela_host::mock::MockStateAdapter;
@@ -22,6 +22,7 @@ use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;
 use vela_host::target::HostTargetPlan;
 use vela_host::value::HostValue;
+use vela_package::ModulePath;
 use vela_reflect::access::{FieldAccess, FunctionAccess, MethodAccess, MethodEffectSet};
 use vela_reflect::candidates::ReflectCandidate;
 use vela_reflect::error::ReflectErrorKind;
@@ -410,6 +411,7 @@ fn script_module_reflection_registry() -> TypeRegistry {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(1),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::reward"),
         r#"
 #[doc("Grant reward.")]

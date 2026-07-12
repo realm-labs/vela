@@ -1120,7 +1120,9 @@ fn call_method_uses_standard_option_method_id_before_name_fallback() {
         UnlinkedInstructionKind::MakeEnum {
             dst: Register(0),
             enum_name: "Option".into(),
+            type_id: vela_stdlib::std_type_id("Option"),
             variant: "None".into(),
+            variant_id: vela_stdlib::std_variant_id("Option", "None"),
             fields: Vec::new(),
         },
     ));
@@ -1150,7 +1152,9 @@ fn call_method_uses_standard_result_method_id_before_name_fallback() {
         UnlinkedInstructionKind::MakeEnum {
             dst: Register(0),
             enum_name: "Result".into(),
+            type_id: vela_stdlib::std_type_id("Result"),
             variant: "Err".into(),
+            variant_id: vela_stdlib::std_variant_id("Result", "Err"),
             fields: Vec::new(),
         },
     ));

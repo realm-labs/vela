@@ -2,7 +2,8 @@ use vela_analysis::executable::{ExecutableAnalysisGeneration, ExecutableAnalysis
 use vela_common::{PrimitiveTag, ScalarValue, SourceId, Span};
 use vela_def::{FunctionId, GlobalId, TypeId};
 use vela_hir::ids::{HirBodyId, HirDeclId};
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
+use vela_package::ModulePath;
 
 use crate::{
     CompileFunctionAccess, CompileFunctionClass, CompileFunctionDescriptor,
@@ -100,6 +101,7 @@ fn build(source: &str, parameters: &[&str]) -> crate::MirProgram {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SOURCE,
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("verifier_builder"),
         source,
     ));

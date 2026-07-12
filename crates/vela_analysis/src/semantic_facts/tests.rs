@@ -6,7 +6,8 @@ mod pattern_fields;
 use vela_common::SourceId;
 use vela_hir::body::HirExprKind;
 use vela_hir::ids::HirExprId;
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
+use vela_package::ModulePath;
 
 use super::{CallTargetFact, MemberTargetFact};
 use crate::facts::AnalysisFacts;
@@ -18,6 +19,7 @@ fn runtime_record_members_are_dynamic_only_when_the_owner_schema_is_absent() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(81),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game"),
         r#"
         struct SourceRecord { present: i64 }
@@ -79,6 +81,7 @@ fn missing_method_targets_require_a_closed_receiver_universe() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         source,
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game"),
         text,
     ));
@@ -132,6 +135,7 @@ fn nested_try_preserves_a_statically_never_payload() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(82),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game"),
         "fn main() { let nested = fixture::failure()??; }",
     ));

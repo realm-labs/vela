@@ -856,34 +856,34 @@ cargo clippy -p vela_package -p vela_language_service -p vela_engine --all-targe
 
 ## 20. Phase 2: Package Identity Hard Switch
 
-- [ ] Use the single `vela_package::ModulePath` owner established in Phase 1;
+- [x] Use the single `vela_package::ModulePath` owner established in Phase 1;
       do not add an HIR alias or second module-path type.
-- [ ] Make `ModuleSource`/package source inputs carry `PackageId`.
-- [ ] Index HIR modules and children by `ModuleKey`.
-- [ ] Resolve `crate::` and direct dependency aliases.
-- [ ] Reject implicit transitive imports and unknown aliases.
-- [ ] Make declaration qualification and visibility package-aware.
-- [ ] Replace hard-coded `script` identity helpers with PackageId-aware DefPath
+- [x] Make `ModuleSource`/package source inputs carry `PackageId`.
+- [x] Index HIR modules and children by `ModuleKey`.
+- [x] Resolve `crate::` and direct dependency aliases.
+- [x] Reject implicit transitive imports and unknown aliases.
+- [x] Make declaration qualification and visibility package-aware.
+- [x] Replace hard-coded `script` identity helpers with PackageId-aware DefPath
       construction for every script definition kind.
-- [ ] Update HIR method catalogs, analysis facts, MIR/bytecode semantic input,
+- [x] Update HIR method catalogs, analysis facts, MIR/bytecode semantic input,
       linker indexes, ProgramImage indexes, reflection, hot reload, Engine,
       language service, LSP, examples, and tests in the same cutover.
-- [ ] Make convenience source/file/dir APIs build an explicit reserved package.
-- [ ] Delete package-unaware source-set, module lookup, and stable-ID paths.
-- [ ] Add architecture guards against the hard-coded script package and
+- [x] Make convenience source/file/dir APIs build an explicit reserved package.
+- [x] Delete package-unaware source-set, module lookup, and stable-ID paths.
+- [x] Add architecture guards against the hard-coded script package and
       ModulePath-only global indexes returning.
 
 Focused tests:
 
-- [ ] `crate_import_resolves_within_current_package`
-- [ ] `dependency_alias_resolves_to_direct_package`
-- [ ] `transitive_dependency_requires_direct_alias`
-- [ ] `same_module_path_in_two_packages_does_not_collide`
-- [ ] `same_symbol_path_in_two_packages_has_distinct_stable_ids`
-- [ ] `single_source_uses_reserved_explicit_package`
-- [ ] `language_service_scratch_document_uses_reserved_explicit_package`
-- [ ] `package_aware_identity_survives_compile_link_runtime_and_reload`
-- [ ] `language_service_symbols_keep_package_ownership`
+- [x] `crate_import_resolves_within_current_package`
+- [x] `dependency_alias_resolves_to_direct_package`
+- [x] `transitive_dependency_requires_direct_alias`
+- [x] `same_module_path_in_two_packages_does_not_collide`
+- [x] `same_symbol_path_in_two_packages_has_distinct_stable_ids`
+- [x] `single_source_uses_reserved_explicit_package`
+- [x] `language_service_scratch_document_uses_reserved_explicit_package`
+- [x] `package_aware_identity_survives_compile_link_runtime_and_reload`
+- [x] `language_service_symbols_keep_package_ownership`
 
 Mandatory zero-hit gates:
 

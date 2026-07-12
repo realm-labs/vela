@@ -5,9 +5,11 @@ use crate::{
     UnlinkedInstructionKind, UnlinkedProgram,
 };
 use vela_def::{
-    DefPath, FieldId, FunctionId, MethodId, script_inherent_method_id, script_trait_method_id,
+    DefPath, FieldId, FunctionId, MethodId, TypeId, script_inherent_method_id,
+    script_trait_method_id, script_type_id,
 };
 use vela_host::target::HostPathPart;
+use vela_package::{ModuleKey, ModulePath, PackageId};
 
 fn semantic_diagnostic_codes(error: TestCompileError) -> Vec<String> {
     error
@@ -18,11 +20,19 @@ fn semantic_diagnostic_codes(error: TestCompileError) -> Vec<String> {
 }
 
 fn stable_test_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {
-    script_trait_method_id(trait_name, method_name)
+    script_trait_method_id(PackageId::anonymous().as_str(), trait_name, method_name)
 }
 
 fn stable_test_inherent_method_id(type_name: &str, method_name: &str) -> MethodId {
-    script_inherent_method_id(type_name, method_name)
+    script_inherent_method_id(PackageId::anonymous().as_str(), type_name, method_name)
+}
+
+fn stable_test_type_id(type_name: &str) -> TypeId {
+    script_type_id(PackageId::anonymous().as_str(), type_name, None)
+}
+
+fn anonymous_module(path: ModulePath) -> ModuleKey {
+    ModuleKey::new(PackageId::anonymous(), path)
 }
 
 #[test]
@@ -59,7 +69,7 @@ fn graph_requests_compile_program_and_stable_function_roots() {
     )
     .expect("HIR source set");
     let function = built
-        .function(&ModulePath::root(), "main")
+        .function(&anonymous_module(ModulePath::root()), "main")
         .expect("stable main declaration");
     let options = CompilerOptions::default();
     let program = compile_program(ProgramCompilationRequest {
@@ -101,8 +111,16 @@ fn compilation_requests_reject_invalid_scope_and_function_roots() {
         "const VALUE = 1; fn first() { return VALUE; }",
     )
     .expect("single source set");
-    assert!(built.function(&ModulePath::root(), "VALUE").is_none());
-    assert!(built.function(&ModulePath::root(), "missing").is_none());
+    assert!(
+        built
+            .function(&anonymous_module(ModulePath::root()), "VALUE")
+            .is_none()
+    );
+    assert!(
+        built
+            .function(&anonymous_module(ModulePath::root()), "missing")
+            .is_none()
+    );
 }
 
 #[test]
@@ -118,10 +136,10 @@ fn function_selection_is_bound_to_its_source_set_even_when_hir_ids_collide() {
     )
     .expect("beta source set");
     let alpha = alpha
-        .function(&ModulePath::root(), "alpha")
+        .function(&anonymous_module(ModulePath::root()), "alpha")
         .expect("alpha function");
     let beta = beta
-        .function(&ModulePath::root(), "beta")
+        .function(&anonymous_module(ModulePath::root()), "beta")
         .expect("beta function");
     assert_eq!(alpha.declaration(), beta.declaration());
 
@@ -138,13 +156,17 @@ fn function_selection_is_bound_to_its_source_set_even_when_hir_ids_collide() {
 fn one_module_graph_keeps_module_qualified_function_compilation() {
     let sources = [ModuleSource::new(
         SourceId::new(35),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::one"),
         "fn main() { return 1; }",
     )];
     let built =
         vela_hir::source_ingestion::build_module_source_set(&sources).expect("one-module graph");
     let function = built
-        .function(&ModulePath::from_qualified("game::one"), "main")
+        .function(
+            &anonymous_module(ModulePath::from_qualified("game::one")),
+            "main",
+        )
         .expect("qualified main function");
 
     let code = compile_function(FunctionCompilationRequest {
@@ -161,11 +183,13 @@ fn module_graph_request_keeps_roots_methods_and_metadata_in_one_scope() {
     let sources = [
         ModuleSource::new(
             SourceId::new(41),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::one"),
             "struct One {} impl One { fn value(self) { return 1; } } fn first() { return 1; }",
         ),
         ModuleSource::new(
             SourceId::new(42),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::two"),
             "struct Two {} impl Two { fn value(self) { return 2; } } fn second() { return 2; }",
         ),
@@ -181,8 +205,16 @@ fn module_graph_request_keeps_roots_methods_and_metadata_in_one_scope() {
 
     assert!(program.function("game::one::first").is_some());
     assert!(program.function("game::two::second").is_some());
-    assert!(program.script_method("game::one::One", "value").is_some());
-    assert!(program.script_method("game::two::Two", "value").is_some());
+    assert!(
+        program
+            .script_method(stable_test_type_id("game::one::One"), "value")
+            .is_some()
+    );
+    assert!(
+        program
+            .script_method(stable_test_type_id("game::two::Two"), "value")
+            .is_some()
+    );
     assert_eq!(
         program
             .script_metadata()

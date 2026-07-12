@@ -9,9 +9,7 @@ use vela_analysis::type_fact::TypeFact;
 use vela_common::Span;
 use vela_hir::attributes::HirAttribute;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding, LocalBindingKind};
-use vela_hir::module_graph::{
-    Declaration, DeclarationKind, Import, ImportResolution, ModuleGraph, ModulePath,
-};
+use vela_hir::module_graph::{Declaration, DeclarationKind, Import, ImportResolution, ModuleGraph};
 use vela_hir::type_hint::{
     EnumVariantFieldsHint, EnumVariantHint, FunctionSignature, ImplMetadataKind,
     ImplMethodMetadata, StructFieldHint, TraitMethodMetadata,
@@ -259,6 +257,7 @@ impl LanguageServiceDatabases {
             }
             module_hover(
                 graph,
+                graph.module_key(module)?,
                 &import.path[..=segment],
                 range,
                 target.symbol().cloned(),
@@ -269,13 +268,14 @@ impl LanguageServiceDatabases {
 
 fn module_hover(
     graph: &ModuleGraph,
+    current_module: &vela_package::ModuleKey,
     path: &[String],
     range: DiagnosticRange,
     symbol: Option<SymbolRef>,
 ) -> Option<Hover> {
-    let module_path = ModulePath::new(path.iter().cloned());
-    graph.module_id(&module_path)?;
-    let label = module_path.join();
+    let module_key = graph.resolve_module_path(current_module, path)?;
+    graph.module_id(&module_key)?;
+    let label = module_key.path.join();
     Some(Hover::new(
         range,
         label.clone(),

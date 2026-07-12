@@ -3,7 +3,8 @@ use vela_common::{ScalarValue, ShapeId, SourceId};
 use vela_def::{FieldId, FunctionId, MethodId, TypeId, VariantId};
 use vela_hir::body::{HirExprKind, HirField};
 use vela_hir::ids::{HirExprId, HirNodeId};
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
+use vela_package::ModulePath;
 
 use crate::{
     CompileFieldAccess, CompileFieldDescriptor, CompileFieldTarget, CompileFunctionAccess,
@@ -83,6 +84,7 @@ fn lower_selected(
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(82),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("assignments"),
         source,
     ));

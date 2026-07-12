@@ -1,4 +1,5 @@
 use vela_analysis::completion::CompletionKind as AnalysisCompletionKind;
+use vela_package::ModuleKey;
 
 use crate::{DisplayParts, TextRange};
 
@@ -273,7 +274,7 @@ pub(super) struct MemberReceiver {
 pub(super) struct RecordConstructor {
     pub(super) path: Vec<String>,
     pub(super) field_names: Vec<String>,
-    pub(super) current_module: Vec<String>,
+    pub(super) current_module: Option<ModuleKey>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

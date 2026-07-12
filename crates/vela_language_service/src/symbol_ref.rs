@@ -1,8 +1,9 @@
 use vela_common::Span;
 use vela_hir::binding::LocalBinding;
 use vela_hir::ids::HirDeclId;
-use vela_hir::module_graph::{Declaration, ModuleGraph, ModulePath};
+use vela_hir::module_graph::{Declaration, ModuleGraph};
 use vela_hir::type_hint::ImplMetadataKind;
+use vela_package::ModuleKey;
 
 use crate::{DocumentId, TextRange};
 
@@ -120,14 +121,8 @@ pub(crate) fn source_symbol_for_declaration(
     source_symbol(qualified_source_declaration_name(graph, declaration))
 }
 
-pub(crate) fn source_module_symbol(path: &ModulePath) -> SymbolRef {
-    source_symbol(path.join())
-}
-
-pub(crate) fn source_module_symbol_from_segments<'a>(
-    segments: impl IntoIterator<Item = &'a String>,
-) -> SymbolRef {
-    source_module_symbol(&ModulePath::new(segments.into_iter().cloned()))
+pub(crate) fn source_module_symbol(key: &ModuleKey) -> SymbolRef {
+    source_symbol(format!("{}::{}", key.package, key.path.join()))
 }
 
 pub(crate) fn source_symbol_for_declaration_id(

@@ -212,13 +212,15 @@ mod tests {
     use vela_common::{HostTypeId, SourceId};
     use vela_def::{FieldId, TypeId};
     use vela_hir::binding::LocalBindingKind;
-    use vela_hir::module_graph::{ModulePath, ModuleSource};
+    use vela_hir::module_graph::ModuleSource;
+    use vela_package::ModulePath;
 
     #[test]
     fn analysis_facts_collect_function_signature_and_local_hints() {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game"),
             r#"
             struct Player { level: i64 }
@@ -268,6 +270,7 @@ mod tests {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game"),
             "enum QuestState { Active, Done }",
         ));
@@ -291,6 +294,7 @@ mod tests {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game"),
             r#"
             const BONUS: i64 = 3
@@ -347,6 +351,7 @@ mod tests {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game"),
             r#"
             fn main(enemy: Enemy) {
@@ -385,6 +390,7 @@ mod tests {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(19),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game"),
             r#"
             fn main() {
@@ -477,6 +483,7 @@ mod tests {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game"),
             r#"
             struct Player { level: i64 }
@@ -534,6 +541,7 @@ mod tests {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game"),
             r#"
             struct Reward { count: i64 }
@@ -793,6 +801,7 @@ mod tests {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(17),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game"),
             r#"
             struct Reward { count: i64 }
@@ -914,6 +923,7 @@ mod tests {
         let mut graph = ModuleGraph::new();
         graph.add_source(ModuleSource::new(
             SourceId::new(18),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game"),
             r#"
             fn main(player: Player, slot: i64) -> i64 {

@@ -16,6 +16,7 @@ fn runs_compiled_cross_module_imported_script_call() {
     let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 use game::reward::grant as give_reward
@@ -27,6 +28,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             r#"
 pub fn grant(amount) {
@@ -48,6 +50,7 @@ fn runs_compiled_same_named_cross_module_functions() {
     let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 use game::reward::main as reward_main
@@ -59,6 +62,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             r#"
 pub fn main() {
@@ -80,6 +84,7 @@ fn runs_compiled_cross_module_imported_const_expression() {
     let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 use game::tuning::BONUS as REWARD
@@ -91,6 +96,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::tuning"),
             r#"
 use game::base::BASE as START
@@ -100,6 +106,7 @@ pub const BONUS: i64 = START + 1;
         ),
         ModuleSource::new(
             SourceId::new(3),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::base"),
             r#"
 pub const BASE: i64 = 4;
@@ -119,6 +126,7 @@ fn runs_compiled_cross_module_imported_type_constructors() {
     let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 use game::reward::Reward as Prize
@@ -135,6 +143,7 @@ fn make_damage() {
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             r#"
 pub struct Reward { count: i64 }
@@ -142,6 +151,7 @@ pub struct Reward { count: i64 }
         ),
         ModuleSource::new(
             SourceId::new(3),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::damage"),
             r#"
 pub enum Damage { Physical { amount: i64 } }
@@ -182,6 +192,7 @@ fn runs_cross_module_imported_constructor_defaults() {
     let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 use game::reward::Reward as Prize
@@ -197,6 +208,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             r#"
 pub const BASE_COUNT: i64 = 5
@@ -221,6 +233,7 @@ fn runs_compiled_cross_module_imported_match_patterns() {
     let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 use game::damage::Damage as Hit
@@ -237,6 +250,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::damage"),
             r#"
 pub enum Damage {
@@ -259,6 +273,7 @@ fn qualified_source_record_patterns_keep_the_legacy_false_arm_and_budget() {
     let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 fn main() {
@@ -269,6 +284,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             "pub struct Reward { amount: i64 }",
         ),
@@ -311,6 +327,7 @@ fn runs_compiled_cross_module_qualified_function_and_const_paths() {
     let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(1),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 fn main() {
@@ -320,6 +337,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(2),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             r#"
 pub fn grant() {
@@ -329,6 +347,7 @@ pub fn grant() {
         ),
         ModuleSource::new(
             SourceId::new(3),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::config"),
             r#"
 pub const BONUS: i64 = 5;

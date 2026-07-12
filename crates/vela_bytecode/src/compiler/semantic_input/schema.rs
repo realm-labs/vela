@@ -30,7 +30,7 @@ use crate::compiler::error::CompileResult;
 
 impl GenerationBuilder<'_, '_> {
     pub(super) fn insert_script_schema(&mut self) -> CompileResult<()> {
-        self.index_script_types();
+        self.index_script_types()?;
         let declarations = self
             .request
             .type_symbols
@@ -43,11 +43,17 @@ impl GenerationBuilder<'_, '_> {
         self.insert_script_globals()
     }
 
-    fn index_script_types(&mut self) {
+    fn index_script_types(&mut self) -> CompileResult<()> {
         for (declaration, symbol) in self.request.type_symbols {
+            let package = self
+                .request
+                .graph
+                .declaration(*declaration)
+                .and_then(|metadata| self.request.graph.module_package(metadata.module))
+                .ok_or_else(registry_input_error)?;
             let explicit =
                 schema_id_attr(self.request.graph.declaration_attrs(*declaration)).map(u128::from);
-            let id = script_type_id(symbol, explicit);
+            let id = script_type_id(package.as_str(), symbol, explicit);
             self.type_ids.insert(*declaration, id);
             self.type_names.insert(id, symbol.clone());
             if let Some(shape) = self.request.graph.struct_shape(*declaration) {
@@ -65,6 +71,7 @@ impl GenerationBuilder<'_, '_> {
                     self.variant_ids.insert(
                         (*declaration, variant.name.clone()),
                         script_variant_id(
+                            package.as_str(),
                             symbol,
                             &variant.name,
                             schema_id_attr(&variant.attrs).map(u128::from),
@@ -73,6 +80,7 @@ impl GenerationBuilder<'_, '_> {
                 }
             }
         }
+        Ok(())
     }
 
     fn insert_script_type(&mut self, declaration: HirDeclId) -> CompileResult<()> {
@@ -83,6 +91,12 @@ impl GenerationBuilder<'_, '_> {
             .ok_or_else(registry_input_error)?;
         let type_id = self.type_ids[&declaration];
         let type_name = self.type_names[&type_id].clone();
+        let package = self
+            .request
+            .graph
+            .module_package(metadata.module)
+            .ok_or_else(registry_input_error)?
+            .as_str();
         let origin = MirSourceOrigin::declaration(declaration, metadata.span);
         let mut type_fields = Vec::new();
         let mut type_variants = Vec::new();
@@ -100,6 +114,7 @@ impl GenerationBuilder<'_, '_> {
                     .enumerate()
                     .map(|(order, field)| {
                         let id = script_field_id(
+                            package,
                             &type_name,
                             None,
                             &field.name,
@@ -169,6 +184,7 @@ impl GenerationBuilder<'_, '_> {
                     let mut field_ids = Vec::new();
                     for (field_order, field) in fields.iter().enumerate() {
                         let id = script_field_id(
+                            package,
                             &type_name,
                             Some(&variant.name),
                             &field.name,
@@ -251,7 +267,7 @@ impl GenerationBuilder<'_, '_> {
                 declaration,
                 CompileTypeDescriptor {
                     id: type_id,
-                    canonical_name: script_type_path(&type_name).canonical_name(),
+                    canonical_name: script_type_path(package, &type_name).canonical_name(),
                     runtime_name: type_name,
                     class: match metadata.kind {
                         DeclarationKind::Struct => CompileTypeClass::ScriptRecord,
@@ -289,7 +305,12 @@ impl GenerationBuilder<'_, '_> {
             else {
                 continue;
             };
-            let id = script_global_id(&symbol);
+            let package = self
+                .request
+                .graph
+                .module_package(metadata.module)
+                .ok_or_else(registry_input_error)?;
+            let id = script_global_id(package.as_str(), &symbol);
             let origin = MirSourceOrigin::declaration(declaration, metadata.span);
             self.remember_contract(&contract, origin);
             self.targets
@@ -346,7 +367,12 @@ impl GenerationBuilder<'_, '_> {
                 .graph
                 .function_signature(declaration)
                 .ok_or_else(registry_input_error)?;
-            let function = script_function_id(&symbol);
+            let package = self
+                .request
+                .graph
+                .module_package(metadata.module)
+                .ok_or_else(registry_input_error)?;
+            let function = script_function_id(package.as_str(), &symbol);
             self.function_ids.insert(declaration, function);
             let origin = MirSourceOrigin::body(body.id, body.origin.span);
             self.function_code_symbols.insert(function, symbol.clone());
@@ -409,7 +435,7 @@ impl GenerationBuilder<'_, '_> {
                         .map(|target| target.semantic)
                 })
                 .map_or_else(|| self.ensure_opaque_external_type(target_type, origin), Ok)?;
-            let function = script_function_id(&symbol);
+            let function = script_function_id(method.owner().package().as_str(), &symbol);
             self.function_code_symbols.insert(function, symbol.clone());
             let target = MethodExecutableTarget {
                 method: method.method_id(),

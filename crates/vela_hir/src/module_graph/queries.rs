@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 
 use vela_common::{Diagnostic, SourceId, Span};
+use vela_package::{ModuleKey, ModulePath, PackageId};
 
 use crate::attributes::HirAttribute;
 use crate::binding::BindingMap;
@@ -11,7 +12,7 @@ use crate::type_hint::{
     TraitShape,
 };
 
-use super::{Declaration, DeclarationIndex, DeclarationKind, Import, ModuleGraph, ModulePath};
+use super::{Declaration, DeclarationIndex, DeclarationKind, Import, ModuleGraph};
 
 impl ModuleGraph {
     #[must_use]
@@ -23,14 +24,24 @@ impl ModuleGraph {
 
     #[must_use]
     pub fn module_path(&self, module: ModuleId) -> Option<&ModulePath> {
-        self.modules
-            .get(usize::try_from(module.get()).ok()?)
-            .map(|module| &module.path)
+        self.module_key(module).map(|key| &key.path)
     }
 
     #[must_use]
-    pub fn module_id(&self, path: &ModulePath) -> Option<ModuleId> {
-        self.module_by_path.get(path).copied()
+    pub fn module_package(&self, module: ModuleId) -> Option<&PackageId> {
+        self.module_key(module).map(|key| &key.package)
+    }
+
+    #[must_use]
+    pub fn module_key(&self, module: ModuleId) -> Option<&ModuleKey> {
+        self.modules
+            .get(usize::try_from(module.get()).ok()?)
+            .map(|module| &module.key)
+    }
+
+    #[must_use]
+    pub fn module_id(&self, key: &ModuleKey) -> Option<ModuleId> {
+        self.module_by_key.get(key).copied()
     }
 
     pub fn module_ids(&self) -> impl Iterator<Item = ModuleId> + '_ {
@@ -362,31 +373,45 @@ impl ModuleGraph {
     pub fn declaration_by_type_path(
         &self,
         path: &[String],
-        current_module: &[String],
+        current_module: &ModuleKey,
         kind: DeclarationKind,
     ) -> Option<&Declaration> {
         let (name, module_segments) = path.split_last()?;
-        let module_path = if module_segments.is_empty() {
-            ModulePath::new(current_module.iter().cloned())
+        let module_key = if module_segments.is_empty() {
+            current_module.clone()
         } else {
-            ModulePath::new(module_segments.iter().cloned())
+            self.import_module_key_from(current_module, module_segments)
         };
-        let module = self.module_id(&module_path)?;
+        let module = self.module_id(&module_key)?;
         let declaration = self.module(module)?.get(name)?;
         self.declaration(declaration)
             .filter(|declaration| declaration.kind == kind)
     }
 
     #[must_use]
+    pub fn resolve_module_path(
+        &self,
+        current_module: &ModuleKey,
+        path: &[String],
+    ) -> Option<ModuleKey> {
+        Some(self.import_module_key_from(current_module, path))
+    }
+
+    #[must_use]
     pub fn declarations_by_path_base(
         &self,
+        package: &PackageId,
         base: &str,
         kind: DeclarationKind,
     ) -> Vec<&Declaration> {
         let path = ModulePath::from_qualified(base);
         if path.segments().len() > 1 {
             return self
-                .declaration_by_type_path(path.segments(), &[], kind)
+                .declaration_by_type_path(
+                    path.segments(),
+                    &ModuleKey::new(package.clone(), ModulePath::root()),
+                    kind,
+                )
                 .into_iter()
                 .collect();
         }
@@ -413,7 +438,7 @@ impl ModuleGraph {
     }
 
     #[must_use]
-    pub fn module_child_segments(&self, base: &ModulePath) -> Vec<&str> {
+    pub fn module_child_segments(&self, base: &ModuleKey) -> Vec<&str> {
         self.module_children
             .get(base)
             .map(|children| children.iter().map(String::as_str).collect())
@@ -423,7 +448,18 @@ impl ModuleGraph {
     #[must_use]
     pub fn module_completion_labels(&self) -> Vec<String> {
         let mut labels = BTreeSet::new();
-        self.collect_module_completion_labels(&ModulePath::root(), String::new(), &mut labels);
+        let packages = self
+            .modules
+            .iter()
+            .map(|module| module.key.package.clone())
+            .collect::<BTreeSet<_>>();
+        for package in packages {
+            self.collect_module_completion_labels(
+                &ModuleKey::new(package, ModulePath::root()),
+                String::new(),
+                &mut labels,
+            );
+        }
         labels.into_iter().collect()
     }
 

@@ -18,8 +18,9 @@ use vela_hir::body::HirBody;
 use vela_hir::ids::{HirDeclId, HirExprId};
 use vela_hir::{
     body::{HirPathKind, HirPathOwner},
-    module_graph::{DeclarationKind, ModuleGraph, ModulePath},
+    module_graph::{DeclarationKind, ModuleGraph},
 };
+use vela_package::{ModuleKey, ModulePath};
 
 mod hir_cursor;
 use hir_cursor::{hir_call_at, refine_cursor_with_hir};
@@ -234,6 +235,11 @@ impl<'a> QueryContext<'a> {
     }
 
     #[must_use]
+    pub fn module_key(&self) -> Option<&ModuleKey> {
+        self.source_record().map(SourceRecord::module_key)
+    }
+
+    #[must_use]
     pub const fn syntax_parse(&self) -> Option<&SyntaxParse<SyntaxSourceFile>> {
         self.syntax_parse
     }
@@ -283,10 +289,9 @@ impl<'a> QueryContext<'a> {
         databases: &LanguageServiceDatabases,
         callee_path: &[String],
     ) -> Vec<CallableFacts> {
-        let current_module = self
-            .module_path()
-            .map(|module| module.segments())
-            .unwrap_or_default();
+        let Some(current_module) = self.module_key() else {
+            return Vec::new();
+        };
         source_callable_facts_by_path(databases, callee_path, current_module)
     }
 

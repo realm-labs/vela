@@ -6,7 +6,7 @@ use vela_analysis::{
 use vela_common::Span;
 use vela_hir::{
     binding::{BindingMap, BindingResolution, LocalBinding},
-    module_graph::{Declaration, DeclarationKind, Import, ImportResolution, ModulePath},
+    module_graph::{Declaration, DeclarationKind, Import, ImportResolution},
     type_hint::ImplMetadataKind,
 };
 
@@ -16,7 +16,7 @@ use crate::{
     symbol_ref::{
         builtin_member_symbol, builtin_symbol, schema_member_symbol, schema_symbol,
         schema_variant_symbol, source_enum_variant_symbol, source_impl_method_symbol,
-        source_member_symbol, source_module_symbol_from_segments, source_symbol_for_declaration,
+        source_member_symbol, source_module_symbol, source_symbol_for_declaration,
     },
 };
 
@@ -206,7 +206,7 @@ fn symbol_ref_for_import(
     let range = query.identifier_range()?;
     let source_id = query.source_id()?;
     let graph = databases.hir_db().graph();
-    let module = graph.module_id(query.module_path()?)?;
+    let module = graph.module_id(query.module_key()?)?;
     graph.imports(module)?.iter().find_map(|import| {
         if import.span.source != source_id {
             return None;
@@ -217,10 +217,9 @@ fn symbol_ref_for_import(
             let declaration = graph.declaration(declaration)?;
             return Some(source_symbol_for_declaration(graph, declaration));
         }
-        let path = import.path[..=segment].to_vec();
-        graph
-            .module_id(&ModulePath::new(path.iter().cloned()))
-            .map(|_| source_module_symbol_from_segments(path.iter()))
+        let path = &import.path[..=segment];
+        let key = graph.resolve_module_path(query.module_key()?, path)?;
+        graph.module_id(&key).map(|_| source_module_symbol(&key))
     })
 }
 
@@ -707,7 +706,9 @@ mod tests {
 
         assert_eq!(
             target.symbol(),
-            Some(&SymbolRef::Source("game::reward".to_owned()))
+            Some(&SymbolRef::Source(
+                "dev.vela.anonymous::game::reward".to_owned()
+            ))
         );
     }
 

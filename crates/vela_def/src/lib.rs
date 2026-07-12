@@ -366,7 +366,7 @@ mod tests {
 
     #[test]
     fn typed_wrappers_preserve_def_id() {
-        let id = DefPath::trait_def("script", ["combat"], "Scored").id();
+        let id = DefPath::trait_def("com.example.test", ["combat"], "Scored").id();
         let trait_id = TraitId::from_def_id(id);
 
         assert_eq!(trait_id.def_id(), id);

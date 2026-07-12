@@ -24,7 +24,7 @@ pub(crate) use cache_policy::{CacheSiteInstruction, CacheSiteStorage};
 use std::collections::BTreeMap;
 
 use vela_common::{GlobalSlot, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span};
-use vela_def::{FunctionId, MethodId, script_function_id};
+use vela_def::{FunctionId, MethodId, TypeId};
 use vela_hir::ids::HirLocalId;
 use vela_hir::module_graph::ModuleGraph;
 use vela_host::resolved::HostMutationOp;
@@ -63,14 +63,35 @@ impl UnlinkedProgram {
     }
 
     pub fn insert_function(&mut self, function: UnlinkedCodeObject) {
-        if let Some(index) = self.function_by_name.get(&function.name).copied() {
+        let identity = function.compiled_mir.map(|identity| identity.root);
+        let existing = identity
+            .and_then(|id| self.function_by_id.get(&id).copied())
+            .or_else(|| {
+                identity
+                    .is_none()
+                    .then(|| self.function_by_name.get(&function.name).copied())
+                    .flatten()
+            });
+        if let Some(index) = existing {
             self.functions[index.0] = function;
+            self.rebuild_function_index();
             return;
         }
 
         let insertion = self
             .functions
-            .binary_search_by(|existing| existing.name.as_str().cmp(function.name.as_str()))
+            .binary_search_by(|existing| {
+                existing
+                    .name
+                    .as_str()
+                    .cmp(function.name.as_str())
+                    .then_with(|| {
+                        existing
+                            .compiled_mir
+                            .map(|identity| identity.root)
+                            .cmp(&identity)
+                    })
+            })
             .unwrap_or_else(|index| index);
         self.functions.insert(insertion, function);
         self.rebuild_function_index();
@@ -110,13 +131,15 @@ impl UnlinkedProgram {
 
     pub fn insert_script_method(
         &mut self,
+        owner: TypeId,
         type_name: impl Into<String>,
         method: impl Into<String>,
         method_id: MethodId,
+        function_id: FunctionId,
         function: impl Into<String>,
     ) {
         self.script_methods
-            .insert(type_name, method, method_id, function);
+            .insert(owner, type_name, method, method_id, function_id, function);
     }
 
     #[must_use]
@@ -189,42 +212,56 @@ impl UnlinkedProgram {
     }
 
     #[must_use]
-    pub fn script_method(&self, type_name: &str, method: &str) -> Option<&UnlinkedCodeObject> {
-        let method = self.script_methods.get(type_name, method)?;
-        self.function(&method.function)
+    pub fn script_method(&self, owner: TypeId, method: &str) -> Option<&UnlinkedCodeObject> {
+        let method = self.script_methods.get(owner, method)?;
+        self.function_by_id(method.function_id)
+            .or_else(|| self.function(&method.function))
     }
 
     #[must_use]
-    pub fn script_method_id(&self, type_name: &str, method: &str) -> Option<MethodId> {
+    pub fn script_method_id(&self, owner: TypeId, method: &str) -> Option<MethodId> {
         self.script_methods
-            .get(type_name, method)
+            .get(owner, method)
             .map(|method| method.id)
     }
 
     #[must_use]
     pub fn script_method_by_id(
         &self,
-        type_name: &str,
+        owner: TypeId,
         method_id: MethodId,
     ) -> Option<&UnlinkedCodeObject> {
-        let method = self.script_methods.get_by_id(type_name, method_id)?;
-        self.function(&method.function)
+        let method = self.script_methods.get_by_id(owner, method_id)?;
+        self.function_by_id(method.function_id)
+            .or_else(|| self.function(&method.function))
     }
 
     fn rebuild_function_index(&mut self) {
         self.function_by_name.clear();
         self.function_by_id.clear();
+        let mut names = BTreeMap::<String, (usize, FunctionIndex)>::new();
+        for (index, function) in self.functions.iter().enumerate() {
+            let entry = names
+                .entry(function.name.clone())
+                .or_insert((0, FunctionIndex(index)));
+            entry.0 += 1;
+        }
         self.function_by_name.extend(
-            self.functions
-                .iter()
-                .enumerate()
-                .map(|(index, function)| (function.name.clone(), FunctionIndex(index))),
+            names
+                .into_iter()
+                .filter_map(|(name, (count, index))| (count == 1).then_some((name, index))),
         );
-        self.function_by_id.extend(
-            self.functions.iter().enumerate().map(|(index, function)| {
-                (script_function_id(&function.name), FunctionIndex(index))
-            }),
-        );
+        self.function_by_id
+            .extend(
+                self.functions
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(index, function)| {
+                        function
+                            .compiled_mir
+                            .map(|identity| (identity.root, FunctionIndex(index)))
+                    }),
+            );
     }
 }
 
@@ -243,13 +280,13 @@ pub trait UnlinkedProgramCode {
         None
     }
 
-    fn script_method(&self, type_name: &str, method: &str) -> Option<&UnlinkedCodeObject>;
+    fn script_method(&self, owner: TypeId, method: &str) -> Option<&UnlinkedCodeObject>;
 
-    fn script_method_id(&self, type_name: &str, method: &str) -> Option<MethodId>;
+    fn script_method_id(&self, owner: TypeId, method: &str) -> Option<MethodId>;
 
     fn script_method_by_id(
         &self,
-        type_name: &str,
+        owner: TypeId,
         method_id: MethodId,
     ) -> Option<&UnlinkedCodeObject>;
 }
@@ -267,20 +304,20 @@ impl UnlinkedProgramCode for UnlinkedProgram {
         UnlinkedProgram::function_by_id(self, id)
     }
 
-    fn script_method(&self, type_name: &str, method: &str) -> Option<&UnlinkedCodeObject> {
-        UnlinkedProgram::script_method(self, type_name, method)
+    fn script_method(&self, owner: TypeId, method: &str) -> Option<&UnlinkedCodeObject> {
+        UnlinkedProgram::script_method(self, owner, method)
     }
 
-    fn script_method_id(&self, type_name: &str, method: &str) -> Option<MethodId> {
-        UnlinkedProgram::script_method_id(self, type_name, method)
+    fn script_method_id(&self, owner: TypeId, method: &str) -> Option<MethodId> {
+        UnlinkedProgram::script_method_id(self, owner, method)
     }
 
     fn script_method_by_id(
         &self,
-        type_name: &str,
+        owner: TypeId,
         method_id: MethodId,
     ) -> Option<&UnlinkedCodeObject> {
-        UnlinkedProgram::script_method_by_id(self, type_name, method_id)
+        UnlinkedProgram::script_method_by_id(self, owner, method_id)
     }
 }
 
@@ -602,17 +639,24 @@ pub enum UnlinkedTypeGuardPlan {
         ok: Option<Box<UnlinkedTypeGuardPlan>>,
         err: Option<Box<UnlinkedTypeGuardPlan>>,
     },
-    Type(String),
+    Type {
+        name: String,
+        type_id: Option<vela_def::TypeId>,
+    },
     Variant {
         enum_name: String,
+        type_id: Option<vela_def::TypeId>,
         variant: String,
+        variant_id: Option<vela_def::VariantId>,
     },
     Shape {
         type_name: String,
+        type_id: vela_def::TypeId,
         shape_id: ShapeId,
     },
     HostType {
         type_name: String,
+        type_id: vela_def::TypeId,
         host_type_id: HostTypeId,
     },
 }
@@ -947,12 +991,15 @@ pub enum UnlinkedInstructionKind {
     MakeRecord {
         dst: Register,
         type_name: String,
+        type_id: Option<vela_def::TypeId>,
         fields: Vec<(String, Register)>,
     },
     MakeEnum {
         dst: Register,
         enum_name: String,
+        type_id: Option<vela_def::TypeId>,
         variant: String,
+        variant_id: Option<vela_def::VariantId>,
         fields: Vec<(String, Register)>,
     },
     GetRecordField {
@@ -1051,7 +1098,9 @@ pub enum UnlinkedInstructionKind {
         dst: Register,
         value: Register,
         enum_name: String,
+        type_id: Option<vela_def::TypeId>,
         variant: String,
+        variant_id: Option<vela_def::VariantId>,
     },
     LoadGlobal {
         dst: Register,

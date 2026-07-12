@@ -8,7 +8,8 @@ use test_compile_support::{
 use vela_bytecode::Linker;
 use vela_bytecode::compiler::error::CompileErrorKind;
 use vela_common::SourceId;
-use vela_hir::module_graph::{ModulePath, ModuleSource};
+use vela_hir::module_graph::ModuleSource;
+use vela_package::ModulePath;
 use vela_vm::Vm;
 use vela_vm::error::{VmError, VmErrorKind};
 use vela_vm::owned_value::OwnedValue;
@@ -41,11 +42,13 @@ fn core_language_fixture_executes() {
         &[
             ModuleSource::new(
                 SourceId::new(1),
+                vela_package::PackageId::anonymous(),
                 ModulePath::from_qualified("conformance::core"),
                 core,
             ),
             ModuleSource::new(
                 SourceId::new(2),
+                vela_package::PackageId::anonymous(),
                 ModulePath::from_qualified("conformance::reward"),
                 reward,
             ),

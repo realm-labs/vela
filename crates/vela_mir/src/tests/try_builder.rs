@@ -1,11 +1,12 @@
 use std::collections::{BTreeMap, BTreeSet};
+use vela_package::ModulePath;
 
 use vela_analysis::executable::{ExecutableAnalysisGeneration, ExecutableAnalysisInput};
 use vela_common::SourceId;
 use vela_def::{FieldId, FunctionId, TypeId, VariantId};
 use vela_hir::body::{HirBody, HirBodyOwner, HirExprKind};
 use vela_hir::ids::{HirBodyId, HirExprId};
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
 
 use crate::{
     CompileFieldAccess, CompileFieldDescriptor, CompileFunctionAccess, CompileFunctionClass,
@@ -68,6 +69,7 @@ fn build(
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SOURCE,
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("try_builder"),
         source,
     ));

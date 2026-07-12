@@ -72,10 +72,7 @@ pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext 
             offset,
         )
     {
-        record_constructor.current_module = query
-            .module_path()
-            .map(|module| module.segments().to_vec())
-            .unwrap_or_default();
+        record_constructor.current_module = query.module_key().cloned();
         return CompletionContext {
             kind: CompletionContextKind::RecordField,
             prefix: prefix.to_owned(),
@@ -94,10 +91,7 @@ pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext 
             .syntax_parse()
             .and_then(|parse| map_key_at(&parse.tree(), query.source_id(), offset))
     {
-        map_key.current_module = query
-            .module_path()
-            .map(|module| module.segments().to_vec())
-            .unwrap_or_default();
+        map_key.current_module = query.module_key().cloned();
         return CompletionContext {
             kind: CompletionContextKind::MapKey,
             prefix: prefix.to_owned(),

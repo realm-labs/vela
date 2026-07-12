@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 use std::sync::Arc;
 use vela_bytecode::linked::LinkedMethodDispatchKind;
 use vela_bytecode::{LinkedProgram, derived_linked_record_trait_fields};
-use vela_def::{MethodId, script_trait_method_id};
+use vela_def::TypeId;
 use vela_reflect::registry::TypeRegistry;
 
 use crate::heap::{GcRef, HeapValue};
@@ -130,15 +130,13 @@ fn call_partial_eq(
     rhs: &Value,
     runtime: &mut EqualityRuntime<'_, '_, '_>,
 ) -> VmResult<Option<bool>> {
-    let Some(type_name) =
-        receiver_type_name(lhs, runtime.heap.as_deref(), runtime.vm.type_registry())
-            .map(str::to_owned)
+    let Some((type_id, type_name)) =
+        receiver_type_identity(lhs, runtime.heap.as_deref(), runtime.vm.type_registry())
+            .map(|(id, name)| (id, name.to_owned()))
     else {
         return Ok(None);
     };
-    let method_id = script_trait_method_id("PartialEq", PARTIAL_EQ_METHOD);
-    let Some(result) =
-        call_builtin_trait_method(lhs, rhs, runtime, &type_name, method_id, PARTIAL_EQ_METHOD)?
+    let Some(result) = call_builtin_trait_method(lhs, rhs, runtime, type_id, PARTIAL_EQ_METHOD)?
     else {
         return derived_partial_eq(lhs, rhs, runtime, &type_name);
     };
@@ -258,15 +256,13 @@ fn call_partial_ord(
     runtime: &mut EqualityRuntime<'_, '_, '_>,
     operation: &'static str,
 ) -> VmResult<Option<Option<Ordering>>> {
-    let Some(type_name) =
-        receiver_type_name(lhs, runtime.heap.as_deref(), runtime.vm.type_registry())
-            .map(str::to_owned)
+    let Some((type_id, type_name)) =
+        receiver_type_identity(lhs, runtime.heap.as_deref(), runtime.vm.type_registry())
+            .map(|(id, name)| (id, name.to_owned()))
     else {
         return Ok(None);
     };
-    let method_id = script_trait_method_id("PartialOrd", PARTIAL_ORD_METHOD);
-    let Some(result) =
-        call_builtin_trait_method(lhs, rhs, runtime, &type_name, method_id, PARTIAL_ORD_METHOD)?
+    let Some(result) = call_builtin_trait_method(lhs, rhs, runtime, type_id, PARTIAL_ORD_METHOD)?
     else {
         return derived_partial_ord(lhs, rhs, runtime, &type_name, operation);
     };
@@ -279,16 +275,13 @@ fn call_ord(
     runtime: &mut EqualityRuntime<'_, '_, '_>,
     operation: &'static str,
 ) -> VmResult<Option<Ordering>> {
-    let Some(type_name) =
-        receiver_type_name(lhs, runtime.heap.as_deref(), runtime.vm.type_registry())
-            .map(str::to_owned)
+    let Some((type_id, type_name)) =
+        receiver_type_identity(lhs, runtime.heap.as_deref(), runtime.vm.type_registry())
+            .map(|(id, name)| (id, name.to_owned()))
     else {
         return Ok(None);
     };
-    let method_id = script_trait_method_id("Ord", ORD_METHOD);
-    let Some(result) =
-        call_builtin_trait_method(lhs, rhs, runtime, &type_name, method_id, ORD_METHOD)?
-    else {
+    let Some(result) = call_builtin_trait_method(lhs, rhs, runtime, type_id, ORD_METHOD)? else {
         return derived_ord(lhs, rhs, runtime, &type_name, operation);
     };
     let result = store_value_in_heap_if_needed(
@@ -357,13 +350,10 @@ fn call_builtin_trait_method(
     lhs: &Value,
     rhs: &Value,
     runtime: &mut EqualityRuntime<'_, '_, '_>,
-    type_name: &str,
-    method_id: MethodId,
+    owner: TypeId,
     method_name: &'static str,
 ) -> VmResult<Option<Value>> {
-    let Some(target) =
-        linked_builtin_trait_target(runtime.program, type_name, method_name, method_id)
-    else {
+    let Some(target) = linked_builtin_trait_target(runtime.program, owner, method_name) else {
         return Ok(None);
     };
     runtime.program.function(target.function).ok_or_else(|| {
@@ -414,17 +404,16 @@ struct LinkedBuiltinTraitTarget {
 
 fn linked_builtin_trait_target(
     program: &LinkedProgram,
-    type_name: &str,
+    owner: TypeId,
     method_name: &str,
-    method_id: MethodId,
 ) -> Option<LinkedBuiltinTraitTarget> {
-    let dispatch = program.script_method_dispatch(type_name, method_name)?;
+    let dispatch = program.script_method_dispatch(owner, method_name)?;
     let dispatch = program.method_dispatch(dispatch)?;
     match &dispatch.kind {
         LinkedMethodDispatchKind::Script {
-            method_id: actual,
+            method_id: _,
             function,
-        } if *actual == method_id => Some(LinkedBuiltinTraitTarget {
+        } => Some(LinkedBuiltinTraitTarget {
             function: *function,
         }),
         _ => None,
@@ -511,18 +500,26 @@ impl OrderingOp {
     }
 }
 
-fn receiver_type_name<'a>(
+fn receiver_type_identity<'a>(
     receiver: &Value,
     heap: Option<&'a HeapExecution<'_>>,
     registry: Option<&'a TypeRegistry>,
-) -> Option<&'a str> {
+) -> Option<(TypeId, &'a str)> {
     match receiver {
         Value::HostRef(reference) => registry
             .and_then(|registry| registry.type_of_host(*reference))
-            .map(|desc| desc.key.name.as_str()),
+            .map(|desc| (desc.key.id, desc.key.name.as_str())),
         Value::HeapRef(reference) => match heap?.heap.get(*reference)? {
-            HeapValue::Record { type_name, .. } => Some(type_name.as_str()),
-            HeapValue::Enum { enum_name, .. } => Some(enum_name.as_str()),
+            HeapValue::Record {
+                type_name,
+                identity: Some(identity),
+                ..
+            } => Some((identity.type_id, type_name.as_str())),
+            HeapValue::Enum {
+                enum_name,
+                identity: Some(identity),
+                ..
+            } => Some((identity.type_id, enum_name.as_str())),
             _ => None,
         },
         _ => None,

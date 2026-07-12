@@ -209,7 +209,7 @@ impl LanguageServiceDatabases {
                     .project_db()
                     .module_by_document()
                     .get(document_id)
-                    .map(|module_path| DisplayParts::symbol(module_path.join()))
+                    .map(|module_key| DisplayParts::symbol(module_key.path.join()))
                     .filter(|module| !module.render().is_empty());
                 Some(WorkspaceSymbol {
                     name: name_parts.render(),
@@ -236,7 +236,7 @@ impl LanguageServiceDatabases {
             .module_by_document()
             .iter()
             .filter_map(|(document_id, module_path)| {
-                let name = module_path.join();
+                let name = module_path.path.join();
                 if name.is_empty() || !symbol_matches(query, &name) {
                     return None;
                 }
@@ -249,7 +249,7 @@ impl LanguageServiceDatabases {
                     detail: None,
                     detail_parts: None,
                     kind: DocumentSymbolKind::Module,
-                    container_name: parent_module_name(module_path.segments()),
+                    container_name: parent_module_name(module_path.path.segments()),
                     location: WorkspaceSymbolLocation::Source {
                         document_id: document_id.clone(),
                         range: diagnostic_range(
@@ -905,7 +905,8 @@ pub fn main(amount: i64) -> i64 { return amount }";
         assert!(
             symbols.iter().any(|symbol| symbol.name() == "game::reward"
                 && symbol.kind() == DocumentSymbolKind::Module
-                && symbol.symbol() == &SymbolRef::Source("game::reward".to_owned())
+                && symbol.symbol()
+                    == &SymbolRef::Source("dev.vela.anonymous::game::reward".to_owned())
                 && matches!(
                     symbol.location(),
                     WorkspaceSymbolLocation::Source { document_id, .. } if document_id == &reward

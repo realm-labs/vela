@@ -7,7 +7,8 @@ use vela_analysis::{
     registry::RegistryFacts,
     type_fact::TypeFact,
 };
-use vela_hir::module_graph::{ModuleGraph, ModulePath};
+use vela_hir::module_graph::ModuleGraph;
+use vela_package::{ModuleKey, ModulePath};
 
 use crate::{TextRange, symbol_ref::schema_symbol};
 
@@ -19,6 +20,7 @@ use super::{
 pub(super) fn type_hint_completion_items(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
+    current_module: &ModuleKey,
     replace_range: TextRange,
     prefix: &str,
     module_base: Option<&str>,
@@ -29,6 +31,7 @@ pub(super) fn type_hint_completion_items(
             graph,
             schema,
             &facts,
+            current_module,
             replace_range,
             prefix,
             module_base,
@@ -58,7 +61,10 @@ pub(super) fn type_hint_completion_items(
     );
     items.extend(
         graph
-            .module_child_segments(&ModulePath::root())
+            .module_child_segments(&ModuleKey::new(
+                current_module.package.clone(),
+                ModulePath::root(),
+            ))
             .into_iter()
             .filter(|segment| segment.starts_with(prefix))
             .map(|segment| {
@@ -78,13 +84,17 @@ fn qualified_type_hint_completion_items(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
     facts: &AnalysisFacts,
+    current_module: &ModuleKey,
     replace_range: TextRange,
     prefix: &str,
     module_base: &str,
 ) -> Vec<CompletionItem> {
     let mut items = type_completions(schema);
     let module_path = ModulePath::from_qualified(module_base);
-    if let Some(module) = graph.module_id(&module_path) {
+    let module_key = graph
+        .resolve_module_path(current_module, module_path.segments())
+        .unwrap_or_else(|| ModuleKey::new(current_module.package.clone(), module_path));
+    if let Some(module) = graph.module_id(&module_key) {
         items.extend(
             graph
                 .declarations_in_module(module)
@@ -95,7 +105,7 @@ fn qualified_type_hint_completion_items(
     }
     items.extend(
         graph
-            .module_child_segments(&module_path)
+            .module_child_segments(&module_key)
             .into_iter()
             .map(|segment| AnalysisCompletionItem {
                 label: format!("{module_base}::{segment}"),

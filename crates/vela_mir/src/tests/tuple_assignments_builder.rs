@@ -2,7 +2,8 @@ use vela_analysis::executable::{ExecutableAnalysisGeneration, ExecutableAnalysis
 use vela_common::{HostTypeId, PrimitiveTag, ShapeId, SourceId};
 use vela_def::{FieldId, FunctionId, TypeId, VariantId};
 use vela_hir::body::{HirExprKind, HirField};
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
+use vela_package::ModulePath;
 
 use crate::{
     CompileFieldAccess, CompileFieldDescriptor, CompileFieldTarget, CompileFunctionAccess,
@@ -68,6 +69,7 @@ fn lower_selected(source: &str, options: FixtureOptions) -> Result<MirProgram, M
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SOURCE,
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("tuple_assignments"),
         source,
     ));
@@ -281,6 +283,7 @@ fn lower_host_tuple(
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SOURCE,
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("tuple_host_assignments"),
         source,
     ));

@@ -136,7 +136,7 @@ fn call_script_impl_method(
     dispatch: &mut ScriptMethodDispatch<'_, '_, '_>,
 ) -> VmResult<Value> {
     let function = {
-        let type_name = receiver_type_name(
+        let owner = receiver_type_id(
             receiver,
             dispatch.heap.as_deref(),
             dispatch.vm.type_registry(),
@@ -146,7 +146,7 @@ fn call_script_impl_method(
                 method: method.to_owned(),
             })
         })?;
-        let Some(target) = dispatch.program.script_method_dispatch(type_name, method) else {
+        let Some(target) = dispatch.program.script_method_dispatch(owner, method) else {
             return Err(VmError::new(VmErrorKind::UnknownMethod {
                 method: method.to_owned(),
             }));
@@ -209,18 +209,24 @@ fn call_script_impl_method(
     result
 }
 
-fn receiver_type_name<'a>(
+fn receiver_type_id(
     receiver: &Value,
-    heap: Option<&'a HeapExecution<'_>>,
-    registry: Option<&'a TypeRegistry>,
-) -> Option<&'a str> {
+    heap: Option<&HeapExecution<'_>>,
+    registry: Option<&TypeRegistry>,
+) -> Option<vela_def::TypeId> {
     match receiver {
         Value::HostRef(reference) => registry
             .and_then(|registry| registry.type_of_host(*reference))
-            .map(|desc| desc.key.name.as_str()),
+            .map(|desc| desc.key.id),
         Value::HeapRef(reference) => match heap?.heap.get(*reference)? {
-            HeapValue::Record { type_name, .. } => Some(type_name.as_str()),
-            HeapValue::Enum { enum_name, .. } => Some(enum_name.as_str()),
+            HeapValue::Record {
+                identity: Some(identity),
+                ..
+            } => Some(identity.type_id),
+            HeapValue::Enum {
+                identity: Some(identity),
+                ..
+            } => Some(identity.type_id),
             _ => None,
         },
         _ => None,

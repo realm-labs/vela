@@ -3,7 +3,7 @@ use std::sync::Arc;
 use vela_bytecode::{
     LinkedArtifact, LinkedCodeObject, LinkedProgram, ProgramImage, ScriptFunctionHandle,
 };
-use vela_def::MethodId;
+use vela_def::{MethodId, TypeId};
 use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_hot_reload::runtime::HotReloadRuntime;
@@ -15,7 +15,7 @@ use crate::engine::Engine;
 use super::call_args::call_args_type_error;
 use super::{
     CallArgs, CallOptions, RuntimeGlobalStore, RuntimeScriptGlobalStore, VelaValue,
-    state::RuntimeSidecars, unknown_function, unknown_method, value_type_name,
+    state::RuntimeSidecars, unknown_function, unknown_method, value_type_id,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -42,7 +42,7 @@ impl VelaFunction {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct VelaMethod {
     pub(super) runtime_id: u64,
-    pub(super) receiver_type: String,
+    pub(super) receiver_type: TypeId,
     pub(super) name: String,
     pub(super) method_id: MethodId,
     pub(super) version_id: Option<ProgramVersionId>,
@@ -57,8 +57,8 @@ impl VelaMethod {
     }
 
     #[must_use]
-    pub fn receiver_type(&self) -> &str {
-        &self.receiver_type
+    pub const fn receiver_type(&self) -> TypeId {
+        self.receiver_type
     }
 
     #[must_use]
@@ -170,7 +170,7 @@ impl RuntimeMethodTarget for &str {
         self,
         context: RuntimeMethodResolveContext<'program, '_>,
     ) -> VmResult<ResolvedRuntimeMethod> {
-        let receiver_type = value_type_name(
+        let receiver_type = value_type_id(
             &context.receiver.value,
             &context.script_globals.heap,
             context.engine.registry().as_ref(),
@@ -179,9 +179,10 @@ impl RuntimeMethodTarget for &str {
         let method = context
             .program_image
             .script_methods()
-            .get(&receiver_type, self)
+            .get(receiver_type, self)
             .ok_or_else(|| unknown_method(self.to_owned()))?;
-        let (function, code) = linked_function_by_name(context.linked_program, &method.function)?;
+        let (function, code) =
+            linked_function_by_id(context.linked_program, method.function_id, &method.function)?;
         Ok(ResolvedRuntimeMethod {
             name: self.to_owned(),
             function,
@@ -204,7 +205,7 @@ impl RuntimeMethodTarget for &VelaMethod {
                 "VelaMethod belongs to another Runtime",
             ));
         }
-        let receiver_type = value_type_name(
+        let receiver_type = value_type_id(
             &context.receiver.value,
             &context.script_globals.heap,
             context.engine.registry().as_ref(),
@@ -218,9 +219,10 @@ impl RuntimeMethodTarget for &VelaMethod {
         let method = context
             .program_image
             .script_methods()
-            .get_by_id(&self.receiver_type, self.method_id)
+            .get_by_id(self.receiver_type, self.method_id)
             .ok_or_else(|| unknown_method(self.name.clone()))?;
-        let (function, code) = linked_function_by_name(context.linked_program, &method.function)?;
+        let (function, code) =
+            linked_function_by_id(context.linked_program, method.function_id, &method.function)?;
         let (params, param_defaults) = if self.version_id == context.version_id {
             (self.params.clone(), self.param_defaults.clone())
         } else {
@@ -291,6 +293,20 @@ fn linked_function_by_name<'program>(
         .function(function)
         .map(|code| (function, code))
         .ok_or_else(|| unknown_function(name.to_owned()))
+}
+
+fn linked_function_by_id<'program>(
+    program: &'program LinkedProgram,
+    id: vela_def::FunctionId,
+    debug_name: &str,
+) -> VmResult<(ScriptFunctionHandle, &'program LinkedCodeObject)> {
+    let function = program
+        .entry_point_by_id(id)
+        .ok_or_else(|| unknown_function(debug_name.to_owned()))?;
+    program
+        .function(function)
+        .map(|code| (function, code))
+        .ok_or_else(|| unknown_function(debug_name.to_owned()))
 }
 
 fn linked_params(program: &LinkedProgram, code: &LinkedCodeObject) -> Vec<String> {

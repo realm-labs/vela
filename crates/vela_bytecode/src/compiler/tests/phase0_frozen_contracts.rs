@@ -1,5 +1,6 @@
 use super::*;
 use vela_common::{Diagnostic, Severity};
+use vela_package::ModulePath;
 
 #[derive(Clone, Copy)]
 struct ExpectedLabel<'a> {
@@ -495,6 +496,7 @@ fn imported_one_segment_record_pattern_has_a_structured_source_diagnostic() {
     let error = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(730),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 use game::reward::Reward as Prize
@@ -506,6 +508,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(731),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             "pub struct Reward { amount: i64 }",
         ),
@@ -519,6 +522,7 @@ fn qualified_record_patterns_materialize_never_match_predicates() {
     let program = compile_test_modules(&[
         ModuleSource::new(
             SourceId::new(732),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::main"),
             r#"
 fn main() {
@@ -529,6 +533,7 @@ fn main() {
         ),
         ModuleSource::new(
             SourceId::new(733),
+            vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game::reward"),
             "pub struct Reward { amount: i64 }",
         ),

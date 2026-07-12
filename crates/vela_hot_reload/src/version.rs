@@ -4,7 +4,7 @@ use vela_bytecode::{
     LinkedArtifact, LinkedProgram, ProgramImage, UnlinkedCodeObject,
     script_methods::{ScriptMethod, ScriptMethodTable},
 };
-use vela_def::MethodId;
+use vela_def::{MethodId, TypeId};
 use vela_hir::module_graph::ModuleGraph;
 
 use crate::abi::HotReloadAbi;
@@ -62,43 +62,44 @@ impl ProgramVersion {
     }
 
     #[must_use]
-    pub fn script_method(&self, type_name: &str, method: &str) -> Option<&ScriptMethod> {
-        self.artifact
-            .image()
-            .script_methods()
-            .get(type_name, method)
+    pub fn script_method(&self, owner: TypeId, method: &str) -> Option<&ScriptMethod> {
+        self.artifact.image().script_methods().get(owner, method)
     }
 
     #[must_use]
-    pub fn script_method_by_id(
-        &self,
-        type_name: &str,
-        method_id: MethodId,
-    ) -> Option<&ScriptMethod> {
+    pub fn script_method_by_id(&self, owner: TypeId, method_id: MethodId) -> Option<&ScriptMethod> {
         self.artifact
             .image()
             .script_methods()
-            .get_by_id(type_name, method_id)
+            .get_by_id(owner, method_id)
     }
 
     #[must_use]
     pub fn script_method_function(
         &self,
-        type_name: &str,
+        owner: TypeId,
         method: &str,
     ) -> Option<Arc<UnlinkedCodeObject>> {
-        let method = self.script_method(type_name, method)?;
-        self.function(&method.function)
+        let method = self.script_method(owner, method)?;
+        self.artifact
+            .image()
+            .function_by_id(method.function_id)
+            .cloned()
+            .map(Arc::new)
     }
 
     #[must_use]
     pub fn script_method_function_by_id(
         &self,
-        type_name: &str,
+        owner: TypeId,
         method_id: MethodId,
     ) -> Option<Arc<UnlinkedCodeObject>> {
-        let method = self.script_method_by_id(type_name, method_id)?;
-        self.function(&method.function)
+        let method = self.script_method_by_id(owner, method_id)?;
+        self.artifact
+            .image()
+            .function_by_id(method.function_id)
+            .cloned()
+            .map(Arc::new)
     }
 
     #[must_use]
@@ -237,37 +238,41 @@ impl HotUpdate {
     }
 
     #[must_use]
-    pub fn script_method(&self, type_name: &str, method: &str) -> Option<&ScriptMethod> {
-        self.script_methods().get(type_name, method)
+    pub fn script_method(&self, owner: TypeId, method: &str) -> Option<&ScriptMethod> {
+        self.script_methods().get(owner, method)
     }
 
     #[must_use]
-    pub fn script_method_by_id(
-        &self,
-        type_name: &str,
-        method_id: MethodId,
-    ) -> Option<&ScriptMethod> {
-        self.script_methods().get_by_id(type_name, method_id)
+    pub fn script_method_by_id(&self, owner: TypeId, method_id: MethodId) -> Option<&ScriptMethod> {
+        self.script_methods().get_by_id(owner, method_id)
     }
 
     #[must_use]
     pub fn script_method_function(
         &self,
-        type_name: &str,
+        owner: TypeId,
         method: &str,
     ) -> Option<Arc<UnlinkedCodeObject>> {
-        let method = self.script_method(type_name, method)?;
-        self.function(&method.function)
+        let method = self.script_method(owner, method)?;
+        self.artifact
+            .image()
+            .function_by_id(method.function_id)
+            .cloned()
+            .map(Arc::new)
     }
 
     #[must_use]
     pub fn script_method_function_by_id(
         &self,
-        type_name: &str,
+        owner: TypeId,
         method_id: MethodId,
     ) -> Option<Arc<UnlinkedCodeObject>> {
-        let method = self.script_method_by_id(type_name, method_id)?;
-        self.function(&method.function)
+        let method = self.script_method_by_id(owner, method_id)?;
+        self.artifact
+            .image()
+            .function_by_id(method.function_id)
+            .cloned()
+            .map(Arc::new)
     }
 
     #[must_use]

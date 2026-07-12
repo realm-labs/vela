@@ -4,7 +4,8 @@ use vela_def::{FieldId, FunctionId, GlobalId, TypeId};
 use vela_hir::binding::BindingResolution;
 use vela_hir::body::{HirBody, HirExprKind};
 use vela_hir::ids::HirDeclId;
-use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModuleSource};
+use vela_package::ModulePath;
 
 use crate::{
     CompileFieldAccess, CompileFieldDescriptor, CompileFunctionAccess, CompileFunctionClass,
@@ -38,6 +39,7 @@ fn try_build_declarations(
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(99),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("declarations"),
         source,
     ));
@@ -287,11 +289,13 @@ fn imported_and_qualified_const_and_global_paths_share_declaration_lowering() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(101),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::config"),
         "pub const LIMIT: i64 = 7;\npub global state: i64",
     ));
     graph.add_source(ModuleSource::new(
         SourceId::new(102),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::main"),
         r#"
 use game::config::LIMIT as IMPORTED_LIMIT
@@ -588,6 +592,7 @@ fn fixture_declaration_kinds_are_the_expected_semantic_inputs() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(99),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("declaration_kinds"),
         "const VALUE = 1\nglobal state: i64\nfn main() {}",
     ));

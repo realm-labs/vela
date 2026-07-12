@@ -4,7 +4,9 @@ use vela_common::{Diagnostic, SourceId};
 use vela_syntax::parse::parse_source_with_id;
 
 use crate::ids::ModuleId;
-use crate::module_graph::{DeclarationKind, ModuleGraph, ModulePath, ModuleSource};
+use vela_package::{ModuleKey, ModulePath};
+
+use crate::module_graph::{DeclarationKind, ModuleGraph, ModuleSource};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum HirSourceBuildErrorKind {
@@ -71,8 +73,8 @@ impl HirSourceSet {
     }
 
     #[must_use]
-    pub fn function(&self, module_path: &ModulePath, name: &str) -> Option<HirSourceFunction<'_>> {
-        let module = self.graph.module_id(module_path)?;
+    pub fn function(&self, module: &ModuleKey, name: &str) -> Option<HirSourceFunction<'_>> {
+        let module = self.graph.module_id(module)?;
         let declaration = self.graph.module(module)?.get(name)?;
         let metadata = self.graph.declaration(declaration)?;
         (metadata.kind == DeclarationKind::Function
@@ -101,7 +103,12 @@ pub fn build_single_source(
     text: impl Into<String>,
 ) -> Result<HirSourceSet, HirSourceBuildError> {
     build_source_set(
-        &[ModuleSource::new(source, ModulePath::root(), text)],
+        &[ModuleSource::new(
+            source,
+            vela_package::PackageId::anonymous(),
+            ModulePath::root(),
+            text,
+        )],
         HirSourceSetKind::SingleSource,
     )
 }
@@ -157,11 +164,12 @@ mod tests {
     use vela_common::SourceId;
 
     use super::*;
-    use crate::module_graph::ModulePath;
+    use vela_package::ModulePath;
 
     fn source(id: u32, path: &[&str], text: &str) -> ModuleSource {
         ModuleSource::new(
             SourceId::new(id),
+            vela_package::PackageId::anonymous(),
             ModulePath::new(path.iter().copied()),
             text,
         )
@@ -192,6 +200,25 @@ mod tests {
         assert_eq!(
             built.graph().module_path(built.modules()[1]),
             Some(&ModulePath::new(["game", "reward"]))
+        );
+    }
+
+    #[test]
+    fn single_source_uses_reserved_explicit_package() {
+        let built = build_single_source(SourceId::new(1), "fn main() { return 1; }")
+            .expect("single source");
+        let module = built.modules()[0];
+
+        assert_eq!(
+            built.graph().module_package(module),
+            Some(&vela_package::PackageId::anonymous())
+        );
+        assert_eq!(
+            built.graph().module_key(module),
+            Some(&vela_package::ModuleKey::new(
+                vela_package::PackageId::anonymous(),
+                ModulePath::root(),
+            ))
         );
     }
 

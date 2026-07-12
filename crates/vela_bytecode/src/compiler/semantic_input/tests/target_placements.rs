@@ -152,13 +152,20 @@ fn main() {
     .expect("source Result and standard dynamic try layouts must coexist");
     let targets = fixture.input.targets();
     let script = targets
-        .type_by_name("script::Result")
+        .type_by_name(&format!("{}::Result", vela_package::PackageId::anonymous()))
         .expect("package-qualified script Result descriptor");
     let standard = targets
         .type_by_name("std::Result")
         .expect("package-qualified standard Result descriptor");
 
-    assert_eq!(script.id, vela_def::script_type_id("Result", None));
+    assert_eq!(
+        script.id,
+        vela_def::script_type_id(
+            vela_package::PackageId::anonymous().as_str(),
+            "Result",
+            None,
+        )
+    );
     assert_eq!(standard.id, result_layout().type_id);
     assert_ne!(script.id, standard.id);
     let expression = fixture.try_expressions[0].1;
@@ -726,7 +733,7 @@ fn main() { return Layout { alpha: 1, zeta: 2 }; }
     .expect("non-alphabetic record declaration order");
     let targets = fixture.input.targets();
     let descriptor = targets
-        .type_by_name("script::Layout")
+        .type_by_name(&format!("{}::Layout", vela_package::PackageId::anonymous()))
         .expect("script record descriptor");
     let names = descriptor
         .fields

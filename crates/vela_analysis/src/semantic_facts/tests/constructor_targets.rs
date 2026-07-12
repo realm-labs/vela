@@ -1,9 +1,10 @@
 use std::collections::BTreeMap;
+use vela_package::ModulePath;
 
 use vela_common::SourceId;
 use vela_def::FunctionId;
 use vela_hir::body::{HirExprKind, HirPatternKind};
-use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
 
 use crate::executable::{ExecutableAnalysisGeneration, ExecutableAnalysisInput};
 use crate::semantic_facts::ConstructorTargetFact;
@@ -13,6 +14,7 @@ fn executable_constructor_targets_follow_imported_and_qualified_hir_resolutions(
     let mut graph = ModuleGraph::new();
     let main = graph.add_source(ModuleSource::new(
         SourceId::new(91),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::main"),
         r#"
 use game::schema::Reward as Prize
@@ -34,6 +36,7 @@ fn main() {
     ));
     graph.add_source(ModuleSource::new(
         SourceId::new(92),
+        vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::schema"),
         r#"
 pub struct Reward { amount: i64 }

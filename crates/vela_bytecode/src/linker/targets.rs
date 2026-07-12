@@ -1,8 +1,4 @@
-use std::collections::BTreeMap;
-
-use vela_def::{DefPath, script_type_id, script_type_path, script_variant_id, script_variant_path};
-use vela_hir::attributes::schema_id_attr;
-use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
+use vela_def::{DefPath, script_type_path, script_variant_path};
 use vela_registry::Def;
 
 use super::{
@@ -119,8 +115,12 @@ impl LinkContext<'_, '_> {
         Ok(handle)
     }
 
-    pub(super) fn link_type(&mut self, name: &str) -> Result<TypeHandle, LinkError> {
-        let id = self.resolve_type_id(name);
+    pub(super) fn link_type(
+        &mut self,
+        name: &str,
+        resolved: Option<TypeId>,
+    ) -> Result<TypeHandle, LinkError> {
+        let id = self.resolve_type_id(name, resolved)?;
         if let Some(handle) = self.type_handles.get(&id).copied() {
             return Ok(handle);
         }
@@ -135,9 +135,10 @@ impl LinkContext<'_, '_> {
         &mut self,
         enum_name: &str,
         variant: &str,
+        resolved: Option<VariantId>,
         owner: TypeHandle,
     ) -> Result<VariantHandle, LinkError> {
-        let id = self.resolve_variant_id(enum_name, variant);
+        let id = self.resolve_variant_id(enum_name, variant, resolved)?;
         if let Some(handle) = self.variant_handles.get(&id).copied() {
             return Ok(handle);
         }
@@ -152,35 +153,42 @@ impl LinkContext<'_, '_> {
         Ok(handle)
     }
 
-    fn resolve_type_id(&self, name: &str) -> TypeId {
-        if let Some(id) = self.script_type_ids.get(name) {
-            return *id;
+    fn resolve_type_id(&self, name: &str, resolved: Option<TypeId>) -> Result<TypeId, LinkError> {
+        if let Some(id) = resolved {
+            return Ok(id);
         }
         if let Some(registry) = self.linker.registry {
             for path in type_path_candidates(name) {
                 if let Some(id) = registry.get_by_path(&path).and_then(Def::type_id) {
-                    return id;
+                    return Ok(id);
                 }
             }
         }
-        script_type_id(name, None)
+        Err(LinkError::UnresolvedType {
+            name: name.to_owned(),
+        })
     }
 
-    fn resolve_variant_id(&self, enum_name: &str, variant: &str) -> VariantId {
-        if let Some(id) = self
-            .script_variant_ids
-            .get(&(enum_name.to_owned(), variant.to_owned()))
-        {
-            return *id;
+    fn resolve_variant_id(
+        &self,
+        enum_name: &str,
+        variant: &str,
+        resolved: Option<VariantId>,
+    ) -> Result<VariantId, LinkError> {
+        if let Some(id) = resolved {
+            return Ok(id);
         }
         if let Some(registry) = self.linker.registry {
             for path in variant_path_candidates(enum_name, variant) {
                 if let Some(id) = registry.get_by_path(&path).and_then(Def::variant_id) {
-                    return id;
+                    return Ok(id);
                 }
             }
         }
-        script_variant_id(enum_name, variant, None)
+        Err(LinkError::UnresolvedVariant {
+            enum_name: enum_name.to_owned(),
+            variant: variant.to_owned(),
+        })
     }
 
     pub(super) fn link_host_target(
@@ -273,64 +281,35 @@ impl LinkContext<'_, '_> {
                     .map(|plan| self.link_type_guard_plan(*plan).map(Box::new))
                     .transpose()?,
             }),
-            UnlinkedTypeGuardPlan::Type(name) => self.link_type(&name).map(TypeGuardPlan::Type),
-            UnlinkedTypeGuardPlan::Variant { enum_name, variant } => {
-                let owner = self.link_type(&enum_name)?;
-                self.link_variant(&enum_name, &variant, owner)
+            UnlinkedTypeGuardPlan::Type { name, type_id } => {
+                self.link_type(&name, type_id).map(TypeGuardPlan::Type)
+            }
+            UnlinkedTypeGuardPlan::Variant {
+                enum_name,
+                type_id,
+                variant,
+                variant_id,
+            } => {
+                let owner = self.link_type(&enum_name, type_id)?;
+                self.link_variant(&enum_name, &variant, variant_id, owner)
                     .map(TypeGuardPlan::Variant)
             }
             UnlinkedTypeGuardPlan::Shape {
                 type_name,
+                type_id,
                 shape_id,
             } => self
-                .link_type(&type_name)
+                .link_type(&type_name, Some(type_id))
                 .map(|ty| TypeGuardPlan::Shape { ty, shape_id }),
             UnlinkedTypeGuardPlan::HostType {
                 type_name,
+                type_id,
                 host_type_id,
             } => self
-                .link_type(&type_name)
+                .link_type(&type_name, Some(type_id))
                 .map(|ty| TypeGuardPlan::HostType { ty, host_type_id }),
         }
     }
-}
-
-pub(super) fn script_schema_identities(
-    graph: &ModuleGraph,
-) -> (
-    BTreeMap<String, TypeId>,
-    BTreeMap<(String, String), VariantId>,
-) {
-    let mut types = BTreeMap::new();
-    let mut variants = BTreeMap::new();
-    for declaration in graph.declarations() {
-        if !matches!(
-            declaration.kind,
-            DeclarationKind::Struct | DeclarationKind::Enum
-        ) {
-            continue;
-        }
-        let type_name = graph
-            .qualified_declaration_name(declaration.id)
-            .expect("stored declaration has a module path");
-        let explicit = schema_id_attr(graph.declaration_attrs(declaration.id)).map(u128::from);
-        types.insert(type_name.clone(), script_type_id(&type_name, explicit));
-        if declaration.kind == DeclarationKind::Enum
-            && let Some(shape) = graph.enum_shape(declaration.id)
-        {
-            for variant in &shape.variants {
-                variants.insert(
-                    (type_name.clone(), variant.name.clone()),
-                    script_variant_id(
-                        &type_name,
-                        &variant.name,
-                        schema_id_attr(&variant.attrs).map(u128::from),
-                    ),
-                );
-            }
-        }
-    }
-    (types, variants)
 }
 
 fn type_path_candidates(name: &str) -> Vec<DefPath> {
@@ -339,7 +318,10 @@ fn type_path_candidates(name: &str) -> Vec<DefPath> {
         paths.push(DefPath::ty("std", std::iter::empty::<&str>(), name));
         paths.push(DefPath::ty("host", std::iter::empty::<&str>(), name));
     }
-    paths.push(script_type_path(name));
+    paths.push(script_type_path(
+        vela_package::PackageId::anonymous().as_str(),
+        name,
+    ));
     paths
 }
 
@@ -359,6 +341,10 @@ fn variant_path_candidates(enum_name: &str, variant: &str) -> Vec<DefPath> {
             variant,
         ));
     }
-    paths.push(script_variant_path(enum_name, variant));
+    paths.push(script_variant_path(
+        vela_package::PackageId::anonymous().as_str(),
+        enum_name,
+        variant,
+    ));
     paths
 }
