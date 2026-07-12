@@ -48,14 +48,21 @@ HirSourceSet -> CompiledProgram -> Engine link -> Arc<LinkedArtifact> pipeline.
 Attach same-generation package/provider metadata to LinkedArtifact. Create
 ProgramVersion and HotUpdate only through the existing hot-reload artifact
 boundary. Runtime provider lookup and calls belong to vela_engine Runtime and
-must resolve linked handles rather than dispatch by source names.
+must resolve stable ProviderKey/MethodId pairs to linked handles rather than
+dispatch by source names. Seal only the host-selected providers into an
+InstalledProviderSet; discovered but unselected providers are not runtime ABI.
+Compatible reloads reapply the existing selection and logical ProviderHandle
+values resolve against the new active image automatically.
 
 Treat manifest capabilities as declared requirements, not optional flags.
-Require compiler-inferred package effects to be a subset of declared
-requirements and declared requirements to be a subset of host grants; never
-silently intersect away a missing grant. Preserve execution budgets, GC roots,
-HostAccess, reflection permissions, safe-point installation, retained old
-frames/closures, and existing ABI/schema checks.
+Use one shared Capability/CapabilitySet definition across manifests, analysis,
+Engine grants, and hot reload. Require statically observed package effects to
+be a subset of declared requirements and declared requirements to be a subset
+of host grants; never silently intersect away a missing grant. Keep dynamic
+calls runtime-gated instead of claiming complete call-graph inference in the
+first slice. Preserve execution budgets, GC roots, HostAccess, reflection
+permissions, safe-point installation, retained old frames/closures, and
+existing ABI/schema checks.
 
 Close each phase only after its focused tests pass. Phase 1 may be committed as
 a package-foundation checkpoint before the identity cutover. Phase 2 must land
@@ -123,6 +130,8 @@ These are migration inputs, not alternate architectures to preserve.
 ## 3. Goals
 
 - Add one dependency-light `vela_package` crate.
+- Use one shared capability vocabulary and bitset across package declarations,
+  compiler checks, Engine grants, and hot-reload ABI.
 - Define stable package identity, package manifests, path dependencies,
   package source roots, workspace members, and requested capabilities.
 - Make `PackageId + ModulePath` the only script module identity.
@@ -182,6 +191,7 @@ vela_hir
 
 vela_analysis
   provider trait/type/signature/effect validation facts
+  statically observed package capability requirements
 
 vela_def
   package-aware DefPath helpers and stable script IDs
@@ -202,6 +212,8 @@ vela_language_service / vela_lsp_server
 
 Dependency rules:
 
+- `vela_common` owns the domain-neutral `Capability` vocabulary and
+  `CapabilitySet`; package, analysis, Engine, and hot reload use that one type.
 - `vela_package` depends only on general utilities such as `vela_common`,
   serialization/TOML libraries, and the standard library.
 - `vela_package` must not depend on Engine, HIR, bytecode, VM, hot reload, or
@@ -438,8 +450,8 @@ pub struct ProviderDescriptor {
     pub key: ProviderKey,
     pub provider_type: TypeId,
     pub methods: Vec<ProviderMethodDescriptor>,
-    pub declared_capabilities: PackageCapabilitySet,
-    pub inferred_capabilities: PackageCapabilitySet,
+    pub package_declared_capabilities: CapabilitySet,
+    pub package_statically_observed_capabilities: CapabilitySet,
     pub source: ProviderSourceLocation,
 }
 ```
@@ -464,13 +476,26 @@ manifest roots
 Suggested API shape:
 
 ```rust
-let catalog = engine.discover_packages(["plugins/vela.toml"])?;
-let providers = catalog.providers_for(service_trait_id);
+let discovery = engine.discover_packages(["plugins/vela.toml"])?;
+let providers = discovery.catalog().providers_for(service_trait_id);
 ```
 
-`ProviderCatalog` owns or pins the exact package graph and HIR generation from
-which its descriptors were built. A selection cannot be combined with a
-different catalog/package graph by matching strings. Discovery errors preserve
+Discovery returns a sealed snapshot rather than exposing raw HIR ownership
+through the catalog:
+
+```rust
+pub struct DiscoverySnapshot {
+    id: DiscoverySnapshotId,
+    package_graph: Arc<PackageGraph>,
+    sources: Arc<HirSourceSet>,
+    catalog: ProviderCatalog,
+}
+```
+
+`ProviderCatalog` is the lightweight metadata view. `ProviderSelection`
+records `DiscoverySnapshotId`, so a selection cannot be combined with a
+different package graph/HIR generation by matching strings. Public APIs do not
+expose mutable or independently replaceable HIR. Discovery errors preserve
 manifest and Vela source diagnostics separately.
 
 ## 12. Compilation And Artifact Boundary
@@ -478,8 +503,8 @@ manifest and Vela source diagnostics separately.
 Provider selection uses complete stable keys:
 
 ```rust
-let selection = ProviderSelection::from_keys([provider_key]);
-let artifact = engine.compile_provider_selection(&catalog, &selection)?;
+let selection = ProviderSelection::from_snapshot(&discovery, [provider_key]);
+let artifact = engine.compile_provider_selection(&discovery, &selection)?;
 ```
 
 The production pipeline remains:
@@ -499,6 +524,8 @@ Rules:
 - selected providers include their owning package and transitive dependencies;
 - the first slice compiles complete selected packages, not function-level
   tree-shaken fragments;
+- only explicitly selected provider keys enter the installed runtime table;
+  other provider declarations in compiled packages remain discovery metadata;
 - Engine remains the only production linker;
 - package/provider metadata is sealed into the same executable generation as
   verified MIR, linked bytecode, debug metadata, and cache layouts;
@@ -518,14 +545,48 @@ compile_provider_hot_reload_initial(...) -> ProgramVersion
 compile_provider_hot_reload_update(...) -> HotUpdate
 ```
 
+The artifact-owned installed table is distinct from the discovery catalog:
+
+```rust
+pub struct InstalledProviderSet {
+    providers: BTreeMap<ProviderKey, LinkedProviderEntry>,
+    selection: ProviderSelectionFingerprint,
+}
+
+pub struct LinkedProviderEntry {
+    pub key: ProviderKey,
+    pub provider_type: TypeHandle,
+    pub receiver: ProviderReceiverPlan,
+    pub methods: BTreeMap<MethodId, MethodDispatchHandle>,
+    pub package_declared_capabilities: CapabilitySet,
+}
+```
+
+`InstalledProviderSet` is constructed only by the linker from the sealed
+selection and same-generation compile metadata. It is not attachable after
+linking. `ProviderReceiverPlan` is a closed linked enum whose only first-slice
+variant is `FreshZeroField`; this leaves an explicit extension point without
+changing first-slice object-identity semantics.
+
+`ProviderSelection` contains the source `DiscoverySnapshotId` to prevent
+cross-generation compilation. `ProviderSelectionFingerprint` does not contain
+that generation-local ID: it is derived from the canonical sorted set of
+selected `ProviderKey` values. Reload reconstructs a selection with those keys
+against the new discovery snapshot, then compares/installs the resulting
+artifact.
+
 ## 13. Runtime Provider Calls
 
 Provider lookup/call is an Engine Runtime embedding API. The VM only executes
 the linked method target using existing call machinery.
 
 ```rust
-runtime.call_provider(&provider_key, "run", args, options)?;
+runtime.call_provider(&provider_key, service_method_id, args, options)?;
 ```
+
+`MethodId` is the primary API and linked-table key. A convenience method-name
+API may resolve a name to the service `MethodId` once, but the execution path
+does not repeatedly search source method strings.
 
 First-slice construction rule:
 
@@ -538,10 +599,14 @@ First-slice construction rule:
 
 Handle rule:
 
-- `ProviderHandle` contains `ProviderKey` plus the Runtime image/version token;
-- a handle from an old active image is rejected as stale after installation;
-- hosts re-query to obtain a current handle;
-- `call_provider(ProviderKey, ...)` resolves the current image each call;
+- `ProviderHandle` contains the owning Runtime ID and stable `ProviderKey`, not
+  a public generation-local linked handle;
+- a handle from another Runtime is rejected;
+- each call resolves the ProviderKey/MethodId pair in the current image;
+- compatible hot reload automatically sends subsequent calls through the new
+  installed linked entry;
+- an internal resolved call target pins the active `Arc<LinkedArtifact>` for
+  the duration of that call;
 - old in-flight frames and closures continue on their pinned old artifact under
   the existing retained-generation semantics.
 
@@ -551,19 +616,27 @@ and panic/error projection.
 
 ## 14. Capability Contract
 
-The manifest declares requirements; the compiler derives actual requirements;
-the host grants runtime authority:
+The manifest declares requirements, the compiler observes statically resolved
+effects in each complete compiled package, and the host grants runtime
+authority. All layers use the same `vela_common::CapabilitySet`:
 
 ```text
-compiler inferred requirements
+statically observed requirements
   subset of manifest declared requirements
   subset of host grants
 ```
 
 Rules:
 
-- an inferred capability missing from the manifest is a package compile
-  diagnostic;
+- a statically observed capability missing from the manifest is a package
+  compile diagnostic;
+- the first slice conservatively scans all compiled code in each selected
+  package, not only a provider reachability slice;
+- statically resolved native, HostAccess, IO, time, random, event, and
+  reflection effects contribute requirements;
+- dynamic calls remain protected by the normal Runtime capability gate and do
+  not justify claiming complete transitive effect inference;
+- complete call-graph capability minimization is deferred;
 - a declared capability missing from host grants rejects compilation/install
   of that selected package graph;
 - no intersection silently removes a requirement;
@@ -571,8 +644,8 @@ Rules:
 - the first slice uses the existing capabilities only: host read/write, event
   emit, time, random, IO read/write, and reflection read/write/call;
 - unknown capability names are manifest diagnostics;
-- catalog queries expose declared/inferred metadata but do not grant access or
-  bypass reflection permissions;
+- catalog queries expose declared/statically-observed metadata but do not grant
+  access or bypass reflection permissions;
 - per-provider overrides and disabled-provider states are deferred.
 
 ## 15. Hot Reload Contract
@@ -593,17 +666,21 @@ Compatibility checks include:
 - root and dependency `PackageId` stability;
 - stable definition paths affected by package/module changes;
 - service trait addition/removal/method/signature/effect changes;
-- selected provider key addition/removal according to hot-reload policy;
+- every previously installed provider key still resolves in the rebuilt
+  discovery snapshot;
 - provider target type changes;
 - provider method target/signature/effect changes;
-- declared and inferred capability expansion;
+- declared and statically observed capability expansion;
 - public script schema used by provider parameters and return values.
 
 A selected provider removal, service ABI change, provider target-type change,
 or unapproved capability expansion is rejected. A provider body-only change is
-accepted. Additions follow the existing explicit hot-reload addition policy.
-Rejected updates do not advance the active image. Reports carry package,
-module, service, provider, manifest span, and Vela source span context.
+accepted. Ordinary source/manifest reload reapplies the previous artifact's
+`ProviderSelectionFingerprint`: a newly discovered but unselected provider is
+not installed and does not change runtime provider ABI. Changing the installed
+selection is an explicit host restage operation, not an incidental source
+reload. Rejected updates do not advance the active image. Reports carry
+package, module, service, provider, manifest span, and Vela source span context.
 
 ## 16. Language Service And LSP
 
@@ -653,6 +730,8 @@ cutover:
 - [ ] Inventory every handwritten `vela.toml` parser and config model.
 - [ ] Inventory every `ModulePath`-only module index and module lookup.
 - [ ] Inventory every hard-coded `script` DefPath/stable-ID call site.
+- [ ] Inventory every capability enum/set definition and effect-to-capability
+      mapping.
 - [ ] Inventory every Engine source/dir/hot-reload front door.
 - [ ] Inventory current HIR trait/impl/attribute metadata and validation gaps.
 - [ ] Inventory ProgramImage/LinkedArtifact metadata construction and Runtime
@@ -669,6 +748,9 @@ Exit gate:
 ## 19. Phase 1: `vela_package` And Unified Manifest
 
 - [ ] Add `vela_package` to the workspace with the dependency rules above.
+- [ ] Move the capability vocabulary and bitset to the single
+      `vela_common::Capability` / `CapabilitySet` owner; update Engine and
+      other consumers without retaining a duplicate Engine definition.
 - [ ] Add validated package/module identity types, manifest file spans, source
       table, manifest model, and package graph diagnostics.
 - [ ] Move the existing `ModulePath` type mechanically into `vela_package` and
@@ -690,6 +772,7 @@ Focused tests:
 
 - [ ] `manifest_parses_workspace_package_sources_dependencies_and_capabilities`
 - [ ] `manifest_reports_unknown_keys_with_spans`
+- [ ] `manifest_and_engine_use_the_same_capability_ids`
 - [ ] `path_dependency_resolves_relative_to_manifest`
 - [ ] `source_root_cannot_escape_authorized_package_root`
 - [ ] `duplicate_package_id_at_different_manifests_is_rejected`
@@ -769,10 +852,11 @@ cargo test -p vela_language_service
 - [ ] Resolve service trait and provider target declarations package-aware.
 - [ ] Require a public zero-field provider target.
 - [ ] Validate method coverage, defaults, signatures, return hints, effects,
-      access, and declared/inferred capabilities.
+      access, and declared/statically-observed capabilities.
 - [ ] Reject duplicate provider keys and malformed/redundant arguments.
-- [ ] Add stable `ProviderKey`, public descriptors, source locations, and a
-      catalog pinned to one package/HIR generation.
+- [ ] Add stable `ProviderKey`, public descriptors, source locations, a
+      lightweight catalog, and a sealed `DiscoverySnapshot` that pins one
+      package/HIR generation.
 - [ ] Add `Engine::discover_packages` without compilation or execution.
 - [ ] Prove discovery does not execute top-level code or native/HostAccess work.
 
@@ -786,6 +870,7 @@ Focused tests:
 - [ ] `catalog_reports_stable_ids_and_source_spans`
 - [ ] `discovery_does_not_execute_script_or_host_code`
 - [ ] `catalog_cannot_mix_selection_from_another_generation`
+- [ ] `statically_observed_effect_must_be_declared_by_package`
 
 Validation:
 
@@ -798,16 +883,22 @@ cargo test -p vela_engine provider_catalog
 
 ## 22. Phase 4: Linked Provider Runtime Vertical Slice
 
-- [ ] Add provider selection by full `ProviderKey`.
+- [ ] Add provider selection by full `ProviderKey` bound to one
+      `DiscoverySnapshotId`.
 - [ ] Resolve owning packages and transitive dependencies.
 - [ ] Compile complete selected packages through sealed HIR requests.
-- [ ] Seal provider metadata into `CompiledProgram` and `LinkedArtifact` from
-      the same compilation generation.
-- [ ] Link ProviderKey -> provider type handle -> method dispatch handles.
+- [ ] Seal only selected providers into an `InstalledProviderSet` carried from
+      `CompiledProgram` into `LinkedArtifact` in the same generation.
+- [ ] Keep discovered but unselected providers out of runtime lookup and ABI.
+- [ ] Link ProviderKey -> provider type handle -> MethodId -> method dispatch
+      handle.
 - [ ] Reject missing native definitions or cross-generation metadata at link.
 - [ ] Add Runtime current-image lookup, fresh zero-field receiver construction,
       and provider method calls.
-- [ ] Add version-checked `ProviderHandle` and stale-handle rejection.
+- [ ] Add Runtime-bound logical `ProviderHandle` values that re-resolve stable
+      keys against the current compatible image.
+- [ ] Keep resolved generation-local provider targets internal and pin their
+      artifact only for the active call/frame.
 - [ ] Preserve normal budgets, GC roots, HostAccess, capabilities, tracing,
       profiling, and errors.
 - [ ] Keep provider lookup out of the core VM public API.
@@ -816,11 +907,14 @@ Focused tests:
 
 - [ ] `compile_provider_selection_includes_transitive_dependencies`
 - [ ] `linked_artifact_owns_same_generation_provider_metadata`
+- [ ] `linked_artifact_installs_only_selected_providers`
 - [ ] `runtime_calls_provider_trait_impl_method`
+- [ ] `runtime_primary_provider_call_uses_method_id_without_name_dispatch`
 - [ ] `runtime_rejects_missing_provider_or_method`
 - [ ] `provider_call_constructs_fresh_zero_field_receiver`
 - [ ] `provider_call_uses_normal_budget_host_access_and_capability_checks`
-- [ ] `provider_handle_rejects_stale_runtime_image`
+- [ ] `provider_handle_rebinds_after_compatible_reload`
+- [ ] `provider_handle_rejects_another_runtime`
 
 Validation:
 
@@ -833,6 +927,10 @@ cargo test -p vela_vm linked_execution
 ## 23. Phase 5: Package And Provider Hot Reload
 
 - [ ] Add artifact-derived package/provider ABI records.
+- [ ] Persist the installed selection fingerprint in the artifact/version and
+      reapply it during ordinary source/manifest reload.
+- [ ] Derive the fingerprint only from canonical selected ProviderKey values,
+      not the generation-local DiscoverySnapshotId.
 - [ ] Stage changed manifests and sources through Engine package graph rebuild.
 - [ ] Compute changed packages and affected dependents for reports.
 - [ ] Compare service trait, provider key/target/method, package identity,
@@ -840,7 +938,8 @@ cargo test -p vela_vm linked_execution
 - [ ] Accept provider body-only changes.
 - [ ] Reject selected provider removal, target changes, service ABI changes,
       and unapproved capability expansion.
-- [ ] Apply the existing addition policy to new providers/services.
+- [ ] Keep newly discovered but unselected providers out of the update ABI;
+      require explicit host restaging to change the installed selection.
 - [ ] Keep old active frames/closures pinned and move new calls to the accepted
       generation at the existing safe point.
 - [ ] Include manifest and source labels in rejection reports.
@@ -848,6 +947,8 @@ cargo test -p vela_vm linked_execution
 Focused tests:
 
 - [ ] `provider_body_change_is_accepted`
+- [ ] `unselected_provider_addition_does_not_change_runtime_abi`
+- [ ] `ordinary_reload_reapplies_previous_provider_selection`
 - [ ] `provider_removal_is_rejected_without_advancing_active_image`
 - [ ] `service_trait_method_change_is_rejected`
 - [ ] `provider_target_or_signature_change_is_rejected`
@@ -911,6 +1012,10 @@ Final zero-hit and architecture gates must prove:
 - hot reload accepts artifacts, not manifests, HIR, or CompiledProgram;
 - provider runtime dispatch uses linked handles, not names;
 - provider metadata cannot be attached across executable generations;
+- only selected providers enter `InstalledProviderSet` and runtime ABI;
+- provider handles re-resolve stable ProviderKey/MethodId pairs after a
+  compatible reload;
+- the capability vocabulary has one shared definition;
 - language service and Engine consume the same package graph model;
 - all active files satisfy the current file-size policy.
 
@@ -940,10 +1045,13 @@ The plan is complete only when:
 - [ ] provider attributes are structured and source-spanned in HIR.
 - [ ] discovery returns a sealed read-only catalog without execution.
 - [ ] selected packages compile and link through the existing artifact pipeline.
+- [ ] only the explicit selection is sealed into `InstalledProviderSet`.
 - [ ] linked provider metadata is same-generation by construction.
-- [ ] Runtime calls a zero-field provider through linked trait impl dispatch.
-- [ ] capability declarations, inferred effects, and host grants are checked by
-      subset relations rather than intersection.
+- [ ] Runtime calls a zero-field provider by MethodId through linked trait impl
+      dispatch.
+- [ ] logical ProviderHandle values rebind across compatible image updates.
+- [ ] capability declarations, statically observed effects, and host grants use
+      one CapabilitySet and subset checks rather than intersection.
 - [ ] provider hot reload preserves safe points, retained generations, and ABI
       rejection semantics.
 - [ ] package/provider tooling works without executing scripts or host code.
@@ -959,8 +1067,9 @@ one public service trait
 one zero-field provider exported with #[provider(id = "...")]
 host discovery lists the provider without execution
 Engine compiles and links the selected package graph
-Runtime calls provider.run(...) through linked trait dispatch
+Runtime calls the provider MethodId through linked trait dispatch
 provider body hot reload is accepted at a safe point
+the logical provider handle enters the compatible new generation
 provider signature or capability expansion is rejected without image advance
 language tooling resolves the dependency and provider/service navigation
 ```
