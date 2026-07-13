@@ -71,7 +71,7 @@ pub(crate) fn resumable_ordering_kind(
     }
 }
 
-pub(super) fn array_values(
+pub(crate) fn array_values(
     receiver: &Value,
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,

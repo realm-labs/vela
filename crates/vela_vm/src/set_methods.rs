@@ -58,7 +58,7 @@ pub(crate) fn relation_matches(
     }
 }
 
-pub(super) fn set_values(
+pub(crate) fn set_values(
     receiver: &Value,
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,

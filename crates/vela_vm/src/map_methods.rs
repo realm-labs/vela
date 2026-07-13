@@ -29,7 +29,7 @@ pub(crate) fn is_map(receiver: &Value, heap: Option<&crate::HeapExecution<'_>>) 
     }
 }
 
-pub(super) fn map_entries(
+pub(crate) fn map_entries(
     receiver: &Value,
     heap: Option<&crate::HeapExecution<'_>>,
     operation: &'static str,

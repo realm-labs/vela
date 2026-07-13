@@ -13,6 +13,7 @@ use crate::numeric_ops::{
     add_numeric, binary_float_literal_numeric, binary_int_literal_numeric, div_numeric,
     mul_numeric, negate_numeric, rem_numeric, sub_numeric,
 };
+use crate::resumable_callbacks::{ResumableCallbackMethod, ResumableCallbackStep};
 use crate::runtime_checks::is_truthy;
 use crate::value::Value;
 use crate::{
@@ -20,10 +21,11 @@ use crate::{
     store_value_in_heap_if_needed, validate_inline_cache_layout,
 };
 use crate::{
-    array_methods, closure_calls, constant_loads, field_access, format_strings, host_access,
-    i64_ops, indexing, iteration, native_function_calls, runtime_type_guards,
-    script_aggregate_construction, script_builtin_methods, script_function_calls,
-    script_method_calls, script_object_construction, try_propagation, tuple_fields,
+    array_methods, callback_method_dispatch, closure_calls, constant_loads, field_access,
+    format_strings, host_access, i64_ops, indexing, iteration, native_function_calls,
+    runtime_type_guards, script_aggregate_construction, script_builtin_methods,
+    script_function_calls, script_method_calls, script_object_construction, try_propagation,
+    tuple_fields,
 };
 
 pub(crate) struct LinkedExecutionCall<'a> {
@@ -100,6 +102,12 @@ enum PendingFrameOperation {
     },
     ArrayOrdering {
         ordering: array_methods::ResumableArrayOrdering,
+        destination: Register,
+        returned: Option<Value>,
+        source_span: Option<Span>,
+    },
+    CallbackMethod {
+        callback: ResumableCallbackMethod,
         destination: Register,
         returned: Option<Value>,
         source_span: Option<Span>,
@@ -286,9 +294,14 @@ impl Vm {
                         }
                     }
                     let protected_root_len = heap.as_deref_mut().map(|heap| {
-                        heap.push_frame_roots(
-                            &session.frames.last().expect("caller frame").registers,
-                        )
+                        let caller = session.frames.last().expect("caller frame");
+                        let protected_root_len = heap.push_frame_roots(&caller.registers);
+                        if let Some(PendingFrameOperation::CallbackMethod { callback, .. }) =
+                            caller.pending_operation.as_ref()
+                        {
+                            callback.protect_roots(heap);
+                        }
+                        protected_root_len
                     });
                     let return_to = ReturnContinuation {
                         target: pending.return_target,
@@ -371,7 +384,8 @@ impl Vm {
                             };
                             match operation {
                                 PendingFrameOperation::Comparison { returned, .. }
-                                | PendingFrameOperation::ArrayOrdering { returned, .. } => {
+                                | PendingFrameOperation::ArrayOrdering { returned, .. }
+                                | PendingFrameOperation::CallbackMethod { returned, .. } => {
                                     *returned = Some(value);
                                 }
                             }
@@ -547,7 +561,9 @@ impl Vm {
                         }));
                     }
                     ResumableComparisonStep::Call { function, args } => Some((
+                        Arc::clone(&current_owner),
                         function,
+                        Vec::new(),
                         args,
                         source_span,
                         PendingFrameOperation::Comparison {
@@ -572,7 +588,9 @@ impl Vm {
                         None
                     }
                     array_methods::ResumableArrayOrderingStep::Call { function, args } => Some((
+                        Arc::clone(&current_owner),
                         function,
+                        Vec::new(),
                         args,
                         source_span,
                         PendingFrameOperation::ArrayOrdering {
@@ -583,32 +601,77 @@ impl Vm {
                         },
                     )),
                 },
+                PendingFrameOperation::CallbackMethod {
+                    mut callback,
+                    destination,
+                    returned,
+                    source_span,
+                } => match callback
+                    .step(heap, budget, returned)
+                    .map_err(|error| error.with_source_span_if_absent(source_span))?
+                {
+                    ResumableCallbackStep::Complete(value) => {
+                        frame_state.registers.write(destination, value)?;
+                        None
+                    }
+                    ResumableCallbackStep::Call {
+                        owner,
+                        function,
+                        captures,
+                        args,
+                    } => Some((
+                        owner,
+                        function,
+                        captures,
+                        args,
+                        source_span,
+                        PendingFrameOperation::CallbackMethod {
+                            callback,
+                            destination,
+                            returned: None,
+                            source_span,
+                        },
+                    )),
+                },
             };
-            let Some((function, args, source_span, resumed_operation)) = pending else {
+            let Some((owner, function, captures, args, source_span, resumed_operation)) = pending
+            else {
                 return Ok(FrameDriveOutcome::Continue);
             };
-            let target = program.function(function).ok_or_else(|| {
+            let target = owner.function(function).ok_or_else(|| {
                 VmError::new(VmErrorKind::UnknownFunction {
                     name: format!("<linked function#{}>", function.index()),
                 })
             })?;
             if target.asyncness.is_async() {
                 return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
-                    name: program.debug_name(target.debug_name).to_owned(),
+                    name: owner.program().debug_name(target.debug_name).to_owned(),
                 })
                 .with_source_span_if_absent(source_span));
             }
+            let inline_caches = if owner.generation() == program.generation() {
+                call.inline_caches
+            } else {
+                call.inline_caches
+                    .and_then(|caches| caches.for_generation(owner.generation()))
+            };
+            let bytecode_profiler = if owner.generation() == program.generation() {
+                call.bytecode_profiler
+            } else {
+                call.bytecode_profiler
+                    .and_then(|profiler| profiler.for_generation(owner.generation()))
+            };
             frame_state.pending_operation = Some(resumed_operation);
             return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
-                owner: Arc::clone(&current_owner),
+                owner,
                 function,
-                captures: Vec::new(),
+                captures,
                 args,
                 check_param_guards: true,
                 call_site: source_span,
                 call_site_offset: frame_state.ip.0.checked_sub(1).map(InstructionOffset),
-                inline_caches: call.inline_caches,
-                bytecode_profiler: call.bytecode_profiler,
+                inline_caches,
+                bytecode_profiler,
                 return_target: PendingReturnTarget::Operation,
             }));
         }
@@ -1124,6 +1187,91 @@ impl Vm {
                         &dispatch_target.kind
                     {
                         let receiver_value = frame.read(*receiver)?;
+                        if let Some(callback_cache) = callback_method_dispatch::callback_cache_entry(
+                            *method_id,
+                            &receiver_value,
+                            heap.as_deref(),
+                        ) {
+                            let values =
+                                script_function_calls::script_call_args_from_call_arguments(
+                                    frame, args,
+                                )?;
+                            if let Some(callback) = ResumableCallbackMethod::new(
+                                &receiver_value,
+                                callback_cache,
+                                values.as_slice(),
+                                heap.as_deref(),
+                            ) {
+                                let callback = callback?;
+                                if let (Some(site), Some(caches)) =
+                                    (*cache_site, call.inline_caches)
+                                {
+                                    let existing = caches.method_dispatch(site);
+                                    let generic_valid = existing.is_some_and(|entry| {
+                                        entry.dispatch == *dispatch
+                                            && entry.debug_name == dispatch_target.debug_name
+                                            && matches!(
+                                                entry.target,
+                                                crate::MethodInlineCacheTarget::Value {
+                                                    method_id: cached_method,
+                                                    ..
+                                                } | crate::MethodInlineCacheTarget::CallbackValue {
+                                                    method_id: cached_method,
+                                                    ..
+                                                } if cached_method == *method_id
+                                            )
+                                    });
+                                    let cached = existing.is_some_and(|entry| {
+                                        entry.dispatch == *dispatch
+                                            && entry.debug_name == dispatch_target.debug_name
+                                            && matches!(
+                                                entry.target,
+                                                crate::MethodInlineCacheTarget::CallbackValue {
+                                                    method_id: cached_method,
+                                                    callback_method,
+                                                } if cached_method == *method_id
+                                                    && callback_method == callback_cache
+                                            )
+                                    });
+                                    if !cached {
+                                        if !generic_valid {
+                                            caches.set_method_dispatch(
+                                                site,
+                                                crate::MethodInlineCacheEntry {
+                                                    dispatch: *dispatch,
+                                                    debug_name: dispatch_target.debug_name,
+                                                    target: crate::MethodInlineCacheTarget::Value {
+                                                        method_id: *method_id,
+                                                        standard_method: None,
+                                                    },
+                                                },
+                                            );
+                                        }
+                                        caches.set_method_dispatch(
+                                            site,
+                                            crate::MethodInlineCacheEntry {
+                                                dispatch: *dispatch,
+                                                debug_name: dispatch_target.debug_name,
+                                                target:
+                                                    crate::MethodInlineCacheTarget::CallbackValue {
+                                                        method_id: *method_id,
+                                                        callback_method: callback_cache,
+                                                    },
+                                            },
+                                        );
+                                    }
+                                }
+                                frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
+                                frame_state.pending_operation =
+                                    Some(PendingFrameOperation::CallbackMethod {
+                                        callback,
+                                        destination: *dst,
+                                        returned: None,
+                                        source_span: instruction.span,
+                                    });
+                                return Ok(FrameDriveOutcome::Continue);
+                            }
+                        }
                         if let Some(kind) = array_methods::resumable_ordering_kind(
                             &receiver_value,
                             *method_id,
@@ -1140,7 +1288,8 @@ impl Vm {
                                 heap.as_deref(),
                             )?;
                             if let (Some(site), Some(caches)) = (*cache_site, call.inline_caches) {
-                                let cached = caches.method_dispatch(site).is_some_and(|entry| {
+                                let existing = caches.method_dispatch(site);
+                                let cached = existing.is_some_and(|entry| {
                                     entry.dispatch == *dispatch
                                         && entry.debug_name == dispatch_target.debug_name
                                         && matches!(
@@ -1152,17 +1301,19 @@ impl Vm {
                                         )
                                 });
                                 if !cached {
-                                    caches.set_method_dispatch(
-                                        site,
-                                        crate::MethodInlineCacheEntry {
-                                            dispatch: *dispatch,
-                                            debug_name: dispatch_target.debug_name,
-                                            target: crate::MethodInlineCacheTarget::Value {
-                                                method_id: *method_id,
-                                                standard_method: None,
+                                    if existing.is_none() {
+                                        caches.set_method_dispatch(
+                                            site,
+                                            crate::MethodInlineCacheEntry {
+                                                dispatch: *dispatch,
+                                                debug_name: dispatch_target.debug_name,
+                                                target: crate::MethodInlineCacheTarget::Value {
+                                                    method_id: *method_id,
+                                                    standard_method: None,
+                                                },
                                             },
-                                        },
-                                    );
+                                        );
+                                    }
                                     caches.set_method_dispatch(
                                         site,
                                         crate::MethodInlineCacheEntry {
@@ -1339,6 +1490,32 @@ impl Vm {
                     ) = &resolution
                     {
                         let receiver_value = frame.read(*receiver)?;
+                        if let Some(callback_cache) = callback_method_dispatch::callback_cache_entry(
+                            *method_id,
+                            &receiver_value,
+                            heap.as_deref(),
+                        ) {
+                            let values =
+                                script_method_calls::dynamic_value_args_from_linked_arguments(
+                                    frame, args,
+                                )?;
+                            if let Some(callback) = ResumableCallbackMethod::new(
+                                &receiver_value,
+                                callback_cache,
+                                values.as_slice(),
+                                heap.as_deref(),
+                            ) {
+                                frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
+                                frame_state.pending_operation =
+                                    Some(PendingFrameOperation::CallbackMethod {
+                                        callback: callback?,
+                                        destination: *dst,
+                                        returned: None,
+                                        source_span: instruction.span,
+                                    });
+                                return Ok(FrameDriveOutcome::Continue);
+                            }
+                        }
                         if let Some(kind) = array_methods::resumable_ordering_kind(
                             &receiver_value,
                             *method_id,

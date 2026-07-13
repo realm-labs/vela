@@ -40,6 +40,7 @@ pub mod ranges;
 mod record_fields;
 mod reflection;
 mod reflection_values;
+mod resumable_callbacks;
 mod runtime_checks;
 mod runtime_type_guards;
 mod script_aggregate_construction;
