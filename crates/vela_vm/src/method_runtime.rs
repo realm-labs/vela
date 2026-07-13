@@ -1,49 +1,16 @@
 use vela_bytecode::LinkedProgram;
 
-use crate::CallFrame;
-use crate::linked_execution::LinkedExecutionCall;
 use crate::runtime_checks::expect_closure_ref;
-use crate::{
-    ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmBytecodeProfiler, VmError,
-    VmErrorKind, VmInlineCaches, VmResult,
-};
+use crate::{ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
-#[derive(Clone, Copy)]
-pub(crate) enum CallerRoots<'a> {
-    Frame(&'a CallFrame),
-    Empty,
-}
-
-impl<'a> CallerRoots<'a> {
-    pub(crate) fn for_frame(frame: &'a CallFrame, heap: Option<&HeapExecution<'_>>) -> Self {
-        if heap.is_some() {
-            Self::Frame(frame)
-        } else {
-            Self::Empty
-        }
-    }
-
-    pub(crate) fn push_to_heap(self, heap: &mut HeapExecution<'_>) -> usize {
-        match self {
-            Self::Frame(frame) => heap.push_frame_roots(frame),
-            Self::Empty => heap.push_protected_roots(&[]),
-        }
-    }
-}
-
-pub(crate) struct MethodRuntime<'a, 'host, 'heap> {
-    pub(crate) vm: &'a Vm,
+pub(crate) struct MethodRuntime<'a, 'heap> {
     pub(crate) program: &'a LinkedProgram,
-    pub(crate) host: Option<&'a mut HostExecution<'host>>,
     pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
     pub(crate) budget: Option<&'a mut ExecutionBudget>,
-    pub(crate) caller_roots: CallerRoots<'a>,
-    pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
-    pub(crate) bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
 }
 
 pub(crate) fn call_callback(
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
     operation: &'static str,
     callback: &Value,
     args: &[Value],
@@ -53,7 +20,7 @@ pub(crate) fn call_callback(
 }
 
 pub(crate) fn callback_param_len(
-    runtime: &MethodRuntime<'_, '_, '_>,
+    runtime: &MethodRuntime<'_, '_>,
     operation: &'static str,
     callback: &Value,
 ) -> VmResult<usize> {
@@ -67,55 +34,13 @@ pub(crate) fn callback_param_len(
 }
 
 pub(crate) fn call_callback_with_protected_values<'value>(
-    runtime: &mut MethodRuntime<'_, '_, '_>,
-    operation: &'static str,
-    callback: &Value,
-    args: &[Value],
-    protected_values: impl IntoIterator<Item = &'value Value>,
+    _runtime: &mut MethodRuntime<'_, '_>,
+    _operation: &'static str,
+    _callback: &Value,
+    _args: &[Value],
+    _protected_values: impl IntoIterator<Item = &'value Value>,
 ) -> VmResult<Value> {
-    if let Some(budget) = runtime.budget.as_deref_mut() {
-        budget.charge_execution_units(1)?;
-    }
-    let (owner, function, captures) = {
-        let closure = expect_closure_ref(callback, runtime.heap.as_deref(), operation)?;
-        let captures = closure.captures.clone();
-        (
-            std::sync::Arc::clone(&closure.owner),
-            closure.function,
-            captures,
-        )
-    };
-    let protected_root_len = runtime.heap.as_deref_mut().map(|heap| {
-        let protected_root_len = runtime.caller_roots.push_to_heap(heap);
-        heap.protect_values(args);
-        heap.protect_value_refs(protected_values);
-        protected_root_len
-    });
-    owner.function(function).ok_or_else(|| {
-        VmError::new(VmErrorKind::UnknownFunction {
-            name: format!("<linked closure#{}>", function.index()),
-        })
-    })?;
-    let result = runtime.vm.execute_linked_call(
-        LinkedExecutionCall {
-            owner,
-            function,
-            captures: captures.as_slice(),
-            args,
-            check_param_guards: true,
-            call_site: None,
-            call_site_offset: None,
-            inline_caches: runtime.inline_caches,
-            bytecode_profiler: runtime.bytecode_profiler,
-        },
-        runtime.host.as_deref_mut(),
-        runtime.heap.as_deref_mut(),
-        runtime.budget.as_deref_mut(),
-    );
-    if let (Some(heap), Some(protected_root_len)) =
-        (runtime.heap.as_deref_mut(), protected_root_len)
-    {
-        heap.truncate_protected_roots(protected_root_len);
-    }
-    result
+    Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+        opcode: "callback escaped the execution session",
+    }))
 }

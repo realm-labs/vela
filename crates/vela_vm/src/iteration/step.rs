@@ -14,7 +14,7 @@ pub(crate) struct RangeNextStep {
 }
 
 pub(crate) fn dispatch_linked_range_next(
-    runtime: IterRuntime<'_, '_, '_>,
+    runtime: IterRuntime<'_, '_>,
     code: &LinkedCodeObject,
     step: RangeNextStep,
 ) -> VmResult<Option<usize>> {

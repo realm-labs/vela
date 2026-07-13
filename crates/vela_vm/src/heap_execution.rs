@@ -36,12 +36,6 @@ impl<'heap> HeapExecution<'heap> {
         self.last_gc_step.as_ref()
     }
 
-    pub(crate) fn push_protected_roots(&mut self, roots: &[GcRef]) -> usize {
-        let previous_len = self.protected_roots.len();
-        self.protected_roots.extend_from_slice(roots);
-        previous_len
-    }
-
     pub(crate) fn push_frame_roots(&mut self, frame: &CallFrame) -> usize {
         let previous_len = self.protected_roots.len();
         frame.extend_heap_roots(&mut self.protected_roots);
@@ -55,15 +49,6 @@ impl<'heap> HeapExecution<'heap> {
     pub(crate) fn protect_values(&mut self, values: &[Value]) {
         values
             .iter()
-            .for_each(|value| value.trace_heap_refs(&mut self.protected_roots));
-    }
-
-    pub(crate) fn protect_value_refs<'value>(
-        &mut self,
-        values: impl IntoIterator<Item = &'value Value>,
-    ) {
-        values
-            .into_iter()
             .for_each(|value| value.trace_heap_refs(&mut self.protected_roots));
     }
 

@@ -5,8 +5,8 @@ use crate::method_runtime::{MethodRuntime, call_callback};
 use crate::ranges::RangeCursor;
 use crate::runtime_checks::is_truthy;
 use crate::value_key::ValueKey;
-use crate::{Value, VmError, VmErrorKind, VmResult};
-use vela_bytecode::TypeGuardPlan;
+use crate::{ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult};
+use vela_bytecode::{LinkedProgram, TypeGuardPlan};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct IteratorState {
@@ -74,19 +74,27 @@ enum IteratorCursor {
     Map {
         source: Box<IteratorState>,
         callback: Value,
+        awaiting: bool,
     },
     Filter {
         source: Box<IteratorState>,
         callback: Value,
+        awaiting: Option<Value>,
     },
     Take {
         source: Box<IteratorState>,
         remaining: usize,
+        active: bool,
     },
     Skip {
         source: Box<IteratorState>,
         remaining: usize,
     },
+}
+
+pub(crate) enum IteratorPollStep {
+    Complete(Option<Value>),
+    Call { callback: Value, args: Vec<Value> },
 }
 
 impl IteratorState {
@@ -200,6 +208,7 @@ impl IteratorState {
             cursor: IteratorCursor::Map {
                 source: Box::new(source),
                 callback,
+                awaiting: false,
             },
             item_guards: Vec::new(),
         }
@@ -210,6 +219,7 @@ impl IteratorState {
             cursor: IteratorCursor::Filter {
                 source: Box::new(source),
                 callback,
+                awaiting: None,
             },
             item_guards: Vec::new(),
         }
@@ -220,6 +230,7 @@ impl IteratorState {
             cursor: IteratorCursor::Take {
                 source: Box::new(source),
                 remaining,
+                active: false,
             },
             item_guards: Vec::new(),
         }
@@ -267,7 +278,9 @@ impl IteratorState {
                 Ok(Some(value))
             }
             IteratorCursor::Range(cursor) => Ok(cursor.next().map(Value::i64)),
-            IteratorCursor::Take { source, remaining } => {
+            IteratorCursor::Take {
+                source, remaining, ..
+            } => {
                 if *remaining == 0 {
                     return Ok(None);
                 }
@@ -298,25 +311,16 @@ impl IteratorState {
 
     pub(crate) fn next_with_runtime(
         &mut self,
-        runtime: &mut MethodRuntime<'_, '_, '_>,
+        runtime: &mut MethodRuntime<'_, '_>,
         operation: &'static str,
         protected_values: &[Value],
     ) -> VmResult<Option<Value>> {
         self.next_with_runtime_inner(runtime, operation, protected_values, true)
     }
 
-    pub(crate) fn next_with_runtime_precharged(
-        &mut self,
-        runtime: &mut MethodRuntime<'_, '_, '_>,
-        operation: &'static str,
-        protected_values: &[Value],
-    ) -> VmResult<Option<Value>> {
-        self.next_with_runtime_inner(runtime, operation, protected_values, false)
-    }
-
     fn next_with_runtime_inner(
         &mut self,
-        runtime: &mut MethodRuntime<'_, '_, '_>,
+        runtime: &mut MethodRuntime<'_, '_>,
         operation: &'static str,
         protected_values: &[Value],
         charge_step: bool,
@@ -365,7 +369,9 @@ impl IteratorState {
                 operation,
                 HeapSequenceKind::Bytes,
             ),
-            IteratorCursor::Take { source, remaining } => {
+            IteratorCursor::Take {
+                source, remaining, ..
+            } => {
                 if *remaining == 0 {
                     return Ok(None);
                 }
@@ -384,7 +390,12 @@ impl IteratorState {
                 }
                 source.next_with_runtime(runtime, operation, protected_values)
             }
-            IteratorCursor::Map { source, callback } => {
+            IteratorCursor::Map {
+                source,
+                callback,
+                awaiting,
+            } => {
+                debug_assert!(!*awaiting);
                 let Some(value) = source.next_with_runtime(runtime, operation, protected_values)?
                 else {
                     return self.validate_item(None, runtime);
@@ -392,7 +403,12 @@ impl IteratorState {
                 let protected = callback_protected_values(source, *callback, protected_values);
                 call_callback(runtime, operation, callback, &[value], &protected).map(Some)
             }
-            IteratorCursor::Filter { source, callback } => loop {
+            IteratorCursor::Filter {
+                source,
+                callback,
+                awaiting,
+            } => loop {
+                debug_assert!(awaiting.is_none());
                 let Some(value) = source.next_with_runtime(runtime, operation, protected_values)?
                 else {
                     return self.validate_item(None, runtime);
@@ -405,6 +421,212 @@ impl IteratorState {
             },
         }?;
         self.validate_item(next, runtime)
+    }
+
+    pub(crate) fn poll_next(
+        &mut self,
+        program: &LinkedProgram,
+        heap: &mut Option<&mut HeapExecution<'_>>,
+        budget: &mut Option<&mut ExecutionBudget>,
+        operation: &'static str,
+        charge_step: bool,
+        returned: Option<Value>,
+    ) -> VmResult<IteratorPollStep> {
+        let mut returned = returned;
+        let step =
+            self.poll_next_inner(program, heap, budget, operation, charge_step, &mut returned)?;
+        if returned.is_some() {
+            return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                opcode: "iterator callback result escaped its continuation",
+            }));
+        }
+        Ok(step)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn poll_next_inner(
+        &mut self,
+        program: &LinkedProgram,
+        heap: &mut Option<&mut HeapExecution<'_>>,
+        budget: &mut Option<&mut ExecutionBudget>,
+        operation: &'static str,
+        charge_step: bool,
+        returned: &mut Option<Value>,
+    ) -> VmResult<IteratorPollStep> {
+        if charge_step && let Some(budget) = budget.as_deref_mut() {
+            budget.charge_execution_units(1)?;
+        }
+        let step = match &mut self.cursor {
+            IteratorCursor::Values { .. } | IteratorCursor::Range(_) => {
+                IteratorPollStep::Complete(self.next_without_runtime()?)
+            }
+            IteratorCursor::Array { source, next, len } => {
+                IteratorPollStep::Complete(next_indexed_heap_value_direct(
+                    *source,
+                    next,
+                    *len,
+                    heap.as_deref(),
+                    operation,
+                    HeapSequenceKind::Array,
+                )?)
+            }
+            IteratorCursor::Set { source, next, len } => {
+                IteratorPollStep::Complete(next_indexed_heap_value_direct(
+                    *source,
+                    next,
+                    *len,
+                    heap.as_deref(),
+                    operation,
+                    HeapSequenceKind::Set,
+                )?)
+            }
+            IteratorCursor::MapValues { source, keys, next } => IteratorPollStep::Complete(
+                next_map_value_direct(*source, keys, next, heap.as_deref(), operation)?,
+            ),
+            IteratorCursor::MapKeys { source, keys, next } => IteratorPollStep::Complete(
+                next_map_key_direct(*source, keys, next, heap.as_deref(), operation)?,
+            ),
+            IteratorCursor::MapEntries { source, keys, next } => IteratorPollStep::Complete(
+                next_map_entry_direct(*source, keys, next, heap, budget, operation)?,
+            ),
+            IteratorCursor::StringChars { source, byte_next } => IteratorPollStep::Complete(
+                next_string_char_direct(*source, byte_next, heap.as_deref(), operation)?,
+            ),
+            IteratorCursor::StringBytes { source, next } => IteratorPollStep::Complete(
+                next_string_byte_direct(*source, next, heap.as_deref(), operation)?,
+            ),
+            IteratorCursor::Bytes { source, next, len } => {
+                IteratorPollStep::Complete(next_indexed_heap_value_direct(
+                    *source,
+                    next,
+                    *len,
+                    heap.as_deref(),
+                    operation,
+                    HeapSequenceKind::Bytes,
+                )?)
+            }
+            IteratorCursor::Take {
+                source,
+                remaining,
+                active,
+            } => {
+                if !*active && *remaining == 0 {
+                    IteratorPollStep::Complete(None)
+                } else {
+                    if !*active {
+                        *remaining = remaining.saturating_sub(1);
+                        *active = true;
+                    }
+                    let step =
+                        source.poll_next_inner(program, heap, budget, operation, true, returned)?;
+                    if matches!(step, IteratorPollStep::Complete(_)) {
+                        *active = false;
+                    }
+                    step
+                }
+            }
+            IteratorCursor::Skip { source, remaining } => loop {
+                if *remaining == 0 {
+                    break source
+                        .poll_next_inner(program, heap, budget, operation, true, returned)?;
+                }
+                match source.poll_next_inner(program, heap, budget, operation, true, returned)? {
+                    IteratorPollStep::Complete(Some(_)) => {
+                        *remaining = remaining.saturating_sub(1);
+                    }
+                    IteratorPollStep::Complete(None) => {
+                        break IteratorPollStep::Complete(None);
+                    }
+                    call @ IteratorPollStep::Call { .. } => break call,
+                }
+            },
+            IteratorCursor::Map {
+                source,
+                callback,
+                awaiting,
+            } => {
+                if *awaiting {
+                    *awaiting = false;
+                    IteratorPollStep::Complete(Some(returned.take().ok_or_else(|| {
+                        VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                            opcode: "missing iterator map callback result",
+                        })
+                    })?))
+                } else {
+                    match source
+                        .poll_next_inner(program, heap, budget, operation, true, returned)?
+                    {
+                        IteratorPollStep::Complete(Some(value)) => {
+                            *awaiting = true;
+                            IteratorPollStep::Call {
+                                callback: *callback,
+                                args: vec![value],
+                            }
+                        }
+                        other => other,
+                    }
+                }
+            }
+            IteratorCursor::Filter {
+                source,
+                callback,
+                awaiting,
+            } => {
+                let accepted = if let Some(value) = awaiting.take() {
+                    let predicate = returned.take().ok_or_else(|| {
+                        VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                            opcode: "missing iterator filter callback result",
+                        })
+                    })?;
+                    is_truthy(&predicate).then_some(value)
+                } else {
+                    None
+                };
+                if let Some(value) = accepted {
+                    IteratorPollStep::Complete(Some(value))
+                } else {
+                    match source
+                        .poll_next_inner(program, heap, budget, operation, true, returned)?
+                    {
+                        IteratorPollStep::Complete(Some(value)) => {
+                            *awaiting = Some(value);
+                            IteratorPollStep::Call {
+                                callback: *callback,
+                                args: vec![value],
+                            }
+                        }
+                        other => other,
+                    }
+                }
+            }
+        };
+        match step {
+            IteratorPollStep::Complete(value) => self
+                .validate_polled_item(value, program, heap, budget)
+                .map(IteratorPollStep::Complete),
+            call => Ok(call),
+        }
+    }
+
+    fn validate_polled_item(
+        &self,
+        value: Option<Value>,
+        program: &LinkedProgram,
+        heap: &mut Option<&mut HeapExecution<'_>>,
+        budget: &mut Option<&mut ExecutionBudget>,
+    ) -> VmResult<Option<Value>> {
+        let Some(value) = value else {
+            return Ok(None);
+        };
+        for guard in &self.item_guards {
+            let mut runtime = MethodRuntime {
+                program,
+                heap: heap.as_deref_mut(),
+                budget: budget.as_deref_mut(),
+            };
+            crate::runtime_type_guards::execute_iterator_item_guard(&value, guard, &mut runtime)?;
+        }
+        Ok(Some(value))
     }
 
     pub(crate) fn trace_heap_refs(&self, refs: &mut Vec<GcRef>) {
@@ -421,8 +643,12 @@ impl IteratorState {
             | IteratorCursor::StringBytes { source, .. }
             | IteratorCursor::Bytes { source, .. } => refs.push(*source),
             IteratorCursor::Range(_) => {}
-            IteratorCursor::Map { source, callback }
-            | IteratorCursor::Filter { source, callback } => {
+            IteratorCursor::Map {
+                source, callback, ..
+            }
+            | IteratorCursor::Filter {
+                source, callback, ..
+            } => {
                 source.trace_heap_refs(refs);
                 callback.trace_heap_refs(refs);
             }
@@ -450,8 +676,12 @@ impl IteratorState {
             | IteratorCursor::StringBytes { source, .. }
             | IteratorCursor::Bytes { source, .. } => protected.push(Value::HeapRef(*source)),
             IteratorCursor::Range(_) => {}
-            IteratorCursor::Map { source, callback }
-            | IteratorCursor::Filter { source, callback } => {
+            IteratorCursor::Map {
+                source, callback, ..
+            }
+            | IteratorCursor::Filter {
+                source, callback, ..
+            } => {
                 source.push_protected_values(protected);
                 protected.push(*callback);
             }
@@ -502,7 +732,7 @@ impl IteratorState {
     fn validate_item(
         &self,
         value: Option<Value>,
-        runtime: &mut MethodRuntime<'_, '_, '_>,
+        runtime: &mut MethodRuntime<'_, '_>,
     ) -> VmResult<Option<Value>> {
         let Some(value) = value else {
             return Ok(None);
@@ -525,7 +755,7 @@ fn next_indexed_heap_value(
     source: GcRef,
     next: &mut usize,
     len: usize,
-    runtime: &MethodRuntime<'_, '_, '_>,
+    runtime: &MethodRuntime<'_, '_>,
     operation: &'static str,
     kind: HeapSequenceKind,
 ) -> VmResult<Option<Value>> {
@@ -560,7 +790,7 @@ fn next_map_value(
     source: GcRef,
     keys: &[ValueKey],
     next: &mut usize,
-    runtime: &MethodRuntime<'_, '_, '_>,
+    runtime: &MethodRuntime<'_, '_>,
     operation: &'static str,
 ) -> VmResult<Option<Value>> {
     let Some(heap) = runtime.heap.as_deref() else {
@@ -582,7 +812,7 @@ fn next_map_key(
     source: GcRef,
     keys: &[ValueKey],
     next: &mut usize,
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
     operation: &'static str,
 ) -> VmResult<Option<Value>> {
     let Some(heap) = runtime.heap.as_deref() else {
@@ -604,7 +834,7 @@ fn next_map_entry(
     source: GcRef,
     keys: &[ValueKey],
     next: &mut usize,
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
     operation: &'static str,
 ) -> VmResult<Option<Value>> {
     let Some(heap) = runtime.heap.as_deref() else {
@@ -629,7 +859,7 @@ fn next_map_entry(
 fn next_string_char(
     source: GcRef,
     byte_next: &mut usize,
-    runtime: &MethodRuntime<'_, '_, '_>,
+    runtime: &MethodRuntime<'_, '_>,
     operation: &'static str,
 ) -> VmResult<Option<Value>> {
     let Some(heap) = runtime.heap.as_deref() else {
@@ -651,13 +881,150 @@ fn next_string_char(
 fn next_string_byte(
     source: GcRef,
     next: &mut usize,
-    runtime: &MethodRuntime<'_, '_, '_>,
+    runtime: &MethodRuntime<'_, '_>,
     operation: &'static str,
 ) -> VmResult<Option<Value>> {
     let Some(heap) = runtime.heap.as_deref() else {
         return type_error(operation);
     };
     let Some(HeapValue::String(value)) = heap.heap.get(source) else {
+        return type_error(operation);
+    };
+    let Some(byte) = value.as_bytes().get(*next) else {
+        return Ok(None);
+    };
+    *next = next.saturating_add(1);
+    Ok(Some(Value::U8(*byte)))
+}
+
+fn next_indexed_heap_value_direct(
+    source: GcRef,
+    next: &mut usize,
+    len: usize,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+    kind: HeapSequenceKind,
+) -> VmResult<Option<Value>> {
+    if *next >= len {
+        return Ok(None);
+    }
+    let index = *next;
+    *next = next.saturating_add(1);
+    let Some(value) = heap.and_then(|heap| heap.heap.get(source)) else {
+        return type_error(operation);
+    };
+    match (kind, value) {
+        (HeapSequenceKind::Array, HeapValue::Array(values)) => {
+            Ok(values.get(index).map(stored_runtime_value))
+        }
+        (HeapSequenceKind::Set, HeapValue::Set(values)) => Ok(values
+            .values()
+            .nth(index)
+            .copied()
+            .map(|value| stored_runtime_value(&value))),
+        (HeapSequenceKind::Bytes, HeapValue::Bytes(values)) => {
+            Ok(values.get(index).map(|byte| Value::U8(*byte)))
+        }
+        _ => type_error(operation),
+    }
+}
+
+fn next_map_value_direct(
+    source: GcRef,
+    keys: &[ValueKey],
+    next: &mut usize,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<Option<Value>> {
+    let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(source)) else {
+        return type_error(operation);
+    };
+    while let Some(key) = keys.get(*next) {
+        *next = next.saturating_add(1);
+        if let Some(value) = values.get_keyed(key) {
+            return Ok(Some(value));
+        }
+    }
+    Ok(None)
+}
+
+fn next_map_key_direct(
+    source: GcRef,
+    keys: &[ValueKey],
+    next: &mut usize,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<Option<Value>> {
+    let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(source)) else {
+        return type_error(operation);
+    };
+    while let Some(key) = keys.get(*next) {
+        *next = next.saturating_add(1);
+        if let Some(entry) = values.entry_for_key(key) {
+            return Ok(Some(stored_runtime_value(&entry.key)));
+        }
+    }
+    Ok(None)
+}
+
+fn next_map_entry_direct(
+    source: GcRef,
+    keys: &[ValueKey],
+    next: &mut usize,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<Option<Value>> {
+    let entry = {
+        let Some(HeapValue::Map(values)) = heap.as_deref().and_then(|heap| heap.heap.get(source))
+        else {
+            return type_error(operation);
+        };
+        let mut found = None;
+        while let Some(key) = keys.get(*next) {
+            *next = next.saturating_add(1);
+            if let Some(entry) = values.entry_for_key(key) {
+                found = Some((
+                    stored_runtime_value(&entry.key),
+                    stored_runtime_value(&entry.value),
+                ));
+                break;
+            }
+        }
+        found
+    };
+    let Some((key, value)) = entry else {
+        return Ok(None);
+    };
+    crate::map_methods::map_entry(key, value, heap, budget).map(Some)
+}
+
+fn next_string_char_direct(
+    source: GcRef,
+    byte_next: &mut usize,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<Option<Value>> {
+    let Some(HeapValue::String(value)) = heap.and_then(|heap| heap.heap.get(source)) else {
+        return type_error(operation);
+    };
+    let Some(rest) = value.get(*byte_next..) else {
+        return type_error(operation);
+    };
+    let Some(ch) = rest.chars().next() else {
+        return Ok(None);
+    };
+    *byte_next = byte_next.saturating_add(ch.len_utf8());
+    Ok(Some(Value::Char(ch)))
+}
+
+fn next_string_byte_direct(
+    source: GcRef,
+    next: &mut usize,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<Option<Value>> {
+    let Some(HeapValue::String(value)) = heap.and_then(|heap| heap.heap.get(source)) else {
         return type_error(operation);
     };
     let Some(byte) = value.as_bytes().get(*next) else {

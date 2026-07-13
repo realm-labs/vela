@@ -43,6 +43,7 @@ struct PreparedCallback {
 }
 
 enum CallbackState {
+    Iterator(Box<crate::iteration::ResumableIteratorMethod>),
     Sequence {
         receiver: StandardMethodReceiver,
         target: CallbackMethodInlineCacheTarget,
@@ -148,6 +149,15 @@ impl ResumableCallbackMethod {
         args: &[Value],
         heap: Option<&HeapExecution<'_>>,
     ) -> Option<VmResult<Self>> {
+        if let Some(iterator) =
+            crate::iteration::ResumableIteratorMethod::new(*receiver, cache, args)
+        {
+            return Some(iterator.map(|iterator| Self {
+                callback_value: args.first().copied().unwrap_or(Value::Missing),
+                callback: None,
+                state: CallbackState::Iterator(Box::new(iterator)),
+            }));
+        }
         let operation = callback_operation(cache.receiver, cache.target)?;
         if cache.receiver == StandardMethodReceiver::Array
             && cache.target == CallbackMethodInlineCacheTarget::Sum
@@ -271,6 +281,9 @@ impl ResumableCallbackMethod {
         budget: &mut Option<&mut ExecutionBudget>,
         returned: Option<Value>,
     ) -> VmResult<ResumableCallbackStep> {
+        if matches!(self.state, CallbackState::Iterator(_)) {
+            return self.step_iterator(program_owner, heap, budget, returned);
+        }
         if matches!(self.state, CallbackState::Enum { .. }) {
             return self.step_enum(heap, budget, returned);
         }
@@ -393,7 +406,10 @@ impl ResumableCallbackMethod {
                     return Err(incomplete_callback());
                 }
             }
-            CallbackState::SortBy(_) | CallbackState::Enum { .. } | CallbackState::Complete => {
+            CallbackState::Iterator(_)
+            | CallbackState::SortBy(_)
+            | CallbackState::Enum { .. }
+            | CallbackState::Complete => {
                 return Err(incomplete_callback());
             }
         }
@@ -402,7 +418,7 @@ impl ResumableCallbackMethod {
             CallbackState::Sequence { values, index, .. } => *index < values.len(),
             CallbackState::Map { entries, index, .. } => *index < entries.len(),
             CallbackState::GroupBy { values, index, .. } => *index < values.len(),
-            CallbackState::SortBy(_) => false,
+            CallbackState::Iterator(_) | CallbackState::SortBy(_) => false,
             CallbackState::Enum { .. } => false,
             CallbackState::Complete => false,
         };
@@ -476,7 +492,10 @@ impl ResumableCallbackMethod {
                 *awaiting = Some(value);
                 vec![value]
             }
-            CallbackState::SortBy(_) | CallbackState::Enum { .. } | CallbackState::Complete => {
+            CallbackState::Iterator(_)
+            | CallbackState::SortBy(_)
+            | CallbackState::Enum { .. }
+            | CallbackState::Complete => {
                 return Err(incomplete_callback());
             }
         };
@@ -502,6 +521,7 @@ impl ResumableCallbackMethod {
             heap.protect_values(&callback.captures);
         }
         match &self.state {
+            CallbackState::Iterator(iterator) => iterator.protect_roots(heap),
             CallbackState::Sequence {
                 values,
                 output,
@@ -599,6 +619,34 @@ impl ResumableCallbackMethod {
             });
         }
         Ok(self.callback.as_ref().expect("callback was prepared"))
+    }
+
+    fn step_iterator(
+        &mut self,
+        program_owner: &Arc<LinkedArtifact>,
+        heap: &mut Option<&mut HeapExecution<'_>>,
+        budget: &mut Option<&mut ExecutionBudget>,
+        returned: Option<Value>,
+    ) -> VmResult<ResumableCallbackStep> {
+        let CallbackState::Iterator(iterator) = &mut self.state else {
+            return Err(incomplete_callback());
+        };
+        match iterator.step(program_owner, heap, budget, returned)? {
+            crate::iteration::ResumableIteratorMethodStep::Complete(value) => {
+                Ok(ResumableCallbackStep::Complete(value))
+            }
+            crate::iteration::ResumableIteratorMethodStep::Call {
+                owner,
+                function,
+                captures,
+                args,
+            } => Ok(ResumableCallbackStep::Call {
+                owner,
+                function,
+                captures,
+                args,
+            }),
+        }
     }
 
     fn step_enum(
@@ -848,7 +896,10 @@ impl ResumableCallbackMethod {
                 }
                 map_methods::make_map_from_entries(entries, heap, budget, operation)?
             }
-            CallbackState::SortBy(_) | CallbackState::Enum { .. } | CallbackState::Complete => {
+            CallbackState::Iterator(_)
+            | CallbackState::SortBy(_)
+            | CallbackState::Enum { .. }
+            | CallbackState::Complete => {
                 return Err(incomplete_callback());
             }
         };

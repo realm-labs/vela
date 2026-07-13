@@ -112,6 +112,13 @@ enum PendingFrameOperation {
         returned: Option<Value>,
         source_span: Option<Span>,
     },
+    IteratorNext {
+        next: iteration::ResumableIteratorNext,
+        destination: Register,
+        jump_if_done: InstructionOffset,
+        returned: Option<Value>,
+        source_span: Option<Span>,
+    },
 }
 
 struct PendingLinkedCall<'a> {
@@ -296,10 +303,17 @@ impl Vm {
                     let protected_root_len = heap.as_deref_mut().map(|heap| {
                         let caller = session.frames.last().expect("caller frame");
                         let protected_root_len = heap.push_frame_roots(&caller.registers);
-                        if let Some(PendingFrameOperation::CallbackMethod { callback, .. }) =
-                            caller.pending_operation.as_ref()
-                        {
-                            callback.protect_roots(heap);
+                        if let Some(operation) = caller.pending_operation.as_ref() {
+                            match operation {
+                                PendingFrameOperation::CallbackMethod { callback, .. } => {
+                                    callback.protect_roots(heap);
+                                }
+                                PendingFrameOperation::IteratorNext { next, .. } => {
+                                    next.protect_roots(heap);
+                                }
+                                PendingFrameOperation::Comparison { .. }
+                                | PendingFrameOperation::ArrayOrdering { .. } => {}
+                            }
                         }
                         protected_root_len
                     });
@@ -385,7 +399,8 @@ impl Vm {
                             match operation {
                                 PendingFrameOperation::Comparison { returned, .. }
                                 | PendingFrameOperation::ArrayOrdering { returned, .. }
-                                | PendingFrameOperation::CallbackMethod { returned, .. } => {
+                                | PendingFrameOperation::CallbackMethod { returned, .. }
+                                | PendingFrameOperation::IteratorNext { returned, .. } => {
                                     *returned = Some(value);
                                 }
                             }
@@ -628,6 +643,44 @@ impl Vm {
                         PendingFrameOperation::CallbackMethod {
                             callback,
                             destination,
+                            returned: None,
+                            source_span,
+                        },
+                    )),
+                },
+                PendingFrameOperation::IteratorNext {
+                    mut next,
+                    destination,
+                    jump_if_done,
+                    returned,
+                    source_span,
+                } => match next
+                    .step(&current_owner, heap, budget, returned)
+                    .map_err(|error| error.with_source_span_if_absent(source_span))?
+                {
+                    iteration::ResumableIteratorStep::Complete(Some(value)) => {
+                        frame_state.registers.write(destination, value)?;
+                        None
+                    }
+                    iteration::ResumableIteratorStep::Complete(None) => {
+                        frame_state.ip = jump_if_done;
+                        None
+                    }
+                    iteration::ResumableIteratorStep::Call {
+                        owner,
+                        function,
+                        captures,
+                        args,
+                    } => Some((
+                        owner,
+                        function,
+                        captures,
+                        args,
+                        source_span,
+                        PendingFrameOperation::IteratorNext {
+                            next,
+                            destination,
+                            jump_if_done,
                             returned: None,
                             source_span,
                         },
@@ -1402,7 +1455,6 @@ impl Vm {
                             inline_caches: call.inline_caches,
                             cache_site: *cache_site,
                             call_site: instruction.span,
-                            bytecode_profiler: call.bytecode_profiler,
                         },
                         host,
                         heap,
@@ -1435,7 +1487,6 @@ impl Vm {
                         inline_caches: call.inline_caches,
                         cache_site: *cache_site,
                         call_site: instruction.span,
-                        bytecode_profiler: call.bytecode_profiler,
                     };
                     let resolution = script_method_calls::resolve_linked_dynamic_script_target(
                         self,
@@ -1824,14 +1875,9 @@ impl Vm {
                 InstructionKind::IterInit { dst, iterable } => {
                     iteration::dispatch_iter_init(
                         iteration::IterRuntime {
-                            vm: self,
-                            program,
-                            host: host.as_deref_mut(),
                             frame,
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
-                            inline_caches: call.inline_caches,
-                            bytecode_profiler: call.bytecode_profiler,
                         },
                         *dst,
                         *iterable,
@@ -1843,24 +1889,19 @@ impl Vm {
                     dst,
                     jump_if_done,
                 } => {
-                    if let Some(target) = iteration::dispatch_linked_iter_next(
-                        iteration::IterRuntime {
-                            vm: self,
-                            program,
-                            host: host.as_deref_mut(),
-                            frame,
-                            heap: heap.as_deref_mut(),
-                            budget: budget.as_deref_mut(),
-                            inline_caches: call.inline_caches,
-                            bytecode_profiler: call.bytecode_profiler,
-                        },
-                        code,
-                        *iterator,
-                        *dst,
-                        *jump_if_done,
-                    )? {
-                        ip = target;
-                    }
+                    frame_state.ip = InstructionOffset(ip);
+                    frame_state.pending_operation = Some(PendingFrameOperation::IteratorNext {
+                        next: iteration::ResumableIteratorNext::new(
+                            frame.read(*iterator)?,
+                            "iterator",
+                            false,
+                        ),
+                        destination: *dst,
+                        jump_if_done: *jump_if_done,
+                        returned: None,
+                        source_span: instruction.span,
+                    });
+                    return Ok(FrameDriveOutcome::Continue);
                 }
                 InstructionKind::RangeNext {
                     cursor,
@@ -1872,14 +1913,9 @@ impl Vm {
                 } => {
                     if let Some(target) = iteration::dispatch_linked_range_next(
                         iteration::IterRuntime {
-                            vm: self,
-                            program,
-                            host: host.as_deref_mut(),
                             frame,
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
-                            inline_caches: call.inline_caches,
-                            bytecode_profiler: call.bytecode_profiler,
                         },
                         code,
                         iteration::RangeNextStep {

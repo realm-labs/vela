@@ -7,7 +7,7 @@ use super::{array_values, expect_arity, make_array_value, option_value};
 pub(crate) fn map(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
+    mut runtime: MethodRuntime<'_, '_>,
 ) -> VmResult<Value> {
     expect_arity("map", args, 1)?;
     let values = array_values(receiver, runtime.heap.as_deref(), "method map")?;
@@ -19,7 +19,7 @@ pub(crate) fn map(
 pub(crate) fn filter(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
+    mut runtime: MethodRuntime<'_, '_>,
 ) -> VmResult<Value> {
     expect_arity("filter", args, 1)?;
     let values = array_values(receiver, runtime.heap.as_deref(), "method filter")?;
@@ -36,7 +36,7 @@ pub(crate) fn filter(
 pub(crate) fn find(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
+    mut runtime: MethodRuntime<'_, '_>,
 ) -> VmResult<Value> {
     expect_arity("find", args, 1)?;
     let values = array_values(receiver, runtime.heap.as_deref(), "method find")?;
@@ -57,7 +57,7 @@ pub(crate) fn find(
 pub(crate) fn any(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
+    mut runtime: MethodRuntime<'_, '_>,
 ) -> VmResult<bool> {
     expect_arity("any", args, 1)?;
     let values = array_values(receiver, runtime.heap.as_deref(), "method any")?;
@@ -72,7 +72,7 @@ pub(crate) fn any(
 pub(crate) fn all(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
+    mut runtime: MethodRuntime<'_, '_>,
 ) -> VmResult<bool> {
     expect_arity("all", args, 1)?;
     let values = array_values(receiver, runtime.heap.as_deref(), "method all")?;
@@ -87,7 +87,7 @@ pub(crate) fn all(
 pub(crate) fn count(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
+    mut runtime: MethodRuntime<'_, '_>,
 ) -> VmResult<i64> {
     expect_arity("count", args, 1)?;
     let values = array_values(receiver, runtime.heap.as_deref(), "method count")?;

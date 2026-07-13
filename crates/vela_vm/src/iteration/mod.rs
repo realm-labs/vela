@@ -1,4 +1,6 @@
 mod methods;
+mod resumable;
+mod resumable_method;
 mod source;
 mod state;
 mod step;
@@ -13,6 +15,8 @@ pub(crate) use methods::{
     callback_all, callback_all_over, callback_any, callback_any_over, callback_count,
     callback_count_over, callback_find, callback_find_over,
 };
+pub(crate) use resumable::{ResumableIteratorNext, ResumableIteratorStep};
+pub(crate) use resumable_method::{ResumableIteratorMethod, ResumableIteratorMethodStep};
 pub(crate) use source::make_iterator;
 pub(crate) use state::IteratorItemGuard;
 pub use state::IteratorState;
@@ -20,26 +24,17 @@ pub(crate) use step::{RangeNextStep, dispatch_linked_i64_range_next, dispatch_li
 
 use crate::heap::HeapValue;
 use crate::heap_values::allocate_heap_value;
-use crate::method_runtime::{CallerRoots, MethodRuntime};
-use crate::{
-    CallFrame, ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmBytecodeProfiler,
-    VmError, VmErrorKind, VmInlineCaches, VmResult,
-};
-use vela_bytecode::{InstructionOffset, LinkedCodeObject, LinkedProgram, Register};
+use crate::{CallFrame, ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult};
+use vela_bytecode::Register;
 
-pub(crate) struct IterRuntime<'a, 'host, 'heap> {
-    pub(crate) vm: &'a Vm,
-    pub(crate) program: &'a LinkedProgram,
-    pub(crate) host: Option<&'a mut HostExecution<'host>>,
+pub(crate) struct IterRuntime<'a, 'heap> {
     pub(crate) frame: &'a mut CallFrame,
     pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
     pub(crate) budget: Option<&'a mut ExecutionBudget>,
-    pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
-    pub(crate) bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
 }
 
 pub(crate) fn dispatch_iter_init(
-    mut runtime: IterRuntime<'_, '_, '_>,
+    mut runtime: IterRuntime<'_, '_>,
     dst: Register,
     iterable: Register,
 ) -> VmResult<()> {
@@ -60,51 +55,6 @@ pub(crate) fn dispatch_iter_init(
         budget_ref(&mut runtime.budget),
     )?;
     runtime.frame.write(dst, value)
-}
-
-pub(crate) fn dispatch_linked_iter_next(
-    mut runtime: IterRuntime<'_, '_, '_>,
-    code: &LinkedCodeObject,
-    iterator: Register,
-    dst: Register,
-    jump_if_done: InstructionOffset,
-) -> VmResult<Option<usize>> {
-    let next = next_iterator_value(&mut runtime, iterator)?;
-    match next {
-        Some(value) => {
-            runtime.frame.write(dst, value)?;
-            Ok(None)
-        }
-        None => {
-            debug_assert!(jump_if_done.0 <= code.instructions.len());
-            Ok(Some(jump_if_done.0))
-        }
-    }
-}
-
-fn next_iterator_value(
-    runtime: &mut IterRuntime<'_, '_, '_>,
-    iterator: Register,
-) -> VmResult<Option<Value>> {
-    let receiver = runtime.frame.read(iterator)?;
-    let mut iterator_state =
-        methods::take_iterator_from_heap(&receiver, &mut runtime.heap, "iterator")?;
-    let caller_roots = CallerRoots::for_frame(runtime.frame, runtime.heap.as_deref());
-    let result = {
-        let mut method_runtime = MethodRuntime {
-            vm: runtime.vm,
-            program: runtime.program,
-            host: runtime.host.as_deref_mut(),
-            heap: runtime.heap.as_deref_mut(),
-            budget: runtime.budget.as_deref_mut(),
-            caller_roots,
-            inline_caches: runtime.inline_caches,
-            bytecode_profiler: runtime.bytecode_profiler,
-        };
-        iterator_state.next_with_runtime_precharged(&mut method_runtime, "iterator", &[])
-    };
-    methods::restore_iterator_to_heap(receiver, &mut runtime.heap, iterator_state, "iterator")?;
-    result
 }
 
 #[inline]

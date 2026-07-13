@@ -11,7 +11,7 @@ pub(super) fn call_cached(
     receiver_kind: StandardMethodReceiver,
     target: CallbackMethodInlineCacheTarget,
     args: &[Value],
-    dispatch: &mut CallbackMethodDispatch<'_, '_, '_>,
+    dispatch: &mut CallbackMethodDispatch<'_, '_>,
 ) -> Option<VmResult<Value>> {
     if let Err(error) = crate::runtime_checks::expect_arity(method_name(target)?, args, 1) {
         return Some(Err(error));
@@ -120,7 +120,7 @@ fn cached_enum_value(
 
 fn cached_option_result(
     payload: Option<Value>,
-    dispatch: &mut CallbackMethodDispatch<'_, '_, '_>,
+    dispatch: &mut CallbackMethodDispatch<'_, '_>,
     operation: &'static str,
 ) -> VmResult<Value> {
     let Some(heap) = dispatch.heap.as_deref_mut() else {
@@ -132,7 +132,7 @@ fn cached_option_result(
 fn cached_result_result(
     variant: StdEnumVariant,
     payload: Value,
-    dispatch: &mut CallbackMethodDispatch<'_, '_, '_>,
+    dispatch: &mut CallbackMethodDispatch<'_, '_>,
     operation: &'static str,
 ) -> VmResult<Value> {
     let Some(heap) = dispatch.heap.as_deref_mut() else {

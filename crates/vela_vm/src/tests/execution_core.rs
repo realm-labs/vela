@@ -410,6 +410,34 @@ fn main() {
 }
 
 #[test]
+fn explicit_frame_stack_executes_deep_iterator_callback_recursion() {
+    let program = compile_test_program(
+        SourceId::new(5),
+        r#"
+fn dive(value) {
+    if value == 0 { return true; }
+    return [value - 1]
+        .iter()
+        .map(|next| dive(next))
+        .next()
+        .unwrap_or(false);
+}
+
+fn main() {
+    return dive(10_000);
+}
+"#,
+    )
+    .expect("compile deeply recursive iterator callback source");
+    let linked = link_test_program(&program);
+
+    assert_eq!(
+        Vm::new().run_linked_program(&linked, "main", &[]),
+        Ok(OwnedValue::Bool(true))
+    );
+}
+
+#[test]
 fn call_frame_registers_expose_heap_roots_for_gc() {
     let mut heap = ScriptHeap::new();
     let rooted = heap.allocate(HeapValue::String("rooted".into()));

@@ -8,16 +8,15 @@ use vela_def::MethodId;
 
 use crate::dynamic_method_resolution::{self, DynamicMethodTarget};
 use crate::heap::HeapValue;
-use crate::method_runtime::CallerRoots;
 use crate::{
     CallFrame, ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmResult,
     store_value_in_heap_if_needed,
 };
 use crate::{
     DynamicMethodInlineCacheEntry, DynamicMethodInlineCacheTarget, DynamicReceiverGuard,
-    MethodInlineCacheEntry, MethodInlineCacheTarget, StandardMethodReceiver, VmBytecodeProfiler,
-    VmError, VmErrorKind, VmInlineCaches, array_methods, callback_method_dispatch, host_access,
-    script_builtin_methods, script_function_calls,
+    MethodInlineCacheEntry, MethodInlineCacheTarget, StandardMethodReceiver, VmError, VmErrorKind,
+    VmInlineCaches, array_methods, callback_method_dispatch, host_access, script_builtin_methods,
+    script_function_calls,
 };
 
 use crate::script_methods::{ScriptMethodDispatch, call_method_id};
@@ -31,30 +30,24 @@ pub(crate) struct ScriptMethodIdCall<'a> {
 }
 
 pub(crate) fn dispatch_linked_method_id_call(
-    vm: &Vm,
+    _vm: &Vm,
     context: LinkedMethodRuntimeContext<'_>,
-    host: &mut Option<&mut HostExecution<'_>>,
+    _host: &mut Option<&mut HostExecution<'_>>,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
     frame: &mut CallFrame,
     call: ScriptMethodIdCall<'_>,
 ) -> VmResult<()> {
     let mut receiver_value = frame.read(call.receiver)?;
-    let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
     let result = call_method_id(
         &mut receiver_value,
         call.method,
         call.method_id,
         call.values,
         ScriptMethodDispatch {
-            vm,
             program: context.program,
-            host: host.as_deref_mut(),
             heap: heap.as_deref_mut(),
             budget: budget.as_deref_mut(),
-            caller_roots,
-            inline_caches: context.inline_caches,
-            bytecode_profiler: context.bytecode_profiler,
         },
     )?;
     let result = store_value_in_heap_if_needed(result, heap.as_deref_mut(), budget.as_deref_mut())?;
@@ -65,15 +58,12 @@ pub(crate) fn dispatch_linked_method_id_call(
 #[derive(Clone, Copy)]
 pub(crate) struct LinkedMethodRuntimeContext<'a> {
     pub(crate) program: &'a LinkedProgram,
-    pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
-    pub(crate) bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
 }
 
 pub(crate) struct LinkedScriptMethodCallContext<'a> {
     pub(crate) program: &'a LinkedProgram,
     pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
     pub(crate) cache_site: Option<CacheSiteId>,
-    pub(crate) bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
     pub(crate) call_site: Option<Span>,
 }
 
@@ -229,8 +219,6 @@ pub(crate) fn dispatch_linked_method_call(
                 vm,
                 LinkedMethodRuntimeContext {
                     program: context.program,
-                    inline_caches: context.inline_caches,
-                    bytecode_profiler: context.bytecode_profiler,
                 },
                 host,
                 heap,
@@ -273,8 +261,6 @@ pub(crate) fn dispatch_linked_method_call(
                 vm,
                 LinkedMethodRuntimeContext {
                     program: context.program,
-                    inline_caches: context.inline_caches,
-                    bytecode_profiler: context.bytecode_profiler,
                 },
                 host,
                 heap,
@@ -317,7 +303,7 @@ pub(crate) fn dispatch_linked_method_call(
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn dispatch_resolved_linked_dynamic_method_call(
-    vm: &Vm,
+    _vm: &Vm,
     context: LinkedScriptMethodCallContext<'_>,
     host: &mut Option<&mut HostExecution<'_>>,
     heap: &mut Option<&mut HeapExecution<'_>>,
@@ -390,16 +376,10 @@ pub(crate) fn dispatch_resolved_linked_dynamic_method_call(
                 return frame.write(call.dst, result);
             }
 
-            let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
             let mut dispatch = callback_method_dispatch::CallbackMethodDispatch {
-                vm,
                 program: context.program,
-                host: host.as_deref_mut(),
                 heap: heap.as_deref_mut(),
                 budget: budget.as_deref_mut(),
-                caller_roots,
-                inline_caches: context.inline_caches,
-                bytecode_profiler: context.bytecode_profiler,
             };
             let result = callback_method_dispatch::call_by_id(
                 method_id,
@@ -960,9 +940,9 @@ struct LinkedCallbackValueMethodCall<'a> {
 }
 
 fn linked_callback_value_method_result(
-    vm: &Vm,
+    _vm: &Vm,
     context: &LinkedScriptMethodCallContext<'_>,
-    host: &mut Option<&mut HostExecution<'_>>,
+    _host: &mut Option<&mut HostExecution<'_>>,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
     frame: &CallFrame,
@@ -972,16 +952,10 @@ fn linked_callback_value_method_result(
         Ok(receiver) => receiver,
         Err(error) => return Some(Err(error)),
     };
-    let caller_roots = CallerRoots::for_frame(frame, heap.as_deref());
     let mut dispatch = callback_method_dispatch::CallbackMethodDispatch {
-        vm,
         program: context.program,
-        host: host.as_deref_mut(),
         heap: heap.as_deref_mut(),
         budget: budget.as_deref_mut(),
-        caller_roots,
-        inline_caches: context.inline_caches,
-        bytecode_profiler: context.bytecode_profiler,
     };
     if let Some(callback_method) = call.callback_method
         && callback_method_dispatch::callback_cache_entry_matches_method_id(

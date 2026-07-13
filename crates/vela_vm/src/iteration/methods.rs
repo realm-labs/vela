@@ -104,7 +104,7 @@ pub(crate) fn string_bytes_method(
 pub(crate) fn next_method_runtime(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
+    mut runtime: MethodRuntime<'_, '_>,
 ) -> VmResult<Value> {
     runtime_checks::expect_arity("next", args, 0)?;
     let next = with_taken_iterator(
@@ -122,7 +122,7 @@ pub(crate) fn next_method_runtime(
 pub(crate) fn count_method_runtime(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
+    mut runtime: MethodRuntime<'_, '_>,
 ) -> VmResult<Value> {
     runtime_checks::expect_arity("count", args, 0)?;
     let count = with_taken_iterator(
@@ -150,7 +150,7 @@ pub(crate) fn count_method_runtime(
 pub(crate) fn collect_array_method_runtime(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
+    mut runtime: MethodRuntime<'_, '_>,
 ) -> VmResult<Value> {
     runtime_checks::expect_arity("collect_array", args, 0)?;
     let values = with_taken_iterator(
@@ -173,7 +173,7 @@ pub(crate) fn collect_array_method_runtime(
 pub(crate) fn collect_set_method_runtime(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
+    mut runtime: MethodRuntime<'_, '_>,
 ) -> VmResult<Value> {
     runtime_checks::expect_arity("collect_set", args, 0)?;
     let values = with_taken_iterator(
@@ -196,7 +196,7 @@ pub(crate) fn collect_set_method_runtime(
 pub(crate) fn collect_map_method_runtime(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
+    mut runtime: MethodRuntime<'_, '_>,
 ) -> VmResult<Value> {
     runtime_checks::expect_arity("collect_map", args, 0)?;
     let values = with_taken_iterator(
@@ -220,7 +220,7 @@ pub(crate) fn collect_map_method_runtime(
 pub(crate) fn map_method(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
+    mut runtime: MethodRuntime<'_, '_>,
 ) -> VmResult<Value> {
     runtime_checks::expect_arity("map", args, 1)?;
     let source = take_iterator(receiver, &mut runtime.heap, "method map")?;
@@ -236,7 +236,7 @@ pub(crate) fn map_method(
 pub(crate) fn filter_method(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
+    mut runtime: MethodRuntime<'_, '_>,
 ) -> VmResult<Value> {
     runtime_checks::expect_arity("filter", args, 1)?;
     let source = take_iterator(receiver, &mut runtime.heap, "method filter")?;
@@ -286,7 +286,7 @@ pub(crate) fn skip_method(
 pub(crate) fn any_method(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
+    mut runtime: MethodRuntime<'_, '_>,
 ) -> VmResult<Value> {
     runtime_checks::expect_arity("any", args, 1)?;
     let result = with_taken_iterator(receiver, &mut runtime, "method any", |iterator, runtime| {
@@ -298,7 +298,7 @@ pub(crate) fn any_method(
 pub(crate) fn all_method(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
+    mut runtime: MethodRuntime<'_, '_>,
 ) -> VmResult<Value> {
     runtime_checks::expect_arity("all", args, 1)?;
     let result = with_taken_iterator(receiver, &mut runtime, "method all", |iterator, runtime| {
@@ -310,7 +310,7 @@ pub(crate) fn all_method(
 pub(crate) fn find_method(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
+    mut runtime: MethodRuntime<'_, '_>,
 ) -> VmResult<Value> {
     runtime_checks::expect_arity("find", args, 1)?;
     let found = with_taken_iterator(
@@ -327,7 +327,7 @@ pub(crate) fn find_method(
 
 pub(crate) fn collect_values(
     iterator: &mut IteratorState,
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
     operation: &'static str,
 ) -> VmResult<Vec<Value>> {
     let mut values = Vec::new();
@@ -339,7 +339,7 @@ pub(crate) fn collect_values(
 
 fn collect_unique_values(
     iterator: &mut IteratorState,
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
     operation: &'static str,
 ) -> VmResult<ScriptSet> {
     let mut values = ScriptSet::new();
@@ -354,7 +354,7 @@ fn collect_unique_values(
 
 fn collect_map_entries(
     iterator: &mut IteratorState,
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
     operation: &'static str,
 ) -> VmResult<Vec<(Value, Value)>> {
     let mut values = Vec::new();
@@ -365,7 +365,7 @@ fn collect_map_entries(
     Ok(values)
 }
 
-fn map_entry_value(
+pub(super) fn map_entry_value(
     value: &Value,
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
@@ -395,9 +395,9 @@ fn map_entry_value(
 
 pub(crate) fn collect_values_over<T>(
     items: impl IntoIterator<Item = T>,
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
     _operation: &'static str,
-    mut callback: impl FnMut(&mut MethodRuntime<'_, '_, '_>, T, &[Value]) -> VmResult<Value>,
+    mut callback: impl FnMut(&mut MethodRuntime<'_, '_>, T, &[Value]) -> VmResult<Value>,
 ) -> VmResult<Vec<Value>> {
     let mut values = Vec::new();
     for item in items {
@@ -409,9 +409,9 @@ pub(crate) fn collect_values_over<T>(
 
 pub(crate) fn filter_items_over<T>(
     items: impl IntoIterator<Item = T>,
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
     _operation: &'static str,
-    mut predicate: impl FnMut(&mut MethodRuntime<'_, '_, '_>, &T, &[Value]) -> VmResult<Value>,
+    mut predicate: impl FnMut(&mut MethodRuntime<'_, '_>, &T, &[Value]) -> VmResult<Value>,
     mut protected_value: impl FnMut(&T) -> Value,
 ) -> VmResult<Vec<T>> {
     let mut kept = Vec::new();
@@ -427,9 +427,9 @@ pub(crate) fn filter_items_over<T>(
 
 pub(crate) fn try_for_each_over<T>(
     items: impl IntoIterator<Item = T>,
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
     _operation: &'static str,
-    mut f: impl FnMut(&mut MethodRuntime<'_, '_, '_>, T) -> VmResult<()>,
+    mut f: impl FnMut(&mut MethodRuntime<'_, '_>, T) -> VmResult<()>,
 ) -> VmResult<()> {
     for item in items {
         f(runtime, item)?;
@@ -439,7 +439,7 @@ pub(crate) fn try_for_each_over<T>(
 
 pub(crate) fn callback_any(
     iterator: &mut IteratorState,
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
     operation: &'static str,
     callback: Value,
 ) -> VmResult<bool> {
@@ -460,7 +460,7 @@ pub(crate) fn callback_any(
 
 pub(crate) fn callback_all(
     iterator: &mut IteratorState,
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
     operation: &'static str,
     callback: Value,
 ) -> VmResult<bool> {
@@ -481,7 +481,7 @@ pub(crate) fn callback_all(
 
 pub(crate) fn callback_find(
     iterator: &mut IteratorState,
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
     operation: &'static str,
     callback: Value,
 ) -> VmResult<Option<Value>> {
@@ -502,7 +502,7 @@ pub(crate) fn callback_find(
 
 pub(crate) fn callback_count(
     iterator: &mut IteratorState,
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
     operation: &'static str,
     callback: Value,
 ) -> VmResult<i64> {
@@ -526,9 +526,9 @@ pub(crate) fn callback_count(
 
 pub(crate) fn callback_any_over<T>(
     items: impl IntoIterator<Item = T>,
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
     _operation: &'static str,
-    mut callback: impl FnMut(&mut MethodRuntime<'_, '_, '_>, &T) -> VmResult<Value>,
+    mut callback: impl FnMut(&mut MethodRuntime<'_, '_>, &T) -> VmResult<Value>,
 ) -> VmResult<bool> {
     for item in items {
         if is_truthy(&callback(runtime, &item)?) {
@@ -540,9 +540,9 @@ pub(crate) fn callback_any_over<T>(
 
 pub(crate) fn callback_all_over<T>(
     items: impl IntoIterator<Item = T>,
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
     _operation: &'static str,
-    mut callback: impl FnMut(&mut MethodRuntime<'_, '_, '_>, &T) -> VmResult<Value>,
+    mut callback: impl FnMut(&mut MethodRuntime<'_, '_>, &T) -> VmResult<Value>,
 ) -> VmResult<bool> {
     for item in items {
         if !is_truthy(&callback(runtime, &item)?) {
@@ -554,9 +554,9 @@ pub(crate) fn callback_all_over<T>(
 
 pub(crate) fn callback_find_over<T>(
     items: impl IntoIterator<Item = T>,
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
     _operation: &'static str,
-    mut callback: impl FnMut(&mut MethodRuntime<'_, '_, '_>, &T) -> VmResult<Value>,
+    mut callback: impl FnMut(&mut MethodRuntime<'_, '_>, &T) -> VmResult<Value>,
 ) -> VmResult<Option<T>> {
     for item in items {
         if is_truthy(&callback(runtime, &item)?) {
@@ -568,9 +568,9 @@ pub(crate) fn callback_find_over<T>(
 
 pub(crate) fn callback_count_over<T>(
     items: impl IntoIterator<Item = T>,
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
     operation: &'static str,
-    mut callback: impl FnMut(&mut MethodRuntime<'_, '_, '_>, &T) -> VmResult<Value>,
+    mut callback: impl FnMut(&mut MethodRuntime<'_, '_>, &T) -> VmResult<Value>,
 ) -> VmResult<i64> {
     let mut count = 0_i64;
     for item in items {
@@ -633,9 +633,9 @@ fn take_iterator(
 
 fn with_taken_iterator<T>(
     receiver: &Value,
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
     operation: &'static str,
-    f: impl FnOnce(&mut IteratorState, &mut MethodRuntime<'_, '_, '_>) -> VmResult<T>,
+    f: impl FnOnce(&mut IteratorState, &mut MethodRuntime<'_, '_>) -> VmResult<T>,
 ) -> VmResult<T> {
     let mut iterator = take_iterator(receiver, &mut runtime.heap, operation)?;
     let result = f(&mut iterator, runtime);
@@ -650,19 +650,22 @@ fn count_arg(value: Value, operation: &'static str) -> VmResult<usize> {
     }
 }
 
-fn check_collect_array_len(len: usize, budget: Option<&ExecutionBudget>) -> VmResult<()> {
+pub(super) fn check_collect_array_len(
+    len: usize,
+    budget: Option<&ExecutionBudget>,
+) -> VmResult<()> {
     check_collection_len("array", 0, len, budget, |budget| {
         budget.collection_limits().max_array_len
     })
 }
 
-fn check_collect_set_len(len: usize, budget: Option<&ExecutionBudget>) -> VmResult<()> {
+pub(super) fn check_collect_set_len(len: usize, budget: Option<&ExecutionBudget>) -> VmResult<()> {
     check_collection_len("set", 0, len, budget, |budget| {
         budget.collection_limits().max_set_len
     })
 }
 
-fn check_collect_map_len(len: usize, budget: Option<&ExecutionBudget>) -> VmResult<()> {
+pub(super) fn check_collect_map_len(len: usize, budget: Option<&ExecutionBudget>) -> VmResult<()> {
     check_collection_len("map", 0, len, budget, |budget| {
         budget.collection_limits().max_map_entries
     })

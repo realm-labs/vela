@@ -5,23 +5,17 @@ use std::sync::OnceLock;
 use vela_bytecode::LinkedProgram;
 use vela_def::MethodId;
 
-use crate::method_runtime::{CallerRoots, MethodRuntime};
+use crate::method_runtime::MethodRuntime;
 use crate::{
     CallbackMethodInlineCacheEntry, CallbackMethodInlineCacheTarget, ExecutionBudget,
-    HeapExecution, HostExecution, StandardMethodReceiver, Value, Vm, VmBytecodeProfiler,
-    VmInlineCaches, VmResult, array_methods, iteration, map_methods, option_result_methods,
-    set_methods,
+    HeapExecution, StandardMethodReceiver, Value, VmResult, array_methods, iteration, map_methods,
+    option_result_methods, set_methods,
 };
 
-pub(crate) struct CallbackMethodDispatch<'a, 'host, 'heap> {
-    pub(crate) vm: &'a Vm,
+pub(crate) struct CallbackMethodDispatch<'a, 'heap> {
     pub(crate) program: &'a LinkedProgram,
-    pub(crate) host: Option<&'a mut HostExecution<'host>>,
     pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
     pub(crate) budget: Option<&'a mut ExecutionBudget>,
-    pub(crate) caller_roots: CallerRoots<'a>,
-    pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
-    pub(crate) bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
 }
 
 #[derive(Clone, Copy)]
@@ -125,17 +119,12 @@ fn standard_method_id(owner: &str, name: &str) -> MethodId {
     id
 }
 
-impl<'a, 'host, 'heap> CallbackMethodDispatch<'a, 'host, 'heap> {
-    fn runtime<'dispatch>(&'dispatch mut self) -> MethodRuntime<'dispatch, 'host, 'heap> {
+impl<'a, 'heap> CallbackMethodDispatch<'a, 'heap> {
+    fn runtime<'dispatch>(&'dispatch mut self) -> MethodRuntime<'dispatch, 'heap> {
         MethodRuntime {
-            vm: self.vm,
             program: self.program,
-            host: self.host.as_deref_mut(),
             heap: self.heap.as_deref_mut(),
             budget: self.budget.as_deref_mut(),
-            caller_roots: self.caller_roots,
-            inline_caches: self.inline_caches,
-            bytecode_profiler: self.bytecode_profiler,
         }
     }
 
@@ -148,7 +137,7 @@ pub(crate) fn call_by_id(
     method_id: MethodId,
     receiver: &Value,
     args: &[Value],
-    dispatch: &mut CallbackMethodDispatch<'_, '_, '_>,
+    dispatch: &mut CallbackMethodDispatch<'_, '_>,
 ) -> Option<VmResult<Value>> {
     let cache = callback_cache_entry(method_id, receiver, dispatch.heap_ref())?;
     call_cached(receiver, cache, args, dispatch)
@@ -317,7 +306,7 @@ pub(crate) fn call_cached(
     receiver: &Value,
     cache: CallbackMethodInlineCacheEntry,
     args: &[Value],
-    dispatch: &mut CallbackMethodDispatch<'_, '_, '_>,
+    dispatch: &mut CallbackMethodDispatch<'_, '_>,
 ) -> Option<VmResult<Value>> {
     if !receiver_matches_cache(receiver, cache.receiver, dispatch.heap_ref()) {
         return None;
