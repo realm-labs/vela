@@ -75,7 +75,8 @@ impl HotReloadDiagnosticDetail {
             | HotReloadErrorKind::RemovedFunctionAbi { .. }
             | HotReloadErrorKind::RemovedMethodAbi { .. }
             | HotReloadErrorKind::RemovedTraitAbi { .. }
-            | HotReloadErrorKind::RemovedModuleAbi { .. } => None,
+            | HotReloadErrorKind::RemovedModuleAbi { .. }
+            | HotReloadErrorKind::ChangedPackageProviderAbi { .. } => None,
             HotReloadErrorKind::DeletedFunctionParameters { old, new, .. }
             | HotReloadErrorKind::ChangedFunctionParameters { old, new, .. } => {
                 Some(Self::FunctionParameterList {

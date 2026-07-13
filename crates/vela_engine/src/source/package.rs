@@ -146,6 +146,14 @@ impl PackageCompileRequest {
 
 impl ProviderCompileRequest {
     #[must_use]
+    pub fn new(packages: PackageCompileRequest, providers: ProviderSelection) -> Self {
+        Self {
+            packages,
+            providers,
+        }
+    }
+
+    #[must_use]
     pub fn for_selection(
         snapshot: &PackageCompilationSnapshot,
         providers: ProviderSelection,
@@ -408,6 +416,29 @@ impl Engine {
             artifact,
         )
         .map_err(|error| package_error(EnginePackageErrorKind::HotReload(error)))
+    }
+
+    pub fn compile_package_hot_reload_update_from_previous(
+        &self,
+        previous: &ProgramVersion,
+        snapshot: &PackageCompilationSnapshot,
+    ) -> Result<HotUpdate, EnginePackageError> {
+        let fingerprint = previous
+            .linked_artifact()
+            .package_metadata()
+            .ok_or_else(|| package_error(EnginePackageErrorKind::RequestFingerprintMismatch))?
+            .request();
+        let packages =
+            PackageCompileRequest::for_roots(snapshot, fingerprint.roots().iter().cloned());
+        if fingerprint.providers().providers().is_empty() {
+            return self.compile_package_hot_reload_update(previous, snapshot, &packages);
+        }
+        let selection = ProviderSelection::for_snapshot(
+            snapshot.id,
+            fingerprint.providers().providers().iter().cloned(),
+        );
+        let request = ProviderCompileRequest::new(packages, selection);
+        self.compile_provider_hot_reload_update(previous, snapshot, &request)
     }
 }
 

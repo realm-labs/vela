@@ -179,6 +179,16 @@ impl ProviderCatalog {
 }
 
 impl ProviderSelection {
+    pub(super) fn for_snapshot(
+        snapshot: PackageCompilationSnapshotId,
+        providers: impl IntoIterator<Item = ProviderKey>,
+    ) -> Self {
+        Self {
+            snapshot,
+            providers: providers.into_iter().collect(),
+        }
+    }
+
     #[must_use]
     pub const fn snapshot(&self) -> PackageCompilationSnapshotId {
         self.snapshot

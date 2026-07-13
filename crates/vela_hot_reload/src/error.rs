@@ -57,6 +57,9 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedTraitAbi { .. } => "reload.trait.changed_abi",
             HotReloadErrorKind::RemovedModuleAbi { .. } => "reload.module.removed_abi",
             HotReloadErrorKind::ChangedModuleAbi { .. } => "reload.module.changed_abi",
+            HotReloadErrorKind::ChangedPackageProviderAbi { .. } => {
+                "reload.package_provider.changed_abi"
+            }
         }
     }
 
@@ -97,6 +100,7 @@ impl HotReloadError {
             | HotReloadErrorKind::ChangedTraitAbi { trait_name, .. } => Some(trait_name.clone()),
             HotReloadErrorKind::RemovedModuleAbi { module, .. }
             | HotReloadErrorKind::ChangedModuleAbi { module, .. } => Some(module.clone()),
+            HotReloadErrorKind::ChangedPackageProviderAbi { target, .. } => Some(target.clone()),
         }
     }
 
@@ -185,6 +189,9 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedModuleAbi { module, .. } => {
                 format!("module `{module}` changed export ABI")
             }
+            HotReloadErrorKind::ChangedPackageProviderAbi { target, reason } => {
+                format!("{target} changed incompatibly: {reason}")
+            }
         }
     }
 
@@ -259,6 +266,9 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedModuleAbi { .. } => {
                 Some("preserve existing module exports or restart with an explicit migration".to_owned())
             }
+            HotReloadErrorKind::ChangedPackageProviderAbi { .. } => Some(
+                "preserve the package roots, selected providers, provider targets, methods, and capability requirements or explicitly restage the runtime".to_owned(),
+            ),
         }
     }
 
@@ -294,7 +304,8 @@ impl HotReloadError {
             | HotReloadErrorKind::AddedFunctionParametersWithoutDefaults { .. }
             | HotReloadErrorKind::AddedFunctionParametersDenied { .. }
             | HotReloadErrorKind::NewFunctionDenied { .. }
-            | HotReloadErrorKind::RemovedFunction { .. } => None,
+            | HotReloadErrorKind::RemovedFunction { .. }
+            | HotReloadErrorKind::ChangedPackageProviderAbi { .. } => None,
         }
     }
 }
@@ -436,6 +447,10 @@ pub enum HotReloadErrorKind {
         old: Vec<ModuleExportAbi>,
         new: Vec<ModuleExportAbi>,
         source_span: Option<Box<Span>>,
+    },
+    ChangedPackageProviderAbi {
+        target: String,
+        reason: String,
     },
 }
 

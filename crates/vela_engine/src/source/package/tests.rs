@@ -19,6 +19,8 @@ use crate::runtime::{CallArgs, CallOptions, Runtime};
 
 static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(1);
 
+mod provider_reload;
+
 #[test]
 fn ordinary_package_imports_public_dependency_function() {
     let root = package_fixture("public_function");

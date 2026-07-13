@@ -55,6 +55,7 @@ pub struct InstalledProviderSet {
 pub struct LinkedProviderEntry {
     key: ProviderKey,
     provider_type: TypeHandle,
+    provider_type_id: TypeId,
     receiver: ProviderReceiverPlan,
     methods: BTreeMap<MethodId, MethodDispatchHandle>,
     package_declared_capabilities: CapabilitySet,
@@ -214,6 +215,7 @@ impl PackageCompilationMetadata {
             let entry = LinkedProviderEntry {
                 key: key.clone(),
                 provider_type,
+                provider_type_id: provider.provider_type,
                 receiver: ProviderReceiverPlan::FreshZeroField {
                     shape: provider.provider_shape,
                 },
@@ -272,6 +274,11 @@ impl LinkedProviderEntry {
     }
 
     #[must_use]
+    pub const fn provider_type_id(&self) -> TypeId {
+        self.provider_type_id
+    }
+
+    #[must_use]
     pub const fn receiver(&self) -> ProviderReceiverPlan {
         self.receiver
     }
@@ -279,6 +286,10 @@ impl LinkedProviderEntry {
     #[must_use]
     pub fn method(&self, id: MethodId) -> Option<MethodDispatchHandle> {
         self.methods.get(&id).copied()
+    }
+
+    pub fn method_ids(&self) -> impl Iterator<Item = MethodId> + '_ {
+        self.methods.keys().copied()
     }
 
     #[must_use]

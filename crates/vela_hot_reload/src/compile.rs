@@ -8,6 +8,7 @@ use vela_hir::module_graph::ModuleGraph;
 use crate::abi::HotReloadAbi;
 use crate::error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
 use crate::function_signature::ensure_compatible_function_signature;
+use crate::package_abi::ensure_compatible_package_update;
 use crate::policy::HotReloadPolicy;
 use crate::report::AcceptedHotReloadChanges;
 use crate::symbol::{FunctionSymbolId, ProgramVersionId};
@@ -39,6 +40,7 @@ pub fn update_from_linked_artifact(
     policy: &HotReloadPolicy,
     artifact: Arc<LinkedArtifact>,
 ) -> HotReloadResult<HotUpdate> {
+    ensure_compatible_package_update(previous.linked_artifact(), &artifact)?;
     let abi = abi_with_script_metadata(abi, artifact.image().script_metadata());
     let script_metadata = artifact.image().script_metadata().cloned();
     let mut functions = BTreeMap::new();
