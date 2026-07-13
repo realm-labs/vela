@@ -150,6 +150,79 @@ async fn main() {
     }
 
     #[test]
+    fn suspended_parent_heap_roots_survive_gc_during_nested_reentry() {
+        let engine = Engine::builder()
+            .register_async_context_fn(
+                NativeFunctionDesc::new("test::nested_gc", FunctionId::new(0xA533))
+                    .returns(TypeHint::unit())
+                    .access(FunctionAccess::public()),
+                |_args, context| {
+                    Box::pin(async move {
+                        let mut first_poll = true;
+                        poll_fn(|task| {
+                            if first_poll {
+                                first_poll = false;
+                                task.waker().wake_by_ref();
+                                Poll::Pending
+                            } else {
+                                Poll::Ready(())
+                            }
+                        })
+                        .await;
+                        let _ = context.call("collect_garbage", CallArgs::new())?;
+                        Ok(OwnedValue::Unit)
+                    })
+                },
+            )
+            .build()
+            .expect("engine should build");
+        let program = engine
+            .compile_source(
+                r#"
+struct Keep { text: String }
+
+fn collect_garbage() {
+    let garbage = ["one", "two", "three", "four"];
+    return garbage.len();
+}
+
+async fn main() {
+    let keep = Keep { text: "alive" };
+    test::nested_gc().await;
+    return keep.text;
+}
+"#,
+            )
+            .expect("nested GC fixture should compile");
+        let mut runtime = Runtime::new(engine, program);
+        runtime
+            .state
+            .script_globals
+            .heap
+            .set_gc_config(vela_vm::heap::GcConfig {
+                max_pause_micros: 500,
+                heap_growth_factor: 1.0,
+            });
+        let mut future = runtime.call_async("main", CallArgs::new(), CallOptions::unbounded());
+        let mut context = Context::from_waker(Waker::noop());
+
+        assert!(matches!(
+            Pin::new(&mut future).poll(&mut context),
+            Poll::Pending
+        ));
+        let Poll::Ready(result) = Pin::new(&mut future).poll(&mut context) else {
+            panic!("nested reentry should complete after the deliberate suspension");
+        };
+        let value = result.expect("parent roots should survive nested GC");
+        drop(future);
+
+        assert_eq!(
+            runtime.value_to_owned(&value),
+            Ok(OwnedValue::String("alive".into()))
+        );
+    }
+
+    #[test]
     fn reentry_call_depth_error_unwinds_child_and_runtime_remains_reusable() {
         let engine = Engine::builder()
             .register_async_context_fn(
@@ -340,6 +413,128 @@ async fn main(value) {
 
         assert_eq!(polls.load(Ordering::SeqCst), 2);
         assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(42)));
+    }
+
+    #[test]
+    fn async_native_poll_count_does_not_consume_execution_units() {
+        struct PendingPolls {
+            remaining: usize,
+            polls: Arc<AtomicUsize>,
+        }
+
+        impl Future for PendingPolls {
+            type Output = vela_vm::error::VmResult<OwnedValue>;
+
+            fn poll(mut self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Self::Output> {
+                self.polls.fetch_add(1, Ordering::SeqCst);
+                if self.remaining > 0 {
+                    self.remaining -= 1;
+                    context.waker().wake_by_ref();
+                    Poll::Pending
+                } else {
+                    Poll::Ready(Ok(OwnedValue::i64(42)))
+                }
+            }
+        }
+
+        let polls = Arc::new(AtomicUsize::new(0));
+        let native_polls = Arc::clone(&polls);
+        let engine = Engine::builder()
+            .register_async_fn(
+                NativeFunctionDesc::new("pending_value", FunctionId::new(0xA534))
+                    .returns(TypeHint::i64()),
+                move |_args| {
+                    Box::pin(PendingPolls {
+                        remaining: 3,
+                        polls: Arc::clone(&native_polls),
+                    })
+                },
+            )
+            .build()
+            .expect("engine should build");
+        let program = engine
+            .compile_source("async fn main() -> i64 { return pending_value().await; }")
+            .expect("poll budget fixture should compile");
+        let mut runtime = Runtime::new(engine, program);
+        let mut future = runtime.call_async(
+            "main",
+            CallArgs::new(),
+            CallOptions::new(1, usize::MAX, usize::MAX),
+        );
+        let mut context = Context::from_waker(Waker::noop());
+
+        for expected_polls in 1..=3 {
+            assert!(matches!(
+                Pin::new(&mut future).poll(&mut context),
+                Poll::Pending
+            ));
+            assert_eq!(polls.load(Ordering::SeqCst), expected_polls);
+        }
+        let Poll::Ready(result) = Pin::new(&mut future).poll(&mut context) else {
+            panic!("fourth executor poll should complete the native future");
+        };
+        let value = result.expect("polling must not consume semantic execution units");
+        drop(future);
+
+        assert_eq!(polls.load(Ordering::SeqCst), 4);
+        assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(42)));
+    }
+
+    #[test]
+    fn async_result_materialization_respects_memory_limit_and_releases_runtime() {
+        struct LargeResult {
+            pending: bool,
+        }
+
+        impl Future for LargeResult {
+            type Output = vela_vm::error::VmResult<OwnedValue>;
+
+            fn poll(mut self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Self::Output> {
+                if self.pending {
+                    self.pending = false;
+                    context.waker().wake_by_ref();
+                    Poll::Pending
+                } else {
+                    Poll::Ready(Ok(OwnedValue::String("x".repeat(1024))))
+                }
+            }
+        }
+
+        let engine = Engine::builder()
+            .register_async_fn(
+                NativeFunctionDesc::new("large_result", FunctionId::new(0xA535))
+                    .returns(TypeHint::string()),
+                |_args| Box::pin(LargeResult { pending: true }),
+            )
+            .build()
+            .expect("engine should build");
+        let program = engine
+            .compile_source(
+                r#"
+async fn main() -> String { return large_result().await; }
+fn reusable() -> i64 { return 9; }
+"#,
+            )
+            .expect("memory limit fixture should compile");
+        let mut runtime = Runtime::new(engine, program);
+        let error = run_to_completion(runtime.call_async(
+            "main",
+            CallArgs::new(),
+            CallOptions::new(u64::MAX, 64, usize::MAX),
+        ))
+        .expect_err("async result conversion should enforce the memory limit");
+
+        assert!(matches!(
+            error.kind(),
+            vela_vm::error::VmErrorKind::BudgetExceeded {
+                budget: vela_vm::budget::ExecutionBudgetKind::MemoryBytes,
+                limit: 64,
+            }
+        ));
+        let value = runtime
+            .call("reusable", CallArgs::new(), CallOptions::unbounded())
+            .expect("memory failure should release Runtime");
+        assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(9)));
     }
 
     #[test]

@@ -1244,9 +1244,9 @@ Purpose: close every cross-cutting contract and remove provisional omissions.
   reload activation until outer completion/cancellation.
 - [x] Add reload ABI rejection for callable/provider/event/native asyncness
   changes and retained-old-generation tests.
-- [ ] Verify await root-live maps, suspended parent roots during nested GC,
+- [x] Verify await root-live maps, suspended parent roots during nested GC,
   owned native arguments/results, and no Rust future in script GC.
-- [ ] Seal deterministic execution-unit behavior, call-depth retention,
+- [x] Seal deterministic execution-unit behavior, call-depth retention,
   no-busy-poll behavior, and memory-limit interactions.
 - [ ] Complete provider target resolution through `RuntimeCallTarget`, including
   asyncness and handle/runtime validation, with no provider-specific call API or

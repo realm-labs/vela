@@ -5,7 +5,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll, Waker};
 
 #[test]
-fn linked_execution_prepares_and_resumes_async_native_calls() {
+fn linked_async_native_arguments_and_results_are_owned_across_gc() {
     let native_id = FunctionId::new(0x57);
     let mut vm = Vm::new();
     vm.register_async_native_with_id(native_id, |args| {
@@ -21,7 +21,7 @@ fn linked_execution_prepares_and_resumes_async_native_calls() {
     );
     let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 2)
         .with_asyncness(vela_common::CallableAsyncness::Async);
-    let value = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(42)));
+    let value = code.push_constant(Constant::String("kept across await".into()));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::LoadConst {
             dst: Register(0),
@@ -71,6 +71,16 @@ fn linked_execution_prepares_and_resumes_async_native_calls() {
     else {
         panic!("awaited async native should suspend");
     };
+    assert_eq!(
+        prepared.args(),
+        &[OwnedValue::String("kept across await".into())]
+    );
+    let stats = heap.heap.collect_full(&[]);
+    assert_eq!(
+        stats.swept, 1,
+        "native arguments must not borrow heap values"
+    );
+
     let mut future = prepared.invoke();
     let mut context = Context::from_waker(Waker::noop());
     let Poll::Ready(result) = Pin::new(&mut future).poll(&mut context) else {
@@ -85,5 +95,11 @@ fn linked_execution_prepares_and_resumes_async_native_calls() {
     else {
         panic!("resumed entry should not suspend again");
     };
-    assert_eq!(value, RuntimeValue::i64(42));
+    let RuntimeValue::HeapRef(value) = value else {
+        panic!("owned async result should be materialized back into the script heap");
+    };
+    assert_eq!(
+        heap.heap.get(value),
+        Some(&HeapValue::String("kept across await".into()))
+    );
 }
