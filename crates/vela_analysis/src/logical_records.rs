@@ -334,6 +334,7 @@ fn fixed_fields(kind: LogicalRecordKind) -> Vec<(&'static str, TypeFact)> {
         ],
         ReflectFunction => vec![
             ("access", fixed_record(ReflectFunctionAccess)),
+            ("async", TypeFact::BOOL),
             ("attrs", attrs()),
             ("docs", TypeFact::Any),
             ("effects", fixed_record(ReflectEffectSet)),
@@ -357,6 +358,7 @@ fn fixed_fields(kind: LogicalRecordKind) -> Vec<(&'static str, TypeFact)> {
         ],
         ReflectMethod => vec![
             ("access", fixed_record(ReflectMethodAccess)),
+            ("async", TypeFact::BOOL),
             ("attrs", attrs()),
             ("docs", TypeFact::Any),
             ("effects", fixed_record(ReflectEffectSet)),
@@ -465,6 +467,7 @@ mod tests {
     fn reflection_manifest_covers_nested_metadata_layouts() {
         let function = LogicalRecordFact::fixed(LogicalRecordKind::ReflectFunction);
         let access = function.field("access").expect("function access field");
+        let asyncness = function.field("async").expect("function async field");
         let params = function.field("params").expect("function params field");
         let effects = function.field("effects").expect("function effects field");
 
@@ -484,5 +487,6 @@ mod tests {
             TypeFact::LogicalRecord(record)
                 if record.kind() == LogicalRecordKind::ReflectEffectSet
         ));
+        assert_eq!(asyncness.fact(), &TypeFact::BOOL);
     }
 }
