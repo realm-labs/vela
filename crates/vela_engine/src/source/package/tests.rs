@@ -6,6 +6,8 @@ use vela_common::Capability;
 use vela_common::ScalarValue;
 use vela_def::{script_trait_id, script_trait_method_id};
 use vela_package::PackageId;
+use vela_vm::budget::ExecutionBudgetKind;
+use vela_vm::error::VmErrorKind;
 use vela_vm::owned_value::OwnedValue;
 
 use super::*;
@@ -732,6 +734,108 @@ impl CommandProvider for Command { pub fn run(self) -> i64 { return 1; } }
 }
 
 #[test]
+fn provider_handle_rebinds_after_compatible_reload() {
+    let root = package_fixture("provider_handle_reload");
+    let source = |value| {
+        format!(
+            r#"pub trait CommandProvider {{ fn run(self) -> i64; }}
+pub struct Command {{}}
+#[provider(id = "command")]
+impl CommandProvider for Command {{ pub fn run(self) -> i64 {{ return {value}; }} }}
+"#
+        )
+    };
+    write_package(&root, "dev.vela.plugin", "plugin", "", &source(1));
+    let engine = Engine::builder().build().expect("engine");
+    let first = engine
+        .load_package_workspace(root.join("vela.toml"))
+        .expect("first snapshot");
+    let first_catalog = engine.discover_providers(&first).expect("first catalog");
+    let key = first_catalog.providers()[0].key().clone();
+    let method = first_catalog.providers()[0].methods()[0].id();
+    let first_selection = first_catalog.select([key.clone()]).expect("selection");
+    let first_request = ProviderCompileRequest::for_selection(&first, first_selection);
+    let initial = engine
+        .compile_provider_hot_reload_initial(&first, &first_request)
+        .expect("initial version");
+    let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone());
+    let handle = runtime.provider_handle(&key).expect("provider handle");
+    assert_eq!(call_provider_i64(&mut runtime, &handle, method), 1);
+
+    fs::write(root.join("src/api.vela"), source(2)).expect("replace provider body");
+    let second = engine
+        .load_package_workspace(root.join("vela.toml"))
+        .expect("second snapshot");
+    let second_catalog = engine.discover_providers(&second).expect("second catalog");
+    let second_selection = second_catalog.select([key.clone()]).expect("selection");
+    let second_request = ProviderCompileRequest::for_selection(&second, second_selection);
+    let update = engine
+        .compile_provider_hot_reload_update(&initial, &second, &second_request)
+        .expect("body-only update");
+    runtime.stage_hot_update(update).expect("stage update");
+    runtime
+        .check_reload()
+        .expect("safe-point update")
+        .expect("reload report");
+
+    assert_eq!(call_provider_i64(&mut runtime, &handle, method), 2);
+    remove_fixture(root);
+}
+
+#[test]
+fn provider_call_uses_normal_execution_budget() {
+    let root = package_fixture("provider_budget");
+    write_package(
+        &root,
+        "dev.vela.plugin",
+        "plugin",
+        "",
+        r#"pub trait WorkProvider { fn run(self) -> i64; }
+pub struct Work {}
+#[provider(id = "work")]
+impl WorkProvider for Work {
+    pub fn run(self) -> i64 {
+        let total = 0;
+        for value in 1..=100 { total += value; }
+        return total;
+    }
+}
+"#,
+    );
+    let engine = Engine::builder().build().expect("engine");
+    let snapshot = engine
+        .load_package_workspace(root.join("vela.toml"))
+        .expect("snapshot");
+    let catalog = engine.discover_providers(&snapshot).expect("catalog");
+    let descriptor = &catalog.providers()[0];
+    let key = descriptor.key().clone();
+    let method = descriptor.methods()[0].id();
+    let selection = catalog.select([key.clone()]).expect("selection");
+    let request = ProviderCompileRequest::for_selection(&snapshot, selection);
+    let artifact = engine
+        .compile_provider_selection(&snapshot, &request)
+        .expect("selected provider compiles");
+    let mut runtime = Runtime::from_linked_artifact(engine, artifact);
+
+    let error = runtime
+        .call_provider(
+            &key,
+            method,
+            CallArgs::new(),
+            CallOptions::new(4, usize::MAX, usize::MAX),
+        )
+        .expect_err("provider call exhausts the execution budget");
+    assert!(matches!(
+        error.kind_ref(),
+        VmErrorKind::BudgetExceeded {
+            budget: ExecutionBudgetKind::ExecutionUnits,
+            ..
+        }
+    ));
+    remove_fixture(root);
+}
+
+#[test]
 fn statically_observed_effect_must_be_declared_by_package() {
     let root = package_fixture("provider_catalog_capability");
     write_package(
@@ -797,6 +901,20 @@ fn call_i64(runtime: &mut Runtime) -> i64 {
     match runtime.value_to_owned(&output).expect("materialize result") {
         OwnedValue::Scalar(ScalarValue::I64(value)) => value,
         other => panic!("expected i64 package result, got {other:?}"),
+    }
+}
+
+fn call_provider_i64(
+    runtime: &mut Runtime,
+    handle: &crate::runtime::ProviderHandle,
+    method: vela_def::MethodId,
+) -> i64 {
+    let output = runtime
+        .call_provider_handle(handle, method, CallArgs::new(), CallOptions::unbounded())
+        .expect("provider call");
+    match runtime.value_to_owned(&output).expect("materialize result") {
+        OwnedValue::Scalar(ScalarValue::I64(value)) => value,
+        other => panic!("expected i64 provider result, got {other:?}"),
     }
 }
 

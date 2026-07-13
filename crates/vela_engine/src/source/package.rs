@@ -371,6 +371,44 @@ impl Engine {
         )
         .map_err(|error| package_error(EnginePackageErrorKind::HotReload(error)))
     }
+
+    pub fn compile_provider_hot_reload_initial(
+        &self,
+        snapshot: &PackageCompilationSnapshot,
+        request: &ProviderCompileRequest,
+    ) -> Result<ProgramVersion, EnginePackageError> {
+        let artifact = self.compile_provider_selection(snapshot, request)?;
+        initial_version_from_linked_artifact(self.hot_reload_abi(), artifact)
+            .map_err(|error| package_error(EnginePackageErrorKind::HotReload(error)))
+    }
+
+    pub fn compile_provider_hot_reload_update(
+        &self,
+        previous: &ProgramVersion,
+        snapshot: &PackageCompilationSnapshot,
+        request: &ProviderCompileRequest,
+    ) -> Result<HotUpdate, EnginePackageError> {
+        let artifact = self.compile_provider_selection(snapshot, request)?;
+        let previous_request = previous
+            .linked_artifact()
+            .package_metadata()
+            .map(PackageArtifactMetadata::request);
+        let next_request = artifact
+            .package_metadata()
+            .map(PackageArtifactMetadata::request);
+        if previous_request != next_request {
+            return Err(package_error(
+                EnginePackageErrorKind::RequestFingerprintMismatch,
+            ));
+        }
+        update_from_linked_artifact(
+            previous,
+            self.hot_reload_abi(),
+            self.hot_reload_policy(),
+            artifact,
+        )
+        .map_err(|error| package_error(EnginePackageErrorKind::HotReload(error)))
+    }
 }
 
 fn package_module_sources(graph: &PackageGraph) -> Result<Vec<ModuleSource>, EnginePackageError> {
