@@ -108,7 +108,7 @@ and must not be overloaded as the VM no-value result. The first tuple slice
 defers one-element tuples, direct tuple field access, and tuple Map/Set keys;
 host Rust tuple conversion starts with arities 2 through 4. The implementation
 plan lives in
-[tuple-unit-null-refactor-plan.md](tuple-unit-null-refactor-plan.md).
+[tuple-unit-null-refactor-plan.md](archive/tuple-unit-null-refactor-plan.md).
 
 Reflection metadata must not use unit as a missing-data sentinel. Optional
 copied metadata such as docs, attributes, source spans, schema hashes, module
@@ -238,7 +238,7 @@ owns the embedding-facing source/file/directory and hot-reload orchestration,
 including structured projection of front-end and backend errors. This boundary
 is implemented as a breaking internal hard switch without compatibility
 wrappers; the execution checklist is
-[bytecode-source-boundary-hard-switch-plan.md](bytecode-source-boundary-hard-switch-plan.md).
+[bytecode-source-boundary-hard-switch-plan.md](archive/bytecode-source-boundary-hard-switch-plan.md).
 
 The HIR boundaries are `source_ingestion::build_single_source` and
 `source_ingestion::build_module_source_set`. They return an ordered
@@ -279,8 +279,9 @@ stable HIR IDs. MIR is the execution-shape layer: CFG, temporaries, places,
 typed operations, guards, liveness, debug/root metadata, and lowering decisions
 belong in a future internal `vela_mir` crate. MIR must consume Heavy HIR and
 analysis facts only; it must not parse source or repair missing semantic facts.
-The execution plans are [heavy-hir-hard-switch-plan.md](heavy-hir-hard-switch-plan.md)
-and [mir-lowering-jit-foundation-plan.md](mir-lowering-jit-foundation-plan.md).
+The execution plans are
+[heavy-hir-hard-switch-plan.md](archive/heavy-hir-hard-switch-plan.md) and
+[mir-lowering-jit-foundation-plan.md](archive/mir-lowering-jit-foundation-plan.md).
 
 Production executable analysis is total within each selected stable function's
 runtime body closure, including nested lambdas and parameter-default bodies.
@@ -574,7 +575,7 @@ compatibility shims. It should borrow rust-analyzer's high-level separation of
 context construction, feature producers, item models, and LSP projection while
 avoiding Rust-specific macro, trait-solver, and full Salsa complexity unless a
 Vela-specific need appears. The execution plan lives in
-[lsp-clean-architecture-refactor-plan.md](lsp-clean-architecture-refactor-plan.md).
+[lsp-clean-architecture-refactor-plan.md](archive/lsp-clean-architecture-refactor-plan.md).
 
 LSP authoring UX should align with rust-analyzer where Vela syntax overlaps.
 This is a user-facing behavior contract, not a semantic import from Rust:
@@ -1605,8 +1606,8 @@ guard-refined facts. Safepoints are unique program points. Value liveness,
 GC-root liveness, and lexical debugger availability are distinct analyses.
 
 The detailed migration and acceptance gates are defined in
-`docs/mir-executable-generation-architecture-plan.md`. This contract supersedes
-earlier future-facing statements that ProgramVersion owns mutable inline-cache
+`docs/archive/mir-executable-generation-architecture-plan.md`. This contract
+supersedes earlier future-facing statements that ProgramVersion owns mutable inline-cache
 state, that raw bytecode instruction count must remain the permanent budget
 unit, or that generation-local closure handles may be resolved against the
 runtime's current program.

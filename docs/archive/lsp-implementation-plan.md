@@ -140,7 +140,7 @@ This plan must not:
 ## 4. Architecture Summary
 
 The long-term contract lives in
-[architecture/lsp.md](architecture/lsp.md). The implementation should follow
+[architecture/lsp.md](../architecture/lsp.md). The implementation should follow
 this ownership split:
 
 ```text
@@ -169,7 +169,7 @@ resolve payloads; `vela_lsp_server` remains the only layer that projects those
 models into LSP JSON-RPC shapes.
 
 Protocol-level test planning lives in
-[lsp-protocol-test-matrix.md](lsp-protocol-test-matrix.md). Future LSP coverage
+[lsp-protocol-test-matrix.md](../lsp-protocol-test-matrix.md). Future LSP coverage
 work should use that document as the protocol-first checklist for pairing each
 advertised method with service tests, JSON-RPC fixtures, syntax coverage, and
 negative/degraded behavior.
@@ -451,7 +451,7 @@ coverage complete based only on the older capability phases.
     packages thin launchers around `vela_lsp_server` over stdio.
 - [x] Complete matrix acceptance.
   - Every advertised row in
-    [lsp-protocol-test-matrix.md](lsp-protocol-test-matrix.md) has service
+    [lsp-protocol-test-matrix.md](../lsp-protocol-test-matrix.md) has service
     proof, protocol proof, applicable syntax coverage, cross-file coverage
     where required, negative/degraded coverage, and focused validation.
   - Matrix acceptance is validated by the protocol-first audit rows above,
@@ -2111,7 +2111,7 @@ not move from `Active follow-up` to `Complete enough`, until all of these
 conditions are true:
 
 - The protocol matrix is complete for every advertised capability in
-  [lsp-protocol-test-matrix.md](lsp-protocol-test-matrix.md): lifecycle
+  [lsp-protocol-test-matrix.md](../lsp-protocol-test-matrix.md): lifecycle
   advertisement is pinned, each method has a JSON-RPC fixture, each service
   query has focused editor-neutral tests, applicable syntax dimensions have
   positive and negative coverage, dynamic/missing-schema/parser-recovery/stale

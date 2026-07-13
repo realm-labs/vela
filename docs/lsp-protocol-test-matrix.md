@@ -11,7 +11,7 @@ protocol row, then preserve both `vela_language_service` tests and
 `vela_lsp_server` JSON-RPC fixtures for the applicable Vela syntax dimensions.
 
 Execution progress for auditing and filling this matrix is tracked in
-[lsp-implementation-plan.md](lsp-implementation-plan.md), section
+[lsp-implementation-plan.md](archive/lsp-implementation-plan.md), section
 "Protocol Test Matrix Coverage Tracker".
 
 The matrix preserves the standing LSP constraints:

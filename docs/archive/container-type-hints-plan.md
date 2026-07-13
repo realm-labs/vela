@@ -12,7 +12,7 @@
 > **Superseded note:** the original slice in this document intentionally
 > restricted maps to `Map<String, V>` and narrow set key contracts. Current
 > map/set keyability is defined by
-> [value-keyed-map-set-plan.md](value-keyed-map-set-plan.md), where
+> [value-keyed-map-set-plan.md](../value-keyed-map-set-plan.md), where
 > `Map<K, V>` keys and `Set<T>` elements use the runtime `ValueKey` policy.
 
 ---
@@ -133,7 +133,7 @@ The parser should accept only these arities:
 Current runtime maps are string-keyed. This container type-hint slice therefore
 accepts only `Map<String, V>` and rejects `Map<K, V>` when `K` is not `String`.
 The follow-on value-keyed collection design is tracked in
-[value-keyed-map-set-plan.md](value-keyed-map-set-plan.md); that plan replaces
+[value-keyed-map-set-plan.md](../value-keyed-map-set-plan.md); that plan replaces
 the string-key restriction with a shared `ValueKey` policy and identity keys
 for script records/structs. Current runtime sets are also limited to keyable
 values, so `Set<T>` accepts only `null`, `bool`, `i64`, `f64`, and `String`
@@ -736,7 +736,7 @@ cargo bench -p vela_vm --bench baseline -- --quick container
 ### Future arbitrary map keys
 
 - This plan intentionally keeps `Map<K, V>` restricted to `Map<String, V>`.
-- The follow-on plan, [value-keyed-map-set-plan.md](value-keyed-map-set-plan.md),
+- The follow-on plan, [value-keyed-map-set-plan.md](../value-keyed-map-set-plan.md),
   defines the `ValueKey` semantics needed to accept arbitrary key contracts:
   keyable runtime values, identity keys for records/structs, ordering behavior,
   float/NaN policy, serde/reflection/key iterator behavior, and hot-reload ABI

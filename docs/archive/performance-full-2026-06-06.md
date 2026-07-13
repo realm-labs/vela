@@ -3148,8 +3148,8 @@ external runtime versions when comparing other languages
 
 ## Optimization Order
 
-Optimization should follow the roadmap in [goal.md](goal.md) and the contract
-in [architecture.md](architecture.md):
+Optimization should follow the roadmap in [goal.md](../goal.md) and the contract
+in [architecture.md](../architecture.md):
 
 1. Establish M18 measurement baselines.
 2. Optimize the M19 interpreter and managed heap path without changing

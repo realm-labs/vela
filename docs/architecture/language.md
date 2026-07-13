@@ -1,6 +1,6 @@
 ## Language Semantics
 
-The first grammar draft lives in [grammar.ebnf](grammar.ebnf). It is the syntax
+The first grammar draft lives in [grammar.ebnf](../grammar.ebnf). It is the syntax
 target for the parser milestones before semantic validation and lowering.
 
 Parser implementations should preserve source spans for every token and AST

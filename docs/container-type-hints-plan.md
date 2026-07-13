@@ -10,7 +10,7 @@ keys and limited sets to a narrow set of leaf value contracts.
 Current Vela container contracts are governed by:
 
 - [architecture/primitives-type-hints-and-guards.md](architecture/primitives-type-hints-and-guards.md)
-- [architecture/runtime-vm.md](architecture/runtime-vm.md)
+- [architecture/runtime.md](architecture/runtime.md)
 - [value-keyed-map-set-plan.md](value-keyed-map-set-plan.md)
 
 The current public contract is:

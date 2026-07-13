@@ -57,7 +57,7 @@ Handles, slots, and linked targets are runtime operands.
 ## Runtime Image Context
 
 The runtime image/state split in
-[runtime-image-state-refactor-plan.md](../runtime-image-state-refactor-plan.md)
+[runtime-image-state-refactor-plan.md](../archive/runtime-image-state-refactor-plan.md)
 is supporting context for this refactor. `ProgramVersion` and runtime images
 should own linked code, debug tables, runtime handle layouts, profile metadata,
 and cache invalidation metadata. Per-runtime mutable state such as globals,

@@ -72,7 +72,7 @@ The next implementation focus returns to the existing M20 cache-family audit.
 
 The MIR/executable-generation implementation is complete through Batch F /
 Phase 11 in
-[mir-executable-generation-architecture-plan.md](mir-executable-generation-architecture-plan.md).
+[mir-executable-generation-architecture-plan.md](archive/mir-executable-generation-architecture-plan.md).
 `LinkedArtifact` is the sole production executable generation: compiler output
 remains unlinked only until verification and linking, while the VM, frames,
 closures, callbacks, iterator guards, and runtime container contracts execute
@@ -576,7 +576,7 @@ the bytecode syntax payload/dispatcher are deleted, and D1 stable identity,
 D2 nested-body query selection, and D3 architecture acceptance are complete.
 The Phase 7 searches, directory-wide file-size gate, workspace clippy/tests,
 and runnable examples named in
-[heavy-hir-hard-switch-plan.md](heavy-hir-hard-switch-plan.md) pass. Verified
+[heavy-hir-hard-switch-plan.md](archive/heavy-hir-hard-switch-plan.md) pass. Verified
 MIR now consumes that completed Heavy HIR contract; M20 cache-family audit may
 continue independently when it does not change lowering architecture.
 
@@ -1885,7 +1885,7 @@ follow-up and later M22 backend work; it is not an open ownership or correctness
 gap in this track.
 
 Use the phased checks in
-[mir-executable-generation-architecture-plan.md](mir-executable-generation-architecture-plan.md)
+[mir-executable-generation-architecture-plan.md](archive/mir-executable-generation-architecture-plan.md)
 for this track. Do not close individual defects with temporary fact clearing,
 cache disabling, stale-value rejection, or a second execution route.
 
