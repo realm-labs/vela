@@ -15,6 +15,8 @@ clear; they are not permission for unrelated growth.
 | `vela_vm/src/script_method_calls.rs` | Exhaustive standard/dynamic method router with one fallback-order contract. |
 | `vela_vm/src/linked_execution.rs` | Exhaustive linked instruction dispatch loop; instruction ordering, safepoints, spans, profiling, and budget metadata are reviewed as one loop. |
 | `vela_bytecode/src/linked.rs` | Declarative linked instruction and immutable layout definitions. |
+| `vela_bytecode/src/lib.rs` | Declarative unlinked bytecode instruction, operand, metadata, and compiled-program definitions reviewed as one public format contract. |
+| `vela_bytecode/src/linker.rs` | Single generation-sealing pass whose instruction, identity, provider, debug, and verification mappings must remain auditable together. |
 | `vela_bytecode/src/verification.rs` | Exhaustive unlinked instruction verifier and shared invariant helpers. |
 | `vela_bytecode/src/verification/linked.rs` | Exhaustive linked instruction verifier; every linked opcode must remain in the same match audit. |
 | `vela_analysis/src/registry.rs` | Declarative registry-to-analysis projection for the complete metadata surface. |
@@ -24,4 +26,5 @@ clear; they are not permission for unrelated growth.
 | `vela_syntax/src/parse/tests.rs` | Dense parser fixture matrix. |
 | `vela_vm/src/tests/type_guards.rs` | Dense end-to-end guard contract matrix corresponding to the exhaustive guard interpreter. |
 | `vela_bytecode/src/verification/tests.rs` | Dense negative verifier fixture matrix. |
+| `vela_hot_reload/src/tests/runtime_reports.rs` | Dense runtime staging, acceptance, rejection, and diagnostic-report fixture matrix. |
 | `vela_mir/src/tests/model.rs` | Dense MIR model invariant fixtures. |

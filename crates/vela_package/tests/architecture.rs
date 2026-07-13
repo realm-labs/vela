@@ -79,6 +79,43 @@ fn provider_runtime_and_reload_keep_artifact_boundaries() {
     }
 }
 
+#[test]
+fn active_workspace_files_follow_the_reviewed_size_policy() {
+    const MAX_LINES: usize = 1_200;
+
+    let root = workspace_root();
+    let exceptions = fs::read_to_string(root.join("docs/architecture/file-size-exceptions.md"))
+        .expect("file-size exception ledger");
+    let mut violations = Vec::new();
+    for source_root in [root.join("crates"), root.join("examples")] {
+        for path in rust_files(&source_root) {
+            let text = fs::read_to_string(&path).expect("Rust source");
+            let line_count = text.lines().count();
+            if line_count <= MAX_LINES {
+                continue;
+            }
+            let relative = path
+                .strip_prefix(&source_root)
+                .expect("source belongs to scanned root")
+                .to_string_lossy()
+                .replace('\\', "/");
+            let ledger_path = if source_root.ends_with("crates") {
+                relative
+            } else {
+                format!("examples/{relative}")
+            };
+            if !exceptions.contains(&format!("`{ledger_path}`")) {
+                violations.push(format!("{ledger_path}: {line_count} lines"));
+            }
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "active Rust files above {MAX_LINES} lines require a reviewed exception: {violations:?}"
+    );
+}
+
 fn rust_files(root: &Path) -> Vec<PathBuf> {
     let mut pending = vec![root.to_owned()];
     let mut files = Vec::new();
