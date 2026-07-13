@@ -35,24 +35,34 @@ mod bytecode_profile;
 #[cfg(test)]
 mod bytecode_profile_tests;
 mod call_args;
+mod call_future;
+mod execution_host;
 mod global_store;
 mod handles;
 mod image;
 mod inline_cache;
+#[cfg(test)]
+mod ownership_proof;
 mod provider;
 mod script_globals;
 mod state;
 
 pub use call_args::CallArgs;
+pub use call_future::RuntimeCallFuture;
 pub use global_store::RuntimeGlobalStore;
-pub use handles::{RuntimeCallTarget, RuntimeMethodTarget, VelaFunction, VelaMethod};
+pub use handles::{
+    RuntimeCallTarget, RuntimeMethodSelector, VelaFunction, VelaMethod, VelaMethodTarget,
+};
 pub use image::{OwnedImage, RuntimeImage, RuntimeImageStorage, SharedImage};
-pub use provider::ProviderHandle;
+pub use provider::{ProviderHandle, ProviderMethodTarget};
 pub use script_globals::{IntoGlobalValue, RuntimeScriptGlobalStore, VelaValue};
 
-use call_args::{CallArgsAdapter, EmptyStateAdapter, call_args_type_error};
-use global_store::GlobalStoreAdapter;
-use handles::{RuntimeCallExecution, RuntimeMethodResolveContext};
+use call_args::call_args_type_error;
+use execution_host::ExecutionHost;
+use handles::{
+    RuntimeCallExecution, RuntimeCallTargetKind, RuntimeMethodResolveContext,
+    RuntimeMethodSelectorKind,
+};
 use state::RuntimeState;
 
 pub type Runtime = RuntimeImpl<OwnedImage>;
@@ -463,34 +473,19 @@ where
         })
     }
 
-    pub fn call<T>(
+    pub fn call<'host, T>(
         &mut self,
         entry: T,
-        args: CallArgs<'_>,
+        args: CallArgs<'host>,
         options: CallOptions,
     ) -> VmResult<VelaValue>
     where
         T: RuntimeCallTarget,
     {
-        let mut adapter = EmptyStateAdapter;
-        self.call_with_adapter(entry, args, options, &mut adapter)
-    }
-
-    pub fn call_with_adapter<T>(
-        &mut self,
-        entry: T,
-        mut args: CallArgs<'_>,
-        options: CallOptions,
-        adapter: &mut dyn ScriptStateAdapter,
-    ) -> VmResult<VelaValue>
-    where
-        T: RuntimeCallTarget,
-    {
-        let version_id = self.current_program_version_id();
+        let mut budget = options.budget();
+        let target = handles::call_target_sealed::Sealed::into_call_target(entry);
+        let target = self.resolve_call_target(target, &mut budget)?;
         let state = &mut self.state;
-        let linked_program = self.image.linked_program();
-        let target = entry.resolve(state.id, linked_program, version_id)?;
-        let mut access = HostAccess::new();
         Self::call_runtime_args(RuntimeCallExecution {
             runtime_id: state.id,
             engine: self.image.engine(),
@@ -501,77 +496,52 @@ where
             script_globals: &mut state.script_globals,
             sidecars: &state.sidecars,
             target,
-            args: &mut args,
-            options,
-            adapter,
-            access: &mut access,
+            args,
+            budget,
         })
     }
 
-    pub fn call_method<T>(
-        &mut self,
-        receiver: &VelaValue,
-        method: T,
-        mut args: CallArgs<'_>,
+    pub fn call_async<'call, T>(
+        &'call mut self,
+        entry: T,
+        args: CallArgs<'call>,
         options: CallOptions,
-    ) -> VmResult<VelaValue>
+    ) -> RuntimeCallFuture<'call>
     where
-        T: RuntimeMethodTarget,
+        T: RuntimeCallTarget + Send + 'call,
+    {
+        RuntimeCallFuture::new(async move { self.call(entry, args, options) })
+    }
+
+    pub fn bind_method<T>(&self, receiver: &VelaValue, method: T) -> VmResult<VelaMethodTarget>
+    where
+        T: RuntimeMethodSelector,
     {
         self.check_vela_value_runtime(receiver)?;
-        let version_id = self.current_program_version_id();
-        let state = &mut self.state;
-        let linked_program = self.image.linked_program();
-        let target = method.resolve(RuntimeMethodResolveContext {
-            runtime_id: state.id,
-            program_image: self.image.program_image(),
-            linked_program,
-            receiver,
-            version_id,
-            script_globals: &state.script_globals,
-            engine: self.image.engine(),
-        })?;
-        let mut budget = options.budget();
-        let resolved = args.resolve_values(
-            &target.name,
-            &target.params,
-            &target.param_defaults,
-            state.id,
-            &mut state.script_globals.heap,
-            &mut budget,
-        )?;
-        let mut adapter = EmptyStateAdapter;
-        let mut access = HostAccess::new();
-        let mut adapter = CallArgsAdapter::new(&mut args, &mut adapter);
-        let mut adapter = GlobalStoreAdapter::new(&mut state.globals, &mut adapter);
-        let mut host = HostExecution {
-            adapter: &mut adapter,
-            access: &mut access,
-            script_globals: Some(&state.script_globals.values),
+        let method = match handles::method_selector_sealed::Sealed::into_method_selector(method) {
+            RuntimeMethodSelectorKind::Name(name) => self.method(receiver, name)?,
+            RuntimeMethodSelectorKind::Method(method) => {
+                if method.runtime_id != self.state.id {
+                    return Err(call_args_type_error(
+                        "VelaMethod belongs to another Runtime",
+                    ));
+                }
+                let receiver_type = self
+                    .value_type_id(receiver)
+                    .ok_or_else(|| unknown_method(method.name.clone()))?;
+                if receiver_type != method.receiver_type {
+                    return Err(call_args_type_error(
+                        "VelaMethod receiver type does not match value",
+                    ));
+                }
+                method
+            }
         };
-        let vm = runtime_vm(
-            self.image.engine(),
-            self.image.program_image(),
-            self.hot_reload.as_ref(),
-        );
-        let roots = state.script_globals.roots();
-        let mut method_args = Vec::with_capacity(resolved.len().saturating_add(1));
-        method_args.push(receiver.value);
-        method_args.extend_from_slice(&resolved);
-        let result = vm.run_linked_runtime_code_call(LinkedRuntimeCodeCall {
-            artifact: self.image.linked_artifact(),
-            function: target.function,
-            args: &method_args,
-            host: &mut host,
-            persistent: PersistentHeapExecution {
-                heap: &mut state.script_globals.heap,
-                roots: &roots,
-            },
-            budget: &mut budget,
-            inline_caches: Some(&state.sidecars),
-            bytecode_profiler: Some(&state.sidecars),
-        })?;
-        Ok(state.script_globals.retain(state.id, result))
+        Ok(VelaMethodTarget {
+            runtime_id: self.state.id,
+            receiver: receiver.clone(),
+            method,
+        })
     }
 
     pub fn value_to_owned(&mut self, value: &VelaValue) -> VmResult<OwnedValue> {
@@ -601,13 +571,15 @@ where
         entry: &str,
         args: &[OwnedValue],
         options: CallOptions,
-        adapter: &mut dyn ScriptStateAdapter,
+        adapter: &mut (dyn ScriptStateAdapter + Send),
         access: &mut HostAccess,
     ) -> VmResult<OwnedValue> {
         let mut budget = options.budget();
-        let mut adapter = GlobalStoreAdapter::new(&mut self.state.globals, adapter);
+        let execution_args =
+            CallArgs::from_positional(args.iter().cloned()).with_fallback_adapter(adapter);
+        let mut execution_host = ExecutionHost::new(execution_args, &mut self.state.globals);
         let mut host = HostExecution {
-            adapter: &mut adapter,
+            adapter: &mut execution_host,
             access,
             script_globals: Some(&self.state.script_globals.values),
         };
@@ -649,12 +621,12 @@ where
         }
     }
 
-    pub fn call_args_raw(
+    pub fn call_args_raw<'host>(
         &mut self,
         entry: &str,
-        args: &mut CallArgs<'_>,
+        mut args: CallArgs<'host>,
         options: CallOptions,
-        adapter: &mut dyn ScriptStateAdapter,
+        adapter: &'host mut (dyn ScriptStateAdapter + Send),
         access: &mut HostAccess,
     ) -> VmResult<OwnedValue> {
         let mut budget = options.budget();
@@ -675,7 +647,9 @@ where
             .map(|param| linked_program.debug_name(*param).to_owned())
             .collect::<Vec<_>>();
         let roots = self.state.script_globals.roots();
-        let resolved = args.resolve_values(
+        args.set_fallback_adapter(adapter);
+        let mut execution_host = ExecutionHost::new(args, &mut self.state.globals);
+        let resolved = execution_host.resolve_values(
             entry,
             &params,
             &code.param_defaults,
@@ -683,10 +657,8 @@ where
             &mut self.state.script_globals.heap,
             &mut budget,
         )?;
-        let mut adapter = CallArgsAdapter::new(args, adapter);
-        let mut adapter = GlobalStoreAdapter::new(&mut self.state.globals, &mut adapter);
         let mut host = HostExecution {
-            adapter: &mut adapter,
+            adapter: &mut execution_host,
             access,
             script_globals: Some(&self.state.script_globals.values),
         };
@@ -716,9 +688,10 @@ where
         persistent_value_to_owned(&value, &mut self.state.script_globals.heap)
     }
 
-    fn call_runtime_args(call: RuntimeCallExecution<'_, '_, '_, '_, '_>) -> VmResult<VelaValue> {
-        let mut budget = call.options.budget();
-        let resolved = call.args.resolve_values(
+    fn call_runtime_args(call: RuntimeCallExecution<'_, '_, '_>) -> VmResult<VelaValue> {
+        let mut budget = call.budget;
+        let mut execution_host = ExecutionHost::new(call.args, call.globals);
+        let resolved = execution_host.resolve_values(
             &call.target.name,
             &call.target.params,
             &call.target.param_defaults,
@@ -726,19 +699,27 @@ where
             &mut call.script_globals.heap,
             &mut budget,
         )?;
-        let mut adapter = CallArgsAdapter::new(call.args, call.adapter);
-        let mut adapter = GlobalStoreAdapter::new(call.globals, &mut adapter);
+        let mut access = HostAccess::new();
         let mut host = HostExecution {
-            adapter: &mut adapter,
-            access: call.access,
+            adapter: &mut execution_host,
+            access: &mut access,
             script_globals: Some(&call.script_globals.values),
         };
         let vm = runtime_vm(call.engine, call.registry_image, call.hot_reload);
         let roots = call.script_globals.roots();
+        let mut entry_args = Vec::with_capacity(
+            resolved
+                .len()
+                .saturating_add(usize::from(call.target.receiver.is_some())),
+        );
+        if let Some(receiver) = &call.target.receiver {
+            entry_args.push(receiver.value);
+        }
+        entry_args.extend_from_slice(&resolved);
         let result = vm.run_linked_runtime_code_call(LinkedRuntimeCodeCall {
             artifact: call.artifact,
             function: call.target.function,
-            args: &resolved,
+            args: &entry_args,
             host: &mut host,
             persistent: PersistentHeapExecution {
                 heap: &mut call.script_globals.heap,
@@ -751,12 +732,42 @@ where
         Ok(call.script_globals.retain(call.runtime_id, result))
     }
 
+    fn resolve_call_target(
+        &mut self,
+        target: RuntimeCallTargetKind,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<handles::EntryRequest> {
+        match target {
+            target @ (RuntimeCallTargetKind::FunctionName(_)
+            | RuntimeCallTargetKind::Function(_)) => handles::resolve_function_target(
+                target,
+                self.state.id,
+                self.image.linked_program(),
+                self.current_program_version_id(),
+            ),
+            RuntimeCallTargetKind::BoundMethod(target) => handles::resolve_bound_method(
+                target,
+                RuntimeMethodResolveContext {
+                    runtime_id: self.state.id,
+                    program_image: self.image.program_image(),
+                    linked_program: self.image.linked_program(),
+                    version_id: self.current_program_version_id(),
+                    script_globals: &self.state.script_globals,
+                    engine: self.image.engine(),
+                },
+            ),
+            RuntimeCallTargetKind::ProviderMethod(target) => {
+                self.resolve_provider_target(target, budget)
+            }
+        }
+    }
+
     pub fn call_raw_at_event_end_safe_point(
         &mut self,
         entry: &str,
         args: &[OwnedValue],
         options: CallOptions,
-        adapter: &mut dyn ScriptStateAdapter,
+        adapter: &mut (dyn ScriptStateAdapter + Send),
         access: &mut HostAccess,
     ) -> VmResult<EventCallSafePointReport> {
         let value = self.call_raw(entry, args, options, adapter, access)?;
@@ -764,12 +775,12 @@ where
         Ok(EventCallSafePointReport { value, reload })
     }
 
-    pub fn call_args_raw_at_event_end_safe_point(
+    pub fn call_args_raw_at_event_end_safe_point<'host>(
         &mut self,
         entry: &str,
-        args: &mut CallArgs<'_>,
+        args: CallArgs<'host>,
         options: CallOptions,
-        adapter: &mut dyn ScriptStateAdapter,
+        adapter: &'host mut (dyn ScriptStateAdapter + Send),
         access: &mut HostAccess,
     ) -> VmResult<EventCallSafePointReport> {
         let value = self.call_args_raw(entry, args, options, adapter, access)?;

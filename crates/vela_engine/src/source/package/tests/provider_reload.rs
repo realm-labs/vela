@@ -292,7 +292,11 @@ impl CallbackProvider for Callback {{
     let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone());
     let handle = runtime.provider_handle(&key).expect("provider handle");
     let old_callback = runtime
-        .call_provider_handle(&handle, method, CallArgs::new(), CallOptions::unbounded())
+        .call(
+            handle.method(method),
+            CallArgs::new(),
+            CallOptions::unbounded(),
+        )
         .expect("old callback");
 
     fs::write(root.join("src/api.vela"), source(2)).expect("change provider helper body");
@@ -308,7 +312,11 @@ impl CallbackProvider for Callback {{
         .expect("safe point")
         .expect("accepted report");
     let new_callback = runtime
-        .call_provider_handle(&handle, method, CallArgs::new(), CallOptions::unbounded())
+        .call(
+            handle.method(method),
+            CallArgs::new(),
+            CallOptions::unbounded(),
+        )
         .expect("new callback");
 
     assert_eq!(call_callback_i64(&mut runtime, old_callback), 1);

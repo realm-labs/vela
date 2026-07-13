@@ -73,11 +73,10 @@ fn main() {
     let mut fallback = CountingGlobalLookupAdapter::default();
 
     let result = runtime
-        .call_with_adapter(
+        .call(
             "main",
-            CallArgs::new(),
+            CallArgs::new().with_fallback_adapter(&mut fallback),
             CallOptions::unbounded(),
-            &mut fallback,
         )
         .expect("runtime call should run");
 

@@ -19,7 +19,8 @@ pub use crate::reload::{
 };
 pub use crate::runtime::{
     CallArgs, CallOptions, EventCallSafePointReport, IntoGlobalValue, ProviderHandle, Runtime,
-    RuntimeCallTarget, RuntimeMethodTarget, VelaFunction, VelaMethod, VelaValue,
+    RuntimeCallFuture, RuntimeCallTarget, RuntimeMethodSelector, VelaFunction, VelaMethod,
+    VelaMethodTarget, VelaValue,
 };
 pub use crate::schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
 pub use crate::source::{

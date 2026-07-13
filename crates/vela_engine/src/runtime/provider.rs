@@ -1,19 +1,11 @@
 use vela_bytecode::{LinkedMethodDispatchKind, ProviderReceiverPlan};
 use vela_def::MethodId;
 use vela_hir::provider::ProviderKey;
-use vela_host::access::HostAccess;
-use vela_host::adapter::ScriptStateAdapter;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::heap_execution::HeapExecution;
-use vela_vm::{
-    HostExecution, LinkedRuntimeCodeCall, PersistentHeapExecution, allocate_zero_field_record,
-};
+use vela_vm::{allocate_zero_field_record, budget::ExecutionBudget};
 
-use super::call_args::{CallArgsAdapter, EmptyStateAdapter};
-use super::global_store::GlobalStoreAdapter;
-use super::{
-    CallArgs, CallOptions, RuntimeImageStorage, RuntimeImpl, VelaValue, runtime_vm, unknown_method,
-};
+use super::{RuntimeImageStorage, RuntimeImpl, handles::EntryRequest, unknown_method};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProviderHandle {
@@ -26,6 +18,20 @@ impl ProviderHandle {
     pub const fn key(&self) -> &ProviderKey {
         &self.key
     }
+
+    #[must_use]
+    pub fn method(&self, method: MethodId) -> ProviderMethodTarget {
+        ProviderMethodTarget {
+            handle: self.clone(),
+            method,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProviderMethodTarget {
+    pub(super) handle: ProviderHandle,
+    pub(super) method: MethodId,
 }
 
 impl<I> RuntimeImpl<I>
@@ -38,95 +44,6 @@ where
             runtime_id: self.state.id,
             key: key.clone(),
         })
-    }
-
-    pub fn call_provider(
-        &mut self,
-        key: &ProviderKey,
-        method: MethodId,
-        args: CallArgs<'_>,
-        options: CallOptions,
-    ) -> VmResult<VelaValue> {
-        let mut adapter = EmptyStateAdapter;
-        self.call_provider_with_adapter(key, method, args, options, &mut adapter)
-    }
-
-    pub fn call_provider_handle(
-        &mut self,
-        handle: &ProviderHandle,
-        method: MethodId,
-        args: CallArgs<'_>,
-        options: CallOptions,
-    ) -> VmResult<VelaValue> {
-        if handle.runtime_id != self.state.id {
-            return Err(VmError::new(VmErrorKind::TypeMismatch {
-                operation: "provider handle belongs to another runtime",
-            }));
-        }
-        self.call_provider(&handle.key, method, args, options)
-    }
-
-    pub fn call_provider_with_adapter(
-        &mut self,
-        key: &ProviderKey,
-        method: MethodId,
-        mut args: CallArgs<'_>,
-        options: CallOptions,
-        adapter: &mut dyn ScriptStateAdapter,
-    ) -> VmResult<VelaValue> {
-        let target = self.resolve_provider_method(key, method)?;
-        let mut budget = options.budget();
-        let state = &mut self.state;
-        let receiver = {
-            let mut heap = HeapExecution::new(&mut state.script_globals.heap);
-            let value = allocate_zero_field_record(
-                target.type_name,
-                target.type_id,
-                target.shape,
-                &mut heap,
-                Some(&mut budget),
-            )?;
-            state.script_globals.retain(state.id, value)
-        };
-        let resolved = args.resolve_values(
-            &target.debug_name,
-            &target.params,
-            &target.param_defaults,
-            state.id,
-            &mut state.script_globals.heap,
-            &mut budget,
-        )?;
-        let mut access = HostAccess::new();
-        let mut adapter = CallArgsAdapter::new(&mut args, adapter);
-        let mut adapter = GlobalStoreAdapter::new(&mut state.globals, &mut adapter);
-        let mut host = HostExecution {
-            adapter: &mut adapter,
-            access: &mut access,
-            script_globals: Some(&state.script_globals.values),
-        };
-        let vm = runtime_vm(
-            self.image.engine(),
-            self.image.program_image(),
-            self.hot_reload.as_ref(),
-        );
-        let roots = state.script_globals.roots();
-        let mut method_args = Vec::with_capacity(resolved.len().saturating_add(1));
-        method_args.push(receiver.value);
-        method_args.extend_from_slice(&resolved);
-        let result = vm.run_linked_runtime_code_call(LinkedRuntimeCodeCall {
-            artifact: self.image.linked_artifact(),
-            function: target.function,
-            args: &method_args,
-            host: &mut host,
-            persistent: PersistentHeapExecution {
-                heap: &mut state.script_globals.heap,
-                roots: &roots,
-            },
-            budget: &mut budget,
-            inline_caches: Some(&state.sidecars),
-            bytecode_profiler: Some(&state.sidecars),
-        })?;
-        Ok(state.script_globals.retain(state.id, result))
     }
 
     fn resolve_provider(&self, key: &ProviderKey) -> VmResult<&vela_bytecode::LinkedProviderEntry> {
@@ -173,6 +90,38 @@ where
                 .map(|param| program.debug_name(*param).to_owned())
                 .collect(),
             param_defaults: code.param_defaults.iter().skip(1).copied().collect(),
+        })
+    }
+
+    pub(super) fn resolve_provider_target(
+        &mut self,
+        target: ProviderMethodTarget,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<EntryRequest> {
+        if target.handle.runtime_id != self.state.id {
+            return Err(VmError::new(VmErrorKind::TypeMismatch {
+                operation: "provider handle belongs to another runtime",
+            }));
+        }
+        let resolved = self.resolve_provider_method(&target.handle.key, target.method)?;
+        let state = &mut self.state;
+        let receiver = {
+            let mut heap = HeapExecution::new(&mut state.script_globals.heap);
+            let value = allocate_zero_field_record(
+                resolved.type_name,
+                resolved.type_id,
+                resolved.shape,
+                &mut heap,
+                Some(budget),
+            )?;
+            state.script_globals.retain(state.id, value)
+        };
+        Ok(EntryRequest {
+            name: resolved.debug_name,
+            function: resolved.function,
+            params: resolved.params,
+            param_defaults: resolved.param_defaults,
+            receiver: Some(receiver),
         })
     }
 }

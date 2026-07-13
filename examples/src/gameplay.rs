@@ -158,12 +158,12 @@ impl<'a> GameScript<'a> {
         let args = host.main_args(main)?;
 
         let mut runtime = Runtime::new(engine, program);
+        let args = args.with_fallback_adapter(host.adapter_mut());
         let output = runtime
-            .call_with_adapter(
+            .call(
                 "main",
                 args,
                 CallOptions::new(10_000, 1024 * 1024, 64),
-                host.adapter_mut(),
             )
             .map_err(|error| {
                 crate::diagnostics::render_vm_error(self.label, self.source, &error)

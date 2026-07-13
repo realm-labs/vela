@@ -10,19 +10,18 @@ history belongs in Git.
 
 ## Current Focus
 
-M20 inline-cache and specialization work is in close-out mode. The package and
-service-provider hard switch, Heavy HIR, verified MIR, linked executable
-generation, source-boundary cleanup, Rowan syntax migration, tuple/unit/null
-hard switch, and clean LSP architecture tracks are complete.
+The executor-neutral async execution track is active at Batch A in
+[async-execution-model-plan.md](async-execution-model-plan.md). The pre-change
+workspace, focused call-depth/callback/provider/reload behavior, and
+representative runtime performance baseline are recorded in
+[archive/async-execution-baseline-2026-07-13.md](archive/async-execution-baseline-2026-07-13.md).
+The safe-Rust scoped `Send` ownership proof, execution-owned host boundary, and
+unified function/bound-method/provider call-target contract are complete. The
+current checkpoint is reducing the remaining raw public execution surface,
+followed by explicit await representation and the frame-stack driver.
 
-The next checkpoint is a cache-family audit. Do not add another broad cache
-family until existing families are classified as complete, incomplete, or
-explicitly deferred. New M20 work must close one named coverage, correctness,
-measurement, or decision gap.
-
-Parameterized container contracts may continue as a focused M20 type-contract
-slice. M20.5 LSP work may continue in parallel only when it remains
-analysis-only and does not change runtime language semantics.
+M20 cache close-out and M20.5 LSP follow-up remain valid but are paused while
+the async plan is the persistent work queue.
 
 ## Milestone Snapshot
 
@@ -92,6 +91,13 @@ analysis-only and does not change runtime language semantics.
   [archive/performance-full-2026-06-06.md](archive/performance-full-2026-06-06.md).
 
 ## Active Gaps
+
+### Async Execution Batch A
+
+- Reduce the remaining raw Runtime execution helpers to internal compatibility
+  support and keep reload checks as explicit lifecycle operations.
+- Carry callable asyncness and explicit await control flow through the frontend,
+  MIR, linked executable, and one non-recursive execution-frame driver.
 
 ### M20 Cache Close-Out
 
@@ -185,16 +191,10 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Audit every M20 cache family and classify it as complete, incomplete, or
-   deferred.
-2. Close only named cache-family gaps with focused correctness tests and paired
-   benchmark evidence.
-3. Run the parameterized-container acceptance audit and record only concrete
-   remaining failures.
-4. Take M20.5 work only from a reproducible editor behavior or protocol-matrix
-   gap.
-5. Begin M21 and M22 planning only from the stable runtime and tooling
-   contracts above.
+1. Complete the Batch A public execution-surface hard switch.
+2. Execute the remaining Batch A frontend/MIR/driver work and restore the full green
+   checkpoint before starting Batch B.
+3. Continue directly through Batches B-D and Section 18 of the async plan.
 
 ## Update Rules
 

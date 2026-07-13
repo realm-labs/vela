@@ -1,13 +1,8 @@
 use std::collections::BTreeMap;
 
-use vela_common::HostObjectId;
 use vela_host::adapter::ScriptStateAdapter;
-use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
-use vela_host::resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess};
-use vela_host::target::HostTargetInstance;
-use vela_host::value::HostValue;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::heap::ScriptHeap;
@@ -17,20 +12,10 @@ use vela_vm::value::Value;
 
 use super::VelaValue;
 
-const DIRECT_HOST_OBJECT_ID_BASE: u64 = 1 << 63;
-
+#[derive(Default)]
 pub struct CallArgs<'a> {
     entries: Vec<CallArg<'a>>,
-    next_direct_object_id: u64,
-}
-
-impl Default for CallArgs<'_> {
-    fn default() -> Self {
-        Self {
-            entries: Vec::new(),
-            next_direct_object_id: DIRECT_HOST_OBJECT_ID_BASE,
-        }
-    }
+    fallback: Option<&'a mut (dyn ScriptStateAdapter + Send)>,
 }
 
 impl<'a> CallArgs<'a> {
@@ -43,7 +28,7 @@ impl<'a> CallArgs<'a> {
     pub fn from_positional(args: impl IntoIterator<Item = OwnedValue>) -> Self {
         Self {
             entries: args.into_iter().map(CallArg::Positional).collect(),
-            next_direct_object_id: DIRECT_HOST_OBJECT_ID_BASE,
+            fallback: None,
         }
     }
 
@@ -51,7 +36,7 @@ impl<'a> CallArgs<'a> {
     pub fn from_values(args: impl IntoIterator<Item = VelaValue>) -> Self {
         Self {
             entries: args.into_iter().map(CallArg::PositionalValue).collect(),
-            next_direct_object_id: DIRECT_HOST_OBJECT_ID_BASE,
+            fallback: None,
         }
     }
 
@@ -121,12 +106,12 @@ impl<'a> CallArgs<'a> {
 
     pub fn push_host_ref<T>(&mut self, name: impl Into<String>, value: &'a T) -> &mut Self
     where
-        T: ScriptHostObject + 'a,
+        T: ScriptHostObject + Sync + 'a,
     {
-        let host_ref = self.next_direct_host_ref(value.host_type_id());
         self.entries.push(CallArg::NamedHost {
             name: name.into(),
-            host_ref,
+            host_ref: None,
+            type_id: value.host_type_id(),
             binding: HostArgBinding::Shared(value),
         });
         self
@@ -134,12 +119,12 @@ impl<'a> CallArgs<'a> {
 
     pub fn push_host_mut<T>(&mut self, name: impl Into<String>, value: &'a mut T) -> &mut Self
     where
-        T: ScriptHostObject + 'a,
+        T: ScriptHostObject + Send + 'a,
     {
-        let host_ref = self.next_direct_host_ref(value.host_type_id());
         self.entries.push(CallArg::NamedHost {
             name: name.into(),
-            host_ref,
+            host_ref: None,
+            type_id: value.host_type_id(),
             binding: HostArgBinding::Mutable(value),
         });
         self
@@ -200,7 +185,7 @@ impl<'a> CallArgs<'a> {
     #[must_use]
     pub fn with_host_ref<T>(mut self, name: impl Into<String>, value: &'a T) -> Self
     where
-        T: ScriptHostObject + 'a,
+        T: ScriptHostObject + Sync + 'a,
     {
         self.push_host_ref(name, value);
         self
@@ -209,10 +194,26 @@ impl<'a> CallArgs<'a> {
     #[must_use]
     pub fn with_host_mut<T>(mut self, name: impl Into<String>, value: &'a mut T) -> Self
     where
-        T: ScriptHostObject + 'a,
+        T: ScriptHostObject + Send + 'a,
     {
         self.push_host_mut(name, value);
         self
+    }
+
+    #[must_use]
+    pub fn with_fallback_adapter(
+        mut self,
+        adapter: &'a mut (dyn ScriptStateAdapter + Send),
+    ) -> Self {
+        self.fallback = Some(adapter);
+        self
+    }
+
+    pub(super) fn set_fallback_adapter(
+        &mut self,
+        adapter: &'a mut (dyn ScriptStateAdapter + Send),
+    ) {
+        self.fallback = Some(adapter);
     }
 
     #[must_use]
@@ -306,10 +307,61 @@ impl<'a> CallArgs<'a> {
         Ok(resolved)
     }
 
-    fn next_direct_host_ref(&mut self, type_id: vela_common::HostTypeId) -> HostRef {
-        let object_id = HostObjectId::new(self.next_direct_object_id);
-        self.next_direct_object_id = self.next_direct_object_id.saturating_add(1);
-        HostRef::new(type_id, object_id, 1)
+    pub(super) fn assign_direct_host_refs(&mut self, next_object_id: &mut u64) {
+        for entry in &mut self.entries {
+            if let CallArg::NamedHost {
+                host_ref, type_id, ..
+            } = entry
+                && host_ref.is_none()
+            {
+                *host_ref = Some(HostRef::new(
+                    *type_id,
+                    vela_common::HostObjectId::new(*next_object_id),
+                    1,
+                ));
+                *next_object_id = next_object_id.saturating_add(1);
+            }
+        }
+    }
+
+    pub(super) fn take_fallback(&mut self) -> Option<&'a mut (dyn ScriptStateAdapter + Send)> {
+        self.fallback.take()
+    }
+
+    pub(super) fn direct_binding(&self, root: HostRef) -> Option<&HostArgBinding<'a>> {
+        self.entries.iter().find_map(|entry| match entry {
+            CallArg::NamedHost {
+                host_ref: Some(host_ref),
+                binding,
+                ..
+            } if *host_ref == root => Some(binding),
+            _ => None,
+        })
+    }
+
+    pub(super) fn direct_binding_mut(&mut self, root: HostRef) -> Option<&mut HostArgBinding<'a>> {
+        self.entries.iter_mut().find_map(|entry| match entry {
+            CallArg::NamedHost {
+                host_ref: Some(host_ref),
+                binding,
+                ..
+            } if *host_ref == root => Some(binding),
+            _ => None,
+        })
+    }
+
+    pub(super) fn direct_binding_by_type(
+        &self,
+        type_id: vela_common::HostTypeId,
+    ) -> Option<&HostArgBinding<'a>> {
+        self.entries.iter().find_map(|entry| match entry {
+            CallArg::NamedHost {
+                type_id: binding_type,
+                binding,
+                ..
+            } if *binding_type == type_id => Some(binding),
+            _ => None,
+        })
     }
 }
 
@@ -319,7 +371,7 @@ impl From<Vec<OwnedValue>> for CallArgs<'_> {
     }
 }
 
-enum CallArg<'a> {
+pub(super) enum CallArg<'a> {
     Positional(OwnedValue),
     PositionalValue(VelaValue),
     Named {
@@ -332,7 +384,8 @@ enum CallArg<'a> {
     },
     NamedHost {
         name: String,
-        host_ref: HostRef,
+        host_ref: Option<HostRef>,
+        type_id: vela_common::HostTypeId,
         binding: HostArgBinding<'a>,
     },
 }
@@ -355,7 +408,13 @@ impl CallArg<'_> {
                     Err(call_args_type_error("VelaValue belongs to another Runtime"))
                 }
             }
-            Self::NamedHost { host_ref, .. } => Ok(Value::HostRef(*host_ref)),
+            Self::NamedHost {
+                host_ref: Some(host_ref),
+                ..
+            } => Ok(Value::HostRef(*host_ref)),
+            Self::NamedHost { host_ref: None, .. } => Err(call_args_type_error(
+                "direct host argument was not assigned an execution identity",
+            )),
         }
     }
 
@@ -369,235 +428,9 @@ impl CallArg<'_> {
     }
 }
 
-enum HostArgBinding<'a> {
-    Shared(&'a dyn ScriptHostObject),
-    Mutable(&'a mut dyn ScriptHostObject),
-}
-
-pub(crate) struct CallArgsAdapter<'call, 'args> {
-    args: &'call mut CallArgs<'args>,
-    fallback: &'call mut dyn ScriptStateAdapter,
-}
-
-impl<'call, 'args> CallArgsAdapter<'call, 'args> {
-    pub(crate) fn new(
-        args: &'call mut CallArgs<'args>,
-        fallback: &'call mut dyn ScriptStateAdapter,
-    ) -> Self {
-        Self { args, fallback }
-    }
-
-    fn direct_binding<'s>(&'s self, root: HostRef) -> Option<&'s HostArgBinding<'args>> {
-        for entry in &self.args.entries {
-            if let CallArg::NamedHost {
-                host_ref, binding, ..
-            } = entry
-                && *host_ref == root
-            {
-                return Some(binding);
-            }
-        }
-        None
-    }
-
-    fn direct_binding_mut<'s>(
-        &'s mut self,
-        root: HostRef,
-    ) -> Option<&'s mut HostArgBinding<'args>> {
-        for entry in &mut self.args.entries {
-            if let CallArg::NamedHost {
-                host_ref, binding, ..
-            } = entry
-                && *host_ref == root
-            {
-                return Some(binding);
-            }
-        }
-        None
-    }
-
-    fn direct_binding_by_type<'s>(
-        &'s self,
-        type_id: vela_common::HostTypeId,
-    ) -> Option<&'s HostArgBinding<'args>> {
-        for entry in &self.args.entries {
-            if let CallArg::NamedHost {
-                host_ref, binding, ..
-            } = entry
-                && host_ref.type_id == type_id
-            {
-                return Some(binding);
-            }
-        }
-        None
-    }
-
-    fn direct_access_error(target: HostTargetInstance<'_>, action: &'static str) -> HostError {
-        HostError {
-            kind: HostErrorKind::PermissionDenied {
-                path: target.to_diagnostic_path().to_host_path(),
-                action,
-            },
-            source_span: None,
-        }
-    }
-}
-
-impl ScriptStateAdapter for CallArgsAdapter<'_, '_> {
-    fn host_schema_epoch(&self) -> HostSchemaEpoch {
-        self.fallback.host_schema_epoch()
-    }
-
-    fn resolve_host_access(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
-        match self.direct_binding_by_type(spec.plan.root_type) {
-            Some(HostArgBinding::Shared(object)) => object.resolve_host_target(spec),
-            Some(HostArgBinding::Mutable(object)) => object.resolve_host_target(spec),
-            None => self.fallback.resolve_host_access(spec),
-        }
-    }
-
-    fn read_host(
-        &self,
-        access: ResolvedHostAccess,
-        target: HostTargetInstance<'_>,
-    ) -> HostResult<HostValue> {
-        match self.direct_binding(target.root) {
-            Some(HostArgBinding::Shared(object)) => object.read_resolved_host(access, target),
-            Some(HostArgBinding::Mutable(object)) => object.read_resolved_host(access, target),
-            None => self.fallback.read_host(access, target),
-        }
-    }
-
-    fn write_host(
-        &mut self,
-        access: ResolvedHostAccess,
-        target: HostTargetInstance<'_>,
-        value: HostValue,
-    ) -> HostResult<()> {
-        match self.direct_binding_mut(target.root) {
-            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(target, "write")),
-            Some(HostArgBinding::Mutable(object)) => {
-                object.write_resolved_host(access, target, value)
-            }
-            None => self.fallback.write_host(access, target, value),
-        }
-    }
-
-    fn mutate_host(
-        &mut self,
-        access: ResolvedHostAccess,
-        target: HostTargetInstance<'_>,
-        op: HostMutationOp,
-        rhs: HostValue,
-    ) -> HostResult<()> {
-        match self.direct_binding_mut(target.root) {
-            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(target, "write")),
-            Some(HostArgBinding::Mutable(object)) => {
-                object.mutate_resolved_host(access, target, op, rhs)
-            }
-            None => self.fallback.mutate_host(access, target, op, rhs),
-        }
-    }
-
-    fn remove_host(
-        &mut self,
-        access: ResolvedHostAccess,
-        target: HostTargetInstance<'_>,
-    ) -> HostResult<()> {
-        match self.direct_binding_mut(target.root) {
-            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(target, "write")),
-            Some(HostArgBinding::Mutable(object)) => object.remove_resolved_host(access, target),
-            None => self.fallback.remove_host(access, target),
-        }
-    }
-
-    fn call_host(
-        &mut self,
-        access: ResolvedHostAccess,
-        target: HostTargetInstance<'_>,
-        method: vela_common::HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
-        match self.direct_binding_mut(target.root) {
-            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(target, "call")),
-            Some(HostArgBinding::Mutable(object)) => {
-                object.call_resolved_host(access, target, method, args)
-            }
-            None => self.fallback.call_host(access, target, method, args),
-        }
-    }
-}
-
-pub(crate) struct EmptyStateAdapter;
-
-impl ScriptStateAdapter for EmptyStateAdapter {
-    fn read_host(
-        &self,
-        _access: ResolvedHostAccess,
-        target: HostTargetInstance<'_>,
-    ) -> HostResult<HostValue> {
-        Err(HostError {
-            kind: HostErrorKind::MissingPath {
-                path: target.to_diagnostic_path().to_host_path(),
-            },
-            source_span: None,
-        })
-    }
-
-    fn write_host(
-        &mut self,
-        _access: ResolvedHostAccess,
-        target: HostTargetInstance<'_>,
-        _value: HostValue,
-    ) -> HostResult<()> {
-        Err(HostError {
-            kind: HostErrorKind::MissingPath {
-                path: target.to_diagnostic_path().to_host_path(),
-            },
-            source_span: None,
-        })
-    }
-
-    fn mutate_host(
-        &mut self,
-        _access: ResolvedHostAccess,
-        target: HostTargetInstance<'_>,
-        _op: HostMutationOp,
-        _rhs: HostValue,
-    ) -> HostResult<()> {
-        Err(HostError {
-            kind: HostErrorKind::MissingPath {
-                path: target.to_diagnostic_path().to_host_path(),
-            },
-            source_span: None,
-        })
-    }
-
-    fn remove_host(
-        &mut self,
-        _access: ResolvedHostAccess,
-        target: HostTargetInstance<'_>,
-    ) -> HostResult<()> {
-        Err(HostError {
-            kind: HostErrorKind::MissingPath {
-                path: target.to_diagnostic_path().to_host_path(),
-            },
-            source_span: None,
-        })
-    }
-
-    fn call_host(
-        &mut self,
-        _access: ResolvedHostAccess,
-        _target: HostTargetInstance<'_>,
-        method: vela_common::HostMethodId,
-        _args: &[HostValue],
-    ) -> HostResult<HostValue> {
-        Err(HostError {
-            kind: HostErrorKind::UnsupportedMethod { method },
-            source_span: None,
-        })
-    }
+pub(super) enum HostArgBinding<'a> {
+    Shared(&'a (dyn ScriptHostObject + Sync)),
+    Mutable(&'a mut (dyn ScriptHostObject + Send)),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

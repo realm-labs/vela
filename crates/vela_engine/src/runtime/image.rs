@@ -24,7 +24,7 @@ pub struct SharedImage {
     image: Arc<RuntimeImage>,
 }
 
-pub trait RuntimeImageStorage: Deref<Target = RuntimeImage> {
+pub trait RuntimeImageStorage: Deref<Target = RuntimeImage> + Send {
     #[doc(hidden)]
     fn from_runtime_image(image: RuntimeImage) -> Self;
 }

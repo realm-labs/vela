@@ -25,9 +25,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args = CallArgs::new().with_serde_value("event", &event)?;
     let output = runtime.call("handle_damage", args, CallOptions::unbounded())?;
     let score_method = runtime.method(&output, "score")?;
-    let score = runtime.call_method(
-        &output,
-        &score_method,
+    let score_target = runtime.bind_method(&output, &score_method)?;
+    let score = runtime.call(
+        score_target,
         CallArgs::new().with_value("bonus", 5_i64),
         CallOptions::unbounded(),
     )?;

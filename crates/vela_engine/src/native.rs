@@ -1,3 +1,5 @@
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 
 use vela_common::PrimitiveTag;
@@ -458,6 +460,44 @@ impl TypeHint {
 
 pub type NativeFunction =
     Arc<dyn Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static>;
+
+/// The lifetime-erased future returned by one registered async Rust call.
+///
+/// The future may borrow its invocation arguments, but it must remain `Send`
+/// for that scoped lifetime.
+///
+/// ```compile_fail
+/// use std::rc::Rc;
+/// use vela_engine::native::NativeCallFuture;
+/// use vela_vm::owned_value::OwnedValue;
+///
+/// fn non_send<'call>(value: &'call Rc<i64>) -> NativeCallFuture<'call> {
+///     Box::pin(async move {
+///         let value = **value;
+///         Ok(OwnedValue::i64(value))
+///     })
+/// }
+/// ```
+pub type NativeCallFuture<'call> =
+    Pin<Box<dyn Future<Output = VmResult<OwnedValue>> + Send + 'call>>;
+
+/// A `Send + Sync + 'static` factory whose returned future is scoped to one
+/// invocation.
+///
+/// ```compile_fail
+/// use std::rc::Rc;
+/// use std::sync::Arc;
+/// use vela_engine::native::{AsyncNativeFunction, NativeCallFuture};
+/// use vela_vm::owned_value::OwnedValue;
+///
+/// let captured = Rc::new(1_i64);
+/// let _factory: AsyncNativeFunction = Arc::new(move |_args| {
+///     let captured = Rc::clone(&captured);
+///     Box::pin(async move { Ok(OwnedValue::i64(*captured)) }) as NativeCallFuture<'_>
+/// });
+/// ```
+pub type AsyncNativeFunction =
+    Arc<dyn for<'call> Fn(&'call [OwnedValue]) -> NativeCallFuture<'call> + Send + Sync + 'static>;
 pub type HostNativeFunction = Arc<
     dyn for<'host> Fn(&[OwnedValue], &mut HostExecution<'host>) -> VmResult<OwnedValue>
         + Send
@@ -542,8 +582,26 @@ impl ContextHostNativeFunctionEntry {
 
 #[cfg(test)]
 mod tests {
-    use super::EffectSet;
+    use std::sync::Arc;
+
+    use vela_vm::owned_value::OwnedValue;
+
+    use super::{AsyncNativeFunction, EffectSet, NativeCallFuture};
     use crate::permission::Capability;
+
+    fn require_send<T: Send>(_: T) {}
+
+    fn borrowed_async_native(args: &[OwnedValue]) -> NativeCallFuture<'_> {
+        Box::pin(async move { Ok(args.first().cloned().unwrap_or(OwnedValue::Unit)) })
+    }
+
+    #[test]
+    fn async_native_factory_is_static_and_returns_scoped_send_future() {
+        let factory: AsyncNativeFunction = Arc::new(borrowed_async_native);
+        let args = [OwnedValue::i64(42)];
+
+        require_send(factory(&args));
+    }
 
     #[test]
     fn required_capability_set_matches_effect_flags() {

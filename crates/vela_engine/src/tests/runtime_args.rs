@@ -440,14 +440,14 @@ fn main(player: Player, amount, bonus = 1) {
         HostValue::Scalar(vela_common::ScalarValue::I64(9)),
     );
     let mut tx = HostAccess::new();
-    let mut args = CallArgs::new()
+    let args = CallArgs::new()
         .with_value("amount", 2_i64)
         .with_host_handle("player", player);
 
     let result = runtime
         .call_args_raw(
             "main",
-            &mut args,
+            args,
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx,
@@ -480,7 +480,7 @@ fn main(left, right) {
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
-    let mut args = CallArgs::from_positional([
+    let args = CallArgs::from_positional([
         OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
         OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
     ]);
@@ -488,7 +488,7 @@ fn main(left, right) {
     let result = runtime
         .call_args_raw(
             "main",
-            &mut args,
+            args,
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx,
@@ -510,14 +510,14 @@ fn runtime_call_args_reject_duplicate_named_values() {
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
-    let mut args = CallArgs::new()
+    let args = CallArgs::new()
         .with_value("value", 1_i64)
         .with_value("value", 2_i64);
 
     let error = runtime
         .call_args_raw(
             "main",
-            &mut args,
+            args,
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx,
@@ -541,12 +541,12 @@ fn runtime_call_args_reject_unknown_named_values() {
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
-    let mut args = CallArgs::new().with_value("missing", 1_i64);
+    let args = CallArgs::new().with_value("missing", 1_i64);
 
     let error = runtime
         .call_args_raw(
             "main",
-            &mut args,
+            args,
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx,
@@ -570,12 +570,12 @@ fn runtime_call_args_reject_mixed_modes() {
     let mut runtime = Runtime::new(engine, program);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
-    let mut args = CallArgs::new().with(1_i64).with_value("value", 2_i64);
+    let args = CallArgs::new().with(1_i64).with_value("value", 2_i64);
 
     let error = runtime
         .call_args_raw(
             "main",
-            &mut args,
+            args,
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx,
@@ -876,10 +876,12 @@ fn make_reward() {
     let reward = runtime
         .call("make_reward", CallArgs::new(), CallOptions::unbounded())
         .expect("factory should return runtime value");
+    let score_by_name_target = runtime
+        .bind_method(&reward, "score")
+        .expect("named method target should bind");
     let score_by_name = runtime
-        .call_method(
-            &reward,
-            "score",
+        .call(
+            score_by_name_target,
             CallArgs::new().with_value("amount", 5_i64),
             CallOptions::unbounded(),
         )
@@ -887,10 +889,12 @@ fn make_reward() {
     let score_method = runtime
         .method(&reward, "score")
         .expect("method should resolve");
+    let score_by_cached_target = runtime
+        .bind_method(&reward, &score_method)
+        .expect("cached method target should bind");
     let score_by_cached_method = runtime
-        .call_method(
-            &reward,
-            &score_method,
+        .call(
+            score_by_cached_target,
             CallArgs::new()
                 .with_value("amount", 3_i64)
                 .with_value("multiplier", 4_i64),
@@ -966,12 +970,7 @@ fn make_reward(gold) {
         .expect("method should resolve");
 
     let error = runtime_b
-        .call_method(
-            &reward_b,
-            &score,
-            CallArgs::from_positional([OwnedValue::Scalar(vela_common::ScalarValue::I64(5))]),
-            CallOptions::unbounded(),
-        )
+        .bind_method(&reward_b, &score)
         .expect_err("cached method from another runtime should fail");
 
     assert_eq!(
@@ -1001,14 +1000,14 @@ fn main(player: Player) {
         .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut player = direct_player(9);
-    let mut args = CallArgs::new().with_host_mut("player", &mut player);
+    let args = CallArgs::new().with_host_mut("player", &mut player);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
     let report = runtime
         .call_args_raw_at_event_end_safe_point(
             "main",
-            &mut args,
+            args,
             CallOptions::unbounded(),
             &mut adapter,
             &mut tx,
@@ -1020,7 +1019,6 @@ fn main(player: Player) {
         OwnedValue::Scalar(vela_common::ScalarValue::I64(10))
     );
     assert_eq!(report.reload, None);
-    drop(args);
     assert_eq!(player.level, 10);
 }
 

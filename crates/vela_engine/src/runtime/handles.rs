@@ -4,8 +4,6 @@ use vela_bytecode::{
     LinkedArtifact, LinkedCodeObject, LinkedProgram, ProgramImage, ScriptFunctionHandle,
 };
 use vela_def::{MethodId, TypeId};
-use vela_host::access::HostAccess;
-use vela_host::adapter::ScriptStateAdapter;
 use vela_hot_reload::runtime::HotReloadRuntime;
 use vela_hot_reload::symbol::ProgramVersionId;
 use vela_vm::error::VmResult;
@@ -14,7 +12,7 @@ use crate::engine::Engine;
 
 use super::call_args::call_args_type_error;
 use super::{
-    CallArgs, CallOptions, RuntimeGlobalStore, RuntimeScriptGlobalStore, VelaValue,
+    CallArgs, ProviderMethodTarget, RuntimeGlobalStore, RuntimeScriptGlobalStore, VelaValue,
     state::RuntimeSidecars, unknown_function, unknown_method, value_type_id,
 };
 
@@ -72,86 +70,134 @@ impl VelaMethod {
     }
 }
 
-pub trait RuntimeCallTarget {
-    fn resolve(
-        self,
-        runtime_id: u64,
-        program: &LinkedProgram,
-        version_id: Option<ProgramVersionId>,
-    ) -> VmResult<ResolvedRuntimeFunction>;
+#[derive(Clone, Debug)]
+pub struct VelaMethodTarget {
+    pub(super) runtime_id: u64,
+    pub(super) receiver: VelaValue,
+    pub(super) method: VelaMethod,
 }
 
-impl RuntimeCallTarget for &str {
-    fn resolve(
-        self,
-        _runtime_id: u64,
-        program: &LinkedProgram,
-        _version_id: Option<ProgramVersionId>,
-    ) -> VmResult<ResolvedRuntimeFunction> {
-        let (function, code) = linked_function_by_name(program, self)?;
-        Ok(ResolvedRuntimeFunction {
-            name: self.to_owned(),
-            function,
-            params: linked_params(program, code),
-            param_defaults: code.param_defaults.clone(),
-        })
+impl VelaMethodTarget {
+    #[must_use]
+    pub fn receiver(&self) -> &VelaValue {
+        &self.receiver
+    }
+
+    #[must_use]
+    pub fn method(&self) -> &VelaMethod {
+        &self.method
     }
 }
 
-impl RuntimeCallTarget for &String {
-    fn resolve(
-        self,
-        runtime_id: u64,
-        program: &LinkedProgram,
-        version_id: Option<ProgramVersionId>,
-    ) -> VmResult<ResolvedRuntimeFunction> {
-        RuntimeCallTarget::resolve(self.as_str(), runtime_id, program, version_id)
-    }
-}
+pub trait RuntimeCallTarget: call_target_sealed::Sealed {}
 
-impl RuntimeCallTarget for &VelaFunction {
-    fn resolve(
-        self,
-        runtime_id: u64,
-        program: &LinkedProgram,
-        version_id: Option<ProgramVersionId>,
-    ) -> VmResult<ResolvedRuntimeFunction> {
-        if self.runtime_id != runtime_id {
-            return Err(call_args_type_error(
-                "VelaFunction belongs to another Runtime",
-            ));
+impl<T> RuntimeCallTarget for T where T: call_target_sealed::Sealed {}
+
+pub(super) mod call_target_sealed {
+    use super::{RuntimeCallTargetKind, VelaFunction, VelaMethodTarget};
+    use crate::runtime::ProviderMethodTarget;
+
+    pub trait Sealed {
+        fn into_call_target(self) -> RuntimeCallTargetKind;
+    }
+
+    impl Sealed for &str {
+        fn into_call_target(self) -> RuntimeCallTargetKind {
+            RuntimeCallTargetKind::FunctionName(self.to_owned())
         }
-        let (function, code) = linked_function_by_name(program, &self.name)?;
-        let (params, param_defaults) = if self.version_id == version_id {
-            (self.params.clone(), self.param_defaults.clone())
-        } else {
-            (linked_params(program, code), code.param_defaults.clone())
-        };
-        Ok(ResolvedRuntimeFunction {
-            name: self.name.clone(),
-            function,
-            params,
-            param_defaults,
-        })
+    }
+
+    impl Sealed for String {
+        fn into_call_target(self) -> RuntimeCallTargetKind {
+            RuntimeCallTargetKind::FunctionName(self)
+        }
+    }
+
+    impl Sealed for &String {
+        fn into_call_target(self) -> RuntimeCallTargetKind {
+            RuntimeCallTargetKind::FunctionName(self.clone())
+        }
+    }
+
+    impl Sealed for VelaFunction {
+        fn into_call_target(self) -> RuntimeCallTargetKind {
+            RuntimeCallTargetKind::Function(self)
+        }
+    }
+
+    impl Sealed for &VelaFunction {
+        fn into_call_target(self) -> RuntimeCallTargetKind {
+            RuntimeCallTargetKind::Function(self.clone())
+        }
+    }
+
+    impl Sealed for VelaMethodTarget {
+        fn into_call_target(self) -> RuntimeCallTargetKind {
+            RuntimeCallTargetKind::BoundMethod(self)
+        }
+    }
+
+    impl Sealed for ProviderMethodTarget {
+        fn into_call_target(self) -> RuntimeCallTargetKind {
+            RuntimeCallTargetKind::ProviderMethod(self)
+        }
     }
 }
 
-impl RuntimeCallTarget for VelaFunction {
-    fn resolve(
-        self,
-        runtime_id: u64,
-        program: &LinkedProgram,
-        version_id: Option<ProgramVersionId>,
-    ) -> VmResult<ResolvedRuntimeFunction> {
-        (&self).resolve(runtime_id, program, version_id)
+#[doc(hidden)]
+pub enum RuntimeCallTargetKind {
+    FunctionName(String),
+    Function(VelaFunction),
+    BoundMethod(VelaMethodTarget),
+    ProviderMethod(ProviderMethodTarget),
+}
+
+pub trait RuntimeMethodSelector: method_selector_sealed::Sealed {}
+
+impl<T> RuntimeMethodSelector for T where T: method_selector_sealed::Sealed {}
+
+pub(super) mod method_selector_sealed {
+    use super::{RuntimeMethodSelectorKind, VelaMethod};
+
+    pub trait Sealed {
+        fn into_method_selector(self) -> RuntimeMethodSelectorKind;
+    }
+
+    impl Sealed for &str {
+        fn into_method_selector(self) -> RuntimeMethodSelectorKind {
+            RuntimeMethodSelectorKind::Name(self.to_owned())
+        }
+    }
+
+    impl Sealed for String {
+        fn into_method_selector(self) -> RuntimeMethodSelectorKind {
+            RuntimeMethodSelectorKind::Name(self)
+        }
+    }
+
+    impl Sealed for &String {
+        fn into_method_selector(self) -> RuntimeMethodSelectorKind {
+            RuntimeMethodSelectorKind::Name(self.clone())
+        }
+    }
+
+    impl Sealed for VelaMethod {
+        fn into_method_selector(self) -> RuntimeMethodSelectorKind {
+            RuntimeMethodSelectorKind::Method(self)
+        }
+    }
+
+    impl Sealed for &VelaMethod {
+        fn into_method_selector(self) -> RuntimeMethodSelectorKind {
+            RuntimeMethodSelectorKind::Method(self.clone())
+        }
     }
 }
 
-pub trait RuntimeMethodTarget {
-    fn resolve<'program>(
-        self,
-        context: RuntimeMethodResolveContext<'program, '_>,
-    ) -> VmResult<ResolvedRuntimeMethod>;
+#[doc(hidden)]
+pub enum RuntimeMethodSelectorKind {
+    Name(String),
+    Method(VelaMethod),
 }
 
 #[doc(hidden)]
@@ -160,126 +206,129 @@ pub struct RuntimeMethodResolveContext<'program, 'state> {
     pub program_image: &'state ProgramImage,
     pub linked_program: &'program LinkedProgram,
     pub version_id: Option<ProgramVersionId>,
-    pub receiver: &'state VelaValue,
     pub script_globals: &'state RuntimeScriptGlobalStore,
     pub engine: &'state Engine,
 }
 
-impl RuntimeMethodTarget for &str {
-    fn resolve<'program>(
-        self,
-        context: RuntimeMethodResolveContext<'program, '_>,
-    ) -> VmResult<ResolvedRuntimeMethod> {
-        let receiver_type = value_type_id(
-            &context.receiver.value,
-            &context.script_globals.heap,
-            context.engine.registry().as_ref(),
+pub(super) fn resolve_bound_method(
+    target: VelaMethodTarget,
+    context: RuntimeMethodResolveContext<'_, '_>,
+) -> VmResult<EntryRequest> {
+    if target.runtime_id != context.runtime_id {
+        return Err(call_args_type_error(
+            "bound Vela method belongs to another Runtime",
+        ));
+    }
+    let method_handle = target.method;
+    if method_handle.runtime_id != context.runtime_id {
+        return Err(call_args_type_error(
+            "VelaMethod belongs to another Runtime",
+        ));
+    }
+    let receiver_type = value_type_id(
+        &target.receiver.value,
+        &context.script_globals.heap,
+        context.engine.registry().as_ref(),
+    )
+    .ok_or_else(|| unknown_method(method_handle.name.clone()))?;
+    if receiver_type != method_handle.receiver_type {
+        return Err(call_args_type_error(
+            "VelaMethod receiver type does not match value",
+        ));
+    }
+    let method = context
+        .program_image
+        .script_methods()
+        .get_by_id(method_handle.receiver_type, method_handle.method_id)
+        .ok_or_else(|| unknown_method(method_handle.name.clone()))?;
+    let (function, code) =
+        linked_function_by_id(context.linked_program, method.function_id, &method.function)?;
+    let (params, param_defaults) = if method_handle.version_id == context.version_id {
+        (
+            method_handle.params.clone(),
+            method_handle.param_defaults.clone(),
         )
-        .ok_or_else(|| unknown_method(self.to_owned()))?;
-        let method = context
-            .program_image
-            .script_methods()
-            .get(receiver_type, self)
-            .ok_or_else(|| unknown_method(self.to_owned()))?;
-        let (function, code) =
-            linked_function_by_id(context.linked_program, method.function_id, &method.function)?;
-        Ok(ResolvedRuntimeMethod {
-            name: self.to_owned(),
-            function,
-            params: linked_params(context.linked_program, code)
+    } else {
+        (
+            linked_params(context.linked_program, code)
                 .into_iter()
                 .skip(1)
                 .collect(),
-            param_defaults: code.param_defaults.iter().skip(1).copied().collect(),
-        })
-    }
-}
-
-impl RuntimeMethodTarget for &VelaMethod {
-    fn resolve<'program>(
-        self,
-        context: RuntimeMethodResolveContext<'program, '_>,
-    ) -> VmResult<ResolvedRuntimeMethod> {
-        if self.runtime_id != context.runtime_id {
-            return Err(call_args_type_error(
-                "VelaMethod belongs to another Runtime",
-            ));
-        }
-        let receiver_type = value_type_id(
-            &context.receiver.value,
-            &context.script_globals.heap,
-            context.engine.registry().as_ref(),
+            code.param_defaults.iter().skip(1).copied().collect(),
         )
-        .ok_or_else(|| unknown_method(self.name.clone()))?;
-        if receiver_type != self.receiver_type {
-            return Err(call_args_type_error(
-                "VelaMethod receiver type does not match value",
-            ));
+    };
+    Ok(EntryRequest {
+        name: method_handle.name,
+        function,
+        params,
+        param_defaults,
+        receiver: Some(target.receiver),
+    })
+}
+
+pub(super) fn resolve_function_target(
+    target: RuntimeCallTargetKind,
+    runtime_id: u64,
+    program: &LinkedProgram,
+    version_id: Option<ProgramVersionId>,
+) -> VmResult<EntryRequest> {
+    match target {
+        RuntimeCallTargetKind::FunctionName(name) => {
+            let (function, code) = linked_function_by_name(program, &name)?;
+            Ok(EntryRequest {
+                name,
+                function,
+                params: linked_params(program, code),
+                param_defaults: code.param_defaults.clone(),
+                receiver: None,
+            })
         }
-        let method = context
-            .program_image
-            .script_methods()
-            .get_by_id(self.receiver_type, self.method_id)
-            .ok_or_else(|| unknown_method(self.name.clone()))?;
-        let (function, code) =
-            linked_function_by_id(context.linked_program, method.function_id, &method.function)?;
-        let (params, param_defaults) = if self.version_id == context.version_id {
-            (self.params.clone(), self.param_defaults.clone())
-        } else {
-            (
-                linked_params(context.linked_program, code)
-                    .into_iter()
-                    .skip(1)
-                    .collect(),
-                code.param_defaults.iter().skip(1).copied().collect(),
-            )
-        };
-        Ok(ResolvedRuntimeMethod {
-            name: self.name.clone(),
-            function,
-            params,
-            param_defaults,
-        })
+        RuntimeCallTargetKind::Function(function_handle) => {
+            if function_handle.runtime_id != runtime_id {
+                return Err(call_args_type_error(
+                    "VelaFunction belongs to another Runtime",
+                ));
+            }
+            let (function, code) = linked_function_by_name(program, &function_handle.name)?;
+            let (params, param_defaults) = if function_handle.version_id == version_id {
+                (function_handle.params, function_handle.param_defaults)
+            } else {
+                (linked_params(program, code), code.param_defaults.clone())
+            };
+            Ok(EntryRequest {
+                name: function_handle.name,
+                function,
+                params,
+                param_defaults,
+                receiver: None,
+            })
+        }
+        RuntimeCallTargetKind::BoundMethod(_) | RuntimeCallTargetKind::ProviderMethod(_) => Err(
+            call_args_type_error("call target requires runtime resolution"),
+        ),
     }
 }
 
-impl RuntimeMethodTarget for VelaMethod {
-    fn resolve<'program>(
-        self,
-        context: RuntimeMethodResolveContext<'program, '_>,
-    ) -> VmResult<ResolvedRuntimeMethod> {
-        (&self).resolve(context)
-    }
-}
-
-pub struct ResolvedRuntimeFunction {
+pub(super) struct EntryRequest {
     pub(super) name: String,
     pub(super) function: ScriptFunctionHandle,
     pub(super) params: Vec<String>,
     pub(super) param_defaults: Vec<bool>,
+    pub(super) receiver: Option<VelaValue>,
 }
 
-pub struct ResolvedRuntimeMethod {
-    pub(super) name: String,
-    pub(super) function: ScriptFunctionHandle,
-    pub(super) params: Vec<String>,
-    pub(super) param_defaults: Vec<bool>,
-}
-
-pub(super) struct RuntimeCallExecution<'program, 'args, 'adapter, 'access, 'state> {
+pub(super) struct RuntimeCallExecution<'program, 'state, 'host> {
     pub(super) runtime_id: u64,
     pub(super) engine: &'program Engine,
     pub(super) registry_image: &'program ProgramImage,
     pub(super) artifact: &'program Arc<LinkedArtifact>,
     pub(super) hot_reload: Option<&'program HotReloadRuntime>,
-    pub(super) globals: &'program mut RuntimeGlobalStore,
-    pub(super) script_globals: &'program mut RuntimeScriptGlobalStore,
+    pub(super) globals: &'state mut RuntimeGlobalStore,
+    pub(super) script_globals: &'state mut RuntimeScriptGlobalStore,
     pub(super) sidecars: &'state RuntimeSidecars,
-    pub(super) target: ResolvedRuntimeFunction,
-    pub(super) args: &'adapter mut CallArgs<'args>,
-    pub(super) options: CallOptions,
-    pub(super) adapter: &'adapter mut dyn ScriptStateAdapter,
-    pub(super) access: &'access mut HostAccess,
+    pub(super) target: EntryRequest,
+    pub(super) args: CallArgs<'host>,
+    pub(super) budget: vela_vm::budget::ExecutionBudget,
 }
 
 fn linked_function_by_name<'program>(

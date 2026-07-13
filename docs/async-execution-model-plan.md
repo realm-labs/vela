@@ -3,7 +3,7 @@
 > **Track:** executor-neutral script suspension, Rust/Vela async interop,
 > scoped host leases, and same-execution reentry
 > **Document status:** ready for execution
-> **Execution status:** not started
+> **Execution status:** Batch A active
 > **Baseline:** pulled `master` at `841a033d2` on 2026-07-13
 > **Plan execution style:** throughput-first large batches. Intermediate
 > compilation and tests may be red; each batch-completion checkpoint must be
@@ -1123,19 +1123,19 @@ Rules:
 Purpose: prove safe ownership and hard-switch all synchronous execution to the
 resumable foundation before adding real host suspension.
 
-- [ ] Record full baseline validation, focused call-depth/callback/provider/
+- [x] Record full baseline validation, focused call-depth/callback/provider/
   hot-reload tests, and representative runtime benchmarks.
-- [ ] Add compile-only ownership prototypes for `Send + Sync` factories,
+- [x] Add compile-only ownership prototypes for `Send + Sync` factories,
   scoped `Send` lifetime-borrowing futures, prepared-call lease extraction, and
   mutable-state reentrant child calls on Rust 1.97.
-- [ ] Prove and seal the single registration/call future aliases plus direct
+- [x] Prove and seal the single registration/call future aliases plus direct
   CallArgs/adapter auto-trait erasure; add positive and compile-fail tests and no
   Engine/Runtime mode generic.
-- [ ] Consume CallArgs and compose Runtime host globals plus the fallback
+- [x] Consume CallArgs and compose Runtime host globals plus the fallback
   adapter behind one `ExecutionHost` owner; delete the borrowing `CallArgsAdapter`/
   `GlobalStoreAdapter` execution shape and allocate direct HostRef identities
   across the whole outer execution.
-- [ ] Seal one `RuntimeCallTarget` contract for functions, bound methods, and
+- [x] Seal one `RuntimeCallTarget` contract for functions, bound methods, and
   provider methods; resolve each into `EntryRequest` and hard-switch away from
   `RuntimeMethodTarget` plus specialized method/provider execution setup.
 - [ ] Reduce the public Runtime execution surface to `call` and `call_async`:

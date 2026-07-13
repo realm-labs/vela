@@ -1,6 +1,9 @@
 use std::fs;
+use std::future::Future;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::task::{Context, Poll, Waker};
 
 use vela_common::{Capability, HostObjectId, HostTypeId, ScalarValue};
 use vela_def::{FieldId, TypeId, script_trait_id, script_trait_method_id};
@@ -688,18 +691,28 @@ impl CommandProvider for Command {
         .compile_provider_selection(&snapshot, &request)
         .expect("selected provider compiles");
     let mut runtime = Runtime::from_linked_artifact(engine, artifact);
+    let handle = runtime.provider_handle(&key).expect("provider handle");
 
     let output = runtime
-        .call_provider(
-            &key,
-            method,
+        .call(
+            handle.method(method),
             CallArgs::new().with_value("value", 41_i64),
             CallOptions::unbounded(),
         )
         .expect("provider method runs");
+    let async_output = poll_to_completion(runtime.call_async(
+        handle.method(method),
+        CallArgs::new().with_value("value", 40_i64),
+        CallOptions::unbounded(),
+    ))
+    .expect("async provider method runs");
     assert_eq!(
         runtime.value_to_owned(&output),
         Ok(OwnedValue::Scalar(ScalarValue::I64(42)))
+    );
+    assert_eq!(
+        runtime.value_to_owned(&async_output),
+        Ok(OwnedValue::Scalar(ScalarValue::I64(41)))
     );
     remove_fixture(root);
 }
@@ -742,7 +755,6 @@ impl CommandProvider for Unselected { pub fn run(self) -> i64 { return 2; } }
         .find(|provider| provider.key().provider().as_str() == "unselected")
         .expect("unselected descriptor");
     let key = installed.key().clone();
-    let method = installed.methods()[0].id();
     let selection = catalog.select([key.clone()]).expect("selection");
     let request = ProviderCompileRequest::for_selection(&snapshot, selection);
     let artifact = engine
@@ -750,21 +762,12 @@ impl CommandProvider for Unselected { pub fn run(self) -> i64 { return 2; } }
         .expect("selected provider compiles");
     let mut runtime = Runtime::from_linked_artifact(engine, artifact);
 
+    assert!(runtime.provider_handle(unselected.key()).is_err());
+    let handle = runtime.provider_handle(&key).expect("provider handle");
     assert!(
         runtime
-            .call_provider(
-                unselected.key(),
-                method,
-                CallArgs::new(),
-                CallOptions::unbounded(),
-            )
-            .is_err()
-    );
-    assert!(
-        runtime
-            .call_provider(
-                &key,
-                vela_def::MethodId::new(u128::MAX),
+            .call(
+                handle.method(vela_def::MethodId::new(u128::MAX)),
                 CallArgs::new(),
                 CallOptions::unbounded(),
             )
@@ -801,12 +804,21 @@ impl InstanceProvider for Instance { pub fn instance(self) -> Instance { return 
         .compile_provider_selection(&snapshot, &request)
         .expect("selected provider compiles");
     let mut runtime = Runtime::from_linked_artifact(engine, artifact);
+    let handle = runtime.provider_handle(&key).expect("provider handle");
 
     let first = runtime
-        .call_provider(&key, method, CallArgs::new(), CallOptions::unbounded())
+        .call(
+            handle.method(method),
+            CallArgs::new(),
+            CallOptions::unbounded(),
+        )
         .expect("first provider call");
     let second = runtime
-        .call_provider(&key, method, CallArgs::new(), CallOptions::unbounded())
+        .call(
+            handle.method(method),
+            CallArgs::new(),
+            CallOptions::unbounded(),
+        )
         .expect("second provider call");
     assert_ne!(first, second);
     remove_fixture(root);
@@ -845,7 +857,11 @@ impl CommandProvider for Command { pub fn run(self) -> i64 { return 1; } }
 
     assert!(
         second
-            .call_provider_handle(&handle, method, CallArgs::new(), CallOptions::unbounded(),)
+            .call(
+                handle.method(method),
+                CallArgs::new(),
+                CallOptions::unbounded(),
+            )
             .is_err()
     );
     remove_fixture(root);
@@ -934,11 +950,11 @@ impl WorkProvider for Work {
         .compile_provider_selection(&snapshot, &request)
         .expect("selected provider compiles");
     let mut runtime = Runtime::from_linked_artifact(engine, artifact);
+    let handle = runtime.provider_handle(&key).expect("provider handle");
 
     let error = runtime
-        .call_provider(
-            &key,
-            method,
+        .call(
+            handle.method(method),
             CallArgs::new(),
             CallOptions::new(4, usize::MAX, usize::MAX),
         )
@@ -1000,14 +1016,15 @@ impl LevelProvider for LevelUp {
     let level = HostPath::new(player).field(field);
     let mut adapter = MockStateAdapter::new();
     adapter.insert_diagnostic_path_value(level.clone(), HostValue::Scalar(ScalarValue::I64(9)));
+    let handle = runtime.provider_handle(&key).expect("provider handle");
 
     let output = runtime
-        .call_provider_with_adapter(
-            &key,
-            method,
-            CallArgs::new().with_host_handle("player", player),
+        .call(
+            handle.method(method),
+            CallArgs::new()
+                .with_host_handle("player", player)
+                .with_fallback_adapter(&mut adapter),
             CallOptions::new(1_000, usize::MAX, usize::MAX),
-            &mut adapter,
         )
         .expect("provider host mutation runs");
     assert_eq!(
@@ -1096,11 +1113,25 @@ fn call_provider_i64(
     method: vela_def::MethodId,
 ) -> i64 {
     let output = runtime
-        .call_provider_handle(handle, method, CallArgs::new(), CallOptions::unbounded())
+        .call(
+            handle.method(method),
+            CallArgs::new(),
+            CallOptions::unbounded(),
+        )
         .expect("provider call");
     match runtime.value_to_owned(&output).expect("materialize result") {
         OwnedValue::Scalar(ScalarValue::I64(value)) => value,
         other => panic!("expected i64 provider result, got {other:?}"),
+    }
+}
+
+fn poll_to_completion<F: Future>(future: F) -> F::Output {
+    let mut future = Box::pin(future);
+    let mut context = Context::from_waker(Waker::noop());
+    loop {
+        if let Poll::Ready(output) = Pin::new(&mut future).poll(&mut context) {
+            return output;
+        }
     }
 }
 

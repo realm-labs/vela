@@ -1,13 +1,10 @@
 use std::collections::BTreeMap;
 
 use vela_common::{GlobalSlot, HostObjectId};
-use vela_host::adapter::{GlobalBinding, ScriptStateAdapter};
+use vela_host::adapter::GlobalBinding;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
-use vela_host::resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess};
-use vela_host::target::HostTargetInstance;
-use vela_host::value::HostValue;
 
 const GLOBAL_HOST_OBJECT_ID_BASE: u64 = 1 << 62;
 
@@ -89,53 +86,30 @@ impl RuntimeGlobalStore {
         self.slots.get(slot.get()).and_then(|host_ref| *host_ref)
     }
 
-    fn binding(&self, root: HostRef) -> Option<&HostGlobalBinding> {
+    pub(super) fn binding(&self, root: HostRef) -> Option<&HostGlobalBinding> {
         self.globals.values().find(|global| global.host_ref == root)
     }
 
-    fn binding_mut(&mut self, root: HostRef) -> Option<&mut HostGlobalBinding> {
+    pub(super) fn binding_mut(&mut self, root: HostRef) -> Option<&mut HostGlobalBinding> {
         self.globals
             .values_mut()
             .find(|global| global.host_ref == root)
     }
 
-    fn binding_by_type(&self, type_id: vela_common::HostTypeId) -> Option<&HostGlobalBinding> {
+    pub(super) fn binding_by_type(
+        &self,
+        type_id: vela_common::HostTypeId,
+    ) -> Option<&HostGlobalBinding> {
         self.globals
             .values()
             .find(|global| global.host_ref.type_id == type_id)
     }
-}
 
-struct HostGlobalBinding {
-    host_ref: HostRef,
-    object: Box<dyn ScriptHostObject + Send>,
-}
-
-pub(super) struct GlobalStoreAdapter<'call> {
-    globals: &'call mut RuntimeGlobalStore,
-    fallback: &'call mut dyn ScriptStateAdapter,
-}
-
-impl<'call> GlobalStoreAdapter<'call> {
-    pub(super) fn new(
-        globals: &'call mut RuntimeGlobalStore,
-        fallback: &'call mut dyn ScriptStateAdapter,
-    ) -> Self {
-        Self { globals, fallback }
-    }
-}
-
-impl ScriptStateAdapter for GlobalStoreAdapter<'_> {
-    fn host_schema_epoch(&self) -> HostSchemaEpoch {
-        self.fallback.host_schema_epoch()
-    }
-
-    fn global_ref(&self, global: GlobalBinding<'_>) -> HostResult<HostRef> {
+    pub(super) fn host_ref_for_binding(&self, global: GlobalBinding<'_>) -> HostResult<HostRef> {
         global
             .slot
-            .and_then(|slot| self.globals.host_ref_by_slot(slot))
-            .or_else(|| self.globals.host_ref(global.name))
-            .or_else(|| self.fallback.global_ref(global).ok())
+            .and_then(|slot| self.host_ref_by_slot(slot))
+            .or_else(|| self.host_ref(global.name))
             .ok_or_else(|| HostError {
                 kind: HostErrorKind::MissingGlobal {
                     name: global.name.to_owned(),
@@ -143,73 +117,9 @@ impl ScriptStateAdapter for GlobalStoreAdapter<'_> {
                 source_span: None,
             })
     }
+}
 
-    fn resolve_host_access(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
-        if let Some(global) = self.globals.binding_by_type(spec.plan.root_type) {
-            return global.object.resolve_host_target(spec);
-        }
-        self.fallback.resolve_host_access(spec)
-    }
-
-    fn read_host(
-        &self,
-        access: ResolvedHostAccess,
-        target: HostTargetInstance<'_>,
-    ) -> HostResult<HostValue> {
-        if let Some(global) = self.globals.binding(target.root) {
-            return global.object.read_resolved_host(access, target);
-        }
-        self.fallback.read_host(access, target)
-    }
-
-    fn write_host(
-        &mut self,
-        access: ResolvedHostAccess,
-        target: HostTargetInstance<'_>,
-        value: HostValue,
-    ) -> HostResult<()> {
-        if let Some(global) = self.globals.binding_mut(target.root) {
-            return global.object.write_resolved_host(access, target, value);
-        }
-        self.fallback.write_host(access, target, value)
-    }
-
-    fn mutate_host(
-        &mut self,
-        access: ResolvedHostAccess,
-        target: HostTargetInstance<'_>,
-        op: HostMutationOp,
-        rhs: HostValue,
-    ) -> HostResult<()> {
-        if let Some(global) = self.globals.binding_mut(target.root) {
-            return global.object.mutate_resolved_host(access, target, op, rhs);
-        }
-        self.fallback.mutate_host(access, target, op, rhs)
-    }
-
-    fn remove_host(
-        &mut self,
-        access: ResolvedHostAccess,
-        target: HostTargetInstance<'_>,
-    ) -> HostResult<()> {
-        if let Some(global) = self.globals.binding_mut(target.root) {
-            return global.object.remove_resolved_host(access, target);
-        }
-        self.fallback.remove_host(access, target)
-    }
-
-    fn call_host(
-        &mut self,
-        access: ResolvedHostAccess,
-        target: HostTargetInstance<'_>,
-        method: vela_common::HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
-        if let Some(global) = self.globals.binding_mut(target.root) {
-            return global
-                .object
-                .call_resolved_host(access, target, method, args);
-        }
-        self.fallback.call_host(access, target, method, args)
-    }
+pub(super) struct HostGlobalBinding {
+    pub(super) host_ref: HostRef,
+    pub(super) object: Box<dyn ScriptHostObject + Send>,
 }

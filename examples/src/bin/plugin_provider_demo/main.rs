@@ -72,9 +72,8 @@ fn call_provider(
     handle: &ProviderHandle,
     method: vela_def::MethodId,
 ) -> Result<i64, Box<dyn std::error::Error>> {
-    let value = runtime.call_provider_handle(
-        handle,
-        method,
+    let value = runtime.call(
+        handle.method(method),
         CallArgs::new().with_value("value", 40_i64),
         CallOptions::unbounded(),
     )?;
