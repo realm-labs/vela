@@ -701,7 +701,7 @@ fn dynamic_script_call_args_from_linked_arguments(
         .collect()
 }
 
-fn dynamic_value_args_from_linked_arguments(
+pub(crate) fn dynamic_value_args_from_linked_arguments(
     frame: &CallFrame,
     args: &[DynamicCallArgumentLinked],
 ) -> VmResult<Vec<Value>> {
@@ -960,13 +960,7 @@ fn contextual_array_standard_value_method(
             target,
             Some(crate::StandardMethodInlineCacheTarget::Distinct)
         );
-    let is_sort = method_id == ids.array_sort
-        || matches!(target, Some(crate::StandardMethodInlineCacheTarget::Sort));
-    let is_min = method_id == ids.array_min
-        || matches!(target, Some(crate::StandardMethodInlineCacheTarget::Min));
-    let is_max = method_id == ids.array_max
-        || matches!(target, Some(crate::StandardMethodInlineCacheTarget::Max));
-    if !(is_contains || is_index_of || is_distinct || is_sort || is_min || is_max) {
+    if !(is_contains || is_index_of || is_distinct) {
         return None;
     }
     if is_contains {
@@ -991,13 +985,7 @@ fn contextual_array_standard_value_method(
             &mut runtime.budget,
         ));
     }
-    if is_sort {
-        return Some(array_methods::sort_with_ordering(receiver, args, runtime));
-    }
-    if is_min {
-        return Some(array_methods::min_with_ordering(receiver, args, runtime));
-    }
-    Some(array_methods::max_with_ordering(receiver, args, runtime))
+    None
 }
 
 struct LinkedCallbackValueMethodCall<'a> {

@@ -9,7 +9,9 @@ pub(crate) use aggregation::{group_by, sum, sum_values};
 pub(crate) use higher_order::{all, any, count, filter, find, map};
 pub(crate) use lookup::{contains_by_key, first, index_of_by_key, last};
 pub(crate) use mutation::{clear, extend, insert, pop, push, remove_at};
-pub(crate) use ordering::{max_with_ordering, min_with_ordering, sort_by, sort_with_ordering};
+pub(crate) use ordering::{
+    ResumableArrayOrdering, ResumableArrayOrderingKind, ResumableArrayOrderingStep, sort_by,
+};
 pub(crate) use transform::{distinct_by_key, join, reverse, slice};
 
 use crate::collection_mutation::check_collection_len;
@@ -46,6 +48,26 @@ pub(crate) fn is_array(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> bo
             )
         }
         _ => false,
+    }
+}
+
+pub(crate) fn resumable_ordering_kind(
+    receiver: &Value,
+    method_id: vela_def::MethodId,
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<ResumableArrayOrderingKind> {
+    if !is_array(receiver, heap) {
+        return None;
+    }
+    let ids = crate::std_method_ids::std_method_ids();
+    if method_id == ids.array_sort {
+        Some(ResumableArrayOrderingKind::Sort)
+    } else if method_id == ids.array_min {
+        Some(ResumableArrayOrderingKind::Min)
+    } else if method_id == ids.array_max {
+        Some(ResumableArrayOrderingKind::Max)
+    } else {
+        None
     }
 }
 

@@ -59,6 +59,7 @@ pub(crate) struct ResumableComparison {
 
 pub(crate) enum ResumableComparisonStep {
     Complete(Value),
+    CompleteOrdering(Ordering),
     Call {
         function: vela_bytecode::ScriptFunctionHandle,
         args: Vec<Value>,
@@ -77,6 +78,7 @@ enum ComparisonWork {
     FinishOrdering {
         op: OrderingOp,
     },
+    FinishTotal,
     Evaluate {
         mode: ComparisonMode,
         lhs: Value,
@@ -107,6 +109,7 @@ enum ComparisonResult {
     Partial(Option<Ordering>),
     Total(Ordering),
     Final(Value),
+    FinalOrdering(Ordering),
 }
 
 #[derive(Clone, Copy)]
@@ -120,6 +123,21 @@ impl ResumableComparison {
     pub(crate) fn new(kind: ResumableComparisonKind, lhs: Value, rhs: Value) -> Self {
         Self {
             work: vec![ComparisonWork::Direct { kind, lhs, rhs }],
+            result: None,
+            awaiting: None,
+        }
+    }
+
+    pub(crate) fn total(lhs: Value, rhs: Value, operation: &'static str) -> Self {
+        Self {
+            work: vec![
+                ComparisonWork::FinishTotal,
+                ComparisonWork::Evaluate {
+                    mode: ComparisonMode::Total { operation },
+                    lhs,
+                    rhs,
+                },
+            ],
             result: None,
             awaiting: None,
         }
@@ -167,12 +185,17 @@ impl ResumableComparison {
 
         loop {
             let Some(work) = self.work.pop() else {
-                let Some(ComparisonResult::Final(value)) = self.result.take() else {
-                    return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                return match self.result.take() {
+                    Some(ComparisonResult::Final(value)) => {
+                        Ok(ResumableComparisonStep::Complete(value))
+                    }
+                    Some(ComparisonResult::FinalOrdering(ordering)) => {
+                        Ok(ResumableComparisonStep::CompleteOrdering(ordering))
+                    }
+                    _ => Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
                         opcode: "incomplete resumable comparison",
-                    }));
+                    })),
                 };
-                return Ok(ResumableComparisonStep::Complete(value));
             };
             match work {
                 ComparisonWork::Direct { kind, lhs, rhs } => match kind {
@@ -226,6 +249,12 @@ impl ResumableComparison {
                     self.result = Some(ComparisonResult::Final(Value::Bool(
                         ordering.is_some_and(|ordering| op.matches(ordering)),
                     )));
+                }
+                ComparisonWork::FinishTotal => {
+                    let Some(ComparisonResult::Total(ordering)) = self.result.take() else {
+                        return incomplete_comparison();
+                    };
+                    self.result = Some(ComparisonResult::FinalOrdering(ordering));
                 }
                 ComparisonWork::Evaluate { mode, lhs, rhs } => {
                     if let Some(result) =

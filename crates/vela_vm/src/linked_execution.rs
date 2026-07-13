@@ -20,10 +20,10 @@ use crate::{
     store_value_in_heap_if_needed, validate_inline_cache_layout,
 };
 use crate::{
-    closure_calls, constant_loads, field_access, format_strings, host_access, i64_ops, indexing,
-    iteration, native_function_calls, runtime_type_guards, script_aggregate_construction,
-    script_function_calls, script_method_calls, script_object_construction, try_propagation,
-    tuple_fields,
+    array_methods, closure_calls, constant_loads, field_access, format_strings, host_access,
+    i64_ops, indexing, iteration, native_function_calls, runtime_type_guards,
+    script_aggregate_construction, script_builtin_methods, script_function_calls,
+    script_method_calls, script_object_construction, try_propagation, tuple_fields,
 };
 
 pub(crate) struct LinkedExecutionCall<'a> {
@@ -94,6 +94,12 @@ enum PendingReturnTarget {
 enum PendingFrameOperation {
     Comparison {
         comparison: ResumableComparison,
+        destination: Register,
+        returned: Option<Value>,
+        source_span: Option<Span>,
+    },
+    ArrayOrdering {
+        ordering: array_methods::ResumableArrayOrdering,
         destination: Register,
         returned: Option<Value>,
         source_span: Option<Span>,
@@ -356,16 +362,19 @@ impl Vm {
                             caller.registers.write(destination, value)?;
                         }
                         PendingReturnTarget::Operation => {
-                            let Some(PendingFrameOperation::Comparison { returned, .. }) =
-                                caller.pending_operation.as_mut()
-                            else {
+                            let Some(operation) = caller.pending_operation.as_mut() else {
                                 return Err(VmError::new(
                                     VmErrorKind::UnsupportedLinkedInstruction {
-                                        opcode: "missing pending comparison continuation",
+                                        opcode: "missing pending operation continuation",
                                     },
                                 ));
                             };
-                            *returned = Some(value);
+                            match operation {
+                                PendingFrameOperation::Comparison { returned, .. }
+                                | PendingFrameOperation::ArrayOrdering { returned, .. } => {
+                                    *returned = Some(value);
+                                }
+                            }
                         }
                     }
                     if limits_call_depth {
@@ -517,52 +526,91 @@ impl Vm {
             inline_caches: frame_state.inline_caches,
             bytecode_profiler: frame_state.bytecode_profiler,
         };
-        if let Some(PendingFrameOperation::Comparison {
-            mut comparison,
-            destination,
-            returned,
-            source_span,
-        }) = frame_state.pending_operation.take()
-        {
-            match comparison
-                .step(self, program, heap, budget, returned)
-                .map_err(|error| error.with_source_span_if_absent(source_span))?
-            {
-                ResumableComparisonStep::Complete(value) => {
-                    frame_state.registers.write(destination, value)?;
-                }
-                ResumableComparisonStep::Call { function, args } => {
-                    let target = program.function(function).ok_or_else(|| {
-                        VmError::new(VmErrorKind::UnknownFunction {
-                            name: format!("<linked function#{}>", function.index()),
-                        })
-                    })?;
-                    if target.asyncness.is_async() {
-                        return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
-                            name: program.debug_name(target.debug_name).to_owned(),
-                        })
-                        .with_source_span_if_absent(source_span));
+        if let Some(operation) = frame_state.pending_operation.take() {
+            let pending = match operation {
+                PendingFrameOperation::Comparison {
+                    mut comparison,
+                    destination,
+                    returned,
+                    source_span,
+                } => match comparison
+                    .step(self, program, heap, budget, returned)
+                    .map_err(|error| error.with_source_span_if_absent(source_span))?
+                {
+                    ResumableComparisonStep::Complete(value) => {
+                        frame_state.registers.write(destination, value)?;
+                        None
                     }
-                    frame_state.pending_operation = Some(PendingFrameOperation::Comparison {
-                        comparison,
-                        destination,
-                        returned: None,
-                        source_span,
-                    });
-                    return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
-                        owner: Arc::clone(&current_owner),
+                    ResumableComparisonStep::CompleteOrdering(_) => {
+                        return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                            opcode: "ordering result escaped comparison continuation",
+                        }));
+                    }
+                    ResumableComparisonStep::Call { function, args } => Some((
                         function,
-                        captures: Vec::new(),
                         args,
-                        check_param_guards: true,
-                        call_site: source_span,
-                        call_site_offset: frame_state.ip.0.checked_sub(1).map(InstructionOffset),
-                        inline_caches: call.inline_caches,
-                        bytecode_profiler: call.bytecode_profiler,
-                        return_target: PendingReturnTarget::Operation,
-                    }));
-                }
+                        source_span,
+                        PendingFrameOperation::Comparison {
+                            comparison,
+                            destination,
+                            returned: None,
+                            source_span,
+                        },
+                    )),
+                },
+                PendingFrameOperation::ArrayOrdering {
+                    mut ordering,
+                    destination,
+                    returned,
+                    source_span,
+                } => match ordering
+                    .step(self, program, heap, budget, returned)
+                    .map_err(|error| error.with_source_span_if_absent(source_span))?
+                {
+                    array_methods::ResumableArrayOrderingStep::Complete(value) => {
+                        frame_state.registers.write(destination, value)?;
+                        None
+                    }
+                    array_methods::ResumableArrayOrderingStep::Call { function, args } => Some((
+                        function,
+                        args,
+                        source_span,
+                        PendingFrameOperation::ArrayOrdering {
+                            ordering,
+                            destination,
+                            returned: None,
+                            source_span,
+                        },
+                    )),
+                },
+            };
+            let Some((function, args, source_span, resumed_operation)) = pending else {
+                return Ok(FrameDriveOutcome::Continue);
+            };
+            let target = program.function(function).ok_or_else(|| {
+                VmError::new(VmErrorKind::UnknownFunction {
+                    name: format!("<linked function#{}>", function.index()),
+                })
+            })?;
+            if target.asyncness.is_async() {
+                return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
+                    name: program.debug_name(target.debug_name).to_owned(),
+                })
+                .with_source_span_if_absent(source_span));
             }
+            frame_state.pending_operation = Some(resumed_operation);
+            return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
+                owner: Arc::clone(&current_owner),
+                function,
+                captures: Vec::new(),
+                args,
+                check_param_guards: true,
+                call_site: source_span,
+                call_site_offset: frame_state.ip.0.checked_sub(1).map(InstructionOffset),
+                inline_caches: call.inline_caches,
+                bytecode_profiler: call.bytecode_profiler,
+                return_target: PendingReturnTarget::Operation,
+            }));
         }
         let mut ip = frame_state.ip.0;
         let frame = &mut frame_state.registers;
@@ -1072,6 +1120,78 @@ impl Vm {
                         })
                         .with_source_span_if_absent(instruction.span)
                     })?;
+                    if let vela_bytecode::linked::LinkedMethodDispatchKind::Value { method_id } =
+                        &dispatch_target.kind
+                    {
+                        let receiver_value = frame.read(*receiver)?;
+                        if let Some(kind) = array_methods::resumable_ordering_kind(
+                            &receiver_value,
+                            *method_id,
+                            heap.as_deref(),
+                        ) {
+                            let values =
+                                script_function_calls::script_call_args_from_call_arguments(
+                                    frame, args,
+                                )?;
+                            let ordering = array_methods::ResumableArrayOrdering::new(
+                                kind,
+                                &receiver_value,
+                                values.as_slice(),
+                                heap.as_deref(),
+                            )?;
+                            if let (Some(site), Some(caches)) = (*cache_site, call.inline_caches) {
+                                let cached = caches.method_dispatch(site).is_some_and(|entry| {
+                                    entry.dispatch == *dispatch
+                                        && entry.debug_name == dispatch_target.debug_name
+                                        && matches!(
+                                            entry.target,
+                                            crate::MethodInlineCacheTarget::Value {
+                                                method_id: cached_method,
+                                                ..
+                                            } if cached_method == *method_id
+                                        )
+                                });
+                                if !cached {
+                                    caches.set_method_dispatch(
+                                        site,
+                                        crate::MethodInlineCacheEntry {
+                                            dispatch: *dispatch,
+                                            debug_name: dispatch_target.debug_name,
+                                            target: crate::MethodInlineCacheTarget::Value {
+                                                method_id: *method_id,
+                                                standard_method: None,
+                                            },
+                                        },
+                                    );
+                                    caches.set_method_dispatch(
+                                        site,
+                                        crate::MethodInlineCacheEntry {
+                                            dispatch: *dispatch,
+                                            debug_name: dispatch_target.debug_name,
+                                            target: crate::MethodInlineCacheTarget::Value {
+                                                method_id: *method_id,
+                                                standard_method:
+                                                    script_builtin_methods::standard_cache_entry(
+                                                        *method_id,
+                                                        &receiver_value,
+                                                        heap.as_deref(),
+                                                    ),
+                                            },
+                                        },
+                                    );
+                                }
+                            }
+                            frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
+                            frame_state.pending_operation =
+                                Some(PendingFrameOperation::ArrayOrdering {
+                                    ordering,
+                                    destination: *dst,
+                                    returned: None,
+                                    source_span: instruction.span,
+                                });
+                            return Ok(FrameDriveOutcome::Continue);
+                        }
+                    }
                     if let vela_bytecode::linked::LinkedMethodDispatchKind::Script {
                         method_id,
                         function,
@@ -1210,6 +1330,40 @@ impl Vm {
                             bytecode_profiler: call.bytecode_profiler,
                             return_target: PendingReturnTarget::Register(*dst),
                         }));
+                    }
+                    if let script_method_calls::LinkedDynamicResolution::Other(
+                        script_method_calls::LinkedDynamicNonScriptTarget::StandardValue {
+                            method_id,
+                            ..
+                        },
+                    ) = &resolution
+                    {
+                        let receiver_value = frame.read(*receiver)?;
+                        if let Some(kind) = array_methods::resumable_ordering_kind(
+                            &receiver_value,
+                            *method_id,
+                            heap.as_deref(),
+                        ) {
+                            let values =
+                                script_method_calls::dynamic_value_args_from_linked_arguments(
+                                    frame, args,
+                                )?;
+                            let ordering = array_methods::ResumableArrayOrdering::new(
+                                kind,
+                                &receiver_value,
+                                values.as_slice(),
+                                heap.as_deref(),
+                            )?;
+                            frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
+                            frame_state.pending_operation =
+                                Some(PendingFrameOperation::ArrayOrdering {
+                                    ordering,
+                                    destination: *dst,
+                                    returned: None,
+                                    source_span: instruction.span,
+                                });
+                            return Ok(FrameDriveOutcome::Continue);
+                        }
                     }
                     let script_method_calls::LinkedDynamicResolution::Other(target) = resolution
                     else {

@@ -6,8 +6,8 @@ use crate::method_runtime::CallerRoots;
 use crate::script_builtin_methods;
 use crate::std_method_ids::std_method_ids;
 use crate::{
-    EqualityRuntime, ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmBytecodeProfiler,
-    VmError, VmErrorKind, VmInlineCaches, VmResult, array_methods,
+    ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmBytecodeProfiler, VmError,
+    VmErrorKind, VmInlineCaches, VmResult, array_methods,
 };
 
 pub(crate) struct ScriptMethodDispatch<'a, 'host, 'heap> {
@@ -92,37 +92,6 @@ fn contextual_array_method_by_id(
             args,
             &mut dispatch.heap,
             &mut dispatch.budget,
-        ));
-    }
-    let mut runtime = EqualityRuntime {
-        vm: dispatch.vm,
-        program: dispatch.program,
-        host: dispatch.host.as_deref_mut(),
-        heap: dispatch.heap.as_deref_mut(),
-        budget: dispatch.budget.as_deref_mut(),
-        caller_roots: dispatch.caller_roots,
-        inline_caches: dispatch.inline_caches,
-        bytecode_profiler: dispatch.bytecode_profiler,
-    };
-    if method_id == ids.array_sort {
-        return Some(array_methods::sort_with_ordering(
-            receiver,
-            args,
-            &mut runtime,
-        ));
-    }
-    if method_id == ids.array_min {
-        return Some(array_methods::min_with_ordering(
-            receiver,
-            args,
-            &mut runtime,
-        ));
-    }
-    if method_id == ids.array_max {
-        return Some(array_methods::max_with_ordering(
-            receiver,
-            args,
-            &mut runtime,
         ));
     }
     None
