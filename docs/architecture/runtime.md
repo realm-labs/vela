@@ -223,6 +223,27 @@ pointer tagging
 specialized arrays
 ```
 
+### Execution Session And Frames
+
+Every Runtime call constructs one execution-owned host boundary and drives one
+`ExecutionSession`. The session owns the explicit linked VM frame stack, return
+continuations, pending comparison/callback/iterator operations, execution
+budget, heap/GC context, and generation roots for the outer call. Function,
+closure, script-method, provider, guard, comparison, collection-callback, and
+iterator calls push frames and resume their parent operation after return.
+
+Production linked execution does not recursively invoke the interpreter. The
+remaining `execute_linked_call` name is a non-recursive root driver shim over
+the session loop. Call depth remains a logical frame budget rather than a Rust
+stack limit, so deeply nested script and callback calls fail only at the
+configured language budget.
+
+Await is preserved as explicit verified MIR and linked resume control flow.
+Known async calls require await, sync entry calls reject declared async entries,
+and non-awaited dynamic async targets trap before invocation. `call` and
+`call_async` enter this same session driver; real executor-neutral Rust future
+suspension is the active next checkpoint, not a second interpreter.
+
 ### Execution Budget
 
 The VM charges backend-neutral execution units at explicit MIR semantic points:
@@ -291,7 +312,6 @@ The language does not expose:
 thread creation
 shared-memory concurrency
 locks or atomics
-async/await
 coroutines
 channels
 parallel iterators
@@ -300,7 +320,10 @@ parallel iterators
 If a host application needs concurrency, the Rust host owns it. The host may run
 multiple independent Vela runtimes on different threads, shard actors across
 workers, schedule events on an async runtime, or perform IO in background tasks.
-Each script invocation still observes a single-threaded VM boundary.
+Each script invocation still observes a single-threaded VM boundary. Vela
+`async fn` and `.await` preserve sequential script semantics; suspension does
+not make a Runtime concurrently callable and does not expose threads or shared
+memory to scripts.
 
 Allowed host-level concurrency models:
 

@@ -315,7 +315,9 @@ real `&T` or `&mut T`.
 `with_host_ref` creates a read-only handle. `with_host_mut` creates a writable
 handle whose mutations write through immediately through `HostAccess`. Hosts that
 already store state behind their own adapter should pass existing handles with
-`with_host_handle` and use `runtime.call_with_adapter` with that adapter.
+`with_host_handle` and attach that adapter to the same `CallArgs` with
+`with_fallback_adapter`. Runtime consumes the arguments into one
+execution-owned `ExecutionHost`; there is no adapter-specific execution API.
 The high-level direct call result is a runtime-managed `VelaValue`; hosts
 materialize it only when they need a detached Rust boundary value. Hosts that
 need diagnostics should derive them from their own adapter or domain-level

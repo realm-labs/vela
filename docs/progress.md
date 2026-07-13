@@ -10,18 +10,21 @@ history belongs in Git.
 
 ## Current Focus
 
-The executor-neutral async execution track is active at Batch A in
+The executor-neutral async execution track is active at Batch B in
 [async-execution-model-plan.md](async-execution-model-plan.md). The pre-change
 workspace, focused call-depth/callback/provider/reload behavior, and
 representative runtime performance baseline are recorded in
 [archive/async-execution-baseline-2026-07-13.md](archive/async-execution-baseline-2026-07-13.md).
-The safe-Rust scoped `Send` ownership proof, execution-owned host boundary,
-unified function/bound-method/provider target contract, and two-method public
-execution surface are complete. Lossless `async fn`/`.await` syntax and the
-callable asyncness fact now reach HIR, analysis, registries, reflection, MIR,
-linked code/dispatch, providers, and Runtime entry resolution. The current
-checkpoint is explicit await control flow through MIR and linked execution,
-followed by the frame-stack driver.
+Batch A is complete: the safe-Rust scoped `Send` ownership proof,
+execution-owned host boundary, unified function/bound-method/provider target
+contract, and two-method public execution surface are sealed. Lossless `async
+fn`/`.await` syntax and callable asyncness reach HIR, analysis, registries,
+reflection, MIR, linked code/dispatch, providers, and Runtime entry resolution.
+All synchronous execution now uses one `ExecutionSession`, explicit frame stack,
+return-continuation model, and non-recursive driver, including comparisons,
+collection callbacks, iterators, guards, and providers. The full workspace gate
+is green. Batch B now owns real executor-neutral suspension and the async native
+vertical slice.
 
 M20 cache close-out and M20.5 LSP follow-up remain valid but are paused while
 the async plan is the persistent work queue.
@@ -56,6 +59,10 @@ the async plan is the persistent work queue.
 - `LinkedArtifact` is the sole production executable generation.
   `ProgramVersion` and linked closures retain generation ownership across hot
   reload; no unlinked compatibility interpreter remains.
+- Callable asyncness and explicit await/resume control flow are preserved from
+  source through verified MIR and linked execution. Sync execution and awaited
+  sync targets use the same explicit `ExecutionSession` frame driver; real Rust
+  future suspension is the active Batch B gap.
 
 ### Host Boundary And Embedding
 
@@ -95,11 +102,15 @@ the async plan is the persistent work queue.
 
 ## Active Gaps
 
-### Async Execution Batch A
+### Async Execution Batch B
 
-- Represent await as verified MIR and linked control flow, complete the
-  remaining async-call diagnostics, and build one non-recursive execution-frame
-  driver.
+- Implement the executor-neutral outer call future and prepared async
+  invocation/resume protocol on the existing `ExecutionSession`.
+- Add async native/context/host/method registration and macro support with
+  scoped `Send`, non-`'static` returned futures.
+- Execute awaited async targets without busy-polling while preserving dynamic
+  dispatch, reflection, error/try behavior, budgets, GC roots, and the single
+  `call`/`call_async` surface.
 
 ### M20 Cache Close-Out
 
@@ -193,11 +204,12 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Execute the remaining Batch A frame-stack driver work and restore the full
-   green checkpoint before starting Batch B.
-2. Complete dynamic async-call validation while converting every recursive
-   linked call path to the session driver.
-3. Continue directly through Batches B-D and Section 18 of the async plan.
+1. Implement the Batch B prepared async call/resume protocol and drive it from
+   the scoped Runtime call future without an executor dependency.
+2. Add the async native/context/HostPath registration vertical slice and its
+   macro-generated wrappers.
+3. Validate ready, pending/wake, dynamic, reflection, error, try, and `Send`
+   ownership paths, then continue directly through Batches C-D and Section 18.
 
 ## Update Rules
 

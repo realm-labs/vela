@@ -1070,14 +1070,17 @@ fn invoice_payment_updates_account_through_host_access() {
     let invoice = state.insert_invoice(Invoice { amount: 20, kind: "renewal".into() });
 
     let mut runtime = compile_demo_runtime();
-    let output = runtime.call_with_adapter(
-        "billing.on_invoice_paid",
-        CallArgs::new()
-            .with_host_handle("account", account)
-            .with_host_handle("invoice", invoice),
-        CallOptions::unbounded(),
-        &mut state,
-    ).unwrap();
+    let args = CallArgs::new()
+        .with_host_handle("account", account)
+        .with_host_handle("invoice", invoice)
+        .with_fallback_adapter(&mut state);
+    let output = runtime
+        .call(
+            "billing.on_invoice_paid",
+            args,
+            CallOptions::unbounded(),
+        )
+        .unwrap();
 
     assert_eq!(state.account(account).balance, 110);
     assert_eq!(state.account(account).status, "preferred");

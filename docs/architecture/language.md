@@ -69,6 +69,22 @@ pub fn on_invoice_paid(ctx, account, invoice) {
 }
 ```
 
+### Async Functions And Await
+
+Module functions and script methods may be declared with `async fn`. Await is
+the postfix call-expression form `.await` and is legal only inside an async
+function. A statically known async target must be awaited; a non-awaited dynamic
+call traps before invocation if it resolves to an async target. Awaited dynamic
+calls may resolve to either sync or async targets. Sync-only callback methods
+reject async callbacks.
+
+Callable asyncness is semantic metadata, not syntax rediscovered by backends.
+It is retained through HIR, analysis, registries, reflection, verified MIR, and
+linked execution. Await is an explicit control-flow boundary with a destination
+and resume edge. Batch A executes awaited synchronous targets through the shared
+frame driver; real Rust future suspension is added by the later async execution
+plan checkpoints.
+
 ### Equality And Ordering
 
 Semantic object equality and ordering are opt-in. `PartialEq` is the closed

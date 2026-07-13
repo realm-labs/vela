@@ -14,9 +14,10 @@ decision history lives in
   `HostAccess`.
 - Reflection can query metadata and perform controlled reads, writes, and
   calls, but cannot mutate runtime type structure or implement monkey patching.
-- The MVP does not include JIT, script async/coroutines, moving GC, or a custom
-  full IDE product. A full native LSP capability track is allowed before the
-  MVP when it stays analysis-only and does not change language or runtime
+- The MVP does not include JIT, complex async/coroutine hot reload, moving GC,
+  or a custom full IDE product. The executor-neutral async track is governed by
+  its explicit batch plan. A full native LSP capability track is allowed before
+  the MVP when it stays analysis-only and does not change language or runtime
   semantics.
 - Pre-release code should replace obsolete internal APIs instead of preserving
   compatibility shims. Product-level hot reload ABI and schema compatibility
@@ -822,12 +823,13 @@ against the active program and reports the normal missing-function or ABI
 errors if the target is no longer valid.
 
 Rust-side calls to methods on returned `VelaValue` handles use
-`Runtime::call_method`. Methods remain type-level script methods keyed by the
+`Runtime::bind_method`, then pass the receiver-bound target to `Runtime::call`
+or `Runtime::call_async`. Methods remain type-level script methods keyed by the
 receiver script type and stable `MethodId`; there is no per-value method
-registration or monkey patching. `Runtime::method` caches the owner type,
-method name, method id, version id, and parameter metadata. Calls validate the
-receiver runtime and script type, then re-resolve by method id when the active
-version changes.
+registration or monkey patching. `Runtime::method` optionally caches the owner
+type, method name, method id, version id, and parameter metadata before binding.
+Calls validate the receiver runtime and script type, then re-resolve by method
+id when the active version changes.
 
 With the `serde` feature enabled, Rust structs and enums that implement serde
 traits can cross the ordinary script-owned value boundary explicitly through
@@ -913,10 +915,10 @@ High-level embedding calls construct `HostAccess` internally and return a
 runtime-managed `VelaValue`. Host mutation counting is not part of the default
 host boundary; hosts that need diagnostics should instrument their adapter or
 domain operations directly.
-The shortest runtime method name, `Runtime::call`, is reserved for this common
-high-level `CallArgs -> VelaValue` path. Lower-level entrypoints that expose
-adapter or `HostAccess` internals use explicit names such as `call_with_adapter`,
-`call_raw`, and `call_args_raw`.
+The public execution surface is the `Runtime::call`/`Runtime::call_async` pair
+over one sealed target contract and `CallArgs -> VelaValue` boundary. Fallback
+adapters are carried by `CallArgs` into the execution-owned host; raw and
+adapter-specific execution entrypoints remain internal or are removed.
 
 Mutable cross-call script globals are host-managed declarations, not module
 `let` or `static` initializers. Scripts declare globals as ordinary module
@@ -1823,20 +1825,25 @@ change triggers reconstruction from that root rather than promoting the changed
 manifest to a new project. A failed reconstruction publishes diagnostics while
 retaining the last valid graph and does not commit a database generation.
 
-## Approved Future Architecture Tracks
+## Active Async Architecture Decisions
 
 ### Executor-Neutral Async Execution
 
-The post-first-interpreter async target is defined by
-[async-execution-model-plan.md](async-execution-model-plan.md). Sync and async
-entry points will share one explicit VM frame stack and execution driver; core
-crates will not own a Tokio executor or a second async interpreter. The public
-contract has one scoped `Send` call future: it may borrow Runtime and host state
-for the invocation lifetime without becoming a `'static` task. Engine,
-EngineBuilder, Runtime, and CallArgs do not gain an async execution-mode generic,
-and this track does not add a parallel `!Send` registry/runtime.
+The executor-neutral async contract is defined by
+[async-execution-model-plan.md](async-execution-model-plan.md). Batch A makes
+callable asyncness and explicit await/resume control flow authoritative from
+source through linked execution. Known async calls require await, await is
+illegal in sync functions, dynamic non-awaited async dispatch traps before
+invocation, and sync-only callback APIs reject async callbacks.
 
-The target Runtime execution surface is exactly `call` and `call_async`.
+All existing synchronous execution hard-switches to one `ExecutionSession`,
+explicit frame stack, return-continuation model, and pending-operation state.
+Script functions, closures, methods, providers, comparisons, guards, collection
+callbacks, and iterators resume by frame push/pop. Production code does not
+recursively invoke linked execution; the remaining `execute_linked_call` name
+is only a non-recursive root driver shim.
+
+The Runtime execution surface is exactly `call` and `call_async`.
 Function names/handles, receiver-bound methods, and provider methods implement
 one sealed call-target contract and resolve to one internal entry request;
 method, provider, key/handle, adapter, raw, and event-safe-point combinations do
@@ -1844,14 +1851,19 @@ not create additional sync/async execution methods. Fallback adapters belong to
 the execution-owned host input, while reload safe-point checks remain explicit
 lifecycle operations after an outer call.
 
+Real Rust future suspension remains a Batch B decision constrained to the same
+session driver. Its public future is scoped and `Send`, may borrow Runtime and
+host state for the invocation lifetime, and need not be `'static`. Core crates
+do not own an executor, Engine/Runtime/CallArgs gain no mode generic, and no
+parallel `!Send` registry/runtime is introduced.
+
 Rust struct access across await will use Rust-only scoped host leases derived
 from `HostRef` bindings. Scripts will continue to see only
 `HostRef`/`HostPath`/`PathProxy`/`HostAccess`, and reentry from registered Rust
 code will drive a nested entry on the same execution, generation, heap, host
-scope, budget, and cancellation context. This is an approved future contract,
-not a statement that async is implemented in the current MVP baseline; the
-standing non-async constraint remains active until the plan's implementation
-checkpoints update the architecture and roadmap.
+scope, budget, and cancellation context. Batch A does not claim real host
+suspension, typed across-await leases, or async reentry; those activate only at
+their later checkpoints.
 
 ## Validation Rules
 

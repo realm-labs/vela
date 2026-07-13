@@ -419,7 +419,6 @@ pub struct EffectSet {
     pub io: bool,
     pub random: bool,
     pub network: bool,
-    pub may_yield: bool, // reserved for future coroutine/async support
 }
 ```
 
@@ -434,9 +433,10 @@ function budgets
 event-system constraints
 ```
 
-For the MVP, script execution does not yield inside a call. `may_yield` exists
-only so future ABI checks can reserve the effect bit; it should remain `false`
-for all MVP functions.
+Callable suspension is not an `EffectSet` permission. Function and method
+descriptors carry the separate `CallableAsyncness::{Sync, Async}` ABI fact,
+which analysis, reflection, providers, entry resolution, and hot reload must
+preserve independently from capabilities and host effects.
 
 ### Attributes
 

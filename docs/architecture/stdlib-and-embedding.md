@@ -379,11 +379,11 @@ let output = runtime.call(
 )?;
 ```
 
-`Runtime::call` still accepts positional `OwnedValue` slices for static call
-sites. Dynamic dispatch should prefer `CallArgs`: named entries are matched
-against the target function's parameter names and reordered before execution,
-while ordinary script values and host handles can be mixed in the same argument
-list.
+`CallArgs::from_positional` accepts positional `OwnedValue` sequences for
+static call sites. Dynamic dispatch should prefer named `CallArgs`: entries are
+matched against the target function's parameter names and reordered before
+execution, while ordinary script values and host handles can be mixed in the
+same argument list.
 
 Direct `CallArgs::with_host_ref("name", &value)` and
 `CallArgs::with_host_mut("name", &mut value)` are user-facing embedding
@@ -392,8 +392,10 @@ reference. Field reads and writes dispatch through the type's host object
 adapter and `HostAccess`; `&T` is read-only, while `&mut T` allows write-through
 mutation during the call. Hosts that already manage object identity through a
 state adapter can pass an existing low-level handle with
-`CallArgs::with_host_handle("name", host_ref)` and call
-`runtime.call_with_adapter` with that adapter.
+`CallArgs::with_host_handle("name", host_ref)` and attach the adapter to the
+same argument owner with `CallArgs::with_fallback_adapter(adapter)`. Runtime
+consumes the arguments and composes direct bindings, Runtime globals, and the
+fallback adapter behind one execution-owned `ExecutionHost`.
 
 `call` returns a runtime-managed `VelaValue`. Hosts can pass it back to later
 calls without materializing a detached copy, decode it with `from_value` when
@@ -412,6 +414,13 @@ The cached entry belongs to the runtime that created it. If hot reload advances
 the active version, a later call through the cached entry re-resolves the
 function by name against the current program version; removed or incompatible
 functions report the normal runtime or reload errors.
+
+The only asynchronous execution twin is `call_async`, and it accepts the same
+function, bound-method, and provider-method targets as `call`. A sync call
+rejects a declared async entry before executing its body. The Batch A future
+already enters the shared frame driver and can execute awaited sync targets;
+real pending/wake suspension on registered Rust futures is activated by Batch B
+of the async execution plan.
 
 With the `serde` feature enabled, hosts can pass ordinary Rust data as
 script-owned values without registering it as host state:
@@ -493,21 +502,24 @@ patches:
 
 ```rust
 let reward = runtime.call("make_reward", CallArgs::new(), options)?;
-let score = runtime.call_method(
-    &reward,
-    "score",
+let score_target = runtime.bind_method(&reward, "score")?;
+let score = runtime.call(
+    score_target,
     CallArgs::new().with_value("bonus", 5),
     options,
 )?;
 
 let score_method = runtime.method(&reward, "score")?;
-let fast_score = runtime.call_method(&reward, &score_method, args, options)?;
+let fast_target = runtime.bind_method(&reward, &score_method)?;
+let fast_score = runtime.call(fast_target, args, options)?;
 ```
 
-Cached methods store the owner script type and stable method ID. Calls validate
-that the receiver still belongs to the same runtime and still has the expected
-script type; hot reload re-resolves the method target by stable method ID on
-the current program version.
+`bind_method` produces the receiver-bound call target; `method` optionally
+caches the owner script type and stable method ID before binding. Calls validate
+that the receiver still belongs to the same runtime and has the expected script
+type; hot reload re-resolves the method target by stable method ID on the
+current program version. Provider methods use the same `call`/`call_async`
+surface through their bound provider-method target.
 
 ### Hot Reload
 

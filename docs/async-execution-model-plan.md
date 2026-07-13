@@ -3,15 +3,16 @@
 > **Track:** executor-neutral script suspension, Rust/Vela async interop,
 > scoped host leases, and same-execution reentry
 > **Document status:** ready for execution
-> **Execution status:** Batch A active
+> **Execution status:** Batch A complete; Batch B active
 > **Baseline:** pulled `master` at `841a033d2` on 2026-07-13
 > **Plan execution style:** throughput-first large batches. Intermediate
 > compilation and tests may be red; each batch-completion checkpoint must be
 > green.
 > **Relationship to the roadmap:** this is a post-first-interpreter architecture
-> track. The current MVP/non-async statements remain true until this plan is
-> implemented and the active architecture and roadmap documents are changed at
-> the relevant batch checkpoints.
+> track. Batch A activated async syntax, callable asyncness, explicit await IR,
+> and the shared resumable execution foundation. Real Rust future suspension,
+> host leases, and the remaining integration surface activate only at their
+> later batch checkpoints.
 
 This plan defines the long-term async architecture. It is not a short-term
 adapter around the recursive VM, a Tokio integration, or a game-specific actor
@@ -1146,18 +1147,18 @@ resumable foundation before adding real host suspension.
   formatting/highlighting basics.
 - [x] Propagate callable asyncness through HIR, analysis, registry, reflection,
   native/method/provider descriptors, compile snapshots, and linked metadata.
-- [ ] Add async call validation and diagnostics described in Section 6.
+- [x] Add async call validation and diagnostics described in Section 6.
 - [x] Add explicit MIR await control flow, liveness, effects, dumps, verifier
   checks, root maps, and backend-linked representation.
-- [ ] Introduce `ExecutionSession`, explicit frame stack, return continuations,
+- [x] Introduce `ExecutionSession`, explicit frame stack, return continuations,
   and unified `EntryRequest` setup.
-- [ ] Convert every recursive linked script/closure/method/callback/guard/
+- [x] Convert every recursive linked script/closure/method/callback/guard/
   equality/provider call path to frame push/pop.
-- [ ] Delete the production recursive `execute_linked_call` execution contract
+- [x] Delete the production recursive `execute_linked_call` execution contract
   or reduce the name to a non-recursive compatibility-free driver shim.
-- [ ] Run all existing synchronous Runtime, VM, provider, host, budget, GC,
+- [x] Run all existing synchronous Runtime, VM, provider, host, budget, GC,
   closure, guard, reflection, and reload tests with no semantic regressions.
-- [ ] Update active runtime/MIR architecture and decisions for the frame-stack
+- [x] Update active runtime/MIR architecture and decisions for the frame-stack
   and asyncness contracts activated in this batch.
 
 Batch A completion gate: the entire workspace is green; every existing

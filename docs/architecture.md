@@ -212,6 +212,7 @@ contract before changing that subsystem:
 - [Native LSP architecture](architecture/lsp.md)
 - [Packages and service providers](packages-and-providers.md)
 - [Clean identity refactor](architecture/clean-identity-refactor.md)
+- [Executor-neutral async execution plan](async-execution-model-plan.md)
 
 Keep this file as the entrypoint and cross-subsystem contract. Subsystem files
 carry the detailed rules so active architecture docs remain reviewable and stay
