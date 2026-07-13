@@ -2,41 +2,11 @@ use super::expr::SyntaxExpression;
 use super::{AstChildren, AstNode, SyntaxAttribute, SyntaxBlock, SyntaxTypeHint};
 use crate::{SyntaxKind, SyntaxNode, SyntaxToken, TextRange};
 
+mod syntax_item;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SyntaxItem {
     syntax: SyntaxNode,
-}
-
-impl SyntaxItem {
-    #[must_use]
-    pub fn text_range(&self) -> TextRange {
-        self.syntax.text_range()
-    }
-
-    #[must_use]
-    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
-        AstChildren::new(&self.syntax)
-    }
-
-    #[must_use]
-    pub fn pub_token(&self) -> Option<SyntaxToken> {
-        pub_token(&self.syntax)
-    }
-
-    #[must_use]
-    pub fn is_public(&self) -> bool {
-        self.pub_token().is_some()
-    }
-
-    #[must_use]
-    pub fn async_token(&self) -> Option<SyntaxToken> {
-        token(&self.syntax, SyntaxKind::AsyncKw)
-    }
-
-    #[must_use]
-    pub fn is_async(&self) -> bool {
-        self.async_token().is_some()
-    }
 }
 
 impl AstNode for SyntaxItem {

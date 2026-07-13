@@ -4,6 +4,8 @@ use super::{CstParser, DelimiterDepth};
 use crate::SyntaxKind;
 use crate::lexer::lex;
 
+mod await_expr;
+
 impl CstParser<'_, '_> {
     pub(super) fn expression_range(&mut self, start: usize, end: usize) {
         let expression_start = self.skip_trivia(start);
@@ -148,15 +150,6 @@ impl CstParser<'_, '_> {
 
     fn try_expression_body(&mut self, start: usize, end: usize) {
         self.expression_range(start, end.saturating_sub(1));
-        self.emit_until(end);
-    }
-
-    fn await_expression_body(&mut self, start: usize, end: usize) {
-        let Some(dot) = self.trailing_await_suffix_start(start, end) else {
-            self.emit_until(end);
-            return;
-        };
-        self.expression_range(start, dot);
         self.emit_until(end);
     }
 
@@ -825,23 +818,6 @@ impl CstParser<'_, '_> {
     fn root_binary_operator_has_left_operand(&self, start: usize, operator: usize) -> bool {
         self.previous_significant_before(start, operator)
             .is_some_and(|left| Self::can_end_expression(self.tokens[left].kind))
-    }
-
-    fn previous_significant_before(&self, start: usize, end: usize) -> Option<usize> {
-        (start..end)
-            .rev()
-            .find(|cursor| !self.tokens[*cursor].kind.is_trivia())
-    }
-
-    fn trailing_await_suffix_start(&self, start: usize, end: usize) -> Option<usize> {
-        let await_kw = self.previous_significant_before(start, end)?;
-        if self.kind_at(await_kw) != Some(SyntaxKind::AwaitKw) {
-            return None;
-        }
-        let dot = self.previous_significant_before(start, await_kw)?;
-        (self.kind_at(dot) == Some(SyntaxKind::Dot)
-            && self.previous_significant_before(start, dot).is_some())
-        .then_some(dot)
     }
 
     fn find_outer_call_arg_list_start(&self, start: usize, end: usize) -> Option<usize> {
