@@ -122,6 +122,52 @@ fn snapshots_are_immutable_across_authoritative_mutations() {
 }
 
 #[test]
+fn manifest_change_refreshes_one_project_generation() {
+    let root = std::env::temp_dir().join(format!(
+        "vela_lsp_manifest_generation_{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(root.join("src")).expect("fixture source directory");
+    let manifest = root.join("vela.toml");
+    std::fs::write(
+        &manifest,
+        "[package]\nid = \"dev.vela.editor\"\nname = \"editor\"\nversion = \"0.1.0\"\n[source]\nroots = [\"src\"]\n",
+    )
+    .expect("fixture manifest");
+    std::fs::write(root.join("src/main.vela"), "pub fn main() {}\n").expect("fixture source");
+    let uri = crate::paths::document_path_uri(&manifest.display().to_string());
+    let (sender, _receiver) = unbounded();
+    let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+    state
+        .project
+        .workspace_roots
+        .insert(root.display().to_string());
+    let change = state
+        .project
+        .upsert_watched_file(&uri)
+        .expect("initial manifest change");
+    state.project.apply_config_change(change);
+    state.project.refresh_databases();
+    let before = state.project.databases.generation();
+
+    std::fs::write(
+        &manifest,
+        "[package]\nid = \"dev.vela.editor\"\nname = \"editor\"\nversion = \"0.1.1\"\n[source]\nroots = [\"src\"]\n",
+    )
+    .expect("updated manifest");
+    let change = state
+        .project
+        .upsert_watched_file(&uri)
+        .expect("updated manifest change");
+    state.project.apply_config_change(change);
+    state.project.refresh_databases();
+    let after = state.project.databases.generation();
+
+    assert_eq!(after.get(), before.get() + 1);
+    std::fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
 fn client_capabilities_are_owned_by_global_state() {
     let (sender, _receiver) = unbounded();
     let mut state = GlobalState::new(sender, LaunchConfiguration::new());
