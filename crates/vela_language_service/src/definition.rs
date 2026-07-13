@@ -3,6 +3,7 @@ use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::body::HirPathKind;
 use vela_hir::module_graph::{Declaration, DeclarationKind, ImportResolution, ModuleGraph};
+use vela_hir::type_hint::ImplMetadataKind;
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
@@ -79,6 +80,18 @@ impl LanguageServiceDatabases {
         for declaration in graph.declarations() {
             if declaration.span.source != source_id || !declaration.span.contains(offset) {
                 continue;
+            }
+            if declaration.kind == DeclarationKind::Impl
+                && let Some(metadata) = graph.impl_metadata(declaration.id)
+                && let ImplMetadataKind::Trait { trait_path } = &metadata.kind
+                && trait_path.last().is_some_and(|name| name == target.text())
+                && let Some(service) = graph.resolve_visible_declaration_path(
+                    declaration.module,
+                    trait_path,
+                    DeclarationKind::Trait,
+                )
+            {
+                return self.definition_from_declaration(service);
             }
             let Some(bindings) = graph.bindings(declaration.id) else {
                 continue;

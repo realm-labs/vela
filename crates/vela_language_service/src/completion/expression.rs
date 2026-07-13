@@ -61,6 +61,7 @@ pub(super) fn expression_completion_items(
     ));
     items.extend(source_module_completion_items(
         graph,
+        query.module_key(),
         context.replace_range(),
         context.prefix(),
     ));

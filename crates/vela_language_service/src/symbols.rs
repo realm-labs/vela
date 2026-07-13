@@ -185,6 +185,7 @@ impl LanguageServiceDatabases {
             .into_iter()
             .chain(self.module_workspace_symbols(query))
             .chain(self.script_workspace_symbols(query))
+            .chain(self.provider_workspace_symbols(query))
             .chain(self.schema_workspace_symbols(query))
             .collect::<Vec<_>>();
         symbols.sort_by(|left, right| {
@@ -293,6 +294,47 @@ impl LanguageServiceDatabases {
                         },
                     })
                 })?
+            })
+            .collect()
+    }
+
+    fn provider_workspace_symbols(&self, query: &str) -> Vec<WorkspaceSymbol> {
+        let graph = self.hir_db().graph();
+        let Ok(providers) = vela_hir::provider::discover_providers(graph) else {
+            return Vec::new();
+        };
+        providers
+            .into_iter()
+            .filter_map(|provider| {
+                let name_parts = DisplayParts::qualified(
+                    provider.key.package().as_str(),
+                    provider.key.provider().as_str(),
+                );
+                let name = name_parts.render();
+                if !symbol_matches(query, &name) {
+                    return None;
+                }
+                let source = self.symbol_source_record_for(provider.source.source)?;
+                let range = diagnostic_range(source.text(), span_range(provider.source)?);
+                let detail_parts =
+                    DisplayParts::plain(format!("provider for trait {:?}", provider.key.service()));
+                Some(WorkspaceSymbol {
+                    name,
+                    name_parts,
+                    detail: Some(detail_parts.render()),
+                    detail_parts: Some(detail_parts),
+                    kind: DocumentSymbolKind::Object,
+                    container_name: Some(provider.key.package().to_string()),
+                    location: WorkspaceSymbolLocation::Source {
+                        document_id: source.document_id().clone(),
+                        range,
+                    },
+                    symbol: SymbolRef::Source(format!(
+                        "provider:{}:{}",
+                        provider.key.package(),
+                        provider.key.provider()
+                    )),
+                })
             })
             .collect()
     }

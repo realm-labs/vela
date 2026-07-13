@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use vela_common::{Diagnostic, SourceId, Span};
-use vela_package::{ModuleKey, ModulePath, PackageId};
+use vela_package::{ModuleKey, ModulePath, PackageAlias, PackageId};
 
 use crate::attributes::HirAttribute;
 use crate::binding::BindingMap;
@@ -501,6 +501,25 @@ impl ModuleGraph {
             );
         }
         labels.into_iter().collect()
+    }
+
+    #[must_use]
+    pub fn module_completion_labels_for(&self, package: &PackageId) -> Vec<String> {
+        let mut labels = BTreeSet::new();
+        self.collect_module_completion_labels(
+            &ModuleKey::new(package.clone(), ModulePath::root()),
+            String::new(),
+            &mut labels,
+        );
+        labels.into_iter().collect()
+    }
+
+    #[must_use]
+    pub fn dependency_aliases(&self, package: &PackageId) -> Vec<&PackageAlias> {
+        self.package_dependencies
+            .get(package)
+            .map(|dependencies| dependencies.keys().collect())
+            .unwrap_or_default()
     }
 
     #[must_use]

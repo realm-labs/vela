@@ -1105,6 +1105,31 @@ fn public_export_rename_reports_hot_reload_risk() {
 }
 
 #[test]
+fn rename_provider_id_reports_hot_reload_risk() {
+    let document = DocumentId::from("/workspace/scripts/provider.vela");
+    let text = r#"pub trait Service { fn run(self); }
+pub struct Plugin {}
+#[provider(id = "plugin")]
+impl Service for Plugin { pub fn run(self) {} }
+"#;
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+    let line = text.lines().nth(2).expect("provider line");
+    let position = Position::new(2, line.find("plugin").expect("provider id"));
+    let prepared = databases
+        .prepare_rename(&document, position)
+        .expect("provider id prepares rename");
+    assert_eq!(prepared.placeholder(), "plugin");
+
+    let edit = databases
+        .rename(&document, position, "plugin-v2")
+        .expect("provider id rename");
+    assert_eq!(edit.risks().len(), 1);
+    assert_eq!(edit.risks()[0].kind(), RenameRiskKind::HotReloadAbi);
+    assert!(edit.risks()[0].message().contains("ProviderKey"));
+    assert_eq!(edit.document_edits()[0].edits()[0].new_text(), "plugin-v2");
+}
+
+#[test]
 fn rename_rejects_module_declaration_collision() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\
