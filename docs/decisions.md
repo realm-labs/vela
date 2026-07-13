@@ -1897,6 +1897,12 @@ facts rather than re-inferring it from token text. Syntax recovery may still
 recognize `.await` as a receiver boundary so completion can use the semantic
 awaited-result fact.
 
+Direct CLI execution remains synchronous by default. `vela_cli --async`
+explicitly opts into a small CLI-owned executor and calls `Runtime::call_async`;
+core crates still own no executor. The synchronous C ABI does not grow a
+poll/waker surface: an async entry returns the distinct
+`VelaStatus::AsyncEntry` status and a descriptive error string.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

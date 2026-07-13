@@ -2,13 +2,10 @@
 #![allow(clippy::result_large_err)]
 
 use std::error::Error;
-use std::future::Future;
-use std::pin::pin;
-use std::sync::Arc;
-use std::task::{Context, Poll, Wake, Waker};
-use std::thread::{self, Thread};
+use std::task::Poll;
 
 use vela_engine::prelude::*;
+use vela_examples::async_executor::block_on;
 use vela_macros::{ScriptHost, script_methods};
 
 const SOURCE: &str = include_str!("main.vela");
@@ -112,29 +109,5 @@ impl WorkflowState {
             )
             .await?;
         Ok(self.total)
-    }
-}
-
-struct ThreadWake(Thread);
-
-impl Wake for ThreadWake {
-    fn wake(self: Arc<Self>) {
-        self.0.unpark();
-    }
-
-    fn wake_by_ref(self: &Arc<Self>) {
-        self.0.unpark();
-    }
-}
-
-fn block_on<F: Future>(future: F) -> F::Output {
-    let waker = Waker::from(Arc::new(ThreadWake(thread::current())));
-    let mut context = Context::from_waker(&waker);
-    let mut future = pin!(future);
-    loop {
-        match future.as_mut().poll(&mut context) {
-            Poll::Ready(output) => return output,
-            Poll::Pending => thread::park(),
-        }
     }
 }

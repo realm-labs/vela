@@ -92,6 +92,62 @@ fn main() {
 }
 
 #[test]
+fn cli_requires_explicit_async_execution() {
+    let fixture = write_script(
+        "async_default",
+        r#"
+async fn main() {
+    return 42;
+}
+"#,
+    );
+    let script = fixture
+        .script()
+        .to_str()
+        .expect("script path should be utf8");
+
+    let output = run_cli(script);
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
+    assert!(stderr.contains("error[vm::async_entry_requires_call_async]"));
+    assert!(stderr.contains("rerun with `--async`"));
+}
+
+#[test]
+fn cli_async_flag_drives_async_entry() {
+    let fixture = write_script(
+        "async_explicit",
+        r#"
+async fn answer() {
+    return 42;
+}
+
+async fn main() {
+    return answer().await;
+}
+"#,
+    );
+    let script = fixture
+        .script()
+        .to_str()
+        .expect("script path should be utf8");
+
+    let output = run_cli_args(&["--async", script]);
+
+    assert!(
+        output.status.success(),
+        "async CLI script failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        String::from_utf8(output.stdout).expect("stdout should be utf8"),
+        "Scalar(I64(42))\n"
+    );
+}
+
+#[test]
 fn cli_runs_standard_time_and_random_helpers() {
     let fixture = write_script(
         "stdlib",
@@ -186,7 +242,8 @@ fn cli_renders_clap_help() {
     let stdout = String::from_utf8(output.stdout).expect("stdout should be utf8");
     assert!(stdout.contains("Run a Vela script file"));
     assert!(
-        stdout.contains("Usage: vela_cli <SCRIPT>")
-            || stdout.contains("Usage: vela_cli.exe <SCRIPT>")
+        stdout.contains("Usage: vela_cli [OPTIONS] <SCRIPT>")
+            || stdout.contains("Usage: vela_cli.exe [OPTIONS] <SCRIPT>")
     );
+    assert!(stdout.contains("--async"));
 }

@@ -1,0 +1,7 @@
+async fn answer() -> i64 {
+    return 42;
+}
+
+async fn main() -> i64 {
+    return answer().await;
+}

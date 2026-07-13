@@ -4,6 +4,7 @@ use std::error::Error;
 use std::path::{Path, PathBuf};
 
 pub mod diagnostics;
+pub mod async_executor;
 pub mod gameplay;
 pub mod hot_reload_demo;
 

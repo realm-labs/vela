@@ -421,6 +421,8 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo run --manifest-path examples/Cargo.toml --bin level_up
+cargo run --manifest-path examples/Cargo.toml --bin async_basic
+cargo run --manifest-path examples/Cargo.toml --bin async_stateful_reentry
 ```
 
 Later:

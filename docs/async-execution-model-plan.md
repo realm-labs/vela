@@ -1253,7 +1253,7 @@ Purpose: close every cross-cutting contract and remove provisional omissions.
   duplicate runtime setup.
 - [x] Complete reflection invocation/metadata, package metadata, diagnostics,
   formatter, semantic tokens, completion, hover, and signature help.
-- [ ] Define CLI behavior, add generic sync/async/stateful/reentry examples, and
+- [x] Define CLI behavior, add generic sync/async/stateful/reentry examples, and
   make the sync C surface fail clearly on async entries.
 - [ ] Mark async functions explicitly JIT-ineligible and add verifier/linker
   tests preserving future backend input.

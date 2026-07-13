@@ -3,6 +3,7 @@
 use std::path::{Path, PathBuf};
 
 mod diagnostics;
+mod executor;
 
 use clap::Parser;
 use vela_engine::prelude::*;
@@ -15,6 +16,10 @@ use vela_engine::prelude::*;
     disable_help_subcommand = true
 )]
 struct Cli {
+    /// Drive an async `main` with the CLI-owned executor.
+    #[arg(long = "async")]
+    async_entry: bool,
+
     /// Vela script file to execute.
     script: PathBuf,
 }
@@ -28,10 +33,10 @@ fn main() {
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
-    run_script(&cli.script)
+    run_script(&cli.script, cli.async_entry)
 }
 
-fn run_script(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+fn run_script(path: &Path, async_entry: bool) -> Result<(), Box<dyn std::error::Error>> {
     let fs_root = path.parent().unwrap_or_else(|| Path::new("."));
     let engine = Engine::builder()
         .with_standard_natives()
@@ -49,13 +54,14 @@ fn run_script(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
         .compile_file(path)
         .map_err(|error| diagnostics::render_engine_source_error(path, &error))?;
     let mut runtime = Runtime::new_compiled(engine, program);
-    let output = runtime
-        .call(
-            "main",
-            CallArgs::new(),
-            CallOptions::new(10_000, 1024 * 1024, 64),
-        )
-        .map_err(|error| diagnostics::render_vm_error(path, &error))?;
+    let args = CallArgs::new();
+    let options = CallOptions::new(10_000, 1024 * 1024, 64);
+    let output = if async_entry {
+        executor::block_on(runtime.call_async("main", args, options))
+    } else {
+        runtime.call("main", args, options)
+    }
+    .map_err(|error| diagnostics::render_vm_error(path, &error))?;
     println!("{:?}", runtime.value_to_owned(&output)?);
     Ok(())
 }

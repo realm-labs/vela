@@ -4,7 +4,7 @@ use vela_bytecode::compiler::error::{CompileError, CompileErrorKind};
 use vela_common::diagnostic_render::{DiagnosticRenderer, DiagnosticSource};
 use vela_common::{Diagnostic, SourceId};
 use vela_engine::source::{EngineSourceError, EngineSourceErrorKind};
-use vela_vm::error::VmError;
+use vela_vm::error::{VmError, VmErrorKind};
 
 pub(crate) fn render_engine_source_error(path: &Path, error: &EngineSourceError) -> String {
     match &error.kind {
@@ -22,7 +22,14 @@ pub(crate) fn render_vm_error(path: &Path, error: &VmError) -> String {
     let source = std::fs::read_to_string(path)
         .ok()
         .map(|text| DiagnosticSource::new(SourceId::new(1), path.display().to_string(), text));
-    render_diagnostics(&[error.to_diagnostic()], source)
+    let mut rendered = render_diagnostics(&[error.to_diagnostic()], source);
+    if matches!(
+        error.kind_ref(),
+        VmErrorKind::AsyncEntryRequiresCallAsync { .. }
+    ) {
+        rendered.push_str("\nhelp: rerun with `--async` to drive an async entry");
+    }
+    rendered
 }
 
 fn render_compile_error(path: &Path, error: &CompileError) -> String {

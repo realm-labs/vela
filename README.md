@@ -127,17 +127,20 @@ cargo test --workspace
 Run standalone examples:
 
 ```bash
-cargo run -p vela_examples --bin level_up
-cargo run -p vela_examples --bin host_type_methods
-cargo run -p vela_examples --bin script_global
-cargo run -p vela_examples --bin serde_value
-cargo run -p vela_examples --bin io_stdlib
+cargo run --manifest-path examples/Cargo.toml --bin level_up
+cargo run --manifest-path examples/Cargo.toml --bin host_type_methods
+cargo run --manifest-path examples/Cargo.toml --bin script_global
+cargo run --manifest-path examples/Cargo.toml --bin serde_value
+cargo run --manifest-path examples/Cargo.toml --bin io_stdlib
+cargo run --manifest-path examples/Cargo.toml --bin async_basic
+cargo run --manifest-path examples/Cargo.toml --bin async_stateful_reentry
 ```
 
 Run the CLI on a simple script:
 
 ```bash
 cargo run -p vela_cli -- examples/src/bin/io_stdlib/main.vela
+cargo run -p vela_cli -- --async examples/src/bin/async_basic/main.vela
 ```
 
 Some host-boundary examples need their Rust embedding setup and should be run

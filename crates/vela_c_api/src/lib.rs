@@ -37,6 +37,7 @@ pub enum VelaStatus {
     RuntimeError = 5,
     UnsupportedValue = 6,
     Panic = 7,
+    AsyncEntry = 8,
 }
 
 #[repr(C)]
@@ -330,7 +331,13 @@ fn call_runtime(
     let value = runtime
         .runtime
         .call(entry, args, CallOptions::unbounded())
-        .map_err(|error| (VelaStatus::RuntimeError, error.to_string()))?;
+        .map_err(|error| match error.kind_ref() {
+            vela_vm::error::VmErrorKind::AsyncEntryRequiresCallAsync { name } => (
+                VelaStatus::AsyncEntry,
+                format!("async entry `{name}` is unsupported by the synchronous C API"),
+            ),
+            _ => (VelaStatus::RuntimeError, error.to_string()),
+        })?;
     let owned = runtime
         .runtime
         .value_to_owned(&value)
@@ -941,6 +948,29 @@ fn main() -> i64 {
         let status = unsafe { vela_runtime_call(runtime, entry.as_ptr(), &mut result, &mut error) };
         assert_eq!(status, VelaStatus::RuntimeError);
         assert!(!error.is_null());
+
+        unsafe {
+            vela_string_free(error);
+            vela_value_free(&mut result);
+            vela_runtime_free(runtime);
+            vela_engine_free(engine);
+        }
+    }
+
+    #[test]
+    fn c_api_reports_structured_async_entry_error() {
+        let (engine, runtime, mut error) = compile_runtime("async fn main() { return 42; }");
+        let entry = c_string("main");
+        let mut result = VelaCValue::default();
+
+        let status = unsafe { vela_runtime_call(runtime, entry.as_ptr(), &mut result, &mut error) };
+
+        assert_eq!(status, VelaStatus::AsyncEntry);
+        assert!(!error.is_null());
+        let message = unsafe { CStr::from_ptr(error) }
+            .to_str()
+            .expect("error should be utf8");
+        assert!(message.contains("unsupported by the synchronous C API"));
 
         unsafe {
             vela_string_free(error);

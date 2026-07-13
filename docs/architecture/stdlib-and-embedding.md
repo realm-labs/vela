@@ -417,9 +417,14 @@ functions report the normal runtime or reload errors.
 
 The only asynchronous execution twin is `call_async`, and it accepts the same
 function, bound-method, and provider-method targets as `call`. A sync call
-rejects a declared async entry before executing its body. The Batch A future
-already enters the shared frame driver and can execute awaited sync targets;
-real pending/wake suspension on registered Rust futures uses that same driver.
+rejects a declared async entry before executing its body. The scoped `Send`
+future enters the shared frame driver, executes awaited sync targets inline,
+and suspends through ordinary executor polling for registered Rust futures.
+
+The CLI owns a minimal executor only when `--async` is selected; its default
+path remains synchronous and reports that flag when `main` is async. The
+synchronous C ABI has no poll/waker protocol and returns
+`VelaStatus::AsyncEntry` plus a descriptive error string for async entries.
 
 Stateful async Rust methods may hold direct host leases across ordinary Rust
 await points and reenter Vela through their `NativeCallContext`. A mutable
