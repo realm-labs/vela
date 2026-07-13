@@ -220,6 +220,10 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
     assert_eq!(fields.get("returns"), Some(&option_string("bool")));
     assert_eq!(fields.get("return_desc"), Some(&option_type_desc("bool")));
     assert_eq!(fields.get("returns_desc"), Some(&option_type_desc("bool")));
+    assert_eq!(
+        fields.get("async"),
+        Some(&ReflectValue::Host(HostValue::Bool(true)))
+    );
     let Some(ReflectValue::Array(raw_params)) = fields.get("params") else {
         panic!("method params should be an array");
     };
@@ -433,6 +437,27 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
         ReflectValue::Array(trait_records.clone())
     );
     assert_eq!(trait_records.len(), 1);
+    let ReflectValue::ScriptRecord {
+        fields: trait_fields,
+        ..
+    } = &trait_records[0]
+    else {
+        panic!("trait metadata should be a record");
+    };
+    let Some(ReflectValue::Array(trait_methods)) = trait_fields.get("methods") else {
+        panic!("trait methods should be an array");
+    };
+    let ReflectValue::ScriptRecord {
+        fields: trait_method_fields,
+        ..
+    } = &trait_methods[0]
+    else {
+        panic!("trait method metadata should be a record");
+    };
+    assert_eq!(
+        trait_method_fields.get("async"),
+        Some(&ReflectValue::Host(HostValue::Bool(true)))
+    );
     assert!(has_trait(&registry, "Damageable"));
     assert!(!has_trait(&registry, "Trackable"));
 

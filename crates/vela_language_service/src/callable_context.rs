@@ -6,7 +6,7 @@ use vela_analysis::stdlib::{
     stdlib_method_fact_with_lambda_arity,
 };
 use vela_analysis::type_fact::TypeFact;
-use vela_common::SourceId;
+use vela_common::{CallableAsyncness, SourceId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint, ImplMetadataKind};
 use vela_package::ModuleKey;
@@ -38,6 +38,7 @@ pub struct CallableFacts {
     name: String,
     params: Vec<CallableParameterFacts>,
     returns: TypeFact,
+    asyncness: CallableAsyncness,
     origin: CallableOrigin,
     symbol: SymbolRef,
 }
@@ -56,6 +57,11 @@ impl CallableFacts {
     #[must_use]
     pub const fn returns(&self) -> &TypeFact {
         &self.returns
+    }
+
+    #[must_use]
+    pub const fn asyncness(&self) -> CallableAsyncness {
+        self.asyncness
     }
 
     #[must_use]
@@ -182,6 +188,7 @@ fn source_callable_facts_for_declaration(
         name: declaration.name.clone(),
         params,
         returns,
+        asyncness: signature.asyncness,
         origin: CallableOrigin::Source,
         symbol: source_symbol_for_declaration(graph, declaration),
     })
@@ -396,10 +403,20 @@ fn schema_method_callable_facts(
     let TypeFact::Function { params, returns } = fact else {
         return Vec::new();
     };
+    let signature = schema
+        .method_signature_fact(&owner, method)
+        .or_else(|| schema.trait_method_signature_fact(&owner, method));
     vec![CallableFacts {
         name: format!("{owner}.{method}"),
-        params: indexed_callable_parameters(params.clone()),
-        returns: returns.as_ref().clone(),
+        params: signature.map_or_else(
+            || indexed_callable_parameters(params.clone()),
+            registry_callable_parameters,
+        ),
+        returns: signature.map_or_else(
+            || returns.as_ref().clone(),
+            |signature| signature.returns.clone(),
+        ),
+        asyncness: signature.map_or(CallableAsyncness::Sync, |signature| signature.asyncness),
         origin: CallableOrigin::SchemaMethod,
         symbol: schema_member_symbol(&owner, method),
     }]
@@ -460,6 +477,7 @@ fn source_variant_callable_facts(
                     name: format!("{owner}::{}", variant.name),
                     params,
                     returns: TypeFact::enum_type(&owner, Some(&variant.name)),
+                    asyncness: CallableAsyncness::Sync,
                     origin: CallableOrigin::SourceVariant,
                     symbol: source_enum_variant_symbol(graph, declaration.id, &variant.name)?,
                 })
@@ -476,10 +494,16 @@ fn schema_callable_facts(schema: &RegistryFacts, callee: &str) -> Vec<CallableFa
             let TypeFact::Function { params, returns } = function.fact else {
                 return None;
             };
+            let signature = schema.function_signature_fact(&function.name);
             Some(CallableFacts {
                 name: function.name.clone(),
-                params: indexed_callable_parameters(params),
-                returns: *returns,
+                params: signature.map_or_else(
+                    || indexed_callable_parameters(params),
+                    registry_callable_parameters,
+                ),
+                returns: signature.map_or_else(|| *returns, |signature| signature.returns.clone()),
+                asyncness: signature
+                    .map_or(CallableAsyncness::Sync, |signature| signature.asyncness),
                 origin: CallableOrigin::Schema,
                 symbol: schema_symbol(function.name),
             })
@@ -503,6 +527,7 @@ fn schema_variant_callable_facts(schema: &RegistryFacts, callee: &str) -> Vec<Ca
                 name: owner.clone(),
                 params,
                 returns: variant.fact,
+                asyncness: CallableAsyncness::Sync,
                 origin: CallableOrigin::SchemaVariant,
                 symbol: schema_variant_symbol(&variant.owner, &variant.name),
             })
@@ -566,6 +591,7 @@ fn stdlib_callable_fact(fact: StdlibFunctionFact) -> CallableFacts {
         name: fact.name.to_owned(),
         params: indexed_callable_parameters(fact.params),
         returns: fact.returns,
+        asyncness: CallableAsyncness::Sync,
         origin: CallableOrigin::Stdlib,
         symbol: builtin_symbol(fact.name),
     }
@@ -590,6 +616,7 @@ fn stdlib_method_callable_fact(fact: StdlibMethodFact) -> CallableFacts {
         name: format!("{}.{}", fact.receiver.display_name(), fact.method),
         params,
         returns: fact.returns,
+        asyncness: CallableAsyncness::Sync,
         origin: CallableOrigin::StdlibMethod,
         symbol: builtin_member_symbol(&fact.receiver.display_name(), fact.method),
     }
@@ -627,6 +654,7 @@ fn callable_facts_from_signature(
         name,
         params,
         returns,
+        asyncness: signature.asyncness,
         origin,
     }
 }
@@ -639,6 +667,20 @@ fn indexed_callable_parameters(params: Vec<TypeFact>) -> Vec<CallableParameterFa
             name: format!("arg{index}"),
             type_fact,
             defaulted: false,
+        })
+        .collect()
+}
+
+fn registry_callable_parameters(
+    signature: &vela_analysis::registry::CallableSignatureFact,
+) -> Vec<CallableParameterFacts> {
+    signature
+        .parameters
+        .iter()
+        .map(|parameter| CallableParameterFacts {
+            name: parameter.name.clone(),
+            type_fact: parameter.type_fact.clone(),
+            defaulted: !parameter.requirement.is_required(),
         })
         .collect()
 }

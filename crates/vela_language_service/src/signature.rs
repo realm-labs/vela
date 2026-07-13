@@ -207,9 +207,15 @@ fn call_context_from_query(query: &QueryContext<'_>) -> Option<CallContext> {
     })
 }
 
-fn signature_label(name: &str, parameters: &[SignatureParameter], returns: &TypeFact) -> String {
+fn signature_label(
+    asyncness: vela_common::CallableAsyncness,
+    name: &str,
+    parameters: &[SignatureParameter],
+    returns: &TypeFact,
+) -> String {
     let returns = returns.display_name();
-    DisplayParts::callable_signature(
+    DisplayParts::callable_signature_with_asyncness(
+        asyncness,
         name,
         parameters.iter().map(|param| param.label_parts.clone()),
         Some(returns.as_str()),
@@ -237,7 +243,12 @@ fn callable_signature_information(callable: &CallableFacts) -> SignatureInformat
         })
         .collect::<Vec<_>>();
     SignatureInformation {
-        label: signature_label(callable.name(), &parameters, callable.returns()),
+        label: signature_label(
+            callable.asyncness(),
+            callable.name(),
+            &parameters,
+            callable.returns(),
+        ),
         parameters,
     }
 }
@@ -255,7 +266,8 @@ fn callable_signatures_by_origin(
 
 #[cfg(test)]
 mod tests {
-    use vela_analysis::registry::RegistryFacts;
+    use vela_analysis::registry::{CallableSignatureFact, RegistryFacts};
+    use vela_common::CallableAsyncness;
 
     use super::*;
     use crate::{
@@ -299,6 +311,70 @@ mod tests {
         );
         assert_eq!(help.signatures()[0].parameters()[1].name(), "amount");
         assert_eq!(help.signatures()[0].parameters()[1].label(), "amount: i64");
+    }
+
+    #[test]
+    fn signature_help_displays_source_callable_asyncness() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "async fn load(value: i64) -> String { return \"ready\"; }\n\
+                    async fn main() { return load(1).await; }";
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        let line_index = LineIndex::new(text);
+        let call = text.rfind("load(1)").expect("async call");
+
+        let help = databases
+            .signature_help(&document, line_index.position(call + "load(".len()))
+            .expect("signature help should resolve async source function");
+
+        assert_eq!(
+            help.signatures()[0].label(),
+            "async load(value: i64) -> String"
+        );
+    }
+
+    #[test]
+    fn signature_help_displays_schema_callable_asyncness() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "async fn main() { return load(1).await; }";
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        let mut schema = RegistryFacts::default();
+        schema.insert_function(
+            "load",
+            TypeFact::function(vec![TypeFact::I64], TypeFact::STRING),
+        );
+        schema.insert_function_signature(
+            "load",
+            CallableSignatureFact::new(
+                [vela_analysis::registry::CallableParameterFact::new(
+                    "value",
+                    TypeFact::I64,
+                    vela_analysis::registry::CallableParameterRequirementFact::Required,
+                )],
+                TypeFact::STRING,
+            )
+            .asyncness(CallableAsyncness::Async),
+        );
+        databases.set_schema_facts(schema);
+        databases.update(&project);
+
+        let help = databases
+            .signature_help(
+                &document,
+                Position::new(0, text.find("1)").expect("schema call argument")),
+            )
+            .expect("signature help should resolve async schema function");
+
+        assert_eq!(
+            help.signatures()[0].label(),
+            "async load(value: i64) -> String"
+        );
     }
 
     #[test]

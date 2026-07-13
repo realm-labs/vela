@@ -46,6 +46,7 @@ pub(super) fn function_record(desc: &FunctionDesc) -> ReflectValue {
             ("name".to_owned(), string(desc.name.clone())),
             ("module".to_owned(), optional_string(desc.module.as_deref())),
             ("public".to_owned(), bool_value(desc.public)),
+            ("async".to_owned(), bool_value(desc.asyncness.is_async())),
             ("effects".to_owned(), function_effects_record(desc)),
             ("access".to_owned(), function_access_record(desc)),
             ("origin".to_owned(), origin_value(desc.origin)),

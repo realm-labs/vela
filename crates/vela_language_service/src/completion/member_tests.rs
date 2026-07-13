@@ -215,6 +215,24 @@ pub fn main() { current_player(). }"#;
 }
 
 #[test]
+fn member_completion_uses_awaited_source_function_return_facts() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"
+struct Player { level: i64 }
+impl Player {
+    fn grant(self, amount: i64) -> bool { return amount > 0 }
+}
+async fn current_player() -> Player { return Player { level: 1 } }
+async fn main() { current_player().await. }"#;
+
+    let completions = completions_for(document, text, "current_player().await.");
+
+    assert_eq!(completions.context().kind(), CompletionContextKind::Member);
+    assert_completion(&completions, "level", CompletionKind::Field);
+    assert_completion(&completions, "grant", CompletionKind::Method);
+}
+
+#[test]
 fn member_completion_uses_source_method_return_receiver_facts() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"

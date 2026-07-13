@@ -1,4 +1,5 @@
-use vela_analysis::registry::{RegistryEffectFact, RegistryFacts};
+use vela_analysis::registry::{CallableSignatureFact, RegistryEffectFact, RegistryFacts};
+use vela_common::CallableAsyncness;
 
 use super::*;
 use crate::{
@@ -39,6 +40,46 @@ fn hover_returns_none_for_unresolved_name() {
             .is_none(),
         "unresolved names must not produce speculative hover facts"
     );
+}
+
+#[test]
+fn hover_displays_source_callable_asyncness() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "async fn load(value: i64) -> String { return \"ready\"; }\n\
+                async fn main() { return load(1).await; }";
+    let databases = databases_for(&document, text, RegistryFacts::default());
+    let call = text.rfind("load(1)").expect("async call");
+    let position = LineIndex::new(text).position(call);
+
+    let hover = databases
+        .hover(&document, position)
+        .expect("hover should resolve async source function");
+
+    assert_eq!(hover.kind(), HoverKind::Function);
+    assert_eq!(hover.detail(), "async (value: i64) -> String");
+}
+
+#[test]
+fn hover_displays_schema_callable_asyncness() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "async fn main() { return load().await; }";
+    let mut schema = RegistryFacts::default();
+    schema.insert_function("load", TypeFact::function(Vec::new(), TypeFact::STRING));
+    schema.insert_function_signature(
+        "load",
+        CallableSignatureFact::new([], TypeFact::STRING).asyncness(CallableAsyncness::Async),
+    );
+    let databases = databases_for(&document, text, schema);
+
+    let hover = databases
+        .hover(
+            &document,
+            Position::new(0, text.find("load").expect("schema async call")),
+        )
+        .expect("hover should resolve async schema function");
+
+    assert_eq!(hover.kind(), HoverKind::Function);
+    assert!(hover.detail().starts_with("async Function() -> String"));
 }
 
 #[test]

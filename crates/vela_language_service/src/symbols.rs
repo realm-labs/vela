@@ -615,7 +615,7 @@ fn signature_detail_parts(signature: &FunctionSignature) -> DisplayParts {
         )
     });
     let return_type = signature.return_type.as_ref().map(|hint| hint.display());
-    DisplayParts::signature(params, return_type.as_deref())
+    DisplayParts::signature_with_asyncness(signature.asyncness, params, return_type.as_deref())
 }
 
 fn symbol_from_span(

@@ -1891,6 +1891,12 @@ borrow before `check_reload` can activate the staged generation. Callable
 asyncness is reload ABI for script, native, reflected/event, trait-method, and
 provider descriptors; sync/async changes require restart or explicit migration.
 
+Reflection metadata records expose callable asyncness explicitly as `async`,
+and language tooling reads callable asyncness from HIR or registry signature
+facts rather than re-inferring it from token text. Syntax recovery may still
+recognize `.await` as a receiver boundary so completion can use the semantic
+awaited-result fact.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

@@ -1251,7 +1251,7 @@ Purpose: close every cross-cutting contract and remove provisional omissions.
 - [x] Complete provider target resolution through `RuntimeCallTarget`, including
   asyncness and handle/runtime validation, with no provider-specific call API or
   duplicate runtime setup.
-- [ ] Complete reflection invocation/metadata, package metadata, diagnostics,
+- [x] Complete reflection invocation/metadata, package metadata, diagnostics,
   formatter, semantic tokens, completion, hover, and signature help.
 - [ ] Define CLI behavior, add generic sync/async/stateful/reentry examples, and
   make the sync C surface fail clearly on async entries.

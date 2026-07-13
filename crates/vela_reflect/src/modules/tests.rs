@@ -98,6 +98,7 @@ fn module_function_queries_return_records_and_candidates() {
     registry.register_function(
         FunctionDesc::new(function_id, "game::reward::grant")
             .module("game::reward")
+            .asyncness(vela_common::CallableAsyncness::Async)
             .param(
                 FunctionParamDesc::new("amount")
                     .type_hint("i64")
@@ -273,6 +274,10 @@ fn module_function_queries_return_records_and_candidates() {
     assert_eq!(
         function_metadata.get("origin"),
         Some(&ReflectValue::Host(HostValue::String("script".into())))
+    );
+    assert_eq!(
+        function_metadata.get("async"),
+        Some(&ReflectValue::Host(HostValue::Bool(true)))
     );
     assert_eq!(
         function_metadata.get("source_span"),

@@ -61,6 +61,31 @@ fn syntax_diagnostics_map_to_document_ranges() {
 }
 
 #[test]
+fn async_call_diagnostics_retain_analysis_code_and_repair() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let mut db = LanguageServiceDatabases::new();
+    db.update(&project(&[file(
+        document.as_str(),
+        "async fn load() -> i64 { return 1; }\nfn main() { return load(); }",
+    )]));
+
+    let diagnostics = db.diagnostics_for_document(&document);
+    let diagnostic = diagnostics
+        .diagnostics()
+        .iter()
+        .find(|diagnostic| diagnostic.code() == Some("analysis::async_call_requires_await"))
+        .expect("language service should retain the async call diagnostic");
+
+    assert!(diagnostic.message().contains("requires `.await`"));
+    assert!(
+        diagnostic
+            .labels()
+            .iter()
+            .any(|label| label.message().contains("append `.await`"))
+    );
+}
+
+#[test]
 fn open_file_diagnostics_are_prioritized() {
     let mut db = LanguageServiceDatabases::new();
     db.update(&project(&[

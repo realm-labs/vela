@@ -77,6 +77,14 @@ fn formatting_preserves_comments() {
 }
 
 #[test]
+fn formatting_preserves_async_and_await_syntax() {
+    let source = "async   fn main(){return load( ).await}";
+    let formatted = apply_edits(source, &format_source(source));
+
+    assert_eq!(formatted, "async fn main() {\n    return load().await\n}\n");
+}
+
+#[test]
 fn formatting_is_idempotent() {
     let source = "pub fn main() {\n    return 1\n}\n";
     let edits = format_source(source);

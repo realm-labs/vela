@@ -148,7 +148,8 @@ fn syntax_visibility(item: &SyntaxItem) -> &'static str {
 
 fn syntax_function_signature(function: &SyntaxFunctionItem) -> String {
     format!(
-        "fn {}({}) -> {}",
+        "{}fn {}({}) -> {}",
+        if function.is_async() { "async " } else { "" },
         function.name_text().unwrap_or_default(),
         syntax_params_signature(function.param_list().map(|list| list.params())),
         optional_syntax_hint(function.return_type())
@@ -168,7 +169,8 @@ fn syntax_trait_signature(item: &SyntaxTraitItem) -> String {
 
 fn syntax_trait_method_signature(method: &SyntaxTraitMethod) -> String {
     format!(
-        "{}({}) -> {} default:{}",
+        "{}{}({}) -> {} default:{}",
+        if method.is_async() { "async " } else { "" },
         method.name_text().unwrap_or_default(),
         syntax_params_signature(method.param_list().map(|list| list.params())),
         optional_syntax_hint(method.return_type()),
@@ -195,7 +197,8 @@ fn syntax_impl_signature(item: &SyntaxImplItem) -> String {
 
 fn syntax_impl_method_signature(method: &SyntaxImplMethod) -> String {
     format!(
-        "fn {}({}) -> {}",
+        "{}fn {}({}) -> {}",
+        if method.is_async() { "async " } else { "" },
         method.name_text().unwrap_or_default(),
         syntax_params_signature(method.param_list().map(|list| list.params())),
         optional_syntax_hint(method.return_type())
@@ -261,5 +264,30 @@ fn syntax_hint_signature(hint: &SyntaxTypeHint) -> String {
         path
     } else {
         format!("{}<{}>", path, args.join(","))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use vela_common::SourceId;
+    use vela_syntax::parse::parse_source_with_id;
+
+    use super::summarize_source;
+
+    #[test]
+    fn callable_asyncness_changes_declaration_fingerprint() {
+        let sync = parse_source_with_id(
+            SourceId::new(1),
+            "fn load() {} trait Service { fn run(self); } impl Worker { fn work(self) {} }",
+        );
+        let asynchronous = parse_source_with_id(
+            SourceId::new(1),
+            "async fn load() {} trait Service { async fn run(self); } impl Worker { async fn work(self) {} }",
+        );
+
+        assert_ne!(
+            summarize_source(&sync).declaration_fingerprint,
+            summarize_source(&asynchronous).declaration_fingerprint
+        );
     }
 }

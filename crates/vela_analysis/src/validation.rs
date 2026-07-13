@@ -256,6 +256,19 @@ pub struct ExecutableValidationFacts {
 }
 
 impl ExecutableValidationFacts {
+    /// Builds validation facts for a selected set of HIR bodies without
+    /// requiring compiler function IDs.
+    #[must_use]
+    pub fn for_bodies(
+        graph: &ModuleGraph,
+        schema: Option<&RegistryFacts>,
+        bodies: impl IntoIterator<Item = HirBodyId>,
+    ) -> Self {
+        let facts = AnalysisFacts::from_module_graph(graph);
+        let bodies = bodies.into_iter().collect::<BTreeSet<_>>();
+        Self::from_analysis(graph, schema, &facts, &bodies)
+    }
+
     pub(crate) fn from_analysis(
         graph: &ModuleGraph,
         schema: Option<&RegistryFacts>,

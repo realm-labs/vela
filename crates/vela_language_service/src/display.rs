@@ -1,5 +1,7 @@
 use std::fmt;
 
+use vela_common::CallableAsyncness;
+
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct DisplayParts {
     parts: Vec<DisplayPart>,
@@ -113,12 +115,44 @@ impl DisplayParts {
     }
 
     #[must_use]
+    pub fn signature_with_asyncness(
+        asyncness: CallableAsyncness,
+        parameters: impl IntoIterator<Item = DisplayParts>,
+        returns: Option<&str>,
+    ) -> Self {
+        let mut parts = Self::new();
+        if asyncness.is_async() {
+            parts.push(DisplayPartKind::Text, "async");
+            parts.push(DisplayPartKind::Text, " ");
+        }
+        parts.push_signature_tail(parameters, returns);
+        parts
+    }
+
+    #[must_use]
     pub fn callable_signature(
         name: &str,
         parameters: impl IntoIterator<Item = DisplayParts>,
         returns: Option<&str>,
     ) -> Self {
         let mut parts = Self::new();
+        parts.push(DisplayPartKind::Symbol, name);
+        parts.push_signature_tail(parameters, returns);
+        parts
+    }
+
+    #[must_use]
+    pub fn callable_signature_with_asyncness(
+        asyncness: CallableAsyncness,
+        name: &str,
+        parameters: impl IntoIterator<Item = DisplayParts>,
+        returns: Option<&str>,
+    ) -> Self {
+        let mut parts = Self::new();
+        if asyncness.is_async() {
+            parts.push(DisplayPartKind::Text, "async");
+            parts.push(DisplayPartKind::Text, " ");
+        }
         parts.push(DisplayPartKind::Symbol, name);
         parts.push_signature_tail(parameters, returns);
         parts

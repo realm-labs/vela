@@ -39,7 +39,10 @@ depth, and async-result memory limits are also closed with focused tests.
 Provider methods now have direct proof as the same sealed `RuntimeCallTarget`
 through sync rejection, async outer calls, NativeCallContext reentry, stable-ID
 reload re-resolution, and cross-Runtime handle validation; no provider-specific
-execution method exists.
+execution method exists. Reflection records expose callable asyncness, reflected
+async invocation shares awaited runtime dispatch, and language tooling preserves
+async syntax while projecting semantic diagnostics, awaited completion receiver
+facts, and source/registry asyncness into hover and signature help.
 
 M20 cache close-out and M20.5 LSP follow-up remain valid but are paused while
 the async plan is the persistent work queue.
@@ -120,8 +123,7 @@ the async plan is the persistent work queue.
 
 ### Async Execution Batch D
 
-- Complete reflection, tooling, CLI/C ABI, backend, diagnostic, zero-hit, and
-  performance acceptance.
+- Complete CLI/C ABI, backend, zero-hit, and performance acceptance.
 - Finish Section 18 documentation, compatibility, and validation audits.
 
 ### M20 Cache Close-Out
@@ -222,8 +224,7 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Close Batch D reflection, tooling, diagnostics, compatibility, and
-   performance acceptance.
+1. Close Batch D CLI/C ABI, backend, compatibility, and performance acceptance.
 2. Run the zero-hit, examples, benchmark, feature, documentation, and
    performance/memory gates.
 3. Close every Section 18 audit and documentation criterion.
