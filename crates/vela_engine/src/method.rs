@@ -9,6 +9,7 @@ use vela_vm::HostExecution;
 use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
 
+use crate::context::NativeCallContext;
 use crate::native::{EffectSet, FunctionAccess, NativeCallFuture, TypeHint};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -124,6 +125,17 @@ pub type AsyncDirectNativeMethodFunction = Arc<
         + Sync
         + 'static,
 >;
+pub type AsyncContextDirectNativeMethodFunction = Arc<
+    dyn for<'invoke, 'lease> Fn(
+            HostRef,
+            &'invoke mut [ErasedHostLease<'lease>],
+            Vec<OwnedValue>,
+            &'invoke mut NativeCallContext<'invoke, 'invoke>,
+        ) -> NativeCallFuture<'invoke>
+        + Send
+        + Sync
+        + 'static,
+>;
 
 #[derive(Clone)]
 pub enum AsyncNativeMethodImplementation {
@@ -131,6 +143,11 @@ pub enum AsyncNativeMethodImplementation {
     Direct {
         lease_kind: HostLeaseKind,
         function: AsyncDirectNativeMethodFunction,
+    },
+    DirectContext {
+        lease_kind: HostLeaseKind,
+        param_leases: Vec<(usize, HostLeaseKind)>,
+        function: AsyncContextDirectNativeMethodFunction,
     },
 }
 
@@ -204,6 +221,32 @@ impl AsyncNativeMethodEntry {
             desc,
             function: AsyncNativeMethodImplementation::Direct {
                 lease_kind,
+                function: Arc::new(function),
+            },
+        }
+    }
+
+    #[must_use]
+    pub fn new_direct_context(
+        mut desc: NativeMethodDesc,
+        lease_kind: HostLeaseKind,
+        param_leases: Vec<(usize, HostLeaseKind)>,
+        function: impl for<'invoke, 'lease> Fn(
+            HostRef,
+            &'invoke mut [ErasedHostLease<'lease>],
+            Vec<OwnedValue>,
+            &'invoke mut NativeCallContext<'invoke, 'invoke>,
+        ) -> NativeCallFuture<'invoke>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        desc.asyncness = CallableAsyncness::Async;
+        Self {
+            desc,
+            function: AsyncNativeMethodImplementation::DirectContext {
+                lease_kind,
+                param_leases,
                 function: Arc::new(function),
             },
         }

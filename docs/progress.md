@@ -10,7 +10,7 @@ history belongs in Git.
 
 ## Current Focus
 
-The executor-neutral async execution track is active at Batch C in
+The executor-neutral async execution track is active at Batch D in
 [async-execution-model-plan.md](async-execution-model-plan.md). The pre-change
 workspace, focused call-depth/callback/provider/reload behavior, and
 representative runtime performance baseline are recorded in
@@ -26,9 +26,10 @@ collection callbacks, iterators, guards, and providers. The full workspace gate
 is green. Batch B is complete: `Runtime::call_async` drives real
 executor-neutral suspension; pure/context/host/HostPath-method registries and
 free-function macros accept scoped `Send` futures; and static, dynamic,
-reflected, error, and try paths share the same session. Batch C now owns typed
-shared/exclusive host leases, direct borrowed struct methods, and
-same-execution reentry.
+reflected, error, and try paths share the same session. Batch C is complete:
+typed shared/exclusive host leases, direct borrowed struct methods,
+same-execution reentry, and the domain-neutral state/service example pass the
+full checkpoint gate.
 
 M20 cache close-out and M20.5 LSP follow-up remain valid but are paused while
 the async plan is the persistent work queue.
@@ -107,14 +108,12 @@ the async plan is the persistent work queue.
 
 ## Active Gaps
 
-### Async Execution Batch C
+### Async Execution Batch D
 
-- Add atomic scoped shared/exclusive host leases over execution-owned direct
-  bindings without changing script-visible HostRef/HostPath semantics.
-- Generate direct async `&self`/`&mut self` method wrappers that hold and
-  restore leases safely across await, errors, cancellation, and unwind.
-- Add NativeCallContext same-execution reentry with nested binding scopes,
-  inherited budgets/generation/heap state, and mutable-state child reborrowing.
+- Close suspended-generation reload and async ABI compatibility proofs.
+- Complete GC-root, budget, provider, reflection, tooling, CLI/C ABI, backend,
+  diagnostic, zero-hit, and performance acceptance.
+- Finish Section 18 documentation, compatibility, and validation audits.
 
 ### M20 Cache Close-Out
 
@@ -199,7 +198,13 @@ The last full workspace validation passed on 2026-07-13:
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
+cargo clippy --manifest-path examples/Cargo.toml --all-targets -- -D warnings
+cargo test --manifest-path examples/Cargo.toml --test runnable_examples
 ```
+
+The Miri component is unavailable on the installed stable
+`aarch64-apple-darwin` toolchain; focused safe-Rust lease/reentry tests and the
+workspace unsafe-code prohibition remain green.
 
 Use the relevant subset of [validation.md](validation.md) for each change.
 M20 work also requires focused correctness tests for the touched bytecode,
@@ -208,12 +213,11 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Implement execution-owned host binding scopes and atomic shared/exclusive
-   lease extraction/restoration.
-2. Extend direct method macros over the lease contract and validate async
-   `&self`/`&mut self` receivers.
-3. Add same-execution NativeCallContext reentry and the domain-neutral mutable
-   state/service fixture, then continue directly through Batch D and Section 18.
+1. Close Batch D hot reload, GC/budget, reflection,
+   provider, tooling, diagnostics, compatibility, and performance acceptance.
+2. Run the zero-hit, examples, benchmark, feature, documentation, and
+   performance/memory gates.
+3. Close every Section 18 audit and documentation criterion.
 
 ## Update Rules
 

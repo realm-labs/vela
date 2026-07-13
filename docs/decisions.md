@@ -1864,16 +1864,23 @@ prepared owned call and suspend until the embedding executor polls again.
 Dynamic HostPath methods and `reflect::call` resolve asyncness before dispatch,
 so their non-awaited async forms fail without invoking the target while sync
 reflection remains synchronous. Async macro support is active for free,
-context, and host functions. Direct borrowed Rust receivers remain a Batch C
-lease contract and are not emulated with references stored in Vela values.
+context, and host functions.
 
-Rust struct access across await will use Rust-only scoped host leases derived
-from `HostRef` bindings. Scripts will continue to see only
-`HostRef`/`HostPath`/`PathProxy`/`HostAccess`, and reentry from registered Rust
-code will drive a nested entry on the same execution, generation, heap, host
-scope, budget, and cancellation context. Batch A does not claim real host
-typed across-await leases or async reentry; those activate only at their later
-checkpoints.
+Batch C direct async methods acquire Rust-only scoped shared/exclusive leases
+for `&self`/`&mut self` and typed `&T`/`&mut T` host parameters. Acquisition is
+atomic in stable parameter order; direct bindings are restored by RAII across
+success, error, cancellation, and panic unwind. Opaque adapters and Runtime
+globals fail closed unless they provide an explicit safe typed lease contract.
+Lease types never enter Vela values, reflection, or GC state.
+
+NativeCallContext reentry uses the same call-target abstraction and pushes a
+child marker/frame on the active session. It inherits generation, heap,
+globals, host access, sidecars, budgets, capabilities, and cancellation state.
+Nested binding scopes share one monotonic HostRef allocator; child refs expire
+with the scope. An exclusive receiver may be reborrowed explicitly into child
+CallArgs, while access through its raw parent HostRef remains busy. A caught
+child error unwinds only that reentry segment and leaves the parked parent
+native boundary resumable.
 
 ## Validation Rules
 

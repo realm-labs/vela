@@ -17,6 +17,16 @@ use super::{CallArgs, RuntimeGlobalStore};
 
 const EXECUTION_HOST_OBJECT_ID_BASE: u64 = 1 << 63;
 
+pub(super) trait DirectContextInvoker: Send {
+    fn invoke<'invoke, 'lease>(
+        self: Box<Self>,
+        leases: &'invoke mut [ErasedHostLease<'lease>],
+        host: &'invoke mut dyn ExecutionHostBoundary,
+    ) -> NativeCallFuture<'invoke>
+    where
+        Self: 'invoke;
+}
+
 pub(super) struct ExecutionHost<'state, 'host> {
     args: CallArgs<'host>,
     globals: &'state mut RuntimeGlobalStore,
@@ -30,6 +40,12 @@ pub(super) trait ExecutionHostBoundary: ScriptStateAdapter + Send {
     fn invoke_prepared_with_lease<'call>(
         &'call mut self,
         prepared: &'call PreparedAsyncCall,
+    ) -> NativeCallFuture<'call>;
+
+    fn invoke_direct_context<'call>(
+        &'call mut self,
+        requests: Vec<(HostRef, HostLeaseKind)>,
+        invoke: Box<dyn DirectContextInvoker + 'call>,
     ) -> NativeCallFuture<'call>;
 }
 
@@ -114,6 +130,22 @@ impl ExecutionHostBoundary for ExecutionHost<'_, '_> {
             Err(error) => Box::pin(async move { Err(error.into()) }),
         }
     }
+
+    fn invoke_direct_context<'call>(
+        &'call mut self,
+        requests: Vec<(HostRef, HostLeaseKind)>,
+        invoke: Box<dyn DirectContextInvoker + 'call>,
+    ) -> NativeCallFuture<'call> {
+        Box::pin(async move {
+            for (root, _) in &requests {
+                if self.globals.binding(*root).is_some() {
+                    return Err(host_lease_unsupported(*root).into());
+                }
+            }
+            let mut leases = self.args.take_host_leases(&requests)?;
+            invoke.invoke(&mut leases, self).await
+        })
+    }
 }
 
 pub(super) struct ReentryExecutionHost<'scope> {
@@ -177,6 +209,22 @@ impl ExecutionHostBoundary for ReentryExecutionHost<'_> {
             },
             Err(error) => Box::pin(async move { Err(error.into()) }),
         }
+    }
+
+    fn invoke_direct_context<'call>(
+        &'call mut self,
+        requests: Vec<(HostRef, HostLeaseKind)>,
+        invoke: Box<dyn DirectContextInvoker + 'call>,
+    ) -> NativeCallFuture<'call> {
+        Box::pin(async move {
+            for (root, _) in &requests {
+                if self.args.direct_binding(*root).is_none() {
+                    return Err(host_lease_unsupported(*root).into());
+                }
+            }
+            let mut leases = self.args.take_host_leases(&requests)?;
+            invoke.invoke(&mut leases, self).await
+        })
     }
 }
 
@@ -569,7 +617,11 @@ fn missing_global(name: &str) -> HostError {
 
 #[cfg(test)]
 mod tests {
-    use super::{EXECUTION_HOST_OBJECT_ID_BASE, ExecutionHost};
+    use vela_vm::budget::ExecutionBudget;
+    use vela_vm::heap::ScriptHeap;
+    use vela_vm::value::Value;
+
+    use super::{EXECUTION_HOST_OBJECT_ID_BASE, ExecutionHost, ReentryExecutionHost};
     use crate::runtime::{CallArgs, RuntimeGlobalStore};
 
     #[test]
@@ -587,5 +639,43 @@ mod tests {
             host.next_direct_object_id(),
             EXECUTION_HOST_OBJECT_ID_BASE + 2
         );
+    }
+
+    #[test]
+    fn nested_scope_uses_shared_allocator_and_invalidates_child_ref_on_drop() {
+        let root_value = vec![1_i64];
+        let child_value = vec![2_i64];
+        let args = CallArgs::new().with_host_ref("root", &root_value);
+        let mut globals = RuntimeGlobalStore::new();
+        let mut host = ExecutionHost::new(args, &mut globals);
+        let mut heap = ScriptHeap::default();
+        let mut budget = ExecutionBudget::unbounded();
+
+        let child_ref = {
+            let child_args = CallArgs::new().with_host_ref("child", &child_value);
+            let child = ReentryExecutionHost::new(child_args, &mut host)
+                .expect("nested scope should allocate its direct binding");
+            let values = child
+                .resolve_values(
+                    "child",
+                    &["child".to_owned()],
+                    &[false],
+                    1,
+                    &mut heap,
+                    &mut budget,
+                )
+                .expect("child binding should resolve");
+            let [Value::HostRef(child_ref)] = values.as_slice() else {
+                panic!("child binding should resolve to HostRef");
+            };
+            *child_ref
+        };
+
+        assert_eq!(child_ref.object_id.get(), EXECUTION_HOST_OBJECT_ID_BASE + 1);
+        assert_eq!(
+            host.next_direct_object_id(),
+            EXECUTION_HOST_OBJECT_ID_BASE + 2
+        );
+        assert!(host.args.direct_binding(child_ref).is_none());
     }
 }

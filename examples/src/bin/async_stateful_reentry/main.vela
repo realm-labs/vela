@@ -1,0 +1,7 @@
+fn after_advance(state: WorkflowState, bonus: i64) {
+    state.total += bonus;
+}
+
+async fn run(state: WorkflowState, service: RuleService) {
+    return state.advance(service, 4).await;
+}

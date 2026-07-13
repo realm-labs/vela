@@ -150,6 +150,59 @@ async fn main() {
     }
 
     #[test]
+    fn reentry_call_depth_error_unwinds_child_and_runtime_remains_reusable() {
+        let engine = Engine::builder()
+            .register_async_context_fn(
+                NativeFunctionDesc::new("test::enter_deep", FunctionId::new(0xA532))
+                    .returns(TypeHint::unit())
+                    .access(FunctionAccess::public()),
+                |_args, context| {
+                    Box::pin(async move {
+                        let _ = context
+                            .call_async("deep", CallArgs::new().with(100_i64))
+                            .await?;
+                        Ok(OwnedValue::Unit)
+                    })
+                },
+            )
+            .build()
+            .expect("engine should build");
+        let program = engine
+            .compile_source(
+                r#"
+fn deep(remaining: i64) {
+    if remaining == 0 { return 0; }
+    return deep(remaining - 1);
+}
+
+async fn main() { return test::enter_deep().await; }
+fn reusable() { return 9; }
+"#,
+            )
+            .expect("depth fixture should compile");
+        let mut runtime = Runtime::new(engine, program);
+
+        let error = run_to_completion(runtime.call_async(
+            "main",
+            CallArgs::new(),
+            CallOptions::new(u64::MAX, usize::MAX, 4),
+        ))
+        .expect_err("nested reentry should inherit the outer call-depth budget");
+        assert!(matches!(
+            error.kind(),
+            vela_vm::error::VmErrorKind::BudgetExceeded {
+                budget: vela_vm::budget::ExecutionBudgetKind::CallDepth,
+                ..
+            }
+        ));
+
+        let value = runtime
+            .call("reusable", CallArgs::new(), CallOptions::unbounded())
+            .expect("reentry failure should leave Runtime reusable");
+        assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(9)));
+    }
+
+    #[test]
     fn scoped_runtime_call_future_is_send_and_executes_sync_entry() {
         let engine = Engine::builder().build().expect("engine should build");
         let program = engine

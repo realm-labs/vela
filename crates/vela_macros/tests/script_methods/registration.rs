@@ -161,6 +161,8 @@ fn script_methods_feed_stable_engine_registration_api() {
 fn script_methods_register_async_shared_and_mutable_direct_receivers() {
     let engine = Engine::builder()
         .register_script_host::<DirectCounter>()
+        .register_script_host::<DirectPeer>()
+        .register_script_host::<DirectConfig>()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
         .reflection_permissions(vela_reflect::permissions::ReflectPermissionSet::all())
@@ -176,7 +178,11 @@ async fn main(counter: DirectCounter) {
 }
 
 async fn wait(counter: DirectCounter) {
-    return counter.wait_async().await;
+    return counter.wait_with_context().await;
+}
+
+async fn panic_context(counter: DirectCounter) {
+    return counter.panic_with_context().await;
 }
 
 async fn read_async_entry(counter: DirectCounter) {
@@ -186,11 +192,81 @@ async fn read_async_entry(counter: DirectCounter) {
 fn read(counter: DirectCounter) {
     return counter.total;
 }
+
+fn hook(counter: DirectCounter) {
+    counter.total += 10;
+}
+
+async fn reenter(counter: DirectCounter) {
+    return counter.add_with_hook(counter, 4).await;
+}
+
+fn raw_read(counter: DirectCounter) { return counter.total; }
+
+async fn typed_leases(
+    counter: DirectCounter,
+    peer: DirectPeer,
+    config: DirectConfig,
+) {
+    return counter.update_with(peer, config, 4).await;
+}
+
+async fn alias_conflict(counter: DirectCounter) {
+    return counter.merge(counter).await;
+}
 "#,
         )
         .expect("direct async method source should compile");
     let mut runtime = vela_engine::runtime::Runtime::new(engine, program);
     let mut counter = DirectCounter { total: 3 };
+    let mut reentry_counter = DirectCounter { total: 3 };
+
+    let reentered = run_future(runtime.call_async(
+        "reenter",
+        vela_engine::runtime::CallArgs::new().with_host_mut("counter", &mut reentry_counter),
+        vela_engine::runtime::CallOptions::unbounded(),
+    ))
+    .expect("direct async method should reborrow its receiver into child Vela");
+    assert_eq!(runtime.value_to_owned(&reentered), Ok(OwnedValue::i64(18)));
+    assert_eq!(reentry_counter.total, 18);
+
+    let mut lease_counter = DirectCounter { total: 1 };
+    let mut peer = DirectPeer { total: 2 };
+    let config = DirectConfig { bonus: 3 };
+    let leased = run_future(
+        runtime.call_async(
+            "typed_leases",
+            vela_engine::runtime::CallArgs::new()
+                .with_host_mut("counter", &mut lease_counter)
+                .with_host_mut("peer", &mut peer)
+                .with_host_ref("config", &config),
+            vela_engine::runtime::CallOptions::unbounded(),
+        ),
+    )
+    .expect("typed host reference parameters should acquire atomic leases");
+    assert_eq!(runtime.value_to_owned(&leased), Ok(OwnedValue::i64(10)));
+    assert_eq!(lease_counter.total, 10);
+    assert_eq!(peer.total, 6);
+
+    let mut aliased = DirectCounter { total: 5 };
+    let alias_result = run_future(runtime.call_async(
+        "alias_conflict",
+        vela_engine::runtime::CallArgs::new().with_host_mut("counter", &mut aliased),
+        vela_engine::runtime::CallOptions::unbounded(),
+    ));
+    let alias_error = alias_result.expect_err("aliased exclusive leases should conflict");
+    assert!(matches!(
+        alias_error.kind(),
+        vela_vm::error::VmErrorKind::Host(vela_host::error::HostErrorKind::HostObjectBusy { .. })
+    ));
+    let alias_read = runtime
+        .call(
+            "read",
+            vela_engine::runtime::CallArgs::new().with_host_ref("counter", &aliased),
+            vela_engine::runtime::CallOptions::unbounded(),
+        )
+        .expect("an atomic lease conflict should restore the receiver binding");
+    assert_eq!(runtime.value_to_owned(&alias_read), Ok(OwnedValue::i64(5)));
 
     let result = run_future(runtime.call_async(
         "main",
@@ -221,6 +297,17 @@ fn read(counter: DirectCounter) {
         std::task::Poll::Pending
     ));
     drop(cancelled);
+
+    let mut panicking = std::boxed::Box::pin(runtime.call_async(
+        "panic_context",
+        vela_engine::runtime::CallArgs::new().with_host_mut("counter", &mut counter),
+        vela_engine::runtime::CallOptions::unbounded(),
+    ));
+    let panic_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let _ = panicking.as_mut().poll(&mut context);
+    }));
+    assert!(panic_result.is_err());
+    drop(panicking);
 
     let result = runtime
         .call(

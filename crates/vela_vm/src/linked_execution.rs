@@ -60,6 +60,16 @@ pub struct LinkedExecutionSession {
     root_generation: vela_bytecode::ExecutableGenerationId,
 }
 
+impl LinkedExecutionSession {
+    fn top_reentry_frame(&self) -> Option<usize> {
+        self.frames.iter().rposition(|frame| {
+            frame
+                .return_to
+                .is_some_and(|return_to| matches!(return_to.target, PendingReturnTarget::Reentry))
+        })
+    }
+}
+
 #[derive(Clone, Copy)]
 struct PendingAsyncResume {
     destination: Option<Register>,
@@ -166,6 +176,7 @@ enum FrameDriveOutcome {
 
 pub struct PreparedAsyncCall {
     native_id: Option<vela_def::FunctionId>,
+    method_id: Option<vela_common::HostMethodId>,
     function: native_function_calls::PreparedAsyncNativeFunction,
     args: Vec<OwnedValue>,
     name: String,
@@ -198,6 +209,11 @@ impl PreparedAsyncCall {
     #[must_use]
     pub const fn native_id(&self) -> Option<vela_def::FunctionId> {
         self.native_id
+    }
+
+    #[must_use]
+    pub const fn method_id(&self) -> Option<vela_common::HostMethodId> {
+        self.method_id
     }
 
     #[must_use]
@@ -491,7 +507,7 @@ impl Vm {
                     for frame in session.frames.iter().skip(1).rev() {
                         error = error.with_call_frame(frame.stack_frame());
                     }
-                    if limits_call_depth {
+                    if limits_call_depth && session.top_reentry_frame().is_none() {
                         for _ in 1..session.frames.len() {
                             budget
                                 .as_deref_mut()
@@ -515,11 +531,13 @@ impl Vm {
                             for frame in session.frames.iter().skip(1).rev() {
                                 error = error.with_call_frame(frame.stack_frame());
                             }
-                            for _ in 1..session.frames.len() {
-                                budget
-                                    .as_deref_mut()
-                                    .expect("call-depth budget mode requires a budget")
-                                    .exit_call();
+                            if session.top_reentry_frame().is_none() {
+                                for _ in 1..session.frames.len() {
+                                    budget
+                                        .as_deref_mut()
+                                        .expect("call-depth budget mode requires a budget")
+                                        .exit_call();
+                                }
                             }
                             return Err(error);
                         }
@@ -575,11 +593,13 @@ impl Vm {
                                     .as_deref_mut()
                                     .expect("call-depth budget mode requires a budget")
                                     .exit_call();
-                                for _ in 1..session.frames.len() {
-                                    budget
-                                        .as_deref_mut()
-                                        .expect("call-depth budget mode requires a budget")
-                                        .exit_call();
+                                if session.top_reentry_frame().is_none() {
+                                    for _ in 1..session.frames.len() {
+                                        budget
+                                            .as_deref_mut()
+                                            .expect("call-depth budget mode requires a budget")
+                                            .exit_call();
+                                    }
                                 }
                             }
                             error = error.with_call_frame(pending_frame);
@@ -842,6 +862,33 @@ impl Vm {
         }
     }
 
+    pub fn abort_linked_reentry(
+        &self,
+        session: &mut LinkedExecutionSession,
+        heap: &mut HeapExecution<'_>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<()> {
+        let Some(reentry_index) = session.top_reentry_frame() else {
+            return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                opcode: "abort without an active reentry",
+            }));
+        };
+        let protected_root_len = session.frames[reentry_index]
+            .return_to
+            .and_then(|return_to| return_to.protected_root_len);
+        let removed = session.frames.len().saturating_sub(reentry_index);
+        session.frames.truncate(reentry_index);
+        if let Some(protected_root_len) = protected_root_len {
+            heap.truncate_protected_roots(protected_root_len);
+        }
+        if budget.limits_call_depth() {
+            for _ in 0..removed {
+                budget.exit_call();
+            }
+        }
+        Ok(())
+    }
+
     pub fn drive_linked_execution(
         &self,
         session: &mut LinkedExecutionSession,
@@ -905,7 +952,7 @@ impl Vm {
                 Ok(LinkedDriveOutcome::ReentryComplete(value))
             }
             Err(error) => {
-                if session.root_call_depth_charged {
+                if session.root_call_depth_charged && session.top_reentry_frame().is_none() {
                     budget.exit_call();
                     session.root_call_depth_charged = false;
                 }
@@ -1619,6 +1666,7 @@ impl Vm {
                         return Ok(FrameDriveOutcome::Async {
                             call: PreparedAsyncCall {
                                 native_id: Some(prepared.native_id),
+                                method_id: None,
                                 function: prepared.function,
                                 args: prepared.args,
                                 name: prepared.name,
@@ -2115,6 +2163,7 @@ impl Vm {
                         return Ok(FrameDriveOutcome::Async {
                             call: PreparedAsyncCall {
                                 native_id: None,
+                                method_id: Some(*method_id),
                                 function: native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod {
                                     function: Arc::clone(function),
                                     receiver: prepared.receiver,
@@ -2146,6 +2195,7 @@ impl Vm {
                         return Ok(FrameDriveOutcome::Async {
                             call: PreparedAsyncCall {
                                 native_id: None,
+                                method_id: Some(*method_id),
                                 function:
                                     native_function_calls::PreparedAsyncNativeFunction::HostMethod {
                                         function: Arc::clone(function),
@@ -2695,6 +2745,7 @@ impl Vm {
                         return Ok(FrameDriveOutcome::Async {
                             call: PreparedAsyncCall {
                                 native_id: None,
+                                method_id: Some(method_id),
                                 function: native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod {
                                     function: Arc::clone(function),
                                     receiver: prepared.receiver,
@@ -2730,6 +2781,7 @@ impl Vm {
                         return Ok(FrameDriveOutcome::Async {
                             call: PreparedAsyncCall {
                                 native_id: None,
+                                method_id: Some(method_id),
                                 function:
                                     native_function_calls::PreparedAsyncNativeFunction::HostMethod {
                                         function: Arc::clone(function),

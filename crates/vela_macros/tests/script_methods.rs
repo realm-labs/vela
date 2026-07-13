@@ -153,6 +153,28 @@ struct DirectCounter {
 }
 
 #[allow(dead_code)]
+#[derive(ScriptHost)]
+#[script(path = "game::counter::DirectPeer")]
+struct DirectPeer {
+    #[script(get, set)]
+    total: i64,
+}
+
+#[allow(dead_code)]
+#[derive(ScriptHost)]
+#[script(path = "game::counter::DirectConfig")]
+struct DirectConfig {
+    #[script(get)]
+    bonus: i64,
+}
+
+#[script_methods]
+impl DirectPeer {}
+
+#[script_methods]
+impl DirectConfig {}
+
+#[allow(dead_code)]
 #[script_methods]
 impl DirectCounter {
     #[script_method(effect = "write_host", reflect = true)]
@@ -184,8 +206,75 @@ impl DirectCounter {
     }
 
     #[script_method(effect = "write_host")]
+    pub async fn add_with_hook(
+        &mut self,
+        context: &mut vela_engine::context::NativeCallContext<'_, '_>,
+        raw: HostRef,
+        amount: i64,
+    ) -> VmResult<i64> {
+        self.total += amount;
+        let raw_error = context
+            .call_async(
+                "raw_read",
+                vela_engine::runtime::CallArgs::new().with_host_handle("counter", raw),
+            )
+            .await
+            .expect_err("the raw parent HostRef should remain busy while leased");
+        if !matches!(
+            raw_error.kind(),
+            vela_vm::error::VmErrorKind::Host(
+                vela_host::error::HostErrorKind::HostObjectBusy { .. }
+            )
+        ) {
+            return Err(raw_error);
+        }
+        let _ = context
+            .call_async(
+                "hook",
+                vela_engine::runtime::CallArgs::new().with_host_mut("counter", &mut *self),
+            )
+            .await?;
+        self.total += 1;
+        Ok(self.total)
+    }
+
+    #[script_method(effect = "write_host")]
+    pub async fn update_with(
+        &mut self,
+        peer: &mut DirectPeer,
+        config: &DirectConfig,
+        amount: i64,
+    ) -> i64 {
+        peer.total += amount;
+        self.total += peer.total + config.bonus;
+        self.total
+    }
+
+    #[script_method(effect = "write_host")]
+    pub async fn merge(&mut self, other: &mut DirectCounter) -> i64 {
+        self.total += other.total;
+        self.total
+    }
+
+    #[script_method(effect = "write_host")]
     pub async fn wait_async(&mut self) -> i64 {
         std::future::pending().await
+    }
+
+    #[script_method(effect = "write_host")]
+    pub async fn wait_with_context(
+        &mut self,
+        _context: &mut vela_engine::context::NativeCallContext<'_, '_>,
+    ) -> i64 {
+        std::future::pending().await
+    }
+
+    #[script_method(effect = "write_host")]
+    pub async fn panic_with_context(
+        &mut self,
+        _context: &mut vela_engine::context::NativeCallContext<'_, '_>,
+    ) -> i64 {
+        panic!("context direct method panic fixture")
     }
 }
 

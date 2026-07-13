@@ -119,6 +119,12 @@ success_example!(
 );
 
 success_example!(
+    async_stateful_reentry_example_runs,
+    env!("CARGO_BIN_EXE_async_stateful_reentry"),
+    "async_stateful_reentry result=Scalar(I64(12)) total=12\n",
+);
+
+success_example!(
     io_stdlib_example_runs,
     env!("CARGO_BIN_EXE_io_stdlib"),
     "hello from fs\nio_stdlib len=Scalar(I64(13)) output=done\n",

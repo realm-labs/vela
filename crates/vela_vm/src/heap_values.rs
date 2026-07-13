@@ -7,7 +7,7 @@ use crate::SmallStorage;
 use crate::budget::ExecutionBudget;
 use crate::collection_mutation::check_collection_len;
 use crate::error::{VmError, VmErrorKind, VmResult};
-use crate::heap::HeapValue;
+use crate::heap::{HeapValue, ScriptHeap};
 use crate::heap_execution::HeapExecution;
 use crate::option_result::std_enum_identity_for_names;
 use crate::owned_value::{OwnedClosureValue, OwnedIteratorState, OwnedMapEntry, OwnedValue};
@@ -15,6 +15,20 @@ use crate::script_map::ScriptMap;
 use crate::script_object::ScriptFields;
 use crate::script_set::ScriptSet;
 use crate::value::{ClosureValue, Value};
+
+pub fn owned_to_persistent_value(
+    value: OwnedValue,
+    heap: &mut ScriptHeap,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    let mut heap_execution = HeapExecution::new(heap);
+    owned_to_value(value, &mut heap_execution, budget)
+}
+
+pub fn persistent_value_to_owned(value: &Value, heap: &mut ScriptHeap) -> VmResult<OwnedValue> {
+    let heap_execution = HeapExecution::new(heap);
+    value_to_owned(value, Some(&heap_execution))
+}
 
 pub(crate) fn value_from_constant(
     constant: &Constant,

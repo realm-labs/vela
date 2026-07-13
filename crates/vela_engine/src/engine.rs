@@ -517,6 +517,20 @@ impl Engine {
                         },
                     );
                 }
+                AsyncNativeMethodImplementation::DirectContext { lease_kind, .. } => {
+                    let lease_kind = *lease_kind;
+                    vm.register_async_direct_host_method_with_id(
+                        id,
+                        lease_kind,
+                        move |_root, _lease, _args| {
+                            Box::pin(async {
+                                Err(VmError::new(VmErrorKind::TypeMismatch {
+                                    operation: "context direct method outside Runtime execution",
+                                }))
+                            })
+                        },
+                    );
+                }
             }
         }
     }

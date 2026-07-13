@@ -419,8 +419,35 @@ The only asynchronous execution twin is `call_async`, and it accepts the same
 function, bound-method, and provider-method targets as `call`. A sync call
 rejects a declared async entry before executing its body. The Batch A future
 already enters the shared frame driver and can execute awaited sync targets;
-real pending/wake suspension on registered Rust futures is activated by Batch B
-of the async execution plan.
+real pending/wake suspension on registered Rust futures uses that same driver.
+
+Stateful async Rust methods may hold direct host leases across ordinary Rust
+await points and reenter Vela through their `NativeCallContext`. A mutable
+receiver is reborrowed explicitly into the child scope:
+
+```rust,ignore
+ctx.call_async(
+    "hooks::after_update",
+    CallArgs::new().with_host_mut("state", &mut *state),
+).await?;
+```
+
+The embedding must keep Runtime storage disjoint from host storage. Split the
+fields before calling so borrowing Runtime does not also borrow the struct that
+is passed as host state:
+
+```rust,ignore
+let Actor { runtime, state, services } = actor;
+runtime.call_async(
+    "handle",
+    CallArgs::new()
+        .with_host_mut("state", state)
+        .with_host_ref("services", services),
+    CallOptions::unbounded(),
+).await?;
+```
+
+This is a Rust ownership requirement, not an actor-specific Runtime API.
 
 With the `serde` feature enabled, hosts can pass ordinary Rust data as
 script-owned values without registering it as host state:

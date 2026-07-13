@@ -28,6 +28,7 @@ pub(super) struct MethodMeta {
     pub(super) callable_native: bool,
     pub(super) receiver: MethodReceiver,
     pub(super) is_async: bool,
+    pub(super) context_index: Option<usize>,
 }
 
 #[derive(Clone)]
@@ -35,6 +36,13 @@ pub(super) struct ParamMeta {
     pub(super) name: String,
     pub(super) ty: Type,
     pub(super) hint: HintKind,
+    pub(super) host_lease: Option<HostLeaseParam>,
+}
+
+#[derive(Clone)]
+pub(super) struct HostLeaseParam {
+    pub(super) ty: Type,
+    pub(super) mutable: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -204,11 +212,13 @@ fn method_meta(
     let mut params = Vec::new();
     let mut skipped_receiver = false;
     let mut receiver = MethodReceiver::HostBoundary;
+    let mut context_index = None;
     for input in &method.sig.inputs {
         let param = match input {
             FnArg::Typed(param) => param,
             FnArg::Receiver(_) => {
                 receiver = self_receiver_kind(input)?;
+                skipped_receiver = true;
                 continue;
             }
         };
@@ -217,6 +227,12 @@ fn method_meta(
                 return Err(spanned_error(
                     input,
                     "NativeCallContext boundary parameters must be &mut NativeCallContext",
+                ));
+            }
+            if context_index.replace(params.len()).is_some() {
+                return Err(spanned_error(
+                    input,
+                    "script methods accept at most one NativeCallContext parameter",
                 ));
             }
             continue;
@@ -235,12 +251,16 @@ fn method_meta(
             receiver = MethodReceiver::HostBoundary;
             continue;
         }
-        reject_script_reference_param(param)?;
+        let host_lease = is_async.then(|| host_lease_param(&param.ty)).flatten();
+        if host_lease.is_none() {
+            reject_script_reference_param(param)?;
+        }
         reject_unsupported_integer_type(&param.ty)?;
         params.push(ParamMeta {
             name: param_name(param),
             ty: param.ty.as_ref().clone(),
             hint: hint_for_type(&param.ty),
+            host_lease,
         });
     }
     reject_return_type(&method.sig.output)?;
@@ -264,6 +284,24 @@ fn method_meta(
         callable_native: has_callable_native_boundary(method),
         receiver,
         is_async,
+        context_index,
+    })
+}
+
+fn host_lease_param(ty: &Type) -> Option<HostLeaseParam> {
+    let Type::Reference(reference) = ty else {
+        return None;
+    };
+    let ident = type_ident(&reference.elem)?;
+    if matches!(
+        ident.as_str(),
+        "str" | "HostPath" | "HostExecution" | "NativeCallContext"
+    ) {
+        return None;
+    }
+    Some(HostLeaseParam {
+        ty: reference.elem.as_ref().clone(),
+        mutable: reference.mutability.is_some(),
     })
 }
 

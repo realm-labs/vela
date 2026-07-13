@@ -181,10 +181,10 @@ impl GameHostFixture {
         }
     }
 
-    pub fn main_args(
+    pub fn main_args<'args>(
         &self,
         main: &UnlinkedCodeObject,
-    ) -> Result<CallArgs<'static>, Box<dyn Error>> {
+    ) -> Result<CallArgs<'args>, Box<dyn Error>> {
         let mut args = CallArgs::new();
         for param in &main.params {
             match param.as_str() {

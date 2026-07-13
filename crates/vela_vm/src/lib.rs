@@ -81,10 +81,12 @@ use error::{VmError, VmErrorKind, VmResult};
 pub(crate) use frame::CallFrame;
 use heap::{HeapValue, ScriptHeap};
 use heap_execution::HeapExecution;
-pub use heap_values::allocate_zero_field_record;
 use heap_values::{
     allocate_heap_value, enum_variant_owner, owned_to_value, store_runtime_value,
     store_value_in_heap_if_needed, stored_runtime_value, value_from_constant, value_to_owned,
+};
+pub use heap_values::{
+    allocate_zero_field_record, owned_to_persistent_value, persistent_value_to_owned,
 };
 use owned_value::OwnedValue;
 pub(crate) use reflection_values::{
@@ -1163,20 +1165,6 @@ fn owned_heap_result(
     let result = result.and_then(|value| value_to_owned(&value, Some(heap)));
     heap.heap.collect_full_with_budget(&[], Some(budget));
     result
-}
-
-pub fn owned_to_persistent_value(
-    value: OwnedValue,
-    heap: &mut ScriptHeap,
-    budget: Option<&mut ExecutionBudget>,
-) -> VmResult<Value> {
-    let mut heap_execution = HeapExecution::new(heap);
-    owned_to_value(value, &mut heap_execution, budget)
-}
-
-pub fn persistent_value_to_owned(value: &Value, heap: &mut ScriptHeap) -> VmResult<OwnedValue> {
-    let heap_execution = HeapExecution::new(heap);
-    value_to_owned(value, Some(&heap_execution))
 }
 
 fn linked_program_entry(program: &LinkedProgram, entry: &str) -> VmResult<ScriptFunctionHandle> {

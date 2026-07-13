@@ -222,20 +222,77 @@ pub(super) fn script_host_object_impl_tokens(
 fn async_direct_method_registration_tokens(method: &MethodMeta, desc: TokenStream) -> TokenStream {
     let ident = &method.ident;
     let expected = method.params.len();
-    let arg_bindings = method.params.iter().enumerate().map(|(index, param)| {
-        let name = quote::format_ident!("__vela_arg_{}", param.name);
-        let ty = &param.ty;
-        quote! {
-            let #name = <#ty as ::vela_engine::args::FromScriptArg>::from_script_arg(
-                &args[#index],
-            )?;
-        }
-    });
+    let arg_bindings = method
+        .params
+        .iter()
+        .enumerate()
+        .filter(|(_, param)| param.host_lease.is_none())
+        .map(|(index, param)| {
+            let name = quote::format_ident!("__vela_arg_{}", param.name);
+            let ty = &param.ty;
+            quote! {
+                let #name = <#ty as ::vela_engine::args::FromScriptArg>::from_script_arg(
+                    &args[#index],
+                )?;
+            }
+        })
+        .collect::<Vec<_>>();
+    let lease_arg_bindings = method
+        .params
+        .iter()
+        .filter_map(|param| {
+            let lease = param.host_lease.as_ref()?;
+            let name = quote::format_ident!("__vela_arg_{}", param.name);
+            let ty = &lease.ty;
+            Some(if lease.mutable {
+                quote! {
+                    let #name = __vela_leases
+                        .next()
+                        .and_then(|lease| lease.object_mut())
+                        .and_then(|object| object.lease_any_mut())
+                        .and_then(|object| object.downcast_mut::<#ty>())
+                        .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(root))?;
+                }
+            } else {
+                quote! {
+                    let #name = __vela_leases
+                        .next()
+                        .and_then(|lease| lease.object().lease_any())
+                        .and_then(|object| object.downcast_ref::<#ty>())
+                        .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(root))?;
+                }
+            })
+        })
+        .collect::<Vec<_>>();
+    let param_leases = method
+        .params
+        .iter()
+        .enumerate()
+        .filter_map(|(index, param)| {
+            let lease = param.host_lease.as_ref()?;
+            let kind = if lease.mutable {
+                quote! { ::vela_host::lease::HostLeaseKind::Exclusive }
+            } else {
+                quote! { ::vela_host::lease::HostLeaseKind::Shared }
+            };
+            Some(quote! { (#index, #kind) })
+        })
+        .collect::<Vec<_>>();
     let arg_names = method
         .params
         .iter()
-        .map(|param| quote::format_ident!("__vela_arg_{}", param.name));
-    let (lease_kind, lease, receiver) = match method.receiver {
+        .map(|param| quote::format_ident!("__vela_arg_{}", param.name))
+        .collect::<Vec<_>>();
+    let mut call_args = arg_names
+        .iter()
+        .map(|name| quote! { #name })
+        .collect::<Vec<_>>();
+    if let Some(index) = method.context_index {
+        call_args.insert(index, quote! { __vela_context });
+    }
+    let (lease_kind, owned_lease, borrowed_lease, owned_receiver, borrowed_receiver) = match method
+        .receiver
+    {
         MethodReceiver::SharedSelf => (
             quote! { ::vela_host::lease::HostLeaseKind::Shared },
             quote! {
@@ -244,7 +301,16 @@ fn async_direct_method_registration_tokens(method: &MethodMeta, desc: TokenStrea
                     root,
                 )?;
             },
+            quote! {
+                let mut __vela_leases = leases.iter_mut();
+                let __vela_receiver = __vela_leases
+                    .next()
+                    .and_then(|lease| lease.object().lease_any())
+                    .and_then(|object| object.downcast_ref::<Self>())
+                    .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(root))?;
+            },
             quote! { &*__vela_lease },
+            quote! { __vela_receiver },
         ),
         MethodReceiver::MutSelf => (
             quote! { ::vela_host::lease::HostLeaseKind::Exclusive },
@@ -254,12 +320,53 @@ fn async_direct_method_registration_tokens(method: &MethodMeta, desc: TokenStrea
                     root,
                 )?;
             },
+            quote! {
+                let mut __vela_leases = leases.iter_mut();
+                let __vela_receiver = __vela_leases
+                    .next()
+                    .and_then(|lease| lease.object_mut())
+                    .and_then(|object| object.lease_any_mut())
+                    .and_then(|object| object.downcast_mut::<Self>())
+                    .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(root))?;
+            },
             quote! { &mut *__vela_lease },
+            quote! { __vela_receiver },
         ),
         MethodReceiver::HostBoundary => {
             unreachable!("async host-boundary methods are rejected during metadata collection")
         }
     };
+
+    if method.context_index.is_some() || !param_leases.is_empty() {
+        return quote! {
+        .register_async_context_direct_method_fn(
+            #desc,
+            #lease_kind,
+            ::std::vec![#(#param_leases),*],
+            move |root, leases, args, __vela_context| {
+                ::std::boxed::Box::pin(async move {
+                    if args.len() != #expected {
+                        return Err(::vela_vm::error::VmError::new(
+                            ::vela_vm::error::VmErrorKind::ArityMismatch {
+                                name: "typed async direct method".to_owned(),
+                                expected: #expected,
+                                actual: args.len(),
+                            },
+                        ));
+                    }
+                    #borrowed_lease
+                    #(#arg_bindings)*
+                    #(#lease_arg_bindings)*
+                    let __vela_result = Self::#ident(
+                        #borrowed_receiver,
+                        #(#call_args),*
+                    ).await;
+                    ::vela_engine::typed::IntoNativeReturn::into_native_return(__vela_result)
+                })
+            },
+        )
+        };
+    }
 
     quote! {
         .register_async_direct_method_fn(
@@ -276,9 +383,12 @@ fn async_direct_method_registration_tokens(method: &MethodMeta, desc: TokenStrea
                             },
                         ));
                     }
-                    #lease
+                    #owned_lease
                     #(#arg_bindings)*
-                    let __vela_result = Self::#ident(#receiver, #(#arg_names),*).await;
+                    let __vela_result = Self::#ident(
+                        #owned_receiver,
+                        #(#call_args),*
+                    ).await;
                     ::vela_engine::typed::IntoNativeReturn::into_native_return(__vela_result)
                 })
             },
@@ -372,7 +482,19 @@ fn args_tuple_tokens(params: &[ParamMeta]) -> TokenStream {
 
 fn param_tokens(param: &ParamMeta) -> TokenStream {
     let name = &param.name;
-    let hint = hint_tokens(param.hint.clone());
+    let hint = if let Some(lease) = &param.host_lease {
+        let ty = &lease.ty;
+        quote! {
+            ::vela_engine::native::TypeHint::Host(
+                ::vela_reflect::registry::TypeKey::new(
+                    <#ty>::vela_type_id(),
+                    ::core::stringify!(#ty),
+                )
+            )
+        }
+    } else {
+        hint_tokens(param.hint.clone())
+    };
     quote! { #name, #hint }
 }
 

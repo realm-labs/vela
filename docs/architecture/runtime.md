@@ -254,8 +254,23 @@ HostPath-based methods. Their factories are `Send + Sync + 'static`, while the
 returned `NativeCallFuture<'call>` may borrow invocation arguments and host
 execution state for `'call`. `#[script_function]`, `#[script_context_function]`,
 and `#[script_host_function]` emit the same contract for Rust `async fn`.
-Direct Rust `&self`/`&mut self` async methods remain owned by the scoped host
-lease checkpoint; scripts continue to receive only HostPath-based values.
+
+`#[script_methods]` also supports async `&self`/`&mut self` methods. Runtime
+atomically acquires Rust-only `HostLeaseRef`/`HostLeaseMut` scopes for the
+receiver and any typed `&T`/`&mut T` host parameters, restores every binding on
+return, error, cancellation, or unwind, and reports alias conflicts as
+`HostObjectBusy`. Runtime-owned globals and opaque adapters fail closed with
+`HostLeaseUnsupported` unless they implement an explicit safe lease contract.
+Neither lease wrapper is a Vela value or reflection type.
+
+An active `NativeCallContext` can call a sync child with `call`, call a sync or
+async child with `call_async`, and bind a script method target. Reentry pushes a
+marker and child frame on the same session, so it inherits the pinned artifact,
+heap, globals, host boundary, sidecars, remaining budgets, capabilities, and
+cancellation state. Child `CallArgs` receive new HostRefs from the execution's
+single allocator and are invalid after the child scope exits. A mutable method
+must explicitly reborrow its lease into child arguments; the raw parent HostRef
+remains busy while the exclusive lease is live.
 
 ### Execution Budget
 

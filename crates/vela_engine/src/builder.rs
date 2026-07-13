@@ -422,6 +422,33 @@ impl EngineBuilder {
         self
     }
 
+    #[doc(hidden)]
+    #[must_use]
+    pub fn register_async_context_direct_method_fn(
+        mut self,
+        desc: NativeMethodDesc,
+        lease_kind: vela_host::lease::HostLeaseKind,
+        param_leases: Vec<(usize, vela_host::lease::HostLeaseKind)>,
+        function: impl for<'invoke, 'lease> Fn(
+            vela_host::path::HostRef,
+            &'invoke mut [vela_host::lease::ErasedHostLease<'lease>],
+            Vec<OwnedValue>,
+            &'invoke mut crate::context::NativeCallContext<'invoke, 'invoke>,
+        ) -> NativeCallFuture<'invoke>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        self.async_native_methods
+            .push(AsyncNativeMethodEntry::new_direct_context(
+                desc,
+                lease_kind,
+                param_leases,
+                function,
+            ));
+        self
+    }
+
     #[must_use]
     pub fn register_typed_native_method_fn<Args, F>(
         self,

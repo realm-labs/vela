@@ -1,0 +1,525 @@
+use vela_bytecode::ProgramImage;
+use vela_host::access::HostAccess;
+use vela_host::adapter::ScriptStateAdapter;
+use vela_host::path::HostRef;
+use vela_vm::budget::ExecutionBudget;
+use vela_vm::error::{VmError, VmErrorKind, VmResult};
+use vela_vm::heap_execution::HeapExecution;
+use vela_vm::owned_value::OwnedValue;
+use vela_vm::value::Value;
+use vela_vm::{
+    HostExecution, LinkedDriveOutcome, LinkedExecutionReentry, LinkedExecutionSession,
+    PreparedAsyncCall, ScriptGlobalValues,
+};
+
+use crate::context::{NativeCallContext, NativeReentry};
+use crate::engine::Engine;
+use crate::method::AsyncNativeMethodImplementation;
+
+use super::call_args::{CallArgs, call_args_type_error};
+use super::call_future::RuntimeCallFuture;
+use super::execution_host::{DirectContextInvoker, ExecutionHostBoundary, ReentryExecutionHost};
+use super::handles::{
+    self, RuntimeCallTargetKind, RuntimeMethodResolveContext, RuntimeMethodSelectorKind,
+};
+use super::provider;
+use super::script_globals::{RuntimeValueRoots, VelaValue};
+use super::state;
+use super::{VelaMethod, VelaMethodTarget, unknown_method, value_type_id};
+
+pub(super) struct ActiveNativeReentry<'execution, 'heap> {
+    pub(super) runtime_id: u64,
+    pub(super) engine: &'execution Engine,
+    pub(super) registry_image: &'execution ProgramImage,
+    pub(super) artifact: &'execution std::sync::Arc<vela_bytecode::LinkedArtifact>,
+    pub(super) vm: &'execution vela_vm::Vm,
+    pub(super) session: &'execution mut LinkedExecutionSession,
+    pub(super) host: &'execution mut dyn ExecutionHostBoundary,
+    pub(super) access: &'execution mut HostAccess,
+    pub(super) heap: &'execution mut HeapExecution<'heap>,
+    pub(super) budget: &'execution mut ExecutionBudget,
+    pub(super) script_global_values: &'execution ScriptGlobalValues,
+    pub(super) retained_values: std::sync::Arc<std::sync::Mutex<RuntimeValueRoots>>,
+    pub(super) sidecars: &'execution mut state::RuntimeSidecars,
+}
+
+impl ActiveNativeReentry<'_, '_> {
+    fn resolve_target(&mut self, target: RuntimeCallTargetKind) -> VmResult<handles::EntryRequest> {
+        match target {
+            target @ (RuntimeCallTargetKind::FunctionName(_)
+            | RuntimeCallTargetKind::Function(_)) => handles::resolve_function_target(
+                target,
+                self.runtime_id,
+                self.artifact.program(),
+                None,
+            ),
+            RuntimeCallTargetKind::BoundMethod(target) => handles::resolve_bound_method(
+                target,
+                RuntimeMethodResolveContext {
+                    runtime_id: self.runtime_id,
+                    program_image: self.registry_image,
+                    linked_program: self.artifact.program(),
+                    version_id: None,
+                    script_heap: self.heap.heap,
+                    engine: self.engine,
+                },
+            ),
+            RuntimeCallTargetKind::ProviderMethod(target) => {
+                provider::resolve_provider_reentry_target(
+                    target,
+                    self.runtime_id,
+                    self.artifact,
+                    self.heap,
+                    self.budget,
+                    &self.retained_values,
+                )
+            }
+        }
+    }
+
+    fn method_handle(&self, receiver: &VelaValue, name: String) -> VmResult<VelaMethod> {
+        if receiver.runtime_id != self.runtime_id {
+            return Err(call_args_type_error("VelaValue belongs to another Runtime"));
+        }
+        let receiver_type = value_type_id(
+            &receiver.value,
+            self.heap.heap,
+            self.engine.registry().as_ref(),
+        )
+        .ok_or_else(|| unknown_method(name.clone()))?;
+        let method_id = self
+            .registry_image
+            .script_methods()
+            .get(receiver_type, &name)
+            .map(|method| method.id)
+            .ok_or_else(|| unknown_method(name.clone()))?;
+        let code = self
+            .registry_image
+            .script_methods()
+            .get_by_id(receiver_type, method_id)
+            .and_then(|method| {
+                let function = self
+                    .artifact
+                    .program()
+                    .entry_point_by_id(method.function_id)?;
+                self.artifact.program().function(function)
+            })
+            .ok_or_else(|| unknown_method(name.clone()))?;
+        Ok(VelaMethod {
+            runtime_id: self.runtime_id,
+            receiver_type,
+            name,
+            method_id,
+            version_id: None,
+            params: code
+                .params
+                .iter()
+                .skip(1)
+                .map(|param| self.artifact.program().debug_name(*param).to_owned())
+                .collect(),
+            param_defaults: code.param_defaults.iter().skip(1).copied().collect(),
+        })
+    }
+
+    fn drive_sync<'call>(
+        &'call mut self,
+        target: handles::EntryRequest,
+        args: CallArgs<'call>,
+    ) -> VmResult<VelaValue> {
+        if target.asyncness.is_async() {
+            return Err(VmError::new(VmErrorKind::AsyncEntryRequiresCallAsync {
+                name: target.name,
+            }));
+        }
+        let runtime_id = self.runtime_id;
+        let retained_values = std::sync::Arc::clone(&self.retained_values);
+        let mut child_host = ReentryExecutionHost::new(args, self.host)?;
+        let resolved = child_host.resolve_values(
+            &target.name,
+            &target.params,
+            &target.param_defaults,
+            self.runtime_id,
+            self.heap.heap,
+            self.budget,
+        )?;
+        let entry_args = reentry_entry_args(&target, &resolved);
+        self.vm.push_linked_reentry(
+            self.session,
+            LinkedExecutionReentry {
+                artifact: self.artifact,
+                function: target.function,
+                args: &entry_args,
+                inline_caches: Some(&*self.sidecars),
+                bytecode_profiler: Some(&*self.sidecars),
+            },
+            self.heap,
+            self.budget,
+        )?;
+        let mut host = HostExecution {
+            adapter: &mut child_host,
+            access: self.access,
+            script_globals: Some(self.script_global_values),
+        };
+        let outcome = match self.vm.drive_linked_execution(
+            self.session,
+            Some(&mut host),
+            self.heap,
+            self.budget,
+            Some(&*self.sidecars),
+            Some(&*self.sidecars),
+        ) {
+            Ok(outcome) => outcome,
+            Err(error) => {
+                self.vm
+                    .abort_linked_reentry(self.session, self.heap, self.budget)?;
+                return Err(error);
+            }
+        };
+        match outcome {
+            LinkedDriveOutcome::ReentryComplete(value) => Ok(RuntimeValueRoots::retain(
+                &retained_values,
+                runtime_id,
+                value,
+            )),
+            LinkedDriveOutcome::AsyncBoundary(call) => {
+                let name = call.name().to_owned();
+                self.vm
+                    .abort_linked_reentry(self.session, self.heap, self.budget)?;
+                Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait { name }))
+            }
+            LinkedDriveOutcome::Complete(_) => {
+                Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                    opcode: "root completed while driving native reentry",
+                }))
+            }
+        }
+    }
+
+    async fn drive_async<'call>(
+        &'call mut self,
+        target: handles::EntryRequest,
+        args: CallArgs<'call>,
+    ) -> VmResult<VelaValue> {
+        let runtime_id = self.runtime_id;
+        let retained_values = std::sync::Arc::clone(&self.retained_values);
+        let mut child_host = ReentryExecutionHost::new(args, self.host)?;
+        let resolved = child_host.resolve_values(
+            &target.name,
+            &target.params,
+            &target.param_defaults,
+            self.runtime_id,
+            self.heap.heap,
+            self.budget,
+        )?;
+        let entry_args = reentry_entry_args(&target, &resolved);
+        self.vm.push_linked_reentry(
+            self.session,
+            LinkedExecutionReentry {
+                artifact: self.artifact,
+                function: target.function,
+                args: &entry_args,
+                inline_caches: Some(&*self.sidecars),
+                bytecode_profiler: Some(&*self.sidecars),
+            },
+            self.heap,
+            self.budget,
+        )?;
+
+        loop {
+            let outcome = {
+                let mut host = HostExecution {
+                    adapter: &mut child_host,
+                    access: self.access,
+                    script_globals: Some(self.script_global_values),
+                };
+                match self.vm.drive_linked_execution(
+                    self.session,
+                    Some(&mut host),
+                    self.heap,
+                    self.budget,
+                    Some(&*self.sidecars),
+                    Some(&*self.sidecars),
+                ) {
+                    Ok(outcome) => outcome,
+                    Err(error) => {
+                        self.vm
+                            .abort_linked_reentry(self.session, self.heap, self.budget)?;
+                        return Err(error);
+                    }
+                }
+            };
+            match outcome {
+                LinkedDriveOutcome::ReentryComplete(value) => {
+                    return Ok(RuntimeValueRoots::retain(
+                        &retained_values,
+                        runtime_id,
+                        value,
+                    ));
+                }
+                LinkedDriveOutcome::Complete(_) => {
+                    return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                        opcode: "root completed while driving native reentry",
+                    }));
+                }
+                LinkedDriveOutcome::AsyncBoundary(prepared) => {
+                    let result = {
+                        let mut nested = ActiveNativeReentry {
+                            runtime_id: self.runtime_id,
+                            engine: self.engine,
+                            registry_image: self.registry_image,
+                            artifact: self.artifact,
+                            vm: self.vm,
+                            session: self.session,
+                            host: &mut child_host,
+                            access: self.access,
+                            heap: self.heap,
+                            budget: self.budget,
+                            script_global_values: self.script_global_values,
+                            retained_values: std::sync::Arc::clone(&self.retained_values),
+                            sidecars: self.sidecars,
+                        };
+                        invoke_prepared_async(&prepared, &mut nested).await
+                    };
+                    if let Err(error) = self.vm.resume_linked_async_call(
+                        self.session,
+                        result,
+                        Some(self.heap),
+                        Some(self.budget),
+                    ) {
+                        self.vm
+                            .abort_linked_reentry(self.session, self.heap, self.budget)?;
+                        return Err(error);
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl NativeReentry for ActiveNativeReentry<'_, '_> {
+    fn adapter(&mut self) -> &mut dyn ScriptStateAdapter {
+        self.host
+    }
+
+    fn access(&mut self) -> &mut HostAccess {
+        self.access
+    }
+
+    fn host_execution(&mut self) -> HostExecution<'_> {
+        HostExecution {
+            adapter: self.host,
+            access: self.access,
+            script_globals: Some(self.script_global_values),
+        }
+    }
+
+    fn budget(&self) -> Option<&ExecutionBudget> {
+        Some(self.budget)
+    }
+
+    fn budget_mut(&mut self) -> Option<&mut ExecutionBudget> {
+        Some(self.budget)
+    }
+
+    fn call<'call>(
+        &'call mut self,
+        target: RuntimeCallTargetKind,
+        args: CallArgs<'call>,
+    ) -> VmResult<VelaValue> {
+        let target = self.resolve_target(target)?;
+        self.drive_sync(target, args)
+    }
+
+    fn call_async<'call>(
+        &'call mut self,
+        target: RuntimeCallTargetKind,
+        args: CallArgs<'call>,
+    ) -> RuntimeCallFuture<'call> {
+        RuntimeCallFuture::new(async move {
+            let target = self.resolve_target(target)?;
+            self.drive_async(target, args).await
+        })
+    }
+
+    fn bind_method(
+        &mut self,
+        receiver: &VelaValue,
+        method: RuntimeMethodSelectorKind,
+    ) -> VmResult<VelaMethodTarget> {
+        let method = match method {
+            RuntimeMethodSelectorKind::Name(name) => self.method_handle(receiver, name)?,
+            RuntimeMethodSelectorKind::Method(method) => method,
+        };
+        let target = VelaMethodTarget {
+            runtime_id: self.runtime_id,
+            receiver: receiver.clone(),
+            method,
+        };
+        handles::resolve_bound_method(
+            target.clone(),
+            RuntimeMethodResolveContext {
+                runtime_id: self.runtime_id,
+                program_image: self.registry_image,
+                linked_program: self.artifact.program(),
+                version_id: None,
+                script_heap: self.heap.heap,
+                engine: self.engine,
+            },
+        )?;
+        Ok(target)
+    }
+}
+
+fn reentry_entry_args(target: &handles::EntryRequest, resolved: &[Value]) -> Vec<Value> {
+    let mut entry_args = Vec::with_capacity(
+        resolved
+            .len()
+            .saturating_add(usize::from(target.receiver.is_some())),
+    );
+    if let Some(receiver) = &target.receiver {
+        entry_args.push(receiver.value);
+    }
+    entry_args.extend_from_slice(resolved);
+    entry_args
+}
+
+struct RuntimeDirectContextInvoker<'execution, 'heap> {
+    pub(super) runtime_id: u64,
+    pub(super) engine: &'execution Engine,
+    pub(super) registry_image: &'execution ProgramImage,
+    pub(super) artifact: &'execution std::sync::Arc<vela_bytecode::LinkedArtifact>,
+    pub(super) vm: &'execution vela_vm::Vm,
+    pub(super) session: &'execution mut LinkedExecutionSession,
+    pub(super) access: &'execution mut HostAccess,
+    pub(super) heap: &'execution mut HeapExecution<'heap>,
+    pub(super) budget: &'execution mut ExecutionBudget,
+    pub(super) script_global_values: &'execution ScriptGlobalValues,
+    pub(super) retained_values: std::sync::Arc<std::sync::Mutex<RuntimeValueRoots>>,
+    pub(super) sidecars: &'execution mut state::RuntimeSidecars,
+    root: HostRef,
+    args: Vec<OwnedValue>,
+    function: crate::method::AsyncContextDirectNativeMethodFunction,
+}
+
+impl DirectContextInvoker for RuntimeDirectContextInvoker<'_, '_> {
+    fn invoke<'invoke, 'lease>(
+        self: Box<Self>,
+        leases: &'invoke mut [vela_host::lease::ErasedHostLease<'lease>],
+        host: &'invoke mut dyn ExecutionHostBoundary,
+    ) -> vela_vm::NativeCallFuture<'invoke>
+    where
+        Self: 'invoke,
+    {
+        Box::pin(async move {
+            let mut nested = ActiveNativeReentry {
+                runtime_id: self.runtime_id,
+                engine: self.engine,
+                registry_image: self.registry_image,
+                artifact: self.artifact,
+                vm: self.vm,
+                session: self.session,
+                host,
+                access: self.access,
+                heap: self.heap,
+                budget: self.budget,
+                script_global_values: self.script_global_values,
+                retained_values: self.retained_values,
+                sidecars: self.sidecars,
+            };
+            let engine = self.engine.clone();
+            let mut context = NativeCallContext::new_reentry(&engine, &mut nested);
+            (self.function)(self.root, leases, self.args, &mut context).await
+        })
+    }
+}
+
+pub(super) async fn invoke_prepared_async(
+    prepared: &PreparedAsyncCall,
+    active: &mut ActiveNativeReentry<'_, '_>,
+) -> VmResult<OwnedValue> {
+    if let Some(entry) = prepared
+        .native_id()
+        .and_then(|id| active.engine.async_context_host_native_function(id))
+    {
+        crate::engine::check_capabilities(
+            &entry.desc.name,
+            &entry.desc.effects,
+            active.engine.capabilities(),
+        )?;
+        let engine = active.engine.clone();
+        let function = std::sync::Arc::clone(&entry.function);
+        let args = prepared.args().to_vec();
+        let mut context = NativeCallContext::new_reentry(&engine, active);
+        return function(&args, &mut context).await;
+    }
+    if let Some(entry) = prepared
+        .method_id()
+        .and_then(|id| active.engine.async_native_method(id))
+        && let AsyncNativeMethodImplementation::DirectContext {
+            lease_kind,
+            param_leases,
+            function,
+        } = &entry.function
+    {
+        crate::engine::check_capabilities(
+            &entry.desc.name,
+            &entry.desc.effects,
+            active.engine.capabilities(),
+        )?;
+        let (root, prepared_kind) = prepared.host_lease_request().ok_or_else(|| {
+            VmError::new(VmErrorKind::TypeMismatch {
+                operation: "context direct method lease",
+            })
+        })?;
+        if prepared_kind != *lease_kind {
+            return Err(VmError::new(VmErrorKind::TypeMismatch {
+                operation: "context direct method lease kind",
+            }));
+        }
+        let mut requests = Vec::with_capacity(param_leases.len().saturating_add(1));
+        requests.push((root, *lease_kind));
+        for (index, kind) in param_leases {
+            let Some(OwnedValue::HostRef(root)) = prepared.args().get(*index) else {
+                return Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "typed direct method host lease parameter",
+                }));
+            };
+            requests.push((*root, *kind));
+        }
+        let invoke = RuntimeDirectContextInvoker {
+            runtime_id: active.runtime_id,
+            engine: active.engine,
+            registry_image: active.registry_image,
+            artifact: active.artifact,
+            vm: active.vm,
+            session: &mut *active.session,
+            access: &mut *active.access,
+            heap: &mut *active.heap,
+            budget: &mut *active.budget,
+            script_global_values: active.script_global_values,
+            retained_values: std::sync::Arc::clone(&active.retained_values),
+            sidecars: &mut *active.sidecars,
+            root,
+            args: prepared.args().to_vec(),
+            function: std::sync::Arc::clone(function),
+        };
+        return active
+            .host
+            .invoke_direct_context(requests, Box::new(invoke))
+            .await;
+    }
+    if prepared.requires_host_lease() {
+        return active.host.invoke_prepared_with_lease(prepared).await;
+    }
+    if prepared.requires_host() {
+        let mut host = HostExecution {
+            adapter: active.host,
+            access: active.access,
+            script_globals: Some(active.script_global_values),
+        };
+        return prepared
+            .invoke_with_host(&mut host, Some(active.budget))
+            .await;
+    }
+    prepared.invoke().await
+}

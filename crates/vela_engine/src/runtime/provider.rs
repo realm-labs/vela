@@ -1,16 +1,99 @@
-use vela_bytecode::{LinkedMethodDispatchKind, ProviderReceiverPlan};
+use std::sync::{Arc, Mutex};
+
+use vela_bytecode::{LinkedArtifact, LinkedMethodDispatchKind, ProviderReceiverPlan};
 use vela_def::MethodId;
 use vela_hir::provider::ProviderKey;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::heap_execution::HeapExecution;
 use vela_vm::{allocate_zero_field_record, budget::ExecutionBudget};
 
-use super::{RuntimeImageStorage, RuntimeImpl, handles::EntryRequest, unknown_method};
+use super::{
+    RuntimeImageStorage, RuntimeImpl, handles::EntryRequest, script_globals::RuntimeValueRoots,
+    unknown_method,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProviderHandle {
     runtime_id: u64,
     key: ProviderKey,
+}
+
+pub(super) fn resolve_provider_reentry_target(
+    target: ProviderMethodTarget,
+    runtime_id: u64,
+    artifact: &Arc<LinkedArtifact>,
+    heap: &mut HeapExecution<'_>,
+    budget: &mut ExecutionBudget,
+    retained_values: &Arc<Mutex<RuntimeValueRoots>>,
+) -> VmResult<EntryRequest> {
+    if target.handle.runtime_id != runtime_id {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "provider handle belongs to another runtime",
+        }));
+    }
+    let resolved = resolve_provider_call(artifact, &target.handle.key, target.method)?;
+    let value = allocate_zero_field_record(
+        resolved.type_name,
+        resolved.type_id,
+        resolved.shape,
+        heap,
+        Some(budget),
+    )?;
+    let receiver = RuntimeValueRoots::retain(retained_values, runtime_id, value);
+    Ok(EntryRequest {
+        name: resolved.debug_name,
+        asyncness: resolved.asyncness,
+        function: resolved.function,
+        params: resolved.params,
+        param_defaults: resolved.param_defaults,
+        receiver: Some(receiver),
+    })
+}
+
+fn resolve_provider_call(
+    artifact: &Arc<LinkedArtifact>,
+    key: &ProviderKey,
+    method: MethodId,
+) -> VmResult<ResolvedProviderCall> {
+    let provider = artifact
+        .package_metadata()
+        .and_then(|metadata| metadata.installed_providers().get(key))
+        .ok_or_else(|| unknown_provider(key))?;
+    let dispatch = provider
+        .method(method)
+        .ok_or_else(|| unknown_method(format!("provider method {method:?}")))?;
+    let asyncness = provider
+        .method_asyncness(method)
+        .ok_or_else(|| unknown_method(format!("provider method {method:?}")))?;
+    let program = artifact.program();
+    let dispatch = program
+        .method_dispatch(dispatch)
+        .ok_or_else(|| unknown_method(format!("provider method {method:?}")))?;
+    let LinkedMethodDispatchKind::Script { function, .. } = dispatch.kind else {
+        return Err(unknown_method(format!("provider method {method:?}")));
+    };
+    let code = program
+        .function(function)
+        .ok_or_else(|| unknown_method(format!("provider method {method:?}")))?;
+    let linked_type = program
+        .ty(provider.provider_type())
+        .ok_or_else(|| unknown_provider(key))?;
+    let ProviderReceiverPlan::FreshZeroField { shape } = provider.receiver();
+    Ok(ResolvedProviderCall {
+        function,
+        asyncness,
+        type_id: linked_type.id,
+        shape,
+        type_name: program.debug_name(linked_type.debug_name).to_owned(),
+        debug_name: format!("provider {}::{method:?}", key.provider()),
+        params: code
+            .params
+            .iter()
+            .skip(1)
+            .map(|param| program.debug_name(*param).to_owned())
+            .collect(),
+        param_defaults: code.param_defaults.iter().skip(1).copied().collect(),
+    })
 }
 
 impl ProviderHandle {

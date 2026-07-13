@@ -3,7 +3,7 @@
 > **Track:** executor-neutral script suspension, Rust/Vela async interop,
 > scoped host leases, and same-execution reentry
 > **Document status:** ready for execution
-> **Execution status:** Batches A-B complete; Batch C active
+> **Execution status:** Batches A-C complete; Batch D active
 > **Baseline:** pulled `master` at `841a033d2` on 2026-07-13
 > **Plan execution style:** throughput-first large batches. Intermediate
 > compilation and tests may be red; each batch-completion checkpoint must be
@@ -1203,34 +1203,34 @@ are not claimed until Batch C.
 Purpose: support the mutable actor/service shape safely across await and nested
 Vela calls.
 
-- [ ] Add `HostLeaseRef`/`HostLeaseMut` without changing existing typed path
+- [x] Add `HostLeaseRef`/`HostLeaseMut` without changing existing typed path
   marker semantics.
-- [ ] Extend `ExecutionHost` with nested reentry binding scopes that use the
+- [x] Extend `ExecutionHost` with nested reentry binding scopes that use the
   outer execution's HostRef allocator and invalidate child refs on scope exit.
-- [ ] Implement atomic shared/exclusive lease validation, extraction,
+- [x] Implement atomic shared/exclusive lease validation, extraction,
   restoration, busy errors, nested scope invalidation, and adapter fail-closed
   behavior.
-- [ ] Integrate Runtime-owned host globals with safe typed lease extraction or
+- [x] Integrate Runtime-owned host globals with safe typed lease extraction or
   an explicit unsupported result; do not leave them on an accidental borrowing
   adapter path.
-- [ ] Extend `#[script_methods]` to generate async direct-receiver and typed host
+- [x] Extend `#[script_methods]` to generate async direct-receiver and typed host
   parameter wrappers on top of the completed lease protocol.
-- [ ] Make macro-generated `&self`, `&mut self`, `&T`, and `&mut T` host boundary
+- [x] Make macro-generated `&self`, `&mut self`, `&T`, and `&mut T` host boundary
   parameters acquire the correct direct typed leases while keeping references
   absent from script-visible types.
-- [ ] Add `NativeCallContext::call`, `call_async`, and target-binding operations
+- [x] Add `NativeCallContext::call`, `call_async`, and target-binding operations
   on the same session with inherited generation, host, heap, budgets,
   capabilities, profiler, and cancellation; do not add execution variants per
   target kind.
-- [ ] Implement mutable-state child reborrowing and ensure raw parent HostRef
+- [x] Implement mutable-state child reborrowing and ensure raw parent HostRef
   access fails while its exclusive lease is held.
-- [ ] Cover nested async-native -> Vela -> async-native reentry, error paths,
+- [x] Cover nested async-native -> Vela -> async-native reentry, error paths,
   call-depth exhaustion, alias conflicts, and multiple host objects.
-- [ ] Prove cancellation/error/panic-unwind RAII releases all scopes/leases and
+- [x] Prove cancellation/error/panic-unwind RAII releases all scopes/leases and
   Runtime can be reused.
-- [ ] Add a domain-neutral actor-state/service fixture matching the motivating
+- [x] Add a domain-neutral actor-state/service fixture matching the motivating
   ownership shape without depending on an actor framework.
-- [ ] Document the disjoint Runtime/host-storage requirement.
+- [x] Document the disjoint Runtime/host-storage requirement.
 
 Batch C completion gate: the complete mutable-state service and reentry example
 passes under the scoped `Send` contract and Miri-compatible safe Rust, with no
