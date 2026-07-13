@@ -1882,6 +1882,15 @@ CallArgs, while access through its raw parent HostRef remains busy. A caught
 child error unwinds only that reentry segment and leaves the parked parent
 native boundary resumable.
 
+Batch D preserves explicit reload activation while permitting staging during a
+suspended outer call. `HotReloadStagingHandle` shares only a synchronized
+pending-update slot with the Runtime; it never owns or changes the current
+`ProgramVersion`. Every active session continues on its pinned
+`Arc<LinkedArtifact>`, and completion or cancellation must release the Runtime
+borrow before `check_reload` can activate the staged generation. Callable
+asyncness is reload ABI for script, native, reflected/event, trait-method, and
+provider descriptors; sync/async changes require restart or explicit migration.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

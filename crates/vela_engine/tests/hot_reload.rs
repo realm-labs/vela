@@ -1,9 +1,51 @@
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::task::{Context, Poll, Waker};
+
+use vela_def::FunctionId;
 use vela_engine::engine::Engine;
+use vela_engine::native::{NativeFunctionDesc, TypeHint};
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
 use vela_reflect::permissions::ReflectPolicy;
 use vela_vm::owned_value::OwnedValue;
+
+struct ReloadGateFuture {
+    ready: Arc<AtomicBool>,
+    value: OwnedValue,
+}
+
+impl Future for ReloadGateFuture {
+    type Output = vela_vm::error::VmResult<OwnedValue>;
+
+    fn poll(self: Pin<&mut Self>, _context: &mut Context<'_>) -> Poll<Self::Output> {
+        if self.ready.load(Ordering::SeqCst) {
+            Poll::Ready(Ok(self.value.clone()))
+        } else {
+            Poll::Pending
+        }
+    }
+}
+
+fn reload_gate_engine(ready: Arc<AtomicBool>) -> Engine {
+    Engine::builder()
+        .register_async_fn(
+            NativeFunctionDesc::new("reload_gate", FunctionId::new(0xA5D0))
+                .param("value", TypeHint::i64())
+                .returns(TypeHint::i64()),
+            move |args| {
+                Box::pin(ReloadGateFuture {
+                    ready: Arc::clone(&ready),
+                    value: args.first().cloned().unwrap_or(OwnedValue::Unit),
+                })
+            },
+        )
+        .build()
+        .expect("reload gate engine should build")
+}
 
 fn call_raw(
     runtime: &mut Runtime,
@@ -84,6 +126,128 @@ fn runtime_hot_reload_update_waits_for_explicit_reload_safe_point() {
         ),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
+}
+
+#[test]
+fn suspended_async_call_keeps_old_generation_until_completion_safe_point() {
+    let ready = Arc::new(AtomicBool::new(false));
+    let engine = reload_gate_engine(Arc::clone(&ready));
+    let initial = engine
+        .compile_hot_reload_initial(
+            r#"
+async fn wait_value() -> i64 { return reload_gate(10).await; }
+async fn main() -> i64 { return (wait_value().await) + 1; }
+fn version() -> i64 { return 1; }
+"#,
+        )
+        .expect("initial async generation should compile");
+    let update = engine
+        .compile_hot_reload_update(
+            &initial,
+            r#"
+async fn wait_value() -> i64 { return reload_gate(10).await; }
+async fn main() -> i64 { return (wait_value().await) + 100; }
+fn version() -> i64 { return 2; }
+"#,
+        )
+        .expect("ABI-compatible async update should compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let staging = runtime
+        .hot_reload_staging_handle()
+        .expect("hot reload runtime should expose staging handle");
+    let mut future = runtime.call_async("main", CallArgs::new(), CallOptions::unbounded());
+    let mut context = Context::from_waker(Waker::noop());
+
+    assert!(matches!(
+        Pin::new(&mut future).poll(&mut context),
+        Poll::Pending
+    ));
+    assert_eq!(staging.stage_hot_update(update), None);
+    assert!(staging.has_pending_update());
+
+    ready.store(true, Ordering::SeqCst);
+    let Poll::Ready(result) = Pin::new(&mut future).poll(&mut context) else {
+        panic!("released native gate should resume the old generation");
+    };
+    let old_result = result.expect("old generation should complete");
+    drop(future);
+
+    assert_eq!(runtime.value_to_owned(&old_result), Ok(OwnedValue::i64(11)));
+    assert_eq!(
+        runtime
+            .hot_reload_version()
+            .expect("active generation should remain available")
+            .id
+            .0,
+        0
+    );
+
+    let report = runtime
+        .check_reload()
+        .expect("reload check should succeed")
+        .expect("staged update should activate after completion");
+    assert!(report.accepted);
+
+    let mut next = runtime.call_async("main", CallArgs::new(), CallOptions::unbounded());
+    let Poll::Ready(result) = Pin::new(&mut next).poll(&mut context) else {
+        panic!("ready native gate should complete the new generation");
+    };
+    let new_result = result.expect("new generation should complete");
+    drop(next);
+    assert_eq!(
+        runtime.value_to_owned(&new_result),
+        Ok(OwnedValue::i64(110))
+    );
+}
+
+#[test]
+fn cancelling_suspended_call_defers_reload_and_releases_runtime() {
+    let ready = Arc::new(AtomicBool::new(false));
+    let engine = reload_gate_engine(ready);
+    let initial = engine
+        .compile_hot_reload_initial(
+            r#"
+async fn main() -> i64 { return reload_gate(10).await; }
+fn version() -> i64 { return 1; }
+"#,
+        )
+        .expect("initial async generation should compile");
+    let update = engine
+        .compile_hot_reload_update(
+            &initial,
+            r#"
+async fn main() -> i64 { return reload_gate(20).await; }
+fn version() -> i64 { return 2; }
+"#,
+        )
+        .expect("ABI-compatible async update should compile");
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let staging = runtime
+        .hot_reload_staging_handle()
+        .expect("hot reload runtime should expose staging handle");
+    let mut future = runtime.call_async("main", CallArgs::new(), CallOptions::unbounded());
+    let mut context = Context::from_waker(Waker::noop());
+
+    assert!(matches!(
+        Pin::new(&mut future).poll(&mut context),
+        Poll::Pending
+    ));
+    assert_eq!(staging.stage_hot_update(update), None);
+    drop(future);
+
+    let old_version = runtime
+        .call("version", CallArgs::new(), CallOptions::unbounded())
+        .expect("cancellation should release Runtime while update remains staged");
+    assert_eq!(runtime.value_to_owned(&old_version), Ok(OwnedValue::i64(1)));
+
+    runtime
+        .check_reload()
+        .expect("reload check should succeed")
+        .expect("staged update should activate after cancellation");
+    let new_version = runtime
+        .call("version", CallArgs::new(), CallOptions::unbounded())
+        .expect("Runtime should execute the activated generation");
+    assert_eq!(runtime.value_to_owned(&new_version), Ok(OwnedValue::i64(2)));
 }
 
 #[test]

@@ -1,14 +1,47 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use crate::error::HotReloadResult;
 use crate::report::HotReloadReport;
 use crate::symbol::ProgramVersionId;
 use crate::version::{HotUpdate, ProgramVersion};
 
-#[derive(Clone, Debug, PartialEq)]
+/// A cloneable producer for the pending hot-update slot.
+///
+/// Staging never changes the active generation. Only `HotReloadRuntime` can
+/// consume the slot at an explicit reload safe point.
+#[derive(Clone, Debug)]
+pub struct HotReloadStagingHandle {
+    pending: Arc<Mutex<Option<HotReloadResult<HotUpdate>>>>,
+}
+
+impl HotReloadStagingHandle {
+    fn pending(&self) -> MutexGuard<'_, Option<HotReloadResult<HotUpdate>>> {
+        self.pending
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    #[must_use]
+    pub fn has_pending_update(&self) -> bool {
+        self.pending().is_some()
+    }
+
+    pub fn stage_hot_update(&self, update: HotUpdate) -> Option<HotReloadResult<HotUpdate>> {
+        self.stage_hot_update_result(Ok(update))
+    }
+
+    pub fn stage_hot_update_result(
+        &self,
+        update: HotReloadResult<HotUpdate>,
+    ) -> Option<HotReloadResult<HotUpdate>> {
+        self.pending().replace(update)
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct HotReloadRuntime {
     current: Arc<ProgramVersion>,
-    pending: Option<HotReloadResult<HotUpdate>>,
+    staging: HotReloadStagingHandle,
 }
 
 impl HotReloadRuntime {
@@ -16,7 +49,9 @@ impl HotReloadRuntime {
     pub fn new(initial: ProgramVersion) -> Self {
         Self {
             current: Arc::new(initial),
-            pending: None,
+            staging: HotReloadStagingHandle {
+                pending: Arc::new(Mutex::new(None)),
+            },
         }
     }
 
@@ -27,7 +62,12 @@ impl HotReloadRuntime {
 
     #[must_use]
     pub fn has_pending_update(&self) -> bool {
-        self.pending.is_some()
+        self.staging.has_pending_update()
+    }
+
+    #[must_use]
+    pub fn staging_handle(&self) -> HotReloadStagingHandle {
+        self.staging.clone()
     }
 
     pub fn stage_hot_update(&mut self, update: HotUpdate) -> Option<HotReloadResult<HotUpdate>> {
@@ -38,14 +78,13 @@ impl HotReloadRuntime {
         &mut self,
         update: HotReloadResult<HotUpdate>,
     ) -> Option<HotReloadResult<HotUpdate>> {
-        self.pending.replace(update)
+        self.staging.stage_hot_update_result(update)
     }
 
     #[must_use]
     pub fn check_reload(&mut self) -> Option<HotReloadReport> {
-        self.pending
-            .take()
-            .map(|update| self.apply_hot_update_result_report(update))
+        let update = self.staging.pending().take();
+        update.map(|update| self.apply_hot_update_result_report(update))
     }
 
     pub fn apply_hot_update(&mut self, update: HotUpdate) -> HotReloadResult<Arc<ProgramVersion>> {

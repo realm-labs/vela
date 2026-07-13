@@ -13,6 +13,7 @@ use vela_host::path::HostRef;
 use vela_hot_reload::error::HotReloadResult;
 use vela_hot_reload::report::HotReloadReport;
 use vela_hot_reload::runtime::HotReloadRuntime;
+pub use vela_hot_reload::runtime::HotReloadStagingHandle;
 use vela_hot_reload::symbol::ProgramVersionId;
 use vela_hot_reload::version::{HotUpdate, ProgramVersion};
 use vela_vm::HostExecution;
@@ -228,6 +229,18 @@ where
     #[must_use]
     pub fn hot_reload_version(&self) -> Option<std::sync::Arc<ProgramVersion>> {
         self.hot_reload.as_ref().map(HotReloadRuntime::current)
+    }
+
+    /// Returns a staging-only handle that may queue an update while an async
+    /// outer call has the Runtime borrowed.
+    ///
+    /// The handle cannot activate the update. Call `check_reload` on the
+    /// Runtime after the outer call completes or is cancelled.
+    #[must_use]
+    pub fn hot_reload_staging_handle(&self) -> Option<HotReloadStagingHandle> {
+        self.hot_reload
+            .as_ref()
+            .map(HotReloadRuntime::staging_handle)
     }
 
     pub fn apply_hot_update(&mut self, update: HotUpdate) -> EngineResult<HotReloadReport> {

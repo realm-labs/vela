@@ -1240,9 +1240,9 @@ real Rust reference ever represented in a Vela value.
 
 Purpose: close every cross-cutting contract and remove provisional omissions.
 
-- [ ] Pin suspended frames/providers/reentry to one LinkedArtifact and defer
+- [x] Pin suspended frames/providers/reentry to one LinkedArtifact and defer
   reload activation until outer completion/cancellation.
-- [ ] Add reload ABI rejection for callable/provider/event/native asyncness
+- [x] Add reload ABI rejection for callable/provider/event/native asyncness
   changes and retained-old-generation tests.
 - [ ] Verify await root-live maps, suspended parent roots during nested GC,
   owned native arguments/results, and no Rust future in script GC.

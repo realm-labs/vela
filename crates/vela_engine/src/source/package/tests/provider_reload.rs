@@ -109,6 +109,55 @@ impl CommandProvider for Command {{ pub fn run(self{parameter}) -> i64 {{ return
 }
 
 #[test]
+fn provider_service_asyncness_change_is_rejected() {
+    let root = package_fixture("provider_asyncness_reload");
+    let source = |async_keyword: &str| {
+        format!(
+            r#"pub trait CommandProvider {{ {async_keyword}fn run(self) -> i64; }}
+pub struct Command {{}}
+#[provider(id = "command")]
+impl CommandProvider for Command {{ pub {async_keyword}fn run(self) -> i64 {{ return 1; }} }}
+"#
+        )
+    };
+    write_package(&root, "dev.vela.plugin", "plugin", "", &source(""));
+    let engine = Engine::builder().build().expect("engine");
+    let first = engine
+        .load_package_workspace(root.join("vela.toml"))
+        .expect("first snapshot");
+    let catalog = engine.discover_providers(&first).expect("catalog");
+    let key = catalog.providers()[0].key().clone();
+    let selection = catalog.select([key.clone()]).expect("selection");
+    let request = ProviderCompileRequest::for_selection(&first, selection);
+    let initial = engine
+        .compile_provider_hot_reload_initial(&first, &request)
+        .expect("initial version");
+
+    fs::write(root.join("src/api.vela"), source("async "))
+        .expect("change provider method asyncness");
+    let second = engine
+        .load_package_workspace(root.join("vela.toml"))
+        .expect("second snapshot");
+    let catalog = engine.discover_providers(&second).expect("catalog");
+    let selection = catalog.select([key]).expect("selection");
+    let request = ProviderCompileRequest::for_selection(&second, selection);
+    let error = engine
+        .compile_provider_hot_reload_update(&initial, &second, &request)
+        .expect_err("provider method asyncness change should be rejected");
+
+    let EnginePackageErrorKind::HotReload(error) = error.kind else {
+        panic!("provider asyncness change should report hot reload ABI failure");
+    };
+    let vela_hot_reload::error::HotReloadErrorKind::ChangedPackageProviderAbi { reason, .. } =
+        error.kind
+    else {
+        panic!("provider asyncness change should report provider ABI failure");
+    };
+    assert_eq!(reason, "provider service method asyncness changed");
+    remove_fixture(root);
+}
+
+#[test]
 fn capability_expansion_requires_host_approval() {
     let root = package_fixture("provider_capability_reload");
     let source = |body: &str| {

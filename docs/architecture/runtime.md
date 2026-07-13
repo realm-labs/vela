@@ -272,6 +272,15 @@ single allocator and are invalid after the child scope exits. A mutable method
 must explicitly reborrow its lease into child arguments; the raw parent HostRef
 remains busy while the exclusive lease is live.
 
+Async suspension does not change hot-reload ownership. The outer execution and
+all nested frames, providers, closures, and reentry retain one
+`Arc<LinkedArtifact>`. A cloneable `HotReloadStagingHandle` may replace only the
+pending-update slot while `call_async` holds its scoped mutable Runtime borrow;
+it cannot activate an update or mutate the active image. After the outer future
+completes or is dropped, the embedding host calls `Runtime::check_reload` at its
+existing explicit safe point. No suspended frame, register file, native future,
+or host lease migrates generations.
+
 ### Execution Budget
 
 The VM charges backend-neutral execution units at explicit MIR semantic points:
