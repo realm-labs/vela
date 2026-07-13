@@ -349,7 +349,6 @@ dependencies = [
  "vela_def",
  "vela_hir",
  "vela_mir",
- "vela_package",
  "vela_reflect",
  "vela_registry",
 ]
