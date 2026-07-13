@@ -1772,6 +1772,18 @@ package capabilities into `LinkedArtifact`. Ordinary artifacts carry an empty
 prerequisite. Reload rebuilds the same roots against a new snapshot and rejects
 an incidental root-set change.
 
+### Snapshot-Bound Provider Discovery
+
+Provider discovery is a read-only projection over one sealed package
+compilation snapshot. HIR retains attribute arguments structurally and accepts
+providers only as `#[provider(id = "...")]` resolved trait impls whose target is
+a public zero-field script record. Stable identity is `PackageId + TraitId +
+ProviderId`; public catalog descriptors expose stable type/method IDs and file
+locations, while generation-local HIR IDs remain internal. Engine derives
+declared and statically observed capability metadata through analysis without
+compiling or executing provider code. `ProviderSelection` retains the catalog's
+snapshot ID, and cross-generation selection reuse is rejected before linking.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

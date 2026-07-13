@@ -24,7 +24,8 @@ pub use crate::runtime::{
 pub use crate::schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
 pub use crate::source::{
     EnginePackageError, EnginePackageErrorKind, PackageCompilationSnapshot,
-    PackageCompilationSnapshotId, PackageCompileRequest,
+    PackageCompilationSnapshotId, PackageCompileRequest, ProviderCatalog, ProviderCatalogError,
+    ProviderDescriptor, ProviderMethodDescriptor, ProviderSelection, ProviderSourceLocation,
 };
 pub use crate::source::{EngineSourceError, EngineSourceErrorKind};
 pub use crate::{args, host};

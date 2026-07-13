@@ -930,6 +930,10 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
                 cursor = self.skip_attribute(cursor);
                 continue;
             }
+            if self.at_kind(cursor, SyntaxKind::PubKw) {
+                cursor += 1;
+                continue;
+            }
             return self.at_kind(cursor, SyntaxKind::FnKw).then_some(cursor);
         }
     }

@@ -17,6 +17,13 @@ use vela_package::{PackageGraph, PackageGraphError, PackageId, load_package_grap
 
 use crate::engine::Engine;
 
+mod provider;
+
+pub use provider::{
+    ProviderCatalog, ProviderCatalogError, ProviderDescriptor, ProviderMethodDescriptor,
+    ProviderSelection, ProviderSourceLocation,
+};
+
 static NEXT_PACKAGE_SNAPSHOT: AtomicU64 = AtomicU64::new(1);
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -68,6 +75,8 @@ pub enum EnginePackageErrorKind {
         missing: CapabilitySet,
     },
     RequestFingerprintMismatch,
+    ProviderDiscovery(vela_hir::provider::ProviderDiscoveryError),
+    ProviderAnalysis(String),
 }
 
 impl PackageCompilationSnapshotId {
@@ -160,6 +169,8 @@ impl fmt::Display for EnginePackageError {
             ),
             EnginePackageErrorKind::RequestFingerprintMismatch => formatter
                 .write_str("package hot reload request does not match the active root package set"),
+            EnginePackageErrorKind::ProviderDiscovery(error) => error.fmt(formatter),
+            EnginePackageErrorKind::ProviderAnalysis(message) => formatter.write_str(message),
         }
     }
 }

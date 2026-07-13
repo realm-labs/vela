@@ -606,12 +606,18 @@ fn impl_method_metadata(
 ) -> Option<ImplMethodMetadata> {
     let name = method.name_token()?;
     Some(ImplMethodMetadata {
+        attrs: attrs_from_cst(source, method.attributes()),
         node,
         name: name.text().to_owned(),
         name_span: span_for(source, name.text_range()),
         signature: function_signature(source, method.param_list(), method.return_type()),
         span: body_span,
         body_span,
+        visibility: if method.is_public() {
+            Visibility::Public
+        } else {
+            Visibility::Private
+        },
     })
 }
 

@@ -7,6 +7,7 @@ pub mod binding;
 pub mod body;
 pub mod ids;
 pub mod module_graph;
+pub mod provider;
 pub mod script_methods;
 pub mod source_ingestion;
 mod top_level;

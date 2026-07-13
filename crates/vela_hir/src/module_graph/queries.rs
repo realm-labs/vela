@@ -12,7 +12,9 @@ use crate::type_hint::{
     TraitShape,
 };
 
-use super::{Declaration, DeclarationIndex, DeclarationKind, Import, ModuleGraph};
+use super::{
+    Declaration, DeclarationIndex, DeclarationKind, Import, ImportResolution, ModuleGraph,
+};
 
 impl ModuleGraph {
     #[must_use]
@@ -30,6 +32,14 @@ impl ModuleGraph {
     #[must_use]
     pub fn module_package(&self, module: ModuleId) -> Option<&PackageId> {
         self.module_key(module).map(|key| &key.package)
+    }
+
+    #[must_use]
+    pub fn source_package(&self, source: SourceId) -> Option<&PackageId> {
+        self.modules
+            .iter()
+            .find(|module| module.source == source)
+            .map(|module| &module.key.package)
     }
 
     #[must_use]
@@ -386,6 +396,36 @@ impl ModuleGraph {
         let declaration = self.module(module)?.get(name)?;
         self.declaration(declaration)
             .filter(|declaration| declaration.kind == kind)
+    }
+
+    #[must_use]
+    pub fn resolve_visible_declaration_path(
+        &self,
+        requesting_module: ModuleId,
+        path: &[String],
+        kind: DeclarationKind,
+    ) -> Option<&Declaration> {
+        if let [name] = path {
+            if let Some(declaration) = self
+                .module(requesting_module)
+                .and_then(|declarations| declarations.get(name))
+                .and_then(|declaration| self.declaration(declaration))
+                .filter(|declaration| declaration.kind == kind)
+            {
+                return Some(declaration);
+            }
+            return self.imports(requesting_module)?.iter().find_map(|import| {
+                let binding = super::names::import_binding_name(import)?;
+                if binding != *name {
+                    return None;
+                }
+                let ImportResolution::Declaration(declaration) = import.resolution?;
+                self.declaration(declaration)
+                    .filter(|declaration| declaration.kind == kind)
+            });
+        }
+        let current = self.module_key(requesting_module)?;
+        self.declaration_by_type_path(path, current, kind)
     }
 
     #[must_use]

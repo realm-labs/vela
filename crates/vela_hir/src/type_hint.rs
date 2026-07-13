@@ -141,10 +141,12 @@ pub enum ImplMetadataKind {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ImplMethodMetadata {
+    pub attrs: Vec<HirAttribute>,
     pub node: HirNodeId,
     pub name: String,
     pub name_span: Span,
     pub signature: FunctionSignature,
     pub span: Span,
     pub body_span: Span,
+    pub visibility: crate::module_graph::Visibility,
 }

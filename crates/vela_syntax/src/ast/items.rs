@@ -995,6 +995,16 @@ impl SyntaxImplMethod {
     }
 
     #[must_use]
+    pub fn pub_token(&self) -> Option<SyntaxToken> {
+        pub_token(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn is_public(&self) -> bool {
+        self.pub_token().is_some()
+    }
+
+    #[must_use]
     pub fn name_token(&self) -> Option<SyntaxToken> {
         token_after(&self.syntax, SyntaxKind::FnKw, SyntaxKind::Ident)
     }

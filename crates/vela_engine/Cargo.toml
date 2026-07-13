@@ -7,6 +7,7 @@ version.workspace = true
 [dependencies]
 serde = { workspace = true, optional = true }
 vela_bytecode = { workspace = true }
+vela_analysis = { workspace = true }
 vela_common = { workspace = true }
 
 vela_def = { workspace = true }
@@ -24,7 +25,6 @@ vela_vm = { workspace = true }
 serde = ["dep:serde", "vela_vm/serde"]
 
 [dev-dependencies]
-vela_analysis = { workspace = true }
 vela_bytecode = { workspace = true, features = ["test-support"] }
 vela_macros = { workspace = true }
 vela_language_service = { workspace = true }

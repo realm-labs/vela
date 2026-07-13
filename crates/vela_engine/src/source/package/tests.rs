@@ -2,7 +2,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use vela_common::Capability;
 use vela_common::ScalarValue;
+use vela_def::{script_trait_id, script_trait_method_id};
 use vela_package::PackageId;
 use vela_vm::owned_value::OwnedValue;
 
@@ -431,6 +433,142 @@ fn ordinary_dependency_abi_change_is_rejected_without_image_advance() {
 
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     assert_eq!(call_i64(&mut runtime), 1);
+    remove_fixture(root);
+}
+
+#[test]
+fn catalog_reports_stable_ids_and_source_spans() {
+    let root = package_fixture("provider_catalog_ids");
+    write_package(
+        &root,
+        "dev.vela.app",
+        "app",
+        "",
+        r#"pub trait CommandProvider { fn run(self, value: i64) -> i64; }
+pub struct SortInventory {}
+#[provider(id = "sort_inventory")]
+impl CommandProvider for SortInventory {
+    pub fn run(self, value: i64) -> i64 { return value; }
+}
+"#,
+    );
+    let engine = Engine::builder().build().expect("engine");
+    let snapshot = engine
+        .load_package_workspace(root.join("vela.toml"))
+        .expect("snapshot");
+    let catalog = engine.discover_providers(&snapshot).expect("catalog");
+    let provider = &catalog.providers()[0];
+    let service = script_trait_id("dev.vela.app", "main::CommandProvider");
+
+    assert_eq!(catalog.snapshot(), snapshot.id());
+    assert_eq!(provider.key().service(), service);
+    assert_eq!(provider.key().provider().as_str(), "sort_inventory");
+    assert_eq!(
+        provider.methods()[0].id(),
+        script_trait_method_id("dev.vela.app", "main::CommandProvider", "run")
+    );
+    assert_eq!(provider.methods()[0].name(), "run");
+    assert_eq!(
+        provider.source().path(),
+        fs::canonicalize(root.join("src/main.vela")).expect("canonical source path")
+    );
+    assert!(provider.source().start() < provider.source().end());
+    remove_fixture(root);
+}
+
+#[test]
+fn discovery_does_not_execute_script_or_host_code() {
+    let root = package_fixture("provider_catalog_no_execute");
+    write_package(
+        &root,
+        "dev.vela.app",
+        "app",
+        "[capabilities]\nrequires = [\"time\"]\n",
+        r#"pub trait ClockProvider { fn now(self) -> i64; }
+pub struct Clock {}
+#[provider(id = "clock")]
+impl ClockProvider for Clock {
+    pub fn now(self) -> i64 { return time::now(); }
+}
+"#,
+    );
+    let engine = Engine::builder().build().expect("engine without time host");
+    let snapshot = engine
+        .load_package_workspace(root.join("vela.toml"))
+        .expect("snapshot");
+    let catalog = engine
+        .discover_providers(&snapshot)
+        .expect("discovery is analysis only");
+
+    assert_eq!(catalog.providers().len(), 1);
+    assert!(
+        catalog.providers()[0]
+            .package_statically_observed_capabilities()
+            .contains(Capability::Time)
+    );
+    remove_fixture(root);
+}
+
+#[test]
+fn catalog_cannot_mix_selection_from_another_generation() {
+    let root = package_fixture("provider_catalog_generation");
+    write_package(
+        &root,
+        "dev.vela.app",
+        "app",
+        "",
+        r#"pub trait CommandProvider { fn run(self) -> i64; }
+pub struct Command {}
+#[provider(id = "command")]
+impl CommandProvider for Command { pub fn run(self) -> i64 { return 1; } }
+"#,
+    );
+    let engine = Engine::builder().build().expect("engine");
+    let first = engine
+        .load_package_workspace(root.join("vela.toml"))
+        .expect("first snapshot");
+    let first_catalog = engine.discover_providers(&first).expect("first catalog");
+    let selection = first_catalog
+        .select([first_catalog.providers()[0].key().clone()])
+        .expect("selection");
+    let second = engine
+        .load_package_workspace(root.join("vela.toml"))
+        .expect("second snapshot");
+    let second_catalog = engine.discover_providers(&second).expect("second catalog");
+
+    assert!(matches!(
+        second_catalog.validate_selection(&selection),
+        Err(ProviderCatalogError::SnapshotMismatch { .. })
+    ));
+    remove_fixture(root);
+}
+
+#[test]
+fn statically_observed_effect_must_be_declared_by_package() {
+    let root = package_fixture("provider_catalog_capability");
+    write_package(
+        &root,
+        "dev.vela.app",
+        "app",
+        "",
+        r#"pub trait ClockProvider { fn now(self) -> i64; }
+pub struct Clock {}
+#[provider(id = "clock")]
+impl ClockProvider for Clock { pub fn now(self) -> i64 { return time::now(); } }
+"#,
+    );
+    let engine = Engine::builder().build().expect("engine");
+    let snapshot = engine
+        .load_package_workspace(root.join("vela.toml"))
+        .expect("snapshot");
+    let error = engine
+        .discover_providers(&snapshot)
+        .expect_err("undeclared provider effect");
+
+    assert!(matches!(
+        error.kind,
+        EnginePackageErrorKind::UndeclaredCapabilities { .. }
+    ));
     remove_fixture(root);
 }
 

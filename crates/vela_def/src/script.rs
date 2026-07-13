@@ -1,4 +1,6 @@
-use crate::{DefPath, FieldId, FunctionId, GlobalId, MethodId, TypeId, VariantId, stable_id};
+use crate::{
+    DefPath, FieldId, FunctionId, GlobalId, MethodId, TraitId, TypeId, VariantId, stable_id,
+};
 
 /// Returns the canonical definition path for a script function symbol.
 ///
@@ -66,6 +68,13 @@ pub fn script_type_id(package: &str, symbol: &str, explicit: Option<u128>) -> Ty
             )))
         },
     )
+}
+
+/// Returns the stable semantic identity for a script trait symbol.
+#[must_use]
+pub fn script_trait_id(package: &str, symbol: &str) -> TraitId {
+    let (module, name) = split_source_symbol(symbol);
+    TraitId::from_def_id(DefPath::trait_def(package, module, name).id())
 }
 
 /// Returns the canonical definition path for a script global symbol.

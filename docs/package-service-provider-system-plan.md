@@ -955,31 +955,31 @@ cargo test -p vela_hot_reload package
 
 ## 22. Phase 4: Structured Provider HIR And Catalog
 
-- [ ] Replace flattened HIR attribute values with structured arguments without
+- [x] Replace flattened HIR attribute values with structured arguments without
       regressing existing `doc`, `derive`, `id`, event, or policy attributes.
-- [ ] Parse and validate `#[provider(id = "...")]` on trait impls.
-- [ ] Resolve service trait and provider target declarations package-aware.
-- [ ] Require a public zero-field provider target.
-- [ ] Validate method coverage, defaults, signatures, return hints, effects,
+- [x] Parse and validate `#[provider(id = "...")]` on trait impls.
+- [x] Resolve service trait and provider target declarations package-aware.
+- [x] Require a public zero-field provider target.
+- [x] Validate method coverage, defaults, signatures, return hints, effects,
       access, and declared/statically-observed capabilities.
-- [ ] Reject duplicate provider keys and malformed/redundant arguments.
-- [ ] Add stable `ProviderKey`, public descriptors, source locations, and a
+- [x] Reject duplicate provider keys and malformed/redundant arguments.
+- [x] Add stable `ProviderKey`, public descriptors, source locations, and a
       lightweight catalog bound to one `PackageCompilationSnapshotId`.
-- [ ] Add `Engine::discover_providers(&PackageCompilationSnapshot)` without
+- [x] Add `Engine::discover_providers(&PackageCompilationSnapshot)` without
       compilation or execution.
-- [ ] Prove discovery does not execute top-level code or native/HostAccess work.
+- [x] Prove discovery does not execute top-level code or native/HostAccess work.
 
 Focused tests:
 
-- [ ] `provider_service_is_inferred_from_resolved_impl_trait`
-- [ ] `provider_rejects_non_trait_impl_and_nonzero_field_target`
-- [ ] `provider_rejects_redundant_unknown_duplicate_or_missing_id`
-- [ ] `provider_rejects_method_signature_and_effect_mismatch`
-- [ ] `duplicate_provider_key_is_rejected`
-- [ ] `catalog_reports_stable_ids_and_source_spans`
-- [ ] `discovery_does_not_execute_script_or_host_code`
-- [ ] `catalog_cannot_mix_selection_from_another_generation`
-- [ ] `statically_observed_effect_must_be_declared_by_package`
+- [x] `provider_service_is_inferred_from_resolved_impl_trait`
+- [x] `provider_rejects_non_trait_impl_and_nonzero_field_target`
+- [x] `provider_rejects_redundant_unknown_duplicate_or_missing_id`
+- [x] `provider_rejects_method_signature_and_effect_mismatch`
+- [x] `duplicate_provider_key_is_rejected`
+- [x] `catalog_reports_stable_ids_and_source_spans`
+- [x] `discovery_does_not_execute_script_or_host_code`
+- [x] `catalog_cannot_mix_selection_from_another_generation`
+- [x] `statically_observed_effect_must_be_declared_by_package`
 
 Validation:
 

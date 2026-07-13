@@ -32,8 +32,9 @@ required.
 ## Current Focus
 
 The package and service-provider hard-switch track is active. Phase 0 inventory,
-Phase 1 package foundation, the atomic Phase 2 package-identity cutover, and
-Phase 3 ordinary package compilation are complete and verified. `vela_package`
+Phase 1 package foundation, the atomic Phase 2 package-identity cutover, Phase 3
+ordinary package compilation, and Phase 4 provider discovery are complete and
+verified. `vela_package`
 now owns validated package/module
 identity, structured spanned `vela.toml` parsing, path dependency/workspace
 graph construction, path authorization, and deterministic source discovery.
@@ -47,8 +48,12 @@ uses explicit reserved packages. Engine now loads a sealed package/HIR snapshot,
 binds root requests to its generation, compiles only each root's transitive
 dependency closure, seals package/capability/root metadata into the linked
 artifact, runs ordinary artifacts without provider state, and rebuilds the same
-root set for hot reload. The next step is Phase 4 structured provider HIR and
-read-only catalog discovery.
+root set for hot reload. HIR now preserves structured attribute arguments and
+discovers explicit provider trait impls through resolved package-aware service
+and target identities. Engine projects them into immutable snapshot-bound
+catalogs with stable keys, method IDs, source locations, and declared/observed
+capabilities without compilation or execution. The next step is Phase 5 linked
+provider selection and Runtime dispatch.
 
 The MIR/executable-generation implementation is complete through Batch F /
 Phase 11 in
