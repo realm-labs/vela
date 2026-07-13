@@ -1248,7 +1248,7 @@ Purpose: close every cross-cutting contract and remove provisional omissions.
   owned native arguments/results, and no Rust future in script GC.
 - [x] Seal deterministic execution-unit behavior, call-depth retention,
   no-busy-poll behavior, and memory-limit interactions.
-- [ ] Complete provider target resolution through `RuntimeCallTarget`, including
+- [x] Complete provider target resolution through `RuntimeCallTarget`, including
   asyncness and handle/runtime validation, with no provider-specific call API or
   duplicate runtime setup.
 - [ ] Complete reflection invocation/metadata, package metadata, diagnostics,
