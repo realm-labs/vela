@@ -1915,6 +1915,36 @@ impl Vm {
                     else {
                         unreachable!("script dynamic targets return through a frame push")
                     };
+                    if let script_method_calls::LinkedDynamicNonScriptTarget::Host { method_id } =
+                        &target
+                        && let Some(function) = self.async_host_method_ids.get(method_id)
+                    {
+                        let name = program.debug_name(*method_name).to_owned();
+                        let Some(resume) = await_resume else {
+                            return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait { name })
+                                .with_source_span_if_absent(instruction.span));
+                        };
+                        let prepared = host_access::prepare_async_host_root_method_args(
+                            frame,
+                            heap.as_deref(),
+                            *receiver,
+                            args,
+                        )?;
+                        frame_state.ip = resume;
+                        return Ok(FrameDriveOutcome::Async {
+                            call: PreparedAsyncCall {
+                                function:
+                                    native_function_calls::PreparedAsyncNativeFunction::HostMethod {
+                                        function: Arc::clone(function),
+                                        receiver: prepared.receiver,
+                                    },
+                                args: prepared.args,
+                                name,
+                            },
+                            destination: Some(*dst),
+                            source_span: instruction.span,
+                        });
+                    }
                     script_method_calls::dispatch_resolved_linked_dynamic_method_call(
                         self,
                         context,

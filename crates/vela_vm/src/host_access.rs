@@ -1,4 +1,4 @@
-use vela_bytecode::linked::LinkedMethodDispatchKind;
+use vela_bytecode::linked::{DynamicCallArgumentLinked, LinkedMethodDispatchKind};
 use vela_bytecode::{
     CacheSiteId, DebugNameId, HostTargetPlanId, LinkedProgram, MethodDispatchHandle, Register,
 };
@@ -507,6 +507,23 @@ pub(crate) fn prepare_async_host_method_args(
         .map(|register| value_to_owned(&frame.read(*register)?, heap))
         .collect::<VmResult<Vec<_>>>()?;
     Ok(PreparedAsyncHostMethodArgs { receiver, args })
+}
+
+pub(crate) fn prepare_async_host_root_method_args(
+    frame: &CallFrame,
+    heap: Option<&HeapExecution<'_>>,
+    receiver: Register,
+    args: &[DynamicCallArgumentLinked],
+) -> VmResult<PreparedAsyncHostMethodArgs> {
+    let root = expect_host_ref(&frame.read(receiver)?, "host_call")?;
+    let args = crate::script_method_calls::dynamic_value_args_from_linked_arguments(frame, args)?
+        .iter()
+        .map(|value| value_to_owned(value, heap))
+        .collect::<VmResult<Vec<_>>>()?;
+    Ok(PreparedAsyncHostMethodArgs {
+        receiver: HostPath::new(root),
+        args,
+    })
 }
 
 pub(crate) fn execute_host_root_method_call(

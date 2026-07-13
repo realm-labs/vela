@@ -143,6 +143,34 @@ pub type AsyncHostMethodFunction = Arc<
         + Sync
         + 'static,
 >;
+pub(crate) enum ConditionalAsyncNativeFunction {
+    Pure(AsyncNativeFunction),
+    Host(AsyncHostNativeFunction),
+    HostMethod {
+        function: AsyncHostMethodFunction,
+        receiver: vela_host::path::HostPath,
+    },
+}
+
+pub(crate) enum ConditionalHostNativeOutcome {
+    Complete(OwnedValue),
+    Async {
+        function: ConditionalAsyncNativeFunction,
+        args: Vec<OwnedValue>,
+        diagnostic_name: String,
+    },
+}
+
+pub(crate) type ConditionalHostNativeFunction = Arc<
+    dyn for<'host, 'budget> Fn(
+            &[OwnedValue],
+            &mut HostExecution<'host>,
+            Option<&'budget mut ExecutionBudget>,
+        ) -> VmResult<ConditionalHostNativeOutcome>
+        + Send
+        + Sync
+        + 'static,
+>;
 pub type BorrowedNativeFunction = Arc<
     dyn for<'heap, 'budget> Fn(
             &[Value],
@@ -181,6 +209,7 @@ pub struct Vm {
     async_native_ids: HashMap<FunctionId, AsyncNativeFunction>,
     async_host_native_ids: HashMap<FunctionId, AsyncHostNativeFunction>,
     async_host_method_ids: HashMap<HostMethodId, AsyncHostMethodFunction>,
+    conditional_host_native_ids: HashMap<FunctionId, ConditionalHostNativeFunction>,
     borrowed_native_ids: HashMap<FunctionId, BorrowedNativeFunction>,
     host_native_ids: HashMap<FunctionId, HostNativeFunction>,
     borrowed_host_native_ids: HashMap<FunctionId, BorrowedHostNativeFunction>,
@@ -719,6 +748,22 @@ impl Vm {
         self.async_host_method_ids.insert(id, Arc::new(function));
     }
 
+    pub(crate) fn register_conditional_host_native_with_id(
+        &mut self,
+        id: FunctionId,
+        function: impl for<'host, 'budget> Fn(
+            &[OwnedValue],
+            &mut HostExecution<'host>,
+            Option<&'budget mut ExecutionBudget>,
+        ) -> VmResult<ConditionalHostNativeOutcome>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        self.conditional_host_native_ids
+            .insert(id, Arc::new(function));
+    }
+
     pub fn register_borrowed_native(
         &mut self,
         name: impl Into<String>,
@@ -854,6 +899,7 @@ impl Vm {
             .keys()
             .chain(self.async_native_ids.keys())
             .chain(self.async_host_native_ids.keys())
+            .chain(self.conditional_host_native_ids.keys())
             .chain(self.borrowed_native_ids.keys())
             .chain(self.host_native_ids.keys())
             .chain(self.borrowed_host_native_ids.keys())

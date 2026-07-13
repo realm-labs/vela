@@ -240,9 +240,22 @@ configured language budget.
 
 Await is preserved as explicit verified MIR and linked resume control flow.
 Known async calls require await, sync entry calls reject declared async entries,
-and non-awaited dynamic async targets trap before invocation. `call` and
-`call_async` enter this same session driver; real executor-neutral Rust future
-suspension is the active next checkpoint, not a second interpreter.
+and non-awaited dynamic or reflected async targets trap before invocation.
+`call` and `call_async` enter this same session driver. `call_async` returns a
+scoped `Send` future that may borrow Runtime, call arguments, and a fallback
+adapter for the invocation lifetime; it does not require Runtime ownership or
+`'static` inputs. The driver returns `Pending` immediately when a registered
+Rust future does, and resumes only when its caller polls again. Core runtime
+crates contain no executor or Tokio dependency.
+
+Engine registration has one async family beside each supported native boundary:
+pure functions, HostAccess functions, NativeCallContext functions, and
+HostPath-based methods. Their factories are `Send + Sync + 'static`, while the
+returned `NativeCallFuture<'call>` may borrow invocation arguments and host
+execution state for `'call`. `#[script_function]`, `#[script_context_function]`,
+and `#[script_host_function]` emit the same contract for Rust `async fn`.
+Direct Rust `&self`/`&mut self` async methods remain owned by the scoped host
+lease checkpoint; scripts continue to receive only HostPath-based values.
 
 ### Execution Budget
 

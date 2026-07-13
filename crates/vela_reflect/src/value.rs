@@ -384,6 +384,21 @@ pub fn call_with_policy(
     call_impl(ctx, target, method, args, Some(policy))
 }
 
+pub fn resolve_host_method_with_policy<'a>(
+    registry: &'a TypeRegistry,
+    target: &ReflectValue,
+    method: &str,
+    policy: &ReflectPolicy,
+) -> ReflectResult<&'a crate::registry::MethodDesc> {
+    let ReflectValue::HostRef(host_ref) = target else {
+        return Err(ReflectError::new(ReflectErrorKind::InvalidTarget));
+    };
+    let desc = host_type(registry, *host_ref)?;
+    let method_desc = find_method_with_policy(desc, method, policy)?;
+    policy.require_method_call_access(&desc.key.name, method_desc)?;
+    Ok(method_desc)
+}
+
 fn call_impl(
     ctx: &mut ReflectContext<'_>,
     target: &ReflectValue,
@@ -394,18 +409,11 @@ fn call_impl(
     let ReflectValue::HostRef(host_ref) = target else {
         return Err(ReflectError::new(ReflectErrorKind::InvalidTarget));
     };
-    let type_name = ctx
-        .registry
-        .type_of_host(*host_ref)
-        .map_or_else(|| "<unknown>".to_owned(), |desc| desc.key.name.clone());
     let method_desc = if let Some(policy) = policy {
-        find_method_with_policy(host_type(ctx.registry, *host_ref)?, method, policy)?
+        resolve_host_method_with_policy(ctx.registry, target, method, policy)?
     } else {
         ctx.registry.host_method(*host_ref, method)?
     };
-    if let Some(policy) = policy {
-        policy.require_method_call_access(&type_name, method_desc)?;
-    }
     let args = args
         .into_iter()
         .map(host_arg)

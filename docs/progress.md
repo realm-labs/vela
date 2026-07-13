@@ -10,7 +10,7 @@ history belongs in Git.
 
 ## Current Focus
 
-The executor-neutral async execution track is active at Batch B in
+The executor-neutral async execution track is active at Batch C in
 [async-execution-model-plan.md](async-execution-model-plan.md). The pre-change
 workspace, focused call-depth/callback/provider/reload behavior, and
 representative runtime performance baseline are recorded in
@@ -23,8 +23,12 @@ reflection, MIR, linked code/dispatch, providers, and Runtime entry resolution.
 All synchronous execution now uses one `ExecutionSession`, explicit frame stack,
 return-continuation model, and non-recursive driver, including comparisons,
 collection callbacks, iterators, guards, and providers. The full workspace gate
-is green. Batch B now owns real executor-neutral suspension and the async native
-vertical slice.
+is green. Batch B is complete: `Runtime::call_async` drives real
+executor-neutral suspension; pure/context/host/HostPath-method registries and
+free-function macros accept scoped `Send` futures; and static, dynamic,
+reflected, error, and try paths share the same session. Batch C now owns typed
+shared/exclusive host leases, direct borrowed struct methods, and
+same-execution reentry.
 
 M20 cache close-out and M20.5 LSP follow-up remain valid but are paused while
 the async plan is the persistent work queue.
@@ -60,9 +64,10 @@ the async plan is the persistent work queue.
   `ProgramVersion` and linked closures retain generation ownership across hot
   reload; no unlinked compatibility interpreter remains.
 - Callable asyncness and explicit await/resume control flow are preserved from
-  source through verified MIR and linked execution. Sync execution and awaited
-  sync targets use the same explicit `ExecutionSession` frame driver; real Rust
-  future suspension is the active Batch B gap.
+  source through verified MIR and linked execution. Sync execution, awaited
+  sync targets, and real Rust future suspension use the same explicit
+  `ExecutionSession` frame driver. The outer future is scoped and `Send`, and
+  registered async futures may borrow invocation state without being `'static`.
 
 ### Host Boundary And Embedding
 
@@ -102,15 +107,14 @@ the async plan is the persistent work queue.
 
 ## Active Gaps
 
-### Async Execution Batch B
+### Async Execution Batch C
 
-- Implement the executor-neutral outer call future and prepared async
-  invocation/resume protocol on the existing `ExecutionSession`.
-- Add async native/context/host/method registration and macro support with
-  scoped `Send`, non-`'static` returned futures.
-- Execute awaited async targets without busy-polling while preserving dynamic
-  dispatch, reflection, error/try behavior, budgets, GC roots, and the single
-  `call`/`call_async` surface.
+- Add atomic scoped shared/exclusive host leases over execution-owned direct
+  bindings without changing script-visible HostRef/HostPath semantics.
+- Generate direct async `&self`/`&mut self` method wrappers that hold and
+  restore leases safely across await, errors, cancellation, and unwind.
+- Add NativeCallContext same-execution reentry with nested binding scopes,
+  inherited budgets/generation/heap state, and mutable-state child reborrowing.
 
 ### M20 Cache Close-Out
 
@@ -204,12 +208,12 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Implement the Batch B prepared async call/resume protocol and drive it from
-   the scoped Runtime call future without an executor dependency.
-2. Add the async native/context/HostPath registration vertical slice and its
-   macro-generated wrappers.
-3. Validate ready, pending/wake, dynamic, reflection, error, try, and `Send`
-   ownership paths, then continue directly through Batches C-D and Section 18.
+1. Implement execution-owned host binding scopes and atomic shared/exclusive
+   lease extraction/restoration.
+2. Extend direct method macros over the lease contract and validate async
+   `&self`/`&mut self` receivers.
+3. Add same-execution NativeCallContext reentry and the domain-neutral mutable
+   state/service fixture, then continue directly through Batch D and Section 18.
 
 ## Update Rules
 

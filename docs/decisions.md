@@ -1851,19 +1851,29 @@ not create additional sync/async execution methods. Fallback adapters belong to
 the execution-owned host input, while reload safe-point checks remain explicit
 lifecycle operations after an outer call.
 
-Real Rust future suspension remains a Batch B decision constrained to the same
-session driver. Its public future is scoped and `Send`, may borrow Runtime and
-host state for the invocation lifetime, and need not be `'static`. Core crates
-do not own an executor, Engine/Runtime/CallArgs gain no mode generic, and no
-parallel `!Send` registry/runtime is introduced.
+Batch B activates real Rust future suspension on the same session driver. Its
+public Runtime future is scoped and `Send`, may borrow Runtime and host state
+for the invocation lifetime, and need not be `'static`. Registered async
+pure/context/host/HostPath-method factories are `Send + Sync + 'static`, but
+their returned futures are scoped to the invocation and must be `Send` only for
+that lifetime. Core crates do not own an executor, Engine/Runtime/CallArgs gain
+no mode generic, and no parallel `!Send` registry/runtime is introduced.
+
+Awaited sync targets complete in the current drive; async Rust targets return a
+prepared owned call and suspend until the embedding executor polls again.
+Dynamic HostPath methods and `reflect::call` resolve asyncness before dispatch,
+so their non-awaited async forms fail without invoking the target while sync
+reflection remains synchronous. Async macro support is active for free,
+context, and host functions. Direct borrowed Rust receivers remain a Batch C
+lease contract and are not emulated with references stored in Vela values.
 
 Rust struct access across await will use Rust-only scoped host leases derived
 from `HostRef` bindings. Scripts will continue to see only
 `HostRef`/`HostPath`/`PathProxy`/`HostAccess`, and reentry from registered Rust
 code will drive a nested entry on the same execution, generation, heap, host
 scope, budget, and cancellation context. Batch A does not claim real host
-suspension, typed across-await leases, or async reentry; those activate only at
-their later checkpoints.
+typed across-await leases or async reentry; those activate only at their later
+checkpoints.
 
 ## Validation Rules
 

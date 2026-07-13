@@ -6,6 +6,7 @@ use vela_def::FunctionId;
 
 use crate::{
     AsyncHostNativeFunction, AsyncNativeFunction, BorrowedNativeFunction, CallFrame,
+    ConditionalAsyncNativeFunction, ConditionalHostNativeFunction, ConditionalHostNativeOutcome,
     ExecutionBudget, HeapExecution, HostExecution, HostNativeFunction, NativeFunction,
     NativeInlineCacheEntry, OwnedValue, SmallStorage, Vm, VmError, VmErrorKind, VmInlineCaches,
     VmResult, owned_to_value, value::Value, value_to_owned,
@@ -57,6 +58,7 @@ pub(crate) enum NativeCallTarget {
     Pure(NativeFunction),
     AsyncPure(AsyncNativeFunction),
     AsyncHost(AsyncHostNativeFunction),
+    ConditionalHost(ConditionalHostNativeFunction),
     BorrowedPure(BorrowedNativeFunction),
     Host(HostNativeFunction),
     BorrowedHost(crate::BorrowedHostNativeFunction),
@@ -68,6 +70,7 @@ impl NativeCallTarget {
             Self::Pure(_) => "pure",
             Self::AsyncPure(_) => "async_pure",
             Self::AsyncHost(_) => "async_host",
+            Self::ConditionalHost(_) => "conditional_host",
             Self::BorrowedPure(_) => "borrowed_pure",
             Self::Host(_) => "host",
             Self::BorrowedHost(_) => "borrowed_host",
@@ -127,6 +130,45 @@ pub(crate) fn dispatch_linked_native_function_call(
             source_span: call.call_site,
         }));
     }
+    if let NativeCallTarget::ConditionalHost(function) = target {
+        let args = native_call_args_from_registers(frame, call.args, heap.as_deref())?
+            .as_slice()
+            .to_vec();
+        let host = host.as_deref_mut().ok_or_else(|| {
+            VmError::new(VmErrorKind::TypeMismatch {
+                operation: "host context",
+            })
+        })?;
+        return match function(&args, host, budget.as_deref_mut())
+            .map_err(|error| error.with_source_span_if_absent(call.call_site))?
+        {
+            ConditionalHostNativeOutcome::Complete(result) => {
+                write_native_result(frame, heap, budget, call.dst, result)?;
+                Ok(LinkedNativeDispatch::Complete)
+            }
+            ConditionalHostNativeOutcome::Async {
+                function,
+                args,
+                diagnostic_name,
+            } => Ok(LinkedNativeDispatch::Async(PreparedAsyncNativeCall {
+                function: match function {
+                    ConditionalAsyncNativeFunction::Pure(function) => {
+                        PreparedAsyncNativeFunction::Pure(function)
+                    }
+                    ConditionalAsyncNativeFunction::Host(function) => {
+                        PreparedAsyncNativeFunction::Host(function)
+                    }
+                    ConditionalAsyncNativeFunction::HostMethod { function, receiver } => {
+                        PreparedAsyncNativeFunction::HostMethod { function, receiver }
+                    }
+                },
+                args,
+                destination: call.dst,
+                name: diagnostic_name,
+                source_span: call.call_site,
+            })),
+        };
+    }
     dispatch_resolved_native_function_call(host, heap, budget, frame, &call, target)?;
     Ok(LinkedNativeDispatch::Complete)
 }
@@ -145,7 +187,9 @@ fn dispatch_resolved_native_function_call(
             native(values.as_slice())
                 .map_err(|error| error.with_source_span_if_absent(call.call_site))?
         }
-        NativeCallTarget::AsyncPure(_) | NativeCallTarget::AsyncHost(_) => {
+        NativeCallTarget::AsyncPure(_)
+        | NativeCallTarget::AsyncHost(_)
+        | NativeCallTarget::ConditionalHost(_) => {
             unreachable!("async targets are prepared before dispatch")
         }
         NativeCallTarget::BorrowedPure(native) => {
@@ -187,19 +231,29 @@ fn dispatch_resolved_native_function_call(
                 .map_err(|error| error.with_source_span_if_absent(call.call_site))?
         }
     };
-    if let Some(dst) = call.dst {
-        let result = owned_to_value(
-            result,
-            heap.as_deref_mut().ok_or_else(|| {
-                VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "native heap",
-                })
-            })?,
-            budget.as_deref_mut(),
-        )?;
-        frame.write(dst, result)?;
-    }
-    Ok(())
+    write_native_result(frame, heap, budget, call.dst, result)
+}
+
+fn write_native_result(
+    frame: &mut CallFrame,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    destination: Option<Register>,
+    result: OwnedValue,
+) -> VmResult<()> {
+    let Some(destination) = destination else {
+        return Ok(());
+    };
+    let result = owned_to_value(
+        result,
+        heap.as_deref_mut().ok_or_else(|| {
+            VmError::new(VmErrorKind::TypeMismatch {
+                operation: "native heap",
+            })
+        })?,
+        budget.as_deref_mut(),
+    )?;
+    frame.write(destination, result)
 }
 
 fn resolve_cached_native_call_target(
@@ -227,6 +281,12 @@ fn resolve_native_call_target_by_id(vm: &Vm, native: FunctionId) -> Option<Nativ
         .get(&native)
         .cloned()
         .map(NativeCallTarget::BorrowedPure)
+        .or_else(|| {
+            vm.conditional_host_native_ids
+                .get(&native)
+                .cloned()
+                .map(NativeCallTarget::ConditionalHost)
+        })
         .or_else(|| {
             vm.borrowed_host_native_ids
                 .get(&native)

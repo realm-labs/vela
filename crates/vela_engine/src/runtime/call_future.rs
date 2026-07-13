@@ -6,6 +6,22 @@ use vela_vm::error::VmResult;
 
 use super::VelaValue;
 
+/// A scoped, executor-neutral `Send` future for one Runtime execution.
+///
+/// The future borrows the Runtime and any call-scoped host bindings; it is not
+/// required to be `'static`.
+///
+/// ```compile_fail
+/// use vela_engine::prelude::{CallArgs, CallOptions, Engine, Runtime};
+///
+/// fn require_static<T: 'static>(_: T) {}
+///
+/// let engine = Engine::builder().build().unwrap();
+/// let program = engine.compile_source("fn main() { return 1; }").unwrap();
+/// let mut runtime = Runtime::new(engine, program);
+/// let future = runtime.call_async("main", CallArgs::new(), CallOptions::unbounded());
+/// require_static(future);
+/// ```
 pub struct RuntimeCallFuture<'call> {
     inner: Pin<Box<dyn Future<Output = VmResult<VelaValue>> + Send + 'call>>,
 }
@@ -48,6 +64,7 @@ mod tests {
     use crate::native::{EffectSet, FunctionAccess, NativeFunctionDesc, TypeHint};
     use crate::permission::Capability;
     use crate::runtime::{CallArgs, CallOptions, Runtime};
+    use vela_reflect::permissions::ReflectPermissionSet;
     use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey};
 
     fn require_send<T: Send>(_: &T) {}
@@ -69,7 +86,7 @@ mod tests {
         let program = engine
             .compile_source("fn main(value) { return value + 1; }")
             .expect("program should compile");
-        let mut runtime = Runtime::new(engine, program);
+        let mut runtime = Runtime::new(engine.clone(), program);
 
         let future = runtime.call_async(
             "main",
@@ -140,6 +157,7 @@ impl Counter {
         let polls = Arc::new(AtomicUsize::new(0));
         let factory_polls = Arc::clone(&polls);
         let engine = Engine::builder()
+            .with_standard_natives()
             .register_async_fn(
                 NativeFunctionDesc::new("async_identity", vela_def::FunctionId::new(0xA51C))
                     .param("value", TypeHint::Any)
@@ -156,9 +174,29 @@ impl Counter {
             .build()
             .expect("engine should build");
         let program = engine
-            .compile_source("async fn main(value) { return async_identity(value).await; }")
+            .compile_source(
+                r#"
+async fn checked(value) {
+    return result::ok(async_identity(value).await);
+}
+
+async fn invoke(callback: Function, value) {
+    return callback(value).await;
+}
+
+async fn wrapped(value) {
+    let resolved = checked(value).await?;
+    let adjusted = invoke(|inner| result::ok(inner), resolved).await?;
+    return result::ok(adjusted);
+}
+
+async fn main(value) {
+    return wrapped(value).await.unwrap_or(-1);
+}
+"#,
+            )
             .expect("async program should compile");
-        let mut runtime = Runtime::new(engine, program);
+        let mut runtime = Runtime::new(engine.clone(), program);
         let mut future = runtime.call_async(
             "main",
             CallArgs::new().with(42_i64),
@@ -252,7 +290,7 @@ impl Counter {
                     .param("player", TypeHint::Any)
                     .returns(TypeHint::i64())
                     .effects(EffectSet::host_write())
-                    .access(FunctionAccess::public()),
+                    .access(FunctionAccess::public().reflect_callable(true)),
                 |args, context| {
                     Box::pin(async move {
                         let Some(OwnedValue::HostRef(player)) = args.first() else {
@@ -279,23 +317,32 @@ impl Counter {
                 .param("amount", TypeHint::i64())
                 .returns(TypeHint::i64())
                 .effects(EffectSet::host_write())
-                .access(FunctionAccess::public()),
+                .access(FunctionAccess::public().reflect_callable(true)),
                 async_add_level,
             )
+            .reflection_permissions(ReflectPermissionSet::all())
             .build()
             .expect("engine should build");
         let program = engine
             .compile_source(
                 r#"
+async fn dynamic_add(player, amount) {
+    return player.async_add_level(amount).await;
+}
+
 async fn main(player: Player) {
     game::async_set_level(player).await;
     game::async_increment_level(player).await;
-    return player.async_add_level(5).await;
+    player.async_add_level(5).await;
+    dynamic_add(player, 2).await;
+    reflect::call(player, "async_add_level", 3).await;
+    let increment = reflect::function("game::async_increment_level");
+    return reflect::call(increment, player).await;
 }
 "#,
             )
             .expect("async host program should compile");
-        let mut runtime = Runtime::new(engine, program);
+        let mut runtime = Runtime::new(engine.clone(), program);
         let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
         let level_path = HostPath::new(player).field(FieldId::new(1));
         let mut adapter = MockStateAdapter::new();
@@ -320,10 +367,93 @@ async fn main(player: Player) {
         let value = result.expect("async host call should complete");
         drop(future);
 
-        assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(17)));
+        assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(23)));
         assert_eq!(
             adapter.read_diagnostic_path(&level_path),
-            Ok(HostValue::Scalar(ScalarValue::I64(17)))
+            Ok(HostValue::Scalar(ScalarValue::I64(23)))
         );
+
+        let unawaited = engine
+            .compile_source("fn main(player) { return player.async_add_level(1); }")
+            .expect("dynamic unawaited call should defer asyncness to runtime");
+        let mut unawaited_runtime = Runtime::new(engine.clone(), unawaited);
+        let args = CallArgs::new()
+            .with_host_handle("player", player)
+            .with_fallback_adapter(&mut adapter);
+        let error = unawaited_runtime
+            .call("main", args, CallOptions::unbounded())
+            .expect_err("dynamic async target should require await");
+        assert!(matches!(
+            error.kind(),
+            vela_vm::error::VmErrorKind::AsyncCallRequiresAwait { name }
+                if name == "async_add_level"
+        ));
+
+        let unawaited_reflection = engine
+            .compile_source(
+                r#"
+fn main(player) {
+    return reflect::call(player, "async_add_level", 1);
+}
+"#,
+            )
+            .expect("reflection asyncness should be resolved at runtime");
+        let mut reflection_runtime = Runtime::new(engine, unawaited_reflection);
+        let args = CallArgs::new()
+            .with_host_handle("player", player)
+            .with_fallback_adapter(&mut adapter);
+        let error = reflection_runtime
+            .call("main", args, CallOptions::unbounded())
+            .expect_err("reflected async target should require await");
+        assert!(matches!(
+            error.kind(),
+            vela_vm::error::VmErrorKind::AsyncCallRequiresAwait { name }
+                if name == "async_add_level"
+        ));
+    }
+
+    #[test]
+    fn runtime_call_future_propagates_async_native_errors_and_releases_runtime() {
+        let engine = Engine::builder()
+            .register_async_fn(
+                NativeFunctionDesc::new("async_fail", FunctionId::new(0xA524)),
+                |_| {
+                    Box::pin(async {
+                        Err(vela_vm::error::VmError::new(
+                            vela_vm::error::VmErrorKind::TypeMismatch {
+                                operation: "async test failure",
+                            },
+                        ))
+                    })
+                },
+            )
+            .build()
+            .expect("engine should build");
+        let program = engine
+            .compile_source(
+                r#"
+async fn failing() { return async_fail().await; }
+fn healthy() { return 42; }
+"#,
+            )
+            .expect("async error program should compile");
+        let mut runtime = Runtime::new(engine, program);
+
+        let error = run_to_completion(runtime.call_async(
+            "failing",
+            CallArgs::new(),
+            CallOptions::unbounded(),
+        ))
+        .expect_err("async native error should propagate");
+        assert!(matches!(
+            error.kind(),
+            vela_vm::error::VmErrorKind::TypeMismatch {
+                operation: "async test failure"
+            }
+        ));
+        let healthy = runtime
+            .call("healthy", CallArgs::new(), CallOptions::unbounded())
+            .expect("runtime should be reusable after async error");
+        assert_eq!(runtime.value_to_owned(&healthy), Ok(OwnedValue::i64(42)));
     }
 }

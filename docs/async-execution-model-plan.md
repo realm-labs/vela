@@ -3,7 +3,7 @@
 > **Track:** executor-neutral script suspension, Rust/Vela async interop,
 > scoped host leases, and same-execution reentry
 > **Document status:** ready for execution
-> **Execution status:** Batch A complete; Batch B active
+> **Execution status:** Batches A-B complete; Batch C active
 > **Baseline:** pulled `master` at `841a033d2` on 2026-07-13
 > **Plan execution style:** throughput-first large batches. Intermediate
 > compilation and tests may be red; each batch-completion checkpoint must be
@@ -1171,26 +1171,26 @@ future is required to complete yet.
 Purpose: make Rust-to-Vela and Vela-to-Rust suspension work through the Batch A
 driver with one scoped `Send` execution contract.
 
-- [ ] Implement the executor-neutral outer call future and prepared-call/resume
+- [x] Implement the executor-neutral outer call future and prepared-call/resume
   protocol without unsafe or core executor dependency.
-- [ ] Add exactly `Runtime::call_async` beside `Runtime::call`; both accept the
+- [x] Add exactly `Runtime::call_async` beside `Runtime::call`; both accept the
   same sealed `RuntimeCallTarget` forms and enter the same driver.
-- [ ] Implement async native/context/host/method registries whose factories are
+- [x] Implement async native/context/host/method registries whose factories are
   `Send + Sync` and whose lifetime-dependent returned futures are `Send` without
   being required to be `'static`.
-- [ ] Extend `#[script_function]` to generate async descriptors/wrappers and
+- [x] Extend `#[script_function]` to generate async descriptors/wrappers and
   add low-level/typed HostPath-based async method registration. Direct
   `&self`/`&mut self` method wrappers land with leases in Batch C.
-- [ ] Execute awaited sync targets immediately and suspend on async targets.
-- [ ] Reject declared async entries through sync Runtime calls before body
+- [x] Execute awaited sync targets immediately and suspend on async targets.
+- [x] Reject declared async entries through sync Runtime calls before body
   execution and reject non-awaited dynamic async targets before dispatch.
-- [ ] Cover async script-to-script, native free-function, context function,
+- [x] Cover async script-to-script, native free-function, context function,
   HostPath-based method, dynamic callable/method, reflection, error, and try
   paths.
-- [ ] Prove the scoped call future is `Send` but not required to be `'static`;
+- [x] Prove the scoped call future is `Send` but not required to be `'static`;
   prove registration rejects `Rc` captures and a `!Send` returned future.
-- [ ] Prove the driver does not busy-poll and does not depend on Tokio.
-- [ ] Update embedding/registration docs and active decisions for the APIs now
+- [x] Prove the driver does not busy-poll and does not depend on Tokio.
+- [x] Update embedding/registration docs and active decisions for the APIs now
   available.
 
 Batch B completion gate: Rust can await Vela; Vela can await Rust free functions
