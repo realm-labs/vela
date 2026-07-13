@@ -16,9 +16,9 @@ use crate::runtime_checks::is_truthy;
 use crate::value::Value;
 use crate::{
     EqualityRuntime, HostExecution, Vm, VmBytecodeProfiler, VmInlineCaches, identity_equal,
-    identity_not_equal, validate_inline_cache_layout, values_equal_with_traits,
-    values_greater_equal_with_traits, values_greater_with_traits, values_less_equal_with_traits,
-    values_less_with_traits, values_not_equal_with_traits,
+    identity_not_equal, store_value_in_heap_if_needed, validate_inline_cache_layout,
+    values_equal_with_traits, values_greater_equal_with_traits, values_greater_with_traits,
+    values_less_equal_with_traits, values_less_with_traits, values_not_equal_with_traits,
 };
 use crate::{
     closure_calls, constant_loads, field_access, format_strings, host_access, i64_ops, indexing,
@@ -49,6 +49,76 @@ impl LinkedExecutionCall<'_> {
         VmStackFrame::new(program.debug_name(code.debug_name), self.call_site)
             .with_bytecode_offset(self.call_site_offset)
     }
+}
+
+struct ExecutionSession<'a> {
+    frames: Vec<ExecutionFrame<'a>>,
+}
+
+struct ExecutionFrame<'a> {
+    owner: Arc<LinkedArtifact>,
+    function: ScriptFunctionHandle,
+    ip: InstructionOffset,
+    registers: CallFrame,
+    return_to: Option<ReturnContinuation>,
+    call_site: Option<Span>,
+    call_site_offset: Option<InstructionOffset>,
+    inline_caches: Option<&'a dyn VmInlineCaches>,
+    bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
+}
+
+impl ExecutionFrame<'_> {
+    fn stack_frame(&self) -> VmStackFrame {
+        let program = self.owner.program();
+        let Some(code) = program.function(self.function) else {
+            return VmStackFrame::new("<missing linked function>", self.call_site)
+                .with_bytecode_offset(self.call_site_offset);
+        };
+        VmStackFrame::new(program.debug_name(code.debug_name), self.call_site)
+            .with_bytecode_offset(self.call_site_offset)
+    }
+}
+
+#[derive(Clone, Copy)]
+struct ReturnContinuation {
+    destination: Register,
+    protected_root_len: Option<usize>,
+}
+
+struct PendingLinkedCall<'a> {
+    owner: Arc<LinkedArtifact>,
+    function: ScriptFunctionHandle,
+    captures: Vec<Value>,
+    args: Vec<Value>,
+    check_param_guards: bool,
+    call_site: Option<Span>,
+    call_site_offset: Option<InstructionOffset>,
+    inline_caches: Option<&'a dyn VmInlineCaches>,
+    bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
+    destination: Register,
+}
+
+impl PendingLinkedCall<'_> {
+    fn stack_frame(&self) -> VmStackFrame {
+        let program = self.owner.program();
+        let Some(code) = program.function(self.function) else {
+            return VmStackFrame::new("<missing linked function>", self.call_site)
+                .with_bytecode_offset(self.call_site_offset);
+        };
+        VmStackFrame::new(program.debug_name(code.debug_name), self.call_site)
+            .with_bytecode_offset(self.call_site_offset)
+    }
+}
+
+enum FrameDriveOutcome<'a> {
+    Push(PendingLinkedCall<'a>),
+    Return(Value),
+}
+
+#[derive(Clone, Copy)]
+struct FrameDispatchContext<'a> {
+    inline_caches: Option<&'a dyn VmInlineCaches>,
+    bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
 }
 
 impl Vm {
@@ -113,38 +183,211 @@ impl Vm {
         result
     }
 
-    fn execute_linked_body<const CHARGE_BUDGET: bool, const PROFILE: bool>(
+    fn execute_linked_body<'a, const CHARGE_BUDGET: bool, const PROFILE: bool>(
         &self,
-        call: LinkedExecutionCall<'_>,
+        call: LinkedExecutionCall<'a>,
         mut host: Option<&mut HostExecution<'_>>,
         mut heap: Option<&mut HeapExecution<'_>>,
         mut budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<Value> {
-        let program = call.owner.program();
-        let code = program.function(call.function).ok_or_else(|| {
+        let entry = self.prepare_execution_frame(
+            call.owner,
+            call.function,
+            call.captures,
+            call.args,
+            call.check_param_guards,
+            call.call_site,
+            call.call_site_offset,
+            call.inline_caches,
+            call.bytecode_profiler,
+            None,
+            heap.as_deref_mut(),
+            budget.as_deref_mut(),
+        )?;
+        let mut session = ExecutionSession {
+            frames: vec![entry],
+        };
+        let limits_call_depth = budget
+            .as_deref()
+            .is_some_and(ExecutionBudget::limits_call_depth);
+
+        loop {
+            let outcome = {
+                let active = session
+                    .frames
+                    .last_mut()
+                    .expect("an execution session retains an active frame");
+                self.drive_linked_frame::<CHARGE_BUDGET, PROFILE>(
+                    active,
+                    &mut host,
+                    &mut heap,
+                    &mut budget,
+                )
+            };
+            let outcome = match outcome {
+                Ok(outcome) => outcome,
+                Err(mut error) => {
+                    for frame in session.frames.iter().skip(1).rev() {
+                        error = error.with_call_frame(frame.stack_frame());
+                    }
+                    if limits_call_depth {
+                        for _ in 1..session.frames.len() {
+                            budget
+                                .as_deref_mut()
+                                .expect("call-depth budget mode requires a budget")
+                                .exit_call();
+                        }
+                    }
+                    return Err(error);
+                }
+            };
+            match outcome {
+                FrameDriveOutcome::Push(pending) => {
+                    if limits_call_depth {
+                        let enter = budget
+                            .as_deref_mut()
+                            .expect("call-depth budget mode requires a budget")
+                            .enter_call();
+                        if let Err(mut error) = enter {
+                            error = error.with_call_frame(pending.stack_frame());
+                            for frame in session.frames.iter().skip(1).rev() {
+                                error = error.with_call_frame(frame.stack_frame());
+                            }
+                            for _ in 1..session.frames.len() {
+                                budget
+                                    .as_deref_mut()
+                                    .expect("call-depth budget mode requires a budget")
+                                    .exit_call();
+                            }
+                            return Err(error);
+                        }
+                    }
+                    let protected_root_len = heap.as_deref_mut().map(|heap| {
+                        heap.push_frame_roots(
+                            &session.frames.last().expect("caller frame").registers,
+                        )
+                    });
+                    let return_to = ReturnContinuation {
+                        destination: pending.destination,
+                        protected_root_len,
+                    };
+                    let pending_frame = pending.stack_frame();
+                    let child = self.prepare_execution_frame(
+                        pending.owner,
+                        pending.function,
+                        &pending.captures,
+                        &pending.args,
+                        pending.check_param_guards,
+                        pending.call_site,
+                        pending.call_site_offset,
+                        pending.inline_caches,
+                        pending.bytecode_profiler,
+                        Some(return_to),
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    );
+                    let child = match child {
+                        Ok(child) => child,
+                        Err(mut error) => {
+                            if let (Some(heap), Some(protected_root_len)) =
+                                (heap.as_deref_mut(), protected_root_len)
+                            {
+                                heap.truncate_protected_roots(protected_root_len);
+                            }
+                            if limits_call_depth {
+                                budget
+                                    .as_deref_mut()
+                                    .expect("call-depth budget mode requires a budget")
+                                    .exit_call();
+                                for _ in 1..session.frames.len() {
+                                    budget
+                                        .as_deref_mut()
+                                        .expect("call-depth budget mode requires a budget")
+                                        .exit_call();
+                                }
+                            }
+                            error = error.with_call_frame(pending_frame);
+                            for frame in session.frames.iter().skip(1).rev() {
+                                error = error.with_call_frame(frame.stack_frame());
+                            }
+                            return Err(error);
+                        }
+                    };
+                    session.frames.push(child);
+                }
+                FrameDriveOutcome::Return(value) => {
+                    let finished = session.frames.pop().expect("returning frame");
+                    let Some(return_to) = finished.return_to else {
+                        return Ok(value);
+                    };
+                    let value = store_value_in_heap_if_needed(
+                        value,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    )?;
+                    if let (Some(heap), Some(protected_root_len)) =
+                        (heap.as_deref_mut(), return_to.protected_root_len)
+                    {
+                        heap.truncate_protected_roots(protected_root_len);
+                    }
+                    session
+                        .frames
+                        .last_mut()
+                        .expect("return continuation has a caller")
+                        .registers
+                        .write(return_to.destination, value)?;
+                    if limits_call_depth {
+                        budget
+                            .as_deref_mut()
+                            .expect("call-depth budget mode requires a budget")
+                            .exit_call();
+                    }
+                }
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn prepare_execution_frame<'a>(
+        &self,
+        owner: Arc<LinkedArtifact>,
+        function: ScriptFunctionHandle,
+        captures: &[Value],
+        args: &[Value],
+        check_param_guards: bool,
+        call_site: Option<Span>,
+        call_site_offset: Option<InstructionOffset>,
+        inline_caches: Option<&'a dyn VmInlineCaches>,
+        bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
+        return_to: Option<ReturnContinuation>,
+        heap: Option<&mut HeapExecution<'_>>,
+        budget: Option<&mut ExecutionBudget>,
+    ) -> VmResult<ExecutionFrame<'a>> {
+        let program = owner.program();
+        let code = program.function(function).ok_or_else(|| {
             VmError::new(VmErrorKind::UnknownFunction {
-                name: format!("<linked function#{}>", call.function.index()),
+                name: format!("<linked function#{}>", function.index()),
             })
         })?;
-        validate_inline_cache_layout(call.inline_caches, code.cache_sites.len())?;
+        validate_inline_cache_layout(inline_caches, code.cache_sites.len())?;
         let function_name = program.debug_name(code.debug_name);
-        if call.captures.len() != usize::from(code.capture_count) {
+        if captures.len() != usize::from(code.capture_count) {
             return Err(VmError::new(VmErrorKind::ArityMismatch {
                 name: function_name.to_owned(),
                 expected: usize::from(code.capture_count),
-                actual: call.captures.len(),
+                actual: captures.len(),
             }));
         }
-        if call.args.len() > code.params.len() {
+        if args.len() > code.params.len() {
             return Err(VmError::new(VmErrorKind::ArityMismatch {
                 name: function_name.to_owned(),
                 expected: code.params.len(),
-                actual: call.args.len(),
+                actual: args.len(),
             }));
         }
 
-        let mut frame = CallFrame::new_linked(code.register_count, &call.owner);
-        for (index, capture) in call.captures.iter().enumerate() {
+        let mut frame = CallFrame::new_linked(code.register_count, &owner);
+        for (index, capture) in captures.iter().enumerate() {
             frame.write(
                 Register(u16::try_from(index).map_err(|_| {
                     VmError::new(VmErrorKind::RegisterOutOfBounds {
@@ -155,7 +398,7 @@ impl Vm {
             )?;
         }
         let param_offset = usize::from(code.capture_count);
-        for (index, arg) in call.args.iter().enumerate() {
+        for (index, arg) in args.iter().enumerate() {
             frame.write(
                 Register(
                     u16::try_from(param_offset.saturating_add(index)).map_err(|_| {
@@ -167,7 +410,7 @@ impl Vm {
                 *arg,
             )?;
         }
-        for index in call.args.len()..code.params.len() {
+        for index in args.len()..code.params.len() {
             frame.write(
                 Register(
                     u16::try_from(param_offset.saturating_add(index)).map_err(|_| {
@@ -179,8 +422,7 @@ impl Vm {
                 Value::Missing,
             )?;
         }
-        let actual = call
-            .args
+        let actual = args
             .iter()
             .filter(|arg| !matches!(arg, Value::Missing))
             .count();
@@ -201,11 +443,8 @@ impl Vm {
                 }));
             }
         }
-        if call.check_param_guards {
-            let mut guard_context = runtime_type_guards::GuardExecutionContext::new(
-                heap.as_deref_mut(),
-                budget.as_deref_mut(),
-            );
+        if check_param_guards {
+            let mut guard_context = runtime_type_guards::GuardExecutionContext::new(heap, budget);
             runtime_type_guards::execute_linked_param_guards(
                 code,
                 program,
@@ -214,7 +453,39 @@ impl Vm {
             )?;
         }
 
-        let mut ip = 0_usize;
+        Ok(ExecutionFrame {
+            owner,
+            function,
+            ip: InstructionOffset(0),
+            registers: frame,
+            return_to,
+            call_site,
+            call_site_offset,
+            inline_caches,
+            bytecode_profiler,
+        })
+    }
+
+    fn drive_linked_frame<'a, const CHARGE_BUDGET: bool, const PROFILE: bool>(
+        &self,
+        frame_state: &mut ExecutionFrame<'a>,
+        host: &mut Option<&mut HostExecution<'_>>,
+        heap: &mut Option<&mut HeapExecution<'_>>,
+        budget: &mut Option<&mut ExecutionBudget>,
+    ) -> VmResult<FrameDriveOutcome<'a>> {
+        let program = frame_state.owner.program();
+        let code = program.function(frame_state.function).ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownFunction {
+                name: format!("<linked function#{}>", frame_state.function.index()),
+            })
+        })?;
+        let current_owner = Arc::clone(&frame_state.owner);
+        let call = FrameDispatchContext {
+            inline_caches: frame_state.inline_caches,
+            bytecode_profiler: frame_state.bytecode_profiler,
+        };
+        let mut ip = frame_state.ip.0;
+        let frame = &mut frame_state.registers;
         while ip < code.instructions.len() {
             let instruction_offset = InstructionOffset(ip);
             let instruction = &code.instructions[ip];
@@ -257,7 +528,7 @@ impl Vm {
                         .with_source_span(instruction.span)
                     })?;
                     constant_loads::dispatch_load_const(
-                        &mut frame,
+                        frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                         *dst,
@@ -342,7 +613,7 @@ impl Vm {
                     let lhs_value = frame.read(*lhs)?;
                     let rhs_value = frame.read(*rhs)?;
                     let caller_roots =
-                        crate::method_runtime::CallerRoots::for_frame(&frame, heap.as_deref());
+                        crate::method_runtime::CallerRoots::for_frame(frame, heap.as_deref());
                     let value = Value::Bool(
                         values_equal_with_traits(
                             &lhs_value,
@@ -366,7 +637,7 @@ impl Vm {
                     let lhs_value = frame.read(*lhs)?;
                     let rhs_value = frame.read(*rhs)?;
                     let caller_roots =
-                        crate::method_runtime::CallerRoots::for_frame(&frame, heap.as_deref());
+                        crate::method_runtime::CallerRoots::for_frame(frame, heap.as_deref());
                     let value = Value::Bool(
                         values_not_equal_with_traits(
                             &lhs_value,
@@ -404,7 +675,7 @@ impl Vm {
                     let lhs_value = frame.read(*lhs)?;
                     let rhs_value = frame.read(*rhs)?;
                     let caller_roots =
-                        crate::method_runtime::CallerRoots::for_frame(&frame, heap.as_deref());
+                        crate::method_runtime::CallerRoots::for_frame(frame, heap.as_deref());
                     let value = values_less_with_traits(
                         &lhs_value,
                         &rhs_value,
@@ -426,7 +697,7 @@ impl Vm {
                     let lhs_value = frame.read(*lhs)?;
                     let rhs_value = frame.read(*rhs)?;
                     let caller_roots =
-                        crate::method_runtime::CallerRoots::for_frame(&frame, heap.as_deref());
+                        crate::method_runtime::CallerRoots::for_frame(frame, heap.as_deref());
                     let value = values_less_equal_with_traits(
                         &lhs_value,
                         &rhs_value,
@@ -448,7 +719,7 @@ impl Vm {
                     let lhs_value = frame.read(*lhs)?;
                     let rhs_value = frame.read(*rhs)?;
                     let caller_roots =
-                        crate::method_runtime::CallerRoots::for_frame(&frame, heap.as_deref());
+                        crate::method_runtime::CallerRoots::for_frame(frame, heap.as_deref());
                     let value = values_greater_with_traits(
                         &lhs_value,
                         &rhs_value,
@@ -470,7 +741,7 @@ impl Vm {
                     let lhs_value = frame.read(*lhs)?;
                     let rhs_value = frame.read(*rhs)?;
                     let caller_roots =
-                        crate::method_runtime::CallerRoots::for_frame(&frame, heap.as_deref());
+                        crate::method_runtime::CallerRoots::for_frame(frame, heap.as_deref());
                     let value = values_greater_equal_with_traits(
                         &lhs_value,
                         &rhs_value,
@@ -592,7 +863,7 @@ impl Vm {
                     runtime_type_guards::execute_linked_register_guard(
                         code,
                         program,
-                        &frame,
+                        frame,
                         *src,
                         *guard,
                         &mut guard_context,
@@ -631,10 +902,10 @@ impl Vm {
                 } => {
                     native_function_calls::dispatch_linked_native_function_call(
                         self,
-                        &mut host,
-                        &mut heap,
-                        &mut budget,
-                        &mut frame,
+                        host,
+                        heap,
+                        budget,
+                        frame,
                         native_function_calls::LinkedNativeFunctionCall {
                             program,
                             dst: *dst,
@@ -654,27 +925,35 @@ impl Vm {
                     mode,
                     args,
                 } => {
-                    script_function_calls::dispatch_linked_script_function_call(
-                        self,
-                        script_function_calls::LinkedScriptFunctionCallContext {
-                            program,
-                            inline_caches: call.inline_caches,
-                            call_site: instruction.span,
-                            call_site_offset: Some(instruction_offset),
-                            bytecode_profiler: call.bytecode_profiler,
-                        },
-                        &mut host,
-                        &mut heap,
-                        &mut budget,
-                        &mut frame,
-                        script_function_calls::LinkedScriptFunctionCall {
-                            dst: *dst,
-                            function: *function,
-                            debug_name: *debug_name,
-                            mode: *mode,
-                            args,
-                        },
-                    )?;
+                    let target_code = program.function(*function).ok_or_else(|| {
+                        VmError::new(VmErrorKind::UnknownFunction {
+                            name: program.debug_name(*debug_name).to_owned(),
+                        })
+                        .with_source_span_if_absent(instruction.span)
+                    })?;
+                    if target_code.asyncness.is_async() && await_resume.is_none() {
+                        return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
+                            name: program.debug_name(*debug_name).to_owned(),
+                        })
+                        .with_source_span_if_absent(instruction.span));
+                    }
+                    let args =
+                        script_function_calls::script_call_args_from_call_arguments(frame, args)?
+                            .as_slice()
+                            .to_vec();
+                    frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
+                    return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
+                        owner: current_owner,
+                        function: *function,
+                        captures: Vec::new(),
+                        args,
+                        check_param_guards: matches!(mode, vela_bytecode::ScriptCallMode::Checked),
+                        call_site: instruction.span,
+                        call_site_offset: Some(instruction_offset),
+                        inline_caches: call.inline_caches,
+                        bytecode_profiler: call.bytecode_profiler,
+                        destination: *dst,
+                    }));
                 }
                 InstructionKind::MakeClosure {
                     dst,
@@ -682,9 +961,9 @@ impl Vm {
                     captures,
                 } => {
                     closure_calls::make_linked_closure(
-                        &mut heap,
-                        &mut budget,
-                        &mut frame,
+                        heap,
+                        budget,
+                        frame,
                         closure_calls::LinkedMakeClosure {
                             dst: *dst,
                             function: *function,
@@ -694,25 +973,62 @@ impl Vm {
                     )?;
                 }
                 InstructionKind::CallClosure { dst, callee, args } => {
-                    closure_calls::dispatch_linked_closure_call(
-                        self,
-                        closure_calls::LinkedClosureCallContext {
-                            calling_generation: program.generation(),
-                            inline_caches: call.inline_caches,
-                            call_site: instruction.span,
-                            call_site_offset: instruction_offset,
-                            bytecode_profiler: call.bytecode_profiler,
-                        },
-                        &mut host,
-                        &mut heap,
-                        &mut budget,
-                        &mut frame,
-                        closure_calls::LinkedClosureCall {
-                            dst: *dst,
-                            callee: *callee,
-                            args,
-                        },
-                    )?;
+                    let (owner, function, captures) = {
+                        let closure = crate::runtime_checks::expect_closure_ref(
+                            &frame.read(*callee)?,
+                            heap.as_deref(),
+                            "closure call",
+                        )?;
+                        (
+                            Arc::clone(&closure.owner),
+                            closure.function,
+                            closure.captures.as_slice().to_vec(),
+                        )
+                    };
+                    let target_code = owner.function(function).ok_or_else(|| {
+                        VmError::new(VmErrorKind::UnknownFunction {
+                            name: format!("<linked closure#{}>", function.index()),
+                        })
+                        .with_source_span_if_absent(instruction.span)
+                    })?;
+                    if target_code.asyncness.is_async() && await_resume.is_none() {
+                        return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
+                            name: owner
+                                .program()
+                                .debug_name(target_code.debug_name)
+                                .to_owned(),
+                        })
+                        .with_source_span_if_absent(instruction.span));
+                    }
+                    let values = args
+                        .iter()
+                        .map(|register| frame.read(*register))
+                        .collect::<VmResult<Vec<_>>>()?;
+                    let inline_caches = if owner.generation() == program.generation() {
+                        call.inline_caches
+                    } else {
+                        call.inline_caches
+                            .and_then(|caches| caches.for_generation(owner.generation()))
+                    };
+                    let bytecode_profiler = if owner.generation() == program.generation() {
+                        call.bytecode_profiler
+                    } else {
+                        call.bytecode_profiler
+                            .and_then(|profiler| profiler.for_generation(owner.generation()))
+                    };
+                    frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
+                    return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
+                        owner,
+                        function,
+                        captures,
+                        args: values,
+                        check_param_guards: true,
+                        call_site: instruction.span,
+                        call_site_offset: Some(instruction_offset),
+                        inline_caches,
+                        bytecode_profiler,
+                        destination: *dst,
+                    }));
                 }
                 InstructionKind::CallMethod {
                     dst,
@@ -722,6 +1038,64 @@ impl Vm {
                     cache_site,
                     args,
                 } => {
+                    let dispatch_target = program.method_dispatch(*dispatch).ok_or_else(|| {
+                        VmError::new(VmErrorKind::UnknownMethod {
+                            method: program.debug_name(*debug_name).to_owned(),
+                        })
+                        .with_source_span_if_absent(instruction.span)
+                    })?;
+                    if let vela_bytecode::linked::LinkedMethodDispatchKind::Script {
+                        method_id,
+                        function,
+                    } = &dispatch_target.kind
+                    {
+                        let target_code = program.function(*function).ok_or_else(|| {
+                            VmError::new(VmErrorKind::UnknownMethod {
+                                method: program.debug_name(dispatch_target.debug_name).to_owned(),
+                            })
+                            .with_source_span_if_absent(instruction.span)
+                        })?;
+                        if target_code.asyncness.is_async() && await_resume.is_none() {
+                            return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
+                                name: program.debug_name(dispatch_target.debug_name).to_owned(),
+                            })
+                            .with_source_span_if_absent(instruction.span));
+                        }
+                        if let (Some(site), Some(caches)) = (*cache_site, call.inline_caches) {
+                            caches.set_method_dispatch(
+                                site,
+                                crate::MethodInlineCacheEntry {
+                                    dispatch: *dispatch,
+                                    debug_name: dispatch_target.debug_name,
+                                    target: crate::MethodInlineCacheTarget::Script {
+                                        method_id: *method_id,
+                                        function: *function,
+                                    },
+                                },
+                            );
+                        }
+                        let mut values = Vec::with_capacity(args.len().saturating_add(1));
+                        values.push(frame.read(*receiver)?);
+                        values.extend_from_slice(
+                            script_function_calls::script_call_args_from_call_arguments(
+                                frame, args,
+                            )?
+                            .as_slice(),
+                        );
+                        frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
+                        return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
+                            owner: current_owner,
+                            function: *function,
+                            captures: Vec::new(),
+                            args: values,
+                            check_param_guards: true,
+                            call_site: instruction.span,
+                            call_site_offset: Some(instruction_offset),
+                            inline_caches: call.inline_caches,
+                            bytecode_profiler: call.bytecode_profiler,
+                            destination: *dst,
+                        }));
+                    }
                     script_method_calls::dispatch_linked_method_call(
                         self,
                         script_method_calls::LinkedScriptMethodCallContext {
@@ -729,13 +1103,12 @@ impl Vm {
                             inline_caches: call.inline_caches,
                             cache_site: *cache_site,
                             call_site: instruction.span,
-                            call_site_offset: Some(instruction_offset),
                             bytecode_profiler: call.bytecode_profiler,
                         },
-                        &mut host,
-                        &mut heap,
-                        &mut budget,
-                        &mut frame,
+                        host,
+                        heap,
+                        budget,
+                        frame,
                         script_method_calls::LinkedScriptMethodCall {
                             dst: *dst,
                             receiver: *receiver,
@@ -752,31 +1125,82 @@ impl Vm {
                     cache_site,
                     args,
                 } => {
-                    script_method_calls::dispatch_linked_dynamic_method_call(
+                    let dynamic_call = script_method_calls::LinkedDynamicMethodCall {
+                        dst: *dst,
+                        receiver: *receiver,
+                        method_name: *method_name,
+                        args,
+                    };
+                    let context = script_method_calls::LinkedScriptMethodCallContext {
+                        program,
+                        inline_caches: call.inline_caches,
+                        cache_site: *cache_site,
+                        call_site: instruction.span,
+                        bytecode_profiler: call.bytecode_profiler,
+                    };
+                    let resolution = script_method_calls::resolve_linked_dynamic_script_target(
                         self,
-                        script_method_calls::LinkedScriptMethodCallContext {
-                            program,
-                            inline_caches: call.inline_caches,
-                            cache_site: *cache_site,
+                        &context,
+                        host.as_deref(),
+                        heap.as_deref(),
+                        frame,
+                        &dynamic_call,
+                    )?;
+                    if let script_method_calls::LinkedDynamicResolution::Script(target) = resolution
+                    {
+                        let target_code = program.function(target.function).ok_or_else(|| {
+                            VmError::new(VmErrorKind::UnknownMethod {
+                                method: program.debug_name(*method_name).to_owned(),
+                            })
+                            .with_source_span_if_absent(instruction.span)
+                        })?;
+                        if target_code.asyncness.is_async() && await_resume.is_none() {
+                            return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
+                                name: program.debug_name(*method_name).to_owned(),
+                            })
+                            .with_source_span_if_absent(instruction.span));
+                        }
+                        let mut values = Vec::with_capacity(target.args.len().saturating_add(1));
+                        values.push(frame.read(*receiver)?);
+                        values.extend_from_slice(
+                            script_function_calls::script_call_args_from_call_arguments(
+                                frame,
+                                &target.args,
+                            )?
+                            .as_slice(),
+                        );
+                        frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
+                        return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
+                            owner: current_owner,
+                            function: target.function,
+                            captures: Vec::new(),
+                            args: values,
+                            check_param_guards: true,
                             call_site: instruction.span,
                             call_site_offset: Some(instruction_offset),
+                            inline_caches: call.inline_caches,
                             bytecode_profiler: call.bytecode_profiler,
-                        },
-                        &mut host,
-                        &mut heap,
-                        &mut budget,
-                        &mut frame,
-                        script_method_calls::LinkedDynamicMethodCall {
-                            dst: *dst,
-                            receiver: *receiver,
-                            method_name: *method_name,
-                            args,
-                        },
+                            destination: *dst,
+                        }));
+                    }
+                    let script_method_calls::LinkedDynamicResolution::Other(target) = resolution
+                    else {
+                        unreachable!("script dynamic targets return through a frame push")
+                    };
+                    script_method_calls::dispatch_resolved_linked_dynamic_method_call(
+                        self,
+                        context,
+                        host,
+                        heap,
+                        budget,
+                        frame,
+                        dynamic_call,
+                        target,
                     )?;
                 }
                 InstructionKind::TryPropagate { dst, src, expected } => {
                     if let Some(value) = try_propagation::dispatch_try_propagate(
-                        &mut frame,
+                        frame,
                         heap.as_deref(),
                         *dst,
                         *src,
@@ -791,12 +1215,13 @@ impl Vm {
                             program,
                             value,
                             &mut guard_context,
-                        );
+                        )
+                        .map(FrameDriveOutcome::Return);
                     }
                 }
                 InstructionKind::MakeArray { dst, elements } => {
                     script_aggregate_construction::make_array(
-                        &mut frame,
+                        frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                         *dst,
@@ -805,7 +1230,7 @@ impl Vm {
                 }
                 InstructionKind::MakeTuple { dst, elements } => {
                     script_aggregate_construction::make_tuple(
-                        &mut frame,
+                        frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                         *dst,
@@ -814,7 +1239,7 @@ impl Vm {
                 }
                 InstructionKind::MakeSetFromArray { dst, src } => {
                     script_aggregate_construction::make_set_from_array(
-                        &mut frame,
+                        frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                         *dst,
@@ -823,7 +1248,7 @@ impl Vm {
                 }
                 InstructionKind::FormatString { dst, parts } => {
                     format_strings::make_format_string(
-                        &mut frame,
+                        frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                         *dst,
@@ -834,7 +1259,7 @@ impl Vm {
                 }
                 InstructionKind::MakeMap { dst, entries } => {
                     script_aggregate_construction::make_linked_map(
-                        &mut frame,
+                        frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                         *dst,
@@ -850,12 +1275,12 @@ impl Vm {
                     inclusive,
                 } => {
                     script_aggregate_construction::make_range(
-                        &mut frame, *dst, *start, *end, *inclusive,
+                        frame, *dst, *start, *end, *inclusive,
                     )?;
                 }
                 InstructionKind::MakeRecord { dst, ty, fields } => {
                     script_object_construction::make_linked_record(
-                        &mut frame,
+                        frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                         *dst,
@@ -870,7 +1295,7 @@ impl Vm {
                     debug_name,
                 } => {
                     field_access::dispatch_get_record_field(
-                        &mut frame,
+                        frame,
                         heap.as_deref_mut(),
                         *dst,
                         *record,
@@ -885,7 +1310,7 @@ impl Vm {
                     cache_site,
                 } => {
                     field_access::dispatch_linked_get_record_slot(
-                        &mut frame,
+                        frame,
                         heap.as_deref_mut(),
                         program,
                         field_access::LinkedRecordSlotRead {
@@ -904,7 +1329,7 @@ impl Vm {
                     src,
                 } => {
                     field_access::dispatch_set_record_field(
-                        &mut frame,
+                        frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                         *record,
@@ -920,7 +1345,7 @@ impl Vm {
                     src,
                 } => {
                     field_access::dispatch_linked_set_record_slot(
-                        &mut frame,
+                        frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                         program,
@@ -941,7 +1366,7 @@ impl Vm {
                     fields,
                 } => {
                     script_object_construction::make_linked_enum(
-                        &mut frame,
+                        frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                         *dst,
@@ -959,7 +1384,7 @@ impl Vm {
                     debug_name,
                 } => {
                     field_access::dispatch_get_enum_field(
-                        &mut frame,
+                        frame,
                         heap.as_deref_mut(),
                         *dst,
                         *value,
@@ -973,7 +1398,7 @@ impl Vm {
                     debug_name,
                 } => {
                     field_access::dispatch_linked_get_enum_slot(
-                        &mut frame,
+                        frame,
                         heap.as_deref_mut(),
                         program,
                         *dst,
@@ -1002,13 +1427,13 @@ impl Vm {
                     frame.write(*dst, field)?;
                 }
                 InstructionKind::GetIndex { dst, base, index } => {
-                    indexing::dispatch_get_index(&mut frame, heap.as_deref(), *dst, *base, *index)?;
+                    indexing::dispatch_get_index(frame, heap.as_deref(), *dst, *base, *index)?;
                 }
                 InstructionKind::GetStringKeyIndex { dst, base, key } => {
                     let key =
                         string_key_constant(code.constants.get(key.0), key.0, instruction.span)?;
                     indexing::dispatch_get_string_key_index(
-                        &mut frame,
+                        frame,
                         heap.as_deref(),
                         *dst,
                         *base,
@@ -1017,7 +1442,7 @@ impl Vm {
                 }
                 InstructionKind::SetIndex { base, index, src } => {
                     indexing::dispatch_set_index(
-                        &mut frame,
+                        frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                         *base,
@@ -1029,7 +1454,7 @@ impl Vm {
                     let key =
                         string_key_constant(code.constants.get(key.0), key.0, instruction.span)?;
                     indexing::dispatch_set_string_key_index(
-                        &mut frame,
+                        frame,
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                         *base,
@@ -1043,7 +1468,7 @@ impl Vm {
                             vm: self,
                             program,
                             host: host.as_deref_mut(),
-                            frame: &mut frame,
+                            frame,
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             inline_caches: call.inline_caches,
@@ -1064,7 +1489,7 @@ impl Vm {
                             vm: self,
                             program,
                             host: host.as_deref_mut(),
-                            frame: &mut frame,
+                            frame,
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             inline_caches: call.inline_caches,
@@ -1091,7 +1516,7 @@ impl Vm {
                             vm: self,
                             program,
                             host: host.as_deref_mut(),
-                            frame: &mut frame,
+                            frame,
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             inline_caches: call.inline_caches,
@@ -1119,7 +1544,7 @@ impl Vm {
                     jump_if_done,
                 } => {
                     if let Some(target) = iteration::dispatch_linked_i64_range_next(
-                        &mut frame,
+                        frame,
                         code,
                         iteration::RangeNextStep {
                             cursor: *cursor,
@@ -1140,7 +1565,7 @@ impl Vm {
                     variant,
                 } => {
                     field_access::dispatch_linked_enum_tag_equal(
-                        &mut frame,
+                        frame,
                         heap.as_deref(),
                         program,
                         *dst,
@@ -1157,7 +1582,7 @@ impl Vm {
                 } => {
                     let value = host_access::load_linked_cached_host_global(
                         host_access::HostAccessRuntime {
-                            frame: &frame,
+                            frame,
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
@@ -1180,7 +1605,7 @@ impl Vm {
                 } => {
                     let value = host_access::execute_code_host_read(
                         host_access::HostAccessRuntime {
-                            frame: &frame,
+                            frame,
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
@@ -1206,7 +1631,7 @@ impl Vm {
                 } => {
                     host_access::execute_code_host_write(
                         host_access::HostAccessRuntime {
-                            frame: &frame,
+                            frame,
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
@@ -1233,7 +1658,7 @@ impl Vm {
                 } => {
                     host_access::execute_code_host_mutate(
                         host_access::HostAccessRuntime {
-                            frame: &frame,
+                            frame,
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
@@ -1261,7 +1686,7 @@ impl Vm {
                 } => {
                     host_access::execute_code_host_remove(
                         host_access::HostAccessRuntime {
-                            frame: &frame,
+                            frame,
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
@@ -1289,7 +1714,7 @@ impl Vm {
                 } => {
                     let value = host_access::execute_linked_code_host_call(
                         host_access::HostAccessRuntime {
-                            frame: &frame,
+                            frame,
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
                             host: host.as_deref_mut(),
@@ -1324,7 +1749,8 @@ impl Vm {
                         program,
                         frame.read(*src)?,
                         &mut guard_context,
-                    );
+                    )
+                    .map(FrameDriveOutcome::Return);
                 }
             }
 
@@ -1336,7 +1762,7 @@ impl Vm {
             if let Some(heap) = heap.as_deref_mut()
                 && heap.needs_safe_point()
             {
-                heap.collect_frame_at_safe_point(&frame, budget.as_deref_mut());
+                heap.collect_frame_at_safe_point(frame, budget.as_deref_mut());
             }
         }
 

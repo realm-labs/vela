@@ -159,6 +159,9 @@ pub enum VmErrorKind {
     AsyncEntryRequiresCallAsync {
         name: String,
     },
+    AsyncCallRequiresAwait {
+        name: String,
+    },
     UnknownMethod {
         method: String,
     },
@@ -221,6 +224,7 @@ impl VmErrorKind {
             Self::PermissionDenied { .. } => "vm::permission_denied",
             Self::UnknownFunction { .. } => "vm::unknown_function",
             Self::AsyncEntryRequiresCallAsync { .. } => "vm::async_entry_requires_call_async",
+            Self::AsyncCallRequiresAwait { .. } => "vm::async_call_requires_await",
             Self::UnknownMethod { .. } => "vm::unknown_method",
             Self::ArityMismatch { .. } => "vm::arity_mismatch",
             Self::Host(_) => "vm::host_error",
@@ -271,6 +275,9 @@ impl VmErrorKind {
             Self::UnknownFunction { name } => format!("unknown function `{name}`"),
             Self::AsyncEntryRequiresCallAsync { name } => {
                 format!("async entry `{name}` requires `Runtime::call_async`")
+            }
+            Self::AsyncCallRequiresAwait { name } => {
+                format!("async target `{name}` must be invoked with `await`")
             }
             Self::UnknownMethod { method } => format!("unknown method `{method}`"),
             Self::ArityMismatch {

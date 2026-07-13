@@ -1,19 +1,16 @@
-use std::sync::Arc;
-
 use vela_bytecode::linked::{DynamicCallArgumentLinked, LinkedMethodDispatchKind};
 use vela_bytecode::{
-    CacheSiteId, CallArgument, DebugNameId, InstructionOffset, LinkedProgram, MethodDispatchHandle,
-    Register, ScriptFunctionHandle,
+    CacheSiteId, CallArgument, DebugNameId, LinkedProgram, MethodDispatchHandle, Register,
+    ScriptFunctionHandle,
 };
 use vela_common::Span;
 use vela_def::MethodId;
 
 use crate::dynamic_method_resolution::{self, DynamicMethodTarget};
 use crate::heap::HeapValue;
-use crate::linked_execution::LinkedExecutionCall;
 use crate::method_runtime::CallerRoots;
 use crate::{
-    CallFrame, ExecutionBudget, HeapExecution, HostExecution, SmallStorage, Value, Vm, VmResult,
+    CallFrame, ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmResult,
     store_value_in_heap_if_needed,
 };
 use crate::{
@@ -78,7 +75,6 @@ pub(crate) struct LinkedScriptMethodCallContext<'a> {
     pub(crate) cache_site: Option<CacheSiteId>,
     pub(crate) bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
     pub(crate) call_site: Option<Span>,
-    pub(crate) call_site_offset: Option<InstructionOffset>,
 }
 
 pub(crate) struct LinkedScriptMethodCall<'a> {
@@ -94,6 +90,72 @@ pub(crate) struct LinkedDynamicMethodCall<'a> {
     pub(crate) receiver: Register,
     pub(crate) method_name: DebugNameId,
     pub(crate) args: &'a [DynamicCallArgumentLinked],
+}
+
+pub(crate) struct LinkedDynamicScriptTarget {
+    pub(crate) function: vela_bytecode::ScriptFunctionHandle,
+    pub(crate) args: Vec<CallArgument>,
+}
+
+pub(crate) enum LinkedDynamicResolution {
+    Script(LinkedDynamicScriptTarget),
+    Other(LinkedDynamicNonScriptTarget),
+}
+
+pub(crate) enum LinkedDynamicNonScriptTarget {
+    Host {
+        method_id: vela_common::HostMethodId,
+    },
+    StandardValue {
+        method_id: MethodId,
+        standard_method: Option<crate::StandardMethodInlineCacheEntry>,
+    },
+}
+
+pub(crate) fn resolve_linked_dynamic_script_target(
+    vm: &Vm,
+    context: &LinkedScriptMethodCallContext<'_>,
+    host: Option<&HostExecution<'_>>,
+    heap: Option<&HeapExecution<'_>>,
+    frame: &CallFrame,
+    call: &LinkedDynamicMethodCall<'_>,
+) -> VmResult<LinkedDynamicResolution> {
+    let method = context.program.debug_name(call.method_name);
+    let receiver = frame.read(call.receiver)?;
+    let target = linked_dynamic_method_dispatch_target(
+        vm,
+        context,
+        &receiver,
+        method,
+        call.method_name,
+        heap,
+        host,
+    )?;
+    let function = match target {
+        DynamicMethodInlineCacheTarget::Script { function, .. } => function,
+        DynamicMethodInlineCacheTarget::Host { method_id } => {
+            return Ok(LinkedDynamicResolution::Other(
+                LinkedDynamicNonScriptTarget::Host { method_id },
+            ));
+        }
+        DynamicMethodInlineCacheTarget::StandardValue {
+            method_id,
+            standard_method,
+        } => {
+            return Ok(LinkedDynamicResolution::Other(
+                LinkedDynamicNonScriptTarget::StandardValue {
+                    method_id,
+                    standard_method,
+                },
+            ));
+        }
+    };
+    let args =
+        dynamic_script_call_args_from_linked_arguments(context.program, function, call.args)?;
+    Ok(LinkedDynamicResolution::Script(LinkedDynamicScriptTarget {
+        function,
+        args: args.as_slice().to_vec(),
+    }))
 }
 
 pub(crate) fn dispatch_linked_method_call(
@@ -117,22 +179,10 @@ pub(crate) fn dispatch_linked_method_call(
     match dispatch.target {
         MethodInlineCacheTarget::Script {
             method_id: _,
-            function,
-        } => dispatch_linked_script_method_call(
-            vm,
-            context,
-            host,
-            heap,
-            budget,
-            frame,
-            ScriptLinkedMethodCall {
-                dst: call.dst,
-                receiver: call.receiver,
-                debug_name: dispatch.debug_name,
-                function,
-                values,
-            },
-        ),
+            function: _,
+        } => Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+            opcode: "script method escaped the execution session",
+        })),
         MethodInlineCacheTarget::Value {
             method_id,
             standard_method,
@@ -267,7 +317,8 @@ pub(crate) fn dispatch_linked_method_call(
     }
 }
 
-pub(crate) fn dispatch_linked_dynamic_method_call(
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn dispatch_resolved_linked_dynamic_method_call(
     vm: &Vm,
     context: LinkedScriptMethodCallContext<'_>,
     host: &mut Option<&mut HostExecution<'_>>,
@@ -275,56 +326,12 @@ pub(crate) fn dispatch_linked_dynamic_method_call(
     budget: &mut Option<&mut ExecutionBudget>,
     frame: &mut CallFrame,
     call: LinkedDynamicMethodCall<'_>,
-) -> VmResult<()> {
-    let call_site = context.call_site;
-    dispatch_linked_dynamic_method_call_inner(vm, context, host, heap, budget, frame, call)
-        .map_err(|error| error.with_source_span_if_absent(call_site))
-}
-
-fn dispatch_linked_dynamic_method_call_inner(
-    vm: &Vm,
-    context: LinkedScriptMethodCallContext<'_>,
-    host: &mut Option<&mut HostExecution<'_>>,
-    heap: &mut Option<&mut HeapExecution<'_>>,
-    budget: &mut Option<&mut ExecutionBudget>,
-    frame: &mut CallFrame,
-    call: LinkedDynamicMethodCall<'_>,
+    target: LinkedDynamicNonScriptTarget,
 ) -> VmResult<()> {
     let method = context.program.debug_name(call.method_name);
     let receiver = frame.read(call.receiver)?;
-    let target = linked_dynamic_method_dispatch_target(
-        vm,
-        &context,
-        &receiver,
-        method,
-        call.method_name,
-        heap.as_deref(),
-        host.as_deref(),
-    )?;
     match target {
-        DynamicMethodInlineCacheTarget::Script { dispatch, function } => {
-            let script_args = dynamic_script_call_args_from_linked_arguments(
-                context.program,
-                function,
-                call.args,
-            )?;
-            dispatch_linked_method_call(
-                vm,
-                context,
-                host,
-                heap,
-                budget,
-                frame,
-                LinkedScriptMethodCall {
-                    dst: call.dst,
-                    receiver: call.receiver,
-                    dispatch,
-                    debug_name: call.method_name,
-                    args: script_args.as_slice(),
-                },
-            )
-        }
-        DynamicMethodInlineCacheTarget::Host { method_id } => {
+        LinkedDynamicNonScriptTarget::Host { method_id } => {
             let values_storage = dynamic_value_args_from_linked_arguments(frame, call.args)?;
             let return_value = host_access::execute_host_root_method_call(
                 host_access::HostAccessRuntime {
@@ -348,7 +355,7 @@ fn dispatch_linked_dynamic_method_call_inner(
             }
             Ok(())
         }
-        DynamicMethodInlineCacheTarget::StandardValue {
+        LinkedDynamicNonScriptTarget::StandardValue {
             method_id,
             standard_method,
         } => {
@@ -1068,62 +1075,4 @@ fn linked_callback_value_method_result(
         );
     }
     Some(result)
-}
-
-struct ScriptLinkedMethodCall<'a> {
-    dst: Register,
-    receiver: Register,
-    debug_name: DebugNameId,
-    function: vela_bytecode::ScriptFunctionHandle,
-    values: &'a [Value],
-}
-
-fn dispatch_linked_script_method_call(
-    vm: &Vm,
-    context: LinkedScriptMethodCallContext<'_>,
-    host: &mut Option<&mut HostExecution<'_>>,
-    heap: &mut Option<&mut HeapExecution<'_>>,
-    budget: &mut Option<&mut ExecutionBudget>,
-    frame: &mut CallFrame,
-    call: ScriptLinkedMethodCall<'_>,
-) -> VmResult<()> {
-    context.program.function(call.function).ok_or_else(|| {
-        VmError::new(VmErrorKind::UnknownMethod {
-            method: context.program.debug_name(call.debug_name).to_owned(),
-        })
-        .with_source_span_if_absent(context.call_site)
-    })?;
-    let receiver_value = frame.read(call.receiver)?;
-    let method_args =
-        SmallStorage::try_from_prefix_and_slice_map(receiver_value, call.values, 4, |value| {
-            Ok::<_, VmError>(*value)
-        })?;
-    let protected_root_len = heap.as_deref_mut().map(|heap| heap.push_frame_roots(frame));
-    let owner = Arc::clone(frame.linked_owner().ok_or_else(|| {
-        VmError::new(VmErrorKind::UnknownMethod {
-            method: context.program.debug_name(call.debug_name).to_owned(),
-        })
-    })?);
-    let result = vm.execute_linked_call(
-        LinkedExecutionCall {
-            owner,
-            function: call.function,
-            captures: &[],
-            args: method_args.as_slice(),
-            check_param_guards: true,
-            call_site: context.call_site,
-            call_site_offset: context.call_site_offset,
-            inline_caches: context.inline_caches,
-            bytecode_profiler: context.bytecode_profiler,
-        },
-        host.as_deref_mut(),
-        heap.as_deref_mut(),
-        budget.as_deref_mut(),
-    );
-    if let (Some(heap), Some(protected_root_len)) = (heap.as_deref_mut(), protected_root_len) {
-        heap.truncate_protected_roots(protected_root_len);
-    }
-    let result =
-        store_value_in_heap_if_needed(result?, heap.as_deref_mut(), budget.as_deref_mut())?;
-    frame.write(call.dst, result)
 }

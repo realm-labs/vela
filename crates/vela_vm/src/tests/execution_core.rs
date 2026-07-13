@@ -333,6 +333,30 @@ fn main() {
 }
 
 #[test]
+fn explicit_frame_stack_executes_deep_script_recursion() {
+    let program = compile_test_program(
+        SourceId::new(2),
+        r#"
+fn countdown(value) {
+    if value == 0 { return 42; }
+    return countdown(value - 1);
+}
+
+fn main() {
+    return countdown(10_000);
+}
+"#,
+    )
+    .expect("compile deep recursive source");
+    let linked = link_test_program(&program);
+
+    assert_eq!(
+        Vm::new().run_linked_program(&linked, "main", &[]),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(42)))
+    );
+}
+
+#[test]
 fn call_frame_registers_expose_heap_roots_for_gc() {
     let mut heap = ScriptHeap::new();
     let rooted = heap.allocate(HeapValue::String("rooted".into()));
