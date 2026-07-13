@@ -25,6 +25,7 @@ cargo bench -p vela_vm --bench baseline
 cargo bench -p vela_vm --bench baseline -- --quick
 cargo bench -p vela_vm --bench external_compare -- --quick
 cargo bench -p vela_engine --bench hot_reload -- --quick
+cargo bench -p vela_engine --bench async_execution -- --quick
 ```
 
 `baseline` accepts optional workload-name substring filters after `--`, for
@@ -121,6 +122,21 @@ external runtime versions when used
 external comparison mode (`internal_hot_loop`, `embedded_hot_loop`, or
 `process_hot_loop`) when used
 ```
+
+## Async Execution Acceptance
+
+The 2026-07-13 executor-neutral async exit measurements are recorded in
+[archive/async-execution-acceptance-2026-07-13.md](archive/async-execution-acceptance-2026-07-13.md).
+Ready async and provider overhead is bounded, suspended memory is linear, and
+10,000 recursive script calls complete on the explicit frame stack. The
+pre-change comparison also shows material scalar/script-call regressions from
+the required non-recursive `ExecutionSession` hard switch.
+
+Those regressions are accepted for the async milestone only with named
+follow-up `ASYNC-PERF-1`: profile scalar, script-call, and cached-callback rows,
+then compact/reuse frame storage or specialize verified leaf/block dispatch
+without adding recursion, duplicate drivers, inferred await, or weaker budget
+and root semantics.
 
 ## Perf Optimization Loop
 

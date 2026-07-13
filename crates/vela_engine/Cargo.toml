@@ -37,5 +37,9 @@ harness = false
 name = "generation_memory"
 harness = false
 
+[[bench]]
+name = "async_execution"
+harness = false
+
 [lints]
 workspace = true
