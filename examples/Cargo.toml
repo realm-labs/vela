@@ -14,6 +14,7 @@ vela_engine = { path = "../crates/vela_engine", features = ["serde"] }
 vela_hot_reload = { path = "../crates/vela_hot_reload" }
 vela_host = { path = "../crates/vela_host" }
 vela_macros = { path = "../crates/vela_macros" }
+vela_package = { path = "../crates/vela_package" }
 vela_reflect = { path = "../crates/vela_reflect" }
 vela_vm = { path = "../crates/vela_vm" }
 

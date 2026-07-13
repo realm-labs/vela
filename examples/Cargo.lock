@@ -66,6 +66,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "equivalent"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
+
+[[package]]
 name = "find-msvc-tools"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -78,10 +84,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
 
 [[package]]
+name = "hashbrown"
+version = "0.17.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
+
+[[package]]
+name = "indexmap"
+version = "2.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d466e9454f08e4a911e14806c24e16fba1b4c121d1ea474396f396069cf949d9"
+dependencies = [
+ "equivalent",
+ "hashbrown 0.17.1",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
+
+[[package]]
+name = "memchr"
+version = "2.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
 name = "proc-macro2"
@@ -108,7 +136,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "417a3a9f582e349834051b8a10c8d71ca88da4211e4093528e36b9845f6b5f21"
 dependencies = [
  "countme",
- "hashbrown",
+ "hashbrown 0.14.5",
  "rustc-hash",
  "text-size",
 ]
@@ -173,6 +201,43 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f18aa187839b2bdb1ad2fa35ead8c4c2976b64e4363c386d45ac0f7ee85c9233"
 
 [[package]]
+name = "toml_datetime"
+version = "0.7.5+spec-1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92e1cfed4a3038bc5a127e35a2d360f145e1f4b971b551a2ba5fd7aedf7e1347"
+dependencies = [
+ "serde_core",
+]
+
+[[package]]
+name = "toml_edit"
+version = "0.23.10+spec-1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84c8b9f757e028cee9fa244aea147aab2a9ec09d5325a9b01e0a49730c2b5269"
+dependencies = [
+ "indexmap",
+ "toml_datetime",
+ "toml_parser",
+ "toml_writer",
+ "winnow 0.7.15",
+]
+
+[[package]]
+name = "toml_parser"
+version = "1.1.2+spec-1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2abe9b86193656635d2411dc43050282ca48aa31c2451210f4202550afb7526"
+dependencies = [
+ "winnow 1.0.3",
+]
+
+[[package]]
+name = "toml_writer"
+version = "1.1.1+spec-1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "756daf9b1013ebe47a8776667b466417e2d4c5679d441c26230efd9ef78692db"
+
+[[package]]
 name = "unicode-ident"
 version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -185,6 +250,7 @@ dependencies = [
  "vela_common",
  "vela_def",
  "vela_hir",
+ "vela_package",
  "vela_reflect",
  "vela_registry",
  "vela_syntax",
@@ -200,6 +266,7 @@ dependencies = [
  "vela_hir",
  "vela_host",
  "vela_mir",
+ "vela_package",
  "vela_registry",
  "vela_stdlib",
 ]
@@ -223,6 +290,7 @@ name = "vela_engine"
 version = "0.1.0"
 dependencies = [
  "serde",
+ "vela_analysis",
  "vela_bytecode",
  "vela_common",
  "vela_def",
@@ -230,6 +298,7 @@ dependencies = [
  "vela_host",
  "vela_hot_reload",
  "vela_mir",
+ "vela_package",
  "vela_reflect",
  "vela_registry",
  "vela_stdlib",
@@ -248,6 +317,7 @@ dependencies = [
  "vela_host",
  "vela_hot_reload",
  "vela_macros",
+ "vela_package",
  "vela_reflect",
  "vela_vm",
 ]
@@ -258,6 +328,7 @@ version = "0.1.0"
 dependencies = [
  "vela_common",
  "vela_def",
+ "vela_package",
  "vela_syntax",
 ]
 
@@ -278,6 +349,7 @@ dependencies = [
  "vela_def",
  "vela_hir",
  "vela_mir",
+ "vela_package",
  "vela_reflect",
  "vela_registry",
 ]
@@ -301,6 +373,15 @@ dependencies = [
  "vela_common",
  "vela_def",
  "vela_hir",
+ "vela_package",
+]
+
+[[package]]
+name = "vela_package"
+version = "0.1.0"
+dependencies = [
+ "toml_edit",
+ "vela_common",
 ]
 
 [[package]]
@@ -311,6 +392,7 @@ dependencies = [
  "vela_def",
  "vela_hir",
  "vela_host",
+ "vela_package",
  "vela_registry",
  "vela_syntax",
 ]
@@ -361,3 +443,18 @@ dependencies = [
  "vela_stdlib",
  "vela_stdlib_runtime",
 ]
+
+[[package]]
+name = "winnow"
+version = "0.7.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df79d97927682d2fd8adb29682d1140b343be4ac0f08fd68b7765d9c059d3945"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
+name = "winnow"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0592e1c9d151f854e6fd382574c3a0855250e1d9b2f99d9281c6e6391af352f1"
