@@ -1823,6 +1823,27 @@ change triggers reconstruction from that root rather than promoting the changed
 manifest to a new project. A failed reconstruction publishes diagnostics while
 retaining the last valid graph and does not commit a database generation.
 
+## Approved Future Architecture Tracks
+
+### Executor-Neutral Async Execution
+
+The post-first-interpreter async target is defined by
+[async-execution-model-plan.md](async-execution-model-plan.md). Sync and async
+entry points will share one explicit VM frame stack and execution driver; core
+crates will not own a Tokio executor or a second async interpreter. The public
+mode distinction is portable (`Send`) versus thread-bound (`!Send`), while call
+futures remain scoped and may borrow Runtime and host state rather than becoming
+`'static` tasks.
+
+Rust struct access across await will use Rust-only scoped host leases derived
+from `HostRef` bindings. Scripts will continue to see only
+`HostRef`/`HostPath`/`PathProxy`/`HostAccess`, and reentry from registered Rust
+code will drive a nested entry on the same execution, generation, heap, host
+scope, budget, and cancellation context. This is an approved future contract,
+not a statement that async is implemented in the current MVP baseline; the
+standing non-async constraint remains active until the plan's implementation
+checkpoints update the architecture and roadmap.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:
