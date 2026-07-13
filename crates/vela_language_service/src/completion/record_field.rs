@@ -269,6 +269,10 @@ fn record_constructor_for_expr(
             .as_try()
             .and_then(|try_expr| try_expr.expression())
             .and_then(|value| record_constructor_for_expr(&value, search)),
+        SyntaxExpressionKind::Await => expr
+            .as_await()
+            .and_then(|await_expr| await_expr.expression())
+            .and_then(|value| record_constructor_for_expr(&value, search)),
         SyntaxExpressionKind::Binary => {
             let binary = expr.as_binary()?;
             binary

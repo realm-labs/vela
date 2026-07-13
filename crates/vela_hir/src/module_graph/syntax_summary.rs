@@ -180,7 +180,12 @@ impl SyntaxModuleSummary {
         self.item(index, SyntaxKind::FunctionItem)
             .and_then(|item| SyntaxFunctionItem::cast(item.syntax().clone()))
             .map_or(fallback, |item| {
-                function_signature(self.source, item.param_list(), item.return_type())
+                function_signature(
+                    self.source,
+                    item.is_async(),
+                    item.param_list(),
+                    item.return_type(),
+                )
             })
     }
 
@@ -489,10 +494,16 @@ fn global_metadata(source: SourceId, item: &SyntaxGlobalItem) -> Option<GlobalMe
 
 fn function_signature(
     source: SourceId,
+    is_async: bool,
     params: Option<SyntaxParamList>,
     return_type: Option<SyntaxTypeHint>,
 ) -> FunctionSignature {
     FunctionSignature {
+        asyncness: if is_async {
+            vela_common::CallableAsyncness::Async
+        } else {
+            vela_common::CallableAsyncness::Sync
+        },
         params: params
             .into_iter()
             .flat_map(|params| params.params())
@@ -591,7 +602,12 @@ fn trait_method_metadata(
         name: name.text().to_owned(),
         name_span: span_for(source, name.text_range()),
         span: span_for(source, method.syntax().text_range()),
-        signature: function_signature(source, method.param_list(), method.return_type()),
+        signature: function_signature(
+            source,
+            method.is_async(),
+            method.param_list(),
+            method.return_type(),
+        ),
         has_default: method.body().is_some(),
         default_body_node,
         default_body_span,
@@ -610,7 +626,12 @@ fn impl_method_metadata(
         node,
         name: name.text().to_owned(),
         name_span: span_for(source, name.text_range()),
-        signature: function_signature(source, method.param_list(), method.return_type()),
+        signature: function_signature(
+            source,
+            method.is_async(),
+            method.param_list(),
+            method.return_type(),
+        ),
         span: body_span,
         body_span,
         visibility: if method.is_public() {

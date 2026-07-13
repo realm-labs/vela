@@ -61,6 +61,7 @@ impl TypeRegistry {
 }
 
 fn apply_signature(mut desc: FunctionDesc, signature: &FunctionSignature) -> FunctionDesc {
+    desc = desc.asyncness(signature.asyncness);
     for param in &signature.params {
         let mut param_desc = FunctionParamDesc::new(param.name.clone())
             .defaulted(param.default_value_span.is_some());

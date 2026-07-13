@@ -1142,9 +1142,9 @@ resumable foundation before adding real host suspension.
   move fallback adapter bindings into the execution host input, make raw helpers
   internal or remove them, and keep reload safe-point checks as separate
   lifecycle operations.
-- [ ] Add `async`/`await` syntax, CST losslessness/recovery, AST accessors, and
+- [x] Add `async`/`await` syntax, CST losslessness/recovery, AST accessors, and
   formatting/highlighting basics.
-- [ ] Propagate callable asyncness through HIR, analysis, registry, reflection,
+- [x] Propagate callable asyncness through HIR, analysis, registry, reflection,
   native/method/provider descriptors, compile snapshots, and linked metadata.
 - [ ] Add async call validation and diagnostics described in Section 6.
 - [ ] Add explicit MIR await control flow, liveness, effects, dumps, verifier

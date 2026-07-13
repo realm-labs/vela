@@ -58,6 +58,29 @@ fn semantic_tokens_cover_lexical_classes() {
 }
 
 #[test]
+fn semantic_tokens_classify_async_and_await_keywords() {
+    let document = DocumentId::from("/workspace/scripts/game/async.vela");
+    let text = "async fn main() { service::load().await; }";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+    let tokens = databases.semantic_tokens(&document);
+
+    for keyword in ["async", "await"] {
+        assert_token_at(
+            &tokens,
+            0,
+            text.find(keyword).expect("keyword should exist"),
+            keyword.len(),
+            SemanticTokenType::Keyword,
+            if keyword == "await" {
+                SemanticTokenModifiers::CONTROL_FLOW
+            } else {
+                SemanticTokenModifiers::NONE
+            },
+        );
+    }
+}
+
+#[test]
 fn semantic_tokens_mark_resolved_symbols() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let helper = DocumentId::from("/workspace/scripts/game/reward.vela");

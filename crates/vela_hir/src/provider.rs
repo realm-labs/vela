@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
-use vela_common::{Diagnostic, ShapeId, Span, script_shape_id};
+use vela_common::{CallableAsyncness, Diagnostic, ShapeId, Span, script_shape_id};
 use vela_def::{
     MethodId, TraitId, TypeId, script_trait_id, script_trait_method_id, script_type_id,
 };
@@ -41,6 +41,7 @@ pub struct HirProviderDescriptor {
 pub struct HirProviderMethodDescriptor {
     pub id: MethodId,
     pub name: String,
+    pub asyncness: CallableAsyncness,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -284,6 +285,7 @@ fn discover_provider(
         .map(|method| HirProviderMethodDescriptor {
             id: script_trait_method_id(service_package.as_str(), &service_symbol, &method.name),
             name: method.name.clone(),
+            asyncness: method.signature.asyncness,
         })
         .collect();
     Ok(HirProviderDescriptor {
@@ -401,7 +403,8 @@ fn validate_methods(
 }
 
 fn signatures_match(expected: &FunctionSignature, actual: &FunctionSignature) -> bool {
-    expected.params.len() == actual.params.len()
+    expected.asyncness == actual.asyncness
+        && expected.params.len() == actual.params.len()
         && expected
             .params
             .iter()

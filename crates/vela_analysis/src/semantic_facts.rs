@@ -329,6 +329,9 @@ impl HirSemanticFacts {
             HirExprKind::Try { expression } => {
                 expression.map_or(TypeFact::Unknown, |id| try_payload_fact(self.fact(id)))
             }
+            HirExprKind::Await { expression } => {
+                expression.map_or(TypeFact::Unknown, |id| self.fact(id))
+            }
             HirExprKind::Unit => TypeFact::UNIT,
             HirExprKind::Tuple { elements } => {
                 TypeFact::tuple(elements.iter().map(|id| self.fact(*id)))

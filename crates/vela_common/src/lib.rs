@@ -14,6 +14,20 @@ use std::collections::HashMap;
 use std::fmt;
 use std::num::NonZeroU32;
 
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum CallableAsyncness {
+    #[default]
+    Sync,
+    Async,
+}
+
+impl CallableAsyncness {
+    #[must_use]
+    pub const fn is_async(self) -> bool {
+        matches!(self, Self::Async)
+    }
+}
+
 macro_rules! stable_id {
     ($name:ident, $inner:ty) => {
         #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

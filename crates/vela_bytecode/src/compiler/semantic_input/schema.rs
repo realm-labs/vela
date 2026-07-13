@@ -480,6 +480,7 @@ impl GenerationBuilder<'_, '_> {
                             code_symbol: symbol,
                         },
                         signature: CompileSignature {
+                            asyncness: vela_common::CallableAsyncness::Sync,
                             parameters: full_signature.parameters.iter().skip(1).cloned().collect(),
                             ..full_signature
                         },
@@ -581,6 +582,7 @@ impl GenerationBuilder<'_, '_> {
             )?;
         }
         Ok(CompileSignature {
+            asyncness: signature.asyncness,
             parameters,
             positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
             return_contract,

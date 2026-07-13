@@ -145,6 +145,9 @@ pub enum SyntaxKind {
     UnitExpr,
     TupleExpr,
     AttributeValue,
+    AwaitExpr,
+    AsyncKw,
+    AwaitKw,
     Eof,
 }
 
@@ -222,6 +225,7 @@ impl SyntaxKind {
                 | Self::UnitExpr
                 | Self::TupleExpr
                 | Self::AttributeValue
+                | Self::AwaitExpr
                 | Self::Error
         )
     }
@@ -260,6 +264,8 @@ impl SyntaxKind {
                 | Self::SelfKw
                 | Self::InKw
                 | Self::AsKw
+                | Self::AsyncKw
+                | Self::AwaitKw
         )
     }
 
@@ -462,7 +468,10 @@ impl From<u16> for SyntaxKind {
             139 => Self::UnitExpr,
             140 => Self::TupleExpr,
             141 => Self::AttributeValue,
-            142 => Self::Eof,
+            142 => Self::AwaitExpr,
+            143 => Self::AsyncKw,
+            144 => Self::AwaitKw,
+            145 => Self::Eof,
             _ => unreachable!("raw syntax kind already checked against LAST_KIND"),
         }
     }
@@ -636,6 +645,9 @@ mod tests {
         SyntaxKind::UnitExpr,
         SyntaxKind::TupleExpr,
         SyntaxKind::AttributeValue,
+        SyntaxKind::AwaitExpr,
+        SyntaxKind::AsyncKw,
+        SyntaxKind::AwaitKw,
         SyntaxKind::Eof,
     ];
 

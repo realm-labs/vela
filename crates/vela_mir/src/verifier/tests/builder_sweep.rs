@@ -78,6 +78,7 @@ fn build_configured(
                 canonical_symbol: SWEEP_SYMBOL.to_owned(),
                 debug_name: "main".to_owned(),
                 signature: CompileSignature {
+                    asyncness: vela_common::CallableAsyncness::Sync,
                     parameters,
                     positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
                     return_contract: None,
@@ -217,12 +218,14 @@ fn mir_verifier_sweeps_registry_calls_and_reflection() {
                 origin: None,
             };
             let registry_signature = CompileSignature {
+                asyncness: vela_common::CallableAsyncness::Sync,
                 parameters: vec![required("value")],
                 positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
                 return_contract: None,
                 effect: MirEffect::PURE,
             };
             let reflection_signature = CompileSignature {
+                asyncness: vela_common::CallableAsyncness::Sync,
                 parameters: vec![required("target"), required("member")],
                 positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
                 return_contract: None,

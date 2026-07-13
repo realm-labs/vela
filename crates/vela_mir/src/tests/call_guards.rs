@@ -17,6 +17,7 @@ fn script_function_calls_own_parameter_guard_policy() {
     );
     let entry = function.entry_block();
     let signature = CompileSignature {
+        asyncness: vela_common::CallableAsyncness::Sync,
         parameters: vec![CompileParameter {
             name: "value".to_owned(),
             contract: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),

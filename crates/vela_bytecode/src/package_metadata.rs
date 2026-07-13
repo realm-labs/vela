@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-use vela_common::{CapabilitySet, ShapeId, Span};
+use vela_common::{CallableAsyncness, CapabilitySet, ShapeId, Span};
 use vela_def::{MethodId, TypeId};
 use vela_hir::provider::ProviderKey;
 use vela_package::{PackageId, PackageVersion};
@@ -20,6 +20,7 @@ pub struct PackageCompilationInput {
 pub struct ProviderMethodCompilationInput {
     pub id: MethodId,
     pub name: String,
+    pub asyncness: CallableAsyncness,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -62,6 +63,7 @@ pub struct LinkedProviderEntry {
     provider_type_id: TypeId,
     receiver: ProviderReceiverPlan,
     methods: BTreeMap<MethodId, MethodDispatchHandle>,
+    method_asyncness: BTreeMap<MethodId, CallableAsyncness>,
     package_declared_capabilities: CapabilitySet,
     source: Span,
 }
@@ -204,6 +206,7 @@ impl PackageCompilationMetadata {
                 }
             };
             let mut methods = BTreeMap::new();
+            let mut method_asyncness = BTreeMap::new();
             for method in provider.methods {
                 let dispatch = program
                     .script_method_dispatch(provider.provider_type, &method.name)
@@ -221,6 +224,7 @@ impl PackageCompilationMetadata {
                         method.id
                     ));
                 }
+                method_asyncness.insert(method.id, method.asyncness);
             }
             let key = provider.key;
             let entry = LinkedProviderEntry {
@@ -231,6 +235,7 @@ impl PackageCompilationMetadata {
                     shape: provider.provider_shape,
                 },
                 methods,
+                method_asyncness,
                 package_declared_capabilities: provider.package_declared_capabilities,
                 source: provider.source,
             };
@@ -298,6 +303,11 @@ impl LinkedProviderEntry {
     #[must_use]
     pub fn method(&self, id: MethodId) -> Option<MethodDispatchHandle> {
         self.methods.get(&id).copied()
+    }
+
+    #[must_use]
+    pub fn method_asyncness(&self, id: MethodId) -> Option<CallableAsyncness> {
+        self.method_asyncness.get(&id).copied()
     }
 
     pub fn method_ids(&self) -> impl Iterator<Item = MethodId> + '_ {

@@ -17,9 +17,11 @@ representative runtime performance baseline are recorded in
 [archive/async-execution-baseline-2026-07-13.md](archive/async-execution-baseline-2026-07-13.md).
 The safe-Rust scoped `Send` ownership proof, execution-owned host boundary,
 unified function/bound-method/provider target contract, and two-method public
-execution surface are complete. The current checkpoint is explicit async/await
-representation through the frontend and MIR, followed by the frame-stack
-driver.
+execution surface are complete. Lossless `async fn`/`.await` syntax and the
+callable asyncness fact now reach HIR, analysis, registries, reflection, MIR,
+linked code/dispatch, providers, and Runtime entry resolution. The current
+checkpoint is explicit await control flow through MIR and linked execution,
+followed by the frame-stack driver.
 
 M20 cache close-out and M20.5 LSP follow-up remain valid but are paused while
 the async plan is the persistent work queue.
@@ -95,8 +97,9 @@ the async plan is the persistent work queue.
 
 ### Async Execution Batch A
 
-- Carry callable asyncness and explicit await control flow through the frontend,
-  MIR, linked executable, and one non-recursive execution-frame driver.
+- Represent await as verified MIR and linked control flow, complete the
+  remaining async-call diagnostics, and build one non-recursive execution-frame
+  driver.
 
 ### M20 Cache Close-Out
 

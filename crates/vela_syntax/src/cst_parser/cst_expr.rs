@@ -29,6 +29,7 @@ impl CstParser<'_, '_> {
             SyntaxKind::CallExpr => self.call_expression_body(expression_start, expression_end),
             SyntaxKind::IndexExpr => self.index_expression_body(expression_start, expression_end),
             SyntaxKind::TryExpr => self.try_expression_body(expression_start, expression_end),
+            SyntaxKind::AwaitExpr => self.await_expression_body(expression_start, expression_end),
             SyntaxKind::ArrayExpr => self.array_expression_body(expression_start, expression_end),
             SyntaxKind::MapExpr => self.map_expression_body(expression_start, expression_end),
             SyntaxKind::RecordExpr => {
@@ -147,6 +148,15 @@ impl CstParser<'_, '_> {
 
     fn try_expression_body(&mut self, start: usize, end: usize) {
         self.expression_range(start, end.saturating_sub(1));
+        self.emit_until(end);
+    }
+
+    fn await_expression_body(&mut self, start: usize, end: usize) {
+        let Some(dot) = self.trailing_await_suffix_start(start, end) else {
+            self.emit_until(end);
+            return;
+        };
+        self.expression_range(start, dot);
         self.emit_until(end);
     }
 
@@ -637,6 +647,9 @@ impl CstParser<'_, '_> {
         if self.has_trailing_try_suffix(start, end) {
             return SyntaxKind::TryExpr;
         }
+        if self.trailing_await_suffix_start(start, end).is_some() {
+            return SyntaxKind::AwaitExpr;
+        }
         if self.find_outer_index_list_start(start, end).is_some() {
             return SyntaxKind::IndexExpr;
         }
@@ -818,6 +831,17 @@ impl CstParser<'_, '_> {
         (start..end)
             .rev()
             .find(|cursor| !self.tokens[*cursor].kind.is_trivia())
+    }
+
+    fn trailing_await_suffix_start(&self, start: usize, end: usize) -> Option<usize> {
+        let await_kw = self.previous_significant_before(start, end)?;
+        if self.kind_at(await_kw) != Some(SyntaxKind::AwaitKw) {
+            return None;
+        }
+        let dot = self.previous_significant_before(start, await_kw)?;
+        (self.kind_at(dot) == Some(SyntaxKind::Dot)
+            && self.previous_significant_before(start, dot).is_some())
+        .then_some(dot)
     }
 
     fn find_outer_call_arg_list_start(&self, start: usize, end: usize) -> Option<usize> {

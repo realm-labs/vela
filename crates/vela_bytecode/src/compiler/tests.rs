@@ -62,6 +62,42 @@ fn main() {
 }
 
 #[test]
+fn compiler_and_linker_preserve_function_asyncness() {
+    let program = compile_test_program(
+        SourceId::new(4),
+        "async fn pending() { return 7; } fn ready() { return 8; }",
+    )
+    .expect("async metadata source should compile");
+
+    assert_eq!(
+        program
+            .function("pending")
+            .expect("pending bytecode")
+            .asyncness,
+        vela_common::CallableAsyncness::Async
+    );
+    assert_eq!(
+        program.function("ready").expect("ready bytecode").asyncness,
+        vela_common::CallableAsyncness::Sync
+    );
+
+    let artifact = crate::Linker::new()
+        .link_compiled_program(program)
+        .expect("async metadata program should link");
+    let linked = artifact.program();
+    let pending = linked
+        .entry_point_by_name("pending")
+        .and_then(|handle| linked.function(handle))
+        .expect("linked pending entry");
+    let ready = linked
+        .entry_point_by_name("ready")
+        .and_then(|handle| linked.function(handle))
+        .expect("linked ready entry");
+    assert_eq!(pending.asyncness, vela_common::CallableAsyncness::Async);
+    assert_eq!(ready.asyncness, vela_common::CallableAsyncness::Sync);
+}
+
+#[test]
 fn graph_requests_compile_program_and_stable_function_roots() {
     let built = vela_hir::source_ingestion::build_single_source(
         SourceId::new(3),

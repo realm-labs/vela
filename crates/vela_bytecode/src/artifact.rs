@@ -292,6 +292,7 @@ fn test_mir_binding(
                 canonical_symbol: format!("__low_level::{}", handle.index()),
                 debug_name: format!("__low_level::{}", handle.index()),
                 signature: vela_mir::CompileSignature {
+                    asyncness: vela_common::CallableAsyncness::Sync,
                     parameters: Vec::new(),
                     positional: vela_mir::CompilePositionalPolicy::ExactOrTrailingDefaults,
                     return_contract: None,

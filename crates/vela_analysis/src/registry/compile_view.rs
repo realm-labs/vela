@@ -303,7 +303,7 @@ impl<'registry> CompileViewFacts<'registry> {
             .return_type
             .as_ref()
             .map_or(TypeFact::Unknown, |hint| self.type_hint_fact(hint));
-        CallableSignatureFact::new(parameters, returns)
+        CallableSignatureFact::new(parameters, returns).asyncness(signature.asyncness)
     }
 
     fn type_hint_fact(&self, hint: &TypeHintDef) -> TypeFact {

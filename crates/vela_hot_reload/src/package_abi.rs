@@ -103,6 +103,16 @@ fn ensure_compatible_metadata(
                 new_manifest,
             );
         }
+        if old_provider.method_ids().any(|method| {
+            old_provider.method_asyncness(method) != new_provider.method_asyncness(method)
+        }) {
+            return incompatible(
+                &format!("provider {}", key.provider()),
+                "provider service method asyncness changed",
+                Some(new_provider.source()),
+                new_manifest,
+            );
+        }
     }
     Ok(())
 }

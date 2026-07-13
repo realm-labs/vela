@@ -3,6 +3,7 @@ use std::error::Error;
 use std::fmt;
 
 use vela_analysis::executable::ExecutableAnalysisView;
+use vela_common::CallableAsyncness;
 use vela_def::{FieldId, FunctionId, GlobalId, MethodId, TypeId, VariantId};
 use vela_hir::body::HirBodyOwner;
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId, HirPatternId};
@@ -114,6 +115,7 @@ pub enum CompileParameterDefault {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompileSignature {
+    pub asyncness: CallableAsyncness,
     pub parameters: Vec<CompileParameter>,
     pub positional: CompilePositionalPolicy,
     pub return_contract: Option<MirTypeContract>,

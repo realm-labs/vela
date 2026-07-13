@@ -475,6 +475,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
         let frame = self.link_frame(&code.frame);
 
         let mut linked = LinkedCodeObject::new(debug_name, code.register_count)
+            .with_asyncness(code.asyncness)
             .with_params(params)
             .with_param_defaults(code.param_defaults.clone())
             .with_capture_count(code.capture_count);

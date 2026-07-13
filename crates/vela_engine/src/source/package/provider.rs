@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::registry::{RegistryEffectFact, RegistryFacts};
-use vela_common::{Capability, CapabilitySet};
+use vela_common::{CallableAsyncness, Capability, CapabilitySet};
 use vela_def::{MethodId, TraitId, TypeId};
 use vela_hir::provider::{ProviderKey, discover_providers};
 
@@ -25,6 +25,7 @@ pub struct ProviderSourceLocation {
 pub struct ProviderMethodDescriptor {
     id: MethodId,
     name: String,
+    asyncness: CallableAsyncness,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -86,6 +87,11 @@ impl ProviderMethodDescriptor {
     #[must_use]
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    #[must_use]
+    pub const fn asyncness(&self) -> CallableAsyncness {
+        self.asyncness
     }
 }
 
@@ -277,6 +283,7 @@ impl Engine {
                         .map(|method| ProviderMethodDescriptor {
                             id: method.id,
                             name: method.name,
+                            asyncness: method.asyncness,
                         })
                         .collect::<Vec<_>>()
                         .into_boxed_slice(),

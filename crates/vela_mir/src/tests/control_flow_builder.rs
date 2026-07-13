@@ -54,6 +54,7 @@ fn build(source: &str, parameter_names: &[&str]) -> crate::MirProgram {
                 canonical_symbol: "control_flow_builder::main".to_owned(),
                 debug_name: "main".to_owned(),
                 signature: CompileSignature {
+                    asyncness: vela_common::CallableAsyncness::Sync,
                     parameters,
                     positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
                     return_contract: None,
@@ -98,7 +99,7 @@ fn mir_builder_lowers_if_values_through_one_mutable_join_local() {
     assert_eq!(
         program.dump(),
         r#"mir {
-  target function#710 CompileFunctionDescriptor { id: FunctionId(710), class: Script, canonical_symbol: "control_flow_builder::main", debug_name: "main", signature: CompileSignature { parameters: [CompileParameter { name: "condition", contract: None, default: Required, origin: None }], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, global_read: false, host_read: false, host_write: false, host_call: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
+  target function#710 CompileFunctionDescriptor { id: FunctionId(710), class: Script, canonical_symbol: "control_flow_builder::main", debug_name: "main", signature: CompileSignature { asyncness: Sync, parameters: [CompileParameter { name: "condition", contract: None, default: Required, origin: None }], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, global_read: false, host_read: false, host_write: false, host_call: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
   fn f0 body h0 owner function#710 symbol="control_flow_builder::main" @71:19..169/h0 {
     param p0: condition -> l0 kind=Explicit(HirParamId(0)) contract=None default=None hir=l0 @71:8..17/h0
     local l0: Script(HirLocalId(0)) Dynamic @71:8..17/h0

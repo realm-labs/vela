@@ -110,6 +110,7 @@ mod tests {
                     canonical_symbol: format!("test::try_root_{}", function.get()),
                     debug_name: format!("try_root_{}", function.get()),
                     signature: CompileSignature {
+                        asyncness: vela_common::CallableAsyncness::Sync,
                         parameters: Vec::new(),
                         positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
                         return_contract: None,

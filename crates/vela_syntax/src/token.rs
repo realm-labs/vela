@@ -78,6 +78,8 @@ pub enum Keyword {
     SelfValue,
     In,
     As,
+    Async,
+    Await,
 }
 
 impl Keyword {
@@ -106,6 +108,8 @@ impl Keyword {
             "self" => Some(Self::SelfValue),
             "in" => Some(Self::In),
             "as" => Some(Self::As),
+            "async" => Some(Self::Async),
+            "await" => Some(Self::Await),
             _ => None,
         }
     }
@@ -135,6 +139,8 @@ impl Keyword {
             Self::SelfValue => SyntaxKind::SelfKw,
             Self::In => SyntaxKind::InKw,
             Self::As => SyntaxKind::AsKw,
+            Self::Async => SyntaxKind::AsyncKw,
+            Self::Await => SyntaxKind::AwaitKw,
         }
     }
 }

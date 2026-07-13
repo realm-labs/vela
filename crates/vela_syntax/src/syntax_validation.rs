@@ -1,7 +1,10 @@
 use vela_common::{Diagnostic, SourceId, Span};
 
 use crate::TextRange;
-use crate::ast::{AstNode, SyntaxSourceFile, SyntaxTuplePattern, SyntaxTypeHint, SyntaxUsePath};
+use crate::ast::{
+    AstNode, SyntaxAwaitExpr, SyntaxFunctionItem, SyntaxImplMethod, SyntaxSourceFile,
+    SyntaxTraitMethod, SyntaxTuplePattern, SyntaxTypeHint, SyntaxUsePath,
+};
 use crate::syntax_kind::SyntaxKind;
 
 pub(crate) fn validate_source(source: SourceId, tree: &SyntaxSourceFile) -> Vec<Diagnostic> {
@@ -24,6 +27,61 @@ pub(crate) fn validate_source(source: SourceId, tree: &SyntaxSourceFile) -> Vec<
             .flat_map(|pattern| validate_tuple_pattern(source, &pattern)),
     );
     diagnostics.extend(validate_removed_null(source, tree));
+    diagnostics.extend(
+        tree.syntax()
+            .descendants()
+            .filter_map(SyntaxAwaitExpr::cast)
+            .flat_map(|expression| validate_await(source, &expression)),
+    );
+    diagnostics
+}
+
+fn validate_await(source: SourceId, expression: &SyntaxAwaitExpr) -> Vec<Diagnostic> {
+    let mut diagnostics = Vec::new();
+    let valid_operand = expression
+        .expression()
+        .is_some_and(|operand| operand.as_call().is_some());
+    if !valid_operand {
+        let span = expression.expression().map_or_else(
+            || span_for(source, expression.syntax().text_range()),
+            |operand| span_for(source, operand.syntax().text_range()),
+        );
+        diagnostics.push(
+            Diagnostic::error("`.await` requires a call expression")
+                .with_code("syntax::invalid_await_operand")
+                .with_span(span)
+                .with_label(span, "this expression is not a call"),
+        );
+    }
+
+    let inside_async = expression
+        .syntax()
+        .ancestors()
+        .skip(1)
+        .find_map(|ancestor| match ancestor.kind() {
+            SyntaxKind::LambdaExpr => Some(false),
+            SyntaxKind::FunctionItem => {
+                SyntaxFunctionItem::cast(ancestor).map(|item| item.is_async())
+            }
+            SyntaxKind::ImplMethod => SyntaxImplMethod::cast(ancestor).map(|item| item.is_async()),
+            SyntaxKind::TraitMethod => {
+                SyntaxTraitMethod::cast(ancestor).map(|item| item.is_async())
+            }
+            _ => None,
+        })
+        .unwrap_or(false);
+    if !inside_async {
+        let span = expression.await_token().map_or_else(
+            || span_for(source, expression.syntax().text_range()),
+            |token| span_for(source, token.text_range()),
+        );
+        diagnostics.push(
+            Diagnostic::error("`.await` is only allowed inside an async function")
+                .with_code("syntax::await_outside_async")
+                .with_span(span)
+                .with_label(span, "declare the enclosing function with `async fn`"),
+        );
+    }
     diagnostics
 }
 

@@ -167,7 +167,8 @@ fn method_def(desc: &TypeDesc, owner: vela_def::TypeId, method: &MethodDesc) -> 
         FunctionSignature::new(
             method.params.iter().map(method_param_def),
             method.return_type.as_deref().map(raw_type_hint_def),
-        ),
+        )
+        .asyncness(method.asyncness),
     )
     .host_runtime_id(method.id.get())
     .effects(method_effects(&method.effects))
@@ -195,7 +196,8 @@ fn native_function_def(desc: &NativeFunctionDesc) -> FunctionDef {
                 .iter()
                 .map(|param| ParamDef::new(param.name.clone(), Some(type_hint_def(&param.hint)))),
             Some(type_hint_def(&desc.returns)),
-        ),
+        )
+        .asyncness(desc.asyncness),
     )
     .with_id(desc.id)
     .effects(native_function_effects(&desc.effects))

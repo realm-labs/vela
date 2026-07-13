@@ -1,5 +1,8 @@
 use std::cell::Cell;
 use std::collections::BTreeMap;
+use std::future::Future;
+use std::pin::Pin;
+use std::task::{Context, Poll, Waker};
 
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
 use vela_def::{FieldId, TypeId};
@@ -91,6 +94,38 @@ fn main() {
     assert_eq!(
         runtime.value_to_owned(&value),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(16)))
+    );
+}
+
+#[test]
+fn sync_runtime_call_rejects_async_entry_and_call_async_accepts_it() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = engine
+        .compile_source_with_id(SourceId::new(2), "async fn main() { return 42; }")
+        .expect("async entry should compile");
+    let mut runtime = Runtime::new(engine, program);
+
+    let error = runtime
+        .call("main", CallArgs::new(), CallOptions::unbounded())
+        .expect_err("sync call must reject an async entry");
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::AsyncEntryRequiresCallAsync {
+            name: "main".to_owned(),
+        }
+    );
+
+    let value = {
+        let mut future = runtime.call_async("main", CallArgs::new(), CallOptions::unbounded());
+        let mut context = Context::from_waker(Waker::noop());
+        match Pin::new(&mut future).poll(&mut context) {
+            Poll::Ready(result) => result.expect("ready async entry should execute"),
+            Poll::Pending => panic!("entry without await should complete immediately"),
+        }
+    };
+    assert_eq!(
+        runtime.value_to_owned(&value),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(42)))
     );
 }
 

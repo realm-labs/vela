@@ -32,6 +32,7 @@ fn function_descriptor(
         canonical_symbol: format!("test::function_{}", function.get()),
         debug_name: format!("function_{}", function.get()),
         signature: CompileSignature {
+            asyncness: vela_common::CallableAsyncness::Sync,
             parameters,
             positional: CompilePositionalPolicy::RuntimeChecked,
             return_contract: None,

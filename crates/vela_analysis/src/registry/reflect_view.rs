@@ -272,6 +272,7 @@ fn function_desc_signature_fact(
             .as_deref()
             .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint)),
     )
+    .asyncness(desc.asyncness)
 }
 
 fn method_desc_fact(registry: &TypeRegistry, desc: &MethodDesc) -> TypeFact {
@@ -307,6 +308,7 @@ fn method_desc_signature_fact(registry: &TypeRegistry, desc: &MethodDesc) -> Cal
             .as_deref()
             .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint)),
     )
+    .asyncness(desc.asyncness)
 }
 
 fn trait_method_desc_fact(registry: &TypeRegistry, desc: &TraitMethodDesc) -> TypeFact {
@@ -345,6 +347,7 @@ fn trait_method_desc_signature_fact(
             .as_deref()
             .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint)),
     )
+    .asyncness(desc.asyncness)
 }
 
 fn reflected_parameter_fact(

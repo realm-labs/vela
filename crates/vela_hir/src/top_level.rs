@@ -67,6 +67,14 @@ impl SyntaxConstInitializerValidator {
                     self.visit_expr(&value);
                 }
             }
+            SyntaxExpressionKind::Await => {
+                self.report(expr.syntax().text_range(), "await");
+                if let Some(await_expr) = expr.as_await()
+                    && let Some(value) = await_expr.expression()
+                {
+                    self.visit_expr(&value);
+                }
+            }
             SyntaxExpressionKind::Binary => {
                 if let Some(binary) = expr.as_binary() {
                     if let Some(lhs) = binary.lhs() {

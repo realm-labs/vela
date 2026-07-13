@@ -369,6 +369,7 @@ pub struct MethodDesc {
     pub params: Vec<MethodParamDesc>,
     pub return_type: Option<String>,
     pub effects: MethodEffectSet,
+    pub asyncness: vela_common::CallableAsyncness,
     pub access: MethodAccess,
     pub origin: DeclOrigin,
     pub docs: Option<String>,
@@ -385,6 +386,7 @@ impl MethodDesc {
             params: Vec::new(),
             return_type: None,
             effects: MethodEffectSet::default(),
+            asyncness: vela_common::CallableAsyncness::Sync,
             access: MethodAccess::default(),
             origin: DeclOrigin::Host,
             docs: None,
@@ -396,6 +398,12 @@ impl MethodDesc {
     #[must_use]
     pub fn effects(mut self, effects: MethodEffectSet) -> Self {
         self.effects = effects;
+        self
+    }
+
+    #[must_use]
+    pub fn asyncness(mut self, asyncness: vela_common::CallableAsyncness) -> Self {
+        self.asyncness = asyncness;
         self
     }
 
@@ -536,6 +544,7 @@ pub struct TraitMethodDesc {
     pub params: Vec<MethodParamDesc>,
     pub return_type: Option<String>,
     pub has_default: bool,
+    pub asyncness: vela_common::CallableAsyncness,
     pub origin: DeclOrigin,
     pub docs: Option<String>,
     pub attrs: AttrMap,
@@ -551,6 +560,7 @@ impl TraitMethodDesc {
             params: Vec::new(),
             return_type: None,
             has_default: false,
+            asyncness: vela_common::CallableAsyncness::Sync,
             origin: DeclOrigin::Host,
             docs: None,
             attrs: AttrMap::new(),
@@ -561,6 +571,12 @@ impl TraitMethodDesc {
     #[must_use]
     pub fn defaulted(mut self, has_default: bool) -> Self {
         self.has_default = has_default;
+        self
+    }
+
+    #[must_use]
+    pub fn asyncness(mut self, asyncness: vela_common::CallableAsyncness) -> Self {
+        self.asyncness = asyncness;
         self
     }
 

@@ -24,7 +24,9 @@ pub(crate) use cache_policy::{CacheSiteInstruction, CacheSiteStorage};
 
 use std::collections::BTreeMap;
 
-use vela_common::{GlobalSlot, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span};
+use vela_common::{
+    CallableAsyncness, GlobalSlot, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span,
+};
 use vela_def::{FunctionId, MethodId, TypeId};
 use vela_hir::ids::HirLocalId;
 use vela_hir::module_graph::ModuleGraph;
@@ -331,6 +333,7 @@ impl UnlinkedProgramCode for UnlinkedProgram {
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnlinkedCodeObject {
     pub name: String,
+    pub asyncness: CallableAsyncness,
     pub params: Vec<String>,
     pub param_defaults: Vec<bool>,
     pub capture_count: u16,
@@ -351,6 +354,7 @@ impl UnlinkedCodeObject {
     pub fn new(name: impl Into<String>, register_count: u16) -> Self {
         Self {
             name: name.into(),
+            asyncness: CallableAsyncness::Sync,
             params: Vec::new(),
             param_defaults: Vec::new(),
             capture_count: 0,
@@ -371,6 +375,12 @@ impl UnlinkedCodeObject {
     pub fn with_params(mut self, params: Vec<String>) -> Self {
         self.param_defaults = vec![false; params.len()];
         self.params = params;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_asyncness(mut self, asyncness: CallableAsyncness) -> Self {
+        self.asyncness = asyncness;
         self
     }
 

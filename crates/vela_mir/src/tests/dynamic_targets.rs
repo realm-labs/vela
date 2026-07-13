@@ -30,6 +30,7 @@ fn script_descriptor(function: FunctionId) -> CompileFunctionDescriptor {
         canonical_symbol: format!("test::dynamic_target_{}", function.get()),
         debug_name: format!("dynamic_target_{}", function.get()),
         signature: CompileSignature {
+            asyncness: vela_common::CallableAsyncness::Sync,
             parameters: Vec::new(),
             positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
             return_contract: None,

@@ -33,6 +33,7 @@ fn origin() -> MirSourceOrigin {
 
 fn signature(parameters: Vec<CompileParameter>) -> CompileSignature {
     CompileSignature {
+        asyncness: vela_common::CallableAsyncness::Sync,
         parameters,
         positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
         return_contract: None,
@@ -879,6 +880,7 @@ fn mir_verifier_checks_call_host_and_reflection_descriptors() {
                 function: missing_function,
                 debug_name: "missing".to_owned(),
                 signature: CompileSignature {
+                    asyncness: vela_common::CallableAsyncness::Sync,
                     parameters: Vec::new(),
                     positional: CompilePositionalPolicy::RuntimeChecked,
                     return_contract: None,

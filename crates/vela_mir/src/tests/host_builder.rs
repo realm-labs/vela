@@ -142,6 +142,7 @@ fn function_descriptor(graph: &ModuleGraph, body: &HirBody) -> CompileFunctionDe
         canonical_symbol: "host_builder::main".to_owned(),
         debug_name: "main".to_owned(),
         signature: CompileSignature {
+            asyncness: vela_common::CallableAsyncness::Sync,
             parameters,
             positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
             return_contract: None,
@@ -504,6 +505,7 @@ fn mix_method_target() -> HostMethodTarget {
 
 fn grant_signature() -> CompileSignature {
     CompileSignature {
+        asyncness: vela_common::CallableAsyncness::Sync,
         parameters: vec![CompileParameter {
             name: "value".to_owned(),
             contract: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
@@ -518,6 +520,7 @@ fn grant_signature() -> CompileSignature {
 
 fn touch_signature() -> CompileSignature {
     CompileSignature {
+        asyncness: vela_common::CallableAsyncness::Sync,
         parameters: Vec::new(),
         positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
         return_contract: None,
@@ -527,6 +530,7 @@ fn touch_signature() -> CompileSignature {
 
 fn mix_signature() -> CompileSignature {
     CompileSignature {
+        asyncness: vela_common::CallableAsyncness::Sync,
         parameters: vec![
             CompileParameter {
                 name: "first".to_owned(),

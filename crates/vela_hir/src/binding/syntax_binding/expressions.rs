@@ -168,6 +168,13 @@ impl SyntaxBindingLowerer<'_> {
                     .map(|expr| self.bind_expr(&expr, PathUsage::Value));
                 HirExprKind::Try { expression }
             }
+            SyntaxExpressionKind::Await => {
+                let expression = expr
+                    .as_await()
+                    .and_then(|expr| expr.expression())
+                    .map(|expr| self.bind_expr(&expr, PathUsage::Value));
+                HirExprKind::Await { expression }
+            }
             SyntaxExpressionKind::Array => {
                 let elements = expr
                     .as_array()
@@ -408,6 +415,7 @@ impl SyntaxBindingLowerer<'_> {
             | HirExprKind::Call(_)
             | HirExprKind::Index(_)
             | HirExprKind::Try { .. }
+            | HirExprKind::Await { .. }
             | HirExprKind::Array { .. }
             | HirExprKind::Map { .. }
             | HirExprKind::Record { .. }

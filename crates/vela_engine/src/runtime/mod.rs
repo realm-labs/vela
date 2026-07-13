@@ -482,9 +482,27 @@ where
     where
         T: RuntimeCallTarget,
     {
+        self.call_impl(entry, args, options, false)
+    }
+
+    fn call_impl<'host, T>(
+        &mut self,
+        entry: T,
+        args: CallArgs<'host>,
+        options: CallOptions,
+        allow_async_entry: bool,
+    ) -> VmResult<VelaValue>
+    where
+        T: RuntimeCallTarget,
+    {
         let mut budget = options.budget();
         let target = handles::call_target_sealed::Sealed::into_call_target(entry);
         let target = self.resolve_call_target(target, &mut budget)?;
+        if target.asyncness.is_async() && !allow_async_entry {
+            return Err(VmError::new(VmErrorKind::AsyncEntryRequiresCallAsync {
+                name: target.name,
+            }));
+        }
         let state = &mut self.state;
         Self::call_runtime_args(RuntimeCallExecution {
             runtime_id: state.id,
@@ -510,7 +528,7 @@ where
     where
         T: RuntimeCallTarget + Send + 'call,
     {
-        RuntimeCallFuture::new(async move { self.call(entry, args, options) })
+        RuntimeCallFuture::new(async move { self.call_impl(entry, args, options, true) })
     }
 
     pub fn bind_method<T>(&self, receiver: &VelaValue, method: T) -> VmResult<VelaMethodTarget>

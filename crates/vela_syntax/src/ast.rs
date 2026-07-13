@@ -21,12 +21,12 @@ pub use attributes::{
 };
 pub use control::{SyntaxMatchArm, SyntaxMatchArmBody, SyntaxMatchArmList, SyntaxMatchExpr};
 pub use expr::{
-    SyntaxArgList, SyntaxArgument, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBinaryExpr,
-    SyntaxCallExpr, SyntaxExpression, SyntaxExpressionKind, SyntaxFieldExpr, SyntaxIndexExpr,
-    SyntaxInterpolatedStringPart, SyntaxInterpolation, SyntaxLambdaBody, SyntaxLambdaExpr,
-    SyntaxLiteral, SyntaxMapEntry, SyntaxMapExpr, SyntaxParenExpr, SyntaxPathExpr,
-    SyntaxRecordExpr, SyntaxRecordExprField, SyntaxRecordExprFieldList, SyntaxTryExpr,
-    SyntaxTupleExpr, SyntaxUnaryExpr, SyntaxUnitExpr,
+    SyntaxArgList, SyntaxArgument, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxAwaitExpr,
+    SyntaxBinaryExpr, SyntaxCallExpr, SyntaxExpression, SyntaxExpressionKind, SyntaxFieldExpr,
+    SyntaxIndexExpr, SyntaxInterpolatedStringPart, SyntaxInterpolation, SyntaxLambdaBody,
+    SyntaxLambdaExpr, SyntaxLiteral, SyntaxMapEntry, SyntaxMapExpr, SyntaxParenExpr,
+    SyntaxPathExpr, SyntaxRecordExpr, SyntaxRecordExprField, SyntaxRecordExprFieldList,
+    SyntaxTryExpr, SyntaxTupleExpr, SyntaxUnaryExpr, SyntaxUnitExpr,
 };
 pub use items::{
     SyntaxConstItem, SyntaxEnumItem, SyntaxEnumVariant, SyntaxEnumVariantList, SyntaxFunctionItem,

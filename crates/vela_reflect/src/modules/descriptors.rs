@@ -1,4 +1,4 @@
-use vela_common::Span;
+use vela_common::{CallableAsyncness, Span};
 use vela_def::FunctionId;
 
 use crate::{
@@ -59,6 +59,7 @@ pub struct FunctionDesc {
     pub module: Option<String>,
     pub params: Vec<FunctionParamDesc>,
     pub return_type: Option<String>,
+    pub asyncness: CallableAsyncness,
     pub public: bool,
     pub effects: FunctionEffectSet,
     pub access: FunctionAccess,
@@ -77,6 +78,7 @@ impl FunctionDesc {
             module: None,
             params: Vec::new(),
             return_type: None,
+            asyncness: CallableAsyncness::Sync,
             public: true,
             effects: FunctionEffectSet::default(),
             access: FunctionAccess::default(),
@@ -102,6 +104,12 @@ impl FunctionDesc {
     #[must_use]
     pub fn return_type(mut self, return_type: impl Into<String>) -> Self {
         self.return_type = Some(return_type.into());
+        self
+    }
+
+    #[must_use]
+    pub const fn asyncness(mut self, asyncness: CallableAsyncness) -> Self {
+        self.asyncness = asyncness;
         self
     }
 

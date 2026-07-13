@@ -2,8 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use vela_common::PrimitiveTag;
-use vela_common::Span;
+use vela_common::{CallableAsyncness, PrimitiveTag, Span};
 use vela_def::FunctionId;
 use vela_reflect::registry::{AttrMap, TypeKey};
 use vela_vm::HostExecution;
@@ -22,6 +21,7 @@ pub struct NativeFunctionDesc {
     pub params: Vec<NativeParamDesc>,
     pub returns: TypeHint,
     pub effects: EffectSet,
+    pub asyncness: CallableAsyncness,
     pub access: FunctionAccess,
     pub docs: Option<String>,
     pub attrs: AttrMap,
@@ -37,6 +37,7 @@ impl NativeFunctionDesc {
             params: Vec::new(),
             returns: TypeHint::Any,
             effects: EffectSet::default(),
+            asyncness: CallableAsyncness::Sync,
             access: FunctionAccess::default(),
             docs: None,
             attrs: AttrMap::new(),
@@ -62,6 +63,12 @@ impl NativeFunctionDesc {
     #[must_use]
     pub fn effects(mut self, effects: EffectSet) -> Self {
         self.effects = effects;
+        self
+    }
+
+    #[must_use]
+    pub fn asyncness(mut self, asyncness: CallableAsyncness) -> Self {
+        self.asyncness = asyncness;
         self
     }
 

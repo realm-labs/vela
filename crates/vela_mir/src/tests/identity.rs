@@ -36,6 +36,7 @@ fn script_method_descriptor(
             code_symbol: "game::__impl.Player.main".to_owned(),
         },
         signature: CompileSignature {
+            asyncness: vela_common::CallableAsyncness::Sync,
             parameters: Vec::new(),
             positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
             return_contract: None,
@@ -264,6 +265,7 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
                 canonical_symbol: "game::main".to_owned(),
                 debug_name: "main".to_owned(),
                 signature: CompileSignature {
+                    asyncness: vela_common::CallableAsyncness::Sync,
                     parameters: Vec::new(),
                     positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
                     return_contract: None,
@@ -303,6 +305,7 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
                 canonical_symbol: "game::main".to_owned(),
                 debug_name: "main".to_owned(),
                 signature: CompileSignature {
+                    asyncness: vela_common::CallableAsyncness::Sync,
                     parameters: vec![CompileParameter {
                         name: "value".to_owned(),
                         contract: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
@@ -329,6 +332,7 @@ fn mir_model_lowering_input_requires_an_exact_owned_compile_target() {
                 canonical_symbol: "game::__impl.Player.main".to_owned(),
                 debug_name: "Player::main".to_owned(),
                 signature: CompileSignature {
+                    asyncness: vela_common::CallableAsyncness::Sync,
                     parameters: Vec::new(),
                     positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
                     return_contract: None,

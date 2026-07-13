@@ -207,7 +207,7 @@ impl FunctionBuilder<'_> {
                     MirHostOperation::Call {
                         root,
                         path: mir_path,
-                        target: method.clone(),
+                        target: Box::new(method.clone()),
                         arguments,
                     },
                     MirEffect::host_call().union(method.signature.effect),

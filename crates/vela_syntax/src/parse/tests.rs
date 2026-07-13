@@ -65,6 +65,56 @@ fn parser_parse_source_wraps_top_level_items_in_cst_nodes() {
 }
 
 #[test]
+fn parser_keeps_async_functions_and_methods_lossless() {
+    let source = r#"pub async fn run() { service::load().await; }
+trait Service { async fn refresh(self); }
+impl Service for Worker { pub async fn refresh(self) { service::load().await; } }
+"#;
+    let parse = parse_source_with_id(SourceId::new(12), source);
+    let tree = parse.tree();
+    let function = tree.functions().next().expect("async function");
+    let trait_method = tree
+        .traits()
+        .next()
+        .expect("trait")
+        .methods()
+        .next()
+        .expect("async trait method");
+    let impl_method = tree
+        .impls()
+        .next()
+        .expect("impl")
+        .methods()
+        .next()
+        .expect("async impl method");
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert_eq!(tree.syntax().text().to_string(), source);
+    assert!(function.is_async());
+    assert!(trait_method.is_async());
+    assert!(impl_method.is_async());
+}
+
+#[test]
+fn parser_reports_invalid_await_context_and_operand() {
+    let parse = parse_source_with_id(
+        SourceId::new(13),
+        "fn sync() { load().await; } async fn invalid() { value.await; }",
+    );
+    let codes = parse
+        .diagnostics()
+        .iter()
+        .filter_map(|diagnostic| diagnostic.code.as_deref())
+        .collect::<Vec<_>>();
+
+    assert!(codes.contains(&"syntax::await_outside_async"), "{codes:?}");
+    assert!(
+        codes.contains(&"syntax::invalid_await_operand"),
+        "{codes:?}"
+    );
+}
+
+#[test]
 fn parser_parse_source_reports_missing_function_name() {
     let source = "fn () {}\nfn grant(amount: i64) -> i64 { return amount; }\n";
     let parse = parse_source_with_id(SourceId::new(12), source);

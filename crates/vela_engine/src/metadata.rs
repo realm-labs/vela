@@ -110,6 +110,7 @@ fn native_module_desc(module_name: &str) -> ModuleDesc {
 fn reflect_function(desc: &NativeFunctionDesc) -> FunctionDesc {
     let mut reflected = FunctionDesc::new(desc.id, desc.name.clone())
         .origin(DeclOrigin::Host)
+        .asyncness(desc.asyncness)
         .return_type(type_hint_display(&desc.returns))
         .effects(reflect_function_effects(&desc.effects))
         .access(reflect_function_access(&desc.access));

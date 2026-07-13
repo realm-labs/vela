@@ -97,6 +97,7 @@ fn lower_selected(source: &str, options: FixtureOptions) -> Result<MirProgram, M
             canonical_symbol: "tuple_assignments::main".to_owned(),
             debug_name: "main".to_owned(),
             signature: CompileSignature {
+                asyncness: vela_common::CallableAsyncness::Sync,
                 parameters: parameters(&graph, body),
                 positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
                 return_contract: None,
@@ -338,6 +339,7 @@ fn lower_host_tuple(
             canonical_symbol: "tuple_host_assignments::main".to_owned(),
             debug_name: "main".to_owned(),
             signature: CompileSignature {
+                asyncness: vela_common::CallableAsyncness::Sync,
                 parameters: parameters(&graph, body),
                 positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
                 return_contract: None,
@@ -518,7 +520,7 @@ fn tuple_assignment_rebuilds_a_direct_local_and_returns_the_leaf() {
     assert_eq!(
         program.dump(),
         r#"mir {
-  target function#9400 CompileFunctionDescriptor { id: FunctionId(9400), class: Script, canonical_symbol: "tuple_assignments::main", debug_name: "main", signature: CompileSignature { parameters: [CompileParameter { name: "pair", contract: None, default: Required, origin: None }, CompileParameter { name: "rhs", contract: None, default: Required, origin: None }], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, global_read: false, host_read: false, host_write: false, host_call: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
+  target function#9400 CompileFunctionDescriptor { id: FunctionId(9400), class: Script, canonical_symbol: "tuple_assignments::main", debug_name: "main", signature: CompileSignature { asyncness: Sync, parameters: [CompileParameter { name: "pair", contract: None, default: Required, origin: None }, CompileParameter { name: "rhs", contract: None, default: Required, origin: None }], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, global_read: false, host_read: false, host_write: false, host_call: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
   fn f0 body h0 owner function#9400 symbol="tuple_assignments::main" @94:36..60/h0 {
     param p0: pair -> l0 kind=Explicit(HirParamId(0)) contract=None default=None hir=l0 @94:8..12/h0
     param p1: rhs -> l1 kind=Explicit(HirParamId(1)) contract=None default=None hir=l1 @94:26..29/h0

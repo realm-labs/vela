@@ -1,10 +1,10 @@
 use crate::SyntaxKind;
 use crate::ast::{
-    AssignOp, AstNode, BinaryOp, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxBlock,
-    SyntaxCallExpr, SyntaxExprStmt, SyntaxExpressionKind, SyntaxFieldExpr, SyntaxIfExpr,
-    SyntaxIndexExpr, SyntaxLambdaBody, SyntaxLambdaExpr, SyntaxMapExpr, SyntaxMatchArmBody,
-    SyntaxMatchExpr, SyntaxParenExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxTryExpr,
-    SyntaxTupleExpr, SyntaxUnaryExpr, SyntaxUnitExpr, UnaryOp,
+    AssignOp, AstNode, BinaryOp, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxAwaitExpr,
+    SyntaxBinaryExpr, SyntaxBlock, SyntaxCallExpr, SyntaxExprStmt, SyntaxExpressionKind,
+    SyntaxFieldExpr, SyntaxIfExpr, SyntaxIndexExpr, SyntaxLambdaBody, SyntaxLambdaExpr,
+    SyntaxMapExpr, SyntaxMatchArmBody, SyntaxMatchExpr, SyntaxParenExpr, SyntaxPathExpr,
+    SyntaxRecordExpr, SyntaxTryExpr, SyntaxTupleExpr, SyntaxUnaryExpr, SyntaxUnitExpr, UnaryOp,
 };
 use crate::parse::parse_source;
 
@@ -50,6 +50,41 @@ fn ast_block_expression_exposes_statement_children() {
             .entries()
             .count(),
         1
+    );
+}
+
+#[test]
+fn ast_await_expression_exposes_call_and_suffix_tokens() {
+    let source = "async fn run() { let value = service::load(1).await; }";
+    let parse = parse_source(source);
+    let expression = parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function")
+        .body()
+        .expect("body")
+        .let_statements()
+        .next()
+        .expect("let")
+        .initializer()
+        .expect("initializer");
+    let await_expression = SyntaxAwaitExpr::cast(expression.syntax().clone()).expect("await");
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert_eq!(expression.expression_kind(), SyntaxExpressionKind::Await);
+    assert_eq!(await_expression.dot_token().expect("dot").text(), ".");
+    assert_eq!(
+        await_expression.await_token().expect("await token").text(),
+        "await"
+    );
+    assert_eq!(
+        await_expression
+            .expression()
+            .expect("awaited call")
+            .syntax()
+            .kind(),
+        SyntaxKind::CallExpr
     );
 }
 

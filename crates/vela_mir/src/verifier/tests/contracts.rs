@@ -181,6 +181,7 @@ fn mir_verifier_accepts_registry_native_value_method_and_reflection_targets() {
     let owner = TypeId::new(7_201);
     let method = MethodId::new(7_202);
     let registry_signature = CompileSignature {
+        asyncness: vela_common::CallableAsyncness::Sync,
         parameters: Vec::new(),
         positional: CompilePositionalPolicy::RuntimeChecked,
         return_contract: None,
@@ -644,6 +645,7 @@ fn mir_verifier_rechecks_call_argument_placement_after_construction() {
         origin: None,
     };
     let native_signature = CompileSignature {
+        asyncness: vela_common::CallableAsyncness::Sync,
         parameters: vec![parameter],
         positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
         return_contract: None,

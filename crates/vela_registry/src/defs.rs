@@ -1028,6 +1028,7 @@ impl TraitDef {
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct FunctionSignature {
+    pub asyncness: vela_common::CallableAsyncness,
     pub params: Vec<ParamDef>,
     pub return_type: Option<TypeHintDef>,
 }
@@ -1039,9 +1040,16 @@ impl FunctionSignature {
         return_type: Option<impl Into<TypeHintDef>>,
     ) -> Self {
         Self {
+            asyncness: vela_common::CallableAsyncness::Sync,
             params: params.into_iter().collect(),
             return_type: return_type.map(Into::into),
         }
+    }
+
+    #[must_use]
+    pub fn asyncness(mut self, asyncness: vela_common::CallableAsyncness) -> Self {
+        self.asyncness = asyncness;
+        self
     }
 }
 

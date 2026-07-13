@@ -46,6 +46,7 @@ impl SyntaxExpression {
             SyntaxKind::CallExpr => SyntaxExpressionKind::Call,
             SyntaxKind::IndexExpr => SyntaxExpressionKind::Index,
             SyntaxKind::TryExpr => SyntaxExpressionKind::Try,
+            SyntaxKind::AwaitExpr => SyntaxExpressionKind::Await,
             SyntaxKind::ArrayExpr => SyntaxExpressionKind::Array,
             SyntaxKind::MapExpr => SyntaxExpressionKind::Map,
             SyntaxKind::RecordExpr => SyntaxExpressionKind::Record,
@@ -108,6 +109,11 @@ impl SyntaxExpression {
     }
 
     #[must_use]
+    pub fn as_await(&self) -> Option<SyntaxAwaitExpr> {
+        SyntaxAwaitExpr::cast(self.syntax.clone())
+    }
+
+    #[must_use]
     pub fn as_index(&self) -> Option<SyntaxIndexExpr> {
         SyntaxIndexExpr::cast(self.syntax.clone())
     }
@@ -167,6 +173,7 @@ pub enum SyntaxExpressionKind {
     Call,
     Index,
     Try,
+    Await,
     Array,
     Map,
     Record,
@@ -431,6 +438,42 @@ impl SyntaxTryExpr {
 impl AstNode for SyntaxTryExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == SyntaxKind::TryExpr
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxAwaitExpr {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxAwaitExpr {
+    #[must_use]
+    pub fn expression(&self) -> Option<SyntaxExpression> {
+        child(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn dot_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::Dot)
+    }
+
+    #[must_use]
+    pub fn await_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::AwaitKw)
+    }
+}
+
+impl AstNode for SyntaxAwaitExpr {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::AwaitExpr
     }
 
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -914,6 +957,7 @@ fn expression_kind(kind: SyntaxKind) -> bool {
             | SyntaxKind::CallExpr
             | SyntaxKind::IndexExpr
             | SyntaxKind::TryExpr
+            | SyntaxKind::AwaitExpr
             | SyntaxKind::ArrayExpr
             | SyntaxKind::MapExpr
             | SyntaxKind::RecordExpr

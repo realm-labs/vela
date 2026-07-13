@@ -302,6 +302,7 @@ fn mir_model_represents_ranges_formats_defaults_and_iterator_control() {
                     function: FunctionId::new(221),
                     debug_name: "script::format_range".to_owned(),
                     signature: CompileSignature {
+                        asyncness: vela_common::CallableAsyncness::Sync,
                         parameters: vec![
                             CompileParameter {
                                 name: "value".to_owned(),

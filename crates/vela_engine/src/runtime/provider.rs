@@ -63,6 +63,9 @@ where
         let dispatch = provider
             .method(method)
             .ok_or_else(|| unknown_method(format!("provider method {method:?}")))?;
+        let asyncness = provider
+            .method_asyncness(method)
+            .ok_or_else(|| unknown_method(format!("provider method {method:?}")))?;
         let program = self.image.linked_program();
         let dispatch = program
             .method_dispatch(dispatch)
@@ -79,6 +82,7 @@ where
         let ProviderReceiverPlan::FreshZeroField { shape } = provider.receiver();
         Ok(ResolvedProviderCall {
             function,
+            asyncness,
             type_id: linked_type.id,
             shape,
             type_name: program.debug_name(linked_type.debug_name).to_owned(),
@@ -118,6 +122,7 @@ where
         };
         Ok(EntryRequest {
             name: resolved.debug_name,
+            asyncness: resolved.asyncness,
             function: resolved.function,
             params: resolved.params,
             param_defaults: resolved.param_defaults,
@@ -128,6 +133,7 @@ where
 
 struct ResolvedProviderCall {
     function: vela_bytecode::ScriptFunctionHandle,
+    asyncness: vela_common::CallableAsyncness,
     type_id: vela_def::TypeId,
     shape: vela_common::ShapeId,
     type_name: String,

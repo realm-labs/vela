@@ -71,6 +71,7 @@ fn lower(
             canonical_symbol: "constructors::main".to_owned(),
             debug_name: "main".to_owned(),
             signature: CompileSignature {
+                asyncness: vela_common::CallableAsyncness::Sync,
                 parameters: Vec::new(),
                 positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
                 return_contract: None,

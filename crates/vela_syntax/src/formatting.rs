@@ -513,6 +513,8 @@ fn is_word_like(token: SyntaxKind) -> bool {
             | SyntaxKind::SelfKw
             | SyntaxKind::InKw
             | SyntaxKind::AsKw
+            | SyntaxKind::AsyncKw
+            | SyntaxKind::AwaitKw
     )
 }
 
@@ -881,6 +883,16 @@ fn main() {
     }
 }
 "
+        );
+    }
+
+    #[test]
+    fn formatting_preserves_async_and_await_spacing() {
+        let formatted = format_source(source_id(), "pub  async  fn run(){service::load(1).await;}");
+
+        assert_eq!(
+            formatted.text(),
+            "pub async fn run() {\n    service::load(1).await;\n}\n"
         );
     }
 

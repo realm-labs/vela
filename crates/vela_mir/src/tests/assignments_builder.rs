@@ -158,6 +158,7 @@ fn function_descriptor(parameters: Vec<CompileParameter>) -> CompileFunctionDesc
         canonical_symbol: "assignments::main".to_owned(),
         debug_name: "main".to_owned(),
         signature: CompileSignature {
+            asyncness: vela_common::CallableAsyncness::Sync,
             parameters,
             positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
             return_contract: None,
@@ -247,6 +248,7 @@ fn insert_non_call_method_descriptors(
         origin,
     )?;
     let signature = CompileSignature {
+        asyncness: vela_common::CallableAsyncness::Sync,
         parameters: Vec::new(),
         positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
         return_contract: None,
@@ -261,6 +263,7 @@ fn insert_non_call_method_descriptors(
                     canonical_symbol: "assignments::MethodOwner::visible".to_owned(),
                     debug_name: "visible".to_owned(),
                     signature: CompileSignature {
+                        asyncness: vela_common::CallableAsyncness::Sync,
                         parameters: vec![CompileParameter {
                             name: "self".to_owned(),
                             contract: None,
@@ -422,7 +425,7 @@ fn assignment_builder_lowers_typed_local_compound_and_returns_the_result() {
     assert_eq!(
         program.dump(),
         r#"mir {
-  target function#8200 CompileFunctionDescriptor { id: FunctionId(8200), class: Script, canonical_symbol: "assignments::main", debug_name: "main", signature: CompileSignature { parameters: [CompileParameter { name: "value", contract: None, default: Required, origin: None }], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, global_read: false, host_read: false, host_write: false, host_call: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
+  target function#8200 CompileFunctionDescriptor { id: FunctionId(8200), class: Script, canonical_symbol: "assignments::main", debug_name: "main", signature: CompileSignature { asyncness: Sync, parameters: [CompileParameter { name: "value", contract: None, default: Required, origin: None }], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, global_read: false, host_read: false, host_write: false, host_call: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
   fn f0 body h0 owner function#8200 symbol="assignments::main" @82:20..42/h0 {
     param p0: value -> l0 kind=Explicit(HirParamId(0)) contract=None default=None hir=l0 @82:8..13/h0
     local l0: Script(HirLocalId(0)) Primitive(I64) @82:8..13/h0

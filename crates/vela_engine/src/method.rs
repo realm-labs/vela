@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use vela_common::{HostMethodId, Span};
+use vela_common::{CallableAsyncness, HostMethodId, Span};
 use vela_host::path::HostPath;
 use vela_reflect::registry::{AttrMap, TypeKey};
 use vela_vm::HostExecution;
@@ -17,6 +17,7 @@ pub struct NativeMethodDesc {
     pub params: Vec<NativeMethodParamDesc>,
     pub returns: TypeHint,
     pub effects: EffectSet,
+    pub asyncness: CallableAsyncness,
     pub access: FunctionAccess,
     pub docs: Option<String>,
     pub attrs: AttrMap,
@@ -33,6 +34,7 @@ impl NativeMethodDesc {
             params: Vec::new(),
             returns: TypeHint::Any,
             effects: EffectSet::default(),
+            asyncness: CallableAsyncness::Sync,
             access: FunctionAccess::default(),
             docs: None,
             attrs: AttrMap::new(),
@@ -58,6 +60,12 @@ impl NativeMethodDesc {
     #[must_use]
     pub fn effects(mut self, effects: EffectSet) -> Self {
         self.effects = effects;
+        self
+    }
+
+    #[must_use]
+    pub fn asyncness(mut self, asyncness: CallableAsyncness) -> Self {
+        self.asyncness = asyncness;
         self
     }
 

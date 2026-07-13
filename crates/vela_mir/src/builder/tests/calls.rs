@@ -89,6 +89,7 @@ fn function_descriptor(
         canonical_symbol: symbol.to_owned(),
         debug_name: symbol.rsplit("::").next().unwrap_or(symbol).to_owned(),
         signature: CompileSignature {
+            asyncness: vela_common::CallableAsyncness::Sync,
             parameters,
             positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
             return_contract: None,
@@ -704,6 +705,7 @@ fn main(receiver, first, second) {
                     code_symbol: "calls::Receiver::apply".to_owned(),
                 },
                 signature: CompileSignature {
+                    asyncness: vela_common::CallableAsyncness::Sync,
                     parameters: method_parameters,
                     positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
                     return_contract: None,

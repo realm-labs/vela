@@ -104,6 +104,7 @@ fn build_fixture(
                 canonical_symbol: "closures_defaults::main".to_owned(),
                 debug_name: "main".to_owned(),
                 signature: CompileSignature {
+                    asyncness: vela_common::CallableAsyncness::Sync,
                     parameters: parameters.clone(),
                     positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
                     return_contract: return_contract.clone(),
@@ -705,6 +706,7 @@ impl Counter {
     .expect("method executable analysis");
 
     let full_signature = CompileSignature {
+        asyncness: vela_common::CallableAsyncness::Sync,
         parameters: parameters.clone(),
         positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
         return_contract: None,
@@ -752,6 +754,7 @@ impl Counter {
                     code_symbol: symbol,
                 },
                 signature: CompileSignature {
+                    asyncness: vela_common::CallableAsyncness::Sync,
                     parameters: full_signature.parameters.iter().skip(1).cloned().collect(),
                     ..full_signature
                 },

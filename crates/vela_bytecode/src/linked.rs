@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, Weak};
 
-use vela_common::{GlobalSlot, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span};
+use vela_common::{
+    CallableAsyncness, GlobalSlot, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span,
+};
 use vela_def::{FunctionId, MethodId, TypeId, VariantId};
 use vela_hir::module_graph::ModuleGraph;
 use vela_host::resolved::HostMutationOp;
@@ -316,12 +318,23 @@ impl LinkedProgram {
 pub struct LinkedNativeFunction {
     pub id: FunctionId,
     pub debug_name: DebugNameId,
+    pub asyncness: CallableAsyncness,
 }
 
 impl LinkedNativeFunction {
     #[must_use]
     pub const fn new(id: FunctionId, debug_name: DebugNameId) -> Self {
-        Self { id, debug_name }
+        Self {
+            id,
+            debug_name,
+            asyncness: CallableAsyncness::Sync,
+        }
+    }
+
+    #[must_use]
+    pub const fn with_asyncness(mut self, asyncness: CallableAsyncness) -> Self {
+        self.asyncness = asyncness;
+        self
     }
 }
 
@@ -329,12 +342,23 @@ impl LinkedNativeFunction {
 pub struct LinkedMethodDispatch {
     pub debug_name: DebugNameId,
     pub kind: LinkedMethodDispatchKind,
+    pub asyncness: CallableAsyncness,
 }
 
 impl LinkedMethodDispatch {
     #[must_use]
     pub const fn new(debug_name: DebugNameId, kind: LinkedMethodDispatchKind) -> Self {
-        Self { debug_name, kind }
+        Self {
+            debug_name,
+            kind,
+            asyncness: CallableAsyncness::Sync,
+        }
+    }
+
+    #[must_use]
+    pub const fn with_asyncness(mut self, asyncness: CallableAsyncness) -> Self {
+        self.asyncness = asyncness;
+        self
     }
 }
 
@@ -489,6 +513,7 @@ pub enum GuardLocation {
 #[derive(Clone, Debug, PartialEq)]
 pub struct LinkedCodeObject {
     pub debug_name: DebugNameId,
+    pub asyncness: CallableAsyncness,
     pub params: Vec<DebugNameId>,
     pub param_defaults: Vec<bool>,
     pub capture_count: u16,
@@ -508,6 +533,7 @@ impl LinkedCodeObject {
     pub fn new(debug_name: DebugNameId, register_count: u16) -> Self {
         Self {
             debug_name,
+            asyncness: CallableAsyncness::Sync,
             params: Vec::new(),
             param_defaults: Vec::new(),
             capture_count: 0,
@@ -527,6 +553,12 @@ impl LinkedCodeObject {
     pub fn with_params(mut self, params: Vec<DebugNameId>) -> Self {
         self.param_defaults = vec![false; params.len()];
         self.params = params;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_asyncness(mut self, asyncness: CallableAsyncness) -> Self {
+        self.asyncness = asyncness;
         self
     }
 

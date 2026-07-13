@@ -27,6 +27,16 @@ impl SyntaxItem {
     pub fn is_public(&self) -> bool {
         self.pub_token().is_some()
     }
+
+    #[must_use]
+    pub fn async_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::AsyncKw)
+    }
+
+    #[must_use]
+    pub fn is_async(&self) -> bool {
+        self.async_token().is_some()
+    }
 }
 
 impl AstNode for SyntaxItem {
@@ -271,6 +281,16 @@ impl SyntaxFunctionItem {
     #[must_use]
     pub fn is_public(&self) -> bool {
         self.pub_token().is_some()
+    }
+
+    #[must_use]
+    pub fn async_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::AsyncKw)
+    }
+
+    #[must_use]
+    pub fn is_async(&self) -> bool {
+        self.async_token().is_some()
     }
 
     #[must_use]
@@ -846,6 +866,16 @@ impl SyntaxTraitMethod {
     }
 
     #[must_use]
+    pub fn async_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::AsyncKw)
+    }
+
+    #[must_use]
+    pub fn is_async(&self) -> bool {
+        self.async_token().is_some()
+    }
+
+    #[must_use]
     pub fn name_token(&self) -> Option<SyntaxToken> {
         token_after(&self.syntax, SyntaxKind::FnKw, SyntaxKind::Ident)
     }
@@ -1002,6 +1032,16 @@ impl SyntaxImplMethod {
     #[must_use]
     pub fn is_public(&self) -> bool {
         self.pub_token().is_some()
+    }
+
+    #[must_use]
+    pub fn async_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::AsyncKw)
+    }
+
+    #[must_use]
+    pub fn is_async(&self) -> bool {
+        self.async_token().is_some()
     }
 
     #[must_use]

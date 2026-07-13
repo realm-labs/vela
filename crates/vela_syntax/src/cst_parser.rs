@@ -560,6 +560,18 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
         if self.at_kind(cursor, SyntaxKind::PubKw) {
             cursor = self.skip_trivia(cursor + 1);
         }
+        if self.at_kind(cursor, SyntaxKind::AsyncKw) {
+            let async_pos = cursor;
+            cursor = self.skip_trivia(cursor + 1);
+            if !self.at_kind(cursor, SyntaxKind::FnKw) {
+                return None;
+            }
+            let end = self.find_item_end(SyntaxKind::FunctionItem, async_pos);
+            return Some(ItemBoundary {
+                kind: SyntaxKind::FunctionItem,
+                end,
+            });
+        }
 
         let kind = match self.kind_at(cursor)? {
             SyntaxKind::UseKw => SyntaxKind::UseItem,
@@ -931,6 +943,10 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
                 continue;
             }
             if self.at_kind(cursor, SyntaxKind::PubKw) {
+                cursor += 1;
+                continue;
+            }
+            if self.at_kind(cursor, SyntaxKind::AsyncKw) {
                 cursor += 1;
                 continue;
             }

@@ -313,7 +313,7 @@ pub enum MirHostOperation {
     Call {
         root: MirOperand,
         path: MirHostPath,
-        target: HostMethodTarget,
+        target: Box<HostMethodTarget>,
         arguments: Vec<MirOperand>,
     },
 }

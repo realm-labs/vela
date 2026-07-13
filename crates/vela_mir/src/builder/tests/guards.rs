@@ -400,6 +400,7 @@ fn root_targets(
                 canonical_symbol: "guards::main".to_owned(),
                 debug_name: "main".to_owned(),
                 signature: CompileSignature {
+                    asyncness: vela_common::CallableAsyncness::Sync,
                     parameters,
                     positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
                     return_contract: None,

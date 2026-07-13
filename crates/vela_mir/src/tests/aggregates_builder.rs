@@ -203,6 +203,7 @@ fn function_descriptor(
         canonical_symbol: symbol.to_owned(),
         debug_name: symbol.to_owned(),
         signature: CompileSignature {
+            asyncness: vela_common::CallableAsyncness::Sync,
             parameters,
             positional,
             return_contract: None,

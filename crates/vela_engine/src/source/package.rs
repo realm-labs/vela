@@ -540,6 +540,7 @@ fn provider_compilation_inputs(
                 .map(|method| ProviderMethodCompilationInput {
                     id: method.id,
                     name: method.name,
+                    asyncness: method.asyncness,
                 })
                 .collect::<Vec<_>>()
                 .into_boxed_slice(),

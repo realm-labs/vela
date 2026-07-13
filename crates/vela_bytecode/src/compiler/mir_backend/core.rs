@@ -125,6 +125,7 @@ impl<'a> FunctionBackend<'a> {
         let capture_count = u16::try_from(function.captures().len())
             .map_err(|_| MirBackendError::RegisterOverflow)?;
         let mut code = UnlinkedCodeObject::new(function.code_symbol(), next_register)
+            .with_asyncness(function.asyncness())
             .with_params(params)
             .with_param_defaults(defaults)
             .with_capture_count(capture_count);

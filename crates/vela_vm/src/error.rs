@@ -156,6 +156,9 @@ pub enum VmErrorKind {
     UnknownFunction {
         name: String,
     },
+    AsyncEntryRequiresCallAsync {
+        name: String,
+    },
     UnknownMethod {
         method: String,
     },
@@ -217,6 +220,7 @@ impl VmErrorKind {
             Self::UnknownNative { .. } => "vm::unknown_native",
             Self::PermissionDenied { .. } => "vm::permission_denied",
             Self::UnknownFunction { .. } => "vm::unknown_function",
+            Self::AsyncEntryRequiresCallAsync { .. } => "vm::async_entry_requires_call_async",
             Self::UnknownMethod { .. } => "vm::unknown_method",
             Self::ArityMismatch { .. } => "vm::arity_mismatch",
             Self::Host(_) => "vm::host_error",
@@ -265,6 +269,9 @@ impl VmErrorKind {
                 format!("native `{native}` requires capability `{capability}`")
             }
             Self::UnknownFunction { name } => format!("unknown function `{name}`"),
+            Self::AsyncEntryRequiresCallAsync { name } => {
+                format!("async entry `{name}` requires `Runtime::call_async`")
+            }
             Self::UnknownMethod { method } => format!("unknown method `{method}`"),
             Self::ArityMismatch {
                 name,

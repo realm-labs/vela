@@ -3,6 +3,7 @@ use std::sync::Arc;
 use vela_bytecode::{
     LinkedArtifact, LinkedCodeObject, LinkedProgram, ProgramImage, ScriptFunctionHandle,
 };
+use vela_common::CallableAsyncness;
 use vela_def::{MethodId, TypeId};
 use vela_hot_reload::runtime::HotReloadRuntime;
 use vela_hot_reload::symbol::ProgramVersionId;
@@ -259,6 +260,7 @@ pub(super) fn resolve_bound_method(
     };
     Ok(EntryRequest {
         name: method_handle.name,
+        asyncness: code.asyncness,
         function,
         params,
         param_defaults,
@@ -277,6 +279,7 @@ pub(super) fn resolve_function_target(
             let (function, code) = linked_function_by_name(program, &name)?;
             Ok(EntryRequest {
                 name,
+                asyncness: code.asyncness,
                 function,
                 params: linked_params(program, code),
                 param_defaults: code.param_defaults.clone(),
@@ -297,6 +300,7 @@ pub(super) fn resolve_function_target(
             };
             Ok(EntryRequest {
                 name: function_handle.name,
+                asyncness: code.asyncness,
                 function,
                 params,
                 param_defaults,
@@ -311,6 +315,7 @@ pub(super) fn resolve_function_target(
 
 pub(super) struct EntryRequest {
     pub(super) name: String,
+    pub(super) asyncness: CallableAsyncness,
     pub(super) function: ScriptFunctionHandle,
     pub(super) params: Vec<String>,
     pub(super) param_defaults: Vec<bool>,

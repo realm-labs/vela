@@ -388,6 +388,13 @@ fn collect_expr_ranges(
                 collect_expr_ranges(&value, source, line_index, ranges);
             }
         }
+        SyntaxExpressionKind::Await => {
+            if let Some(await_expr) = expr.as_await()
+                && let Some(value) = await_expr.expression()
+            {
+                collect_expr_ranges(&value, source, line_index, ranges);
+            }
+        }
         SyntaxExpressionKind::Binary => {
             if let Some(binary) = expr.as_binary() {
                 if let Some(lhs) = binary.lhs() {
