@@ -16,6 +16,8 @@ pub struct HotReloadReport {
     pub changed_functions: Vec<String>,
     pub changed_modules: Vec<String>,
     pub impacted_modules: Vec<String>,
+    pub changed_packages: Vec<String>,
+    pub impacted_packages: Vec<String>,
     pub errors: Vec<HotReloadDiagnostic>,
     version: Option<Arc<ProgramVersion>>,
 }
@@ -30,6 +32,8 @@ impl HotReloadReport {
         let changed_functions = sorted_functions(changes.changed_functions);
         let changed_modules = sorted_strings(changes.changed_modules);
         let impacted_modules = sorted_strings(changes.impacted_modules);
+        let changed_packages = sorted_strings(changes.changed_packages);
+        let impacted_packages = sorted_strings(changes.impacted_packages);
         Self {
             accepted: true,
             from_version,
@@ -37,6 +41,8 @@ impl HotReloadReport {
             changed_functions,
             changed_modules,
             impacted_modules,
+            changed_packages,
+            impacted_packages,
             errors: Vec::new(),
             version: Some(version),
         }
@@ -51,6 +57,8 @@ impl HotReloadReport {
             changed_functions: Vec::new(),
             changed_modules: Vec::new(),
             impacted_modules: Vec::new(),
+            changed_packages: Vec::new(),
+            impacted_packages: Vec::new(),
             errors: vec![HotReloadDiagnostic::from_error(error)],
             version: None,
         }
@@ -72,6 +80,8 @@ pub(crate) struct AcceptedHotReloadChanges {
     pub changed_functions: Vec<FunctionSymbolId>,
     pub changed_modules: Vec<String>,
     pub impacted_modules: Vec<String>,
+    pub changed_packages: Vec<String>,
+    pub impacted_packages: Vec<String>,
 }
 
 impl AcceptedHotReloadChanges {
@@ -80,11 +90,15 @@ impl AcceptedHotReloadChanges {
         changed_functions: Vec<FunctionSymbolId>,
         changed_modules: Vec<String>,
         impacted_modules: Vec<String>,
+        changed_packages: Vec<String>,
+        impacted_packages: Vec<String>,
     ) -> Self {
         Self {
             changed_functions,
             changed_modules,
             impacted_modules,
+            changed_packages,
+            impacted_packages,
         }
     }
 }

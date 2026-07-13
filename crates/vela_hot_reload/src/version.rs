@@ -233,6 +233,16 @@ impl HotUpdate {
     }
 
     #[must_use]
+    pub fn changed_packages(&self) -> &[String] {
+        &self.changes.changed_packages
+    }
+
+    #[must_use]
+    pub fn impacted_packages(&self) -> &[String] {
+        &self.changes.impacted_packages
+    }
+
+    #[must_use]
     pub fn script_methods(&self) -> &ScriptMethodTable {
         self.artifact.image().script_methods()
     }

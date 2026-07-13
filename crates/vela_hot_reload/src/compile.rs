@@ -77,10 +77,18 @@ pub fn update_from_linked_artifact(
         }
     }
     previous.abi().ensure_compatible_update(&abi)?;
-    let (changed_modules, impacted_modules) =
-        module_changes(previous.script_metadata(), script_metadata.as_ref());
-    let changes =
-        AcceptedHotReloadChanges::new(changed_functions, changed_modules, impacted_modules);
+    let module_changes = module_changes(
+        previous.script_metadata(),
+        script_metadata.as_ref(),
+        artifact.package_metadata().is_some(),
+    );
+    let changes = AcceptedHotReloadChanges::new(
+        changed_functions,
+        module_changes.changed_modules,
+        module_changes.impacted_modules,
+        module_changes.changed_packages,
+        module_changes.impacted_packages,
+    );
     let update = HotUpdate::new(abi, changes, artifact);
     Ok(update)
 }
@@ -88,13 +96,35 @@ pub fn update_from_linked_artifact(
 fn module_changes(
     previous: Option<&ModuleGraph>,
     next: Option<&ModuleGraph>,
-) -> (Vec<String>, Vec<String>) {
+    include_packages: bool,
+) -> ModuleChanges {
     let Some(next) = next else {
-        return (Vec::new(), Vec::new());
+        return ModuleChanges::default();
     };
     let changed = changed_module_ids(previous, next);
     let impacted = next.dependent_modules(changed.iter().copied());
-    (module_names(next, &changed), module_names(next, &impacted))
+    ModuleChanges {
+        changed_modules: module_names(next, &changed),
+        impacted_modules: module_names(next, &impacted),
+        changed_packages: if include_packages {
+            package_names(next, &changed)
+        } else {
+            Vec::new()
+        },
+        impacted_packages: if include_packages {
+            package_names(next, &impacted)
+        } else {
+            Vec::new()
+        },
+    }
+}
+
+#[derive(Default)]
+struct ModuleChanges {
+    changed_modules: Vec<String>,
+    impacted_modules: Vec<String>,
+    changed_packages: Vec<String>,
+    impacted_packages: Vec<String>,
 }
 
 fn changed_module_ids(previous: Option<&ModuleGraph>, next: &ModuleGraph) -> BTreeSet<ModuleId> {
@@ -120,5 +150,13 @@ fn module_names(graph: &ModuleGraph, modules: &BTreeSet<ModuleId>) -> Vec<String
         .filter_map(|module| graph.module_path(*module))
         .map(|path| path.join())
         .filter(|name| !name.is_empty())
+        .collect()
+}
+
+fn package_names(graph: &ModuleGraph, modules: &BTreeSet<ModuleId>) -> Vec<String> {
+    modules
+        .iter()
+        .filter_map(|module| graph.module_package(*module))
+        .map(ToString::to_string)
         .collect()
 }

@@ -440,6 +440,15 @@ impl Engine {
         let request = ProviderCompileRequest::new(packages, selection);
         self.compile_provider_hot_reload_update(previous, snapshot, &request)
     }
+
+    pub fn compile_package_workspace_hot_reload_update_from_previous(
+        &self,
+        previous: &ProgramVersion,
+        manifest: impl AsRef<Path>,
+    ) -> Result<HotUpdate, EnginePackageError> {
+        let snapshot = self.load_package_workspace(manifest)?;
+        self.compile_package_hot_reload_update_from_previous(previous, &snapshot)
+    }
 }
 
 fn package_module_sources(graph: &PackageGraph) -> Result<Vec<ModuleSource>, EnginePackageError> {

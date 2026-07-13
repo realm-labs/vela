@@ -213,11 +213,8 @@ fn ordinary_package_reload_reapplies_previous_root_set() {
         .expect("initial version");
 
     fs::write(root.join("src/main.vela"), "pub fn main() { return 2; }\n").expect("change body");
-    let second = engine
-        .load_package_workspace(root.join("vela.toml"))
-        .expect("second snapshot");
     let update = engine
-        .compile_package_hot_reload_update_from_previous(&initial, &second)
+        .compile_package_workspace_hot_reload_update_from_previous(&initial, root.join("vela.toml"))
         .expect("previous roots reapplied");
 
     assert_eq!(
@@ -228,6 +225,53 @@ fn ordinary_package_reload_reapplies_previous_root_set() {
             .request()
             .roots(),
         &[package("dev.vela.app")]
+    );
+    remove_fixture(root);
+}
+
+#[test]
+fn dependency_change_reports_impacted_packages() {
+    let root = package_fixture("package_impact_report");
+    write_package(
+        &root,
+        "dev.vela.app",
+        "app",
+        "[dependencies]\nutil = { path = \"util\" }\n",
+        "use util::api::answer\npub fn main() { return answer(); }\n",
+    );
+    write_package(
+        &root.join("util"),
+        "dev.vela.util",
+        "util",
+        "",
+        "pub fn answer() { return 1; }\n",
+    );
+    let engine = Engine::builder().build().expect("engine");
+    let first = engine
+        .load_package_workspace(root.join("vela.toml"))
+        .expect("first snapshot");
+    let request = PackageCompileRequest::for_root(&first, &package("dev.vela.app"));
+    let initial = engine
+        .compile_package_hot_reload_initial(&first, &request)
+        .expect("initial version");
+
+    fs::write(
+        root.join("util/src/api.vela"),
+        "pub fn answer() { return 2; }\n",
+    )
+    .expect("change dependency body");
+    let second = engine
+        .load_package_workspace(root.join("vela.toml"))
+        .expect("second snapshot");
+    let update = engine
+        .compile_package_hot_reload_update_from_previous(&initial, &second)
+        .expect("dependency body update");
+
+    assert_eq!(update.changed_packages(), &["dev.vela.util"]);
+    assert!(
+        update
+            .impacted_packages()
+            .contains(&"dev.vela.app".to_owned())
     );
     remove_fixture(root);
 }
