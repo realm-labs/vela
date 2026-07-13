@@ -41,55 +41,385 @@ pub(crate) struct EqualityRuntime<'a, 'host, 'heap> {
     pub(crate) bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
 }
 
-pub(crate) fn values_equal_with_traits(
-    lhs: &Value,
-    rhs: &Value,
-    runtime: &mut EqualityRuntime<'_, '_, '_>,
-) -> VmResult<bool> {
-    if let Some(equal) = leaf_values_equal(lhs, rhs, runtime.heap.as_deref())? {
-        return Ok(equal);
+#[derive(Clone, Copy)]
+pub(crate) enum ResumableComparisonKind {
+    Equal,
+    NotEqual,
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
+}
+
+pub(crate) struct ResumableComparison {
+    work: Vec<ComparisonWork>,
+    result: Option<ComparisonResult>,
+    awaiting: Option<AwaitedComparisonResult>,
+}
+
+pub(crate) enum ResumableComparisonStep {
+    Complete(Value),
+    Call {
+        function: vela_bytecode::ScriptFunctionHandle,
+        args: Vec<Value>,
+    },
+}
+
+enum ComparisonWork {
+    Direct {
+        kind: ResumableComparisonKind,
+        lhs: Value,
+        rhs: Value,
+    },
+    FinishEqual {
+        invert: bool,
+    },
+    FinishOrdering {
+        op: OrderingOp,
+    },
+    Evaluate {
+        mode: ComparisonMode,
+        lhs: Value,
+        rhs: Value,
+    },
+    ReduceEqual {
+        remaining: std::vec::IntoIter<(Value, Value)>,
+    },
+    ReducePartial {
+        remaining: std::vec::IntoIter<(Value, Value)>,
+        operation: &'static str,
+    },
+    ReduceTotal {
+        remaining: std::vec::IntoIter<(Value, Value)>,
+        operation: &'static str,
+    },
+}
+
+#[derive(Clone, Copy)]
+enum ComparisonMode {
+    Equal,
+    Partial { operation: &'static str },
+    Total { operation: &'static str },
+}
+
+enum ComparisonResult {
+    Equal(bool),
+    Partial(Option<Ordering>),
+    Total(Ordering),
+    Final(Value),
+}
+
+#[derive(Clone, Copy)]
+enum AwaitedComparisonResult {
+    Equal,
+    Partial { operation: &'static str },
+    Total { operation: &'static str },
+}
+
+impl ResumableComparison {
+    pub(crate) fn new(kind: ResumableComparisonKind, lhs: Value, rhs: Value) -> Self {
+        Self {
+            work: vec![ComparisonWork::Direct { kind, lhs, rhs }],
+            result: None,
+            awaiting: None,
+        }
     }
-    call_partial_eq(lhs, rhs, runtime)?.ok_or_else(|| comparable_error("equal"))
+
+    pub(crate) fn step(
+        &mut self,
+        vm: &Vm,
+        program: &LinkedProgram,
+        heap: &mut Option<&mut HeapExecution<'_>>,
+        budget: &mut Option<&mut ExecutionBudget>,
+        returned: Option<Value>,
+    ) -> VmResult<ResumableComparisonStep> {
+        if let Some(awaiting) = self.awaiting.take() {
+            let returned = returned.expect("a resumed comparison has a child result");
+            self.result = Some(match awaiting {
+                AwaitedComparisonResult::Equal => {
+                    let returned = store_value_in_heap_if_needed(
+                        returned,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    )?;
+                    let Value::Bool(value) = returned else {
+                        return Err(VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "equal",
+                        }));
+                    };
+                    ComparisonResult::Equal(value)
+                }
+                AwaitedComparisonResult::Partial { operation } => ComparisonResult::Partial(
+                    partial_cmp_result(returned, heap.as_deref(), operation)?,
+                ),
+                AwaitedComparisonResult::Total { operation } => {
+                    let returned = store_value_in_heap_if_needed(
+                        returned,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    )?;
+                    ComparisonResult::Total(total_cmp_result(returned, operation)?)
+                }
+            });
+        } else {
+            debug_assert!(returned.is_none());
+        }
+
+        loop {
+            let Some(work) = self.work.pop() else {
+                let Some(ComparisonResult::Final(value)) = self.result.take() else {
+                    return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                        opcode: "incomplete resumable comparison",
+                    }));
+                };
+                return Ok(ResumableComparisonStep::Complete(value));
+            };
+            match work {
+                ComparisonWork::Direct { kind, lhs, rhs } => match kind {
+                    ResumableComparisonKind::Equal | ResumableComparisonKind::NotEqual => {
+                        self.work.push(ComparisonWork::FinishEqual {
+                            invert: matches!(kind, ResumableComparisonKind::NotEqual),
+                        });
+                        self.work.push(ComparisonWork::Evaluate {
+                            mode: ComparisonMode::Equal,
+                            lhs,
+                            rhs,
+                        });
+                    }
+                    ResumableComparisonKind::Less
+                    | ResumableComparisonKind::LessEqual
+                    | ResumableComparisonKind::Greater
+                    | ResumableComparisonKind::GreaterEqual => {
+                        let op = match kind {
+                            ResumableComparisonKind::Less => OrderingOp::Less,
+                            ResumableComparisonKind::LessEqual => OrderingOp::LessEqual,
+                            ResumableComparisonKind::Greater => OrderingOp::Greater,
+                            ResumableComparisonKind::GreaterEqual => OrderingOp::GreaterEqual,
+                            ResumableComparisonKind::Equal | ResumableComparisonKind::NotEqual => {
+                                unreachable!()
+                            }
+                        };
+                        if let Ok(value) = op.numeric(&lhs, &rhs) {
+                            self.result = Some(ComparisonResult::Final(Value::Bool(value)));
+                        } else {
+                            self.work.push(ComparisonWork::FinishOrdering { op });
+                            self.work.push(ComparisonWork::Evaluate {
+                                mode: ComparisonMode::Partial {
+                                    operation: op.operation(),
+                                },
+                                lhs,
+                                rhs,
+                            });
+                        }
+                    }
+                },
+                ComparisonWork::FinishEqual { invert } => {
+                    let Some(ComparisonResult::Equal(value)) = self.result.take() else {
+                        return incomplete_comparison();
+                    };
+                    self.result = Some(ComparisonResult::Final(Value::Bool(value ^ invert)));
+                }
+                ComparisonWork::FinishOrdering { op } => {
+                    let Some(ComparisonResult::Partial(ordering)) = self.result.take() else {
+                        return incomplete_comparison();
+                    };
+                    self.result = Some(ComparisonResult::Final(Value::Bool(
+                        ordering.is_some_and(|ordering| op.matches(ordering)),
+                    )));
+                }
+                ComparisonWork::Evaluate { mode, lhs, rhs } => {
+                    if let Some(result) =
+                        immediate_comparison_result(mode, &lhs, &rhs, heap.as_deref())?
+                    {
+                        self.result = Some(result);
+                        continue;
+                    }
+                    let Some((type_id, type_name)) =
+                        receiver_type_identity(&lhs, heap.as_deref(), vm.type_registry())
+                            .map(|(id, name)| (id, name.to_owned()))
+                    else {
+                        return Err(comparable_error(mode.operation()));
+                    };
+                    let method_name = mode.method_name();
+                    if let Some(target) = linked_builtin_trait_target(program, type_id, method_name)
+                    {
+                        program.function(target.function).ok_or_else(|| {
+                            VmError::new(VmErrorKind::UnknownMethod {
+                                method: method_name.to_owned(),
+                            })
+                        })?;
+                        self.awaiting = Some(mode.awaited_result());
+                        return Ok(ResumableComparisonStep::Call {
+                            function: target.function,
+                            args: vec![lhs, rhs],
+                        });
+                    }
+                    let trait_name = mode.trait_name();
+                    let Some(field_names) =
+                        derived_linked_record_trait_fields(program, &type_name, trait_name)
+                    else {
+                        return Err(comparable_error(mode.operation()));
+                    };
+                    let Some(field_pairs) =
+                        record_field_pairs(&lhs, &rhs, heap.as_deref(), &type_name, &field_names)?
+                    else {
+                        return Err(comparable_error(mode.operation()));
+                    };
+                    self.begin_derived(mode, field_pairs);
+                }
+                ComparisonWork::ReduceEqual { mut remaining } => {
+                    let Some(ComparisonResult::Equal(equal)) = self.result.take() else {
+                        return incomplete_comparison();
+                    };
+                    if !equal {
+                        self.result = Some(ComparisonResult::Equal(false));
+                    } else if let Some((lhs, rhs)) = remaining.next() {
+                        self.work.push(ComparisonWork::ReduceEqual { remaining });
+                        self.work.push(ComparisonWork::Evaluate {
+                            mode: ComparisonMode::Equal,
+                            lhs,
+                            rhs,
+                        });
+                    } else {
+                        self.result = Some(ComparisonResult::Equal(true));
+                    }
+                }
+                ComparisonWork::ReducePartial {
+                    mut remaining,
+                    operation,
+                } => {
+                    let Some(ComparisonResult::Partial(ordering)) = self.result.take() else {
+                        return incomplete_comparison();
+                    };
+                    match ordering {
+                        None => self.result = Some(ComparisonResult::Partial(None)),
+                        Some(ordering) if ordering != Ordering::Equal => {
+                            self.result = Some(ComparisonResult::Partial(Some(ordering)));
+                        }
+                        Some(_) => {
+                            if let Some((lhs, rhs)) = remaining.next() {
+                                self.work.push(ComparisonWork::ReducePartial {
+                                    remaining,
+                                    operation,
+                                });
+                                self.work.push(ComparisonWork::Evaluate {
+                                    mode: ComparisonMode::Partial { operation },
+                                    lhs,
+                                    rhs,
+                                });
+                            } else {
+                                self.result =
+                                    Some(ComparisonResult::Partial(Some(Ordering::Equal)));
+                            }
+                        }
+                    }
+                }
+                ComparisonWork::ReduceTotal {
+                    mut remaining,
+                    operation,
+                } => {
+                    let Some(ComparisonResult::Total(ordering)) = self.result.take() else {
+                        return incomplete_comparison();
+                    };
+                    if ordering != Ordering::Equal {
+                        self.result = Some(ComparisonResult::Total(ordering));
+                    } else if let Some((lhs, rhs)) = remaining.next() {
+                        self.work.push(ComparisonWork::ReduceTotal {
+                            remaining,
+                            operation,
+                        });
+                        self.work.push(ComparisonWork::Evaluate {
+                            mode: ComparisonMode::Total { operation },
+                            lhs,
+                            rhs,
+                        });
+                    } else {
+                        self.result = Some(ComparisonResult::Total(Ordering::Equal));
+                    }
+                }
+            }
+        }
+    }
+
+    fn begin_derived(&mut self, mode: ComparisonMode, field_pairs: Vec<(Value, Value)>) {
+        let mut remaining = field_pairs.into_iter();
+        let Some((lhs, rhs)) = remaining.next() else {
+            self.result = Some(match mode {
+                ComparisonMode::Equal => ComparisonResult::Equal(true),
+                ComparisonMode::Partial { .. } => ComparisonResult::Partial(Some(Ordering::Equal)),
+                ComparisonMode::Total { .. } => ComparisonResult::Total(Ordering::Equal),
+            });
+            return;
+        };
+        self.work.push(match mode {
+            ComparisonMode::Equal => ComparisonWork::ReduceEqual { remaining },
+            ComparisonMode::Partial { operation } => ComparisonWork::ReducePartial {
+                remaining,
+                operation,
+            },
+            ComparisonMode::Total { operation } => ComparisonWork::ReduceTotal {
+                remaining,
+                operation,
+            },
+        });
+        self.work.push(ComparisonWork::Evaluate { mode, lhs, rhs });
+    }
 }
 
-pub(crate) fn values_not_equal_with_traits(
-    lhs: &Value,
-    rhs: &Value,
-    runtime: &mut EqualityRuntime<'_, '_, '_>,
-) -> VmResult<bool> {
-    values_equal_with_traits(lhs, rhs, runtime).map(|equal| !equal)
+impl ComparisonMode {
+    const fn operation(self) -> &'static str {
+        match self {
+            Self::Equal => "equal",
+            Self::Partial { operation } | Self::Total { operation } => operation,
+        }
+    }
+
+    const fn method_name(self) -> &'static str {
+        match self {
+            Self::Equal => PARTIAL_EQ_METHOD,
+            Self::Partial { .. } => PARTIAL_ORD_METHOD,
+            Self::Total { .. } => ORD_METHOD,
+        }
+    }
+
+    const fn trait_name(self) -> &'static str {
+        match self {
+            Self::Equal => "PartialEq",
+            Self::Partial { .. } => "PartialOrd",
+            Self::Total { .. } => "Ord",
+        }
+    }
+
+    const fn awaited_result(self) -> AwaitedComparisonResult {
+        match self {
+            Self::Equal => AwaitedComparisonResult::Equal,
+            Self::Partial { operation } => AwaitedComparisonResult::Partial { operation },
+            Self::Total { operation } => AwaitedComparisonResult::Total { operation },
+        }
+    }
 }
 
-pub(crate) fn values_less_with_traits(
+fn immediate_comparison_result(
+    mode: ComparisonMode,
     lhs: &Value,
     rhs: &Value,
-    runtime: &mut EqualityRuntime<'_, '_, '_>,
-) -> VmResult<bool> {
-    values_order_with_traits(lhs, rhs, runtime, OrderingOp::Less)
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<Option<ComparisonResult>> {
+    match mode {
+        ComparisonMode::Equal => {
+            leaf_values_equal(lhs, rhs, heap).map(|result| result.map(ComparisonResult::Equal))
+        }
+        ComparisonMode::Partial { operation } => leaf_values_partial_cmp(lhs, rhs, heap, operation)
+            .map(|result| result.map(ComparisonResult::Partial)),
+        ComparisonMode::Total { operation } => leaf_values_total_cmp(lhs, rhs, heap, operation)
+            .map(|result| result.map(ComparisonResult::Total)),
+    }
 }
 
-pub(crate) fn values_less_equal_with_traits(
-    lhs: &Value,
-    rhs: &Value,
-    runtime: &mut EqualityRuntime<'_, '_, '_>,
-) -> VmResult<bool> {
-    values_order_with_traits(lhs, rhs, runtime, OrderingOp::LessEqual)
-}
-
-pub(crate) fn values_greater_with_traits(
-    lhs: &Value,
-    rhs: &Value,
-    runtime: &mut EqualityRuntime<'_, '_, '_>,
-) -> VmResult<bool> {
-    values_order_with_traits(lhs, rhs, runtime, OrderingOp::Greater)
-}
-
-pub(crate) fn values_greater_equal_with_traits(
-    lhs: &Value,
-    rhs: &Value,
-    runtime: &mut EqualityRuntime<'_, '_, '_>,
-) -> VmResult<bool> {
-    values_order_with_traits(lhs, rhs, runtime, OrderingOp::GreaterEqual)
+fn incomplete_comparison<T>() -> VmResult<T> {
+    Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+        opcode: "incomplete resumable comparison",
+    }))
 }
 
 pub(crate) fn values_total_cmp_with_traits(
@@ -123,52 +453,6 @@ pub(crate) fn identity_not_equal(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<bool> {
     identity_equal(lhs, rhs, heap).map(|equal| !equal)
-}
-
-fn call_partial_eq(
-    lhs: &Value,
-    rhs: &Value,
-    runtime: &mut EqualityRuntime<'_, '_, '_>,
-) -> VmResult<Option<bool>> {
-    let Some((type_id, type_name)) =
-        receiver_type_identity(lhs, runtime.heap.as_deref(), runtime.vm.type_registry())
-            .map(|(id, name)| (id, name.to_owned()))
-    else {
-        return Ok(None);
-    };
-    let Some(result) = call_builtin_trait_method(lhs, rhs, runtime, type_id, PARTIAL_EQ_METHOD)?
-    else {
-        return derived_partial_eq(lhs, rhs, runtime, &type_name);
-    };
-    let result = store_value_in_heap_if_needed(
-        result,
-        runtime.heap.as_deref_mut(),
-        runtime.budget.as_deref_mut(),
-    )?;
-    match result {
-        Value::Bool(value) => Ok(Some(value)),
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "equal",
-        })),
-    }
-}
-
-fn derived_partial_eq(
-    lhs: &Value,
-    rhs: &Value,
-    runtime: &mut EqualityRuntime<'_, '_, '_>,
-    type_name: &str,
-) -> VmResult<Option<bool>> {
-    let Some(field_pairs) = derived_record_field_pairs(lhs, rhs, runtime, type_name, "PartialEq")?
-    else {
-        return Ok(None);
-    };
-    for (left, right) in field_pairs {
-        if !values_equal_with_traits(&left, &right, runtime)? {
-            return Ok(Some(false));
-        }
-    }
-    Ok(Some(true))
 }
 
 fn derived_record_field_pairs(
@@ -235,40 +519,6 @@ fn record_field_pairs(
         .map(Some)
 }
 
-fn values_order_with_traits(
-    lhs: &Value,
-    rhs: &Value,
-    runtime: &mut EqualityRuntime<'_, '_, '_>,
-    op: OrderingOp,
-) -> VmResult<bool> {
-    if let Ok(result) = op.numeric(lhs, rhs) {
-        return Ok(result);
-    }
-    let Some(ordering) = call_partial_ord(lhs, rhs, runtime, op.operation())? else {
-        return non_comparable(op.operation());
-    };
-    Ok(ordering.is_some_and(|ordering| op.matches(ordering)))
-}
-
-fn call_partial_ord(
-    lhs: &Value,
-    rhs: &Value,
-    runtime: &mut EqualityRuntime<'_, '_, '_>,
-    operation: &'static str,
-) -> VmResult<Option<Option<Ordering>>> {
-    let Some((type_id, type_name)) =
-        receiver_type_identity(lhs, runtime.heap.as_deref(), runtime.vm.type_registry())
-            .map(|(id, name)| (id, name.to_owned()))
-    else {
-        return Ok(None);
-    };
-    let Some(result) = call_builtin_trait_method(lhs, rhs, runtime, type_id, PARTIAL_ORD_METHOD)?
-    else {
-        return derived_partial_ord(lhs, rhs, runtime, &type_name, operation);
-    };
-    partial_cmp_result(result, runtime.heap.as_deref(), operation).map(Some)
-}
-
 fn call_ord(
     lhs: &Value,
     rhs: &Value,
@@ -292,29 +542,6 @@ fn call_ord(
     total_cmp_result(result, operation).map(Some)
 }
 
-fn derived_partial_ord(
-    lhs: &Value,
-    rhs: &Value,
-    runtime: &mut EqualityRuntime<'_, '_, '_>,
-    type_name: &str,
-    operation: &'static str,
-) -> VmResult<Option<Option<Ordering>>> {
-    let Some(field_pairs) = derived_record_field_pairs(lhs, rhs, runtime, type_name, "PartialOrd")?
-    else {
-        return Ok(None);
-    };
-    for (left, right) in field_pairs {
-        let Some(ordering) = values_partial_cmp_with_traits(&left, &right, runtime, operation)?
-        else {
-            return Ok(Some(None));
-        };
-        if ordering != Ordering::Equal {
-            return Ok(Some(Some(ordering)));
-        }
-    }
-    Ok(Some(Some(Ordering::Equal)))
-}
-
 fn derived_ord(
     lhs: &Value,
     rhs: &Value,
@@ -332,18 +559,6 @@ fn derived_ord(
         }
     }
     Ok(Some(Ordering::Equal))
-}
-
-fn values_partial_cmp_with_traits(
-    lhs: &Value,
-    rhs: &Value,
-    runtime: &mut EqualityRuntime<'_, '_, '_>,
-    operation: &'static str,
-) -> VmResult<Option<Ordering>> {
-    if let Some(ordering) = leaf_values_partial_cmp(lhs, rhs, runtime.heap.as_deref(), operation)? {
-        return Ok(ordering);
-    }
-    call_partial_ord(lhs, rhs, runtime, operation)?.ok_or_else(|| comparable_error(operation))
 }
 
 fn call_builtin_trait_method(

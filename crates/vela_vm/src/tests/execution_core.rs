@@ -357,6 +357,35 @@ fn main() {
 }
 
 #[test]
+fn explicit_frame_stack_executes_deep_trait_comparison_recursion() {
+    let program = compile_test_program(
+        SourceId::new(3),
+        r#"
+struct Counter { value: i64 }
+
+impl PartialEq for Counter {
+    fn eq(self, other: Counter) -> bool {
+        if self.value == 0 { return other.value == 0; }
+        return Counter { value: self.value - 1 }
+            == Counter { value: other.value - 1 };
+    }
+}
+
+fn main() {
+    return Counter { value: 10_000 } == Counter { value: 10_000 };
+}
+"#,
+    )
+    .expect("compile deeply recursive trait comparison");
+    let linked = link_test_program(&program);
+
+    assert_eq!(
+        Vm::new().run_linked_program(&linked, "main", &[]),
+        Ok(OwnedValue::Bool(true))
+    );
+}
+
+#[test]
 fn call_frame_registers_expose_heap_roots_for_gc() {
     let mut heap = ScriptHeap::new();
     let rooted = heap.allocate(HeapValue::String("rooted".into()));

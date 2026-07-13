@@ -5,6 +5,7 @@ use vela_bytecode::{InstructionOffset, LinkedArtifact, Register, ScriptFunctionH
 use vela_common::Span;
 
 use crate::budget::ExecutionBudget;
+use crate::equality::{ResumableComparison, ResumableComparisonKind, ResumableComparisonStep};
 use crate::error::{VmError, VmErrorKind, VmResult, VmStackFrame};
 use crate::frame::CallFrame;
 use crate::heap_execution::HeapExecution;
@@ -15,10 +16,8 @@ use crate::numeric_ops::{
 use crate::runtime_checks::is_truthy;
 use crate::value::Value;
 use crate::{
-    EqualityRuntime, HostExecution, Vm, VmBytecodeProfiler, VmInlineCaches, identity_equal,
-    identity_not_equal, store_value_in_heap_if_needed, validate_inline_cache_layout,
-    values_equal_with_traits, values_greater_equal_with_traits, values_greater_with_traits,
-    values_less_equal_with_traits, values_less_with_traits, values_not_equal_with_traits,
+    HostExecution, Vm, VmBytecodeProfiler, VmInlineCaches, identity_equal, identity_not_equal,
+    store_value_in_heap_if_needed, validate_inline_cache_layout,
 };
 use crate::{
     closure_calls, constant_loads, field_access, format_strings, host_access, i64_ops, indexing,
@@ -61,6 +60,7 @@ struct ExecutionFrame<'a> {
     ip: InstructionOffset,
     registers: CallFrame,
     return_to: Option<ReturnContinuation>,
+    pending_operation: Option<PendingFrameOperation>,
     call_site: Option<Span>,
     call_site_offset: Option<InstructionOffset>,
     inline_caches: Option<&'a dyn VmInlineCaches>,
@@ -81,8 +81,23 @@ impl ExecutionFrame<'_> {
 
 #[derive(Clone, Copy)]
 struct ReturnContinuation {
-    destination: Register,
+    target: PendingReturnTarget,
     protected_root_len: Option<usize>,
+}
+
+#[derive(Clone, Copy)]
+enum PendingReturnTarget {
+    Register(Register),
+    Operation,
+}
+
+enum PendingFrameOperation {
+    Comparison {
+        comparison: ResumableComparison,
+        destination: Register,
+        returned: Option<Value>,
+        source_span: Option<Span>,
+    },
 }
 
 struct PendingLinkedCall<'a> {
@@ -95,7 +110,7 @@ struct PendingLinkedCall<'a> {
     call_site_offset: Option<InstructionOffset>,
     inline_caches: Option<&'a dyn VmInlineCaches>,
     bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
-    destination: Register,
+    return_target: PendingReturnTarget,
 }
 
 impl PendingLinkedCall<'_> {
@@ -111,6 +126,7 @@ impl PendingLinkedCall<'_> {
 }
 
 enum FrameDriveOutcome<'a> {
+    Continue,
     Push(PendingLinkedCall<'a>),
     Return(Value),
 }
@@ -242,6 +258,7 @@ impl Vm {
                 }
             };
             match outcome {
+                FrameDriveOutcome::Continue => {}
                 FrameDriveOutcome::Push(pending) => {
                     if limits_call_depth {
                         let enter = budget
@@ -268,7 +285,7 @@ impl Vm {
                         )
                     });
                     let return_to = ReturnContinuation {
-                        destination: pending.destination,
+                        target: pending.return_target,
                         protected_root_len,
                     };
                     let pending_frame = pending.stack_frame();
@@ -330,12 +347,27 @@ impl Vm {
                     {
                         heap.truncate_protected_roots(protected_root_len);
                     }
-                    session
+                    let caller = session
                         .frames
                         .last_mut()
-                        .expect("return continuation has a caller")
-                        .registers
-                        .write(return_to.destination, value)?;
+                        .expect("return continuation has a caller");
+                    match return_to.target {
+                        PendingReturnTarget::Register(destination) => {
+                            caller.registers.write(destination, value)?;
+                        }
+                        PendingReturnTarget::Operation => {
+                            let Some(PendingFrameOperation::Comparison { returned, .. }) =
+                                caller.pending_operation.as_mut()
+                            else {
+                                return Err(VmError::new(
+                                    VmErrorKind::UnsupportedLinkedInstruction {
+                                        opcode: "missing pending comparison continuation",
+                                    },
+                                ));
+                            };
+                            *returned = Some(value);
+                        }
+                    }
                     if limits_call_depth {
                         budget
                             .as_deref_mut()
@@ -459,6 +491,7 @@ impl Vm {
             ip: InstructionOffset(0),
             registers: frame,
             return_to,
+            pending_operation: None,
             call_site,
             call_site_offset,
             inline_caches,
@@ -473,17 +506,64 @@ impl Vm {
         heap: &mut Option<&mut HeapExecution<'_>>,
         budget: &mut Option<&mut ExecutionBudget>,
     ) -> VmResult<FrameDriveOutcome<'a>> {
-        let program = frame_state.owner.program();
+        let current_owner = Arc::clone(&frame_state.owner);
+        let program = current_owner.program();
         let code = program.function(frame_state.function).ok_or_else(|| {
             VmError::new(VmErrorKind::UnknownFunction {
                 name: format!("<linked function#{}>", frame_state.function.index()),
             })
         })?;
-        let current_owner = Arc::clone(&frame_state.owner);
         let call = FrameDispatchContext {
             inline_caches: frame_state.inline_caches,
             bytecode_profiler: frame_state.bytecode_profiler,
         };
+        if let Some(PendingFrameOperation::Comparison {
+            mut comparison,
+            destination,
+            returned,
+            source_span,
+        }) = frame_state.pending_operation.take()
+        {
+            match comparison
+                .step(self, program, heap, budget, returned)
+                .map_err(|error| error.with_source_span_if_absent(source_span))?
+            {
+                ResumableComparisonStep::Complete(value) => {
+                    frame_state.registers.write(destination, value)?;
+                }
+                ResumableComparisonStep::Call { function, args } => {
+                    let target = program.function(function).ok_or_else(|| {
+                        VmError::new(VmErrorKind::UnknownFunction {
+                            name: format!("<linked function#{}>", function.index()),
+                        })
+                    })?;
+                    if target.asyncness.is_async() {
+                        return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
+                            name: program.debug_name(target.debug_name).to_owned(),
+                        })
+                        .with_source_span_if_absent(source_span));
+                    }
+                    frame_state.pending_operation = Some(PendingFrameOperation::Comparison {
+                        comparison,
+                        destination,
+                        returned: None,
+                        source_span,
+                    });
+                    return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
+                        owner: Arc::clone(&current_owner),
+                        function,
+                        captures: Vec::new(),
+                        args,
+                        check_param_guards: true,
+                        call_site: source_span,
+                        call_site_offset: frame_state.ip.0.checked_sub(1).map(InstructionOffset),
+                        inline_caches: call.inline_caches,
+                        bytecode_profiler: call.bytecode_profiler,
+                        return_target: PendingReturnTarget::Operation,
+                    }));
+                }
+            }
+        }
         let mut ip = frame_state.ip.0;
         let frame = &mut frame_state.registers;
         while ip < code.instructions.len() {
@@ -610,52 +690,32 @@ impl Vm {
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Equal { dst, lhs, rhs } => {
-                    let lhs_value = frame.read(*lhs)?;
-                    let rhs_value = frame.read(*rhs)?;
-                    let caller_roots =
-                        crate::method_runtime::CallerRoots::for_frame(frame, heap.as_deref());
-                    let value = Value::Bool(
-                        values_equal_with_traits(
-                            &lhs_value,
-                            &rhs_value,
-                            &mut EqualityRuntime {
-                                vm: self,
-                                program,
-                                host: host.as_deref_mut(),
-                                heap: heap.as_deref_mut(),
-                                budget: budget.as_deref_mut(),
-                                caller_roots,
-                                inline_caches: call.inline_caches,
-                                bytecode_profiler: call.bytecode_profiler,
-                            },
-                        )
-                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?,
-                    );
-                    frame.write(*dst, value)?;
+                    frame_state.ip = InstructionOffset(ip);
+                    frame_state.pending_operation = Some(PendingFrameOperation::Comparison {
+                        comparison: ResumableComparison::new(
+                            ResumableComparisonKind::Equal,
+                            frame.read(*lhs)?,
+                            frame.read(*rhs)?,
+                        ),
+                        destination: *dst,
+                        returned: None,
+                        source_span: instruction.span,
+                    });
+                    return Ok(FrameDriveOutcome::Continue);
                 }
                 InstructionKind::NotEqual { dst, lhs, rhs } => {
-                    let lhs_value = frame.read(*lhs)?;
-                    let rhs_value = frame.read(*rhs)?;
-                    let caller_roots =
-                        crate::method_runtime::CallerRoots::for_frame(frame, heap.as_deref());
-                    let value = Value::Bool(
-                        values_not_equal_with_traits(
-                            &lhs_value,
-                            &rhs_value,
-                            &mut EqualityRuntime {
-                                vm: self,
-                                program,
-                                host: host.as_deref_mut(),
-                                heap: heap.as_deref_mut(),
-                                budget: budget.as_deref_mut(),
-                                caller_roots,
-                                inline_caches: call.inline_caches,
-                                bytecode_profiler: call.bytecode_profiler,
-                            },
-                        )
-                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?,
-                    );
-                    frame.write(*dst, value)?;
+                    frame_state.ip = InstructionOffset(ip);
+                    frame_state.pending_operation = Some(PendingFrameOperation::Comparison {
+                        comparison: ResumableComparison::new(
+                            ResumableComparisonKind::NotEqual,
+                            frame.read(*lhs)?,
+                            frame.read(*rhs)?,
+                        ),
+                        destination: *dst,
+                        returned: None,
+                        source_span: instruction.span,
+                    });
+                    return Ok(FrameDriveOutcome::Continue);
                 }
                 InstructionKind::IdentityEqual { dst, lhs, rhs } => {
                     let value = Value::Bool(
@@ -672,92 +732,60 @@ impl Vm {
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::Less { dst, lhs, rhs } => {
-                    let lhs_value = frame.read(*lhs)?;
-                    let rhs_value = frame.read(*rhs)?;
-                    let caller_roots =
-                        crate::method_runtime::CallerRoots::for_frame(frame, heap.as_deref());
-                    let value = values_less_with_traits(
-                        &lhs_value,
-                        &rhs_value,
-                        &mut EqualityRuntime {
-                            vm: self,
-                            program,
-                            host: host.as_deref_mut(),
-                            heap: heap.as_deref_mut(),
-                            budget: budget.as_deref_mut(),
-                            caller_roots,
-                            inline_caches: call.inline_caches,
-                            bytecode_profiler: call.bytecode_profiler,
-                        },
-                    )
-                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    frame.write(*dst, Value::Bool(value))?;
+                    frame_state.ip = InstructionOffset(ip);
+                    frame_state.pending_operation = Some(PendingFrameOperation::Comparison {
+                        comparison: ResumableComparison::new(
+                            ResumableComparisonKind::Less,
+                            frame.read(*lhs)?,
+                            frame.read(*rhs)?,
+                        ),
+                        destination: *dst,
+                        returned: None,
+                        source_span: instruction.span,
+                    });
+                    return Ok(FrameDriveOutcome::Continue);
                 }
                 InstructionKind::LessEqual { dst, lhs, rhs } => {
-                    let lhs_value = frame.read(*lhs)?;
-                    let rhs_value = frame.read(*rhs)?;
-                    let caller_roots =
-                        crate::method_runtime::CallerRoots::for_frame(frame, heap.as_deref());
-                    let value = values_less_equal_with_traits(
-                        &lhs_value,
-                        &rhs_value,
-                        &mut EqualityRuntime {
-                            vm: self,
-                            program,
-                            host: host.as_deref_mut(),
-                            heap: heap.as_deref_mut(),
-                            budget: budget.as_deref_mut(),
-                            caller_roots,
-                            inline_caches: call.inline_caches,
-                            bytecode_profiler: call.bytecode_profiler,
-                        },
-                    )
-                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    frame.write(*dst, Value::Bool(value))?;
+                    frame_state.ip = InstructionOffset(ip);
+                    frame_state.pending_operation = Some(PendingFrameOperation::Comparison {
+                        comparison: ResumableComparison::new(
+                            ResumableComparisonKind::LessEqual,
+                            frame.read(*lhs)?,
+                            frame.read(*rhs)?,
+                        ),
+                        destination: *dst,
+                        returned: None,
+                        source_span: instruction.span,
+                    });
+                    return Ok(FrameDriveOutcome::Continue);
                 }
                 InstructionKind::Greater { dst, lhs, rhs } => {
-                    let lhs_value = frame.read(*lhs)?;
-                    let rhs_value = frame.read(*rhs)?;
-                    let caller_roots =
-                        crate::method_runtime::CallerRoots::for_frame(frame, heap.as_deref());
-                    let value = values_greater_with_traits(
-                        &lhs_value,
-                        &rhs_value,
-                        &mut EqualityRuntime {
-                            vm: self,
-                            program,
-                            host: host.as_deref_mut(),
-                            heap: heap.as_deref_mut(),
-                            budget: budget.as_deref_mut(),
-                            caller_roots,
-                            inline_caches: call.inline_caches,
-                            bytecode_profiler: call.bytecode_profiler,
-                        },
-                    )
-                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    frame.write(*dst, Value::Bool(value))?;
+                    frame_state.ip = InstructionOffset(ip);
+                    frame_state.pending_operation = Some(PendingFrameOperation::Comparison {
+                        comparison: ResumableComparison::new(
+                            ResumableComparisonKind::Greater,
+                            frame.read(*lhs)?,
+                            frame.read(*rhs)?,
+                        ),
+                        destination: *dst,
+                        returned: None,
+                        source_span: instruction.span,
+                    });
+                    return Ok(FrameDriveOutcome::Continue);
                 }
                 InstructionKind::GreaterEqual { dst, lhs, rhs } => {
-                    let lhs_value = frame.read(*lhs)?;
-                    let rhs_value = frame.read(*rhs)?;
-                    let caller_roots =
-                        crate::method_runtime::CallerRoots::for_frame(frame, heap.as_deref());
-                    let value = values_greater_equal_with_traits(
-                        &lhs_value,
-                        &rhs_value,
-                        &mut EqualityRuntime {
-                            vm: self,
-                            program,
-                            host: host.as_deref_mut(),
-                            heap: heap.as_deref_mut(),
-                            budget: budget.as_deref_mut(),
-                            caller_roots,
-                            inline_caches: call.inline_caches,
-                            bytecode_profiler: call.bytecode_profiler,
-                        },
-                    )
-                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    frame.write(*dst, Value::Bool(value))?;
+                    frame_state.ip = InstructionOffset(ip);
+                    frame_state.pending_operation = Some(PendingFrameOperation::Comparison {
+                        comparison: ResumableComparison::new(
+                            ResumableComparisonKind::GreaterEqual,
+                            frame.read(*lhs)?,
+                            frame.read(*rhs)?,
+                        ),
+                        destination: *dst,
+                        returned: None,
+                        source_span: instruction.span,
+                    });
+                    return Ok(FrameDriveOutcome::Continue);
                 }
                 InstructionKind::I64Add { dst, lhs, rhs } => {
                     let lhs = frame
@@ -943,7 +971,7 @@ impl Vm {
                             .to_vec();
                     frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
                     return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
-                        owner: current_owner,
+                        owner: Arc::clone(&current_owner),
                         function: *function,
                         captures: Vec::new(),
                         args,
@@ -952,7 +980,7 @@ impl Vm {
                         call_site_offset: Some(instruction_offset),
                         inline_caches: call.inline_caches,
                         bytecode_profiler: call.bytecode_profiler,
-                        destination: *dst,
+                        return_target: PendingReturnTarget::Register(*dst),
                     }));
                 }
                 InstructionKind::MakeClosure {
@@ -1027,7 +1055,7 @@ impl Vm {
                         call_site_offset: Some(instruction_offset),
                         inline_caches,
                         bytecode_profiler,
-                        destination: *dst,
+                        return_target: PendingReturnTarget::Register(*dst),
                     }));
                 }
                 InstructionKind::CallMethod {
@@ -1084,7 +1112,7 @@ impl Vm {
                         );
                         frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
                         return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
-                            owner: current_owner,
+                            owner: Arc::clone(&current_owner),
                             function: *function,
                             captures: Vec::new(),
                             args: values,
@@ -1093,7 +1121,7 @@ impl Vm {
                             call_site_offset: Some(instruction_offset),
                             inline_caches: call.inline_caches,
                             bytecode_profiler: call.bytecode_profiler,
-                            destination: *dst,
+                            return_target: PendingReturnTarget::Register(*dst),
                         }));
                     }
                     script_method_calls::dispatch_linked_method_call(
@@ -1171,7 +1199,7 @@ impl Vm {
                         );
                         frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
                         return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
-                            owner: current_owner,
+                            owner: Arc::clone(&current_owner),
                             function: target.function,
                             captures: Vec::new(),
                             args: values,
@@ -1180,7 +1208,7 @@ impl Vm {
                             call_site_offset: Some(instruction_offset),
                             inline_caches: call.inline_caches,
                             bytecode_profiler: call.bytecode_profiler,
-                            destination: *dst,
+                            return_target: PendingReturnTarget::Register(*dst),
                         }));
                     }
                     let script_method_calls::LinkedDynamicResolution::Other(target) = resolution
