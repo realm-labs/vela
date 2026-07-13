@@ -158,6 +158,60 @@ fn restricted_jit_eligibility_rejects_generation_owned_allocations() {
 }
 
 #[test]
+fn restricted_jit_input_retains_verified_async_resume_contract() {
+    let version = compile_initial(
+        SourceId::new(1),
+        "async fn helper() -> i64 { return 42; } \
+         async fn main() -> i64 { return helper().await; }",
+    )
+    .expect("compile async JIT input through MIR and linked verification");
+    let input = version
+        .restricted_entry_jit_input("main")
+        .expect("async main has retained JIT input");
+
+    assert!(!input.eligibility.is_eligible());
+    assert!(
+        input
+            .eligibility
+            .reasons()
+            .contains(&vela_mir::MirJitIneligibility::Async)
+    );
+    assert_eq!(
+        input.linked.asyncness,
+        vela_common::CallableAsyncness::Async
+    );
+
+    let mir = input
+        .mir_owner
+        .program()
+        .function(input.mir_function)
+        .expect("retained MIR function");
+    assert_eq!(mir.asyncness(), vela_common::CallableAsyncness::Async);
+    let (_, terminator) = mir
+        .blocks()
+        .filter_map(|(block, body)| body.terminator().map(|terminator| (block, terminator)))
+        .find(|(_, terminator)| {
+            matches!(
+                terminator.kind,
+                vela_mir::MirTerminatorKind::AwaitCall { .. }
+            )
+        })
+        .expect("MIR keeps explicit await terminator");
+    let vela_mir::MirTerminatorKind::AwaitCall { resume, .. } = &terminator.kind else {
+        unreachable!("matched await terminator")
+    };
+    assert!(terminator.safepoint.is_some());
+    assert!(mir.block(*resume).is_some());
+
+    assert!(input.linked.instructions.iter().any(|instruction| {
+        matches!(
+            instruction.kind,
+            vela_bytecode::InstructionKind::AwaitCall { .. }
+        )
+    }));
+}
+
+#[test]
 fn new_calls_enter_new_code_after_update() {
     let initial =
         compile_initial(SourceId::new(1), "fn main() { return 20; }").expect("compile initial");

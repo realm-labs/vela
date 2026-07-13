@@ -248,6 +248,11 @@ adapter for the invocation lifetime; it does not require Runtime ownership or
 Rust future does, and resumes only when its caller polls again. Core runtime
 crates contain no executor or Tokio dependency.
 
+Restricted JIT input marks declared async and await-containing MIR functions
+with `MirJitIneligibility::Async`. The future backend boundary remains the same
+verified MIR plus linked artifact, including the await operation, safepoint,
+and resume edge; there is no compiled async execution path in the MVP.
+
 Engine registration has one async family beside each supported native boundary:
 pure functions, HostAccess functions, NativeCallContext functions, and
 HostPath-based methods. Their factories are `Send + Sync + 'static`, while the

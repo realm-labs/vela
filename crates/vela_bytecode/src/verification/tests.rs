@@ -31,6 +31,57 @@ fn accepts_valid_code_object() {
 }
 
 #[test]
+fn accepts_explicit_await_call_with_resume_successor() {
+    let mut code =
+        UnlinkedCodeObject::new("main", 1).with_asyncness(vela_common::CallableAsyncness::Async);
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::AwaitCall {
+            operation: Box::new(UnlinkedInstructionKind::CallNative {
+                dst: Some(Register(0)),
+                name: "ready".to_owned(),
+                native: vela_def::FunctionId::new(1),
+                cache_site: None,
+                args: Vec::new(),
+            }),
+            resume: InstructionOffset(1),
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
+        src: Register(0),
+    }));
+
+    assert_eq!(verify_code_object(&code), Ok(()));
+}
+
+#[test]
+fn rejects_non_call_await_operation() {
+    let mut code =
+        UnlinkedCodeObject::new("main", 1).with_asyncness(vela_common::CallableAsyncness::Async);
+    let constant = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(42)));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::AwaitCall {
+            operation: Box::new(UnlinkedInstructionKind::LoadConst {
+                dst: Register(0),
+                constant,
+            }),
+            resume: InstructionOffset(1),
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
+        src: Register(0),
+    }));
+
+    assert_eq!(
+        verify_code_object(&code),
+        Err(error(
+            "main",
+            Some(0),
+            VerificationErrorKind::InvalidAwaitOperation,
+        ))
+    );
+}
+
+#[test]
 fn accepts_load_const_with_bytes_constant() {
     let mut code = UnlinkedCodeObject::new("bytes", 1);
     let constant = code.push_constant(Constant::Bytes(vec![0, 1, 2, 255]));

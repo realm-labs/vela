@@ -1903,6 +1903,11 @@ core crates still own no executor. The synchronous C ABI does not grow a
 poll/waker surface: an async entry returns the distinct
 `VelaStatus::AsyncEntry` status and a descriptive error string.
 
+Restricted JIT input keeps using the single verified-MIR/linked-artifact
+contract. Declared async functions and any MIR function with an `AwaitCall`
+terminator carry the explicit `MirJitIneligibility::Async` reason; no compiled
+async path or second backend representation is introduced.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

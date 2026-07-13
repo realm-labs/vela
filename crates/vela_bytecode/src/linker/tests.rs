@@ -1,4 +1,4 @@
-use vela_common::{HostTypeId, SourceId};
+use vela_common::{CallableAsyncness, HostTypeId, SourceId};
 use vela_def::{DefPath, FieldId};
 use vela_hir::module_graph::ModuleSource;
 use vela_hir::source_ingestion::build_module_source_set;
@@ -117,6 +117,55 @@ fn linker_maps_native_functions_to_dense_handles() {
         .expect("native side table should contain handle 0");
     assert_eq!(linked_native.id, native);
     assert_eq!(linked.debug_name(linked_native.debug_name), "award");
+}
+
+#[test]
+fn linker_preserves_explicit_async_await_resume_input() {
+    let path = DefPath::function("host", std::iter::empty::<&str>(), "ready");
+    let native = FunctionId::from_def_id(path.id());
+    let mut registry = DefinitionRegistry::new();
+    registry
+        .register_function(FunctionDef::new(path, FunctionSignature::default()))
+        .expect("native definition registration should succeed");
+    let mut code = UnlinkedCodeObject::new("main", 1).with_asyncness(CallableAsyncness::Async);
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::AwaitCall {
+            operation: Box::new(UnlinkedInstructionKind::CallNative {
+                dst: Some(Register(0)),
+                name: "ready".to_owned(),
+                native,
+                cache_site: None,
+                args: Vec::new(),
+            }),
+            resume: InstructionOffset(1),
+        },
+    ));
+    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
+        src: Register(0),
+    }));
+    let mut program = UnlinkedProgram::new();
+    program.insert_function(code);
+
+    let linked = Linker::with_registry(&registry)
+        .with_native_implementation(native)
+        .link_test_program(&program)
+        .expect("explicit await should verify and link");
+    let main = linked
+        .functions()
+        .find(|(_, code)| linked.debug_name(code.debug_name) == "main")
+        .map(|(_, code)| code)
+        .expect("main function should link");
+
+    assert_eq!(main.asyncness, CallableAsyncness::Async);
+    assert!(matches!(
+        &main.instructions[0].kind,
+        InstructionKind::AwaitCall { operation, resume }
+            if *resume == InstructionOffset(1)
+                && matches!(operation.as_ref(), InstructionKind::CallNative {
+                    native: handle,
+                    ..
+                } if handle.index() == 0)
+    ));
 }
 
 #[test]

@@ -45,7 +45,10 @@ async syntax while projecting semantic diagnostics, awaited completion receiver
 facts, and source/registry asyncness into hover and signature help. The CLI
 requires an explicit `--async` executor-owning path, the synchronous C ABI
 returns `VelaStatus::AsyncEntry`, and the generic async plus stateful reentry
-examples exercise the scoped API.
+examples exercise the scoped API. Restricted JIT input marks declared async or
+await-containing MIR with `MirJitIneligibility::Async`, while verified MIR and
+linked bytecode retain the explicit await operation, safepoint, and resume edge
+for a future backend.
 
 M20 cache close-out and M20.5 LSP follow-up remain valid but are paused while
 the async plan is the persistent work queue.
@@ -126,7 +129,7 @@ the async plan is the persistent work queue.
 
 ### Async Execution Batch D
 
-- Complete backend, zero-hit, and performance acceptance.
+- Complete zero-hit and performance acceptance.
 - Finish Section 18 documentation, compatibility, and validation audits.
 
 ### M20 Cache Close-Out
@@ -227,7 +230,7 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Close Batch D backend, compatibility, and performance acceptance.
+1. Close Batch D compatibility and performance acceptance.
 2. Run the zero-hit, examples, benchmark, feature, documentation, and
    performance/memory gates.
 3. Close every Section 18 audit and documentation criterion.

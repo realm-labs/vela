@@ -1255,7 +1255,7 @@ Purpose: close every cross-cutting contract and remove provisional omissions.
   formatter, semantic tokens, completion, hover, and signature help.
 - [x] Define CLI behavior, add generic sync/async/stateful/reentry examples, and
   make the sync C surface fail clearly on async entries.
-- [ ] Mark async functions explicitly JIT-ineligible and add verifier/linker
+- [x] Mark async functions explicitly JIT-ineligible and add verifier/linker
   tests preserving future backend input.
 - [ ] Run zero-hit audits for recursive linked execution, macro async rejection,
   stale `may_yield` contract text, per-CallArgs direct IDs, and duplicate sync/
