@@ -1,4 +1,5 @@
 use std::fmt;
+use std::path::{Path, PathBuf};
 
 use vela_common::Span;
 
@@ -189,7 +190,7 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedModuleAbi { module, .. } => {
                 format!("module `{module}` changed export ABI")
             }
-            HotReloadErrorKind::ChangedPackageProviderAbi { target, reason } => {
+            HotReloadErrorKind::ChangedPackageProviderAbi { target, reason, .. } => {
                 format!("{target} changed incompatibly: {reason}")
             }
         }
@@ -304,8 +305,20 @@ impl HotReloadError {
             | HotReloadErrorKind::AddedFunctionParametersWithoutDefaults { .. }
             | HotReloadErrorKind::AddedFunctionParametersDenied { .. }
             | HotReloadErrorKind::NewFunctionDenied { .. }
-            | HotReloadErrorKind::RemovedFunction { .. }
-            | HotReloadErrorKind::ChangedPackageProviderAbi { .. } => None,
+            | HotReloadErrorKind::RemovedFunction { .. } => None,
+            HotReloadErrorKind::ChangedPackageProviderAbi { source_span, .. } => {
+                source_span.as_deref().copied()
+            }
+        }
+    }
+
+    #[must_use]
+    pub fn manifest_path(&self) -> Option<&Path> {
+        match &self.kind {
+            HotReloadErrorKind::ChangedPackageProviderAbi { manifest_path, .. } => {
+                manifest_path.as_deref()
+            }
+            _ => None,
         }
     }
 }
@@ -451,6 +464,8 @@ pub enum HotReloadErrorKind {
     ChangedPackageProviderAbi {
         target: String,
         reason: String,
+        source_span: Option<Box<Span>>,
+        manifest_path: Option<PathBuf>,
     },
 }
 

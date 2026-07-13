@@ -1797,6 +1797,17 @@ profiling, and safe-point machinery. A public `ProviderHandle` contains only its
 owning runtime identity and stable key, so compatible reloads re-resolve it
 against the newly active artifact rather than exposing generation-local handles.
 
+### Package And Provider Reload ABI
+
+Package reload reconstructs the prior canonical root and selected-provider
+fingerprint against a newly loaded package snapshot. Hot reload derives package
+and provider compatibility only from the previous and next linked artifacts:
+roots and selected keys must remain stable, selected provider target and method
+identities must match, and package capability requirements cannot expand without
+explicit restaging. Unselected provider additions do not enter runtime ABI.
+Accepted reports expose changed and impacted package IDs; provider ABI rejection
+diagnostics retain the Vela provider span and canonical package manifest path.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

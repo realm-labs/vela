@@ -1035,38 +1035,38 @@ cargo test -p vela_vm linked_execution
 
 ## 24. Phase 6: Package And Provider Hot Reload
 
-- [ ] Add artifact-derived package/provider ABI records.
-- [ ] Persist the installed selection fingerprint in the artifact/version and
+- [x] Add artifact-derived package/provider ABI records.
+- [x] Persist the installed selection fingerprint in the artifact/version and
       reapply it during ordinary source/manifest reload.
-- [ ] Derive the fingerprint only from canonical selected ProviderKey values,
+- [x] Derive the fingerprint only from canonical selected ProviderKey values,
       not the generation-local PackageCompilationSnapshotId.
-- [ ] Persist and reapply ordinary root PackageIds through the complete
+- [x] Persist and reapply ordinary root PackageIds through the complete
       PackageCompileRequestFingerprint even when provider selection is empty.
-- [ ] Stage changed manifests and sources through Engine package graph rebuild.
-- [ ] Compute changed packages and affected dependents for reports.
-- [ ] Compare service trait, provider key/target/method, package identity,
+- [x] Stage changed manifests and sources through Engine package graph rebuild.
+- [x] Compute changed packages and affected dependents for reports.
+- [x] Compare service trait, provider key/target/method, package identity,
       public schema, and capability ABI.
-- [ ] Accept provider body-only changes.
-- [ ] Reject selected provider removal, target changes, service ABI changes,
+- [x] Accept provider body-only changes.
+- [x] Reject selected provider removal, target changes, service ABI changes,
       and unapproved capability expansion.
-- [ ] Keep newly discovered but unselected providers out of the update ABI;
+- [x] Keep newly discovered but unselected providers out of the update ABI;
       require explicit host restaging to change the installed selection.
-- [ ] Keep old active frames/closures pinned and move new calls to the accepted
+- [x] Keep old active frames/closures pinned and move new calls to the accepted
       generation at the existing safe point.
-- [ ] Include manifest and source labels in rejection reports.
+- [x] Include manifest and source labels in rejection reports.
 
 Focused tests:
 
-- [ ] `provider_body_change_is_accepted`
-- [ ] `ordinary_package_reload_reapplies_previous_root_set`
-- [ ] `unselected_provider_addition_does_not_change_runtime_abi`
-- [ ] `ordinary_reload_reapplies_previous_provider_selection`
-- [ ] `provider_removal_is_rejected_without_advancing_active_image`
-- [ ] `service_trait_method_change_is_rejected`
-- [ ] `provider_target_or_signature_change_is_rejected`
-- [ ] `capability_expansion_requires_host_approval`
-- [ ] `dependency_change_reports_impacted_packages`
-- [ ] `old_frame_keeps_old_provider_generation_and_new_call_uses_new_generation`
+- [x] `provider_body_change_is_accepted`
+- [x] `ordinary_package_reload_reapplies_previous_root_set`
+- [x] `unselected_provider_addition_does_not_change_runtime_abi`
+- [x] `ordinary_reload_reapplies_previous_provider_selection`
+- [x] `provider_removal_is_rejected_without_advancing_active_image`
+- [x] `service_trait_method_change_is_rejected`
+- [x] `provider_target_or_signature_change_is_rejected`
+- [x] `capability_expansion_requires_host_approval`
+- [x] `dependency_change_reports_impacted_packages`
+- [x] `old_frame_keeps_old_provider_generation_and_new_call_uses_new_generation`
 
 Validation:
 

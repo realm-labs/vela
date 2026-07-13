@@ -507,6 +507,7 @@ fn package_inputs(
             id: package.id.clone(),
             version: package.version.clone(),
             declared_capabilities: package.required_capabilities,
+            manifest_path: package.manifest_path.clone(),
         })
         .collect()
 }
@@ -532,6 +533,7 @@ fn provider_compilation_inputs(
             provider_type: provider.provider_type,
             provider_type_name: provider.provider_type_name,
             provider_shape: provider.provider_shape,
+            source: provider.source,
             methods: provider
                 .methods
                 .into_iter()

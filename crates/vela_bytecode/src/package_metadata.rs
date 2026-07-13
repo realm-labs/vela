@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
+use std::path::{Path, PathBuf};
 
-use vela_common::{CapabilitySet, ShapeId};
+use vela_common::{CapabilitySet, ShapeId, Span};
 use vela_def::{MethodId, TypeId};
 use vela_hir::provider::ProviderKey;
 use vela_package::{PackageId, PackageVersion};
@@ -12,6 +13,7 @@ pub struct PackageCompilationInput {
     pub id: PackageId,
     pub version: PackageVersion,
     pub declared_capabilities: CapabilitySet,
+    pub manifest_path: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -26,6 +28,7 @@ pub struct ProviderCompilationInput {
     pub provider_type: TypeId,
     pub provider_type_name: String,
     pub provider_shape: ShapeId,
+    pub source: Span,
     pub methods: Box<[ProviderMethodCompilationInput]>,
     pub package_declared_capabilities: CapabilitySet,
 }
@@ -36,6 +39,7 @@ pub struct CompiledPackageMetadata {
     version: PackageVersion,
     declared_capabilities: CapabilitySet,
     observed_capabilities: CapabilitySet,
+    manifest_path: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -59,6 +63,7 @@ pub struct LinkedProviderEntry {
     receiver: ProviderReceiverPlan,
     methods: BTreeMap<MethodId, MethodDispatchHandle>,
     package_declared_capabilities: CapabilitySet,
+    source: Span,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -104,6 +109,11 @@ impl CompiledPackageMetadata {
     pub const fn observed_capabilities(&self) -> CapabilitySet {
         self.observed_capabilities
     }
+
+    #[must_use]
+    pub fn manifest_path(&self) -> &Path {
+        &self.manifest_path
+    }
 }
 
 impl PackageCompilationMetadata {
@@ -123,6 +133,7 @@ impl PackageCompilationMetadata {
                 version: package.version.clone(),
                 declared_capabilities: package.declared_capabilities,
                 observed_capabilities: observed.get(&package.id).copied().unwrap_or_default(),
+                manifest_path: package.manifest_path.clone(),
             })
             .collect::<Vec<_>>();
         compiled.sort_by(|left, right| left.id.cmp(&right.id));
@@ -221,6 +232,7 @@ impl PackageCompilationMetadata {
                 },
                 methods,
                 package_declared_capabilities: provider.package_declared_capabilities,
+                source: provider.source,
             };
             installed.insert(key, entry);
         }
@@ -295,6 +307,11 @@ impl LinkedProviderEntry {
     #[must_use]
     pub const fn package_declared_capabilities(&self) -> CapabilitySet {
         self.package_declared_capabilities
+    }
+
+    #[must_use]
+    pub const fn source(&self) -> Span {
+        self.source
     }
 }
 

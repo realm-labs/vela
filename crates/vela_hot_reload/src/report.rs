@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use vela_common::Span;
@@ -120,6 +121,7 @@ pub struct HotReloadDiagnostic {
     pub target: Option<String>,
     pub detail: Option<HotReloadDiagnosticDetail>,
     pub source_span: Option<Span>,
+    pub manifest_path: Option<PathBuf>,
     pub reason: String,
     pub repair_hint: Option<String>,
     pub error: HotReloadError,
@@ -134,6 +136,7 @@ impl HotReloadDiagnostic {
             target: error.target(),
             detail,
             source_span: error.source_span(),
+            manifest_path: error.manifest_path().map(ToOwned::to_owned),
             reason: error.reason(),
             repair_hint: error.repair_hint(),
             error,

@@ -33,8 +33,9 @@ required.
 
 The package and service-provider hard-switch track is active. Phase 0 inventory,
 Phase 1 package foundation, the atomic Phase 2 package-identity cutover, Phase 3
-ordinary package compilation, Phase 4 provider discovery, and Phase 5 linked
-provider runtime dispatch are complete and verified. `vela_package`
+ordinary package compilation, Phase 4 provider discovery, Phase 5 linked
+provider runtime dispatch, and Phase 6 package/provider hot reload are complete
+and verified. `vela_package`
 now owns validated package/module
 identity, structured spanned `vela.toml` parsing, path dependency/workspace
 graph construction, path authorization, and deterministic source discovery.
@@ -56,8 +57,12 @@ capabilities without compilation or execution. Selected providers now compile
 through the ordinary package closure and linker, enter same-generation artifact
 metadata only when selected, and execute through Runtime `MethodId` dispatch
 with fresh zero-field receivers, normal budgets and HostAccess, runtime-bound
-logical handles, and compatible-reload rebinding. The next step is Phase 6
-package/provider ABI comparison and selection-preserving hot reload.
+logical handles, and compatible-reload rebinding. Reload now rebuilds manifests
+and sources against the previous root/provider fingerprint, compares artifact-
+derived package/provider ABI and capability expansion, reports changed and
+impacted packages, preserves old provider-created closures, and carries provider
+source spans plus canonical manifest paths on rejection. The next step is Phase
+7 tooling, examples, documentation, architecture guards, and close-out.
 
 The MIR/executable-generation implementation is complete through Batch F /
 Phase 11 in
