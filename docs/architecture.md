@@ -78,6 +78,13 @@ Source-ingestion, bytecode-compilation, and link failures remain structured
 Engine errors and return immediately; only artifact ABI/policy outcomes enter
 the staged hot-reload report path.
 
+Package/project IO is owned by the dependency-light `vela_package` crate.
+Engine and language tooling consume the same structured `vela.toml`, package
+graph, deterministic source table, and `PackageId + ModulePath` identity.
+Ordinary roots and optional provider selections extend one sealed package
+compile request and enter the same HIR/compiler/linker pipeline. Only the linker
+may seal selected provider metadata into `LinkedArtifact`.
+
 ## File Extensions
 
 Vela source files use `.vela`.
@@ -203,6 +210,7 @@ contract before changing that subsystem:
 - [Standard library and embedding](architecture/stdlib-and-embedding.md)
 - [Tooling, performance, security, and testing](architecture/tooling-performance-security-testing.md)
 - [Native LSP architecture](architecture/lsp.md)
+- [Packages and service providers](packages-and-providers.md)
 - [Clean identity refactor](architecture/clean-identity-refactor.md)
 
 Keep this file as the entrypoint and cross-subsystem contract. Subsystem files

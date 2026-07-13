@@ -633,3 +633,13 @@ native functions cannot mutate TypeRegistry at runtime
 reflection can call only reflect_callable native functions
 hot reload can replace script functions, but host native function ABI is fixed for the engine version
 ```
+
+## Provider Runtime Boundary
+
+Provider discovery is an optional metadata projection over the same sealed
+package snapshot used by ordinary compilation. Engine selects full stable
+`ProviderKey` values and the linker seals only those selections into the linked
+artifact. Runtime provider calls resolve `MethodId` to linked script dispatch,
+construct a fresh zero-field script receiver, and use the ordinary VM,
+HostAccess, capability, budget, GC-root, and profiling boundaries. Provider
+lookup policy does not belong in the core VM API.

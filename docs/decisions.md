@@ -1808,6 +1808,16 @@ explicit restaging. Unselected provider additions do not enter runtime ABI.
 Accepted reports expose changed and impacted package IDs; provider ABI rejection
 diagnostics retain the Vela provider span and canonical package manifest path.
 
+### Package-Aware Tooling Is A Metadata Projection
+
+ProjectState loads manifests and assembles sources through `vela_package`, with
+open-document overlays taking precedence over disk snapshots and each refresh
+committing exactly one database generation. Completion and navigation consume
+the retained package graph and HIR provider metadata; they never rediscover
+packages through an editor-specific parser or execute script, native,
+reflection, or HostAccess code. Provider rename results carry hot-reload risk
+metadata because the provider ID participates in stable `ProviderKey` identity.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

@@ -17,6 +17,12 @@ existing host boundary, reflection, and hot-reload contracts.
 
 ## Layering
 
+Package projects are assembled through `vela_package`, never an LSP-specific
+manifest parser. ProjectState retains package/module ownership and direct
+dependency aliases for completion, definition, references, symbols, hover, and
+rename-risk projection. Provider tooling is metadata-only and must not execute
+scripts or host code.
+
 ```text
 VS Code / Zed / JetBrains / CLI
         |

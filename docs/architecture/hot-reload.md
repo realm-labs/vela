@@ -124,6 +124,14 @@ pub fn on_invoice_paid(ctx, account, invoice) {
 
 ### Hot Reload ABI Checks
 
+Package artifacts retain canonical ordinary roots and selected provider keys.
+Reload rebuilds a package snapshot and reapplies that fingerprint before
+artifact comparison. Selected provider keys, target types, service method IDs,
+package identities, and capability requirements are runtime ABI; unselected
+discovery entries are not. Provider-created closures retain their creation
+artifact, while logical Runtime provider handles resolve stable keys against
+the active image for each new call.
+
 Function changes allowed:
 
 ```text

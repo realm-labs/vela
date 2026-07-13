@@ -3,8 +3,9 @@
 > **Track:** package/module/SPI architecture continuation, adjacent to
 > M14/M15/M20.5
 >
-> **Document status:** reviewed execution plan, updated for the linked-artifact,
-> source-boundary, executable-generation, and LSP ownership hard switches
+> **Document status:** complete and validated on 2026-07-13 against the
+> linked-artifact, source-boundary, executable-generation, and LSP ownership
+> hard switches
 >
 > **Compatibility policy:** breaking pre-release package, module, Engine,
 > tooling, and hot-reload API changes are allowed. Do not preserve the global
@@ -1078,33 +1079,33 @@ cargo test -p vela_engine reload
 
 ## 25. Phase 7: Tooling, Examples, Docs, And Close-Out
 
-- [ ] Load workspace/package manifests through `ProjectState` using
+- [x] Load workspace/package manifests through `ProjectState` using
       `vela_package`.
-- [ ] Preserve overlay precedence and one-generation refresh commits.
-- [ ] Add completion for `crate` and direct dependency aliases.
-- [ ] Add package/provider symbols, hover, definition, references, and rename
+- [x] Preserve overlay precedence and one-generation refresh commits.
+- [x] Add completion for `crate` and direct dependency aliases.
+- [x] Add package/provider symbols, hover, definition, references, and rename
       risk metadata.
-- [ ] Publish manifest/package/provider diagnostics without running host code.
-- [ ] Add one standalone API-package + plugin-package example.
-- [ ] Add one standalone ordinary app-package + library-package example with no
+- [x] Publish manifest/package/provider diagnostics without running host code.
+- [x] Add one standalone API-package + plugin-package example.
+- [x] Add one standalone ordinary app-package + library-package example with no
       provider declarations.
-- [ ] Document manifest schema, imports, discovery, selection, calls,
+- [x] Document manifest schema, imports, discovery, selection, calls,
       capabilities, and reload.
-- [ ] Update `docs/architecture.md`, relevant subsystem architecture docs,
+- [x] Update `docs/architecture.md`, relevant subsystem architecture docs,
       `docs/decisions.md`, and `docs/progress.md` to final implemented truth.
-- [ ] Add dependency-direction, parser ownership, package identity, artifact
+- [x] Add dependency-direction, parser ownership, package identity, artifact
       ownership, provider dispatch, and file-size architecture guards.
-- [ ] Remove stale plan wording and mark tasks complete only after validation.
+- [x] Remove stale plan wording and mark tasks complete only after validation.
 
 Focused tests:
 
-- [ ] `lsp_completion_lists_crate_and_dependency_aliases`
-- [ ] `definition_follows_provider_to_service_trait_across_package`
-- [ ] `references_find_service_provider_impls_across_packages`
-- [ ] `rename_provider_id_reports_hot_reload_risk`
-- [ ] `manifest_change_refreshes_one_project_generation`
-- [ ] `example_ordinary_package_dependency_compiles_runs_and_reloads`
-- [ ] `example_plugin_provider_discovers_compiles_runs_and_reloads`
+- [x] `lsp_completion_lists_crate_and_dependency_aliases`
+- [x] `definition_follows_provider_to_service_trait_across_package`
+- [x] `references_find_service_provider_impls_across_packages`
+- [x] `rename_provider_id_reports_hot_reload_risk`
+- [x] `manifest_change_refreshes_one_project_generation`
+- [x] `example_ordinary_package_dependency_compiles_runs_and_reloads`
+- [x] `example_plugin_provider_discovers_compiles_runs_and_reloads`
 
 Validation:
 
@@ -1154,27 +1155,27 @@ These do not block the first slice:
 
 The plan is complete only when:
 
-- [ ] `vela_package` is the single shared package/manifest owner.
-- [ ] Engine and language service use the same package graph/source assembly.
-- [ ] `PackageId + ModulePath` is the only script module identity.
-- [ ] all stable script definitions include PackageId.
-- [ ] SourceId remains internal and deterministic.
-- [ ] an ordinary root package imports, compiles, runs, and hot reloads its path
+- [x] `vela_package` is the single shared package/manifest owner.
+- [x] Engine and language service use the same package graph/source assembly.
+- [x] `PackageId + ModulePath` is the only script module identity.
+- [x] all stable script definitions include PackageId.
+- [x] SourceId remains internal and deterministic.
+- [x] an ordinary root package imports, compiles, runs, and hot reloads its path
       dependencies without provider metadata.
-- [ ] provider attributes are structured and source-spanned in HIR.
-- [ ] discovery returns a sealed read-only catalog without execution.
-- [ ] selected packages compile and link through the existing artifact pipeline.
-- [ ] only the explicit selection is sealed into `InstalledProviderSet`.
-- [ ] linked provider metadata is same-generation by construction.
-- [ ] Runtime calls a zero-field provider by MethodId through linked trait impl
+- [x] provider attributes are structured and source-spanned in HIR.
+- [x] discovery returns a sealed read-only catalog without execution.
+- [x] selected packages compile and link through the existing artifact pipeline.
+- [x] only the explicit selection is sealed into `InstalledProviderSet`.
+- [x] linked provider metadata is same-generation by construction.
+- [x] Runtime calls a zero-field provider by MethodId through linked trait impl
       dispatch.
-- [ ] logical ProviderHandle values rebind across compatible image updates.
-- [ ] capability declarations, statically observed effects, and host grants use
+- [x] logical ProviderHandle values rebind across compatible image updates.
+- [x] capability declarations, statically observed effects, and host grants use
       one CapabilitySet and subset checks rather than intersection.
-- [ ] provider hot reload preserves safe points, retained generations, and ABI
+- [x] provider hot reload preserves safe points, retained generations, and ABI
       rejection semantics.
-- [ ] package/provider tooling works without executing scripts or host code.
-- [ ] all focused, workspace, examples, architecture, dependency, zero-hit, and
+- [x] package/provider tooling works without executing scripts or host code.
+- [x] all focused, workspace, examples, architecture, dependency, zero-hit, and
       file-size gates pass.
 
 The proving vertical slice is:

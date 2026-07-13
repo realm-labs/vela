@@ -31,11 +31,12 @@ required.
 
 ## Current Focus
 
-The package and service-provider hard-switch track is active. Phase 0 inventory,
+The package and service-provider hard-switch track is complete. Phase 0 inventory,
 Phase 1 package foundation, the atomic Phase 2 package-identity cutover, Phase 3
 ordinary package compilation, Phase 4 provider discovery, Phase 5 linked
-provider runtime dispatch, and Phase 6 package/provider hot reload are complete
-and verified. `vela_package`
+provider runtime dispatch, Phase 6 package/provider hot reload, and Phase 7
+tooling, examples, documentation, and architecture close-out are complete and
+verified. `vela_package`
 now owns validated package/module
 identity, structured spanned `vela.toml` parsing, path dependency/workspace
 graph construction, path authorization, and deterministic source discovery.
@@ -61,8 +62,13 @@ logical handles, and compatible-reload rebinding. Reload now rebuilds manifests
 and sources against the previous root/provider fingerprint, compares artifact-
 derived package/provider ABI and capability expansion, reports changed and
 impacted packages, preserves old provider-created closures, and carries provider
-source spans plus canonical manifest paths on rejection. The next step is Phase
-7 tooling, examples, documentation, architecture guards, and close-out.
+source spans plus canonical manifest paths on rejection. Language tooling now
+projects package imports and provider identity into completion, symbols, hover,
+definition, references, and rename-risk metadata without executing scripts or
+host code. The ordinary-package and plugin-provider demos prove compatible body
+reload, and architecture guards pin parser ownership, dependency direction,
+package identity, artifact-only reload, provider dispatch, and file-size policy.
+The next implementation focus returns to the existing M20 cache-family audit.
 
 The MIR/executable-generation implementation is complete through Batch F /
 Phase 11 in
