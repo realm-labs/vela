@@ -5,8 +5,9 @@
 > **Document status:** ready for execution
 > **Execution status:** not started
 > **Baseline:** pulled `master` at `841a033d2` on 2026-07-13
-> **Execution mode:** throughput-first large batches. Intermediate compilation
-> and tests may be red; each batch-completion checkpoint must be green.
+> **Plan execution style:** throughput-first large batches. Intermediate
+> compilation and tests may be red; each batch-completion checkpoint must be
+> green.
 > **Relationship to the roadmap:** this is a post-first-interpreter architecture
 > track. The current MVP/non-async statements remain true until this plan is
 > implemented and the active architecture and roadmap documents are changed at
@@ -40,17 +41,17 @@ progress only and is never a valid stopping condition.
 
 Implement the long-term architecture directly:
 
-1. Batch A: prove the safe Rust ownership shape, add portable/thread-bound
-   execution modes, carry asyncness through syntax/HIR/analysis/reflection/MIR,
-   introduce explicit await control flow, and replace recursive VM script calls
-   with one explicit execution-frame stack and driver.
+1. Batch A: prove the safe Rust ownership shape for one scoped `Send` call
+   future, carry asyncness through syntax/HIR/analysis/reflection/MIR, introduce
+   explicit await control flow, consume call host state into an execution owner,
+   and replace recursive VM script calls with one explicit execution-frame stack
+   and driver.
 2. Batch B: add the executor-neutral Rust-to-Vela async call surface and
    Vela-to-Rust async function plus HostPath-based method registration, using
    the same execution driver as sync calls.
-3. Batch C: replace CallArgsAdapter borrowing with execution-owned host binding
-   scopes, implement safe typed shared/exclusive host leases, finish direct
-   stateful struct methods, and implement same-execution NativeCallContext
-   reentry, including mutable-state reborrows.
+3. Batch C: build safe typed shared/exclusive host leases on the execution-owned
+   scopes, finish direct stateful struct methods, and implement same-execution
+   NativeCallContext reentry, including mutable-state reborrows.
 4. Batch D: close hot reload, cancellation, GC roots, execution budgets,
    reflection, providers, tooling, diagnostics, examples, documentation,
    compatibility, and performance acceptance.
@@ -66,7 +67,8 @@ Do not create a second async interpreter, poll the recursive VM as a black box,
 add a Tokio dependency to the core runtime, expose BoxFuture/LocalBoxFuture as
 the semantic API distinction, require Runtime to be moved into tokio::spawn,
 expose Rust references to scripts, keep CallArgsAdapter alive across await with
-unsafe/self-references, add compatibility execution modes, or reset budgets and
+unsafe/self-references, add Engine/Runtime execution-mode generics or a parallel
+`!Send` runtime path, add compatibility execution modes, or reset budgets and
 generation state during reentry. Workspace unsafe remains forbidden.
 
 Never mark the goal complete while any of the following is true:
@@ -74,8 +76,10 @@ Never mark the goal complete while any of the following is true:
 - any Batch A-D or Section 18 checklist item is unchecked;
 - script-to-script calls still recurse through Rust execute_linked_call frames;
 - sync and async calls do not use the same execution driver;
-- portable and thread-bound registration/call modes are not both covered by
-  compile-time tests;
+- CallArgsAdapter/GlobalStoreAdapter still form a borrowing execution stack
+  instead of one execution-owned host boundary;
+- the scoped Runtime call future or any registered async Rust future is not
+  proven `Send` for its invocation lifetime;
 - Runtime::call_async, async native functions, async struct methods, mutable
   host leases, or same-execution reentry is missing;
 - cancellation can leave Runtime or a direct host binding permanently busy;
@@ -171,9 +175,9 @@ types:
    reborrowing the mutable host state into the child Vela entry.
 9. The outer Vela frame resumes after the Rust future and any nested Vela call
    finish.
-10. Portable execution produces a scoped `Send` future suitable for a
-    `Send` actor-handler future. Thread-bound execution accepts `!Send` callable
-    factories, host state, and futures.
+10. Async execution produces one scoped `Send` future suitable for a `Send`
+    actor-handler future without requiring Runtime ownership or `'static`
+    arguments.
 11. A suspended old-generation call survives a staged reload with its original
     code and resumes correctly; new outer calls use the new generation only
     after a safe activation point.
@@ -189,7 +193,8 @@ types:
 - `async fn` declarations and call-expression `.await`.
 - Executor-neutral Rust futures based only on `std::future::Future` and
   `std::task` in core crates.
-- Portable (`Send`) and thread-bound (`!Send`) engine/runtime modes.
+- One scoped `Send` async embedding contract with no Engine/Runtime mode
+  parameter.
 - One stackless linked VM execution driver for sync and async front doors.
 - Explicit MIR/linked suspension and resume metadata.
 - Async Rust free-function and struct-method registration, including macro
@@ -215,70 +220,65 @@ types:
   poll-based C ABI is a separate design.
 - Transactional rollback on error or cancellation.
 - Making opaque adapter-backed state downcastable merely to obtain `&mut T`.
+- `!Send` registered futures or a thread-bound/local Runtime mode. A real future
+  requirement for those may define a separate follow-up; this track does not
+  reserve public generics or duplicate registries for it.
 - Any game-server, actor-framework, handler, or service type in core crates.
 
 ---
 
-## 4. Terminology And Public Mode Model
+## 4. Scoped Send Future Contract
 
-The API must distinguish semantic guarantees, not allocation details.
+The model has one async execution contract. It must keep three independent
+properties clear:
 
-| Term | Meaning | Not implied |
+| Property | Required meaning | Not implied |
 |---|---|---|
 | scoped | the call future may borrow Runtime and host values | `'static` or detached |
-| portable | the call future and all captured execution state are `Send` | concurrent Runtime use |
-| thread-bound | the execution may contain `!Send` state/futures | a particular executor crate |
-| erased future | an internal dynamic future representation | a public API name |
+| `Send` | the borrowed future may migrate between executor threads | concurrent Runtime use |
+| erased future | internal dynamic future representation | a public API mode or name |
 | async callable | invocation is allowed to suspend | a capability permission |
 
-Use semantic mode markers, with exact trait machinery proven in Phase 0:
+Do not add a second public mode dimension:
 
 ```rust,ignore
-pub struct Portable;
-pub struct ThreadBound;
-
-pub struct Engine<M = Portable> { /* ... */ }
-pub struct EngineBuilder<M = Portable> { /* ... */ }
-pub struct RuntimeImpl<I, M = Portable> { /* ... */ }
-pub struct CallArgs<'a, M = Portable> { /* ... */ }
-
-pub type Runtime = RuntimeImpl<OwnedImage, Portable>;
-pub type ThreadBoundRuntime = RuntimeImpl<OwnedImage, ThreadBound>;
+pub struct Engine { /* unchanged mode shape */ }
+pub struct EngineBuilder { /* unchanged mode shape */ }
+pub struct RuntimeImpl<I> { /* no async mode parameter */ }
+pub struct CallArgs<'a> { /* no async mode parameter */ }
 ```
 
-The names `BoxFuture`, `LocalBoxFuture`, `BoxedRuntime`, `LocalRuntime`, and
-`SendRuntime` must not become the primary API. Boxing is an internal erasure
-choice. `Portable` and `ThreadBound` state the actual contract.
+The required contract is:
 
-### 4.1 Portable Mode
+- registered callable factories remain `Send + Sync + 'static`;
+- each returned Rust future is `Send` for its scoped invocation lifetime, not
+  necessarily `'static`;
+- the Runtime call future is `Send` while borrowing `&mut Runtime`, call args,
+  host bindings, and any fallback adapter;
+- mutable direct bindings used by the async execution owner require `T: Send`;
+- shared direct bindings used by it require `T: Sync`;
+- an adapter borrowed across async execution must be `Send`;
+- Runtime remains exclusively borrowed and executes only one outer call at a
+  time. `Send` does not make Runtime `Sync` or permit concurrent calls.
 
-- This is the default because current registered native factories already
-  require `Send + Sync`, Runtime is `Send`, and server handlers commonly need a
-  `Send` outer future.
-- Registered callable factories are `Send + Sync + 'static`.
-- Their returned futures are `Send` for the scoped invocation lifetime.
-- Mutable direct bindings require `T: Send`; shared direct bindings require
-  `T: Sync`; fallback adapters used across await require the matching portable
-  bound.
-- The returned call future is scoped, not `'static`, and may migrate only while
-  all of its borrows satisfy the portable bounds.
+Hard-switch direct `CallArgs` host bindings to retain the required auto traits
+after type erasure—for example shared trait objects with `+ Sync` and mutable
+trait objects with `+ Send`. Do not introduce `AsyncCallArgs`, a runtime mode
+generic, or a registry selected by call site merely to preserve non-`Send` host
+bindings. This is a pre-release server-oriented contract and aligns with the
+existing `Send + Sync` native registry and `Send` Runtime.
 
-### 4.2 Thread-Bound Mode
+The names `BoxFuture`, `LocalBoxFuture`, `BoxedRuntime`, `LocalRuntime`,
+`SendRuntime`, `Portable`, and `ThreadBound` must not become public architecture.
+Internal code may use a pinned boxed `dyn Future + Send + 'call` to erase a
+lifetime-dependent future; boxing is an implementation detail.
 
-- `Engine::builder().thread_bound()` irreversibly changes the builder mode and
-  produces a thread-bound Engine/Runtime.
-- Registered factories and futures may capture `Rc`, `RefCell`, or other
-  `!Send` state.
-- Portable functions also work in this mode because a `Send` future is valid
-  where no `Send` guarantee is required.
-- The Engine, Runtime, CallArgs, and call future do not claim `Send`.
-
-One mixed registry cannot return a future that is statically `Send` only when a
-runtime-selected call graph happens not to touch a local future. Therefore the
-portability guarantee is an Engine/Runtime mode, not two differently named call
-methods on an untyped mixed engine. Per-function portability may be reconsidered
-only with a separately typed and statically proven artifact/view; runtime
-preflight alone cannot add the Rust `Send` auto trait.
+A `Send` future is still valid on a current-thread executor and may remain
+actor-local for its entire lifetime. `Send` only permits migration; it does not
+request it. The ownership property needed here is the scoped borrow, while the
+outer server handler independently requires `Send`. Supporting `Rc`/UI/WASM
+thread-affine host futures would be a different requirement and does not justify
+infecting the current Engine and Runtime types with another mode.
 
 ---
 
@@ -340,7 +340,7 @@ Raw async entry points should exist only where the current raw sync surface has
 a real embedding consumer. All public front doors must resolve an internal
 `EntryRequest` and enter the same driver rather than duplicate VM setup.
 
-The concrete return may be a named `RuntimeCallFuture<'call, I, M>` so the
+The concrete return may be a named `RuntimeCallFuture<'call, I>` so the
 runtime owns polling/cancellation behavior and compile tests can assert auto
 traits. The name describes the operation; it must not expose the internal
 future-boxing representation.
@@ -356,7 +356,7 @@ Semantics:
 - Runtime remains exclusively borrowed for the whole outer call. Independent
   calls do not run concurrently on the same Runtime.
 
-### 5.2 Portable Does Not Mean Detached
+### 5.2 Scoped Send Does Not Mean Detached
 
 The following compile-time property is required:
 
@@ -368,30 +368,12 @@ let future = runtime.call_async(
     CallArgs::new().with_host_mut("actor", &mut actor),
     options,
 );
-require_send(future); // when Runtime, actor, adapter, and registered calls are portable
+require_send(future); // Runtime, actor, adapter, and registered futures satisfy Send bounds
 ```
 
 The future still borrows `runtime` and `actor`; it is not `'static`. This is the
 shape needed when an outer actor-handler future is required to be `Send` but the
 Runtime itself remains actor-local.
-
-### 5.3 Thread-Bound Registration And Call
-
-```rust,ignore
-let engine = Engine::builder()
-    .thread_bound()
-    .register_async_fn(desc, move |args| {
-        let local = Rc::clone(&local_state);
-        async move { Ok(local.borrow().answer(args)) }
-    })
-    .build()?;
-
-let mut runtime = compile_thread_bound_runtime(&engine, source)?;
-let value = runtime.call_async("main", CallArgs::new(), options).await?;
-```
-
-Both modes use `register_async_fn` and `call_async`. The mode changes bounds,
-not method vocabulary.
 
 ---
 
@@ -465,9 +447,9 @@ All linked script-call families must stop recursively invoking
 `execute_linked_call`. Introduce an execution-owned frame stack:
 
 ```rust,ignore
-struct ExecutionSession<'host, I, M> {
+struct ExecutionSession<'host, I> {
     frames: Vec<ExecutionFrame>,
-    host: ExecutionHost<'host, M>,
+    host: ExecutionHost<'host>,
     heap_and_globals: /* borrowed runtime execution state */,
     budget: ExecutionBudget,
     generation: Arc<LinkedArtifact>,
@@ -497,13 +479,13 @@ The core interpreter is a synchronous state machine that runs until a semantic
 boundary:
 
 ```rust,ignore
-enum DriveOutcome<M> {
+enum DriveOutcome {
     Complete(OwnedValue),
-    AsyncBoundary(PreparedAsyncCall<M>),
+    AsyncBoundary(PreparedAsyncCall),
 }
 
-impl ExecutionSession<'_, _, _> {
-    fn drive_until_boundary(&mut self) -> VmResult<DriveOutcome<_>>;
+impl ExecutionSession<'_, _> {
+    fn drive_until_boundary(&mut self) -> VmResult<DriveOutcome>;
     fn resume_async_call(&mut self, packet: ResumePacket) -> VmResult<()>;
 }
 ```
@@ -588,7 +570,7 @@ returns a special value.
 
 ### 8.1 User-Facing Registration
 
-Use the same semantic names in both modes:
+Use one registration contract:
 
 ```rust,ignore
 Engine::builder()
@@ -603,11 +585,11 @@ Typed variants and macros should be the preferred surface; low-level aliases
 may expose an internal pinned erased future in signatures but must not encode
 `Box` or `LocalBox` in public method names.
 
-Rust 1.97 lifetime-dependent future erasure and mode-specific bounds must be
-settled by compile-only Phase 0 tests. Prefer a sealed mode trait plus
-mode-specific implementations of registration traits. Do not require user
-functions to return `'static` futures: the returned future may borrow the
-call-lifetime context and host leases.
+Rust 1.97 lifetime-dependent future erasure and `Send` higher-ranked bounds must
+be settled by compile-only Phase 0 tests. Do not require user functions to
+return `'static` futures: the returned future may borrow the call-lifetime
+context and host leases, but it must be `Send` for that lifetime. Do not add a
+mode trait or duplicate registration-trait implementation family.
 
 ### 8.2 Macro Ergonomics
 
@@ -669,8 +651,7 @@ Vela remains general-purpose and supports state through ordinary host patterns:
 
 - pass a direct shared/mutable struct binding in `CallArgs`;
 - register a host struct and invoke its sync/async methods;
-- capture `Arc`/portable state or `Rc`/thread-bound state in a registered
-  callable factory;
+- capture `Arc` or other `Send + Sync` state in a registered callable factory;
 - expose opaque persistent state through a host adapter.
 
 Core crates must not add a service locator or actor registry. The host chooses
@@ -745,18 +726,19 @@ invocation and restore it afterward. Comparing only `HostTypeId` and casting is
 not sufficient. Non-`'static` object types may continue to support ordinary
 HostAccess while being ineligible for typed Rust leases.
 
-### 9.3 Portable Bounds
+### 9.3 Send Bounds
 
-For a portable async call:
+For every async call:
 
-- `HostLeaseMut<'a, T>` is portable only when `T: Send`;
-- `HostLeaseRef<'a, T>` is portable only when `T: Sync`;
+- `HostLeaseMut<'a, T>` requires `T: Send`;
+- `HostLeaseRef<'a, T>` requires `T: Sync`;
 - the generated Rust future must be `Send`;
-- every owned return/error/argument crossing the suspension boundary must meet
-  the execution-mode contract.
+- every owned return/error/argument crossing the suspension boundary must be
+  compatible with the scoped `Send` execution owner.
 
-Compile-fail tests must prove that `Rc` state and `!Send` futures are rejected
-by portable registration but accepted by a thread-bound builder.
+Compile-fail tests must prove that `Rc` captures, non-`Sync` shared host state,
+non-`Send` mutable host state, and `!Send` returned futures are rejected. There
+is no alternate builder that accepts them in this track.
 
 ### 9.4 Host Method Routing
 
@@ -915,8 +897,7 @@ error classes include clear source/call-chain diagnostics for:
 - host root busy due to a live lease;
 - typed lease unavailable or type/mutability mismatch;
 - async callback used in a sync callback API;
-- reentry/call-depth exhaustion;
-- thread-bound/portable registration mismatch where detected at build time.
+- reentry/call-depth exhaustion.
 
 RAII guards must clear any Runtime active-execution marker during normal return,
 error, panic unwind, and cancellation. Do not turn borrow conflicts into
@@ -1095,11 +1076,16 @@ resumable foundation before adding real host suspension.
 
 - [ ] Record full baseline validation, focused call-depth/callback/provider/
   hot-reload tests, and representative runtime benchmarks.
-- [ ] Add compile-only ownership prototypes for portable and thread-bound
-  factories, lifetime-borrowing futures, prepared-call lease extraction, and
+- [ ] Add compile-only ownership prototypes for `Send + Sync` factories,
+  scoped `Send` lifetime-borrowing futures, prepared-call lease extraction, and
   mutable-state reentrant child calls on Rust 1.97.
-- [ ] Choose and seal mode trait/type aliases from the proof; add positive and
-  compile-fail auto-trait tests.
+- [ ] Prove and seal the single registration/call future aliases plus direct
+  CallArgs/adapter auto-trait erasure; add positive and compile-fail tests and no
+  Engine/Runtime mode generic.
+- [ ] Consume CallArgs and compose Runtime host globals plus the fallback
+  adapter behind one `ExecutionHost` owner; delete the borrowing `CallArgsAdapter`/
+  `GlobalStoreAdapter` execution shape and allocate direct HostRef identities
+  across the whole outer execution.
 - [ ] Add `async`/`await` syntax, CST losslessness/recovery, AST accessors, and
   formatting/highlighting basics.
 - [ ] Propagate callable asyncness through HIR, analysis, registry, reflection,
@@ -1119,20 +1105,22 @@ resumable foundation before adding real host suspension.
   and asyncness contracts activated in this batch.
 
 Batch A completion gate: the entire workspace is green; every existing
-synchronous call executes through one explicit frame stack; await is represented
-and verified end-to-end; no real Rust future is required to complete yet.
+synchronous call executes through one explicit frame stack and execution-owned
+host boundary; await is represented and verified end-to-end; no real Rust
+future is required to complete yet.
 
 ### 16.2 Batch B: Async Calls And Native Vertical Slice
 
 Purpose: make Rust-to-Vela and Vela-to-Rust suspension work through the Batch A
-driver in both execution modes.
+driver with one scoped `Send` execution contract.
 
 - [ ] Implement the executor-neutral outer call future and prepared-call/resume
   protocol without unsafe or core executor dependency.
 - [ ] Add `Runtime::call_async` and method/adapter/raw variants justified by the
   current sync surface.
-- [ ] Implement portable and thread-bound async native/context/host/method
-  registries with the same public method names and mode-specific bounds.
+- [ ] Implement async native/context/host/method registries whose factories are
+  `Send + Sync` and whose lifetime-dependent returned futures are `Send` without
+  being required to be `'static`.
 - [ ] Extend `#[script_function]` to generate async descriptors/wrappers and
   add low-level/typed HostPath-based async method registration. Direct
   `&self`/`&mut self` method wrappers land with leases in Batch C.
@@ -1142,28 +1130,26 @@ driver in both execution modes.
 - [ ] Cover async script-to-script, native free-function, context function,
   HostPath-based method, dynamic callable/method, reflection, error, and try
   paths.
-- [ ] Prove a portable scoped call future is `Send` but not required to be
-  `'static`; prove thread-bound registration accepts `Rc` and a `!Send` future.
+- [ ] Prove the scoped call future is `Send` but not required to be `'static`;
+  prove registration rejects `Rc` captures and a `!Send` returned future.
 - [ ] Prove the driver does not busy-poll and does not depend on Tokio.
 - [ ] Update embedding/registration docs and active decisions for the APIs now
   available.
 
 Batch B completion gate: Rust can await Vela; Vela can await Rust free functions
-and HostPath-based native methods; both modes pass compile/runtime tests; and
-sync/async paths share one driver. Direct borrowed struct receivers are not
-claimed until Batch C.
+and HostPath-based native methods; the scoped `Send` compile/runtime contract
+passes; and sync/async paths share one driver. Direct borrowed struct receivers
+are not claimed until Batch C.
 
 ### 16.3 Batch C: Host Leases And Reentry Hard Switch
 
 Purpose: support the mutable actor/service shape safely across await and nested
 Vela calls.
 
-- [ ] Consume CallArgs into execution-owned host scopes and delete the borrowing
-  `CallArgsAdapter` architecture.
-- [ ] Allocate direct HostRef identities across the entire outer execution and
-  nested scopes.
 - [ ] Add `HostLeaseRef`/`HostLeaseMut` without changing existing typed path
   marker semantics.
+- [ ] Extend `ExecutionHost` with nested reentry binding scopes that use the
+  outer execution's HostRef allocator and invalidate child refs on scope exit.
 - [ ] Implement atomic shared/exclusive lease validation, extraction,
   restoration, busy errors, nested scope invalidation, and adapter fail-closed
   behavior.
@@ -1189,8 +1175,8 @@ Vela calls.
 - [ ] Document the disjoint Runtime/host-storage requirement.
 
 Batch C completion gate: the complete mutable-state service and reentry example
-passes in portable and thread-bound modes under Miri-compatible safe Rust, with
-no real Rust reference ever represented in a Vela value.
+passes under the scoped `Send` contract and Miri-compatible safe Rust, with no
+real Rust reference ever represented in a Vela value.
 
 ### 16.4 Batch D: System Closure And Acceptance
 
@@ -1236,10 +1222,10 @@ the worktree is clean.
 | Boundary | Required cases |
 |---|---|
 | Rust -> Vela | sync via `call`; sync and async via `call_async`; error/try/cancel |
-| Vela -> Rust function | sync, async ready, async pending/wake, portable, thread-bound |
+| Vela -> Rust function | sync, async ready, async pending/wake, scoped `Send` future |
 | Vela -> Rust method | `&self`, `&mut self`, extra `&T`/`&mut T`, alias rejection |
 | reentry | sync and async child, same mutable state reborrow, nested async boundary |
-| modes | scoped portable future is `Send`; local captures accepted only thread-bound |
+| future contract | scoped call is `Send` and non-`'static`; `!Send` registration is rejected |
 | dynamic calls | awaited sync/async; non-awaited async traps before dispatch |
 | host scopes | unique IDs, busy parent, child invalidation, adapter unsupported lease |
 | cancellation | pending future drop, lease release, Runtime reuse, no rollback claim |
@@ -1258,15 +1244,15 @@ core behavior must also be tested without Tokio.
 
 Add compile-pass/compile-fail coverage for:
 
-- a portable call future borrowing `&mut Runtime` and `&mut ActorState` is
-  `Send` when bounds hold;
+- a call future borrowing `&mut Runtime` and `&mut ActorState` is `Send` when
+  bounds hold;
 - it is not required or coerced to `'static`;
-- portable registration rejects a `!Send` returned future;
-- portable shared/mutable host args enforce `Sync`/`Send` respectively;
-- thread-bound registration accepts `Rc<RefCell<_>>` captures and futures;
+- registration rejects a `!Send` returned future and non-`Send + Sync` factory;
+- shared/mutable host args enforce `Sync`/`Send` respectively after type
+  erasure;
+- no Engine, EngineBuilder, Runtime, or CallArgs async-mode generic is added;
 - macro-generated async receiver and host-reference parameters compile;
-- ordinary script-visible Rust reference parameters/returns remain rejected;
-- no public mode uses Box/Local naming as the semantic distinction.
+- ordinary script-visible Rust reference parameters/returns remain rejected.
 
 ### 17.3 Focused Validation During Batches
 
@@ -1297,7 +1283,7 @@ cargo test --workspace
 ```
 
 Also build examples, benches, feature combinations, and documentation targets
-that exercise engine public generics/modes. Run Miri on the focused lease/reentry
+that exercise the public scoped async API. Run Miri on the focused lease/reentry
 crate tests when the toolchain component is available; if unavailable, record
 that fact without replacing the safe-Rust tests.
 
@@ -1325,9 +1311,11 @@ Adapt exact patterns to final names and require no architectural leftovers:
 ```bash
 rg -n 'does not support async (functions|methods)' crates
 rg -n 'execute_linked_call\(' crates/vela_vm crates/vela_engine
-rg -n 'DIRECT_HOST_OBJECT_ID_BASE|CallArgsAdapter' crates/vela_engine
+rg -n 'DIRECT_HOST_OBJECT_ID_BASE|CallArgsAdapter|GlobalStoreAdapter' crates/vela_engine
 rg -n 'may_yield' crates docs/architecture
-rg -n 'BoxFuture|LocalBoxFuture|SendRuntime|LocalRuntime' crates docs
+rg -n 'BoxFuture|LocalBoxFuture|SendRuntime|LocalRuntime' \
+  crates docs/architecture docs/decisions.md docs/goal.md
+rg -n 'Portable|ThreadBound|thread_bound' crates docs/architecture
 rg -n 'tokio::spawn' crates/vela_engine crates/vela_vm crates/vela_host
 ```
 
@@ -1350,10 +1338,10 @@ The goal is complete only when all are true:
 - [ ] All script call families use one explicit execution-frame stack; no
   production script-to-script Rust recursion remains.
 - [ ] Sync and async Runtime APIs use one `EntryRequest` and execution driver.
-- [ ] Portable and thread-bound modes use semantic names, share method names,
-  and enforce their factory/future/host auto-trait guarantees at compile time.
-- [ ] `Runtime::call_async` is scoped and can be `Send` without Runtime ownership
-  or `'static` arguments.
+- [ ] Async registration and Runtime calls expose one scoped `Send` contract;
+  no public execution-mode generic or parallel `!Send` registry/runtime exists.
+- [ ] `Runtime::call_async` is scoped and `Send` without Runtime ownership or
+  `'static` arguments.
 - [ ] Async Rust functions and stateful struct methods can be registered and
   awaited from Vela.
 - [ ] Direct mutable host state can be safely leased across Rust await, used by

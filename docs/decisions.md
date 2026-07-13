@@ -1831,9 +1831,10 @@ The post-first-interpreter async target is defined by
 [async-execution-model-plan.md](async-execution-model-plan.md). Sync and async
 entry points will share one explicit VM frame stack and execution driver; core
 crates will not own a Tokio executor or a second async interpreter. The public
-mode distinction is portable (`Send`) versus thread-bound (`!Send`), while call
-futures remain scoped and may borrow Runtime and host state rather than becoming
-`'static` tasks.
+contract has one scoped `Send` call future: it may borrow Runtime and host state
+for the invocation lifetime without becoming a `'static` task. Engine,
+EngineBuilder, Runtime, and CallArgs do not gain an async execution-mode generic,
+and this track does not add a parallel `!Send` registry/runtime.
 
 Rust struct access across await will use Rust-only scoped host leases derived
 from `HostRef` bindings. Scripts will continue to see only
