@@ -737,6 +737,7 @@ fn hover_kind(kind: HoverKind) -> &'static str {
         HoverKind::Method => "method",
         HoverKind::Variant => "variant",
         HoverKind::Module => "module",
+        HoverKind::Provider => "provider",
         HoverKind::Unknown => "unknown",
     }
 }

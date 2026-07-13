@@ -40,6 +40,7 @@ pub enum HoverKind {
     Method,
     Variant,
     Module,
+    Provider,
     Unknown,
 }
 
@@ -122,11 +123,14 @@ impl LanguageServiceDatabases {
     #[must_use]
     pub fn hover(&self, document_id: &DocumentId, position: Position) -> Option<Hover> {
         let query = QueryContext::from_databases(self, document_id, position)?;
-        let target = SymbolTarget::from_query(self, &query)?;
         let source_id = query.source_id()?;
+        let graph = self.hir_db().graph();
+        if let Some(provider) = provider_hover(&query, graph, source_id) {
+            return Some(provider);
+        }
+        let target = SymbolTarget::from_query(self, &query)?;
         let offset = u32::try_from(target.range().start).ok()?;
         let range = diagnostic_range(query.text(), target.range());
-        let graph = self.hir_db().graph();
         let facts = AnalysisFacts::from_module_graph(graph);
 
         if let Some(receiver_fact) = target.member_receiver_fact()
@@ -264,6 +268,36 @@ impl LanguageServiceDatabases {
             )
         })
     }
+}
+
+fn provider_hover(
+    query: &QueryContext<'_>,
+    graph: &ModuleGraph,
+    source_id: vela_common::SourceId,
+) -> Option<Hover> {
+    let target = crate::rename::provider_id_rename_target(query, graph, source_id)?;
+    let offset = u32::try_from(target.range.start).ok()?;
+    let provider = vela_hir::provider::discover_providers(graph)
+        .ok()?
+        .into_iter()
+        .find(|provider| provider.source.source == source_id && provider.source.contains(offset))?;
+    let range = diagnostic_range(query.text(), target.range);
+    let detail = DisplayParts::plain(format!(
+        "provider {} for trait {:?}",
+        provider.key.package(),
+        provider.key.service()
+    ));
+    Some(Hover::new(
+        range,
+        target.value.clone(),
+        HoverKind::Provider,
+        detail,
+        Some(
+            "Provider IDs are stable hot-reload ABI keys; renaming this value removes the old provider identity."
+                .to_owned(),
+        ),
+        Some(crate::rename::provider_id_symbol(&target.value)),
+    ))
 }
 
 fn module_hover(

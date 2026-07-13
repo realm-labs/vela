@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use vela_package::load_package_graph;
 
 use crate::{
-    DocumentId, LanguageServiceDatabases, Position, SourceFileSnapshot, Workspace,
+    DocumentId, HoverKind, LanguageServiceDatabases, Position, SourceFileSnapshot, Workspace,
     assemble_package_project_sources,
 };
 
@@ -60,6 +60,24 @@ fn workspace_symbols_expose_package_provider_identity() {
             .any(|symbol| symbol.name() == "dev.vela.plugin::command"),
         "{symbols:?}"
     );
+    fixture.remove();
+}
+
+#[test]
+fn hover_exposes_package_provider_identity() {
+    let fixture = ProviderToolingFixture::new("hover");
+    let databases = fixture.databases();
+    let line = fixture.plugin_text.lines().nth(2).expect("provider line");
+    let hover = databases
+        .hover(
+            &fixture.plugin_document,
+            Position::new(2, line.find("command").expect("provider id")),
+        )
+        .expect("provider hover");
+
+    assert_eq!(hover.kind(), HoverKind::Provider);
+    assert_eq!(hover.label(), "command");
+    assert!(hover.detail().contains("dev.vela.plugin"));
     fixture.remove();
 }
 

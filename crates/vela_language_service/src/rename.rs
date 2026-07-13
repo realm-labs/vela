@@ -37,9 +37,9 @@ struct RenameToken {
     range: TextRange,
 }
 
-struct ProviderIdRenameTarget {
-    range: TextRange,
-    value: String,
+pub(crate) struct ProviderIdRenameTarget {
+    pub(crate) range: TextRange,
+    pub(crate) value: String,
 }
 
 impl LanguageServiceDatabases {
@@ -376,7 +376,7 @@ impl LanguageServiceDatabases {
     }
 }
 
-fn provider_id_rename_target(
+pub(crate) fn provider_id_rename_target(
     query: &QueryContext<'_>,
     graph: &ModuleGraph,
     source_id: SourceId,
@@ -413,7 +413,7 @@ fn provider_id_rename_target(
     None
 }
 
-fn provider_id_symbol(value: &str) -> SymbolRef {
+pub(crate) fn provider_id_symbol(value: &str) -> SymbolRef {
     SymbolRef::Source(format!("provider:{value}"))
 }
 
