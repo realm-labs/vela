@@ -10,7 +10,8 @@ history belongs in Git.
 
 ## Current Focus
 
-The executor-neutral async execution track is active at Batch D in
+The executor-neutral async execution track is complete through Batch D and
+Section 18 in
 [async-execution-model-plan.md](async-execution-model-plan.md). The pre-change
 workspace, focused call-depth/callback/provider/reload behavior, and
 representative runtime performance baseline are recorded in
@@ -53,8 +54,13 @@ for a future backend. The Batch D zero-hit audit is recorded in
 all forbidden active patterns are absent, and the remaining root/test adapter
 names are classified over the single session driver.
 
-M20 cache close-out and M20.5 LSP follow-up remain valid but are paused while
-the async plan is the persistent work queue.
+The final focused, all-feature workspace, example, benchmark-build, rustdoc,
+and documentation-site gates are green. Performance and memory acceptance,
+including the named `ASYNC-PERF-1` follow-up and unavailable-Miri note, is
+recorded in
+[archive/async-execution-acceptance-2026-07-13.md](archive/async-execution-acceptance-2026-07-13.md).
+Current implementation focus returns to M20 cache close-out and the M20.5 LSP
+follow-up.
 
 ## Milestone Snapshot
 
@@ -129,11 +135,6 @@ the async plan is the persistent work queue.
   [archive/performance-full-2026-06-06.md](archive/performance-full-2026-06-06.md).
 
 ## Active Gaps
-
-### Async Execution Batch D
-
-- Complete performance acceptance.
-- Finish Section 18 documentation, compatibility, and validation audits.
 
 ### M20 Cache Close-Out
 

@@ -1260,12 +1260,12 @@ Purpose: close every cross-cutting contract and remove provisional omissions.
 - [x] Run zero-hit audits for recursive linked execution, macro async rejection,
   stale `may_yield` contract text, per-CallArgs direct IDs, and duplicate sync/
   async/provider drivers.
-- [ ] Run focused and full validation, examples, benchmark builds, and the
+- [x] Run focused and full validation, examples, benchmark builds, and the
   performance/memory comparison in Section 17.
-- [ ] Update `docs/goal.md`, all affected architecture docs,
+- [x] Update `docs/goal.md`, all affected architecture docs,
   `docs/decisions.md`, and `docs/progress.md` so no active document still claims
   the implemented language/runtime has no async support.
-- [ ] Review file sizes/module ownership and split new oversized mixed-purpose
+- [x] Review file sizes/module ownership and split new oversized mixed-purpose
   files.
 
 Batch D completion gate: every Section 18 criterion is checked, all validation
@@ -1390,45 +1390,45 @@ have no forbidden hit.
 
 The goal is complete only when all are true:
 
-- [ ] Vela has implemented `async fn` and call-expression `.await` semantics
+- [x] Vela has implemented `async fn` and call-expression `.await` semantics
   with diagnostics and tooling support.
-- [ ] Callable asyncness is one end-to-end registry/HIR/MIR/linked/reflection/
+- [x] Callable asyncness is one end-to-end registry/HIR/MIR/linked/reflection/
   ABI fact, separate from capability effects.
-- [ ] Await is an explicit verified MIR and linked control-flow boundary with a
+- [x] Await is an explicit verified MIR and linked control-flow boundary with a
   resume edge, destination, safepoint, and root-live facts.
-- [ ] All script call families use one explicit execution-frame stack; no
+- [x] All script call families use one explicit execution-frame stack; no
   production script-to-script Rust recursion remains.
-- [ ] `Runtime::call` and `Runtime::call_async` are the only public Runtime
+- [x] `Runtime::call` and `Runtime::call_async` are the only public Runtime
   execution methods; every function, bound-method, and provider target resolves
   one `EntryRequest` and uses one driver.
-- [ ] Async registration and Runtime calls expose one scoped `Send` contract;
+- [x] Async registration and Runtime calls expose one scoped `Send` contract;
   no public execution-mode generic or parallel `!Send` registry/runtime exists.
-- [ ] `Runtime::call_async` is scoped and `Send` without Runtime ownership or
+- [x] `Runtime::call_async` is scoped and `Send` without Runtime ownership or
   `'static` arguments.
-- [ ] Async Rust functions and stateful struct methods can be registered and
+- [x] Async Rust functions and stateful struct methods can be registered and
   awaited from Vela.
-- [ ] Direct mutable host state can be safely leased across Rust await, used by
+- [x] Direct mutable host state can be safely leased across Rust await, used by
   existing Rust services, reborrowed into nested Vela, and restored.
-- [ ] Scripts still see only HostRef/HostPath/PathProxy/HostAccess; no Rust
+- [x] Scripts still see only HostRef/HostPath/PathProxy/HostAccess; no Rust
   reference is a Vela value or reflection type.
-- [ ] NativeCallContext reentry inherits the same generation, heap, host scopes,
+- [x] NativeCallContext reentry inherits the same generation, heap, host scopes,
   budgets, capabilities, profiler, cancellation, and call-depth state.
-- [ ] Cancellation and every error path release leases/scopes and leave Runtime
+- [x] Cancellation and every error path release leases/scopes and leave Runtime
   reusable, without claiming rollback of committed effects.
-- [ ] Suspended frames pin old LinkedArtifact generations and expose complete GC
+- [x] Suspended frames pin old LinkedArtifact generations and expose complete GC
   roots; no async-frame hot migration exists.
-- [ ] Execution-unit behavior is semantic and executor-independent; the driver
+- [x] Execution-unit behavior is semantic and executor-independent; the driver
   never busy-polls.
-- [ ] Provider, reflection, package metadata, reload ABI, CLI, and sync C
+- [x] Provider, reflection, package metadata, reload ABI, CLI, and sync C
   behavior are explicit and tested.
-- [ ] Async functions are explicitly JIT-ineligible without creating a second
+- [x] Async functions are explicitly JIT-ineligible without creating a second
   backend contract.
-- [ ] Domain-neutral examples cover the motivating actor-state/service/reentry
+- [x] Domain-neutral examples cover the motivating actor-state/service/reentry
   shape and document disjoint Runtime/host storage.
-- [ ] All Batch A-D checklists, focused tests, compile tests, zero-hit audits,
+- [x] All Batch A-D checklists, focused tests, compile tests, zero-hit audits,
   full validation, examples, and performance/memory measurements pass or have an
   explicitly accepted and justified result allowed by this plan.
-- [ ] Active goal/architecture/decision/progress docs describe the implemented
+- [x] Active goal/architecture/decision/progress docs describe the implemented
   async system consistently.
-- [ ] Work is committed at coherent verified checkpoints with Conventional
+- [x] Work is committed at coherent verified checkpoints with Conventional
   Commits and the final worktree is clean.

@@ -92,3 +92,36 @@ growth is linear in pending invocations and frames, and the material sync
 regression has an explicit architectural justification plus named optimization
 follow-up. The Batch D performance/memory gate is accepted without recursion,
 duplicate drivers, unsafe leases, or bytecode-inferred await.
+
+## Final Validation
+
+The completed implementation passed the following gates on 2026-07-13:
+
+- focused tests for `vela_syntax`, `vela_hir`, `vela_analysis`, `vela_mir`,
+  `vela_bytecode`, `vela_vm`, `vela_host`, `vela_engine`, `vela_hot_reload`,
+  `vela_reflect`, `vela_macros`, `vela_registry`, `vela_language_service`,
+  `vela_lsp_server`, `vela_cli`, and `vela_c_api`;
+- `cargo fmt --all -- --check`;
+- `cargo clippy --workspace --all-targets --all-features -- -D warnings`;
+- `cargo test --workspace --all-features`, including compile-fail rustdoc tests;
+- `cargo test --manifest-path examples/Cargo.toml --all-features`, all 31
+  runnable example checks, and direct runs of `async_basic` and
+  `async_stateful_reentry`;
+- `cargo bench --workspace --all-features --no-run`, including the async
+  acceptance benchmark;
+- `cargo doc --workspace --all-features --no-deps`;
+- the documentation site's placeholder, highlighting, Astro check, and static
+  build gates.
+
+`cargo miri --version` reported that the `miri` component is unavailable for
+the installed `stable-aarch64-apple-darwin` toolchain. No Miri result is claimed;
+the focused safe-Rust ownership, cancellation, lease restoration, nested
+reentry, and Runtime reuse tests remain the executable proof on this machine.
+
+The file-size audit compared async-track Rust files with the pre-track base.
+The newly over-threshold mixed files were split: runtime unit tests moved out of
+`runtime/mod.rs`, and async provider tests moved out of the package test root,
+leaving both roots below 1,200 lines. Remaining over-threshold files predate the
+track or are focused test/verification modules; `linked_execution.rs` retains
+its documented opcode-dispatch exception and delegates async ownership to the
+focused session/reentry modules.
