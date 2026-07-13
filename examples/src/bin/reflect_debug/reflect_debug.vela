@@ -151,7 +151,7 @@ fn main(ctx: Context, player: Player) {
     let permissions = reflect::permissions();
     let player_type_of = reflect::type_of(player).unwrap_or(missing_type);
 
-    if reflect::name(player_type_of) == "Player"
+    let type_metadata_ok = reflect::name(player_type_of) == "Player"
         && reflect::kind(player_type_of) == "host"
         && reflect::id(player) == reflect::id(player_type)
         && reflect::id(player_type) > 0
@@ -205,8 +205,8 @@ fn main(ctx: Context, player: Player) {
         && reflect::attr(bytes_type, "stdlib").unwrap_or("") == "builtin"
         && reflect::attr(array_type, "stdlib").unwrap_or("") == "builtin"
         && reflect::attr(option_type, "stdlib").unwrap_or("") == "option"
-        && reflect::attr(result_type, "stdlib").unwrap_or("") == "result"
-        && reflect::has_method(option_type, "map")
+        && reflect::attr(result_type, "stdlib").unwrap_or("") == "result";
+    let method_metadata_ok = reflect::has_method(option_type, "map")
         && reflect::has_method(option_type, "ok_or")
         && reflect::has_method(result_type, "map_err")
         && reflect::has_method(result_type, "to_error_option")
@@ -252,8 +252,8 @@ fn main(ctx: Context, player: Player) {
         && reflect::returns(range_len).unwrap_or("") == "i64"
         && reflect::attr(range_len, "stdlib").unwrap_or("") == "range"
         && range_is_empty.params.is_empty()
-        && reflect::returns(range_is_empty).unwrap_or("") == "bool"
-        && reflect::has_field(config_type, "kill_rewards")
+        && reflect::returns(range_is_empty).unwrap_or("") == "bool";
+    let field_metadata_ok = reflect::has_field(config_type, "kill_rewards")
         && reflect::field(config_type, "exp_to_next_level").type.unwrap_or("") == "i64"
         && reflect::has_type("Inventory")
         && reflect::kind(inventory_type) == "host"
@@ -273,8 +273,8 @@ fn main(ctx: Context, player: Player) {
         && item_count.name == "count"
         && item_count.writable
         && item_count_access.reflect_readable
-        && item_count_access.reflect_writable
-        && reflect::kind(quest_type) == "script_enum"
+        && item_count_access.reflect_writable;
+    let variant_metadata_ok = reflect::kind(quest_type) == "script_enum"
         && reflect::kind(host_quest_type) == "host"
         && reflect::has_field(player_type, "quest_progress")
         && reflect::field(player_type, "quest_progress").type.unwrap_or("") == "HostQuestProgress"
@@ -319,8 +319,8 @@ fn main(ctx: Context, player: Player) {
         && reflect::variant_is(quest, "Active")
         && reflect::implements(player_type, damageable)
         && reflect::has_trait("Damageable")
-        && !reflect::has_trait("MissingTrait")
-        && fields.len() == 6
+        && !reflect::has_trait("MissingTrait");
+    let player_metadata_ok = fields.len() == 6
         && reflect::fields(player_type).len() == fields.len()
         && fields[1].owner == "Player"
         && fields[1].name == "level"
@@ -334,12 +334,12 @@ fn main(ctx: Context, player: Player) {
         && reflect::name(method) == "add_reward"
         && method.owner == "Player"
         && method.effects.writes_host
-        && method_access.reflect_callable
-        && permissions.len() == 9
+        && method_access.reflect_callable;
+    let permission_metadata_ok = permissions.len() == 9
         && reflect::has_permission("reflect::read_type_info")
         && reflect::has_permission("reflect::write_value_fields")
-        && reflect::has_permission("reflect::call_event_methods")
-        && reflect::has_module("game::reward")
+        && reflect::has_permission("reflect::call_event_methods");
+    let module_metadata_ok = reflect::has_module("game::reward")
         && reflect::has_module("time")
         && reflect::has_module("math")
         && reflect::has_module("option")
@@ -436,8 +436,8 @@ fn main(ctx: Context, player: Player) {
         && reflect::has_function("u8::shift_left")
         && reflect::has_function("u32::wrapping_mul")
         && reflect::has_function("i8::wrapping_add")
-        && !reflect::has_function("game::reward::missing")
-        && reflect::name(reward_function) == "game::reward::grant"
+        && !reflect::has_function("game::reward::missing");
+    let function_metadata_ok = reflect::name(reward_function) == "game::reward::grant"
         && reflect::kind(reward_function) == "function"
         && reflect::id(reward_function) > 0
         && reflect::origin(reward_function) == "host"
@@ -519,8 +519,8 @@ fn main(ctx: Context, player: Player) {
         && reflect::exports(u32_module).contains("u32::wrapping_mul")
         && reflect::exports(i8_module).len() == 2
         && reflect::exports(i8_module).contains("i8::try_from_i64")
-        && reflect::exports(i8_module).contains("i8::wrapping_add")
-        && reflect::name(option_some) == "option::some"
+        && reflect::exports(i8_module).contains("i8::wrapping_add");
+    let stdlib_function_metadata_ok = reflect::name(option_some) == "option::some"
         && reflect::kind(option_some) == "function"
         && reflect::origin(option_some) == "host"
         && reflect::attr(option_some, "stdlib").unwrap_or("") == "option"
@@ -605,8 +605,8 @@ fn main(ctx: Context, player: Player) {
         && reflect::returns(i8_wrapping_add).unwrap_or("") == "i8"
         && i8_wrapping_add_params.len() == 2
         && i8_wrapping_add_params[0].type.unwrap_or("") == "i8"
-        && i8_wrapping_add_params[1].type.unwrap_or("") == "i8"
-        && reflect::name(time_now) == "time::now"
+        && i8_wrapping_add_params[1].type.unwrap_or("") == "i8";
+    let time_metadata_ok = reflect::name(time_now) == "time::now"
         && reflect::name(time_tick) == "time::tick"
         && reflect::name(time_elapsed) == "time::elapsed_since"
         && reflect::returns(time_now).unwrap_or("") == "i64"
@@ -622,8 +622,8 @@ fn main(ctx: Context, player: Player) {
         && reflected_elapsed == 10
         && time_elapsed_params.len() == 1
         && time_elapsed_params[0].name == "start"
-        && time_elapsed_params[0].type.unwrap_or("") == "i64"
-        && ctx_methods.len() == 2
+        && time_elapsed_params[0].type.unwrap_or("") == "i64";
+    let context_metadata_ok = ctx_methods.len() == 2
         && ctx_fields.len() == 3
         && reflect::docs(context_type).unwrap_or("") == "Standard host context object for deterministic time, events, and logging."
         && reflect::attr(context_type, "stdlib").unwrap_or("") == "context"
@@ -658,8 +658,8 @@ fn main(ctx: Context, player: Player) {
         && ctx_log_params.len() == 3
         && ctx_log_params[0].name == "level"
         && ctx_log_params[1].name == "message"
-        && ctx_log_params[2].defaulted
-        && functions.len() == 57
+        && ctx_log_params[2].defaulted;
+    let function_catalog_ok = functions.len() == 57
         && functions.any(|function| reflect::id(function) == reflect::id(reward_function))
         && functions.any(|function| reflect::name(function) == "main"
             && reflect::origin(function) == "script")
@@ -690,7 +690,20 @@ fn main(ctx: Context, player: Player) {
         && functions.any(|function| reflect::name(function) == "u32::wrapping_mul"
             && reflect::attr(function, "stdlib").unwrap_or("") == "u32")
         && functions.any(|function| reflect::name(function) == "i8::wrapping_add"
-            && reflect::attr(function, "stdlib").unwrap_or("") == "i8") {
+            && reflect::attr(function, "stdlib").unwrap_or("") == "i8");
+
+    if type_metadata_ok
+        && method_metadata_ok
+        && field_metadata_ok
+        && variant_metadata_ok
+        && player_metadata_ok
+        && permission_metadata_ok
+        && module_metadata_ok
+        && function_metadata_ok
+        && stdlib_function_metadata_ok
+        && time_metadata_ok
+        && context_metadata_ok
+        && function_catalog_ok {
         reflect::set(player, "level", 12);
         reflect::call(ctx, "emit", "reflect::player", reflect::get(player, "level"), fields.len());
         let metadata_score = reflect::get(player, "level") + fields.len() + reward_params.len();
