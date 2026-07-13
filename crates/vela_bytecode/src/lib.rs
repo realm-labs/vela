@@ -937,6 +937,10 @@ pub enum UnlinkedInstructionKind {
     Jump {
         target: InstructionOffset,
     },
+    AwaitCall {
+        operation: Box<UnlinkedInstructionKind>,
+        resume: InstructionOffset,
+    },
     CallNative {
         dst: Option<Register>,
         name: String,

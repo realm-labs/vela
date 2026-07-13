@@ -5,11 +5,12 @@ use vela_hir::ids::HirExprId;
 use crate::{
     CompileCallArguments, CompileCallTarget, CompileCalleeTarget, CompileHostPathSegment,
     CompileHostPathTarget, CompileMemberTarget, CompileMethodClass, CompileTypeClass,
-    HostMethodTarget, HostTypeTarget, MirBuildError, MirEffect, MirHostMutation, MirHostOperation,
-    MirHostPath, MirHostPathSegment, MirImmediate, MirOperand, MirPlace, MirSafepoint,
-    MirSourceOrigin, MirStatement, MirStatementKind, MirTypeContract, MirValueType,
+    HostMethodTarget, HostTypeTarget, MirAwaitOperation, MirBuildError, MirEffect, MirHostMutation,
+    MirHostOperation, MirHostPath, MirHostPathSegment, MirImmediate, MirOperand, MirPlace,
+    MirSafepoint, MirSourceOrigin, MirStatement, MirStatementKind, MirTypeContract, MirValueType,
 };
 
+use super::calls::AwaitContext;
 use super::core::{FunctionBuilder, value_type};
 
 enum PreparedHostPath {
@@ -181,6 +182,7 @@ impl FunctionBuilder<'_> {
         call: &HirCall,
         placed: &CompileCallTarget,
         origin: MirSourceOrigin,
+        await_context: Option<AwaitContext>,
     ) -> Result<MirOperand, MirBuildError> {
         let field = self.host_call_field(expression, call, origin)?;
         match &placed.callee {
@@ -201,17 +203,22 @@ impl FunctionBuilder<'_> {
                 }
                 let result_type = self
                     .host_call_result_type(expression, method.signature.return_contract.as_ref());
-                self.append_host_value(
-                    origin,
-                    result_type,
-                    MirHostOperation::Call {
-                        root,
-                        path: mir_path,
-                        target: Box::new(method.clone()),
-                        arguments,
-                    },
-                    MirEffect::host_call().union(method.signature.effect),
-                )
+                let operation = MirHostOperation::Call {
+                    root,
+                    path: mir_path,
+                    target: Box::new(method.clone()),
+                    arguments,
+                };
+                let effect = MirEffect::host_call().union(method.signature.effect);
+                match await_context {
+                    Some(context) => self.append_await_operation(
+                        context,
+                        MirAwaitOperation::Host(operation),
+                        result_type,
+                        effect,
+                    ),
+                    None => self.append_host_value(origin, result_type, operation, effect),
+                }
             }
             CompileCalleeTarget::HostRemove { path } => {
                 if field.name != "remove"
@@ -230,12 +237,19 @@ impl FunctionBuilder<'_> {
                 let PreparedHostPath::Ready { root, path } = self.prepare_host_path(&path)? else {
                     return Ok(unit());
                 };
-                self.append_host_effect(
-                    origin,
-                    MirHostOperation::Remove { root, path },
-                    MirEffect::host_write(),
-                )?;
-                Ok(unit())
+                let operation = MirHostOperation::Remove { root, path };
+                match await_context {
+                    Some(context) => self.append_await_operation(
+                        context,
+                        MirAwaitOperation::Host(operation),
+                        MirValueType::Unit,
+                        MirEffect::host_write(),
+                    ),
+                    None => {
+                        self.append_host_effect(origin, operation, MirEffect::host_write())?;
+                        Ok(unit())
+                    }
+                }
             }
             CompileCalleeTarget::HostPush { path } => {
                 if field.name != "push" || path.segments.is_empty() {
@@ -256,17 +270,24 @@ impl FunctionBuilder<'_> {
                     return Ok(unit());
                 }
                 let value = self.capture_operand(value, value_origin)?;
-                self.append_host_effect(
-                    origin,
-                    MirHostOperation::Mutate {
-                        root,
-                        path,
-                        operation: MirHostMutation::Push,
-                        value,
-                    },
-                    MirEffect::host_write(),
-                )?;
-                Ok(unit())
+                let operation = MirHostOperation::Mutate {
+                    root,
+                    path,
+                    operation: MirHostMutation::Push,
+                    value,
+                };
+                match await_context {
+                    Some(context) => self.append_await_operation(
+                        context,
+                        MirAwaitOperation::Host(operation),
+                        MirValueType::Unit,
+                        MirEffect::host_write(),
+                    ),
+                    None => {
+                        self.append_host_effect(origin, operation, MirEffect::host_write())?;
+                        Ok(unit())
+                    }
+                }
             }
             CompileCalleeTarget::ScriptFunction { .. }
             | CompileCalleeTarget::ScriptMethod { .. }

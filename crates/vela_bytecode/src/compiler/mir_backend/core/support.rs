@@ -89,6 +89,7 @@ pub(super) fn mir_successors(kind: &MirTerminatorKind) -> Vec<MirBlockId> {
             .collect(),
         MirTerminatorKind::IteratorNext { next, done, .. }
         | MirTerminatorKind::RangeNext { next, done, .. } => vec![*next, *done],
+        MirTerminatorKind::AwaitCall { resume, .. } => vec![*resume],
         MirTerminatorKind::Return(_)
         | MirTerminatorKind::TryTypeMismatch { .. }
         | MirTerminatorKind::Unreachable => Vec::new(),

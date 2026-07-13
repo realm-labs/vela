@@ -130,6 +130,52 @@ fn sync_runtime_call_rejects_async_entry_and_call_async_accepts_it() {
 }
 
 #[test]
+fn call_async_executes_an_awaited_sync_script_target() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = engine
+        .compile_source_with_id(
+            SourceId::new(3),
+            r#"
+fn answer() { return 42; }
+async fn main() { return answer().await; }
+"#,
+        )
+        .expect("awaited sync target should compile");
+    let main = program.function("main").expect("main bytecode");
+    let (await_offset, resume) = main
+        .instructions
+        .iter()
+        .enumerate()
+        .find_map(|(offset, instruction)| match &instruction.kind {
+            vela_bytecode::UnlinkedInstructionKind::AwaitCall { operation, resume }
+                if matches!(
+                    operation.as_ref(),
+                    vela_bytecode::UnlinkedInstructionKind::CallFunction { .. }
+                ) =>
+            {
+                Some((offset, *resume))
+            }
+            _ => None,
+        })
+        .expect("explicit awaited script call bytecode");
+    assert!(resume.0 > await_offset, "await resumes in a later block");
+    let mut runtime = Runtime::new(engine, program);
+
+    let value = {
+        let mut future = runtime.call_async("main", CallArgs::new(), CallOptions::unbounded());
+        let mut context = Context::from_waker(Waker::noop());
+        match Pin::new(&mut future).poll(&mut context) {
+            Poll::Ready(result) => result.expect("sync await should complete immediately"),
+            Poll::Pending => panic!("awaiting a sync target must not suspend"),
+        }
+    };
+    assert_eq!(
+        runtime.value_to_owned(&value),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(42)))
+    );
+}
+
+#[test]
 fn runtime_call_checks_public_entry_parameter_contracts() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine

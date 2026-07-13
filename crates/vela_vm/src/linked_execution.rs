@@ -233,7 +233,13 @@ impl Vm {
                     .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
             }
 
-            match &instruction.kind {
+            let (instruction_kind, await_resume) = match &instruction.kind {
+                InstructionKind::AwaitCall { operation, resume } => {
+                    (operation.as_ref(), Some(*resume))
+                }
+                kind => (kind, None),
+            };
+            match instruction_kind {
                 InstructionKind::ChargeExecutionUnits { units } => {
                     if CHARGE_BUDGET {
                         budget
@@ -612,6 +618,9 @@ impl Vm {
                 InstructionKind::Jump { target } => {
                     debug_assert!(target.0 <= code.instructions.len());
                     ip = target.0;
+                }
+                InstructionKind::AwaitCall { .. } => {
+                    unreachable!("linked bytecode verification rejects nested await operations")
                 }
                 InstructionKind::CallNative {
                     dst,
@@ -1317,6 +1326,11 @@ impl Vm {
                         &mut guard_context,
                     );
                 }
+            }
+
+            if let Some(resume) = await_resume {
+                debug_assert!(resume.0 <= code.instructions.len());
+                ip = resume.0;
             }
 
             if let Some(heap) = heap.as_deref_mut()

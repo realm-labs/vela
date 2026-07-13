@@ -5,12 +5,17 @@ use vela_hir::ids::{HirBodyId, HirExprId, HirLocalId};
 use crate::{
     CompileCallArguments, CompileCalleeTarget, CompileFunctionClass, CompileMethodClass,
     CompileParameterDefault, CompilePlacedCallArgument, CompilePlacedCallValue, CompileSignature,
-    MirBuildError, MirCall, MirDynamicArgument, MirEffect, MirOperand, MirPlace, MirSafepoint,
-    MirScriptArgument, MirScriptParameterGuardMode, MirSourceOrigin, MirStatement,
-    MirStatementKind,
+    MirAwaitOperation, MirBuildError, MirCall, MirDynamicArgument, MirEffect, MirOperand, MirPlace,
+    MirSafepoint, MirScriptArgument, MirScriptParameterGuardMode, MirSourceOrigin, MirStatement,
+    MirStatementKind, MirTerminator, MirTerminatorKind, MirValueType,
 };
 
 use super::core::{FunctionBuilder, value_type};
+
+#[derive(Clone, Copy, Debug)]
+pub(super) struct AwaitContext {
+    pub origin: MirSourceOrigin,
+}
 
 impl FunctionBuilder<'_> {
     /// Lower one call from the immutable compile-target generation.
@@ -23,6 +28,7 @@ impl FunctionBuilder<'_> {
         expression: HirExprId,
         call: &HirCall,
         origin: MirSourceOrigin,
+        await_context: Option<AwaitContext>,
     ) -> Result<MirOperand, MirBuildError> {
         if call.expression != expression {
             return Err(self.inconsistent(
@@ -44,10 +50,10 @@ impl FunctionBuilder<'_> {
                 | CompileCalleeTarget::HostRemove { .. }
                 | CompileCalleeTarget::HostPush { .. }
         ) {
-            return self.lower_host_call(expression, call, &target, origin);
+            return self.lower_host_call(expression, call, &target, origin, await_context);
         }
         if matches!(target.callee, CompileCalleeTarget::Reflection { .. }) {
-            return self.lower_reflection_call(expression, call, &target, origin);
+            return self.lower_reflection_call(expression, call, &target, origin, await_context);
         }
 
         let (call, effect) = match target.callee {
@@ -300,7 +306,26 @@ impl FunctionBuilder<'_> {
             }
         };
 
-        self.append_call(expression, origin, call, effect)
+        self.append_call(expression, origin, call, effect, await_context)
+    }
+
+    pub(super) fn lower_await(
+        &mut self,
+        operand: Option<HirExprId>,
+        origin: MirSourceOrigin,
+    ) -> Result<MirOperand, MirBuildError> {
+        let operand = operand.ok_or_else(|| {
+            self.inconsistent(origin, "await expression is missing its call operand")
+        })?;
+        let record = self.body.expression(operand).ok_or_else(|| {
+            self.inconsistent(origin, "await expression references a missing call operand")
+        })?;
+        let HirExprKind::Call(call) = &record.kind else {
+            return Err(self.inconsistent(origin, "await operand is not a direct call expression"));
+        };
+        let call = call.clone();
+        let call_origin = MirSourceOrigin::expression(self.body.id, operand, record.origin.span);
+        self.lower_call(operand, &call, call_origin, Some(AwaitContext { origin }))
     }
 
     fn validate_source_arguments(
@@ -649,6 +674,7 @@ impl FunctionBuilder<'_> {
         origin: MirSourceOrigin,
         call: MirCall,
         effect: MirEffect,
+        await_context: Option<AwaitContext>,
     ) -> Result<MirOperand, MirBuildError> {
         if self.current_is_terminated()? {
             return Ok(MirOperand::Immediate(crate::MirImmediate::Unit));
@@ -664,6 +690,14 @@ impl FunctionBuilder<'_> {
             .ok_or_else(|| {
                 self.inconsistent(origin, "call expression has no analysis type fact")
             })?;
+        if let Some(await_context) = await_context {
+            return self.append_await_operation(
+                await_context,
+                MirAwaitOperation::Call(call),
+                result_type,
+                effect,
+            );
+        }
         let destination = self.function.add_temp(result_type, origin);
         let safepoint = self.function.add_safepoint(MirSafepoint::new(origin));
         self.function.append_statement(
@@ -677,6 +711,40 @@ impl FunctionBuilder<'_> {
             ),
         )?;
         Ok(MirOperand::Temp(destination))
+    }
+
+    pub(super) fn append_await_operation(
+        &mut self,
+        context: AwaitContext,
+        operation: MirAwaitOperation,
+        result_type: MirValueType,
+        effect: MirEffect,
+    ) -> Result<MirOperand, MirBuildError> {
+        if self.current_is_terminated()? {
+            return Ok(MirOperand::Immediate(crate::MirImmediate::Unit));
+        }
+        let destination = self
+            .function
+            .add_synthetic_local(result_type, context.origin);
+        let resume = self.function.add_block();
+        let safepoint = self
+            .function
+            .add_safepoint(MirSafepoint::new(context.origin));
+        self.function.set_terminator(
+            self.current_block,
+            MirTerminator::new(
+                context.origin,
+                MirTerminatorKind::AwaitCall {
+                    operation: Box::new(operation),
+                    destination: MirPlace::Local(destination),
+                    resume,
+                },
+                effect,
+                Some(safepoint),
+            ),
+        )?;
+        self.current_block = resume;
+        Ok(MirOperand::Local(destination))
     }
 }
 

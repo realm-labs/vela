@@ -247,6 +247,23 @@ fn verify_linked_instruction(
         InstructionKind::Jump { target } => {
             verify_linked_jump(function, instruction_index, code, *target)
         }
+        InstructionKind::AwaitCall { operation, resume } => {
+            verify_linked_jump(function, instruction_index, code, *resume)?;
+            if !is_linked_await_operation(operation) {
+                return Err(error(
+                    function,
+                    instruction_index,
+                    VerificationErrorKind::InvalidAwaitOperation,
+                ));
+            }
+            verify_linked_instruction(
+                function,
+                code,
+                index,
+                &Instruction::new((**operation).clone()),
+                context,
+            )
+        }
         InstructionKind::CallNative {
             dst,
             native,
@@ -600,6 +617,22 @@ fn verify_linked_instruction(
             verify_linked_register(function, instruction_index, code, *src)
         }
     }
+}
+
+fn is_linked_await_operation(operation: &InstructionKind) -> bool {
+    matches!(
+        operation,
+        InstructionKind::CallNative { .. }
+            | InstructionKind::CallFunction { .. }
+            | InstructionKind::CallClosure { .. }
+            | InstructionKind::CallDynamicMethod { .. }
+            | InstructionKind::CallMethod { .. }
+            | InstructionKind::HostRead { .. }
+            | InstructionKind::HostWrite { .. }
+            | InstructionKind::HostMutate { .. }
+            | InstructionKind::HostRemove { .. }
+            | InstructionKind::HostCall { .. }
+    )
 }
 
 fn verify_linked_instruction_cache_site(

@@ -522,6 +522,24 @@ impl MirFunction {
                 .map(|_| ())
         };
         match &terminator.kind {
+            crate::MirTerminatorKind::AwaitCall {
+                destination,
+                resume,
+                ..
+            } => {
+                require_block(*resume)?;
+                match destination {
+                    crate::MirPlace::Local(local) => require_local(*local)?,
+                    crate::MirPlace::Temp(temp) => {
+                        if self.temps.get(*temp).is_none() {
+                            return Err(MirBuildError::MissingTemp {
+                                temp: *temp,
+                                origin: terminator.origin,
+                            });
+                        }
+                    }
+                }
+            }
             crate::MirTerminatorKind::Jump(target) => require_block(*target)?,
             crate::MirTerminatorKind::Branch {
                 then_block,

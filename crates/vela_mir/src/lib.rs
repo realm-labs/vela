@@ -66,11 +66,12 @@ pub use input::{
 };
 pub use jit::{MirJitEligibility, MirJitIneligibility, restricted_jit_eligibility};
 pub use operations::{
-    MirAggregate, MirCall, MirContextualBinaryOp, MirContextualNumericLiteral, MirDynamicArgument,
-    MirDynamicBinaryOp, MirDynamicUnaryOp, MirFieldTarget, MirFormatPart, MirGlobalOperation,
-    MirHostMutation, MirHostOperation, MirHostPath, MirHostPathSegment, MirIdentityOp, MirIndexKey,
-    MirIndexOperation, MirIteratorOperation, MirLiteralSide, MirReflectionOperation,
-    MirScriptArgument, MirScriptParameterGuardMode, MirStatement, MirStatementKind,
+    MirAggregate, MirAwaitOperation, MirCall, MirContextualBinaryOp, MirContextualNumericLiteral,
+    MirDynamicArgument, MirDynamicBinaryOp, MirDynamicUnaryOp, MirFieldTarget, MirFormatPart,
+    MirGlobalOperation, MirHostMutation, MirHostOperation, MirHostPath, MirHostPathSegment,
+    MirIdentityOp, MirIndexKey, MirIndexOperation, MirIteratorOperation, MirLiteralSide,
+    MirReflectionOperation, MirScriptArgument, MirScriptParameterGuardMode, MirStatement,
+    MirStatementKind,
 };
 pub use origin::{MirSourceNode, MirSourceOrigin};
 pub use targets::{

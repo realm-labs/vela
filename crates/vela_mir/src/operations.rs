@@ -443,6 +443,43 @@ pub enum MirStatementKind {
     Iterator(MirIteratorOperation),
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum MirAwaitOperation {
+    Call(MirCall),
+    Host(MirHostOperation),
+    Reflect(MirReflectionOperation),
+}
+
+impl MirAwaitOperation {
+    pub(crate) const fn minimum_effect(&self) -> MirEffect {
+        match self {
+            Self::Call(call) => call.minimum_effect(),
+            Self::Host(MirHostOperation::Read { .. }) => MirEffect::host_read(),
+            Self::Host(
+                MirHostOperation::Write { .. }
+                | MirHostOperation::Mutate { .. }
+                | MirHostOperation::Remove { .. },
+            ) => MirEffect::host_write(),
+            Self::Host(MirHostOperation::Call { target, .. }) => {
+                MirEffect::host_call().union(target.signature.effect)
+            }
+            Self::Reflect(MirReflectionOperation::Read { .. }) => MirEffect::reflection_read(),
+            Self::Reflect(MirReflectionOperation::Write { .. }) => MirEffect::reflection_write(),
+            Self::Reflect(MirReflectionOperation::Call { .. }) => MirEffect::reflection_call(),
+        }
+    }
+
+    pub(crate) fn has_valid_call_contract(&self) -> bool {
+        match self {
+            Self::Call(call) => call.has_valid_contract(),
+            Self::Host(MirHostOperation::Call {
+                target, arguments, ..
+            }) => external_arguments_match(&target.signature, arguments.len()),
+            Self::Host(_) | Self::Reflect(_) => true,
+        }
+    }
+}
+
 impl MirStatementKind {
     pub(crate) fn has_valid_call_contract(&self) -> bool {
         match self {
@@ -557,7 +594,7 @@ impl MirStatementKind {
 }
 
 impl MirCall {
-    fn has_valid_contract(&self) -> bool {
+    pub(crate) fn has_valid_contract(&self) -> bool {
         match self {
             Self::ScriptFunction {
                 signature,
@@ -606,6 +643,19 @@ impl MirCall {
             | Self::ValueMethod { signature, .. } => {
                 MirEffect::external_call().union(signature.effect)
             }
+        }
+    }
+
+    pub(crate) const fn known_asyncness(&self) -> Option<vela_common::CallableAsyncness> {
+        match self {
+            Self::ScriptFunction { signature, .. }
+            | Self::ScriptMethod { signature, .. }
+            | Self::NativeFunction { signature, .. }
+            | Self::StdlibFunction { signature, .. }
+            | Self::ValueMethod { signature, .. } => Some(signature.asyncness),
+            Self::CallableValue { .. }
+            | Self::DynamicCallable { .. }
+            | Self::DynamicMethod { .. } => None,
         }
     }
 }

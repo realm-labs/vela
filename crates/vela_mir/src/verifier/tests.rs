@@ -115,6 +115,21 @@ fn build(source: &str, parameters: &[&str]) -> crate::MirProgram {
     let body = graph.function_body(declaration.id).expect("main body");
     let function_id = FunctionId::new(7_100);
     let body_origin = MirSourceOrigin::body(body.id, body.origin.span);
+    let mut compile_signature = signature(
+        parameters
+            .iter()
+            .map(|name| CompileParameter {
+                name: (*name).to_owned(),
+                contract: None,
+                default: CompileParameterDefault::Required,
+                origin: None,
+            })
+            .collect(),
+    );
+    compile_signature.asyncness = graph
+        .function_signature(declaration.id)
+        .expect("function signature")
+        .asyncness;
     let analysis = ExecutableAnalysisGeneration::from_module_graph(
         &graph,
         [ExecutableAnalysisInput::new(function_id, body.id)],
@@ -130,17 +145,7 @@ fn build(source: &str, parameters: &[&str]) -> crate::MirProgram {
                 class: CompileFunctionClass::Script,
                 canonical_symbol: "verifier_builder::main".to_owned(),
                 debug_name: "main".to_owned(),
-                signature: signature(
-                    parameters
-                        .iter()
-                        .map(|name| CompileParameter {
-                            name: (*name).to_owned(),
-                            contract: None,
-                            default: CompileParameterDefault::Required,
-                            origin: None,
-                        })
-                        .collect(),
-                ),
+                signature: compile_signature,
                 access: CompileFunctionAccess::script(false),
             },
             body_origin,
@@ -276,6 +281,102 @@ fn loop_backedge_budget_charge_does_not_apply_to_conditional_exit_edge() {
         None,
         "a successor-specific backedge charge must not move before the branch"
     );
+}
+
+#[test]
+fn mir_verifier_rejects_await_in_a_sync_function() {
+    let mut function = function();
+    let destination = function.add_synthetic_local(MirValueType::Dynamic, origin());
+    let resume = function.add_block();
+    let safepoint = function.add_safepoint(MirSafepoint::new(origin()));
+    function
+        .set_terminator(
+            function.entry_block(),
+            MirTerminator::new(
+                origin(),
+                MirTerminatorKind::AwaitCall {
+                    operation: Box::new(crate::MirAwaitOperation::Call(MirCall::DynamicCallable {
+                        callee: MirOperand::Immediate(MirImmediate::Unit),
+                        arguments: Vec::new(),
+                    })),
+                    destination: MirPlace::Local(destination),
+                    resume,
+                },
+                MirEffect::dynamic_call(),
+                Some(safepoint),
+            ),
+        )
+        .expect("await terminator");
+    function
+        .set_terminator(
+            resume,
+            MirTerminator::new(
+                origin(),
+                MirTerminatorKind::Return(Some(MirOperand::Local(destination))),
+                MirEffect::PURE,
+                None,
+            ),
+        )
+        .expect("resume return");
+
+    assert!(matches!(
+        verify_error(&program(function)).into_kind(),
+        MirVerifyErrorKind::InvalidTerminatorContract(_)
+    ));
+}
+
+#[test]
+fn mir_verifier_rejects_a_known_async_call_without_await() {
+    let native = FunctionId::new(7_001);
+    let mut native_signature = signature(Vec::new());
+    native_signature.asyncness = vela_common::CallableAsyncness::Async;
+    let mut targets = target_table();
+    assert!(targets.insert_function(CompileFunctionDescriptor {
+        id: native,
+        class: CompileFunctionClass::Native,
+        canonical_symbol: "native::async_work".to_owned(),
+        debug_name: "async_work".to_owned(),
+        signature: native_signature.clone(),
+        access: CompileFunctionAccess::new(true, true, true),
+    }));
+    let mut function = function();
+    let destination = function.add_synthetic_local(MirValueType::Dynamic, origin());
+    let safepoint = function.add_safepoint(MirSafepoint::new(origin()));
+    function
+        .append_statement(
+            function.entry_block(),
+            MirStatement::new(
+                origin(),
+                Some(MirPlace::Local(destination)),
+                MirStatementKind::Call(MirCall::NativeFunction {
+                    function: native,
+                    debug_name: "async_work".to_owned(),
+                    signature: native_signature,
+                    arguments: Vec::new(),
+                }),
+                MirEffect::external_call(),
+                Some(safepoint),
+            ),
+        )
+        .expect("ordinary async call statement");
+    function
+        .set_terminator(
+            function.entry_block(),
+            MirTerminator::new(
+                origin(),
+                MirTerminatorKind::Return(Some(MirOperand::Local(destination))),
+                MirEffect::PURE,
+                None,
+            ),
+        )
+        .expect("return terminator");
+    let mut program = crate::MirProgram::new(targets);
+    program.add_function(function).expect("test MIR function");
+
+    assert!(matches!(
+        verify_error(&program).into_kind(),
+        MirVerifyErrorKind::InvalidCallContract(_)
+    ));
 }
 
 #[test]

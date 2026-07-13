@@ -49,6 +49,7 @@ pub enum VerificationErrorKind {
         instruction: &'static str,
         reason: &'static str,
     },
+    InvalidAwaitOperation,
     ArityFrameMismatch {
         capture_count: u16,
         parameter_count: usize,
@@ -457,6 +458,24 @@ fn verify_instruction(
         UnlinkedInstructionKind::Jump { target } => {
             verify_jump(function, instruction_index, code, *target)
         }
+        UnlinkedInstructionKind::AwaitCall { operation, resume } => {
+            verify_jump(function, instruction_index, code, *resume)?;
+            if !is_unlinked_await_operation(operation) {
+                return Err(error(
+                    function,
+                    instruction_index,
+                    VerificationErrorKind::InvalidAwaitOperation,
+                ));
+            }
+            verify_instruction(
+                function,
+                code,
+                index,
+                &UnlinkedInstruction::new((**operation).clone()),
+                closure_scope,
+                cache_scope,
+            )
+        }
         UnlinkedInstructionKind::CallNative { dst, args, .. } => {
             if let Some(dst) = dst {
                 verify_register(function, instruction_index, code, *dst)?;
@@ -722,6 +741,22 @@ fn verify_instruction(
             verify_register(function, instruction_index, code, *src)
         }
     }
+}
+
+fn is_unlinked_await_operation(operation: &UnlinkedInstructionKind) -> bool {
+    matches!(
+        operation,
+        UnlinkedInstructionKind::CallNative { .. }
+            | UnlinkedInstructionKind::CallFunction { .. }
+            | UnlinkedInstructionKind::CallClosure { .. }
+            | UnlinkedInstructionKind::CallDynamicMethod { .. }
+            | UnlinkedInstructionKind::CallMethodId { .. }
+            | UnlinkedInstructionKind::HostRead { .. }
+            | UnlinkedInstructionKind::HostWrite { .. }
+            | UnlinkedInstructionKind::HostMutate { .. }
+            | UnlinkedInstructionKind::HostRemove { .. }
+            | UnlinkedInstructionKind::HostCall { .. }
+    )
 }
 
 fn verify_instruction_cache_site(

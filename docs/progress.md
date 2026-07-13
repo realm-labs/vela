@@ -193,9 +193,10 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Complete the Batch A async/await frontend and MIR representation.
-2. Execute the remaining Batch A frame-stack driver work and restore the full green
-   checkpoint before starting Batch B.
+1. Execute the remaining Batch A frame-stack driver work and restore the full
+   green checkpoint before starting Batch B.
+2. Complete dynamic async-call validation while converting every recursive
+   linked call path to the session driver.
 3. Continue directly through Batches B-D and Section 18 of the async plan.
 
 ## Update Rules

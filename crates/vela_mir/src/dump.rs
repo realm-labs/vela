@@ -1,11 +1,11 @@
 use std::fmt::{self, Write};
 
 use crate::{
-    MirAggregate, MirCall, MirDynamicArgument, MirEffect, MirEvaluatedConstant, MirFormatPart,
-    MirFunction, MirFunctionOwner, MirGlobalOperation, MirHostOperation, MirImmediate,
-    MirIndexOperation, MirIteratorOperation, MirOperand, MirPatternPredicate, MirProgram,
-    MirReflectionOperation, MirRvalue, MirScriptArgument, MirSourceNode, MirSourceOrigin,
-    MirStatement, MirStatementKind, MirTerminator, MirTerminatorKind,
+    MirAggregate, MirAwaitOperation, MirCall, MirDynamicArgument, MirEffect, MirEvaluatedConstant,
+    MirFormatPart, MirFunction, MirFunctionOwner, MirGlobalOperation, MirHostOperation,
+    MirImmediate, MirIndexOperation, MirIteratorOperation, MirOperand, MirPatternPredicate,
+    MirProgram, MirReflectionOperation, MirRvalue, MirScriptArgument, MirSourceNode,
+    MirSourceOrigin, MirStatement, MirStatementKind, MirTerminator, MirTerminatorKind,
 };
 
 impl MirProgram {
@@ -740,6 +740,21 @@ fn write_iterator(
 
 fn write_terminator(formatter: &mut fmt::Formatter<'_>, terminator: &MirTerminator) -> fmt::Result {
     match &terminator.kind {
+        MirTerminatorKind::AwaitCall {
+            operation,
+            destination,
+            resume,
+        } => {
+            formatter.write_str("await ")?;
+            match operation.as_ref() {
+                MirAwaitOperation::Call(call) => write_call(formatter, call)?,
+                MirAwaitOperation::Host(operation) => write_host(formatter, operation)?,
+                MirAwaitOperation::Reflect(operation) => {
+                    write_reflection(formatter, operation)?;
+                }
+            }
+            write!(formatter, " -> {} resume {resume}", place(*destination))?;
+        }
         MirTerminatorKind::Jump(target) => write!(formatter, "jump {target}")?,
         MirTerminatorKind::Branch {
             condition,

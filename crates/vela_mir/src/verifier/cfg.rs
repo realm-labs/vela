@@ -174,6 +174,7 @@ pub(crate) fn analyze(verifier: &FunctionVerifier<'_>) -> Result<FunctionGraph, 
 
 fn terminator_successors(kind: &MirTerminatorKind) -> Vec<MirBlockId> {
     match kind {
+        MirTerminatorKind::AwaitCall { resume, .. } => vec![*resume],
         MirTerminatorKind::Jump(target) => vec![*target],
         MirTerminatorKind::Branch {
             then_block,

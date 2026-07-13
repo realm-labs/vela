@@ -16,15 +16,15 @@ use targets::{
     verify_aggregate, verify_field_operation, verify_guard_use, verify_predicate_targets,
 };
 
-use vela_common::PrimitiveTag;
+use vela_common::{CallableAsyncness, PrimitiveTag};
 
 use crate::operations::MirDestinationRequirement;
 use crate::{
-    CompileFunctionClass, CompileMethodClass, MirBinaryOp, MirCall, MirConstantProvenance,
-    MirContextualBinaryOp, MirDynamicBinaryOp, MirEffect, MirGlobalOperation, MirGuardAssumption,
-    MirIteratorOperation, MirOperand, MirPlace, MirReflectionOperation, MirRvalue, MirSourceNode,
-    MirSourceOrigin, MirStatementKind, MirTerminatorKind, MirTypeContract, MirUnaryOp,
-    MirValueType,
+    CompileFunctionClass, CompileMethodClass, MirAwaitOperation, MirBinaryOp, MirCall,
+    MirConstantProvenance, MirContextualBinaryOp, MirDynamicBinaryOp, MirEffect,
+    MirGlobalOperation, MirGuardAssumption, MirIteratorOperation, MirOperand, MirPlace,
+    MirReflectionOperation, MirRvalue, MirSourceNode, MirSourceOrigin, MirStatementId,
+    MirStatementKind, MirTerminatorKind, MirTypeContract, MirUnaryOp, MirValueType,
 };
 
 use super::cfg::FunctionGraph;
@@ -344,6 +344,7 @@ pub(crate) fn verify_operations(
             .terminator()
             .expect("CFG analysis retained a terminated block");
         verify_origin(verifier, Some(block_id), None, terminator.origin)?;
+        let await_boundary = matches!(terminator.kind, MirTerminatorKind::AwaitCall { .. });
         verify_effect_and_safepoint(
             verifier,
             block_id,
@@ -352,7 +353,7 @@ pub(crate) fn verify_operations(
             terminator.effect,
             terminator.kind.minimum_effect(),
             terminator.safepoint,
-            terminator.effect.requires_safepoint(),
+            await_boundary || terminator.effect.requires_safepoint(),
         )?;
         visit_terminator_operands(&terminator.kind, |operand| {
             verifier
@@ -648,9 +649,25 @@ fn verify_statement_kind(
             verify_aggregate(verifier, block, id, statement.origin, value, destination)?;
         }
         MirStatementKind::Call(call) => {
+            reject_known_async_call(
+                verifier,
+                block,
+                id,
+                statement.origin,
+                call.known_asyncness(),
+            )?;
             verify_call(verifier, block, id, statement.origin, call, destination)?
         }
         MirStatementKind::Host(operation) => {
+            if let crate::MirHostOperation::Call { target, .. } = operation {
+                reject_known_async_call(
+                    verifier,
+                    block,
+                    id,
+                    statement.origin,
+                    Some(target.signature.asyncness),
+                )?;
+            }
             verify_host(
                 verifier,
                 block,
@@ -661,6 +678,22 @@ fn verify_statement_kind(
             )?;
         }
         MirStatementKind::Reflect(operation) => {
+            let function = match operation {
+                MirReflectionOperation::Read { function, .. }
+                | MirReflectionOperation::Write { function, .. }
+                | MirReflectionOperation::Call { function, .. } => *function,
+            };
+            reject_known_async_call(
+                verifier,
+                block,
+                id,
+                statement.origin,
+                Some(
+                    function_target(verifier, function, statement.origin)?
+                        .signature
+                        .asyncness,
+                ),
+            )?;
             verify_reflection(
                 verifier,
                 block,
@@ -871,6 +904,66 @@ fn verify_terminator(
                 ));
             }
         }
+        MirTerminatorKind::AwaitCall {
+            operation,
+            destination,
+            resume,
+        } => {
+            if verifier.function.asyncness() != CallableAsyncness::Async {
+                return Err(error(
+                    verifier,
+                    Some(block),
+                    None,
+                    terminator.origin,
+                    MirVerifyErrorKind::InvalidTerminatorContract(
+                        "await terminator is only valid in an async function".to_owned(),
+                    ),
+                ));
+            }
+            if *resume == block {
+                return Err(error(
+                    verifier,
+                    Some(block),
+                    None,
+                    terminator.origin,
+                    MirVerifyErrorKind::InvalidTerminatorContract(
+                        "await resume block must differ from its source block".to_owned(),
+                    ),
+                ));
+            }
+            let MirPlace::Local(destination) = destination else {
+                return Err(error(
+                    verifier,
+                    Some(block),
+                    None,
+                    terminator.origin,
+                    MirVerifyErrorKind::InvalidTerminatorContract(
+                        "await destination must be a local defined on the resume edge".to_owned(),
+                    ),
+                ));
+            };
+            let destination =
+                require_local(verifier, block, terminator.origin, *destination)?.value_type;
+            if !operation.has_valid_call_contract() {
+                return Err(error(
+                    verifier,
+                    Some(block),
+                    None,
+                    terminator.origin,
+                    MirVerifyErrorKind::InvalidCallContract(
+                        "argument placement violates the MIR await call contract".to_owned(),
+                    ),
+                ));
+            }
+            verify_await_operation(
+                verifier,
+                block,
+                terminator.origin,
+                terminator.effect,
+                operation,
+                destination,
+            )?;
+        }
         MirTerminatorKind::Return(value) => {
             if let Some(value) = value {
                 let _ = verifier.operand_type(value, block, None, terminator.origin)?;
@@ -881,6 +974,68 @@ fn verify_terminator(
         | MirTerminatorKind::Unreachable => {}
     }
     Ok(())
+}
+
+fn reject_known_async_call(
+    verifier: &FunctionVerifier<'_>,
+    block: crate::MirBlockId,
+    statement: MirStatementId,
+    origin: MirSourceOrigin,
+    asyncness: Option<CallableAsyncness>,
+) -> Result<(), MirVerifyError> {
+    if asyncness == Some(CallableAsyncness::Async) {
+        Err(error(
+            verifier,
+            Some(block),
+            Some(statement),
+            origin,
+            MirVerifyErrorKind::InvalidCallContract(
+                "known async call must use an await terminator".to_owned(),
+            ),
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+fn verify_await_operation(
+    verifier: &FunctionVerifier<'_>,
+    block: crate::MirBlockId,
+    origin: MirSourceOrigin,
+    effect: MirEffect,
+    operation: &MirAwaitOperation,
+    destination: MirValueType,
+) -> Result<(), MirVerifyError> {
+    // The operation verifiers use a statement id only for point facts and
+    // error attribution. Await operands live at the terminator, so this id
+    // deliberately misses point facts and errors are normalized below.
+    let sentinel = MirStatementId::from_index(u32::MAX);
+    let result = match operation {
+        MirAwaitOperation::Call(call) => {
+            verify_call(verifier, block, sentinel, origin, call, Some(destination))
+        }
+        MirAwaitOperation::Host(operation) => verify_host(
+            verifier,
+            block,
+            sentinel,
+            origin,
+            operation,
+            Some(destination),
+        ),
+        MirAwaitOperation::Reflect(operation) => verify_reflection(
+            verifier,
+            block,
+            sentinel,
+            origin,
+            effect,
+            operation,
+            Some(destination),
+        ),
+    };
+    result.map_err(|mut error| {
+        error.statement = None;
+        error
+    })
 }
 
 fn verify_call(

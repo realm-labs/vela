@@ -860,6 +860,7 @@ fn infer_declared_return_fact(function: &MirFunction) -> Option<MirValueFact> {
 
 fn successors(kind: &MirTerminatorKind) -> Vec<MirBlockId> {
     match kind {
+        MirTerminatorKind::AwaitCall { resume, .. } => vec![*resume],
         MirTerminatorKind::Jump(target) => vec![*target],
         MirTerminatorKind::Branch {
             then_block,

@@ -103,6 +103,7 @@ pub(crate) fn verify(
             )
         })?;
         match terminator.kind {
+            MirTerminatorKind::AwaitCall { .. } => {}
             MirTerminatorKind::RangeNext {
                 cursor, exhausted, ..
             } => {
@@ -295,6 +296,13 @@ fn add_edge_definitions(
         .and_then(|block| block.terminator())
         .expect("CFG analysis requires a terminator");
     match terminator.kind {
+        MirTerminatorKind::AwaitCall {
+            destination: MirPlace::Local(local),
+            resume,
+            ..
+        } if resume == successor => {
+            state.insert(local);
+        }
         MirTerminatorKind::IteratorNext { item, next, .. }
         | MirTerminatorKind::RangeNext { item, next, .. }
             if next == successor =>
@@ -302,6 +310,7 @@ fn add_edge_definitions(
             state.insert(item);
         }
         MirTerminatorKind::Jump(_)
+        | MirTerminatorKind::AwaitCall { .. }
         | MirTerminatorKind::Branch { .. }
         | MirTerminatorKind::Switch { .. }
         | MirTerminatorKind::GuardBranch { .. }
@@ -482,6 +491,9 @@ pub(crate) fn visit_terminator_operands(
     mut visitor: impl FnMut(&MirOperand) -> Result<(), MirVerifyError>,
 ) -> Result<(), MirVerifyError> {
     match kind {
+        MirTerminatorKind::AwaitCall { operation, .. } => {
+            visit_await_operation(operation, &mut visitor)?;
+        }
         MirTerminatorKind::Branch { condition, .. } => visitor(condition)?,
         MirTerminatorKind::Switch { discriminant, .. } => visitor(discriminant)?,
         MirTerminatorKind::GuardBranch { value, .. } => visitor(value)?,
@@ -495,6 +507,39 @@ pub(crate) fn visit_terminator_operands(
         | MirTerminatorKind::Unreachable => {}
     }
     Ok(())
+}
+
+fn visit_await_operation(
+    operation: &crate::MirAwaitOperation,
+    visitor: &mut impl FnMut(&MirOperand) -> Result<(), MirVerifyError>,
+) -> Result<(), MirVerifyError> {
+    match operation {
+        crate::MirAwaitOperation::Call(call) => visit_call(call, visitor),
+        crate::MirAwaitOperation::Host(operation) => visit_host(operation, visitor),
+        crate::MirAwaitOperation::Reflect(operation) => match operation {
+            MirReflectionOperation::Read { target, member, .. } => {
+                visitor(target)?;
+                visitor(member)
+            }
+            MirReflectionOperation::Write {
+                target,
+                member,
+                value,
+                ..
+            } => {
+                visitor(target)?;
+                visitor(member)?;
+                visitor(value)
+            }
+            MirReflectionOperation::Call { target, tail, .. } => {
+                visitor(target)?;
+                for value in tail {
+                    visitor(value)?;
+                }
+                Ok(())
+            }
+        },
+    }
 }
 
 fn visit_rvalue(

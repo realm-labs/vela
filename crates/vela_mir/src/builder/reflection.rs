@@ -3,10 +3,11 @@ use vela_hir::ids::HirExprId;
 
 use crate::{
     CompileCallTarget, CompileCalleeTarget, CompileFunctionClass, CompileReflectionCall,
-    MirBuildError, MirEffect, MirImmediate, MirOperand, MirPlace, MirReflectionOperation,
-    MirSafepoint, MirSourceOrigin, MirStatement, MirStatementKind,
+    MirAwaitOperation, MirBuildError, MirEffect, MirImmediate, MirOperand, MirPlace,
+    MirReflectionOperation, MirSafepoint, MirSourceOrigin, MirStatement, MirStatementKind,
 };
 
+use super::calls::AwaitContext;
 use super::core::{FunctionBuilder, value_type};
 
 impl FunctionBuilder<'_> {
@@ -16,6 +17,7 @@ impl FunctionBuilder<'_> {
         call: &HirCall,
         target: &CompileCallTarget,
         origin: MirSourceOrigin,
+        await_context: Option<AwaitContext>,
     ) -> Result<MirOperand, MirBuildError> {
         let CompileCalleeTarget::Reflection {
             operation,
@@ -112,7 +114,20 @@ impl FunctionBuilder<'_> {
             MirReflectionOperation::Call { .. } => MirEffect::reflection_call(),
         };
         let effect = intrinsic_effect.union(descriptor.signature.effect);
-        self.append_reflection(expression, operation, effect, origin)
+        if let Some(context) = await_context {
+            let analysis = self.input.analysis();
+            let result = analysis.expression(expression).ok_or_else(|| {
+                self.inconsistent(origin, "reflection expression has no analysis type fact")
+            })?;
+            self.append_await_operation(
+                context,
+                MirAwaitOperation::Reflect(operation),
+                value_type(Some(result)),
+                effect,
+            )
+        } else {
+            self.append_reflection(expression, operation, effect, origin)
+        }
     }
 
     fn static_callee_name(

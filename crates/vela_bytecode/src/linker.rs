@@ -729,6 +729,23 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 }
             }
             UnlinkedInstructionKind::Jump { target } => InstructionKind::Jump { target: *target },
+            UnlinkedInstructionKind::AwaitCall { operation, resume } => {
+                let nested = UnlinkedInstruction::new((**operation).clone());
+                let linked = self.link_instruction(
+                    LinkInstructionContext {
+                        program,
+                        code,
+                        host_target_map,
+                        linked_code: &mut *linked_code,
+                        instruction_offset,
+                    },
+                    &nested,
+                )?;
+                InstructionKind::AwaitCall {
+                    operation: Box::new(linked.kind),
+                    resume: *resume,
+                }
+            }
             UnlinkedInstructionKind::CallNative {
                 dst,
                 name,

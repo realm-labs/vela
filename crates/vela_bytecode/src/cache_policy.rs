@@ -23,6 +23,7 @@ pub trait CacheSiteInstruction {
 macro_rules! impl_cache_sites {
     (
         $instruction:ty;
+        delegate { $delegate_pattern:pat => $delegate:ident; }
         cache {
             $(
                 $policy_pattern:pat => ($kind:ident, $storage:ident);
@@ -34,6 +35,7 @@ macro_rules! impl_cache_sites {
         impl CacheSiteInstruction for $instruction {
             fn cache_site_policy(&self) -> Option<CacheSitePolicy> {
                 match self {
+                    $delegate_pattern => $delegate.cache_site_policy(),
                     $(
                         $policy_pattern => Some(CacheSitePolicy {
                             kind: CacheSiteKind::$kind,
@@ -46,6 +48,7 @@ macro_rules! impl_cache_sites {
 
             fn cache_site(&self) -> Option<CacheSiteId> {
                 match self {
+                    $delegate_pattern => $delegate.cache_site(),
                     $($access_pattern => $read,)+
                     $($none_pattern)|+ => None,
                 }
@@ -53,6 +56,7 @@ macro_rules! impl_cache_sites {
 
             fn set_cache_site(&mut self, site: CacheSiteId) {
                 match self {
+                    $delegate_pattern => $delegate.set_cache_site(site),
                     $($access_pattern => ($write)(site),)+
                     $($none_pattern)|+ => {}
                 }
@@ -132,6 +136,7 @@ macro_rules! non_cache_instructions {
 
 impl_cache_sites! {
     UnlinkedInstructionKind;
+    delegate { Self::AwaitCall { operation, .. } => operation; }
     cache {
         Self::LoadGlobal { .. } => (GlobalRead, OptionalOperand);
         Self::LoadGlobal { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
@@ -159,6 +164,7 @@ impl_cache_sites! {
 
 impl_cache_sites! {
     InstructionKind;
+    delegate { Self::AwaitCall { operation, .. } => operation; }
     cache {
         Self::LoadGlobal { .. } => (GlobalRead, OptionalOperand);
         Self::LoadGlobal { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };

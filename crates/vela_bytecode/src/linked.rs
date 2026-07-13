@@ -877,6 +877,10 @@ pub enum InstructionKind {
     Jump {
         target: InstructionOffset,
     },
+    AwaitCall {
+        operation: Box<InstructionKind>,
+        resume: InstructionOffset,
+    },
     CallNative {
         dst: Option<Register>,
         native: NativeHandle,

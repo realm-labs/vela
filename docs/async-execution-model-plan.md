@@ -1147,7 +1147,7 @@ resumable foundation before adding real host suspension.
 - [x] Propagate callable asyncness through HIR, analysis, registry, reflection,
   native/method/provider descriptors, compile snapshots, and linked metadata.
 - [ ] Add async call validation and diagnostics described in Section 6.
-- [ ] Add explicit MIR await control flow, liveness, effects, dumps, verifier
+- [x] Add explicit MIR await control flow, liveness, effects, dumps, verifier
   checks, root maps, and backend-linked representation.
 - [ ] Introduce `ExecutionSession`, explicit frame stack, return continuations,
   and unified `EntryRequest` setup.

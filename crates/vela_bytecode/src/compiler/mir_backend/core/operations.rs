@@ -6,6 +6,7 @@ use super::{
     MirScriptParameterGuardMode, MirTerminatorKind, Register, ScriptCallMode, TryPropagateFamily,
     UnlinkedInstructionKind,
 };
+use vela_mir::{MirAwaitOperation, MirPlace};
 
 impl<'a> FunctionBackend<'a> {
     pub(super) fn call(
@@ -14,6 +15,17 @@ impl<'a> FunctionBackend<'a> {
         call: &MirCall,
         span: vela_common::Span,
     ) -> Result<(), MirBackendError> {
+        let kind = self.call_instruction(dst, call, span)?;
+        self.emit(kind, span);
+        Ok(())
+    }
+
+    fn call_instruction(
+        &mut self,
+        dst: Register,
+        call: &MirCall,
+        span: vela_common::Span,
+    ) -> Result<UnlinkedInstructionKind, MirBackendError> {
         let kind = match call {
             MirCall::ScriptFunction {
                 function,
@@ -129,8 +141,7 @@ impl<'a> FunctionBackend<'a> {
                     .collect::<Result<_, MirBackendError>>()?,
             },
         };
-        self.emit(kind, span);
-        Ok(())
+        Ok(kind)
     }
 
     pub(super) fn host(
@@ -139,6 +150,17 @@ impl<'a> FunctionBackend<'a> {
         operation: &MirHostOperation,
         span: vela_common::Span,
     ) -> Result<(), MirBackendError> {
+        let kind = self.host_instruction(dst, operation, span)?;
+        self.emit(kind, span);
+        Ok(())
+    }
+
+    fn host_instruction(
+        &mut self,
+        dst: Option<Register>,
+        operation: &MirHostOperation,
+        span: vela_common::Span,
+    ) -> Result<UnlinkedInstructionKind, MirBackendError> {
         let (root, path) = match operation {
             MirHostOperation::Read { root, path } | MirHostOperation::Remove { root, path } => {
                 (root, path)
@@ -194,8 +216,7 @@ impl<'a> FunctionBackend<'a> {
                 cache_site: CacheSiteId::new(0),
             },
         };
-        self.emit(kind, span);
-        Ok(())
+        Ok(kind)
     }
 
     fn host_target(
@@ -235,6 +256,17 @@ impl<'a> FunctionBackend<'a> {
         operation: &MirReflectionOperation,
         span: vela_common::Span,
     ) -> Result<(), MirBackendError> {
+        let kind = self.reflect_instruction(dst, operation, span)?;
+        self.emit(kind, span);
+        Ok(())
+    }
+
+    fn reflect_instruction(
+        &mut self,
+        dst: Register,
+        operation: &MirReflectionOperation,
+        span: vela_common::Span,
+    ) -> Result<UnlinkedInstructionKind, MirBackendError> {
         let (function, args) = match operation {
             MirReflectionOperation::Read {
                 function,
@@ -272,17 +304,13 @@ impl<'a> FunctionBackend<'a> {
             .targets()
             .function(function)
             .ok_or(MirBackendError::MissingTarget("reflection function"))?;
-        self.emit(
-            UnlinkedInstructionKind::CallNative {
-                dst: Some(dst),
-                name: descriptor.debug_name.clone(),
-                native: function,
-                cache_site: None,
-                args,
-            },
-            span,
-        );
-        Ok(())
+        Ok(UnlinkedInstructionKind::CallNative {
+            dst: Some(dst),
+            name: descriptor.debug_name.clone(),
+            native: function,
+            cache_site: None,
+            args,
+        })
     }
 
     pub(super) fn terminator(
@@ -503,6 +531,33 @@ impl<'a> FunctionBackend<'a> {
                 {
                     instruction.span = None;
                 }
+            }
+            MirTerminatorKind::AwaitCall {
+                operation,
+                destination,
+                resume,
+            } => {
+                let dst = match destination {
+                    MirPlace::Local(local) => self.locals[local],
+                    MirPlace::Temp(temp) => self.temps[temp],
+                };
+                let operation = match operation.as_ref() {
+                    MirAwaitOperation::Call(call) => self.call_instruction(dst, call, span)?,
+                    MirAwaitOperation::Host(operation) => {
+                        self.host_instruction(Some(dst), operation, span)?
+                    }
+                    MirAwaitOperation::Reflect(operation) => {
+                        self.reflect_instruction(dst, operation, span)?
+                    }
+                };
+                self.emit_patch(
+                    UnlinkedInstructionKind::AwaitCall {
+                        operation: Box::new(operation),
+                        resume: InstructionOffset(0),
+                    },
+                    *resume,
+                    span,
+                );
             }
             MirTerminatorKind::Return(value) => {
                 let src = match value {

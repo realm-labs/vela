@@ -357,6 +357,7 @@ fn opcode_label(kind: &InstructionKind) -> &'static str {
         InstructionKind::JumpIfFalse { .. } => "JumpIfFalse",
         InstructionKind::JumpIfNotMissing { .. } => "JumpIfNotMissing",
         InstructionKind::Jump { .. } => "Jump",
+        InstructionKind::AwaitCall { .. } => "AwaitCall",
         InstructionKind::CallNative { .. } => "CallNative",
         InstructionKind::CallFunction { .. } => "CallFunction",
         InstructionKind::MakeClosure { .. } => "MakeClosure",
