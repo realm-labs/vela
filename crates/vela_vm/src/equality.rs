@@ -1,21 +1,17 @@
 use std::cmp::Ordering;
-use std::sync::Arc;
 use vela_bytecode::linked::LinkedMethodDispatchKind;
 use vela_bytecode::{LinkedProgram, derived_linked_record_trait_fields};
 use vela_def::TypeId;
 use vela_reflect::registry::TypeRegistry;
 
 use crate::heap::{GcRef, HeapValue};
-use crate::linked_execution::LinkedExecutionCall;
-use crate::method_runtime::CallerRoots;
 use crate::numeric_ops::{
     greater_equal_numeric, greater_numeric, less_equal_numeric, less_numeric,
 };
 use crate::option_result::{StdEnumKind, StdEnumVariant, std_enum_tag};
 use crate::{
-    ExecutionBudget, HeapExecution, HostExecution, SmallStorage, Value, Vm, VmBytecodeProfiler,
-    VmError, VmErrorKind, VmInlineCaches, VmResult, store_value_in_heap_if_needed,
-    stored_runtime_value,
+    ExecutionBudget, HeapExecution, Value, Vm, VmError, VmErrorKind, VmResult,
+    store_value_in_heap_if_needed, stored_runtime_value,
 };
 
 const PARTIAL_EQ_METHOD: &str = "eq";
@@ -28,17 +24,6 @@ fn values_equal(lhs: &Value, rhs: &Value, heap: Option<&HeapExecution<'_>>) -> V
         return Ok(equal);
     }
     non_comparable("equal")
-}
-
-pub(crate) struct EqualityRuntime<'a, 'host, 'heap> {
-    pub(crate) vm: &'a Vm,
-    pub(crate) program: &'a LinkedProgram,
-    pub(crate) host: Option<&'a mut HostExecution<'host>>,
-    pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
-    pub(crate) budget: Option<&'a mut ExecutionBudget>,
-    pub(crate) caller_roots: CallerRoots<'a>,
-    pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
-    pub(crate) bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
 }
 
 #[derive(Clone, Copy)]
@@ -451,18 +436,6 @@ fn incomplete_comparison<T>() -> VmResult<T> {
     }))
 }
 
-pub(crate) fn values_total_cmp_with_traits(
-    lhs: &Value,
-    rhs: &Value,
-    runtime: &mut EqualityRuntime<'_, '_, '_>,
-    operation: &'static str,
-) -> VmResult<Ordering> {
-    if let Some(ordering) = leaf_values_total_cmp(lhs, rhs, runtime.heap.as_deref(), operation)? {
-        return Ok(ordering);
-    }
-    call_ord(lhs, rhs, runtime, operation)?.ok_or_else(|| comparable_error(operation))
-}
-
 pub(crate) fn identity_equal(
     lhs: &Value,
     rhs: &Value,
@@ -482,21 +455,6 @@ pub(crate) fn identity_not_equal(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<bool> {
     identity_equal(lhs, rhs, heap).map(|equal| !equal)
-}
-
-fn derived_record_field_pairs(
-    lhs: &Value,
-    rhs: &Value,
-    runtime: &EqualityRuntime<'_, '_, '_>,
-    type_name: &str,
-    trait_name: &str,
-) -> VmResult<Option<Vec<(Value, Value)>>> {
-    let Some(field_names) =
-        derived_linked_record_trait_fields(runtime.program, type_name, trait_name)
-    else {
-        return Ok(None);
-    };
-    record_field_pairs(lhs, rhs, runtime.heap.as_deref(), type_name, &field_names)
 }
 
 fn record_field_pairs(
@@ -546,99 +504,6 @@ fn record_field_pairs(
         })
         .collect::<VmResult<Vec<_>>>()
         .map(Some)
-}
-
-fn call_ord(
-    lhs: &Value,
-    rhs: &Value,
-    runtime: &mut EqualityRuntime<'_, '_, '_>,
-    operation: &'static str,
-) -> VmResult<Option<Ordering>> {
-    let Some((type_id, type_name)) =
-        receiver_type_identity(lhs, runtime.heap.as_deref(), runtime.vm.type_registry())
-            .map(|(id, name)| (id, name.to_owned()))
-    else {
-        return Ok(None);
-    };
-    let Some(result) = call_builtin_trait_method(lhs, rhs, runtime, type_id, ORD_METHOD)? else {
-        return derived_ord(lhs, rhs, runtime, &type_name, operation);
-    };
-    let result = store_value_in_heap_if_needed(
-        result,
-        runtime.heap.as_deref_mut(),
-        runtime.budget.as_deref_mut(),
-    )?;
-    total_cmp_result(result, operation).map(Some)
-}
-
-fn derived_ord(
-    lhs: &Value,
-    rhs: &Value,
-    runtime: &mut EqualityRuntime<'_, '_, '_>,
-    type_name: &str,
-    operation: &'static str,
-) -> VmResult<Option<Ordering>> {
-    let Some(field_pairs) = derived_record_field_pairs(lhs, rhs, runtime, type_name, "Ord")? else {
-        return Ok(None);
-    };
-    for (left, right) in field_pairs {
-        let ordering = values_total_cmp_with_traits(&left, &right, runtime, operation)?;
-        if ordering != Ordering::Equal {
-            return Ok(Some(ordering));
-        }
-    }
-    Ok(Some(Ordering::Equal))
-}
-
-fn call_builtin_trait_method(
-    lhs: &Value,
-    rhs: &Value,
-    runtime: &mut EqualityRuntime<'_, '_, '_>,
-    owner: TypeId,
-    method_name: &'static str,
-) -> VmResult<Option<Value>> {
-    let Some(target) = linked_builtin_trait_target(runtime.program, owner, method_name) else {
-        return Ok(None);
-    };
-    runtime.program.function(target.function).ok_or_else(|| {
-        VmError::new(VmErrorKind::UnknownMethod {
-            method: method_name.to_owned(),
-        })
-    })?;
-    let args = SmallStorage::try_from_prefix_and_slice_map(*lhs, &[*rhs], 2, |arg| {
-        Ok::<_, VmError>(*arg)
-    })?;
-    let protected_root_len = runtime
-        .heap
-        .as_deref_mut()
-        .map(|heap| runtime.caller_roots.push_to_heap(heap));
-    let owner = Arc::clone(runtime.caller_roots.linked_owner().ok_or_else(|| {
-        VmError::new(VmErrorKind::UnknownMethod {
-            method: method_name.to_owned(),
-        })
-    })?);
-    let result = runtime.vm.execute_linked_call(
-        LinkedExecutionCall {
-            owner,
-            function: target.function,
-            captures: &[],
-            args: args.as_slice(),
-            check_param_guards: true,
-            call_site: None,
-            call_site_offset: None,
-            inline_caches: runtime.inline_caches,
-            bytecode_profiler: runtime.bytecode_profiler,
-        },
-        runtime.host.as_deref_mut(),
-        runtime.heap.as_deref_mut(),
-        runtime.budget.as_deref_mut(),
-    );
-    if let (Some(heap), Some(protected_root_len)) =
-        (runtime.heap.as_deref_mut(), protected_root_len)
-    {
-        heap.truncate_protected_roots(protected_root_len);
-    }
-    result.map(Some)
 }
 
 #[derive(Clone, Copy)]

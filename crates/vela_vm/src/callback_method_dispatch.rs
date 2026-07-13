@@ -458,9 +458,11 @@ pub(crate) fn call_cached(
         (StandardMethodReceiver::Array, CallbackMethodInlineCacheTarget::GroupBy) => {
             array_methods::group_by(receiver, args, dispatch.runtime())
         }
-        (StandardMethodReceiver::Array, CallbackMethodInlineCacheTarget::SortBy) => {
-            array_methods::sort_by(receiver, args, dispatch.runtime())
-        }
+        (StandardMethodReceiver::Array, CallbackMethodInlineCacheTarget::SortBy) => Err(
+            crate::VmError::new(crate::VmErrorKind::UnsupportedLinkedInstruction {
+                opcode: "sort_by escaped the execution session",
+            }),
+        ),
         (StandardMethodReceiver::Map, CallbackMethodInlineCacheTarget::MapValues) => {
             map_methods::map_values(receiver, args, dispatch.runtime())
         }

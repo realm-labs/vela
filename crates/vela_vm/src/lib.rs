@@ -74,9 +74,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::sync::Arc;
 
-pub(crate) use equality::{
-    EqualityRuntime, identity_equal, identity_not_equal, values_total_cmp_with_traits,
-};
+pub(crate) use equality::{identity_equal, identity_not_equal};
 use error::{VmError, VmErrorKind, VmResult};
 pub(crate) use frame::CallFrame;
 use heap::{HeapValue, ScriptHeap};

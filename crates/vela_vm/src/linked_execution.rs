@@ -607,7 +607,7 @@ impl Vm {
                     returned,
                     source_span,
                 } => match callback
-                    .step(heap, budget, returned)
+                    .step(self, &current_owner, heap, budget, returned)
                     .map_err(|error| error.with_source_span_if_absent(source_span))?
                 {
                     ResumableCallbackStep::Complete(value) => {

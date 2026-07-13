@@ -10,7 +10,7 @@ pub(crate) use higher_order::{all, any, count, filter, find, map};
 pub(crate) use lookup::{contains_by_key, first, index_of_by_key, last};
 pub(crate) use mutation::{clear, extend, insert, pop, push, remove_at};
 pub(crate) use ordering::{
-    ResumableArrayOrdering, ResumableArrayOrderingKind, ResumableArrayOrderingStep, sort_by,
+    ResumableArrayOrdering, ResumableArrayOrderingKind, ResumableArrayOrderingStep,
 };
 pub(crate) use transform::{distinct_by_key, join, reverse, slice};
 

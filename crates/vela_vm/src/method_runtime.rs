@@ -29,13 +29,6 @@ impl<'a> CallerRoots<'a> {
             Self::Empty => heap.push_protected_roots(&[]),
         }
     }
-
-    pub(crate) fn linked_owner(self) -> Option<&'a std::sync::Arc<vela_bytecode::LinkedArtifact>> {
-        match self {
-            Self::Frame(frame) => frame.linked_owner(),
-            Self::Empty => None,
-        }
-    }
 }
 
 pub(crate) struct MethodRuntime<'a, 'host, 'heap> {

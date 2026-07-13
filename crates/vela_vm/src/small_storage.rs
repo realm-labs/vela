@@ -81,6 +81,7 @@ impl<T> SmallStorage<T> {
     }
 
     #[inline]
+    #[cfg(test)]
     pub(crate) fn try_from_prefix_and_slice_map<U, E>(
         prefix: T,
         items: &[U],
