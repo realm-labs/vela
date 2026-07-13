@@ -2,6 +2,7 @@ use crate::abi::{AccessAbi, EffectAbi, ParamAbi, TraitMethodAbi};
 use crate::error::{HotReloadError, HotReloadErrorKind};
 use crate::module_abi::ModuleExportAbi;
 use crate::schema_abi::SchemaAbi;
+use vela_common::CallableAsyncness;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum HotReloadDiagnosticDetail {
@@ -32,6 +33,10 @@ pub enum HotReloadDiagnosticDetail {
         old: Option<String>,
         new: Option<String>,
     },
+    FunctionAsyncnessAbi {
+        old: CallableAsyncness,
+        new: CallableAsyncness,
+    },
     FunctionEffectAbi {
         old: EffectAbi,
         new: EffectAbi,
@@ -51,6 +56,10 @@ pub enum HotReloadDiagnosticDetail {
     MethodReturnAbi {
         old: Option<String>,
         new: Option<String>,
+    },
+    MethodAsyncnessAbi {
+        old: CallableAsyncness,
+        new: CallableAsyncness,
     },
     MethodAccessAbi {
         old: AccessAbi,
@@ -122,6 +131,12 @@ impl HotReloadDiagnosticDetail {
                     new: new.clone(),
                 })
             }
+            HotReloadErrorKind::ChangedFunctionAsyncness { old, new, .. } => {
+                Some(Self::FunctionAsyncnessAbi {
+                    old: *old,
+                    new: *new,
+                })
+            }
             HotReloadErrorKind::ChangedFunctionEffects { old, new, .. } => {
                 Some(Self::FunctionEffectAbi {
                     old: old.clone(),
@@ -150,6 +165,12 @@ impl HotReloadDiagnosticDetail {
                 Some(Self::MethodReturnAbi {
                     old: old.clone(),
                     new: new.clone(),
+                })
+            }
+            HotReloadErrorKind::ChangedMethodAsyncness { old, new, .. } => {
+                Some(Self::MethodAsyncnessAbi {
+                    old: *old,
+                    new: *new,
                 })
             }
             HotReloadErrorKind::ChangedMethodAccess { old, new, .. } => {

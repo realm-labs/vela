@@ -184,6 +184,11 @@ fn render_detail(detail: &HotReloadDiagnosticDetail) -> String {
             render_optional(old),
             render_optional(new)
         ),
+        HotReloadDiagnosticDetail::FunctionAsyncnessAbi { old, new } => format!(
+            "function asyncness: old={} new={}",
+            render_asyncness(*old),
+            render_asyncness(*new)
+        ),
         HotReloadDiagnosticDetail::FunctionEffectAbi { old, new } => format!(
             "function effects: old=({}) new=({})",
             render_effect_abi(old),
@@ -209,6 +214,11 @@ fn render_detail(detail: &HotReloadDiagnosticDetail) -> String {
             render_optional(old),
             render_optional(new)
         ),
+        HotReloadDiagnosticDetail::MethodAsyncnessAbi { old, new } => format!(
+            "method asyncness: old={} new={}",
+            render_asyncness(*old),
+            render_asyncness(*new)
+        ),
         HotReloadDiagnosticDetail::MethodAccessAbi { old, new } => format!(
             "method access: old=({}) new=({})",
             render_access_abi(old),
@@ -224,6 +234,13 @@ fn render_detail(detail: &HotReloadDiagnosticDetail) -> String {
             render_module_export_abi_list(old),
             render_module_export_abi_list(new)
         ),
+    }
+}
+
+fn render_asyncness(asyncness: vela_common::CallableAsyncness) -> &'static str {
+    match asyncness {
+        vela_common::CallableAsyncness::Sync => "sync",
+        vela_common::CallableAsyncness::Async => "async",
     }
 }
 
@@ -344,13 +361,21 @@ fn render_trait_method_abi_list(methods: &[crate::abi::TraitMethodAbi]) -> Strin
 fn render_trait_method_abi(method: &crate::abi::TraitMethodAbi) -> String {
     let params = render_param_abi_list(&method.params);
     let return_type = method.return_type.as_deref().unwrap_or("Any");
+    let async_suffix = if method.asyncness.is_async() {
+        " async"
+    } else {
+        ""
+    };
     if method.has_default {
         format!(
-            "{}#{}({params})->{return_type}=default",
-            method.name, method.id
+            "{}#{}({params})->{return_type}{async_suffix}=default",
+            method.name, method.id,
         )
     } else {
-        format!("{}#{}({params})->{return_type}", method.name, method.id)
+        format!(
+            "{}#{}({params})->{return_type}{async_suffix}",
+            method.name, method.id
+        )
     }
 }
 

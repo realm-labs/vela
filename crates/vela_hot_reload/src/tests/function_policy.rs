@@ -265,6 +265,33 @@ fn main() -> f64 {
 }
 
 #[test]
+fn script_function_asyncness_changes_are_rejected_during_compile_update() {
+    let initial = compile_initial(
+        SourceId::new(1),
+        r#"
+fn main() -> i64 {
+    return 1;
+}
+"#,
+    )
+    .expect("initial script function should compile");
+
+    let error = compile_update(
+        &initial,
+        SourceId::new(2),
+        r#"
+async fn main() -> i64 {
+    return 1;
+}
+"#,
+    )
+    .expect_err("changed script function asyncness should be rejected");
+
+    assert_eq!(error.code(), "reload.function.asyncness_changed");
+    assert_eq!(error.target(), Some("main".to_owned()));
+}
+
+#[test]
 fn reordered_function_parameters_are_rejected() {
     let initial = compile_initial(SourceId::new(1), "fn main(player, monster) { return 1; }")
         .expect("compile initial");

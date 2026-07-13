@@ -163,6 +163,28 @@ fn registry_function_abi_accepts_host_stable_id_renames() {
 }
 
 #[test]
+fn registry_function_abi_rejects_native_asyncness_changes() {
+    let mut old_registry = TypeRegistry::new();
+    old_registry.register_function(FunctionDesc::new(
+        FunctionId::new(24),
+        "game::native::load_reward",
+    ));
+
+    let mut new_registry = TypeRegistry::new();
+    new_registry.register_function(
+        FunctionDesc::new(FunctionId::new(24), "game::native::load_reward")
+            .asyncness(CallableAsyncness::Async),
+    );
+
+    let error = HotReloadAbi::from_registry(&old_registry)
+        .ensure_compatible_update(&HotReloadAbi::from_registry(&new_registry))
+        .expect_err("native function asyncness change should be rejected");
+
+    assert_eq!(error.code(), "reload.function.asyncness_changed");
+    assert_eq!(error.target(), Some("game::native::load_reward".to_owned()));
+}
+
+#[test]
 fn registry_function_abi_keeps_script_function_renames_name_based() {
     let mut old_registry = TypeRegistry::new();
     old_registry.register_function(

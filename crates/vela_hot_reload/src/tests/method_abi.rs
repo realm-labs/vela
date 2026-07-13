@@ -1,6 +1,53 @@
 use super::*;
 
 #[test]
+fn method_asyncness_abi_changes_are_rejected() {
+    let old_abi = HotReloadAbi::empty().method(MethodAbi::new(
+        "State",
+        "refresh",
+        EffectAbi::host_write(),
+        AccessAbi::public(),
+    ));
+    let changed = HotReloadAbi::empty().method(
+        MethodAbi::new(
+            "State",
+            "refresh",
+            EffectAbi::host_write(),
+            AccessAbi::public(),
+        )
+        .asyncness(CallableAsyncness::Async),
+    );
+    let initial = compile_initial_with_abi(SourceId::new(1), "fn main() { return 1; }", old_abi)
+        .expect("initial");
+
+    let error = compile_update_with_abi(
+        &initial,
+        SourceId::new(2),
+        "fn main() { return 2; }",
+        changed,
+    )
+    .expect_err("method asyncness change should fail");
+    assert_eq!(
+        error.kind,
+        HotReloadErrorKind::ChangedMethodAsyncness {
+            type_name: "State".to_owned(),
+            method: "refresh".to_owned(),
+            old: CallableAsyncness::Sync,
+            new: CallableAsyncness::Async,
+            source_span: None,
+        }
+    );
+    let report = HotReloadReport::rejected(ProgramVersionId(4), error);
+    assert_eq!(report.errors[0].code, "reload.method.asyncness_changed");
+    assert!(
+        report
+            .render_lines()
+            .iter()
+            .any(|line| { line.text == "method asyncness: old=sync new=async" })
+    );
+}
+
+#[test]
 fn method_effect_and_access_abi_changes_are_rejected() {
     let old_abi = HotReloadAbi::empty().method(MethodAbi::new(
         "Player",

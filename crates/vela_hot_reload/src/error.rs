@@ -1,7 +1,7 @@
 use std::fmt;
 use std::path::{Path, PathBuf};
 
-use vela_common::Span;
+use vela_common::{CallableAsyncness, Span};
 
 use crate::abi::{AccessAbi, EffectAbi, ParamAbi, TraitMethodAbi};
 use crate::module_abi::ModuleExportAbi;
@@ -45,6 +45,9 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedSchemaAbi { .. } => "reload.schema.abi_changed",
             HotReloadErrorKind::RemovedFunctionAbi { .. } => "reload.function.removed_abi",
             HotReloadErrorKind::ChangedFunctionEvent { .. } => "reload.function.event_changed",
+            HotReloadErrorKind::ChangedFunctionAsyncness { .. } => {
+                "reload.function.asyncness_changed"
+            }
             HotReloadErrorKind::ChangedFunctionEffects { .. } => "reload.function.effects_changed",
             HotReloadErrorKind::ChangedFunctionAccess { .. } => "reload.function.access_changed",
             HotReloadErrorKind::RemovedMethodAbi { .. } => "reload.method.removed_abi",
@@ -52,6 +55,7 @@ impl HotReloadError {
                 "reload.method.parameter_abi_changed"
             }
             HotReloadErrorKind::ChangedMethodReturnAbi { .. } => "reload.method.return_abi_changed",
+            HotReloadErrorKind::ChangedMethodAsyncness { .. } => "reload.method.asyncness_changed",
             HotReloadErrorKind::ChangedMethodEffects { .. } => "reload.method.effects_changed",
             HotReloadErrorKind::ChangedMethodAccess { .. } => "reload.method.access_changed",
             HotReloadErrorKind::RemovedTraitAbi { .. } => "reload.trait.removed_abi",
@@ -77,6 +81,7 @@ impl HotReloadError {
             | HotReloadErrorKind::RemovedFunction { function }
             | HotReloadErrorKind::RemovedFunctionAbi { function, .. }
             | HotReloadErrorKind::ChangedFunctionEvent { function, .. }
+            | HotReloadErrorKind::ChangedFunctionAsyncness { function, .. }
             | HotReloadErrorKind::ChangedFunctionEffects { function, .. }
             | HotReloadErrorKind::ChangedFunctionAccess { function, .. } => Some(function.clone()),
             HotReloadErrorKind::RemovedSchema { type_name, .. }
@@ -89,6 +94,9 @@ impl HotReloadError {
                 type_name, method, ..
             }
             | HotReloadErrorKind::ChangedMethodReturnAbi {
+                type_name, method, ..
+            }
+            | HotReloadErrorKind::ChangedMethodAsyncness {
                 type_name, method, ..
             }
             | HotReloadErrorKind::ChangedMethodEffects {
@@ -147,6 +155,9 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedFunctionEvent { function, .. } => {
                 format!("function `{function}` changed event binding ABI")
             }
+            HotReloadErrorKind::ChangedFunctionAsyncness { function, .. } => {
+                format!("function `{function}` changed asyncness ABI")
+            }
             HotReloadErrorKind::ChangedFunctionEffects { function, .. } => {
                 format!("function `{function}` changed effect ABI")
             }
@@ -167,6 +178,11 @@ impl HotReloadError {
                 type_name, method, ..
             } => {
                 format!("method `{type_name}.{method}` changed return ABI")
+            }
+            HotReloadErrorKind::ChangedMethodAsyncness {
+                type_name, method, ..
+            } => {
+                format!("method `{type_name}.{method}` changed asyncness ABI")
             }
             HotReloadErrorKind::ChangedMethodEffects {
                 type_name, method, ..
@@ -238,6 +254,10 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedFunctionEvent { .. } => {
                 Some("preserve the previous event binding or restart with an explicit migration".to_owned())
             }
+            HotReloadErrorKind::ChangedFunctionAsyncness { .. }
+            | HotReloadErrorKind::ChangedMethodAsyncness { .. } => {
+                Some("preserve whether the callable is sync or async, or restart with an explicit migration".to_owned())
+            }
             HotReloadErrorKind::RemovedMethodAbi { .. } => {
                 Some("restore the method ABI entry or restart with an explicit migration".to_owned())
             }
@@ -283,11 +303,13 @@ impl HotReloadError {
             | HotReloadErrorKind::ChangedFunctionParameterAbi { source_span, .. }
             | HotReloadErrorKind::ChangedFunctionReturnAbi { source_span, .. }
             | HotReloadErrorKind::ChangedFunctionEvent { source_span, .. }
+            | HotReloadErrorKind::ChangedFunctionAsyncness { source_span, .. }
             | HotReloadErrorKind::ChangedFunctionEffects { source_span, .. }
             | HotReloadErrorKind::ChangedFunctionAccess { source_span, .. }
             | HotReloadErrorKind::RemovedMethodAbi { source_span, .. }
             | HotReloadErrorKind::ChangedMethodParameterAbi { source_span, .. }
             | HotReloadErrorKind::ChangedMethodReturnAbi { source_span, .. }
+            | HotReloadErrorKind::ChangedMethodAsyncness { source_span, .. }
             | HotReloadErrorKind::ChangedMethodEffects { source_span, .. }
             | HotReloadErrorKind::ChangedMethodAccess { source_span, .. } => {
                 source_span.as_deref().copied()
@@ -396,6 +418,12 @@ pub enum HotReloadErrorKind {
         new: Option<String>,
         source_span: Option<Box<Span>>,
     },
+    ChangedFunctionAsyncness {
+        function: String,
+        old: CallableAsyncness,
+        new: CallableAsyncness,
+        source_span: Option<Box<Span>>,
+    },
     ChangedFunctionEffects {
         function: String,
         old: EffectAbi,
@@ -425,6 +453,13 @@ pub enum HotReloadErrorKind {
         method: String,
         old: Option<String>,
         new: Option<String>,
+        source_span: Option<Box<Span>>,
+    },
+    ChangedMethodAsyncness {
+        type_name: String,
+        method: String,
+        old: CallableAsyncness,
+        new: CallableAsyncness,
         source_span: Option<Box<Span>>,
     },
     ChangedMethodEffects {

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use vela_common::Span;
+use vela_common::{CallableAsyncness, Span};
 use vela_hir::module_graph::ModuleGraph;
 use vela_reflect::modules::{DeclOrigin, FunctionDesc, FunctionParamDesc};
 use vela_reflect::registry::{
@@ -221,6 +221,7 @@ pub struct FunctionAbi {
     pub origin: DeclOrigin,
     pub params: Vec<ParamAbi>,
     pub return_type: Option<String>,
+    pub asyncness: CallableAsyncness,
     pub event: Option<String>,
     pub effects: EffectAbi,
     pub access: AccessAbi,
@@ -236,6 +237,7 @@ impl FunctionAbi {
             origin: DeclOrigin::Host,
             params: Vec::new(),
             return_type: None,
+            asyncness: CallableAsyncness::Sync,
             event: None,
             effects,
             access,
@@ -266,7 +268,8 @@ impl FunctionAbi {
             ),
         )
         .id(function.id.get())
-        .origin(function.origin);
+        .origin(function.origin)
+        .asyncness(function.asyncness);
         if let Some(event) = function.attrs.get("event") {
             abi = abi.event(event);
         }
@@ -301,6 +304,12 @@ impl FunctionAbi {
     }
 
     #[must_use]
+    pub fn asyncness(mut self, asyncness: CallableAsyncness) -> Self {
+        self.asyncness = asyncness;
+        self
+    }
+
+    #[must_use]
     pub fn param(mut self, param: ParamAbi) -> Self {
         self.params.push(param);
         self
@@ -329,6 +338,16 @@ impl FunctionAbi {
                 HotReloadErrorKind::RemovedFunctionAbi {
                     function: self.name.clone(),
                     source_span: self.source_span.map(Box::new),
+                },
+            ));
+        }
+        if self.asyncness != next.asyncness {
+            return Err(HotReloadError::new(
+                HotReloadErrorKind::ChangedFunctionAsyncness {
+                    function: self.name.clone(),
+                    old: self.asyncness,
+                    new: next.asyncness,
+                    source_span: next.source_span.map(Box::new),
                 },
             ));
         }
@@ -486,6 +505,7 @@ pub struct MethodAbi {
     pub origin: DeclOrigin,
     pub params: Vec<ParamAbi>,
     pub return_type: Option<String>,
+    pub asyncness: CallableAsyncness,
     pub effects: EffectAbi,
     pub access: AccessAbi,
     pub source_span: Option<Span>,
@@ -506,6 +526,7 @@ impl MethodAbi {
             origin: DeclOrigin::Host,
             params: Vec::new(),
             return_type: None,
+            asyncness: CallableAsyncness::Sync,
             effects,
             access,
             source_span: None,
@@ -532,7 +553,8 @@ impl MethodAbi {
             AccessAbi::new(method.access.public, method.access.reflect_callable),
         )
         .id(method.id.get())
-        .origin(method.origin);
+        .origin(method.origin)
+        .asyncness(method.asyncness);
         for param in &method.params {
             abi = abi.param(ParamAbi::from_method_param(param));
         }
@@ -570,6 +592,12 @@ impl MethodAbi {
     }
 
     #[must_use]
+    pub fn asyncness(mut self, asyncness: CallableAsyncness) -> Self {
+        self.asyncness = asyncness;
+        self
+    }
+
+    #[must_use]
     pub fn source_span(mut self, source_span: Span) -> Self {
         self.source_span = Some(source_span);
         self
@@ -587,6 +615,17 @@ impl MethodAbi {
                 method: self.name.clone(),
                 source_span: self.source_span.map(Box::new),
             }));
+        }
+        if self.asyncness != next.asyncness {
+            return Err(HotReloadError::new(
+                HotReloadErrorKind::ChangedMethodAsyncness {
+                    type_name: self.type_name.clone(),
+                    method: self.name.clone(),
+                    old: self.asyncness,
+                    new: next.asyncness,
+                    source_span: next.source_span.map(Box::new),
+                },
+            ));
         }
         ensure_method_params_compatible(self, next)?;
         if !type_hints_compatible(self.return_type.as_deref(), next.return_type.as_deref()) {
@@ -758,6 +797,7 @@ pub(crate) fn trait_methods_compatible(old: &TraitMethodAbi, new: &TraitMethodAb
             .zip(&new.params)
             .all(|(old, new)| params_compatible(old, new))
         && type_hints_compatible(old.return_type.as_deref(), new.return_type.as_deref())
+        && old.asyncness == new.asyncness
         && old.has_default == new.has_default
 }
 
@@ -788,6 +828,7 @@ pub struct TraitMethodAbi {
     pub name: String,
     pub params: Vec<ParamAbi>,
     pub return_type: Option<String>,
+    pub asyncness: CallableAsyncness,
     pub has_default: bool,
 }
 
@@ -799,13 +840,16 @@ impl TraitMethodAbi {
             name: name.into(),
             params: Vec::new(),
             return_type: None,
+            asyncness: CallableAsyncness::Sync,
             has_default: false,
         }
     }
 
     #[must_use]
     pub fn from_method(method: &TraitMethodDesc) -> Self {
-        let mut abi = Self::new(method.id.get(), method.name.clone()).defaulted(method.has_default);
+        let mut abi = Self::new(method.id.get(), method.name.clone())
+            .asyncness(method.asyncness)
+            .defaulted(method.has_default);
         for param in &method.params {
             abi = abi.param(ParamAbi::from_method_param(param));
         }
@@ -824,6 +868,12 @@ impl TraitMethodAbi {
     #[must_use]
     pub fn return_type(mut self, return_type: impl Into<String>) -> Self {
         self.return_type = Some(return_type.into());
+        self
+    }
+
+    #[must_use]
+    pub fn asyncness(mut self, asyncness: CallableAsyncness) -> Self {
+        self.asyncness = asyncness;
         self
     }
 

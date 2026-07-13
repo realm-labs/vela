@@ -1,6 +1,47 @@
 use super::*;
 
 #[test]
+fn function_asyncness_abi_changes_are_rejected() {
+    let old_abi = HotReloadAbi::empty().function(
+        FunctionAbi::new("service::refresh", EffectAbi::pure(), AccessAbi::public())
+            .event("refresh")
+            .asyncness(CallableAsyncness::Sync),
+    );
+    let changed = HotReloadAbi::empty().function(
+        FunctionAbi::new("service::refresh", EffectAbi::pure(), AccessAbi::public())
+            .event("refresh")
+            .asyncness(CallableAsyncness::Async),
+    );
+    let initial = compile_initial_with_abi(SourceId::new(1), "fn main() { return 1; }", old_abi)
+        .expect("initial");
+
+    let error = compile_update_with_abi(
+        &initial,
+        SourceId::new(2),
+        "fn main() { return 2; }",
+        changed,
+    )
+    .expect_err("function asyncness change should fail");
+    assert_eq!(
+        error.kind,
+        HotReloadErrorKind::ChangedFunctionAsyncness {
+            function: "service::refresh".to_owned(),
+            old: CallableAsyncness::Sync,
+            new: CallableAsyncness::Async,
+            source_span: None,
+        }
+    );
+    let report = HotReloadReport::rejected(ProgramVersionId(3), error);
+    assert_eq!(report.errors[0].code, "reload.function.asyncness_changed");
+    assert!(
+        report
+            .render_lines()
+            .iter()
+            .any(|line| { line.text == "function asyncness: old=sync new=async" })
+    );
+}
+
+#[test]
 fn function_effect_and_access_abi_changes_are_rejected() {
     let old_abi = HotReloadAbi::empty().function(FunctionAbi::new(
         "game::reward::grant",

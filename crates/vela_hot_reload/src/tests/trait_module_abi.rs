@@ -1,6 +1,31 @@
 use super::*;
 
 #[test]
+fn trait_method_asyncness_changes_are_rejected() {
+    let old = HotReloadAbi::empty()
+        .trait_abi(TraitAbi::new("Service").method(TraitMethodAbi::new(1, "refresh")));
+    let changed = HotReloadAbi::empty().trait_abi(
+        TraitAbi::new("Service")
+            .method(TraitMethodAbi::new(1, "refresh").asyncness(CallableAsyncness::Async)),
+    );
+
+    let error = old
+        .ensure_compatible_update(&changed)
+        .expect_err("trait method asyncness change should fail");
+    assert!(matches!(
+        error.kind,
+        HotReloadErrorKind::ChangedTraitAbi { .. }
+    ));
+    let report = HotReloadReport::rejected(ProgramVersionId(5), error);
+    assert!(
+        report
+            .render_lines()
+            .iter()
+            .any(|line| { line.text.contains("refresh#1(<none>)->Any async") })
+    );
+}
+
+#[test]
 fn trait_descriptor_abi_changes_are_rejected() {
     let span = Span::new(SourceId::new(15), 100, 140);
     let old_abi = HotReloadAbi::empty().trait_abi(

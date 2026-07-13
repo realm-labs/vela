@@ -9,7 +9,7 @@ use crate::runtime::HotReloadRuntime;
 use crate::schema_abi::*;
 use crate::symbol::ProgramVersionId;
 use test_compile_support::*;
-use vela_common::{HostMethodId, SourceId, Span};
+use vela_common::{CallableAsyncness, HostMethodId, SourceId, Span};
 use vela_def::{FieldId, FunctionId, MethodId, TypeId, VariantId};
 use vela_reflect::access::{FunctionAccess, FunctionEffectSet, MethodAccess, MethodEffectSet};
 use vela_reflect::modules::{DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc};

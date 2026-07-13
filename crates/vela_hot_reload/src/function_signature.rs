@@ -9,6 +9,17 @@ pub(crate) fn ensure_compatible_function_signature(
     new_code: &UnlinkedCodeObject,
     policy: &HotReloadPolicy,
 ) -> HotReloadResult<()> {
+    if old_code.asyncness != new_code.asyncness {
+        return Err(HotReloadError::new(
+            HotReloadErrorKind::ChangedFunctionAsyncness {
+                function: name.to_owned(),
+                old: old_code.asyncness,
+                new: new_code.asyncness,
+                source_span: None,
+            },
+        ));
+    }
+
     if new_code.params.len() < old_code.params.len() {
         return Err(HotReloadError::new(
             HotReloadErrorKind::DeletedFunctionParameters {
