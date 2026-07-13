@@ -33,8 +33,8 @@ required.
 
 The package and service-provider hard-switch track is active. Phase 0 inventory,
 Phase 1 package foundation, the atomic Phase 2 package-identity cutover, Phase 3
-ordinary package compilation, and Phase 4 provider discovery are complete and
-verified. `vela_package`
+ordinary package compilation, Phase 4 provider discovery, and Phase 5 linked
+provider runtime dispatch are complete and verified. `vela_package`
 now owns validated package/module
 identity, structured spanned `vela.toml` parsing, path dependency/workspace
 graph construction, path authorization, and deterministic source discovery.
@@ -52,8 +52,12 @@ root set for hot reload. HIR now preserves structured attribute arguments and
 discovers explicit provider trait impls through resolved package-aware service
 and target identities. Engine projects them into immutable snapshot-bound
 catalogs with stable keys, method IDs, source locations, and declared/observed
-capabilities without compilation or execution. The next step is Phase 5 linked
-provider selection and Runtime dispatch.
+capabilities without compilation or execution. Selected providers now compile
+through the ordinary package closure and linker, enter same-generation artifact
+metadata only when selected, and execute through Runtime `MethodId` dispatch
+with fresh zero-field receivers, normal budgets and HostAccess, runtime-bound
+logical handles, and compatible-reload rebinding. The next step is Phase 6
+package/provider ABI comparison and selection-preserving hot reload.
 
 The MIR/executable-generation implementation is complete through Batch F /
 Phase 11 in

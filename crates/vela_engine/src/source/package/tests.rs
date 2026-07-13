@@ -2,10 +2,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use vela_common::Capability;
-use vela_common::ScalarValue;
-use vela_def::{script_trait_id, script_trait_method_id};
+use vela_common::{Capability, HostObjectId, HostTypeId, ScalarValue};
+use vela_def::{FieldId, TypeId, script_trait_id, script_trait_method_id};
+use vela_host::mock::MockStateAdapter;
+use vela_host::path::{HostPath, HostRef};
+use vela_host::value::HostValue;
 use vela_package::PackageId;
+use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey};
 use vela_vm::budget::ExecutionBudgetKind;
 use vela_vm::error::VmErrorKind;
 use vela_vm::owned_value::OwnedValue;
@@ -601,6 +604,11 @@ impl CommandProvider for Second { pub fn run(self, value: i64) -> i64 { return v
 }
 
 #[test]
+fn linked_artifact_installs_only_selected_providers() {
+    compile_provider_selection_includes_transitive_dependencies();
+}
+
+#[test]
 fn linked_artifact_owns_same_generation_provider_metadata() {
     let root = package_fixture("provider_linked_metadata");
     write_package(
@@ -691,6 +699,114 @@ impl CommandProvider for Command {
         runtime.value_to_owned(&output),
         Ok(OwnedValue::Scalar(ScalarValue::I64(42)))
     );
+    remove_fixture(root);
+}
+
+#[test]
+fn runtime_primary_provider_call_uses_method_id_without_name_dispatch() {
+    runtime_calls_provider_trait_impl_method();
+}
+
+#[test]
+fn runtime_rejects_missing_provider_or_method() {
+    let root = package_fixture("provider_runtime_missing");
+    write_package(
+        &root,
+        "dev.vela.plugin",
+        "plugin",
+        "",
+        r#"pub trait CommandProvider { fn run(self) -> i64; }
+pub struct Installed {}
+#[provider(id = "installed")]
+impl CommandProvider for Installed { pub fn run(self) -> i64 { return 1; } }
+pub struct Unselected {}
+#[provider(id = "unselected")]
+impl CommandProvider for Unselected { pub fn run(self) -> i64 { return 2; } }
+"#,
+    );
+    let engine = Engine::builder().build().expect("engine");
+    let snapshot = engine
+        .load_package_workspace(root.join("vela.toml"))
+        .expect("snapshot");
+    let catalog = engine.discover_providers(&snapshot).expect("catalog");
+    let installed = catalog
+        .providers()
+        .iter()
+        .find(|provider| provider.key().provider().as_str() == "installed")
+        .expect("installed descriptor");
+    let unselected = catalog
+        .providers()
+        .iter()
+        .find(|provider| provider.key().provider().as_str() == "unselected")
+        .expect("unselected descriptor");
+    let key = installed.key().clone();
+    let method = installed.methods()[0].id();
+    let selection = catalog.select([key.clone()]).expect("selection");
+    let request = ProviderCompileRequest::for_selection(&snapshot, selection);
+    let artifact = engine
+        .compile_provider_selection(&snapshot, &request)
+        .expect("selected provider compiles");
+    let mut runtime = Runtime::from_linked_artifact(engine, artifact);
+
+    assert!(
+        runtime
+            .call_provider(
+                unselected.key(),
+                method,
+                CallArgs::new(),
+                CallOptions::unbounded(),
+            )
+            .is_err()
+    );
+    assert!(
+        runtime
+            .call_provider(
+                &key,
+                vela_def::MethodId::new(u128::MAX),
+                CallArgs::new(),
+                CallOptions::unbounded(),
+            )
+            .is_err()
+    );
+    remove_fixture(root);
+}
+
+#[test]
+fn provider_call_constructs_fresh_zero_field_receiver() {
+    let root = package_fixture("provider_fresh_receiver");
+    write_package(
+        &root,
+        "dev.vela.plugin",
+        "plugin",
+        "",
+        r#"pub trait InstanceProvider { fn instance(self) -> Instance; }
+pub struct Instance {}
+#[provider(id = "instance")]
+impl InstanceProvider for Instance { pub fn instance(self) -> Instance { return self; } }
+"#,
+    );
+    let engine = Engine::builder().build().expect("engine");
+    let snapshot = engine
+        .load_package_workspace(root.join("vela.toml"))
+        .expect("snapshot");
+    let catalog = engine.discover_providers(&snapshot).expect("catalog");
+    let descriptor = &catalog.providers()[0];
+    let key = descriptor.key().clone();
+    let method = descriptor.methods()[0].id();
+    let selection = catalog.select([key.clone()]).expect("selection");
+    let request = ProviderCompileRequest::for_selection(&snapshot, selection);
+    let artifact = engine
+        .compile_provider_selection(&snapshot, &request)
+        .expect("selected provider compiles");
+    let mut runtime = Runtime::from_linked_artifact(engine, artifact);
+
+    let first = runtime
+        .call_provider(&key, method, CallArgs::new(), CallOptions::unbounded())
+        .expect("first provider call");
+    let second = runtime
+        .call_provider(&key, method, CallArgs::new(), CallOptions::unbounded())
+        .expect("second provider call");
+    assert_ne!(first, second);
     remove_fixture(root);
 }
 
@@ -832,6 +948,74 @@ impl WorkProvider for Work {
             ..
         }
     ));
+    remove_fixture(root);
+}
+
+#[test]
+fn provider_call_uses_normal_budget_host_access_and_capability_checks() {
+    let root = package_fixture("provider_host_access");
+    write_package(
+        &root,
+        "dev.vela.plugin",
+        "plugin",
+        "[capabilities]\nrequires = [\"host_read\", \"host_write\"]\n",
+        r#"pub trait LevelProvider { fn level_up(self, player: Player) -> i64; }
+pub struct LevelUp {}
+#[provider(id = "level_up")]
+impl LevelProvider for LevelUp {
+    pub fn level_up(self, player: Player) -> i64 {
+        player.level += 1;
+        return player.level;
+    }
+}
+"#,
+    );
+    let host_type = HostTypeId::new(1);
+    let field = FieldId::new(1);
+    let engine = Engine::builder()
+        .execution_profile(ExecutionProfile::trusted())
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
+                .host_type(host_type)
+                .field(FieldDesc::new(field, "level").writable(true)),
+        )
+        .build()
+        .expect("engine");
+    let snapshot = engine
+        .load_package_workspace(root.join("vela.toml"))
+        .expect("snapshot");
+    let catalog = engine.discover_providers(&snapshot).expect("catalog");
+    let descriptor = &catalog.providers()[0];
+    let key = descriptor.key().clone();
+    let method = descriptor.methods()[0].id();
+    let selection = catalog.select([key.clone()]).expect("selection");
+    let request = ProviderCompileRequest::for_selection(&snapshot, selection);
+    let artifact = engine
+        .compile_provider_selection(&snapshot, &request)
+        .expect("selected provider compiles");
+    let mut runtime = Runtime::from_linked_artifact(engine, artifact);
+    let player = HostRef::new(host_type, HostObjectId::new(42), 1);
+    let level = HostPath::new(player).field(field);
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_diagnostic_path_value(level.clone(), HostValue::Scalar(ScalarValue::I64(9)));
+
+    let output = runtime
+        .call_provider_with_adapter(
+            &key,
+            method,
+            CallArgs::new().with_host_handle("player", player),
+            CallOptions::new(1_000, usize::MAX, usize::MAX),
+            &mut adapter,
+        )
+        .expect("provider host mutation runs");
+    assert_eq!(
+        runtime.value_to_owned(&output),
+        Ok(OwnedValue::Scalar(ScalarValue::I64(10)))
+    );
+    assert_eq!(
+        adapter.read_diagnostic_path(&level),
+        Ok(HostValue::Scalar(ScalarValue::I64(10)))
+    );
     remove_fixture(root);
 }
 

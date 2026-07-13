@@ -992,38 +992,38 @@ cargo test -p vela_engine provider_catalog
 
 ## 23. Phase 5: Linked Provider Runtime Vertical Slice
 
-- [ ] Add provider selection by full `ProviderKey` bound to one
+- [x] Add provider selection by full `ProviderKey` bound to one
       `PackageCompilationSnapshotId`.
-- [ ] Resolve owning packages and transitive dependencies.
-- [ ] Compile complete selected packages through sealed HIR requests.
-- [ ] Seal only selected providers into an `InstalledProviderSet` carried from
+- [x] Resolve owning packages and transitive dependencies.
+- [x] Compile complete selected packages through sealed HIR requests.
+- [x] Seal only selected providers into an `InstalledProviderSet` carried from
       `CompiledProgram` into `LinkedArtifact` in the same generation.
-- [ ] Keep discovered but unselected providers out of runtime lookup and ABI.
-- [ ] Link ProviderKey -> provider type handle -> MethodId -> method dispatch
+- [x] Keep discovered but unselected providers out of runtime lookup and ABI.
+- [x] Link ProviderKey -> provider type handle -> MethodId -> method dispatch
       handle.
-- [ ] Reject missing native definitions or cross-generation metadata at link.
-- [ ] Add Runtime current-image lookup, fresh zero-field receiver construction,
+- [x] Reject missing native definitions or cross-generation metadata at link.
+- [x] Add Runtime current-image lookup, fresh zero-field receiver construction,
       and provider method calls.
-- [ ] Add Runtime-bound logical `ProviderHandle` values that re-resolve stable
+- [x] Add Runtime-bound logical `ProviderHandle` values that re-resolve stable
       keys against the current compatible image.
-- [ ] Keep resolved generation-local provider targets internal and pin their
+- [x] Keep resolved generation-local provider targets internal and pin their
       artifact only for the active call/frame.
-- [ ] Preserve normal budgets, GC roots, HostAccess, capabilities, tracing,
+- [x] Preserve normal budgets, GC roots, HostAccess, capabilities, tracing,
       profiling, and errors.
-- [ ] Keep provider lookup out of the core VM public API.
+- [x] Keep provider lookup out of the core VM public API.
 
 Focused tests:
 
-- [ ] `compile_provider_selection_includes_transitive_dependencies`
-- [ ] `linked_artifact_owns_same_generation_provider_metadata`
-- [ ] `linked_artifact_installs_only_selected_providers`
-- [ ] `runtime_calls_provider_trait_impl_method`
-- [ ] `runtime_primary_provider_call_uses_method_id_without_name_dispatch`
-- [ ] `runtime_rejects_missing_provider_or_method`
-- [ ] `provider_call_constructs_fresh_zero_field_receiver`
-- [ ] `provider_call_uses_normal_budget_host_access_and_capability_checks`
-- [ ] `provider_handle_rebinds_after_compatible_reload`
-- [ ] `provider_handle_rejects_another_runtime`
+- [x] `compile_provider_selection_includes_transitive_dependencies`
+- [x] `linked_artifact_owns_same_generation_provider_metadata`
+- [x] `linked_artifact_installs_only_selected_providers`
+- [x] `runtime_calls_provider_trait_impl_method`
+- [x] `runtime_primary_provider_call_uses_method_id_without_name_dispatch`
+- [x] `runtime_rejects_missing_provider_or_method`
+- [x] `provider_call_constructs_fresh_zero_field_receiver`
+- [x] `provider_call_uses_normal_budget_host_access_and_capability_checks`
+- [x] `provider_handle_rebinds_after_compatible_reload`
+- [x] `provider_handle_rejects_another_runtime`
 
 Validation:
 

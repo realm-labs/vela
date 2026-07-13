@@ -1784,6 +1784,19 @@ declared and statically observed capability metadata through analysis without
 compiling or executing provider code. `ProviderSelection` retains the catalog's
 snapshot ID, and cross-generation selection reuse is rejected before linking.
 
+### Linked Provider Runtime
+
+Provider compilation extends the ordinary snapshot-bound package request and
+uses the same compiler/linker path. The linker alone converts selected stable
+provider metadata into `TypeHandle` and `MethodDispatchHandle` entries owned by
+the resulting `LinkedArtifact`; discovered but unselected providers never enter
+runtime metadata. Engine Runtime resolves stable `ProviderKey`/`MethodId` pairs
+against the current image, constructs a fresh zero-field receiver, and invokes
+the linked script method through normal budget, GC-root, HostAccess, capability,
+profiling, and safe-point machinery. A public `ProviderHandle` contains only its
+owning runtime identity and stable key, so compatible reloads re-resolve it
+against the newly active artifact rather than exposing generation-local handles.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:
