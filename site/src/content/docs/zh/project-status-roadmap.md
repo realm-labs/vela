@@ -7,7 +7,7 @@ Vela 目前是预发布实现，但已经有较完整的可运行原型。稳定
 
 ## 当前可用
 
-当前代码库已经包含源码解析、HIR lowering、字节码编译、VM 执行、执行预算、非移动 GC 基础、数组、map、set、字符串、Option/Result 辅助方法、模块、runtime global、标准 native、反射元数据、宿主注册、HostAccess 写穿和热更新流程。
+当前代码库已经包含源码解析、HIR lowering、字节码编译、VM 执行、执行预算、executor-neutral 的 `async fn`/`.await`、非移动 GC 基础、数组、map、set、字符串、Option/Result 辅助方法、模块、runtime global、标准 native、反射元数据、宿主注册、HostAccess 写穿和热更新流程。
 
 项目还包含浏览器 Playground、文档站、独立嵌入示例、conformance 风格测试、benchmark harness 和 parser fuzz 基础设施。
 
@@ -19,7 +19,7 @@ Vela 目前是预发布实现，但已经有较完整的可运行原型。稳定
 
 ## MVP 明确非目标
 
-MVP 不包含脚本泛型、monkey patching、任意 `eval`、脚本 async/coroutine、JIT、完整 LSP、通过反射修改运行时类型结构，也不会把 Rust `&mut T` 引用暴露给脚本。
+MVP 不包含脚本泛型、monkey patching、任意 `eval`、脚本可见的 task/coroutine handle、手动 resume、JIT、完整 LSP、通过反射修改运行时类型结构、挂起 async frame 的热迁移，也不会把 Rust `&mut T` 引用暴露给脚本。
 
 这些限制是有意的，用来保证热更新、宿主所有权、capability enforcement 和诊断仍然可控。
 

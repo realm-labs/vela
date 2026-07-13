@@ -11,7 +11,8 @@ the first release.
 
 The MVP does not include script-language generics, function overloading by type,
 a Rust-style borrow checker, arbitrary `eval`, macros, monkey patching, classes,
-script threads, async/coroutine hot reload, or JIT compilation.
+script threads, script-visible task or coroutine handles, manual resume, hot
+migration of suspended async frames, or JIT compilation.
 
 ## Host Boundary Constraints
 

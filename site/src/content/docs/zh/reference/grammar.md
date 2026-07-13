@@ -23,8 +23,9 @@ fn on_kill(ctx: Context, player: Player) {
 ## 表达式和语句
 
 表达式语法覆盖 literals、arrays、maps、typed record literals、field
-access、indexing、calls、unary/binary operators、ranges、lambdas、`if`、
-`match` 和 blocks。
+access、indexing、calls、调用表达式后缀 `.await`、unary/binary operators、
+ranges、lambdas、`if`、`match` 和 blocks。模块函数和脚本方法可以声明为
+`async fn`。
 
 赋值目标必须是可赋值目标：identifier、field、index 或 host path proxy。
 复合赋值和普通赋值使用相同写入边界。
@@ -36,8 +37,10 @@ binding、path、tuple-variant 和 record-variant patterns。
 
 ## 有意排除
 
-语法有意排除脚本侧泛型、async/coroutines、macro expansion、`eval`、
-classes、monkey patching 和 Rust-style borrow syntax。
+语法有意排除脚本侧泛型、脚本可见的 task/coroutine handle、手动 resume、
+macro expansion、`eval`、classes、monkey patching 和 Rust-style borrow
+syntax。异步执行仍然是顺序的：`.await` 会挂起 `async fn` 直到调用完成，
+但不会暴露脚本级并发。
 
 Type hints 是 metadata contract 和分析输入。它们不会创建泛型类型，也不
 会生成 monomorphized script functions。

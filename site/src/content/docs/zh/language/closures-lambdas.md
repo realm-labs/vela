@@ -35,4 +35,6 @@ fn above(limit: i64, values) {
 
 ## 运行时边界
 
-闭包执行和其他脚本调用一样受预算约束。MVP 不承诺协程挂起、async 热更新，也不承诺把闭包跨无关 runtime 移动。
+闭包执行和其他脚本调用一样受预算约束。Async 函数可以在 await 调用时挂起，
+但闭包不会变成 task handle，也不会获得手动 resume 语义。热更新时，挂起 frame
+继续使用原来的代码版本；闭包不能跨无关 Runtime 移动。

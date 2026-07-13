@@ -81,9 +81,9 @@ reject async callbacks.
 Callable asyncness is semantic metadata, not syntax rediscovered by backends.
 It is retained through HIR, analysis, registries, reflection, verified MIR, and
 linked execution. Await is an explicit control-flow boundary with a destination
-and resume edge. Batch A executes awaited synchronous targets through the shared
-frame driver; real Rust future suspension is added by the later async execution
-plan checkpoints.
+and resume edge. Awaited synchronous targets complete in the current drive;
+registered Rust futures suspend the same frame driver and resume only when the
+embedding executor polls the scoped Runtime future again.
 
 ### Equality And Ordering
 

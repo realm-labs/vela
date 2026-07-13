@@ -23,8 +23,9 @@ fn on_kill(ctx: Context, player: Player) {
 ## Expressions And Statements
 
 The expression grammar covers literals, arrays, maps, typed record literals,
-field access, indexing, calls, unary and binary operators, ranges, lambdas,
-`if`, `match`, and blocks.
+field access, indexing, calls, postfix call `.await`, unary and binary
+operators, ranges, lambdas, `if`, `match`, and blocks. Module functions and
+script methods may be declared with `async fn`.
 
 Assignments require assignable targets: identifiers, fields, indexes, or host
 path proxies. Compound assignment uses the same write boundary as ordinary
@@ -37,9 +38,11 @@ literal, binding, path, tuple-variant, and record-variant patterns.
 
 ## Deliberate Exclusions
 
-The grammar intentionally excludes script-language generics, async/coroutines,
-macro expansion, `eval`, classes, monkey patching, and Rust-style borrow
-syntax.
+The grammar intentionally excludes script-language generics, script-visible
+task or coroutine handles, manual resume, macro expansion, `eval`, classes,
+monkey patching, and Rust-style borrow syntax. Async execution remains
+sequential: `.await` suspends an `async fn` until its call completes without
+exposing script-level concurrency.
 
 Type hints are metadata contracts and analysis inputs. They do not create
 generic types or monomorphized script functions. Only selected builtin

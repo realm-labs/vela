@@ -82,7 +82,8 @@ produce faster bytecode when the program makes those facts obvious.
 
 This pass must not:
 
-- Add JIT, async/coroutines, moving GC, or script-language generics.
+- Add JIT, async execution, moving GC, or script-language generics as part of
+  this typed-scalar optimization pass.
 - Add implicit numeric conversions.
 - Add Rust references or Rust host state into script-owned values.
 - Special-case `scalar_branch_loop` by name.
@@ -613,4 +614,3 @@ Validation:
   cargo clippy -p vela_bytecode --all-targets -- -D warnings
   cargo clippy -p vela_vm --all-targets -- -D warnings
 ```
-

@@ -57,6 +57,8 @@ can explain why a field is hidden or denied under the active reflection policy.
 Method and trait-method reflection records expose copied `params`, `return`,
 and `returns` metadata. `return` matches function reflection naming, while
 `returns` is a script-accessible alias because `return` is a keyword.
+Function, method, and trait-method records also expose a copied `async: bool`
+field from the authoritative callable descriptor.
 
 ```text
 FieldNotWritable:
@@ -101,6 +103,12 @@ TypeRegistry available as host/schema input
 TypeFact inference for editor hints
 diagnostics that carry spans, related locations, candidates, and fix hints
 ```
+
+Async tooling preserves and formats `async fn`/`.await`, classifies both as
+semantic keywords, and projects await-context and missing-await diagnostics.
+Completion uses the semantic awaited-result fact after `.await.`. Hover,
+symbols, and signature help read asyncness from HIR or registry callable
+signatures; they do not infer target asyncness from source token text.
 
 Strong hints should be gradual, not mandatory static typing:
 

@@ -354,7 +354,7 @@ The language does not expose:
 thread creation
 shared-memory concurrency
 locks or atomics
-coroutines
+script-visible task/coroutine handles or manual resume
 channels
 parallel iterators
 ```

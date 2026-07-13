@@ -35,4 +35,7 @@ The core standard-library callback sites are iterator adapters such as `map`, `f
 
 ## Runtime Boundaries
 
-Closure execution is budgeted like other script calls. The MVP does not promise coroutine suspension, async hot reload, or moving closures across unrelated runtime instances.
+Closure execution is budgeted like other script calls. Async functions can
+suspend while awaiting calls, but closures do not become task handles or gain
+manual-resume semantics. Suspended frames keep their original code version
+during hot reload, and closures cannot move across unrelated Runtime instances.

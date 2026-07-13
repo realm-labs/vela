@@ -5,8 +5,10 @@
    attributes, functions, structs, enums, traits, blocks, control flow, match,
    lambdas, literals, calls, field access, indexing, and host-state assignment.
 
-   The grammar intentionally excludes script generics, async/coroutines, eval,
-   macros, classes, and Rust-style borrow syntax.
+   The grammar intentionally excludes script generics, script-visible task or
+   coroutine handles, manual resume, eval, macros, classes, and Rust-style
+   borrow syntax. Sequential async functions and await expressions are part of
+   the language surface.
 
    Notation:
    - Terminal symbols are quoted.
@@ -74,7 +76,7 @@ unicode_escape  = "u", "{", HEX_DIGIT, { HEX_DIGIT }, "}" ;
 keyword         = "use" | "pub" | "const" | "global" | "let" | "fn" | "struct"
                 | "enum" | "trait" | "impl" | "for" | "if" | "else"
                 | "match" | "return" | "break" | "continue" | "true"
-                | "false" | "self" | "in" | "as" ;
+                | "false" | "self" | "in" | "as" | "async" | "await" ;
 
 (* ========================================================================= *)
 (* Module items                                                              *)
@@ -99,7 +101,7 @@ const_decl      = "const", ws, IDENT, ws, [ type_annotation, ws ],
 
 global_decl     = "global", ws, IDENT, ws, type_annotation, ws, item_term ;
 
-function_decl   = "fn", ws, IDENT, ws, parameter_list, ws,
+function_decl   = [ "async", ws ], "fn", ws, IDENT, ws, parameter_list, ws,
                   [ return_type, ws ], block ;
 
 parameter_list  = "(", ws, [ parameter, { ws, ",", ws, parameter },
@@ -126,7 +128,7 @@ record_fields   = "{", line_ws, [ struct_field, { field_sep, struct_field },
 
 trait_decl      = "trait", ws, IDENT, ws, "{", line_ws,
                   { trait_item, line_ws }, "}" ;
-trait_item      = { attribute, line_ws }, "fn", ws, IDENT, ws, parameter_list,
+trait_item      = { attribute, line_ws }, [ "async", ws ], "fn", ws, IDENT, ws, parameter_list,
                   ws, [ return_type, ws ], ( block | item_term ) ;
 
 impl_decl       = "impl", ws, path, ws, [ "for", ws, path, ws ], "{", line_ws,
@@ -240,10 +242,12 @@ unary           = ( "!" | "-" ), ws, unary
 
 postfix         = primary, { line_ws, postfix_op } ;
 postfix_op      = call_suffix
+                | await_suffix
                 | field_suffix
                 | index_suffix
                 | try_suffix ;
 call_suffix     = argument_list ;
+await_suffix    = ".", ws, "await" ;
 field_suffix    = ".", ws, IDENT ;
 index_suffix    = "[", ws, expr, ws, "]" ;
 try_suffix      = "?" ;
@@ -367,4 +371,8 @@ path            = IDENT, { ws, "::", ws, IDENT } ;
       impl declarations are self-terminating. Parser implementations should keep
       newline tokens available for item_term and stmt_term instead of skipping
       all layout before parsing statement boundaries.
+
+   7. await_suffix is valid only when its receiver is a call expression and the
+      containing function is async. Known async callees require await; awaited
+      dynamic calls may resolve to either synchronous or asynchronous targets.
 *)

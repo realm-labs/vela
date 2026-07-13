@@ -23,7 +23,8 @@ vertical slice across syntax/HIR analysis/bytecode/VM/stdlib/docs/tests.
 Preserve standing constraints: no script-language generics, no Rust &mut
 references exposed to scripts, host mutation only through HostRef/HostPath/
 PathProxy/HostAccess, reflection without runtime type-structure mutation, and
-no MVP JIT/async/coroutines/moving GC/full LSP. Prefer clean replacement over
+do not add JIT, async execution, moving GC, or a full LSP as part of this
+iterator track. Prefer clean replacement over
 compatibility shims. Validate each checkpoint with the relevant tests and commit
 small Conventional Commit checkpoints.
 ```

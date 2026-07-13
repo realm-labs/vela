@@ -56,6 +56,18 @@ fn describe(result) -> String {
 }
 ```
 
-## 边界
+## Async 函数和 Await
 
-MVP 不包含 `async`、协程、`yield` 或脚本级线程。控制流里的宿主效果仍然受能力、预算和 HostAccess 检查。
+模块函数和脚本方法可以声明为 `async fn`。后缀 `.await` 只能用于调用表达式，
+并且只能出现在 async 函数中。静态已知的 async callee 必须 await；awaited
+dynamic call 可以解析为同步或异步目标。
+
+```vela
+async fn load_profile(repository, player_id) {
+    return repository.load(player_id).await;
+}
+```
+
+Await 保持顺序脚本语义。挂起的调用会在嵌入方 executor 再次 poll 时恢复；
+它不会暴露 task handle、手动 resume、`yield`、脚本级线程，也不允许并发使用
+同一个 Runtime。宿主效果仍然受 capability、预算和 HostAccess 检查。

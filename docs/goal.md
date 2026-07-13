@@ -23,7 +23,10 @@ The language should provide:
 4. Hot Reload First semantics: hot reload replaces function-level or module-level code objects. Existing call frames continue on old code, and new calls enter new code.
 5. Controlled reflection: scripts can inspect types, fields, methods, variants, traits, modules, and functions, and can perform controlled dynamic reads, writes, and calls. Runtime schema mutation is not allowed.
 6. Embeddability: Rust hosts can register types, native functions, capability profiles, execution budgets, state adapters, and hot reload policies.
-7. Practical performance: the MVP should keep the bytecode VM, stable IDs,
+7. Executor-neutral async execution: scripts can declare `async fn`, await
+   script/native/host/provider targets, and suspend through a scoped `Send`
+   Runtime future without putting an executor in core crates.
+8. Practical performance: the MVP should keep the bytecode VM, stable IDs,
    field slots, native standard library functions, and GC boundaries ready for
    optimization. After the MVP, the non-JIT interpreter should target
    Lua-comparable performance on representative host-boundary workloads before
@@ -42,7 +45,9 @@ The first phase does not include:
 - Arbitrary `eval` or runtime execution of generated source strings.
 - JIT compilation.
 - Script-level threads or shared-memory concurrency.
-- Complex async or coroutine hot reload.
+- Migration of suspended async frames, native futures, or host leases across
+  hot-reload generations.
+- Script-visible task spawning, coroutine handles, or manual suspension/resume.
 - A custom full IDE product beyond the native LSP server and thin editor
   integrations.
 - Performance that exceeds LuaJIT at the outset.
@@ -115,7 +120,8 @@ constraints in this roadmap: no general script-language generics beyond
 restricted builtin type hints, no Rust &mut exposed to scripts, all host
 mutation through HostRef, HostPath, PathProxy, and HostAccess,
 reflection without runtime type-structure mutation or monkey patching, and no
-MVP JIT, script async/coroutines, moving GC, or a custom full IDE product.
+MVP JIT, async-frame hot migration, script-visible task/coroutine handles,
+moving GC, or a custom full IDE product.
 Full native LSP work is allowed before the MVP when it stays behind the clean
 `vela_language_service` and `vela_lsp_server` boundaries and does not change
 language/runtime semantics. For each turn, choose the smallest
@@ -152,9 +158,9 @@ integration rather than script-language syntax.
 These milestones start after the completed M0-M6 prototype. Current
 implementation status lives in [progress.md](progress.md), and detailed
 historical progress is archived under [archive](archive/). The plan below
-tracks the first complete non-JIT, non-async interpreter, a full native LSP
-capability track before the MVP, plus post-MVP debugger, JIT, and
-release-hardening work.
+tracks the first complete non-JIT interpreter, the executor-neutral async
+execution extension, a full native LSP capability track before the MVP, plus
+post-MVP debugger, JIT, and release-hardening work.
 
 ### Milestone Checkpoint Rules
 
@@ -979,8 +985,9 @@ Risk: the language drifts into a mixture of Rust, Python, Lua, and JavaScript.
 Control:
 
 ```text
-The first complete interpreter excludes script generics, JIT, script async,
-and script macros.
+The first complete interpreter excludes script generics, JIT, script-visible
+task/coroutine handles, and script macros. Executor-neutral `async fn` and
+`.await` use the same sequential frame driver and do not expose concurrency.
 Rust host derive macros are allowed only to reduce embedding boilerplate.
 Every syntax feature must serve domain-neutral host scripting or the host access model.
 ```

@@ -77,7 +77,9 @@ fn main() {
 ```
 
 There are no script-language generics, overload sets, Rust-style borrow syntax,
-async/coroutines, arbitrary `eval`, or runtime monkey patching.
+script-visible task/coroutine handles, arbitrary `eval`, or runtime monkey
+patching. Executor-neutral `async fn` and `.await` preserve sequential script
+semantics.
 
 ## Repository Layout
 
@@ -187,4 +189,5 @@ GitHub Pages deploys automatically from the Pages workflow after CI succeeds.
   `HostAccess`.
 - Reflection can query metadata and perform controlled reads, writes, and
   calls, but cannot mutate runtime type structure.
-- No monkey patching, MVP JIT, script async/coroutines, moving GC, or full LSP.
+- No monkey patching, MVP JIT, async-frame hot migration, script-visible
+  task/coroutine handles, moving GC, or custom full IDE product.

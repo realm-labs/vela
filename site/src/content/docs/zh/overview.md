@@ -24,7 +24,7 @@ fn level_up(player: Player) {
 
 ## Vela 不是什么
 
-Vela 不是动态 Rust，也不是 Lua table/metatable 模型的复刻，更不是无限制插件沙箱。MVP 明确不包含脚本泛型、JIT、脚本 async/coroutine、monkey patching、运行时修改类型结构，也不会把真实 Rust 引用暴露给脚本。
+Vela 不是动态 Rust，也不是 Lua table/metatable 模型的复刻，更不是无限制插件沙箱。MVP 明确不包含脚本泛型、JIT、脚本可见的 task/coroutine handle、monkey patching、运行时修改类型结构，也不会把真实 Rust 引用暴露给脚本。Executor-neutral 的 `async fn` 和 `.await` 仍保持顺序语义，不暴露脚本级并发。
 
 语言是动态的，但嵌入边界是显式的。宿主决定哪些类型、字段、方法、native 函数、global、能力和预算对某个 Runtime 可用。
 

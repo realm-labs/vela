@@ -9,8 +9,9 @@ Lua clone。部分功能被明确排除在第一版之外。
 ## 语言非目标
 
 MVP 不包含脚本侧泛型、按类型的函数重载、Rust-style borrow checker、任意
-`eval`、macros、monkey patching、classes、脚本线程、async/coroutine hot
-reload 或 JIT compilation。
+`eval`、macros、monkey patching、classes、脚本线程、脚本可见的
+task/coroutine handle、手动 resume、挂起 async frame 的热迁移或 JIT
+compilation。
 
 ## 宿主边界约束
 

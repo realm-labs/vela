@@ -14,11 +14,11 @@ decision history lives in
   `HostAccess`.
 - Reflection can query metadata and perform controlled reads, writes, and
   calls, but cannot mutate runtime type structure or implement monkey patching.
-- The MVP does not include JIT, complex async/coroutine hot reload, moving GC,
-  or a custom full IDE product. The executor-neutral async track is governed by
-  its explicit batch plan. A full native LSP capability track is allowed before
-  the MVP when it stays analysis-only and does not change language or runtime
-  semantics.
+- The MVP does not include JIT, hot migration of suspended async frames, moving
+  GC, or a custom full IDE product. Executor-neutral `async fn` and `.await`
+  preserve sequential semantics and expose no task/coroutine handles or manual
+  resume. A full native LSP capability track is allowed before the MVP when it
+  stays analysis-only and does not change language or runtime semantics.
 - Pre-release code should replace obsolete internal APIs instead of preserving
   compatibility shims. Product-level hot reload ABI and schema compatibility
   checks remain required.
