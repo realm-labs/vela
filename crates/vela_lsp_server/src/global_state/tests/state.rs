@@ -168,6 +168,101 @@ fn manifest_change_refreshes_one_project_generation() {
 }
 
 #[test]
+fn dependency_manifest_change_reloads_from_root_and_keeps_last_valid_graph() {
+    let root = std::env::temp_dir().join(format!(
+        "vela_lsp_dependency_manifest_{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(root.join("src")).expect("app source directory");
+    std::fs::create_dir_all(root.join("plugin/src")).expect("plugin source directory");
+    let root_manifest = root.join("vela.toml");
+    let plugin_manifest = root.join("plugin/vela.toml");
+    std::fs::write(
+        &root_manifest,
+        "[package]\nid=\"dev.vela.app\"\nname=\"app\"\nversion=\"0.1.0\"\n[dependencies]\nplugin={path=\"plugin\"}\n",
+    )
+    .expect("root manifest");
+    std::fs::write(
+        &plugin_manifest,
+        "[package]\nid=\"dev.vela.plugin\"\nname=\"plugin\"\nversion=\"0.1.0\"\n",
+    )
+    .expect("plugin manifest");
+    std::fs::write(root.join("src/main.vela"), "pub fn main() {}\n").expect("app source");
+    std::fs::write(root.join("plugin/src/lib.vela"), "pub fn value() {}\n").expect("plugin source");
+
+    let root_uri = crate::paths::document_path_uri(&root_manifest.display().to_string());
+    let plugin_uri = crate::paths::document_path_uri(&plugin_manifest.display().to_string());
+    let (sender, _receiver) = unbounded();
+    let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+    state
+        .project
+        .workspace_roots
+        .insert(root.display().to_string());
+    let change = state
+        .project
+        .upsert_watched_file(&root_uri)
+        .expect("initial root manifest load");
+    state.project.apply_config_change(change);
+    assert!(state.project.take_watched_project_changed());
+    let app = vela_package::PackageId::new("dev.vela.app").expect("app package ID");
+    let plugin = vela_package::PackageId::new("dev.vela.plugin").expect("plugin package ID");
+    assert!(
+        state
+            .project
+            .package_graph()
+            .is_some_and(|graph| graph.packages().contains_key(&app))
+    );
+
+    std::fs::write(
+        &plugin_manifest,
+        "[package]\nid=\"dev.vela.plugin\"\nname=\"plugin\"\nversion=\"0.2.0\"\n",
+    )
+    .expect("updated plugin manifest");
+    let change = state
+        .project
+        .upsert_watched_file(&plugin_uri)
+        .expect("dependency change reloads root graph");
+    state.project.apply_config_change(change);
+    assert!(state.project.take_watched_project_changed());
+    let graph = state.project.package_graph().expect("package graph");
+    assert!(graph.packages().contains_key(&app));
+    assert_eq!(
+        graph
+            .packages()
+            .get(&plugin)
+            .map(|package| package.version.as_str()),
+        Some("0.2.0")
+    );
+
+    state.project.refresh_databases();
+    let valid_generation = state.project.databases.generation();
+    std::fs::write(&plugin_manifest, "[package\n").expect("invalid plugin manifest");
+    state.did_change_watched_files(lsp_types::DidChangeWatchedFilesParams {
+        changes: vec![lsp_types::FileEvent {
+            uri: lsp_types::Url::parse(&plugin_uri).expect("plugin URI"),
+            typ: lsp_types::FileChangeType::CHANGED,
+        }],
+    });
+    assert_eq!(state.project.databases.generation(), valid_generation);
+    assert!(!state.project.take_watched_project_changed());
+    let graph = state
+        .project
+        .package_graph()
+        .expect("last valid graph is retained");
+    assert!(graph.packages().contains_key(&app));
+    assert_eq!(
+        graph
+            .packages()
+            .get(&plugin)
+            .map(|package| package.version.as_str()),
+        Some("0.2.0")
+    );
+    assert!(!state.project.config_diagnostics.is_empty());
+
+    std::fs::remove_dir_all(root).expect("remove fixture");
+}
+
+#[test]
 fn client_capabilities_are_owned_by_global_state() {
     let (sender, _receiver) = unbounded();
     let mut state = GlobalState::new(sender, LaunchConfiguration::new());

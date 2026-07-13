@@ -21,6 +21,8 @@ pub(super) struct ProjectState {
     pub(super) databases: LanguageServiceDatabases,
     pub(super) config: Option<WorkspaceConfig>,
     package_graph: Option<PackageGraph>,
+    root_manifest: Option<PathBuf>,
+    watched_project_changed: bool,
     has_config_file: bool,
     project_config_update_pending: bool,
     pub(super) config_diagnostics: Vec<vela_language_service::ProjectDiagnostic>,
@@ -42,6 +44,11 @@ impl ProjectState {
 
     pub(super) fn workspace_snapshot(&self) -> WorkspaceSnapshot {
         self.workspace.snapshot()
+    }
+
+    #[cfg(test)]
+    pub(super) fn package_graph(&self) -> Option<&PackageGraph> {
+        self.package_graph.as_ref()
     }
 
     pub(super) fn apply_config_change(&mut self, mut change: ConfigChange) {
@@ -86,31 +93,10 @@ impl ProjectState {
 
     pub(super) fn upsert_watched_file(&mut self, uri: &str) -> Option<ConfigChange> {
         if is_config_uri(uri) {
-            let text = read_document_uri(uri)?;
-            let document_id = DocumentId::from(uri.to_owned());
-            let mut result = WorkspaceConfig::from_vela_toml(uri, &text);
-            match load_package_project(document_uri_path(uri), &self.authorized_package_roots(uri))
-            {
-                Ok(graph) => {
-                    result.config =
-                        WorkspaceConfig::from_package_graph(&graph, result.config.schema().clone());
-                    self.package_graph = Some(graph);
-                }
-                Err(error) => {
-                    self.package_graph = None;
-                    result.diagnostics.push(ProjectDiagnostic::new(
-                        Some(document_id.clone()),
-                        error.to_string(),
-                    ));
-                }
-            }
-            if !result.diagnostics.is_empty() || self.config_documents.contains(&document_id) {
-                self.config_documents.insert(document_id);
-            }
-            self.config_diagnostics = result.diagnostics;
-            Some(ConfigChange::from_workspace_file(result.config))
+            self.reload_package_project(uri)
         } else if self.is_schema_uri(uri) {
             self.upsert_schema_artifact(uri);
+            self.watched_project_changed = true;
             None
         } else if is_source_uri(uri) {
             let text = read_document_uri(uri)?;
@@ -119,24 +105,96 @@ impl ProjectState {
                 document_id.clone(),
                 SourceFileSnapshot::new(document_id, text),
             );
+            self.watched_project_changed = true;
             None
         } else {
             None
         }
     }
 
+    fn reload_package_project(&mut self, changed_uri: &str) -> Option<ConfigChange> {
+        let changed_path = document_uri_path(changed_uri);
+        let root_manifest = self.root_manifest_for_change(&changed_path);
+        let root_uri = document_path_uri(&root_manifest.display().to_string());
+        let text = read_document_uri(&root_uri);
+        let mut result = text.as_deref().map_or_else(
+            || vela_language_service::ConfigParseResult {
+                config: self
+                    .config
+                    .clone()
+                    .unwrap_or_else(|| WorkspaceConfig::workspace([])),
+                diagnostics: vec![ProjectDiagnostic::new(
+                    Some(DocumentId::from(changed_uri.to_owned())),
+                    format!("manifest `{}` cannot be read", root_manifest.display()),
+                )],
+            },
+            |text| WorkspaceConfig::from_vela_toml(&root_uri, text),
+        );
+        let authorized_roots = self.authorized_package_roots(&root_uri);
+        let had_valid_graph = self.package_graph.is_some();
+        let loaded = match load_package_project(&root_manifest, &authorized_roots) {
+            Ok(graph) => {
+                result.config =
+                    WorkspaceConfig::from_package_graph(&graph, result.config.schema().clone());
+                self.package_graph = Some(graph);
+                self.root_manifest = Some(root_manifest.clone());
+                self.watched_project_changed = true;
+                true
+            }
+            Err(error) => {
+                if result.diagnostics.is_empty() {
+                    result.diagnostics.push(ProjectDiagnostic::new(
+                        Some(DocumentId::from(changed_uri.to_owned())),
+                        error.to_string(),
+                    ));
+                }
+                false
+            }
+        };
+        for document in result
+            .diagnostics
+            .iter()
+            .filter_map(ProjectDiagnostic::document_id)
+        {
+            self.config_documents.insert(document.clone());
+        }
+        self.config_diagnostics = result.diagnostics;
+        if !loaded && had_valid_graph {
+            return None;
+        }
+        if !loaded {
+            self.root_manifest = Some(root_manifest);
+            self.watched_project_changed = true;
+        }
+        Some(ConfigChange::from_workspace_file(result.config))
+    }
+
     pub(super) fn remove_watched_file(&mut self, uri: &str) -> Option<ConfigChange> {
         if is_config_uri(uri) {
+            let path = document_uri_path(uri);
+            if self
+                .root_manifest
+                .as_ref()
+                .is_some_and(|root| !same_path(root, &path))
+            {
+                return self.reload_package_project(uri);
+            }
             self.package_graph = None;
+            self.root_manifest = None;
+            self.watched_project_changed = true;
             self.config_diagnostics.clear();
             self.config_documents
                 .insert(DocumentId::from(uri.to_owned()));
             Some(ConfigChange::clear_workspace_file())
         } else if self.is_schema_uri(uri) {
             self.mark_schema_artifact_missing();
+            self.watched_project_changed = true;
             None
         } else if is_source_uri(uri) {
-            self.disk_sources.remove(&DocumentId::from(uri.to_owned()));
+            self.watched_project_changed |= self
+                .disk_sources
+                .remove(&DocumentId::from(uri.to_owned()))
+                .is_some();
             None
         } else {
             None
@@ -247,6 +305,30 @@ impl ProjectState {
             roots
         }
     }
+
+    fn root_manifest_for_change(&self, changed: &std::path::Path) -> PathBuf {
+        if let Some(root) = &self.root_manifest {
+            return root.clone();
+        }
+        self.workspace_roots
+            .iter()
+            .map(|root| document_uri_path(root))
+            .filter(|root| changed.starts_with(root))
+            .map(|root| root.join(CONFIG_FILE))
+            .filter(|manifest| manifest.is_file())
+            .max_by_key(|manifest| manifest.components().count())
+            .unwrap_or_else(|| changed.to_owned())
+    }
+
+    pub(super) fn take_watched_project_changed(&mut self) -> bool {
+        std::mem::take(&mut self.watched_project_changed)
+    }
+
+    pub(super) fn refresh_databases_after_watched_changes(&mut self) {
+        if self.take_watched_project_changed() {
+            self.refresh_databases();
+        }
+    }
 }
 
 fn project_diagnostics(project: &ProjectSources) -> Vec<ProjectDiagnostic> {
@@ -265,4 +347,17 @@ fn is_source_uri(uri: &str) -> bool {
 
 fn read_document_uri(uri: &str) -> Option<String> {
     std::fs::read_to_string(document_uri_path(uri)).ok()
+}
+
+fn same_path(left: &std::path::Path, right: &std::path::Path) -> bool {
+    fn comparable(path: &std::path::Path) -> String {
+        let path = normalized_path(path);
+        let path = path.strip_prefix("//?/").unwrap_or(&path);
+        if cfg!(windows) {
+            path.to_ascii_lowercase()
+        } else {
+            path.to_owned()
+        }
+    }
+    comparable(left) == comparable(right)
 }

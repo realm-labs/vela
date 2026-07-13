@@ -1074,7 +1074,7 @@ impl GlobalState {
         for work in self.reload_scheduler.drain() {
             self.apply_reload_work(work);
         }
-        self.project.refresh_databases();
+        self.project.refresh_databases_after_watched_changes();
         self.publish_workspace_diagnostics()
     }
 

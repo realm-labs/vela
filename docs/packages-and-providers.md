@@ -27,8 +27,10 @@ requires = ["host_read", "host_write"]
 Dependency keys are direct import aliases. Paths and source roots must remain
 inside host-authorized roots. A root manifest may also declare explicit
 `[workspace].members`. `[host].schema` is root configuration and is rejected in
-dependency manifests. Duplicate IDs, cycles, unknown keys/capabilities, and
-unauthorized paths are spanned manifest errors.
+dependency manifests. Manifest tables and package fields are strictly typed and
+required where documented. Duplicate IDs, cycles, unknown keys/capabilities,
+unauthorized paths, and overlapping source roots are rejected before source
+assembly; each source file has one package/module owner.
 
 ## Imports And Identity
 

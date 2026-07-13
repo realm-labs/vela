@@ -103,6 +103,11 @@ pub enum PackageGraphError {
     UnauthorizedPath {
         path: PathBuf,
     },
+    OverlappingSourceRoots {
+        package: PackageId,
+        first: PathBuf,
+        second: PathBuf,
+    },
     DuplicatePackageId {
         id: PackageId,
         first: PathBuf,
@@ -134,6 +139,16 @@ impl fmt::Display for PackageGraphError {
                 formatter,
                 "path `{}` escapes the authorized roots",
                 path.display()
+            ),
+            Self::OverlappingSourceRoots {
+                package,
+                first,
+                second,
+            } => write!(
+                formatter,
+                "package `{package}` has overlapping source roots `{}` and `{}`",
+                first.display(),
+                second.display()
             ),
             Self::DuplicatePackageId { id, first, second } => write!(
                 formatter,
@@ -279,15 +294,29 @@ impl GraphBuilder {
         }
         self.manifests_by_package
             .insert(metadata.id.clone(), path.clone());
-        let source_roots = loaded
+        let mut source_roots = loaded
             .manifest
             .source
             .roots
             .iter()
             .map(|root| canonicalize_existing_or_parent(&loaded.root.join(root)))
             .collect::<Result<Vec<_>, _>>()?;
+        source_roots.sort();
+        source_roots.dedup();
         for root in &source_roots {
             authorize(root, &self.authorized_roots)?;
+        }
+        for (index, first) in source_roots.iter().enumerate() {
+            if let Some(second) = source_roots[index + 1..]
+                .iter()
+                .find(|second| second.starts_with(first))
+            {
+                return Err(PackageGraphError::OverlappingSourceRoots {
+                    package: metadata.id.clone(),
+                    first: first.clone(),
+                    second: second.clone(),
+                });
+            }
         }
         let descriptor = PackageDescriptor {
             id: metadata.id.clone(),
@@ -520,6 +549,24 @@ mod tests {
             .expect_err("escape rejected");
         assert!(matches!(error, PackageGraphError::UnauthorizedPath { .. }));
         fs::remove_dir_all(parent).expect("remove fixture");
+    }
+
+    #[test]
+    fn nested_source_roots_are_rejected_before_sources_are_duplicated() {
+        let root = fixture("nested_roots");
+        write(
+            &root.join("vela.toml"),
+            "[package]\nid=\"com.example.app\"\nname=\"app\"\nversion=\"0.1.0\"\n[source]\nroots=[\"src\",\"src/generated\"]\n",
+        );
+        write(&root.join("src/generated/main.vela"), "fn main() {}\n");
+
+        let error = load_package_graph(root.join("vela.toml"), std::slice::from_ref(&root))
+            .expect_err("nested roots rejected");
+        assert!(matches!(
+            error,
+            PackageGraphError::OverlappingSourceRoots { .. }
+        ));
+        fs::remove_dir_all(root).expect("remove fixture");
     }
 
     #[test]

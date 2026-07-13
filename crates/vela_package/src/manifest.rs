@@ -112,7 +112,15 @@ pub fn parse_manifest(file: ManifestFileId, text: &str) -> ManifestParse {
         &mut diagnostics,
     );
 
-    let workspace = table(&document, "workspace").map(|value| {
+    let workspace_table = manifest_table(&document, file, "workspace", &mut diagnostics);
+    let package_span = document.get("package").and_then(Item::span).unwrap_or(0..0);
+    let package_table = manifest_table(&document, file, "package", &mut diagnostics);
+    let source_table = manifest_table(&document, file, "source", &mut diagnostics);
+    let dependencies_table = manifest_table(&document, file, "dependencies", &mut diagnostics);
+    let capabilities_table = manifest_table(&document, file, "capabilities", &mut diagnostics);
+    let host_table = manifest_table(&document, file, "host", &mut diagnostics);
+
+    let workspace = workspace_table.map(|value| {
         reject_unknown_keys(file, value, &["members"], &mut diagnostics);
         WorkspaceManifest {
             members: string_array(
@@ -124,42 +132,44 @@ pub fn parse_manifest(file: ManifestFileId, text: &str) -> ManifestParse {
             .unwrap_or_default(),
         }
     });
-    let package = table(&document, "package").and_then(|value| {
+    let package = package_table.and_then(|value| {
         reject_unknown_keys(file, value, &["id", "name", "version"], &mut diagnostics);
-        let id = validated_string(
+        let id = validated_required_string(
             file,
             value.get("id"),
             "package.id",
+            package_span.clone(),
             |text| PackageId::new(text),
             &mut diagnostics,
         )?;
-        let name = validated_string(
+        let name = validated_required_string(
             file,
             value.get("name"),
             "package.name",
+            package_span.clone(),
             |text| PackageName::new(text),
             &mut diagnostics,
         )?;
-        let version = validated_string(
+        let version = validated_required_string(
             file,
             value.get("version"),
             "package.version",
+            package_span.clone(),
             |text| PackageVersion::new(text),
             &mut diagnostics,
         )?;
         Some(PackageMetadata { id, name, version })
     });
-    let source = table(&document, "source").map_or_else(SourceManifest::default, |value| {
+    let source = source_table.map_or_else(SourceManifest::default, |value| {
         reject_unknown_keys(file, value, &["roots"], &mut diagnostics);
         SourceManifest {
             roots: string_array(file, value.get("roots"), "source.roots", &mut diagnostics)
                 .unwrap_or_default(),
         }
     });
-    let dependencies = parse_dependencies(file, table(&document, "dependencies"), &mut diagnostics);
-    let required_capabilities =
-        parse_capabilities(file, table(&document, "capabilities"), &mut diagnostics);
-    let host = table(&document, "host").map(|value| {
+    let dependencies = parse_dependencies(file, dependencies_table, &mut diagnostics);
+    let required_capabilities = parse_capabilities(file, capabilities_table, &mut diagnostics);
+    let host = host_table.map(|value| {
         reject_unknown_keys(file, value, &["schema"], &mut diagnostics);
         HostManifest {
             schema: optional_string(file, value.get("schema"), "host.schema", &mut diagnostics),
@@ -179,8 +189,24 @@ pub fn parse_manifest(file: ManifestFileId, text: &str) -> ManifestParse {
     }
 }
 
-fn table<'a>(document: &'a Document<String>, key: &str) -> Option<&'a dyn TableLike> {
-    document.get(key).and_then(Item::as_table_like)
+fn manifest_table<'a>(
+    document: &'a Document<String>,
+    file: ManifestFileId,
+    key: &str,
+    diagnostics: &mut Vec<ManifestDiagnostic>,
+) -> Option<&'a dyn TableLike> {
+    let item = document.get(key)?;
+    match item.as_table_like() {
+        Some(table) => Some(table),
+        None => {
+            diagnostics.push(diagnostic(
+                file,
+                item.span().unwrap_or(0..0),
+                format!("{key} must be a table"),
+            ));
+            None
+        }
+    }
 }
 
 fn reject_unknown_keys(
@@ -291,20 +317,29 @@ fn parse_capabilities(
     result
 }
 
-fn validated_string<T, E: std::fmt::Display>(
+fn validated_required_string<T, E: std::fmt::Display>(
     file: ManifestFileId,
     item: Option<&Item>,
     name: &str,
+    missing_span: Range<usize>,
     validate: impl FnOnce(&str) -> Result<T, E>,
     diagnostics: &mut Vec<ManifestDiagnostic>,
 ) -> Option<T> {
-    let value = optional_string(file, item, name, diagnostics)?;
+    let Some(item) = item else {
+        diagnostics.push(diagnostic(
+            file,
+            missing_span,
+            format!("{name} is required"),
+        ));
+        return None;
+    };
+    let value = optional_string(file, Some(item), name, diagnostics)?;
     match validate(&value) {
         Ok(value) => Some(value),
         Err(error) => {
             diagnostics.push(diagnostic(
                 file,
-                item.and_then(Item::span).unwrap_or(0..0),
+                item.span().unwrap_or(0..0),
                 error.to_string(),
             ));
             None
@@ -434,6 +469,39 @@ schema = "target/schema.json"
         assert!(parsed.manifest.is_none());
         assert_eq!(parsed.diagnostics[0].span.file, ManifestFileId::new(7));
         assert!(parsed.diagnostics[0].span.end > parsed.diagnostics[0].span.start);
+    }
+
+    #[test]
+    fn manifest_rejects_wrong_table_types_and_missing_package_fields() {
+        let wrong_table = parse_manifest(
+            ManifestFileId::new(9),
+            "package = \"not-a-table\"\ndependencies = [\"util\"]\n",
+        );
+        assert!(wrong_table.manifest.is_none());
+        assert!(
+            wrong_table
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.message == "package must be a table")
+        );
+        assert!(
+            wrong_table
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.message == "dependencies must be a table")
+        );
+
+        let missing_field = parse_manifest(
+            ManifestFileId::new(10),
+            "[package]\nid = \"com.example.app\"\nname = \"app\"\n",
+        );
+        assert!(missing_field.manifest.is_none());
+        let diagnostic = missing_field
+            .diagnostics
+            .iter()
+            .find(|diagnostic| diagnostic.message == "package.version is required")
+            .expect("missing package version diagnostic");
+        assert_eq!(diagnostic.span.file, ManifestFileId::new(10));
     }
 
     #[test]

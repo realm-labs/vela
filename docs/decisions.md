@@ -1817,6 +1817,10 @@ the retained package graph and HIR provider metadata; they never rediscover
 packages through an editor-specific parser or execute script, native,
 reflection, or HostAccess code. Provider rename results carry hot-reload risk
 metadata because the provider ID participates in stable `ProviderKey` identity.
+The root manifest is durable project state: a member or dependency manifest
+change triggers reconstruction from that root rather than promoting the changed
+manifest to a new project. A failed reconstruction publishes diagnostics while
+retaining the last valid graph and does not commit a database generation.
 
 ## Validation Rules
 
