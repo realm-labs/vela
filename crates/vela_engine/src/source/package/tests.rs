@@ -544,6 +544,194 @@ impl CommandProvider for Command { pub fn run(self) -> i64 { return 1; } }
 }
 
 #[test]
+fn compile_provider_selection_includes_transitive_dependencies() {
+    let root = package_fixture("provider_compile_closure");
+    write_package(
+        &root,
+        "dev.vela.plugin",
+        "plugin",
+        "[dependencies]\napi = { path = \"api\" }\n",
+        r#"use api::api::CommandProvider
+pub struct First {}
+#[provider(id = "first")]
+impl CommandProvider for First { pub fn run(self, value: i64) -> i64 { return value + 1; } }
+pub struct Second {}
+#[provider(id = "second")]
+impl CommandProvider for Second { pub fn run(self, value: i64) -> i64 { return value + 2; } }
+"#,
+    );
+    write_package(
+        &root.join("api"),
+        "dev.vela.api",
+        "api",
+        "[dependencies]\nbase = { path = \"../base\" }\n",
+        "pub trait CommandProvider { fn run(self, value: i64) -> i64; }\n",
+    );
+    write_package(
+        &root.join("base"),
+        "dev.vela.base",
+        "base",
+        "",
+        "pub fn marker() { return 1; }\n",
+    );
+    let engine = Engine::builder().build().expect("engine");
+    let snapshot = engine
+        .load_package_workspace(root.join("vela.toml"))
+        .expect("snapshot");
+    let catalog = engine.discover_providers(&snapshot).expect("catalog");
+    let selected_key = catalog.providers()[0].key().clone();
+    let selection = catalog.select([selected_key.clone()]).expect("selection");
+    let request = ProviderCompileRequest::for_selection(&snapshot, selection);
+    let artifact = engine
+        .compile_provider_selection(&snapshot, &request)
+        .expect("selected provider compiles");
+    let metadata = artifact.package_metadata().expect("package metadata");
+
+    assert_eq!(metadata.packages().len(), 3);
+    assert_eq!(metadata.request().roots(), &[package("dev.vela.plugin")]);
+    assert_eq!(
+        metadata.request().providers().providers(),
+        std::slice::from_ref(&selected_key)
+    );
+    assert_eq!(metadata.installed_providers().len(), 1);
+    assert!(metadata.installed_providers().get(&selected_key).is_some());
+    remove_fixture(root);
+}
+
+#[test]
+fn linked_artifact_owns_same_generation_provider_metadata() {
+    let root = package_fixture("provider_linked_metadata");
+    write_package(
+        &root,
+        "dev.vela.plugin",
+        "plugin",
+        "",
+        r#"pub trait CommandProvider { fn run(self, value: i64) -> i64; }
+pub struct Command {}
+#[provider(id = "command")]
+impl CommandProvider for Command {
+    pub fn run(self, value: i64) -> i64 { return value + 1; }
+}
+"#,
+    );
+    let engine = Engine::builder().build().expect("engine");
+    let snapshot = engine
+        .load_package_workspace(root.join("vela.toml"))
+        .expect("snapshot");
+    let catalog = engine.discover_providers(&snapshot).expect("catalog");
+    let descriptor = &catalog.providers()[0];
+    let key = descriptor.key().clone();
+    let method = descriptor.methods()[0].id();
+    let selection = catalog.select([key.clone()]).expect("selection");
+    let request = ProviderCompileRequest::for_selection(&snapshot, selection);
+    let artifact = engine
+        .compile_provider_selection(&snapshot, &request)
+        .expect("selected provider compiles");
+    let installed = artifact
+        .package_metadata()
+        .expect("package metadata")
+        .installed_providers();
+    let provider = installed.get(&key).expect("selected provider installed");
+    let dispatch = provider.method(method).expect("service method linked");
+
+    assert_eq!(provider.key(), &key);
+    assert_eq!(
+        artifact
+            .program()
+            .ty(provider.provider_type())
+            .map(|ty| ty.id),
+        Some(descriptor.provider_type())
+    );
+    assert!(artifact.program().method_dispatch(dispatch).is_some());
+    remove_fixture(root);
+}
+
+#[test]
+fn runtime_calls_provider_trait_impl_method() {
+    let root = package_fixture("provider_runtime_call");
+    write_package(
+        &root,
+        "dev.vela.plugin",
+        "plugin",
+        "",
+        r#"pub trait CommandProvider { fn run(self, value: i64) -> i64; }
+pub struct Command {}
+#[provider(id = "command")]
+impl CommandProvider for Command {
+    pub fn run(self, value: i64) -> i64 { return value + 1; }
+}
+"#,
+    );
+    let engine = Engine::builder().build().expect("engine");
+    let snapshot = engine
+        .load_package_workspace(root.join("vela.toml"))
+        .expect("snapshot");
+    let catalog = engine.discover_providers(&snapshot).expect("catalog");
+    let descriptor = &catalog.providers()[0];
+    let key = descriptor.key().clone();
+    let method = descriptor.methods()[0].id();
+    let selection = catalog.select([key.clone()]).expect("selection");
+    let request = ProviderCompileRequest::for_selection(&snapshot, selection);
+    let artifact = engine
+        .compile_provider_selection(&snapshot, &request)
+        .expect("selected provider compiles");
+    let mut runtime = Runtime::from_linked_artifact(engine, artifact);
+
+    let output = runtime
+        .call_provider(
+            &key,
+            method,
+            CallArgs::new().with_value("value", 41_i64),
+            CallOptions::unbounded(),
+        )
+        .expect("provider method runs");
+    assert_eq!(
+        runtime.value_to_owned(&output),
+        Ok(OwnedValue::Scalar(ScalarValue::I64(42)))
+    );
+    remove_fixture(root);
+}
+
+#[test]
+fn provider_handle_rejects_another_runtime() {
+    let root = package_fixture("provider_runtime_handle");
+    write_package(
+        &root,
+        "dev.vela.plugin",
+        "plugin",
+        "",
+        r#"pub trait CommandProvider { fn run(self) -> i64; }
+pub struct Command {}
+#[provider(id = "command")]
+impl CommandProvider for Command { pub fn run(self) -> i64 { return 1; } }
+"#,
+    );
+    let engine = Engine::builder().build().expect("engine");
+    let snapshot = engine
+        .load_package_workspace(root.join("vela.toml"))
+        .expect("snapshot");
+    let catalog = engine.discover_providers(&snapshot).expect("catalog");
+    let descriptor = &catalog.providers()[0];
+    let key = descriptor.key().clone();
+    let method = descriptor.methods()[0].id();
+    let selection = catalog.select([key.clone()]).expect("selection");
+    let request = ProviderCompileRequest::for_selection(&snapshot, selection);
+    let artifact = engine
+        .compile_provider_selection(&snapshot, &request)
+        .expect("selected provider compiles");
+    let first = Runtime::from_linked_artifact(engine.clone(), artifact.clone());
+    let mut second = Runtime::from_linked_artifact(engine, artifact);
+    let handle = first.provider_handle(&key).expect("provider handle");
+
+    assert!(
+        second
+            .call_provider_handle(&handle, method, CallArgs::new(), CallOptions::unbounded(),)
+            .is_err()
+    );
+    remove_fixture(root);
+}
+
+#[test]
 fn statically_observed_effect_must_be_declared_by_package() {
     let root = package_fixture("provider_catalog_capability");
     write_package(

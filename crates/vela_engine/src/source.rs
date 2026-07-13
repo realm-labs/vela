@@ -19,7 +19,8 @@ mod package;
 pub use package::{
     EnginePackageError, EnginePackageErrorKind, PackageCompilationSnapshot,
     PackageCompilationSnapshotId, PackageCompileRequest, ProviderCatalog, ProviderCatalogError,
-    ProviderDescriptor, ProviderMethodDescriptor, ProviderSelection, ProviderSourceLocation,
+    ProviderCompileRequest, ProviderDescriptor, ProviderMethodDescriptor, ProviderSelection,
+    ProviderSourceLocation,
 };
 
 pub(crate) use loader::{

@@ -61,16 +61,31 @@ impl<'registry> Linker<'registry> {
         &self,
         program: &UnlinkedProgram,
     ) -> Result<Arc<crate::LinkedArtifact>, LinkError> {
-        Ok(Arc::new(self.link_unowned(program)?.into_test_artifact()))
+        Ok(Arc::new(
+            self.link_unowned(program, None)?.0.into_test_artifact(),
+        ))
     }
 
     fn link_unowned(
         &self,
         program: &UnlinkedProgram,
-    ) -> Result<crate::artifact::UnboundLinkedProgram, LinkError> {
+        package_metadata: Option<crate::PackageCompilationMetadata>,
+    ) -> Result<
+        (
+            crate::artifact::UnboundLinkedProgram,
+            Option<crate::PackageArtifactMetadata>,
+        ),
+        LinkError,
+    > {
         let image = crate::ProgramImage::from_program(program);
-        let linked = LinkContext::new(self, &image).link_program(&image)?;
-        crate::LinkedArtifact::finish_unbound(image, linked).map_err(LinkError::Verification)
+        let mut linked = LinkContext::new(self, &image).link_program(&image)?;
+        let package_metadata = package_metadata
+            .map(|metadata| metadata.link(&mut linked))
+            .transpose()
+            .map_err(LinkError::PackageMetadata)?;
+        let artifact = crate::LinkedArtifact::finish_unbound(image, linked)
+            .map_err(LinkError::Verification)?;
+        Ok((artifact, package_metadata))
     }
 
     /// Links one cohesive bytecode and verified-MIR compile generation.
@@ -87,12 +102,14 @@ impl<'registry> Linker<'registry> {
         program: crate::compiler::CompiledProgram,
     ) -> Result<Arc<crate::LinkedArtifact>, LinkError> {
         let parts = program.into_linker_parts();
-        self.link_unowned(&parts.bytecode)?
+        let (linked, package_metadata) =
+            self.link_unowned(&parts.bytecode, parts.package_metadata)?;
+        linked
             .bind_compiled_mir(
                 parts.verified_mir,
                 &parts.mir_executables,
                 &parts.budget_layouts,
-                parts.package_metadata,
+                package_metadata,
             )
             .map(Arc::new)
     }
@@ -101,6 +118,7 @@ impl<'registry> Linker<'registry> {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum LinkError {
     Verification(crate::verification::VerificationError),
+    PackageMetadata(String),
     UnresolvedNative {
         name: String,
         id: FunctionId,
@@ -212,6 +230,7 @@ impl fmt::Display for LinkError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Verification(error) => write!(formatter, "{error}"),
+            Self::PackageMetadata(message) => formatter.write_str(message),
             Self::UnresolvedNative { name, id } => {
                 write!(formatter, "unresolved native function {name} ({id:?})")
             }

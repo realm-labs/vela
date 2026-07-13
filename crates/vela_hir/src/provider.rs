@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
-use vela_common::{Diagnostic, Span};
+use vela_common::{Diagnostic, ShapeId, Span, script_shape_id};
 use vela_def::{
     MethodId, TraitId, TypeId, script_trait_id, script_trait_method_id, script_type_id,
 };
@@ -28,6 +28,8 @@ pub struct ProviderKey {
 pub struct HirProviderDescriptor {
     pub key: ProviderKey,
     pub provider_type: TypeId,
+    pub provider_type_name: String,
+    pub provider_shape: ShapeId,
     pub methods: Vec<HirProviderMethodDescriptor>,
     pub source: Span,
     pub impl_declaration: HirDeclId,
@@ -291,6 +293,8 @@ fn discover_provider(
             &target_symbol,
             schema_id_attr(graph.declaration_attrs(target.id)).map(u128::from),
         ),
+        provider_type_name: target_symbol.clone(),
+        provider_shape: script_shape_id(&target_symbol, std::iter::empty::<&str>()),
         methods,
         source: provider_attr.span,
         impl_declaration: declaration.id,

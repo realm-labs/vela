@@ -39,6 +39,7 @@ mod global_store;
 mod handles;
 mod image;
 mod inline_cache;
+mod provider;
 mod script_globals;
 mod state;
 
@@ -46,6 +47,7 @@ pub use call_args::CallArgs;
 pub use global_store::RuntimeGlobalStore;
 pub use handles::{RuntimeCallTarget, RuntimeMethodTarget, VelaFunction, VelaMethod};
 pub use image::{OwnedImage, RuntimeImage, RuntimeImageStorage, SharedImage};
+pub use provider::ProviderHandle;
 pub use script_globals::{IntoGlobalValue, RuntimeScriptGlobalStore, VelaValue};
 
 use call_args::{CallArgsAdapter, EmptyStateAdapter, call_args_type_error};

@@ -82,6 +82,7 @@ use error::{VmError, VmErrorKind, VmResult};
 pub(crate) use frame::CallFrame;
 use heap::{HeapValue, ScriptHeap};
 use heap_execution::HeapExecution;
+pub use heap_values::allocate_zero_field_record;
 use heap_values::{
     allocate_heap_value, enum_variant_owner, owned_to_value, store_runtime_value,
     store_value_in_heap_if_needed, stored_runtime_value, value_from_constant, value_to_owned,

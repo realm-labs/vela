@@ -6,7 +6,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use vela_bytecode::compiler::error::CompileError;
 use vela_bytecode::compiler::{PackageProgramCompilationRequest, compile_package_program};
-use vela_bytecode::{LinkError, LinkedArtifact, PackageArtifactMetadata, PackageCompilationInput};
+use vela_bytecode::{
+    LinkError, LinkedArtifact, PackageArtifactMetadata, PackageCompilationInput,
+    ProviderCompilationInput, ProviderMethodCompilationInput,
+};
 use vela_common::{CapabilitySet, SourceId};
 use vela_hir::module_graph::ModuleSource;
 use vela_hir::source_ingestion::{HirSourceBuildError, HirSourceSet, build_package_source_set};
@@ -43,6 +46,12 @@ pub struct PackageCompileRequest {
     roots: BTreeSet<PackageId>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProviderCompileRequest {
+    packages: PackageCompileRequest,
+    providers: ProviderSelection,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct EnginePackageError {
     pub kind: EnginePackageErrorKind,
@@ -76,6 +85,7 @@ pub enum EnginePackageErrorKind {
     },
     RequestFingerprintMismatch,
     ProviderDiscovery(vela_hir::provider::ProviderDiscoveryError),
+    ProviderCatalog(ProviderCatalogError),
     ProviderAnalysis(String),
 }
 
@@ -134,6 +144,33 @@ impl PackageCompileRequest {
     }
 }
 
+impl ProviderCompileRequest {
+    #[must_use]
+    pub fn for_selection(
+        snapshot: &PackageCompilationSnapshot,
+        providers: ProviderSelection,
+    ) -> Self {
+        let roots = providers
+            .providers()
+            .iter()
+            .map(|key| key.package().clone());
+        Self {
+            packages: PackageCompileRequest::for_roots(snapshot, roots),
+            providers,
+        }
+    }
+
+    #[must_use]
+    pub const fn packages(&self) -> &PackageCompileRequest {
+        &self.packages
+    }
+
+    #[must_use]
+    pub const fn providers(&self) -> &ProviderSelection {
+        &self.providers
+    }
+}
+
 impl fmt::Display for EnginePackageError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
@@ -170,6 +207,7 @@ impl fmt::Display for EnginePackageError {
             EnginePackageErrorKind::RequestFingerprintMismatch => formatter
                 .write_str("package hot reload request does not match the active root package set"),
             EnginePackageErrorKind::ProviderDiscovery(error) => error.fmt(formatter),
+            EnginePackageErrorKind::ProviderCatalog(error) => error.fmt(formatter),
             EnginePackageErrorKind::ProviderAnalysis(message) => formatter.write_str(message),
         }
     }
@@ -226,6 +264,34 @@ impl Engine {
         snapshot: &PackageCompilationSnapshot,
         request: &PackageCompileRequest,
     ) -> Result<Arc<LinkedArtifact>, EnginePackageError> {
+        self.compile_package_request(snapshot, request, &[])
+    }
+
+    pub fn compile_provider_selection(
+        &self,
+        snapshot: &PackageCompilationSnapshot,
+        request: &ProviderCompileRequest,
+    ) -> Result<Arc<LinkedArtifact>, EnginePackageError> {
+        if request.providers.snapshot() != snapshot.id {
+            return Err(package_error(EnginePackageErrorKind::SnapshotMismatch {
+                expected: snapshot.id,
+                actual: request.providers.snapshot(),
+            }));
+        }
+        let catalog = self.discover_providers(snapshot)?;
+        catalog
+            .validate_selection(&request.providers)
+            .map_err(|error| package_error(EnginePackageErrorKind::ProviderCatalog(error)))?;
+        let providers = provider_compilation_inputs(snapshot, &request.providers)?;
+        self.compile_package_request(snapshot, &request.packages, &providers)
+    }
+
+    fn compile_package_request(
+        &self,
+        snapshot: &PackageCompilationSnapshot,
+        request: &PackageCompileRequest,
+        providers: &[ProviderCompilationInput],
+    ) -> Result<Arc<LinkedArtifact>, EnginePackageError> {
         if request.snapshot != snapshot.id {
             return Err(package_error(EnginePackageErrorKind::SnapshotMismatch {
                 expected: snapshot.id,
@@ -260,6 +326,7 @@ impl Engine {
             registry: Some(self.compiler_registry()),
             roots: &request.roots,
             packages: &packages,
+            providers,
         })
         .map_err(|error| package_error(EnginePackageErrorKind::Backend(error)))?;
         validate_observed_capabilities(program.package_metadata())?;
@@ -366,6 +433,42 @@ fn package_inputs(
         .collect()
 }
 
+fn provider_compilation_inputs(
+    snapshot: &PackageCompilationSnapshot,
+    selection: &ProviderSelection,
+) -> Result<Vec<ProviderCompilationInput>, EnginePackageError> {
+    let discovered = vela_hir::provider::discover_providers(snapshot.sources.graph())
+        .map_err(|error| package_error(EnginePackageErrorKind::ProviderDiscovery(error)))?;
+    let mut inputs = Vec::with_capacity(selection.providers().len());
+    for provider in discovered {
+        if !selection.providers().contains(&provider.key) {
+            continue;
+        }
+        let package = snapshot
+            .package_graph
+            .packages()
+            .get(provider.key.package())
+            .expect("selected provider belongs to a loaded package");
+        inputs.push(ProviderCompilationInput {
+            key: provider.key,
+            provider_type: provider.provider_type,
+            provider_type_name: provider.provider_type_name,
+            provider_shape: provider.provider_shape,
+            methods: provider
+                .methods
+                .into_iter()
+                .map(|method| ProviderMethodCompilationInput {
+                    id: method.id,
+                    name: method.name,
+                })
+                .collect::<Vec<_>>()
+                .into_boxed_slice(),
+            package_declared_capabilities: package.required_capabilities,
+        });
+    }
+    Ok(inputs)
+}
+
 fn validate_host_grants(
     engine: &Engine,
     graph: &PackageGraph,
@@ -389,7 +492,7 @@ fn validate_host_grants(
 }
 
 fn validate_observed_capabilities(
-    metadata: Option<&PackageArtifactMetadata>,
+    metadata: Option<&vela_bytecode::PackageCompilationMetadata>,
 ) -> Result<(), EnginePackageError> {
     let metadata = metadata.expect("package compilation always produces package metadata");
     for package in metadata.packages() {

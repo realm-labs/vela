@@ -45,7 +45,7 @@ pub struct CompiledProgram {
     verified_mir: Arc<vela_mir::OwnedVerifiedMirBundle>,
     mir_executables: Box<[CompiledMirExecutable]>,
     budget_layouts: Box<[CompiledExecutableBudgetLayout]>,
-    package_metadata: Option<crate::PackageArtifactMetadata>,
+    package_metadata: Option<crate::PackageCompilationMetadata>,
 }
 
 pub(crate) struct CompiledProgramParts {
@@ -53,7 +53,7 @@ pub(crate) struct CompiledProgramParts {
     pub(crate) verified_mir: Arc<vela_mir::OwnedVerifiedMirBundle>,
     pub(crate) mir_executables: Box<[CompiledMirExecutable]>,
     pub(crate) budget_layouts: Box<[CompiledExecutableBudgetLayout]>,
-    pub(crate) package_metadata: Option<crate::PackageArtifactMetadata>,
+    pub(crate) package_metadata: Option<crate::PackageCompilationMetadata>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -96,7 +96,7 @@ impl CompiledProgram {
     }
 
     #[must_use]
-    pub const fn package_metadata(&self) -> Option<&crate::PackageArtifactMetadata> {
+    pub const fn package_metadata(&self) -> Option<&crate::PackageCompilationMetadata> {
         self.package_metadata.as_ref()
     }
 
@@ -138,6 +138,7 @@ pub struct PackageProgramCompilationRequest<'a> {
     pub registry: Option<RegistryCompileView<'a>>,
     pub roots: &'a BTreeSet<PackageId>,
     pub packages: &'a [crate::PackageCompilationInput],
+    pub providers: &'a [crate::ProviderCompilationInput],
 }
 
 pub struct FunctionCompilationRequest<'a> {
@@ -191,7 +192,7 @@ pub fn compile_package_program(
         request.sources,
         request.options,
         request.registry,
-        Some((request.roots, request.packages)),
+        Some((request.roots, request.packages, request.providers)),
     )
 }
 
@@ -199,7 +200,11 @@ fn compile_program_inner(
     sources: &HirSourceSet,
     options: &CompilerOptions,
     registry: Option<RegistryCompileView<'_>>,
-    package_request: Option<(&BTreeSet<PackageId>, &[crate::PackageCompilationInput])>,
+    package_request: Option<(
+        &BTreeSet<PackageId>,
+        &[crate::PackageCompilationInput],
+        &[crate::ProviderCompilationInput],
+    )>,
 ) -> CompileResult<CompiledProgram> {
     let graph = sources.graph();
     reject_invalid_graph(graph)?;
@@ -262,8 +267,8 @@ fn compile_program_inner(
     let bytecode = verify_program(program)?;
     let observed = observed_capabilities(&verified_mir, &executable_packages)?;
     let package_metadata = package_request
-        .map(|(roots, packages)| {
-            crate::PackageArtifactMetadata::ordinary(roots, packages, &observed)
+        .map(|(roots, packages, providers)| {
+            crate::PackageCompilationMetadata::new(roots, packages, providers, &observed)
         })
         .transpose()
         .map_err(|message| CompileError::new(CompileErrorKind::RegistrySnapshot(message)))?;

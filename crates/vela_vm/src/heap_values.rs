@@ -87,6 +87,24 @@ pub(crate) fn allocate_heap_value(
     Ok(Value::HeapRef(reference))
 }
 
+pub fn allocate_zero_field_record(
+    type_name: String,
+    type_id: vela_def::TypeId,
+    shape_id: vela_common::ShapeId,
+    heap: &mut HeapExecution<'_>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    allocate_heap_value(
+        HeapValue::Record {
+            fields: ScriptFields::from_pairs(&type_name, std::iter::empty()),
+            identity: Some(crate::heap::RecordIdentity::new(type_id, shape_id)),
+            type_name,
+        },
+        heap,
+        budget,
+    )
+}
+
 pub(crate) fn store_runtime_value(
     value: &Value,
     heap: &mut HeapExecution<'_>,

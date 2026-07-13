@@ -41,8 +41,10 @@ pub use linked::{
 };
 pub use linker::{LinkError, Linker};
 pub use package_metadata::{
-    CompiledPackageMetadata, InstalledProviderSet, PackageArtifactMetadata,
-    PackageCompilationInput, PackageCompileRequestFingerprint,
+    CompiledPackageMetadata, InstalledProviderSet, LinkedProviderEntry, PackageArtifactMetadata,
+    PackageCompilationInput, PackageCompilationMetadata, PackageCompileRequestFingerprint,
+    ProviderCompilationInput, ProviderMethodCompilationInput, ProviderReceiverPlan,
+    ProviderSelectionFingerprint,
 };
 pub use program_image::ProgramImage;
 pub use script_metadata::{derived_linked_record_trait_fields, derived_record_trait_fields};

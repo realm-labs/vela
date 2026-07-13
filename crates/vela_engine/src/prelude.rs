@@ -18,14 +18,15 @@ pub use crate::reload::{
     EngineHotReloadSourceError, EngineHotReloadSourceErrorKind, EngineHotReloadSourceResult,
 };
 pub use crate::runtime::{
-    CallArgs, CallOptions, EventCallSafePointReport, IntoGlobalValue, Runtime, RuntimeCallTarget,
-    RuntimeMethodTarget, VelaFunction, VelaMethod, VelaValue,
+    CallArgs, CallOptions, EventCallSafePointReport, IntoGlobalValue, ProviderHandle, Runtime,
+    RuntimeCallTarget, RuntimeMethodTarget, VelaFunction, VelaMethod, VelaValue,
 };
 pub use crate::schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
 pub use crate::source::{
     EnginePackageError, EnginePackageErrorKind, PackageCompilationSnapshot,
     PackageCompilationSnapshotId, PackageCompileRequest, ProviderCatalog, ProviderCatalogError,
-    ProviderDescriptor, ProviderMethodDescriptor, ProviderSelection, ProviderSourceLocation,
+    ProviderCompileRequest, ProviderDescriptor, ProviderMethodDescriptor, ProviderSelection,
+    ProviderSourceLocation,
 };
 pub use crate::source::{EngineSourceError, EngineSourceErrorKind};
 pub use crate::{args, host};
