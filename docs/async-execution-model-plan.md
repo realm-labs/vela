@@ -1257,7 +1257,7 @@ Purpose: close every cross-cutting contract and remove provisional omissions.
   make the sync C surface fail clearly on async entries.
 - [x] Mark async functions explicitly JIT-ineligible and add verifier/linker
   tests preserving future backend input.
-- [ ] Run zero-hit audits for recursive linked execution, macro async rejection,
+- [x] Run zero-hit audits for recursive linked execution, macro async rejection,
   stale `may_yield` contract text, per-CallArgs direct IDs, and duplicate sync/
   async/provider drivers.
 - [ ] Run focused and full validation, examples, benchmark builds, and the

@@ -48,7 +48,10 @@ returns `VelaStatus::AsyncEntry`, and the generic async plus stateful reentry
 examples exercise the scoped API. Restricted JIT input marks declared async or
 await-containing MIR with `MirJitIneligibility::Async`, while verified MIR and
 linked bytecode retain the explicit await operation, safepoint, and resume edge
-for a future backend.
+for a future backend. The Batch D zero-hit audit is recorded in
+[archive/async-execution-zero-hit-audit-2026-07-13.md](archive/async-execution-zero-hit-audit-2026-07-13.md):
+all forbidden active patterns are absent, and the remaining root/test adapter
+names are classified over the single session driver.
 
 M20 cache close-out and M20.5 LSP follow-up remain valid but are paused while
 the async plan is the persistent work queue.
@@ -129,7 +132,7 @@ the async plan is the persistent work queue.
 
 ### Async Execution Batch D
 
-- Complete zero-hit and performance acceptance.
+- Complete performance acceptance.
 - Finish Section 18 documentation, compatibility, and validation audits.
 
 ### M20 Cache Close-Out
