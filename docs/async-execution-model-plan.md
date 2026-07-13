@@ -68,14 +68,18 @@ add a Tokio dependency to the core runtime, expose BoxFuture/LocalBoxFuture as
 the semantic API distinction, require Runtime to be moved into tokio::spawn,
 expose Rust references to scripts, keep CallArgsAdapter alive across await with
 unsafe/self-references, add Engine/Runtime execution-mode generics or a parallel
-`!Send` runtime path, add compatibility execution modes, or reset budgets and
-generation state during reentry. Workspace unsafe remains forbidden.
+`!Send` runtime path, multiply Runtime execution methods by function/method/
+provider/adapter/raw/safe-point target shape, add compatibility execution modes,
+or reset budgets and generation state during reentry. Workspace unsafe remains
+forbidden.
 
 Never mark the goal complete while any of the following is true:
 
 - any Batch A-D or Section 18 checklist item is unchecked;
 - script-to-script calls still recurse through Rust execute_linked_call frames;
 - sync and async calls do not use the same execution driver;
+- public Runtime execution has methods other than the single `call`/
+  `call_async` pair, or a supported target cannot use that pair;
 - CallArgsAdapter/GlobalStoreAdapter still form a borrowing execution stack
   instead of one execution-owned host boundary;
 - the scoped Runtime call future or any registered async Rust future is not
@@ -110,10 +114,11 @@ production path and the relevant constraints are:
 1. Production execution already goes through Heavy HIR, owned verified MIR,
    linked executable generation, and `LinkedArtifact`. Async must extend that
    path; it must not bypass MIR or introduce another interpreter.
-2. `RuntimeImpl` exposes synchronous `call`, `call_with_adapter`, `call_method`,
-   raw-call, event-safe-point, and provider entry points. Provider execution now
-   uses the ordinary linked script-method path and therefore needs async parity,
-   not a provider-specific executor.
+2. `RuntimeImpl` currently exposes synchronous `call`, `call_with_adapter`,
+   `call_method`, raw-call, event-safe-point, and provider entry points. These
+   are consolidation inputs, not a promise to clone every spelling for async.
+   Provider execution already uses the ordinary linked script-method path, so a
+   provider is another call target rather than another execution API or driver.
 3. `vela_vm::linked_execution::execute_linked_call` owns a single `CallFrame`,
    while script functions, closures, script methods, guards, equality callbacks,
    and related paths recursively invoke it. A suspended execution cannot be
@@ -201,7 +206,8 @@ types:
   ergonomics.
 - Safe scoped shared/exclusive leases for direct typed host bindings.
 - Reentrant Vela calls through the active native-call context.
-- Cancellation, budgets, GC roots, generation pinning, provider parity,
+- Cancellation, budgets, GC roots, generation pinning, provider-target
+  integration,
   reflection metadata, diagnostics, formatter, and language-service support.
 
 ### 3.2 Explicit Non-Goals For This Track
@@ -314,31 +320,66 @@ let result = runtime
 This is intentionally not shown inside `tokio::spawn(async move { ... })`.
 `call_async` must not require Runtime ownership or `'static` arguments.
 
-Required parity:
+The target public execution surface is exactly one sync/async pair:
 
 ```rust,ignore
-runtime.call_async(entry, args, options).await?;
-runtime.call_with_adapter_async(entry, args, options, adapter).await?;
-runtime.call_method_async(receiver, method, args, options).await?;
-runtime.call_provider_async(key, method, args, options).await?;
-runtime.call_provider_handle_async(handle, method, args, options).await?;
-runtime
-    .call_provider_with_adapter_async(key, method, args, options, adapter)
-    .await?;
-runtime
-    .call_args_raw_async_at_event_end_safe_point(
-        entry,
-        &mut args,
-        options,
-        adapter,
-        access,
-    )
-    .await?;
+pub fn call<T: RuntimeCallTarget>(
+    &mut self,
+    target: T,
+    args: CallArgs<'_>,
+    options: CallOptions,
+) -> VmResult<VelaValue>;
+
+pub fn call_async<'call, T: RuntimeCallTarget + 'call>(
+    &'call mut self,
+    target: T,
+    args: CallArgs<'call>,
+    options: CallOptions,
+) -> RuntimeCallFuture<'call>;
 ```
 
-Raw async entry points should exist only where the current raw sync surface has
-a real embedding consumer. All public front doors must resolve an internal
-`EntryRequest` and enter the same driver rather than duplicate VM setup.
+`RuntimeCallTarget` is a sealed target abstraction, not an alternate execution
+mode. It resolves all supported target forms into one internal `EntryRequest`:
+
+- a function name or `VelaFunction`;
+- a receiver-bound script method, produced by a target-construction operation
+  such as `runtime.bind_method(&receiver, method)`;
+- a provider method target, produced from a validated `ProviderHandle`.
+
+For example, a method uses the same execution method:
+
+```rust,ignore
+let target = runtime.bind_method(&receiver, "update")?;
+let result = runtime.call_async(target, args, options).await?;
+```
+
+Do not add `call_method`, `call_method_async`, `call_provider`,
+`call_provider_async`, key/handle variants, or adapter variants. Target
+lookup/binding may have domain-specific names; execution does not. The current
+`RuntimeMethodTarget` path and provider call setup must be folded into
+`RuntimeCallTarget`/`EntryRequest` during the hard switch.
+
+The host environment is orthogonal to the call target. `CallArgs` is consumed
+into the execution-owned host binding set and may carry an optional fallback
+adapter binding; `HostAccess` is owned by the execution session. Therefore a
+custom adapter does not create another call method. Current raw entry points
+must be migrated to ordinary typed targets/`CallArgs` or made crate-private if
+they remain useful internally; they do not receive async twins.
+
+```rust,ignore
+let args = CallArgs::new()
+    .with_fallback_adapter(&mut adapter)
+    .with(42_i64);
+let value = runtime.call_async(target, args, options).await?;
+```
+
+Reload activation is also a separate lifecycle operation. An embedding that
+defines an event boundary performs `call`/`call_async` and then the explicit
+reload safe-point check. Do not encode that composition in names such as
+`call_args_raw_async_at_event_end_safe_point` or in `CallOptions`.
+
+All target forms enter the same driver. Adding a new target kind must require a
+new target resolver only, never another sync/async method pair.
 
 The concrete return may be a named `RuntimeCallFuture<'call, I>` so the
 runtime owns polling/cancellation behavior and compile tests can assert auto
@@ -663,8 +704,8 @@ ownership and lifetime.
 
 ### 9.1 Replace Borrowing CallArgsAdapter
 
-`CallArgs` must be consumed into an `ExecutionHost`/`HostBindingScopes` owner.
-That owner contains:
+`CallArgs`, including any optional fallback adapter binding, must be consumed
+into an `ExecutionHost`/`HostBindingScopes` owner. That owner contains:
 
 - one execution-wide direct-object ID allocator;
 - an outer binding scope and nested reentry scopes;
@@ -777,12 +818,14 @@ Registered Rust code reenters Vela through the current `NativeCallContext`:
 ```rust,ignore
 ctx.call("sync_hook", args)?;
 ctx.call_async("async_hook", args).await?;
-ctx.call_method_async(receiver, method, args).await?;
+let target = ctx.bind_method(&receiver, method)?;
+ctx.call_async(target, args).await?;
 ```
 
 It must not obtain or move the public Runtime. Context reentry pushes a nested
 entry marker/frame on the same `ExecutionSession` and drives it using the same
-sync/async loop.
+sync/async loop. `NativeCallContext` mirrors the same two execution names and
+accepts the same target abstraction; it does not grow method/provider variants.
 
 The context owns no new `CallOptions`. Reentry inherits:
 
@@ -982,9 +1025,15 @@ permit an uncharged script loop or repeated VM polling loop.
 ### 14.2 Packages And Providers
 
 - Provider discovery and linked metadata retain method asyncness.
-- `call_provider_async` and handle/adapter variants use the ordinary
-  `EntryRequest` and execution driver.
-- Sync provider calls reject async provider methods before executing the method.
+- `ProviderHandle::method(MethodId)` (or an equivalent target-construction
+  operation) produces a provider method target implementing
+  `RuntimeCallTarget`; key lookup happens before execution and runtime ownership
+  is validated when the target resolves.
+- Both `Runtime::call` and `Runtime::call_async` accept that target. The sync
+  call rejects an async provider method before executing it.
+- Remove the current `call_provider`, `call_provider_handle`, and
+  `call_provider_with_adapter` execution entry points in the pre-release hard
+  switch. Adapter bindings travel with the ordinary execution host input.
 - Provider hot-reload compatibility includes method asyncness.
 - No provider-specific future wrapper or VM path is allowed.
 
@@ -1026,7 +1075,7 @@ The implementation must inspect and migrate at least these ownership areas:
 | MIR | `vela_mir` calls, CFG, effects, liveness, verifier | explicit await terminator and root/resume facts |
 | executable | `vela_bytecode` linked forms/linker | explicit await/resume dispatch metadata |
 | VM | `linked_execution`, frame and call-family modules | explicit frame stack and one driver |
-| embedding | engine Runtime and provider modules | EntryRequest plus sync/async front-door parity |
+| embedding | engine Runtime and provider modules | two call front doors plus unified target resolution |
 | native bridge | engine native/method/typed/context modules | mode-aware async factories and prepared calls |
 | host boundary | `vela_host`, runtime call args | execution-owned scopes and safe leases |
 | macros | `vela_macros` script function/method emission | async signature parsing and lease wrappers |
@@ -1086,6 +1135,13 @@ resumable foundation before adding real host suspension.
   adapter behind one `ExecutionHost` owner; delete the borrowing `CallArgsAdapter`/
   `GlobalStoreAdapter` execution shape and allocate direct HostRef identities
   across the whole outer execution.
+- [ ] Seal one `RuntimeCallTarget` contract for functions, bound methods, and
+  provider methods; resolve each into `EntryRequest` and hard-switch away from
+  `RuntimeMethodTarget` plus specialized method/provider execution setup.
+- [ ] Reduce the public Runtime execution surface to `call` and `call_async`:
+  move fallback adapter bindings into the execution host input, make raw helpers
+  internal or remove them, and keep reload safe-point checks as separate
+  lifecycle operations.
 - [ ] Add `async`/`await` syntax, CST losslessness/recovery, AST accessors, and
   formatting/highlighting basics.
 - [ ] Propagate callable asyncness through HIR, analysis, registry, reflection,
@@ -1116,8 +1172,8 @@ driver with one scoped `Send` execution contract.
 
 - [ ] Implement the executor-neutral outer call future and prepared-call/resume
   protocol without unsafe or core executor dependency.
-- [ ] Add `Runtime::call_async` and method/adapter/raw variants justified by the
-  current sync surface.
+- [ ] Add exactly `Runtime::call_async` beside `Runtime::call`; both accept the
+  same sealed `RuntimeCallTarget` forms and enter the same driver.
 - [ ] Implement async native/context/host/method registries whose factories are
   `Send + Sync` and whose lifetime-dependent returned futures are `Send` without
   being required to be `'static`.
@@ -1161,9 +1217,10 @@ Vela calls.
 - [ ] Make macro-generated `&self`, `&mut self`, `&T`, and `&mut T` host boundary
   parameters acquire the correct direct typed leases while keeping references
   absent from script-visible types.
-- [ ] Add `NativeCallContext::call`, `call_async`, and needed method variants on
-  the same session with inherited generation, host, heap, budgets, capabilities,
-  profiler, and cancellation.
+- [ ] Add `NativeCallContext::call`, `call_async`, and target-binding operations
+  on the same session with inherited generation, host, heap, budgets,
+  capabilities, profiler, and cancellation; do not add execution variants per
+  target kind.
 - [ ] Implement mutable-state child reborrowing and ensure raw parent HostRef
   access fails while its exclusive lease is held.
 - [ ] Cover nested async-native -> Vela -> async-native reentry, error paths,
@@ -1190,8 +1247,9 @@ Purpose: close every cross-cutting contract and remove provisional omissions.
   owned native arguments/results, and no Rust future in script GC.
 - [ ] Seal deterministic execution-unit behavior, call-depth retention,
   no-busy-poll behavior, and memory-limit interactions.
-- [ ] Add async parity for provider keys/handles/adapters and eliminate duplicate
-  provider runtime setup.
+- [ ] Complete provider target resolution through `RuntimeCallTarget`, including
+  asyncness and handle/runtime validation, with no provider-specific call API or
+  duplicate runtime setup.
 - [ ] Complete reflection invocation/metadata, package metadata, diagnostics,
   formatter, semantic tokens, completion, hover, and signature help.
 - [ ] Define CLI behavior, add generic sync/async/stateful/reentry examples, and
@@ -1232,7 +1290,7 @@ the worktree is clean.
 | GC | values live across await, nested GC, return conversion, old-frame roots |
 | budget | charge before dispatch, depth across await, no poll/wake charging/spin |
 | reload | old suspended generation resumes; new outer call uses new generation |
-| providers | key and handle async calls, reload re-resolution, sync rejection |
+| providers | validated handle builds call target, reload re-resolution, sync rejection |
 | reflection | asyncness metadata and awaited reflected invocation |
 | tooling | parse/recovery/format/semantic diagnostics and hover/signature display |
 
@@ -1317,6 +1375,8 @@ rg -n 'BoxFuture|LocalBoxFuture|SendRuntime|LocalRuntime' \
   crates docs/architecture docs/decisions.md docs/goal.md
 rg -n 'Portable|ThreadBound|thread_bound' crates docs/architecture
 rg -n 'tokio::spawn' crates/vela_engine crates/vela_vm crates/vela_host
+rg -n 'pub fn call_(with_adapter|method|provider|provider_handle|provider_with_adapter|raw|args_raw)' \
+  crates/vela_engine/src/runtime
 ```
 
 Hits in negative tests or historical archived documents must be reviewed and
@@ -1337,7 +1397,9 @@ The goal is complete only when all are true:
   resume edge, destination, safepoint, and root-live facts.
 - [ ] All script call families use one explicit execution-frame stack; no
   production script-to-script Rust recursion remains.
-- [ ] Sync and async Runtime APIs use one `EntryRequest` and execution driver.
+- [ ] `Runtime::call` and `Runtime::call_async` are the only public Runtime
+  execution methods; every function, bound-method, and provider target resolves
+  one `EntryRequest` and uses one driver.
 - [ ] Async registration and Runtime calls expose one scoped `Send` contract;
   no public execution-mode generic or parallel `!Send` registry/runtime exists.
 - [ ] `Runtime::call_async` is scoped and `Send` without Runtime ownership or

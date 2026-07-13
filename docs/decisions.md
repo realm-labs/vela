@@ -1836,6 +1836,14 @@ for the invocation lifetime without becoming a `'static` task. Engine,
 EngineBuilder, Runtime, and CallArgs do not gain an async execution-mode generic,
 and this track does not add a parallel `!Send` registry/runtime.
 
+The target Runtime execution surface is exactly `call` and `call_async`.
+Function names/handles, receiver-bound methods, and provider methods implement
+one sealed call-target contract and resolve to one internal entry request;
+method, provider, key/handle, adapter, raw, and event-safe-point combinations do
+not create additional sync/async execution methods. Fallback adapters belong to
+the execution-owned host input, while reload safe-point checks remain explicit
+lifecycle operations after an outer call.
+
 Rust struct access across await will use Rust-only scoped host leases derived
 from `HostRef` bindings. Scripts will continue to see only
 `HostRef`/`HostPath`/`PathProxy`/`HostAccess`, and reentry from registered Rust
