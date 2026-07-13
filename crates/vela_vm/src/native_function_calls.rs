@@ -37,6 +37,7 @@ pub(crate) enum LinkedNativeDispatch {
 }
 
 pub(crate) struct PreparedAsyncNativeCall {
+    pub(crate) native_id: FunctionId,
     pub(crate) function: PreparedAsyncNativeFunction,
     pub(crate) args: Vec<OwnedValue>,
     pub(crate) destination: Option<Register>,
@@ -128,6 +129,7 @@ pub(crate) fn dispatch_linked_native_function_call(
             .as_slice()
             .to_vec();
         return Ok(LinkedNativeDispatch::Async(PreparedAsyncNativeCall {
+            native_id: call.native,
             function,
             args,
             destination: call.dst,
@@ -156,6 +158,7 @@ pub(crate) fn dispatch_linked_native_function_call(
                 args,
                 diagnostic_name,
             } => Ok(LinkedNativeDispatch::Async(PreparedAsyncNativeCall {
+                native_id: call.native,
                 function: match function {
                     ConditionalAsyncNativeFunction::Pure(function) => {
                         PreparedAsyncNativeFunction::Pure(function)

@@ -8,6 +8,7 @@ use vela_def::{MethodId, TypeId};
 use vela_hot_reload::runtime::HotReloadRuntime;
 use vela_hot_reload::symbol::ProgramVersionId;
 use vela_vm::error::VmResult;
+use vela_vm::heap::ScriptHeap;
 
 use crate::engine::Engine;
 
@@ -94,7 +95,7 @@ pub trait RuntimeCallTarget: call_target_sealed::Sealed {}
 
 impl<T> RuntimeCallTarget for T where T: call_target_sealed::Sealed {}
 
-pub(super) mod call_target_sealed {
+pub(crate) mod call_target_sealed {
     use super::{RuntimeCallTargetKind, VelaFunction, VelaMethodTarget};
     use crate::runtime::ProviderMethodTarget;
 
@@ -157,7 +158,7 @@ pub trait RuntimeMethodSelector: method_selector_sealed::Sealed {}
 
 impl<T> RuntimeMethodSelector for T where T: method_selector_sealed::Sealed {}
 
-pub(super) mod method_selector_sealed {
+pub(crate) mod method_selector_sealed {
     use super::{RuntimeMethodSelectorKind, VelaMethod};
 
     pub trait Sealed {
@@ -207,7 +208,7 @@ pub struct RuntimeMethodResolveContext<'program, 'state> {
     pub program_image: &'state ProgramImage,
     pub linked_program: &'program LinkedProgram,
     pub version_id: Option<ProgramVersionId>,
-    pub script_globals: &'state RuntimeScriptGlobalStore,
+    pub script_heap: &'state ScriptHeap,
     pub engine: &'state Engine,
 }
 
@@ -228,7 +229,7 @@ pub(super) fn resolve_bound_method(
     }
     let receiver_type = value_type_id(
         &target.receiver.value,
-        &context.script_globals.heap,
+        context.script_heap,
         context.engine.registry().as_ref(),
     )
     .ok_or_else(|| unknown_method(method_handle.name.clone()))?;

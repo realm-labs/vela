@@ -7,9 +7,10 @@ use vela_host::resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, Resol
 use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
 use vela_vm::budget::ExecutionBudget;
-use vela_vm::error::VmResult;
+use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::heap::ScriptHeap;
 use vela_vm::value::Value;
+use vela_vm::{NativeCallFuture, PreparedAsyncCall};
 
 use super::call_args::HostArgBinding;
 use super::{CallArgs, RuntimeGlobalStore};
@@ -21,6 +22,15 @@ pub(super) struct ExecutionHost<'state, 'host> {
     globals: &'state mut RuntimeGlobalStore,
     fallback: FallbackAdapter<'host>,
     next_direct_object_id: u64,
+}
+
+pub(super) trait ExecutionHostBoundary: ScriptStateAdapter + Send {
+    fn assign_direct_host_refs(&mut self, args: &mut CallArgs<'_>);
+
+    fn invoke_prepared_with_lease<'call>(
+        &'call mut self,
+        prepared: &'call PreparedAsyncCall,
+    ) -> NativeCallFuture<'call>;
 }
 
 impl<'state, 'host> ExecutionHost<'state, 'host> {
@@ -80,6 +90,216 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
             .take_host_leases(&[(root, kind)])?
             .pop()
             .ok_or_else(|| host_lease_unsupported(root))
+    }
+}
+
+impl ExecutionHostBoundary for ExecutionHost<'_, '_> {
+    fn assign_direct_host_refs(&mut self, args: &mut CallArgs<'_>) {
+        args.assign_direct_host_refs(&mut self.next_direct_object_id);
+    }
+
+    fn invoke_prepared_with_lease<'call>(
+        &'call mut self,
+        prepared: &'call PreparedAsyncCall,
+    ) -> NativeCallFuture<'call> {
+        let Some((root, kind)) = prepared.host_lease_request() else {
+            return Box::pin(async {
+                Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "nested typed host lease",
+                }))
+            });
+        };
+        match self.take_host_lease(root, kind) {
+            Ok(lease) => prepared.invoke_with_host_lease(lease),
+            Err(error) => Box::pin(async move { Err(error.into()) }),
+        }
+    }
+}
+
+pub(super) struct ReentryExecutionHost<'scope> {
+    args: CallArgs<'scope>,
+    parent: &'scope mut dyn ExecutionHostBoundary,
+}
+
+impl<'scope> ReentryExecutionHost<'scope> {
+    pub(super) fn new(
+        mut args: CallArgs<'scope>,
+        parent: &'scope mut dyn ExecutionHostBoundary,
+    ) -> VmResult<Self> {
+        if args.take_fallback().is_some() {
+            return Err(vela_vm::error::VmError::new(
+                vela_vm::error::VmErrorKind::TypeMismatch {
+                    operation: "nested reentry fallback adapter",
+                },
+            ));
+        }
+        parent.assign_direct_host_refs(&mut args);
+        Ok(Self { args, parent })
+    }
+
+    pub(super) fn resolve_values(
+        &self,
+        entry: &str,
+        params: &[String],
+        param_defaults: &[bool],
+        runtime_id: u64,
+        heap: &mut ScriptHeap,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<Vec<Value>> {
+        self.args
+            .resolve_values(entry, params, param_defaults, runtime_id, heap, budget)
+    }
+}
+
+impl ExecutionHostBoundary for ReentryExecutionHost<'_> {
+    fn assign_direct_host_refs(&mut self, args: &mut CallArgs<'_>) {
+        self.parent.assign_direct_host_refs(args);
+    }
+
+    fn invoke_prepared_with_lease<'call>(
+        &'call mut self,
+        prepared: &'call PreparedAsyncCall,
+    ) -> NativeCallFuture<'call> {
+        let Some((root, kind)) = prepared.host_lease_request() else {
+            return Box::pin(async {
+                Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "nested typed host lease",
+                }))
+            });
+        };
+        if self.args.direct_binding(root).is_none() {
+            return Box::pin(async move { Err(host_lease_unsupported(root).into()) });
+        }
+        match self.args.take_host_leases(&[(root, kind)]) {
+            Ok(mut leases) => match leases.pop() {
+                Some(lease) => prepared.invoke_with_host_lease(lease),
+                None => Box::pin(async move { Err(host_lease_unsupported(root).into()) }),
+            },
+            Err(error) => Box::pin(async move { Err(error.into()) }),
+        }
+    }
+}
+
+impl ScriptStateAdapter for ReentryExecutionHost<'_> {
+    fn host_schema_epoch(&self) -> HostSchemaEpoch {
+        self.parent.host_schema_epoch()
+    }
+
+    fn global_ref(&self, global: GlobalBinding<'_>) -> HostResult<HostRef> {
+        self.parent.global_ref(global)
+    }
+
+    fn resolve_host_access(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
+        match self.args.direct_binding_by_type(spec.plan.root_type) {
+            Some((_, HostArgBinding::Shared { object, .. })) => object.resolve_host_target(spec),
+            Some((root, HostArgBinding::Mutable { object })) => object
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .as_deref()
+                .ok_or_else(|| host_object_busy(root))?
+                .resolve_host_target(spec),
+            None => self.parent.resolve_host_access(spec),
+        }
+    }
+
+    fn read_host(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<HostValue> {
+        match self.args.direct_binding(target.root) {
+            Some(HostArgBinding::Shared { object, .. }) => {
+                object.read_resolved_host(access, target)
+            }
+            Some(HostArgBinding::Mutable { object }) => object
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .as_deref()
+                .ok_or_else(|| host_object_busy(target.root))?
+                .read_resolved_host(access, target),
+            None => self.parent.read_host(access, target),
+        }
+    }
+
+    fn write_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        value: HostValue,
+    ) -> HostResult<()> {
+        match self.args.direct_binding_mut(target.root) {
+            Some(HostArgBinding::Shared { .. }) => {
+                Err(ExecutionHost::direct_access_error(target, "write"))
+            }
+            Some(HostArgBinding::Mutable { object }) => object
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .as_deref_mut()
+                .ok_or_else(|| host_object_busy(target.root))?
+                .write_resolved_host(access, target, value),
+            None => self.parent.write_host(access, target, value),
+        }
+    }
+
+    fn mutate_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        op: HostMutationOp,
+        rhs: HostValue,
+    ) -> HostResult<()> {
+        match self.args.direct_binding_mut(target.root) {
+            Some(HostArgBinding::Shared { .. }) => {
+                Err(ExecutionHost::direct_access_error(target, "write"))
+            }
+            Some(HostArgBinding::Mutable { object }) => object
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .as_deref_mut()
+                .ok_or_else(|| host_object_busy(target.root))?
+                .mutate_resolved_host(access, target, op, rhs),
+            None => self.parent.mutate_host(access, target, op, rhs),
+        }
+    }
+
+    fn remove_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<()> {
+        match self.args.direct_binding_mut(target.root) {
+            Some(HostArgBinding::Shared { .. }) => {
+                Err(ExecutionHost::direct_access_error(target, "write"))
+            }
+            Some(HostArgBinding::Mutable { object }) => object
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .as_deref_mut()
+                .ok_or_else(|| host_object_busy(target.root))?
+                .remove_resolved_host(access, target),
+            None => self.parent.remove_host(access, target),
+        }
+    }
+
+    fn call_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        method: HostMethodId,
+        args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        match self.args.direct_binding_mut(target.root) {
+            Some(HostArgBinding::Shared { .. }) => {
+                Err(ExecutionHost::direct_access_error(target, "call"))
+            }
+            Some(HostArgBinding::Mutable { object }) => object
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .as_deref_mut()
+                .ok_or_else(|| host_object_busy(target.root))?
+                .call_resolved_host(access, target, method, args),
+            None => self.parent.call_host(access, target, method, args),
+        }
     }
 }
 

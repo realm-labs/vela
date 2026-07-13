@@ -113,7 +113,8 @@ use budget::ExecutionBudget;
 use value::Value;
 
 pub use linked_execution::{
-    LinkedDriveOutcome, LinkedExecutionSession, LinkedExecutionStart, PreparedAsyncCall,
+    LinkedDriveOutcome, LinkedExecutionReentry, LinkedExecutionSession, LinkedExecutionStart,
+    PreparedAsyncCall,
 };
 
 pub type NativeFunction =

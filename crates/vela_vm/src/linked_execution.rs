@@ -55,7 +55,7 @@ impl LinkedExecutionCall<'_> {
 
 pub struct LinkedExecutionSession {
     frames: Vec<ExecutionFrame>,
-    pending_async: Option<PendingAsyncResume>,
+    pending_async: Vec<PendingAsyncResume>,
     root_call_depth_charged: bool,
     root_generation: vela_bytecode::ExecutableGenerationId,
 }
@@ -99,6 +99,7 @@ struct ReturnContinuation {
 enum PendingReturnTarget {
     Register(Register),
     Operation,
+    Reentry,
 }
 
 enum PendingFrameOperation {
@@ -164,6 +165,7 @@ enum FrameDriveOutcome {
 }
 
 pub struct PreparedAsyncCall {
+    native_id: Option<vela_def::FunctionId>,
     function: native_function_calls::PreparedAsyncNativeFunction,
     args: Vec<OwnedValue>,
     name: String,
@@ -171,6 +173,7 @@ pub struct PreparedAsyncCall {
 
 pub enum LinkedDriveOutcome {
     Complete(Value),
+    ReentryComplete(Value),
     AsyncBoundary(PreparedAsyncCall),
 }
 
@@ -183,7 +186,25 @@ pub struct LinkedExecutionStart<'artifact, 'args, 'caches> {
     pub bytecode_profiler: Option<&'caches dyn VmBytecodeProfiler>,
 }
 
+pub struct LinkedExecutionReentry<'artifact, 'args, 'caches> {
+    pub artifact: &'artifact Arc<LinkedArtifact>,
+    pub function: ScriptFunctionHandle,
+    pub args: &'args [Value],
+    pub inline_caches: Option<&'caches dyn VmInlineCaches>,
+    pub bytecode_profiler: Option<&'caches dyn VmBytecodeProfiler>,
+}
+
 impl PreparedAsyncCall {
+    #[must_use]
+    pub const fn native_id(&self) -> Option<vela_def::FunctionId> {
+        self.native_id
+    }
+
+    #[must_use]
+    pub fn args(&self) -> &[OwnedValue] {
+        &self.args
+    }
+
     #[must_use]
     pub fn invoke(&self) -> NativeCallFuture<'_> {
         match &self.function {
@@ -410,7 +431,7 @@ impl Vm {
         let mut session = LinkedExecutionSession {
             root_generation: entry.owner.generation(),
             frames: vec![entry],
-            pending_async: None,
+            pending_async: Vec::new(),
             root_call_depth_charged: false,
         };
         let dispatch = FrameDispatchContext {
@@ -425,6 +446,9 @@ impl Vm {
             &mut budget,
         )? {
             LinkedDriveOutcome::Complete(value) => Ok(value),
+            LinkedDriveOutcome::ReentryComplete(_) => {
+                unreachable!("root execution cannot return through a reentry continuation")
+            }
             LinkedDriveOutcome::AsyncBoundary(call) => {
                 Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
                     name: call.name().to_owned(),
@@ -441,7 +465,6 @@ impl Vm {
         heap: &mut Option<&mut HeapExecution<'_>>,
         budget: &mut Option<&mut ExecutionBudget>,
     ) -> VmResult<LinkedDriveOutcome> {
-        debug_assert!(session.pending_async.is_none());
         let limits_call_depth = budget
             .as_deref()
             .is_some_and(ExecutionBudget::limits_call_depth);
@@ -573,7 +596,7 @@ impl Vm {
                     destination,
                     source_span,
                 } => {
-                    session.pending_async = Some(PendingAsyncResume {
+                    session.pending_async.push(PendingAsyncResume {
                         destination,
                         source_span,
                     });
@@ -619,6 +642,15 @@ impl Vm {
                                 }
                             }
                         }
+                        PendingReturnTarget::Reentry => {
+                            if limits_call_depth {
+                                budget
+                                    .as_deref_mut()
+                                    .expect("call-depth budget mode requires a budget")
+                                    .exit_call();
+                            }
+                            return Ok(LinkedDriveOutcome::ReentryComplete(value));
+                        }
                     }
                     if limits_call_depth {
                         budget
@@ -638,7 +670,7 @@ impl Vm {
         heap: Option<&mut HeapExecution<'_>>,
         budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<()> {
-        let pending = session.pending_async.take().ok_or_else(|| {
+        let pending = session.pending_async.pop().ok_or_else(|| {
             VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
                 opcode: "async resume without a pending invocation",
             })
@@ -713,10 +745,95 @@ impl Vm {
             Ok(entry) => Ok(LinkedExecutionSession {
                 root_generation: entry.owner.generation(),
                 frames: vec![entry],
-                pending_async: None,
+                pending_async: Vec::new(),
                 root_call_depth_charged: limits_call_depth,
             }),
             Err(error) => {
+                if limits_call_depth {
+                    budget.exit_call();
+                }
+                Err(error.with_call_frame(stack_frame))
+            }
+        }
+    }
+
+    pub fn push_linked_reentry(
+        &self,
+        session: &mut LinkedExecutionSession,
+        reentry: LinkedExecutionReentry<'_, '_, '_>,
+        heap: &mut HeapExecution<'_>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<()> {
+        if session.pending_async.is_empty() {
+            return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                opcode: "reentry without a suspended native invocation",
+            }));
+        }
+        if reentry.artifact.generation() != session.root_generation {
+            return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                opcode: "reentry artifact generation mismatch",
+            }));
+        }
+
+        let stack_frame = reentry
+            .artifact
+            .program()
+            .function(reentry.function)
+            .map_or_else(
+                || VmStackFrame::new("<missing linked reentry function>", None),
+                |code| {
+                    VmStackFrame::new(reentry.artifact.program().debug_name(code.debug_name), None)
+                },
+            );
+        let limits_call_depth = budget.limits_call_depth();
+        if limits_call_depth {
+            budget
+                .enter_call()
+                .map_err(|error| error.with_call_frame(stack_frame.clone()))?;
+        }
+
+        let protected_root_len = session.frames.last().map(|caller| {
+            let protected_root_len = heap.push_frame_roots(&caller.registers);
+            if let Some(operation) = caller.pending_operation.as_ref() {
+                match operation {
+                    PendingFrameOperation::CallbackMethod { callback, .. } => {
+                        callback.protect_roots(heap);
+                    }
+                    PendingFrameOperation::IteratorNext { next, .. } => {
+                        next.protect_roots(heap);
+                    }
+                    PendingFrameOperation::Comparison { .. }
+                    | PendingFrameOperation::ArrayOrdering { .. } => {}
+                }
+            }
+            protected_root_len
+        });
+        let entry = self.prepare_execution_frame(
+            Arc::clone(reentry.artifact),
+            reentry.function,
+            &[],
+            reentry.args,
+            true,
+            None,
+            None,
+            reentry.inline_caches,
+            reentry.bytecode_profiler,
+            Some(ReturnContinuation {
+                target: PendingReturnTarget::Reentry,
+                protected_root_len,
+            }),
+            Some(heap),
+            Some(budget),
+        );
+        match entry {
+            Ok(entry) => {
+                session.frames.push(entry);
+                Ok(())
+            }
+            Err(error) => {
+                if let Some(protected_root_len) = protected_root_len {
+                    heap.truncate_protected_roots(protected_root_len);
+                }
                 if limits_call_depth {
                     budget.exit_call();
                 }
@@ -783,6 +900,9 @@ impl Vm {
             }
             Ok(LinkedDriveOutcome::AsyncBoundary(call)) => {
                 Ok(LinkedDriveOutcome::AsyncBoundary(call))
+            }
+            Ok(LinkedDriveOutcome::ReentryComplete(value)) => {
+                Ok(LinkedDriveOutcome::ReentryComplete(value))
             }
             Err(error) => {
                 if session.root_call_depth_charged {
@@ -1498,6 +1618,7 @@ impl Vm {
                         frame_state.ip = resume;
                         return Ok(FrameDriveOutcome::Async {
                             call: PreparedAsyncCall {
+                                native_id: Some(prepared.native_id),
                                 function: prepared.function,
                                 args: prepared.args,
                                 name: prepared.name,
@@ -1993,6 +2114,7 @@ impl Vm {
                         frame_state.ip = resume;
                         return Ok(FrameDriveOutcome::Async {
                             call: PreparedAsyncCall {
+                                native_id: None,
                                 function: native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod {
                                     function: Arc::clone(function),
                                     receiver: prepared.receiver,
@@ -2023,6 +2145,7 @@ impl Vm {
                         frame_state.ip = resume;
                         return Ok(FrameDriveOutcome::Async {
                             call: PreparedAsyncCall {
+                                native_id: None,
                                 function:
                                     native_function_calls::PreparedAsyncNativeFunction::HostMethod {
                                         function: Arc::clone(function),
@@ -2571,6 +2694,7 @@ impl Vm {
                         frame_state.ip = resume;
                         return Ok(FrameDriveOutcome::Async {
                             call: PreparedAsyncCall {
+                                native_id: None,
                                 function: native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod {
                                     function: Arc::clone(function),
                                     receiver: prepared.receiver,
@@ -2605,6 +2729,7 @@ impl Vm {
                         frame_state.ip = resume;
                         return Ok(FrameDriveOutcome::Async {
                             call: PreparedAsyncCall {
+                                native_id: None,
                                 function:
                                     native_function_calls::PreparedAsyncNativeFunction::HostMethod {
                                         function: Arc::clone(function),

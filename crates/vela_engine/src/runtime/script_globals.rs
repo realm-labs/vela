@@ -150,7 +150,7 @@ where
 }
 
 #[derive(Debug, Default)]
-struct RuntimeValueRoots {
+pub(super) struct RuntimeValueRoots {
     next_id: u64,
     values: BTreeMap<u64, RuntimeValueRoot>,
 }
@@ -162,7 +162,7 @@ struct RuntimeValueRoot {
 }
 
 impl RuntimeValueRoots {
-    fn retain(roots: &Arc<Mutex<Self>>, runtime_id: u64, value: Value) -> VelaValue {
+    pub(super) fn retain(roots: &Arc<Mutex<Self>>, runtime_id: u64, value: Value) -> VelaValue {
         let mut roots_mut = roots.lock().expect("runtime value roots mutex poisoned");
         let root_id = roots_mut.next_id;
         roots_mut.next_id = roots_mut.next_id.saturating_add(1);
@@ -203,7 +203,7 @@ impl RuntimeValueRoots {
 pub struct RuntimeScriptGlobalStore {
     pub(super) heap: ScriptHeap,
     pub(super) values: ScriptGlobalValues,
-    retained_values: Arc<Mutex<RuntimeValueRoots>>,
+    pub(super) retained_values: Arc<Mutex<RuntimeValueRoots>>,
 }
 
 impl RuntimeScriptGlobalStore {

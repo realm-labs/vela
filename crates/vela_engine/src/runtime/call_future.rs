@@ -27,7 +27,7 @@ pub struct RuntimeCallFuture<'call> {
 }
 
 impl<'call> RuntimeCallFuture<'call> {
-    pub(super) fn new(future: impl Future<Output = VmResult<VelaValue>> + Send + 'call) -> Self {
+    pub(crate) fn new(future: impl Future<Output = VmResult<VelaValue>> + Send + 'call) -> Self {
         Self {
             inner: Box::pin(future),
         }
@@ -78,6 +78,75 @@ mod tests {
                 return value;
             }
         }
+    }
+
+    #[test]
+    fn async_context_native_reenters_same_session_across_nested_async_boundary() {
+        let engine = Engine::builder()
+            .register_async_fn(
+                NativeFunctionDesc::new("test::nested", FunctionId::new(0xA530))
+                    .param("value", TypeHint::i64())
+                    .returns(TypeHint::i64())
+                    .access(FunctionAccess::public()),
+                |args| {
+                    Box::pin(async move {
+                        let value = match args.first() {
+                            Some(OwnedValue::Scalar(ScalarValue::I64(value))) => *value,
+                            _ => 0,
+                        };
+                        Ok(OwnedValue::i64(value + 1))
+                    })
+                },
+            )
+            .register_async_context_fn(
+                NativeFunctionDesc::new("test::outer", FunctionId::new(0xA531))
+                    .returns(TypeHint::i64())
+                    .access(FunctionAccess::public()),
+                |_args, context| {
+                    Box::pin(async move {
+                        let receiver = context.call("counter", CallArgs::new())?;
+                        let target = context.bind_method(&receiver, "add")?;
+                        let _ = context.call(target, CallArgs::new().with(2_i64))?;
+                        let _ = context
+                            .call_async("child", CallArgs::new().with(41_i64))
+                            .await?;
+                        Ok(OwnedValue::i64(7))
+                    })
+                },
+            )
+            .build()
+            .expect("engine should build");
+        let program = engine
+            .compile_source(
+                r#"
+struct Counter { value: i64 }
+
+fn counter() { return Counter { value: 40 }; }
+
+impl Counter {
+    fn add(self, amount: i64) { return self.value + amount; }
+}
+
+async fn child(value: i64) {
+    return test::nested(value).await;
+}
+
+async fn main() {
+    return test::outer().await;
+}
+"#,
+            )
+            .expect("reentry fixture should compile");
+        let mut runtime = Runtime::new(engine, program);
+
+        let value = run_to_completion(runtime.call_async(
+            "main",
+            CallArgs::new(),
+            CallOptions::unbounded(),
+        ))
+        .expect("nested reentry should complete");
+
+        assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(7)));
     }
 
     #[test]

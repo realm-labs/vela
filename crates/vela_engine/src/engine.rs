@@ -473,7 +473,8 @@ impl Engine {
                     if let Some(error) = capability_error {
                         return Err(error);
                     }
-                    let mut context = crate::context::NativeCallContext::new(&engine, host, budget);
+                    let mut context =
+                        crate::context::NativeCallContext::new(&engine, host, budget, None);
                     function(args, &mut context).await
                 })
             });
@@ -550,7 +551,8 @@ impl Engine {
                 let engine = engine.clone();
                 move |args, host, budget| {
                     check_capabilities(&name, &effects, capabilities)?;
-                    let mut context = crate::context::NativeCallContext::new(&engine, host, budget);
+                    let mut context =
+                        crate::context::NativeCallContext::new(&engine, host, budget, None);
                     function(args, &mut context)
                 }
             });
@@ -609,7 +611,7 @@ impl Engine {
                             return Err(error);
                         }
                         let mut context =
-                            crate::context::NativeCallContext::new(&engine, host, budget);
+                            crate::context::NativeCallContext::new(&engine, host, budget, None);
                         function(args, &mut context).await
                     })
                 });
@@ -630,7 +632,8 @@ impl Engine {
                 let engine = self.clone();
                 vm.register_budgeted_host_native_with_id(id, move |args, host, budget| {
                     check_capabilities(&alias, &effects, capabilities)?;
-                    let mut context = crate::context::NativeCallContext::new(&engine, host, budget);
+                    let mut context =
+                        crate::context::NativeCallContext::new(&engine, host, budget, None);
                     function(args, &mut context)
                 });
             }
@@ -727,7 +730,7 @@ impl Engine {
     }
 }
 
-fn check_capabilities(
+pub(crate) fn check_capabilities(
     native: &str,
     effects: &crate::native::EffectSet,
     capabilities: CapabilitySet,
