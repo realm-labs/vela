@@ -14,6 +14,17 @@ use crate::{
 pub trait ScriptHostObject {
     fn host_type_id(&self) -> HostTypeId;
 
+    /// Exposes a concrete `'static` direct host object to Rust-only lease
+    /// wrappers. Opaque or non-`'static` implementations remain ineligible.
+    fn lease_any(&self) -> Option<&dyn Any> {
+        None
+    }
+
+    /// Mutable counterpart to [`ScriptHostObject::lease_any`].
+    fn lease_any_mut(&mut self) -> Option<&mut dyn Any> {
+        None
+    }
+
     fn resolve_host_target(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
         let _ = spec;
         Ok(ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)))

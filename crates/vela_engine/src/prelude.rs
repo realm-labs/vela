@@ -7,6 +7,7 @@ pub use crate::args::{
 pub use crate::builder::EngineBuilder;
 pub use crate::context::NativeCallContext;
 pub use crate::engine::Engine;
+pub use crate::host_lease::{HostLeaseMut, HostLeaseRef};
 pub use crate::host_type::HostTypeSpec;
 pub use crate::io::FsSandbox;
 pub use crate::method::NativeMethodDesc;

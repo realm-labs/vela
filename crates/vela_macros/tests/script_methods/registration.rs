@@ -3,6 +3,16 @@ use vela_bytecode::compiler::CompiledProgram;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::owned_value::OwnedValue;
 
+fn run_future<F: std::future::Future>(future: F) -> F::Output {
+    let mut future = std::pin::pin!(future);
+    let mut context = std::task::Context::from_waker(std::task::Waker::noop());
+    loop {
+        if let std::task::Poll::Ready(output) = future.as_mut().poll(&mut context) {
+            return output;
+        }
+    }
+}
+
 fn run_linked_program_with_host(
     engine: &Engine,
     program: CompiledProgram,
@@ -145,6 +155,81 @@ fn script_methods_feed_stable_engine_registration_api() {
         ),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(21))),
     );
+}
+
+#[test]
+fn script_methods_register_async_shared_and_mutable_direct_receivers() {
+    let engine = Engine::builder()
+        .register_script_host::<DirectCounter>()
+        .capability(Capability::HostRead)
+        .capability(Capability::HostWrite)
+        .reflection_permissions(vela_reflect::permissions::ReflectPermissionSet::all())
+        .build()
+        .expect("engine should register direct async methods");
+    let program = engine
+        .compile_source(
+            r#"
+async fn main(counter: DirectCounter) {
+    counter.add_async(4).await;
+    reflect::call(counter, "add_async", 2).await;
+    return counter.read_async().await;
+}
+
+async fn wait(counter: DirectCounter) {
+    return counter.wait_async().await;
+}
+
+async fn read_async_entry(counter: DirectCounter) {
+    return counter.read_async().await;
+}
+
+fn read(counter: DirectCounter) {
+    return counter.total;
+}
+"#,
+        )
+        .expect("direct async method source should compile");
+    let mut runtime = vela_engine::runtime::Runtime::new(engine, program);
+    let mut counter = DirectCounter { total: 3 };
+
+    let result = run_future(runtime.call_async(
+        "main",
+        vela_engine::runtime::CallArgs::new().with_host_mut("counter", &mut counter),
+        vela_engine::runtime::CallOptions::unbounded(),
+    ))
+    .expect("direct async methods should execute");
+
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(9)));
+    assert_eq!(counter.total, 9);
+
+    let result = run_future(runtime.call_async(
+        "read_async_entry",
+        vela_engine::runtime::CallArgs::new().with_host_ref("counter", &counter),
+        vela_engine::runtime::CallOptions::unbounded(),
+    ))
+    .expect("shared direct host binding should support a shared async lease");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(9)));
+
+    let mut cancelled = std::boxed::Box::pin(runtime.call_async(
+        "wait",
+        vela_engine::runtime::CallArgs::new().with_host_mut("counter", &mut counter),
+        vela_engine::runtime::CallOptions::unbounded(),
+    ));
+    let mut context = std::task::Context::from_waker(std::task::Waker::noop());
+    assert!(matches!(
+        cancelled.as_mut().poll(&mut context),
+        std::task::Poll::Pending
+    ));
+    drop(cancelled);
+
+    let result = runtime
+        .call(
+            "read",
+            vela_engine::runtime::CallArgs::new().with_host_ref("counter", &counter),
+            vela_engine::runtime::CallOptions::unbounded(),
+        )
+        .expect("dropping a pending direct method should release Runtime and its lease");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(9)));
 }
 
 fn assert_registered_method_matches_native_desc(

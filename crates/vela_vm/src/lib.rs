@@ -143,12 +143,27 @@ pub type AsyncHostMethodFunction = Arc<
         + Sync
         + 'static,
 >;
+pub type AsyncDirectHostMethodFunction = Arc<
+    dyn for<'host> Fn(
+            vela_host::path::HostRef,
+            vela_host::lease::ErasedHostLease<'host>,
+            Vec<OwnedValue>,
+        ) -> NativeCallFuture<'host>
+        + Send
+        + Sync
+        + 'static,
+>;
 pub(crate) enum ConditionalAsyncNativeFunction {
     Pure(AsyncNativeFunction),
     Host(AsyncHostNativeFunction),
     HostMethod {
         function: AsyncHostMethodFunction,
         receiver: vela_host::path::HostPath,
+    },
+    DirectHostMethod {
+        function: AsyncDirectHostMethodFunction,
+        receiver: vela_host::path::HostPath,
+        lease_kind: vela_host::lease::HostLeaseKind,
     },
 }
 
@@ -209,6 +224,13 @@ pub struct Vm {
     async_native_ids: HashMap<FunctionId, AsyncNativeFunction>,
     async_host_native_ids: HashMap<FunctionId, AsyncHostNativeFunction>,
     async_host_method_ids: HashMap<HostMethodId, AsyncHostMethodFunction>,
+    async_direct_host_method_ids: HashMap<
+        HostMethodId,
+        (
+            vela_host::lease::HostLeaseKind,
+            AsyncDirectHostMethodFunction,
+        ),
+    >,
     conditional_host_native_ids: HashMap<FunctionId, ConditionalHostNativeFunction>,
     borrowed_native_ids: HashMap<FunctionId, BorrowedNativeFunction>,
     host_native_ids: HashMap<FunctionId, HostNativeFunction>,
@@ -746,6 +768,23 @@ impl Vm {
         + 'static,
     ) {
         self.async_host_method_ids.insert(id, Arc::new(function));
+    }
+
+    pub fn register_async_direct_host_method_with_id(
+        &mut self,
+        id: HostMethodId,
+        lease_kind: vela_host::lease::HostLeaseKind,
+        function: impl for<'host> Fn(
+            vela_host::path::HostRef,
+            vela_host::lease::ErasedHostLease<'host>,
+            Vec<OwnedValue>,
+        ) -> NativeCallFuture<'host>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        self.async_direct_host_method_ids
+            .insert(id, (lease_kind, Arc::new(function)));
     }
 
     pub(crate) fn register_conditional_host_native_with_id(

@@ -5,6 +5,7 @@
 pub mod access;
 pub mod adapter;
 pub mod error;
+pub mod lease;
 pub mod mock;
 pub mod object;
 pub mod path;

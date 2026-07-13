@@ -89,6 +89,12 @@ pub enum HostErrorKind {
     UnsupportedMethod {
         method: HostMethodId,
     },
+    HostObjectBusy {
+        path: HostPath,
+    },
+    HostLeaseUnsupported {
+        path: HostPath,
+    },
 }
 
 pub type HostResult<T> = Result<T, HostError>;

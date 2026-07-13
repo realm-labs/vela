@@ -1,6 +1,10 @@
 use std::collections::BTreeMap;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 
 use vela_host::adapter::ScriptStateAdapter;
+use vela_host::error::HostResult;
+use vela_host::lease::{ErasedHostLease, HostLeaseKind, host_lease_unsupported, host_object_busy};
 use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
 use vela_vm::budget::ExecutionBudget;
@@ -112,7 +116,10 @@ impl<'a> CallArgs<'a> {
             name: name.into(),
             host_ref: None,
             type_id: value.host_type_id(),
-            binding: HostArgBinding::Shared(value),
+            binding: HostArgBinding::Shared {
+                object: value,
+                leases: Arc::new(AtomicUsize::new(0)),
+            },
         });
         self
     }
@@ -125,7 +132,9 @@ impl<'a> CallArgs<'a> {
             name: name.into(),
             host_ref: None,
             type_id: value.host_type_id(),
-            binding: HostArgBinding::Mutable(value),
+            binding: HostArgBinding::Mutable {
+                object: Arc::new(Mutex::new(Some(value))),
+            },
         });
         self
     }
@@ -354,15 +363,77 @@ impl<'a> CallArgs<'a> {
     pub(super) fn direct_binding_by_type(
         &self,
         type_id: vela_common::HostTypeId,
-    ) -> Option<&HostArgBinding<'a>> {
+    ) -> Option<(HostRef, &HostArgBinding<'a>)> {
         self.entries.iter().find_map(|entry| match entry {
             CallArg::NamedHost {
+                host_ref: Some(host_ref),
                 type_id: binding_type,
                 binding,
                 ..
-            } if *binding_type == type_id => Some(binding),
+            } if *binding_type == type_id => Some((*host_ref, binding)),
             _ => None,
         })
+    }
+
+    pub(super) fn take_host_lease(
+        &mut self,
+        root: HostRef,
+        kind: HostLeaseKind,
+    ) -> HostResult<ErasedHostLease<'a>> {
+        let Some(binding) = self.direct_binding_mut(root) else {
+            return Err(host_lease_unsupported(root));
+        };
+        match (binding, kind) {
+            (HostArgBinding::Shared { object, leases }, HostLeaseKind::Shared) => {
+                if object.lease_any().is_none() {
+                    return Err(host_lease_unsupported(root));
+                }
+                leases.fetch_add(1, Ordering::AcqRel);
+                Ok(ErasedHostLease::Shared {
+                    object: *object,
+                    leases: Arc::clone(leases),
+                })
+            }
+            (HostArgBinding::Shared { .. }, HostLeaseKind::Exclusive) => {
+                Err(host_object_busy(root))
+            }
+            (HostArgBinding::Mutable { object }, _) => {
+                let mut stored = object
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+                if stored
+                    .as_deref()
+                    .is_some_and(|object| object.lease_any().is_none())
+                {
+                    return Err(host_lease_unsupported(root));
+                }
+                let Some(leased) = stored.take() else {
+                    return Err(host_object_busy(root));
+                };
+                drop(stored);
+                Ok(ErasedHostLease::Exclusive {
+                    object: Some(leased),
+                    slot: Arc::clone(object),
+                })
+            }
+        }
+    }
+
+    pub(super) fn take_host_leases(
+        &mut self,
+        requests: &[(HostRef, HostLeaseKind)],
+    ) -> HostResult<Vec<ErasedHostLease<'a>>> {
+        let mut leases = Vec::with_capacity(requests.len());
+        for (root, kind) in requests {
+            match self.take_host_lease(*root, *kind) {
+                Ok(lease) => leases.push(lease),
+                Err(error) => {
+                    drop(leases);
+                    return Err(error);
+                }
+            }
+        }
+        Ok(leases)
     }
 }
 
@@ -430,8 +501,13 @@ impl CallArg<'_> {
 }
 
 pub(super) enum HostArgBinding<'a> {
-    Shared(&'a (dyn ScriptHostObject + Sync)),
-    Mutable(&'a mut (dyn ScriptHostObject + Send)),
+    Shared {
+        object: &'a (dyn ScriptHostObject + Sync),
+        leases: Arc<AtomicUsize>,
+    },
+    Mutable {
+        object: Arc<Mutex<Option<&'a mut (dyn ScriptHostObject + Send)>>>,
+    },
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -443,4 +519,73 @@ enum CallArgsMode {
 
 pub(crate) fn call_args_type_error(operation: &'static str) -> VmError {
     VmError::new(VmErrorKind::TypeMismatch { operation })
+}
+
+#[cfg(test)]
+mod lease_tests {
+    use std::any::Any;
+
+    use vela_common::HostTypeId;
+    use vela_host::lease::HostLeaseKind;
+    use vela_host::object::ScriptHostObject;
+    use vela_host::target::HostTargetInstance;
+    use vela_host::value::HostValue;
+
+    use super::{CallArg, CallArgs};
+
+    struct LeaseHost;
+
+    impl ScriptHostObject for LeaseHost {
+        fn host_type_id(&self) -> HostTypeId {
+            HostTypeId::new(0x1EA5E)
+        }
+
+        fn lease_any(&self) -> Option<&dyn Any> {
+            Some(self)
+        }
+
+        fn lease_any_mut(&mut self) -> Option<&mut dyn Any> {
+            Some(self)
+        }
+
+        fn read_resolved_host(
+            &self,
+            _access: vela_host::resolved::ResolvedHostAccess,
+            _target: HostTargetInstance<'_>,
+        ) -> vela_host::error::HostResult<HostValue> {
+            Ok(HostValue::Unit)
+        }
+    }
+
+    #[test]
+    fn multi_lease_acquisition_rolls_back_on_conflict() {
+        let mut host = LeaseHost;
+        let mut args = CallArgs::new().with_host_mut("host", &mut host);
+        let mut next = 1_u64 << 63;
+        args.assign_direct_host_refs(&mut next);
+        let root = match &args.entries[0] {
+            CallArg::NamedHost {
+                host_ref: Some(root),
+                ..
+            } => *root,
+            _ => panic!("direct host argument should have an identity"),
+        };
+
+        let error = match args.take_host_leases(&[
+            (root, HostLeaseKind::Exclusive),
+            (root, HostLeaseKind::Exclusive),
+        ]) {
+            Ok(_) => panic!("duplicate exclusive request should fail atomically"),
+            Err(error) => error,
+        };
+        assert!(matches!(
+            error.kind,
+            vela_host::error::HostErrorKind::HostObjectBusy { .. }
+        ));
+
+        let lease = args
+            .take_host_lease(root, HostLeaseKind::Exclusive)
+            .expect("failed acquisition should restore the first lease");
+        drop(lease);
+    }
 }

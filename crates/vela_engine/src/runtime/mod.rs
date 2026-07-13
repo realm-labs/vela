@@ -847,7 +847,15 @@ where
                     return Ok(call.script_globals.retain(call.runtime_id, value));
                 }
                 LinkedDriveOutcome::AsyncBoundary(prepared) => {
-                    let result = if prepared.requires_host() {
+                    let result = if prepared.requires_host_lease() {
+                        let (root, kind) = prepared.host_lease_request().ok_or_else(|| {
+                            VmError::new(VmErrorKind::TypeMismatch {
+                                operation: "nested typed host lease",
+                            })
+                        })?;
+                        let lease = execution_host.take_host_lease(root, kind)?;
+                        prepared.invoke_with_host_lease(lease).await
+                    } else if prepared.requires_host() {
                         let mut host = HostExecution {
                             adapter: &mut execution_host,
                             access: &mut access,

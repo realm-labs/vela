@@ -17,7 +17,9 @@ use vela_vm::{HostExecution, Vm};
 
 use crate::builder::EngineBuilder;
 use crate::compiler_options::{add_native_signature_hints, compiler_options_from_registry};
-use crate::method::{AsyncNativeMethodEntry, NativeMethodDesc, NativeMethodEntry};
+use crate::method::{
+    AsyncNativeMethodEntry, AsyncNativeMethodImplementation, NativeMethodDesc, NativeMethodEntry,
+};
 use crate::native::{
     AsyncContextHostNativeFunctionEntry, AsyncHostNativeFunctionEntry, AsyncNativeFunctionEntry,
     ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
@@ -354,28 +356,6 @@ impl Engine {
         (entry.function)(receiver, args, host)
     }
 
-    pub fn call_async_native_method<'call, 'host>(
-        &'call self,
-        id: HostMethodId,
-        receiver: &'call vela_host::path::HostPath,
-        args: &'call [vela_vm::owned_value::OwnedValue],
-        host: &'call mut vela_vm::HostExecution<'host>,
-    ) -> crate::native::NativeCallFuture<'call> {
-        let Some(entry) = self.async_native_method(id) else {
-            return Box::pin(async move {
-                Err(VmError::new(VmErrorKind::UnknownMethod {
-                    method: format!("host method {}", id.get()),
-                }))
-            });
-        };
-        if let Err(error) =
-            check_capabilities(&entry.desc.name, &entry.desc.effects, self.capabilities)
-        {
-            return Box::pin(async move { Err(error) });
-        }
-        (entry.function)(receiver, args, host)
-    }
-
     pub fn link_compiled_program(
         &self,
         program: vela_bytecode::compiler::CompiledProgram,
@@ -506,13 +486,37 @@ impl Engine {
             let name = entry.desc.name.clone();
             let effects = entry.desc.effects;
             let capabilities = self.capabilities;
-            let function = Arc::clone(&entry.function);
-            vm.register_async_host_method_with_id(id, move |receiver, args, host, _budget| {
-                if let Err(error) = check_capabilities(&name, &effects, capabilities) {
-                    return Box::pin(async move { Err(error) });
+            match &entry.function {
+                AsyncNativeMethodImplementation::HostPath(function) => {
+                    let function = Arc::clone(function);
+                    vm.register_async_host_method_with_id(
+                        id,
+                        move |receiver, args, host, _budget| {
+                            if let Err(error) = check_capabilities(&name, &effects, capabilities) {
+                                return Box::pin(async move { Err(error) });
+                            }
+                            function(receiver, args, host)
+                        },
+                    );
                 }
-                function(receiver, args, host)
-            });
+                AsyncNativeMethodImplementation::Direct {
+                    lease_kind,
+                    function,
+                } => {
+                    let lease_kind = *lease_kind;
+                    let function = Arc::clone(function);
+                    vm.register_async_direct_host_method_with_id(
+                        id,
+                        lease_kind,
+                        move |root, lease, args| {
+                            if let Err(error) = check_capabilities(&name, &effects, capabilities) {
+                                return Box::pin(async move { Err(error) });
+                            }
+                            function(root, lease, args)
+                        },
+                    );
+                }
+            }
         }
     }
 

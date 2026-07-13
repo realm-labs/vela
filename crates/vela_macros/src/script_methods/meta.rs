@@ -27,6 +27,7 @@ pub(super) struct MethodMeta {
     pub(super) returns: HintKind,
     pub(super) callable_native: bool,
     pub(super) receiver: MethodReceiver,
+    pub(super) is_async: bool,
 }
 
 #[derive(Clone)]
@@ -196,12 +197,7 @@ fn method_meta(
     docs: Option<String>,
 ) -> Result<MethodMeta> {
     reject_generic_signature(&method.sig.generics, "#[script_method]")?;
-    if method.sig.asyncness.is_some() {
-        return Err(spanned_error(
-            &method.sig.asyncness,
-            "#[script_method] does not support async methods",
-        ));
-    }
+    let is_async = method.sig.asyncness.is_some();
     reject_unsafe_signature(&method.sig, "#[script_method]")?;
     reject_extern_signature(&method.sig, "#[script_method]")?;
 
@@ -248,6 +244,12 @@ fn method_meta(
         });
     }
     reject_return_type(&method.sig.output)?;
+    if is_async && receiver == MethodReceiver::HostBoundary {
+        return Err(spanned_error(
+            &method.sig,
+            "async #[script_method] requires an &self or &mut self receiver",
+        ));
+    }
 
     Ok(MethodMeta {
         ident: method.sig.ident.clone(),
@@ -261,6 +263,7 @@ fn method_meta(
         returns: return_hint(&method.sig.output),
         callable_native: has_callable_native_boundary(method),
         receiver,
+        is_async,
     })
 }
 

@@ -400,6 +400,28 @@ impl EngineBuilder {
         self
     }
 
+    #[doc(hidden)]
+    #[must_use]
+    pub fn register_async_direct_method_fn(
+        mut self,
+        desc: NativeMethodDesc,
+        lease_kind: vela_host::lease::HostLeaseKind,
+        function: impl for<'host> Fn(
+            vela_host::path::HostRef,
+            vela_host::lease::ErasedHostLease<'host>,
+            Vec<OwnedValue>,
+        ) -> NativeCallFuture<'host>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        self.async_native_methods
+            .push(AsyncNativeMethodEntry::new_direct(
+                desc, lease_kind, function,
+            ));
+        self
+    }
+
     #[must_use]
     pub fn register_typed_native_method_fn<Args, F>(
         self,

@@ -22,6 +22,13 @@ pub(super) struct ReflectedFunctionCalls {
     async_natives: HashMap<FunctionId, AsyncNativeFunction>,
     async_host_natives: HashMap<FunctionId, AsyncHostNativeFunction>,
     async_host_methods: HashMap<vela_common::HostMethodId, AsyncHostMethodFunction>,
+    async_direct_host_methods: HashMap<
+        vela_common::HostMethodId,
+        (
+            vela_host::lease::HostLeaseKind,
+            crate::AsyncDirectHostMethodFunction,
+        ),
+    >,
 }
 
 impl ReflectedFunctionCalls {
@@ -31,6 +38,13 @@ impl ReflectedFunctionCalls {
         async_natives: HashMap<FunctionId, AsyncNativeFunction>,
         async_host_natives: HashMap<FunctionId, AsyncHostNativeFunction>,
         async_host_methods: HashMap<vela_common::HostMethodId, AsyncHostMethodFunction>,
+        async_direct_host_methods: HashMap<
+            vela_common::HostMethodId,
+            (
+                vela_host::lease::HostLeaseKind,
+                crate::AsyncDirectHostMethodFunction,
+            ),
+        >,
     ) -> Self {
         Self {
             natives,
@@ -38,6 +52,7 @@ impl ReflectedFunctionCalls {
             async_natives,
             async_host_natives,
             async_host_methods,
+            async_direct_host_methods,
         }
     }
 
@@ -193,6 +208,20 @@ pub(super) fn register(
                     function: ConditionalAsyncNativeFunction::HostMethod {
                         function: Arc::clone(function),
                         receiver: vela_host::path::HostPath::new(*host_ref),
+                    },
+                    args: args[2..].to_vec(),
+                    diagnostic_name: method_desc.name.clone(),
+                });
+            }
+            if let Some((lease_kind, function)) = function_calls
+                .async_direct_host_methods
+                .get(&method_desc.id)
+            {
+                return Ok(ConditionalHostNativeOutcome::Async {
+                    function: ConditionalAsyncNativeFunction::DirectHostMethod {
+                        function: Arc::clone(function),
+                        receiver: vela_host::path::HostPath::new(*host_ref),
+                        lease_kind: *lease_kind,
                     },
                     args: args[2..].to_vec(),
                     diagnostic_name: method_desc.name.clone(),

@@ -1,6 +1,7 @@
 use vela_common::HostMethodId;
 use vela_host::adapter::{GlobalBinding, ScriptStateAdapter};
 use vela_host::error::{HostError, HostErrorKind, HostResult};
+use vela_host::lease::{ErasedHostLease, HostLeaseKind, host_lease_unsupported, host_object_busy};
 use vela_host::path::HostRef;
 use vela_host::resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess};
 use vela_host::target::HostTargetInstance;
@@ -66,6 +67,20 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
     pub(super) const fn next_direct_object_id(&self) -> u64 {
         self.next_direct_object_id
     }
+
+    pub(super) fn take_host_lease(
+        &mut self,
+        root: HostRef,
+        kind: HostLeaseKind,
+    ) -> HostResult<ErasedHostLease<'host>> {
+        if self.globals.binding(root).is_some() {
+            return Err(host_lease_unsupported(root));
+        }
+        self.args
+            .take_host_leases(&[(root, kind)])?
+            .pop()
+            .ok_or_else(|| host_lease_unsupported(root))
+    }
 }
 
 impl ScriptStateAdapter for ExecutionHost<'_, '_> {
@@ -84,8 +99,13 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
             return global.object.resolve_host_target(spec);
         }
         match self.args.direct_binding_by_type(spec.plan.root_type) {
-            Some(HostArgBinding::Shared(object)) => object.resolve_host_target(spec),
-            Some(HostArgBinding::Mutable(object)) => object.resolve_host_target(spec),
+            Some((_, HostArgBinding::Shared { object, .. })) => object.resolve_host_target(spec),
+            Some((root, HostArgBinding::Mutable { object })) => object
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .as_deref()
+                .ok_or_else(|| host_object_busy(root))?
+                .resolve_host_target(spec),
             None => self.fallback.resolve_host_access(spec),
         }
     }
@@ -99,8 +119,15 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
             return global.object.read_resolved_host(access, target);
         }
         match self.args.direct_binding(target.root) {
-            Some(HostArgBinding::Shared(object)) => object.read_resolved_host(access, target),
-            Some(HostArgBinding::Mutable(object)) => object.read_resolved_host(access, target),
+            Some(HostArgBinding::Shared { object, .. }) => {
+                object.read_resolved_host(access, target)
+            }
+            Some(HostArgBinding::Mutable { object }) => object
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .as_deref()
+                .ok_or_else(|| host_object_busy(target.root))?
+                .read_resolved_host(access, target),
             None => self.fallback.read_host(access, target),
         }
     }
@@ -115,10 +142,13 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
             return global.object.write_resolved_host(access, target, value);
         }
         match self.args.direct_binding_mut(target.root) {
-            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(target, "write")),
-            Some(HostArgBinding::Mutable(object)) => {
-                object.write_resolved_host(access, target, value)
-            }
+            Some(HostArgBinding::Shared { .. }) => Err(Self::direct_access_error(target, "write")),
+            Some(HostArgBinding::Mutable { object }) => object
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .as_deref_mut()
+                .ok_or_else(|| host_object_busy(target.root))?
+                .write_resolved_host(access, target, value),
             None => self.fallback.write_host(access, target, value),
         }
     }
@@ -134,10 +164,13 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
             return global.object.mutate_resolved_host(access, target, op, rhs);
         }
         match self.args.direct_binding_mut(target.root) {
-            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(target, "write")),
-            Some(HostArgBinding::Mutable(object)) => {
-                object.mutate_resolved_host(access, target, op, rhs)
-            }
+            Some(HostArgBinding::Shared { .. }) => Err(Self::direct_access_error(target, "write")),
+            Some(HostArgBinding::Mutable { object }) => object
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .as_deref_mut()
+                .ok_or_else(|| host_object_busy(target.root))?
+                .mutate_resolved_host(access, target, op, rhs),
             None => self.fallback.mutate_host(access, target, op, rhs),
         }
     }
@@ -151,8 +184,13 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
             return global.object.remove_resolved_host(access, target);
         }
         match self.args.direct_binding_mut(target.root) {
-            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(target, "write")),
-            Some(HostArgBinding::Mutable(object)) => object.remove_resolved_host(access, target),
+            Some(HostArgBinding::Shared { .. }) => Err(Self::direct_access_error(target, "write")),
+            Some(HostArgBinding::Mutable { object }) => object
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .as_deref_mut()
+                .ok_or_else(|| host_object_busy(target.root))?
+                .remove_resolved_host(access, target),
             None => self.fallback.remove_host(access, target),
         }
     }
@@ -170,10 +208,13 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
                 .call_resolved_host(access, target, method, args);
         }
         match self.args.direct_binding_mut(target.root) {
-            Some(HostArgBinding::Shared(_)) => Err(Self::direct_access_error(target, "call")),
-            Some(HostArgBinding::Mutable(object)) => {
-                object.call_resolved_host(access, target, method, args)
-            }
+            Some(HostArgBinding::Shared { .. }) => Err(Self::direct_access_error(target, "call")),
+            Some(HostArgBinding::Mutable { object }) => object
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .as_deref_mut()
+                .ok_or_else(|| host_object_busy(target.root))?
+                .call_resolved_host(access, target, method, args),
             None => self.fallback.call_host(access, target, method, args),
         }
     }

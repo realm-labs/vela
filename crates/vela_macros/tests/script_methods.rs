@@ -155,10 +155,37 @@ struct DirectCounter {
 #[allow(dead_code)]
 #[script_methods]
 impl DirectCounter {
-    #[script_method(effect = "write_host")]
+    #[script_method(effect = "write_host", reflect = true)]
     pub fn add(&mut self, amount: i64) -> i64 {
         self.total += amount;
         self.total
+    }
+
+    #[script_method(effect = "write_host", reflect = true)]
+    pub async fn add_async(&mut self, amount: i64) -> i64 {
+        let mut pending = true;
+        std::future::poll_fn(move |context| {
+            if pending {
+                pending = false;
+                context.waker().wake_by_ref();
+                std::task::Poll::Pending
+            } else {
+                std::task::Poll::Ready(())
+            }
+        })
+        .await;
+        self.total += amount;
+        self.total
+    }
+
+    #[script_method(effect = "read_host", reflect = true)]
+    pub async fn read_async(&self) -> i64 {
+        self.total
+    }
+
+    #[script_method(effect = "write_host")]
+    pub async fn wait_async(&mut self) -> i64 {
+        std::future::pending().await
     }
 }
 

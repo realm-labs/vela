@@ -57,6 +57,7 @@ impl Vm {
             self.async_native_ids.clone(),
             self.async_host_native_ids.clone(),
             self.async_host_method_ids.clone(),
+            self.async_direct_host_method_ids.clone(),
         );
         values::register(self, &registry, &policy, &lookup_budget, function_calls);
     }

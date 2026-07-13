@@ -19,6 +19,11 @@ fn method_desc_expr(method: &MethodMeta) -> TokenStream {
     let returns = hint_tokens(method.returns.clone());
     let params = method.params.iter().map(param_tokens);
     let access = access_tokens(method);
+    let asyncness = if method.is_async {
+        quote! { ::vela_common::CallableAsyncness::Async }
+    } else {
+        quote! { ::vela_common::CallableAsyncness::Sync }
+    };
     let docs = method
         .docs
         .as_ref()
@@ -42,7 +47,8 @@ fn method_desc_expr(method: &MethodMeta) -> TokenStream {
         )
         .effects(#effect)
         .returns(#returns)
-        .access(#access);
+        .access(#access)
+        .asyncness(#asyncness);
         #(
             desc = desc.param(#params);
         )*
@@ -75,7 +81,10 @@ pub(super) fn script_host_method_registration_tokens(methods: &[MethodMeta]) -> 
     let mut builder = quote! { builder };
     for method in methods {
         let desc = method_desc_expr(method);
-        if method.callable_native {
+        if method.is_async {
+            let registration = async_direct_method_registration_tokens(method, desc);
+            builder = quote! { #builder #registration };
+        } else if method.callable_native {
             let args_tuple = args_tuple_tokens(&method.params);
             let ident = &method.ident;
             builder = quote! {
@@ -102,7 +111,7 @@ pub(super) fn script_host_object_impl_tokens(
 ) -> TokenStream {
     let arms = methods
         .iter()
-        .filter(|method| method.receiver != MethodReceiver::HostBoundary)
+        .filter(|method| method.receiver != MethodReceiver::HostBoundary && !method.is_async)
         .map(host_method_arm_tokens);
     let resolve_arms = methods
         .iter()
@@ -114,6 +123,14 @@ pub(super) fn script_host_object_impl_tokens(
         impl ::vela_host::object::ScriptHostObject for #self_ty {
             fn host_type_id(&self) -> ::vela_common::HostTypeId {
                 ::vela_host::object::ScriptHostFieldAccess::script_host_type_id(self)
+            }
+
+            fn lease_any(&self) -> Option<&dyn ::core::any::Any> {
+                Some(self)
+            }
+
+            fn lease_any_mut(&mut self) -> Option<&mut dyn ::core::any::Any> {
+                Some(self)
             }
 
             fn resolve_host_target(
@@ -199,6 +216,73 @@ pub(super) fn script_host_object_impl_tokens(
                 }
             }
         }
+    }
+}
+
+fn async_direct_method_registration_tokens(method: &MethodMeta, desc: TokenStream) -> TokenStream {
+    let ident = &method.ident;
+    let expected = method.params.len();
+    let arg_bindings = method.params.iter().enumerate().map(|(index, param)| {
+        let name = quote::format_ident!("__vela_arg_{}", param.name);
+        let ty = &param.ty;
+        quote! {
+            let #name = <#ty as ::vela_engine::args::FromScriptArg>::from_script_arg(
+                &args[#index],
+            )?;
+        }
+    });
+    let arg_names = method
+        .params
+        .iter()
+        .map(|param| quote::format_ident!("__vela_arg_{}", param.name));
+    let (lease_kind, lease, receiver) = match method.receiver {
+        MethodReceiver::SharedSelf => (
+            quote! { ::vela_host::lease::HostLeaseKind::Shared },
+            quote! {
+                let __vela_lease = ::vela_engine::host_lease::HostLeaseRef::<Self>::from_erased(
+                    lease,
+                    root,
+                )?;
+            },
+            quote! { &*__vela_lease },
+        ),
+        MethodReceiver::MutSelf => (
+            quote! { ::vela_host::lease::HostLeaseKind::Exclusive },
+            quote! {
+                let mut __vela_lease = ::vela_engine::host_lease::HostLeaseMut::<Self>::from_erased(
+                    lease,
+                    root,
+                )?;
+            },
+            quote! { &mut *__vela_lease },
+        ),
+        MethodReceiver::HostBoundary => {
+            unreachable!("async host-boundary methods are rejected during metadata collection")
+        }
+    };
+
+    quote! {
+        .register_async_direct_method_fn(
+            #desc,
+            #lease_kind,
+            move |root, lease, args| {
+                ::std::boxed::Box::pin(async move {
+                    if args.len() != #expected {
+                        return Err(::vela_vm::error::VmError::new(
+                            ::vela_vm::error::VmErrorKind::ArityMismatch {
+                                name: "typed async direct method".to_owned(),
+                                expected: #expected,
+                                actual: args.len(),
+                            },
+                        ));
+                    }
+                    #lease
+                    #(#arg_bindings)*
+                    let __vela_result = Self::#ident(#receiver, #(#arg_names),*).await;
+                    ::vela_engine::typed::IntoNativeReturn::into_native_return(__vela_result)
+                })
+            },
+        )
     }
 }
 

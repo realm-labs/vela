@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use vela_common::{CallableAsyncness, HostMethodId, Span};
+use vela_host::lease::{ErasedHostLease, HostLeaseKind};
 use vela_host::path::HostPath;
+use vela_host::path::HostRef;
 use vela_reflect::registry::{AttrMap, TypeKey};
 use vela_vm::HostExecution;
 use vela_vm::error::VmResult;
@@ -116,6 +118,21 @@ pub type AsyncNativeMethodFunction = Arc<
         + Sync
         + 'static,
 >;
+pub type AsyncDirectNativeMethodFunction = Arc<
+    dyn for<'host> Fn(HostRef, ErasedHostLease<'host>, Vec<OwnedValue>) -> NativeCallFuture<'host>
+        + Send
+        + Sync
+        + 'static,
+>;
+
+#[derive(Clone)]
+pub enum AsyncNativeMethodImplementation {
+    HostPath(AsyncNativeMethodFunction),
+    Direct {
+        lease_kind: HostLeaseKind,
+        function: AsyncDirectNativeMethodFunction,
+    },
+}
 
 #[derive(Clone)]
 pub struct NativeMethodEntry {
@@ -146,7 +163,7 @@ impl NativeMethodEntry {
 #[derive(Clone)]
 pub struct AsyncNativeMethodEntry {
     pub desc: NativeMethodDesc,
-    pub function: AsyncNativeMethodFunction,
+    pub function: AsyncNativeMethodImplementation,
 }
 
 impl AsyncNativeMethodEntry {
@@ -165,7 +182,30 @@ impl AsyncNativeMethodEntry {
         desc.asyncness = CallableAsyncness::Async;
         Self {
             desc,
-            function: Arc::new(function),
+            function: AsyncNativeMethodImplementation::HostPath(Arc::new(function)),
+        }
+    }
+
+    #[must_use]
+    pub fn new_direct(
+        mut desc: NativeMethodDesc,
+        lease_kind: HostLeaseKind,
+        function: impl for<'host> Fn(
+            HostRef,
+            ErasedHostLease<'host>,
+            Vec<OwnedValue>,
+        ) -> NativeCallFuture<'host>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        desc.asyncness = CallableAsyncness::Async;
+        Self {
+            desc,
+            function: AsyncNativeMethodImplementation::Direct {
+                lease_kind,
+                function: Arc::new(function),
+            },
         }
     }
 }

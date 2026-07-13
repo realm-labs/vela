@@ -202,6 +202,13 @@ impl PreparedAsyncCall {
                     }))
                 })
             }
+            native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod { .. } => {
+                Box::pin(async {
+                    Err(VmError::new(VmErrorKind::TypeMismatch {
+                        operation: "async direct host method invocation",
+                    }))
+                })
+            }
         }
     }
 
@@ -211,6 +218,14 @@ impl PreparedAsyncCall {
             self.function,
             native_function_calls::PreparedAsyncNativeFunction::Host(_)
                 | native_function_calls::PreparedAsyncNativeFunction::HostMethod { .. }
+        )
+    }
+
+    #[must_use]
+    pub fn requires_host_lease(&self) -> bool {
+        matches!(
+            self.function,
+            native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod { .. }
         )
     }
 
@@ -230,7 +245,51 @@ impl PreparedAsyncCall {
                 function,
                 receiver,
             } => function(receiver, &self.args, host, budget),
+            native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod { .. } => {
+                Box::pin(async {
+                    Err(VmError::new(VmErrorKind::TypeMismatch {
+                        operation: "async direct host method invocation",
+                    }))
+                })
+            }
         }
+    }
+
+    #[must_use]
+    pub fn host_lease_request(
+        &self,
+    ) -> Option<(vela_host::path::HostRef, vela_host::lease::HostLeaseKind)> {
+        let native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod {
+            receiver,
+            lease_kind,
+            ..
+        } = &self.function
+        else {
+            return None;
+        };
+        receiver
+            .segments
+            .is_empty()
+            .then_some((receiver.root, *lease_kind))
+    }
+
+    pub fn invoke_with_host_lease<'host>(
+        &self,
+        lease: vela_host::lease::ErasedHostLease<'host>,
+    ) -> NativeCallFuture<'host> {
+        let native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod {
+            function,
+            receiver,
+            ..
+        } = &self.function
+        else {
+            return Box::pin(async {
+                Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "async host lease invocation",
+                }))
+            });
+        };
+        function(receiver.root, lease, self.args.clone())
     }
 
     #[must_use]
@@ -1917,6 +1976,37 @@ impl Vm {
                     };
                     if let script_method_calls::LinkedDynamicNonScriptTarget::Host { method_id } =
                         &target
+                        && let Some((lease_kind, function)) =
+                            self.async_direct_host_method_ids.get(method_id)
+                    {
+                        let name = program.debug_name(*method_name).to_owned();
+                        let Some(resume) = await_resume else {
+                            return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait { name })
+                                .with_source_span_if_absent(instruction.span));
+                        };
+                        let prepared = host_access::prepare_async_host_root_method_args(
+                            frame,
+                            heap.as_deref(),
+                            *receiver,
+                            args,
+                        )?;
+                        frame_state.ip = resume;
+                        return Ok(FrameDriveOutcome::Async {
+                            call: PreparedAsyncCall {
+                                function: native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod {
+                                    function: Arc::clone(function),
+                                    receiver: prepared.receiver,
+                                    lease_kind: *lease_kind,
+                                },
+                                args: prepared.args,
+                                name,
+                            },
+                            destination: Some(*dst),
+                            source_span: instruction.span,
+                        });
+                    }
+                    if let script_method_calls::LinkedDynamicNonScriptTarget::Host { method_id } =
+                        &target
                         && let Some(function) = self.async_host_method_ids.get(method_id)
                     {
                         let name = program.debug_name(*method_name).to_owned();
@@ -2457,6 +2547,42 @@ impl Vm {
                 } => {
                     let method_id =
                         host_access::linked_host_method_id(program, *method, instruction.span)?;
+                    if let Some((lease_kind, function)) =
+                        self.async_direct_host_method_ids.get(&method_id)
+                    {
+                        let name = program.debug_name(*debug_name).to_owned();
+                        let Some(resume) = await_resume else {
+                            return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait { name })
+                                .with_source_span_if_absent(instruction.span));
+                        };
+                        let prepared = host_access::prepare_async_host_method_args(
+                            frame,
+                            heap.as_deref(),
+                            *root,
+                            host_access::CodeHostTargetPlan {
+                                targets: &code.host_targets,
+                                target_id: *target,
+                                dynamic_args,
+                                cache_site: *cache_site,
+                            },
+                            args,
+                            instruction.span,
+                        )?;
+                        frame_state.ip = resume;
+                        return Ok(FrameDriveOutcome::Async {
+                            call: PreparedAsyncCall {
+                                function: native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod {
+                                    function: Arc::clone(function),
+                                    receiver: prepared.receiver,
+                                    lease_kind: *lease_kind,
+                                },
+                                args: prepared.args,
+                                name,
+                            },
+                            destination: *dst,
+                            source_span: instruction.span,
+                        });
+                    }
                     if let Some(function) = self.async_host_method_ids.get(&method_id) {
                         let name = program.debug_name(*debug_name).to_owned();
                         let Some(resume) = await_resume else {
