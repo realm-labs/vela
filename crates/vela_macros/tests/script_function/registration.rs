@@ -1,4 +1,7 @@
 use super::*;
+use std::future::Future;
+use std::pin::Pin;
+use std::task::{Context, Poll, Waker};
 use vela_bytecode::compiler::CompiledProgram;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::owned_value::OwnedValue;
@@ -69,6 +72,59 @@ fn main() {
     assert_eq!(
         run_linked_program(&engine, program, &[]),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(42))),
+    );
+}
+
+#[test]
+fn async_script_function_macros_register_scoped_send_wrappers() {
+    fn require_send<T: Send>(_: &T) {}
+
+    let builder = vela_register_native_function_async_bonus(Engine::builder());
+    let builder = vela_register_context_native_function_async_set_level(builder);
+    let engine = vela_register_host_native_function_async_set_score(builder)
+        .capability(Capability::HostWrite)
+        .build()
+        .expect("engine should build from async macro functions");
+    let program = compile_source!(
+        engine,
+        r#"
+async fn main(player) {
+    game::async_set_level(player, 11).await;
+    game::async_set_score(player, 17).await;
+    return game::async_bonus(41).await;
+}
+"#,
+        "source should compile with async macro functions"
+    );
+    let registry = engine.registry();
+    let async_bonus = registry
+        .function_by_name("game::async_bonus")
+        .expect("async macro metadata");
+    assert_eq!(async_bonus.asyncness, vela_common::CallableAsyncness::Async);
+
+    let mut runtime = Runtime::new(engine, program);
+    let player = HostRef::new(HostTypeId::new(1), vela_common::HostObjectId::new(42), 1);
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_object(player);
+    let args = vela_engine::runtime::CallArgs::from_positional([OwnedValue::HostRef(player)])
+        .with_fallback_adapter(&mut adapter);
+    let mut future = runtime.call_async("main", args, CallOptions::unbounded());
+    require_send(&future);
+    let mut context = Context::from_waker(Waker::noop());
+    let Poll::Ready(result) = Pin::new(&mut future).poll(&mut context) else {
+        panic!("ready async macro functions should complete in one poll");
+    };
+    let value = result.expect("async macro call should succeed");
+    drop(future);
+
+    assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(42)));
+    assert_eq!(
+        adapter.read_diagnostic_path(&HostPath::new(player).field(FieldId::new(1))),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(11)))
+    );
+    assert_eq!(
+        adapter.read_diagnostic_path(&HostPath::new(player).field(FieldId::new(2))),
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(17)))
     );
 }
 

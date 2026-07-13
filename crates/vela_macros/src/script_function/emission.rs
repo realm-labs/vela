@@ -9,6 +9,11 @@ pub(super) fn desc_tokens(function: &FunctionMeta) -> TokenStream {
     let name = &function.name;
     let effect = effect_tokens(function.effect);
     let returns = hint_tokens(function.returns.clone());
+    let asyncness = function.is_async.then(|| {
+        quote! {
+            desc = desc.asyncness(::vela_common::CallableAsyncness::Async);
+        }
+    });
     let params = function.params.iter().map(param_tokens);
     let access = access_tokens(function);
     let docs = function
@@ -35,6 +40,7 @@ pub(super) fn desc_tokens(function: &FunctionMeta) -> TokenStream {
             )*
             #(#attrs)*
             #docs
+            #asyncness
             desc
         }
     }
@@ -62,10 +68,15 @@ pub(super) fn args_tuple_tokens(params: &[ParamMeta]) -> TokenStream {
 
 pub(super) fn register_tokens(
     mode: FunctionMode,
+    is_async: bool,
+    params: &[ParamMeta],
     args_tuple: &TokenStream,
     desc_name: &syn::Ident,
     fn_ident: &syn::Ident,
 ) -> TokenStream {
+    if is_async {
+        return async_register_tokens(mode, params, args_tuple, desc_name, fn_ident);
+    }
     match mode {
         FunctionMode::Pure => {
             quote! { builder.register_typed_native_fn::<#args_tuple, _>(#desc_name(), #fn_ident) }
@@ -86,6 +97,81 @@ pub(super) fn register_tokens(
                 )
             }
         }
+    }
+}
+
+fn async_register_tokens(
+    mode: FunctionMode,
+    params: &[ParamMeta],
+    args_tuple: &TokenStream,
+    desc_name: &syn::Ident,
+    fn_ident: &syn::Ident,
+) -> TokenStream {
+    let args = params
+        .iter()
+        .enumerate()
+        .map(|(index, param)| {
+            let ident = quote::format_ident!("__vela_arg_{index}");
+            let ty = &param.ty;
+            quote! { #ident: #ty }
+        })
+        .collect::<Vec<_>>();
+    let arg_names = (0..params.len())
+        .map(|index| quote::format_ident!("__vela_arg_{index}"))
+        .collect::<Vec<_>>();
+    let converted_call = match mode {
+        FunctionMode::Pure => quote! { #fn_ident(#(#arg_names),*).await },
+        FunctionMode::Context | FunctionMode::Host => {
+            quote! { #fn_ident(__vela_context, #(#arg_names),*).await }
+        }
+    };
+    let future = quote! {
+        ::std::boxed::Box::pin(async move {
+            ::vela_engine::typed::IntoNativeReturn::into_native_return(#converted_call)
+        })
+    };
+    match mode {
+        FunctionMode::Pure => quote! {
+            {
+                fn __vela_async_wrapper(
+                    #(#args),*
+                ) -> ::vela_engine::native::NativeCallFuture<'static> {
+                    #future
+                }
+                builder.register_typed_async_fn::<#args_tuple, _>(
+                    #desc_name(),
+                    __vela_async_wrapper,
+                )
+            }
+        },
+        FunctionMode::Context => quote! {
+            {
+                fn __vela_async_wrapper<'call, 'host>(
+                    __vela_context: &'call mut ::vela_engine::context::NativeCallContext<'call, 'host>,
+                    #(#args),*
+                ) -> ::vela_engine::native::NativeCallFuture<'call> {
+                    #future
+                }
+                builder.register_typed_async_context_fn::<#args_tuple, _>(
+                    #desc_name(),
+                    __vela_async_wrapper,
+                )
+            }
+        },
+        FunctionMode::Host => quote! {
+            {
+                fn __vela_async_wrapper<'call, 'host>(
+                    __vela_context: &'call mut ::vela_vm::HostExecution<'host>,
+                    #(#args),*
+                ) -> ::vela_engine::native::NativeCallFuture<'call> {
+                    #future
+                }
+                builder.register_typed_async_host_fn::<#args_tuple, _>(
+                    #desc_name(),
+                    __vela_async_wrapper,
+                )
+            }
+        },
     }
 }
 

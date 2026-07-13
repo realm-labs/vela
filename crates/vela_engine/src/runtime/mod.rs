@@ -847,7 +847,18 @@ where
                     return Ok(call.script_globals.retain(call.runtime_id, value));
                 }
                 LinkedDriveOutcome::AsyncBoundary(prepared) => {
-                    let result = prepared.invoke().await;
+                    let result = if prepared.requires_host() {
+                        let mut host = HostExecution {
+                            adapter: &mut execution_host,
+                            access: &mut access,
+                            script_globals: Some(&call.script_globals.values),
+                        };
+                        prepared
+                            .invoke_with_host(&mut host, Some(&mut budget))
+                            .await
+                    } else {
+                        prepared.invoke().await
+                    };
                     vm.resume_linked_async_call(
                         &mut session,
                         result,

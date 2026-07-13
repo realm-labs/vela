@@ -1,12 +1,14 @@
+use std::sync::Arc;
+
 use vela_bytecode::{CacheSiteId, DebugNameId, LinkedProgram, NativeHandle, Register};
 use vela_common::Span;
 use vela_def::FunctionId;
 
 use crate::{
-    AsyncNativeFunction, BorrowedNativeFunction, CallFrame, ExecutionBudget, HeapExecution,
-    HostExecution, HostNativeFunction, NativeFunction, NativeInlineCacheEntry, OwnedValue,
-    SmallStorage, Vm, VmError, VmErrorKind, VmInlineCaches, VmResult, owned_to_value, value::Value,
-    value_to_owned,
+    AsyncHostNativeFunction, AsyncNativeFunction, BorrowedNativeFunction, CallFrame,
+    ExecutionBudget, HeapExecution, HostExecution, HostNativeFunction, NativeFunction,
+    NativeInlineCacheEntry, OwnedValue, SmallStorage, Vm, VmError, VmErrorKind, VmInlineCaches,
+    VmResult, owned_to_value, value::Value, value_to_owned,
 };
 
 struct NativeFunctionCall<'a> {
@@ -34,17 +36,27 @@ pub(crate) enum LinkedNativeDispatch {
 }
 
 pub(crate) struct PreparedAsyncNativeCall {
-    pub(crate) function: AsyncNativeFunction,
+    pub(crate) function: PreparedAsyncNativeFunction,
     pub(crate) args: Vec<OwnedValue>,
     pub(crate) destination: Option<Register>,
     pub(crate) name: String,
     pub(crate) source_span: Option<Span>,
 }
 
+pub(crate) enum PreparedAsyncNativeFunction {
+    Pure(AsyncNativeFunction),
+    Host(AsyncHostNativeFunction),
+    HostMethod {
+        function: crate::AsyncHostMethodFunction,
+        receiver: vela_host::path::HostPath,
+    },
+}
+
 #[derive(Clone)]
 pub(crate) enum NativeCallTarget {
     Pure(NativeFunction),
     AsyncPure(AsyncNativeFunction),
+    AsyncHost(AsyncHostNativeFunction),
     BorrowedPure(BorrowedNativeFunction),
     Host(HostNativeFunction),
     BorrowedHost(crate::BorrowedHostNativeFunction),
@@ -55,6 +67,7 @@ impl NativeCallTarget {
         match self {
             Self::Pure(_) => "pure",
             Self::AsyncPure(_) => "async_pure",
+            Self::AsyncHost(_) => "async_host",
             Self::BorrowedPure(_) => "borrowed_pure",
             Self::Host(_) => "host",
             Self::BorrowedHost(_) => "borrowed_host",
@@ -93,7 +106,16 @@ pub(crate) fn dispatch_linked_native_function_call(
         })
         .with_source_span_if_absent(call.call_site));
     };
-    if let NativeCallTarget::AsyncPure(function) = target {
+    let async_function = match &target {
+        NativeCallTarget::AsyncPure(function) => {
+            Some(PreparedAsyncNativeFunction::Pure(Arc::clone(function)))
+        }
+        NativeCallTarget::AsyncHost(function) => {
+            Some(PreparedAsyncNativeFunction::Host(Arc::clone(function)))
+        }
+        _ => None,
+    };
+    if let Some(function) = async_function {
         let args = native_call_args_from_registers(frame, call.args, heap.as_deref())?
             .as_slice()
             .to_vec();
@@ -123,7 +145,7 @@ fn dispatch_resolved_native_function_call(
             native(values.as_slice())
                 .map_err(|error| error.with_source_span_if_absent(call.call_site))?
         }
-        NativeCallTarget::AsyncPure(_) => {
+        NativeCallTarget::AsyncPure(_) | NativeCallTarget::AsyncHost(_) => {
             unreachable!("async targets are prepared before dispatch")
         }
         NativeCallTarget::BorrowedPure(native) => {
@@ -216,6 +238,12 @@ fn resolve_native_call_target_by_id(vm: &Vm, native: FunctionId) -> Option<Nativ
                 .get(&native)
                 .cloned()
                 .map(NativeCallTarget::AsyncPure)
+        })
+        .or_else(|| {
+            vm.async_host_native_ids
+                .get(&native)
+                .cloned()
+                .map(NativeCallTarget::AsyncHost)
         })
         .or_else(|| {
             vm.native_ids

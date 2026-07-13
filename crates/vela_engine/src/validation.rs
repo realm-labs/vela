@@ -3,13 +3,11 @@ use std::collections::BTreeSet;
 use vela_reflect::modules::ModuleDesc;
 use vela_reflect::registry::{AttrMap, MethodParamDesc, TypeDesc};
 
+use crate::compiler_registry::EngineFunctionEntries;
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
 use crate::metadata::type_hint_display;
-use crate::method::{NativeMethodDesc, NativeMethodEntry};
-use crate::native::{
-    AsyncNativeFunctionEntry, ContextHostNativeFunctionEntry, HostNativeFunctionEntry,
-    NativeFunctionDesc, NativeFunctionEntry, TypeHint,
-};
+use crate::method::{AsyncNativeMethodEntry, NativeMethodDesc, NativeMethodEntry};
+use crate::native::{NativeFunctionDesc, TypeHint};
 
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct ModuleValidationOptions {
@@ -455,10 +453,7 @@ fn validate_trait_method_params(
 }
 
 pub(crate) fn validate_native_functions(
-    functions: &[NativeFunctionEntry],
-    async_functions: &[AsyncNativeFunctionEntry],
-    host_functions: &[HostNativeFunctionEntry],
-    context_host_functions: &[ContextHostNativeFunctionEntry],
+    functions: EngineFunctionEntries<'_>,
     types: &[TypeDesc],
     include_standard_natives: bool,
 ) -> EngineResult<()> {
@@ -473,11 +468,14 @@ pub(crate) fn validate_native_functions(
     }
 
     for desc in functions
+        .native
         .iter()
         .map(|entry| &entry.desc)
-        .chain(async_functions.iter().map(|entry| &entry.desc))
-        .chain(host_functions.iter().map(|entry| &entry.desc))
-        .chain(context_host_functions.iter().map(|entry| &entry.desc))
+        .chain(functions.async_native.iter().map(|entry| &entry.desc))
+        .chain(functions.async_host.iter().map(|entry| &entry.desc))
+        .chain(functions.async_context_host.iter().map(|entry| &entry.desc))
+        .chain(functions.host.iter().map(|entry| &entry.desc))
+        .chain(functions.context_host.iter().map(|entry| &entry.desc))
     {
         validate_native_function_desc(desc, &mut ids, &mut names, &type_hints)?;
     }
@@ -488,6 +486,7 @@ pub(crate) fn validate_native_functions(
 pub(crate) fn validate_native_method_type_hints(
     host_method_metadata: &[NativeMethodDesc],
     native_methods: &[NativeMethodEntry],
+    async_native_methods: &[AsyncNativeMethodEntry],
     types: &[TypeDesc],
     include_standard_types: bool,
 ) -> EngineResult<()> {
@@ -495,6 +494,7 @@ pub(crate) fn validate_native_method_type_hints(
     for desc in host_method_metadata
         .iter()
         .chain(native_methods.iter().map(|entry| &entry.desc))
+        .chain(async_native_methods.iter().map(|entry| &entry.desc))
     {
         validate_attr_names(
             &format!("host method {}.{}", desc.owner.name, desc.name),

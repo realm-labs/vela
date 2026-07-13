@@ -164,7 +164,7 @@ enum FrameDriveOutcome {
 }
 
 pub struct PreparedAsyncCall {
-    function: crate::AsyncNativeFunction,
+    function: native_function_calls::PreparedAsyncNativeFunction,
     args: Vec<OwnedValue>,
     name: String,
 }
@@ -186,7 +186,51 @@ pub struct LinkedExecutionStart<'artifact, 'args, 'caches> {
 impl PreparedAsyncCall {
     #[must_use]
     pub fn invoke(&self) -> NativeCallFuture<'_> {
-        (self.function)(&self.args)
+        match &self.function {
+            native_function_calls::PreparedAsyncNativeFunction::Pure(function) => {
+                function(&self.args)
+            }
+            native_function_calls::PreparedAsyncNativeFunction::Host(_) => Box::pin(async {
+                Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "async host native invocation",
+                }))
+            }),
+            native_function_calls::PreparedAsyncNativeFunction::HostMethod { .. } => {
+                Box::pin(async {
+                    Err(VmError::new(VmErrorKind::TypeMismatch {
+                        operation: "async host method invocation",
+                    }))
+                })
+            }
+        }
+    }
+
+    #[must_use]
+    pub fn requires_host(&self) -> bool {
+        matches!(
+            self.function,
+            native_function_calls::PreparedAsyncNativeFunction::Host(_)
+                | native_function_calls::PreparedAsyncNativeFunction::HostMethod { .. }
+        )
+    }
+
+    pub fn invoke_with_host<'call, 'host>(
+        &'call self,
+        host: &'call mut HostExecution<'host>,
+        budget: Option<&'call mut ExecutionBudget>,
+    ) -> NativeCallFuture<'call> {
+        match &self.function {
+            native_function_calls::PreparedAsyncNativeFunction::Pure(function) => {
+                function(&self.args)
+            }
+            native_function_calls::PreparedAsyncNativeFunction::Host(function) => {
+                function(&self.args, host, budget)
+            }
+            native_function_calls::PreparedAsyncNativeFunction::HostMethod {
+                function,
+                receiver,
+            } => function(receiver, &self.args, host, budget),
+        }
     }
 
     #[must_use]
@@ -2377,10 +2421,46 @@ impl Vm {
                     target,
                     dynamic_args,
                     method,
+                    debug_name,
                     args,
                     cache_site,
-                    ..
                 } => {
+                    let method_id =
+                        host_access::linked_host_method_id(program, *method, instruction.span)?;
+                    if let Some(function) = self.async_host_method_ids.get(&method_id) {
+                        let name = program.debug_name(*debug_name).to_owned();
+                        let Some(resume) = await_resume else {
+                            return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait { name })
+                                .with_source_span_if_absent(instruction.span));
+                        };
+                        let prepared = host_access::prepare_async_host_method_args(
+                            frame,
+                            heap.as_deref(),
+                            *root,
+                            host_access::CodeHostTargetPlan {
+                                targets: &code.host_targets,
+                                target_id: *target,
+                                dynamic_args,
+                                cache_site: *cache_site,
+                            },
+                            args,
+                            instruction.span,
+                        )?;
+                        frame_state.ip = resume;
+                        return Ok(FrameDriveOutcome::Async {
+                            call: PreparedAsyncCall {
+                                function:
+                                    native_function_calls::PreparedAsyncNativeFunction::HostMethod {
+                                        function: Arc::clone(function),
+                                        receiver: prepared.receiver,
+                                    },
+                                args: prepared.args,
+                                name,
+                            },
+                            destination: *dst,
+                            source_span: instruction.span,
+                        });
+                    }
                     let value = host_access::execute_linked_code_host_call(
                         host_access::HostAccessRuntime {
                             frame,

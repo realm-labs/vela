@@ -24,6 +24,7 @@ pub(super) struct FunctionMeta {
     pub(super) reflect_callable: bool,
     pub(super) params: Vec<ParamMeta>,
     pub(super) returns: HintKind,
+    pub(super) is_async: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -262,6 +263,7 @@ pub(super) fn function_meta(
         reflect_callable: attrs.reflect_callable,
         params,
         returns: return_hint(&item.sig.output),
+        is_async: item.sig.asyncness.is_some(),
     })
 }
 

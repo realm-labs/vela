@@ -1,3 +1,4 @@
+mod async_functions;
 mod context_host;
 mod host;
 mod method;
@@ -7,8 +8,9 @@ mod traits;
 
 pub use returning::IntoNativeReturn;
 pub use traits::{
-    TypedContextHostNativeFunction, TypedHostNativeFunction, TypedNativeFunction,
-    TypedNativeMethodFunction,
+    TypedAsyncContextHostNativeFunction, TypedAsyncHostNativeFunction, TypedAsyncNativeFunction,
+    TypedAsyncNativeMethodFunction, TypedContextHostNativeFunction, TypedHostNativeFunction,
+    TypedNativeFunction, TypedNativeMethodFunction,
 };
 
 use vela_vm::error::{VmError, VmErrorKind, VmResult};

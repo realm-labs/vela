@@ -46,6 +46,11 @@ fn grant_bonus(amount: i64, multiplier: i64) -> i64 {
     amount * multiplier
 }
 
+#[script_function(name = "game::async_bonus", effect = "pure", reflect = true)]
+async fn async_bonus(amount: i64) -> i64 {
+    amount + 1
+}
+
 /// Grants a renamed copied bonus amount.
 #[script_function(
     name = "game::grant_bonus_v2",
@@ -67,6 +72,20 @@ fn set_level(ctx: &mut NativeCallContext<'_, '_>, player: HostRef, level: i64) -
         None,
     )?;
     Ok(ctx.has_capability(Capability::HostWrite))
+}
+
+#[script_context_function(name = "game::async_set_level", effect = "write_host", reflect = true)]
+async fn async_set_level(
+    ctx: &mut NativeCallContext<'_, '_>,
+    player: HostRef,
+    level: i64,
+) -> VmResult<i64> {
+    ctx.set_path(
+        HostPath::new(player).field(FieldId::new(1)),
+        HostValue::Scalar(vela_common::ScalarValue::I64(level)),
+        None,
+    )?;
+    Ok(level)
 }
 
 /// Sets a renamed copied player level through HostAccess.
@@ -112,6 +131,21 @@ fn checked_level(
 /// Sets a copied player score through host execution.
 #[script_host_function(name = "game::set_score", effect = "write_host", reflect = true)]
 fn set_score(host: &mut HostExecution<'_>, player: HostRef, score: i64) -> VmResult<i64> {
+    host.access.write_diagnostic_path(
+        host.adapter,
+        HostPath::new(player).field(FieldId::new(2)),
+        HostValue::Scalar(vela_common::ScalarValue::I64(score)),
+        None,
+    )?;
+    Ok(score)
+}
+
+#[script_host_function(name = "game::async_set_score", effect = "write_host", reflect = true)]
+async fn async_set_score(
+    host: &mut HostExecution<'_>,
+    player: HostRef,
+    score: i64,
+) -> VmResult<i64> {
     host.access.write_diagnostic_path(
         host.adapter,
         HostPath::new(player).field(FieldId::new(2)),

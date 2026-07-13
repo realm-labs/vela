@@ -501,6 +501,24 @@ pub type NativeCallFuture<'call> = vela_vm::NativeCallFuture<'call>;
 /// });
 /// ```
 pub type AsyncNativeFunction = vela_vm::AsyncNativeFunction;
+pub type AsyncHostNativeFunction = Arc<
+    dyn for<'call, 'host> Fn(
+            &'call [OwnedValue],
+            &'call mut HostExecution<'host>,
+        ) -> NativeCallFuture<'call>
+        + Send
+        + Sync
+        + 'static,
+>;
+pub type AsyncContextHostNativeFunction = Arc<
+    dyn for<'call, 'host> Fn(
+            &'call [OwnedValue],
+            &'call mut NativeCallContext<'call, 'host>,
+        ) -> NativeCallFuture<'call>
+        + Send
+        + Sync
+        + 'static,
+>;
 pub type HostNativeFunction = Arc<
     dyn for<'host> Fn(&[OwnedValue], &mut HostExecution<'host>) -> VmResult<OwnedValue>
         + Send
@@ -547,6 +565,58 @@ impl AsyncNativeFunctionEntry {
     pub fn new(
         mut desc: NativeFunctionDesc,
         function: impl for<'call> Fn(&'call [OwnedValue]) -> NativeCallFuture<'call>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        desc.asyncness = CallableAsyncness::Async;
+        Self {
+            desc,
+            function: Arc::new(function),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct AsyncHostNativeFunctionEntry {
+    pub desc: NativeFunctionDesc,
+    pub function: AsyncHostNativeFunction,
+}
+
+impl AsyncHostNativeFunctionEntry {
+    #[must_use]
+    pub fn new(
+        mut desc: NativeFunctionDesc,
+        function: impl for<'call, 'host> Fn(
+            &'call [OwnedValue],
+            &'call mut HostExecution<'host>,
+        ) -> NativeCallFuture<'call>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        desc.asyncness = CallableAsyncness::Async;
+        Self {
+            desc,
+            function: Arc::new(function),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct AsyncContextHostNativeFunctionEntry {
+    pub desc: NativeFunctionDesc,
+    pub function: AsyncContextHostNativeFunction,
+}
+
+impl AsyncContextHostNativeFunctionEntry {
+    #[must_use]
+    pub fn new(
+        mut desc: NativeFunctionDesc,
+        function: impl for<'call, 'host> Fn(
+            &'call [OwnedValue],
+            &'call mut NativeCallContext<'call, 'host>,
+        ) -> NativeCallFuture<'call>
         + Send
         + Sync
         + 'static,

@@ -9,16 +9,23 @@ use vela_registry::{
 };
 
 use crate::native::{
-    AsyncNativeFunctionEntry, ContextHostNativeFunctionEntry, HostNativeFunctionEntry,
-    NativeFunctionDesc, NativeFunctionEntry,
+    AsyncContextHostNativeFunctionEntry, AsyncHostNativeFunctionEntry, AsyncNativeFunctionEntry,
+    ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
+    NativeFunctionEntry,
 };
+
+pub(crate) struct EngineFunctionEntries<'a> {
+    pub(crate) native: &'a [NativeFunctionEntry],
+    pub(crate) async_native: &'a [AsyncNativeFunctionEntry],
+    pub(crate) async_host: &'a [AsyncHostNativeFunctionEntry],
+    pub(crate) async_context_host: &'a [AsyncContextHostNativeFunctionEntry],
+    pub(crate) host: &'a [HostNativeFunctionEntry],
+    pub(crate) context_host: &'a [ContextHostNativeFunctionEntry],
+}
 
 pub(crate) fn definition_registry_from_engine_parts(
     types: &[TypeDesc],
-    native_functions: &[NativeFunctionEntry],
-    async_native_functions: &[AsyncNativeFunctionEntry],
-    host_native_functions: &[HostNativeFunctionEntry],
-    context_host_native_functions: &[ContextHostNativeFunctionEntry],
+    functions: EngineFunctionEntries<'_>,
     include_reflection_natives: bool,
     include_stdlib: bool,
 ) -> Result<DefinitionRegistry, RegistryError> {
@@ -29,16 +36,15 @@ pub(crate) fn definition_registry_from_engine_parts(
     for desc in types {
         register_type_def(&mut registry, desc)?;
     }
-    for desc in native_functions
+    for desc in functions
+        .native
         .iter()
         .map(|entry| &entry.desc)
-        .chain(async_native_functions.iter().map(|entry| &entry.desc))
-        .chain(host_native_functions.iter().map(|entry| &entry.desc))
-        .chain(
-            context_host_native_functions
-                .iter()
-                .map(|entry| &entry.desc),
-        )
+        .chain(functions.async_native.iter().map(|entry| &entry.desc))
+        .chain(functions.async_host.iter().map(|entry| &entry.desc))
+        .chain(functions.async_context_host.iter().map(|entry| &entry.desc))
+        .chain(functions.host.iter().map(|entry| &entry.desc))
+        .chain(functions.context_host.iter().map(|entry| &entry.desc))
     {
         registry.register_function(native_function_def(desc))?;
     }
@@ -390,7 +396,7 @@ mod tests {
     };
     use vela_registry::{Def, IndexCapabilityDef, TypeHintDef, TypeKindDef};
 
-    use super::definition_registry_from_engine_parts;
+    use super::{EngineFunctionEntries, definition_registry_from_engine_parts};
     use crate::native::{EffectSet, NativeFunctionDesc, NativeFunctionEntry};
 
     #[test]
@@ -462,10 +468,14 @@ mod tests {
 
         let registry = definition_registry_from_engine_parts(
             &[type_desc, index_desc],
-            &[native],
-            &[],
-            &[],
-            &[],
+            EngineFunctionEntries {
+                native: &[native],
+                async_native: &[],
+                async_host: &[],
+                async_context_host: &[],
+                host: &[],
+                context_host: &[],
+            },
             true,
             false,
         )

@@ -4,6 +4,7 @@ use vela_bytecode::{
 };
 use vela_common::{GlobalSlot, HostMethodId, Span};
 use vela_host::adapter::GlobalBinding;
+use vela_host::path::HostPath;
 use vela_host::resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, ResolvedHostAccess};
 use vela_host::target::{HostPathArg, HostTargetInstance, HostTargetPlan};
 use vela_host::value::HostValue;
@@ -13,7 +14,8 @@ use crate::heap_values::host_to_value;
 use crate::host_values::{value_from_host, value_to_host};
 use crate::{
     CallFrame, ExecutionBudget, HeapExecution, HostExecution, HostInlineCacheEntry,
-    HostInlineCacheTarget, Value, VmError, VmErrorKind, VmInlineCaches, VmResult, expect_host_ref,
+    HostInlineCacheTarget, OwnedValue, Value, VmError, VmErrorKind, VmInlineCaches, VmResult,
+    expect_host_ref, value_to_owned,
 };
 
 pub(crate) struct HostAccessRuntime<'a, 'host, 'heap> {
@@ -362,6 +364,11 @@ pub(crate) struct LinkedCodeHostCallPlan<'a> {
     pub(crate) wants_return: bool,
 }
 
+pub(crate) struct PreparedAsyncHostMethodArgs {
+    pub(crate) receiver: HostPath,
+    pub(crate) args: Vec<OwnedValue>,
+}
+
 pub(crate) struct HostRootMethodCall<'a> {
     pub(crate) method: HostMethodId,
     pub(crate) args: &'a [Value],
@@ -452,15 +459,7 @@ pub(crate) fn execute_linked_code_host_call(
     root: Register,
     call: LinkedCodeHostCallPlan<'_>,
 ) -> VmResult<Option<Value>> {
-    let method_id = match call.program.method_dispatch(call.method).map(|d| &d.kind) {
-        Some(LinkedMethodDispatchKind::Host { method_id }) => *method_id,
-        _ => {
-            return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
-                opcode: "HostCall",
-            })
-            .with_source_span_if_absent(runtime.source_span));
-        }
-    };
+    let method_id = linked_host_method_id(call.program, call.method, runtime.source_span)?;
     execute_code_host_call(
         runtime,
         root,
@@ -471,6 +470,43 @@ pub(crate) fn execute_linked_code_host_call(
             wants_return: call.wants_return,
         },
     )
+}
+
+pub(crate) fn linked_host_method_id(
+    program: &LinkedProgram,
+    method: MethodDispatchHandle,
+    source_span: Option<Span>,
+) -> VmResult<HostMethodId> {
+    Ok(match program.method_dispatch(method).map(|d| &d.kind) {
+        Some(LinkedMethodDispatchKind::Host { method_id }) => *method_id,
+        _ => {
+            return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                opcode: "HostCall",
+            })
+            .with_source_span_if_absent(source_span));
+        }
+    })
+}
+
+pub(crate) fn prepare_async_host_method_args(
+    frame: &CallFrame,
+    heap: Option<&HeapExecution<'_>>,
+    root: Register,
+    target: CodeHostTargetPlan<'_>,
+    args: &[Register],
+    source_span: Option<Span>,
+) -> VmResult<PreparedAsyncHostMethodArgs> {
+    let root = expect_host_ref(&frame.read(root)?, "host_call")?;
+    let plan = code_host_target(target.targets, target.target_id, source_span)?;
+    let dynamic_args = materialize_host_args(frame, target.dynamic_args, heap, "host_call")?;
+    let receiver = HostTargetInstance::new(root, plan, dynamic_args.as_slice())
+        .to_diagnostic_path()
+        .to_host_path();
+    let args = args
+        .iter()
+        .map(|register| value_to_owned(&frame.read(*register)?, heap))
+        .collect::<VmResult<Vec<_>>>()?;
+    Ok(PreparedAsyncHostMethodArgs { receiver, args })
 }
 
 pub(crate) fn execute_host_root_method_call(

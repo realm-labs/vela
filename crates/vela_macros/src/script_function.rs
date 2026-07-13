@@ -5,7 +5,6 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{ItemFn, Result, parse2};
 
-use crate::attrs::spanned_error;
 use crate::signature::{
     docs_from_attrs, reject_extern_signature, reject_generic_signature, reject_unsafe_signature,
 };
@@ -36,12 +35,6 @@ pub(crate) fn expand_host(attr: TokenStream, input: TokenStream) -> TokenStream 
 fn expand_result(attr: TokenStream, input: TokenStream, mode: FunctionMode) -> Result<TokenStream> {
     let item = parse2::<ItemFn>(input)?;
     reject_generic_signature(&item.sig.generics, mode.attr_name())?;
-    if item.sig.asyncness.is_some() {
-        return Err(spanned_error(
-            &item.sig.asyncness,
-            &format!("{} does not support async functions", mode.attr_name()),
-        ));
-    }
     reject_unsafe_signature(&item.sig, mode.attr_name())?;
     reject_extern_signature(&item.sig, mode.attr_name())?;
 
@@ -53,7 +46,14 @@ fn expand_result(attr: TokenStream, input: TokenStream, mode: FunctionMode) -> R
     let register_name = mode.register_helper_ident(&fn_ident);
     let desc_tokens = emission::desc_tokens(&meta);
     let args_tuple = emission::args_tuple_tokens(&meta.params);
-    let register_tokens = emission::register_tokens(mode, &args_tuple, &desc_name, &fn_ident);
+    let register_tokens = emission::register_tokens(
+        mode,
+        item.sig.asyncness.is_some(),
+        &meta.params,
+        &args_tuple,
+        &desc_name,
+        &fn_ident,
+    );
 
     Ok(quote! {
         #item

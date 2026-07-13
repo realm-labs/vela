@@ -7,7 +7,7 @@ use vela_vm::HostExecution;
 use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
 
-use crate::native::{EffectSet, FunctionAccess, TypeHint};
+use crate::native::{EffectSet, FunctionAccess, NativeCallFuture, TypeHint};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NativeMethodDesc {
@@ -106,6 +106,16 @@ pub type NativeMethodFunction = Arc<
         + Sync
         + 'static,
 >;
+pub type AsyncNativeMethodFunction = Arc<
+    dyn for<'call, 'host> Fn(
+            &'call HostPath,
+            &'call [OwnedValue],
+            &'call mut HostExecution<'host>,
+        ) -> NativeCallFuture<'call>
+        + Send
+        + Sync
+        + 'static,
+>;
 
 #[derive(Clone)]
 pub struct NativeMethodEntry {
@@ -126,6 +136,33 @@ impl NativeMethodEntry {
         + Sync
         + 'static,
     ) -> Self {
+        Self {
+            desc,
+            function: Arc::new(function),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct AsyncNativeMethodEntry {
+    pub desc: NativeMethodDesc,
+    pub function: AsyncNativeMethodFunction,
+}
+
+impl AsyncNativeMethodEntry {
+    #[must_use]
+    pub fn new(
+        mut desc: NativeMethodDesc,
+        function: impl for<'call, 'host> Fn(
+            &'call HostPath,
+            &'call [OwnedValue],
+            &'call mut HostExecution<'host>,
+        ) -> NativeCallFuture<'call>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        desc.asyncness = CallableAsyncness::Async;
         Self {
             desc,
             function: Arc::new(function),

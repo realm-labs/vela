@@ -29,17 +29,26 @@ impl Future for RuntimeCallFuture<'_> {
 #[cfg(test)]
 mod tests {
     use std::future::Future;
+    use std::future::poll_fn;
     use std::pin::Pin;
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::task::{Context, Poll, Waker};
 
+    use vela_common::{HostMethodId, HostObjectId, HostTypeId, ScalarValue};
+    use vela_def::{FieldId, FunctionId, TypeId};
+    use vela_host::mock::MockStateAdapter;
+    use vela_host::path::{HostPath, HostRef};
+    use vela_host::value::HostValue;
     use vela_vm::owned_value::OwnedValue;
 
     use super::RuntimeCallFuture;
     use crate::engine::Engine;
-    use crate::native::{NativeFunctionDesc, TypeHint};
+    use crate::method::NativeMethodDesc;
+    use crate::native::{EffectSet, FunctionAccess, NativeFunctionDesc, TypeHint};
+    use crate::permission::Capability;
     use crate::runtime::{CallArgs, CallOptions, Runtime};
+    use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey};
 
     fn require_send<T: Send>(_: &T) {}
 
@@ -171,5 +180,150 @@ impl Counter {
 
         assert_eq!(polls.load(Ordering::SeqCst), 2);
         assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(42)));
+    }
+
+    #[test]
+    fn runtime_call_future_awaits_host_and_context_native_functions() {
+        fn async_add_level<'call, 'host>(
+            receiver: &'call HostPath,
+            host: &'call mut vela_vm::HostExecution<'host>,
+            amount: i64,
+        ) -> crate::native::NativeCallFuture<'call> {
+            Box::pin(async move {
+                let path = receiver.clone().field(FieldId::new(1));
+                let HostValue::Scalar(ScalarValue::I64(level)) = host
+                    .access
+                    .read_diagnostic_path_at(host.adapter, &path, None)?
+                else {
+                    return Ok(OwnedValue::Unit);
+                };
+                let level = level + amount;
+                host.access.write_diagnostic_path(
+                    host.adapter,
+                    path,
+                    HostValue::Scalar(ScalarValue::I64(level)),
+                    None,
+                )?;
+                Ok(OwnedValue::i64(level))
+            })
+        }
+
+        let engine = Engine::builder()
+            .capability(Capability::HostWrite)
+            .register_type(
+                TypeDesc::new(TypeKey::new(TypeId::new(0xA522), "Player"))
+                    .host_type(HostTypeId::new(1))
+                    .field(FieldDesc::new(FieldId::new(1), "level").writable(true)),
+            )
+            .register_async_host_fn(
+                NativeFunctionDesc::new("game::async_set_level", FunctionId::new(0xA520))
+                    .param("player", TypeHint::Any)
+                    .returns(TypeHint::unit())
+                    .effects(EffectSet::host_write())
+                    .access(FunctionAccess::public()),
+                |args, host| {
+                    Box::pin(async move {
+                        let Some(OwnedValue::HostRef(player)) = args.first() else {
+                            return Ok(OwnedValue::Unit);
+                        };
+                        let mut pending = true;
+                        poll_fn(|context| {
+                            if pending {
+                                pending = false;
+                                context.waker().wake_by_ref();
+                                Poll::Pending
+                            } else {
+                                Poll::Ready(())
+                            }
+                        })
+                        .await;
+                        host.access.write_diagnostic_path(
+                            host.adapter,
+                            HostPath::new(*player).field(FieldId::new(1)),
+                            HostValue::Scalar(ScalarValue::I64(11)),
+                            None,
+                        )?;
+                        Ok(OwnedValue::Unit)
+                    })
+                },
+            )
+            .register_async_context_fn(
+                NativeFunctionDesc::new("game::async_increment_level", FunctionId::new(0xA521))
+                    .param("player", TypeHint::Any)
+                    .returns(TypeHint::i64())
+                    .effects(EffectSet::host_write())
+                    .access(FunctionAccess::public()),
+                |args, context| {
+                    Box::pin(async move {
+                        let Some(OwnedValue::HostRef(player)) = args.first() else {
+                            return Ok(OwnedValue::Unit);
+                        };
+                        let path = HostPath::new(*player).field(FieldId::new(1));
+                        let HostValue::Scalar(ScalarValue::I64(level)) =
+                            context.read_path(&path, None)?
+                        else {
+                            return Ok(OwnedValue::Unit);
+                        };
+                        let level = level + 1;
+                        context.set_path(path, HostValue::Scalar(ScalarValue::I64(level)), None)?;
+                        Ok(OwnedValue::i64(level))
+                    })
+                },
+            )
+            .register_typed_async_method_fn::<(i64,), _>(
+                NativeMethodDesc::new(
+                    TypeKey::new(TypeId::new(0xA522), "Player"),
+                    HostMethodId::new(0xA523),
+                    "async_add_level",
+                )
+                .param("amount", TypeHint::i64())
+                .returns(TypeHint::i64())
+                .effects(EffectSet::host_write())
+                .access(FunctionAccess::public()),
+                async_add_level,
+            )
+            .build()
+            .expect("engine should build");
+        let program = engine
+            .compile_source(
+                r#"
+async fn main(player: Player) {
+    game::async_set_level(player).await;
+    game::async_increment_level(player).await;
+    return player.async_add_level(5).await;
+}
+"#,
+            )
+            .expect("async host program should compile");
+        let mut runtime = Runtime::new(engine, program);
+        let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
+        let level_path = HostPath::new(player).field(FieldId::new(1));
+        let mut adapter = MockStateAdapter::new();
+        adapter.insert_diagnostic_path_value(
+            level_path.clone(),
+            HostValue::Scalar(ScalarValue::I64(3)),
+        );
+        let args = CallArgs::new()
+            .with_host_handle("player", player)
+            .with_fallback_adapter(&mut adapter);
+        let mut future = runtime.call_async("main", args, CallOptions::unbounded());
+        require_send(&future);
+        let mut context = Context::from_waker(Waker::noop());
+
+        assert!(matches!(
+            Pin::new(&mut future).poll(&mut context),
+            Poll::Pending
+        ));
+        let Poll::Ready(result) = Pin::new(&mut future).poll(&mut context) else {
+            panic!("woken async host native should complete on the next poll");
+        };
+        let value = result.expect("async host call should complete");
+        drop(future);
+
+        assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(17)));
+        assert_eq!(
+            adapter.read_diagnostic_path(&level_path),
+            Ok(HostValue::Scalar(ScalarValue::I64(17)))
+        );
     }
 }

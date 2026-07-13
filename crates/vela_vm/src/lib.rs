@@ -122,6 +122,27 @@ pub type NativeCallFuture<'call> =
     Pin<Box<dyn Future<Output = VmResult<OwnedValue>> + Send + 'call>>;
 pub type AsyncNativeFunction =
     Arc<dyn for<'call> Fn(&'call [OwnedValue]) -> NativeCallFuture<'call> + Send + Sync + 'static>;
+pub type AsyncHostNativeFunction = Arc<
+    dyn for<'call, 'host, 'budget> Fn(
+            &'call [OwnedValue],
+            &'call mut HostExecution<'host>,
+            Option<&'call mut ExecutionBudget>,
+        ) -> NativeCallFuture<'call>
+        + Send
+        + Sync
+        + 'static,
+>;
+pub type AsyncHostMethodFunction = Arc<
+    dyn for<'call, 'host, 'budget> Fn(
+            &'call vela_host::path::HostPath,
+            &'call [OwnedValue],
+            &'call mut HostExecution<'host>,
+            Option<&'call mut ExecutionBudget>,
+        ) -> NativeCallFuture<'call>
+        + Send
+        + Sync
+        + 'static,
+>;
 pub type BorrowedNativeFunction = Arc<
     dyn for<'heap, 'budget> Fn(
             &[Value],
@@ -158,6 +179,8 @@ pub(crate) type BorrowedHostNativeFunction = Arc<
 pub struct Vm {
     native_ids: HashMap<FunctionId, NativeFunction>,
     async_native_ids: HashMap<FunctionId, AsyncNativeFunction>,
+    async_host_native_ids: HashMap<FunctionId, AsyncHostNativeFunction>,
+    async_host_method_ids: HashMap<HostMethodId, AsyncHostMethodFunction>,
     borrowed_native_ids: HashMap<FunctionId, BorrowedNativeFunction>,
     host_native_ids: HashMap<FunctionId, HostNativeFunction>,
     borrowed_host_native_ids: HashMap<FunctionId, BorrowedHostNativeFunction>,
@@ -165,7 +188,7 @@ pub struct Vm {
 }
 
 pub struct HostExecution<'host> {
-    pub adapter: &'host mut dyn ScriptStateAdapter,
+    pub adapter: &'host mut (dyn ScriptStateAdapter + Send),
     pub access: &'host mut vela_host::access::HostAccess,
     pub script_globals: Option<&'host ScriptGlobalValues>,
 }
@@ -665,6 +688,37 @@ impl Vm {
         self.async_native_ids.insert(id, Arc::new(function));
     }
 
+    pub fn register_async_host_native_with_id(
+        &mut self,
+        id: FunctionId,
+        function: impl for<'call, 'host, 'budget> Fn(
+            &'call [OwnedValue],
+            &'call mut HostExecution<'host>,
+            Option<&'call mut ExecutionBudget>,
+        ) -> NativeCallFuture<'call>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        self.async_host_native_ids.insert(id, Arc::new(function));
+    }
+
+    pub fn register_async_host_method_with_id(
+        &mut self,
+        id: HostMethodId,
+        function: impl for<'call, 'host, 'budget> Fn(
+            &'call vela_host::path::HostPath,
+            &'call [OwnedValue],
+            &'call mut HostExecution<'host>,
+            Option<&'call mut ExecutionBudget>,
+        ) -> NativeCallFuture<'call>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        self.async_host_method_ids.insert(id, Arc::new(function));
+    }
+
     pub fn register_borrowed_native(
         &mut self,
         name: impl Into<String>,
@@ -798,6 +852,8 @@ impl Vm {
     pub fn native_implementation_ids(&self) -> impl Iterator<Item = FunctionId> + '_ {
         self.native_ids
             .keys()
+            .chain(self.async_native_ids.keys())
+            .chain(self.async_host_native_ids.keys())
             .chain(self.borrowed_native_ids.keys())
             .chain(self.host_native_ids.keys())
             .chain(self.borrowed_host_native_ids.keys())

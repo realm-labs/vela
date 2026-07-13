@@ -5,20 +5,23 @@ use vela_reflect::modules::{DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleD
 use vela_reflect::registry::{MethodDesc, MethodParamDesc, TypeDesc, TypeKey, TypeRegistry};
 
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
-use crate::method::{NativeMethodDesc, NativeMethodEntry};
+use crate::method::{AsyncNativeMethodEntry, NativeMethodDesc, NativeMethodEntry};
 use crate::native::{
-    AsyncNativeFunctionEntry, ContextHostNativeFunctionEntry, HostNativeFunctionEntry,
-    NativeFunctionDesc, NativeFunctionEntry, TypeHint,
+    AsyncContextHostNativeFunctionEntry, AsyncHostNativeFunctionEntry, AsyncNativeFunctionEntry,
+    ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
+    NativeFunctionEntry, TypeHint,
 };
 
 pub(crate) fn inject_host_method_metadata(
     types: &mut [TypeDesc],
     host_method_metadata: &[NativeMethodDesc],
     native_methods: &[NativeMethodEntry],
+    async_native_methods: &[AsyncNativeMethodEntry],
 ) -> EngineResult<()> {
     for desc in host_method_metadata
         .iter()
         .chain(native_methods.iter().map(|entry| &entry.desc))
+        .chain(async_native_methods.iter().map(|entry| &entry.desc))
     {
         let owner = find_type_mut(types, &desc.owner).ok_or_else(|| {
             EngineError::new(EngineErrorKind::UnknownNativeMethodOwner {
@@ -52,6 +55,8 @@ pub(crate) fn inject_native_function_metadata(
     registry: &mut TypeRegistry,
     native_functions: &[NativeFunctionEntry],
     async_native_functions: &[AsyncNativeFunctionEntry],
+    async_host_native_functions: &[AsyncHostNativeFunctionEntry],
+    async_context_host_native_functions: &[AsyncContextHostNativeFunctionEntry],
     host_native_functions: &[HostNativeFunctionEntry],
     context_host_native_functions: &[ContextHostNativeFunctionEntry],
 ) {
@@ -59,6 +64,12 @@ pub(crate) fn inject_native_function_metadata(
         .iter()
         .map(|entry| &entry.desc)
         .chain(async_native_functions.iter().map(|entry| &entry.desc))
+        .chain(async_host_native_functions.iter().map(|entry| &entry.desc))
+        .chain(
+            async_context_host_native_functions
+                .iter()
+                .map(|entry| &entry.desc),
+        )
         .chain(host_native_functions.iter().map(|entry| &entry.desc))
         .chain(
             context_host_native_functions
