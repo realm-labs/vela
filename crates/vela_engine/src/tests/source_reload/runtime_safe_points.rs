@@ -850,7 +850,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_module_rejection() {
 }
 
 #[test]
-fn runtime_call_at_event_end_safe_point_consumes_staged_reload_after_call() {
+fn explicit_event_end_reload_check_consumes_staged_update_after_call() {
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .build()
@@ -868,21 +868,15 @@ fn runtime_call_at_event_end_safe_point_consumes_staged_reload_after_call() {
     runtime
         .stage_hot_update(update)
         .expect("stage pending update");
-    let report = runtime
-        .call_raw_at_event_end_safe_point(
-            "main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx,
-        )
+    let value = runtime
+        .call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
         .expect("event call should run");
+    let reload = runtime
+        .check_reload()
+        .expect("reload check should run")
+        .expect("staged reload should be consumed");
 
-    assert_eq!(
-        report.value,
-        OwnedValue::Scalar(vela_common::ScalarValue::I64(1))
-    );
-    let reload = report.reload.expect("staged reload should be consumed");
+    assert_eq!(value, OwnedValue::Scalar(vela_common::ScalarValue::I64(1)));
     assert!(reload.accepted);
     assert_eq!(reload.changed_functions, vec!["main".to_owned()]);
     assert!(
@@ -938,21 +932,15 @@ fn main() {
     runtime
         .stage_hot_update(update)
         .expect("stage pending update");
-    let report = runtime
-        .call_raw_at_event_end_safe_point(
-            "main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx,
-        )
+    let value = runtime
+        .call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
         .expect("event call should run on the old version");
+    let reload = runtime
+        .check_reload()
+        .expect("reload check should run")
+        .expect("staged reload should be consumed");
 
-    assert_eq!(
-        report.value,
-        OwnedValue::Scalar(vela_common::ScalarValue::I64(1))
-    );
-    let reload = report.reload.expect("staged reload should be consumed");
+    assert_eq!(value, OwnedValue::Scalar(vela_common::ScalarValue::I64(1)));
     assert!(reload.accepted);
     assert_eq!(
         reload.changed_functions,
@@ -970,7 +958,7 @@ fn main() {
 }
 
 #[test]
-fn runtime_call_at_event_end_safe_point_reports_staged_reload_rejection() {
+fn explicit_event_end_reload_check_reports_staged_rejection_after_call() {
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .build()
@@ -991,21 +979,15 @@ fn runtime_call_at_event_end_safe_point_reports_staged_reload_rejection() {
     runtime
         .stage_hot_update_result(Err(update))
         .expect("stage rejected update");
-    let report = runtime
-        .call_raw_at_event_end_safe_point(
-            "main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx,
-        )
+    let value = runtime
+        .call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
         .expect("event call should run before reporting reload rejection");
+    let reload = runtime
+        .check_reload()
+        .expect("reload check should run")
+        .expect("staged rejection should be consumed");
 
-    assert_eq!(
-        report.value,
-        OwnedValue::Scalar(vela_common::ScalarValue::I64(1))
-    );
-    let reload = report.reload.expect("staged rejection should be consumed");
+    assert_eq!(value, OwnedValue::Scalar(vela_common::ScalarValue::I64(1)));
     assert!(!reload.accepted);
     let HotReloadErrorKind::ChangedFunctionReturnAbi {
         function,

@@ -5,6 +5,7 @@ use vela_bytecode::ProgramImage;
 use vela_common::SourceId;
 use vela_hir::module_graph::DeclarationKind;
 use vela_host::access::HostAccess;
+#[cfg(test)]
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::HostErrorKind;
 use vela_host::object::ScriptHostObject;
@@ -20,10 +21,9 @@ use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::heap::{HeapValue, ScriptHeap};
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
-use vela_vm::{
-    LinkedProgramHostBudgetCall, LinkedProgramHostCall, LinkedRuntimeCodeCall,
-    PersistentHeapExecution, persistent_value_to_owned,
-};
+#[cfg(test)]
+use vela_vm::{LinkedProgramHostBudgetCall, LinkedProgramHostCall};
+use vela_vm::{LinkedRuntimeCodeCall, PersistentHeapExecution, persistent_value_to_owned};
 
 use crate::engine::Engine;
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
@@ -566,7 +566,8 @@ where
         self.state.script_globals.value_as(name)
     }
 
-    pub fn call_raw(
+    #[cfg(test)]
+    pub(crate) fn call_raw(
         &mut self,
         entry: &str,
         args: &[OwnedValue],
@@ -621,7 +622,8 @@ where
         }
     }
 
-    pub fn call_args_raw<'host>(
+    #[cfg(test)]
+    pub(crate) fn call_args_raw<'host>(
         &mut self,
         entry: &str,
         mut args: CallArgs<'host>,
@@ -762,32 +764,6 @@ where
         }
     }
 
-    pub fn call_raw_at_event_end_safe_point(
-        &mut self,
-        entry: &str,
-        args: &[OwnedValue],
-        options: CallOptions,
-        adapter: &mut (dyn ScriptStateAdapter + Send),
-        access: &mut HostAccess,
-    ) -> VmResult<EventCallSafePointReport> {
-        let value = self.call_raw(entry, args, options, adapter, access)?;
-        let reload = self.check_optional_reload();
-        Ok(EventCallSafePointReport { value, reload })
-    }
-
-    pub fn call_args_raw_at_event_end_safe_point<'host>(
-        &mut self,
-        entry: &str,
-        args: CallArgs<'host>,
-        options: CallOptions,
-        adapter: &'host mut (dyn ScriptStateAdapter + Send),
-        access: &mut HostAccess,
-    ) -> VmResult<EventCallSafePointReport> {
-        let value = self.call_args_raw(entry, args, options, adapter, access)?;
-        let reload = self.check_optional_reload();
-        Ok(EventCallSafePointReport { value, reload })
-    }
-
     fn check_vela_value_runtime(&self, value: &VelaValue) -> VmResult<()> {
         if value.runtime_id == self.state.id {
             return Ok(());
@@ -810,13 +786,6 @@ where
     fn current_hot_reload_version(&self) -> EngineResult<std::sync::Arc<ProgramVersion>> {
         self.hot_reload_version()
             .ok_or_else(|| EngineError::new(EngineErrorKind::RuntimeNotHotReloadEnabled))
-    }
-
-    fn check_optional_reload(&mut self) -> Option<HotReloadReport> {
-        let hot_reload = self.hot_reload.as_mut()?;
-        let report = hot_reload.check_reload();
-        self.rebind_image_from_reload_report(report.as_ref());
-        report
     }
 
     fn rebind_image_from_reload_report(&mut self, report: Option<&HotReloadReport>) {
@@ -1031,12 +1000,6 @@ mod tests {
             state,
         }
     }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct EventCallSafePointReport {
-    pub value: OwnedValue,
-    pub reload: Option<HotReloadReport>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

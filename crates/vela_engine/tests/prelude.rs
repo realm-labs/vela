@@ -6,6 +6,19 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use vela_engine::prelude::*;
 use vela_host::mock::MockStateAdapter;
 
+fn call_raw(
+    runtime: &mut Runtime,
+    entry: &str,
+    args: &[OwnedValue],
+    options: CallOptions,
+    adapter: &mut MockStateAdapter,
+    _access: &mut HostAccess,
+) -> vela_vm::error::VmResult<OwnedValue> {
+    let args = CallArgs::from_positional(args.iter().cloned()).with_fallback_adapter(adapter);
+    let value = runtime.call(entry, args, options)?;
+    runtime.value_to_owned(&value)
+}
+
 #[test]
 fn prelude_imports_cover_runtime_embedding_flow() {
     let method = HostMethodId::new(23);
@@ -40,15 +53,15 @@ fn main(player: Player, amount: i64) {
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let args = args![host(player), 12_i64];
 
-    let result = runtime
-        .call_raw(
-            "main",
-            &args,
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx,
-        )
-        .expect("runtime call should run");
+    let result = call_raw(
+        &mut runtime,
+        "main",
+        &args,
+        CallOptions::unbounded(),
+        &mut adapter,
+        &mut tx,
+    )
+    .expect("runtime call should run");
 
     assert_eq!(
         result,
@@ -142,7 +155,8 @@ pub const BASE: i64 = 10;
     let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
+        call_raw(
+            &mut runtime,
             "game::main::main",
             &args![5_i64],
             CallOptions::unbounded(),
@@ -178,7 +192,6 @@ fn prelude_imports_cover_source_and_reload_results() {
 
     fn accepts_update_result(_result: EngineHotReloadSourceResult<HotUpdate>) {}
     fn accepts_safe_point_report(_report: Option<HotReloadReport>) {}
-    fn accepts_event_safe_point_report(_report: EventCallSafePointReport) {}
     fn accepts_vela_function(_function: Option<VelaFunction>) {}
     fn accepts_vela_method(_method: Option<VelaMethod>) {}
     fn accepts_call_target<T: RuntimeCallTarget>(_target: T) {}
@@ -202,10 +215,6 @@ fn prelude_imports_cover_source_and_reload_results() {
 
     accepts_update_result(Err(reload_error));
     accepts_safe_point_report(None);
-    accepts_event_safe_point_report(EventCallSafePointReport {
-        value: OwnedValue::Unit,
-        reload: None,
-    });
     accepts_vela_function(None);
     accepts_vela_method(None);
     accepts_call_target("main");

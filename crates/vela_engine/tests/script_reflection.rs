@@ -3,11 +3,24 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use vela_engine::engine::Engine;
-use vela_engine::runtime::{CallOptions, Runtime};
+use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
 use vela_reflect::permissions::ReflectPolicy;
 use vela_vm::owned_value::OwnedValue;
+
+fn call_raw(
+    runtime: &mut Runtime,
+    entry: &str,
+    args: &[OwnedValue],
+    options: CallOptions,
+    adapter: &mut MockStateAdapter,
+    _access: &mut HostAccess,
+) -> vela_vm::error::VmResult<OwnedValue> {
+    let args = CallArgs::from_positional(args.iter().cloned()).with_fallback_adapter(adapter);
+    let value = runtime.call(entry, args, options)?;
+    runtime.value_to_owned(&value)
+}
 
 struct TestDir(PathBuf);
 
@@ -79,7 +92,14 @@ fn main() {
     let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx,),
+        call_raw(
+            &mut runtime,
+            "main",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx,
+        ),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
@@ -139,7 +159,8 @@ fn main() {
     let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
+        call_raw(
+            &mut runtime,
             "game::main::main",
             &[],
             CallOptions::unbounded(),

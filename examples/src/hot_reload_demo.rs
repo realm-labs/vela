@@ -2,8 +2,7 @@ use std::error::Error;
 use std::sync::Arc;
 
 use vela_engine::engine::Engine;
-use vela_engine::runtime::{CallOptions, Runtime};
-use vela_host::access::HostAccess;
+use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_host::mock::MockStateAdapter;
 use vela_hot_reload::version::ProgramVersion;
 use vela_vm::owned_value::OwnedValue;
@@ -55,9 +54,15 @@ pub fn run(
 
 fn run_current_main(runtime: &mut Runtime) -> Result<OwnedValue, Box<dyn Error>> {
     let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+    let value = runtime
+        .call(
+            "main",
+            CallArgs::new().with_fallback_adapter(&mut adapter),
+            CallOptions::unbounded(),
+        )
+        .map_err(|error| format!("{error:?}"))?;
     runtime
-        .call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
+        .value_to_owned(&value)
         .map_err(|error| format!("{error:?}").into())
 }
 

@@ -1000,25 +1000,21 @@ fn main(player: Player) {
         .expect("program should compile");
     let mut runtime = Runtime::new(engine, program);
     let mut player = direct_player(9);
-    let args = CallArgs::new().with_host_mut("player", &mut player);
     let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
-
-    let report = runtime
-        .call_args_raw_at_event_end_safe_point(
+    let value = runtime
+        .call(
             "main",
-            args,
+            CallArgs::new()
+                .with_host_mut("player", &mut player)
+                .with_fallback_adapter(&mut adapter),
             CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx,
         )
         .expect("runtime safe-point direct host args should run");
+    let value = runtime
+        .value_to_owned(&value)
+        .expect("runtime value should materialize");
 
-    assert_eq!(
-        report.value,
-        OwnedValue::Scalar(vela_common::ScalarValue::I64(10))
-    );
-    assert_eq!(report.reload, None);
+    assert_eq!(value, OwnedValue::Scalar(vela_common::ScalarValue::I64(10)));
     assert_eq!(player.level, 10);
 }
 

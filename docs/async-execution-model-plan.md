@@ -1138,7 +1138,7 @@ resumable foundation before adding real host suspension.
 - [x] Seal one `RuntimeCallTarget` contract for functions, bound methods, and
   provider methods; resolve each into `EntryRequest` and hard-switch away from
   `RuntimeMethodTarget` plus specialized method/provider execution setup.
-- [ ] Reduce the public Runtime execution surface to `call` and `call_async`:
+- [x] Reduce the public Runtime execution surface to `call` and `call_async`:
   move fallback adapter bindings into the execution host input, make raw helpers
   internal or remove them, and keep reload safe-point checks as separate
   lifecycle operations.

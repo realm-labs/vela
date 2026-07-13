@@ -209,6 +209,7 @@ impl<'a> CallArgs<'a> {
         self
     }
 
+    #[cfg(test)]
     pub(super) fn set_fallback_adapter(
         &mut self,
         adapter: &'a mut (dyn ScriptStateAdapter + Send),

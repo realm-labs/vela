@@ -3,6 +3,20 @@ use vela_bytecode::compiler::CompiledProgram;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::owned_value::OwnedValue;
 
+fn call_raw(
+    runtime: &mut Runtime,
+    entry: &str,
+    args: &[OwnedValue],
+    options: CallOptions,
+    adapter: &mut MockStateAdapter,
+    _access: &mut HostAccess,
+) -> VmResult<OwnedValue> {
+    let args = vela_engine::runtime::CallArgs::from_positional(args.iter().cloned())
+        .with_fallback_adapter(adapter);
+    let value = runtime.call(entry, args, options)?;
+    runtime.value_to_owned(&value)
+}
+
 fn run_linked_program(
     engine: &Engine,
     program: CompiledProgram,
@@ -538,7 +552,8 @@ fn main(player, ok) {
     let mut runtime = Runtime::new(engine, program);
 
     assert_eq!(
-        runtime.call_raw(
+        call_raw(
+            &mut runtime,
             "main",
             &[OwnedValue::HostRef(player), OwnedValue::Bool(true)],
             CallOptions::unbounded(),
@@ -549,15 +564,15 @@ fn main(player, ok) {
     );
 
     let mut failed_tx = HostAccess::new();
-    let error = runtime
-        .call_raw(
-            "main",
-            &[OwnedValue::HostRef(player), OwnedValue::Bool(false)],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut failed_tx,
-        )
-        .expect_err("macro context host-result error should convert to VM host error");
+    let error = call_raw(
+        &mut runtime,
+        "main",
+        &[OwnedValue::HostRef(player), OwnedValue::Bool(false)],
+        CallOptions::unbounded(),
+        &mut adapter,
+        &mut failed_tx,
+    )
+    .expect_err("macro context host-result error should convert to VM host error");
 
     assert_eq!(
         error.kind(),
@@ -586,15 +601,15 @@ fn main(player) {
     let mut tx = HostAccess::new();
     let mut runtime = Runtime::new(engine, program);
 
-    let error = runtime
-        .call_raw(
-            "main",
-            &[OwnedValue::HostRef(player)],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx,
-        )
-        .expect_err("missing macro-native capability should fail");
+    let error = call_raw(
+        &mut runtime,
+        "main",
+        &[OwnedValue::HostRef(player)],
+        CallOptions::unbounded(),
+        &mut adapter,
+        &mut tx,
+    )
+    .expect_err("missing macro-native capability should fail");
 
     assert_eq!(
         error.kind(),
@@ -626,15 +641,15 @@ fn main(player) {
     let mut tx = HostAccess::new();
     let mut runtime = Runtime::new(engine, program);
 
-    let error = runtime
-        .call_raw(
-            "main",
-            &[OwnedValue::HostRef(player)],
-            CallOptions::new(2, usize::MAX, usize::MAX),
-            &mut adapter,
-            &mut tx,
-        )
-        .expect_err("macro-native budget charge should fail");
+    let error = call_raw(
+        &mut runtime,
+        "main",
+        &[OwnedValue::HostRef(player)],
+        CallOptions::new(2, usize::MAX, usize::MAX),
+        &mut adapter,
+        &mut tx,
+    )
+    .expect_err("macro-native budget charge should fail");
 
     assert_eq!(
         error.kind(),
@@ -735,7 +750,8 @@ fn main(player, ok) {
     let mut runtime = Runtime::new(engine, program);
 
     assert_eq!(
-        runtime.call_raw(
+        call_raw(
+            &mut runtime,
             "main",
             &[OwnedValue::HostRef(player), OwnedValue::Bool(true)],
             CallOptions::unbounded(),
@@ -746,15 +762,15 @@ fn main(player, ok) {
     );
 
     let mut failed_tx = HostAccess::new();
-    let error = runtime
-        .call_raw(
-            "main",
-            &[OwnedValue::HostRef(player), OwnedValue::Bool(false)],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut failed_tx,
-        )
-        .expect_err("macro host-result error should convert to VM host error");
+    let error = call_raw(
+        &mut runtime,
+        "main",
+        &[OwnedValue::HostRef(player), OwnedValue::Bool(false)],
+        CallOptions::unbounded(),
+        &mut adapter,
+        &mut failed_tx,
+    )
+    .expect_err("macro host-result error should convert to VM host error");
 
     assert_eq!(
         error.kind(),

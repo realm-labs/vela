@@ -4,7 +4,7 @@ use vela_common::{HostMethodId, HostObjectId, HostTypeId};
 use vela_def::{FieldId, TypeId};
 use vela_engine::args::{FromScriptArg, IntoScriptArg, ScriptArgsExt};
 use vela_engine::engine::Engine;
-use vela_engine::runtime::CallOptions;
+use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::{HostPath, HostRef};
@@ -12,6 +12,19 @@ use vela_host::proxy::PathProxy;
 use vela_reflect::registry::{MethodDesc, TypeDesc, TypeKey};
 use vela_vm::error::VmErrorKind;
 use vela_vm::owned_value::OwnedValue;
+
+fn call_raw(
+    runtime: &mut Runtime,
+    entry: &str,
+    args: &[OwnedValue],
+    options: CallOptions,
+    adapter: &mut MockStateAdapter,
+    _access: &mut HostAccess,
+) -> vela_vm::error::VmResult<OwnedValue> {
+    let args = CallArgs::from_positional(args.iter().cloned()).with_fallback_adapter(adapter);
+    let value = runtime.call(entry, args, options)?;
+    runtime.value_to_owned(&value)
+}
 
 #[test]
 fn script_arg_conversions_preserve_exact_scalar_tags() {
@@ -520,15 +533,15 @@ fn main(player: Player, amount: i64) {
     let mut tx = HostAccess::new();
     let args = vela_engine::args![vela_engine::host!(1, 42, 1), 12_i64];
 
-    let result = runtime
-        .call_raw(
-            "main",
-            &args,
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx,
-        )
-        .expect("runtime call should run");
+    let result = call_raw(
+        &mut runtime,
+        "main",
+        &args,
+        CallOptions::unbounded(),
+        &mut adapter,
+        &mut tx,
+    )
+    .expect("runtime call should run");
 
     assert_eq!(
         result,

@@ -3,9 +3,7 @@ use std::hint::black_box;
 use std::time::Instant;
 
 use vela_engine::engine::Engine;
-use vela_engine::runtime::{CallOptions, Runtime};
-use vela_host::access::HostAccess;
-use vela_host::mock::MockStateAdapter;
+use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_hot_reload::version::ProgramVersion;
 
 const FUNCTION_COUNT: usize = 200;
@@ -99,23 +97,11 @@ fn measure_calls(
     version: &ProgramVersion,
 ) -> Result<(std::time::Duration, vela_vm::owned_value::OwnedValue), Box<dyn Error>> {
     let mut runtime = Runtime::from_hot_reload_version(engine.clone(), version.clone());
-    let mut adapter = MockStateAdapter::new();
-    let mut access = HostAccess::new();
-    black_box(runtime.call_raw(
-        "main",
-        &[],
-        CallOptions::unbounded(),
-        &mut adapter,
-        &mut access,
-    )?);
+    let warmup = runtime.call("main", CallArgs::new(), CallOptions::unbounded())?;
+    black_box(runtime.value_to_owned(&warmup)?);
     let started = Instant::now();
-    let result = runtime.call_raw(
-        "main",
-        &[],
-        CallOptions::unbounded(),
-        &mut adapter,
-        &mut access,
-    )?;
+    let result = runtime.call("main", CallArgs::new(), CallOptions::unbounded())?;
+    let result = runtime.value_to_owned(&result)?;
     Ok((started.elapsed(), result))
 }
 
