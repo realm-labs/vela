@@ -1,5 +1,3 @@
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 
 use vela_common::{CallableAsyncness, PrimitiveTag, Span};
@@ -485,8 +483,7 @@ pub type NativeFunction =
 ///     })
 /// }
 /// ```
-pub type NativeCallFuture<'call> =
-    Pin<Box<dyn Future<Output = VmResult<OwnedValue>> + Send + 'call>>;
+pub type NativeCallFuture<'call> = vela_vm::NativeCallFuture<'call>;
 
 /// A `Send + Sync + 'static` factory whose returned future is scoped to one
 /// invocation.
@@ -503,8 +500,7 @@ pub type NativeCallFuture<'call> =
 ///     Box::pin(async move { Ok(OwnedValue::i64(*captured)) }) as NativeCallFuture<'_>
 /// });
 /// ```
-pub type AsyncNativeFunction =
-    Arc<dyn for<'call> Fn(&'call [OwnedValue]) -> NativeCallFuture<'call> + Send + Sync + 'static>;
+pub type AsyncNativeFunction = vela_vm::AsyncNativeFunction;
 pub type HostNativeFunction = Arc<
     dyn for<'host> Fn(&[OwnedValue], &mut HostExecution<'host>) -> VmResult<OwnedValue>
         + Send
@@ -533,6 +529,29 @@ impl NativeFunctionEntry {
         desc: NativeFunctionDesc,
         function: impl Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static,
     ) -> Self {
+        Self {
+            desc,
+            function: Arc::new(function),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct AsyncNativeFunctionEntry {
+    pub desc: NativeFunctionDesc,
+    pub function: AsyncNativeFunction,
+}
+
+impl AsyncNativeFunctionEntry {
+    #[must_use]
+    pub fn new(
+        mut desc: NativeFunctionDesc,
+        function: impl for<'call> Fn(&'call [OwnedValue]) -> NativeCallFuture<'call>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        desc.asyncness = CallableAsyncness::Async;
         Self {
             desc,
             function: Arc::new(function),

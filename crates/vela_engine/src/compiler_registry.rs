@@ -9,13 +9,14 @@ use vela_registry::{
 };
 
 use crate::native::{
-    ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
-    NativeFunctionEntry,
+    AsyncNativeFunctionEntry, ContextHostNativeFunctionEntry, HostNativeFunctionEntry,
+    NativeFunctionDesc, NativeFunctionEntry,
 };
 
 pub(crate) fn definition_registry_from_engine_parts(
     types: &[TypeDesc],
     native_functions: &[NativeFunctionEntry],
+    async_native_functions: &[AsyncNativeFunctionEntry],
     host_native_functions: &[HostNativeFunctionEntry],
     context_host_native_functions: &[ContextHostNativeFunctionEntry],
     include_reflection_natives: bool,
@@ -31,6 +32,7 @@ pub(crate) fn definition_registry_from_engine_parts(
     for desc in native_functions
         .iter()
         .map(|entry| &entry.desc)
+        .chain(async_native_functions.iter().map(|entry| &entry.desc))
         .chain(host_native_functions.iter().map(|entry| &entry.desc))
         .chain(
             context_host_native_functions
@@ -461,6 +463,7 @@ mod tests {
         let registry = definition_registry_from_engine_parts(
             &[type_desc, index_desc],
             &[native],
+            &[],
             &[],
             &[],
             true,

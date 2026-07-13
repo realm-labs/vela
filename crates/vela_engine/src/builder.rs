@@ -13,8 +13,8 @@ use crate::error::{EngineError, EngineErrorKind, EngineResult};
 use crate::host_type::HostTypeSpec;
 use crate::method::{NativeMethodDesc, NativeMethodEntry};
 use crate::native::{
-    ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
-    NativeFunctionEntry,
+    AsyncNativeFunctionEntry, ContextHostNativeFunctionEntry, HostNativeFunctionEntry,
+    NativeCallFuture, NativeFunctionDesc, NativeFunctionEntry,
 };
 use crate::permission::{Capability, CapabilitySet, ExecutionProfile};
 use crate::schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
@@ -29,6 +29,7 @@ pub struct EngineBuilder {
     types: Vec<TypeDesc>,
     modules: Vec<ModuleDesc>,
     native_functions: Vec<NativeFunctionEntry>,
+    async_native_functions: Vec<AsyncNativeFunctionEntry>,
     host_native_functions: Vec<HostNativeFunctionEntry>,
     context_host_native_functions: Vec<ContextHostNativeFunctionEntry>,
     host_method_metadata: Vec<NativeMethodDesc>,
@@ -212,6 +213,20 @@ impl EngineBuilder {
     }
 
     #[must_use]
+    pub fn register_async_fn(
+        mut self,
+        desc: NativeFunctionDesc,
+        function: impl for<'call> Fn(&'call [OwnedValue]) -> NativeCallFuture<'call>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        self.async_native_functions
+            .push(AsyncNativeFunctionEntry::new(desc, function));
+        self
+    }
+
+    #[must_use]
     pub fn register_typed_native_fn<Args, F>(self, desc: NativeFunctionDesc, function: F) -> Self
     where
         F: TypedNativeFunction<Args>,
@@ -334,6 +349,7 @@ impl EngineBuilder {
         validation::validate_modules(&self.modules, module_options)?;
         validation::validate_native_functions(
             &self.native_functions,
+            &self.async_native_functions,
             &self.host_native_functions,
             &self.context_host_native_functions,
             &types,
@@ -343,6 +359,7 @@ impl EngineBuilder {
         let definition_registry = definition_registry_from_engine_parts(
             &types,
             &self.native_functions,
+            &self.async_native_functions,
             &self.host_native_functions,
             &self.context_host_native_functions,
             self.reflection_policy.is_some(),
@@ -367,6 +384,7 @@ impl EngineBuilder {
         metadata::inject_native_function_metadata(
             &mut registry,
             &self.native_functions,
+            &self.async_native_functions,
             &self.host_native_functions,
             &self.context_host_native_functions,
         );
@@ -375,6 +393,7 @@ impl EngineBuilder {
             registry,
             definition_registry,
             native_functions: self.native_functions,
+            async_native_functions: self.async_native_functions,
             host_native_functions: self.host_native_functions,
             context_host_native_functions: self.context_host_native_functions,
             native_methods: self.native_methods,

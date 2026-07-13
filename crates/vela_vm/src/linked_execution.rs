@@ -17,8 +17,9 @@ use crate::resumable_callbacks::{ResumableCallbackMethod, ResumableCallbackStep}
 use crate::runtime_checks::is_truthy;
 use crate::value::Value;
 use crate::{
-    HostExecution, Vm, VmBytecodeProfiler, VmInlineCaches, identity_equal, identity_not_equal,
-    store_value_in_heap_if_needed, validate_inline_cache_layout,
+    HostExecution, NativeCallFuture, OwnedValue, Vm, VmBytecodeProfiler, VmInlineCaches,
+    identity_equal, identity_not_equal, owned_to_value, store_value_in_heap_if_needed,
+    validate_inline_cache_layout,
 };
 use crate::{
     array_methods, callback_method_dispatch, closure_calls, constant_loads, field_access,
@@ -52,11 +53,20 @@ impl LinkedExecutionCall<'_> {
     }
 }
 
-struct ExecutionSession<'a> {
-    frames: Vec<ExecutionFrame<'a>>,
+pub struct LinkedExecutionSession {
+    frames: Vec<ExecutionFrame>,
+    pending_async: Option<PendingAsyncResume>,
+    root_call_depth_charged: bool,
+    root_generation: vela_bytecode::ExecutableGenerationId,
 }
 
-struct ExecutionFrame<'a> {
+#[derive(Clone, Copy)]
+struct PendingAsyncResume {
+    destination: Option<Register>,
+    source_span: Option<Span>,
+}
+
+struct ExecutionFrame {
     owner: Arc<LinkedArtifact>,
     function: ScriptFunctionHandle,
     ip: InstructionOffset,
@@ -65,11 +75,9 @@ struct ExecutionFrame<'a> {
     pending_operation: Option<PendingFrameOperation>,
     call_site: Option<Span>,
     call_site_offset: Option<InstructionOffset>,
-    inline_caches: Option<&'a dyn VmInlineCaches>,
-    bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
 }
 
-impl ExecutionFrame<'_> {
+impl ExecutionFrame {
     fn stack_frame(&self) -> VmStackFrame {
         let program = self.owner.program();
         let Some(code) = program.function(self.function) else {
@@ -121,7 +129,7 @@ enum PendingFrameOperation {
     },
 }
 
-struct PendingLinkedCall<'a> {
+struct PendingLinkedCall {
     owner: Arc<LinkedArtifact>,
     function: ScriptFunctionHandle,
     captures: Vec<Value>,
@@ -129,12 +137,10 @@ struct PendingLinkedCall<'a> {
     check_param_guards: bool,
     call_site: Option<Span>,
     call_site_offset: Option<InstructionOffset>,
-    inline_caches: Option<&'a dyn VmInlineCaches>,
-    bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
     return_target: PendingReturnTarget,
 }
 
-impl PendingLinkedCall<'_> {
+impl PendingLinkedCall {
     fn stack_frame(&self) -> VmStackFrame {
         let program = self.owner.program();
         let Some(code) = program.function(self.function) else {
@@ -146,16 +152,73 @@ impl PendingLinkedCall<'_> {
     }
 }
 
-enum FrameDriveOutcome<'a> {
+enum FrameDriveOutcome {
     Continue,
-    Push(PendingLinkedCall<'a>),
+    Push(PendingLinkedCall),
+    Async {
+        call: PreparedAsyncCall,
+        destination: Option<Register>,
+        source_span: Option<Span>,
+    },
     Return(Value),
+}
+
+pub struct PreparedAsyncCall {
+    function: crate::AsyncNativeFunction,
+    args: Vec<OwnedValue>,
+    name: String,
+}
+
+pub enum LinkedDriveOutcome {
+    Complete(Value),
+    AsyncBoundary(PreparedAsyncCall),
+}
+
+pub struct LinkedExecutionStart<'artifact, 'args, 'caches> {
+    pub artifact: &'artifact Arc<LinkedArtifact>,
+    pub function: ScriptFunctionHandle,
+    pub args: &'args [Value],
+    pub roots: &'args [Value],
+    pub inline_caches: Option<&'caches dyn VmInlineCaches>,
+    pub bytecode_profiler: Option<&'caches dyn VmBytecodeProfiler>,
+}
+
+impl PreparedAsyncCall {
+    #[must_use]
+    pub fn invoke(&self) -> NativeCallFuture<'_> {
+        (self.function)(&self.args)
+    }
+
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
 }
 
 #[derive(Clone, Copy)]
 struct FrameDispatchContext<'a> {
     inline_caches: Option<&'a dyn VmInlineCaches>,
     bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
+}
+
+impl FrameDispatchContext<'_> {
+    fn for_generation(
+        self,
+        root_generation: vela_bytecode::ExecutableGenerationId,
+        generation: vela_bytecode::ExecutableGenerationId,
+    ) -> Self {
+        if generation == root_generation {
+            return self;
+        }
+        Self {
+            inline_caches: self
+                .inline_caches
+                .and_then(|caches| caches.for_generation(generation)),
+            bytecode_profiler: self
+                .bytecode_profiler
+                .and_then(|profiler| profiler.for_generation(generation)),
+        }
+    }
 }
 
 impl Vm {
@@ -241,9 +304,41 @@ impl Vm {
             heap.as_deref_mut(),
             budget.as_deref_mut(),
         )?;
-        let mut session = ExecutionSession {
+        let mut session = LinkedExecutionSession {
+            root_generation: entry.owner.generation(),
             frames: vec![entry],
+            pending_async: None,
+            root_call_depth_charged: false,
         };
+        let dispatch = FrameDispatchContext {
+            inline_caches: call.inline_caches,
+            bytecode_profiler: call.bytecode_profiler,
+        };
+        match self.drive_linked_session::<CHARGE_BUDGET, PROFILE>(
+            &mut session,
+            dispatch,
+            &mut host,
+            &mut heap,
+            &mut budget,
+        )? {
+            LinkedDriveOutcome::Complete(value) => Ok(value),
+            LinkedDriveOutcome::AsyncBoundary(call) => {
+                Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
+                    name: call.name().to_owned(),
+                }))
+            }
+        }
+    }
+
+    fn drive_linked_session<const CHARGE_BUDGET: bool, const PROFILE: bool>(
+        &self,
+        session: &mut LinkedExecutionSession,
+        dispatch: FrameDispatchContext<'_>,
+        host: &mut Option<&mut HostExecution<'_>>,
+        heap: &mut Option<&mut HeapExecution<'_>>,
+        budget: &mut Option<&mut ExecutionBudget>,
+    ) -> VmResult<LinkedDriveOutcome> {
+        debug_assert!(session.pending_async.is_none());
         let limits_call_depth = budget
             .as_deref()
             .is_some_and(ExecutionBudget::limits_call_depth);
@@ -254,11 +349,14 @@ impl Vm {
                     .frames
                     .last_mut()
                     .expect("an execution session retains an active frame");
+                let frame_dispatch =
+                    dispatch.for_generation(session.root_generation, active.owner.generation());
                 self.drive_linked_frame::<CHARGE_BUDGET, PROFILE>(
                     active,
-                    &mut host,
-                    &mut heap,
-                    &mut budget,
+                    frame_dispatch,
+                    host,
+                    heap,
+                    budget,
                 )
             };
             let outcome = match outcome {
@@ -322,6 +420,8 @@ impl Vm {
                         protected_root_len,
                     };
                     let pending_frame = pending.stack_frame();
+                    let child_dispatch = dispatch
+                        .for_generation(session.root_generation, pending.owner.generation());
                     let child = self.prepare_execution_frame(
                         pending.owner,
                         pending.function,
@@ -330,8 +430,8 @@ impl Vm {
                         pending.check_param_guards,
                         pending.call_site,
                         pending.call_site_offset,
-                        pending.inline_caches,
-                        pending.bytecode_profiler,
+                        child_dispatch.inline_caches,
+                        child_dispatch.bytecode_profiler,
                         Some(return_to),
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
@@ -365,10 +465,21 @@ impl Vm {
                     };
                     session.frames.push(child);
                 }
+                FrameDriveOutcome::Async {
+                    call,
+                    destination,
+                    source_span,
+                } => {
+                    session.pending_async = Some(PendingAsyncResume {
+                        destination,
+                        source_span,
+                    });
+                    return Ok(LinkedDriveOutcome::AsyncBoundary(call));
+                }
                 FrameDriveOutcome::Return(value) => {
                     let finished = session.frames.pop().expect("returning frame");
                     let Some(return_to) = finished.return_to else {
-                        return Ok(value);
+                        return Ok(LinkedDriveOutcome::Complete(value));
                     };
                     let value = store_value_in_heap_if_needed(
                         value,
@@ -417,8 +528,192 @@ impl Vm {
         }
     }
 
+    pub fn resume_linked_async_call(
+        &self,
+        session: &mut LinkedExecutionSession,
+        result: VmResult<OwnedValue>,
+        heap: Option<&mut HeapExecution<'_>>,
+        budget: Option<&mut ExecutionBudget>,
+    ) -> VmResult<()> {
+        let pending = session.pending_async.take().ok_or_else(|| {
+            VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                opcode: "async resume without a pending invocation",
+            })
+        })?;
+        let value = result.map_err(|mut error| {
+            error = error.with_source_span_if_absent(pending.source_span);
+            for frame in session.frames.iter().skip(1).rev() {
+                error = error.with_call_frame(frame.stack_frame());
+            }
+            if let Some(root) = session.frames.first() {
+                error = error.with_call_frame(root.stack_frame());
+            }
+            error
+        })?;
+        let heap = heap.ok_or_else(|| {
+            VmError::new(VmErrorKind::TypeMismatch {
+                operation: "async native heap",
+            })
+            .with_source_span_if_absent(pending.source_span)
+        })?;
+        let value = owned_to_value(value, heap, budget)?;
+        if let Some(destination) = pending.destination {
+            session
+                .frames
+                .last_mut()
+                .expect("pending async invocation retains an active frame")
+                .registers
+                .write(destination, value)?;
+        }
+        Ok(())
+    }
+
+    pub fn start_linked_execution(
+        &self,
+        start: LinkedExecutionStart<'_, '_, '_>,
+        heap: &mut HeapExecution<'_>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<LinkedExecutionSession> {
+        heap.protect_values(start.roots);
+        heap.protect_values(start.args);
+        let stack_frame = start
+            .artifact
+            .program()
+            .function(start.function)
+            .map_or_else(
+                || VmStackFrame::new("<missing linked function>", None),
+                |code| {
+                    VmStackFrame::new(start.artifact.program().debug_name(code.debug_name), None)
+                },
+            );
+        let limits_call_depth = budget.limits_call_depth();
+        if limits_call_depth {
+            budget
+                .enter_call()
+                .map_err(|error| error.with_call_frame(stack_frame.clone()))?;
+        }
+        let entry = self.prepare_execution_frame(
+            Arc::clone(start.artifact),
+            start.function,
+            &[],
+            start.args,
+            true,
+            None,
+            None,
+            start.inline_caches,
+            start.bytecode_profiler,
+            None,
+            Some(heap),
+            Some(budget),
+        );
+        match entry {
+            Ok(entry) => Ok(LinkedExecutionSession {
+                root_generation: entry.owner.generation(),
+                frames: vec![entry],
+                pending_async: None,
+                root_call_depth_charged: limits_call_depth,
+            }),
+            Err(error) => {
+                if limits_call_depth {
+                    budget.exit_call();
+                }
+                Err(error.with_call_frame(stack_frame))
+            }
+        }
+    }
+
+    pub fn drive_linked_execution(
+        &self,
+        session: &mut LinkedExecutionSession,
+        host: Option<&mut HostExecution<'_>>,
+        heap: &mut HeapExecution<'_>,
+        budget: &mut ExecutionBudget,
+        inline_caches: Option<&dyn VmInlineCaches>,
+        bytecode_profiler: Option<&dyn VmBytecodeProfiler>,
+    ) -> VmResult<LinkedDriveOutcome> {
+        let charges_execution_units = budget.charges_execution_units();
+        let has_profiler = bytecode_profiler.is_some();
+        let dispatch = FrameDispatchContext {
+            inline_caches,
+            bytecode_profiler,
+        };
+        let mut host = host;
+        let mut heap = Some(heap);
+        let mut budget_option = Some(&mut *budget);
+        let outcome = match (charges_execution_units, has_profiler) {
+            (false, false) => self.drive_linked_session::<false, false>(
+                session,
+                dispatch,
+                &mut host,
+                &mut heap,
+                &mut budget_option,
+            ),
+            (true, false) => self.drive_linked_session::<true, false>(
+                session,
+                dispatch,
+                &mut host,
+                &mut heap,
+                &mut budget_option,
+            ),
+            (false, true) => self.drive_linked_session::<false, true>(
+                session,
+                dispatch,
+                &mut host,
+                &mut heap,
+                &mut budget_option,
+            ),
+            (true, true) => self.drive_linked_session::<true, true>(
+                session,
+                dispatch,
+                &mut host,
+                &mut heap,
+                &mut budget_option,
+            ),
+        };
+        match outcome {
+            Ok(LinkedDriveOutcome::Complete(value)) => {
+                if session.root_call_depth_charged {
+                    budget.exit_call();
+                    session.root_call_depth_charged = false;
+                }
+                Ok(LinkedDriveOutcome::Complete(value))
+            }
+            Ok(LinkedDriveOutcome::AsyncBoundary(call)) => {
+                Ok(LinkedDriveOutcome::AsyncBoundary(call))
+            }
+            Err(error) => {
+                if session.root_call_depth_charged {
+                    budget.exit_call();
+                    session.root_call_depth_charged = false;
+                }
+                let error = if let Some(root) = session.frames.first() {
+                    error.with_call_frame(root.stack_frame())
+                } else {
+                    error
+                };
+                Err(error)
+            }
+        }
+    }
+
+    pub fn finish_linked_execution(
+        &self,
+        value: Value,
+        heap: &mut HeapExecution<'_>,
+        roots: &[Value],
+        budget: &mut ExecutionBudget,
+    ) -> Value {
+        let mut gc_roots = Vec::new();
+        roots
+            .iter()
+            .for_each(|root| root.trace_heap_refs(&mut gc_roots));
+        value.trace_heap_refs(&mut gc_roots);
+        heap.heap.collect_full_with_budget(&gc_roots, Some(budget));
+        value
+    }
+
     #[allow(clippy::too_many_arguments)]
-    fn prepare_execution_frame<'a>(
+    fn prepare_execution_frame(
         &self,
         owner: Arc<LinkedArtifact>,
         function: ScriptFunctionHandle,
@@ -427,12 +722,12 @@ impl Vm {
         check_param_guards: bool,
         call_site: Option<Span>,
         call_site_offset: Option<InstructionOffset>,
-        inline_caches: Option<&'a dyn VmInlineCaches>,
-        bytecode_profiler: Option<&'a dyn VmBytecodeProfiler>,
+        inline_caches: Option<&dyn VmInlineCaches>,
+        _bytecode_profiler: Option<&dyn VmBytecodeProfiler>,
         return_to: Option<ReturnContinuation>,
         heap: Option<&mut HeapExecution<'_>>,
         budget: Option<&mut ExecutionBudget>,
-    ) -> VmResult<ExecutionFrame<'a>> {
+    ) -> VmResult<ExecutionFrame> {
         let program = owner.program();
         let code = program.function(function).ok_or_else(|| {
             VmError::new(VmErrorKind::UnknownFunction {
@@ -532,18 +827,17 @@ impl Vm {
             pending_operation: None,
             call_site,
             call_site_offset,
-            inline_caches,
-            bytecode_profiler,
         })
     }
 
-    fn drive_linked_frame<'a, const CHARGE_BUDGET: bool, const PROFILE: bool>(
+    fn drive_linked_frame<const CHARGE_BUDGET: bool, const PROFILE: bool>(
         &self,
-        frame_state: &mut ExecutionFrame<'a>,
+        frame_state: &mut ExecutionFrame,
+        call: FrameDispatchContext<'_>,
         host: &mut Option<&mut HostExecution<'_>>,
         heap: &mut Option<&mut HeapExecution<'_>>,
         budget: &mut Option<&mut ExecutionBudget>,
-    ) -> VmResult<FrameDriveOutcome<'a>> {
+    ) -> VmResult<FrameDriveOutcome> {
         let current_owner = Arc::clone(&frame_state.owner);
         let program = current_owner.program();
         let code = program.function(frame_state.function).ok_or_else(|| {
@@ -551,10 +845,6 @@ impl Vm {
                 name: format!("<linked function#{}>", frame_state.function.index()),
             })
         })?;
-        let call = FrameDispatchContext {
-            inline_caches: frame_state.inline_caches,
-            bytecode_profiler: frame_state.bytecode_profiler,
-        };
         if let Some(operation) = frame_state.pending_operation.take() {
             let pending = match operation {
                 PendingFrameOperation::Comparison {
@@ -702,18 +992,6 @@ impl Vm {
                 })
                 .with_source_span_if_absent(source_span));
             }
-            let inline_caches = if owner.generation() == program.generation() {
-                call.inline_caches
-            } else {
-                call.inline_caches
-                    .and_then(|caches| caches.for_generation(owner.generation()))
-            };
-            let bytecode_profiler = if owner.generation() == program.generation() {
-                call.bytecode_profiler
-            } else {
-                call.bytecode_profiler
-                    .and_then(|profiler| profiler.for_generation(owner.generation()))
-            };
             frame_state.pending_operation = Some(resumed_operation);
             return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
                 owner,
@@ -723,8 +1001,6 @@ impl Vm {
                 check_param_guards: true,
                 call_site: source_span,
                 call_site_offset: frame_state.ip.0.checked_sub(1).map(InstructionOffset),
-                inline_caches,
-                bytecode_profiler,
                 return_target: PendingReturnTarget::Operation,
             }));
         }
@@ -1092,7 +1368,7 @@ impl Vm {
                     cache_site,
                     args,
                 } => {
-                    native_function_calls::dispatch_linked_native_function_call(
+                    let dispatch = native_function_calls::dispatch_linked_native_function_call(
                         self,
                         host,
                         heap,
@@ -1109,6 +1385,24 @@ impl Vm {
                             call_site: instruction.span,
                         },
                     )?;
+                    if let native_function_calls::LinkedNativeDispatch::Async(prepared) = dispatch {
+                        let Some(resume) = await_resume else {
+                            return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
+                                name: prepared.name,
+                            })
+                            .with_source_span_if_absent(prepared.source_span));
+                        };
+                        frame_state.ip = resume;
+                        return Ok(FrameDriveOutcome::Async {
+                            call: PreparedAsyncCall {
+                                function: prepared.function,
+                                args: prepared.args,
+                                name: prepared.name,
+                            },
+                            destination: prepared.destination,
+                            source_span: prepared.source_span,
+                        });
+                    }
                 }
                 InstructionKind::CallFunction {
                     dst,
@@ -1142,8 +1436,6 @@ impl Vm {
                         check_param_guards: matches!(mode, vela_bytecode::ScriptCallMode::Checked),
                         call_site: instruction.span,
                         call_site_offset: Some(instruction_offset),
-                        inline_caches: call.inline_caches,
-                        bytecode_profiler: call.bytecode_profiler,
                         return_target: PendingReturnTarget::Register(*dst),
                     }));
                 }
@@ -1196,18 +1488,6 @@ impl Vm {
                         .iter()
                         .map(|register| frame.read(*register))
                         .collect::<VmResult<Vec<_>>>()?;
-                    let inline_caches = if owner.generation() == program.generation() {
-                        call.inline_caches
-                    } else {
-                        call.inline_caches
-                            .and_then(|caches| caches.for_generation(owner.generation()))
-                    };
-                    let bytecode_profiler = if owner.generation() == program.generation() {
-                        call.bytecode_profiler
-                    } else {
-                        call.bytecode_profiler
-                            .and_then(|profiler| profiler.for_generation(owner.generation()))
-                    };
                     frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
                     return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
                         owner,
@@ -1217,8 +1497,6 @@ impl Vm {
                         check_param_guards: true,
                         call_site: instruction.span,
                         call_site_offset: Some(instruction_offset),
-                        inline_caches,
-                        bytecode_profiler,
                         return_target: PendingReturnTarget::Register(*dst),
                     }));
                 }
@@ -1443,8 +1721,6 @@ impl Vm {
                             check_param_guards: true,
                             call_site: instruction.span,
                             call_site_offset: Some(instruction_offset),
-                            inline_caches: call.inline_caches,
-                            bytecode_profiler: call.bytecode_profiler,
                             return_target: PendingReturnTarget::Register(*dst),
                         }));
                     }
@@ -1528,8 +1804,6 @@ impl Vm {
                             check_param_guards: true,
                             call_site: instruction.span,
                             call_site_offset: Some(instruction_offset),
-                            inline_caches: call.inline_caches,
-                            bytecode_profiler: call.bytecode_profiler,
                             return_target: PendingReturnTarget::Register(*dst),
                         }));
                     }

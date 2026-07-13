@@ -19,8 +19,8 @@ use crate::builder::EngineBuilder;
 use crate::compiler_options::{add_native_signature_hints, compiler_options_from_registry};
 use crate::method::{NativeMethodDesc, NativeMethodEntry};
 use crate::native::{
-    ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
-    NativeFunctionEntry,
+    AsyncNativeFunctionEntry, ContextHostNativeFunctionEntry, HostNativeFunctionEntry,
+    NativeFunctionDesc, NativeFunctionEntry,
 };
 use crate::permission::CapabilitySet;
 
@@ -29,6 +29,7 @@ pub struct Engine {
     registry: Arc<TypeRegistry>,
     definition_registry: Arc<DefinitionRegistry>,
     native_functions: BTreeMap<FunctionId, NativeFunctionEntry>,
+    async_native_functions: BTreeMap<FunctionId, AsyncNativeFunctionEntry>,
     host_native_functions: BTreeMap<FunctionId, HostNativeFunctionEntry>,
     context_host_native_functions: BTreeMap<FunctionId, ContextHostNativeFunctionEntry>,
     native_methods: BTreeMap<HostMethodId, NativeMethodEntry>,
@@ -43,6 +44,7 @@ pub(crate) struct EngineParts {
     pub(crate) registry: TypeRegistry,
     pub(crate) definition_registry: DefinitionRegistry,
     pub(crate) native_functions: Vec<NativeFunctionEntry>,
+    pub(crate) async_native_functions: Vec<AsyncNativeFunctionEntry>,
     pub(crate) host_native_functions: Vec<HostNativeFunctionEntry>,
     pub(crate) context_host_native_functions: Vec<ContextHostNativeFunctionEntry>,
     pub(crate) native_methods: Vec<NativeMethodEntry>,
@@ -77,6 +79,11 @@ impl Engine {
             .into_iter()
             .map(|entry| (entry.desc.id, entry))
             .collect::<BTreeMap<_, _>>();
+        let async_native_functions = parts
+            .async_native_functions
+            .into_iter()
+            .map(|entry| (entry.desc.id, entry))
+            .collect::<BTreeMap<_, _>>();
         let host_native_functions = parts
             .host_native_functions
             .into_iter()
@@ -95,6 +102,7 @@ impl Engine {
         let native_function_names = native_functions
             .values()
             .map(|entry| &entry.desc)
+            .chain(async_native_functions.values().map(|entry| &entry.desc))
             .chain(host_native_functions.values().map(|entry| &entry.desc))
             .chain(
                 context_host_native_functions
@@ -108,6 +116,7 @@ impl Engine {
             registry: Arc::new(parts.registry),
             definition_registry: Arc::new(parts.definition_registry),
             native_functions,
+            async_native_functions,
             host_native_functions,
             context_host_native_functions,
             native_methods,
@@ -135,6 +144,11 @@ impl Engine {
     }
 
     #[must_use]
+    pub fn async_native_function(&self, id: FunctionId) -> Option<&AsyncNativeFunctionEntry> {
+        self.async_native_functions.get(&id)
+    }
+
+    #[must_use]
     pub fn native_function_desc(&self, id: FunctionId) -> Option<&NativeFunctionDesc> {
         self.native_function(id)
             .map(|entry| &entry.desc)
@@ -149,6 +163,12 @@ impl Engine {
     pub fn native_function_by_name(&self, name: &str) -> Option<&NativeFunctionEntry> {
         let id = self.native_function_names.get(name)?;
         self.native_function(*id)
+    }
+
+    #[must_use]
+    pub fn async_native_function_by_name(&self, name: &str) -> Option<&AsyncNativeFunctionEntry> {
+        let id = self.native_function_names.get(name)?;
+        self.async_native_function(*id)
     }
 
     #[must_use]
@@ -265,6 +285,7 @@ impl Engine {
             vm.register_standard_natives();
         }
         self.install_native_functions(vm);
+        self.install_async_native_functions(vm);
         self.install_host_native_functions(vm);
         self.install_context_host_native_functions(vm);
         if let Some(policy) = &self.reflection_policy {
@@ -298,6 +319,22 @@ impl Engine {
                     check_capabilities(&name, &effects, capabilities)?;
                     function(args)
                 }
+            });
+        }
+    }
+
+    fn install_async_native_functions(&self, vm: &mut Vm) {
+        for entry in self.async_native_functions.values() {
+            let id = entry.desc.id;
+            let name = entry.desc.name.clone();
+            let effects = entry.desc.effects;
+            let capabilities = self.capabilities;
+            let function = Arc::clone(&entry.function);
+            vm.register_async_native_with_id(id, move |args| {
+                if let Err(error) = check_capabilities(&name, &effects, capabilities) {
+                    return Box::pin(async move { Err(error) });
+                }
+                function(args)
             });
         }
     }
@@ -354,6 +391,17 @@ impl Engine {
                     check_capabilities(&alias, &effects, capabilities)?;
                     function(args)
                 });
+            } else if let Some(entry) = self.async_native_functions.get(&id) {
+                let alias = alias.to_owned();
+                let effects = entry.desc.effects;
+                let capabilities = self.capabilities;
+                let function = Arc::clone(&entry.function);
+                vm.register_async_native_with_id(id, move |args| {
+                    if let Err(error) = check_capabilities(&alias, &effects, capabilities) {
+                        return Box::pin(async move { Err(error) });
+                    }
+                    function(args)
+                });
             } else if let Some(entry) = self.host_native_functions.get(&id) {
                 let alias = alias.to_owned();
                 let effects = entry.desc.effects;
@@ -382,6 +430,7 @@ impl Engine {
         self.native_functions
             .keys()
             .copied()
+            .chain(self.async_native_functions.keys().copied())
             .chain(self.host_native_functions.keys().copied())
             .chain(self.context_host_native_functions.keys().copied())
             .chain(

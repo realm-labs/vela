@@ -7,8 +7,8 @@ use crate::error::{EngineError, EngineErrorKind, EngineResult};
 use crate::metadata::type_hint_display;
 use crate::method::{NativeMethodDesc, NativeMethodEntry};
 use crate::native::{
-    ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
-    NativeFunctionEntry, TypeHint,
+    AsyncNativeFunctionEntry, ContextHostNativeFunctionEntry, HostNativeFunctionEntry,
+    NativeFunctionDesc, NativeFunctionEntry, TypeHint,
 };
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -456,6 +456,7 @@ fn validate_trait_method_params(
 
 pub(crate) fn validate_native_functions(
     functions: &[NativeFunctionEntry],
+    async_functions: &[AsyncNativeFunctionEntry],
     host_functions: &[HostNativeFunctionEntry],
     context_host_functions: &[ContextHostNativeFunctionEntry],
     types: &[TypeDesc],
@@ -474,6 +475,7 @@ pub(crate) fn validate_native_functions(
     for desc in functions
         .iter()
         .map(|entry| &entry.desc)
+        .chain(async_functions.iter().map(|entry| &entry.desc))
         .chain(host_functions.iter().map(|entry| &entry.desc))
         .chain(context_host_functions.iter().map(|entry| &entry.desc))
     {

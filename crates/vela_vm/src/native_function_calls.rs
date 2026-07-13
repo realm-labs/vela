@@ -3,9 +3,10 @@ use vela_common::Span;
 use vela_def::FunctionId;
 
 use crate::{
-    BorrowedNativeFunction, CallFrame, ExecutionBudget, HeapExecution, HostExecution,
-    HostNativeFunction, NativeFunction, NativeInlineCacheEntry, OwnedValue, SmallStorage, Vm,
-    VmError, VmErrorKind, VmInlineCaches, VmResult, owned_to_value, value::Value, value_to_owned,
+    AsyncNativeFunction, BorrowedNativeFunction, CallFrame, ExecutionBudget, HeapExecution,
+    HostExecution, HostNativeFunction, NativeFunction, NativeInlineCacheEntry, OwnedValue,
+    SmallStorage, Vm, VmError, VmErrorKind, VmInlineCaches, VmResult, owned_to_value, value::Value,
+    value_to_owned,
 };
 
 struct NativeFunctionCall<'a> {
@@ -27,9 +28,23 @@ pub(crate) struct LinkedNativeFunctionCall<'a> {
     pub(crate) call_site: Option<Span>,
 }
 
+pub(crate) enum LinkedNativeDispatch {
+    Complete,
+    Async(PreparedAsyncNativeCall),
+}
+
+pub(crate) struct PreparedAsyncNativeCall {
+    pub(crate) function: AsyncNativeFunction,
+    pub(crate) args: Vec<OwnedValue>,
+    pub(crate) destination: Option<Register>,
+    pub(crate) name: String,
+    pub(crate) source_span: Option<Span>,
+}
+
 #[derive(Clone)]
 pub(crate) enum NativeCallTarget {
     Pure(NativeFunction),
+    AsyncPure(AsyncNativeFunction),
     BorrowedPure(BorrowedNativeFunction),
     Host(HostNativeFunction),
     BorrowedHost(crate::BorrowedHostNativeFunction),
@@ -39,6 +54,7 @@ impl NativeCallTarget {
     pub(crate) const fn kind(&self) -> &'static str {
         match self {
             Self::Pure(_) => "pure",
+            Self::AsyncPure(_) => "async_pure",
             Self::BorrowedPure(_) => "borrowed_pure",
             Self::Host(_) => "host",
             Self::BorrowedHost(_) => "borrowed_host",
@@ -53,7 +69,7 @@ pub(crate) fn dispatch_linked_native_function_call(
     budget: &mut Option<&mut ExecutionBudget>,
     frame: &mut CallFrame,
     call: LinkedNativeFunctionCall<'_>,
-) -> VmResult<()> {
+) -> VmResult<LinkedNativeDispatch> {
     let target = call.program.native_function(call.native).ok_or_else(|| {
         VmError::new(VmErrorKind::UnknownNative {
             name: call.program.debug_name(call.debug_name).to_owned(),
@@ -77,7 +93,20 @@ pub(crate) fn dispatch_linked_native_function_call(
         })
         .with_source_span_if_absent(call.call_site));
     };
-    dispatch_resolved_native_function_call(host, heap, budget, frame, &call, target)
+    if let NativeCallTarget::AsyncPure(function) = target {
+        let args = native_call_args_from_registers(frame, call.args, heap.as_deref())?
+            .as_slice()
+            .to_vec();
+        return Ok(LinkedNativeDispatch::Async(PreparedAsyncNativeCall {
+            function,
+            args,
+            destination: call.dst,
+            name: call.name.to_owned(),
+            source_span: call.call_site,
+        }));
+    }
+    dispatch_resolved_native_function_call(host, heap, budget, frame, &call, target)?;
+    Ok(LinkedNativeDispatch::Complete)
 }
 
 fn dispatch_resolved_native_function_call(
@@ -93,6 +122,9 @@ fn dispatch_resolved_native_function_call(
             let values = native_call_args_from_registers(frame, call.args, heap.as_deref())?;
             native(values.as_slice())
                 .map_err(|error| error.with_source_span_if_absent(call.call_site))?
+        }
+        NativeCallTarget::AsyncPure(_) => {
+            unreachable!("async targets are prepared before dispatch")
         }
         NativeCallTarget::BorrowedPure(native) => {
             let values = native_borrowed_call_args_from_registers(frame, call.args)?;
@@ -178,6 +210,12 @@ fn resolve_native_call_target_by_id(vm: &Vm, native: FunctionId) -> Option<Nativ
                 .get(&native)
                 .cloned()
                 .map(NativeCallTarget::BorrowedHost)
+        })
+        .or_else(|| {
+            vm.async_native_ids
+                .get(&native)
+                .cloned()
+                .map(NativeCallTarget::AsyncPure)
         })
         .or_else(|| {
             vm.native_ids

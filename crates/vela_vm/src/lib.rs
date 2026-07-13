@@ -72,6 +72,8 @@ mod value_key;
 
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 
 pub(crate) use equality::{identity_equal, identity_not_equal};
@@ -110,8 +112,16 @@ use vela_reflect::registry::TypeRegistry;
 use budget::ExecutionBudget;
 use value::Value;
 
+pub use linked_execution::{
+    LinkedDriveOutcome, LinkedExecutionSession, LinkedExecutionStart, PreparedAsyncCall,
+};
+
 pub type NativeFunction =
     Arc<dyn Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static>;
+pub type NativeCallFuture<'call> =
+    Pin<Box<dyn Future<Output = VmResult<OwnedValue>> + Send + 'call>>;
+pub type AsyncNativeFunction =
+    Arc<dyn for<'call> Fn(&'call [OwnedValue]) -> NativeCallFuture<'call> + Send + Sync + 'static>;
 pub type BorrowedNativeFunction = Arc<
     dyn for<'heap, 'budget> Fn(
             &[Value],
@@ -147,6 +157,7 @@ pub(crate) type BorrowedHostNativeFunction = Arc<
 #[derive(Clone, Default)]
 pub struct Vm {
     native_ids: HashMap<FunctionId, NativeFunction>,
+    async_native_ids: HashMap<FunctionId, AsyncNativeFunction>,
     borrowed_native_ids: HashMap<FunctionId, BorrowedNativeFunction>,
     host_native_ids: HashMap<FunctionId, HostNativeFunction>,
     borrowed_host_native_ids: HashMap<FunctionId, BorrowedHostNativeFunction>,
@@ -629,6 +640,29 @@ impl Vm {
         function: impl Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static,
     ) {
         self.native_ids.insert(id, Arc::new(function));
+    }
+
+    pub fn register_async_native(
+        &mut self,
+        name: impl Into<String>,
+        function: impl for<'call> Fn(&'call [OwnedValue]) -> NativeCallFuture<'call>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        let name = name.into();
+        self.register_async_native_with_id(function_id_for_native_name(&name), function);
+    }
+
+    pub fn register_async_native_with_id(
+        &mut self,
+        id: FunctionId,
+        function: impl for<'call> Fn(&'call [OwnedValue]) -> NativeCallFuture<'call>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        self.async_native_ids.insert(id, Arc::new(function));
     }
 
     pub fn register_borrowed_native(

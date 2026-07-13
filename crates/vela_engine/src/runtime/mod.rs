@@ -19,11 +19,15 @@ use vela_vm::HostExecution;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::heap::{HeapValue, ScriptHeap};
+use vela_vm::heap_execution::HeapExecution;
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
+use vela_vm::{
+    LinkedDriveOutcome, LinkedExecutionStart, LinkedRuntimeCodeCall, PersistentHeapExecution,
+    persistent_value_to_owned,
+};
 #[cfg(test)]
 use vela_vm::{LinkedProgramHostBudgetCall, LinkedProgramHostCall};
-use vela_vm::{LinkedRuntimeCodeCall, PersistentHeapExecution, persistent_value_to_owned};
 
 use crate::engine::Engine;
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
@@ -512,7 +516,7 @@ where
             hot_reload: self.hot_reload.as_ref(),
             globals: &mut state.globals,
             script_globals: &mut state.script_globals,
-            sidecars: &state.sidecars,
+            sidecars: &mut state.sidecars,
             target,
             args,
             budget,
@@ -528,7 +532,36 @@ where
     where
         T: RuntimeCallTarget + Send + 'call,
     {
-        RuntimeCallFuture::new(async move { self.call_impl(entry, args, options, true) })
+        RuntimeCallFuture::new(async move { self.call_impl_async(entry, args, options).await })
+    }
+
+    async fn call_impl_async<'call, T>(
+        &'call mut self,
+        entry: T,
+        args: CallArgs<'call>,
+        options: CallOptions,
+    ) -> VmResult<VelaValue>
+    where
+        T: RuntimeCallTarget + Send + 'call,
+    {
+        let mut budget = options.budget();
+        let target = handles::call_target_sealed::Sealed::into_call_target(entry);
+        let target = self.resolve_call_target(target, &mut budget)?;
+        let state = &mut self.state;
+        Self::call_runtime_args_async(RuntimeCallExecution {
+            runtime_id: state.id,
+            engine: self.image.engine(),
+            registry_image: self.image.program_image(),
+            artifact: self.image.linked_artifact(),
+            hot_reload: self.hot_reload.as_ref(),
+            globals: &mut state.globals,
+            script_globals: &mut state.script_globals,
+            sidecars: &mut state.sidecars,
+            target,
+            args,
+            budget,
+        })
+        .await
     }
 
     pub fn bind_method<T>(&self, receiver: &VelaValue, method: T) -> VmResult<VelaMethodTarget>
@@ -746,10 +779,84 @@ where
                 roots: &roots,
             },
             budget: &mut budget,
-            inline_caches: Some(call.sidecars),
-            bytecode_profiler: Some(call.sidecars),
+            inline_caches: Some(&*call.sidecars),
+            bytecode_profiler: Some(&*call.sidecars),
         })?;
         Ok(call.script_globals.retain(call.runtime_id, result))
+    }
+
+    async fn call_runtime_args_async(
+        call: RuntimeCallExecution<'_, '_, '_>,
+    ) -> VmResult<VelaValue> {
+        let mut budget = call.budget;
+        let mut execution_host = ExecutionHost::new(call.args, call.globals);
+        let resolved = execution_host.resolve_values(
+            &call.target.name,
+            &call.target.params,
+            &call.target.param_defaults,
+            call.runtime_id,
+            &mut call.script_globals.heap,
+            &mut budget,
+        )?;
+        let mut access = HostAccess::new();
+        let vm = runtime_vm(call.engine, call.registry_image, call.hot_reload);
+        let roots = call.script_globals.roots();
+        let mut entry_args = Vec::with_capacity(
+            resolved
+                .len()
+                .saturating_add(usize::from(call.target.receiver.is_some())),
+        );
+        if let Some(receiver) = &call.target.receiver {
+            entry_args.push(receiver.value);
+        }
+        entry_args.extend_from_slice(&resolved);
+        let mut heap = HeapExecution::new(&mut call.script_globals.heap);
+        let mut session = vm.start_linked_execution(
+            LinkedExecutionStart {
+                artifact: call.artifact,
+                function: call.target.function,
+                args: &entry_args,
+                roots: &roots,
+                inline_caches: Some(&*call.sidecars),
+                bytecode_profiler: Some(&*call.sidecars),
+            },
+            &mut heap,
+            &mut budget,
+        )?;
+
+        loop {
+            let outcome = {
+                let mut host = HostExecution {
+                    adapter: &mut execution_host,
+                    access: &mut access,
+                    script_globals: Some(&call.script_globals.values),
+                };
+                vm.drive_linked_execution(
+                    &mut session,
+                    Some(&mut host),
+                    &mut heap,
+                    &mut budget,
+                    Some(&*call.sidecars),
+                    Some(&*call.sidecars),
+                )?
+            };
+            match outcome {
+                LinkedDriveOutcome::Complete(value) => {
+                    let value = vm.finish_linked_execution(value, &mut heap, &roots, &mut budget);
+                    drop(heap);
+                    return Ok(call.script_globals.retain(call.runtime_id, value));
+                }
+                LinkedDriveOutcome::AsyncBoundary(prepared) => {
+                    let result = prepared.invoke().await;
+                    vm.resume_linked_async_call(
+                        &mut session,
+                        result,
+                        Some(&mut heap),
+                        Some(&mut budget),
+                    )?;
+                }
+            }
+        }
     }
 
     fn resolve_call_target(

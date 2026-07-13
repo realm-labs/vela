@@ -330,7 +330,7 @@ pub(super) struct RuntimeCallExecution<'program, 'state, 'host> {
     pub(super) hot_reload: Option<&'program HotReloadRuntime>,
     pub(super) globals: &'state mut RuntimeGlobalStore,
     pub(super) script_globals: &'state mut RuntimeScriptGlobalStore,
-    pub(super) sidecars: &'state RuntimeSidecars,
+    pub(super) sidecars: &'state mut RuntimeSidecars,
     pub(super) target: EntryRequest,
     pub(super) args: CallArgs<'host>,
     pub(super) budget: vela_vm::budget::ExecutionBudget,

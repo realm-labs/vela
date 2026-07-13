@@ -7,8 +7,8 @@ use vela_reflect::registry::{MethodDesc, MethodParamDesc, TypeDesc, TypeKey, Typ
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
 use crate::method::{NativeMethodDesc, NativeMethodEntry};
 use crate::native::{
-    ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
-    NativeFunctionEntry, TypeHint,
+    AsyncNativeFunctionEntry, ContextHostNativeFunctionEntry, HostNativeFunctionEntry,
+    NativeFunctionDesc, NativeFunctionEntry, TypeHint,
 };
 
 pub(crate) fn inject_host_method_metadata(
@@ -51,12 +51,14 @@ pub(crate) fn inject_host_method_metadata(
 pub(crate) fn inject_native_function_metadata(
     registry: &mut TypeRegistry,
     native_functions: &[NativeFunctionEntry],
+    async_native_functions: &[AsyncNativeFunctionEntry],
     host_native_functions: &[HostNativeFunctionEntry],
     context_host_native_functions: &[ContextHostNativeFunctionEntry],
 ) {
     for desc in native_functions
         .iter()
         .map(|entry| &entry.desc)
+        .chain(async_native_functions.iter().map(|entry| &entry.desc))
         .chain(host_native_functions.iter().map(|entry| &entry.desc))
         .chain(
             context_host_native_functions
