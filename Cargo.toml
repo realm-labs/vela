@@ -35,7 +35,7 @@ version = "0.1.0"
 anyhow = "1"
 clap = { version = "4.5", features = ["derive"] }
 crossbeam-channel = "0.5"
-lsp-server = "0.8.0"
+lsp-server = "0.9.0"
 lsp-types = "0.95.0"
 proc-macro2 = "1"
 parking_lot = { version = "0.12", features = ["arc_lock", "send_guard"] }
