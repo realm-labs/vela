@@ -1830,9 +1830,10 @@ retaining the last valid graph and does not commit a database generation.
 ### Post-Review Closure Decision
 
 The 2026-07-14 review reopened final async acceptance through Batch E of
-[async-execution-model-plan.md](async-execution-model-plan.md). E1 and E2 now
-implement the following durable contracts; final acceptance still waits for
-the E3 workspace, benchmark, documentation, and zero-hit gates:
+[async-execution-model-plan.md](async-execution-model-plan.md). E1-E3 implement
+the following durable contracts, and the final workspace, benchmark,
+documentation, and zero-hit gates are recorded in
+[the Batch E acceptance report](archive/async-execution-batch-e-acceptance-2026-07-14.md):
 
 - Active async execution uses a VM-owned dynamic root-admission boundary. A
   reentry-returned heap value must join the current `HeapExecution` roots before
@@ -1859,13 +1860,14 @@ over-threshold `linked_execution.rs` is reviewed only as the exhaustive opcode
 driver/root glue. Provider outer and reentry entry construction both consume
 the same pure resolution result before allocating their receiver roots.
 
-The E1 representation is now fixed. `HeapExecution` owns a dynamic root
+The E1 representation is now fixed. `HeapExecution` lazily owns a dynamic root
 registry; a reentry return receives a weak guard token before child protection
 is truncated, and admission marks immediately when incremental collection is
-already sweeping. `VelaValue` carries that token only for the active session,
-while the existing Runtime root registry remains the cross-call owner. Session
-teardown drops the VM registry without a custom destructor or extended heap
-borrow.
+already sweeping. The existing Runtime root registry remains the cross-call
+owner and stores active tokens in a sparse root-ID sidecar, so ordinary
+`VelaValue` and root-entry layouts are unchanged. Last-handle release removes
+the token, and session teardown drops the VM registry without a custom
+destructor or extended heap borrow.
 
 Mutable-origin direct bindings now require `Send + Sync` and store their erased
 borrow behind an owned read/write-guard slot. Read guards implement true
@@ -1873,6 +1875,12 @@ borrow behind an owned read/write-guard slot. Read guards implement true
 `Send`, release by RAII, and support atomic rollback. This is a direct
 pre-release capability correction: non-`Sync` mutable origins no longer enter
 `with_host_mut`, and no exclusive lease is labeled shared.
+
+Batch E performance keeps ordinary entry/provider and suspended-memory costs
+within the accepted comparison, and creates no eager dynamic-root allocation.
+The safe owned-guard lease representation raises the measured exclusive lease
+row by 23.4%; `ASYNC-LEASE-PERF-1` is the M20 follow-up for profiling and
+reducing that boundary cost without weakening exact lease state or RAII.
 
 ### Executor-Neutral Async Execution
 

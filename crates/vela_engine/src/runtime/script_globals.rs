@@ -16,7 +16,6 @@ pub struct VelaValue {
     pub(super) value: Value,
     root_id: u64,
     roots: Arc<Mutex<RuntimeValueRoots>>,
-    active_root: Option<ActiveExecutionRoot>,
 }
 
 impl VelaValue {
@@ -40,7 +39,6 @@ impl Clone for VelaValue {
             value: self.value,
             root_id: self.root_id,
             roots: Arc::clone(&self.roots),
-            active_root: self.active_root.clone(),
         }
     }
 }
@@ -156,6 +154,7 @@ where
 pub(super) struct RuntimeValueRoots {
     next_id: u64,
     values: BTreeMap<u64, RuntimeValueRoot>,
+    active_roots: BTreeMap<u64, ActiveExecutionRoot>,
 }
 
 #[derive(Debug)]
@@ -166,20 +165,7 @@ struct RuntimeValueRoot {
 
 impl RuntimeValueRoots {
     pub(super) fn retain(roots: &Arc<Mutex<Self>>, runtime_id: u64, value: Value) -> VelaValue {
-        let mut roots_mut = roots.lock().expect("runtime value roots mutex poisoned");
-        let root_id = roots_mut.next_id;
-        roots_mut.next_id = roots_mut.next_id.saturating_add(1);
-        roots_mut
-            .values
-            .insert(root_id, RuntimeValueRoot { value, refs: 1 });
-        drop(roots_mut);
-        VelaValue {
-            runtime_id,
-            value,
-            root_id,
-            roots: Arc::clone(roots),
-            active_root: None,
-        }
+        Self::retain_with_active(roots, runtime_id, value, None)
     }
 
     pub(super) fn retain_active(
@@ -188,9 +174,31 @@ impl RuntimeValueRoots {
         value: Value,
         active_root: ActiveExecutionRoot,
     ) -> VelaValue {
-        let mut retained = Self::retain(roots, runtime_id, value);
-        retained.active_root = Some(active_root);
-        retained
+        Self::retain_with_active(roots, runtime_id, value, Some(active_root))
+    }
+
+    fn retain_with_active(
+        roots: &Arc<Mutex<Self>>,
+        runtime_id: u64,
+        value: Value,
+        active_root: Option<ActiveExecutionRoot>,
+    ) -> VelaValue {
+        let mut roots_mut = roots.lock().expect("runtime value roots mutex poisoned");
+        let root_id = roots_mut.next_id;
+        roots_mut.next_id = roots_mut.next_id.saturating_add(1);
+        roots_mut
+            .values
+            .insert(root_id, RuntimeValueRoot { value, refs: 1 });
+        if let Some(active_root) = active_root {
+            roots_mut.active_roots.insert(root_id, active_root);
+        }
+        drop(roots_mut);
+        VelaValue {
+            runtime_id,
+            value,
+            root_id,
+            roots: Arc::clone(roots),
+        }
     }
 
     fn clone_root(&mut self, root_id: u64) {
@@ -206,6 +214,7 @@ impl RuntimeValueRoots {
         root.refs = root.refs.saturating_sub(1);
         if root.refs == 0 {
             self.values.remove(&root_id);
+            self.active_roots.remove(&root_id);
         }
     }
 

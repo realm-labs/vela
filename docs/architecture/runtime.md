@@ -288,6 +288,15 @@ single allocator and are invalid after the child scope exits. A mutable method
 must explicitly reborrow its lease into child arguments; the raw parent HostRef
 remains busy while the exclusive lease is live.
 
+A heap value returned by reentry is admitted to the active `HeapExecution`
+before child frame roots are truncated. The VM creates its dynamic-root
+registry lazily on the first such return and marks the admitted roots
+immediately if incremental collection is already active. Runtime cross-call
+retention stores the weak active-root guard in a sparse sidecar keyed by the
+existing `VelaValue` root ID; dropping the last shared handle removes the guard,
+and session teardown invalidates the registry. Ordinary calls allocate neither
+the registry nor a per-value token.
+
 Async suspension does not change hot-reload ownership. The outer execution and
 all nested frames, providers, closures, and reentry retain one
 `Arc<LinkedArtifact>`. A cloneable `HotReloadStagingHandle` may replace only the

@@ -17,23 +17,15 @@ and one `call`/`call_async` target surface for functions, bound methods, and
 providers. The 2026-07-13 baseline, zero-hit audit, and original acceptance
 result remain recorded under [archive](archive/).
 
-Post-implementation review on 2026-07-14 reopened final acceptance and queued
-Batch E in
-[async-execution-model-plan.md](async-execution-model-plan.md). An object
-returned from reentry could enter `RuntimeValueRoots` after the active
-`HeapExecution` root snapshot, a shared typed lease from a mutable-origin
-binding was represented as exclusive, reflection published keyword field
-`async`, provider lookup was duplicated, and `linked_execution.rs` mixed
-session/resume/reentry policy into dispatch. E1 and E2 repaired those reviewed
-gaps without compatibility paths.
-
-Batch E is the current priority before returning to M20 cache close-out or the
-M20.5 LSP follow-up. E1 and E2 are implemented: reentry values receive
-active-session root tokens before child roots are released; `Send + Sync`
-mutable-origin bindings use exact shared/exclusive owned guards; reflection
-exposes only script-addressable `is_async`; VM session/resume/reentry policy has
-focused owners; and provider outer/reentry paths share one resolver. E3 final
-audits, measurements, documentation closure, and full validation remain.
+Post-implementation review on 2026-07-14 reopened final acceptance through
+Batch E in [async-execution-model-plan.md](async-execution-model-plan.md).
+Batch E is complete: dynamic reentry roots, exact shared/exclusive leases,
+script-addressable `is_async`, focused VM session/resume/reentry ownership, and
+one provider resolver are implemented without compatibility paths. Full
+features, examples, benches, Rust docs, fuzz build, site gates, audits, and
+performance/memory comparison passed; the result is recorded in
+[the Batch E acceptance report](archive/async-execution-batch-e-acceptance-2026-07-14.md).
+Current work returns to M20 cache close-out and the M20.5 LSP follow-up.
 
 ## Milestone Snapshot
 
@@ -111,11 +103,11 @@ audits, measurements, documentation closure, and full validation remain.
 
 ### Async Post-Review Closure
 
-Batch E owns six named proofs. `ASYNC-ROOT-1`, `ASYNC-LEASE-1`,
-`ASYNC-REFLECT-1`, `ASYNC-VM-MOD-1`, and `ASYNC-PROVIDER-1` are implemented and
-focused validated. `ASYNC-DOC-1` remains open until the E3 audits,
-measurements, full validation, examples, features, benches, and documentation
-site gates pass and Section 18 records final acceptance.
+Batch E closed `ASYNC-ROOT-1`, `ASYNC-LEASE-1`, `ASYNC-REFLECT-1`,
+`ASYNC-VM-MOD-1`, `ASYNC-PROVIDER-1`, and `ASYNC-DOC-1`. No async correctness
+or final-acceptance gap remains. Named performance follow-up
+`ASYNC-LEASE-PERF-1` belongs to M20: profile the measured owned-guard exclusive
+lease cost without weakening exact state, safe Rust, scoped `Send`, or RAII.
 
 Do not solve these with a permanent-root leak, an exclusive lease labeled
 shared, reflection aliases, navigation-only source splits, duplicated drivers,
@@ -198,32 +190,23 @@ scanners, runtime execution, live host-state reads, or editor-owned analysis.
 
 ## Validation
 
-The last full workspace validation passed on 2026-07-13. The E1 boundary and E2
-reflection/analysis/VM/provider/reentry focused tests passed on 2026-07-14:
-
-```bash
-cargo clippy -p vela_host -p vela_vm -p vela_engine -p vela_macros --all-targets -- -D warnings
-cargo test -p vela_host -p vela_vm -p vela_engine -p vela_macros --no-fail-fast
-cargo clippy -p vela_vm -p vela_engine -p vela_reflect -p vela_analysis --all-targets -- -D warnings
-cargo test -p vela_reflect -p vela_analysis --no-fail-fast
-cargo test -p vela_vm linked_async --no-fail-fast
-cargo test -p vela_engine provider_ --no-fail-fast
-cargo test -p vela_engine reentry --no-fail-fast
-```
-
-The last full commands were:
+The final Batch E validation passed on 2026-07-14:
 
 ```bash
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
-cargo clippy --manifest-path examples/Cargo.toml --all-targets -- -D warnings
-cargo test --manifest-path examples/Cargo.toml --test runnable_examples
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace --all-features --no-fail-fast
+cargo clippy --manifest-path examples/Cargo.toml --all-targets --all-features -- -D warnings
+cargo test --manifest-path examples/Cargo.toml --all-features --no-fail-fast
+cargo bench --workspace --all-features --no-run
+cargo doc --workspace --all-features --no-deps
+cargo check --manifest-path fuzz/Cargo.toml --bins
 ```
 
 The Miri component is unavailable on the installed stable
-`aarch64-apple-darwin` toolchain; focused safe-Rust lease/reentry tests and the
-workspace unsafe-code prohibition remain green.
+`x86_64-pc-windows-msvc` toolchain; focused safe-Rust lease/reentry tests and
+the workspace unsafe-code prohibition remain green. Documentation placeholder,
+syntax-highlighting, Astro diagnostics, and static-site build gates also pass.
 
 Use the relevant subset of [validation.md](validation.md) for each change.
 M20 work also requires focused correctness tests for the touched bytecode,
@@ -232,9 +215,8 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Run the Batch E/full acceptance gates and performance/memory comparison.
-2. Close every reopened Section 18 and documentation criterion, then resume
-   M20/M20.5 only after the final worktree is clean.
+1. Resume the named M20 cache-family audit and measured close-out work.
+2. Continue M20.5 only for a concrete editor-visible failure or missing proof.
 
 ## Update Rules
 

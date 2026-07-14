@@ -138,6 +138,14 @@ then compact/reuse frame storage or specialize verified leaf/block dispatch
 without adding recursion, duplicate drivers, inferred await, or weaker budget
 and root semantics.
 
+The 2026-07-14 post-review closure is recorded in
+[archive/async-execution-batch-e-acceptance-2026-07-14.md](archive/async-execution-batch-e-acceptance-2026-07-14.md).
+Its same-machine stable comparison found no ordinary entry/provider or memory
+regression after making the dynamic-root registry lazy and retaining active
+tokens in a sparse sidecar. Exact owned read/write guards raise the exclusive
+lease row by 23.4%; named M20 follow-up `ASYNC-LEASE-PERF-1` may optimize that
+boundary only while preserving true `shared(n)`, exclusive exclusion, and RAII.
+
 ## Perf Optimization Loop
 
 Performance work must follow a measurement-first loop:

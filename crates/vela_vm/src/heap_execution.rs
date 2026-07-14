@@ -8,7 +8,7 @@ use crate::{ExecutionBudget, Value};
 pub struct HeapExecution<'heap> {
     pub heap: &'heap mut ScriptHeap,
     protected_roots: Vec<GcRef>,
-    dynamic_roots: Arc<Mutex<DynamicRootRegistry>>,
+    dynamic_roots: Option<Arc<Mutex<DynamicRootRegistry>>>,
     safe_point_roots: Vec<GcRef>,
     safe_point_gc_budget: GcBudget,
     gc_in_progress: bool,
@@ -27,6 +27,7 @@ struct DynamicRootRegistry {
     roots: BTreeMap<u64, DynamicRoot>,
 }
 
+#[derive(Debug)]
 pub struct ActiveExecutionRoot {
     id: u64,
     registry: Weak<Mutex<DynamicRootRegistry>>,
@@ -86,7 +87,7 @@ impl<'heap> HeapExecution<'heap> {
         Self {
             heap,
             protected_roots: Vec::new(),
-            dynamic_roots: Arc::new(Mutex::new(DynamicRootRegistry::default())),
+            dynamic_roots: None,
             safe_point_roots: Vec::new(),
             safe_point_gc_budget: GcBudget::micros(max_pause_micros),
             gc_in_progress: false,
@@ -127,26 +128,33 @@ impl<'heap> HeapExecution<'heap> {
         if self.gc_in_progress {
             self.heap.mark_incremental_roots(&roots);
         }
-        let mut registry = self
-            .dynamic_roots
+        let registry = Arc::clone(
+            self.dynamic_roots
+                .get_or_insert_with(|| Arc::new(Mutex::new(DynamicRootRegistry::default()))),
+        );
+        let mut registry_guard = registry
             .lock()
             .expect("active execution root registry mutex poisoned");
-        let id = registry.next_id;
-        registry.next_id = registry.next_id.saturating_add(1);
-        registry.roots.insert(id, DynamicRoot { roots, refs: 1 });
-        drop(registry);
+        let id = registry_guard.next_id;
+        registry_guard.next_id = registry_guard.next_id.saturating_add(1);
+        registry_guard
+            .roots
+            .insert(id, DynamicRoot { roots, refs: 1 });
+        drop(registry_guard);
         ActiveExecutionValue {
             value,
             root: ActiveExecutionRoot {
                 id,
-                registry: Arc::downgrade(&self.dynamic_roots),
+                registry: Arc::downgrade(&registry),
             },
         }
     }
 
     pub(crate) fn extend_dynamic_roots(&self, roots: &mut Vec<GcRef>) {
-        let registry = self
-            .dynamic_roots
+        let Some(registry) = self.dynamic_roots.as_ref() else {
+            return;
+        };
+        let registry = registry
             .lock()
             .expect("active execution root registry mutex poisoned");
         registry

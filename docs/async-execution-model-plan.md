@@ -1426,20 +1426,20 @@ map while every sync/async/reentry/reload test still uses the same driver.
 
 #### E3. Final Audit And Documentation Closure
 
-- [ ] Run the focused validation for VM, engine, host, macros, reflection,
+- [x] Run the focused validation for VM, engine, host, macros, reflection,
   syntax/HIR/analysis/tooling, providers, and hot reload, followed by the full
   Section 17 checkpoint, examples, feature combinations, benchmark build, and
   documentation-site gates.
-- [ ] Repeat the performance/memory comparison for sync calls, ready/pending
+- [x] Repeat the performance/memory comparison for sync calls, ready/pending
   async calls, dynamic root admission/removal, shared/exclusive lease
   acquisition, reentry, and providers. Accept no material regression without a
   named architectural reason and follow-up.
-- [ ] Run the original zero-hit audits plus the Batch E audits in Section 17.6.
+- [x] Run the original zero-hit audits plus the Batch E audits in Section 17.6.
   Inspect and classify every hit; a command merely executing is not proof.
-- [ ] Update `docs/decisions.md`, runtime/host/reflection architecture,
+- [x] Update `docs/decisions.md`, runtime/host/reflection architecture,
   file-size exceptions, `docs/progress.md`, and Section 18 to implemented truth.
   Keep the 2026-07-13 acceptance report archived as the historical A-D result.
-- [ ] Commit the completed checkpoints with Conventional Commits and finish
+- [x] Commit the completed checkpoints with Conventional Commits and finish
   with a clean worktree.
 
 Batch E completion gate: every `ASYNC-ROOT-1` through `ASYNC-DOC-1` proof is
@@ -1589,7 +1589,7 @@ The goal is complete only when all are true:
   `'static` arguments.
 - [x] Async Rust functions and stateful struct methods can be registered and
   awaited from Vela.
-- [ ] Direct mutable host state can be safely leased across Rust await, used by
+- [x] Direct mutable host state can be safely leased across Rust await, used by
   existing Rust services, reborrowed into nested Vela, and restored; an
   eligible mutable-origin shared request enters true `shared(n)` state rather
   than being represented as exclusive.
@@ -1599,25 +1599,25 @@ The goal is complete only when all are true:
   budgets, capabilities, profiler, cancellation, and call-depth state.
 - [x] Cancellation and every error path release leases/scopes and leave Runtime
   reusable, without claiming rollback of committed effects.
-- [ ] Suspended frames pin old LinkedArtifact generations and expose complete GC
+- [x] Suspended frames pin old LinkedArtifact generations and expose complete GC
   roots, including values returned to Rust by same-session reentry after the
   initial root snapshot; no async-frame hot migration exists.
 - [x] Execution-unit behavior is semantic and executor-independent; the driver
   never busy-polls.
-- [ ] Provider, reflection, package metadata, reload ABI, CLI, and sync C
+- [x] Provider, reflection, package metadata, reload ABI, CLI, and sync C
   behavior are explicit and tested; reflection exposes script-addressable
   `is_async` metadata and provider outer/reentry lookup has one policy owner.
 - [x] Async functions are explicitly JIT-ineligible without creating a second
   backend contract.
 - [x] Domain-neutral examples cover the motivating actor-state/service/reentry
   shape and document disjoint Runtime/host storage.
-- [ ] Execution-session/frame/continuation, async-resume, and reentry policy live
+- [x] Execution-session/frame/continuation, async-resume, and reentry policy live
   in focused VM modules; `linked_execution.rs` owns only the exhaustive linked
   opcode dispatch/root glue covered by its documented exception.
-- [ ] All Batch A-E checklists, focused tests, compile tests, zero-hit audits,
+- [x] All Batch A-E checklists, focused tests, compile tests, zero-hit audits,
   full validation, examples, and performance/memory measurements pass or have an
   explicitly accepted and justified result allowed by this plan.
-- [ ] Active goal/architecture/decision/progress docs describe the implemented
+- [x] Active goal/architecture/decision/progress docs describe the implemented
   async system consistently.
-- [ ] Work is committed at coherent verified checkpoints with Conventional
+- [x] Work is committed at coherent verified checkpoints with Conventional
   Commits and the final worktree is clean.

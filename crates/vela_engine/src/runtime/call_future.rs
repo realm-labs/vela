@@ -244,11 +244,13 @@ async fn main() {
                         .await;
 
                         let held = context.call("make_held", CallArgs::new())?;
+                        let held_clone = held.clone();
+                        drop(held);
                         let _ = context.call("collect_garbage", CallArgs::new())?;
-                        let method = context.bind_method(&held, "read")?;
+                        let method = context.bind_method(&held_clone, "read")?;
                         let _ = context.call(method, CallArgs::new())?;
-                        let _ =
-                            context.call("consume_held", CallArgs::new().with_vela_value(held))?;
+                        let _ = context
+                            .call("consume_held", CallArgs::new().with_vela_value(held_clone))?;
                         Ok(OwnedValue::i64(7))
                     })
                 },
