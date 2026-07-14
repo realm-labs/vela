@@ -438,6 +438,11 @@ descriptors carry the separate `CallableAsyncness::{Sync, Async}` ABI fact,
 which analysis, reflection, providers, entry resolution, and hot reload must
 preserve independently from capabilities and host effects.
 
+Script-visible function, method, and trait-method metadata records expose this
+fact as the copied Boolean field `is_async`. The keyword spelling `async` is not
+a record field or compatibility alias; Vela code can inspect asyncness with
+ordinary dot syntax such as `descriptor.is_async`.
+
 ### Attributes
 
 ```rust

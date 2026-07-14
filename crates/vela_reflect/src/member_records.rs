@@ -25,7 +25,10 @@ fn method_record_fields(method: &MethodDesc) -> ReflectFields {
     fields.insert("id".to_owned(), id_value(method.id.get()));
     fields.insert("name".to_owned(), string(method.name.clone()));
     fields.insert("origin".to_owned(), origin_value(method.origin));
-    fields.insert("async".to_owned(), bool_value(method.asyncness.is_async()));
+    fields.insert(
+        "is_async".to_owned(),
+        bool_value(method.asyncness.is_async()),
+    );
     fields.insert(
         "params".to_owned(),
         array(method.params.iter().map(method_param_record)),
@@ -132,7 +135,10 @@ fn trait_method_record(owner: &str, method: &TraitMethodDesc) -> ReflectValue {
             ("name".to_owned(), string(method.name.clone())),
             ("owner".to_owned(), string(owner)),
             ("origin".to_owned(), origin_value(method.origin)),
-            ("async".to_owned(), bool_value(method.asyncness.is_async())),
+            (
+                "is_async".to_owned(),
+                bool_value(method.asyncness.is_async()),
+            ),
             (
                 "params".to_owned(),
                 array(method.params.iter().map(method_param_record)),

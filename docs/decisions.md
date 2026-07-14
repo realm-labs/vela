@@ -1829,10 +1829,10 @@ retaining the last valid graph and does not commit a database generation.
 
 ### Post-Review Closure Decision
 
-The 2026-07-14 review reopens final async acceptance through Batch E of
-[async-execution-model-plan.md](async-execution-model-plan.md). The following
-directions are decided, but completion is not claimed until their implementation
-and reopened tests pass:
+The 2026-07-14 review reopened final async acceptance through Batch E of
+[async-execution-model-plan.md](async-execution-model-plan.md). E1 and E2 now
+implement the following durable contracts; final acceptance still waits for
+the E3 workspace, benchmark, documentation, and zero-hit gates:
 
 - Active async execution uses a VM-owned dynamic root-admission boundary. A
   reentry-returned heap value must join the current `HeapExecution` roots before
@@ -1843,15 +1843,21 @@ and reopened tests pass:
   type-erased capabilities fail closed instead of being extracted through an
   exclusive lease labeled shared. Safe-Rust proof precedes any bound or
   capability correction, and no parallel CallArgs/Runtime mode is added.
-- Script-visible callable reflection metadata is named `is_async`. The current
-  keyword field `async` is a pre-release implementation gap, not a compatibility
-  surface, and will be removed rather than aliased.
+- Script-visible callable reflection metadata is named `is_async`. The keyword
+  field `async` was removed rather than retained as a compatibility alias.
 - `linked_execution.rs` remains opcode dispatch/root glue. Execution-session,
-  continuation, async-resume, and reentry policy move to focused VM modules;
+  continuation, async-resume, and reentry policy live in focused VM modules;
   the file-size exception does not cover those responsibilities.
 - Provider metadata/method/asyncness/shape/parameter resolution has one pure
   owner over the pinned `LinkedArtifact`. Outer and reentry paths may adapt
   receiver allocation and root admission only after that shared resolution.
+
+The VM ownership split is active: `execution_session.rs` owns session, frame,
+continuation, and start policy; `async_resume.rs` owns prepared async calls and
+resume conversion; `execution_reentry.rs` owns push/abort policy. The remaining
+over-threshold `linked_execution.rs` is reviewed only as the exhaustive opcode
+driver/root glue. Provider outer and reentry entry construction both consume
+the same pure resolution result before allocating their receiver roots.
 
 The E1 representation is now fixed. `HeapExecution` owns a dynamic root
 registry; a reentry return receives a weak guard token before child protection
@@ -1934,10 +1940,9 @@ provider descriptors; sync/async changes require restart or explicit migration.
 
 Reflection metadata records expose callable asyncness explicitly as `is_async`,
 and language tooling reads callable asyncness from HIR or registry signature
-facts rather than re-inferring it from token text. The current implementation's
-keyword field `async` is the active Batch E repair named above, not an accepted
-alias. Syntax recovery may still recognize `.await` as a receiver boundary so
-completion can use the semantic awaited-result fact.
+facts rather than re-inferring it from token text. There is no keyword-field
+`async` compatibility alias. Syntax recovery may still recognize `.await` as a
+receiver boundary so completion can use the semantic awaited-result fact.
 
 Direct CLI execution remains synchronous by default. `vela_cli --async`
 explicitly opts into a small CLI-owned executor and calls `Runtime::call_async`;

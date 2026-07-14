@@ -20,20 +20,20 @@ result remain recorded under [archive](archive/).
 Post-implementation review on 2026-07-14 reopened final acceptance and queued
 Batch E in
 [async-execution-model-plan.md](async-execution-model-plan.md). An object
-returned from reentry can enter `RuntimeValueRoots` after the active
-`HeapExecution` root snapshot, so a later nested GC can collect it. A shared
-typed lease requested from a mutable-origin binding is currently represented as
-exclusive. Reflection publishes keyword field `async`, normal dot syntax cannot
-address it, provider metadata resolution is duplicated for outer/reentry calls,
-and `linked_execution.rs` still owns session/resume/reentry policy despite the
-documented module boundary.
+returned from reentry could enter `RuntimeValueRoots` after the active
+`HeapExecution` root snapshot, a shared typed lease from a mutable-origin
+binding was represented as exclusive, reflection published keyword field
+`async`, provider lookup was duplicated, and `linked_execution.rs` mixed
+session/resume/reentry policy into dispatch. E1 and E2 repaired those reviewed
+gaps without compatibility paths.
 
 Batch E is the current priority before returning to M20 cache close-out or the
-M20.5 LSP follow-up. E1 is implemented and its VM/host/engine/macros boundary is
-green: reentry values receive active-session root tokens before child roots are
-released, and `Send + Sync` mutable-origin bindings use exact shared/exclusive
-owned guards. E2 now owns the `is_async` reflection hard switch, VM semantic
-ownership split, and unified provider resolver before final acceptance.
+M20.5 LSP follow-up. E1 and E2 are implemented: reentry values receive
+active-session root tokens before child roots are released; `Send + Sync`
+mutable-origin bindings use exact shared/exclusive owned guards; reflection
+exposes only script-addressable `is_async`; VM session/resume/reentry policy has
+focused owners; and provider outer/reentry paths share one resolver. E3 final
+audits, measurements, documentation closure, and full validation remain.
 
 ## Milestone Snapshot
 
@@ -111,17 +111,11 @@ ownership split, and unified provider resolver before final acceptance.
 
 ### Async Post-Review Closure
 
-Batch E owns six named proofs. `ASYNC-ROOT-1` and `ASYNC-LEASE-1` are implemented
-and focused/four-crate validated; the remaining final-closure proofs are:
-
-- `ASYNC-REFLECT-1`: replace keyword metadata field `async` with script-visible
-  `is_async` and test Vela dot access;
-- `ASYNC-VM-MOD-1`: move session, async-resume, and reentry policy out of linked
-  opcode dispatch;
-- `ASYNC-PROVIDER-1`: give outer and reentry calls one provider metadata
-  resolver;
-- `ASYNC-DOC-1`: close status, decision, architecture, module-exception, and
-  acceptance documentation only after the implementation and gates pass.
+Batch E owns six named proofs. `ASYNC-ROOT-1`, `ASYNC-LEASE-1`,
+`ASYNC-REFLECT-1`, `ASYNC-VM-MOD-1`, and `ASYNC-PROVIDER-1` are implemented and
+focused validated. `ASYNC-DOC-1` remains open until the E3 audits,
+measurements, full validation, examples, features, benches, and documentation
+site gates pass and Section 18 records final acceptance.
 
 Do not solve these with a permanent-root leak, an exclusive lease labeled
 shared, reflection aliases, navigation-only source splits, duplicated drivers,
@@ -204,12 +198,17 @@ scanners, runtime execution, live host-state reads, or editor-owned analysis.
 
 ## Validation
 
-The last full workspace validation passed on 2026-07-13. The E1 focused
-boundary passed on 2026-07-14:
+The last full workspace validation passed on 2026-07-13. The E1 boundary and E2
+reflection/analysis/VM/provider/reentry focused tests passed on 2026-07-14:
 
 ```bash
 cargo clippy -p vela_host -p vela_vm -p vela_engine -p vela_macros --all-targets -- -D warnings
 cargo test -p vela_host -p vela_vm -p vela_engine -p vela_macros --no-fail-fast
+cargo clippy -p vela_vm -p vela_engine -p vela_reflect -p vela_analysis --all-targets -- -D warnings
+cargo test -p vela_reflect -p vela_analysis --no-fail-fast
+cargo test -p vela_vm linked_async --no-fail-fast
+cargo test -p vela_engine provider_ --no-fail-fast
+cargo test -p vela_engine reentry --no-fail-fast
 ```
 
 The last full commands were:
@@ -233,10 +232,9 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Complete the reflection, VM module-ownership, and provider resolver hard
-   switches without compatibility paths.
-2. Run the Batch E/full acceptance gates and close every reopened Section 18
-   and documentation criterion before resuming M20/M20.5.
+1. Run the Batch E/full acceptance gates and performance/memory comparison.
+2. Close every reopened Section 18 and documentation criterion, then resume
+   M20/M20.5 only after the final worktree is clean.
 
 ## Update Rules
 

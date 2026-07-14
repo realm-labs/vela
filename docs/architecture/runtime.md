@@ -232,6 +232,13 @@ budget, heap/GC context, and generation roots for the outer call. Function,
 closure, script-method, provider, guard, comparison, collection-callback, and
 iterator calls push frames and resume their parent operation after return.
 
+VM ownership follows those semantic boundaries. `execution_session.rs` owns
+session/frame/continuation definitions and start policy, `async_resume.rs` owns
+prepared async boundaries and result resumption, and `execution_reentry.rs`
+owns child push/abort policy. `linked_execution.rs` retains the single frame
+driver, exhaustive linked-opcode dispatch, frame preparation, and root glue; it
+does not duplicate session, resume, or reentry policy.
+
 Production linked execution does not recursively invoke the interpreter. The
 remaining `execute_linked_call` name is a non-recursive root driver shim over
 the session loop. Call depth remains a logical frame budget rather than a Rust
@@ -289,6 +296,13 @@ it cannot activate an update or mutate the active image. After the outer future
 completes or is dropped, the embedding host calls `Runtime::check_reload` at its
 existing explicit safe point. No suspended frame, register file, native future,
 or host lease migrates generations.
+
+Provider calls use the same target and driver. One pure resolver validates the
+Runtime-bound provider handle and reads method dispatch, callable asyncness,
+receiver shape, parameter names, and defaults from the pinned
+`LinkedArtifact`. Outer and reentry callers allocate and root the fresh
+receiver only after that shared resolution, so both paths report identical
+metadata and validation failures.
 
 ### Execution Budget
 

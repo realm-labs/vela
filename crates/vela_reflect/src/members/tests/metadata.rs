@@ -221,7 +221,7 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
     assert_eq!(fields.get("return_desc"), Some(&option_type_desc("bool")));
     assert_eq!(fields.get("returns_desc"), Some(&option_type_desc("bool")));
     assert_eq!(
-        fields.get("async"),
+        fields.get("is_async"),
         Some(&ReflectValue::Host(HostValue::Bool(true)))
     );
     let Some(ReflectValue::Array(raw_params)) = fields.get("params") else {
@@ -455,7 +455,7 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
         panic!("trait method metadata should be a record");
     };
     assert_eq!(
-        trait_method_fields.get("async"),
+        trait_method_fields.get("is_async"),
         Some(&ReflectValue::Host(HostValue::Bool(true)))
     );
     assert!(has_trait(&registry, "Damageable"));

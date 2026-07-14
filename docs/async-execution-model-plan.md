@@ -1398,24 +1398,24 @@ and root-liveness tests remain green.
 
 #### E2. Reflection, Provider, And VM Ownership Cleanup
 
-- [ ] Rename every script-visible reflection metadata field from `async` to
+- [x] Rename every script-visible reflection metadata field from `async` to
   `is_async` across function, method, trait/module/package records, manifests,
   analysis/tooling projections, examples, architecture text, and tests. Add
   end-to-end Vela dot-access tests and retain no compatibility alias.
-- [ ] Extract execution-session/frame/continuation definitions, pending async
+- [x] Extract execution-session/frame/continuation definitions, pending async
   boundary/resume state, and reentry push/abort policy from
   `vela_vm/src/linked_execution.rs` into focused production modules. Keep one
   frame driver and one opcode dispatch loop; do not move code into navigation-
   only wrappers or duplicate dispatch to satisfy a line-count check.
-- [ ] Reassess `docs/architecture/file-size-exceptions.md` after the split.
+- [x] Reassess `docs/architecture/file-size-exceptions.md` after the split.
   `linked_execution.rs` may retain an exception only for the exhaustive opcode
   loop actually left there; session, GC-root, resume, and reentry policy must
   not be justified by that exception.
-- [ ] Consolidate provider metadata/method/asyncness/shape/parameter resolution
+- [x] Consolidate provider metadata/method/asyncness/shape/parameter resolution
   into one pure resolver over the pinned `LinkedArtifact`. Outer Runtime and
   reentry callers may adapt receiver allocation and root admission after the
   shared result, but must use identical validation and diagnostics.
-- [ ] Preserve the public execution surface exactly as `Runtime::call`,
+- [x] Preserve the public execution surface exactly as `Runtime::call`,
   `Runtime::call_async`, `NativeCallContext::call`, and
   `NativeCallContext::call_async` over the same sealed target abstraction. No
   provider-, method-, root-, or adapter-specific execution variants return.

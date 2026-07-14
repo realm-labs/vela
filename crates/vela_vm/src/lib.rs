@@ -3,6 +3,7 @@
 //! Register VM for Vela bytecode.
 
 mod array_methods;
+mod async_resume;
 pub mod backend_conformance;
 pub mod budget;
 mod bytes_methods;
@@ -15,6 +16,8 @@ mod container_contracts;
 mod dynamic_method_resolution;
 mod equality;
 pub mod error;
+mod execution_reentry;
+mod execution_session;
 mod field_access;
 mod format_strings;
 mod frame;
@@ -114,10 +117,10 @@ use vela_reflect::registry::TypeRegistry;
 use budget::ExecutionBudget;
 use value::Value;
 
-pub use linked_execution::{
-    LinkedDriveOutcome, LinkedExecutionReentry, LinkedExecutionSession, LinkedExecutionStart,
-    PreparedAsyncCall,
-};
+pub use async_resume::PreparedAsyncCall;
+pub use execution_reentry::LinkedExecutionReentry;
+pub use execution_session::{LinkedExecutionSession, LinkedExecutionStart};
+pub use linked_execution::LinkedDriveOutcome;
 
 pub type NativeFunction =
     Arc<dyn Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static>;

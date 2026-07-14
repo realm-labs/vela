@@ -276,7 +276,7 @@ fn module_function_queries_return_records_and_candidates() {
         Some(&ReflectValue::Host(HostValue::String("script".into())))
     );
     assert_eq!(
-        function_metadata.get("async"),
+        function_metadata.get("is_async"),
         Some(&ReflectValue::Host(HostValue::Bool(true)))
     );
     assert_eq!(

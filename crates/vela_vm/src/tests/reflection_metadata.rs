@@ -277,11 +277,56 @@ fn main() {
         && reflect::get(direct[1], "name") == "amount"
         && reflect::returns(function).unwrap_or("") == "bool";
 }
+
 "#,
     )
     .expect("compile reflected signature metadata source");
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(script_module_reflection_registry()));
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = HostAccess::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        access: &mut tx,
+        script_globals: None,
+    };
+
+    assert_eq!(
+        exec_reflection_metadata_program(&vm, &program, &[], &mut host),
+        Ok(OwnedValue::Bool(true))
+    );
+}
+
+#[test]
+fn compiled_source_reads_is_async_with_normal_dot_syntax() {
+    let program = compile_reflection_metadata_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let function = reflect::function("game::async_probe");
+    let method = reflect::method(reflect::type_info("AsyncHost"), "wait");
+    return function.is_async && method.is_async;
+}
+"#,
+    )
+    .expect("compile script-addressable async metadata source");
+    let mut graph = ModuleGraph::new();
+    graph.add_source(ModuleSource::new(
+        SourceId::new(2),
+        vela_package::PackageId::anonymous(),
+        ModulePath::from_qualified("game"),
+        "pub async fn async_probe() { return 1; }",
+    ));
+    let mut registry = TypeRegistry::new();
+    registry.register_script_modules(&graph);
+    registry.register(
+        TypeDesc::new(TypeKey::new(TypeId::new(0xA535), "AsyncHost")).method(
+            MethodDesc::new(HostMethodId::new(0xA535), "wait")
+                .asyncness(vela_common::CallableAsyncness::Async),
+        ),
+    );
+    let mut vm = Vm::new();
+    vm.register_reflection_natives(Arc::new(registry));
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
     let mut host = HostExecution {

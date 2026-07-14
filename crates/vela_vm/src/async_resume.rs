@@ -1,0 +1,186 @@
+use crate::budget::ExecutionBudget;
+use crate::error::{VmError, VmErrorKind, VmResult};
+use crate::execution_session::LinkedExecutionSession;
+use crate::heap_execution::HeapExecution;
+use crate::native_function_calls;
+use crate::{HostExecution, NativeCallFuture, OwnedValue, Vm, owned_to_value};
+
+pub struct PreparedAsyncCall {
+    pub(crate) native_id: Option<vela_def::FunctionId>,
+    pub(crate) method_id: Option<vela_common::HostMethodId>,
+    pub(crate) function: native_function_calls::PreparedAsyncNativeFunction,
+    pub(crate) args: Vec<OwnedValue>,
+    pub(crate) name: String,
+}
+
+impl PreparedAsyncCall {
+    #[must_use]
+    pub const fn native_id(&self) -> Option<vela_def::FunctionId> {
+        self.native_id
+    }
+
+    #[must_use]
+    pub const fn method_id(&self) -> Option<vela_common::HostMethodId> {
+        self.method_id
+    }
+
+    #[must_use]
+    pub fn args(&self) -> &[OwnedValue] {
+        &self.args
+    }
+
+    #[must_use]
+    pub fn invoke(&self) -> NativeCallFuture<'_> {
+        match &self.function {
+            native_function_calls::PreparedAsyncNativeFunction::Pure(function) => {
+                function(&self.args)
+            }
+            native_function_calls::PreparedAsyncNativeFunction::Host(_) => Box::pin(async {
+                Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "async host native invocation",
+                }))
+            }),
+            native_function_calls::PreparedAsyncNativeFunction::HostMethod { .. } => {
+                Box::pin(async {
+                    Err(VmError::new(VmErrorKind::TypeMismatch {
+                        operation: "async host method invocation",
+                    }))
+                })
+            }
+            native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod { .. } => {
+                Box::pin(async {
+                    Err(VmError::new(VmErrorKind::TypeMismatch {
+                        operation: "async direct host method invocation",
+                    }))
+                })
+            }
+        }
+    }
+
+    #[must_use]
+    pub fn requires_host(&self) -> bool {
+        matches!(
+            self.function,
+            native_function_calls::PreparedAsyncNativeFunction::Host(_)
+                | native_function_calls::PreparedAsyncNativeFunction::HostMethod { .. }
+        )
+    }
+
+    #[must_use]
+    pub fn requires_host_lease(&self) -> bool {
+        matches!(
+            self.function,
+            native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod { .. }
+        )
+    }
+
+    pub fn invoke_with_host<'call, 'host>(
+        &'call self,
+        host: &'call mut HostExecution<'host>,
+        budget: Option<&'call mut ExecutionBudget>,
+    ) -> NativeCallFuture<'call> {
+        match &self.function {
+            native_function_calls::PreparedAsyncNativeFunction::Pure(function) => {
+                function(&self.args)
+            }
+            native_function_calls::PreparedAsyncNativeFunction::Host(function) => {
+                function(&self.args, host, budget)
+            }
+            native_function_calls::PreparedAsyncNativeFunction::HostMethod {
+                function,
+                receiver,
+            } => function(receiver, &self.args, host, budget),
+            native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod { .. } => {
+                Box::pin(async {
+                    Err(VmError::new(VmErrorKind::TypeMismatch {
+                        operation: "async direct host method invocation",
+                    }))
+                })
+            }
+        }
+    }
+
+    #[must_use]
+    pub fn host_lease_request(
+        &self,
+    ) -> Option<(vela_host::path::HostRef, vela_host::lease::HostLeaseKind)> {
+        let native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod {
+            receiver,
+            lease_kind,
+            ..
+        } = &self.function
+        else {
+            return None;
+        };
+        receiver
+            .segments
+            .is_empty()
+            .then_some((receiver.root, *lease_kind))
+    }
+
+    pub fn invoke_with_host_lease<'host>(
+        &self,
+        lease: vela_host::lease::ErasedHostLease<'host>,
+    ) -> NativeCallFuture<'host> {
+        let native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod {
+            function,
+            receiver,
+            ..
+        } = &self.function
+        else {
+            return Box::pin(async {
+                Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "async host lease invocation",
+                }))
+            });
+        };
+        function(receiver.root, lease, self.args.clone())
+    }
+
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+impl Vm {
+    pub fn resume_linked_async_call(
+        &self,
+        session: &mut LinkedExecutionSession,
+        result: VmResult<OwnedValue>,
+        heap: Option<&mut HeapExecution<'_>>,
+        budget: Option<&mut ExecutionBudget>,
+    ) -> VmResult<()> {
+        let pending = session.pending_async.pop().ok_or_else(|| {
+            VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                opcode: "async resume without a pending invocation",
+            })
+        })?;
+        let value = result.map_err(|mut error| {
+            error = error.with_source_span_if_absent(pending.source_span);
+            for frame in session.frames.iter().skip(1).rev() {
+                error = error.with_call_frame(frame.stack_frame());
+            }
+            if let Some(root) = session.frames.first() {
+                error = error.with_call_frame(root.stack_frame());
+            }
+            error
+        })?;
+        let heap = heap.ok_or_else(|| {
+            VmError::new(VmErrorKind::TypeMismatch {
+                operation: "async native heap",
+            })
+            .with_source_span_if_absent(pending.source_span)
+        })?;
+        let value = owned_to_value(value, heap, budget)?;
+        if let Some(destination) = pending.destination {
+            session
+                .frames
+                .last_mut()
+                .expect("pending async invocation retains an active frame")
+                .registers
+                .write(destination, value)?;
+        }
+        Ok(())
+    }
+}

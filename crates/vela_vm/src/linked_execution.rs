@@ -4,9 +4,14 @@ use vela_bytecode::linked::InstructionKind;
 use vela_bytecode::{InstructionOffset, LinkedArtifact, Register, ScriptFunctionHandle};
 use vela_common::Span;
 
+use crate::async_resume::PreparedAsyncCall;
 use crate::budget::ExecutionBudget;
 use crate::equality::{ResumableComparison, ResumableComparisonKind, ResumableComparisonStep};
 use crate::error::{VmError, VmErrorKind, VmResult, VmStackFrame};
+use crate::execution_session::{
+    ExecutionFrame, LinkedExecutionSession, PendingAsyncResume, PendingFrameOperation,
+    PendingLinkedCall, PendingReturnTarget, ReturnContinuation,
+};
 use crate::frame::CallFrame;
 use crate::heap_execution::{ActiveExecutionValue, HeapExecution};
 use crate::numeric_ops::{
@@ -17,9 +22,8 @@ use crate::resumable_callbacks::{ResumableCallbackMethod, ResumableCallbackStep}
 use crate::runtime_checks::is_truthy;
 use crate::value::Value;
 use crate::{
-    HostExecution, NativeCallFuture, OwnedValue, Vm, VmBytecodeProfiler, VmInlineCaches,
-    identity_equal, identity_not_equal, owned_to_value, store_value_in_heap_if_needed,
-    validate_inline_cache_layout,
+    HostExecution, Vm, VmBytecodeProfiler, VmInlineCaches, identity_equal, identity_not_equal,
+    store_value_in_heap_if_needed, validate_inline_cache_layout,
 };
 use crate::{
     array_methods, callback_method_dispatch, closure_calls, constant_loads, field_access,
@@ -53,116 +57,6 @@ impl LinkedExecutionCall<'_> {
     }
 }
 
-pub struct LinkedExecutionSession {
-    frames: Vec<ExecutionFrame>,
-    pending_async: Vec<PendingAsyncResume>,
-    root_call_depth_charged: bool,
-    root_generation: vela_bytecode::ExecutableGenerationId,
-}
-
-impl LinkedExecutionSession {
-    fn top_reentry_frame(&self) -> Option<usize> {
-        self.frames.iter().rposition(|frame| {
-            frame
-                .return_to
-                .is_some_and(|return_to| matches!(return_to.target, PendingReturnTarget::Reentry))
-        })
-    }
-}
-
-#[derive(Clone, Copy)]
-struct PendingAsyncResume {
-    destination: Option<Register>,
-    source_span: Option<Span>,
-}
-
-struct ExecutionFrame {
-    owner: Arc<LinkedArtifact>,
-    function: ScriptFunctionHandle,
-    ip: InstructionOffset,
-    registers: CallFrame,
-    return_to: Option<ReturnContinuation>,
-    pending_operation: Option<PendingFrameOperation>,
-    call_site: Option<Span>,
-    call_site_offset: Option<InstructionOffset>,
-}
-
-impl ExecutionFrame {
-    fn stack_frame(&self) -> VmStackFrame {
-        let program = self.owner.program();
-        let Some(code) = program.function(self.function) else {
-            return VmStackFrame::new("<missing linked function>", self.call_site)
-                .with_bytecode_offset(self.call_site_offset);
-        };
-        VmStackFrame::new(program.debug_name(code.debug_name), self.call_site)
-            .with_bytecode_offset(self.call_site_offset)
-    }
-}
-
-#[derive(Clone, Copy)]
-struct ReturnContinuation {
-    target: PendingReturnTarget,
-    protected_root_len: Option<usize>,
-}
-
-#[derive(Clone, Copy)]
-enum PendingReturnTarget {
-    Register(Register),
-    Operation,
-    Reentry,
-}
-
-enum PendingFrameOperation {
-    Comparison {
-        comparison: ResumableComparison,
-        destination: Register,
-        returned: Option<Value>,
-        source_span: Option<Span>,
-    },
-    ArrayOrdering {
-        ordering: array_methods::ResumableArrayOrdering,
-        destination: Register,
-        returned: Option<Value>,
-        source_span: Option<Span>,
-    },
-    CallbackMethod {
-        callback: ResumableCallbackMethod,
-        destination: Register,
-        returned: Option<Value>,
-        source_span: Option<Span>,
-    },
-    IteratorNext {
-        next: iteration::ResumableIteratorNext,
-        destination: Register,
-        jump_if_done: InstructionOffset,
-        returned: Option<Value>,
-        source_span: Option<Span>,
-    },
-}
-
-struct PendingLinkedCall {
-    owner: Arc<LinkedArtifact>,
-    function: ScriptFunctionHandle,
-    captures: Vec<Value>,
-    args: Vec<Value>,
-    check_param_guards: bool,
-    call_site: Option<Span>,
-    call_site_offset: Option<InstructionOffset>,
-    return_target: PendingReturnTarget,
-}
-
-impl PendingLinkedCall {
-    fn stack_frame(&self) -> VmStackFrame {
-        let program = self.owner.program();
-        let Some(code) = program.function(self.function) else {
-            return VmStackFrame::new("<missing linked function>", self.call_site)
-                .with_bytecode_offset(self.call_site_offset);
-        };
-        VmStackFrame::new(program.debug_name(code.debug_name), self.call_site)
-            .with_bytecode_offset(self.call_site_offset)
-    }
-}
-
 enum FrameDriveOutcome {
     Continue,
     Push(PendingLinkedCall),
@@ -174,165 +68,10 @@ enum FrameDriveOutcome {
     Return(Value),
 }
 
-pub struct PreparedAsyncCall {
-    native_id: Option<vela_def::FunctionId>,
-    method_id: Option<vela_common::HostMethodId>,
-    function: native_function_calls::PreparedAsyncNativeFunction,
-    args: Vec<OwnedValue>,
-    name: String,
-}
-
 pub enum LinkedDriveOutcome {
     Complete(Value),
     ReentryComplete(ActiveExecutionValue),
     AsyncBoundary(PreparedAsyncCall),
-}
-
-pub struct LinkedExecutionStart<'artifact, 'args, 'caches> {
-    pub artifact: &'artifact Arc<LinkedArtifact>,
-    pub function: ScriptFunctionHandle,
-    pub args: &'args [Value],
-    pub roots: &'args [Value],
-    pub inline_caches: Option<&'caches dyn VmInlineCaches>,
-    pub bytecode_profiler: Option<&'caches dyn VmBytecodeProfiler>,
-}
-
-pub struct LinkedExecutionReentry<'artifact, 'args, 'caches> {
-    pub artifact: &'artifact Arc<LinkedArtifact>,
-    pub function: ScriptFunctionHandle,
-    pub args: &'args [Value],
-    pub inline_caches: Option<&'caches dyn VmInlineCaches>,
-    pub bytecode_profiler: Option<&'caches dyn VmBytecodeProfiler>,
-}
-
-impl PreparedAsyncCall {
-    #[must_use]
-    pub const fn native_id(&self) -> Option<vela_def::FunctionId> {
-        self.native_id
-    }
-
-    #[must_use]
-    pub const fn method_id(&self) -> Option<vela_common::HostMethodId> {
-        self.method_id
-    }
-
-    #[must_use]
-    pub fn args(&self) -> &[OwnedValue] {
-        &self.args
-    }
-
-    #[must_use]
-    pub fn invoke(&self) -> NativeCallFuture<'_> {
-        match &self.function {
-            native_function_calls::PreparedAsyncNativeFunction::Pure(function) => {
-                function(&self.args)
-            }
-            native_function_calls::PreparedAsyncNativeFunction::Host(_) => Box::pin(async {
-                Err(VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "async host native invocation",
-                }))
-            }),
-            native_function_calls::PreparedAsyncNativeFunction::HostMethod { .. } => {
-                Box::pin(async {
-                    Err(VmError::new(VmErrorKind::TypeMismatch {
-                        operation: "async host method invocation",
-                    }))
-                })
-            }
-            native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod { .. } => {
-                Box::pin(async {
-                    Err(VmError::new(VmErrorKind::TypeMismatch {
-                        operation: "async direct host method invocation",
-                    }))
-                })
-            }
-        }
-    }
-
-    #[must_use]
-    pub fn requires_host(&self) -> bool {
-        matches!(
-            self.function,
-            native_function_calls::PreparedAsyncNativeFunction::Host(_)
-                | native_function_calls::PreparedAsyncNativeFunction::HostMethod { .. }
-        )
-    }
-
-    #[must_use]
-    pub fn requires_host_lease(&self) -> bool {
-        matches!(
-            self.function,
-            native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod { .. }
-        )
-    }
-
-    pub fn invoke_with_host<'call, 'host>(
-        &'call self,
-        host: &'call mut HostExecution<'host>,
-        budget: Option<&'call mut ExecutionBudget>,
-    ) -> NativeCallFuture<'call> {
-        match &self.function {
-            native_function_calls::PreparedAsyncNativeFunction::Pure(function) => {
-                function(&self.args)
-            }
-            native_function_calls::PreparedAsyncNativeFunction::Host(function) => {
-                function(&self.args, host, budget)
-            }
-            native_function_calls::PreparedAsyncNativeFunction::HostMethod {
-                function,
-                receiver,
-            } => function(receiver, &self.args, host, budget),
-            native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod { .. } => {
-                Box::pin(async {
-                    Err(VmError::new(VmErrorKind::TypeMismatch {
-                        operation: "async direct host method invocation",
-                    }))
-                })
-            }
-        }
-    }
-
-    #[must_use]
-    pub fn host_lease_request(
-        &self,
-    ) -> Option<(vela_host::path::HostRef, vela_host::lease::HostLeaseKind)> {
-        let native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod {
-            receiver,
-            lease_kind,
-            ..
-        } = &self.function
-        else {
-            return None;
-        };
-        receiver
-            .segments
-            .is_empty()
-            .then_some((receiver.root, *lease_kind))
-    }
-
-    pub fn invoke_with_host_lease<'host>(
-        &self,
-        lease: vela_host::lease::ErasedHostLease<'host>,
-    ) -> NativeCallFuture<'host> {
-        let native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod {
-            function,
-            receiver,
-            ..
-        } = &self.function
-        else {
-            return Box::pin(async {
-                Err(VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "async host lease invocation",
-                }))
-            });
-        };
-        function(receiver.root, lease, self.args.clone())
-    }
-
-    #[must_use]
-    pub fn name(&self) -> &str {
-        &self.name
-    }
 }
 
 #[derive(Clone, Copy)]
@@ -695,212 +434,6 @@ impl Vm {
         }
     }
 
-    pub fn resume_linked_async_call(
-        &self,
-        session: &mut LinkedExecutionSession,
-        result: VmResult<OwnedValue>,
-        heap: Option<&mut HeapExecution<'_>>,
-        budget: Option<&mut ExecutionBudget>,
-    ) -> VmResult<()> {
-        let pending = session.pending_async.pop().ok_or_else(|| {
-            VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
-                opcode: "async resume without a pending invocation",
-            })
-        })?;
-        let value = result.map_err(|mut error| {
-            error = error.with_source_span_if_absent(pending.source_span);
-            for frame in session.frames.iter().skip(1).rev() {
-                error = error.with_call_frame(frame.stack_frame());
-            }
-            if let Some(root) = session.frames.first() {
-                error = error.with_call_frame(root.stack_frame());
-            }
-            error
-        })?;
-        let heap = heap.ok_or_else(|| {
-            VmError::new(VmErrorKind::TypeMismatch {
-                operation: "async native heap",
-            })
-            .with_source_span_if_absent(pending.source_span)
-        })?;
-        let value = owned_to_value(value, heap, budget)?;
-        if let Some(destination) = pending.destination {
-            session
-                .frames
-                .last_mut()
-                .expect("pending async invocation retains an active frame")
-                .registers
-                .write(destination, value)?;
-        }
-        Ok(())
-    }
-
-    pub fn start_linked_execution(
-        &self,
-        start: LinkedExecutionStart<'_, '_, '_>,
-        heap: &mut HeapExecution<'_>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<LinkedExecutionSession> {
-        heap.protect_values(start.roots);
-        heap.protect_values(start.args);
-        let stack_frame = start
-            .artifact
-            .program()
-            .function(start.function)
-            .map_or_else(
-                || VmStackFrame::new("<missing linked function>", None),
-                |code| {
-                    VmStackFrame::new(start.artifact.program().debug_name(code.debug_name), None)
-                },
-            );
-        let limits_call_depth = budget.limits_call_depth();
-        if limits_call_depth {
-            budget
-                .enter_call()
-                .map_err(|error| error.with_call_frame(stack_frame.clone()))?;
-        }
-        let entry = self.prepare_execution_frame(
-            Arc::clone(start.artifact),
-            start.function,
-            &[],
-            start.args,
-            true,
-            None,
-            None,
-            start.inline_caches,
-            start.bytecode_profiler,
-            None,
-            Some(heap),
-            Some(budget),
-        );
-        match entry {
-            Ok(entry) => Ok(LinkedExecutionSession {
-                root_generation: entry.owner.generation(),
-                frames: vec![entry],
-                pending_async: Vec::new(),
-                root_call_depth_charged: limits_call_depth,
-            }),
-            Err(error) => {
-                if limits_call_depth {
-                    budget.exit_call();
-                }
-                Err(error.with_call_frame(stack_frame))
-            }
-        }
-    }
-
-    pub fn push_linked_reentry(
-        &self,
-        session: &mut LinkedExecutionSession,
-        reentry: LinkedExecutionReentry<'_, '_, '_>,
-        heap: &mut HeapExecution<'_>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<()> {
-        if session.pending_async.is_empty() {
-            return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
-                opcode: "reentry without a suspended native invocation",
-            }));
-        }
-        if reentry.artifact.generation() != session.root_generation {
-            return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
-                opcode: "reentry artifact generation mismatch",
-            }));
-        }
-
-        let stack_frame = reentry
-            .artifact
-            .program()
-            .function(reentry.function)
-            .map_or_else(
-                || VmStackFrame::new("<missing linked reentry function>", None),
-                |code| {
-                    VmStackFrame::new(reentry.artifact.program().debug_name(code.debug_name), None)
-                },
-            );
-        let limits_call_depth = budget.limits_call_depth();
-        if limits_call_depth {
-            budget
-                .enter_call()
-                .map_err(|error| error.with_call_frame(stack_frame.clone()))?;
-        }
-
-        let protected_root_len = session.frames.last().map(|caller| {
-            let protected_root_len = heap.push_frame_roots(&caller.registers);
-            if let Some(operation) = caller.pending_operation.as_ref() {
-                match operation {
-                    PendingFrameOperation::CallbackMethod { callback, .. } => {
-                        callback.protect_roots(heap);
-                    }
-                    PendingFrameOperation::IteratorNext { next, .. } => {
-                        next.protect_roots(heap);
-                    }
-                    PendingFrameOperation::Comparison { .. }
-                    | PendingFrameOperation::ArrayOrdering { .. } => {}
-                }
-            }
-            protected_root_len
-        });
-        let entry = self.prepare_execution_frame(
-            Arc::clone(reentry.artifact),
-            reentry.function,
-            &[],
-            reentry.args,
-            true,
-            None,
-            None,
-            reentry.inline_caches,
-            reentry.bytecode_profiler,
-            Some(ReturnContinuation {
-                target: PendingReturnTarget::Reentry,
-                protected_root_len,
-            }),
-            Some(heap),
-            Some(budget),
-        );
-        match entry {
-            Ok(entry) => {
-                session.frames.push(entry);
-                Ok(())
-            }
-            Err(error) => {
-                if let Some(protected_root_len) = protected_root_len {
-                    heap.truncate_protected_roots(protected_root_len);
-                }
-                if limits_call_depth {
-                    budget.exit_call();
-                }
-                Err(error.with_call_frame(stack_frame))
-            }
-        }
-    }
-
-    pub fn abort_linked_reentry(
-        &self,
-        session: &mut LinkedExecutionSession,
-        heap: &mut HeapExecution<'_>,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<()> {
-        let Some(reentry_index) = session.top_reentry_frame() else {
-            return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
-                opcode: "abort without an active reentry",
-            }));
-        };
-        let protected_root_len = session.frames[reentry_index]
-            .return_to
-            .and_then(|return_to| return_to.protected_root_len);
-        let removed = session.frames.len().saturating_sub(reentry_index);
-        session.frames.truncate(reentry_index);
-        if let Some(protected_root_len) = protected_root_len {
-            heap.truncate_protected_roots(protected_root_len);
-        }
-        if budget.limits_call_depth() {
-            for _ in 0..removed {
-                budget.exit_call();
-            }
-        }
-        Ok(())
-    }
-
     pub fn drive_linked_execution(
         &self,
         session: &mut LinkedExecutionSession,
@@ -996,7 +529,7 @@ impl Vm {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn prepare_execution_frame(
+    pub(crate) fn prepare_execution_frame(
         &self,
         owner: Arc<LinkedArtifact>,
         function: ScriptFunctionHandle,

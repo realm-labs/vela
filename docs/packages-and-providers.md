@@ -92,15 +92,18 @@ uses normal budgets, GC roots, HostAccess, capabilities, tracing, and profiling:
 
 ```rust
 let handle = runtime.provider_handle(&key)?;
-let value = runtime.call_provider_handle(
-    &handle,
-    service_method_id,
+let value = runtime.call(
+    handle.method(service_method_id),
     CallArgs::new(),
     CallOptions::unbounded(),
 )?;
 ```
 
 Handles are bound to one Runtime and contain stable keys, never linked handles.
+Provider methods use the same sealed call target and `Runtime::call`/
+`Runtime::call_async` surface as functions and bound methods. Outer calls and
+same-session reentry share one pure resolver over the pinned linked artifact;
+only receiver allocation and root admission differ afterward.
 
 ## Capabilities And Reload
 

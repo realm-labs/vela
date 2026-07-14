@@ -26,12 +26,7 @@ pub(super) fn resolve_provider_reentry_target(
     budget: &mut ExecutionBudget,
     retained_values: &Arc<Mutex<RuntimeValueRoots>>,
 ) -> VmResult<EntryRequest> {
-    if target.handle.runtime_id != runtime_id {
-        return Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "provider handle belongs to another runtime",
-        }));
-    }
-    let resolved = resolve_provider_call(artifact, &target.handle.key, target.method)?;
+    let resolved = resolve_provider_call(&target, runtime_id, artifact)?;
     let value = allocate_zero_field_record(
         resolved.type_name,
         resolved.type_id,
@@ -51,14 +46,18 @@ pub(super) fn resolve_provider_reentry_target(
 }
 
 fn resolve_provider_call(
-    artifact: &Arc<LinkedArtifact>,
-    key: &ProviderKey,
-    method: MethodId,
+    target: &ProviderMethodTarget,
+    runtime_id: u64,
+    artifact: &LinkedArtifact,
 ) -> VmResult<ResolvedProviderCall> {
-    let provider = artifact
-        .package_metadata()
-        .and_then(|metadata| metadata.installed_providers().get(key))
-        .ok_or_else(|| unknown_provider(key))?;
+    if target.handle.runtime_id != runtime_id {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "provider handle belongs to another runtime",
+        }));
+    }
+    let key = &target.handle.key;
+    let method = target.method;
+    let provider = resolve_provider_entry(artifact, key)?;
     let dispatch = provider
         .method(method)
         .ok_or_else(|| unknown_method(format!("provider method {method:?}")))?;
@@ -122,61 +121,10 @@ where
     I: RuntimeImageStorage,
 {
     pub fn provider_handle(&self, key: &ProviderKey) -> VmResult<ProviderHandle> {
-        self.resolve_provider(key)?;
+        resolve_provider_entry(self.image.linked_artifact(), key)?;
         Ok(ProviderHandle {
             runtime_id: self.state.id,
             key: key.clone(),
-        })
-    }
-
-    fn resolve_provider(&self, key: &ProviderKey) -> VmResult<&vela_bytecode::LinkedProviderEntry> {
-        self.image
-            .linked_artifact()
-            .package_metadata()
-            .and_then(|metadata| metadata.installed_providers().get(key))
-            .ok_or_else(|| unknown_provider(key))
-    }
-
-    fn resolve_provider_method(
-        &self,
-        key: &ProviderKey,
-        method: MethodId,
-    ) -> VmResult<ResolvedProviderCall> {
-        let provider = self.resolve_provider(key)?;
-        let dispatch = provider
-            .method(method)
-            .ok_or_else(|| unknown_method(format!("provider method {method:?}")))?;
-        let asyncness = provider
-            .method_asyncness(method)
-            .ok_or_else(|| unknown_method(format!("provider method {method:?}")))?;
-        let program = self.image.linked_program();
-        let dispatch = program
-            .method_dispatch(dispatch)
-            .ok_or_else(|| unknown_method(format!("provider method {method:?}")))?;
-        let LinkedMethodDispatchKind::Script { function, .. } = dispatch.kind else {
-            return Err(unknown_method(format!("provider method {method:?}")));
-        };
-        let code = program
-            .function(function)
-            .ok_or_else(|| unknown_method(format!("provider method {method:?}")))?;
-        let linked_type = program
-            .ty(provider.provider_type())
-            .ok_or_else(|| unknown_provider(key))?;
-        let ProviderReceiverPlan::FreshZeroField { shape } = provider.receiver();
-        Ok(ResolvedProviderCall {
-            function,
-            asyncness,
-            type_id: linked_type.id,
-            shape,
-            type_name: program.debug_name(linked_type.debug_name).to_owned(),
-            debug_name: format!("provider {}::{method:?}", key.provider()),
-            params: code
-                .params
-                .iter()
-                .skip(1)
-                .map(|param| program.debug_name(*param).to_owned())
-                .collect(),
-            param_defaults: code.param_defaults.iter().skip(1).copied().collect(),
         })
     }
 
@@ -185,12 +133,7 @@ where
         target: ProviderMethodTarget,
         budget: &mut ExecutionBudget,
     ) -> VmResult<EntryRequest> {
-        if target.handle.runtime_id != self.state.id {
-            return Err(VmError::new(VmErrorKind::TypeMismatch {
-                operation: "provider handle belongs to another runtime",
-            }));
-        }
-        let resolved = self.resolve_provider_method(&target.handle.key, target.method)?;
+        let resolved = resolve_provider_call(&target, self.state.id, self.image.linked_artifact())?;
         let state = &mut self.state;
         let receiver = {
             let mut heap = HeapExecution::new(&mut state.script_globals.heap);
@@ -212,6 +155,16 @@ where
             receiver: Some(receiver),
         })
     }
+}
+
+fn resolve_provider_entry<'a>(
+    artifact: &'a LinkedArtifact,
+    key: &ProviderKey,
+) -> VmResult<&'a vela_bytecode::LinkedProviderEntry> {
+    artifact
+        .package_metadata()
+        .and_then(|metadata| metadata.installed_providers().get(key))
+        .ok_or_else(|| unknown_provider(key))
 }
 
 struct ResolvedProviderCall {
