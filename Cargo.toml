@@ -38,6 +38,7 @@ crossbeam-channel = "0.5"
 lsp-server = "0.8.0"
 lsp-types = "0.95.0"
 proc-macro2 = "1"
+parking_lot = { version = "0.12", features = ["arc_lock", "send_guard"] }
 quote = "1"
 rowan = "0.16"
 serde = { version = "1", features = ["derive"] }

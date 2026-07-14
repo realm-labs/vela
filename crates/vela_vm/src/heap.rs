@@ -701,6 +701,13 @@ impl ScriptHeap {
         }
     }
 
+    pub(crate) fn mark_incremental_roots(&mut self, roots: &[GcRef]) -> usize {
+        if self.incremental_gc.is_none() {
+            return 0;
+        }
+        self.mark_from_roots(roots)
+    }
+
     fn allocate_object(&mut self, value: HeapValue, size_bytes: usize) -> GcRef {
         let object = HeapObject {
             value,

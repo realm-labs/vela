@@ -205,6 +205,38 @@ impl DirectCounter {
         self.total
     }
 
+    #[script_method(effect = "read_host")]
+    pub async fn read_shared_alias(
+        &self,
+        context: &mut vela_engine::context::NativeCallContext<'_, '_>,
+        other: &DirectCounter,
+        raw: HostRef,
+    ) -> VmResult<i64> {
+        let mut pending = true;
+        std::future::poll_fn(move |task| {
+            if pending {
+                pending = false;
+                task.waker().wake_by_ref();
+                std::task::Poll::Pending
+            } else {
+                std::task::Poll::Ready(())
+            }
+        })
+        .await;
+        let _ = context
+            .call_async(
+                "raw_read",
+                vela_engine::runtime::CallArgs::new().with_host_handle("counter", raw),
+            )
+            .await?;
+        Ok(self.total + other.total)
+    }
+
+    #[script_method(effect = "read_host")]
+    pub async fn wait_shared(&self) -> i64 {
+        std::future::pending().await
+    }
+
     #[script_method(effect = "write_host")]
     pub async fn add_with_hook(
         &mut self,

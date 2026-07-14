@@ -1853,6 +1853,21 @@ and reopened tests pass:
   owner over the pinned `LinkedArtifact`. Outer and reentry paths may adapt
   receiver allocation and root admission only after that shared resolution.
 
+The E1 representation is now fixed. `HeapExecution` owns a dynamic root
+registry; a reentry return receives a weak guard token before child protection
+is truncated, and admission marks immediately when incremental collection is
+already sweeping. `VelaValue` carries that token only for the active session,
+while the existing Runtime root registry remains the cross-call owner. Session
+teardown drops the VM registry without a custom destructor or extended heap
+borrow.
+
+Mutable-origin direct bindings now require `Send + Sync` and store their erased
+borrow behind an owned read/write-guard slot. Read guards implement true
+`shared(n)` state and write guards implement `exclusive`; both are scoped
+`Send`, release by RAII, and support atomic rollback. This is a direct
+pre-release capability correction: non-`Sync` mutable origins no longer enter
+`with_host_mut`, and no exclusive lease is labeled shared.
+
 ### Executor-Neutral Async Execution
 
 The executor-neutral async contract is defined by

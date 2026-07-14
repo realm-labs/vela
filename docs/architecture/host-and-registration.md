@@ -220,9 +220,10 @@ runtime's global store. Loading a Rust-defined global produces a `HostRef`
 root, and script field reads, writes, method calls, and keyed paths then use
 the same `HostTargetPlan` and write-through `HostAccess` execution path as
 call-boundary host handles. Because a `Runtime` may be moved to a worker thread, persistent host
-global objects must be `Send`. Direct call-boundary `with_host_ref` and
-`with_host_mut` bindings are scoped to the call and do not impose this
-persistent-global requirement.
+global objects must be `Send`. Direct call-boundary bindings are scoped to the
+call rather than persistent, but `with_host_ref` requires `Sync` and
+`with_host_mut` requires `Send + Sync`: async shared leases may coexist and
+the scoped Runtime future may move between executor threads.
 
 Vela-defined script-value globals use the same declaration surface but are
 stored in the runtime's persistent script heap. Rust inserts or replaces them
@@ -313,7 +314,13 @@ closures, and mutate aliases inside the same call; they still never receive
 real `&T` or `&mut T`.
 
 `with_host_ref` creates a read-only handle. `with_host_mut` creates a writable
-handle whose mutations write through immediately through `HostAccess`. Hosts that
+`Send + Sync` binding whose mutations write through immediately through
+`HostAccess`. Its direct lease slot has exact `available`, `shared(n)`, and
+`exclusive` states: shared async methods may coexist and leave parent reads
+available, while mutation conflicts until every shared lease drops. Exclusive
+leases block both reads and writes through the parent handle. Non-`Sync` and
+opaque mutable origins fail closed instead of being represented by a stronger
+lease kind. Hosts that
 already store state behind their own adapter should pass existing handles with
 `with_host_handle` and attach that adapter to the same `CallArgs` with
 `with_fallback_adapter`. Runtime consumes the arguments into one

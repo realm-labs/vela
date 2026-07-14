@@ -1,3 +1,6 @@
+use std::collections::BTreeMap;
+use std::sync::{Arc, Mutex, Weak};
+
 use crate::frame::CallFrame;
 use crate::heap::{GcBudget, GcRef, GcStepStats, ScriptHeap};
 use crate::{ExecutionBudget, Value};
@@ -5,10 +8,75 @@ use crate::{ExecutionBudget, Value};
 pub struct HeapExecution<'heap> {
     pub heap: &'heap mut ScriptHeap,
     protected_roots: Vec<GcRef>,
+    dynamic_roots: Arc<Mutex<DynamicRootRegistry>>,
     safe_point_roots: Vec<GcRef>,
     safe_point_gc_budget: GcBudget,
     gc_in_progress: bool,
     last_gc_step: Option<GcStepStats>,
+}
+
+#[derive(Debug)]
+struct DynamicRoot {
+    roots: Vec<GcRef>,
+    refs: usize,
+}
+
+#[derive(Debug, Default)]
+struct DynamicRootRegistry {
+    next_id: u64,
+    roots: BTreeMap<u64, DynamicRoot>,
+}
+
+pub struct ActiveExecutionRoot {
+    id: u64,
+    registry: Weak<Mutex<DynamicRootRegistry>>,
+}
+
+impl Clone for ActiveExecutionRoot {
+    fn clone(&self) -> Self {
+        if let Some(registry) = self.registry.upgrade() {
+            let mut registry = registry
+                .lock()
+                .expect("active execution root registry mutex poisoned");
+            if let Some(root) = registry.roots.get_mut(&self.id) {
+                root.refs = root.refs.saturating_add(1);
+            }
+        }
+        Self {
+            id: self.id,
+            registry: Weak::clone(&self.registry),
+        }
+    }
+}
+
+impl Drop for ActiveExecutionRoot {
+    fn drop(&mut self) {
+        let Some(registry) = self.registry.upgrade() else {
+            return;
+        };
+        let mut registry = registry
+            .lock()
+            .expect("active execution root registry mutex poisoned");
+        let Some(root) = registry.roots.get_mut(&self.id) else {
+            return;
+        };
+        root.refs = root.refs.saturating_sub(1);
+        if root.refs == 0 {
+            registry.roots.remove(&self.id);
+        }
+    }
+}
+
+pub struct ActiveExecutionValue {
+    value: Value,
+    root: ActiveExecutionRoot,
+}
+
+impl ActiveExecutionValue {
+    #[must_use]
+    pub fn into_parts(self) -> (Value, ActiveExecutionRoot) {
+        (self.value, self.root)
+    }
 }
 
 impl<'heap> HeapExecution<'heap> {
@@ -18,6 +86,7 @@ impl<'heap> HeapExecution<'heap> {
         Self {
             heap,
             protected_roots: Vec::new(),
+            dynamic_roots: Arc::new(Mutex::new(DynamicRootRegistry::default())),
             safe_point_roots: Vec::new(),
             safe_point_gc_budget: GcBudget::micros(max_pause_micros),
             gc_in_progress: false,
@@ -52,6 +121,46 @@ impl<'heap> HeapExecution<'heap> {
             .for_each(|value| value.trace_heap_refs(&mut self.protected_roots));
     }
 
+    pub(crate) fn admit_dynamic_value(&mut self, value: Value) -> ActiveExecutionValue {
+        let mut roots = Vec::new();
+        value.trace_heap_refs(&mut roots);
+        if self.gc_in_progress {
+            self.heap.mark_incremental_roots(&roots);
+        }
+        let mut registry = self
+            .dynamic_roots
+            .lock()
+            .expect("active execution root registry mutex poisoned");
+        let id = registry.next_id;
+        registry.next_id = registry.next_id.saturating_add(1);
+        registry.roots.insert(id, DynamicRoot { roots, refs: 1 });
+        drop(registry);
+        ActiveExecutionValue {
+            value,
+            root: ActiveExecutionRoot {
+                id,
+                registry: Arc::downgrade(&self.dynamic_roots),
+            },
+        }
+    }
+
+    pub(crate) fn extend_dynamic_roots(&self, roots: &mut Vec<GcRef>) {
+        let registry = self
+            .dynamic_roots
+            .lock()
+            .expect("active execution root registry mutex poisoned");
+        registry
+            .roots
+            .values()
+            .for_each(|root| roots.extend_from_slice(&root.roots));
+    }
+
+    fn dynamic_root_snapshot(&self) -> Vec<GcRef> {
+        let mut roots = Vec::new();
+        self.extend_dynamic_roots(&mut roots);
+        roots
+    }
+
     #[inline(always)]
     pub(crate) fn needs_safe_point(&self) -> bool {
         self.gc_in_progress || self.heap.should_collect()
@@ -73,11 +182,59 @@ impl<'heap> HeapExecution<'heap> {
         } else {
             self.safe_point_roots.clear();
             self.safe_point_roots.extend(&self.protected_roots);
+            let dynamic_roots = self.dynamic_root_snapshot();
+            self.safe_point_roots.extend(dynamic_roots);
             frame.extend_heap_roots(&mut self.safe_point_roots);
             self.heap
                 .step_gc_with_budget(&self.safe_point_roots, self.safe_point_gc_budget, budget)
         };
         self.gc_in_progress = !stats.complete;
         self.last_gc_step = Some(stats);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::heap::{GcBudget, HeapValue, ScriptHeap};
+    use crate::{CallFrame, HeapExecution, Value};
+
+    #[test]
+    fn dynamic_root_admission_marks_during_incremental_collection() {
+        let mut heap = ScriptHeap::new();
+        let first = heap.allocate(HeapValue::String("first".into()));
+        let admitted = heap.allocate(HeapValue::String("admitted".into()));
+        let mut execution =
+            HeapExecution::new(&mut heap).with_safe_point_gc_budget(GcBudget::sweep_slots(1));
+        let frame = CallFrame::new(0);
+
+        execution.collect_frame_at_safe_point(&frame, None);
+        assert!(!execution.heap.contains(first));
+        assert!(execution.heap.contains(admitted));
+
+        let rooted = execution.admit_dynamic_value(Value::HeapRef(admitted));
+        execution.collect_frame_at_safe_point(&frame, None);
+
+        assert!(execution.heap.contains(admitted));
+        drop(rooted);
+    }
+
+    #[test]
+    fn dynamic_root_guard_release_allows_next_collection_to_reclaim_value() {
+        let mut heap = ScriptHeap::new();
+        let admitted = heap.allocate(HeapValue::String("admitted".into()));
+        let mut execution =
+            HeapExecution::new(&mut heap).with_safe_point_gc_budget(GcBudget::unlimited());
+        let frame = CallFrame::new(0);
+        let rooted = execution.admit_dynamic_value(Value::HeapRef(admitted));
+
+        execution.collect_frame_at_safe_point(&frame, None);
+        assert!(execution.heap.contains(admitted));
+
+        drop(rooted);
+        let garbage = execution.heap.allocate(HeapValue::String("trigger".into()));
+        execution.collect_frame_at_safe_point(&frame, None);
+
+        assert!(!execution.heap.contains(admitted));
+        assert!(!execution.heap.contains(garbage));
     }
 }

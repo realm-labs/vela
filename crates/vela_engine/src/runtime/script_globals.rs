@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::VmResult;
 use vela_vm::heap::ScriptHeap;
+use vela_vm::heap_execution::ActiveExecutionRoot;
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
 use vela_vm::{ScriptGlobalValues, owned_to_persistent_value, persistent_value_to_owned};
@@ -15,6 +16,7 @@ pub struct VelaValue {
     pub(super) value: Value,
     root_id: u64,
     roots: Arc<Mutex<RuntimeValueRoots>>,
+    active_root: Option<ActiveExecutionRoot>,
 }
 
 impl VelaValue {
@@ -38,6 +40,7 @@ impl Clone for VelaValue {
             value: self.value,
             root_id: self.root_id,
             roots: Arc::clone(&self.roots),
+            active_root: self.active_root.clone(),
         }
     }
 }
@@ -175,7 +178,19 @@ impl RuntimeValueRoots {
             value,
             root_id,
             roots: Arc::clone(roots),
+            active_root: None,
         }
+    }
+
+    pub(super) fn retain_active(
+        roots: &Arc<Mutex<Self>>,
+        runtime_id: u64,
+        value: Value,
+        active_root: ActiveExecutionRoot,
+    ) -> VelaValue {
+        let mut retained = Self::retain(roots, runtime_id, value);
+        retained.active_root = Some(active_root);
+        retained
     }
 
     fn clone_root(&mut self, root_id: u64) {

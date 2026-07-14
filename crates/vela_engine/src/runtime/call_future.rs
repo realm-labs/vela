@@ -223,6 +223,79 @@ async fn main() {
     }
 
     #[test]
+    fn reentry_returned_value_survives_nested_incremental_gc() {
+        let engine = Engine::builder()
+            .register_async_context_fn(
+                NativeFunctionDesc::new("test::hold_reentry_value", FunctionId::new(0xA534))
+                    .returns(TypeHint::i64())
+                    .access(FunctionAccess::public()),
+                |_args, context| {
+                    Box::pin(async move {
+                        let mut first_poll = true;
+                        poll_fn(|task| {
+                            if first_poll {
+                                first_poll = false;
+                                task.waker().wake_by_ref();
+                                Poll::Pending
+                            } else {
+                                Poll::Ready(())
+                            }
+                        })
+                        .await;
+
+                        let held = context.call("make_held", CallArgs::new())?;
+                        let _ = context.call("collect_garbage", CallArgs::new())?;
+                        let method = context.bind_method(&held, "read")?;
+                        let _ = context.call(method, CallArgs::new())?;
+                        let _ =
+                            context.call("consume_held", CallArgs::new().with_vela_value(held))?;
+                        Ok(OwnedValue::i64(7))
+                    })
+                },
+            )
+            .build()
+            .expect("engine should build");
+        let program = engine
+            .compile_source(
+                r#"
+struct Held { text: String }
+
+fn make_held() { return Held { text: "alive" }; }
+fn collect_garbage() {
+    let garbage = ["one", "two", "three", "four", "five"];
+    return garbage.len();
+}
+fn consume_held(value: Held) { return value.text.len(); }
+
+impl Held {
+    fn read(self) { return self.text; }
+}
+
+async fn main() { return test::hold_reentry_value().await; }
+"#,
+            )
+            .expect("dynamic reentry root fixture should compile");
+        let mut runtime = Runtime::new(engine, program);
+        runtime
+            .state
+            .script_globals
+            .heap
+            .set_gc_config(vela_vm::heap::GcConfig {
+                max_pause_micros: 1,
+                heap_growth_factor: 1.0,
+            });
+
+        let value = run_to_completion(runtime.call_async(
+            "main",
+            CallArgs::new(),
+            CallOptions::unbounded(),
+        ))
+        .expect("reentry-returned value should remain rooted through nested GC");
+
+        assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(7)));
+    }
+
+    #[test]
     fn reentry_call_depth_error_unwinds_child_and_runtime_remains_reusable() {
         let engine = Engine::builder()
             .register_async_context_fn(

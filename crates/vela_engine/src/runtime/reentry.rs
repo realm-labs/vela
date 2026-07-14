@@ -176,11 +176,15 @@ impl ActiveNativeReentry<'_, '_> {
             }
         };
         match outcome {
-            LinkedDriveOutcome::ReentryComplete(value) => Ok(RuntimeValueRoots::retain(
-                &retained_values,
-                runtime_id,
-                value,
-            )),
+            LinkedDriveOutcome::ReentryComplete(value) => {
+                let (value, active_root) = value.into_parts();
+                Ok(RuntimeValueRoots::retain_active(
+                    &retained_values,
+                    runtime_id,
+                    value,
+                    active_root,
+                ))
+            }
             LinkedDriveOutcome::AsyncBoundary(call) => {
                 let name = call.name().to_owned();
                 self.vm
@@ -250,10 +254,12 @@ impl ActiveNativeReentry<'_, '_> {
             };
             match outcome {
                 LinkedDriveOutcome::ReentryComplete(value) => {
-                    return Ok(RuntimeValueRoots::retain(
+                    let (value, active_root) = value.into_parts();
+                    return Ok(RuntimeValueRoots::retain_active(
                         &retained_values,
                         runtime_id,
                         value,
+                        active_root,
                     ));
                 }
                 LinkedDriveOutcome::Complete(_) => {

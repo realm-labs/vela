@@ -8,7 +8,7 @@ use crate::budget::ExecutionBudget;
 use crate::equality::{ResumableComparison, ResumableComparisonKind, ResumableComparisonStep};
 use crate::error::{VmError, VmErrorKind, VmResult, VmStackFrame};
 use crate::frame::CallFrame;
-use crate::heap_execution::HeapExecution;
+use crate::heap_execution::{ActiveExecutionValue, HeapExecution};
 use crate::numeric_ops::{
     add_numeric, binary_float_literal_numeric, binary_int_literal_numeric, div_numeric,
     mul_numeric, negate_numeric, rem_numeric, sub_numeric,
@@ -184,7 +184,7 @@ pub struct PreparedAsyncCall {
 
 pub enum LinkedDriveOutcome {
     Complete(Value),
-    ReentryComplete(Value),
+    ReentryComplete(ActiveExecutionValue),
     AsyncBoundary(PreparedAsyncCall),
 }
 
@@ -632,6 +632,16 @@ impl Vm {
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                     )?;
+                    let reentry_value = if matches!(return_to.target, PendingReturnTarget::Reentry)
+                    {
+                        Some(
+                            heap.as_deref_mut()
+                                .expect("reentry execution requires a managed heap")
+                                .admit_dynamic_value(value),
+                        )
+                    } else {
+                        None
+                    };
                     if let (Some(heap), Some(protected_root_len)) =
                         (heap.as_deref_mut(), return_to.protected_root_len)
                     {
@@ -669,7 +679,9 @@ impl Vm {
                                     .expect("call-depth budget mode requires a budget")
                                     .exit_call();
                             }
-                            return Ok(LinkedDriveOutcome::ReentryComplete(value));
+                            return Ok(LinkedDriveOutcome::ReentryComplete(
+                                reentry_value.expect("reentry return is dynamically rooted"),
+                            ));
                         }
                     }
                     if limits_call_depth {
@@ -978,6 +990,7 @@ impl Vm {
             .iter()
             .for_each(|root| root.trace_heap_refs(&mut gc_roots));
         value.trace_heap_refs(&mut gc_roots);
+        heap.extend_dynamic_roots(&mut gc_roots);
         heap.heap.collect_full_with_budget(&gc_roots, Some(budget));
         value
     }

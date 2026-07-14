@@ -189,6 +189,14 @@ async fn read_async_entry(counter: DirectCounter) {
     return counter.read_async().await;
 }
 
+async fn shared_alias(counter: DirectCounter) {
+    return counter.read_shared_alias(counter, counter).await;
+}
+
+async fn wait_shared(counter: DirectCounter) {
+    return counter.wait_shared().await;
+}
+
 fn read(counter: DirectCounter) {
     return counter.total;
 }
@@ -220,6 +228,52 @@ async fn alias_conflict(counter: DirectCounter) {
     let mut runtime = vela_engine::runtime::Runtime::new(engine, program);
     let mut counter = DirectCounter { total: 3 };
     let mut reentry_counter = DirectCounter { total: 3 };
+
+    let mut shared_alias_counter = DirectCounter { total: 6 };
+    let shared_alias = run_future(runtime.call_async(
+        "shared_alias",
+        vela_engine::runtime::CallArgs::new().with_host_mut("counter", &mut shared_alias_counter),
+        vela_engine::runtime::CallOptions::unbounded(),
+    ))
+    .expect("mutable-origin shared aliases should coexist across pending reentry");
+    assert_eq!(
+        runtime.value_to_owned(&shared_alias),
+        Ok(OwnedValue::i64(12))
+    );
+    let exclusive_after_shared = run_future(runtime.call_async(
+        "main",
+        vela_engine::runtime::CallArgs::new().with_host_mut("counter", &mut shared_alias_counter),
+        vela_engine::runtime::CallOptions::unbounded(),
+    ))
+    .expect("completed shared aliases should restore exclusive access");
+    assert_eq!(
+        runtime.value_to_owned(&exclusive_after_shared),
+        Ok(OwnedValue::i64(12))
+    );
+
+    let mut cancelled_shared = std::boxed::Box::pin(runtime.call_async(
+        "wait_shared",
+        vela_engine::runtime::CallArgs::new().with_host_mut("counter", &mut shared_alias_counter),
+        vela_engine::runtime::CallOptions::unbounded(),
+    ));
+    let mut shared_context = std::task::Context::from_waker(std::task::Waker::noop());
+    assert!(matches!(
+        cancelled_shared.as_mut().poll(&mut shared_context),
+        std::task::Poll::Pending
+    ));
+    drop(cancelled_shared);
+    let read_after_shared_cancel = runtime
+        .call(
+            "read",
+            vela_engine::runtime::CallArgs::new()
+                .with_host_mut("counter", &mut shared_alias_counter),
+            vela_engine::runtime::CallOptions::unbounded(),
+        )
+        .expect("cancelling shared leases should restore the available state");
+    assert_eq!(
+        runtime.value_to_owned(&read_after_shared_cancel),
+        Ok(OwnedValue::i64(12))
+    );
 
     let reentered = run_future(runtime.call_async(
         "reenter",

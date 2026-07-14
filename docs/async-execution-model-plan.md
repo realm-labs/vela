@@ -1364,28 +1364,28 @@ Primary ownership targets:
 
 #### E1. Dynamic GC Roots And Exact Lease Semantics
 
-- [ ] Add focused regression tests that reproduce `ASYNC-ROOT-1` and
+- [x] Add focused regression tests that reproduce `ASYNC-ROOT-1` and
   `ASYNC-LEASE-1` before claiming either repair. Tests must drive a deliberately
   pending outer async call and deterministic nested GC/lease conflicts rather
   than relying on heap-size or executor timing accidents.
-- [ ] Introduce a VM-owned active-execution root registry/guard or equivalent
+- [x] Introduce a VM-owned active-execution root registry/guard or equivalent
   explicit root-admission boundary. It must integrate with `HeapExecution`,
   incremental collection, frame-root truncation, finish/abort, and cancellation
   without making `vela_vm` depend on engine Runtime types.
-- [ ] Admit every reentry-returned heap value before the child continuation
+- [x] Admit every reentry-returned heap value before the child continuation
   releases its roots. Keep it live while its `VelaValue` handle is live in the
   active native invocation, release it deterministically on handle/session
   teardown, and retain the existing Runtime-level cross-call ownership.
-- [ ] Prove the mutable-origin shared lease lifetime and scoped `Send` shape in
+- [x] Prove the mutable-origin shared lease lifetime and scoped `Send` shape in
   safe Rust before replacing production slots. The proof must cover two shared
   leases, NativeCallContext reentry, read-only parent HostAccess, a conflicting
   exclusive request, cancellation, and restoration.
-- [ ] Replace `HostArgBinding::Mutable`'s wildcard acquisition with an explicit
+- [x] Replace `HostArgBinding::Mutable`'s wildcard acquisition with an explicit
   capability-aware state machine. Eligible `Sync` objects use true
   `shared(n)`; exclusive acquisition excludes all access; unsupported
   type-erased capabilities fail closed. Preserve stable-order atomic
   multi-acquisition and RAII rollback.
-- [ ] If the safe proof requires a stronger `with_host_mut` bound or an
+- [x] If the safe proof requires a stronger `with_host_mut` bound or an
   internal registered lease capability, make one direct pre-release contract
   change and update macros, examples, compile tests, and docs. Do not add
   `with_host_mut_async`, a second Runtime/CallArgs mode, unsafe, raw pointers,

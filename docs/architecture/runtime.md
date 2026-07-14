@@ -262,9 +262,13 @@ and `#[script_host_function]` emit the same contract for Rust `async fn`.
 
 `#[script_methods]` also supports async `&self`/`&mut self` methods. Runtime
 atomically acquires Rust-only `HostLeaseRef`/`HostLeaseMut` scopes for the
-receiver and any typed `&T`/`&mut T` host parameters, restores every binding on
-return, error, cancellation, or unwind, and reports alias conflicts as
-`HostObjectBusy`. Runtime-owned globals and opaque adapters fail closed with
+receiver and any typed `&T`/`&mut T` host parameters. Mutable-origin call
+bindings require `Send + Sync` and use an owned read/write guard state machine:
+`available`, `shared(n)`, or `exclusive`. Shared guards coexist across await
+and nested reentry, preserve read-only parent HostAccess, and exclude mutation;
+exclusive guards exclude every competing access. RAII restores the exact prior
+state on return, error, cancellation, unwind, or failed multi-acquisition.
+Runtime-owned globals, non-`Sync` origins, and opaque adapters fail closed with
 `HostLeaseUnsupported` unless they implement an explicit safe lease contract.
 Neither lease wrapper is a Vela value or reflection type.
 

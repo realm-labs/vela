@@ -390,7 +390,11 @@ Direct `CallArgs::with_host_ref("name", &value)` and
 shortcuts. The script still receives a call-scope `HostRef`, not a real Rust
 reference. Field reads and writes dispatch through the type's host object
 adapter and `HostAccess`; `&T` is read-only, while `&mut T` allows write-through
-mutation during the call. Hosts that already manage object identity through a
+mutation during the call. The mutable type must be `Send + Sync`; this is the
+capability boundary that permits true shared async leases as well as exclusive
+leases without changing the public CallArgs mode. Non-`Sync` mutable state must
+stay behind a host adapter or another explicitly supported boundary. Hosts that
+already manage object identity through a
 state adapter can pass an existing low-level handle with
 `CallArgs::with_host_handle("name", host_ref)` and attach the adapter to the
 same argument owner with `CallArgs::with_fallback_adapter(adapter)`. Runtime

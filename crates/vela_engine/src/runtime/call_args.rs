@@ -1,10 +1,12 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
 
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::HostResult;
-use vela_host::lease::{ErasedHostLease, HostLeaseKind, host_lease_unsupported, host_object_busy};
+use vela_host::lease::{
+    ErasedHostLease, HostLeaseKind, MutableHostLeaseSlot, host_lease_unsupported, host_object_busy,
+};
 use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
 use vela_vm::budget::ExecutionBudget;
@@ -124,16 +126,21 @@ impl<'a> CallArgs<'a> {
         self
     }
 
+    /// Adds writable call-scoped host state.
+    ///
+    /// Mutable-origin bindings require `Sync` as well as `Send` so async
+    /// `&self` methods can acquire genuine coexisting shared leases. Types
+    /// without that capability fail at the embedding boundary.
     pub fn push_host_mut<T>(&mut self, name: impl Into<String>, value: &'a mut T) -> &mut Self
     where
-        T: ScriptHostObject + Send + 'a,
+        T: ScriptHostObject + Send + Sync + 'a,
     {
         self.entries.push(CallArg::NamedHost {
             name: name.into(),
             host_ref: None,
             type_id: value.host_type_id(),
             binding: HostArgBinding::Mutable {
-                object: Arc::new(Mutex::new(Some(value))),
+                object: Arc::new(parking_lot::RwLock::new(value)),
             },
         });
         self
@@ -200,10 +207,12 @@ impl<'a> CallArgs<'a> {
         self
     }
 
+    /// Adds writable call-scoped host state with shared/exclusive async lease
+    /// support. The bound deliberately rejects non-`Sync` mutable origins.
     #[must_use]
     pub fn with_host_mut<T>(mut self, name: impl Into<String>, value: &'a mut T) -> Self
     where
-        T: ScriptHostObject + Send + 'a,
+        T: ScriptHostObject + Send + Sync + 'a,
     {
         self.push_host_mut(name, value);
         self
@@ -389,7 +398,7 @@ impl<'a> CallArgs<'a> {
                     return Err(host_lease_unsupported(root));
                 }
                 leases.fetch_add(1, Ordering::AcqRel);
-                Ok(ErasedHostLease::Shared {
+                Ok(ErasedHostLease::SharedBorrowed {
                     object: *object,
                     leases: Arc::clone(leases),
                 })
@@ -397,24 +406,23 @@ impl<'a> CallArgs<'a> {
             (HostArgBinding::Shared { .. }, HostLeaseKind::Exclusive) => {
                 Err(host_object_busy(root))
             }
-            (HostArgBinding::Mutable { object }, _) => {
-                let mut stored = object
-                    .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner());
-                if stored
-                    .as_deref()
-                    .is_some_and(|object| object.lease_any().is_none())
-                {
-                    return Err(host_lease_unsupported(root));
-                }
-                let Some(leased) = stored.take() else {
+            (HostArgBinding::Mutable { object }, HostLeaseKind::Shared) => {
+                let Some(leased) = object.try_read_arc() else {
                     return Err(host_object_busy(root));
                 };
-                drop(stored);
-                Ok(ErasedHostLease::Exclusive {
-                    object: Some(leased),
-                    slot: Arc::clone(object),
-                })
+                if leased.lease_any().is_none() {
+                    return Err(host_lease_unsupported(root));
+                }
+                Ok(ErasedHostLease::SharedMutable { object: leased })
+            }
+            (HostArgBinding::Mutable { object }, HostLeaseKind::Exclusive) => {
+                let Some(mut leased) = object.try_write_arc() else {
+                    return Err(host_object_busy(root));
+                };
+                if leased.lease_any().is_none() || leased.lease_any_mut().is_none() {
+                    return Err(host_lease_unsupported(root));
+                }
+                Ok(ErasedHostLease::Exclusive { object: leased })
             }
         }
     }
@@ -506,7 +514,7 @@ pub(super) enum HostArgBinding<'a> {
         leases: Arc<AtomicUsize>,
     },
     Mutable {
-        object: Arc<Mutex<Option<&'a mut (dyn ScriptHostObject + Send)>>>,
+        object: MutableHostLeaseSlot<'a>,
     },
 }
 
@@ -587,5 +595,97 @@ mod lease_tests {
             .take_host_lease(root, HostLeaseKind::Exclusive)
             .expect("failed acquisition should restore the first lease");
         drop(lease);
+    }
+
+    #[test]
+    fn mutable_origin_shared_leases_coexist_and_restore_exclusive_access() {
+        fn require_send<T: Send>(_: &T) {}
+
+        let mut host = LeaseHost;
+        let mut args = CallArgs::new().with_host_mut("host", &mut host);
+        let mut next = 1_u64 << 63;
+        args.assign_direct_host_refs(&mut next);
+        let root = match &args.entries[0] {
+            CallArg::NamedHost {
+                host_ref: Some(root),
+                ..
+            } => *root,
+            _ => panic!("direct host argument should have an identity"),
+        };
+
+        let first = args
+            .take_host_lease(root, HostLeaseKind::Shared)
+            .expect("first shared lease should be available");
+        let second = args
+            .take_host_lease(root, HostLeaseKind::Shared)
+            .expect("second shared lease should coexist");
+        require_send(&first);
+        require_send(&second);
+        assert!(!first.is_exclusive());
+        assert!(!second.is_exclusive());
+
+        let binding = args
+            .direct_binding(root)
+            .expect("mutable binding should remain registered");
+        let super::HostArgBinding::Mutable { object } = binding else {
+            panic!("binding should have mutable origin");
+        };
+        assert!(
+            object.try_read().is_some(),
+            "parent read access remains legal"
+        );
+        assert!(
+            object.try_write().is_none(),
+            "shared leases exclude mutation"
+        );
+        let conflict = match args.take_host_lease(root, HostLeaseKind::Exclusive) {
+            Ok(_) => panic!("exclusive acquisition must conflict with shared leases"),
+            Err(error) => error,
+        };
+        assert!(matches!(
+            conflict.kind,
+            vela_host::error::HostErrorKind::HostObjectBusy { .. }
+        ));
+
+        drop(first);
+        drop(second);
+        let exclusive = args
+            .take_host_lease(root, HostLeaseKind::Exclusive)
+            .expect("dropping all shared leases should restore exclusive access");
+        require_send(&exclusive);
+        assert!(exclusive.is_exclusive());
+        drop(exclusive);
+    }
+
+    #[test]
+    fn mixed_mutable_origin_acquisition_rolls_back_shared_state() {
+        let mut host = LeaseHost;
+        let mut args = CallArgs::new().with_host_mut("host", &mut host);
+        let mut next = 1_u64 << 63;
+        args.assign_direct_host_refs(&mut next);
+        let root = match &args.entries[0] {
+            CallArg::NamedHost {
+                host_ref: Some(root),
+                ..
+            } => *root,
+            _ => panic!("direct host argument should have an identity"),
+        };
+
+        let error = match args.take_host_leases(&[
+            (root, HostLeaseKind::Shared),
+            (root, HostLeaseKind::Exclusive),
+        ]) {
+            Ok(_) => panic!("shared followed by exclusive should fail atomically"),
+            Err(error) => error,
+        };
+        assert!(matches!(
+            error.kind,
+            vela_host::error::HostErrorKind::HostObjectBusy { .. }
+        ));
+
+        let exclusive = args
+            .take_host_lease(root, HostLeaseKind::Exclusive)
+            .expect("rollback should restore the available state");
+        drop(exclusive);
     }
 }

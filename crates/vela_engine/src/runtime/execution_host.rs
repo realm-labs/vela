@@ -241,9 +241,7 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_> {
         match self.args.direct_binding_by_type(spec.plan.root_type) {
             Some((_, HostArgBinding::Shared { object, .. })) => object.resolve_host_target(spec),
             Some((root, HostArgBinding::Mutable { object })) => object
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .as_deref()
+                .try_read()
                 .ok_or_else(|| host_object_busy(root))?
                 .resolve_host_target(spec),
             None => self.parent.resolve_host_access(spec),
@@ -260,9 +258,7 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_> {
                 object.read_resolved_host(access, target)
             }
             Some(HostArgBinding::Mutable { object }) => object
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .as_deref()
+                .try_read()
                 .ok_or_else(|| host_object_busy(target.root))?
                 .read_resolved_host(access, target),
             None => self.parent.read_host(access, target),
@@ -280,9 +276,7 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_> {
                 Err(ExecutionHost::direct_access_error(target, "write"))
             }
             Some(HostArgBinding::Mutable { object }) => object
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .as_deref_mut()
+                .try_write()
                 .ok_or_else(|| host_object_busy(target.root))?
                 .write_resolved_host(access, target, value),
             None => self.parent.write_host(access, target, value),
@@ -301,9 +295,7 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_> {
                 Err(ExecutionHost::direct_access_error(target, "write"))
             }
             Some(HostArgBinding::Mutable { object }) => object
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .as_deref_mut()
+                .try_write()
                 .ok_or_else(|| host_object_busy(target.root))?
                 .mutate_resolved_host(access, target, op, rhs),
             None => self.parent.mutate_host(access, target, op, rhs),
@@ -320,9 +312,7 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_> {
                 Err(ExecutionHost::direct_access_error(target, "write"))
             }
             Some(HostArgBinding::Mutable { object }) => object
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .as_deref_mut()
+                .try_write()
                 .ok_or_else(|| host_object_busy(target.root))?
                 .remove_resolved_host(access, target),
             None => self.parent.remove_host(access, target),
@@ -341,9 +331,7 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_> {
                 Err(ExecutionHost::direct_access_error(target, "call"))
             }
             Some(HostArgBinding::Mutable { object }) => object
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .as_deref_mut()
+                .try_write()
                 .ok_or_else(|| host_object_busy(target.root))?
                 .call_resolved_host(access, target, method, args),
             None => self.parent.call_host(access, target, method, args),
@@ -369,9 +357,7 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         match self.args.direct_binding_by_type(spec.plan.root_type) {
             Some((_, HostArgBinding::Shared { object, .. })) => object.resolve_host_target(spec),
             Some((root, HostArgBinding::Mutable { object })) => object
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .as_deref()
+                .try_read()
                 .ok_or_else(|| host_object_busy(root))?
                 .resolve_host_target(spec),
             None => self.fallback.resolve_host_access(spec),
@@ -391,9 +377,7 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
                 object.read_resolved_host(access, target)
             }
             Some(HostArgBinding::Mutable { object }) => object
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .as_deref()
+                .try_read()
                 .ok_or_else(|| host_object_busy(target.root))?
                 .read_resolved_host(access, target),
             None => self.fallback.read_host(access, target),
@@ -412,9 +396,7 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         match self.args.direct_binding_mut(target.root) {
             Some(HostArgBinding::Shared { .. }) => Err(Self::direct_access_error(target, "write")),
             Some(HostArgBinding::Mutable { object }) => object
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .as_deref_mut()
+                .try_write()
                 .ok_or_else(|| host_object_busy(target.root))?
                 .write_resolved_host(access, target, value),
             None => self.fallback.write_host(access, target, value),
@@ -434,9 +416,7 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         match self.args.direct_binding_mut(target.root) {
             Some(HostArgBinding::Shared { .. }) => Err(Self::direct_access_error(target, "write")),
             Some(HostArgBinding::Mutable { object }) => object
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .as_deref_mut()
+                .try_write()
                 .ok_or_else(|| host_object_busy(target.root))?
                 .mutate_resolved_host(access, target, op, rhs),
             None => self.fallback.mutate_host(access, target, op, rhs),
@@ -454,9 +434,7 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         match self.args.direct_binding_mut(target.root) {
             Some(HostArgBinding::Shared { .. }) => Err(Self::direct_access_error(target, "write")),
             Some(HostArgBinding::Mutable { object }) => object
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .as_deref_mut()
+                .try_write()
                 .ok_or_else(|| host_object_busy(target.root))?
                 .remove_resolved_host(access, target),
             None => self.fallback.remove_host(access, target),
@@ -478,9 +456,7 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         match self.args.direct_binding_mut(target.root) {
             Some(HostArgBinding::Shared { .. }) => Err(Self::direct_access_error(target, "call")),
             Some(HostArgBinding::Mutable { object }) => object
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .as_deref_mut()
+                .try_write()
                 .ok_or_else(|| host_object_busy(target.root))?
                 .call_resolved_host(access, target, method, args),
             None => self.fallback.call_host(access, target, method, args),

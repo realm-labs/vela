@@ -29,11 +29,11 @@ and `linked_execution.rs` still owns session/resume/reentry policy despite the
 documented module boundary.
 
 Batch E is the current priority before returning to M20 cache close-out or the
-M20.5 LSP follow-up. It must repair GC and lease correctness first, then
-hard-switch reflection to `is_async`, split VM semantic ownership, unify the
-provider resolver, and rerun final acceptance. Passing existing tests does not
-close these named gaps because those exact state sequences are not currently
-covered.
+M20.5 LSP follow-up. E1 is implemented and its VM/host/engine/macros boundary is
+green: reentry values receive active-session root tokens before child roots are
+released, and `Send + Sync` mutable-origin bindings use exact shared/exclusive
+owned guards. E2 now owns the `is_async` reflection hard switch, VM semantic
+ownership split, and unified provider resolver before final acceptance.
 
 ## Milestone Snapshot
 
@@ -111,13 +111,9 @@ covered.
 
 ### Async Post-Review Closure
 
-Batch E owns six named proofs:
+Batch E owns six named proofs. `ASYNC-ROOT-1` and `ASYNC-LEASE-1` are implemented
+and focused/four-crate validated; the remaining final-closure proofs are:
 
-- `ASYNC-ROOT-1`: dynamically admit reentry-returned `VelaValue` handles to the
-  active VM root set, including during incremental GC;
-- `ASYNC-LEASE-1`: implement truthful capability-aware
-  `available/shared(n)/exclusive` semantics for eligible mutable-origin shared
-  leases, with safe-Rust proof and fail-closed unsupported bindings;
 - `ASYNC-REFLECT-1`: replace keyword metadata field `async` with script-visible
   `is_async` and test Vela dot access;
 - `ASYNC-VM-MOD-1`: move session, async-resume, and reentry policy out of linked
@@ -208,7 +204,15 @@ scanners, runtime execution, live host-state reads, or editor-owned analysis.
 
 ## Validation
 
-The last full workspace validation passed on 2026-07-13:
+The last full workspace validation passed on 2026-07-13. The E1 focused
+boundary passed on 2026-07-14:
+
+```bash
+cargo clippy -p vela_host -p vela_vm -p vela_engine -p vela_macros --all-targets -- -D warnings
+cargo test -p vela_host -p vela_vm -p vela_engine -p vela_macros --no-fail-fast
+```
+
+The last full commands were:
 
 ```bash
 cargo fmt --all -- --check
@@ -229,11 +233,9 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Execute Batch E runtime correctness: dynamic active-execution roots and the
-   exact shared/exclusive lease state machine.
-2. Complete the reflection, VM module-ownership, and provider resolver hard
+1. Complete the reflection, VM module-ownership, and provider resolver hard
    switches without compatibility paths.
-3. Run the Batch E/full acceptance gates and close every reopened Section 18
+2. Run the Batch E/full acceptance gates and close every reopened Section 18
    and documentation criterion before resuming M20/M20.5.
 
 ## Update Rules

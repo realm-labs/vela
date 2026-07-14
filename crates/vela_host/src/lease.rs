@@ -1,3 +1,8 @@
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+use parking_lot::{ArcRwLockReadGuard, ArcRwLockWriteGuard, RawRwLock, RwLock};
+
 use crate::error::{HostError, HostErrorKind};
 use crate::object::ScriptHostObject;
 use crate::path::{HostPath, HostRef};
@@ -9,17 +14,22 @@ pub enum HostLeaseKind {
 }
 
 pub type SharedHostLeaseCount = Arc<AtomicUsize>;
-pub type ExclusiveHostLeaseSlot<'host> =
-    Arc<Mutex<Option<&'host mut (dyn ScriptHostObject + Send)>>>;
+pub type MutableHostLeaseObject<'host> = &'host mut (dyn ScriptHostObject + Send + Sync);
+pub type MutableHostLeaseSlot<'host> = Arc<RwLock<MutableHostLeaseObject<'host>>>;
+pub type SharedMutableHostLease<'host> =
+    ArcRwLockReadGuard<RawRwLock, MutableHostLeaseObject<'host>>;
+pub type ExclusiveHostLease<'host> = ArcRwLockWriteGuard<RawRwLock, MutableHostLeaseObject<'host>>;
 
 pub enum ErasedHostLease<'host> {
-    Shared {
+    SharedBorrowed {
         object: &'host (dyn ScriptHostObject + Sync),
         leases: SharedHostLeaseCount,
     },
+    SharedMutable {
+        object: SharedMutableHostLease<'host>,
+    },
     Exclusive {
-        object: Option<&'host mut (dyn ScriptHostObject + Send)>,
-        slot: ExclusiveHostLeaseSlot<'host>,
+        object: ExclusiveHostLease<'host>,
     },
 }
 
@@ -27,25 +37,16 @@ impl ErasedHostLease<'_> {
     #[must_use]
     pub fn object(&self) -> &dyn ScriptHostObject {
         match self {
-            Self::Shared { object, .. } => *object,
-            Self::Exclusive {
-                object: Some(object),
-                ..
-            } => &**object,
-            Self::Exclusive { object: None, .. } => {
-                unreachable!("exclusive host lease always owns its object")
-            }
+            Self::SharedBorrowed { object, .. } => *object,
+            Self::SharedMutable { object } => &***object,
+            Self::Exclusive { object } => &***object,
         }
     }
 
     pub fn object_mut(&mut self) -> Option<&mut dyn ScriptHostObject> {
         match self {
-            Self::Shared { .. } => None,
-            Self::Exclusive {
-                object: Some(object),
-                ..
-            } => Some(&mut **object),
-            Self::Exclusive { object: None, .. } => None,
+            Self::SharedBorrowed { .. } | Self::SharedMutable { .. } => None,
+            Self::Exclusive { object } => Some(&mut ***object),
         }
     }
 
@@ -57,18 +58,9 @@ impl ErasedHostLease<'_> {
 
 impl Drop for ErasedHostLease<'_> {
     fn drop(&mut self) {
-        match self {
-            Self::Shared { leases, .. } => {
-                let previous = leases.fetch_sub(1, Ordering::AcqRel);
-                debug_assert!(previous > 0, "shared host lease count underflow");
-            }
-            Self::Exclusive { object, slot } => {
-                if let Some(object) = object.take() {
-                    let mut stored = slot.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-                    debug_assert!(stored.is_none(), "exclusive host lease slot was replaced");
-                    *stored = Some(object);
-                }
-            }
+        if let Self::SharedBorrowed { leases, .. } = self {
+            let previous = leases.fetch_sub(1, Ordering::AcqRel);
+            debug_assert!(previous > 0, "shared host lease count underflow");
         }
     }
 }
@@ -86,5 +78,3 @@ pub fn host_lease_unsupported(root: HostRef) -> HostError {
         path: HostPath::new(root),
     })
 }
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
