@@ -1827,6 +1827,32 @@ retaining the last valid graph and does not commit a database generation.
 
 ## Active Async Architecture Decisions
 
+### Post-Review Closure Decision
+
+The 2026-07-14 review reopens final async acceptance through Batch E of
+[async-execution-model-plan.md](async-execution-model-plan.md). The following
+directions are decided, but completion is not claimed until their implementation
+and reopened tests pass:
+
+- Active async execution uses a VM-owned dynamic root-admission boundary. A
+  reentry-returned heap value must join the current `HeapExecution` roots before
+  its child frame roots are released; engine-owned Runtime retention alone is
+  not an active-session GC contract.
+- Lease request kind and acquired state must agree. Eligible `Sync`
+  mutable-origin bindings may enter true `shared(n)` state; unsupported
+  type-erased capabilities fail closed instead of being extracted through an
+  exclusive lease labeled shared. Safe-Rust proof precedes any bound or
+  capability correction, and no parallel CallArgs/Runtime mode is added.
+- Script-visible callable reflection metadata is named `is_async`. The current
+  keyword field `async` is a pre-release implementation gap, not a compatibility
+  surface, and will be removed rather than aliased.
+- `linked_execution.rs` remains opcode dispatch/root glue. Execution-session,
+  continuation, async-resume, and reentry policy move to focused VM modules;
+  the file-size exception does not cover those responsibilities.
+- Provider metadata/method/asyncness/shape/parameter resolution has one pure
+  owner over the pinned `LinkedArtifact`. Outer and reentry paths may adapt
+  receiver allocation and root admission only after that shared resolution.
+
 ### Executor-Neutral Async Execution
 
 The executor-neutral async contract is defined by
@@ -1891,11 +1917,12 @@ borrow before `check_reload` can activate the staged generation. Callable
 asyncness is reload ABI for script, native, reflected/event, trait-method, and
 provider descriptors; sync/async changes require restart or explicit migration.
 
-Reflection metadata records expose callable asyncness explicitly as `async`,
+Reflection metadata records expose callable asyncness explicitly as `is_async`,
 and language tooling reads callable asyncness from HIR or registry signature
-facts rather than re-inferring it from token text. Syntax recovery may still
-recognize `.await` as a receiver boundary so completion can use the semantic
-awaited-result fact.
+facts rather than re-inferring it from token text. The current implementation's
+keyword field `async` is the active Batch E repair named above, not an accepted
+alias. Syntax recovery may still recognize `.await` as a receiver boundary so
+completion can use the semantic awaited-result fact.
 
 Direct CLI execution remains synchronous by default. `vela_cli --async`
 explicitly opts into a small CLI-owned executor and calls `Runtime::call_async`;

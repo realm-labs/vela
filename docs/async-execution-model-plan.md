@@ -2,17 +2,17 @@
 
 > **Track:** executor-neutral script suspension, Rust/Vela async interop,
 > scoped host leases, and same-execution reentry
-> **Document status:** ready for execution
-> **Execution status:** Batches A-C complete; Batch D active
-> **Baseline:** pulled `master` at `841a033d2` on 2026-07-13
+> **Document status:** ready for follow-up execution
+> **Execution status:** Batches A-D implementation landed; post-review Batch E
+> queued to repair reopened acceptance gaps
+> **Baseline:** reviewed `master` at `6dcbcadd9` on 2026-07-14
 > **Plan execution style:** throughput-first large batches. Intermediate
 > compilation and tests may be red; each batch-completion checkpoint must be
 > green.
 > **Relationship to the roadmap:** this is a post-first-interpreter architecture
-> track. Batch A activated async syntax, callable asyncness, explicit await IR,
-> and the shared resumable execution foundation. Real Rust future suspension,
-> host leases, and the remaining integration surface activate only at their
-> later batch checkpoints.
+> track. Batches A-D activated the end-to-end async model. Batch E reopens final
+> acceptance for the GC-root, host-lease, reflection, provider-resolution, and
+> VM module-ownership gaps found by post-implementation review.
 
 This plan defines the long-term async architecture. It is not a short-term
 adapter around the recursive VM, a Tokio integration, or a game-specific actor
@@ -28,34 +28,36 @@ remain domain-neutral and usable outside that integration.
 
 ## 0. Codex Goal
 
-Use this prompt to execute the entire plan:
+Use this prompt to execute the follow-up goal:
 
 ```text
-/goal Execute docs/async-execution-model-plan.md in full.
+/goal Execute Batch E of docs/async-execution-model-plan.md in full and close
+every reopened criterion in Section 18.
 
-This is one persistent, multi-turn implementation goal. The async plan, not an
-unrelated next item from docs/goal.md, is the work queue for this goal. Continue
-automatically across tasks, turns, batches, and commits until every completion
-criterion in Section 18 is checked and validated. Finishing one phase, one
-batch, one commit, one API surface, one test group, or one vertical slice is
-progress only and is never a valid stopping condition.
+This is one persistent, multi-turn implementation goal. Batches A-D are the
+implemented baseline; do not rebuild them or return to unrelated roadmap work.
+The Batch E checklist, its completion gate, and the reopened Section 18 items
+are the complete work queue. Continue automatically across tasks, turns, and
+commits until all of them are checked and validated. Finishing the GC repair,
+the lease repair, one refactor, one commit, or one test group is progress only
+and is never a valid stopping condition.
 
-Implement the long-term architecture directly:
+Preserve the landed A-D contracts: one scoped `Send` call model, one explicit
+frame driver, one execution-owned host boundary, one sealed call-target
+abstraction, exactly `call`/`call_async` execution names, generation-pinned
+reload, and no executor in core. Implement the long-term Batch E architecture
+directly in this order:
 
-1. Batch A: prove the safe Rust ownership shape for one scoped `Send` call
-   future, carry asyncness through syntax/HIR/analysis/reflection/MIR, introduce
-   explicit await control flow, consume call host state into an execution owner,
-   and replace recursive VM script calls with one explicit execution-frame stack
-   and driver.
-2. Batch B: add the executor-neutral Rust-to-Vela async call surface and
-   Vela-to-Rust async function plus HostPath-based method registration, using
-   the same execution driver as sync calls.
-3. Batch C: build safe typed shared/exclusive host leases on the execution-owned
-   scopes, finish direct stateful struct methods, and implement same-execution
-   NativeCallContext reentry, including mutable-state reborrows.
-4. Batch D: close hot reload, cancellation, GC roots, execution budgets,
-   reflection, providers, tooling, diagnostics, examples, documentation,
-   compatibility, and performance acceptance.
+1. E1: repair reentry-returned value rooting through a VM-owned dynamic
+   root-admission boundary, then replace the misleading mutable-binding lease
+   wildcard with a proven capability-aware `available/shared(n)/exclusive`
+   state machine.
+2. E2: hard-switch reflection metadata to `is_async`, split session/resume/
+   reentry ownership out of linked opcode dispatch, and unify provider metadata
+   resolution without changing the public execution surface.
+3. E3: run the focused/full/feature/example/benchmark/documentation gates,
+   update active architecture and status to implemented truth, and close the
+   reopened acceptance criteria.
 
 Use the plan checklists as executable acceptance criteria. Work in substantial
 batches and prefer one coherent Conventional Commit per completed batch.
@@ -76,7 +78,7 @@ forbidden.
 
 Never mark the goal complete while any of the following is true:
 
-- any Batch A-D or Section 18 checklist item is unchecked;
+- any Batch E or reopened Section 18 checklist item is unchecked;
 - script-to-script calls still recurse through Rust execute_linked_call frames;
 - sync and async calls do not use the same execution driver;
 - public Runtime execution has methods other than the single `call`/
@@ -88,6 +90,14 @@ Never mark the goal complete while any of the following is true:
 - Runtime::call_async, async native functions, async struct methods, mutable
   host leases, or same-execution reentry is missing;
 - cancellation can leave Runtime or a direct host binding permanently busy;
+- a `VelaValue` returned by NativeCallContext reentry can become unrooted before
+  the active outer execution finishes using it;
+- a shared lease request is silently represented as an exclusive lease, or the
+  implemented binding capability/state differs from its documented contract;
+- reflection publishes a field that normal Vela field syntax cannot address;
+- execution-session, async-resume, or reentry policy remains owned by the
+  linked opcode-dispatch module;
+- outer-call and reentry provider paths duplicate provider metadata resolution;
 - suspended frames do not pin their LinkedArtifact and expose complete GC roots;
 - provider, reflection, hot-reload ABI, tooling, or diagnostics asyncness is
   omitted;
@@ -99,10 +109,13 @@ Never mark the goal complete while any of the following is true:
   worktree is dirty.
 
 If an implementation attempt fails, diagnose it and continue with another
-in-scope safe-Rust design. Phase 0 exists to prove lifetime and auto-trait
-details on the pinned Rust toolchain; it is not permission to weaken the target
-contract. Report blocked only when progress genuinely requires an external
-decision.
+in-scope safe-Rust design. Prove the dynamic-root and mutable-origin shared
+lease lifetime shapes before committing their production representation; a
+failed proof is not permission to retain a misleading request kind, add unsafe,
+or hide the gap behind documentation. An explicit pre-release bound or host
+capability correction is allowed when the proof requires it, but it must replace
+the old contract and update all callers. Report blocked only when progress
+genuinely requires an external decision.
 ```
 
 ---
@@ -159,6 +172,27 @@ cargo test -p vela_engine provider --lib
 
 Both passed. Batch A must capture a broader pre-change validation and focused
 performance baseline before production edits.
+
+### 1.1 Post-Implementation Review Findings
+
+Batches A-D landed on `master`, but the 2026-07-14 implementation review found
+that final acceptance had been closed before every stated invariant was true.
+The existing implementation remains the baseline; Batch E repairs these gaps
+without adding compatibility modes or alternate public APIs.
+
+| ID | Finding and evidence | Accepted long-term direction | Required proof |
+|---|---|---|---|
+| `ASYNC-ROOT-1` | `Runtime::call_runtime_args_async` snapshots Runtime roots once, while `ActiveNativeReentry` may retain a new `VelaValue` after the child frame and its temporary roots have been popped. A later nested call can start GC before that handle is used again. | Add a VM-owned dynamic root-admission/guard contract to the active `HeapExecution`. A value must join the active GC root set before reentry exposes it to Rust, including during an incremental collection. Runtime-level retention remains responsible for cross-call handles, but must not be the only active-execution root mechanism. | Reentry returns a heap record, another nested call forces incremental/full GC without receiving that value as an argument, and the original handle still supports method binding, conversion, and use. Dropping handles and ending/cancelling the session release the corresponding roots. |
+| `ASYNC-LEASE-1` | `CallArgs::take_host_lease` matches `(HostArgBinding::Mutable, _)`, so a requested shared lease is represented as exclusive. This contradicts the required `available/shared(n)/exclusive` contract and blocks legal shared aliases/read-only access. | Replace the wildcard with an explicit capability-aware slot state machine. A shared request on an eligible `Sync` mutable-origin binding must be a real shared lease; multiple shared leases coexist and exclude mutation. If a binding cannot safely provide that capability, fail explicitly rather than silently upgrading. Prove the safe-Rust ownership shape first and make any necessary pre-release bound/capability correction directly, with no alternate API mode. | Two shared leases from the same eligible mutable-origin binding coexist across pending futures and nested reentry; read-only parent HostAccess remains valid; exclusive acquisition conflicts; cancellation/error restores the exact prior state; non-`Sync` or opaque bindings fail closed. |
+| `ASYNC-REFLECT-1` | Reflection publishes a field named `async`, but `async` lexes as a keyword and ordinary field AST extraction accepts only identifiers, so normal `descriptor.async` access cannot resolve it. | Hard-switch the public reflection record field to `is_async` across functions, methods, modules, manifests, docs, tooling facts, and tests. Do not keep an `async` compatibility alias in this pre-release codebase. | End-to-end Vela code reads `.is_async` from reflected function and method records; `.async` is absent from active APIs and docs. |
+| `ASYNC-VM-MOD-1` | `vela_vm/src/linked_execution.rs` grew from 1,349 to 2,871 lines and now owns session/frame state, pending async resume, reentry control, root driving, and opcode dispatch despite the explicit ownership constraint. | Move execution-session/frame/continuation state, async boundary/resume, and reentry push/abort policy into focused VM modules. Keep `linked_execution.rs` as opcode dispatch glue and correct or remove its file-size exception. Do not create a second driver while splitting ownership. | Module-level tests cover session, resume, and reentry invariants; the zero-hit/module audit confirms those semantic owners no longer live in the dispatch module; sync/async behavior and performance remain equivalent. |
+| `ASYNC-PROVIDER-1` | Outer Runtime calls and NativeCallContext reentry duplicate provider metadata, method-dispatch, asyncness, receiver-shape, and parameter resolution. | Introduce one pure provider metadata resolver over the pinned `LinkedArtifact`. Outer and reentry paths may retain distinct receiver allocation/root-admission adapters, but may not duplicate lookup or validation policy. | Focused tests prove identical outer/reentry errors, asyncness, parameter order, stable-ID reload re-resolution, and cross-Runtime validation through the shared resolver. |
+| `ASYNC-DOC-1` | The plan header and `docs/progress.md` still reported Batch D/Section 18 as active work after simultaneously claiming completion. The acceptance archive also claimed focused VM ownership that the source tree did not contain. | Treat active plan/progress/decision docs as current truth, reopen the affected criteria now, and close them only after Batch E code and validation land. Preserve the old acceptance report as historical evidence rather than rewriting it to claim the follow-up already existed. | Status, Next Up, decisions, module exceptions, architecture text, and Section 18 agree at the final Batch E commit. |
+
+The root and lease fixes are correctness work and come before cleanup. The
+reflection rename, VM ownership split, and provider consolidation are direct
+pre-release replacements: no aliases, legacy branches, duplicated resolvers,
+or selectable implementations survive the Batch E checkpoint.
 
 ---
 
@@ -742,6 +776,17 @@ shared(n)
 exclusive / temporarily extracted
 ```
 
+The state is a semantic contract, not merely an error-compatible
+implementation detail. A shared request must not be represented as an
+exclusive lease. A mutable-origin binding may offer a shared lease only when
+its erased direct-host capability proves the underlying object is `Sync` and
+the safe-Rust lifetime shape preserves restoration. Eligible bindings enter a
+real `shared(n)` state; ineligible bindings fail with `HostLeaseUnsupported`.
+They do not silently extract the object exclusively. Batch E may strengthen a
+pre-release bound or add an internal registered lease capability when its
+compile-only proof requires that change, but it must keep the one `CallArgs`
+surface and replace the old representation outright.
+
 Rules:
 
 1. Shared leases may coexist only with shared leases.
@@ -989,6 +1034,17 @@ generation pinning is supported; suspended-frame migration is not.
   session and budget are available.
 - GC may run before suspension, after resume, or during nested Vela execution,
   while honoring all suspended-parent roots.
+- The initial Runtime/global root snapshot is insufficient for values created
+  after the outer session starts. A `VelaValue` returned through
+  `NativeCallContext` reentry must enter a VM-owned dynamic root set before its
+  child frame roots are released or the value is exposed to Rust.
+- Dynamic root admission/removal must remain correct when incremental GC is
+  already in progress. Do not repair this by rescanning an engine-owned map at
+  arbitrary VM sites or by conservatively retaining every reentry result until
+  Runtime destruction.
+- Runtime-level handles still own cross-call retention. The active execution
+  root mechanism and the persistent Runtime handle mechanism must meet at one
+  explicit VM boundary rather than depending on snapshot timing.
 
 ### 13.2 Deterministic Execution Units
 
@@ -1015,6 +1071,9 @@ permit an uncharged script loop or repeated VM polling loop.
 ### 14.1 Reflection
 
 - Function/method descriptors expose `CallableAsyncness`.
+- Script-visible reflection records expose that fact as `is_async`. `async` is
+  a language keyword and is not a supported reflection-field spelling; no
+  compatibility alias is retained.
 - Reflected invocation follows the same syntax rule: `.await` accepts sync or
   async resolved targets; non-await invocation rejects an async target before
   dispatch.
@@ -1075,7 +1134,7 @@ The implementation must inspect and migrate at least these ownership areas:
 | callable registry | engine/compiler/reflect descriptors | one propagated asyncness field |
 | MIR | `vela_mir` calls, CFG, effects, liveness, verifier | explicit await terminator and root/resume facts |
 | executable | `vela_bytecode` linked forms/linker | explicit await/resume dispatch metadata |
-| VM | `linked_execution`, frame and call-family modules | explicit frame stack and one driver |
+| VM | linked opcode dispatch plus focused session/resume/reentry modules | explicit frame stack and one driver; dynamic active-execution root admission |
 | embedding | engine Runtime and provider modules | two call front doors plus unified target resolution |
 | native bridge | engine native/method/typed/context modules | mode-aware async factories and prepared calls |
 | host boundary | `vela_host`, runtime call args | execution-owned scopes and safe leases |
@@ -1102,10 +1161,12 @@ Status notation:
 
 Rules:
 
-1. Execute Batches A-D in order and continue immediately to the next unchecked
-   item after each checkpoint.
-2. Default commit granularity is one substantial coherent commit per batch, not
-   one commit per checklist line or passing test.
+1. Batches A-D are the landed implementation baseline. Execute Batch E in its
+   stated order and continue immediately to the next unchecked item after each
+   checkpoint.
+2. Default commit granularity is a substantial coherent checkpoint, not one
+   commit per checklist line or passing test. Batch E may use E1, E2, and E3 as
+   its natural large checkpoints.
 3. Recovery commits are allowed when context/review safety requires them. They
    may be red, but they are not stopping points and must be repaired within the
    active batch.
@@ -1272,6 +1333,120 @@ Batch D completion gate: every Section 18 criterion is checked, all validation
 passes, durable docs describe the implemented system, commits are coherent, and
 the worktree is clean.
 
+The Batch D checkpoint was recorded green on 2026-07-13. The implementation
+review in Section 1.1 found acceptance gaps that its tests and audits did not
+exercise. Batch E supersedes that final-closure claim without discarding the
+working A-D implementation.
+
+### 16.5 Batch E: Post-Review Correctness And Ownership Closure
+
+Purpose: repair the two runtime contract gaps first, then make the implemented
+module/API ownership match the clean architecture that Batches A-D intended to
+establish.
+
+Execution style: this is one throughput-first follow-up batch, not six tiny
+goals. Intermediate compilation and tests may be red while root ownership,
+lease type erasure, or VM modules are changing. Prefer a small number of
+substantial coherent commits: runtime correctness, structural/API cleanup, and
+final acceptance. Do not create a commit per checklist item or stop after the
+first green subset.
+
+Primary ownership targets:
+
+| Work | Current files to inspect | Target ownership |
+|---|---|---|
+| dynamic roots | `vela_vm/src/heap_execution.rs`, `vela_vm/src/linked_execution.rs`, `vela_engine/src/runtime/{mod,reentry,script_globals,call_future}.rs` | VM active-execution root admission plus Runtime cross-call handles |
+| lease state | `vela_engine/src/runtime/{call_args,execution_host}.rs`, `vela_host/src/lease.rs`, `vela_engine/src/host_lease.rs`, `vela_macros/src/script_methods/` | one capability-aware direct-host slot/lease protocol |
+| reflection field | `vela_reflect/src/member_records.rs`, `vela_reflect/src/modules/records.rs`, reflection/runtime integration tests | one script-visible `is_async` spelling |
+| VM split | `vela_vm/src/linked_execution.rs`, `vela_vm/src/lib.rs`, linked execution tests | focused session, async-resume, and reentry modules around one dispatch loop |
+| provider resolution | `vela_engine/src/runtime/{provider,reentry,mod}.rs`, provider reload/reentry tests | one pure metadata resolver plus caller-specific receiver/root adaptation |
+| closure docs | this plan, `docs/{progress,decisions}.md`, runtime/host/reflection architecture, file-size exceptions | implemented truth and one final acceptance state |
+
+#### E1. Dynamic GC Roots And Exact Lease Semantics
+
+- [ ] Add focused regression tests that reproduce `ASYNC-ROOT-1` and
+  `ASYNC-LEASE-1` before claiming either repair. Tests must drive a deliberately
+  pending outer async call and deterministic nested GC/lease conflicts rather
+  than relying on heap-size or executor timing accidents.
+- [ ] Introduce a VM-owned active-execution root registry/guard or equivalent
+  explicit root-admission boundary. It must integrate with `HeapExecution`,
+  incremental collection, frame-root truncation, finish/abort, and cancellation
+  without making `vela_vm` depend on engine Runtime types.
+- [ ] Admit every reentry-returned heap value before the child continuation
+  releases its roots. Keep it live while its `VelaValue` handle is live in the
+  active native invocation, release it deterministically on handle/session
+  teardown, and retain the existing Runtime-level cross-call ownership.
+- [ ] Prove the mutable-origin shared lease lifetime and scoped `Send` shape in
+  safe Rust before replacing production slots. The proof must cover two shared
+  leases, NativeCallContext reentry, read-only parent HostAccess, a conflicting
+  exclusive request, cancellation, and restoration.
+- [ ] Replace `HostArgBinding::Mutable`'s wildcard acquisition with an explicit
+  capability-aware state machine. Eligible `Sync` objects use true
+  `shared(n)`; exclusive acquisition excludes all access; unsupported
+  type-erased capabilities fail closed. Preserve stable-order atomic
+  multi-acquisition and RAII rollback.
+- [ ] If the safe proof requires a stronger `with_host_mut` bound or an
+  internal registered lease capability, make one direct pre-release contract
+  change and update macros, examples, compile tests, and docs. Do not add
+  `with_host_mut_async`, a second Runtime/CallArgs mode, unsafe, raw pointers,
+  self-referential owners, or an exclusive lease disguised as shared.
+
+E1 checkpoint: the new GC and lease regressions pass under pending/wake,
+incremental/full collection, nested reentry, error, and cancellation. Existing
+host write-through, exclusive mutable service, Runtime reuse, memory budget,
+and root-liveness tests remain green.
+
+#### E2. Reflection, Provider, And VM Ownership Cleanup
+
+- [ ] Rename every script-visible reflection metadata field from `async` to
+  `is_async` across function, method, trait/module/package records, manifests,
+  analysis/tooling projections, examples, architecture text, and tests. Add
+  end-to-end Vela dot-access tests and retain no compatibility alias.
+- [ ] Extract execution-session/frame/continuation definitions, pending async
+  boundary/resume state, and reentry push/abort policy from
+  `vela_vm/src/linked_execution.rs` into focused production modules. Keep one
+  frame driver and one opcode dispatch loop; do not move code into navigation-
+  only wrappers or duplicate dispatch to satisfy a line-count check.
+- [ ] Reassess `docs/architecture/file-size-exceptions.md` after the split.
+  `linked_execution.rs` may retain an exception only for the exhaustive opcode
+  loop actually left there; session, GC-root, resume, and reentry policy must
+  not be justified by that exception.
+- [ ] Consolidate provider metadata/method/asyncness/shape/parameter resolution
+  into one pure resolver over the pinned `LinkedArtifact`. Outer Runtime and
+  reentry callers may adapt receiver allocation and root admission after the
+  shared result, but must use identical validation and diagnostics.
+- [ ] Preserve the public execution surface exactly as `Runtime::call`,
+  `Runtime::call_async`, `NativeCallContext::call`, and
+  `NativeCallContext::call_async` over the same sealed target abstraction. No
+  provider-, method-, root-, or adapter-specific execution variants return.
+
+E2 checkpoint: the reflection field is usable from Vela, provider outer/reentry
+resolution has one policy owner, and the VM source tree reflects the ownership
+map while every sync/async/reentry/reload test still uses the same driver.
+
+#### E3. Final Audit And Documentation Closure
+
+- [ ] Run the focused validation for VM, engine, host, macros, reflection,
+  syntax/HIR/analysis/tooling, providers, and hot reload, followed by the full
+  Section 17 checkpoint, examples, feature combinations, benchmark build, and
+  documentation-site gates.
+- [ ] Repeat the performance/memory comparison for sync calls, ready/pending
+  async calls, dynamic root admission/removal, shared/exclusive lease
+  acquisition, reentry, and providers. Accept no material regression without a
+  named architectural reason and follow-up.
+- [ ] Run the original zero-hit audits plus the Batch E audits in Section 17.6.
+  Inspect and classify every hit; a command merely executing is not proof.
+- [ ] Update `docs/decisions.md`, runtime/host/reflection architecture,
+  file-size exceptions, `docs/progress.md`, and Section 18 to implemented truth.
+  Keep the 2026-07-13 acceptance report archived as the historical A-D result.
+- [ ] Commit the completed checkpoints with Conventional Commits and finish
+  with a clean worktree.
+
+Batch E completion gate: every `ASYNC-ROOT-1` through `ASYNC-DOC-1` proof is
+green; every reopened Section 18 criterion is checked; the full workspace,
+examples, features, benches, and docs validate; active docs describe the same
+implemented architecture; and the final worktree is clean.
+
 ---
 
 ## 17. Validation And Test Matrix
@@ -1286,13 +1461,13 @@ the worktree is clean.
 | reentry | sync and async child, same mutable state reborrow, nested async boundary |
 | future contract | scoped call is `Send` and non-`'static`; `!Send` registration is rejected |
 | dynamic calls | awaited sync/async; non-awaited async traps before dispatch |
-| host scopes | unique IDs, busy parent, child invalidation, adapter unsupported lease |
+| host scopes | unique IDs, true shared aliases from eligible mutable-origin bindings, read-only parent access, exclusive conflict, child invalidation, adapter unsupported lease |
 | cancellation | pending future drop, lease release, Runtime reuse, no rollback claim |
-| GC | values live across await, nested GC, return conversion, old-frame roots |
+| GC | values live across await, nested GC, reentry-returned `VelaValue` dynamic roots, incremental-collection admission, handle/session release, return conversion, old-frame roots |
 | budget | charge before dispatch, depth across await, no poll/wake charging/spin |
 | reload | old suspended generation resumes; new outer call uses new generation |
-| providers | validated handle builds call target, reload re-resolution, sync rejection |
-| reflection | asyncness metadata and awaited reflected invocation |
+| providers | one outer/reentry resolver, validated handle builds call target, reload re-resolution, sync rejection |
+| reflection | `.is_async` dot access and awaited reflected invocation; no keyword field alias |
 | tooling | parse/recovery/format/semantic diagnostics and hover/signature display |
 
 Use a small deterministic pending future/test waker in unit tests. Tokio may be
@@ -1378,11 +1553,18 @@ rg -n 'Portable|ThreadBound|thread_bound' crates docs/architecture
 rg -n 'tokio::spawn' crates/vela_engine crates/vela_vm crates/vela_host
 rg -n 'pub fn call_(with_adapter|method|provider|provider_handle|provider_with_adapter|raw|args_raw)' \
   crates/vela_engine/src/runtime
+rg -n 'struct LinkedExecutionSession|fn (push|abort)_linked_reentry|fn resume_linked_async_call' \
+  crates/vela_vm/src/linked_execution.rs
+rg -n 'insert\("async"|\("async"\.to_owned\(\), bool_value\([^)]*asyncness' \
+  crates/vela_reflect docs/architecture docs/decisions.md
 ```
 
 Hits in negative tests or historical archived documents must be reviewed and
 explicitly classified; active production paths and active contract docs must
-have no forbidden hit.
+have no forbidden hit. Batch E must additionally inspect provider resolution
+definitions and demonstrate that exactly one function owns provider metadata,
+method-dispatch, asyncness, receiver-shape, and parameter lookup; a broad name
+count is not a substitute for reading the remaining call sites.
 
 ---
 
@@ -1407,28 +1589,35 @@ The goal is complete only when all are true:
   `'static` arguments.
 - [x] Async Rust functions and stateful struct methods can be registered and
   awaited from Vela.
-- [x] Direct mutable host state can be safely leased across Rust await, used by
-  existing Rust services, reborrowed into nested Vela, and restored.
+- [ ] Direct mutable host state can be safely leased across Rust await, used by
+  existing Rust services, reborrowed into nested Vela, and restored; an
+  eligible mutable-origin shared request enters true `shared(n)` state rather
+  than being represented as exclusive.
 - [x] Scripts still see only HostRef/HostPath/PathProxy/HostAccess; no Rust
   reference is a Vela value or reflection type.
 - [x] NativeCallContext reentry inherits the same generation, heap, host scopes,
   budgets, capabilities, profiler, cancellation, and call-depth state.
 - [x] Cancellation and every error path release leases/scopes and leave Runtime
   reusable, without claiming rollback of committed effects.
-- [x] Suspended frames pin old LinkedArtifact generations and expose complete GC
-  roots; no async-frame hot migration exists.
+- [ ] Suspended frames pin old LinkedArtifact generations and expose complete GC
+  roots, including values returned to Rust by same-session reentry after the
+  initial root snapshot; no async-frame hot migration exists.
 - [x] Execution-unit behavior is semantic and executor-independent; the driver
   never busy-polls.
-- [x] Provider, reflection, package metadata, reload ABI, CLI, and sync C
-  behavior are explicit and tested.
+- [ ] Provider, reflection, package metadata, reload ABI, CLI, and sync C
+  behavior are explicit and tested; reflection exposes script-addressable
+  `is_async` metadata and provider outer/reentry lookup has one policy owner.
 - [x] Async functions are explicitly JIT-ineligible without creating a second
   backend contract.
 - [x] Domain-neutral examples cover the motivating actor-state/service/reentry
   shape and document disjoint Runtime/host storage.
-- [x] All Batch A-D checklists, focused tests, compile tests, zero-hit audits,
+- [ ] Execution-session/frame/continuation, async-resume, and reentry policy live
+  in focused VM modules; `linked_execution.rs` owns only the exhaustive linked
+  opcode dispatch/root glue covered by its documented exception.
+- [ ] All Batch A-E checklists, focused tests, compile tests, zero-hit audits,
   full validation, examples, and performance/memory measurements pass or have an
   explicitly accepted and justified result allowed by this plan.
-- [x] Active goal/architecture/decision/progress docs describe the implemented
+- [ ] Active goal/architecture/decision/progress docs describe the implemented
   async system consistently.
-- [x] Work is committed at coherent verified checkpoints with Conventional
+- [ ] Work is committed at coherent verified checkpoints with Conventional
   Commits and the final worktree is clean.

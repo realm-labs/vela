@@ -10,57 +10,30 @@ history belongs in Git.
 
 ## Current Focus
 
-The executor-neutral async execution track is complete through Batch D and
-Section 18 in
-[async-execution-model-plan.md](async-execution-model-plan.md). The pre-change
-workspace, focused call-depth/callback/provider/reload behavior, and
-representative runtime performance baseline are recorded in
-[archive/async-execution-baseline-2026-07-13.md](archive/async-execution-baseline-2026-07-13.md).
-Batch A is complete: the safe-Rust scoped `Send` ownership proof,
-execution-owned host boundary, unified function/bound-method/provider target
-contract, and two-method public execution surface are sealed. Lossless `async
-fn`/`.await` syntax and callable asyncness reach HIR, analysis, registries,
-reflection, MIR, linked code/dispatch, providers, and Runtime entry resolution.
-All synchronous execution now uses one `ExecutionSession`, explicit frame stack,
-return-continuation model, and non-recursive driver, including comparisons,
-collection callbacks, iterators, guards, and providers. The full workspace gate
-is green. Batch B is complete: `Runtime::call_async` drives real
-executor-neutral suspension; pure/context/host/HostPath-method registries and
-free-function macros accept scoped `Send` futures; and static, dynamic,
-reflected, error, and try paths share the same session. Batch C is complete:
-typed shared/exclusive host leases, direct borrowed struct methods,
-same-execution reentry, and the domain-neutral state/service example pass the
-full checkpoint gate. Batch D hot-reload closure is complete: callable, native,
-event/reflection, trait-method, and provider asyncness are ABI; suspended outer
-calls retain their old artifact; staging can proceed through a staging-only
-handle; and activation remains deferred until an explicit safe point after
-completion or cancellation. Await root maps, suspended-parent roots under
-nested GC, owned native values, poll-independent execution units, retained call
-depth, and async-result memory limits are also closed with focused tests.
-Provider methods now have direct proof as the same sealed `RuntimeCallTarget`
-through sync rejection, async outer calls, NativeCallContext reentry, stable-ID
-reload re-resolution, and cross-Runtime handle validation; no provider-specific
-execution method exists. Reflection records expose callable asyncness, reflected
-async invocation shares awaited runtime dispatch, and language tooling preserves
-async syntax while projecting semantic diagnostics, awaited completion receiver
-facts, and source/registry asyncness into hover and signature help. The CLI
-requires an explicit `--async` executor-owning path, the synchronous C ABI
-returns `VelaStatus::AsyncEntry`, and the generic async plus stateful reentry
-examples exercise the scoped API. Restricted JIT input marks declared async or
-await-containing MIR with `MirJitIneligibility::Async`, while verified MIR and
-linked bytecode retain the explicit await operation, safepoint, and resume edge
-for a future backend. The Batch D zero-hit audit is recorded in
-[archive/async-execution-zero-hit-audit-2026-07-13.md](archive/async-execution-zero-hit-audit-2026-07-13.md):
-all forbidden active patterns are absent, and the remaining root/test adapter
-names are classified over the single session driver.
+The executor-neutral async implementation from Batches A-D is landed: Vela has
+one explicit frame driver, scoped `Send` Runtime/native futures, direct typed
+host leases, same-session NativeCallContext reentry, generation-pinned reload,
+and one `call`/`call_async` target surface for functions, bound methods, and
+providers. The 2026-07-13 baseline, zero-hit audit, and original acceptance
+result remain recorded under [archive](archive/).
 
-The final focused, all-feature workspace, example, benchmark-build, rustdoc,
-and documentation-site gates are green. Performance and memory acceptance,
-including the named `ASYNC-PERF-1` follow-up and unavailable-Miri note, is
-recorded in
-[archive/async-execution-acceptance-2026-07-13.md](archive/async-execution-acceptance-2026-07-13.md).
-Current implementation focus returns to M20 cache close-out and the M20.5 LSP
-follow-up.
+Post-implementation review on 2026-07-14 reopened final acceptance and queued
+Batch E in
+[async-execution-model-plan.md](async-execution-model-plan.md). An object
+returned from reentry can enter `RuntimeValueRoots` after the active
+`HeapExecution` root snapshot, so a later nested GC can collect it. A shared
+typed lease requested from a mutable-origin binding is currently represented as
+exclusive. Reflection publishes keyword field `async`, normal dot syntax cannot
+address it, provider metadata resolution is duplicated for outer/reentry calls,
+and `linked_execution.rs` still owns session/resume/reentry policy despite the
+documented module boundary.
+
+Batch E is the current priority before returning to M20 cache close-out or the
+M20.5 LSP follow-up. It must repair GC and lease correctness first, then
+hard-switch reflection to `is_async`, split VM semantic ownership, unify the
+provider resolver, and rerun final acceptance. Passing existing tests does not
+close these named gaps because those exact state sequences are not currently
+covered.
 
 ## Milestone Snapshot
 
@@ -135,6 +108,28 @@ follow-up.
   [archive/performance-full-2026-06-06.md](archive/performance-full-2026-06-06.md).
 
 ## Active Gaps
+
+### Async Post-Review Closure
+
+Batch E owns six named proofs:
+
+- `ASYNC-ROOT-1`: dynamically admit reentry-returned `VelaValue` handles to the
+  active VM root set, including during incremental GC;
+- `ASYNC-LEASE-1`: implement truthful capability-aware
+  `available/shared(n)/exclusive` semantics for eligible mutable-origin shared
+  leases, with safe-Rust proof and fail-closed unsupported bindings;
+- `ASYNC-REFLECT-1`: replace keyword metadata field `async` with script-visible
+  `is_async` and test Vela dot access;
+- `ASYNC-VM-MOD-1`: move session, async-resume, and reentry policy out of linked
+  opcode dispatch;
+- `ASYNC-PROVIDER-1`: give outer and reentry calls one provider metadata
+  resolver;
+- `ASYNC-DOC-1`: close status, decision, architecture, module-exception, and
+  acceptance documentation only after the implementation and gates pass.
+
+Do not solve these with a permanent-root leak, an exclusive lease labeled
+shared, reflection aliases, navigation-only source splits, duplicated drivers,
+or provider-specific public execution methods.
 
 ### M20 Cache Close-Out
 
@@ -234,10 +229,12 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Close Batch D compatibility and performance acceptance.
-2. Run the zero-hit, examples, benchmark, feature, documentation, and
-   performance/memory gates.
-3. Close every Section 18 audit and documentation criterion.
+1. Execute Batch E runtime correctness: dynamic active-execution roots and the
+   exact shared/exclusive lease state machine.
+2. Complete the reflection, VM module-ownership, and provider resolver hard
+   switches without compatibility paths.
+3. Run the Batch E/full acceptance gates and close every reopened Section 18
+   and documentation criterion before resuming M20/M20.5.
 
 ## Update Rules
 

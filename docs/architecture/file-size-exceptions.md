@@ -7,13 +7,19 @@ wrappers. Any unlisted active file above 1200 lines fails the architecture
 audit. Exceptions should be removed when a responsibility boundary becomes
 clear; they are not permission for unrelated growth.
 
+`vela_vm/src/linked_execution.rs` is intentionally absent from the active
+exception table while async-plan Batch E is open. The file currently mixes the
+exhaustive opcode loop with execution-session, async-resume, and reentry policy,
+so its former dispatch-only exception is not valid. After those owners move to
+focused modules, the remaining opcode loop may be reviewed and re-added if it
+still exceeds the ordinary threshold.
+
 | File | Reviewed reason |
 |---|---|
 | `vela_lsp_server/src/global_state.rs` | One typed LSP state machine and its message-transition fixture matrix; splitting transitions from queue/state ownership would duplicate protocol setup. |
 | `vela_lsp_server/src/lsp/to_proto.rs` | Exhaustive protocol projection table whose variants are reviewed together. |
 | `vela_vm/src/runtime_type_guards.rs` | Mutually recursive exhaustive guard interpreter; container, sum, callable, and identity cases share cycle/stamp state. |
 | `vela_vm/src/script_method_calls.rs` | Exhaustive standard/dynamic method router with one fallback-order contract. |
-| `vela_vm/src/linked_execution.rs` | Exhaustive linked instruction dispatch loop; instruction ordering, safepoints, spans, profiling, and budget metadata are reviewed as one loop. |
 | `vela_bytecode/src/linked.rs` | Declarative linked instruction and immutable layout definitions. |
 | `vela_bytecode/src/lib.rs` | Declarative unlinked bytecode instruction, operand, metadata, and compiled-program definitions reviewed as one public format contract. |
 | `vela_bytecode/src/linker.rs` | Single generation-sealing pass whose instruction, identity, provider, debug, and verification mappings must remain auditable together. |
