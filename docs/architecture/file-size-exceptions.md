@@ -19,7 +19,9 @@ clear; they are not permission for unrelated growth.
 | `vela_bytecode/src/linker.rs` | Single generation-sealing pass whose instruction, identity, provider, debug, and verification mappings must remain auditable together. |
 | `vela_bytecode/src/verification.rs` | Exhaustive unlinked instruction verifier and shared invariant helpers. |
 | `vela_bytecode/src/verification/linked.rs` | Exhaustive linked instruction verifier; every linked opcode must remain in the same match audit. |
+| `vela_mir/src/verifier/operations.rs` | Exhaustive MIR statement, terminator, place, and state-operation verifier kept together so every executable operation participates in one invariant audit. |
 | `vela_analysis/src/registry.rs` | Declarative registry-to-analysis projection for the complete metadata surface. |
+| `vela_syntax/src/ast/items.rs` | Declarative CST-backed AST wrappers for the complete module-item surface; declaration accessors share one casting and contextual-keyword contract. |
 | `vela_lsp_server/src/tests.rs` | Dense typed-protocol fixtures. |
 | `vela_lsp_server/src/tests/signature.rs` | Dense signature-help fixture matrix. |
 | `vela_syntax/src/ast/expr_tests.rs` | Dense AST fixture matrix. |
@@ -27,4 +29,7 @@ clear; they are not permission for unrelated growth.
 | `vela_vm/src/tests/type_guards.rs` | Dense end-to-end guard contract matrix corresponding to the exhaustive guard interpreter. |
 | `vela_bytecode/src/verification/tests.rs` | Dense negative verifier fixture matrix. |
 | `vela_hot_reload/src/tests/runtime_reports.rs` | Dense runtime staging, acceptance, rejection, and diagnostic-report fixture matrix. |
+| `vela_language_service/src/semantic_tokens/tests.rs` | Dense semantic-token classification fixture matrix covering the complete editor-neutral taxonomy and contextual declaration cases. |
+| `vela_language_service/src/rename/tests.rs` | Dense rename prepare/apply/rejection fixture matrix across declaration and reference categories. |
+| `vela_engine/src/tests/source_reload/runtime_safe_points.rs` | Dense runtime safe-point, staged update, async ownership, and rollback fixture matrix. |
 | `vela_mir/src/tests/model.rs` | Dense MIR model invariant fixtures. |

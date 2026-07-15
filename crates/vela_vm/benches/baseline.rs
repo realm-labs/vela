@@ -37,6 +37,8 @@ mod report;
 #[path = "../src/test_support.rs"]
 #[allow(dead_code)]
 mod test_compile_support;
+#[path = "baseline/vm_state.rs"]
+mod vm_state;
 #[path = "baseline/workload_sources.rs"]
 mod workload_sources;
 #[path = "baseline/workloads.rs"]
@@ -44,6 +46,7 @@ mod workloads;
 
 use cache_support::{BenchBytecodeProfiler, BenchCacheStats, BenchInlineCaches};
 use config::{BenchConfig, BenchParams};
+use vm_state::run_vm_state;
 use workloads::{ExecutionMode, Workload, workloads};
 
 const PLAYER_TYPE: HostTypeId = HostTypeId::new(1);
@@ -406,29 +409,6 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
             })
         }
     }
-}
-
-fn run_vm_state(
-    vm: &Vm,
-    program: &Arc<LinkedArtifact>,
-    values: &mut VmStateValues,
-) -> Result<OwnedValue, Box<dyn Error>> {
-    let mut adapter = MockStateAdapter::default();
-    let mut access = HostAccess::new();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut access,
-        state_values: Some(values),
-    };
-    let mut budget = ExecutionBudget::unbounded();
-    Ok(vm.run_linked_program_with_host_budget_and_caches(
-        program,
-        "main",
-        &[],
-        &mut host,
-        &mut budget,
-        None,
-    )?)
 }
 
 impl CompiledWorkload {
