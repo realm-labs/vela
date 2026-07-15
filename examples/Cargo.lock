@@ -499,6 +499,7 @@ dependencies = [
  "vela_common",
  "vela_def",
  "vela_host",
+ "vela_mir",
  "vela_reflect",
  "vela_stdlib",
  "vela_stdlib_runtime",
