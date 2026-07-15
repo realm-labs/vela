@@ -241,7 +241,7 @@ Type-location data should distinguish local annotations, function return
 hints, parameters, struct fields, enum fields, and nested builtin container
 arguments. Dot access should be a first-class context even with an empty
 prefix after `.`, and dynamic `Any` receivers should suppress member guesses
-instead of falling back to global completions.
+instead of falling back to unrelated workspace completions.
 
 Member completion should flow through a unified `MemberCompletionIndex` built
 from source facts, schema facts, stdlib/builtin facts, and source trait/impl

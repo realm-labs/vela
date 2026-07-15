@@ -22,7 +22,7 @@ fn main() {
 
 ## 沙箱边界
 
-浏览器环境不暴露真实 Rust host object、服务器状态、文件系统访问，也不代表一个长期运行的应用 Runtime。Host 写穿、native 函数注册、runtime global 和热更新流程需要看 Rust 示例和宿主集成章节。
+浏览器环境不暴露真实 Rust host object、服务器状态、文件系统访问，也不代表一个长期运行的应用 Runtime。Host 写穿、native 函数注册、持久 state 和热更新流程需要看 Rust 示例和宿主集成章节。
 
 Playground 适合验证语言行为；需要验证宿主边界时请运行本地示例。
 

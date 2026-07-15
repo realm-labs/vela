@@ -75,7 +75,7 @@ complete:
 - Dot/member completion must come from a unified member surface that combines
   source fields, source inherent methods, source trait methods, schema
   members, and stdlib/builtin value or container methods. Producers must not
-  guess members by text prefix or fall back to globals for a typed `.` request.
+  guess members by text prefix or fall back to workspace values for a typed `.` request.
 - Completion filtering, ranking, insertion text, label, label details,
   documentation, symbol identity, and resolve payloads must be distinct
   service fields before protocol projection.
@@ -93,7 +93,7 @@ complete:
   schema-backed fields and methods, and builtin value/container methods such as
   `Array<T>`, `Map<K, V>`, `Set<T>`, `Iterator<T>`, `Option<T>`, `Result<T, E>`,
   `String`, and `Bytes` methods. Dynamic `Any` receivers still suppress member
-  guesses and must not fall back to global completions.
+  guesses and must not fall back to unrelated value completions.
 - Completion labels must be readable insertion labels. A source or schema type
   completion should show `Player` as the label and insert `Player`, while the
   module path or owner path lives in `labelDetails`, `detail`, or
@@ -101,7 +101,7 @@ complete:
   or inserted text.
 - `struct Player { | }` is a struct-field declaration context. Completion
   there should offer field-declaration snippets or valid field-name/type
-  assistance, then type-hint completion after `:`, but it must not show global
+  assistance, then type-hint completion after `:`, but it must not show unrelated
   expression items, constructor completions, module path noise, or the struct
   itself as a value.
 - Statement-position snippets must include at least `for in` and `match`
@@ -116,7 +116,7 @@ Use these dimensions as row references in the matrix.
 | ID | Dimension | Required surface |
 |---|---|---|
 | S0 | Workspace/source state | Open overlay, disk snapshot, scratch file, configured roots, multi-file modules, missing/deleted/renamed files, schema absent/stale/invalid. |
-| S1 | Top-level declarations | `pub`, `use`, `const`, `global`, `fn`, parameters, default parameters, `struct`, fields, `enum`, variants, `trait`, default/interface methods, inherent and trait `impl`. |
+| S1 | Top-level declarations | `pub`, `use`, `const`, contextual `state`, `extern state`, `fn`, parameters, default parameters, `struct`, fields, `enum`, variants, `trait`, default/interface methods, inherent and trait `impl`. |
 | S2 | Function and method bodies | Locals, explicit type hints, assignments, compound assignments, returns, nested blocks, `if`, `match`, loops, lambdas, closures, callbacks. |
 | S3 | Type positions | Primitive hints, builtin containers, `Option`/`Result`, source types, schema host types, traits, missing type facts, dynamic `Any` and unknown. |
 | S4 | Members and constructors | Source/schema fields, methods, trait methods, enum variants, tuple/record/unit variants, record constructors, shorthand fields, field labels, member writes. |
@@ -142,7 +142,7 @@ Use a small two or three file workspace as the minimum fixture shape:
 ```text
 scripts/rewards.vela
   pub const BASE_REWARD = 4
-  pub global reward_scale = 2
+  pub extern state reward_scale: i64;
   pub struct RewardConfig { item: String, count: i64 }
   pub enum RewardOutcome { Granted { item: String, count: i64 }, Skipped }
   pub fn reward_bonus(amount, scale = reward_scale) { ... }
@@ -163,13 +163,13 @@ project's supported import syntax.
 | ID | Cross-file case | Required proof |
 |---|---|---|
 | W0 | Workspace setup | Configured root, disk snapshots, open overlay in the importing file, open overlay in the defining file, scratch fallback, and deleted/renamed imported file behavior. |
-| W1 | Cross-file navigation | `definition`, `declaration`, and `typeDefinition` from imported function calls, const/global uses, type hints, constructors, enum variants, member access through imported source types, and schema facts with source spans. |
-| W2 | Cross-file hover/completion/signature | Imported globals, functions, types, variants, fields, methods, and defaulted parameters surface the defining-file facts and docs. |
-| W3 | Cross-file references/highlights | References include defining file plus use files for functions, const/global symbols, source types, field/member uses, enum variants, and imported aliases where supported. Same-document highlight remains local while references spans the workspace. |
-| W4 | Cross-file rename | Rename of private source-owned functions, const/global symbols, source types, fields, methods, and variants edits defining and use files; public or schema-only renames report the right rejection or risk metadata. |
+| W1 | Cross-file navigation | `definition`, `declaration`, and `typeDefinition` from imported function calls, const/state uses, type hints, constructors, enum variants, member access through imported source types, and schema facts with source spans. |
+| W2 | Cross-file hover/completion/signature | Imported state, functions, types, variants, fields, methods, and defaulted parameters surface the defining-file facts and docs. |
+| W3 | Cross-file references/highlights | References include defining file plus use files for functions, const/state symbols, source types, field/member uses, enum variants, and imported aliases where supported. Same-document highlight remains local while references spans the workspace. |
+| W4 | Cross-file rename | Rename of private source-owned functions, const/state symbols, source types, fields, methods, and variants edits defining and use files; state rename reports remove-plus-add ABI risk, while schema-only renames report the right rejection or risk metadata. |
 | W5 | Cross-file call hierarchy | Incoming and outgoing calls cross module boundaries for imported source functions and typed source methods. Dynamic or unresolved calls are not guessed. |
 | W6 | Cross-file diagnostics and actions | Missing import, broken import after delete/rename, unused import, typo candidate from another module, and safe missing-import code action all use the workspace graph. |
-| W7 | Cross-file semantic tokens and inlay hints | Imported function calls, const/global uses, type hints, constructors, enum variants, and member uses keep source/schema/builtin provenance and type facts across files. |
+| W7 | Cross-file semantic tokens and inlay hints | Imported function calls, const/state uses, type hints, constructors, enum variants, and member uses keep source/schema/builtin provenance and type facts across files. |
 | W8 | Cross-file incrementality | Editing a function body in the defining file does not rebuild unrelated modules, but declaration/import fingerprint changes invalidate dependents and refresh open-file results. |
 
 Protocol fixtures should name the cross-file case explicitly, for example
@@ -195,15 +195,15 @@ in `vela_lsp_server`.
 | `textDocument/didClose` | `textDocumentSync.openClose` | S0, S11 | Closing removes overlay or restores disk snapshot, clears or refreshes diagnostics, and restores disk-backed query behavior for features such as definition, completion, hover, type definition, semantic tokens, and inlay hints. | If unsupported, stop advertising `openClose`; otherwise add a protocol fixture. |
 | `textDocument/didSave` | `textDocumentSync.save` is false | S0 | Capability pins `save: false`; save notifications are no-response no-ops. | Save notifications are not required for correctness while `save` is false. |
 | `textDocument/publishDiagnostics` | Server notification | S0, S1, S3, S8, S9, S11 | Parser, HIR, analysis, schema, config, missing import, unused import, and structured repair metadata project to LSP diagnostics. | One-file syntax errors do not block unrelated modules; stale schema degrades to `Any`; deleted files clear diagnostics. |
-| `textDocument/completion` | `completionProvider` | S1-S11, S13, S14 | Item, statement, expression, type, member, record field, map key, module path, call argument, lambda parameter, schema, stdlib, builtin, and cross-file imported declaration completions. Must prove structured authoring contexts before item rendering, then include empty-prefix typed receiver `.` completions for source/schema/builtin methods and fields, struct-field declaration body contexts, readable label/detail separation for source and schema types, and `for in`/`match` snippets. | Dynamic receivers suppress member guesses; unknown constructors suppress record fields; struct declaration bodies suppress global/value/constructor fallback; labels and insert text must not contain unrelated fully qualified path suffixes; stale/cancelled queries discard; malformed cursor contexts recover. |
+| `textDocument/completion` | `completionProvider` | S1-S11, S13, S14 | Item, statement, expression, type, member, record field, map key, module path, call argument, lambda parameter, schema, stdlib, builtin, and cross-file imported declaration completions. Must prove structured authoring contexts before item rendering, then include empty-prefix typed receiver `.` completions for source/schema/builtin methods and fields, struct-field declaration body contexts, readable label/detail separation for source and schema types, and `for in`/`match` snippets. | Dynamic receivers suppress member guesses; unknown constructors suppress record fields; struct declaration bodies suppress value/constructor fallback; labels and insert text must not contain unrelated fully qualified path suffixes; stale/cancelled queries discard; malformed cursor contexts recover. |
 | `completionItem/resolve` | Completion resolve | S3, S4, S5, S10 | Lazy docs/details for schema, stdlib, and source-backed items where supported; items without lazy payloads pass through unchanged. | Unknown resolve payloads return an invalid-request error without panics; initial completion list stays lightweight. |
 | `textDocument/signatureHelp` | `signatureHelpProvider` | S3, S5, S8-S10 | Source functions, source methods, schema functions/methods, trait methods, stdlib functions/methods, active parameter, named/default args, and imported function/method calls. | Unknown calls and dynamic `Any` receiver calls return protocol JSON null; incomplete calls resolve only when target facts exist; stale schema. |
 | `textDocument/hover` | `hoverProvider` | S1-S10 | Locals, params, declarations, fields, methods, variants, modules, type hints, schema facts, stdlib facts, docs, effects, permissions, and imported source facts. | Unresolved names and dynamic `Any` member targets return protocol JSON null; missing-schema type hints degrade to `Any`; schema facts without source spans and parser recovery remain explicit audits. |
-| `textDocument/definition` | `definitionProvider` | S1, S3-S5, S8-S10 | Local bindings, source declarations, cross-file imported declarations, imported const/global uses, imported function calls, source fields/methods/variants, schema facts with source spans. | Schema facts without source spans return no false enclosing declaration; dynamic/unresolved targets return no location. |
+| `textDocument/definition` | `definitionProvider` | S1, S3-S5, S8-S10 | Local bindings, source declarations, cross-file imported declarations, imported const/state uses, imported function calls, source fields/methods/variants, schema facts with source spans. | Schema facts without source spans return no false enclosing declaration; dynamic/unresolved targets return no location. |
 | `textDocument/declaration` | `declarationProvider` | S1, S3-S5, S8-S10 | Source declaration targets, including cross-file imported declarations, where declaration and definition are the same or explicitly distinct. | Must not silently alias unrelated definition behavior for members or type facts; dynamic/unresolved targets return no location. |
 | `textDocument/typeDefinition` | `typeDefinitionProvider` | S1, S3, S4, S8, S10 | Variables, parameters, and member expressions with source/schema type facts jump to source/schema type declarations when source-backed, including imported source types. | Field values such as `cell.value` must not jump to the enclosing function by fallback; builtin/dynamic/unknown types use an explicit protocol JSON null policy. |
 | `textDocument/implementation` | Not advertised | S1, S3, S4, S10 | No positive coverage until trait/impl implementation semantics are specified. | Capability remains absent or protocol JSON null and direct requests return method-not-found or an explicit unsupported response. |
-| `textDocument/references` | `referencesProvider` | S1-S6, S8-S11 | Locals, parameters, source declarations, imports, functions, const/global uses, fields, methods, variants, schema-backed source spans, read/write classification, and cross-file uses. | Shadowed locals stay separate; schema-only, builtin, dynamic, unresolved, and missing-schema targets are classified or rejected consistently. |
+| `textDocument/references` | `referencesProvider` | S1-S6, S8-S11 | Locals, parameters, source declarations, imports, functions, const/state uses, fields, methods, variants, schema-backed source spans, read/write classification, and cross-file uses. | Shadowed locals stay separate; schema-only, builtin, dynamic, unresolved, and missing-schema targets are classified or rejected consistently. |
 | `textDocument/documentHighlight` | `documentHighlightProvider` | S1-S6, S8-S10 | Same-document highlights for locals, params, functions, fields, methods, variants, schema member calls, read/write/text kind. | Parser recovery, dynamic members, unresolved names, shadowing. |
 | `textDocument/prepareRename` | `renameProvider.prepareProvider` | S1-S6, S8-S10 | Editable ranges for source-owned locals, private declarations, source members, variants, and source-backed schema spans where allowed. | Reject keywords, literals, schema-only host facts, builtin facts, dynamic `Any`, unresolved names, public ABI risk without metadata, collisions. |
 | `textDocument/rename` | `renameProvider` | S1-S6, S8-S11 | Versioned workspace edits for all references of an editable source-owned symbol across defining and importing files, conflict checks, hot-reload risk metadata. | Overlapping edits, stale versions, visibility conflicts, name collisions, schema-only/builtin/dynamic/unresolved targets. |
@@ -282,11 +282,11 @@ These were the first places compared against the matrix before acceptance:
    schema types without source spans, imported source type aliases used by
    locals and source fields, imported source function calls whose return type
    is source-owned, imported source method calls whose return type is
-   source-owned, imported const/global values whose types are source-owned,
+   source-owned, imported const/state values whose types are source-owned,
    imported source types nested inside shallow and deep builtin container type
    hints, member access through imported source types, imported enum variant
    constructors whose owner type is source-owned, and `definition` for
-   imported const/global value uses; the remaining audit is broader cross-file
+   imported const/state value uses; the remaining audit is broader cross-file
    type-definition coverage across W1.
 3. `textDocument/implementation` remains intentionally unadvertised until
    trait/impl implementation semantics are specified; lifecycle coverage now
@@ -309,7 +309,7 @@ These were the first places compared against the matrix before acceptance:
    source functions returning `Any` used as receivers, while preserving
    parameter hovers under parser recovery, plus
    `completion` empty results for source and schema functions returning `Any`
-   used as member receivers without falling back to globals, plus
+   used as member receivers without falling back to unrelated values, plus
    `definition`, `declaration`, and `typeDefinition` protocol JSON null results for unknown
    source members, dynamic receiver members, and source functions returning
    `Any` used as receivers where applicable, plus `references` and
@@ -338,10 +338,10 @@ These were the first places compared against the matrix before acceptance:
    service/protocol range filtering for requested semantic-token spans plus
    semantic tokens for imported source function-return member calls and
    imported source enum variant constructors/patterns, plus service/protocol
-   cross-file references for imported const/global value uses, cross-file
-   hover for imported function/const/global use sites, and cross-file
+   cross-file references for imported const/state value uses, cross-file
+   hover for imported function/const/state use sites, and cross-file
    signature help and inlay parameter-name hints for imported source functions
-   plus inlay local type hints from imported const/global value facts plus
+   plus inlay local type hints from imported const/state value facts plus
    imported enum variant payload-name hints, plus protocol incrementality
    coverage proving a defining-file function-body `didChange` reparses only
    the edited document without rebuilding project or HIR indexes.

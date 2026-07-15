@@ -4,8 +4,11 @@ Run these commands before committing normal implementation checkpoints:
 
 ```bash
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace --all-features --no-fail-fast
+cargo clippy --manifest-path examples/Cargo.toml --all-targets --all-features -- -D warnings
+cargo test --manifest-path examples/Cargo.toml --all-features --no-fail-fast
+cargo doc --workspace --all-features --no-deps
 ```
 
 Milestones after M6 should also validate at least one runnable game server demo
@@ -45,4 +48,15 @@ target is compile-checkable without installing `cargo-fuzz`:
 cargo bench --workspace
 cargo check --manifest-path fuzz/Cargo.toml --bins
 cargo fuzz run parser
+```
+
+When editor or documentation surfaces change, also run:
+
+```bash
+node editors/vscode/scripts/validate-package.js
+(cd editors/tree-sitter-vela && npx --yes tree-sitter-cli@0.25.10 generate)
+git diff --exit-code -- editors/tree-sitter-vela/src
+npm --prefix site run test:syntax
+npm --prefix site run test:docs
+npm --prefix site run build
 ```

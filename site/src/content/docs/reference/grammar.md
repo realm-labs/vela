@@ -9,7 +9,7 @@ current language surface; it is not a generated parser listing.
 ## Source Files
 
 Vela source files use `.vela`. A source file may contain imports, attributes,
-constants, globals, functions, structs, enums, traits, and impl blocks.
+constants, VM/extern state declarations, functions, structs, enums, traits, and impl blocks.
 
 ```vela
 use game::reward as reward

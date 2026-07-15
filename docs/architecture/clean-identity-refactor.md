@@ -60,7 +60,7 @@ The runtime image/state split in
 [runtime-image-state-refactor-plan.md](../archive/runtime-image-state-refactor-plan.md)
 is supporting context for this refactor. `ProgramVersion` and runtime images
 should own linked code, debug tables, runtime handle layouts, profile metadata,
-and cache invalidation metadata. Per-runtime mutable state such as globals,
+and cache invalidation metadata. Per-runtime mutable state such as VM/extern state,
 script heap roots, retained runtime values, and inline caches remains
 runtime-local.
 

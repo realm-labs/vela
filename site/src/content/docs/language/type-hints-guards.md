@@ -10,7 +10,7 @@ value from one type to another.
 
 ## Hint Locations
 
-Hints can appear on parameters, return values, locals, globals, struct fields,
+Hints can appear on parameters, return values, locals, state, struct fields,
 enum fields, and lambda parameters. Missing hints leave the value dynamic.
 `Any` means the value is intentionally dynamic.
 

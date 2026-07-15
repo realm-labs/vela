@@ -38,6 +38,7 @@ const examplesJson = JSON.stringify(PLAYGROUND_EXAMPLES);
 
 <script>
   import { createHighlighter } from 'shiki';
+  import type { LanguageRegistration } from '@shikijs/types';
   import githubDark from 'shiki/dist/themes/github-dark.mjs';
   import velaGrammar from '../syntax/vela.tmLanguage.json';
 
@@ -64,7 +65,7 @@ const examplesJson = JSON.stringify(PLAYGROUND_EXAMPLES);
   function getVelaHighlighter() {
     highlighterPromise ??= createHighlighter({
       themes: [githubDark],
-      langs: [velaGrammar],
+      langs: [velaGrammar as LanguageRegistration],
     });
     return highlighterPromise;
   }

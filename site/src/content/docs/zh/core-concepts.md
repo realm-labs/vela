@@ -26,7 +26,7 @@ host 类型注册、native 函数、标准库 native、capability profile、反�
 数，但它本身还没有在运行。
 
 `Runtime` 是真正执行 Program 的地方。它保存某个 active program version 的
-可变 VM 状态：脚本堆、global、inline cache、执行预算和热更新状态。调用通过
+可变 VM 状态：脚本堆、VM/extern state、inline cache、执行预算和热更新状态。调用通过
 函数名或缓存的 entry handle 进入 Runtime，参数放在 `CallArgs` 中，执行由
 `CallOptions` 约束，例如指令预算、内存预算和调用深度。
 

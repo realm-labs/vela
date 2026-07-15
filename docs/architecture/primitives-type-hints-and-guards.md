@@ -133,7 +133,7 @@ f(x)     // OK if x is dynamic; checked by a runtime guard
 ```
 
 Contract locations include function parameters and returns, lambda parameters,
-typed `let`, typed `global` binding insertion/update at embedding boundaries,
+typed `let`, VM-state initialization/update, extern-state binding at embedding boundaries,
 script record and enum fields, later writes to typed fields, host/native
 function parameters and returns, and typed serde/C API decode boundaries.
 
@@ -245,7 +245,7 @@ future inlined proven call     -> unchecked body
 
 Return guards execute before returning from functions with return contracts.
 Local and field guards use explicit guard bytecode or equivalent linked
-metadata when the compiler cannot statically prove the contract. Typed global
+metadata when the compiler cannot statically prove the contract. Typed state
 declarations are bound by the host/runtime rather than assigned directly in
 script source, so their insertion/update contracts must be enforced at embedding
 boundaries.

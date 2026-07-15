@@ -845,7 +845,7 @@ current synchronous `ScriptHostObject::call_resolved_host` return type. Ordinary
 synchronous direct/adapter methods may retain a synchronous fast path as long as
 they enter the same call dispatch and budget contract.
 
-Runtime-owned host globals are not an accidental exception. Their boxed host
+Runtime-owned extern-state bindings are not an accidental exception. Their boxed host
 objects must either participate in the same safe extraction/restoration
 protocol or reject a typed async lease explicitly. An opaque external adapter
 may opt in only by producing an owned prepared operation/lease that does not
@@ -876,7 +876,7 @@ accepts the same target abstraction; it does not grow method/provider variants.
 The context owns no new `CallOptions`. Reentry inherits:
 
 - current pinned `LinkedArtifact`/ProgramVersion;
-- script heap and globals;
+- script heap and VM/extern state;
 - HostAccess scopes and runtime-local sidecars;
 - capabilities/reflection policy;
 - remaining execution and memory budgets;
@@ -1034,7 +1034,7 @@ generation pinning is supported; suspended-frame migration is not.
   session and budget are available.
 - GC may run before suspension, after resume, or during nested Vela execution,
   while honoring all suspended-parent roots.
-- The initial Runtime/global root snapshot is insufficient for values created
+- The initial Runtime/state root snapshot is insufficient for values created
   after the outer session starts. A `VelaValue` returned through
   `NativeCallContext` reentry must enter a VM-owned dynamic root set before its
   child frame roots are released or the value is exposed to Rust.
@@ -1193,7 +1193,7 @@ resumable foundation before adding real host suspension.
 - [x] Prove and seal the single registration/call future aliases plus direct
   CallArgs/adapter auto-trait erasure; add positive and compile-fail tests and no
   Engine/Runtime mode generic.
-- [x] Consume CallArgs and compose Runtime host globals plus the fallback
+- [x] Consume CallArgs and compose Runtime extern state plus the fallback
   adapter behind one `ExecutionHost` owner; delete the borrowing `CallArgsAdapter`/
   `GlobalStoreAdapter` execution shape and allocate direct HostRef identities
   across the whole outer execution.
@@ -1271,7 +1271,7 @@ Vela calls.
 - [x] Implement atomic shared/exclusive lease validation, extraction,
   restoration, busy errors, nested scope invalidation, and adapter fail-closed
   behavior.
-- [x] Integrate Runtime-owned host globals with safe typed lease extraction or
+- [x] Integrate Runtime-owned extern state with safe typed lease extraction or
   an explicit unsupported result; do not leave them on an accidental borrowing
   adapter path.
 - [x] Extend `#[script_methods]` to generate async direct-receiver and typed host
@@ -1355,7 +1355,7 @@ Primary ownership targets:
 
 | Work | Current files to inspect | Target ownership |
 |---|---|---|
-| dynamic roots | `vela_vm/src/heap_execution.rs`, `vela_vm/src/linked_execution.rs`, `vela_engine/src/runtime/{mod,reentry,script_globals,call_future}.rs` | VM active-execution root admission plus Runtime cross-call handles |
+| dynamic roots | `vela_vm/src/heap_execution.rs`, `vela_vm/src/linked_execution.rs`, `vela_engine/src/runtime/{mod,reentry,vm_states,extern_state_bindings,call_future}.rs` | VM active-execution root admission plus Runtime cross-call handles |
 | lease state | `vela_engine/src/runtime/{call_args,execution_host}.rs`, `vela_host/src/lease.rs`, `vela_engine/src/host_lease.rs`, `vela_macros/src/script_methods/` | one capability-aware direct-host slot/lease protocol |
 | reflection field | `vela_reflect/src/member_records.rs`, `vela_reflect/src/modules/records.rs`, reflection/runtime integration tests | one script-visible `is_async` spelling |
 | VM split | `vela_vm/src/linked_execution.rs`, `vela_vm/src/lib.rs`, linked execution tests | focused session, async-resume, and reentry modules around one dispatch loop |

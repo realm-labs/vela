@@ -56,7 +56,7 @@ fn main() {
 }
 ```
 
-The `script_global` example shows runtime-managed globals declared in Vela and initialized or updated from Rust.
+The `script_state` example shows per-Runtime VM state initialized in Vela and updated through state-specific Rust APIs.
 
 ## Exercise Boundaries
 

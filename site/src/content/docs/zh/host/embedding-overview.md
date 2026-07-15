@@ -28,7 +28,7 @@ let result = runtime.call(
 )?;
 ```
 
-`Engine` 是共享定义面。`Runtime` 是可变执行状态：heap、globals、
+`Engine` 是共享定义面。`Runtime` 是可变执行状态：heap、VM/extern state、
 inline caches 和 hot-reload image。
 
 ## 宿主边界

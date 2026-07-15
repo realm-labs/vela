@@ -69,6 +69,26 @@ pub fn on_invoice_paid(ctx, account, invoice) {
 }
 ```
 
+### Persistent State Declarations
+
+Module-level mutable state is explicit about ownership:
+
+```vela
+state attempts: i64 = 0;
+pub extern state account: Account;
+```
+
+`state` is contextual at module-item head and remains a legal identifier in
+parameters, locals, fields, and expressions. It requires an explicit type and
+initializer and creates one VM-owned cell per Runtime. `extern` is reserved;
+`extern state` requires an explicit type, forbids an initializer, and resolves
+to a host binding. Vela may mutate fields below an extern root through
+HostAccess but cannot assign a replacement root.
+
+State identity is derived from package, module, and declaration name. Public
+visibility controls resolution/export, not storage ownership. A declaration
+rename therefore changes identity and hot reload treats it as remove plus add.
+
 ### Async Functions And Await
 
 Module functions and script methods may be declared with `async fn`. Await is

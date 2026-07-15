@@ -416,12 +416,12 @@ terminators with explicit passed/slow CFG successors, and `Option`/`Result`
 propagation uses ordinary variant tests, CFG edges, extraction, and return
 rather than a hidden statement side exit.
 Every contract guard retains a backend-neutral source context: logical
-parameter index, return, local, global, or field plus the clean source/debug
+parameter index, return, local, state, or field plus the clean source/debug
 name. A bytecode backend may encode that context, but must not reconstruct it
 from a guard key, HIR, or a formatted diagnostic description.
 
 Each MIR generation owns a canonical target table for function/method/type/
-variant/field/global IDs, canonical link symbols, debug names, host runtime IDs,
+variant/field/state IDs, canonical link symbols, debug names, host runtime IDs,
 logical layouts, and signatures. Per-call source/debug spellings remain on the
 call operation. A backend must use that owned table rather than traverse HIR,
 analysis, or a live registry. Every `MirFunction` also owns its code symbol,
@@ -475,8 +475,9 @@ do not deliver argument/default values. Set construction records its one
 already-evaluated array source and one visible allocation boundary;
 `set::from_array(values = source)` is canonicalized to that same single logical
 operand, while missing or extra operands are source diagnostics before MIR.
-MIR v1 does not contain targetless index removal, script-global writes, or
-speculative bitwise/shift operations that have no Heavy-HIR/bytecode behavior.
+MIR does not contain targetless index removal or speculative bitwise/shift
+operations that have no Heavy-HIR/bytecode behavior. VM-state reads and writes
+are explicit stable-identity operations.
 
 Heavy HIR body ownership uses stable `HirBodyId` records with explicit owners:
 declarations, trait default methods, impl methods, lambdas, and parameter
@@ -484,9 +485,8 @@ defaults. Nested executable regions such as lambdas and parameter defaults are
 separate bodies with source origins and parent links, not syntax payloads hidden
 inside downstream compiler or tooling callers. Lexical scope facts belong in
 the owning body as `HirScopeId` records with parent/child links and owned local
-IDs. Const initializer expressions use the same body model. Script global
-declarations remain ABI metadata and do not introduce executable initializer
-bodies unless the language later adds such a form.
+IDs. Const and VM-state initializer expressions use the same body model.
+Extern state has no initializer body.
 
 ### Native-First LSP Boundary
 
@@ -618,7 +618,7 @@ LSP authoring UX should align with rust-analyzer where Vela syntax overlaps.
 This is a user-facing behavior contract, not a semantic import from Rust:
 formatter output keeps Rust-like type argument spacing such as
 `Map<String, i64>`; typed receiver `.` completion uses known source, schema,
-trait, and builtin method facts without global fallback; completion labels stay
+trait, and builtin method facts without unrelated workspace fallback; completion labels stay
 short and put owner/module paths in detail fields; declaration bodies such as
 `struct Player { }` use declaration-specific contexts; and statement
 completion provides Rust-like snippets such as `for in` and `match`. Rust-only
@@ -645,7 +645,7 @@ and nested `Option`/`Result` hints.
 Semantic highlighting uses an editor-neutral Vela taxonomy in
 `vela_language_service` with standard LSP names where they exist and explicit
 fallback names for custom token types. Custom tokens such as `builtinType`,
-`const`, `global`, `boolean`, operator families, punctuation families, and
+`const`, `state`, `boolean`, operator families, punctuation families, and
 unresolved references keep their Vela-specific names in the primary legend.
 The pre-hard-switch `null` token classification is removed when source-level
 `null` is deleted. `vela_lsp_server` owns client-specific fallback projection:
@@ -870,9 +870,9 @@ id when the active version changes.
 With the `serde` feature enabled, Rust structs and enums that implement serde
 traits can cross the ordinary script-owned value boundary explicitly through
 `to_owned_value`, `from_owned_value`, `CallArgs::with_serde_value`, and
-`Runtime::insert_global`. This path serializes Rust data into Vela-owned
+`Runtime::set_state`. This path serializes Rust data into Vela-owned
 records, enums, arrays, maps, sets, and scalars. It is a
-snapshot/data-transfer path for messages, configs, globals, and return values,
+snapshot/data-transfer path for messages, configs, VM state, and return values,
 not a host-state binding: script mutation of the value does not write back to
 the original Rust object unless Rust deserializes a returned value and applies
 it itself. Host state that must be mutated in place still uses `HostRef`,
@@ -881,8 +881,8 @@ it itself. Host state that must be mutated in place still uses `HostRef`,
 `Runtime` and `VelaValue` are `Send` so hosts can move a runtime and retained
 script values into worker or actor threads. They are not a concurrent execution
 model: script calls still require mutable runtime access, and one runtime must
-not be called concurrently. Persistent host globals stored inside a runtime
-therefore require `Send`; call-scoped direct host references remain local to
+not be called concurrently. Persistent extern-state objects stored inside a
+runtime therefore require `Send`; call-scoped direct host references remain local to
 that invocation.
 
 The compiler may replace a multi-instruction source-level lowering with one
@@ -956,32 +956,13 @@ over one sealed target contract and `CallArgs -> VelaValue` boundary. Fallback
 adapters are carried by `CallArgs` into the execution-owned host; raw and
 adapter-specific execution entrypoints remain internal or are removed.
 
-Mutable cross-call script globals are host-managed declarations, not module
-`let` or `static` initializers. Scripts declare globals as ordinary module
-items, for example `pub global state: ServerState`; the declaration contributes
-ABI/name/type metadata and Rust inserts a runtime instance under the fully
-qualified name such as `game::state::state`. Rust-defined globals load as
-persistent host-object roots and then use normal `HostRef`, `HostPath`,
-`ScriptStateAdapter`, and write-through `HostAccess` semantics. Vela-defined
-script-value globals use the same declaration surface but are stored as
-persistent VM heap roots owned by `Runtime`; Rust constructs, reads, replaces,
-or updates them through one short embedding API: `insert_global` accepts
-`OwnedValue`, serde values passed by reference, and `VelaValue` handles from
-the same runtime. Rust-side construction supports explicit constructors such as
-`OwnedValue::record`, convenience macros such as `owned_record!`, and serde
-struct/enum conversion. `VelaValue` insertion attaches the runtime-managed value
-as a global root without first materializing a detached `OwnedValue`. The other
-public runtime methods remain `set_global`, `global`, `global_as`, and
-`update_global`; host-object globals keep their explicit host-specific API.
-The VM receives script globals as a concrete runtime value map rather than an
-extension trait, because there is only one runtime-owned script global store.
-Declared globals compile to `GlobalSlot` operands for the runtime hot path;
-the fully qualified global name remains in bytecode for diagnostics and
-fallback. Runtime-owned script globals and Rust-owned host globals both maintain
-slot tables, so a resolved global read avoids string map lookup on the common
-path.
-There is no special `global.vela` file, top-level mutable initialization, or
-script-owned Rust state under GC.
+Persistent cross-call state follows the Explicit Runtime State Ownership
+decision above. VM state is initialized transactionally and stored as a
+Runtime-owned GC root addressed by stable `StateId`; extern state is a
+type-checked host binding addressed through `HostRef` and HostAccess. Dense
+`StateSlot` values are generation-local execution operands. The public Rust
+surface is state-specific (`state`, `state_as`, `set_state`, `update_state`,
+builder binding, replacement, and reload staging), with no dual-store fallback.
 
 There is no default end-of-call apply or automatic rollback. If a script writes
 a host field and later traps, the earlier Rust-side mutation remains. PathProxy
@@ -1270,7 +1251,7 @@ instructions reference them by `DebugNameId` only.
 `vela_bytecode::linker` converts `UnlinkedProgram` values into
 `LinkedProgram` values. Native functions, methods, script functions, types,
 and variants are stored in linked side tables owned by the linked program, and
-instructions carry only dense handles, slots, host target plan IDs, or global
+instructions carry only dense handles, slots, host target plan IDs, or state
 slots. Name-only method and record/enum field bytecode is rejected by
 `LinkError` instead of being preserved as runtime fallback dispatch.
 
@@ -1627,7 +1608,7 @@ artifact. The linker is the only authority for flattened executable handles,
 ProgramImage indexes, generation-global cache-site IDs, and immutable
 cache/profile layouts. RuntimeState owns generation-keyed mutable sidecars for
 cache entries, profile counters, hotness, and active tier selection, plus heap,
-roots, and globals. Sidecars never index a different generation's layout and
+roots, and VM/extern state. Sidecars never index a different generation's layout and
 are pruned through weak generation ownership at safe points.
 
 Dense executable identities such as `ScriptFunctionHandle`, `CacheSiteId`, and
@@ -1961,12 +1942,13 @@ Batch C direct async methods acquire Rust-only scoped shared/exclusive leases
 for `&self`/`&mut self` and typed `&T`/`&mut T` host parameters. Acquisition is
 atomic in stable parameter order; direct bindings are restored by RAII across
 success, error, cancellation, and panic unwind. Opaque adapters and Runtime
-globals fail closed unless they provide an explicit safe typed lease contract.
+extern-state bindings fail closed unless they provide an explicit safe typed
+lease contract.
 Lease types never enter Vela values, reflection, or GC state.
 
 NativeCallContext reentry uses the same call-target abstraction and pushes a
 child marker/frame on the active session. It inherits generation, heap,
-globals, host access, sidecars, budgets, capabilities, and cancellation state.
+VM/extern state, host access, sidecars, budgets, capabilities, and cancellation state.
 Nested binding scopes share one monotonic HostRef allocator; child refs expire
 with the scope. An exclusive receiver may be reborrowed explicitly into child
 CallArgs, while access through its raw parent HostRef remains busy. A caught

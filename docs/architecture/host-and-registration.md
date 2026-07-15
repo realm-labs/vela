@@ -160,7 +160,7 @@ or maps.
 pub trait ScriptStateAdapter {
     fn host_schema_epoch(&self) -> HostSchemaEpoch;
 
-    fn global_ref(&self, global: GlobalBinding<'_>) -> HostResult<HostRef>;
+    fn extern_state_ref(&self, state: ExternStateBinding<'_>) -> HostResult<HostRef>;
 
     fn resolve_host_access(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess>;
 
@@ -202,51 +202,44 @@ network-replicated state
 test mock state
 ```
 
-### Runtime Globals
+### Runtime State
 
-Global state is declared as a module item and bound by the embedding host:
+Persistent cross-call state has two explicit declaration forms:
 
 ```vela
-pub global state: ServerState
+state cache: Cache = Cache { hits: 0 };
+pub extern state server: ServerState;
 ```
 
-The declaration is ABI metadata. It does not allocate state, run an
-initializer, or create top-level side effects. Rust inserts a matching runtime
-global by its fully qualified declaration name, such as
-`game::state::state`, before script calls that access it.
+`state` creates one VM-owned cell per `Runtime`. Its explicit initializer runs
+once during construction, or when that state is first added by hot reload.
+The restricted initializer may construct script-managed values but cannot read
+state or extern state and cannot call native, host, provider, reflection,
+capability, IO, event, time, random, or async surfaces. Construction publishes
+no cells unless every initializer succeeds. Rust may inspect or replace a VM
+cell through `state`, `state_as`, `set_state`, and `update_state`; values remain
+script-GC roots owned by that Runtime.
 
-Rust-defined globals are represented as persistent host objects in the
-runtime's global store. Loading a Rust-defined global produces a `HostRef`
-root, and script field reads, writes, method calls, and keyed paths then use
-the same `HostTargetPlan` and write-through `HostAccess` execution path as
-call-boundary host handles. Because a `Runtime` may be moved to a worker thread, persistent host
-global objects must be `Send`. Direct call-boundary bindings are scoped to the
-call rather than persistent, but `with_host_ref` requires `Sync` and
-`with_host_mut` requires `Send + Sync`: async shared leases may coexist and
-the scoped Runtime future may move between executor threads.
+`extern state` declares a host-owned root and never allocates a script value.
+The host binds it with `RuntimeBuilder::bind_extern_state` before construction,
+or replaces/stages a binding through `replace_extern_state` and
+`stage_extern_state`. Reads produce a `HostRef`; nested reads, writes, methods,
+and keyed paths use `HostPath`, `PathProxy`, and write-through `HostAccess`.
+Vela cannot replace the extern root, and Rust state never enters the script GC.
+Persistent bindings must be `Send` because a Runtime may move between worker
+threads.
 
-Vela-defined script-value globals use the same declaration surface but are
-stored in the runtime's persistent script heap. Rust inserts or replaces them
-through the single `Runtime::insert_global` / `set_global` API, which accepts
-`OwnedValue`, serde values passed by reference when the `serde` feature is
-enabled, and `VelaValue` handles from the same runtime. Scripts see ordinary
-script records, arrays, maps, sets, enums, and scalars. These values are
-VM-managed script objects, not Rust host state and not `HostRef` roots. Runtime
-global roots are retained across calls and included in GC roots during calls.
-Missing runtime instances are runtime errors.
+Both forms use a stable package/module/name-derived `StateId`; dense
+`StateSlot` operands belong to one executable generation. Exact-compatible
+reload preserves existing VM cells and extern bindings without rerunning an
+initializer. Storage or type changes reject, rename is remove plus add, and an
+old generation retains removed cells until its final frame, closure, value, or
+suspended execution owner is gone.
 
-For non-global script values returned from calls, `Runtime::call` returns a
-runtime-managed `VelaValue`. That value can be passed back to later calls on
-the same runtime without `OwnedValue` materialization; explicit
-`value_to_owned` creates a detached Rust boundary copy when needed. With the
-`serde` feature enabled, `from_value` and `global_as` deserialize
-runtime-managed script values directly from the runtime heap without first
-constructing an `OwnedValue`.
-
-Globals do not reintroduce module-level `let` or mutable static
-initialization. A script function may construct a value and return it to Rust;
-Rust can then insert that returned `VelaValue` or materialized `OwnedValue` as
-the runtime instance for a declared global.
+For ordinary returned script values, `Runtime::call` yields a runtime-managed
+`VelaValue`. It can be passed back to the same runtime without materialization;
+`value_to_owned` creates a detached boundary copy, and `from_value` performs
+typed deserialization when serde support is enabled.
 
 Direct call-boundary objects implement the same method shape through
 `ScriptHostObject::call_resolved_host(ResolvedHostAccess, HostTargetInstance,
@@ -410,7 +403,7 @@ instead of registering multiple signatures under the same script-visible name.
 There are three registration shapes:
 
 ```text
-global function       log("message")
+module function       log("message")
 module function       math::clamp(value, min, max)
 host type method      account.ledger.add(code, amount)
 ```

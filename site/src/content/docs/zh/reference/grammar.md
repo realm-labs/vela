@@ -9,7 +9,7 @@ description: "当前 Vela 源码语法的稳定概要。"
 ## 源文件
 
 Vela 源文件使用 `.vela`。一个源文件可以包含 imports、attributes、consts、
-globals、functions、structs、enums、traits 和 impl blocks。
+VM/extern state declarations、functions、structs、enums、traits 和 impl blocks。
 
 ```vela
 use game::reward as reward

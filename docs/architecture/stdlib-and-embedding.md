@@ -398,7 +398,7 @@ already manage object identity through a
 state adapter can pass an existing low-level handle with
 `CallArgs::with_host_handle("name", host_ref)` and attach the adapter to the
 same argument owner with `CallArgs::with_fallback_adapter(adapter)`. Runtime
-consumes the arguments and composes direct bindings, Runtime globals, and the
+consumes the arguments and composes direct bindings, Runtime extern state, and the
 fallback adapter behind one execution-owned `ExecutionHost`.
 
 `call` returns a runtime-managed `VelaValue`. Hosts can pass it back to later
@@ -494,20 +494,20 @@ a snapshot boundary: items are converted to VM-owned values, `HostRef`, or
 handles are deferred until lifetime, invalidation, and hot-reload diagnostics
 are explicit.
 
-The same owned-value conversion model is used for VM-managed globals through a
-single API:
+The same owned-value conversion model is used when Rust explicitly replaces a
+VM state cell:
 
 ```rust
-runtime.insert_global("main::state", owned_record!("State", {
+runtime.set_state("main::state", owned_record!("State", {
     "level" => 1,
 }))?;
-runtime.insert_global("main::state", &serde_state)?;
-runtime.insert_global("main::state", runtime_value)?;
+runtime.set_state("main::state", &serde_state)?;
+runtime.set_state("main::state", runtime_value)?;
 ```
 
 `OwnedValue` is inserted directly, serde values are passed by reference and
 serialized into script-owned records/enums, and a `VelaValue` from the same
-runtime is attached as a global root without first materializing an
+runtime is attached as a state root without first materializing an
 `OwnedValue`.
 
 Returned script aggregates stay under VM management by default and can be
@@ -529,8 +529,8 @@ passed back to calls on that same runtime; Rust calls `value_to_owned` only
 when it needs an owned, heap-detached value. With the `serde` feature enabled,
 `Runtime::from_value` can deserialize a `VelaValue` directly from the runtime
 heap into a Rust struct, enum, or scalar without first materializing an
-`OwnedValue`. VM-managed globals have the same typed read surface through
-`Runtime::global_as`.
+`OwnedValue`. VM-managed state has the same typed read surface through
+`Runtime::state_as`.
 
 Rust can also call script methods registered on the runtime value's script
 type. Methods are still type-level script methods, not per-value monkey

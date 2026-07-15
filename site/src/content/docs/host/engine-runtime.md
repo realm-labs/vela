@@ -34,7 +34,7 @@ available before scripts run.
 ## Runtime
 
 `Runtime` owns execution state for one program image. It is mutable because a
-call can allocate script values, update globals, populate inline caches, apply
+call can allocate script values, update VM state, access extern state, populate inline caches, apply
 hot reload, and mutate host state through call arguments or adapters.
 
 ```rust

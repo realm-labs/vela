@@ -96,7 +96,7 @@ semantics.
 - `crates/vela_reflect`: type registry, reflection records, permissions, and
   controlled read/write/call helpers.
 - `crates/vela_engine`: embedding API, `EngineBuilder`, `Runtime`, call args,
-  native functions, host type registration, globals, and hot reload integration.
+  native functions, host type registration, VM/extern state, and hot reload integration.
 - `crates/vela_macros`: derive and helper macros for host/native bindings.
 - `crates/vela_hot_reload`: program versions, ABI/schema checks, staged updates,
   and reload reports.

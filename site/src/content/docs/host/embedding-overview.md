@@ -30,7 +30,7 @@ let result = runtime.call(
 ```
 
 `Engine` is the shared definition surface. `Runtime` is the mutable execution
-state: heap, globals, inline caches, and hot-reload image.
+state: heap, VM/extern state, inline caches, and hot-reload image.
 
 ## Host Boundary
 

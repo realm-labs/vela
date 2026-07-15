@@ -21,17 +21,19 @@ runtime.call(
 调用返回后，direct binding 就结束了。持久状态仍在 Rust 里，不在脚本 heap
 里。
 
-## 持久 Globals
+## 持久 Extern State
 
-Runtime globals 可以保存 Rust 插入的 persistent host objects。这些对象必须
-是 `Send`，因为 runtime 可以被移动到 worker 线程。
+`extern state` binding 保存 Rust 拥有的 persistent host object。对象必须是
+`Send`，因为 runtime 可以被移动到 worker 线程。
 
 ```rust
-let player_ref = runtime.insert_host_global("main::player", player);
+let runtime = Runtime::builder(engine, program)?
+    .bind_extern_state("main::player", player)?
+    .build()?;
 ```
 
-Script-value globals 不同：它们是由 runtime root 的 VM-managed records、
-arrays、maps、sets、enums 和 scalars。
+VM `state` 不同：records、arrays、maps、sets、enums 和 scalars 由 Runtime
+的脚本 heap root 并追踪。
 
 ## Stale References
 

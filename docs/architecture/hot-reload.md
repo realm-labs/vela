@@ -100,6 +100,8 @@ trait
 fn
 use
 attribute
+state with a restricted initializer
+extern state declaration
 ```
 
 Disallow or strictly limit:
@@ -108,7 +110,7 @@ Disallow or strictly limit:
 register_event(...)
 spawn_task(...)
 open_file(...)
-global_counter += 1
+state_counter += 1
 network call
 random call
 ```
@@ -123,6 +125,19 @@ pub fn on_invoice_paid(ctx, account, invoice) {
 ```
 
 ### Hot Reload ABI Checks
+
+State changes compare stable `StateId`, storage kind, and exact normalized type
+contract. Existing compatible cells and extern bindings are preserved without
+rerunning initializers. Added VM state is initialized in a temporary staging
+runtime; added extern state must have a staged, type-compatible host binding.
+Storage or type changes reject. A rename is reported as remove plus add, and an
+initializer or visibility edit is reported even when it does not reject.
+
+Activation is transactional per Runtime: the candidate image, slot maps,
+staged cells, extern bindings, and sidecar are published together only after
+every check succeeds. Old generation slot maps keep removed state reachable
+for old frames, closures, retained values, and suspended executions; pruning
+occurs only after the final generation owner expires.
 
 Package artifacts retain canonical ordinary roots and selected provider keys.
 Reload rebuilds a package snapshot and reapplies that fingerprint before

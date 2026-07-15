@@ -115,7 +115,7 @@ export default defineConfig({
         { label: "HostRef, HostPath, PathProxy", translations: { 'zh-CN': "HostRef、HostPath、PathProxy" }, link: '/host/hostref-hostpath-pathproxy/' },
         { label: "Host Object Lifetime", translations: { 'zh-CN': "Host 对象生命周期" }, link: '/host/host-object-lifetime/' },
         { label: "HostAccess Write-Through Model", translations: { 'zh-CN': "HostAccess 写穿模型" }, link: '/host/hostaccess-write-through/' },
-        { label: "Runtime Globals", translations: { 'zh-CN': "Runtime Global" }, link: '/host/runtime-globals/' },
+        { label: "Runtime State", translations: { 'zh-CN': "Runtime State" }, link: '/host/runtime-state/' },
         { label: "Serde Snapshot Values", translations: { 'zh-CN': "Serde Snapshot 值" }, link: '/host/serde-snapshot-values/' },
         { label: "Capabilities And Execution Budgets", translations: { 'zh-CN': "能力和执行预算" }, link: '/host/capabilities-execution-budgets/' },
       ],

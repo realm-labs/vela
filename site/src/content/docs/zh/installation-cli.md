@@ -24,7 +24,7 @@ CLI 可以通过本地 workspace binary 运行 `.vela` 源码文件：
 cargo run -p vela_cli -- path/to/script.vela
 ```
 
-CLI 适合直接执行脚本和做 smoke check。更接近生产的用法通常是通过 `vela_engine` 嵌入，让宿主注册类型、函数、capability、预算、global 和热更新策略。
+CLI 适合直接执行脚本和做 smoke check。更接近生产的用法通常是通过 `vela_engine` 嵌入，让宿主注册类型、函数、capability、预算、extern state 和热更新策略。
 
 ## 示例和文档站
 
@@ -33,7 +33,7 @@ CLI 适合直接执行脚本和做 smoke check。更接近生产的用法通常�
 ```bash
 cargo run -p vela_examples --bin modules
 cargo run -p vela_examples --bin host_type_methods
-cargo run -p vela_examples --bin script_global
+cargo run --manifest-path examples/Cargo.toml --bin script_state
 ```
 
 开发文档站：

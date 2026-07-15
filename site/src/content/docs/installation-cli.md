@@ -24,7 +24,7 @@ The CLI can run a `.vela` source file through the local workspace binary:
 cargo run -p vela_cli -- path/to/script.vela
 ```
 
-The CLI is useful for direct script execution and smoke checks. Most production-style usage embeds Vela through `vela_engine` so the host can register types, functions, capabilities, budgets, globals, and hot reload policy.
+The CLI is useful for direct script execution and smoke checks. Most production-style usage embeds Vela through `vela_engine` so the host can register types, functions, capabilities, budgets, extern state, and hot reload policy.
 
 ## Examples And Site
 
@@ -33,7 +33,7 @@ Runnable embedding examples live under `examples/src/bin`:
 ```bash
 cargo run -p vela_examples --bin modules
 cargo run -p vela_examples --bin host_type_methods
-cargo run -p vela_examples --bin script_global
+cargo run --manifest-path examples/Cargo.toml --bin script_state
 ```
 
 To work on the documentation site:

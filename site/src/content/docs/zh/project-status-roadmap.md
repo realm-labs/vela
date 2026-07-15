@@ -7,7 +7,7 @@ Vela 目前是预发布实现，但已经有较完整的可运行原型。稳定
 
 ## 当前可用
 
-当前代码库已经包含源码解析、HIR lowering、字节码编译、VM 执行、执行预算、executor-neutral 的 `async fn`/`.await`、非移动 GC 基础、数组、map、set、字符串、Option/Result 辅助方法、模块、runtime global、标准 native、反射元数据、宿主注册、HostAccess 写穿和热更新流程。
+当前代码库已经包含源码解析、HIR lowering、字节码编译、VM 执行、执行预算、executor-neutral 的 `async fn`/`.await`、非移动 GC 基础、数组、map、set、字符串、Option/Result 辅助方法、模块、VM/extern state、标准 native、反射元数据、宿主注册、HostAccess 写穿和热更新流程。
 
 项目还包含浏览器 Playground、文档站、独立嵌入示例、conformance 风格测试、benchmark harness 和 parser fuzz 基础设施。
 

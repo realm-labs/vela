@@ -7,7 +7,7 @@ Vela is a pre-release implementation with a broad runnable prototype. The stable
 
 ## Available Now
 
-The current codebase includes source parsing, HIR lowering, bytecode compilation, VM execution, execution budgets, executor-neutral `async fn`/`.await`, non-moving GC foundations, arrays, maps, sets, strings, Option/Result helpers, modules, runtime globals, standard natives, reflection metadata, host registration, HostAccess write-through, and hot reload workflows.
+The current codebase includes source parsing, HIR lowering, bytecode compilation, VM execution, execution budgets, executor-neutral `async fn`/`.await`, non-moving GC foundations, arrays, maps, sets, strings, Option/Result helpers, modules, VM/extern state, standard natives, reflection metadata, host registration, HostAccess write-through, and hot reload workflows.
 
 It also includes a browser Playground, a documentation site, standalone embedding examples, conformance-style tests, benchmark harnesses, and parser fuzzing infrastructure.
 

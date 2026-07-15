@@ -3,7 +3,7 @@ title: "Variables And Constants"
 description: "Variables And Constants documentation for Vela."
 ---
 
-Vela has local variables, module constants, and host/runtime globals. The language is dynamic by default: an unhinted binding records the value it currently holds, while a hinted binding adds a runtime contract.
+Vela has local variables, module constants, VM-owned state, and host-owned extern state. The language is dynamic by default: an unhinted local records the value it currently holds, while a hinted binding adds a runtime contract.
 
 ## Local Variables
 
@@ -30,18 +30,20 @@ fn next_level(current: i64) -> i64 {
 }
 ```
 
-## Globals And Host State
+## Persistent State
 
-`global` declares a named value provided by the runtime or host embedding layer. Scripts can read and write compatible globals, but host-owned state still goes through the HostAccess model; scripts never receive real Rust `&mut T` references.
+`state` requires a type and initializer and creates one VM-owned cell per Runtime. `extern state` requires a type, forbids an initializer, and must be bound by the host. Scripts can assign VM state roots; an extern root is immutable and only nested mutation is allowed through HostAccess. Scripts never receive real Rust `&mut T` references.
 
 ```vela
-global player: Player
+extern state player: Player;
+state level_ups: i64 = 0;
 
 fn level_up() {
     player.level += 1
+    level_ups += 1
 }
 ```
 
 ## Common Errors
 
-Assigning a value that violates a binding, field, parameter, return, or global contract raises a type contract diagnostic. Reusing constants as mutable storage and using `global` as a way to bypass host permissions are both rejected by the runtime boundary.
+Assigning a value that violates a binding, field, parameter, return, or state contract raises a type contract diagnostic. Extern roots cannot be assigned, VM initializers cannot perform external effects, and constants cannot be reused as mutable storage.

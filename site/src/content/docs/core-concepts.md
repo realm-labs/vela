@@ -29,7 +29,7 @@ program contains bytecode, metadata, stable IDs, cache sites, and entry points,
 but it is not itself "running" yet.
 
 A `Runtime` is where a program actually executes. It owns the mutable VM state
-for one active program version: script heap, globals, inline caches, execution
+for one active program version: script heap, VM/extern state, inline caches, execution
 budgets, and hot reload state. Calls enter the runtime through named entries or
 cached entry handles, pass values through `CallArgs`, and are bounded by
 `CallOptions` such as instruction budget, memory budget, and call depth.

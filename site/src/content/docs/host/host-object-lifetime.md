@@ -22,17 +22,19 @@ runtime.call(
 When the call returns, the direct binding is gone. Any durable state remains in
 Rust, not in the script heap.
 
-## Persistent Globals
+## Persistent Extern State
 
-Runtime globals may store persistent host objects when inserted by Rust. Those
-objects must be `Send` because a runtime can be moved to a worker thread.
+An `extern state` binding stores a persistent host object owned by Rust. The
+object must be `Send` because a runtime can move to a worker thread.
 
 ```rust
-let player_ref = runtime.insert_host_global("main::player", player);
+let runtime = Runtime::builder(engine, program)?
+    .bind_extern_state("main::player", player)?
+    .build()?;
 ```
 
-Script-value globals are different: they are VM-managed records, arrays, maps,
-sets, enums, and scalars rooted by the runtime.
+VM `state` is different: its records, arrays, maps, sets, enums, and scalars
+are rooted and traced by the Runtime's script heap.
 
 ## Stale References
 

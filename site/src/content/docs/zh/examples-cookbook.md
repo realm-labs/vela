@@ -56,7 +56,7 @@ fn main() {
 }
 ```
 
-`script_global` 示例展示了在 Vela 中声明 runtime-managed global，并从 Rust 初始化或更新它。
+`script_state` 示例展示了 Vela 初始化的 per-Runtime VM state，以及 Rust 的 state 专用更新 API。
 
 ## 验证边界
 

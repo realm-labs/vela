@@ -10,7 +10,7 @@ availability, and the backend-neutral execution schedule.
 Generation-owned immutable data consists of verified MIR, linked code,
 `ProgramImage` indexes, executable handles, cache/profile layouts, source maps,
 and future compiled artifacts. Runtime-local mutable data consists of heap,
-globals, cache entries, profile counters, hotness, active tier selection, and
+VM state cells, extern state bindings, cache entries, profile counters, hotness, active tier selection, and
 budget counters. A mutable sidecar is always qualified by its executable
 generation and is never stored in a shared `ProgramVersion`.
 
@@ -18,7 +18,7 @@ The linker emits one `LinkedArtifact`. Its canonical flattened records allocate
 `ProgramImage` indexes, linked function handles, generation-global cache IDs,
 and profile layout together. `RuntimeImage` references that artifact; it does
 not rebuild or rebase cache operands by function name. Multiple runtimes may
-share the immutable artifact, while each owns isolated heap/global/cache/profile
+share the immutable artifact, while each owns isolated heap/state/cache/profile
 state.
 
 Unlinked bytecode is a compiler, verifier, linker, and test-fixture format. It
@@ -275,14 +275,14 @@ bindings require `Send + Sync` and use an owned read/write guard state machine:
 and nested reentry, preserve read-only parent HostAccess, and exclude mutation;
 exclusive guards exclude every competing access. RAII restores the exact prior
 state on return, error, cancellation, unwind, or failed multi-acquisition.
-Runtime-owned globals, non-`Sync` origins, and opaque adapters fail closed with
+Runtime-owned VM state, non-`Sync` origins, and opaque adapters fail closed with
 `HostLeaseUnsupported` unless they implement an explicit safe lease contract.
 Neither lease wrapper is a Vela value or reflection type.
 
 An active `NativeCallContext` can call a sync child with `call`, call a sync or
 async child with `call_async`, and bind a script method target. Reentry pushes a
 marker and child frame on the same session, so it inherits the pinned artifact,
-heap, globals, host boundary, sidecars, remaining budgets, capabilities, and
+heap, VM/extern state, host boundary, sidecars, remaining budgets, capabilities, and
 cancellation state. Child `CallArgs` receive new HostRefs from the execution's
 single allocator and are invalid after the child scope exits. A mutable method
 must explicitly reborrow its lease into child arguments; the raw parent HostRef

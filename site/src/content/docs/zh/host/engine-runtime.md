@@ -33,7 +33,7 @@ Builder API 保持显式，这样 schemas、effects 和 reflection metadata 都�
 ## Runtime
 
 `Runtime` 拥有一个 program image 的执行状态。它是可变的，因为一次调用
-可能分配脚本值、更新 globals、填充 inline caches、应用热更新，并通过
+可能分配脚本值、更新 VM state、访问 extern state、填充 inline caches、应用热更新，并通过
 调用参数或 adapter 修改宿主状态。
 
 ```rust
