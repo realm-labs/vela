@@ -1109,6 +1109,7 @@ pub(super) fn runtime_semantic_body(body: &HirBody) -> bool {
     matches!(
         body.owner,
         HirBodyOwner::Declaration(_)
+            | HirBodyOwner::StateInitializer(_)
             | HirBodyOwner::TraitDefaultMethod(_)
             | HirBodyOwner::ImplMethod(_)
             | HirBodyOwner::Lambda { .. }

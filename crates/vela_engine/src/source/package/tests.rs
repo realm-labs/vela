@@ -86,7 +86,8 @@ fn ordinary_package_imports_dependency_type_and_method() {
     let artifact = engine
         .compile_package(&snapshot, &package("dev.vela.app"))
         .expect("dependency type and method compile");
-    let mut runtime = Runtime::from_linked_artifact(engine, artifact);
+    let mut runtime =
+        Runtime::from_linked_artifact(engine, artifact).expect("runtime should initialize");
 
     let output = runtime
         .call("main::main", CallArgs::new(), CallOptions::unbounded())
@@ -196,7 +197,8 @@ fn ordinary_package_compiles_and_runs_without_provider_catalog() {
     let artifact = engine
         .compile_packages(&snapshot, &request)
         .expect("artifact");
-    let mut runtime = Runtime::from_linked_artifact(engine, artifact);
+    let mut runtime =
+        Runtime::from_linked_artifact(engine, artifact).expect("runtime should initialize");
 
     let output = runtime
         .call("main::main", CallArgs::new(), CallOptions::unbounded())
@@ -307,7 +309,8 @@ fn ordinary_dependency_body_reload_updates_root_package_calls() {
     let update = engine
         .compile_package_hot_reload_update(&initial, &second, &request)
         .expect("dependency body update accepted");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     assert_eq!(call_i64(&mut runtime), 1);
     runtime
         .apply_hot_update(update)
@@ -443,7 +446,8 @@ fn ordinary_dependency_abi_change_is_rejected_without_image_advance() {
         .expect_err("dependency ABI change rejected");
     assert!(matches!(error.kind, EnginePackageErrorKind::HotReload(_)));
 
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     assert_eq!(call_i64(&mut runtime), 1);
     remove_fixture(root);
 }
@@ -692,7 +696,8 @@ impl CommandProvider for Command {
     let artifact = engine
         .compile_provider_selection(&snapshot, &request)
         .expect("selected provider compiles");
-    let mut runtime = Runtime::from_linked_artifact(engine, artifact);
+    let mut runtime =
+        Runtime::from_linked_artifact(engine, artifact).expect("runtime should initialize");
     let handle = runtime.provider_handle(&key).expect("provider handle");
 
     let output = runtime
@@ -762,7 +767,8 @@ impl CommandProvider for Unselected { pub fn run(self) -> i64 { return 2; } }
     let artifact = engine
         .compile_provider_selection(&snapshot, &request)
         .expect("selected provider compiles");
-    let mut runtime = Runtime::from_linked_artifact(engine, artifact);
+    let mut runtime =
+        Runtime::from_linked_artifact(engine, artifact).expect("runtime should initialize");
 
     assert!(runtime.provider_handle(unselected.key()).is_err());
     let handle = runtime.provider_handle(&key).expect("provider handle");
@@ -805,7 +811,8 @@ impl InstanceProvider for Instance { pub fn instance(self) -> Instance { return 
     let artifact = engine
         .compile_provider_selection(&snapshot, &request)
         .expect("selected provider compiles");
-    let mut runtime = Runtime::from_linked_artifact(engine, artifact);
+    let mut runtime =
+        Runtime::from_linked_artifact(engine, artifact).expect("runtime should initialize");
     let handle = runtime.provider_handle(&key).expect("provider handle");
 
     let first = runtime
@@ -853,8 +860,10 @@ impl CommandProvider for Command { pub fn run(self) -> i64 { return 1; } }
     let artifact = engine
         .compile_provider_selection(&snapshot, &request)
         .expect("selected provider compiles");
-    let first = Runtime::from_linked_artifact(engine.clone(), artifact.clone());
-    let mut second = Runtime::from_linked_artifact(engine, artifact);
+    let first = Runtime::from_linked_artifact(engine.clone(), artifact.clone())
+        .expect("runtime should initialize");
+    let mut second =
+        Runtime::from_linked_artifact(engine, artifact).expect("runtime should initialize");
     let handle = first.provider_handle(&key).expect("provider handle");
 
     let error = second
@@ -898,7 +907,8 @@ impl CommandProvider for Command {{ pub fn run(self) -> i64 {{ return {value}; }
     let initial = engine
         .compile_provider_hot_reload_initial(&first, &first_request)
         .expect("initial version");
-    let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone());
+    let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone())
+        .expect("runtime should initialize");
     let handle = runtime.provider_handle(&key).expect("provider handle");
     assert_eq!(call_provider_i64(&mut runtime, &handle, method), 1);
 
@@ -955,7 +965,8 @@ impl WorkProvider for Work {
     let artifact = engine
         .compile_provider_selection(&snapshot, &request)
         .expect("selected provider compiles");
-    let mut runtime = Runtime::from_linked_artifact(engine, artifact);
+    let mut runtime =
+        Runtime::from_linked_artifact(engine, artifact).expect("runtime should initialize");
     let handle = runtime.provider_handle(&key).expect("provider handle");
 
     let error = runtime
@@ -1017,7 +1028,8 @@ impl LevelProvider for LevelUp {
     let artifact = engine
         .compile_provider_selection(&snapshot, &request)
         .expect("selected provider compiles");
-    let mut runtime = Runtime::from_linked_artifact(engine, artifact);
+    let mut runtime =
+        Runtime::from_linked_artifact(engine, artifact).expect("runtime should initialize");
     let player = HostRef::new(host_type, HostObjectId::new(42), 1);
     let level = HostPath::new(player).field(field);
     let mut adapter = MockStateAdapter::new();

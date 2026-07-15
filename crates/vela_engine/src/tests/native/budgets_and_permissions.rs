@@ -85,7 +85,7 @@ fn main(player) {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -206,7 +206,7 @@ fn main() {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -251,7 +251,7 @@ fn main() {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 

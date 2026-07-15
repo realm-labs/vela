@@ -1,4 +1,5 @@
-use vela_common::{HostMethodId, StateSlot};
+use vela_common::HostMethodId;
+use vela_def::StateId;
 
 use crate::{
     error::{HostError, HostErrorKind, HostResult},
@@ -9,9 +10,9 @@ use crate::{
 };
 
 #[derive(Clone, Copy, Debug)]
-pub struct GlobalBinding<'a> {
+pub struct ExternStateBinding<'a> {
+    pub id: StateId,
     pub name: &'a str,
-    pub slot: Option<StateSlot>,
 }
 
 pub trait ScriptStateAdapter {
@@ -19,10 +20,10 @@ pub trait ScriptStateAdapter {
         HostSchemaEpoch::new(0)
     }
 
-    fn global_ref(&self, global: GlobalBinding<'_>) -> HostResult<HostRef> {
+    fn extern_state_ref(&self, state: ExternStateBinding<'_>) -> HostResult<HostRef> {
         Err(HostError {
-            kind: HostErrorKind::MissingGlobal {
-                name: global.name.to_owned(),
+            kind: HostErrorKind::MissingExternState {
+                name: state.name.to_owned(),
             },
             source_span: None,
         })

@@ -13,7 +13,8 @@ pub(super) fn private_helper_addition_report(
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -91,7 +92,8 @@ pub(super) fn public_function_addition_report(
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -204,7 +206,8 @@ fn on_kill(player_id: i64, monster_id: i64) {
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -309,7 +312,8 @@ fn on_kill(player_id: i64, monster_id: i64) {
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 

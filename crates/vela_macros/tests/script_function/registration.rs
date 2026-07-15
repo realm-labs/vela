@@ -102,7 +102,7 @@ async fn main(player) {
         .expect("async macro metadata");
     assert_eq!(async_bonus.asyncness, vela_common::CallableAsyncness::Async);
 
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let player = HostRef::new(HostTypeId::new(1), vela_common::HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     adapter.insert_object(player);
@@ -605,7 +605,7 @@ fn main(player, ok) {
     let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
     assert_eq!(
         call_raw(
@@ -655,7 +655,7 @@ fn main(player) {
     let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
     let error = call_raw(
         &mut runtime,
@@ -695,7 +695,7 @@ fn main(player) {
     let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
     let error = call_raw(
         &mut runtime,
@@ -803,7 +803,7 @@ fn main(player, ok) {
     let player = HostRef::new(HostTypeId::new(1001), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
     assert_eq!(
         call_raw(

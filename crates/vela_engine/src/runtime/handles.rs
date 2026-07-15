@@ -14,7 +14,7 @@ use crate::engine::Engine;
 
 use super::call_args::call_args_type_error;
 use super::{
-    CallArgs, ProviderMethodTarget, RuntimeGlobalStore, RuntimeScriptGlobalStore, VelaValue,
+    CallArgs, ProviderMethodTarget, RuntimeExternStateBindings, RuntimeVmStateStore, VelaValue,
     state::RuntimeSidecars, unknown_function, unknown_method, value_type_id,
 };
 
@@ -329,8 +329,8 @@ pub(super) struct RuntimeCallExecution<'program, 'state, 'host> {
     pub(super) registry_image: &'program ProgramImage,
     pub(super) artifact: &'program Arc<LinkedArtifact>,
     pub(super) hot_reload: Option<&'program HotReloadRuntime>,
-    pub(super) globals: &'state mut RuntimeGlobalStore,
-    pub(super) script_globals: &'state mut RuntimeScriptGlobalStore,
+    pub(super) extern_states: &'state mut RuntimeExternStateBindings,
+    pub(super) vm_states: &'state mut RuntimeVmStateStore,
     pub(super) sidecars: &'state mut RuntimeSidecars,
     pub(super) target: EntryRequest,
     pub(super) args: CallArgs<'host>,

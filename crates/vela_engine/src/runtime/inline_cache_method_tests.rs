@@ -35,7 +35,7 @@ fn read_bonus() {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let call = method_call_site(&runtime, "read_bonus");
 
     assert_eq!(
@@ -88,7 +88,7 @@ fn read_bonus() {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let call = method_call_site(&runtime, "read_bonus");
     runtime.state.inline_caches().set_method_dispatch(
         call.cache_site,
@@ -144,7 +144,7 @@ fn read_bonus() {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let call = method_call_site(&runtime, "read_bonus");
     let (method_id, function) = script_method_target(&runtime, call.dispatch);
     runtime.state.inline_caches().set_method_dispatch(
@@ -204,7 +204,8 @@ fn read_bonus() {
 "#,
         )
         .expect("initial source should compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let initial_call = method_call_site(&runtime, "read_bonus");
 
     let first = runtime
@@ -294,7 +295,8 @@ pub fn read_bonus() -> i64 {
 "#,
         )
         .expect("initial source should compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let initial_call = method_call_site(&runtime, "read_bonus");
 
     let first = runtime
@@ -383,7 +385,8 @@ fn read_match() {
 "#,
         )
         .expect("initial source should compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let initial_call = method_call_site(&runtime, "read_match");
 
     let first = runtime
@@ -444,7 +447,8 @@ fn read_total() {
 "#,
         )
         .expect("initial source should compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let initial_site = dynamic_method_call_site_by_name(&runtime, "read_total", "take");
 
     let first = runtime

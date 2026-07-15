@@ -26,7 +26,8 @@ fn main() {
 "#,
         )
         .expect("initial source should compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let initial_site = native_call_site(&runtime, "main");
 
     let first = runtime

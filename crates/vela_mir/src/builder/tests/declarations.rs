@@ -128,6 +128,7 @@ fn insert_state(
             name: format!("declarations::{}", metadata.name),
             storage,
             contract: contract.clone(),
+            initializer: None,
         },
         origin,
     )?;

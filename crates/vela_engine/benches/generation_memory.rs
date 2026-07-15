@@ -27,7 +27,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         "shared-runtime" => {
             let version = compile(&engine, &lambda_source(0))?;
             let runtimes = (0..RUNTIME_COUNT)
-                .map(|_| Runtime::from_hot_reload_version(engine.clone(), version.clone()))
+                .map(|_| {
+                    Runtime::from_hot_reload_version(engine.clone(), version.clone())
+                        .expect("runtime should initialize")
+                })
                 .collect::<Vec<_>>();
             black_box(&runtimes);
             report(shape.as_str(), version, runtimes.len(), 1);
@@ -96,7 +99,8 @@ fn measure_calls(
     engine: &Engine,
     version: &ProgramVersion,
 ) -> Result<(std::time::Duration, vela_vm::owned_value::OwnedValue), Box<dyn Error>> {
-    let mut runtime = Runtime::from_hot_reload_version(engine.clone(), version.clone());
+    let mut runtime = Runtime::from_hot_reload_version(engine.clone(), version.clone())
+        .expect("runtime should initialize");
     let warmup = runtime.call("main", CallArgs::new(), CallOptions::unbounded())?;
     black_box(runtime.value_to_owned(&warmup)?);
     let started = Instant::now();

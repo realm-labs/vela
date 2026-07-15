@@ -7,7 +7,7 @@ use std::task::{Context, Poll, Waker};
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
 use vela_def::{FieldId, TypeId};
 use vela_host::access::HostAccess;
-use vela_host::adapter::{GlobalBinding, ScriptStateAdapter};
+use vela_host::adapter::{ExternStateBinding, ScriptStateAdapter};
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
 use vela_host::object::ScriptHostObject;
@@ -26,8 +26,8 @@ use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
 use crate::runtime::{
-    CallArgs, CallOptions, Runtime, RuntimeImage, SharedRuntime, VelaFunction, VelaMethod,
-    VelaValue,
+    CallArgs, CallOptions, Runtime, RuntimeBuildError, RuntimeImage, SharedRuntime, VelaFunction,
+    VelaMethod, VelaValue,
 };
 
 use super::player_type;
@@ -85,7 +85,7 @@ fn main() {
 "#,
         )
         .expect("compile runtime image code-view source");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
     let value = runtime
         .call("main", CallArgs::new(), CallOptions::unbounded())
@@ -103,7 +103,7 @@ fn sync_runtime_call_rejects_async_entry_and_call_async_accepts_it() {
     let program = engine
         .compile_source_with_id(SourceId::new(2), "async fn main() { return 42; }")
         .expect("async entry should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
     let error = runtime
         .call("main", CallArgs::new(), CallOptions::unbounded())
@@ -159,7 +159,7 @@ async fn main() { return answer().await; }
         })
         .expect("explicit awaited script call bytecode");
     assert!(resume.0 > await_offset, "await resumes in a later block");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
     let value = {
         let mut future = runtime.call_async("main", CallArgs::new(), CallOptions::unbounded());
@@ -188,7 +188,7 @@ fn main(value: i64) {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
     let error = runtime
         .call(
@@ -225,22 +225,38 @@ fn direct_player_type() -> TypeDesc {
 }
 
 #[derive(Default)]
-struct CountingGlobalLookupAdapter {
-    global_ref_calls: Cell<usize>,
-    global_ref_by_slot_calls: Cell<usize>,
+struct CountingExternStateLookupAdapter {
+    extern_state_ref_calls: Cell<usize>,
 }
 
-impl ScriptStateAdapter for CountingGlobalLookupAdapter {
-    fn global_ref(&self, global: GlobalBinding<'_>) -> HostResult<HostRef> {
-        if global.slot.is_some() {
-            self.global_ref_by_slot_calls
-                .set(self.global_ref_by_slot_calls.get().saturating_add(1));
-        }
-        self.global_ref_calls
-            .set(self.global_ref_calls.get().saturating_add(1));
+struct WrongHostType;
+
+impl ScriptHostObject for WrongHostType {
+    fn host_type_id(&self) -> HostTypeId {
+        HostTypeId::new(99)
+    }
+
+    fn read_resolved_host(
+        &self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<HostValue> {
         Err(HostError {
-            kind: HostErrorKind::MissingGlobal {
-                name: global.name.to_owned(),
+            kind: HostErrorKind::MissingPath {
+                path: target.to_diagnostic_path().to_host_path(),
+            },
+            source_span: None,
+        })
+    }
+}
+
+impl ScriptStateAdapter for CountingExternStateLookupAdapter {
+    fn extern_state_ref(&self, state: ExternStateBinding<'_>) -> HostResult<HostRef> {
+        self.extern_state_ref_calls
+            .set(self.extern_state_ref_calls.get().saturating_add(1));
+        Err(HostError {
+            kind: HostErrorKind::MissingExternState {
+                name: state.name.to_owned(),
             },
             source_span: None,
         })
@@ -512,7 +528,7 @@ fn main(player: Player, amount, bonus = 1) {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let level = HostPath::new(player).field(super::FieldId::new(1));
     let mut adapter = MockStateAdapter::new();
@@ -558,7 +574,7 @@ fn main(left, right) {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
     let args = CallArgs::from_positional([
@@ -588,7 +604,7 @@ fn runtime_call_args_reject_duplicate_named_values() {
     let program = engine
         .compile_source_with_id(SourceId::new(1), "fn main(value) { return value; }")
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
     let args = CallArgs::new()
@@ -619,7 +635,7 @@ fn runtime_call_args_reject_unknown_named_values() {
     let program = engine
         .compile_source_with_id(SourceId::new(1), "fn main(value) { return value; }")
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
     let args = CallArgs::new().with_value("missing", 1_i64);
@@ -648,7 +664,7 @@ fn runtime_call_args_reject_mixed_modes() {
     let program = engine
         .compile_source_with_id(SourceId::new(1), "fn main(value) { return value; }")
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
     let args = CallArgs::new().with(1_i64).with_value("value", 2_i64);
@@ -688,7 +704,7 @@ fn main(player: Player, amount) {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let mut player = direct_player(9);
     let output = runtime
         .call(
@@ -724,7 +740,7 @@ fn main(player: Player, amount) {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let mut player = direct_player(9);
     player.inventory.insert("gold".to_owned(), 3);
 
@@ -792,7 +808,7 @@ fn main(player: Player) {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let mut player = direct_player(9);
 
     let output = runtime
@@ -828,7 +844,7 @@ fn main(player: Player, amount) {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let mut player = direct_player(9);
 
     let output = runtime
@@ -861,7 +877,7 @@ fn main(amount, multiplier = 2) {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let main = runtime.entry("main").expect("entry should resolve");
 
     let first = runtime
@@ -906,8 +922,8 @@ fn main(amount) {
     let program_b = engine
         .compile_source_with_id(SourceId::new(2), source)
         .expect("program should compile");
-    let runtime_a = Runtime::new(engine.clone(), program_a);
-    let mut runtime_b = Runtime::new(engine, program_b);
+    let runtime_a = Runtime::new(engine.clone(), program_a).expect("runtime should initialize");
+    let mut runtime_b = Runtime::new(engine, program_b).expect("runtime should initialize");
     let main = runtime_a.entry("main").expect("entry should resolve");
 
     let error = runtime_b
@@ -953,7 +969,7 @@ fn make_reward() {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let reward = runtime
         .call("make_reward", CallArgs::new(), CallOptions::unbounded())
         .expect("factory should return runtime value");
@@ -1030,8 +1046,8 @@ fn make_reward(gold) {
     let program_b = engine
         .compile_source_with_id(SourceId::new(2), source)
         .expect("program should compile");
-    let mut runtime_a = Runtime::new(engine.clone(), program_a);
-    let mut runtime_b = Runtime::new(engine, program_b);
+    let mut runtime_a = Runtime::new(engine.clone(), program_a).expect("runtime should initialize");
+    let mut runtime_b = Runtime::new(engine, program_b).expect("runtime should initialize");
     let reward_a = runtime_a
         .call(
             "make_reward",
@@ -1079,7 +1095,7 @@ fn main(player: Player) {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let mut player = direct_player(9);
     let mut adapter = MockStateAdapter::new();
     let value = runtime
@@ -1116,7 +1132,7 @@ fn main(player: Player) {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let player = direct_player(9);
 
     let error = runtime

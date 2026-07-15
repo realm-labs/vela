@@ -157,7 +157,7 @@ impl<'a> GameScript<'a> {
         let mut host = GameHostFixture::for_main(main, self.host);
         let args = host.main_args(main)?;
 
-        let mut runtime = Runtime::new(engine, program);
+        let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
         let args = args.with_fallback_adapter(host.adapter_mut());
         let output = runtime
             .call(

@@ -11,7 +11,8 @@ fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -117,7 +118,8 @@ fn runtime_stages_dir_script_function_access_rejection_until_safe_point() {
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -381,7 +383,8 @@ pub fn grant() {
         )
         .build()
         .expect("new engine should build");
-    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -476,7 +479,8 @@ pub fn grant(player: Player) {
         )
         .build()
         .expect("new engine should build");
-    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
 

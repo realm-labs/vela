@@ -35,27 +35,29 @@ fn read_target_reads_current_adapter_state() {
 }
 
 #[test]
-fn mock_adapter_resolves_named_global_refs() {
+fn mock_adapter_resolves_stable_extern_state_refs() {
     let host_ref = player_ref(3);
+    let state = vela_def::StateId::new(101);
+    let missing = vela_def::StateId::new(102);
     let mut adapter = MockStateAdapter::new();
-    adapter.insert_global_ref("main::state", host_ref);
+    adapter.insert_extern_state_ref(state, host_ref);
 
     assert_eq!(
-        adapter.global_ref(GlobalBinding {
+        adapter.extern_state_ref(ExternStateBinding {
+            id: state,
             name: "main::state",
-            slot: None,
         }),
         Ok(host_ref)
     );
     assert_eq!(
         adapter
-            .global_ref(GlobalBinding {
+            .extern_state_ref(ExternStateBinding {
+                id: missing,
                 name: "main::missing",
-                slot: None,
             })
-            .expect_err("missing global should fail")
+            .expect_err("missing extern state should fail")
             .kind,
-        HostErrorKind::MissingGlobal {
+        HostErrorKind::MissingExternState {
             name: "main::missing".to_owned()
         }
     );

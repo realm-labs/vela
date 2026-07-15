@@ -8,7 +8,7 @@ use vela_def::FieldId;
 
 use crate::{
     access::{HostAccess, HostObjectSnapshot},
-    adapter::{GlobalBinding, ScriptStateAdapter},
+    adapter::{ExternStateBinding, ScriptStateAdapter},
     error::{HostError, HostErrorKind},
     mock::MockStateAdapter,
     object::{HostValueFrom, HostValueInto, ScriptHostFieldAccess},

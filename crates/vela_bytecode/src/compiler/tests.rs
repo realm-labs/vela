@@ -80,6 +80,9 @@ fn update() {
     let slot = program
         .state_slot("main::counter")
         .expect("counter should have a state slot");
+    let state = program.state(slot).expect("counter descriptor");
+    let initializer = state.initializer.expect("compiled state initializer");
+    assert!(program.function_by_id(initializer).is_some());
 
     assert!(update.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
@@ -101,6 +104,43 @@ fn update() {
         instruction.kind,
         UnlinkedInstructionKind::LoadExternState { .. }
     )));
+}
+
+#[test]
+fn compiler_allows_state_initializers_to_call_proven_pure_script_functions() {
+    let program = compile_test_program(
+        SourceId::new(51),
+        r#"
+fn initial_counter() -> i64 { return 7; }
+state counter: i64 = initial_counter();
+fn read() { return counter; }
+"#,
+    )
+    .expect("pure script-call initializer should compile");
+    let state = program.states().first().expect("state descriptor");
+    let initializer = state.initializer.expect("initializer identity");
+
+    assert!(program.function_by_id(initializer).is_some());
+}
+
+#[test]
+fn compiler_rejects_transitive_state_reads_from_state_initializers() {
+    let error = compile_test_program(
+        SourceId::new(52),
+        r#"
+state source: i64 = 1;
+fn read_source() -> i64 { return source; }
+state target: i64 = read_source();
+"#,
+    )
+    .expect_err("state reads through a script call must be rejected");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::InvalidStateInitializer { state, reason }
+            if state == "main::target" && reason.contains("state access")
+    ));
+    assert!(error.span.is_some());
 }
 
 #[test]

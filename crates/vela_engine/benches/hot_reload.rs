@@ -149,7 +149,8 @@ fn run_workload(
 
 fn run_accepted_update(engine: &Engine, initial: &ProgramVersion) -> Result<u64, Box<dyn Error>> {
     let update = engine.compile_hot_reload_update(initial, UPDATED_SOURCE)?;
-    let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone());
+    let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone())
+        .expect("runtime should initialize");
     let report = runtime.apply_hot_update(update)?;
     let value = runtime.call("main", CallArgs::new(), CallOptions::unbounded())?;
     let value = runtime.value_to_owned(&value)?;
@@ -170,7 +171,8 @@ fn run_abi_rejection(engine: &Engine, initial: &ProgramVersion) -> Result<u64, B
         Ok(_) => return Err("ABI rejection benchmark update was accepted".into()),
         Err(error) => return Err(error.into()),
     };
-    let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone());
+    let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone())
+        .expect("runtime should initialize");
     let report = runtime.apply_hot_update_result_report(update)?;
     let active_version = runtime
         .hot_reload_version()

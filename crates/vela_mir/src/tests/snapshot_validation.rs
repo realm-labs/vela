@@ -287,6 +287,7 @@ fn schema_only_snapshot_finalization_proves_complete_descriptor_closure() {
                 name: "state".to_owned(),
                 storage: CompileStateStorage::Vm,
                 contract: state_contract.clone(),
+                initializer: None,
             },
             schema_origin,
         )

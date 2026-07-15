@@ -145,6 +145,9 @@ pub enum VmErrorKind {
         actual: String,
         debug_name: String,
     },
+    MissingVmState {
+        name: String,
+    },
     DivisionByZero,
     UnknownNative {
         name: String,
@@ -219,6 +222,7 @@ impl VmErrorKind {
             Self::TypeMismatch { .. } => "vm::type_mismatch",
             Self::ArithmeticOverflow { .. } => "vm::arithmetic_overflow",
             Self::TypeContractViolation { .. } => "vm::type_contract_violation",
+            Self::MissingVmState { .. } => "vm::missing_vm_state",
             Self::DivisionByZero => "vm::division_by_zero",
             Self::UnknownNative { .. } => "vm::unknown_native",
             Self::PermissionDenied { .. } => "vm::permission_denied",
@@ -267,6 +271,7 @@ impl VmErrorKind {
             } => {
                 format!("type contract `{debug_name}` expected `{expected}`, found `{actual}`")
             }
+            Self::MissingVmState { name } => format!("missing VM state `{name}`"),
             Self::DivisionByZero => "division by zero".to_owned(),
             Self::UnknownNative { name } => format!("unknown native function `{name}`"),
             Self::PermissionDenied { native, capability } => {

@@ -255,7 +255,8 @@ fn runtime_applies_engine_hot_reload_updates() {
         .compile_hot_reload_update_with_id(&initial, SourceId::new(2), "fn main() { return 2; }")
         .expect("compatible update should compile");
     assert!(update.linked_program().function_count() > 0);
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -281,7 +282,7 @@ fn runtime_applies_engine_hot_reload_updates() {
 }
 
 #[test]
-fn runtime_rebinds_script_globals_after_reload_image_swap() {
+fn runtime_rebinds_vm_states_after_reload_image_swap() {
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .build()
@@ -295,7 +296,7 @@ struct ServerState {
     name: String,
 }
 
-global state: ServerState;
+state state: ServerState = ServerState { level: 0, name: "" };
 
 fn make_state() {
     return ServerState { level: 5, name: "boot" };
@@ -308,12 +309,13 @@ fn bump(amount) {
 "#,
         )
         .expect("initial hot reload compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let state = runtime
         .call("make_state", CallArgs::new(), CallOptions::unbounded())
         .expect("factory should run");
     runtime
-        .insert_global("main::state", state)
+        .set_state("main::state", state)
         .expect("script global should insert");
 
     runtime
@@ -324,7 +326,7 @@ struct ServerState {
     name: String,
 }
 
-global state: ServerState;
+state state: ServerState = ServerState { level: 0, name: "" };
 
 fn make_state() {
     return ServerState { level: 0, name: "reload" };
@@ -367,7 +369,7 @@ fn bump(amount) {
     assert_eq!(
         script_record_field(
             &runtime
-                .global("main::state")
+                .state("main::state")
                 .expect("script global should materialize")
                 .expect("script global should exist"),
             "level",
@@ -398,7 +400,8 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
     let update = engine
         .compile_hot_reload_update_with_id(&initial, SourceId::new(2), "fn main() { return 2; }")
         .expect("compatible update should compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -450,7 +453,8 @@ fn runtime_stages_source_text_hot_reload_until_check_reload_safe_point() {
     let initial = engine
         .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -490,7 +494,8 @@ fn runtime_stages_source_text_hot_reload_rejection_until_check_reload_safe_point
     let initial = engine
         .compile_hot_reload_initial_with_id(SourceId::new(1), "pub fn main() -> i64 { return 1; }")
         .expect("initial hot reload compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -540,7 +545,8 @@ fn runtime_tick_boundary_safe_point_consumes_staged_reload() {
     let update = engine
         .compile_hot_reload_update_with_id(&initial, SourceId::new(2), "fn main() { return 2; }")
         .expect("compatible update should compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -591,7 +597,8 @@ fn runtime_tick_boundary_safe_point_reports_staged_reload_rejection() {
         "pub fn main() -> f64 { return 2.0; }",
     ))
     .expect_err("return hint change should be rejected");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -649,7 +656,8 @@ fn runtime_tick_boundary_safe_point_reports_staged_module_export_rejection() {
         update_abi,
     )
     .expect_err("module export ABI change should be rejected");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     runtime
         .stage_hot_update_result(Err(update))
         .expect("stage rejected module export update");
@@ -704,7 +712,8 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_function_abi_rejectio
         HotReloadAbi::empty(),
     )
     .expect_err("removed function ABI should be rejected");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     runtime
         .stage_hot_update_result(Err(update))
         .expect("stage rejected removed function update");
@@ -763,7 +772,8 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_method_abi_rejection(
         HotReloadAbi::empty(),
     )
     .expect_err("removed method ABI should be rejected");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     runtime
         .stage_hot_update_result(Err(update))
         .expect("stage rejected removed method update");
@@ -817,7 +827,8 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_module_rejection() {
         HotReloadAbi::empty(),
     )
     .expect_err("removed module ABI should be rejected");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     runtime
         .stage_hot_update_result(Err(update))
         .expect("stage rejected removed module update");
@@ -861,7 +872,8 @@ fn explicit_event_end_reload_check_consumes_staged_update_after_call() {
     let update = engine
         .compile_hot_reload_update_with_id(&initial, SourceId::new(2), "fn main() { return 2; }")
         .expect("compatible update should compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -925,7 +937,8 @@ fn main() {
 "#,
         )
         .expect("compatible update should compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -972,7 +985,8 @@ fn explicit_event_end_reload_check_reports_staged_rejection_after_call() {
         "pub fn main() -> f64 { return 2.0; }",
     ))
     .expect_err("return hint change should be rejected");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -1043,7 +1057,8 @@ fn main(player: Player) {
 "#,
         )
         .expect("compatible update should compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let level_path = HostPath::new(host_ref).field(FieldId::new(1));
     let mut adapter = MockStateAdapter::new();
@@ -1117,7 +1132,8 @@ fn main(player: Player) {
 "#,
         )
         .expect("compatible update should compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let level_path = HostPath::new(host_ref).field(FieldId::new(1));
     let mut adapter = MockStateAdapter::new();

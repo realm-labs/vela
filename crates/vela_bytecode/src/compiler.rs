@@ -19,9 +19,7 @@ use std::sync::Arc;
 
 #[cfg(test)]
 use vela_common::SourceId;
-#[cfg(test)]
-use vela_common::Span;
-use vela_common::{Capability, CapabilitySet};
+use vela_common::{Capability, CapabilitySet, Span};
 use vela_hir::ids::HirDeclId;
 #[cfg(test)]
 use vela_hir::module_graph::ModuleSource;
@@ -221,7 +219,8 @@ fn compile_program_inner(
         .methods()
         .cloned()
         .collect::<Vec<_>>();
-    let executable_packages = executable_packages(graph, &script_function_symbols, &methods)?;
+    let executable_packages =
+        executable_packages(graph, &script_function_symbols, &state_symbols, &methods)?;
     let input = semantic_input::prepare_semantic_input(semantic_input::SemanticInputRequest {
         graph,
         roots: semantic_input::SemanticRoots::Program,
@@ -238,6 +237,7 @@ fn compile_program_inner(
     let mut program = UnlinkedProgram::new();
     program.set_states(state_descriptors(graph, &input, &state_symbols)?);
     let (mut code, verified_mir) = compile_mir_roots(&input, graph)?;
+    validate_state_initializers(&verified_mir, program.states())?;
     let mir_executables = compiled_mir_executables(&verified_mir);
     attach_compiled_mir_identities(&mut code, &mir_executables);
     for code in code {
@@ -285,6 +285,7 @@ fn compile_program_inner(
 fn executable_packages(
     graph: &ModuleGraph,
     function_symbols: &BTreeMap<HirDeclId, String>,
+    state_symbols: &BTreeMap<HirDeclId, String>,
     methods: &[vela_hir::script_methods::ScriptMethod],
 ) -> CompileResult<BTreeMap<vela_def::FunctionId, PackageId>> {
     let mut packages = BTreeMap::new();
@@ -301,6 +302,25 @@ fn executable_packages(
         })?;
         packages.insert(
             vela_def::script_function_id(package.as_str(), symbol),
+            package.clone(),
+        );
+    }
+    for (declaration, symbol) in state_symbols {
+        if graph.state_initializer_body(*declaration).is_none() {
+            continue;
+        }
+        let metadata = graph.declaration(*declaration).ok_or_else(|| {
+            CompileError::new(CompileErrorKind::RegistrySnapshot(
+                "script state has no declaration metadata".to_owned(),
+            ))
+        })?;
+        let package = graph.module_package(metadata.module).ok_or_else(|| {
+            CompileError::new(CompileErrorKind::RegistrySnapshot(
+                "script state has no package owner".to_owned(),
+            ))
+        })?;
+        packages.insert(
+            vela_def::script_state_initializer_id(package.as_str(), symbol),
             package.clone(),
         );
     }
@@ -354,6 +374,144 @@ fn observed_capabilities(
         }
     }
     Ok(observed)
+}
+
+fn validate_state_initializers(
+    bundle: &vela_mir::OwnedVerifiedMirBundle,
+    states: &[StateDescriptor],
+) -> CompileResult<()> {
+    let programs = bundle
+        .roots()
+        .map(|(function, owner)| (function, owner.as_ref()))
+        .collect::<BTreeMap<_, _>>();
+    for state in states
+        .iter()
+        .filter(|state| state.storage == StateStorage::Vm)
+    {
+        let Some(initializer) = state.initializer else {
+            return Err(invalid_state_initializer(
+                state,
+                state.source_span,
+                "the VM state has no compiled initializer",
+            ));
+        };
+        let mut visiting = BTreeSet::new();
+        let mut validated = BTreeSet::new();
+        validate_initializer_root(state, initializer, &programs, &mut visiting, &mut validated)?;
+    }
+    Ok(())
+}
+
+fn validate_initializer_root(
+    state: &StateDescriptor,
+    function: vela_def::FunctionId,
+    programs: &BTreeMap<vela_def::FunctionId, &vela_mir::OwnedVerifiedMirProgram>,
+    visiting: &mut BTreeSet<vela_def::FunctionId>,
+    validated: &mut BTreeSet<vela_def::FunctionId>,
+) -> CompileResult<()> {
+    if validated.contains(&function) || !visiting.insert(function) {
+        return Ok(());
+    }
+    let owner = programs.get(&function).copied().ok_or_else(|| {
+        invalid_state_initializer(
+            state,
+            state.source_span,
+            "a called script function is missing from the verified program",
+        )
+    })?;
+    let mut callees = Vec::new();
+    for (_, body) in owner.program().functions() {
+        for (_, statement) in body.statements() {
+            reject_initializer_effect(state, statement.effect, statement.origin.span)?;
+            if let vela_mir::MirStatementKind::Call(call) = &statement.kind {
+                match call {
+                    vela_mir::MirCall::ScriptFunction {
+                        function,
+                        signature,
+                        ..
+                    } if !signature.asyncness.is_async() => callees.push(*function),
+                    vela_mir::MirCall::ScriptFunction { .. }
+                    | vela_mir::MirCall::ScriptMethod { .. } => {
+                        return Err(invalid_state_initializer(
+                            state,
+                            Some(statement.origin.span),
+                            "async or method calls are not allowed",
+                        ));
+                    }
+                    _ => {
+                        return Err(invalid_state_initializer(
+                            state,
+                            Some(statement.origin.span),
+                            "native, standard-library, host, provider, reflective, and dynamic calls are not allowed",
+                        ));
+                    }
+                }
+            }
+        }
+        for (_, block) in body.blocks() {
+            let Some(terminator) = block.terminator() else {
+                continue;
+            };
+            reject_initializer_effect(state, terminator.effect, terminator.origin.span)?;
+            if matches!(
+                terminator.kind,
+                vela_mir::MirTerminatorKind::AwaitCall { .. }
+            ) {
+                return Err(invalid_state_initializer(
+                    state,
+                    Some(terminator.origin.span),
+                    "await is not allowed",
+                ));
+            }
+        }
+    }
+    for callee in callees {
+        validate_initializer_root(state, callee, programs, visiting, validated)?;
+    }
+    visiting.remove(&function);
+    validated.insert(function);
+    Ok(())
+}
+
+fn reject_initializer_effect(
+    state: &StateDescriptor,
+    effect: vela_mir::MirEffect,
+    span: Span,
+) -> CompileResult<()> {
+    let reason = [
+        (effect.dynamic_call, "dynamic dispatch"),
+        (effect.state_read || effect.state_write, "state access"),
+        (
+            effect.host_read || effect.host_write || effect.host_call,
+            "host access",
+        ),
+        (
+            effect.reflection_read || effect.reflection_write || effect.reflection_call,
+            "reflection",
+        ),
+        (effect.emits_event, "event emission"),
+        (effect.reads_time, "time access"),
+        (effect.uses_random, "random access"),
+        (effect.reads_io || effect.writes_io, "IO access"),
+    ]
+    .into_iter()
+    .find_map(|(present, reason)| present.then_some(reason));
+    match reason {
+        Some(reason) => Err(invalid_state_initializer(state, Some(span), reason)),
+        None => Ok(()),
+    }
+}
+
+fn invalid_state_initializer(
+    state: &StateDescriptor,
+    span: Option<Span>,
+    reason: impl Into<String>,
+) -> CompileError {
+    let error = CompileError::new(CompileErrorKind::InvalidStateInitializer {
+        state: state.qualified_name.clone(),
+        reason: reason.into(),
+    });
+    span.map_or(error.clone(), |span| error.with_span(span))
 }
 
 fn validate_program_request(sources: &HirSourceSet) -> CompileResult<()> {
@@ -639,7 +797,7 @@ fn state_descriptors(
                     CompileStateStorage::Extern => StateStorage::Extern,
                 },
                 type_contract: target.contract.clone(),
-                initializer: None,
+                initializer: target.initializer,
                 source_span: Some(metadata.span),
             })
         })

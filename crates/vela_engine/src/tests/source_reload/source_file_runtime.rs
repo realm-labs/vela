@@ -10,7 +10,8 @@ fn runtime_compiles_hot_reload_update_from_active_version() {
         .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
     assert!(initial.linked_program().function_count() > 0);
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -67,7 +68,8 @@ fn runtime_compiles_hot_reload_update_file_from_active_version() {
     let initial = engine
         .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let unique = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .expect("system clock should be after epoch")
@@ -109,7 +111,8 @@ fn runtime_stages_hot_reload_file_until_check_reload_safe_point() {
     let initial = engine
         .compile_hot_reload_initial_file(&path)
         .expect("initial hot reload file compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 

@@ -2129,8 +2129,8 @@ impl Vm {
                 InstructionKind::LoadState {
                     dst,
                     slot,
-                    debug_name,
-                    ..
+                    debug_name: _,
+                    cache_site,
                 } => {
                     let value = host_access::load_linked_state(
                         host_access::HostAccessRuntime {
@@ -2142,14 +2142,14 @@ impl Vm {
                             source_span: instruction.span,
                         },
                         program,
-                        *debug_name,
                         *slot,
+                        *cache_site,
                     )?;
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::StoreState {
                     slot,
-                    debug_name,
+                    debug_name: _,
                     src,
                 } => {
                     let value = frame.read(*src)?;
@@ -2163,7 +2163,6 @@ impl Vm {
                             source_span: instruction.span,
                         },
                         program,
-                        *debug_name,
                         *slot,
                         value,
                     )?;

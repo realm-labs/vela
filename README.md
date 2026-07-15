@@ -131,7 +131,7 @@ Run standalone examples:
 ```bash
 cargo run --manifest-path examples/Cargo.toml --bin level_up
 cargo run --manifest-path examples/Cargo.toml --bin host_type_methods
-cargo run --manifest-path examples/Cargo.toml --bin script_global
+cargo run --manifest-path examples/Cargo.toml --bin script_state
 cargo run --manifest-path examples/Cargo.toml --bin serde_value
 cargo run --manifest-path examples/Cargo.toml --bin io_stdlib
 cargo run --manifest-path examples/Cargo.toml --bin async_basic

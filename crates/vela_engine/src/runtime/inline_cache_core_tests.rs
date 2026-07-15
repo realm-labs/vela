@@ -19,7 +19,7 @@ fn inline_caches_allocate_from_image_cache_site_count() {
         .compile_source_with_id(
             SourceId::new(1),
             r#"
-global value: i64;
+state value: i64 = 0;
 
 fn main() {
     return value;
@@ -67,12 +67,12 @@ fn read_second() {
         .expect("program should compile");
     let first_slot = program
         .state_slot("main::first")
-        .expect("first global should have slot");
+        .expect("first state should have slot");
     let second_slot = program
         .state_slot("main::second")
-        .expect("second global should have slot");
+        .expect("second state should have slot");
 
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let first_site = runtime
         .image
         .program_image()
@@ -81,8 +81,8 @@ fn read_second() {
         .cache_sites
         .sites()
         .iter()
-        .find(|site| site.kind == CacheSiteKind::ExternStateRead)
-        .expect("read_first should have global read site")
+        .find(|site| site.kind == CacheSiteKind::StateRead)
+        .expect("read_first should have state read site")
         .id;
     let second_site = runtime
         .image
@@ -92,18 +92,18 @@ fn read_second() {
         .cache_sites
         .sites()
         .iter()
-        .find(|site| site.kind == CacheSiteKind::ExternStateRead)
-        .expect("read_second should have global read site")
+        .find(|site| site.kind == CacheSiteKind::StateRead)
+        .expect("read_second should have state read site")
         .id;
     assert_ne!(first_site, second_site);
     runtime
-        .insert_global(
+        .set_state(
             "main::first",
             OwnedValue::Scalar(vela_common::ScalarValue::I64(10)),
         )
         .expect("first global should insert");
     runtime
-        .insert_global(
+        .set_state(
             "main::second",
             OwnedValue::Scalar(vela_common::ScalarValue::I64(20)),
         )
@@ -143,7 +143,7 @@ fn read_second() {
     );
 
     runtime
-        .insert_global(
+        .set_state(
             "main::first",
             OwnedValue::Scalar(vela_common::ScalarValue::I64(30)),
         )
@@ -164,7 +164,7 @@ fn record_field_inline_cache_is_site_indexed() {
         .compile_source_with_id(
             SourceId::new(1),
             r#"
-global value: i64;
+state value: i64 = 0;
 
 fn main() {
     return value;
@@ -193,7 +193,7 @@ fn inline_cache_families_do_not_evict_same_site_entries() {
         .compile_source_with_id(
             SourceId::new(1),
             r#"
-global value: i64;
+state value: i64 = 0;
 
 fn main() {
     return value;
@@ -232,8 +232,8 @@ fn accepted_hot_reload_clears_runtime_inline_caches() {
         .compile_hot_reload_initial_with_id(
             SourceId::new(1),
             r#"
-global first: i64;
-global second: i64;
+state first: i64 = 0;
+state second: i64 = 0;
 
 fn read_value() {
     return first;
@@ -253,7 +253,8 @@ fn read_value() {
         .position(|state| state.qualified_name == "main::second")
         .map(StateSlot)
         .expect("second global should have a slot");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let initial_site = runtime
         .image
         .program_image()
@@ -266,13 +267,13 @@ fn read_value() {
         .expect("read_value should have an initial global read site")
         .id;
     runtime
-        .insert_global(
+        .set_state(
             "main::first",
             OwnedValue::Scalar(vela_common::ScalarValue::I64(10)),
         )
         .expect("first global should insert");
     runtime
-        .insert_global(
+        .set_state(
             "main::second",
             OwnedValue::Scalar(vela_common::ScalarValue::I64(20)),
         )

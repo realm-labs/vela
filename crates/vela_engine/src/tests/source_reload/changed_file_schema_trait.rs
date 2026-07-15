@@ -11,7 +11,8 @@ fn runtime_stages_changed_file_defaulted_schema_addition_until_safe_point() {
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -72,7 +73,8 @@ fn runtime_stages_changed_file_stable_id_schema_renames_until_safe_point() {
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -133,7 +135,8 @@ fn runtime_stages_changed_file_required_schema_field_rejection_until_safe_point(
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -200,7 +203,8 @@ fn runtime_stages_changed_file_removed_schema_rejection_until_safe_point() {
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -286,7 +290,8 @@ fn runtime_stages_changed_file_schema_field_type_rejection_until_safe_point() {
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -353,7 +358,8 @@ fn runtime_stages_changed_file_defaulted_enum_variant_field_addition_until_safe_
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -414,7 +420,8 @@ fn runtime_stages_changed_file_required_enum_variant_field_rejection_until_safe_
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -481,7 +488,8 @@ fn runtime_stages_changed_file_enum_variant_field_type_rejection_until_safe_poin
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -548,7 +556,8 @@ fn runtime_stages_changed_file_removed_trait_impl_rejection_until_safe_point() {
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -615,7 +624,8 @@ fn runtime_stages_changed_file_added_trait_impl_until_safe_point() {
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -680,7 +690,8 @@ fn runtime_stages_changed_file_removed_trait_rejection_until_safe_point() {
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -747,7 +758,8 @@ fn runtime_stages_changed_file_trait_method_return_rejection_until_safe_point() 
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -814,7 +826,8 @@ fn runtime_stages_changed_file_required_trait_method_rejection_until_safe_point(
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -881,7 +894,8 @@ fn runtime_stages_changed_file_defaulted_trait_method_addition_until_safe_point(
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -947,7 +961,8 @@ fn runtime_returns_changed_file_frontend_rejection_immediately() {
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -1005,7 +1020,8 @@ fn runtime_returns_hot_reload_changed_file_source_errors_immediately() {
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let changed = root.join("game").join("reward.txt");
     std::fs::write(&changed, "not a vela source file").expect("write non-source file");
 

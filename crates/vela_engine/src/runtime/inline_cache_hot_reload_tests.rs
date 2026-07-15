@@ -24,7 +24,8 @@ fn read_value() {
 "#,
         )
         .expect("initial record field source should compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let initial_site = record_field_read_site(&runtime, "read_value");
 
     let first = runtime
@@ -101,7 +102,8 @@ fn call_dynamic(value) {
 "#,
         )
         .expect("initial dynamic method source should compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let initial_site = method_call_site(&runtime, "call_dynamic");
 
     let first = runtime

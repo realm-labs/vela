@@ -219,6 +219,7 @@ pub struct CompileStateDescriptor {
     pub name: String,
     pub storage: CompileStateStorage,
     pub contract: MirTypeContract,
+    pub initializer: Option<FunctionId>,
 }
 
 /// All canonical/debug symbols required by a backend after semantic lowering.

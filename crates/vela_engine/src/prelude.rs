@@ -19,9 +19,10 @@ pub use crate::reload::{
     EngineHotReloadSourceError, EngineHotReloadSourceErrorKind, EngineHotReloadSourceResult,
 };
 pub use crate::runtime::{
-    CallArgs, CallOptions, HotReloadStagingHandle, IntoGlobalValue, ProviderHandle, Runtime,
-    RuntimeCallFuture, RuntimeCallTarget, RuntimeMethodSelector, VelaFunction, VelaMethod,
-    VelaMethodTarget, VelaValue,
+    CallArgs, CallOptions, HotReloadStagingHandle, IntoStateValue, ProviderHandle, Runtime,
+    RuntimeBuildError, RuntimeBuilder, RuntimeCallFuture, RuntimeCallTarget,
+    RuntimeInitializationLimits, RuntimeMethodSelector, VelaFunction, VelaMethod, VelaMethodTarget,
+    VelaValue,
 };
 pub use crate::schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
 pub use crate::source::{

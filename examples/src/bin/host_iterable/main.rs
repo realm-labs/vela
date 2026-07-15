@@ -15,7 +15,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         )
         .build()?;
     let program = engine.compile_source(include_str!("main.vela"))?;
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
     let output = runtime.call("main", CallArgs::new(), CallOptions::unbounded())?;
     let total: i64 = runtime.from_value(&output)?;

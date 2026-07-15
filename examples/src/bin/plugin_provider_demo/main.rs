@@ -24,7 +24,7 @@ fn run_demo() -> Result<(i64, i64), Box<dyn std::error::Error>> {
     let selection = catalog.select([key.clone()])?;
     let request = ProviderCompileRequest::for_selection(&snapshot, selection);
     let initial = engine.compile_provider_hot_reload_initial(&snapshot, &request)?;
-    let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone());
+    let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone()).expect("runtime should initialize");
     let handle = runtime.provider_handle(&key)?;
     let before = call_provider(&mut runtime, &handle, method)?;
 

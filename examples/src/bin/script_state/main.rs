@@ -5,22 +5,15 @@ use std::error::Error;
 use serde::{Deserialize, Serialize};
 use vela_engine::prelude::*;
 
-const STATE_GLOBAL: &str = "main::state";
+const STATE_NAME: &str = "main::state";
 
 fn main() -> Result<(), Box<dyn Error>> {
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .build()?;
     let program = engine.compile_source(include_str!("main.vela"))?;
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
-    let initial_state = ServerState {
-        level: 1,
-        name: "boot".to_owned(),
-        total_gold: 0,
-        stats: ServerStats { handled_ticks: 0 },
-    };
-    runtime.insert_global(STATE_GLOBAL, &initial_state)?;
     let handle_tick = runtime.entry("handle_tick")?;
     let state_name_fn = runtime.entry("state_name")?;
     let tick_count_fn = runtime.entry("tick_count")?;
@@ -42,7 +35,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         total_gold: 5,
         stats: ServerStats { handled_ticks: 7 },
     };
-    runtime.set_global(STATE_GLOBAL, &rust_updated_state)?;
+    runtime.set_state(STATE_NAME, &rust_updated_state)?;
 
     let second_tick = runtime.call(
         &handle_tick,
@@ -63,10 +56,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             .with(OwnedValue::Scalar(vela_common::ScalarValue::I64(4))),
         CallOptions::unbounded(),
     )?;
-    runtime.insert_global(STATE_GLOBAL, state_snapshot)?;
+    runtime.set_state(STATE_NAME, state_snapshot)?;
     let final_state: ServerState = runtime
-        .global_as(STATE_GLOBAL)?
-        .expect("state global should exist");
+        .state_as(STATE_NAME)?
+        .expect("VM state should exist");
 
     let first_tick: i64 = runtime.from_value(&first_tick)?;
     let second_tick: i64 = runtime.from_value(&second_tick)?;
@@ -84,7 +77,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     assert_eq!(final_state.stats.handled_ticks, 8);
 
     println!(
-        "script_global first={first_tick} second={second_tick} name={state_name} \
+        "script_state first={first_tick} second={second_tick} name={state_name} \
          projected={projected_score} final_level={} final_gold={} ticks={tick_count}",
         final_state.level, final_state.total_gold
     );

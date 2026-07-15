@@ -18,7 +18,7 @@ use super::VelaValue;
 ///
 /// let engine = Engine::builder().build().unwrap();
 /// let program = engine.compile_source("fn main() { return 1; }").unwrap();
-/// let mut runtime = Runtime::new(engine, program);
+/// let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 /// let future = runtime.call_async("main", CallArgs::new(), CallOptions::unbounded());
 /// require_static(future);
 /// ```
@@ -137,7 +137,7 @@ async fn main() {
 "#,
             )
             .expect("reentry fixture should compile");
-        let mut runtime = Runtime::new(engine, program);
+        let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
         let value = run_to_completion(runtime.call_async(
             "main",
@@ -194,10 +194,10 @@ async fn main() {
 "#,
             )
             .expect("nested GC fixture should compile");
-        let mut runtime = Runtime::new(engine, program);
+        let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
         runtime
             .state
-            .script_globals
+            .vm_states
             .heap
             .set_gc_config(vela_vm::heap::GcConfig {
                 max_pause_micros: 500,
@@ -277,10 +277,10 @@ async fn main() { return test::hold_reentry_value().await; }
 "#,
             )
             .expect("dynamic reentry root fixture should compile");
-        let mut runtime = Runtime::new(engine, program);
+        let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
         runtime
             .state
-            .script_globals
+            .vm_states
             .heap
             .set_gc_config(vela_vm::heap::GcConfig {
                 max_pause_micros: 1,
@@ -328,7 +328,7 @@ fn reusable() { return 9; }
 "#,
             )
             .expect("depth fixture should compile");
-        let mut runtime = Runtime::new(engine, program);
+        let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
         let error = run_to_completion(runtime.call_async(
             "main",
@@ -356,7 +356,7 @@ fn reusable() { return 9; }
         let program = engine
             .compile_source("fn main(value) { return value + 1; }")
             .expect("program should compile");
-        let mut runtime = Runtime::new(engine.clone(), program);
+        let mut runtime = Runtime::new(engine.clone(), program).expect("runtime should initialize");
 
         let future = runtime.call_async(
             "main",
@@ -383,7 +383,7 @@ impl Counter {
 "#,
             )
             .expect("program should compile");
-        let mut runtime = Runtime::new(engine, program);
+        let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
         let receiver = runtime
             .call("counter", CallArgs::new(), CallOptions::unbounded())
             .expect("receiver factory should run");
@@ -466,7 +466,7 @@ async fn main(value) {
 "#,
             )
             .expect("async program should compile");
-        let mut runtime = Runtime::new(engine.clone(), program);
+        let mut runtime = Runtime::new(engine.clone(), program).expect("runtime should initialize");
         let mut future = runtime.call_async(
             "main",
             CallArgs::new().with(42_i64),
@@ -530,7 +530,7 @@ async fn main(value) {
         let program = engine
             .compile_source("async fn main() -> i64 { return pending_value().await; }")
             .expect("poll budget fixture should compile");
-        let mut runtime = Runtime::new(engine, program);
+        let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
         let mut future = runtime.call_async(
             "main",
             CallArgs::new(),
@@ -591,7 +591,7 @@ fn reusable() -> i64 { return 9; }
 "#,
             )
             .expect("memory limit fixture should compile");
-        let mut runtime = Runtime::new(engine, program);
+        let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
         let error = run_to_completion(runtime.call_async(
             "main",
             CallArgs::new(),
@@ -734,7 +734,7 @@ async fn main(player: Player) {
 "#,
             )
             .expect("async host program should compile");
-        let mut runtime = Runtime::new(engine.clone(), program);
+        let mut runtime = Runtime::new(engine.clone(), program).expect("runtime should initialize");
         let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
         let level_path = HostPath::new(player).field(FieldId::new(1));
         let mut adapter = MockStateAdapter::new();
@@ -768,7 +768,8 @@ async fn main(player: Player) {
         let unawaited = engine
             .compile_source("fn main(player) { return player.async_add_level(1); }")
             .expect("dynamic unawaited call should defer asyncness to runtime");
-        let mut unawaited_runtime = Runtime::new(engine.clone(), unawaited);
+        let mut unawaited_runtime =
+            Runtime::new(engine.clone(), unawaited).expect("runtime should initialize");
         let args = CallArgs::new()
             .with_host_handle("player", player)
             .with_fallback_adapter(&mut adapter);
@@ -790,7 +791,8 @@ fn main(player) {
 "#,
             )
             .expect("reflection asyncness should be resolved at runtime");
-        let mut reflection_runtime = Runtime::new(engine, unawaited_reflection);
+        let mut reflection_runtime =
+            Runtime::new(engine, unawaited_reflection).expect("runtime should initialize");
         let args = CallArgs::new()
             .with_host_handle("player", player)
             .with_fallback_adapter(&mut adapter);
@@ -829,7 +831,7 @@ fn healthy() { return 42; }
 "#,
             )
             .expect("async error program should compile");
-        let mut runtime = Runtime::new(engine, program);
+        let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
         let error = run_to_completion(runtime.call_async(
             "failing",

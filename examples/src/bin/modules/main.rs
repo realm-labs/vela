@@ -10,7 +10,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .execution_profile(ExecutionProfile::trusted())
         .build()?;
     let program = engine.compile_dir(example_dir("modules"))?;
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
     let output = runtime.call(
         "game::main::main",

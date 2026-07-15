@@ -42,6 +42,66 @@ fn value_runtime_slot_stays_compact() {
     );
 }
 
+#[test]
+fn linked_vm_state_resolves_stable_id_across_generation_slot_changes() {
+    let old_program = compile_test_program(
+        SourceId::new(80),
+        "state value: i64 = 0; fn read() { return value; }",
+    )
+    .expect("old state program should compile");
+    let new_program = compile_test_program(
+        SourceId::new(81),
+        "state added: i64 = 0; state value: i64 = 0; fn read() { return value; }",
+    )
+    .expect("new state program should compile");
+    let old = link_test_program(&old_program);
+    let new = link_test_program(&new_program);
+    let state = old
+        .program()
+        .states()
+        .iter()
+        .find(|state| state.qualified_name == "main::value")
+        .expect("value state descriptor")
+        .id;
+    let old_slot = old
+        .program()
+        .states()
+        .iter()
+        .position(|descriptor| descriptor.id == state);
+    let new_slot = new
+        .program()
+        .states()
+        .iter()
+        .position(|descriptor| descriptor.id == state);
+    assert_eq!(old_slot, Some(0));
+    assert_eq!(new_slot, Some(1));
+
+    let mut values = VmStateValues::default();
+    values.insert(state, Value::I64(41));
+    let mut adapter = MockStateAdapter::new();
+    let mut access = HostAccess::new();
+    let vm = Vm::new();
+    for artifact in [&old, &new] {
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            access: &mut access,
+            state_values: Some(&mut values),
+        };
+        let mut budget = ExecutionBudget::unbounded();
+        assert_eq!(
+            vm.run_linked_program_with_host_budget_and_caches(
+                artifact,
+                "read",
+                &[],
+                &mut host,
+                &mut budget,
+                None,
+            ),
+            Ok(OwnedValue::i64(41))
+        );
+    }
+}
+
 mod block_tail_semantics;
 mod bytes;
 mod char;

@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .register_script_host::<RewardSink>()
         .build()?;
     let program = engine.compile_source(include_str!("handle.vela"))?;
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
     let mut player = Player::new();
     let mut scores = IntIntMap::default();

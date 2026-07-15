@@ -41,7 +41,7 @@ pub(super) fn unique_test_dir(name: &str) -> TestDir {
 
 pub(super) fn runtime_from_hot_reload_source(engine: Engine, source: &str) -> Runtime {
     let initial = hot_reload_initial_from_source(&engine, source);
-    Runtime::from_hot_reload_version(engine, initial)
+    Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize")
 }
 
 pub(super) fn hot_reload_initial_from_source(

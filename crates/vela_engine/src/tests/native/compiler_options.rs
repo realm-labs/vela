@@ -901,7 +901,7 @@ fn main() {
     engine
         .link_test_program(&program)
         .expect("engine-compiled standard native program should link");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 

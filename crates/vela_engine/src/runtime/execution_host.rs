@@ -1,5 +1,5 @@
 use vela_common::HostMethodId;
-use vela_host::adapter::{GlobalBinding, ScriptStateAdapter};
+use vela_host::adapter::{ExternStateBinding, ScriptStateAdapter};
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::lease::{ErasedHostLease, HostLeaseKind, host_lease_unsupported, host_object_busy};
 use vela_host::path::HostRef;
@@ -13,7 +13,7 @@ use vela_vm::value::Value;
 use vela_vm::{NativeCallFuture, PreparedAsyncCall};
 
 use super::call_args::HostArgBinding;
-use super::{CallArgs, RuntimeGlobalStore};
+use super::{CallArgs, RuntimeExternStateBindings};
 
 const EXECUTION_HOST_OBJECT_ID_BASE: u64 = 1 << 63;
 
@@ -29,7 +29,7 @@ pub(super) trait DirectContextInvoker: Send {
 
 pub(super) struct ExecutionHost<'state, 'host> {
     args: CallArgs<'host>,
-    globals: &'state mut RuntimeGlobalStore,
+    extern_states: &'state mut RuntimeExternStateBindings,
     fallback: FallbackAdapter<'host>,
     next_direct_object_id: u64,
 }
@@ -50,13 +50,16 @@ pub(super) trait ExecutionHostBoundary: ScriptStateAdapter + Send {
 }
 
 impl<'state, 'host> ExecutionHost<'state, 'host> {
-    pub(super) fn new(mut args: CallArgs<'host>, globals: &'state mut RuntimeGlobalStore) -> Self {
+    pub(super) fn new(
+        mut args: CallArgs<'host>,
+        extern_states: &'state mut RuntimeExternStateBindings,
+    ) -> Self {
         let fallback = args
             .take_fallback()
             .map_or(FallbackAdapter::Empty, FallbackAdapter::Borrowed);
         let mut execution_host = Self {
             args,
-            globals,
+            extern_states,
             fallback,
             next_direct_object_id: EXECUTION_HOST_OBJECT_ID_BASE,
         };
@@ -99,7 +102,7 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
         root: HostRef,
         kind: HostLeaseKind,
     ) -> HostResult<ErasedHostLease<'host>> {
-        if self.globals.binding(root).is_some() {
+        if self.extern_states.binding(root).is_some() {
             return Err(host_lease_unsupported(root));
         }
         self.args
@@ -138,7 +141,7 @@ impl ExecutionHostBoundary for ExecutionHost<'_, '_> {
     ) -> NativeCallFuture<'call> {
         Box::pin(async move {
             for (root, _) in &requests {
-                if self.globals.binding(*root).is_some() {
+                if self.extern_states.binding(*root).is_some() {
                     return Err(host_lease_unsupported(*root).into());
                 }
             }
@@ -233,8 +236,8 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_> {
         self.parent.host_schema_epoch()
     }
 
-    fn global_ref(&self, global: GlobalBinding<'_>) -> HostResult<HostRef> {
-        self.parent.global_ref(global)
+    fn extern_state_ref(&self, state: ExternStateBinding<'_>) -> HostResult<HostRef> {
+        self.parent.extern_state_ref(state)
     }
 
     fn resolve_host_access(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
@@ -344,15 +347,15 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         self.fallback.host_schema_epoch()
     }
 
-    fn global_ref(&self, global: GlobalBinding<'_>) -> HostResult<HostRef> {
-        self.globals
-            .host_ref_for_binding(global)
-            .or_else(|_| self.fallback.global_ref(global))
+    fn extern_state_ref(&self, state: ExternStateBinding<'_>) -> HostResult<HostRef> {
+        self.extern_states
+            .host_ref_for_binding(state)
+            .or_else(|_| self.fallback.extern_state_ref(state))
     }
 
     fn resolve_host_access(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
-        if let Some(global) = self.globals.binding_by_type(spec.plan.root_type) {
-            return global.object.resolve_host_target(spec);
+        if let Some(binding) = self.extern_states.binding_by_type(spec.plan.root_type) {
+            return binding.object.resolve_host_target(spec);
         }
         match self.args.direct_binding_by_type(spec.plan.root_type) {
             Some((_, HostArgBinding::Shared { object, .. })) => object.resolve_host_target(spec),
@@ -369,8 +372,8 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
     ) -> HostResult<HostValue> {
-        if let Some(global) = self.globals.binding(target.root) {
-            return global.object.read_resolved_host(access, target);
+        if let Some(binding) = self.extern_states.binding(target.root) {
+            return binding.object.read_resolved_host(access, target);
         }
         match self.args.direct_binding(target.root) {
             Some(HostArgBinding::Shared { object, .. }) => {
@@ -390,8 +393,8 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         target: HostTargetInstance<'_>,
         value: HostValue,
     ) -> HostResult<()> {
-        if let Some(global) = self.globals.binding_mut(target.root) {
-            return global.object.write_resolved_host(access, target, value);
+        if let Some(binding) = self.extern_states.binding_mut(target.root) {
+            return binding.object.write_resolved_host(access, target, value);
         }
         match self.args.direct_binding_mut(target.root) {
             Some(HostArgBinding::Shared { .. }) => Err(Self::direct_access_error(target, "write")),
@@ -410,8 +413,8 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         op: HostMutationOp,
         rhs: HostValue,
     ) -> HostResult<()> {
-        if let Some(global) = self.globals.binding_mut(target.root) {
-            return global.object.mutate_resolved_host(access, target, op, rhs);
+        if let Some(binding) = self.extern_states.binding_mut(target.root) {
+            return binding.object.mutate_resolved_host(access, target, op, rhs);
         }
         match self.args.direct_binding_mut(target.root) {
             Some(HostArgBinding::Shared { .. }) => Err(Self::direct_access_error(target, "write")),
@@ -428,8 +431,8 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
     ) -> HostResult<()> {
-        if let Some(global) = self.globals.binding_mut(target.root) {
-            return global.object.remove_resolved_host(access, target);
+        if let Some(binding) = self.extern_states.binding_mut(target.root) {
+            return binding.object.remove_resolved_host(access, target);
         }
         match self.args.direct_binding_mut(target.root) {
             Some(HostArgBinding::Shared { .. }) => Err(Self::direct_access_error(target, "write")),
@@ -448,8 +451,8 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         method: HostMethodId,
         args: &[HostValue],
     ) -> HostResult<HostValue> {
-        if let Some(global) = self.globals.binding_mut(target.root) {
-            return global
+        if let Some(binding) = self.extern_states.binding_mut(target.root) {
+            return binding
                 .object
                 .call_resolved_host(access, target, method, args);
         }
@@ -502,10 +505,10 @@ impl ScriptStateAdapter for FallbackAdapter<'_> {
         )
     }
 
-    fn global_ref(&self, global: GlobalBinding<'_>) -> HostResult<HostRef> {
+    fn extern_state_ref(&self, state: ExternStateBinding<'_>) -> HostResult<HostRef> {
         self.adapter().map_or_else(
-            || Err(missing_global(global.name)),
-            |adapter| adapter.global_ref(global),
+            || Err(missing_extern_state(state.name)),
+            |adapter| adapter.extern_state_ref(state),
         )
     }
 
@@ -582,9 +585,9 @@ impl ScriptStateAdapter for FallbackAdapter<'_> {
     }
 }
 
-fn missing_global(name: &str) -> HostError {
+fn missing_extern_state(name: &str) -> HostError {
     HostError {
-        kind: HostErrorKind::MissingGlobal {
+        kind: HostErrorKind::MissingExternState {
             name: name.to_owned(),
         },
         source_span: None,
@@ -598,7 +601,7 @@ mod tests {
     use vela_vm::value::Value;
 
     use super::{EXECUTION_HOST_OBJECT_ID_BASE, ExecutionHost, ReentryExecutionHost};
-    use crate::runtime::{CallArgs, RuntimeGlobalStore};
+    use crate::runtime::{CallArgs, RuntimeExternStateBindings};
 
     #[test]
     fn direct_host_ids_are_allocated_by_the_execution_owner() {
@@ -607,9 +610,9 @@ mod tests {
         let args = CallArgs::new()
             .with_host_ref("shared", &shared)
             .with_host_mut("mutable", &mut mutable);
-        let mut globals = RuntimeGlobalStore::new();
+        let mut extern_states = RuntimeExternStateBindings::new();
 
-        let host = ExecutionHost::new(args, &mut globals);
+        let host = ExecutionHost::new(args, &mut extern_states);
 
         assert_eq!(
             host.next_direct_object_id(),
@@ -622,8 +625,8 @@ mod tests {
         let root_value = vec![1_i64];
         let child_value = vec![2_i64];
         let args = CallArgs::new().with_host_ref("root", &root_value);
-        let mut globals = RuntimeGlobalStore::new();
-        let mut host = ExecutionHost::new(args, &mut globals);
+        let mut extern_states = RuntimeExternStateBindings::new();
+        let mut host = ExecutionHost::new(args, &mut extern_states);
         let mut heap = ScriptHeap::default();
         let mut budget = ExecutionBudget::unbounded();
 

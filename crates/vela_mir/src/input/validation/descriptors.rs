@@ -365,7 +365,12 @@ fn validate_functions(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildE
                             if executable.function == function
                     )
                 });
-            if !declaration_owned && !method_owned {
+            let state_initializer_owned = validator
+                .snapshot
+                .target_table()
+                .states()
+                .any(|(_, state)| state.initializer == Some(function));
+            if !declaration_owned && !method_owned && !state_initializer_owned {
                 return Err(validator.error(
                     origin,
                     format!(
@@ -576,12 +581,17 @@ fn validate_roots(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildError
         validator.require_script_function(*function, origin, "compilation root")?;
         match target.identity {
             CompileFunctionIdentity::Function(function) => {
-                if !validator
+                let declaration_owned = validator
                     .snapshot
                     .functions_by_declaration
                     .values()
-                    .any(|candidate| *candidate == function)
-                {
+                    .any(|candidate| *candidate == function);
+                let state_initializer_owned = validator
+                    .snapshot
+                    .target_table()
+                    .states()
+                    .any(|(_, state)| state.initializer == Some(function));
+                if !declaration_owned && !state_initializer_owned {
                     return Err(
                         validator.error(origin, "script function root has no declaration identity")
                     );

@@ -47,7 +47,7 @@ fn main(player: Player, amount: i64) {
     let program = engine
         .compile_file(&source)
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
     let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
@@ -150,7 +150,7 @@ pub const BASE: i64 = 10;
         .compile_dir(root.path())
         .expect("directory modules should compile");
     assert!(program.function("ignored.main").is_none());
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 

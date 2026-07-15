@@ -703,6 +703,7 @@ fn mir_model_snapshot_owns_method_signatures_and_guard_contracts() {
                 name: "current_reward".to_owned(),
                 storage: CompileStateStorage::Vm,
                 contract: MirTypeContract::Definition(type_id),
+                initializer: None,
             },
             fact_origin,
         )

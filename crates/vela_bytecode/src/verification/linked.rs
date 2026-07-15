@@ -57,6 +57,16 @@ pub fn verify_linked_program(program: &LinkedProgram) -> Result<(), Verification
                 },
             ));
         }
+        if state.storage == crate::StateStorage::Vm && state.initializer.is_none() {
+            return Err(error(
+                "<linked state descriptor>",
+                None,
+                VerificationErrorKind::InvalidStateDescriptor {
+                    slot,
+                    detail: "VM state is missing its required initializer".to_owned(),
+                },
+            ));
+        }
         if let Some(initializer) = state.initializer {
             verify_linked_function_handle(
                 "<linked state descriptor>",

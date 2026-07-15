@@ -63,7 +63,8 @@ impl BenchProvider for Bench {
         let selection = catalog.select([key.clone()])?;
         let request = ProviderCompileRequest::for_selection(&snapshot, selection);
         let artifact = engine.compile_provider_selection(&snapshot, &request)?;
-        let runtime = Runtime::from_linked_artifact(engine, artifact);
+        let runtime =
+            Runtime::from_linked_artifact(engine, artifact).expect("runtime should initialize");
         let handle = runtime.provider_handle(&key)?;
         Ok(Self {
             root,

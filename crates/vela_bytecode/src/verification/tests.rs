@@ -102,6 +102,21 @@ fn program_verifier_rejects_an_extern_state_initializer() {
 }
 
 #[test]
+fn program_verifier_rejects_a_vm_state_without_an_initializer() {
+    let mut descriptor =
+        crate::StateDescriptor::test_extern(vela_def::StateId::new(1), "main::value");
+    descriptor.storage = crate::StateStorage::Vm;
+    let mut program = UnlinkedProgram::new();
+    program.set_states([descriptor]);
+
+    assert!(matches!(
+        program.verify().expect_err("missing VM initializer").kind,
+        VerificationErrorKind::InvalidStateDescriptor { slot: 0, detail }
+            if detail.contains("required initializer")
+    ));
+}
+
+#[test]
 fn accepts_explicit_await_call_with_resume_successor() {
     let mut code =
         UnlinkedCodeObject::new("main", 1).with_asyncness(vela_common::CallableAsyncness::Async);

@@ -23,7 +23,8 @@ fn main() {
 }
 "#,
     );
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -53,7 +54,7 @@ fn runtime_rejects_hot_update_when_not_created_from_version() {
     let compiled = engine
         .compile_source_with_id(SourceId::new(3), "fn main() { return 1; }")
         .expect("ordinary source compile");
-    let mut runtime = Runtime::new_compiled(engine, compiled);
+    let mut runtime = Runtime::new_compiled(engine, compiled).expect("runtime should initialize");
 
     assert!(matches!(
         runtime.apply_hot_update(update),
@@ -73,7 +74,7 @@ fn runtime_rejects_compile_update_when_not_created_from_version() {
     let compiled = engine
         .compile_source_with_id(SourceId::new(3), "fn main() { return 1; }")
         .expect("ordinary source compile");
-    let runtime = Runtime::new_compiled(engine, compiled);
+    let runtime = Runtime::new_compiled(engine, compiled).expect("runtime should initialize");
 
     assert!(matches!(
         runtime.compile_hot_reload_update_with_id(SourceId::new(2), "fn main() { return 2; }"),

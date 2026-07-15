@@ -53,7 +53,7 @@ fn run_script(path: &Path, async_entry: bool) -> Result<(), Box<dyn std::error::
     let program = engine
         .compile_file(path)
         .map_err(|error| diagnostics::render_engine_source_error(path, &error))?;
-    let mut runtime = Runtime::new_compiled(engine, program);
+    let mut runtime = Runtime::new_compiled(engine, program)?;
     let args = CallArgs::new();
     let options = CallOptions::new(10_000, 1024 * 1024, 64);
     let output = if async_entry {

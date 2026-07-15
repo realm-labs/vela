@@ -225,7 +225,8 @@ async fn alias_conflict(counter: DirectCounter) {
 "#,
         )
         .expect("direct async method source should compile");
-    let mut runtime = vela_engine::runtime::Runtime::new(engine, program);
+    let mut runtime =
+        vela_engine::runtime::Runtime::new(engine, program).expect("runtime should initialize");
     let mut counter = DirectCounter { total: 3 };
     let mut reentry_counter = DirectCounter { total: 3 };
 

@@ -182,6 +182,7 @@ pub(super) struct GenerationBuilder<'graph, 'methods> {
     executable_analysis: ExecutableAnalysisGeneration,
     targets: CompileTargetSnapshotBuilder,
     function_ids: BTreeMap<HirDeclId, FunctionId>,
+    state_initializer_ids: BTreeMap<HirDeclId, FunctionId>,
     type_ids: BTreeMap<HirDeclId, TypeId>,
     type_names: BTreeMap<TypeId, String>,
     type_shapes: BTreeMap<TypeId, vela_common::ShapeId>,
@@ -232,6 +233,7 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
             executable_analysis: ExecutableAnalysisGeneration::default(),
             targets: CompileTargetSnapshot::builder(),
             function_ids: BTreeMap::new(),
+            state_initializer_ids: BTreeMap::new(),
             type_ids: BTreeMap::new(),
             type_names: BTreeMap::new(),
             type_shapes: BTreeMap::new(),
@@ -343,6 +345,14 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
                         method.body(),
                     )
                 }));
+                roots.extend(self.state_initializer_ids.iter().filter_map(
+                    |(declaration, function)| {
+                        self.request
+                            .graph
+                            .state_initializer_body(*declaration)
+                            .map(|body| (*function, body.id))
+                    },
+                ));
             }
         }
         roots.sort_unstable();

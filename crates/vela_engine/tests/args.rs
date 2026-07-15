@@ -528,7 +528,8 @@ fn main(player: Player, amount: i64) {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = vela_engine::runtime::Runtime::new(engine, program);
+    let mut runtime =
+        vela_engine::runtime::Runtime::new(engine, program).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
     let args = vela_engine::args![vela_engine::host!(1, 42, 1), 12_i64];

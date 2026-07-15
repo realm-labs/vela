@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .with_fs_io(root.path())
         .build()?;
     let program = engine.compile_source(include_str!("main.vela"))?;
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
     let output = runtime.call("main", CallArgs::new(), CallOptions::unbounded())?;
     let written = std::fs::read_to_string(root.path().join("output.txt"))?;

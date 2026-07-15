@@ -20,7 +20,7 @@ pub fn run(
         .map_err(|error| {
             crate::diagnostics::render_hot_reload_error(initial_label, initial_source, &error)
         })?;
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime = Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let old = runtime
         .hot_reload_version()
         .ok_or("runtime must keep the initial hot reload version")?;

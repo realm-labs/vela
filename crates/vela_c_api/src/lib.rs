@@ -238,7 +238,8 @@ pub unsafe extern "C" fn vela_runtime_compile_source(
             .engine
             .compile_source(source)
             .map_err(|error| (VelaStatus::CompileError, error.to_string()))?;
-        let runtime = Runtime::new_compiled(engine.engine.clone(), program);
+        let runtime = Runtime::new_compiled(engine.engine.clone(), program)
+            .map_err(|error| (VelaStatus::RuntimeError, error.to_string()))?;
         Ok(Box::into_raw(Box::new(VelaRuntime { runtime })))
     })
 }

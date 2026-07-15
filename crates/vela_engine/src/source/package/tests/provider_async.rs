@@ -69,7 +69,8 @@ pub async fn main() -> i64 { return test::enter_provider().await; }
     let artifact = engine
         .compile_provider_selection(&snapshot, &request)
         .expect("selected async provider compiles");
-    let mut runtime = Runtime::from_linked_artifact(engine, artifact);
+    let mut runtime =
+        Runtime::from_linked_artifact(engine, artifact).expect("runtime should initialize");
     let handle = runtime.provider_handle(&key).expect("provider handle");
     *target
         .lock()

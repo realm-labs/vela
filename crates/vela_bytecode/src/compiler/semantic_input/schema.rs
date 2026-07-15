@@ -3,10 +3,10 @@ use std::collections::BTreeMap;
 use vela_analysis::hints::type_fact_from_hint_in_module;
 use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
-use vela_common::{PrimitiveTag, ShapeId};
+use vela_common::{CallableAsyncness, PrimitiveTag, ShapeId};
 use vela_def::{
-    FunctionId, TypeId, script_field_id, script_function_id, script_state_id, script_type_id,
-    script_type_path, script_variant_id,
+    FunctionId, TypeId, script_field_id, script_function_id, script_state_id,
+    script_state_initializer_id, script_type_id, script_type_path, script_variant_id,
 };
 use vela_hir::attributes::schema_id_attr;
 use vela_hir::body::{HirBody, HirBodyRoot};
@@ -311,6 +311,8 @@ impl GenerationBuilder<'_, '_> {
                 .module_package(metadata.module)
                 .ok_or_else(registry_input_error)?;
             let id = script_state_id(package.as_str(), &symbol);
+            let initializer = (state.storage == StateStorage::Vm)
+                .then(|| script_state_initializer_id(package.as_str(), &symbol));
             let origin = MirSourceOrigin::declaration(declaration, metadata.span);
             self.remember_contract(&contract, origin);
             self.targets
@@ -324,6 +326,7 @@ impl GenerationBuilder<'_, '_> {
                             StateStorage::Extern => CompileStateStorage::Extern,
                         },
                         contract: contract.clone(),
+                        initializer,
                     },
                     origin,
                 )
@@ -345,7 +348,87 @@ impl GenerationBuilder<'_, '_> {
 
     pub(super) fn insert_script_callables(&mut self) -> CompileResult<()> {
         self.insert_script_functions()?;
+        self.insert_state_initializers()?;
         self.insert_script_methods()
+    }
+
+    fn insert_state_initializers(&mut self) -> CompileResult<()> {
+        let states = self
+            .request
+            .state_symbols
+            .iter()
+            .map(|(declaration, symbol)| (*declaration, symbol.clone()))
+            .collect::<Vec<_>>();
+        for (declaration, symbol) in states {
+            let Some(body) = self.request.graph.state_initializer_body(declaration) else {
+                continue;
+            };
+            let metadata = self
+                .request
+                .graph
+                .declaration(declaration)
+                .ok_or_else(registry_input_error)?;
+            let state = self
+                .request
+                .graph
+                .state_metadata(declaration)
+                .ok_or_else(registry_input_error)?;
+            let contract = self
+                .type_contract_for_hint(metadata.module, &state.type_hint)
+                .ok_or_else(registry_input_error)?;
+            let package = self
+                .request
+                .graph
+                .module_package(metadata.module)
+                .ok_or_else(registry_input_error)?;
+            let function = script_state_initializer_id(package.as_str(), &symbol);
+            let origin = MirSourceOrigin::body(body.id, body.origin.span);
+            let signature = CompileSignature {
+                asyncness: CallableAsyncness::Sync,
+                parameters: Vec::new(),
+                positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
+                return_contract: Some(contract),
+                effect: MirEffect::PURE,
+            };
+            let return_contract = signature
+                .return_contract
+                .clone()
+                .and_then(meaningful_contract);
+            self.function_return_contracts
+                .insert(function, return_contract.clone());
+            if let Some(contract) = return_contract {
+                self.insert_guard_once(
+                    CompileGuardKey::Return(function),
+                    CompileGuardTarget::new(contract, MirGuardLocation::Return, "return"),
+                    origin,
+                )?;
+            }
+            self.remember_signature_contracts(&signature, origin);
+            self.targets
+                .insert_function_descriptor(
+                    CompileFunctionDescriptor {
+                        id: function,
+                        class: CompileFunctionClass::Script,
+                        canonical_symbol: format!("<state-initializer:{symbol}>"),
+                        debug_name: format!("{symbol} initializer"),
+                        signature,
+                        access: CompileFunctionAccess::new(false, false, false),
+                    },
+                    origin,
+                )
+                .map_err(input_error)?;
+            self.targets
+                .insert_function(
+                    body.id,
+                    vela_mir::CompileFunctionIdentity::Function(function),
+                    origin,
+                )
+                .map_err(input_error)?;
+            self.function_code_symbols
+                .insert(function, format!("<state-initializer:{symbol}>"));
+            self.state_initializer_ids.insert(declaration, function);
+        }
+        Ok(())
     }
 
     fn insert_script_functions(&mut self) -> CompileResult<()> {

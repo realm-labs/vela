@@ -19,10 +19,14 @@ source fixtures use the new forms, and stable identity is named
 and exact contracts enter the semantic pipeline, MIR and linked bytecode use
 storage-specific reads/writes, VM state supports root assignment, extern roots
 reject assignment before bytecode generation, and typed state descriptors map
-generation slots to stable IDs. Batch C is the current checkpoint: introduce
-StateId-keyed persistent stores, compile and run restricted initializers, make
-Runtime construction transactional and fallible, and hard-switch the embedding
-API from global terminology to state ownership.
+generation slots to stable IDs. Batch C is complete: persistent VM and extern
+stores are keyed by `StateId`, restricted verified initializers run once per
+Runtime under explicit limits, construction is fallible and transactionally
+published, extern bindings are type-checked outside script GC, and the Rust,
+C, playground, and example construction surfaces use explicit state ownership.
+Batch D is the current checkpoint: make reload compatibility and staging use
+the same exact state descriptors, stable IDs, initializer path, and
+generation-lifetime rules.
 
 The executor-neutral async implementation from Batches A-D is landed: Vela has
 one explicit frame driver, scoped `Send` Runtime/native futures, direct typed
@@ -118,15 +122,15 @@ storage hard switch reaches final acceptance.
 
 ### State Storage Hard Switch
 
-Batches A-B are complete. HIR binds state initializers and exact contracts;
+Batches A-C are complete. HIR binds state initializers and exact contracts;
 MIR, bytecode, verifier, caches, and execution statically distinguish VM-state
 read/write from extern-state read; direct and compound VM-state assignment work;
 extern-root assignment is rejected; and executable metadata carries typed
-descriptors with stable identity. Batch C must introduce StateId-keyed
-persistent VM and extern stores, compile and run bounded effect-restricted
-initializers transactionally, make Runtime construction fallible, and replace
-the remaining global embedding surfaces. Batch D reload ABI and old-generation
-lifetime remain gated on those persistent stores.
+descriptors with stable identity. Each Runtime now owns independently
+initialized persistent VM state and validated extern bindings through the
+state-specific embedding API. Batch D must compare those descriptors by stable
+identity, stage added cells and bindings per Runtime, publish reload state
+atomically, and retain removed cells for live old-generation owners.
 
 ### Async Post-Review Closure
 

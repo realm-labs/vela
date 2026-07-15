@@ -1,13 +1,14 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
+use vela_def::StateId;
 use vela_vm::budget::ExecutionBudget;
-use vela_vm::error::VmResult;
+use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::heap::ScriptHeap;
 use vela_vm::heap_execution::ActiveExecutionRoot;
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
-use vela_vm::{ScriptGlobalValues, owned_to_persistent_value, persistent_value_to_owned};
+use vela_vm::{VmStateValues, owned_to_persistent_value, persistent_value_to_owned};
 
 use super::{RuntimeImageStorage, RuntimeImpl};
 
@@ -67,45 +68,45 @@ impl PartialEq for VelaValue {
     }
 }
 
-pub trait IntoGlobalValue {
-    fn insert_global<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>
+pub trait IntoStateValue {
+    fn set_state<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>
     where
         I: RuntimeImageStorage;
 }
 
 #[cfg(not(feature = "serde"))]
-impl<T> IntoGlobalValue for T
+impl<T> IntoStateValue for T
 where
     T: Into<OwnedValue>,
 {
-    fn insert_global<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>
+    fn set_state<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>
     where
         I: RuntimeImageStorage,
     {
-        runtime.insert_owned_global(name, self.into())
+        runtime.set_owned_state(name, self.into())
     }
 }
 
 #[cfg(feature = "serde")]
-impl IntoGlobalValue for OwnedValue {
-    fn insert_global<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>
+impl IntoStateValue for OwnedValue {
+    fn set_state<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>
     where
         I: RuntimeImageStorage,
     {
-        runtime.insert_owned_global(name, self)
+        runtime.set_owned_state(name, self)
     }
 }
 
 #[cfg(feature = "serde")]
-macro_rules! impl_owned_global_value {
+macro_rules! impl_owned_state_value {
     ($($ty:ty),* $(,)?) => {
         $(
-            impl IntoGlobalValue for $ty {
-                fn insert_global<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>
+            impl IntoStateValue for $ty {
+                fn set_state<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>
                 where
                     I: RuntimeImageStorage,
                 {
-                    runtime.insert_owned_global(name, OwnedValue::from(self))
+                    runtime.set_owned_state(name, OwnedValue::from(self))
                 }
             }
         )*
@@ -113,40 +114,40 @@ macro_rules! impl_owned_global_value {
 }
 
 #[cfg(feature = "serde")]
-impl_owned_global_value!(bool, char, i32, i64, f64, String, vela_host::path::HostRef);
+impl_owned_state_value!(bool, char, i32, i64, f64, String, vela_host::path::HostRef);
 
-impl IntoGlobalValue for VelaValue {
-    fn insert_global<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>
+impl IntoStateValue for VelaValue {
+    fn set_state<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>
     where
         I: RuntimeImageStorage,
     {
         runtime.check_vela_value_runtime(&self)?;
-        let value = persistent_value_to_owned(&self.value, &mut runtime.state.script_globals.heap)?;
-        runtime.insert_owned_global(name, value)
+        let value = persistent_value_to_owned(&self.value, &mut runtime.state.vm_states.heap)?;
+        runtime.set_owned_state(name, value)
     }
 }
 
-impl IntoGlobalValue for &VelaValue {
-    fn insert_global<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>
+impl IntoStateValue for &VelaValue {
+    fn set_state<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>
     where
         I: RuntimeImageStorage,
     {
         runtime.check_vela_value_runtime(self)?;
-        let value = persistent_value_to_owned(&self.value, &mut runtime.state.script_globals.heap)?;
-        runtime.insert_owned_global(name, value)
+        let value = persistent_value_to_owned(&self.value, &mut runtime.state.vm_states.heap)?;
+        runtime.set_owned_state(name, value)
     }
 }
 
 #[cfg(feature = "serde")]
-impl<T> IntoGlobalValue for &T
+impl<T> IntoStateValue for &T
 where
     T: serde::Serialize + ?Sized,
 {
-    fn insert_global<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>
+    fn set_state<I>(self, runtime: &mut RuntimeImpl<I>, name: String) -> VmResult<()>
     where
         I: RuntimeImageStorage,
     {
-        runtime.insert_owned_global(name, vela_vm::serde::to_owned_value(self)?)
+        runtime.set_owned_state(name, vela_vm::serde::to_owned_value(self)?)
     }
 }
 
@@ -224,13 +225,14 @@ impl RuntimeValueRoots {
 }
 
 #[derive(Debug, Default)]
-pub struct RuntimeScriptGlobalStore {
+pub struct RuntimeVmStateStore {
     pub(super) heap: ScriptHeap,
-    pub(super) values: ScriptGlobalValues,
+    pub(super) values: VmStateValues,
+    state_ids_by_name: BTreeMap<String, StateId>,
     pub(super) retained_values: Arc<Mutex<RuntimeValueRoots>>,
 }
 
-impl RuntimeScriptGlobalStore {
+impl RuntimeVmStateStore {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -240,23 +242,14 @@ impl RuntimeScriptGlobalStore {
     pub fn with_state_layout(states: &[vela_bytecode::StateDescriptor]) -> Self {
         Self {
             heap: ScriptHeap::default(),
-            values: ScriptGlobalValues::with_layout(
-                &states
-                    .iter()
-                    .map(|state| state.qualified_name.clone())
-                    .collect::<Vec<_>>(),
-            ),
+            values: VmStateValues::default(),
+            state_ids_by_name: vm_state_ids_by_name(states),
             retained_values: Arc::new(Mutex::new(RuntimeValueRoots::default())),
         }
     }
 
     pub fn set_state_layout(&mut self, states: &[vela_bytecode::StateDescriptor]) {
-        self.values.set_layout(
-            &states
-                .iter()
-                .map(|state| state.qualified_name.clone())
-                .collect::<Vec<_>>(),
-        );
+        self.state_ids_by_name = vm_state_ids_by_name(states);
     }
 
     #[must_use]
@@ -265,15 +258,24 @@ impl RuntimeScriptGlobalStore {
     }
 
     pub fn insert(&mut self, name: impl Into<String>, value: OwnedValue) -> VmResult<()> {
+        let name = name.into();
+        let state = self
+            .state_ids_by_name
+            .get(&name)
+            .copied()
+            .ok_or_else(|| VmError::new(VmErrorKind::MissingVmState { name: name.clone() }))?;
         let mut budget = ExecutionBudget::unbounded();
         let value = owned_to_persistent_value(value, &mut self.heap, Some(&mut budget))?;
-        self.values.insert(name.into(), value);
+        self.values.insert(state, value);
         self.collect();
         Ok(())
     }
 
     pub fn value(&mut self, name: &str) -> VmResult<Option<OwnedValue>> {
-        let Some(value) = self.values.get(name) else {
+        let Some(state) = self.state_ids_by_name.get(name).copied() else {
+            return Ok(None);
+        };
+        let Some(value) = self.values.get(state) else {
             return Ok(None);
         };
         persistent_value_to_owned(&value, &mut self.heap).map(Some)
@@ -284,7 +286,10 @@ impl RuntimeScriptGlobalStore {
     where
         T: serde::de::DeserializeOwned,
     {
-        let Some(value) = self.values.get(name) else {
+        let Some(state) = self.state_ids_by_name.get(name).copied() else {
+            return Ok(None);
+        };
+        let Some(value) = self.values.get(state) else {
             return Ok(None);
         };
         vela_vm::serde::from_runtime_value(&value, &self.heap).map(Some)
@@ -312,4 +317,12 @@ impl RuntimeScriptGlobalStore {
             .for_each(|value| value.trace_heap_refs(&mut roots));
         self.heap.collect_full(&roots);
     }
+}
+
+fn vm_state_ids_by_name(states: &[vela_bytecode::StateDescriptor]) -> BTreeMap<String, StateId> {
+    states
+        .iter()
+        .filter(|state| state.storage == vela_bytecode::StateStorage::Vm)
+        .map(|state| (state.qualified_name.clone(), state.id))
+        .collect()
 }

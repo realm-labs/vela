@@ -66,7 +66,8 @@ fn runtime_hot_reload_update_waits_for_explicit_reload_safe_point() {
     let initial = engine
         .compile_hot_reload_initial("fn main() { return 1; }")
         .expect("initial hot reload compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let initial_version = runtime
         .hot_reload_version()
         .expect("runtime should expose active hot reload version")
@@ -151,7 +152,8 @@ fn version() -> i64 { return 2; }
 "#,
         )
         .expect("ABI-compatible async update should compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let staging = runtime
         .hot_reload_staging_handle()
         .expect("hot reload runtime should expose staging handle");
@@ -221,7 +223,8 @@ fn version() -> i64 { return 2; }
 "#,
         )
         .expect("ABI-compatible async update should compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let staging = runtime
         .hot_reload_staging_handle()
         .expect("hot reload runtime should expose staging handle");
@@ -262,7 +265,8 @@ fn invoke(callback, value: i64) -> i64 { return callback(value); }
 "#,
         )
         .expect("initial closure generation should compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let old_closure = runtime
         .call("make", CallArgs::new(), CallOptions::unbounded())
         .expect("old closure should be retained");
@@ -331,7 +335,8 @@ fn invoke(callback, value: String) -> bool { return callback(value); }
 "#,
         )
         .expect("initial native closure generation should compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let old_generation = runtime
         .hot_reload_version()
         .expect("hot reload version")
@@ -394,7 +399,8 @@ fn main() {
 "#,
         )
         .expect("initial hot reload compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -492,7 +498,8 @@ fn main() {
 "#,
         )
         .expect("initial hot reload compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 

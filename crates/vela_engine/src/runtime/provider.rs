@@ -8,8 +8,8 @@ use vela_vm::heap_execution::HeapExecution;
 use vela_vm::{allocate_zero_field_record, budget::ExecutionBudget};
 
 use super::{
-    RuntimeImageStorage, RuntimeImpl, handles::EntryRequest, script_globals::RuntimeValueRoots,
-    unknown_method,
+    RuntimeImageStorage, RuntimeImpl, handles::EntryRequest, unknown_method,
+    vm_states::RuntimeValueRoots,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -136,7 +136,7 @@ where
         let resolved = resolve_provider_call(&target, self.state.id, self.image.linked_artifact())?;
         let state = &mut self.state;
         let receiver = {
-            let mut heap = HeapExecution::new(&mut state.script_globals.heap);
+            let mut heap = HeapExecution::new(&mut state.vm_states.heap);
             let value = allocate_zero_field_record(
                 resolved.type_name,
                 resolved.type_id,
@@ -144,7 +144,7 @@ where
                 &mut heap,
                 Some(budget),
             )?;
-            state.script_globals.retain(state.id, value)
+            state.vm_states.retain(state.id, value)
         };
         Ok(EntryRequest {
             name: resolved.debug_name,

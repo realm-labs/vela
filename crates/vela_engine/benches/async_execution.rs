@@ -116,7 +116,10 @@ fn memory_workload(extra_frame_depth: Option<usize>) -> Result<(), Box<dyn Error
     let source = suspended_source(extra_frame_depth.unwrap_or(0));
     let version = engine.compile_hot_reload_initial(&source)?;
     let mut runtimes = (0..MEMORY_RUNTIME_COUNT)
-        .map(|_| Runtime::from_hot_reload_version(engine.clone(), version.clone()))
+        .map(|_| {
+            Runtime::from_hot_reload_version(engine.clone(), version.clone())
+                .expect("runtime should initialize")
+        })
         .collect::<Vec<_>>();
     let runtime_count = runtimes.len();
     if let Some(extra_frame_depth) = extra_frame_depth {
@@ -235,7 +238,8 @@ fn reentry_engine() -> Result<Engine, Box<dyn Error>> {
 
 fn runtime(engine: &Engine, source: &str) -> Result<Runtime, Box<dyn Error>> {
     let version = engine.compile_hot_reload_initial(source)?;
-    Ok(Runtime::from_hot_reload_version(engine.clone(), version))
+    Ok(Runtime::from_hot_reload_version(engine.clone(), version)
+        .expect("runtime should initialize"))
 }
 
 fn sync_call(runtime: &mut Runtime) -> Result<i64, Box<dyn Error>> {

@@ -8,7 +8,7 @@ cargo run --manifest-path examples/Cargo.toml --bin level_up
 cargo run --manifest-path examples/Cargo.toml --bin monster_kill_reward
 cargo run --manifest-path examples/Cargo.toml --bin hot_reload_function_swap
 cargo run --manifest-path examples/Cargo.toml --bin host_type_methods
-cargo run --manifest-path examples/Cargo.toml --bin script_global
+cargo run --manifest-path examples/Cargo.toml --bin script_state
 cargo run --manifest-path examples/Cargo.toml --bin async_stateful_reentry
 cargo run --manifest-path examples/Cargo.toml --bin serde_value
 cargo run --manifest-path examples/Cargo.toml --bin container_type_hints
@@ -43,7 +43,7 @@ Other useful embedding examples:
   await, followed by same-session Vela reentry with an explicit mutable
   reborrow. Its actor-shaped container keeps Runtime and host storage disjoint
   without depending on an actor framework or async executor crate.
-- `script_global`: persistent VM-managed globals that Rust can read and update.
+- `script_state`: per-Runtime VM state initialized by Vela and updateable from Rust.
 - `serde_value`: snapshot-style serde conversion between Rust structs/enums and
   Vela owned values.
 - `native_function`: script calls into Rust native functions.

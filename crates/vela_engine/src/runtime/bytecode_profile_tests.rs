@@ -18,7 +18,7 @@ fn main() {
 "#,
         )
         .expect("profile source should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let main_name = linked_function(&runtime, "main").debug_name;
 
     assert_eq!(
@@ -69,7 +69,8 @@ fn main() {
 "#,
         )
         .expect("initial hot reload source should compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let initial_name = linked_function(&runtime, "main").debug_name;
 
     let first = runtime
@@ -135,8 +136,9 @@ fn shared_generation_keeps_runtime_profile_counters_isolated() {
         .compile_source_with_id(SourceId::new(1), "fn main() { return 7; }")
         .expect("profile source should compile");
     let shared = RuntimeImage::new_compiled(engine, program).into_shared();
-    let mut first = SharedRuntime::from_shared_image(shared.clone());
-    let second = SharedRuntime::from_shared_image(shared);
+    let mut first =
+        SharedRuntime::from_shared_image(shared.clone()).expect("runtime should initialize");
+    let second = SharedRuntime::from_shared_image(shared).expect("runtime should initialize");
     let main_name = first
         .image
         .linked_program()

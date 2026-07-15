@@ -7,7 +7,7 @@ use vela_hir::module_graph::DeclarationKind;
 use vela_host::access::HostAccess;
 #[cfg(test)]
 use vela_host::adapter::ScriptStateAdapter;
-use vela_host::error::HostErrorKind;
+use vela_host::error::HostResult;
 use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
 use vela_hot_reload::error::HotReloadResult;
@@ -42,28 +42,30 @@ mod bytecode_profile_tests;
 mod call_args;
 mod call_future;
 mod execution_host;
-mod global_store;
+mod extern_state_bindings;
 pub(crate) mod handles;
 mod image;
+mod initialization;
 mod inline_cache;
 #[cfg(test)]
 mod ownership_proof;
 mod provider;
 mod reentry;
-mod script_globals;
 mod state;
 #[cfg(test)]
 mod tests;
+mod vm_states;
 
 pub use call_args::CallArgs;
 pub use call_future::RuntimeCallFuture;
-pub use global_store::RuntimeGlobalStore;
+pub use extern_state_bindings::RuntimeExternStateBindings;
 pub use handles::{
     RuntimeCallTarget, RuntimeMethodSelector, VelaFunction, VelaMethod, VelaMethodTarget,
 };
 pub use image::{OwnedImage, RuntimeImage, RuntimeImageStorage, SharedImage};
+pub use initialization::{RuntimeBuildError, RuntimeBuilder, RuntimeInitializationLimits};
 pub use provider::{ProviderHandle, ProviderMethodTarget};
-pub use script_globals::{IntoGlobalValue, RuntimeScriptGlobalStore, VelaValue};
+pub use vm_states::{IntoStateValue, RuntimeVmStateStore, VelaValue};
 
 use call_args::call_args_type_error;
 use execution_host::ExecutionHost;
@@ -72,8 +74,8 @@ use handles::{
     RuntimeMethodSelectorKind,
 };
 use reentry::{ActiveNativeReentry, invoke_prepared_async};
-use script_globals::RuntimeValueRoots;
 use state::RuntimeState;
+use vm_states::RuntimeValueRoots;
 
 pub type Runtime = RuntimeImpl<OwnedImage>;
 pub type SharedRuntime = RuntimeImpl<SharedImage>;
@@ -95,36 +97,44 @@ fn next_runtime_id() -> u64 {
 
 impl RuntimeImpl<OwnedImage> {
     #[must_use]
-    pub fn from_linked_artifact(
+    pub fn builder_from_linked_artifact(
         engine: Engine,
         artifact: std::sync::Arc<vela_bytecode::LinkedArtifact>,
-    ) -> Self {
+    ) -> RuntimeBuilder<OwnedImage> {
         let image = OwnedImage::from_image(RuntimeImage::from_linked_artifact(engine, artifact));
         let state = RuntimeState::for_image(&image);
-        Self {
-            image,
-            state,
-            hot_reload: None,
-        }
-    }
-
-    #[must_use]
-    pub fn new_compiled(engine: Engine, program: vela_bytecode::compiler::CompiledProgram) -> Self {
-        Self::try_new_compiled(engine, program)
-            .expect("compiled runtime image should link verified bytecode")
-    }
-
-    pub fn try_new_compiled(
-        engine: Engine,
-        program: vela_bytecode::compiler::CompiledProgram,
-    ) -> Result<Self, vela_bytecode::linker::LinkError> {
-        let image = OwnedImage::from_image(RuntimeImage::try_new_compiled(engine, program)?);
-        let state = RuntimeState::for_image(&image);
-        Ok(Self {
+        RuntimeBuilder::new(Self {
             image,
             state,
             hot_reload: None,
         })
+    }
+
+    pub fn from_linked_artifact(
+        engine: Engine,
+        artifact: std::sync::Arc<vela_bytecode::LinkedArtifact>,
+    ) -> Result<Self, RuntimeBuildError> {
+        Self::builder_from_linked_artifact(engine, artifact).build()
+    }
+
+    pub fn builder(
+        engine: Engine,
+        program: vela_bytecode::compiler::CompiledProgram,
+    ) -> Result<RuntimeBuilder<OwnedImage>, RuntimeBuildError> {
+        let image = OwnedImage::from_image(RuntimeImage::try_new_compiled(engine, program)?);
+        let state = RuntimeState::for_image(&image);
+        Ok(RuntimeBuilder::new(Self {
+            image,
+            state,
+            hot_reload: None,
+        }))
+    }
+
+    pub fn new_compiled(
+        engine: Engine,
+        program: vela_bytecode::compiler::CompiledProgram,
+    ) -> Result<Self, RuntimeBuildError> {
+        Self::builder(engine, program)?.build()
     }
 
     /// Creates a runtime from a cohesive compiled generation.
@@ -135,41 +145,50 @@ impl RuntimeImpl<OwnedImage> {
     /// use vela_bytecode::UnlinkedProgram;
     /// use vela_engine::{engine::Engine, runtime::Runtime};
     /// let engine = Engine::builder().build().unwrap();
-    /// let _ = Runtime::new(engine, UnlinkedProgram::new());
+    /// let _ = Runtime::new(engine, UnlinkedProgram::new()).expect("runtime should initialize");
     /// ```
-    #[must_use]
-    pub fn new(engine: Engine, program: vela_bytecode::compiler::CompiledProgram) -> Self {
+    pub fn new(
+        engine: Engine,
+        program: vela_bytecode::compiler::CompiledProgram,
+    ) -> Result<Self, RuntimeBuildError> {
         Self::new_compiled(engine, program)
     }
 
-    pub fn try_new(
-        engine: Engine,
-        program: vela_bytecode::compiler::CompiledProgram,
-    ) -> Result<Self, vela_bytecode::linker::LinkError> {
-        Self::try_new_compiled(engine, program)
-    }
-
     #[must_use]
-    pub fn from_hot_reload_version(engine: Engine, version: ProgramVersion) -> Self {
+    pub fn builder_from_hot_reload_version(
+        engine: Engine,
+        version: ProgramVersion,
+    ) -> RuntimeBuilder<OwnedImage> {
         let image = OwnedImage::from_image(RuntimeImage::from_program_version(engine, &version));
         let state = RuntimeState::for_image(&image);
-        Self {
+        RuntimeBuilder::new(Self {
             image,
             hot_reload: Some(HotReloadRuntime::new(version)),
             state,
-        }
+        })
+    }
+
+    pub fn from_hot_reload_version(
+        engine: Engine,
+        version: ProgramVersion,
+    ) -> Result<Self, RuntimeBuildError> {
+        Self::builder_from_hot_reload_version(engine, version).build()
     }
 }
 
 impl RuntimeImpl<SharedImage> {
     #[must_use]
-    pub fn from_shared_image(image: SharedImage) -> Self {
+    pub fn builder_from_shared_image(image: SharedImage) -> RuntimeBuilder<SharedImage> {
         let state = RuntimeState::for_image(&image);
-        Self {
+        RuntimeBuilder::new(Self {
             image,
             hot_reload: None,
             state,
-        }
+        })
+    }
+
+    pub fn from_shared_image(image: SharedImage) -> Result<Self, RuntimeBuildError> {
+        Self::builder_from_shared_image(image).build()
     }
 }
 
@@ -182,50 +201,46 @@ where
         self.image.engine()
     }
 
-    pub fn insert_host_global<T>(&mut self, name: impl Into<String>, value: T) -> HostRef
+    pub fn replace_extern_state<T>(
+        &mut self,
+        name: impl Into<String>,
+        value: T,
+    ) -> HostResult<HostRef>
     where
         T: ScriptHostObject + Send + 'static,
     {
-        self.state.globals.insert_host(name, value)
+        self.state.extern_states.bind_host(name, value)
     }
 
     #[must_use]
-    pub fn host_global_ref(&self, name: &str) -> Option<HostRef> {
-        self.state.globals.host_ref(name)
+    pub fn extern_state_ref(&self, name: &str) -> Option<HostRef> {
+        self.state.extern_states.host_ref(name)
     }
 
-    pub fn insert_global(
+    pub fn set_state(
         &mut self,
         name: impl Into<String>,
-        value: impl IntoGlobalValue,
+        value: impl IntoStateValue,
     ) -> VmResult<()> {
-        value.insert_global(self, name.into())
+        value.set_state(self, name.into())
     }
 
-    pub fn set_global(
-        &mut self,
-        name: impl Into<String>,
-        value: impl IntoGlobalValue,
-    ) -> VmResult<()> {
-        self.insert_global(name, value)
+    pub fn state(&mut self, name: &str) -> VmResult<Option<OwnedValue>> {
+        self.state.vm_states.value(name)
     }
 
-    pub fn global(&mut self, name: &str) -> VmResult<Option<OwnedValue>> {
-        self.state.script_globals.value(name)
-    }
-
-    pub fn update_global(
+    pub fn update_state(
         &mut self,
         name: &str,
         update: impl FnOnce(&mut OwnedValue),
     ) -> VmResult<()> {
-        let mut value = self.state.script_globals.value(name)?.ok_or_else(|| {
-            VmError::new(VmErrorKind::Host(HostErrorKind::MissingGlobal {
+        let mut value = self.state.vm_states.value(name)?.ok_or_else(|| {
+            VmError::new(VmErrorKind::MissingVmState {
                 name: name.to_owned(),
-            }))
+            })
         })?;
         update(&mut value);
-        self.insert_owned_global(name.to_owned(), value)
+        self.set_owned_state(name.to_owned(), value)
     }
 
     #[must_use]
@@ -532,8 +547,8 @@ where
             registry_image: self.image.program_image(),
             artifact: self.image.linked_artifact(),
             hot_reload: self.hot_reload.as_ref(),
-            globals: &mut state.globals,
-            script_globals: &mut state.script_globals,
+            extern_states: &mut state.extern_states,
+            vm_states: &mut state.vm_states,
             sidecars: &mut state.sidecars,
             target,
             args,
@@ -572,8 +587,8 @@ where
             registry_image: self.image.program_image(),
             artifact: self.image.linked_artifact(),
             hot_reload: self.hot_reload.as_ref(),
-            globals: &mut state.globals,
-            script_globals: &mut state.script_globals,
+            extern_states: &mut state.extern_states,
+            vm_states: &mut state.vm_states,
             sidecars: &mut state.sidecars,
             target,
             args,
@@ -615,7 +630,7 @@ where
 
     pub fn value_to_owned(&mut self, value: &VelaValue) -> VmResult<OwnedValue> {
         self.check_vela_value_runtime(value)?;
-        persistent_value_to_owned(&value.value, &mut self.state.script_globals.heap)
+        persistent_value_to_owned(&value.value, &mut self.state.vm_states.heap)
     }
 
     #[cfg(feature = "serde")]
@@ -624,15 +639,15 @@ where
         T: serde::de::DeserializeOwned,
     {
         self.check_vela_value_runtime(value)?;
-        vela_vm::serde::from_runtime_value(&value.value, &self.state.script_globals.heap)
+        vela_vm::serde::from_runtime_value(&value.value, &self.state.vm_states.heap)
     }
 
     #[cfg(feature = "serde")]
-    pub fn global_as<T>(&self, name: &str) -> VmResult<Option<T>>
+    pub fn state_as<T>(&self, name: &str) -> VmResult<Option<T>>
     where
         T: serde::de::DeserializeOwned,
     {
-        self.state.script_globals.value_as(name)
+        self.state.vm_states.value_as(name)
     }
 
     #[cfg(test)]
@@ -647,13 +662,13 @@ where
         let mut budget = options.budget();
         let execution_args =
             CallArgs::from_positional(args.iter().cloned()).with_fallback_adapter(adapter);
-        let mut execution_host = ExecutionHost::new(execution_args, &mut self.state.globals);
-        let roots = self.state.script_globals.roots();
-        let use_persistent_heap = options.managed_heap || !self.state.script_globals.is_empty();
+        let mut execution_host = ExecutionHost::new(execution_args, &mut self.state.extern_states);
+        let roots = self.state.vm_states.roots();
+        let use_persistent_heap = options.managed_heap || !self.state.vm_states.is_empty();
         let mut host = HostExecution {
             adapter: &mut execution_host,
             access,
-            state_values: Some(&mut self.state.script_globals.values),
+            state_values: Some(&mut self.state.vm_states.values),
         };
         let vm = if let Some(hot_reload) = self.hot_reload.as_ref() {
             let current = hot_reload.current();
@@ -672,7 +687,7 @@ where
                 args,
                 host: &mut host,
                 persistent: PersistentHeapExecution {
-                    heap: &mut self.state.script_globals.heap,
+                    heap: &mut self.state.vm_states.heap,
                     roots: &roots,
                 },
                 budget: &mut budget,
@@ -718,21 +733,21 @@ where
             .iter()
             .map(|param| linked_program.debug_name(*param).to_owned())
             .collect::<Vec<_>>();
-        let roots = self.state.script_globals.roots();
+        let roots = self.state.vm_states.roots();
         args.set_fallback_adapter(adapter);
-        let mut execution_host = ExecutionHost::new(args, &mut self.state.globals);
+        let mut execution_host = ExecutionHost::new(args, &mut self.state.extern_states);
         let resolved = execution_host.resolve_values(
             entry,
             &params,
             &code.param_defaults,
             self.state.id,
-            &mut self.state.script_globals.heap,
+            &mut self.state.vm_states.heap,
             &mut budget,
         )?;
         let mut host = HostExecution {
             adapter: &mut execution_host,
             access,
-            state_values: Some(&mut self.state.script_globals.values),
+            state_values: Some(&mut self.state.vm_states.values),
         };
         let vm = if let Some(hot_reload) = self.hot_reload.as_ref() {
             let current = hot_reload.current();
@@ -750,33 +765,33 @@ where
             args: &resolved,
             host: &mut host,
             persistent: PersistentHeapExecution {
-                heap: &mut self.state.script_globals.heap,
+                heap: &mut self.state.vm_states.heap,
                 roots: &roots,
             },
             budget: &mut budget,
             inline_caches: Some(&self.state.sidecars),
             bytecode_profiler: Some(&self.state.sidecars),
         })?;
-        persistent_value_to_owned(&value, &mut self.state.script_globals.heap)
+        persistent_value_to_owned(&value, &mut self.state.vm_states.heap)
     }
 
     fn call_runtime_args(call: RuntimeCallExecution<'_, '_, '_>) -> VmResult<VelaValue> {
         let mut budget = call.budget;
-        let mut execution_host = ExecutionHost::new(call.args, call.globals);
+        let mut execution_host = ExecutionHost::new(call.args, call.extern_states);
         let resolved = execution_host.resolve_values(
             &call.target.name,
             &call.target.params,
             &call.target.param_defaults,
             call.runtime_id,
-            &mut call.script_globals.heap,
+            &mut call.vm_states.heap,
             &mut budget,
         )?;
         let mut access = HostAccess::new();
-        let roots = call.script_globals.roots();
+        let roots = call.vm_states.roots();
         let mut host = HostExecution {
             adapter: &mut execution_host,
             access: &mut access,
-            state_values: Some(&mut call.script_globals.values),
+            state_values: Some(&mut call.vm_states.values),
         };
         let vm = runtime_vm(call.engine, call.registry_image, call.hot_reload);
         let mut entry_args = Vec::with_capacity(
@@ -794,34 +809,34 @@ where
             args: &entry_args,
             host: &mut host,
             persistent: PersistentHeapExecution {
-                heap: &mut call.script_globals.heap,
+                heap: &mut call.vm_states.heap,
                 roots: &roots,
             },
             budget: &mut budget,
             inline_caches: Some(&*call.sidecars),
             bytecode_profiler: Some(&*call.sidecars),
         })?;
-        Ok(call.script_globals.retain(call.runtime_id, result))
+        Ok(call.vm_states.retain(call.runtime_id, result))
     }
 
     async fn call_runtime_args_async(
         call: RuntimeCallExecution<'_, '_, '_>,
     ) -> VmResult<VelaValue> {
         let mut budget = call.budget;
-        let mut execution_host = ExecutionHost::new(call.args, call.globals);
+        let mut execution_host = ExecutionHost::new(call.args, call.extern_states);
         let resolved = execution_host.resolve_values(
             &call.target.name,
             &call.target.params,
             &call.target.param_defaults,
             call.runtime_id,
-            &mut call.script_globals.heap,
+            &mut call.vm_states.heap,
             &mut budget,
         )?;
         let mut access = HostAccess::new();
         let vm = runtime_vm(call.engine, call.registry_image, call.hot_reload);
-        let roots = call.script_globals.roots();
-        let retained_values = std::sync::Arc::clone(&call.script_globals.retained_values);
-        let script_global_values = &mut call.script_globals.values;
+        let roots = call.vm_states.roots();
+        let retained_values = std::sync::Arc::clone(&call.vm_states.retained_values);
+        let vm_state_values = &mut call.vm_states.values;
         let mut entry_args = Vec::with_capacity(
             resolved
                 .len()
@@ -831,7 +846,7 @@ where
             entry_args.push(receiver.value);
         }
         entry_args.extend_from_slice(&resolved);
-        let mut heap = HeapExecution::new(&mut call.script_globals.heap);
+        let mut heap = HeapExecution::new(&mut call.vm_states.heap);
         let mut session = vm.start_linked_execution(
             LinkedExecutionStart {
                 artifact: call.artifact,
@@ -850,7 +865,7 @@ where
                 let mut host = HostExecution {
                     adapter: &mut execution_host,
                     access: &mut access,
-                    state_values: Some(&mut *script_global_values),
+                    state_values: Some(&mut *vm_state_values),
                 };
                 vm.drive_linked_execution(
                     &mut session,
@@ -889,7 +904,7 @@ where
                             access: &mut access,
                             heap: &mut heap,
                             budget: &mut budget,
-                            script_global_values,
+                            vm_state_values,
                             retained_values: std::sync::Arc::clone(&retained_values),
                             sidecars: &mut *call.sidecars,
                         };
@@ -926,7 +941,7 @@ where
                     program_image: self.image.program_image(),
                     linked_program: self.image.linked_program(),
                     version_id: self.current_program_version_id(),
-                    script_heap: &self.state.script_globals.heap,
+                    script_heap: &self.state.vm_states.heap,
                     engine: self.image.engine(),
                 },
             ),
@@ -950,7 +965,7 @@ where
     fn value_type_id(&self, value: &VelaValue) -> Option<vela_def::TypeId> {
         value_type_id(
             &value.value,
-            &self.state.script_globals.heap,
+            &self.state.vm_states.heap,
             self.image.engine().registry().as_ref(),
         )
     }
@@ -976,14 +991,14 @@ impl<I> RuntimeImpl<I>
 where
     I: RuntimeImageStorage,
 {
-    fn insert_owned_global(&mut self, name: String, value: OwnedValue) -> VmResult<()> {
-        validate_global_contract(self.image.program_image(), &name, &value)?;
-        self.state.script_globals.insert(name, value)
+    fn set_owned_state(&mut self, name: String, value: OwnedValue) -> VmResult<()> {
+        validate_state_contract(self.image.program_image(), &name, &value)?;
+        self.state.vm_states.insert(name, value)
     }
 }
 
-fn validate_global_contract(image: &ProgramImage, name: &str, value: &OwnedValue) -> VmResult<()> {
-    let Some(expected) = global_contract_type(image, name) else {
+fn validate_state_contract(image: &ProgramImage, name: &str, value: &OwnedValue) -> VmResult<()> {
+    let Some(expected) = state_contract_type(image, name) else {
         return Ok(());
     };
     if expected == "Any" || owned_value_matches_contract(value, &expected) {
@@ -996,7 +1011,7 @@ fn validate_global_contract(image: &ProgramImage, name: &str, value: &OwnedValue
     }))
 }
 
-fn global_contract_type(image: &ProgramImage, name: &str) -> Option<String> {
+fn state_contract_type(image: &ProgramImage, name: &str) -> Option<String> {
     let graph = image.script_metadata()?;
     let leaf_name = name.rsplit("::").next().unwrap_or(name);
     let mut leaf_match = None;

@@ -115,6 +115,10 @@ impl CompileError {
                 "invalid compile-target registry snapshot: {message}"
             ))
             .with_code("compiler::invalid_registry_snapshot"),
+            CompileErrorKind::InvalidStateInitializer { state, reason } => Diagnostic::error(
+                format!("state initializer for `{state}` is not effect-restricted: {reason}"),
+            )
+            .with_code("compiler::invalid_state_initializer"),
         };
         Some(match self.span {
             Some(span) => diagnostic.with_span(span),
@@ -141,6 +145,7 @@ pub enum CompileErrorKind {
     UnsupportedRecordPattern,
     MirInput(Box<vela_mir::MirBuildError>),
     RegistrySnapshot(String),
+    InvalidStateInitializer { state: String, reason: String },
 }
 
 pub type CompileResult<T> = Result<T, CompileError>;

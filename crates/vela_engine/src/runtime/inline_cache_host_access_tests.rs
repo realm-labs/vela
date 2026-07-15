@@ -49,7 +49,7 @@ fn read_level(player: CachedHostPlayer) {
         .first()
         .expect("read_level should have host target")
         .clone();
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let host_path = HostPath::new(host_ref).field(FieldId::new(1));
     let mut adapter = MockStateAdapter::new();
@@ -122,7 +122,7 @@ fn read_level(player: EpochHostPlayer) {
         .find(|site| site.kind == CacheSiteKind::HostPathRead)
         .expect("read_level should have host read site")
         .id;
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let host_path = HostPath::new(host_ref).field(FieldId::new(1));
     let mut adapter = MockStateAdapter::new();
@@ -207,7 +207,7 @@ fn write_level(player: EpochWriteHostPlayer, value: i64) {
         .find(|site| site.kind == CacheSiteKind::HostPathWrite)
         .expect("write_level should have host write site")
         .id;
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let host_path = HostPath::new(host_ref).field(FieldId::new(1));
     let mut adapter = MockStateAdapter::new();
@@ -300,7 +300,7 @@ fn write_level(player: GuardedHostPlayer, value: i64) {
         .find(|site| site.kind == CacheSiteKind::HostPathWrite)
         .expect("write_level should have host write site")
         .id;
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     runtime.state.inline_caches().set_host_access(
         cache_site,
         HostInlineCacheEntry {
@@ -379,7 +379,7 @@ fn write_level(player: TargetGuardHostPlayer, value: i64) {
         .find(|site| site.kind == CacheSiteKind::HostPathWrite)
         .expect("write_level should have host write site")
         .id;
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let host_path = HostPath::new(host_ref).field(FieldId::new(1));
     let mut adapter = MockStateAdapter::new();
@@ -495,7 +495,7 @@ fn gain_level(player: EpochMutateHostPlayer, amount: i64) {
         .find(|site| site.kind == CacheSiteKind::HostPathMutate)
         .expect("gain_level should have host mutate site")
         .id;
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let host_path = HostPath::new(host_ref).field(FieldId::new(1));
     let mut adapter = MockStateAdapter::new();
@@ -591,7 +591,7 @@ fn award(player: EpochCallHostPlayer, amount: i64) {
         .find(|site| site.kind == CacheSiteKind::HostPathCall)
         .expect("award should have host call site")
         .id;
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
     adapter.insert_method_return(method, HostValue::Scalar(vela_common::ScalarValue::I64(12)));
@@ -702,7 +702,7 @@ fn remove_item(player: EpochRemoveHostPlayer, item_id: String) {
         .find(|site| site.kind == CacheSiteKind::HostPathRemove)
         .expect("remove_item should have host remove site")
         .id;
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let host_path = HostPath::new(host_ref)
         .field(inventory)

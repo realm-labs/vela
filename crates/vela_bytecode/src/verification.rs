@@ -168,9 +168,7 @@ impl fmt::Display for VerificationError {
 impl std::error::Error for VerificationError {}
 
 pub fn verify_program(program: &UnlinkedProgram) -> Result<(), VerificationError> {
-    verify_state_descriptors(program.states(), |function| {
-        program.function_by_id(function).is_some()
-    })?;
+    verify_state_descriptors(program.states())?;
     for function in program.functions() {
         verify_code_object(function)?;
         verify_program_instruction_metadata(program, function)?;
@@ -186,13 +184,14 @@ pub fn verify_program(program: &UnlinkedProgram) -> Result<(), VerificationError
             ));
         }
     }
+    verify_state_initializer_targets(program.states(), |function| {
+        program.function_by_id(function).is_some()
+    })?;
     Ok(())
 }
 
 pub fn verify_program_image(image: &ProgramImage) -> Result<(), VerificationError> {
-    verify_state_descriptors(image.states(), |function| {
-        image.function_by_id(function).is_some()
-    })?;
+    verify_state_descriptors(image.states())?;
     let closure_scope = ClosureIndexScope::Image {
         function_count: image.function_count(),
     };
@@ -216,13 +215,13 @@ pub fn verify_program_image(image: &ProgramImage) -> Result<(), VerificationErro
             ));
         }
     }
+    verify_state_initializer_targets(image.states(), |function| {
+        image.function_by_id(function).is_some()
+    })?;
     Ok(())
 }
 
-fn verify_state_descriptors(
-    states: &[crate::StateDescriptor],
-    has_initializer: impl Fn(vela_def::FunctionId) -> bool,
-) -> Result<(), VerificationError> {
+fn verify_state_descriptors(states: &[crate::StateDescriptor]) -> Result<(), VerificationError> {
     let mut ids = BTreeSet::new();
     let mut names = BTreeSet::new();
     for (slot, state) in states.iter().enumerate() {
@@ -237,6 +236,27 @@ fn verify_state_descriptors(
             ))
         } else if state.storage == crate::StateStorage::Extern && state.initializer.is_some() {
             Some("extern state carries an initializer".to_owned())
+        } else {
+            None
+        };
+        if let Some(detail) = detail {
+            return Err(error(
+                "<state descriptor>",
+                None,
+                VerificationErrorKind::InvalidStateDescriptor { slot, detail },
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn verify_state_initializer_targets(
+    states: &[crate::StateDescriptor],
+    has_initializer: impl Fn(vela_def::FunctionId) -> bool,
+) -> Result<(), VerificationError> {
+    for (slot, state) in states.iter().enumerate() {
+        let detail = if state.storage == crate::StateStorage::Vm && state.initializer.is_none() {
+            Some("VM state is missing its required initializer".to_owned())
         } else if state
             .initializer
             .is_some_and(|function| !has_initializer(function))

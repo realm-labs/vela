@@ -90,6 +90,16 @@ pub fn script_state_id(package: &str, symbol: &str) -> StateId {
     StateId::from_def_id(script_state_path(package, symbol).id())
 }
 
+/// Returns the stable executable identity for a script state initializer.
+///
+/// The initializer is an implementation detail of the state declaration, so
+/// it deliberately shares the declaration's canonical definition path while
+/// remaining type-separated from [`StateId`].
+#[must_use]
+pub fn script_state_initializer_id(package: &str, symbol: &str) -> FunctionId {
+    FunctionId::from_def_id(script_state_path(package, symbol).id())
+}
+
 /// Returns the canonical definition path for a variant of a script enum.
 #[must_use]
 pub fn script_variant_path(package: &str, enum_symbol: &str, variant: &str) -> DefPath {

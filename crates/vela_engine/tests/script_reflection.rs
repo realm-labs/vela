@@ -87,7 +87,7 @@ fn main() {
         .build()
         .expect("build engine");
     let program = engine.compile_source(source).expect("compile script");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -154,7 +154,7 @@ fn main() {
         .build()
         .expect("build engine");
     let program = engine.compile_dir(root.path()).expect("compile modules");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 

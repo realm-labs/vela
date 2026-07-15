@@ -32,7 +32,8 @@ fn read_level(player: ReloadHostPlayer) {
 "#,
         )
         .expect("initial source should compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let initial_site = host_read_site(&runtime, "read_level");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let host_path = HostPath::new(host_ref).field(level);

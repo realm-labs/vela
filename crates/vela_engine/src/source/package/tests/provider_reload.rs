@@ -233,7 +233,8 @@ impl CommandProvider for Command { pub fn run(self) -> i64 { return 1; } }
     let initial = engine
         .compile_provider_hot_reload_initial(&first, &request)
         .expect("initial version");
-    let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone());
+    let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone())
+        .expect("runtime should initialize");
     let handle = runtime.provider_handle(&key).expect("provider handle");
 
     fs::write(
@@ -338,7 +339,8 @@ impl CallbackProvider for Callback {{
     let initial = engine
         .compile_provider_hot_reload_initial(&first, &request)
         .expect("initial version");
-    let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone());
+    let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone())
+        .expect("runtime should initialize");
     let handle = runtime.provider_handle(&key).expect("provider handle");
     let old_callback = runtime
         .call(

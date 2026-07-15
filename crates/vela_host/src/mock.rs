@@ -4,7 +4,7 @@ use vela_common::{HostMethodId, HostObjectId, HostTypeId};
 
 use crate::{
     access::{HostAccess, HostObjectSnapshot},
-    adapter::GlobalBinding,
+    adapter::ExternStateBinding,
     adapter::ScriptStateAdapter,
     add_values, div_values,
     error::{HostError, HostErrorKind, HostResult},
@@ -102,7 +102,7 @@ impl PartialEq<(HostPath, HostMethodId, Vec<HostValue>)> for MockMethodCall {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct MockStateAdapter {
-    globals: BTreeMap<String, HostRef>,
+    extern_states: BTreeMap<vela_def::StateId, HostRef>,
     objects: BTreeMap<HostObjectKey, u32>,
     values: BTreeMap<MockValueKey, HostValue>,
     method_returns: BTreeMap<HostMethodId, HostValue>,
@@ -116,7 +116,7 @@ pub struct MockStateAdapter {
 impl Default for MockStateAdapter {
     fn default() -> Self {
         Self {
-            globals: BTreeMap::new(),
+            extern_states: BTreeMap::new(),
             objects: BTreeMap::new(),
             values: BTreeMap::new(),
             method_returns: BTreeMap::new(),
@@ -139,9 +139,9 @@ impl MockStateAdapter {
         self.insert_value_key(MockValueKey::from_diagnostic_path(&path), value);
     }
 
-    pub fn insert_global_ref(&mut self, name: impl Into<String>, host_ref: HostRef) {
+    pub fn insert_extern_state_ref(&mut self, state: vela_def::StateId, host_ref: HostRef) {
         self.insert_object(host_ref);
-        self.globals.insert(name.into(), host_ref);
+        self.extern_states.insert(state, host_ref);
     }
 
     pub fn insert_value_key(&mut self, key: MockValueKey, value: HostValue) {
@@ -255,10 +255,10 @@ impl ScriptStateAdapter for MockStateAdapter {
         self.schema_epoch
     }
 
-    fn global_ref(&self, global: GlobalBinding<'_>) -> HostResult<HostRef> {
-        self.globals.get(global.name).copied().ok_or_else(|| {
-            HostError::new(HostErrorKind::MissingGlobal {
-                name: global.name.to_owned(),
+    fn extern_state_ref(&self, state: ExternStateBinding<'_>) -> HostResult<HostRef> {
+        self.extern_states.get(&state.id).copied().ok_or_else(|| {
+            HostError::new(HostErrorKind::MissingExternState {
+                name: state.name.to_owned(),
             })
         })
     }

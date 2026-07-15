@@ -14,7 +14,7 @@ fn script_record_field<'value>(
 }
 
 #[test]
-fn runtime_host_global_decl_reads_and_writes_persistent_host_object() {
+fn runtime_extern_state_reads_and_writes_persistent_host_object() {
     let engine = Engine::builder()
         .register_type(direct_player_type())
         .build()
@@ -23,7 +23,7 @@ fn runtime_host_global_decl_reads_and_writes_persistent_host_object() {
         .compile_source_with_id(
             SourceId::new(1),
             r#"
-global state: Player;
+extern state state: Player;
 
 fn main() {
     state.level += 2;
@@ -32,22 +32,60 @@ fn main() {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
-    let global = runtime.insert_host_global("main::state", direct_player(9));
+    let mut builder = Runtime::builder(engine, program).expect("runtime image should link");
+    let binding = builder
+        .bind_extern_state("main::state", direct_player(9))
+        .expect("extern state should bind");
+    let mut runtime = builder.build().expect("runtime should initialize");
 
     let result = runtime
         .call("main", CallArgs::new(), CallOptions::unbounded())
         .expect("runtime call should run");
 
-    assert_eq!(runtime.host_global_ref("main::state"), Some(global));
+    assert_eq!(runtime.extern_state_ref("main::state"), Some(binding));
     assert_eq!(
         runtime.value_to_owned(&result),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
     );
+
+    let replacement = runtime
+        .replace_extern_state("main::state", direct_player(5))
+        .expect("extern state should replace at the runtime boundary");
+    let replaced = runtime
+        .call("main", CallArgs::new(), CallOptions::unbounded())
+        .expect("replacement should be visible");
+    assert_eq!(runtime.extern_state_ref("main::state"), Some(replacement));
+    assert_eq!(
+        runtime.value_to_owned(&replaced),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
+    );
 }
 
 #[test]
-fn runtime_host_global_decl_uses_slotted_lookup_without_fallback_name_lookup() {
+fn runtime_builder_rejects_mismatched_extern_state_type() {
+    let engine = Engine::builder()
+        .register_type(direct_player_type())
+        .build()
+        .expect("engine should build");
+    let program = engine
+        .compile_source("extern state state: Player; fn main() { return state.level; }")
+        .expect("program should compile");
+    let mut builder = Runtime::builder(engine, program).expect("runtime image should link");
+    let error = builder
+        .bind_extern_state("main::state", WrongHostType)
+        .expect_err("mismatched host type must be rejected");
+
+    assert_eq!(
+        error.kind,
+        HostErrorKind::TypeMismatch {
+            expected: HostTypeId::new(1),
+            actual: HostTypeId::new(99),
+        }
+    );
+}
+
+#[test]
+fn runtime_extern_state_uses_id_lookup_without_fallback_lookup() {
     let engine = Engine::builder()
         .register_type(direct_player_type())
         .build()
@@ -56,7 +94,7 @@ fn runtime_host_global_decl_uses_slotted_lookup_without_fallback_name_lookup() {
         .compile_source_with_id(
             SourceId::new(1),
             r#"
-global state: Player;
+extern state state: Player;
 
 fn main() {
     return state.level;
@@ -66,11 +104,14 @@ fn main() {
         .expect("program should compile");
     assert!(
         program.state_slot("main::state").is_some(),
-        "declared global should have a hot-path slot"
+        "declared extern state should have a generation slot"
     );
-    let mut runtime = Runtime::new(engine, program);
-    runtime.insert_host_global("main::state", direct_player(9));
-    let mut fallback = CountingGlobalLookupAdapter::default();
+    let mut builder = Runtime::builder(engine, program).expect("runtime image should link");
+    builder
+        .bind_extern_state("main::state", direct_player(9))
+        .expect("extern state should bind");
+    let mut runtime = builder.build().expect("runtime should initialize");
+    let mut fallback = CountingExternStateLookupAdapter::default();
 
     let result = runtime
         .call(
@@ -84,12 +125,11 @@ fn main() {
         runtime.value_to_owned(&result),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(9)))
     );
-    assert_eq!(fallback.global_ref_by_slot_calls.get(), 0);
-    assert_eq!(fallback.global_ref_calls.get(), 0);
+    assert_eq!(fallback.extern_state_ref_calls.get(), 0);
 }
 
 #[test]
-fn runtime_host_global_decl_requires_host_inserted_instance() {
+fn runtime_extern_state_requires_host_binding() {
     let engine = Engine::builder()
         .register_type(direct_player_type())
         .build()
@@ -98,7 +138,7 @@ fn runtime_host_global_decl_requires_host_inserted_instance() {
         .compile_source_with_id(
             SourceId::new(1),
             r#"
-global state: Player;
+extern state state: Player;
 
 fn main() {
     return state.level;
@@ -106,18 +146,15 @@ fn main() {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let error = match Runtime::new(engine, program) {
+        Ok(_) => panic!("missing extern state should reject runtime construction"),
+        Err(error) => error,
+    };
 
-    let error = runtime
-        .call("main", CallArgs::new(), CallOptions::unbounded())
-        .expect_err("missing global should fail");
-
-    assert_eq!(
-        error.kind(),
-        VmErrorKind::Host(HostErrorKind::MissingGlobal {
-            name: "main::state".to_owned()
-        })
-    );
+    assert!(matches!(
+        error,
+        RuntimeBuildError::MissingExternState { state, .. } if state == "main::state"
+    ));
 }
 
 #[test]
@@ -132,7 +169,7 @@ struct ServerState {
     name: String,
 }
 
-global state: ServerState;
+state state: ServerState = ServerState { level: 0, name: "" };
 
 fn make_state() {
     return ServerState { level: 5, name: "boot" };
@@ -149,13 +186,13 @@ fn read_name() {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
     let state = runtime
         .call("make_state", CallArgs::new(), CallOptions::unbounded())
         .expect("factory should run");
     runtime
-        .insert_global("main::state", state)
+        .set_state("main::state", state)
         .expect("script global should insert");
 
     let first = runtime
@@ -184,7 +221,7 @@ fn read_name() {
     assert_eq!(
         script_record_field(
             &runtime
-                .global("main::state")
+                .state("main::state")
                 .expect("script global should materialize")
                 .expect("script global should exist"),
             "level",
@@ -193,7 +230,7 @@ fn read_name() {
     );
 
     runtime
-        .update_global("main::state", |value| {
+        .update_state("main::state", |value| {
             let OwnedValue::Record { fields, .. } = value else {
                 panic!("state should remain a record");
             };
@@ -245,7 +282,12 @@ struct ServerState {
     stats: ServerStats,
 }
 
-global state: ServerState;
+state state: ServerState = ServerState {
+    level: 0,
+    name: "",
+    total_gold: 0,
+    stats: ServerStats { handled_ticks: 0 },
+};
 
 fn handle_tick(level_gain, gold_gain) {
     state.level += level_gain;
@@ -267,7 +309,7 @@ fn projected_score(snapshot: ServerState, bonus) {
 }
 
 #[test]
-fn shared_runtime_image_keeps_script_globals_isolated() {
+fn shared_runtime_image_keeps_vm_states_isolated() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
         .compile_source_with_id(
@@ -278,7 +320,7 @@ struct ServerState {
     name: String,
 }
 
-global state: ServerState;
+state state: ServerState = ServerState { level: 0, name: "" };
 
 fn make_state(level, name) {
     return ServerState { level: level, name: name };
@@ -296,8 +338,10 @@ fn read_name() {
         )
         .expect("program should compile");
     let shared_image = RuntimeImage::new_compiled(engine, program).into_shared();
-    let mut first = SharedRuntime::from_shared_image(shared_image.clone());
-    let mut second = SharedRuntime::from_shared_image(shared_image);
+    let mut first =
+        SharedRuntime::from_shared_image(shared_image.clone()).expect("runtime should initialize");
+    let mut second =
+        SharedRuntime::from_shared_image(shared_image).expect("runtime should initialize");
 
     let first_state = first
         .call(
@@ -321,10 +365,10 @@ fn read_name() {
         .expect("second factory should run");
 
     first
-        .insert_global("main::state", first_state)
+        .set_state("main::state", first_state)
         .expect("first script global should insert");
     second
-        .insert_global("main::state", second_state)
+        .set_state("main::state", second_state)
         .expect("second script global should insert");
 
     let first_bumped = first
@@ -367,13 +411,13 @@ fn read_name() {
 }
 
 #[test]
-fn runtime_insert_global_rejects_type_contract_mismatch() {
+fn runtime_set_state_rejects_type_contract_mismatch() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
             r#"
-global amount: i64;
+state amount: i64 = 0;
 
 fn read_amount() {
     return amount;
@@ -381,11 +425,11 @@ fn read_amount() {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
     let error = runtime
-        .insert_global("main::amount", OwnedValue::String("wrong".to_owned()))
-        .expect_err("typed global insertion should reject mismatched value");
+        .set_state("main::amount", OwnedValue::String("wrong".to_owned()))
+        .expect_err("typed state update should reject mismatched value");
 
     assert_eq!(
         error.kind(),
@@ -396,14 +440,14 @@ fn read_amount() {
         }
     );
     assert_eq!(
-        runtime.global("main::amount"),
-        Ok(None),
-        "rejected value must not enter the script global store"
+        runtime.state("main::amount"),
+        Ok(Some(OwnedValue::from(0_i64))),
+        "rejected value must not replace initialized state"
     );
 }
 
 #[test]
-fn runtime_update_global_rejects_type_contract_mismatch_without_replacing_value() {
+fn runtime_update_state_rejects_type_contract_mismatch_without_replacing_value() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
         .compile_source_with_id(
@@ -413,20 +457,20 @@ struct ServerState {
     level: i64,
 }
 
-global state: ServerState;
+state state: ServerState = ServerState { level: 0 };
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     runtime
-        .insert_global(
+        .set_state(
             "main::state",
             OwnedValue::record("ServerState", [("level", OwnedValue::i64(3))]),
         )
         .expect("matching global should insert");
 
     let error = runtime
-        .update_global("main::state", |value| {
+        .update_state("main::state", |value| {
             *value = OwnedValue::String("wrong".to_owned());
         })
         .expect_err("typed global update should reject mismatched replacement");
@@ -442,7 +486,7 @@ global state: ServerState;
     assert_eq!(
         script_record_field(
             &runtime
-                .global("main::state")
+                .state("main::state")
                 .expect("global should materialize")
                 .expect("original global should remain"),
             "level",
@@ -460,7 +504,7 @@ struct SerdeServerState {
 
 #[cfg(feature = "serde")]
 #[test]
-fn runtime_insert_global_accepts_serde_struct_with_single_api() {
+fn runtime_set_state_accepts_serde_struct_with_single_api() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
         .compile_source_with_id(
@@ -471,7 +515,7 @@ struct SerdeServerState {
     name: String,
 }
 
-global state: SerdeServerState;
+state state: SerdeServerState = SerdeServerState { level: 0, name: "" };
 
 fn bump(amount) {
     state.level += amount;
@@ -484,14 +528,14 @@ fn read_name() {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let state = SerdeServerState {
         level: 5,
         name: "serde".to_owned(),
     };
 
     runtime
-        .insert_global("main::state", &state)
+        .set_state("main::state", &state)
         .expect("serde global should insert through unified API");
 
     let level_value = runtime
@@ -511,7 +555,7 @@ fn read_name() {
         .from_value(&name_value)
         .expect("name value should deserialize directly");
     let global: SerdeServerState = runtime
-        .global_as("main::state")
+        .state_as("main::state")
         .expect("script global should deserialize directly")
         .expect("script global should exist");
 
@@ -544,7 +588,7 @@ fn make_scores() {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
     let scores = runtime
         .call("make_scores", CallArgs::new(), CallOptions::unbounded())
@@ -584,7 +628,7 @@ fn make_scores() {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
     let scores = runtime
         .call("make_scores", CallArgs::new(), CallOptions::unbounded())
@@ -619,7 +663,7 @@ fn lookup_score(scores: Map<i64, i64>) -> i64 {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let scores = BTreeMap::from([(1_i64, 10_i64), (2_i64, 20_i64)]);
 
     let value = runtime
@@ -640,7 +684,7 @@ fn lookup_score(scores: Map<i64, i64>) -> i64 {
 }
 
 #[test]
-fn runtime_insert_global_accepts_runtime_managed_value_with_single_api() {
+fn runtime_set_state_accepts_runtime_managed_value_with_single_api() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
         .compile_source_with_id(
@@ -651,7 +695,7 @@ struct ServerState {
     name: String,
 }
 
-global state: ServerState;
+state state: ServerState = ServerState { level: 0, name: "" };
 
 fn make_state() {
     return ServerState { level: 11, name: "runtime" };
@@ -663,13 +707,13 @@ fn read_level() {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
     let state = runtime
         .call("make_state", CallArgs::new(), CallOptions::unbounded())
         .expect("factory should return runtime-managed value");
     runtime
-        .insert_global("main::state", state)
+        .set_state("main::state", state)
         .expect("runtime value should insert through unified API");
 
     let level = runtime
@@ -703,7 +747,7 @@ fn reward_score(reward: Reward, bonus) {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
     let reward = runtime
         .call("make_reward", CallArgs::new(), CallOptions::unbounded())
@@ -745,7 +789,7 @@ struct Reward {
     label: String,
 }
 
-global scratch: Reward;
+state scratch: Reward = Reward { gold: 0, label: "" };
 
 fn make_reward(gold, label) {
     return Reward { gold: gold, label: label };
@@ -757,7 +801,7 @@ fn reward_score(reward: Reward) {
 "#,
         )
         .expect("program should compile");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
     let retained = runtime
         .call(
@@ -781,7 +825,7 @@ fn reward_score(reward: Reward) {
         .expect("scratch reward should be returned as runtime value");
 
     runtime
-        .insert_global("main::scratch", scratch)
+        .set_state("main::scratch", scratch)
         .expect("inserting a script global should trigger persistent heap collection");
 
     let score = runtime
@@ -829,8 +873,8 @@ fn read_reward(reward: Reward) {
     let program_b = engine
         .compile_source_with_id(SourceId::new(2), source)
         .expect("program should compile");
-    let mut runtime_a = Runtime::new(engine.clone(), program_a);
-    let mut runtime_b = Runtime::new(engine, program_b);
+    let mut runtime_a = Runtime::new(engine.clone(), program_a).expect("runtime should initialize");
+    let mut runtime_b = Runtime::new(engine, program_b).expect("runtime should initialize");
 
     let reward = runtime_a
         .call("make_reward", CallArgs::new(), CallOptions::unbounded())

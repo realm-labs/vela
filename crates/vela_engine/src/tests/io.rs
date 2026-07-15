@@ -111,7 +111,7 @@ fn main() {
     engine
         .link_test_program(&program)
         .expect("stdio plus fs program should link");
-    let mut runtime = Runtime::new(engine, program);
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
 
     let output = runtime
         .call("main", CallArgs::new(), CallOptions::unbounded())

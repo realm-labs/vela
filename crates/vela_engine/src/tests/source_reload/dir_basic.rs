@@ -173,7 +173,8 @@ pub fn grant() {
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -239,7 +240,8 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -316,7 +318,8 @@ fn runtime_stages_dir_hot_reload_rejection_until_safe_point() {
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -387,7 +390,8 @@ fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
     let initial = engine
         .compile_hot_reload_initial_dir(&root)
         .expect("initial hot reload dir compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 

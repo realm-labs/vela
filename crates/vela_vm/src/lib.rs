@@ -247,78 +247,31 @@ pub struct Vm {
 pub struct HostExecution<'host> {
     pub adapter: &'host mut (dyn ScriptStateAdapter + Send),
     pub access: &'host mut vela_host::access::HostAccess,
-    pub state_values: Option<&'host mut ScriptGlobalValues>,
+    pub state_values: Option<&'host mut VmStateValues>,
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct ScriptGlobalValues {
-    by_name: BTreeMap<String, Value>,
-    slots: Vec<Option<Value>>,
-    slot_by_name: BTreeMap<String, StateSlot>,
+pub struct VmStateValues {
+    by_id: BTreeMap<vela_def::StateId, Value>,
 }
 
-impl ScriptGlobalValues {
-    #[must_use]
-    pub fn with_layout(names: &[String]) -> Self {
-        let mut values = Self::default();
-        values.set_layout(names);
-        values
-    }
-
-    pub fn set_layout(&mut self, names: &[String]) {
-        self.slot_by_name.clear();
-        self.slots.clear();
-        self.slots.resize(names.len(), None);
-        for (index, name) in names.iter().enumerate() {
-            let slot = StateSlot::new(index);
-            self.slot_by_name.insert(name.clone(), slot);
-            if let Some(value) = self.by_name.get(name).copied() {
-                self.slots[index] = Some(value);
-            }
-        }
-    }
-
+impl VmStateValues {
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.by_name.is_empty()
+        self.by_id.is_empty()
     }
 
-    pub fn insert(&mut self, name: String, value: Value) {
-        if let Some(slot) = self.slot_by_name.get(&name).copied() {
-            self.slots[slot.get()] = Some(value);
-        }
-        self.by_name.insert(name, value);
-    }
-
-    pub fn insert_resolved(&mut self, name: String, slot: StateSlot, value: Value) {
-        if slot.get() < self.slots.len() {
-            self.slots[slot.get()] = Some(value);
-        }
-        self.by_name.insert(name, value);
+    pub fn insert(&mut self, state: vela_def::StateId, value: Value) {
+        self.by_id.insert(state, value);
     }
 
     #[must_use]
-    pub fn get(&self, name: &str) -> Option<Value> {
-        self.by_name.get(name).copied()
-    }
-
-    #[must_use]
-    pub fn get_resolved(&self, name: &str, slot: Option<StateSlot>) -> Option<Value> {
-        if let Some(slot) = slot
-            && slot.get() < self.slots.len()
-        {
-            return self.slots[slot.get()];
-        }
-        self.get(name)
-    }
-
-    #[must_use]
-    pub fn get_slot(&self, slot: StateSlot) -> Option<Value> {
-        self.slots.get(slot.get()).and_then(|value| *value)
+    pub fn get(&self, state: vela_def::StateId) -> Option<Value> {
+        self.by_id.get(&state).copied()
     }
 
     pub fn values(&self) -> impl Iterator<Item = Value> + '_ {
-        self.by_name.values().copied()
+        self.by_id.values().copied()
     }
 }
 

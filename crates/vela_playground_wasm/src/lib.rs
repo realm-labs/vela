@@ -6,7 +6,7 @@ use vela_bytecode::compiler::error::{CompileError, CompileErrorKind};
 use vela_common::{Diagnostic, Severity, Span};
 use vela_engine::prelude::{
     CallArgs, CallOptions, Capability, EngineBuilder, EngineSourceError, EngineSourceErrorKind,
-    Runtime,
+    Runtime, RuntimeBuildError,
 };
 use vela_vm::owned_value::OwnedValue;
 use wasm_bindgen::prelude::*;
@@ -70,9 +70,9 @@ fn run_script_inner(source: &str, entry: &str) -> PlaygroundResponse {
         Ok(program) => program,
         Err(error) => return source_error_response(error),
     };
-    let mut runtime = match Runtime::try_new_compiled(engine, program) {
+    let mut runtime = match Runtime::new_compiled(engine, program) {
         Ok(runtime) => runtime,
-        Err(error) => return single_error_response(format!("failed to link program: {error}")),
+        Err(error) => return runtime_build_error_response(error),
     };
     match runtime.call(
         entry,
@@ -100,13 +100,13 @@ fn compile_and_link_program(source: &str) -> Result<(), PlaygroundResponse> {
     let program = engine
         .compile_source(source)
         .map_err(source_error_response)?;
-    Runtime::try_new_compiled(engine, program)
+    Runtime::new_compiled(engine, program)
         .map(drop)
-        .map_err(link_error_response)
+        .map_err(runtime_build_error_response)
 }
 
-fn link_error_response(error: vela_bytecode::linker::LinkError) -> PlaygroundResponse {
-    single_error_response(format!("failed to link program: {error}"))
+fn runtime_build_error_response(error: RuntimeBuildError) -> PlaygroundResponse {
+    single_error_response(format!("failed to initialize runtime: {error}"))
 }
 
 fn playground_engine() -> Result<vela_engine::prelude::Engine, EngineSourceError> {
@@ -163,6 +163,9 @@ fn compile_error_response(error: CompileError) -> PlaygroundResponse {
         },
         CompileErrorKind::InvalidCompilationRequest(error) => {
             single_error_response(format!("invalid bytecode compilation request: {error:?}"))
+        }
+        CompileErrorKind::InvalidStateInitializer { state, reason } => {
+            single_error_response(format!("invalid state initializer for `{state}`: {reason}"))
         }
         CompileErrorKind::UnknownLocal(name) => {
             single_error_response(format!("unknown local `{name}`"))

@@ -21,7 +21,8 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
         )
         .build()
         .expect("new engine should build");
-    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -82,7 +83,8 @@ fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
         )
         .build()
         .expect("new engine should build");
-    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -141,7 +143,8 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
         )
         .build()
         .expect("new engine should build");
-    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -207,7 +210,8 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
         )
         .build()
         .expect("new engine should build");
-    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -261,7 +265,8 @@ fn runtime_stages_source_file_removed_native_function_rejection_until_safe_point
         .execution_profile(ExecutionProfile::trusted())
         .build()
         .expect("new engine should build");
-    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -320,7 +325,8 @@ fn runtime_stages_source_file_native_stable_id_churn_rejection_until_safe_point(
         )
         .build()
         .expect("new engine should build");
-    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -388,7 +394,8 @@ fn main() {
         )
         .build()
         .expect("new engine should build");
-    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -441,7 +448,8 @@ fn runtime_stages_source_file_removed_method_rejection_until_safe_point() {
         .register_type(TypeDesc::new(player_key).host_type(HostTypeId::new(1)))
         .build()
         .expect("new engine should build");
-    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -497,7 +505,8 @@ fn runtime_stages_source_file_method_stable_id_churn_rejection_until_safe_point(
         )))
         .build()
         .expect("new engine should build");
-    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -562,7 +571,8 @@ fn main(player: Player) {
         )))
         .build()
         .expect("new engine should build");
-    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
 
@@ -650,7 +660,8 @@ fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
         )
         .build()
         .expect("new engine should build");
-    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -720,7 +731,8 @@ fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
         )
         .build()
         .expect("new engine should build");
-    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -788,7 +800,8 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
         )
         .build()
         .expect("new engine should build");
-    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -854,7 +867,8 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
         )
         .build()
         .expect("new engine should build");
-    let mut runtime = Runtime::from_hot_reload_version(new_engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -991,7 +1005,8 @@ fn runtime_returns_hot_reload_file_source_errors_immediately() {
     let initial = engine
         .compile_hot_reload_initial_file(&path)
         .expect("initial hot reload file compile");
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial);
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let missing = root.join("missing.vela");
 
     let error = runtime

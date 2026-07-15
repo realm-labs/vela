@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Runtime and host state are separate fields, so the call can borrow both.
     let mut actor = WorkflowActor {
-        runtime: Runtime::new(engine, program),
+        runtime: Runtime::new(engine, program).expect("runtime should initialize"),
         state: WorkflowState { total: 1 },
         service: RuleService { multiplier: 2 },
     };

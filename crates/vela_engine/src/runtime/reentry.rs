@@ -9,7 +9,7 @@ use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
 use vela_vm::{
     HostExecution, LinkedDriveOutcome, LinkedExecutionReentry, LinkedExecutionSession,
-    PreparedAsyncCall, ScriptGlobalValues,
+    PreparedAsyncCall, VmStateValues,
 };
 
 use crate::context::{NativeCallContext, NativeReentry};
@@ -23,8 +23,8 @@ use super::handles::{
     self, RuntimeCallTargetKind, RuntimeMethodResolveContext, RuntimeMethodSelectorKind,
 };
 use super::provider;
-use super::script_globals::{RuntimeValueRoots, VelaValue};
 use super::state;
+use super::vm_states::{RuntimeValueRoots, VelaValue};
 use super::{VelaMethod, VelaMethodTarget, unknown_method, value_type_id};
 
 pub(super) struct ActiveNativeReentry<'execution, 'heap> {
@@ -38,7 +38,7 @@ pub(super) struct ActiveNativeReentry<'execution, 'heap> {
     pub(super) access: &'execution mut HostAccess,
     pub(super) heap: &'execution mut HeapExecution<'heap>,
     pub(super) budget: &'execution mut ExecutionBudget,
-    pub(super) script_global_values: &'execution mut ScriptGlobalValues,
+    pub(super) vm_state_values: &'execution mut VmStateValues,
     pub(super) retained_values: std::sync::Arc<std::sync::Mutex<RuntimeValueRoots>>,
     pub(super) sidecars: &'execution mut state::RuntimeSidecars,
 }
@@ -158,7 +158,7 @@ impl ActiveNativeReentry<'_, '_> {
         let mut host = HostExecution {
             adapter: &mut child_host,
             access: self.access,
-            state_values: Some(&mut *self.script_global_values),
+            state_values: Some(&mut *self.vm_state_values),
         };
         let outcome = match self.vm.drive_linked_execution(
             self.session,
@@ -234,7 +234,7 @@ impl ActiveNativeReentry<'_, '_> {
                 let mut host = HostExecution {
                     adapter: &mut child_host,
                     access: self.access,
-                    state_values: Some(&mut *self.script_global_values),
+                    state_values: Some(&mut *self.vm_state_values),
                 };
                 match self.vm.drive_linked_execution(
                     self.session,
@@ -280,7 +280,7 @@ impl ActiveNativeReentry<'_, '_> {
                             access: self.access,
                             heap: self.heap,
                             budget: self.budget,
-                            script_global_values: &mut *self.script_global_values,
+                            vm_state_values: &mut *self.vm_state_values,
                             retained_values: std::sync::Arc::clone(&self.retained_values),
                             sidecars: self.sidecars,
                         };
@@ -315,7 +315,7 @@ impl NativeReentry for ActiveNativeReentry<'_, '_> {
         HostExecution {
             adapter: self.host,
             access: self.access,
-            state_values: Some(&mut *self.script_global_values),
+            state_values: Some(&mut *self.vm_state_values),
         }
     }
 
@@ -399,7 +399,7 @@ struct RuntimeDirectContextInvoker<'execution, 'heap> {
     pub(super) access: &'execution mut HostAccess,
     pub(super) heap: &'execution mut HeapExecution<'heap>,
     pub(super) budget: &'execution mut ExecutionBudget,
-    pub(super) script_global_values: &'execution mut ScriptGlobalValues,
+    pub(super) vm_state_values: &'execution mut VmStateValues,
     pub(super) retained_values: std::sync::Arc<std::sync::Mutex<RuntimeValueRoots>>,
     pub(super) sidecars: &'execution mut state::RuntimeSidecars,
     root: HostRef,
@@ -428,7 +428,7 @@ impl DirectContextInvoker for RuntimeDirectContextInvoker<'_, '_> {
                 access: self.access,
                 heap: self.heap,
                 budget: self.budget,
-                script_global_values: &mut *self.script_global_values,
+                vm_state_values: &mut *self.vm_state_values,
                 retained_values: self.retained_values,
                 sidecars: self.sidecars,
             };
@@ -502,7 +502,7 @@ pub(super) async fn invoke_prepared_async(
             access: &mut *active.access,
             heap: &mut *active.heap,
             budget: &mut *active.budget,
-            script_global_values: &mut *active.script_global_values,
+            vm_state_values: &mut *active.vm_state_values,
             retained_values: std::sync::Arc::clone(&active.retained_values),
             sidecars: &mut *active.sidecars,
             root,
@@ -521,7 +521,7 @@ pub(super) async fn invoke_prepared_async(
         let mut host = HostExecution {
             adapter: active.host,
             access: active.access,
-            state_values: Some(&mut *active.script_global_values),
+            state_values: Some(&mut *active.vm_state_values),
         };
         return prepared
             .invoke_with_host(&mut host, Some(active.budget))

@@ -7,14 +7,14 @@ use vela_bytecode::{
 use vela_common::StateSlot;
 
 use super::{
-    RuntimeGlobalStore, RuntimeScriptGlobalStore, bytecode_profile::RuntimeBytecodeProfile,
+    RuntimeExternStateBindings, RuntimeVmStateStore, bytecode_profile::RuntimeBytecodeProfile,
     image::RuntimeImage, inline_cache::InlineCaches, next_runtime_id,
 };
 
 pub(super) struct RuntimeState {
     pub(super) id: u64,
-    pub(super) globals: RuntimeGlobalStore,
-    pub(super) script_globals: RuntimeScriptGlobalStore,
+    pub(super) extern_states: RuntimeExternStateBindings,
+    pub(super) vm_states: RuntimeVmStateStore,
     pub(super) sidecars: RuntimeSidecars,
 }
 
@@ -36,8 +36,8 @@ impl RuntimeState {
         generations.insert(active_generation, GenerationRuntimeState::for_image(image));
         Self {
             id: next_runtime_id(),
-            globals: RuntimeGlobalStore::with_state_layout(image.states()),
-            script_globals: RuntimeScriptGlobalStore::with_state_layout(image.states()),
+            extern_states: RuntimeExternStateBindings::with_state_layout(image.states()),
+            vm_states: RuntimeVmStateStore::with_state_layout(image.states()),
             sidecars: RuntimeSidecars {
                 active_generation,
                 generations,
@@ -46,8 +46,8 @@ impl RuntimeState {
     }
 
     pub(super) fn set_state_layout(&mut self, states: &[vela_bytecode::StateDescriptor]) {
-        self.globals.set_state_layout(states);
-        self.script_globals.set_state_layout(states);
+        self.extern_states.set_state_layout(states);
+        self.vm_states.set_state_layout(states);
     }
 
     pub(super) fn rebind_to_image(&mut self, image: &RuntimeImage) {

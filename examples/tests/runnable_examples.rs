@@ -131,9 +131,9 @@ success_example!(
 );
 
 success_example!(
-    script_global_example_runs,
-    env!("CARGO_BIN_EXE_script_global"),
-    "script_global first=9 second=27 name=rust-updated \
+    script_state_example_runs,
+    env!("CARGO_BIN_EXE_script_state"),
+    "script_state first=9 second=27 name=rust-updated \
      projected=31 final_level=11 final_gold=8 ticks=8\n",
 );
 
