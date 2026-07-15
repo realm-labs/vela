@@ -11,26 +11,14 @@ history belongs in Git.
 ## Current Focus
 
 The explicit state-storage hard switch in
-[state-storage-model-plan.md](state-storage-model-plan.md) is active. Batch A is
-complete: `state` is contextual, `extern` is reserved, legacy `global`
-declarations are rejected, CST/AST/HIR expose VM versus extern storage, active
-source fixtures use the new forms, and stable identity is named
-`StateId`/`StateSlot` without aliases. Batch B is complete: initializer bodies
-and exact contracts enter the semantic pipeline, MIR and linked bytecode use
-storage-specific reads/writes, VM state supports root assignment, extern roots
-reject assignment before bytecode generation, and typed state descriptors map
-generation slots to stable IDs. Batch C is complete: persistent VM and extern
-stores are keyed by `StateId`, restricted verified initializers run once per
-Runtime under explicit limits, construction is fallible and transactionally
-published, extern bindings are type-checked outside script GC, and the Rust,
-C, playground, and example construction surfaces use explicit state ownership.
-Batch D is complete: reload compares exact state storage and contracts by
-stable ID, reports additions/removals/initializer-only and visibility changes,
-stages added VM values and extern bindings per Runtime before publication,
-rolls back initializer failures, and retains removed cells while old
-generation owners remain live. Batch E is the current checkpoint: finish
-reflection and editor tooling, migrate active documentation and fixtures, run
-zero-hit audits, and close the full acceptance gates.
+[state-storage-model-plan.md](state-storage-model-plan.md) is complete through
+Batches A-E. Contextual `state` and `extern state` now have distinct semantic,
+bytecode, runtime, reload, reflection, and tooling paths. Each Runtime owns
+independent VM-state cells and validated extern bindings keyed by `StateId`;
+restricted initialization and reload publication are bounded, fallible, and
+transactional. Legacy `global` declarations, embedding APIs, and production
+terminology are removed. Full acceptance passed on 2026-07-15, so M20 cache
+close-out and M20.5 editor follow-up are active again.
 
 The executor-neutral async implementation from Batches A-D is landed: Vela has
 one explicit frame driver, scoped `Send` Runtime/native futures, direct typed
@@ -58,8 +46,8 @@ storage hard switch reaches final acceptance.
 | M8-M18 | Complete enough | HIR, executable language surface, script metadata, host bridge, reflection, stdlib, embedding, reload, diagnostics, examples, and benchmark foundations satisfy their checkpoints. |
 | M19 | Complete enough | The non-JIT interpreter and heap optimization checkpoint is closed; remaining measured costs belong to cache, value-layout, or later backend work. |
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
-| M20 | Active, superseded | Resume cache-family close-out after the state-storage hard switch reaches final acceptance. |
-| M20.5 | Active follow-up, superseded | Resume concrete editor-visible follow-up after state tooling adopts the new model. |
+| M20 | Active | Resume cache-family close-out on the accepted explicit state-storage model. |
+| M20.5 | Active follow-up | Resume concrete editor-visible follow-up on the accepted state tooling model. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -126,20 +114,15 @@ storage hard switch reaches final acceptance.
 
 ### State Storage Hard Switch
 
-Batches A-D are complete. HIR binds state initializers and exact contracts;
-MIR, bytecode, verifier, caches, and execution statically distinguish VM-state
-read/write from extern-state read; direct and compound VM-state assignment work;
-extern-root assignment is rejected; and executable metadata carries typed
-descriptors with stable identity. Each Runtime now owns independently
-initialized persistent VM state and validated extern bindings through the
-state-specific embedding API. Reload compares descriptors by stable identity,
-stages added cells and bindings per Runtime, publishes reload state atomically,
-and retains removed cells for live old-generation owners. Those guarantees are
-covered for compatible preservation,
-added-state isolation, missing/mismatched extern bindings, rollback, retained
-closures, suspended async safe points, and dead-generation pruning. Batch E
-must align reflection, language-service/LSP/editor behavior, active docs, and
-acceptance audits with the implemented model.
+Batches A-E are complete. The semantic pipeline, VM, embedding API, reload,
+reflection, language service, editor integrations, examples, C ABI, site, and
+active documentation use the explicit state model. Compatibility, isolation,
+rollback, retained-generation lifetime, initializer limits, and tooling
+behavior have focused coverage, and the full acceptance gates pass. No
+state-storage hard-switch gap remains. Disk persistence, snapshots,
+replication, cross-Runtime sharing, state migration, async-frame migration, and
+initializer dependency reads remain explicit non-goals rather than implicit
+follow-up requirements.
 
 ### Async Post-Review Closure
 
@@ -155,7 +138,7 @@ or provider-specific public execution methods.
 
 ### M20 Cache Close-Out
 
-Existing cache or measured families include declared globals, script record
+Existing cache or measured families include declared state, script record
 fields, host access, native calls, linked method dispatch, dynamic method
 dispatch, stdlib value methods, callbacks, strings/bytes, Option/Result, and
 selected array/map/set paths.
@@ -230,7 +213,8 @@ scanners, runtime execution, live host-state reads, or editor-owned analysis.
 
 ## Validation
 
-The final Batch E validation passed on 2026-07-14:
+The state-storage Batch E acceptance passed on 2026-07-15. The async Batch E
+acceptance remains recorded for 2026-07-14. The combined full gates are:
 
 ```bash
 cargo fmt --all -- --check
@@ -241,6 +225,7 @@ cargo test --manifest-path examples/Cargo.toml --all-features --no-fail-fast
 cargo bench --workspace --all-features --no-run
 cargo doc --workspace --all-features --no-deps
 cargo check --manifest-path fuzz/Cargo.toml --bins
+cargo bench -p vela_vm --bench baseline -- vm_state_read_write --quick
 ```
 
 The Miri component is unavailable on the installed stable
@@ -255,10 +240,10 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Complete Batch B semantic ownership and executable state operations.
-2. Continue Batches C-D only after the Batch B focused checkpoint is green.
-3. Finish Batch E tooling, docs, audits, and full acceptance before resuming
-   M20/M20.5 follow-up.
+1. Resume the M20 cache-family audit and name the next missing proof.
+2. Resume the M20.5 editor-visible follow-up against the accepted state model.
+3. Keep persistence, migration, cross-Runtime sharing, and async-frame
+   migration outside the completed state-storage hard switch.
 
 ## Update Rules
 

@@ -1057,33 +1057,33 @@ in the declaration and executable descriptor.
 
 The goal is complete only when all of these are true:
 
-- [ ] `state` is contextual and ordinary identifiers named `state` work.
-- [ ] `global` declarations are rejected and no parser compatibility alias
+- [x] `state` is contextual and ordinary identifiers named `state` work.
+- [x] `global` declarations are rejected and no parser compatibility alias
       exists.
-- [ ] `state` and `extern state` have statically distinct HIR, MIR, bytecode,
+- [x] `state` and `extern state` have statically distinct HIR, MIR, bytecode,
       verifier, and runtime paths.
-- [ ] VM state supports direct and compound root assignment.
-- [ ] extern roots are immutable in Vela and nested mutation uses HostAccess.
-- [ ] every VM state has a required explicit type and restricted initializer.
-- [ ] Runtime construction and added-state reload initialization are bounded,
+- [x] VM state supports direct and compound root assignment.
+- [x] extern roots are immutable in Vela and nested mutation uses HostAccess.
+- [x] every VM state has a required explicit type and restricted initializer.
+- [x] Runtime construction and added-state reload initialization are bounded,
       fallible, and transactionally published.
-- [ ] state identity and preservation use StateId; dense slots are
+- [x] state identity and preservation use StateId; dense slots are
       generation-local.
-- [ ] exact-compatible state preserves old values/bindings and does not rerun
+- [x] exact-compatible state preserves old values/bindings and does not rerun
       initializers.
-- [ ] incompatible type/storage changes reject with actionable diagnostics.
-- [ ] removed state remains valid for old generation owners and is later
+- [x] incompatible type/storage changes reject with actionable diagnostics.
+- [x] removed state remains valid for old generation owners and is later
       reclaimed.
-- [ ] multiple runtimes sharing an image keep independent VM state.
-- [ ] host state remains outside script GC and no Rust reference is exposed.
-- [ ] the old global embedding API and production terminology are removed.
-- [ ] reflection, language service, LSP, formatter, editor integrations,
+- [x] multiple runtimes sharing an image keep independent VM state.
+- [x] host state remains outside script GC and no Rust reference is exposed.
+- [x] the old global embedding API and production terminology are removed.
+- [x] reflection, language service, LSP, formatter, editor integrations,
       examples, C ABI, site snippets, and active docs use the new model.
-- [ ] focused and full validation commands pass.
-- [ ] docs/decisions.md records the implemented durable decision.
-- [ ] docs/progress.md reflects the milestone truth without becoming a
+- [x] focused and full validation commands pass.
+- [x] docs/decisions.md records the implemented durable decision.
+- [x] docs/progress.md reflects the milestone truth without becoming a
       changelog.
-- [ ] implementation checkpoints are committed with Conventional Commits and
+- [x] implementation checkpoints are committed with Conventional Commits and
       the final worktree is clean.
 
 The final report must summarize the activated language/runtime contract,
