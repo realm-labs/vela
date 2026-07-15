@@ -10,6 +10,16 @@ history belongs in Git.
 
 ## Current Focus
 
+The explicit state-storage hard switch in
+[state-storage-model-plan.md](state-storage-model-plan.md) is active. Batch A is
+complete: `state` is contextual, `extern` is reserved, legacy `global`
+declarations are rejected, CST/AST/HIR expose VM versus extern storage, active
+source fixtures use the new forms, and stable identity is named
+`StateId`/`StateSlot` without aliases. Batch B is the current checkpoint:
+initializer bodies and exact contracts must enter HIR, MIR and linked bytecode
+must use storage-specific reads/writes, VM state must support root assignment,
+and extern roots must reject assignment before bytecode generation.
+
 The executor-neutral async implementation from Batches A-D is landed: Vela has
 one explicit frame driver, scoped `Send` Runtime/native futures, direct typed
 host leases, same-session NativeCallContext reentry, generation-pinned reload,
@@ -25,7 +35,8 @@ one provider resolver are implemented without compatibility paths. Full
 features, examples, benches, Rust docs, fuzz build, site gates, audits, and
 performance/memory comparison passed; the result is recorded in
 [the Batch E acceptance report](archive/async-execution-batch-e-acceptance-2026-07-14.md).
-Current work returns to M20 cache close-out and the M20.5 LSP follow-up.
+M20 cache close-out and the M20.5 LSP follow-up remain valid after the state
+storage hard switch reaches final acceptance.
 
 ## Milestone Snapshot
 
@@ -35,8 +46,8 @@ Current work returns to M20 cache close-out and the M20.5 LSP follow-up.
 | M8-M18 | Complete enough | HIR, executable language surface, script metadata, host bridge, reflection, stdlib, embedding, reload, diagnostics, examples, and benchmark foundations satisfy their checkpoints. |
 | M19 | Complete enough | The non-JIT interpreter and heap optimization checkpoint is closed; remaining measured costs belong to cache, value-layout, or later backend work. |
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
-| M20 | Active | Audit cache families, close only named gaps, and classify measured deltas. |
-| M20.5 | Active follow-up | Native language-service/LSP plumbing and authoring capabilities are usable; remaining work is focused editor behavior and coverage. |
+| M20 | Active, superseded | Resume cache-family close-out after the state-storage hard switch reaches final acceptance. |
+| M20.5 | Active follow-up, superseded | Resume concrete editor-visible follow-up after state tooling adopts the new model. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -100,6 +111,16 @@ Current work returns to M20 cache close-out and the M20.5 LSP follow-up.
   [archive/performance-full-2026-06-06.md](archive/performance-full-2026-06-06.md).
 
 ## Active Gaps
+
+### State Storage Hard Switch
+
+Batch A is complete. Batch B must replace the remaining generic global
+semantic, MIR, bytecode, verifier, cache, profiler, and execution paths with
+statically distinct VM-state read/write and extern-state read operations. It
+must lower direct and compound VM-state assignment, reject extern-root
+assignment, and bind initializer bodies through the ordinary HIR pipeline.
+Batch C-D runtime initialization, stores, embedding APIs, reload ABI, and old
+generation lifetime remain gated on that executable ownership split.
 
 ### Async Post-Review Closure
 
@@ -215,8 +236,10 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Resume the named M20 cache-family audit and measured close-out work.
-2. Continue M20.5 only for a concrete editor-visible failure or missing proof.
+1. Complete Batch B semantic ownership and executable state operations.
+2. Continue Batches C-D only after the Batch B focused checkpoint is green.
+3. Finish Batch E tooling, docs, audits, and full acceptance before resuming
+   M20/M20.5 follow-up.
 
 ## Update Rules
 
