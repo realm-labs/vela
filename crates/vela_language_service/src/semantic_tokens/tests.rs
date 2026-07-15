@@ -81,6 +81,51 @@ fn semantic_tokens_classify_async_and_await_keywords() {
 }
 
 #[test]
+fn semantic_tokens_treat_state_as_contextual_declaration_keyword() {
+    let document = DocumentId::from("/workspace/scripts/game/state.vela");
+    let text = "state state: i64 = 1;\nextern state player: Player;\nfn read(state: i64) -> i64 { return state; }";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+    let tokens = databases.semantic_tokens(&document);
+
+    assert_token_at(
+        &tokens,
+        0,
+        0,
+        "state".len(),
+        SemanticTokenType::Keyword,
+        SemanticTokenModifiers::NONE,
+    );
+    assert_token_at(
+        &tokens,
+        0,
+        line(text, 0).rfind("state").expect("VM state name"),
+        "state".len(),
+        SemanticTokenType::State,
+        SemanticTokenModifiers::DECLARATION
+            .union(SemanticTokenModifiers::DEFINITION)
+            .union(SemanticTokenModifiers::SOURCE),
+    );
+    assert_token_at(
+        &tokens,
+        1,
+        line(text, 1)
+            .find("state")
+            .expect("extern state introducer"),
+        "state".len(),
+        SemanticTokenType::Keyword,
+        SemanticTokenModifiers::NONE,
+    );
+    assert_token_at(
+        &tokens,
+        2,
+        line(text, 2).find("state").expect("state parameter"),
+        "state".len(),
+        SemanticTokenType::Parameter,
+        SemanticTokenModifiers::DECLARATION.union(SemanticTokenModifiers::SOURCE),
+    );
+}
+
+#[test]
 fn semantic_tokens_mark_resolved_symbols() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let helper = DocumentId::from("/workspace/scripts/game/reward.vela");
@@ -1003,7 +1048,7 @@ fn semantic_token_taxonomy_declares_custom_fallbacks() {
     assert_eq!(SemanticTokenType::TypeAlias.standard_fallback(), "type");
     assert_eq!(SemanticTokenType::BuiltinType.standard_fallback(), "type");
     assert_eq!(SemanticTokenType::Const.standard_fallback(), "variable");
-    assert_eq!(SemanticTokenType::Global.standard_fallback(), "variable");
+    assert_eq!(SemanticTokenType::State.standard_fallback(), "variable");
     assert_eq!(SemanticTokenType::Label.standard_fallback(), "variable");
     assert_eq!(SemanticTokenType::Boolean.standard_fallback(), "keyword");
     assert_eq!(
@@ -1059,7 +1104,7 @@ fn semantic_token_taxonomy_declares_custom_fallbacks() {
         "interface",
         "typeAlias",
         "const",
-        "global",
+        "state",
         "boolean",
         "builtinType",
         "label",

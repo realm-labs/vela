@@ -66,6 +66,11 @@ pub enum ReflectErrorKind {
         candidates: Vec<String>,
         related: Vec<ReflectCandidate>,
     },
+    UnknownState {
+        state: String,
+        candidates: Vec<String>,
+        related: Vec<ReflectCandidate>,
+    },
     UnknownPermission {
         permission: String,
         candidates: Vec<String>,

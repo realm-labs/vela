@@ -24,7 +24,7 @@ pub fn main(amount: i64) -> i64 {
     let rewards_text = r#"#[doc("Base reward amount")]
 pub const BASE_REWARD: i64 = 4
 #[doc("Current reward scale")]
-pub global reward_scale: i64
+pub extern state reward_scale: i64;
 #[doc("Compute reward bonus")]
 pub fn reward_bonus(amount: i64, scale: i64 = reward_scale) -> i64 {
     return amount * scale
@@ -96,7 +96,11 @@ pub fn reward_bonus(amount: i64, scale: i64 = reward_scale) -> i64 {
         global_hover.contains("game::rewards::reward_scale"),
         "{global_hover}"
     );
-    assert!(global_hover.contains("_global_: i64"), "{global_hover}");
+    assert!(
+        global_hover.contains("_extern state_: i64"),
+        "{global_hover}"
+    );
+    assert!(global_hover.contains("host-owned"), "{global_hover}");
     assert!(
         global_hover.contains("Current reward scale"),
         "{global_hover}"

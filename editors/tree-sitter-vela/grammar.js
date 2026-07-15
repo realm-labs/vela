@@ -50,7 +50,7 @@ module.exports = grammar({
         choice(
           $.use_declaration,
           $.const_declaration,
-          $.global_declaration,
+          $.state_declaration,
           $.function_declaration,
           $.struct_declaration,
           $.enum_declaration,
@@ -74,8 +74,22 @@ module.exports = grammar({
         field("value", $._expression),
       ),
 
-    global_declaration: ($) =>
-      seq("global", field("name", $.identifier), field("type", $.type_annotation)),
+    state_declaration: ($) =>
+      choice(
+        seq(
+          "state",
+          field("name", $.identifier),
+          field("type", $.type_annotation),
+          "=",
+          field("value", $._expression),
+        ),
+        seq(
+          "extern",
+          "state",
+          field("name", $.identifier),
+          field("type", $.type_annotation),
+        ),
+      ),
 
     function_declaration: ($) =>
       seq(

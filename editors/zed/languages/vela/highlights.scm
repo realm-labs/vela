@@ -8,7 +8,6 @@
   "enum"
   "fn"
   "for"
-  "global"
   "if"
   "impl"
   "in"
@@ -19,6 +18,8 @@
   "trait"
   "use"
 ] @keyword
+
+(state_declaration ["extern" "state"] @keyword)
 
 (visibility) @keyword
 
@@ -54,7 +55,7 @@
 (enum_declaration name: (identifier) @type)
 (trait_declaration name: (identifier) @type)
 (const_declaration name: (identifier) @constant)
-(global_declaration name: (identifier) @constant)
+(state_declaration name: (identifier) @constant)
 (parameter name: (identifier) @variable.parameter)
 (lambda_parameter name: (identifier) @variable.parameter)
 

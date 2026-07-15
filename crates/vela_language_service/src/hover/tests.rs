@@ -564,7 +564,7 @@ pub fn main(amount: i64) -> i64 {
 #[test]
 fn hover_reports_source_global_fact() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "global score: i64\npub fn main() -> i64 { return score }";
+    let text = "state score: i64 = 0;\npub fn main() -> i64 { return score }";
     let databases = databases_for(&document, text, RegistryFacts::default());
     let use_line = text.lines().nth(1).expect("global use line should exist");
 
@@ -575,9 +575,12 @@ fn hover_reports_source_global_fact() {
         )
         .expect("hover should resolve global use");
 
-    assert_eq!(hover.kind(), HoverKind::Global);
+    assert_eq!(hover.kind(), HoverKind::VmState);
     assert_eq!(hover.label(), "game::main::score");
-    assert_eq!(hover.detail(), "i64");
+    assert_eq!(
+        hover.detail(),
+        "i64 (VM state; owned per Runtime; initialized once; preserved on exact-compatible reload)"
+    );
     assert_eq!(
         hover.symbol(),
         Some(&SymbolRef::Source("game::main::score".to_owned()))

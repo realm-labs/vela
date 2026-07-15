@@ -252,6 +252,15 @@
             "1": { "name": "keyword.declaration.impl.vela" },
             "2": { "name": "entity.name.type.vela" }
           }
+        },
+        {
+          "name": "meta.state.definition.vela",
+          "match": "\\b(?:(extern)\\s+)?(state)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": { "name": "keyword.declaration.vela" },
+            "2": { "name": "keyword.declaration.vela" },
+            "3": { "name": "variable.other.state.vela" }
+          }
         }
       ]
     },
@@ -303,7 +312,7 @@
         },
         {
           "name": "keyword.declaration.vela",
-          "match": "\\b(?:use|pub|const|global|let|fn|struct|enum|trait|impl|as)\\b"
+          "match": "\\b(?:use|pub|const|extern|let|fn|struct|enum|trait|impl|as)\\b"
         },
         {
           "name": "keyword.operator.word.vela",

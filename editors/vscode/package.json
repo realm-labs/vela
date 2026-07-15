@@ -67,9 +67,9 @@
         "description": "Vela constant declaration or reference."
       },
       {
-        "id": "global",
+        "id": "state",
         "superType": "variable",
-        "description": "Vela global declaration or reference."
+        "description": "Vela VM or extern state declaration or reference."
       },
       {
         "id": "boolean",
@@ -240,7 +240,7 @@
           "const": [
             "variable.other.constant.vela"
           ],
-          "global": [
+          "state": [
             "variable.other.constant.vela"
           ],
           "label": [

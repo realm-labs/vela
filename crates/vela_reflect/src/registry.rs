@@ -6,7 +6,7 @@ use lookup::{find_field, find_method, stable_trait_id};
 
 use crate::access::{FieldAccess, MethodAccess, MethodEffectSet};
 use crate::error::{ReflectError, ReflectErrorKind, ReflectResult};
-use crate::modules::{DeclOrigin, FunctionDesc, ModuleDesc};
+use crate::modules::{DeclOrigin, FunctionDesc, ModuleDesc, StateDesc};
 use vela_common::{HostMethodId, HostTypeId, Span};
 use vela_def::{FieldId, FunctionId, MethodId, TraitId, TypeId, VariantId};
 use vela_host::path::HostRef;
@@ -681,6 +681,8 @@ pub struct TypeRegistry {
     modules_by_name: BTreeMap<String, ModuleDesc>,
     functions_by_id: BTreeMap<FunctionId, FunctionDesc>,
     functions_by_name: BTreeMap<String, FunctionId>,
+    states_by_id: BTreeMap<vela_def::StateId, StateDesc>,
+    states_by_name: BTreeMap<String, vela_def::StateId>,
 }
 
 impl TypeRegistry {
@@ -714,6 +716,16 @@ impl TypeRegistry {
         self.functions_by_id.insert(desc.id, desc);
     }
 
+    pub fn register_state(&mut self, desc: StateDesc) {
+        self.states_by_name.insert(desc.name.clone(), desc.id);
+        if let Some(module) = &desc.module
+            && let Some(module_desc) = self.modules_by_name.get_mut(module)
+        {
+            module_desc.export_state(desc.name.clone(), desc.id);
+        }
+        self.states_by_id.insert(desc.id, desc);
+    }
+
     #[must_use]
     pub fn type_of_host(&self, host_ref: HostRef) -> Option<&TypeDesc> {
         let key = self.host_keys.get(&host_ref.type_id)?;
@@ -739,6 +751,10 @@ impl TypeRegistry {
         self.functions_by_id.values()
     }
 
+    pub fn states(&self) -> impl Iterator<Item = &StateDesc> {
+        self.states_by_id.values()
+    }
+
     pub fn traits(&self) -> impl Iterator<Item = &TraitDesc> {
         self.traits_by_name.values()
     }
@@ -757,6 +773,17 @@ impl TypeRegistry {
     pub fn function_by_name(&self, name: &str) -> Option<&FunctionDesc> {
         let id = self.functions_by_name.get(name)?;
         self.functions_by_id.get(id)
+    }
+
+    #[must_use]
+    pub fn state_by_id(&self, id: vela_def::StateId) -> Option<&StateDesc> {
+        self.states_by_id.get(&id)
+    }
+
+    #[must_use]
+    pub fn state_by_name(&self, name: &str) -> Option<&StateDesc> {
+        let id = self.states_by_name.get(name)?;
+        self.states_by_id.get(id)
     }
 
     #[must_use]

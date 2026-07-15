@@ -1105,6 +1105,31 @@ fn public_export_rename_reports_hot_reload_risk() {
 }
 
 #[test]
+fn state_rename_reports_remove_plus_add_hot_reload_risk() {
+    let document = DocumentId::from("/workspace/scripts/game/session.vela");
+    let text = "state counter: i64 = 1;\nfn read() -> i64 { return counter; }";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let edit = databases
+        .rename(
+            &document,
+            Position::new(0, line(text, 0).find("counter").expect("state declaration")),
+            "score",
+        )
+        .expect("state rename should produce edits");
+
+    assert_eq!(edit.risks().len(), 1);
+    assert_eq!(edit.risks()[0].kind(), RenameRiskKind::HotReloadAbi);
+    assert!(
+        edit.risks()[0]
+            .message()
+            .contains("removes the old StateId")
+    );
+    assert!(edit.risks()[0].message().contains("adds a new state"));
+    assert_eq!(document_edit(&edit, &document).edits().len(), 2);
+}
+
+#[test]
 fn rename_provider_id_reports_hot_reload_risk() {
     let document = DocumentId::from("/workspace/scripts/provider.vela");
     let text = r#"pub trait Service { fn run(self); }

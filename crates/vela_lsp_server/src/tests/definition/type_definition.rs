@@ -651,7 +651,7 @@ fn main() {
 }
 
 pub const DEFAULT_CONFIG: RewardConfig = RewardConfig { count: 1 }
-pub global active_config: RewardConfig"#;
+pub extern state active_config: RewardConfig;"#;
     open_document(&mut server, rewards_uri, rewards_text);
     open_document(&mut server, main_uri, main_text);
     let return_line = main_text.lines().nth(4).expect("return line should exist");

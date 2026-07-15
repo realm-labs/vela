@@ -163,7 +163,7 @@ fn item_boundary_completion_ranks_fn_snippet_before_callables() {
 }
 
 #[test]
-fn item_boundary_completion_ranks_struct_snippet_before_globals() {
+fn item_boundary_completion_ranks_contextual_state_snippet_first() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "st";
     let files = vec![SourceFileSnapshot::new(document.clone(), text)];
@@ -179,6 +179,7 @@ fn item_boundary_completion_ranks_struct_snippet_before_globals() {
 
     assert_eq!(completions.context().kind(), CompletionContextKind::Item);
     assert_completion(&completions, "struct", CompletionKind::Snippet);
+    assert_completion(&completions, "state", CompletionKind::Snippet);
     assert_no_completion(&completions, "stabilize");
     let structure = completion(&completions, "struct");
     assert_eq!(structure.insert_format(), CompletionInsertFormat::Snippet);
@@ -186,7 +187,7 @@ fn item_boundary_completion_ranks_struct_snippet_before_globals() {
         structure.insert_text(),
         Some("struct ${1:Name} {\n    $0\n}")
     );
-    assert_eq!(completions.items()[0].label(), "struct");
+    assert_eq!(completions.items()[0].label(), "state");
 }
 
 #[test]

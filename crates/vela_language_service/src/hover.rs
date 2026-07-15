@@ -31,7 +31,8 @@ use crate::{
 pub enum HoverKind {
     Local,
     Parameter,
-    Global,
+    VmState,
+    ExternState,
     Const,
     Function,
     Type,
@@ -793,7 +794,10 @@ fn hover_from_declaration(
     declaration: &Declaration,
     range: DiagnosticRange,
 ) -> Hover {
-    let detail_parts = if matches!(declaration.kind, DeclarationKind::Function) {
+    let detail_parts = if matches!(
+        declaration.kind,
+        DeclarationKind::Function | DeclarationKind::State
+    ) {
         declaration_hover_detail_parts(graph, declaration)
     } else {
         facts
@@ -807,7 +811,13 @@ fn hover_from_declaration(
     let label = qualified_declaration_label(graph, declaration);
     let kind = match declaration.kind {
         DeclarationKind::Const => HoverKind::Const,
-        DeclarationKind::State => HoverKind::Global,
+        DeclarationKind::State => match graph
+            .state_metadata(declaration.id)
+            .map(|state| state.storage)
+        {
+            Some(vela_hir::type_hint::StateStorage::Extern) => HoverKind::ExternState,
+            _ => HoverKind::VmState,
+        },
         DeclarationKind::Function => HoverKind::Function,
         DeclarationKind::Struct | DeclarationKind::Enum => HoverKind::Type,
         DeclarationKind::Trait => HoverKind::Trait,
@@ -834,9 +844,17 @@ fn declaration_hover_detail_parts(
                 .as_ref()
                 .map(|hint| DisplayParts::type_name(hint.display()))
         }),
-        DeclarationKind::State => graph
-            .state_metadata(declaration.id)
-            .map(|metadata| DisplayParts::type_name(metadata.type_hint.display())),
+        DeclarationKind::State => graph.state_metadata(declaration.id).map(|metadata| {
+            let ownership = match metadata.storage {
+                vela_hir::type_hint::StateStorage::Vm => {
+                    "VM state; owned per Runtime; initialized once; preserved on exact-compatible reload"
+                }
+                vela_hir::type_hint::StateStorage::Extern => {
+                    "extern state; host-owned; binding required; root immutable in Vela"
+                }
+            };
+            DisplayParts::plain(format!("{} ({ownership})", metadata.type_hint.display()))
+        }),
         DeclarationKind::Function => graph
             .function_signature(declaration.id)
             .map(signature_detail_parts),

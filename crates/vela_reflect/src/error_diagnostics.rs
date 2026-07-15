@@ -13,6 +13,7 @@ impl ReflectErrorKind {
             Self::UnknownTrait { .. } => "reflect::unknown_trait",
             Self::UnknownModule { .. } => "reflect::unknown_module",
             Self::UnknownFunction { .. } => "reflect::unknown_function",
+            Self::UnknownState { .. } => "reflect::unknown_state",
             Self::UnknownPermission { .. } => "reflect::unknown_permission",
             Self::PermissionDenied { .. } => "reflect::permission_denied",
             Self::MethodNotReflectCallable { .. } => "reflect::method_not_reflect_callable",
@@ -77,6 +78,9 @@ impl ReflectErrorKind {
                 candidates,
                 ..
             } => unknown_name_message("function", function, candidates),
+            Self::UnknownState {
+                state, candidates, ..
+            } => unknown_name_message("state", state, candidates),
             Self::UnknownPermission {
                 permission,
                 candidates,
@@ -166,7 +170,8 @@ impl ReflectErrorKind {
             | Self::UnknownVariant { related, .. }
             | Self::UnknownTrait { related, .. }
             | Self::UnknownModule { related, .. }
-            | Self::UnknownFunction { related, .. } => related
+            | Self::UnknownFunction { related, .. }
+            | Self::UnknownState { related, .. } => related
                 .iter()
                 .filter_map(|candidate| {
                     candidate.source_span.map(|span| {

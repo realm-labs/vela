@@ -92,7 +92,7 @@ pub fn main() {
     return BASE_REWARD + reward_scale
 }"#;
     let rewards_text = r#"pub const BASE_REWARD = 4
-pub global reward_scale: i64"#;
+pub extern state reward_scale: i64;"#;
     let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
@@ -152,8 +152,8 @@ pub global reward_scale: i64"#;
 
     assert_eq!(global_response["result"]["uri"], rewards_uri);
     assert_eq!(global_response["result"]["range"]["start"]["line"], 1);
-    assert_eq!(global_response["result"]["range"]["start"]["character"], 11);
-    assert_eq!(global_response["result"]["range"]["end"]["character"], 23);
+    assert_eq!(global_response["result"]["range"]["start"]["character"], 17);
+    assert_eq!(global_response["result"]["range"]["end"]["character"], 29);
 }
 
 #[test]

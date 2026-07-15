@@ -138,7 +138,7 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
             .find("active_player")
             .expect("global declaration"),
         "active_player".len(),
-        SemanticTokenType::Global,
+        SemanticTokenType::State,
         declaration_definition,
     );
     assert_token_at(

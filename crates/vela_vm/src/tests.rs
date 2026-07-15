@@ -480,6 +480,9 @@ fn script_module_reflection_registry() -> TypeRegistry {
 pub fn grant(player: Player, amount: i64 = 1) -> bool {
     return true;
 }
+
+pub state counter: i64 = 1;
+extern state player: Player;
 "#,
     ));
     let mut registry = TypeRegistry::new();

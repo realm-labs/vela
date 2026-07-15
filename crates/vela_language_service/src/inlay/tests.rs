@@ -103,7 +103,7 @@ pub fn main() {
         SourceFileSnapshot::new(main.clone(), main_text),
         SourceFileSnapshot::new(
             config,
-            "pub const BONUS: i64 = 10\npub global reward_scale: i64",
+            "pub const BONUS: i64 = 10\npub extern state reward_scale: i64;",
         ),
     ]);
 

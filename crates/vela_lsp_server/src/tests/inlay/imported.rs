@@ -68,7 +68,7 @@ fn lsp_inlay_hints_show_imported_const_and_global_typefacts() {
     open_document(
         &mut server,
         "file:///workspace/scripts/game/config.vela",
-        "pub const BONUS: i64 = 10\npub global reward_scale: i64",
+        "pub const BONUS: i64 = 10\npub extern state reward_scale: i64;",
     );
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = r#"use game::config::BONUS

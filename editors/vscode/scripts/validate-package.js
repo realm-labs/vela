@@ -79,7 +79,7 @@ const expectedSemanticTokenTypes = [
   "bytes",
   "typeAlias",
   "const",
-  "global",
+  "state",
   "boolean",
   "builtinType",
   "label",

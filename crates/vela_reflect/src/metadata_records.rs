@@ -166,6 +166,7 @@ fn descriptor_kind(type_name: &str) -> Option<&'static str> {
         "ReflectVariant" => Some("variant"),
         "ReflectModule" => Some("module"),
         "ReflectFunction" => Some("function"),
+        "ReflectState" => Some("state"),
         "ReflectFunctionAccess" => Some("function_access"),
         "ReflectSourceSpan" => Some("source_span"),
         _ => None,

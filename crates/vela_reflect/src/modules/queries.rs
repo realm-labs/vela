@@ -9,7 +9,7 @@ use crate::{
 };
 
 use super::descriptors::ModuleDesc;
-use super::records::{function_record, module_record, module_record_with_exports};
+use super::records::{function_record, module_record, module_record_with_exports, state_record};
 
 pub fn module(registry: &TypeRegistry, name: &str) -> ReflectResult<ReflectValue> {
     let desc = registry.module_by_name(name).ok_or_else(|| {
@@ -179,6 +179,61 @@ pub fn functions_with_policy(registry: &TypeRegistry, policy: &ReflectPolicy) ->
     )
 }
 
+pub fn state(registry: &TypeRegistry, name: &str) -> ReflectResult<ReflectValue> {
+    let desc = registry.state_by_name(name).ok_or_else(|| {
+        let related = state_candidates(registry, name, None);
+        ReflectError::new(ReflectErrorKind::UnknownState {
+            state: name.to_owned(),
+            candidates: candidate_names(&related),
+            related,
+        })
+    })?;
+    Ok(state_record(desc))
+}
+
+pub fn has_state(registry: &TypeRegistry, name: &str) -> bool {
+    registry.state_by_name(name).is_some()
+}
+
+pub fn has_state_with_policy(registry: &TypeRegistry, name: &str, policy: &ReflectPolicy) -> bool {
+    registry
+        .state_by_name(name)
+        .is_some_and(|state| state_visible(state, policy))
+}
+
+pub fn states(registry: &TypeRegistry) -> ReflectValue {
+    ReflectValue::Array(registry.states().map(state_record).collect())
+}
+
+pub fn state_with_policy(
+    registry: &TypeRegistry,
+    name: &str,
+    policy: &ReflectPolicy,
+) -> ReflectResult<ReflectValue> {
+    let desc = registry.state_by_name(name).ok_or_else(|| {
+        let related = state_candidates(registry, name, Some(policy));
+        ReflectError::new(ReflectErrorKind::UnknownState {
+            state: name.to_owned(),
+            candidates: candidate_names(&related),
+            related,
+        })
+    })?;
+    if !state_visible(desc, policy) {
+        policy.require(crate::permissions::ReflectPermission::AccessPrivate)?;
+    }
+    Ok(state_record(desc))
+}
+
+pub fn states_with_policy(registry: &TypeRegistry, policy: &ReflectPolicy) -> ReflectValue {
+    ReflectValue::Array(
+        registry
+            .states()
+            .filter(|state| state_visible(state, policy))
+            .map(state_record)
+            .collect(),
+    )
+}
+
 pub fn callable_function_id_with_policy(
     registry: &TypeRegistry,
     target: &ReflectValue,
@@ -224,6 +279,27 @@ fn function_candidates(
     )
 }
 
+fn state_candidates(
+    registry: &TypeRegistry,
+    name: &str,
+    policy: Option<&ReflectPolicy>,
+) -> Vec<crate::candidates::ReflectCandidate> {
+    ranked_candidates(
+        name,
+        registry
+            .states()
+            .filter(|state| policy.is_none_or(|policy| state_visible(state, policy)))
+            .map(|state| (state.name.as_str(), state.source_span)),
+    )
+}
+
+fn state_visible(state: &super::StateDesc, policy: &ReflectPolicy) -> bool {
+    state.public
+        || policy
+            .permissions()
+            .contains(crate::permissions::ReflectPermission::AccessPrivate)
+}
+
 fn function_candidates_with_policy(
     registry: &TypeRegistry,
     name: &str,
@@ -260,6 +336,11 @@ fn visible_export_names(
     desc.exports
         .iter()
         .filter(|export| {
+            if let Some(state_id) = export.state {
+                return registry
+                    .state_by_id(state_id)
+                    .is_some_and(|state| state_visible(state, policy));
+            }
             let Some(function_id) = export.function else {
                 return true;
             };

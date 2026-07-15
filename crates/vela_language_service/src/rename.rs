@@ -700,9 +700,8 @@ fn rename_target<'a>(
 fn can_rename_declaration_target(declaration: &Declaration) -> bool {
     match declaration.kind {
         DeclarationKind::Function => true,
-        DeclarationKind::Const | DeclarationKind::State => {
-            declaration.visibility != Visibility::Public
-        }
+        DeclarationKind::State => true,
+        DeclarationKind::Const => declaration.visibility != Visibility::Public,
         DeclarationKind::Struct | DeclarationKind::Enum | DeclarationKind::Trait => {
             declaration.visibility != Visibility::Public
         }
@@ -1045,6 +1044,15 @@ fn import_binding_name(import: &Import) -> Option<&str> {
 }
 
 fn rename_risks_for_declaration(declaration: &Declaration) -> Vec<RenameRisk> {
+    if declaration.kind == DeclarationKind::State {
+        return vec![RenameRisk {
+            kind: RenameRiskKind::HotReloadAbi,
+            message: format!(
+                "renaming state `{}` removes the old StateId and adds a new state during hot reload",
+                declaration.name
+            ),
+        }];
+    }
     if declaration.visibility != Visibility::Public {
         return Vec::new();
     }

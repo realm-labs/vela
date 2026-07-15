@@ -498,24 +498,24 @@ fn lsp_completion_projects_zed_style_client_fixture() {
 
     assert_completion_snippet(
         &response,
-        "struct",
+        "state",
         15,
-        "struct declaration",
-        "struct ${1:Name} {\n    $0\n}",
+        "per-Runtime VM state declaration",
+        "state ${1:name}: ${2:Type} = ${3:expression};",
     );
     assert_completion_projection(
         &response,
-        "struct",
+        "state",
         serde_json::json!({
             "range": {
                 "start": { "line": 0, "character": 0 },
                 "end": { "line": 0, "character": 2 }
             },
-            "newText": "struct ${1:Name} {\n    $0\n}"
+            "newText": "state ${1:name}: ${2:Type} = ${3:expression};"
         }),
-        "struct",
-        "0000_00_struct",
-        serde_json::json!({ "detail": "struct declaration" }),
+        "state",
+        "0000_00_state",
+        serde_json::json!({ "detail": "per-Runtime VM state declaration" }),
         true,
     );
 }

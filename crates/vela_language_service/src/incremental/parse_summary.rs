@@ -57,8 +57,12 @@ pub(super) fn summarize_source(parsed: &SyntaxParse<SyntaxSourceFile>) -> ParseS
                 let Some(inner) = SyntaxStateItem::cast(item.syntax().clone()) else {
                     continue;
                 };
+                let storage = match inner.storage() {
+                    vela_syntax::ast::SyntaxStateStorage::Vm => "vm",
+                    vela_syntax::ast::SyntaxStateStorage::Extern => "extern",
+                };
                 declarations.push(format!(
-                    "{} global {}:{}",
+                    "{} {storage} state {}:{}",
                     syntax_visibility(&item),
                     inner.name_text().unwrap_or_default(),
                     optional_syntax_hint(inner.type_hint())

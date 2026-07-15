@@ -163,7 +163,7 @@ pub fn dynamic(player) { return player.level }";
 fn lsp_hover_reports_source_global_fact() {
     let mut server = TestServer::new();
     let _ = initialize_default(&mut server);
-    let text = "global score: i64\npub fn main() -> i64 { return score }";
+    let text = "state score: i64 = 0;\npub fn main() -> i64 { return score }";
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
     let use_line = text.lines().nth(1).expect("global use line should exist");
@@ -186,7 +186,8 @@ fn lsp_hover_reports_source_global_fact() {
         .as_str()
         .expect("hover contents should be markdown");
     assert!(value.contains("game::main::score"), "{value}");
-    assert!(value.contains("_global_: i64"), "{value}");
+    assert!(value.contains("_state_: i64"), "{value}");
+    assert!(value.contains("owned per Runtime"), "{value}");
 }
 
 #[test]

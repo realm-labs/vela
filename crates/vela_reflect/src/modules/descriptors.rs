@@ -1,5 +1,5 @@
 use vela_common::{CallableAsyncness, Span};
-use vela_def::FunctionId;
+use vela_def::{FunctionId, StateId};
 
 use crate::{
     access::{FunctionAccess, FunctionEffectSet},
@@ -67,6 +67,94 @@ pub struct FunctionDesc {
     pub docs: Option<String>,
     pub attrs: AttrMap,
     pub source_span: Option<Span>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum StateStorage {
+    Vm,
+    Extern,
+}
+
+impl StateStorage {
+    #[must_use]
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::Vm => "vm",
+            Self::Extern => "extern",
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct StateDesc {
+    pub id: StateId,
+    pub name: String,
+    pub module: Option<String>,
+    pub public: bool,
+    pub storage: StateStorage,
+    pub type_contract: String,
+    pub has_initializer: bool,
+    pub origin: DeclOrigin,
+    pub source_span: Option<Span>,
+}
+
+impl StateDesc {
+    #[must_use]
+    pub fn new(id: StateId, name: impl Into<String>) -> Self {
+        Self {
+            id,
+            name: name.into(),
+            module: None,
+            public: false,
+            storage: StateStorage::Vm,
+            type_contract: String::new(),
+            has_initializer: false,
+            origin: DeclOrigin::Host,
+            source_span: None,
+        }
+    }
+
+    #[must_use]
+    pub fn module(mut self, module: impl Into<String>) -> Self {
+        self.module = Some(module.into());
+        self
+    }
+
+    #[must_use]
+    pub const fn public(mut self, public: bool) -> Self {
+        self.public = public;
+        self
+    }
+
+    #[must_use]
+    pub const fn storage(mut self, storage: StateStorage) -> Self {
+        self.storage = storage;
+        self
+    }
+
+    #[must_use]
+    pub fn type_contract(mut self, type_contract: impl Into<String>) -> Self {
+        self.type_contract = type_contract.into();
+        self
+    }
+
+    #[must_use]
+    pub const fn initializer(mut self, has_initializer: bool) -> Self {
+        self.has_initializer = has_initializer;
+        self
+    }
+
+    #[must_use]
+    pub const fn origin(mut self, origin: DeclOrigin) -> Self {
+        self.origin = origin;
+        self
+    }
+
+    #[must_use]
+    pub const fn source_span(mut self, source_span: Span) -> Self {
+        self.source_span = Some(source_span);
+        self
+    }
 }
 
 impl FunctionDesc {
@@ -161,6 +249,7 @@ impl FunctionDesc {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ModuleExportKind {
     Function,
+    State,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -168,6 +257,7 @@ pub struct ModuleExportDesc {
     pub name: String,
     pub kind: ModuleExportKind,
     pub function: Option<FunctionId>,
+    pub state: Option<StateId>,
 }
 
 impl ModuleExportDesc {
@@ -177,6 +267,17 @@ impl ModuleExportDesc {
             name: name.into(),
             kind: ModuleExportKind::Function,
             function: Some(function),
+            state: None,
+        }
+    }
+
+    #[must_use]
+    pub fn state(name: impl Into<String>, state: StateId) -> Self {
+        Self {
+            name: name.into(),
+            kind: ModuleExportKind::State,
+            function: None,
+            state: Some(state),
         }
     }
 }
@@ -239,5 +340,17 @@ impl ModuleDesc {
         }
         self.exports
             .push(ModuleExportDesc::function(name, function));
+    }
+
+    pub(crate) fn export_state(&mut self, name: impl Into<String>, state: StateId) {
+        let name = name.into();
+        if self
+            .exports
+            .iter()
+            .any(|export| export.kind == ModuleExportKind::State && export.name == name)
+        {
+            return;
+        }
+        self.exports.push(ModuleExportDesc::state(name, state));
     }
 }

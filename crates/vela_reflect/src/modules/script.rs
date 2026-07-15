@@ -1,10 +1,12 @@
-use vela_def::script_function_id;
+use vela_def::{script_function_id, script_state_id};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, Visibility};
 use vela_hir::type_hint::FunctionSignature;
 
 use crate::{registry::TypeRegistry, script_attrs::ReflectedScriptAttrs};
 
-use super::descriptors::{DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc};
+use super::descriptors::{
+    DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc, StateDesc, StateStorage,
+};
 
 impl TypeRegistry {
     pub fn register_script_modules(&mut self, graph: &ModuleGraph) {
@@ -56,6 +58,45 @@ impl TypeRegistry {
             }
             desc = apply_function_attrs(desc, graph.declaration_attrs(declaration.id));
             self.register_function(desc);
+        }
+
+        for declaration in graph.declarations() {
+            if declaration.kind != DeclarationKind::State {
+                continue;
+            }
+            let Some(metadata) = graph.state_metadata(declaration.id) else {
+                continue;
+            };
+            let Some(module_name) = graph
+                .module_path(declaration.module)
+                .map(|path| path.join())
+            else {
+                continue;
+            };
+            let qualified_name = graph
+                .qualified_declaration_name(declaration.id)
+                .expect("stored script state has a module path");
+            let package = graph
+                .module_package(declaration.module)
+                .expect("stored script state has a package");
+            let storage = match metadata.storage {
+                vela_hir::type_hint::StateStorage::Vm => StateStorage::Vm,
+                vela_hir::type_hint::StateStorage::Extern => StateStorage::Extern,
+            };
+            let mut desc = StateDesc::new(
+                script_state_id(package.as_str(), &qualified_name),
+                qualified_name,
+            )
+            .public(declaration.visibility == Visibility::Public)
+            .storage(storage)
+            .type_contract(metadata.type_hint.display())
+            .initializer(metadata.initializer_span.is_some())
+            .origin(DeclOrigin::Script)
+            .source_span(declaration.span);
+            if !module_name.is_empty() {
+                desc = desc.module(module_name);
+            }
+            self.register_state(desc);
         }
     }
 }

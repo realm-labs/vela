@@ -84,6 +84,85 @@ fn helper() {
 }
 
 #[test]
+fn registers_and_filters_script_state_metadata() {
+    let mut graph = ModuleGraph::new();
+    graph.add_source(ModuleSource::new(
+        SourceId::new(2),
+        vela_package::PackageId::anonymous(),
+        ModulePath::from_qualified("game::session"),
+        r#"
+pub state counter: i64 = 1;
+extern state player: Player;
+"#,
+    ));
+    let mut registry = TypeRegistry::new();
+    registry.register_script_modules(&graph);
+
+    let counter = registry
+        .state_by_name("game::session::counter")
+        .expect("VM state metadata");
+    assert!(counter.public);
+    assert_eq!(counter.storage, StateStorage::Vm);
+    assert_eq!(counter.type_contract, "i64");
+    assert!(counter.has_initializer);
+    assert_eq!(counter.origin, DeclOrigin::Script);
+    assert_eq!(counter.module.as_deref(), Some("game::session"));
+    assert_eq!(
+        counter.source_span.map(|span| span.source),
+        Some(SourceId::new(2))
+    );
+
+    let player = registry
+        .state_by_name("game::session::player")
+        .expect("extern state metadata");
+    assert!(!player.public);
+    assert_eq!(player.storage, StateStorage::Extern);
+    assert_eq!(player.type_contract, "Player");
+    assert!(!player.has_initializer);
+
+    let ReflectValue::ScriptRecord { type_name, fields } =
+        state(&registry, "game::session::counter").expect("state record")
+    else {
+        panic!("state metadata should be a record");
+    };
+    assert_eq!(type_name, "ReflectState");
+    assert_eq!(
+        fields.get("storage"),
+        Some(&ReflectValue::Host(HostValue::String("vm".to_owned())))
+    );
+    assert_eq!(
+        fields.get("has_initializer"),
+        Some(&ReflectValue::Host(HostValue::Bool(true)))
+    );
+    assert_eq!(
+        crate::members::kind(&registry, &ReflectValue::ScriptRecord { type_name, fields })
+            .expect("state kind"),
+        ReflectValue::Host(HostValue::String("state".to_owned()))
+    );
+
+    let read_only = ReflectPolicy::read_only();
+    assert!(has_state_with_policy(
+        &registry,
+        "game::session::counter",
+        &read_only
+    ));
+    assert!(!has_state_with_policy(
+        &registry,
+        "game::session::player",
+        &read_only
+    ));
+    let ReflectValue::Array(visible) = states_with_policy(&registry, &read_only) else {
+        panic!("state list should be an array");
+    };
+    assert_eq!(visible.len(), 1);
+    assert!(has_state_with_policy(
+        &registry,
+        "game::session::player",
+        &ReflectPolicy::all()
+    ));
+}
+
+#[test]
 fn module_function_queries_return_records_and_candidates() {
     let mut registry = TypeRegistry::new();
     let function_id = FunctionId::new(7);

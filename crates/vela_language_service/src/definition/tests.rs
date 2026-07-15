@@ -461,7 +461,7 @@ pub fn main() {
 return BASE_REWARD + reward_scale
 }"#;
     let rewards_text = r#"pub const BASE_REWARD = 4
-pub global reward_scale: i64"#;
+pub extern state reward_scale: i64;"#;
     let databases = databases_for(vec![
         SourceFileSnapshot::new(main.clone(), main_text),
         SourceFileSnapshot::new(rewards.clone(), rewards_text),

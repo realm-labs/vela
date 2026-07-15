@@ -1645,32 +1645,6 @@
     }
   },
   {
-    "type": "global_declaration",
-    "named": true,
-    "fields": {
-      "name": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "identifier",
-            "named": true
-          }
-        ]
-      },
-      "type": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "type_annotation",
-            "named": true
-          }
-        ]
-      }
-    }
-  },
-  {
     "type": "if_expression",
     "named": true,
     "fields": {
@@ -3430,11 +3404,11 @@
           "named": true
         },
         {
-          "type": "global_declaration",
+          "type": "impl_declaration",
           "named": true
         },
         {
-          "type": "impl_declaration",
+          "type": "state_declaration",
           "named": true
         },
         {
@@ -3454,6 +3428,114 @@
           "named": true
         }
       ]
+    }
+  },
+  {
+    "type": "state_declaration",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "type": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_annotation",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "array_literal",
+            "named": true
+          },
+          {
+            "type": "assignment_expression",
+            "named": true
+          },
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "block",
+            "named": true
+          },
+          {
+            "type": "call_expression",
+            "named": true
+          },
+          {
+            "type": "field_expression",
+            "named": true
+          },
+          {
+            "type": "if_expression",
+            "named": true
+          },
+          {
+            "type": "index_expression",
+            "named": true
+          },
+          {
+            "type": "lambda_expression",
+            "named": true
+          },
+          {
+            "type": "literal",
+            "named": true
+          },
+          {
+            "type": "map_literal",
+            "named": true
+          },
+          {
+            "type": "match_expression",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "path_expression",
+            "named": true
+          },
+          {
+            "type": "record_literal",
+            "named": true
+          },
+          {
+            "type": "try_expression",
+            "named": true
+          },
+          {
+            "type": "tuple_expression",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
+            "named": true
+          },
+          {
+            "type": "unit_expression",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {
@@ -4331,6 +4413,10 @@
     "named": false
   },
   {
+    "type": "extern",
+    "named": false
+  },
+  {
     "type": "f32",
     "named": false
   },
@@ -4352,10 +4438,6 @@
   },
   {
     "type": "for",
-    "named": false
-  },
-  {
-    "type": "global",
     "named": false
   },
   {
@@ -4423,6 +4505,10 @@
     "type": "shebang",
     "named": true,
     "extra": true
+  },
+  {
+    "type": "state",
+    "named": false
   },
   {
     "type": "string_literal",

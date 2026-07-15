@@ -631,7 +631,7 @@ count: i64,
 }
 
 pub const DEFAULT_CONFIG: RewardConfig = RewardConfig { count: 1 }
-pub global active_config: RewardConfig"#;
+pub extern state active_config: RewardConfig;"#;
     let databases = databases_for(vec![
         SourceFileSnapshot::new(main.clone(), main_text),
         SourceFileSnapshot::new(rewards.clone(), rewards_text),
@@ -684,7 +684,7 @@ fn type_definition_follows_imported_const_and_global_source_type_hints() {
     let main_text = r#"use game::inventory::Inventory as Bag
 
 pub const DEFAULT_BAG: Bag = Bag { slots: 2 }
-pub global active_bag: Bag"#;
+pub extern state active_bag: Bag;"#;
     let inventory_text = r#"pub struct Inventory {
 slots: i64,
 }"#;

@@ -16,5 +16,5 @@
 (const_declaration
   name: (identifier) @name) @item
 
-(global_declaration
+(state_declaration
   name: (identifier) @name) @item

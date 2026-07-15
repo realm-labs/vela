@@ -787,7 +787,7 @@ mod tests {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
         let text = "\
 const BASE: i64 = 1
-global player: Player
+extern state player: Player;
 pub struct Player {
     level: i64
     name: String

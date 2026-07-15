@@ -27,10 +27,13 @@ fn compile_reflection_module_source(
             "reflect::get",
             "reflect::has_function",
             "reflect::has_module",
+            "reflect::has_state",
             "reflect::id",
             "reflect::kind",
             "reflect::module",
             "reflect::modules",
+            "reflect::state",
+            "reflect::states",
             "reflect::name",
             "reflect::origin",
             "reflect::source_span",
@@ -51,6 +54,8 @@ fn main() {
     let listed_exports = reflect::exports(modules[0]);
     let function = reflect::function("game::reward::grant");
     let functions = reflect::functions();
+    let counter = reflect::state("game::reward::counter");
+    let states = reflect::states();
     let function_params = reflect::get(function, "params");
     if reflect::get(module, "name") == "game::reward"
         && reflect::name(module) == "game::reward"
@@ -60,6 +65,17 @@ fn main() {
         && !reflect::has_module("game::missing")
         && reflect::has_function("game::reward::grant")
         && !reflect::has_function("game::reward::missing")
+        && reflect::has_state("game::reward::counter")
+        && reflect::has_state("game::reward::player")
+        && !reflect::has_state("game::reward::missing")
+        && states.len() == 2
+        && reflect::name(counter) == "game::reward::counter"
+        && reflect::kind(counter) == "state"
+        && reflect::origin(counter) == "script"
+        && reflect::get(counter, "public")
+        && reflect::get(counter, "storage") == "vm"
+        && reflect::get(counter, "type") == "i64"
+        && reflect::get(counter, "has_initializer")
         && reflect::get(modules[0], "name") == "game::reward"
         && exports[0] == "game::reward::grant"
         && module_exports[0] == "game::reward::grant"

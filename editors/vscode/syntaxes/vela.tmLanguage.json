@@ -172,7 +172,7 @@
         },
         {
           "name": "keyword.declaration.vela",
-          "match": "\\b(?:let|use|as|impl|trait|struct|enum|const|global|fn)\\b"
+          "match": "\\b(?:let|use|as|impl|trait|struct|enum|const|extern|fn)\\b"
         },
         {
           "name": "storage.modifier.visibility.vela",
@@ -219,9 +219,23 @@
           }
         },
         {
-          "match": "\\b(?:const|global)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "match": "\\bconst\\s+([A-Za-z_][A-Za-z0-9_]*)",
           "captures": {
             "1": {
+              "name": "variable.other.constant.vela"
+            }
+          }
+        },
+        {
+          "match": "\\b(?:(extern)\\s+)?(state)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "keyword.declaration.vela"
+            },
+            "2": {
+              "name": "keyword.declaration.vela"
+            },
+            "3": {
               "name": "variable.other.constant.vela"
             }
           }

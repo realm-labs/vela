@@ -357,7 +357,7 @@ fn lsp_type_definition_follows_imported_const_and_global_source_type_hints() {
     let main_text = r#"use game::inventory::Inventory as Bag
 
 pub const DEFAULT_BAG: Bag = Bag { slots: 2 }
-pub global active_bag: Bag"#;
+pub extern state active_bag: Bag;"#;
     let inventory_text = r#"pub struct Inventory {
     slots: i64,
 }"#;

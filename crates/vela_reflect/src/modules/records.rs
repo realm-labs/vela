@@ -8,7 +8,7 @@ use crate::{
     value::ReflectValue,
 };
 
-use super::{DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc};
+use super::{DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc, StateDesc};
 
 pub(super) fn module_record(desc: &ModuleDesc) -> ReflectValue {
     module_record_with_exports(desc, desc.exports.iter().map(|export| export.name.clone()))
@@ -72,6 +72,33 @@ pub(super) fn function_record(desc: &FunctionDesc) -> ReflectValue {
             ),
             ("docs".to_owned(), docs_value(desc.docs.as_deref())),
             ("attrs".to_owned(), attrs_value(&desc.attrs)),
+            ("source_span".to_owned(), span_value(desc.source_span)),
+        ]),
+    )
+}
+
+pub(super) fn state_record(desc: &StateDesc) -> ReflectValue {
+    record(
+        "ReflectState",
+        BTreeMap::from([
+            (
+                "id".to_owned(),
+                int_value(i64::try_from(desc.id.get()).unwrap_or(i64::MAX)),
+            ),
+            ("name".to_owned(), string(desc.name.clone())),
+            ("module".to_owned(), optional_string(desc.module.as_deref())),
+            ("public".to_owned(), bool_value(desc.public)),
+            ("storage".to_owned(), string(desc.storage.as_str())),
+            ("type".to_owned(), string(desc.type_contract.clone())),
+            (
+                "type_desc".to_owned(),
+                optional_type_hint_desc(Some(&desc.type_contract)),
+            ),
+            (
+                "has_initializer".to_owned(),
+                bool_value(desc.has_initializer),
+            ),
+            ("origin".to_owned(), origin_value(desc.origin)),
             ("source_span".to_owned(), span_value(desc.source_span)),
         ]),
     )

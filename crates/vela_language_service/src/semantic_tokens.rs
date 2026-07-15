@@ -175,7 +175,7 @@ pub enum SemanticTokenType {
     EnumMember,
     Field,
     Function,
-    Global,
+    State,
     Interface,
     Keyword,
     Label,
@@ -224,7 +224,7 @@ impl SemanticTokenType {
         Self::Interface,
         Self::TypeAlias,
         Self::Const,
-        Self::Global,
+        Self::State,
         Self::Boolean,
         Self::BuiltinType,
         Self::Label,
@@ -271,7 +271,7 @@ impl SemanticTokenType {
             Self::Interface => "interface",
             Self::TypeAlias => "typeAlias",
             Self::Const => "const",
-            Self::Global => "global",
+            Self::State => "state",
             Self::Boolean => "boolean",
             Self::BuiltinType => "builtinType",
             Self::Label => "label",
@@ -318,7 +318,7 @@ impl SemanticTokenType {
             | Self::Interface => self.as_str(),
             Self::Bytes => "string",
             Self::TypeAlias | Self::BuiltinType => "type",
-            Self::Const | Self::Global | Self::Label | Self::UnresolvedReference => "variable",
+            Self::Const | Self::State | Self::Label | Self::UnresolvedReference => "variable",
             Self::Boolean => "keyword",
             Self::ArithmeticOperator
             | Self::AssignmentOperator
@@ -609,6 +609,20 @@ impl LanguageServiceDatabases {
         let graph = self.hir_db().graph();
         let schema = self.schema_db().facts();
 
+        if name == "state"
+            && graph.declarations().any(|declaration| {
+                declaration.kind == DeclarationKind::State
+                    && declaration.span.source == source_id
+                    && declaration.span.contains(span.start)
+                    && span.end <= declaration.name_span.start
+            })
+        {
+            return Some(SemanticTokenClassification::new(
+                SemanticTokenType::Keyword,
+                SemanticTokenModifiers::NONE,
+            ));
+        }
+
         if let Some(classification) = import_paths::classification(graph, text, name, range, span) {
             return Some(classification);
         }
@@ -793,7 +807,7 @@ fn declaration_use_classification(declaration: &Declaration) -> SemanticTokenCla
 fn declaration_token_type(kind: DeclarationKind) -> SemanticTokenType {
     match kind {
         DeclarationKind::Const => SemanticTokenType::Const,
-        DeclarationKind::State => SemanticTokenType::Global,
+        DeclarationKind::State => SemanticTokenType::State,
         DeclarationKind::Function => SemanticTokenType::Function,
         DeclarationKind::Struct => SemanticTokenType::Struct,
         DeclarationKind::Enum => SemanticTokenType::Enum,

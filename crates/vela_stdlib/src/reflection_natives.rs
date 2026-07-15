@@ -139,6 +139,7 @@ pub const REFLECTION_NATIVES: &[ReflectionNativeSpec] = &[
     ReflectionNativeSpec::read("reflect::has_method", &["target", "name"]),
     ReflectionNativeSpec::read("reflect::has_module", &["name"]),
     ReflectionNativeSpec::read("reflect::has_permission", &["name"]),
+    ReflectionNativeSpec::read("reflect::has_state", &["name"]),
     ReflectionNativeSpec::read("reflect::has_trait", &["name"]),
     ReflectionNativeSpec::read("reflect::has_type", &["name"]),
     ReflectionNativeSpec::read("reflect::has_variant", &["target", "name"]),
@@ -158,6 +159,8 @@ pub const REFLECTION_NATIVES: &[ReflectionNativeSpec] = &[
     ReflectionNativeSpec::read("reflect::returns", &["target"]),
     ReflectionNativeSpec::write("reflect::set", &["target", "field", "value"]),
     ReflectionNativeSpec::read("reflect::source_span", &["target"]),
+    ReflectionNativeSpec::read("reflect::state", &["name"]),
+    ReflectionNativeSpec::read("reflect::states", &[]),
     ReflectionNativeSpec::read("reflect::trait_info", &["name"]),
     ReflectionNativeSpec::read("reflect::traits", &["target"]),
     ReflectionNativeSpec::read("reflect::type_info", &["name"]),
@@ -200,7 +203,7 @@ mod tests {
 
     #[test]
     fn manifest_owns_names_parameters_ids_and_effects() {
-        assert_eq!(REFLECTION_NATIVES.len(), 46);
+        assert_eq!(REFLECTION_NATIVES.len(), 49);
         assert_eq!(
             reflection_native_specs()
                 .map(|spec| spec.source_name)

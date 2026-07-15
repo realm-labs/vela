@@ -25,9 +25,14 @@ pub(super) fn item_keyword_completions(prefix: &str) -> Vec<CompletionItem> {
         ("use", "import declaration", "use $0"),
         ("const", "constant declaration", "const ${1:NAME} = $0"),
         (
-            "global",
-            "host-bound global declaration",
-            "global ${1:name}: ${2:Type}",
+            "state",
+            "per-Runtime VM state declaration",
+            "state ${1:name}: ${2:Type} = ${3:expression};",
+        ),
+        (
+            "extern state",
+            "host-owned extern state declaration",
+            "extern state ${1:name}: ${2:Type};",
         ),
         ("pub", "public visibility", "pub $0"),
     ]

@@ -16,6 +16,66 @@ pub(super) fn register(
 ) {
     register_module_natives(vm, registry, policy, lookup_budget);
     register_function_natives(vm, registry, policy, lookup_budget);
+    register_state_natives(vm, registry, policy, lookup_budget);
+}
+
+fn register_state_natives(
+    vm: &mut Vm,
+    registry: &Arc<TypeRegistry>,
+    policy: &reflect::permissions::ReflectPolicy,
+    lookup_budget: &Arc<reflect::permissions::ReflectLookupBudget>,
+) {
+    let state_registry = Arc::clone(registry);
+    let state_policy = policy.clone();
+    let state_budget = Arc::clone(lookup_budget);
+    vm.register_host_native("reflect::state", move |args, _host| {
+        check_reflect_policy(
+            &state_policy,
+            &state_budget,
+            reflect::permissions::ReflectPermission::ReadTypeInfo,
+        )?;
+        expect_arity("reflect::state", args, 1)?;
+        let state_name = expect_string(&args[0], "reflect::state")?;
+        value_from_reflect(reflect::modules::state_with_policy(
+            &state_registry,
+            state_name,
+            &state_policy,
+        )?)
+    });
+
+    let has_state_registry = Arc::clone(registry);
+    let has_state_policy = policy.clone();
+    let has_state_budget = Arc::clone(lookup_budget);
+    vm.register_host_native("reflect::has_state", move |args, _host| {
+        check_reflect_policy(
+            &has_state_policy,
+            &has_state_budget,
+            reflect::permissions::ReflectPermission::ReadTypeInfo,
+        )?;
+        expect_arity("reflect::has_state", args, 1)?;
+        let state_name = expect_string(&args[0], "reflect::has_state")?;
+        Ok(OwnedValue::Bool(reflect::modules::has_state_with_policy(
+            &has_state_registry,
+            state_name,
+            &has_state_policy,
+        )))
+    });
+
+    let states_registry = Arc::clone(registry);
+    let states_policy = policy.clone();
+    let states_budget = Arc::clone(lookup_budget);
+    vm.register_host_native("reflect::states", move |args, _host| {
+        check_reflect_policy(
+            &states_policy,
+            &states_budget,
+            reflect::permissions::ReflectPermission::ReadTypeInfo,
+        )?;
+        expect_arity("reflect::states", args, 0)?;
+        value_from_reflect(reflect::modules::states_with_policy(
+            &states_registry,
+            &states_policy,
+        ))
+    });
 }
 
 fn register_module_natives(
