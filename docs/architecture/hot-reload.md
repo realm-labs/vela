@@ -66,7 +66,9 @@ Each runtime keeps cache entries and profile counters in generation-keyed
 sidecars. Accepted reload activates a fresh sidecar atomically. Old sidecars
 remain available while an old owner is retained and are pruned through weak
 generation tokens at later safe points; a sidecar never retains executable
-code by itself.
+code by itself. A normal Runtime reload check performs this reclamation even
+when no update is pending: it first collects released retained values, then
+prunes dead generation sidecars and their old-only VM/extern state roots.
 
 The same immutable artifact also maps verified MIR functions to linked handles.
 Future M22 compilation may consume the read-only restricted-JIT input on a

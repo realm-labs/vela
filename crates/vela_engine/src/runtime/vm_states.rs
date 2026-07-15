@@ -338,7 +338,7 @@ impl RuntimeVmStateStore {
         self.collect();
     }
 
-    fn collect(&mut self) {
+    pub(super) fn collect(&mut self) {
         let mut roots = Vec::new();
         self.roots()
             .into_iter()

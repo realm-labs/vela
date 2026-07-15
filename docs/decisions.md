@@ -1054,6 +1054,9 @@ or explicit call-boundary safe points to consume the pending update and receive
 the accepted or rejected report. Host mutations write through immediately via
 `HostAccess` and `ScriptStateAdapter`, so reload checks do not commit, inspect, or
 rewrite patch journals; `HostAccess` does not retain one by default.
+Reload checks also reclaim dead generation sidecars and their old-only VM and
+extern state after released retained values are collected, even when no update
+is pending; reclamation never requires a second accepted update.
 
 Function, method, module, trait, schema, effect, access, parameter, return, and
 source-span metadata participate in ABI validation. Engine registries are the

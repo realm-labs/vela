@@ -179,6 +179,11 @@ impl RuntimeExternStateBindings {
         self.bindings.retain(|state, _| retained.contains(state));
     }
 
+    #[cfg(test)]
+    pub(super) fn contains_state_id(&self, state: StateId) -> bool {
+        self.bindings.contains_key(&state)
+    }
+
     pub(super) fn missing_bindings(
         &self,
         states: &[vela_bytecode::StateDescriptor],

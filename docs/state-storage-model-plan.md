@@ -2,7 +2,7 @@
 
 > **Track:** contextual `state` declarations, explicit VM/host ownership,
 > restricted initialization, and hot-reload state compatibility
-> **Document status:** Batches A-E landed; Batch F in execution (F1-F4 complete)
+> **Document status:** Batches A-E landed; Batch F in execution (F1-F5 complete)
 > **Baseline:** post-implementation review of `master` at `afac6150` on
 > 2026-07-15
 > **Execution style:** hard-switch the pre-release language and runtime in
@@ -981,7 +981,7 @@ Tasks, in execution order:
   while rejecting removal or visibility downgrade of an existing public state
   export. Private additions/removals and private-to-public additions continue
   to follow the documented compatibility matrix.
-- [ ] `STATE-F5-GENERATION-RECLAIM`: prune dead generation sidecars, removed VM
+- [x] `STATE-F5-GENERATION-RECLAIM`: prune dead generation sidecars, removed VM
   roots, and removed extern bindings after the last old-generation owner dies,
   at a normal Runtime safe point without requiring another accepted reload.
 - [ ] `STATE-F6-INIT-FINGERPRINT`: include the transitive permitted script-call

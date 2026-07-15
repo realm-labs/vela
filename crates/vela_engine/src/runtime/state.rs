@@ -60,6 +60,11 @@ impl RuntimeState {
             .entry(generation)
             .or_insert_with(|| GenerationRuntimeState::for_image(image));
         self.sidecars.active_generation = generation;
+        self.reclaim_dead_generations();
+    }
+
+    pub(super) fn reclaim_dead_generations(&mut self) {
+        self.vm_states.collect();
         self.sidecars.prune_dead_generations();
         let (vm_states, extern_states) = self.sidecars.retained_state_ids();
         self.vm_states.retain_state_ids(&vm_states);
@@ -74,6 +79,11 @@ impl RuntimeState {
     #[cfg(test)]
     pub(super) fn bytecode_profile(&self) -> &RuntimeBytecodeProfile {
         &self.sidecars.active().bytecode_profile
+    }
+
+    #[cfg(test)]
+    pub(super) fn retained_generation_count(&self) -> usize {
+        self.sidecars.generation_count()
     }
 }
 
@@ -235,7 +245,7 @@ mod tests {
     }
 
     #[test]
-    fn generation_sidecars_are_weak_and_pruned_at_rebind_safe_points() {
+    fn generation_sidecars_are_weak_and_pruned_at_later_safe_points() {
         let old_image = image("old");
         let old_lifetime = old_image.linked_program().lifetime_token();
         let mut state = RuntimeState::for_image(&old_image);
@@ -244,7 +254,7 @@ mod tests {
         state.rebind_to_image(&new_image);
         assert_eq!(state.sidecars.generation_count(), 2);
         drop(old_image);
-        state.rebind_to_image(&new_image);
+        state.reclaim_dead_generations();
 
         assert!(old_lifetime.upgrade().is_none());
         assert_eq!(state.sidecars.generation_count(), 1);
@@ -273,7 +283,7 @@ mod tests {
         state.rebind_to_image(&new_image);
         assert!(state.vm_states.values.get(state_id).is_some());
         drop(old_image);
-        state.rebind_to_image(&new_image);
+        state.reclaim_dead_generations();
 
         assert!(old_lifetime.upgrade().is_none());
         assert!(state.vm_states.values.get(state_id).is_none());

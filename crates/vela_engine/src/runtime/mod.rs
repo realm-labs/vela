@@ -260,9 +260,11 @@ where
             ));
         };
         let update = hot_reload.take_pending_update();
-        update
+        let report = update
             .map(|update| self.apply_hot_update_result_report(update))
-            .transpose()
+            .transpose();
+        self.state.reclaim_dead_generations();
+        report
     }
 
     pub fn check_reload_at_tick_boundary(&mut self) -> EngineResult<Option<HotReloadReport>> {
@@ -670,6 +672,21 @@ where
                 bytecode_profiler: Some(&self.state.sidecars),
             })
         }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn retained_generation_count(&self) -> usize {
+        self.state.retained_generation_count()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn retains_vm_state_id(&self, state: vela_def::StateId) -> bool {
+        self.state.vm_states.values.get(state).is_some()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn retains_extern_state_id(&self, state: vela_def::StateId) -> bool {
+        self.state.extern_states.contains_state_id(state)
     }
 
     #[cfg(test)]
