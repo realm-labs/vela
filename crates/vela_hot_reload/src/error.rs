@@ -567,8 +567,8 @@ pub enum HotReloadErrorKind {
     },
     ChangedStateType {
         state: String,
-        old: MirTypeContract,
-        new: MirTypeContract,
+        old: Box<MirTypeContract>,
+        new: Box<MirTypeContract>,
         source_span: Option<Box<Span>>,
     },
     MissingExternStateBinding {

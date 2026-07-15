@@ -61,8 +61,8 @@ pub(crate) fn compare_state_abi(
         if old_state.type_contract != new_state.type_contract {
             return Err(HotReloadError::new(HotReloadErrorKind::ChangedStateType {
                 state: new_state.qualified_name.clone(),
-                old: old_state.type_contract.clone(),
-                new: new_state.type_contract.clone(),
+                old: Box::new(old_state.type_contract.clone()),
+                new: Box::new(new_state.type_contract.clone()),
                 source_span: new_state.source_span.map(Box::new),
             }));
         }
