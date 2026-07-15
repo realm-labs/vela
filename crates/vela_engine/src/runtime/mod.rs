@@ -525,7 +525,7 @@ where
             sidecars: &mut state.sidecars,
             target,
             args,
-            budget,
+            budget: &mut budget,
         })
     }
 
@@ -565,7 +565,7 @@ where
             sidecars: &mut state.sidecars,
             target,
             args,
-            budget,
+            budget: &mut budget,
         })
         .await
     }
@@ -740,8 +740,8 @@ where
         persistent_value_to_owned(&value, &mut self.state.vm_states.heap)
     }
 
-    fn call_runtime_args(call: RuntimeCallExecution<'_, '_, '_>) -> VmResult<VelaValue> {
-        let mut budget = call.budget;
+    fn call_runtime_args(call: RuntimeCallExecution<'_, '_, '_, '_>) -> VmResult<VelaValue> {
+        let budget = call.budget;
         let mut execution_host = ExecutionHost::new(call.args, call.extern_states);
         let resolved = execution_host.resolve_values(
             &call.target.name,
@@ -749,7 +749,7 @@ where
             &call.target.param_defaults,
             call.runtime_id,
             &mut call.vm_states.heap,
-            &mut budget,
+            budget,
         )?;
         let mut access = HostAccess::new();
         let roots = call.vm_states.roots();
@@ -777,7 +777,7 @@ where
                 heap: &mut call.vm_states.heap,
                 roots: &roots,
             },
-            budget: &mut budget,
+            budget,
             inline_caches: Some(&*call.sidecars),
             bytecode_profiler: Some(&*call.sidecars),
         })?;
@@ -785,9 +785,9 @@ where
     }
 
     async fn call_runtime_args_async(
-        call: RuntimeCallExecution<'_, '_, '_>,
+        call: RuntimeCallExecution<'_, '_, '_, '_>,
     ) -> VmResult<VelaValue> {
-        let mut budget = call.budget;
+        let budget = call.budget;
         let mut execution_host = ExecutionHost::new(call.args, call.extern_states);
         let resolved = execution_host.resolve_values(
             &call.target.name,
@@ -795,7 +795,7 @@ where
             &call.target.param_defaults,
             call.runtime_id,
             &mut call.vm_states.heap,
-            &mut budget,
+            budget,
         )?;
         let mut access = HostAccess::new();
         let vm = runtime_vm(call.engine, call.registry_image, call.hot_reload);
@@ -822,7 +822,7 @@ where
                 bytecode_profiler: Some(&*call.sidecars),
             },
             &mut heap,
-            &mut budget,
+            budget,
         )?;
 
         loop {
@@ -836,14 +836,14 @@ where
                     &mut session,
                     Some(&mut host),
                     &mut heap,
-                    &mut budget,
+                    budget,
                     Some(&*call.sidecars),
                     Some(&*call.sidecars),
                 )?
             };
             match outcome {
                 LinkedDriveOutcome::Complete(value) => {
-                    let value = vm.finish_linked_execution(value, &mut heap, &roots, &mut budget);
+                    let value = vm.finish_linked_execution(value, &mut heap, &roots, budget);
                     drop(heap);
                     return Ok(RuntimeValueRoots::retain(
                         &retained_values,
@@ -868,7 +868,7 @@ where
                             host: &mut execution_host,
                             access: &mut access,
                             heap: &mut heap,
-                            budget: &mut budget,
+                            budget,
                             vm_state_values,
                             retained_values: std::sync::Arc::clone(&retained_values),
                             sidecars: &mut *call.sidecars,
@@ -879,7 +879,7 @@ where
                         &mut session,
                         result,
                         Some(&mut heap),
-                        Some(&mut budget),
+                        Some(budget),
                     )?;
                 }
             }

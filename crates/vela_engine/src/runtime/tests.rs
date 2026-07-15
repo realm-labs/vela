@@ -1,8 +1,11 @@
 use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
+use vela_hot_reload::error::HotReloadErrorKind;
 use vela_vm::owned_value::OwnedValue;
+use vela_vm::value::Value;
 
 use crate::engine::Engine;
+use vela_common::SourceId;
 
 use super::{
     CallArgs, CallOptions, OwnedImage, Runtime, RuntimeBuildError, RuntimeImage, RuntimeImpl,
@@ -176,6 +179,115 @@ fn runtime_state_initialization_enforces_execution_and_allocation_budgets() {
             RuntimeBuildError::Initializer { state, .. } if state == "main::value"
         ));
     }
+}
+
+#[test]
+fn runtime_state_initializers_share_one_transaction_allocation_budget() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let array_bytes = std::mem::size_of::<Vec<Value>>() + 4 * std::mem::size_of::<Value>();
+    let limits = RuntimeInitializationLimits::new(100, array_bytes + array_bytes / 2, 8);
+    let one = engine
+        .compile_source("state first: Array<i64> = [1, 2, 3, 4];")
+        .expect("single initializer compiles");
+    Runtime::builder(engine.clone(), one)
+        .expect("single-state runtime image links")
+        .with_initialization_limits(limits)
+        .build()
+        .expect("one initializer fits the transaction budget");
+
+    let two = engine
+        .compile_source(
+            "state first: Array<i64> = [1, 2, 3, 4]; state second: Array<i64> = [5, 6, 7, 8];",
+        )
+        .expect("two initializers compile");
+    let error = match Runtime::builder(engine, two)
+        .expect("two-state runtime image links")
+        .with_initialization_limits(limits)
+        .build()
+    {
+        Ok(_) => panic!("initializers must share the transaction allocation budget"),
+        Err(error) => error,
+    };
+
+    assert!(matches!(
+        error,
+        RuntimeBuildError::Initializer { state, .. }
+            if state == "main::first" || state == "main::second"
+    ));
+}
+
+#[test]
+fn runtime_state_initializers_share_one_transaction_execution_budget() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let one = engine
+        .compile_source(
+            "fn compute() -> i64 { let first = 1; let second = 2; return first + second; } state first: i64 = compute();",
+        )
+        .expect("single initializer compiles");
+    let two = engine
+        .compile_source(
+            "fn compute() -> i64 { let first = 1; let second = 2; return first + second; } state first: i64 = compute(); state second: i64 = compute();",
+        )
+        .expect("two initializers compile");
+    let one = RuntimeImage::new_compiled(engine.clone(), one).into_shared();
+    let two = RuntimeImage::new_compiled(engine, two).into_shared();
+
+    let aggregate_failure = (1..=64).find_map(|execution_units| {
+        let limits = RuntimeInitializationLimits::new(execution_units, 1024, 8);
+        let one_result = SharedRuntime::builder_from_shared_image(one.clone())
+            .with_initialization_limits(limits)
+            .build();
+        let two_result = SharedRuntime::builder_from_shared_image(two.clone())
+            .with_initialization_limits(limits)
+            .build();
+        match (one_result, two_result) {
+            (Ok(_), Err(error @ RuntimeBuildError::Initializer { .. })) => Some(error),
+            _ => None,
+        }
+    });
+
+    assert!(
+        aggregate_failure.is_some(),
+        "two individually valid initializers must exhaust a shared execution budget"
+    );
+}
+
+#[test]
+fn reload_charges_live_heap_staging_to_the_initializer_transaction() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_with_id(
+            SourceId::new(801),
+            "state existing: i64 = 3; fn read() { return existing; }",
+        )
+        .expect("initial generation compiles");
+    let update = engine
+        .compile_hot_reload_update_with_id(
+            &initial,
+            SourceId::new(802),
+            "state existing: i64 = 3; state added: Array<i64> = [1, 2, 3, 4]; fn read() { return existing; }",
+        )
+        .expect("update compiles");
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime initializes");
+    let array_bytes = std::mem::size_of::<Vec<Value>>() + 4 * std::mem::size_of::<Value>();
+    let limits = RuntimeInitializationLimits::new(100, array_bytes + array_bytes / 2, 8);
+
+    let error = match runtime.prepare_hot_update_state(&update, limits) {
+        Ok(_) => panic!("live-heap staging must consume the shared transaction budget"),
+        Err(error) => error,
+    };
+
+    assert!(matches!(
+        error.kind,
+        HotReloadErrorKind::StateInitializerFailed { ref state, .. }
+            if state == "main::added"
+    ));
+    assert_eq!(
+        runtime.state("main::existing"),
+        Ok(Some(OwnedValue::from(3_i64)))
+    );
+    assert_eq!(runtime.state("main::added"), Ok(None));
 }
 
 fn linked_only_runtime() -> RuntimeImpl<OwnedImage> {

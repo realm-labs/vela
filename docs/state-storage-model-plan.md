@@ -2,7 +2,7 @@
 
 > **Track:** contextual `state` declarations, explicit VM/host ownership,
 > restricted initialization, and hot-reload state compatibility
-> **Document status:** Batches A-E landed; Batch F in execution (F1-F2 complete)
+> **Document status:** Batches A-E landed; Batch F in execution (F1-F3 complete)
 > **Baseline:** post-implementation review of `master` at `afac6150` on
 > 2026-07-15
 > **Execution style:** hard-switch the pre-release language and runtime in
@@ -973,7 +973,7 @@ Tasks, in execution order:
   callable, and `Any` contracts in both source compilation and bytecode
   verification; runtime binding must never interpret a non-host contract as
   "no expected type".
-- [ ] `STATE-F3-INIT-BUDGET`: enforce one execution/allocation budget across the
+- [x] `STATE-F3-INIT-BUDGET`: enforce one execution/allocation budget across the
   complete Runtime-construction or added-state reload transaction. Do not
   recreate the full allowance per declaration or use an unbounded budget when
   materializing staged values into the published heap.

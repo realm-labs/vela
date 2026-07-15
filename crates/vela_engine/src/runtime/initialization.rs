@@ -6,6 +6,7 @@ use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
 use vela_hot_reload::error::{HotReloadError, HotReloadErrorKind};
 use vela_hot_reload::version::HotUpdate;
+use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::VmError;
 use vela_vm::value::Value;
 
@@ -147,12 +148,13 @@ where
         &mut self,
         limits: RuntimeInitializationLimits,
     ) -> Result<(), RuntimeBuildError> {
-        self.initialize_vm_states_matching(limits, |_| true)
+        let mut budget = limits.call_options().budget();
+        self.initialize_vm_states_matching(&mut budget, |_| true)
     }
 
     pub(super) fn initialize_vm_states_matching(
         &mut self,
-        limits: RuntimeInitializationLimits,
+        budget: &mut ExecutionBudget,
         include: impl Fn(StateId) -> bool,
     ) -> Result<(), RuntimeBuildError> {
         let mut states = self
@@ -195,7 +197,7 @@ where
                 sidecars: &mut runtime_state.sidecars,
                 target,
                 args: CallArgs::new(),
-                budget: limits.call_options().budget(),
+                budget,
             })
             .map_err(|error| RuntimeBuildError::Initializer {
                 state: state.qualified_name.clone(),
@@ -262,8 +264,9 @@ where
             hot_reload: None,
             state,
         };
+        let mut budget = limits.call_options().budget();
         staging
-            .initialize_vm_states_matching(limits, |state| added.contains(&state))
+            .initialize_vm_states_matching(&mut budget, |state| added.contains(&state))
             .map_err(|error| match error {
                 RuntimeBuildError::Initializer {
                     state,
@@ -303,21 +306,21 @@ where
                     },
                 })?
                 .expect("selected state initializer published a staging value");
-            let value =
-                self.state
-                    .vm_states
-                    .prepare_value(value)
-                    .map_err(|error| HotReloadError {
-                        kind: HotReloadErrorKind::StateInitializerFailed {
-                            state: next_states
-                                .iter()
-                                .find(|descriptor| descriptor.id == state)
-                                .map(|descriptor| descriptor.qualified_name.clone())
-                                .unwrap_or_else(|| format!("state#{}", state.get())),
-                            reason: error.to_string(),
-                            source_span: None,
-                        },
-                    })?;
+            let value = self
+                .state
+                .vm_states
+                .prepare_value_with_budget(value, &mut budget)
+                .map_err(|error| HotReloadError {
+                    kind: HotReloadErrorKind::StateInitializerFailed {
+                        state: next_states
+                            .iter()
+                            .find(|descriptor| descriptor.id == state)
+                            .map(|descriptor| descriptor.qualified_name.clone())
+                            .unwrap_or_else(|| format!("state#{}", state.get())),
+                        reason: error.to_string(),
+                        source_span: None,
+                    },
+                })?;
             vm_values.push((state, value));
         }
         Ok(ReloadStateStaging { vm_values })

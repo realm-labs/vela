@@ -264,8 +264,7 @@ impl RuntimeVmStateStore {
             .get(&name)
             .copied()
             .ok_or_else(|| VmError::new(VmErrorKind::MissingVmState { name: name.clone() }))?;
-        let mut budget = ExecutionBudget::unbounded();
-        let value = owned_to_persistent_value(value, &mut self.heap, Some(&mut budget))?;
+        let value = self.prepare_value(value)?;
         self.values.insert(state, value);
         self.collect();
         Ok(())
@@ -273,7 +272,15 @@ impl RuntimeVmStateStore {
 
     pub(super) fn prepare_value(&mut self, value: OwnedValue) -> VmResult<Value> {
         let mut budget = ExecutionBudget::unbounded();
-        owned_to_persistent_value(value, &mut self.heap, Some(&mut budget))
+        self.prepare_value_with_budget(value, &mut budget)
+    }
+
+    pub(super) fn prepare_value_with_budget(
+        &mut self,
+        value: OwnedValue,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<Value> {
+        owned_to_persistent_value(value, &mut self.heap, Some(budget))
     }
 
     pub(super) fn insert_prepared(&mut self, state: StateId, value: Value) {

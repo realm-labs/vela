@@ -323,7 +323,7 @@ pub(super) struct EntryRequest {
     pub(super) receiver: Option<VelaValue>,
 }
 
-pub(super) struct RuntimeCallExecution<'program, 'state, 'host> {
+pub(super) struct RuntimeCallExecution<'program, 'state, 'host, 'budget> {
     pub(super) runtime_id: u64,
     pub(super) engine: &'program Engine,
     pub(super) registry_image: &'program ProgramImage,
@@ -334,7 +334,7 @@ pub(super) struct RuntimeCallExecution<'program, 'state, 'host> {
     pub(super) sidecars: &'state mut RuntimeSidecars,
     pub(super) target: EntryRequest,
     pub(super) args: CallArgs<'host>,
-    pub(super) budget: vela_vm::budget::ExecutionBudget,
+    pub(super) budget: &'budget mut vela_vm::budget::ExecutionBudget,
 }
 
 fn linked_function_by_name<'program>(
