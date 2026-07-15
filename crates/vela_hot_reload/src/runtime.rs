@@ -83,8 +83,14 @@ impl HotReloadRuntime {
 
     #[must_use]
     pub fn check_reload(&mut self) -> Option<HotReloadReport> {
-        let update = self.staging.pending().take();
+        let update = self.take_pending_update();
         update.map(|update| self.apply_hot_update_result_report(update))
+    }
+
+    /// Removes the pending update without activating it so an embedding can
+    /// perform per-Runtime staging before calling an apply method.
+    pub fn take_pending_update(&mut self) -> Option<HotReloadResult<HotUpdate>> {
+        self.staging.pending().take()
     }
 
     pub fn apply_hot_update(&mut self, update: HotUpdate) -> HotReloadResult<Arc<ProgramVersion>> {

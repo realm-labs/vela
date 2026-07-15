@@ -85,7 +85,12 @@ impl HotReloadDiagnosticDetail {
             | HotReloadErrorKind::RemovedMethodAbi { .. }
             | HotReloadErrorKind::RemovedTraitAbi { .. }
             | HotReloadErrorKind::RemovedModuleAbi { .. }
-            | HotReloadErrorKind::ChangedPackageProviderAbi { .. } => None,
+            | HotReloadErrorKind::ChangedPackageProviderAbi { .. }
+            | HotReloadErrorKind::ChangedStateStorage { .. }
+            | HotReloadErrorKind::ChangedStateType { .. }
+            | HotReloadErrorKind::MissingExternStateBinding { .. }
+            | HotReloadErrorKind::InvalidExternStateBinding { .. }
+            | HotReloadErrorKind::StateInitializerFailed { .. } => None,
             HotReloadErrorKind::DeletedFunctionParameters { old, new, .. }
             | HotReloadErrorKind::ChangedFunctionParameters { old, new, .. } => {
                 Some(Self::FunctionParameterList {

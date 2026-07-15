@@ -158,6 +158,89 @@ fn main() {
 }
 
 #[test]
+fn reload_requires_and_transactionally_publishes_added_extern_state_binding() {
+    let engine = Engine::builder()
+        .register_type(direct_player_type())
+        .build()
+        .expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_with_id(SourceId::new(21), "fn main() { return 1; }")
+        .expect("initial generation");
+    let update_source = r#"
+extern state player: Player;
+fn main() { return 1; }
+fn player_level() { return player.level; }
+"#;
+    let missing_update = engine
+        .compile_hot_reload_update_with_id(&initial, SourceId::new(22), update_source)
+        .expect("state addition compiles");
+    let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone())
+        .expect("runtime initializes");
+
+    let rejected = runtime
+        .apply_hot_update(missing_update)
+        .expect("missing binding is a reload rejection");
+    assert!(!rejected.accepted);
+    assert_eq!(
+        rejected.errors[0].code,
+        "reload.state.extern_binding_missing"
+    );
+    assert!(runtime.extern_state_ref("main::player").is_none());
+
+    let update = engine
+        .compile_hot_reload_update_with_id(&initial, SourceId::new(23), update_source)
+        .expect("retry update compiles");
+    let binding = runtime
+        .stage_extern_state("main::player", direct_player(12))
+        .expect("binding stages");
+    let accepted = runtime
+        .apply_hot_update(update)
+        .expect("apply bound update");
+
+    assert!(accepted.accepted);
+    assert_eq!(runtime.extern_state_ref("main::player"), Some(binding));
+    let value = runtime
+        .call("player_level", CallArgs::new(), CallOptions::unbounded())
+        .expect("new extern state reads through HostAccess");
+    assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::from(12_i64)));
+}
+
+#[test]
+fn reload_rejects_mismatched_staged_extern_state_binding() {
+    let engine = Engine::builder()
+        .register_type(direct_player_type())
+        .build()
+        .expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_with_id(SourceId::new(24), "fn main() { return 1; }")
+        .expect("initial generation");
+    let update = engine
+        .compile_hot_reload_update_with_id(
+            &initial,
+            SourceId::new(25),
+            "extern state player: Player; fn main() { return 1; }",
+        )
+        .expect("state addition compiles");
+    let initial_id = initial.id;
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime initializes");
+    runtime
+        .stage_extern_state("main::player", WrongHostType)
+        .expect("unresolved future binding can stage");
+
+    let report = runtime
+        .apply_hot_update(update)
+        .expect("reload reports rejection");
+
+    assert!(!report.accepted);
+    assert_eq!(report.errors[0].code, "reload.state.extern_binding_invalid");
+    assert_eq!(
+        runtime.hot_reload_version().expect("active version").id,
+        initial_id
+    );
+}
+
+#[test]
 fn runtime_script_global_decl_persists_vm_owned_value_and_rust_updates() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine

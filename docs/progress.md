@@ -24,9 +24,13 @@ stores are keyed by `StateId`, restricted verified initializers run once per
 Runtime under explicit limits, construction is fallible and transactionally
 published, extern bindings are type-checked outside script GC, and the Rust,
 C, playground, and example construction surfaces use explicit state ownership.
-Batch D is the current checkpoint: make reload compatibility and staging use
-the same exact state descriptors, stable IDs, initializer path, and
-generation-lifetime rules.
+Batch D is complete: reload compares exact state storage and contracts by
+stable ID, reports additions/removals/initializer-only and visibility changes,
+stages added VM values and extern bindings per Runtime before publication,
+rolls back initializer failures, and retains removed cells while old
+generation owners remain live. Batch E is the current checkpoint: finish
+reflection and editor tooling, migrate active documentation and fixtures, run
+zero-hit audits, and close the full acceptance gates.
 
 The executor-neutral async implementation from Batches A-D is landed: Vela has
 one explicit frame driver, scoped `Send` Runtime/native futures, direct typed
@@ -122,15 +126,20 @@ storage hard switch reaches final acceptance.
 
 ### State Storage Hard Switch
 
-Batches A-C are complete. HIR binds state initializers and exact contracts;
+Batches A-D are complete. HIR binds state initializers and exact contracts;
 MIR, bytecode, verifier, caches, and execution statically distinguish VM-state
 read/write from extern-state read; direct and compound VM-state assignment work;
 extern-root assignment is rejected; and executable metadata carries typed
 descriptors with stable identity. Each Runtime now owns independently
 initialized persistent VM state and validated extern bindings through the
-state-specific embedding API. Batch D must compare those descriptors by stable
-identity, stage added cells and bindings per Runtime, publish reload state
-atomically, and retain removed cells for live old-generation owners.
+state-specific embedding API. Reload compares descriptors by stable identity,
+stages added cells and bindings per Runtime, publishes reload state atomically,
+and retains removed cells for live old-generation owners. Those guarantees are
+covered for compatible preservation,
+added-state isolation, missing/mismatched extern bindings, rollback, retained
+closures, suspended async safe points, and dead-generation pruning. Batch E
+must align reflection, language-service/LSP/editor behavior, active docs, and
+acceptance audits with the implemented model.
 
 ### Async Post-Review Closure
 

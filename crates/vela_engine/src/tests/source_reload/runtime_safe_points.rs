@@ -378,6 +378,130 @@ fn bump(amount) {
     );
 }
 
+#[test]
+fn reload_preserves_compatible_state_and_initializes_only_added_vm_state() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_with_id(
+            SourceId::new(301),
+            "state counter: i64 = 1; fn read() { return counter; }",
+        )
+        .expect("initial generation");
+    let update = engine
+        .compile_hot_reload_update_with_id(
+            &initial,
+            SourceId::new(302),
+            "state added: i64 = 7; state counter: i64 = 999; fn read() { return counter + added; }",
+        )
+        .expect("compatible state update");
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime initializes");
+    runtime
+        .set_state("main::counter", 10_i64)
+        .expect("set state");
+
+    let report = runtime.apply_hot_update(update).expect("apply update");
+
+    assert!(report.accepted);
+    assert_eq!(report.added_states, ["main::added"]);
+    assert_eq!(report.initializer_changed_states, ["main::counter"]);
+    assert_eq!(
+        runtime.state("main::counter"),
+        Ok(Some(OwnedValue::from(10_i64)))
+    );
+    assert_eq!(
+        runtime.state("main::added"),
+        Ok(Some(OwnedValue::from(7_i64)))
+    );
+    let value = runtime
+        .call("read", CallArgs::new(), CallOptions::unbounded())
+        .expect("new generation reads both state cells");
+    assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::from(17_i64)));
+}
+
+#[test]
+fn added_state_initializer_failure_rolls_back_image_and_state_publication() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_with_id(
+            SourceId::new(303),
+            "state counter: i64 = 3; fn read() { return counter; }",
+        )
+        .expect("initial generation");
+    let initial_id = initial.id;
+    let update = engine
+        .compile_hot_reload_update_with_id(
+            &initial,
+            SourceId::new(304),
+            "fn recurse() -> i64 { return recurse(); } state added: i64 = recurse(); state counter: i64 = 3; fn read() { return counter + 100; }",
+        )
+        .expect("statically valid update");
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime initializes");
+
+    let report = runtime
+        .apply_hot_update(update)
+        .expect("reload reports rejection");
+
+    assert!(!report.accepted);
+    assert_eq!(report.errors[0].code, "reload.state.initializer_failed");
+    assert_eq!(
+        runtime.hot_reload_version().expect("active version").id,
+        initial_id
+    );
+    assert_eq!(runtime.state("main::added"), Ok(None));
+    let value = runtime
+        .call("read", CallArgs::new(), CallOptions::unbounded())
+        .expect("old generation remains callable");
+    assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::from(3_i64)));
+}
+
+#[test]
+fn shared_update_initializes_added_state_independently_per_runtime() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_with_id(
+            SourceId::new(305),
+            "state existing: i64 = 1; fn read() { return existing; }",
+        )
+        .expect("initial generation");
+    let update = engine
+        .compile_hot_reload_update_with_id(
+            &initial,
+            SourceId::new(306),
+            "state added: i64 = 7; state existing: i64 = 1; fn read() { return existing + added; }",
+        )
+        .expect("compatible update");
+    let mut first =
+        Runtime::from_hot_reload_version(engine.clone(), initial.clone()).expect("first runtime");
+    let mut second = Runtime::from_hot_reload_version(engine, initial).expect("second runtime");
+
+    assert!(
+        first
+            .apply_hot_update(update.clone())
+            .expect("first apply")
+            .accepted
+    );
+    assert!(
+        second
+            .apply_hot_update(update)
+            .expect("second apply")
+            .accepted
+    );
+    first
+        .set_state("main::added", 20_i64)
+        .expect("first update");
+
+    assert_eq!(
+        first.state("main::added"),
+        Ok(Some(OwnedValue::from(20_i64)))
+    );
+    assert_eq!(
+        second.state("main::added"),
+        Ok(Some(OwnedValue::from(7_i64)))
+    );
+}
+
 fn script_record_field<'value>(
     value: &'value OwnedValue,
     field: &str,

@@ -1,7 +1,9 @@
 use std::fmt;
 use std::path::{Path, PathBuf};
 
+use vela_bytecode::StateStorage;
 use vela_common::{CallableAsyncness, Span};
+use vela_mir::MirTypeContract;
 
 use crate::abi::{AccessAbi, EffectAbi, ParamAbi, TraitMethodAbi};
 use crate::module_abi::ModuleExportAbi;
@@ -65,6 +67,15 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedPackageProviderAbi { .. } => {
                 "reload.package_provider.changed_abi"
             }
+            HotReloadErrorKind::ChangedStateStorage { .. } => "reload.state.storage_changed",
+            HotReloadErrorKind::ChangedStateType { .. } => "reload.state.type_changed",
+            HotReloadErrorKind::MissingExternStateBinding { .. } => {
+                "reload.state.extern_binding_missing"
+            }
+            HotReloadErrorKind::InvalidExternStateBinding { .. } => {
+                "reload.state.extern_binding_invalid"
+            }
+            HotReloadErrorKind::StateInitializerFailed { .. } => "reload.state.initializer_failed",
         }
     }
 
@@ -110,6 +121,11 @@ impl HotReloadError {
             HotReloadErrorKind::RemovedModuleAbi { module, .. }
             | HotReloadErrorKind::ChangedModuleAbi { module, .. } => Some(module.clone()),
             HotReloadErrorKind::ChangedPackageProviderAbi { target, .. } => Some(target.clone()),
+            HotReloadErrorKind::ChangedStateStorage { state, .. }
+            | HotReloadErrorKind::ChangedStateType { state, .. }
+            | HotReloadErrorKind::MissingExternStateBinding { state, .. }
+            | HotReloadErrorKind::InvalidExternStateBinding { state, .. }
+            | HotReloadErrorKind::StateInitializerFailed { state, .. } => Some(state.clone()),
         }
     }
 
@@ -209,6 +225,25 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedPackageProviderAbi { target, reason, .. } => {
                 format!("{target} changed incompatibly: {reason}")
             }
+            HotReloadErrorKind::ChangedStateStorage {
+                state, old, new, ..
+            } => {
+                format!("state `{state}` changed storage from {old:?} to {new:?}")
+            }
+            HotReloadErrorKind::ChangedStateType {
+                state, old, new, ..
+            } => {
+                format!("state `{state}` changed type contract from {old:?} to {new:?}")
+            }
+            HotReloadErrorKind::MissingExternStateBinding { state, .. } => {
+                format!("new extern state `{state}` has no staged host binding")
+            }
+            HotReloadErrorKind::InvalidExternStateBinding { state, reason, .. } => {
+                format!("extern state `{state}` has an incompatible staged binding: {reason}")
+            }
+            HotReloadErrorKind::StateInitializerFailed { state, reason, .. } => {
+                format!("initializer for new state `{state}` failed: {reason}")
+            }
         }
     }
 
@@ -290,6 +325,21 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedPackageProviderAbi { .. } => Some(
                 "preserve the package roots, selected providers, provider targets, methods, and capability requirements or explicitly restage the runtime".to_owned(),
             ),
+            HotReloadErrorKind::ChangedStateStorage { .. } => Some(
+                "preserve the state storage kind or restart with an explicit migration".to_owned(),
+            ),
+            HotReloadErrorKind::ChangedStateType { .. } => Some(
+                "preserve the exact state type contract or restart with an explicit migration".to_owned(),
+            ),
+            HotReloadErrorKind::MissingExternStateBinding { .. } => Some(
+                "stage a type-compatible host object for the new extern state before activation".to_owned(),
+            ),
+            HotReloadErrorKind::InvalidExternStateBinding { .. } => Some(
+                "stage a host object whose registered type exactly matches the extern state contract".to_owned(),
+            ),
+            HotReloadErrorKind::StateInitializerFailed { .. } => Some(
+                "fix the initializer or its configured execution limits before retrying the update".to_owned(),
+            ),
         }
     }
 
@@ -329,6 +379,13 @@ impl HotReloadError {
             | HotReloadErrorKind::NewFunctionDenied { .. }
             | HotReloadErrorKind::RemovedFunction { .. } => None,
             HotReloadErrorKind::ChangedPackageProviderAbi { source_span, .. } => {
+                source_span.as_deref().copied()
+            }
+            HotReloadErrorKind::ChangedStateStorage { source_span, .. }
+            | HotReloadErrorKind::ChangedStateType { source_span, .. }
+            | HotReloadErrorKind::MissingExternStateBinding { source_span, .. }
+            | HotReloadErrorKind::InvalidExternStateBinding { source_span, .. }
+            | HotReloadErrorKind::StateInitializerFailed { source_span, .. } => {
                 source_span.as_deref().copied()
             }
         }
@@ -501,6 +558,32 @@ pub enum HotReloadErrorKind {
         reason: String,
         source_span: Option<Box<Span>>,
         manifest_path: Option<PathBuf>,
+    },
+    ChangedStateStorage {
+        state: String,
+        old: StateStorage,
+        new: StateStorage,
+        source_span: Option<Box<Span>>,
+    },
+    ChangedStateType {
+        state: String,
+        old: MirTypeContract,
+        new: MirTypeContract,
+        source_span: Option<Box<Span>>,
+    },
+    MissingExternStateBinding {
+        state: String,
+        source_span: Option<Box<Span>>,
+    },
+    InvalidExternStateBinding {
+        state: String,
+        reason: String,
+        source_span: Option<Box<Span>>,
+    },
+    StateInitializerFailed {
+        state: String,
+        reason: String,
+        source_span: Option<Box<Span>>,
     },
 }
 

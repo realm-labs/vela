@@ -212,6 +212,20 @@ where
         self.state.extern_states.bind_host(name, value)
     }
 
+    /// Stages a host object for an `extern state` declaration in a pending
+    /// hot-reload generation. The binding is validated and published only if
+    /// that generation is accepted at a Runtime safe point.
+    pub fn stage_extern_state<T>(
+        &mut self,
+        name: impl Into<String>,
+        value: T,
+    ) -> vela_host::error::HostResult<HostRef>
+    where
+        T: ScriptHostObject + Send + 'static,
+    {
+        self.state.extern_states.stage_host(name, value)
+    }
+
     #[must_use]
     pub fn extern_state_ref(&self, name: &str) -> Option<HostRef> {
         self.state.extern_states.host_ref(name)
@@ -304,9 +318,10 @@ where
                 EngineErrorKind::RuntimeNotHotReloadEnabled,
             ));
         };
-        let report = hot_reload.check_reload();
-        self.rebind_image_from_reload_report(report.as_ref());
-        Ok(report)
+        let update = hot_reload.take_pending_update();
+        update
+            .map(|update| self.apply_hot_update_result_report(update))
+            .transpose()
     }
 
     pub fn check_reload_at_tick_boundary(&mut self) -> EngineResult<Option<HotReloadReport>> {
@@ -317,12 +332,29 @@ where
         &mut self,
         update: HotReloadResult<HotUpdate>,
     ) -> EngineResult<HotReloadReport> {
-        let Some(hot_reload) = self.hot_reload.as_mut() else {
+        let Some(current) = self.hot_reload.as_ref().map(HotReloadRuntime::current) else {
             return Err(EngineError::new(
                 EngineErrorKind::RuntimeNotHotReloadEnabled,
             ));
         };
-        let report = hot_reload.apply_hot_update_result_report(update);
+        let update = match update {
+            Ok(update) => update,
+            Err(error) => {
+                return Ok(HotReloadReport::rejected(current.id, error));
+            }
+        };
+        let staging =
+            match self.prepare_hot_update_state(&update, RuntimeInitializationLimits::default()) {
+                Ok(staging) => staging,
+                Err(error) => return Ok(HotReloadReport::rejected(current.id, error)),
+            };
+        let next_states = update.linked_artifact().image().states().to_vec();
+        let report = self
+            .hot_reload
+            .as_mut()
+            .expect("hot reload runtime was checked above")
+            .apply_hot_update_report(update);
+        self.commit_hot_update_state(&next_states, staging);
         self.rebind_image_from_reload_report(Some(&report));
         Ok(report)
     }

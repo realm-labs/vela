@@ -1,11 +1,17 @@
 use vela_common::Span;
+use vela_def::StateId;
+use vela_host::error::HostErrorKind;
 use vela_host::error::HostResult;
 use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
+use vela_hot_reload::error::{HotReloadError, HotReloadErrorKind};
+use vela_hot_reload::version::HotUpdate;
 use vela_vm::error::VmError;
+use vela_vm::value::Value;
 
 use super::{
-    CallArgs, CallOptions, RuntimeCallExecution, RuntimeImageStorage, RuntimeImpl, handles,
+    CallArgs, CallOptions, OwnedImage, RuntimeCallExecution, RuntimeImage, RuntimeImageStorage,
+    RuntimeImpl, RuntimeState, handles,
 };
 
 const DEFAULT_INITIALIZER_EXECUTION_UNITS: u64 = 100_000;
@@ -89,6 +95,10 @@ where
     limits: RuntimeInitializationLimits,
 }
 
+pub(super) struct ReloadStateStaging {
+    vm_values: Vec<(StateId, Value)>,
+}
+
 impl<I> RuntimeBuilder<I>
 where
     I: RuntimeImageStorage,
@@ -137,12 +147,21 @@ where
         &mut self,
         limits: RuntimeInitializationLimits,
     ) -> Result<(), RuntimeBuildError> {
+        self.initialize_vm_states_matching(limits, |_| true)
+    }
+
+    pub(super) fn initialize_vm_states_matching(
+        &mut self,
+        limits: RuntimeInitializationLimits,
+        include: impl Fn(StateId) -> bool,
+    ) -> Result<(), RuntimeBuildError> {
         let mut states = self
             .image
             .linked_program()
             .states()
             .iter()
             .filter(|state| state.storage == vela_bytecode::StateStorage::Vm)
+            .filter(|state| include(state.id))
             .cloned()
             .collect::<Vec<_>>();
         states.sort_by_key(|state| state.id);
@@ -189,5 +208,130 @@ where
                 .insert(state.id, result.value());
         }
         Ok(())
+    }
+
+    pub(super) fn prepare_hot_update_state(
+        &mut self,
+        update: &HotUpdate,
+        limits: RuntimeInitializationLimits,
+    ) -> Result<ReloadStateStaging, HotReloadError> {
+        let next_states = update.linked_artifact().image().states();
+        if let Err((state, error)) = self.state.extern_states.validate_layout(next_states) {
+            let kind = match error.kind {
+                HostErrorKind::MissingExternState { .. } => {
+                    HotReloadErrorKind::MissingExternStateBinding {
+                        state,
+                        source_span: error.source_span.map(Box::new),
+                    }
+                }
+                kind => HotReloadErrorKind::InvalidExternStateBinding {
+                    state,
+                    reason: format!("{kind:?}"),
+                    source_span: error.source_span.map(Box::new),
+                },
+            };
+            return Err(HotReloadError { kind });
+        }
+
+        let current = self
+            .image
+            .states()
+            .iter()
+            .map(|state| state.id)
+            .collect::<std::collections::BTreeSet<_>>();
+        let added = next_states
+            .iter()
+            .filter(|state| {
+                state.storage == vela_bytecode::StateStorage::Vm && !current.contains(&state.id)
+            })
+            .map(|state| state.id)
+            .collect::<std::collections::BTreeSet<_>>();
+        if added.is_empty() {
+            return Ok(ReloadStateStaging {
+                vm_values: Vec::new(),
+            });
+        }
+
+        let image = OwnedImage::from_image(RuntimeImage::from_linked_artifact(
+            self.image.engine().clone(),
+            std::sync::Arc::clone(update.linked_artifact()),
+        ));
+        let state = RuntimeState::for_image(&image);
+        let mut staging = RuntimeImpl {
+            image,
+            hot_reload: None,
+            state,
+        };
+        staging
+            .initialize_vm_states_matching(limits, |state| added.contains(&state))
+            .map_err(|error| match error {
+                RuntimeBuildError::Initializer {
+                    state,
+                    source_span,
+                    error,
+                } => HotReloadError {
+                    kind: HotReloadErrorKind::StateInitializerFailed {
+                        state,
+                        reason: error.to_string(),
+                        source_span: source_span.map(Box::new),
+                    },
+                },
+                other => HotReloadError {
+                    kind: HotReloadErrorKind::StateInitializerFailed {
+                        state: "<state>".to_owned(),
+                        reason: other.to_string(),
+                        source_span: None,
+                    },
+                },
+            })?;
+
+        let mut vm_values = Vec::with_capacity(added.len());
+        for state in added {
+            let value = staging
+                .state
+                .vm_states
+                .value_by_id(state)
+                .map_err(|error| HotReloadError {
+                    kind: HotReloadErrorKind::StateInitializerFailed {
+                        state: next_states
+                            .iter()
+                            .find(|descriptor| descriptor.id == state)
+                            .map(|descriptor| descriptor.qualified_name.clone())
+                            .unwrap_or_else(|| format!("state#{}", state.get())),
+                        reason: error.to_string(),
+                        source_span: None,
+                    },
+                })?
+                .expect("selected state initializer published a staging value");
+            let value =
+                self.state
+                    .vm_states
+                    .prepare_value(value)
+                    .map_err(|error| HotReloadError {
+                        kind: HotReloadErrorKind::StateInitializerFailed {
+                            state: next_states
+                                .iter()
+                                .find(|descriptor| descriptor.id == state)
+                                .map(|descriptor| descriptor.qualified_name.clone())
+                                .unwrap_or_else(|| format!("state#{}", state.get())),
+                            reason: error.to_string(),
+                            source_span: None,
+                        },
+                    })?;
+            vm_values.push((state, value));
+        }
+        Ok(ReloadStateStaging { vm_values })
+    }
+
+    pub(super) fn commit_hot_update_state(
+        &mut self,
+        states: &[vela_bytecode::StateDescriptor],
+        staging: ReloadStateStaging,
+    ) {
+        self.state.extern_states.commit_layout(states);
+        self.state.vm_states.set_state_layout(states);
+        for (state, value) in staging.vm_values {
+            self.state.vm_states.insert_prepared(state, value);
+        }
     }
 }

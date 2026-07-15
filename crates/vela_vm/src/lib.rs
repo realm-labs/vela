@@ -273,6 +273,10 @@ impl VmStateValues {
     pub fn values(&self) -> impl Iterator<Item = Value> + '_ {
         self.by_id.values().copied()
     }
+
+    pub fn retain(&mut self, mut keep: impl FnMut(vela_def::StateId, Value) -> bool) {
+        self.by_id.retain(|state, value| keep(*state, *value));
+    }
 }
 
 pub struct PersistentHeapExecution<'heap, 'roots> {

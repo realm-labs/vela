@@ -11,6 +11,7 @@ use crate::function_signature::ensure_compatible_function_signature;
 use crate::package_abi::ensure_compatible_package_update;
 use crate::policy::HotReloadPolicy;
 use crate::report::AcceptedHotReloadChanges;
+use crate::state_abi::compare_state_abi;
 use crate::symbol::{FunctionSymbolId, ProgramVersionId};
 use crate::version::{HotUpdate, ProgramVersion};
 
@@ -41,11 +42,30 @@ pub fn update_from_linked_artifact(
     artifact: Arc<LinkedArtifact>,
 ) -> HotReloadResult<HotUpdate> {
     ensure_compatible_package_update(previous.linked_artifact(), &artifact)?;
+    let state_changes = compare_state_abi(previous.program_image(), artifact.image())?;
+    let previous_initializers = previous
+        .states()
+        .iter()
+        .filter_map(|state| state.initializer)
+        .filter_map(|initializer| previous.program_image().function_by_id(initializer))
+        .map(|code| code.name.clone())
+        .collect::<BTreeSet<_>>();
+    let next_initializers = artifact
+        .image()
+        .states()
+        .iter()
+        .filter_map(|state| state.initializer)
+        .filter_map(|initializer| artifact.image().function_by_id(initializer))
+        .map(|code| code.name.clone())
+        .collect::<BTreeSet<_>>();
     let abi = abi_with_script_metadata(abi, artifact.image().script_metadata());
     let script_metadata = artifact.image().script_metadata().cloned();
     let mut functions = BTreeMap::new();
     let mut changed_functions = Vec::new();
     for (_, code) in artifact.image().functions() {
+        if next_initializers.contains(&code.name) {
+            continue;
+        }
         let name = code.name.clone();
         let symbol = FunctionSymbolId::new(&name);
         if let Some(old_code) = previous.function(&name) {
@@ -67,6 +87,9 @@ pub fn update_from_linked_artifact(
         .function_names()
         .collect::<BTreeSet<_>>();
     for old_name in previous.function_names() {
+        if previous_initializers.contains(old_name) {
+            continue;
+        }
         if previous_script_method_functions.contains(old_name) {
             continue;
         }
@@ -88,6 +111,7 @@ pub fn update_from_linked_artifact(
         module_changes.impacted_modules,
         module_changes.changed_packages,
         module_changes.impacted_packages,
+        state_changes,
     );
     let update = HotUpdate::new(abi, changes, artifact);
     Ok(update)

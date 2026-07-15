@@ -30,6 +30,7 @@ mod method_abi;
 mod registry_manifest;
 mod runtime_reports;
 mod schema_abi;
+mod state_abi;
 mod trait_module_abi;
 
 fn run_linked_version(

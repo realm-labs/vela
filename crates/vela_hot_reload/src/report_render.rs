@@ -38,6 +38,10 @@ pub enum HotReloadReportLineKind {
     ImpactedModules,
     ChangedPackages,
     ImpactedPackages,
+    AddedStates,
+    RemovedStates,
+    InitializerChangedStates,
+    VisibilityChangedStates,
     Diagnostic,
     Detail,
     RepairHint,
@@ -97,6 +101,7 @@ pub(crate) fn render_lines(report: &HotReloadReport) -> Vec<HotReloadReportLine>
                 format!("impacted packages: {}", report.impacted_packages.join(", ")),
             ));
         }
+        push_state_changes(&mut lines, report);
         return lines;
     }
 
@@ -110,6 +115,40 @@ pub(crate) fn render_lines(report: &HotReloadReport) -> Vec<HotReloadReportLine>
         push_diagnostic_lines(&mut lines, index, diagnostic);
     }
     lines
+}
+
+fn push_state_changes(lines: &mut Vec<HotReloadReportLine>, report: &HotReloadReport) {
+    for (kind, label, states) in [
+        (
+            HotReloadReportLineKind::AddedStates,
+            "added states",
+            &report.added_states,
+        ),
+        (
+            HotReloadReportLineKind::RemovedStates,
+            "removed states",
+            &report.removed_states,
+        ),
+        (
+            HotReloadReportLineKind::InitializerChangedStates,
+            "state initializers changed (new Runtime only)",
+            &report.initializer_changed_states,
+        ),
+        (
+            HotReloadReportLineKind::VisibilityChangedStates,
+            "state visibility changed",
+            &report.visibility_changed_states,
+        ),
+    ] {
+        if !states.is_empty() {
+            lines.push(HotReloadReportLine::new(
+                kind,
+                None,
+                None,
+                format!("{label}: {}", states.join(", ")),
+            ));
+        }
+    }
 }
 
 fn push_diagnostic_lines(

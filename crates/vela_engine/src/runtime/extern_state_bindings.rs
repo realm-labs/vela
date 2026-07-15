@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::HostObjectId;
 use vela_def::StateId;
@@ -11,6 +11,7 @@ const EXTERN_STATE_HOST_OBJECT_ID_BASE: u64 = 1 << 62;
 
 pub struct RuntimeExternStateBindings {
     bindings: BTreeMap<StateId, ExternStateObject>,
+    pending: BTreeMap<String, ExternStateObject>,
     state_ids_by_name: BTreeMap<String, StateId>,
     expected_types_by_id: BTreeMap<StateId, Option<vela_common::HostTypeId>>,
     next_host_object_id: u64,
@@ -27,6 +28,7 @@ impl RuntimeExternStateBindings {
     pub fn new() -> Self {
         Self {
             bindings: BTreeMap::new(),
+            pending: BTreeMap::new(),
             state_ids_by_name: BTreeMap::new(),
             expected_types_by_id: BTreeMap::new(),
             next_host_object_id: EXTERN_STATE_HOST_OBJECT_ID_BASE,
@@ -94,6 +96,83 @@ impl RuntimeExternStateBindings {
             },
         );
         Ok(host_ref)
+    }
+
+    pub fn stage_host<T>(&mut self, name: impl Into<String>, value: T) -> HostResult<HostRef>
+    where
+        T: ScriptHostObject + Send + 'static,
+    {
+        let name = name.into();
+        let actual_type = value.host_type_id();
+        let host_ref = HostRef::new(actual_type, HostObjectId::new(self.next_host_object_id), 1);
+        self.next_host_object_id = self.next_host_object_id.saturating_add(1);
+        self.pending.insert(
+            name,
+            ExternStateObject {
+                host_ref,
+                object: Box::new(value),
+            },
+        );
+        Ok(host_ref)
+    }
+
+    pub(super) fn validate_layout(
+        &self,
+        states: &[vela_bytecode::StateDescriptor],
+    ) -> Result<(), (String, HostError)> {
+        for state in states
+            .iter()
+            .filter(|state| state.storage == vela_bytecode::StateStorage::Extern)
+        {
+            let binding = self
+                .bindings
+                .get(&state.id)
+                .or_else(|| self.pending.get(&state.qualified_name))
+                .ok_or_else(|| {
+                    (
+                        state.qualified_name.clone(),
+                        HostError {
+                            kind: HostErrorKind::MissingExternState {
+                                name: state.qualified_name.clone(),
+                            },
+                            source_span: state.source_span,
+                        },
+                    )
+                })?;
+            if let vela_mir::MirTypeContract::Host(expected) = state.type_contract
+                && expected.runtime != binding.host_ref.type_id
+            {
+                return Err((
+                    state.qualified_name.clone(),
+                    HostError {
+                        kind: HostErrorKind::TypeMismatch {
+                            expected: expected.runtime,
+                            actual: binding.host_ref.type_id,
+                        },
+                        source_span: state.source_span,
+                    },
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    pub(super) fn commit_layout(&mut self, states: &[vela_bytecode::StateDescriptor]) {
+        for state in states
+            .iter()
+            .filter(|state| state.storage == vela_bytecode::StateStorage::Extern)
+        {
+            if !self.bindings.contains_key(&state.id)
+                && let Some(binding) = self.pending.remove(&state.qualified_name)
+            {
+                self.bindings.insert(state.id, binding);
+            }
+        }
+        self.set_state_layout(states);
+    }
+
+    pub(super) fn retain_state_ids(&mut self, retained: &BTreeSet<StateId>) {
+        self.bindings.retain(|state, _| retained.contains(&state));
     }
 
     pub(super) fn missing_bindings(

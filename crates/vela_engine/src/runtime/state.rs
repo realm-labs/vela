@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Weak;
 
 use vela_bytecode::{
@@ -25,6 +25,8 @@ pub(super) struct RuntimeSidecars {
 
 struct GenerationRuntimeState {
     lifetime: Weak<()>,
+    vm_states: BTreeSet<vela_def::StateId>,
+    extern_states: BTreeSet<vela_def::StateId>,
     inline_caches: InlineCaches,
     bytecode_profile: RuntimeBytecodeProfile,
 }
@@ -59,6 +61,9 @@ impl RuntimeState {
             .or_insert_with(|| GenerationRuntimeState::for_image(image));
         self.sidecars.active_generation = generation;
         self.sidecars.prune_dead_generations();
+        let (vm_states, extern_states) = self.sidecars.retained_state_ids();
+        self.vm_states.retain_state_ids(&vm_states);
+        self.extern_states.retain_state_ids(&extern_states);
     }
 
     #[cfg(test)]
@@ -85,6 +90,16 @@ impl RuntimeSidecars {
             .retain(|generation, state| *generation == active || state.lifetime.strong_count() > 0);
     }
 
+    fn retained_state_ids(&self) -> (BTreeSet<vela_def::StateId>, BTreeSet<vela_def::StateId>) {
+        let mut vm_states = BTreeSet::new();
+        let mut extern_states = BTreeSet::new();
+        for state in self.generations.values() {
+            vm_states.extend(state.vm_states.iter().copied());
+            extern_states.extend(state.extern_states.iter().copied());
+        }
+        (vm_states, extern_states)
+    }
+
     #[cfg(test)]
     fn generation_count(&self) -> usize {
         self.generations.len()
@@ -99,6 +114,18 @@ impl GenerationRuntimeState {
     fn for_program(program: &LinkedProgram) -> Self {
         Self {
             lifetime: program.lifetime_token(),
+            vm_states: program
+                .states()
+                .iter()
+                .filter(|state| state.storage == vela_bytecode::StateStorage::Vm)
+                .map(|state| state.id)
+                .collect(),
+            extern_states: program
+                .states()
+                .iter()
+                .filter(|state| state.storage == vela_bytecode::StateStorage::Extern)
+                .map(|state| state.id)
+                .collect(),
             inline_caches: InlineCaches::for_program(program),
             bytecode_profile: RuntimeBytecodeProfile::for_program(program),
         }
@@ -221,5 +248,34 @@ mod tests {
 
         assert!(old_lifetime.upgrade().is_none());
         assert_eq!(state.sidecars.generation_count(), 1);
+    }
+
+    #[test]
+    fn removed_vm_state_is_retained_until_old_generation_lifetime_expires() {
+        let engine = Engine::builder().build().expect("engine should build");
+        let old_program = engine
+            .compile_source("state retired: i64 = 5; fn read() { return retired; }")
+            .expect("old fixture compiles");
+        let old_image = RuntimeImage::new_compiled(engine.clone(), old_program);
+        let state_id = old_image.states()[0].id;
+        let old_lifetime = old_image.linked_program().lifetime_token();
+        let mut state = RuntimeState::for_image(&old_image);
+        let value = state
+            .vm_states
+            .prepare_value(vela_vm::owned_value::OwnedValue::from(5_i64))
+            .expect("persistent state value");
+        state.vm_states.insert_prepared(state_id, value);
+        let new_program = engine
+            .compile_source("fn read() { return 0; }")
+            .expect("new fixture compiles");
+        let new_image = RuntimeImage::new_compiled(engine, new_program);
+
+        state.rebind_to_image(&new_image);
+        assert!(state.vm_states.values.get(state_id).is_some());
+        drop(old_image);
+        state.rebind_to_image(&new_image);
+
+        assert!(old_lifetime.upgrade().is_none());
+        assert!(state.vm_states.values.get(state_id).is_none());
     }
 }

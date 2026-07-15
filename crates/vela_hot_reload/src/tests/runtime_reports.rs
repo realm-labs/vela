@@ -270,7 +270,7 @@ fn program_version_owns_program_image_indexes() {
     let version = compile_initial(
         SourceId::new(1),
         r#"
-global state: Player;
+extern state state: Player;
 
 fn helper() {
     return 5;
@@ -319,7 +319,7 @@ fn main() {
     assert_eq!(version.program_image().states(), version.states());
     assert!(
         version.program_image().state_slot("main::state").is_some(),
-        "program image should keep global slot metadata"
+        "program image should keep state slot metadata"
     );
 }
 

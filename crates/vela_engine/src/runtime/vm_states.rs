@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex};
 
 use vela_def::StateId;
@@ -271,6 +271,22 @@ impl RuntimeVmStateStore {
         Ok(())
     }
 
+    pub(super) fn prepare_value(&mut self, value: OwnedValue) -> VmResult<Value> {
+        let mut budget = ExecutionBudget::unbounded();
+        owned_to_persistent_value(value, &mut self.heap, Some(&mut budget))
+    }
+
+    pub(super) fn insert_prepared(&mut self, state: StateId, value: Value) {
+        self.values.insert(state, value);
+    }
+
+    pub(super) fn value_by_id(&mut self, state: StateId) -> VmResult<Option<OwnedValue>> {
+        let Some(value) = self.values.get(state) else {
+            return Ok(None);
+        };
+        persistent_value_to_owned(&value, &mut self.heap).map(Some)
+    }
+
     pub fn value(&mut self, name: &str) -> VmResult<Option<OwnedValue>> {
         let Some(state) = self.state_ids_by_name.get(name).copied() else {
             return Ok(None);
@@ -308,6 +324,11 @@ impl RuntimeVmStateStore {
                 .values(),
         );
         roots
+    }
+
+    pub(super) fn retain_state_ids(&mut self, retained: &BTreeSet<StateId>) {
+        self.values.retain(|state, _| retained.contains(&state));
+        self.collect();
     }
 
     fn collect(&mut self) {

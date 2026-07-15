@@ -15,6 +15,7 @@ pub mod report_detail;
 pub mod report_render;
 pub mod runtime;
 pub mod schema_abi;
+pub mod state_abi;
 pub mod symbol;
 pub mod version;
 

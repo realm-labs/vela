@@ -6,7 +6,7 @@ use crate::engine::Engine;
 
 use super::{
     CallArgs, CallOptions, OwnedImage, Runtime, RuntimeBuildError, RuntimeImage, RuntimeImpl,
-    RuntimeInitializationLimits, RuntimeState,
+    RuntimeInitializationLimits, RuntimeState, SharedRuntime,
 };
 
 #[test]
@@ -45,10 +45,10 @@ fn runtime_initializes_vm_state_once_and_shared_programs_remain_isolated() {
 state counter: i64 = 7;
 fn increment() { counter += 1; return counter; }
 "#;
-    let first_program = engine.compile_source(source).expect("fixture compiles");
-    let second_program = engine.compile_source(source).expect("fixture compiles");
-    let mut first = Runtime::new(engine.clone(), first_program).expect("first runtime");
-    let mut second = Runtime::new(engine, second_program).expect("second runtime");
+    let program = engine.compile_source(source).expect("fixture compiles");
+    let image = RuntimeImage::new_compiled(engine, program).into_shared();
+    let mut first = SharedRuntime::from_shared_image(image.clone()).expect("first runtime");
+    let mut second = SharedRuntime::from_shared_image(image).expect("second runtime");
 
     assert_eq!(
         first.state("main::counter"),

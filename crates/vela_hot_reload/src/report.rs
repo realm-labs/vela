@@ -6,6 +6,7 @@ use vela_common::Span;
 use crate::error::HotReloadError;
 use crate::report_detail::HotReloadDiagnosticDetail;
 use crate::report_render::HotReloadReportLine;
+use crate::state_abi::StateChanges;
 use crate::symbol::{FunctionSymbolId, ProgramVersionId};
 use crate::version::ProgramVersion;
 
@@ -19,6 +20,10 @@ pub struct HotReloadReport {
     pub impacted_modules: Vec<String>,
     pub changed_packages: Vec<String>,
     pub impacted_packages: Vec<String>,
+    pub added_states: Vec<String>,
+    pub removed_states: Vec<String>,
+    pub initializer_changed_states: Vec<String>,
+    pub visibility_changed_states: Vec<String>,
     pub errors: Vec<HotReloadDiagnostic>,
     version: Option<Arc<ProgramVersion>>,
 }
@@ -35,6 +40,10 @@ impl HotReloadReport {
         let impacted_modules = sorted_strings(changes.impacted_modules);
         let changed_packages = sorted_strings(changes.changed_packages);
         let impacted_packages = sorted_strings(changes.impacted_packages);
+        let added_states = sorted_strings(changes.state_changes.added);
+        let removed_states = sorted_strings(changes.state_changes.removed);
+        let initializer_changed_states = sorted_strings(changes.state_changes.initializer_changed);
+        let visibility_changed_states = sorted_strings(changes.state_changes.visibility_changed);
         Self {
             accepted: true,
             from_version,
@@ -44,6 +53,10 @@ impl HotReloadReport {
             impacted_modules,
             changed_packages,
             impacted_packages,
+            added_states,
+            removed_states,
+            initializer_changed_states,
+            visibility_changed_states,
             errors: Vec::new(),
             version: Some(version),
         }
@@ -60,6 +73,10 @@ impl HotReloadReport {
             impacted_modules: Vec::new(),
             changed_packages: Vec::new(),
             impacted_packages: Vec::new(),
+            added_states: Vec::new(),
+            removed_states: Vec::new(),
+            initializer_changed_states: Vec::new(),
+            visibility_changed_states: Vec::new(),
             errors: vec![HotReloadDiagnostic::from_error(error)],
             version: None,
         }
@@ -83,6 +100,7 @@ pub(crate) struct AcceptedHotReloadChanges {
     pub impacted_modules: Vec<String>,
     pub changed_packages: Vec<String>,
     pub impacted_packages: Vec<String>,
+    pub state_changes: StateChanges,
 }
 
 impl AcceptedHotReloadChanges {
@@ -93,6 +111,7 @@ impl AcceptedHotReloadChanges {
         impacted_modules: Vec<String>,
         changed_packages: Vec<String>,
         impacted_packages: Vec<String>,
+        state_changes: StateChanges,
     ) -> Self {
         Self {
             changed_functions,
@@ -100,6 +119,7 @@ impl AcceptedHotReloadChanges {
             impacted_modules,
             changed_packages,
             impacted_packages,
+            state_changes,
         }
     }
 }

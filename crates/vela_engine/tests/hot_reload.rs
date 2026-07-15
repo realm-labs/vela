@@ -136,8 +136,9 @@ fn suspended_async_call_keeps_old_generation_until_completion_safe_point() {
     let initial = engine
         .compile_hot_reload_initial(
             r#"
+state value: i64 = 1;
 async fn wait_value() -> i64 { return reload_gate(10).await; }
-async fn main() -> i64 { return (wait_value().await) + 1; }
+async fn main() -> i64 { return (wait_value().await) + value; }
 fn version() -> i64 { return 1; }
 "#,
         )
@@ -146,8 +147,10 @@ fn version() -> i64 { return 1; }
         .compile_hot_reload_update(
             &initial,
             r#"
+state extra: i64 = 100;
+state value: i64 = 999;
 async fn wait_value() -> i64 { return reload_gate(10).await; }
-async fn main() -> i64 { return (wait_value().await) + 100; }
+async fn main() -> i64 { return (wait_value().await) + value + extra; }
 fn version() -> i64 { return 2; }
 "#,
         )
@@ -189,6 +192,7 @@ fn version() -> i64 { return 2; }
         .expect("reload check should succeed")
         .expect("staged update should activate after completion");
     assert!(report.accepted);
+    assert_eq!(report.added_states, ["main::extra"]);
 
     let mut next = runtime.call_async("main", CallArgs::new(), CallOptions::unbounded());
     let Poll::Ready(result) = Pin::new(&mut next).poll(&mut context) else {
@@ -198,7 +202,7 @@ fn version() -> i64 { return 2; }
     drop(next);
     assert_eq!(
         runtime.value_to_owned(&new_result),
-        Ok(OwnedValue::i64(110))
+        Ok(OwnedValue::i64(111))
     );
 }
 
@@ -322,6 +326,47 @@ fn invoke(callback, value: i64) -> i64 { return callback(value); }
             limit: 1
         }
     ));
+}
+
+#[test]
+fn retained_old_closure_reads_state_removed_from_active_generation() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial(
+            r#"
+state retired: i64 = 5;
+fn make() { return || retired; }
+fn invoke(callback) -> i64 { return callback(); }
+"#,
+        )
+        .expect("initial state generation should compile");
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
+    let old_closure = runtime
+        .call("make", CallArgs::new(), CallOptions::unbounded())
+        .expect("old closure should be retained");
+    let update = runtime
+        .compile_hot_reload_update(
+            r#"
+fn make() { return || 0; }
+fn invoke(callback) -> i64 { return callback(); }
+"#,
+        )
+        .expect("removed-state update should compile")
+        .expect("state removal should be compatible");
+
+    let report = runtime.apply_hot_update(update).expect("reload applies");
+
+    assert_eq!(report.removed_states, ["main::retired"]);
+    assert_eq!(runtime.state("main::retired"), Ok(None));
+    let old_result = runtime
+        .call(
+            "invoke",
+            CallArgs::from_values([old_closure]),
+            CallOptions::unbounded(),
+        )
+        .expect("old closure should resolve its generation state slot");
+    assert_eq!(runtime.value_to_owned(&old_result), Ok(OwnedValue::i64(5)));
 }
 
 #[test]
