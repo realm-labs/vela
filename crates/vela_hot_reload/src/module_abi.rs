@@ -25,7 +25,11 @@ impl ModuleAbi {
     #[must_use]
     pub fn from_module(module: &ModuleDesc) -> Self {
         let mut abi = Self::new(module.name.clone());
-        for export in &module.exports {
+        for export in module
+            .exports
+            .iter()
+            .filter(|export| export.kind == ModuleExportKind::Function)
+        {
             abi = abi.export(ModuleExportAbi::from_export(export));
         }
         if let Some(source_span) = module.source_span {
@@ -104,6 +108,7 @@ impl ModuleExportAbi {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ModuleExportKindAbi {
     Function,
+    State,
 }
 
 impl ModuleExportKindAbi {
@@ -111,6 +116,7 @@ impl ModuleExportKindAbi {
     pub const fn from_export_kind(kind: ModuleExportKind) -> Self {
         match kind {
             ModuleExportKind::Function => Self::Function,
+            ModuleExportKind::State => Self::State,
         }
     }
 
@@ -118,6 +124,7 @@ impl ModuleExportKindAbi {
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Function => "function",
+            Self::State => "state",
         }
     }
 }

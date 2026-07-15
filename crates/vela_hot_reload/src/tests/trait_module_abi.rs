@@ -255,6 +255,23 @@ fn module_abi_manifest_can_be_built_from_type_registry() {
 }
 
 #[test]
+fn module_abi_leaves_state_exports_to_the_state_abi() {
+    let mut module = ModuleDesc::new("game::reward");
+    module.exports.push(ModuleExportDesc::function(
+        "grant_reward",
+        FunctionId::new(77),
+    ));
+    module
+        .exports
+        .push(ModuleExportDesc::state("reward_count", StateId::new(88)));
+
+    assert_eq!(
+        ModuleAbi::from_module(&module),
+        ModuleAbi::new("game::reward").export(ModuleExportAbi::function("grant_reward", 77))
+    );
+}
+
+#[test]
 fn removed_method_abi_is_rejected() {
     let span = Span::new(SourceId::new(9), 30, 45);
     let old_abi = HotReloadAbi::empty().method(

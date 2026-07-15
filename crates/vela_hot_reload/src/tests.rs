@@ -10,9 +10,11 @@ use crate::schema_abi::*;
 use crate::symbol::ProgramVersionId;
 use test_compile_support::*;
 use vela_common::{CallableAsyncness, HostMethodId, SourceId, Span};
-use vela_def::{FieldId, FunctionId, MethodId, TypeId, VariantId};
+use vela_def::{FieldId, FunctionId, MethodId, StateId, TypeId, VariantId};
 use vela_reflect::access::{FunctionAccess, FunctionEffectSet, MethodAccess, MethodEffectSet};
-use vela_reflect::modules::{DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc};
+use vela_reflect::modules::{
+    DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc, ModuleExportDesc,
+};
 use vela_reflect::registry::{
     FieldDesc, MethodDesc, MethodParamDesc, SchemaHash, TraitDesc, TraitMethodDesc, TypeDesc,
     TypeKey, TypeKind, TypeRegistry, VariantDesc,
