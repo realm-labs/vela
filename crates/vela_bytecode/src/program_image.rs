@@ -1,13 +1,14 @@
 use std::collections::BTreeMap;
 
 use vela_common::StateSlot;
-use vela_def::FunctionId;
+use vela_def::{FunctionId, StateId};
 use vela_hir::module_graph::ModuleGraph;
 
 use crate::script_methods::ScriptMethodTable;
 use crate::{
     CacheSiteDesc, CacheSiteId, CacheSiteInstruction, CacheSiteLayout, FunctionIndex,
-    UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgram, UnlinkedProgramCode,
+    StateDescriptor, UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgram,
+    UnlinkedProgramCode,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -15,8 +16,9 @@ pub struct ProgramImage {
     functions: Box<[UnlinkedCodeObject]>,
     function_by_name: BTreeMap<String, FunctionIndex>,
     function_by_id: BTreeMap<FunctionId, FunctionIndex>,
-    global_names: Box<[String]>,
-    global_slots: BTreeMap<String, StateSlot>,
+    states: Box<[StateDescriptor]>,
+    state_slots_by_name: BTreeMap<String, StateSlot>,
+    state_slots_by_id: BTreeMap<StateId, StateSlot>,
     cache_sites: Box<[CacheSiteDesc]>,
     script_methods: ScriptMethodTable,
     script_metadata: Option<ModuleGraph>,
@@ -27,7 +29,7 @@ impl ProgramImage {
     pub(crate) fn from_program(program: &UnlinkedProgram) -> Self {
         Self::from_parts(
             program.functions().cloned(),
-            program.global_names().iter().cloned(),
+            program.states().iter().cloned(),
             program.script_methods().clone(),
             program.script_metadata().cloned(),
         )
@@ -36,7 +38,7 @@ impl ProgramImage {
     #[must_use]
     pub(crate) fn from_parts(
         functions: impl IntoIterator<Item = UnlinkedCodeObject>,
-        global_names: impl IntoIterator<Item = String>,
+        states: impl IntoIterator<Item = StateDescriptor>,
         script_methods: ScriptMethodTable,
         script_metadata: Option<ModuleGraph>,
     ) -> Self {
@@ -63,19 +65,25 @@ impl ProgramImage {
         indexed_functions.extend(nested_functions);
         let cache_sites = rewrite_image_cache_sites(&mut indexed_functions);
 
-        let global_names = global_names.into_iter().collect::<Vec<_>>();
-        let global_slots = global_names
+        let states = states.into_iter().collect::<Vec<_>>();
+        let state_slots_by_name = states
             .iter()
             .enumerate()
-            .map(|(slot, name)| (name.clone(), StateSlot::new(slot)))
+            .map(|(slot, state)| (state.qualified_name.clone(), StateSlot::new(slot)))
+            .collect();
+        let state_slots_by_id = states
+            .iter()
+            .enumerate()
+            .map(|(slot, state)| (state.id, StateSlot::new(slot)))
             .collect();
 
         Self {
             functions: indexed_functions.into_boxed_slice(),
             function_by_name,
             function_by_id,
-            global_names: global_names.into_boxed_slice(),
-            global_slots,
+            states: states.into_boxed_slice(),
+            state_slots_by_name,
+            state_slots_by_id,
             cache_sites,
             script_methods,
             script_metadata,
@@ -123,18 +131,23 @@ impl ProgramImage {
     }
 
     #[must_use]
-    pub fn global_slot(&self, name: &str) -> Option<StateSlot> {
-        self.global_slots.get(name).copied()
+    pub fn state_slot(&self, name: &str) -> Option<StateSlot> {
+        self.state_slots_by_name.get(name).copied()
     }
 
     #[must_use]
-    pub fn global_name(&self, slot: StateSlot) -> Option<&str> {
-        self.global_names.get(slot.get()).map(String::as_str)
+    pub fn state_slot_by_id(&self, id: StateId) -> Option<StateSlot> {
+        self.state_slots_by_id.get(&id).copied()
     }
 
     #[must_use]
-    pub fn global_names(&self) -> &[String] {
-        &self.global_names
+    pub fn state(&self, slot: StateSlot) -> Option<&StateDescriptor> {
+        self.states.get(slot.get())
+    }
+
+    #[must_use]
+    pub fn states(&self) -> &[StateDescriptor] {
+        &self.states
     }
 
     #[must_use]
@@ -282,7 +295,7 @@ fn rewrite_instruction_cache_sites(
 #[cfg(test)]
 mod tests {
     use vela_common::{HostTypeId, StateSlot};
-    use vela_def::{FieldId, FunctionId, MethodId, TypeId};
+    use vela_def::{FieldId, FunctionId, MethodId, StateId, TypeId};
     use vela_host::target::HostTargetPlan;
 
     use crate::{
@@ -316,9 +329,12 @@ mod tests {
     }
 
     #[test]
-    fn image_preserves_global_layout_and_script_methods() {
+    fn image_preserves_state_layout_and_script_methods() {
         let mut program = UnlinkedProgram::new();
-        program.set_global_layout(["main::first".to_owned(), "main::second".to_owned()]);
+        program.set_states([
+            crate::StateDescriptor::test_extern(vela_def::StateId::new(1), "main::first"),
+            crate::StateDescriptor::test_extern(vela_def::StateId::new(2), "main::second"),
+        ]);
         program.insert_function(UnlinkedCodeObject::new("main", 0));
         let owner = TypeId::new(11);
         program.insert_script_method(
@@ -332,15 +348,51 @@ mod tests {
 
         let image = ProgramImage::from_program(&program);
 
-        assert_eq!(image.global_slot("main::first"), Some(StateSlot::new(0)));
-        assert_eq!(image.global_name(StateSlot::new(1)), Some("main::second"));
-        assert_eq!(image.global_names(), program.global_names());
+        assert_eq!(image.state_slot("main::first"), Some(StateSlot::new(0)));
+        assert_eq!(
+            image
+                .state(StateSlot::new(1))
+                .map(|state| state.qualified_name.as_str()),
+            Some("main::second")
+        );
+        assert_eq!(image.states(), program.states());
         assert_eq!(
             image
                 .script_methods()
                 .get_by_id(owner, MethodId::new(7))
                 .map(|method| method.function.as_str()),
             Some("main")
+        );
+    }
+
+    #[test]
+    fn image_state_slots_resolve_stable_ids_after_layout_reordering() {
+        let first = StateId::new(1);
+        let second = StateId::new(2);
+        let descriptors = || {
+            [
+                crate::StateDescriptor::test_extern(first, "main::first"),
+                crate::StateDescriptor::test_extern(second, "main::second"),
+            ]
+        };
+
+        let mut old_program = UnlinkedProgram::new();
+        old_program.set_states(descriptors());
+        let old_image = ProgramImage::from_program(&old_program);
+
+        let mut new_program = UnlinkedProgram::new();
+        new_program.set_states(descriptors().into_iter().rev());
+        let new_image = ProgramImage::from_program(&new_program);
+
+        assert_eq!(old_image.state_slot_by_id(first), Some(StateSlot::new(0)));
+        assert_eq!(new_image.state_slot_by_id(first), Some(StateSlot::new(1)));
+        assert_eq!(
+            old_image.state(StateSlot::new(0)).map(|state| state.id),
+            Some(first)
+        );
+        assert_eq!(
+            new_image.state(StateSlot::new(1)).map(|state| state.id),
+            Some(first)
         );
     }
 
@@ -402,7 +454,7 @@ mod tests {
     }
 
     #[test]
-    fn image_rewrites_cache_site_ids_to_image_global_indexes() {
+    fn image_rewrites_cache_site_ids_to_image_state_indexes() {
         let mut first = UnlinkedCodeObject::new("read_first", 1);
         let first_local =
             first.push_cache_site(CacheSiteKind::ExternStateRead, InstructionOffset(0));
@@ -437,8 +489,8 @@ mod tests {
         let second = image
             .function_by_name("read_second")
             .expect("second function");
-        let first_site = load_global_cache_site(first);
-        let second_site = load_global_cache_site(second);
+        let first_site = load_state_cache_site(first);
+        let second_site = load_state_cache_site(second);
 
         assert_eq!(image.cache_site_count(), 2);
         assert_ne!(first_site, second_site);
@@ -453,7 +505,7 @@ mod tests {
     }
 
     #[test]
-    fn image_rewrites_host_cache_site_ids_to_image_global_indexes() {
+    fn image_rewrites_host_cache_site_ids_to_image_state_indexes() {
         let mut first = UnlinkedCodeObject::new("read_first_host", 2);
         let first_target = first
             .intern_host_target(HostTargetPlan::new(HostTypeId::new(1)).field(FieldId::new(1)));
@@ -510,7 +562,7 @@ mod tests {
         assert_eq!(image.verify(), Ok(()));
     }
 
-    fn load_global_cache_site(function: &UnlinkedCodeObject) -> CacheSiteId {
+    fn load_state_cache_site(function: &UnlinkedCodeObject) -> CacheSiteId {
         function
             .instructions
             .iter()
@@ -521,7 +573,7 @@ mod tests {
                 } => Some(*site),
                 _ => None,
             })
-            .expect("function should have global read cache site")
+            .expect("function should have state read cache site")
     }
 
     fn host_read_cache_site(function: &UnlinkedCodeObject) -> CacheSiteId {

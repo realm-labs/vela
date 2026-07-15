@@ -65,7 +65,7 @@ fn main() {
         )
         .expect("program should compile");
     assert!(
-        program.global_slot("main::state").is_some(),
+        program.state_slot("main::state").is_some(),
         "declared global should have a hot-path slot"
     );
     let mut runtime = Runtime::new(engine, program);

@@ -2,7 +2,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use vela_bytecode::linker::LinkError;
-use vela_bytecode::{LinkedArtifact, LinkedProgram, ProgramImage};
+use vela_bytecode::{LinkedArtifact, LinkedProgram, ProgramImage, StateDescriptor};
 use vela_hot_reload::symbol::ProgramVersionId;
 use vela_hot_reload::version::ProgramVersion;
 
@@ -30,7 +30,7 @@ pub trait RuntimeImageStorage: Deref<Target = RuntimeImage> + Send {
 }
 
 pub(super) struct RuntimeImageLayout {
-    global_names: Box<[String]>,
+    states: Box<[StateDescriptor]>,
 }
 
 impl OwnedImage {
@@ -78,7 +78,7 @@ impl RuntimeImageStorage for SharedImage {
 impl RuntimeImage {
     #[must_use]
     pub fn from_linked_artifact(engine: Engine, artifact: Arc<LinkedArtifact>) -> Self {
-        let layout = RuntimeImageLayout::from_global_names(artifact.image().global_names());
+        let layout = RuntimeImageLayout::from_states(artifact.image().states());
         Self {
             engine,
             artifact,
@@ -105,7 +105,7 @@ impl RuntimeImage {
     pub fn from_program_version(engine: Engine, version: &ProgramVersion) -> Self {
         let version_id = Some(version.id);
         let artifact = Arc::clone(version.linked_artifact());
-        let layout = RuntimeImageLayout::from_global_names(artifact.image().global_names());
+        let layout = RuntimeImageLayout::from_states(artifact.image().states());
         Self {
             engine,
             artifact,
@@ -130,8 +130,8 @@ impl RuntimeImage {
         &self.artifact
     }
 
-    pub(super) fn global_names(&self) -> &[String] {
-        self.layout.global_names()
+    pub(super) fn states(&self) -> &[StateDescriptor] {
+        self.layout.states()
     }
 
     #[cfg(test)]
@@ -150,14 +150,14 @@ impl RuntimeImage {
 }
 
 impl RuntimeImageLayout {
-    fn from_global_names(names: &[String]) -> Self {
+    fn from_states(states: &[StateDescriptor]) -> Self {
         Self {
-            global_names: names.to_vec().into_boxed_slice(),
+            states: states.to_vec().into_boxed_slice(),
         }
     }
 
-    fn global_names(&self) -> &[String] {
-        &self.global_names
+    fn states(&self) -> &[StateDescriptor] {
+        &self.states
     }
 }
 
@@ -177,12 +177,12 @@ mod tests {
         let engine = Engine::builder().build().expect("engine should build");
         let program = engine
             .compile_source(
-                "global state: i64; fn main() { return state; } fn helper() { return state; }",
+                "extern state state: i64; fn main() { return state; } fn helper() { return state; }",
             )
             .expect("fixture compiles");
         let image = RuntimeImage::new_compiled(engine, program);
 
-        assert_eq!(image.global_names(), &["main::state".to_owned()]);
+        assert_eq!(image.states()[0].qualified_name, "main::state");
         assert_eq!(image.cache_site_count(), 2);
         assert_eq!(image.linked_program().function_count(), 2);
         let main_index = image

@@ -14,7 +14,7 @@ impl FunctionBuilder<'_> {
         value: MirOperand,
         origin: MirSourceOrigin,
     ) -> Result<MirOperand, MirBuildError> {
-        let Some(target) = self.input.targets().global_guard(declaration).cloned() else {
+        let Some(target) = self.input.targets().state_guard(declaration).cloned() else {
             return Ok(value);
         };
         let guard = self.function.add_guard(MirGuard {

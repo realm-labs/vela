@@ -129,12 +129,12 @@ fn schema_only_snapshot_finalization_proves_complete_descriptor_closure() {
     let enum_type = TypeId::new(404);
     let variant = VariantId::new(405);
     let variant_field = FieldId::new(406);
-    let global = StateId::new(407);
+    let state = StateId::new(407);
     let function = FunctionId::new(408);
     let function_declaration = HirDeclId::new(409);
     let record_declaration = HirDeclId::new(410);
     let enum_declaration = HirDeclId::new(411);
-    let global_declaration = HirDeclId::new(412);
+    let state_declaration = HirDeclId::new(412);
     let schema_origin = origin(413);
     let mut builder = CompileTargetSnapshot::builder();
 
@@ -278,26 +278,26 @@ fn schema_only_snapshot_finalization_proves_complete_descriptor_closure() {
             schema_origin,
         )
         .expect("return guard fixture insertion");
-    let global_contract = MirTypeContract::Definition(record_type);
+    let state_contract = MirTypeContract::Definition(record_type);
     builder
-        .insert_global(
-            global_declaration,
+        .insert_state(
+            state_declaration,
             CompileStateDescriptor {
-                id: global,
+                id: state,
                 name: "state".to_owned(),
                 storage: CompileStateStorage::Vm,
-                contract: global_contract.clone(),
+                contract: state_contract.clone(),
             },
             schema_origin,
         )
-        .expect("global fixture insertion");
+        .expect("state fixture insertion");
     builder
         .insert_guard(
-            CompileGuardKey::Global(global_declaration),
-            CompileGuardTarget::new(global_contract, MirGuardLocation::Global, "state"),
+            CompileGuardKey::State(state_declaration),
+            CompileGuardTarget::new(state_contract, MirGuardLocation::State, "state"),
             schema_origin,
         )
-        .expect("global guard fixture insertion");
+        .expect("state guard fixture insertion");
     builder
         .insert_evaluated_schema_default(
             HirBodyId::new(414),
@@ -315,8 +315,8 @@ fn schema_only_snapshot_finalization_proves_complete_descriptor_closure() {
         Some(record_type)
     );
     assert_eq!(
-        snapshot.global(global_declaration).map(|value| value.id),
-        Some(global)
+        snapshot.state(state_declaration).map(|value| value.id),
+        Some(state)
     );
 }
 

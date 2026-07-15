@@ -644,14 +644,14 @@ fn verify_statement_kind(
                     (*state, CompileStateStorage::Extern)
                 }
             };
-            let descriptor = verifier.program.targets().global(state).ok_or_else(|| {
-                missing_target(verifier, statement.origin, MirVerifyTarget::Global(state))
+            let descriptor = verifier.program.targets().state(state).ok_or_else(|| {
+                missing_target(verifier, statement.origin, MirVerifyTarget::State(state))
             })?;
             if descriptor.storage != expected_storage {
                 return Err(bad_target(
                     verifier,
                     statement.origin,
-                    MirVerifyTarget::Global(state),
+                    MirVerifyTarget::State(state),
                     "state operation does not match the declaration storage class",
                 ));
             }

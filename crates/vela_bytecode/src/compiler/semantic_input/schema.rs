@@ -40,7 +40,7 @@ impl GenerationBuilder<'_, '_> {
         for declaration in declarations {
             self.insert_script_type(declaration)?;
         }
-        self.insert_script_globals()
+        self.insert_script_states()
     }
 
     fn index_script_types(&mut self) -> CompileResult<()> {
@@ -283,25 +283,25 @@ impl GenerationBuilder<'_, '_> {
             .map_err(input_error)
     }
 
-    fn insert_script_globals(&mut self) -> CompileResult<()> {
-        let globals = self
+    fn insert_script_states(&mut self) -> CompileResult<()> {
+        let states = self
             .request
-            .global_symbols
+            .state_symbols
             .iter()
             .map(|(declaration, symbol)| (*declaration, symbol.clone()))
             .collect::<Vec<_>>();
-        for (declaration, symbol) in globals {
+        for (declaration, symbol) in states {
             let metadata = self
                 .request
                 .graph
                 .declaration(declaration)
                 .ok_or_else(registry_input_error)?;
-            let global = self
+            let state = self
                 .request
                 .graph
                 .state_metadata(declaration)
                 .ok_or_else(registry_input_error)?;
-            let Some(contract) = self.type_contract_for_hint(metadata.module, &global.type_hint)
+            let Some(contract) = self.type_contract_for_hint(metadata.module, &state.type_hint)
             else {
                 continue;
             };
@@ -314,12 +314,12 @@ impl GenerationBuilder<'_, '_> {
             let origin = MirSourceOrigin::declaration(declaration, metadata.span);
             self.remember_contract(&contract, origin);
             self.targets
-                .insert_global(
+                .insert_state(
                     declaration,
                     CompileStateDescriptor {
                         id,
                         name: symbol.clone(),
-                        storage: match global.storage {
+                        storage: match state.storage {
                             StateStorage::Vm => CompileStateStorage::Vm,
                             StateStorage::Extern => CompileStateStorage::Extern,
                         },
@@ -330,10 +330,10 @@ impl GenerationBuilder<'_, '_> {
                 .map_err(input_error)?;
             if !matches!(contract, MirTypeContract::Any) {
                 self.insert_guard_once(
-                    CompileGuardKey::Global(declaration),
+                    CompileGuardKey::State(declaration),
                     CompileGuardTarget::new(
                         contract,
-                        MirGuardLocation::Global,
+                        MirGuardLocation::State,
                         metadata.name.clone(),
                     ),
                     origin,

@@ -412,26 +412,26 @@ fn mir_model_exposes_allocating_host_reflection_and_dynamic_boundaries() {
         })
     );
 
-    let global_result = function.add_temp(MirValueType::Dynamic, origin);
-    let incomplete_global = MirEffect {
+    let state_result = function.add_temp(MirValueType::Dynamic, origin);
+    let incomplete_state = MirEffect {
         state_read: true,
         ..MirEffect::PURE
     };
-    let global = MirStatement::new(
+    let state = MirStatement::new(
         origin,
-        Some(MirPlace::temp(global_result)),
+        Some(MirPlace::temp(state_result)),
         MirStatementKind::State(MirStateOperation::ReadVmState {
             state: StateId::new(285),
         }),
-        incomplete_global,
+        incomplete_state,
         None,
     );
     assert_eq!(
-        function.append_statement(entry, global),
+        function.append_statement(entry, state),
         Err(MirBuildError::IncompleteEffect {
             origin,
             required: MirEffect::state_read(),
-            actual: incomplete_global,
+            actual: incomplete_state,
         })
     );
 }
@@ -617,8 +617,8 @@ fn mir_model_snapshot_owns_method_signatures_and_guard_contracts() {
     let type_id = TypeId::new(218);
     let variant_id = vela_def::VariantId::new(219);
     let field_id = vela_def::FieldId::new(220);
-    let global_id = StateId::new(221);
-    let global_declaration = HirDeclId::new(222);
+    let state_id = StateId::new(221);
+    let state_declaration = HirDeclId::new(222);
     let mut snapshot = CompileTargetSnapshot::builder();
     snapshot
         .insert_method_descriptor(descriptor.clone(), fact_origin)
@@ -696,17 +696,17 @@ fn mir_model_snapshot_owns_method_signatures_and_guard_contracts() {
         )
         .expect("field descriptor should be unique");
     snapshot
-        .insert_global(
-            global_declaration,
+        .insert_state(
+            state_declaration,
             CompileStateDescriptor {
-                id: global_id,
+                id: state_id,
                 name: "current_reward".to_owned(),
                 storage: CompileStateStorage::Vm,
                 contract: MirTypeContract::Definition(type_id),
             },
             fact_origin,
         )
-        .expect("global descriptor should be unique by declaration and stable ID");
+        .expect("state descriptor should be unique by declaration and stable ID");
     let snapshot = snapshot.build_unchecked();
 
     assert_eq!(
@@ -723,8 +723,8 @@ fn mir_model_snapshot_owns_method_signatures_and_guard_contracts() {
     );
     assert_eq!(snapshot.guard(guard_key), Some(&guard));
     assert_eq!(
-        snapshot.global(global_declaration),
-        snapshot.global_by_id(global_id)
+        snapshot.state(state_declaration),
+        snapshot.state_by_id(state_id)
     );
     assert_eq!(
         snapshot

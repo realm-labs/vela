@@ -209,9 +209,9 @@ pub enum LinkError {
         method: String,
         id: MethodId,
     },
-    MissingGlobal {
+    MissingState {
         function: String,
-        global: String,
+        state: String,
     },
     InvalidHostTarget {
         function: String,
@@ -348,10 +348,10 @@ impl fmt::Display for LinkError {
             Self::MissingMethodDefinition { method, id } => {
                 write!(formatter, "missing method definition for {method} ({id:?})")
             }
-            Self::MissingGlobal { function, global } => {
+            Self::MissingState { function, state } => {
                 write!(
                     formatter,
-                    "function {function} references missing global {global}"
+                    "function {function} references missing state {state}"
                 )
             }
             Self::InvalidHostTarget { function, target } => {
@@ -422,6 +422,29 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
 
         for code in functions {
             self.linked.push_function(code);
+        }
+        for state in program.states() {
+            let initializer = state
+                .initializer
+                .map(|function| {
+                    self.script_functions_by_id
+                        .get(&function)
+                        .copied()
+                        .ok_or_else(|| LinkError::MissingScriptFunction {
+                            name: state.qualified_name.clone(),
+                            id: function,
+                        })
+                })
+                .transpose()?;
+            self.linked.push_state(crate::LinkedStateDescriptor {
+                id: state.id,
+                qualified_name: state.qualified_name.clone(),
+                visibility: state.visibility,
+                storage: state.storage,
+                type_contract: state.type_contract.clone(),
+                initializer,
+                source_span: state.source_span,
+            });
         }
         self.link_script_method_dispatches(program)?;
 
@@ -1112,10 +1135,10 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 slot,
                 cache_site,
             } => {
-                let slot = slot.or_else(|| program.global_slot(state)).ok_or_else(|| {
-                    LinkError::MissingGlobal {
+                let slot = slot.or_else(|| program.state_slot(state)).ok_or_else(|| {
+                    LinkError::MissingState {
                         function: code.name.clone(),
-                        global: state.clone(),
+                        state: state.clone(),
                     }
                 })?;
                 let debug_name = self.linked.intern_debug_name(state.clone());
@@ -1127,10 +1150,10 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 }
             }
             UnlinkedInstructionKind::StoreState { state, slot, src } => {
-                let slot = slot.or_else(|| program.global_slot(state)).ok_or_else(|| {
-                    LinkError::MissingGlobal {
+                let slot = slot.or_else(|| program.state_slot(state)).ok_or_else(|| {
+                    LinkError::MissingState {
                         function: code.name.clone(),
-                        global: state.clone(),
+                        state: state.clone(),
                     }
                 })?;
                 let debug_name = self.linked.intern_debug_name(state.clone());
@@ -1146,10 +1169,10 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 slot,
                 cache_site,
             } => {
-                let slot = slot.or_else(|| program.global_slot(state)).ok_or_else(|| {
-                    LinkError::MissingGlobal {
+                let slot = slot.or_else(|| program.state_slot(state)).ok_or_else(|| {
+                    LinkError::MissingState {
                         function: code.name.clone(),
-                        global: state.clone(),
+                        state: state.clone(),
                     }
                 })?;
                 let debug_name = self.linked.intern_debug_name(state.clone());

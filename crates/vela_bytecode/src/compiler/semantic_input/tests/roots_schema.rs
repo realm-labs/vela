@@ -76,12 +76,12 @@ extern state current: Any;
         );
     }
 
-    let global = fixture.declarations["current"];
+    let state = fixture.declarations["current"];
     assert_eq!(
-        targets.global(global).map(|global| &global.contract),
+        targets.state(state).map(|state| &state.contract),
         Some(&MirTypeContract::Any)
     );
-    assert!(targets.guard(CompileGuardKey::Global(global)).is_none());
+    assert!(targets.guard(CompileGuardKey::State(state)).is_none());
 }
 
 #[test]
@@ -131,12 +131,12 @@ fn guarded(dynamic, required: i64, fallback: i64 = dynamic) -> i64 {
         "return",
     );
 
-    let global = fixture.declarations["current"];
+    let state = fixture.declarations["current"];
     assert_guard_context(
         targets
-            .guard(CompileGuardKey::Global(global))
-            .expect("global guard"),
-        MirGuardLocation::Global,
+            .guard(CompileGuardKey::State(state))
+            .expect("state guard"),
+        MirGuardLocation::State,
         "current",
     );
     let field = targets

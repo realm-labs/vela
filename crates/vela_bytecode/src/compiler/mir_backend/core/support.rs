@@ -184,7 +184,7 @@ pub(super) fn guard_location(location: MirGuardLocation) -> Result<GuardLocation
         },
         MirGuardLocation::Return => GuardLocation::Return,
         MirGuardLocation::Local => GuardLocation::Local,
-        MirGuardLocation::Global => GuardLocation::Global,
+        MirGuardLocation::State => GuardLocation::State,
         MirGuardLocation::Field => GuardLocation::Field,
     })
 }

@@ -13,6 +13,7 @@ mod package_metadata;
 pub mod program_image;
 mod script_metadata;
 pub mod script_methods;
+mod state;
 pub mod verification;
 
 #[cfg(feature = "test-support")]
@@ -27,7 +28,7 @@ use std::collections::BTreeMap;
 use vela_common::{
     CallableAsyncness, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span, StateSlot,
 };
-use vela_def::{FunctionId, MethodId, TypeId};
+use vela_def::{FunctionId, MethodId, StateId, TypeId};
 use vela_hir::ids::HirLocalId;
 use vela_hir::module_graph::ModuleGraph;
 use vela_host::resolved::HostMutationOp;
@@ -50,6 +51,7 @@ pub use package_metadata::{
 };
 pub use program_image::ProgramImage;
 pub use script_metadata::{derived_linked_record_trait_fields, derived_record_trait_fields};
+pub use state::{LinkedStateDescriptor, StateDescriptor, StateStorage, StateVisibility};
 pub use vela_registry::DebugNameId;
 
 use crate::script_methods::ScriptMethodTable;
@@ -59,8 +61,9 @@ pub struct UnlinkedProgram {
     functions: Vec<UnlinkedCodeObject>,
     function_by_name: BTreeMap<String, FunctionIndex>,
     function_by_id: BTreeMap<FunctionId, FunctionIndex>,
-    global_names: Vec<String>,
-    global_slots: BTreeMap<String, StateSlot>,
+    states: Vec<StateDescriptor>,
+    state_slots_by_name: BTreeMap<String, StateSlot>,
+    state_slots_by_id: BTreeMap<StateId, StateSlot>,
     script_methods: ScriptMethodTable,
     script_metadata: Option<ModuleGraph>,
 }
@@ -106,32 +109,38 @@ impl UnlinkedProgram {
         self.rebuild_function_index();
     }
 
-    pub fn set_global_layout(&mut self, names: impl IntoIterator<Item = String>) {
-        self.global_names.clear();
-        self.global_slots.clear();
-        for name in names {
-            if self.global_slots.contains_key(&name) {
-                continue;
-            }
-            let slot = StateSlot::new(self.global_names.len());
-            self.global_slots.insert(name.clone(), slot);
-            self.global_names.push(name);
+    pub fn set_states(&mut self, states: impl IntoIterator<Item = StateDescriptor>) {
+        self.states.clear();
+        self.state_slots_by_name.clear();
+        self.state_slots_by_id.clear();
+        for state in states {
+            let slot = StateSlot::new(self.states.len());
+            self.state_slots_by_name
+                .entry(state.qualified_name.clone())
+                .or_insert(slot);
+            self.state_slots_by_id.entry(state.id).or_insert(slot);
+            self.states.push(state);
         }
     }
 
     #[must_use]
-    pub fn global_slot(&self, name: &str) -> Option<StateSlot> {
-        self.global_slots.get(name).copied()
+    pub fn state_slot(&self, name: &str) -> Option<StateSlot> {
+        self.state_slots_by_name.get(name).copied()
     }
 
     #[must_use]
-    pub fn global_name(&self, slot: StateSlot) -> Option<&str> {
-        self.global_names.get(slot.get()).map(String::as_str)
+    pub fn state_slot_by_id(&self, id: StateId) -> Option<StateSlot> {
+        self.state_slots_by_id.get(&id).copied()
     }
 
     #[must_use]
-    pub fn global_names(&self) -> &[String] {
-        &self.global_names
+    pub fn state(&self, slot: StateSlot) -> Option<&StateDescriptor> {
+        self.states.get(slot.get())
+    }
+
+    #[must_use]
+    pub fn states(&self) -> &[StateDescriptor] {
+        &self.states
     }
 
     pub fn verify(&self) -> Result<(), verification::VerificationError> {

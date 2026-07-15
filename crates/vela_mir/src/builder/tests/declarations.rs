@@ -20,7 +20,7 @@ use crate::{
 };
 
 const ROOT_FUNCTION: FunctionId = FunctionId::new(9_900);
-const GLOBAL: StateId = StateId::new(9_901);
+const STATE: StateId = StateId::new(9_901);
 const HOST_TYPE_ID: TypeId = TypeId::new(9_902);
 const HOST_RUNTIME_ID: HostTypeId = HostTypeId::new(9_903);
 const HOST_FIELD_ID: FieldId = FieldId::new(9_904);
@@ -109,7 +109,7 @@ fn declaration(graph: &ModuleGraph, name: &str) -> HirDeclId {
         .id
 }
 
-fn insert_global(
+fn insert_state(
     graph: &ModuleGraph,
     targets: &mut CompileTargetSnapshotBuilder,
     declaration: HirDeclId,
@@ -121,10 +121,10 @@ fn insert_global(
         Some(StateStorage::Vm) | None => CompileStateStorage::Vm,
     };
     let origin = MirSourceOrigin::declaration(declaration, metadata.span);
-    targets.insert_global(
+    targets.insert_state(
         declaration,
         CompileStateDescriptor {
-            id: GLOBAL,
+            id: STATE,
             name: format!("declarations::{}", metadata.name),
             storage,
             contract: contract.clone(),
@@ -133,8 +133,8 @@ fn insert_global(
     )?;
     if contract != MirTypeContract::Any {
         targets.insert_guard(
-            CompileGuardKey::Global(declaration),
-            CompileGuardTarget::new(contract, MirGuardLocation::Global, metadata.name.clone()),
+            CompileGuardKey::State(declaration),
+            CompileGuardTarget::new(contract, MirGuardLocation::State, metadata.name.clone()),
             origin,
         )?;
     }
@@ -158,7 +158,7 @@ fn insert_constant(
 }
 
 #[test]
-fn declaration_paths_distinguish_globals_and_scalar_constants_without_read_guards() {
+fn declaration_paths_distinguish_states_and_scalar_constants_without_read_guards() {
     let source = r#"
 state state: i64 = 0
 const STEP = 3
@@ -171,7 +171,7 @@ fn main() {
 }
 "#;
     let program = try_build_declarations(source, |graph, _body, targets| {
-        insert_global(
+        insert_state(
             graph,
             targets,
             declaration(graph, "state"),
@@ -184,7 +184,7 @@ fn main() {
             MirEvaluatedConstant::Scalar(ScalarValue::I64(3)),
         )
     })
-    .expect("global and scalar const paths");
+    .expect("state and scalar const paths");
     let (_, function) = program.functions().next().expect("main function");
     let state_reads = function
         .statements()
@@ -196,16 +196,16 @@ fn main() {
         })
         .collect::<Vec<_>>();
     assert_eq!(state_reads.len(), 2, "{}", program.dump());
-    for (statement, global) in state_reads {
-        assert_eq!(global, GLOBAL);
+    for (statement, state) in state_reads {
+        assert_eq!(state, STATE);
         assert_eq!(statement.effect, MirEffect::state_read());
         assert_eq!(statement.safepoint, None);
         assert_eq!(source_text(source, statement.origin), "state");
         let Some(MirPlace::Temp(temp)) = statement.destination else {
-            panic!("global read needs a temp destination")
+            panic!("state read needs a temp destination")
         };
         assert_eq!(
-            function.temp(temp).expect("global temp").value_type,
+            function.temp(temp).expect("state temp").value_type,
             MirValueType::Primitive(PrimitiveTag::I64)
         );
     }
@@ -241,7 +241,7 @@ fn main() {
 }
 "#;
     let program = try_build_declarations(source, |graph, _body, targets| {
-        insert_global(
+        insert_state(
             graph,
             targets,
             declaration(graph, "counter"),
@@ -261,17 +261,17 @@ fn main() {
     assert_eq!(operations.len(), 3, "{}", program.dump());
     assert!(matches!(
         operations[0],
-        (MirStateOperation::WriteVmState { state: GLOBAL, .. }, effect)
+        (MirStateOperation::WriteVmState { state: STATE, .. }, effect)
             if effect == MirEffect::state_write()
     ));
     assert!(matches!(
         operations[1],
-        (MirStateOperation::ReadVmState { state: GLOBAL }, effect)
+        (MirStateOperation::ReadVmState { state: STATE }, effect)
             if effect == MirEffect::state_read()
     ));
     assert!(matches!(
         operations[2],
-        (MirStateOperation::WriteVmState { state: GLOBAL, .. }, effect)
+        (MirStateOperation::WriteVmState { state: STATE, .. }, effect)
             if effect == MirEffect::state_write()
     ));
 }
@@ -337,7 +337,7 @@ fn main() {
 }
 
 #[test]
-fn imported_and_qualified_const_and_global_paths_share_declaration_lowering() {
+fn imported_and_qualified_const_and_state_paths_share_declaration_lowering() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         SourceId::new(101),
@@ -355,8 +355,8 @@ use game::config::state as imported_state
 fn main() {
     let imported_const = IMPORTED_LIMIT;
     let qualified_const = game::config::LIMIT;
-    let imported_global = imported_state;
-    let qualified_global = game::config::state;
+    let imported_state = imported_state;
+    let qualified_state = game::config::state;
     return qualified_const;
 }
 "#,
@@ -391,7 +391,7 @@ fn main() {
             limit,
             MirEvaluatedConstant::Scalar(ScalarValue::I64(7)),
         )?;
-        insert_global(
+        insert_state(
             graph,
             targets,
             state,
@@ -405,7 +405,7 @@ fn main() {
             .statements()
             .filter(|(_, statement)| matches!(
                 statement.kind,
-                MirStatementKind::State(MirStateOperation::ReadVmState { state: GLOBAL })
+                MirStatementKind::State(MirStateOperation::ReadVmState { state: STATE })
             ))
             .count(),
         2,
@@ -480,7 +480,7 @@ fn state_read_operand_feeds_hostaccess_root_without_name_reresolution() {
             },
             field_origin,
         )?;
-        insert_global(graph, targets, state, MirTypeContract::Host(HOST_TYPE))?;
+        insert_state(graph, targets, state, MirTypeContract::Host(HOST_TYPE))?;
         targets.insert_host_path(
             ROOT_FUNCTION,
             field.receiver,
@@ -508,27 +508,27 @@ fn state_read_operand_feeds_hostaccess_root_without_name_reresolution() {
             field_origin,
         )
     })
-    .expect("global host root");
+    .expect("state host root");
     let (_, function) = program.functions().next().expect("main function");
     let statements = function
         .statements()
         .map(|(_, statement)| statement)
         .collect::<Vec<_>>();
-    let (global_index, global_temp) = statements
+    let (state_index, state_temp) = statements
         .iter()
         .enumerate()
         .find_map(|(index, statement)| {
-            let MirStatementKind::State(MirStateOperation::ReadExternState { state: GLOBAL }) =
+            let MirStatementKind::State(MirStateOperation::ReadExternState { state: STATE }) =
                 statement.kind
             else {
                 return None;
             };
             let Some(MirPlace::Temp(temp)) = statement.destination else {
-                panic!("global read destination")
+                panic!("state read destination")
             };
             Some((index, temp))
         })
-        .expect("global read");
+        .expect("state read");
     let (host_index, root) = statements
         .iter()
         .enumerate()
@@ -539,8 +539,8 @@ fn state_read_operand_feeds_hostaccess_root_without_name_reresolution() {
             _ => None,
         })
         .expect("HostAccess read");
-    assert!(global_index < host_index, "{}", program.dump());
-    assert_eq!(root, MirOperand::Temp(global_temp));
+    assert!(state_index < host_index, "{}", program.dump());
+    assert_eq!(root, MirOperand::Temp(state_temp));
     assert_eq!(
         statements
             .iter()
@@ -548,10 +548,7 @@ fn state_read_operand_feeds_hostaccess_root_without_name_reresolution() {
             .count(),
         1
     );
-    assert_eq!(
-        source_text(source, statements[global_index].origin),
-        "state"
-    );
+    assert_eq!(source_text(source, statements[state_index].origin), "state");
     assert_eq!(
         source_text(source, statements[host_index].origin),
         "state.amount"
@@ -564,7 +561,7 @@ fn declaration_path_rejects_ambiguous_or_kind_incompatible_targets_without_fallb
         "const VALUE = 1\nfn main() { return VALUE; }",
         |graph, _body, targets| {
             let value = declaration(graph, "VALUE");
-            insert_global(graph, targets, value, MirTypeContract::Any)?;
+            insert_state(graph, targets, value, MirTypeContract::Any)?;
             insert_constant(
                 graph,
                 targets,

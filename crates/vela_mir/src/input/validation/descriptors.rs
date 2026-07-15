@@ -17,7 +17,7 @@ pub(super) fn validate(validator: &SnapshotValidator<'_>) -> Result<(), MirBuild
     validate_fields(validator)?;
     validate_functions(validator)?;
     validate_methods(validator)?;
-    validate_globals(validator)?;
+    validate_states(validator)?;
     validate_identity_indexes(validator)?;
     validate_roots(validator)?;
     validate_guards(validator)
@@ -494,31 +494,31 @@ fn validate_script_method_descriptor(
     Ok(())
 }
 
-fn validate_globals(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildError> {
+fn validate_states(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildError> {
     let mut binding_counts = BTreeMap::<StateId, usize>::new();
-    for (declaration, global) in &validator.snapshot.globals {
+    for (declaration, state) in &validator.snapshot.states {
         let origin =
-            validator.retained_origin(&validator.snapshot.origins.global_bindings, declaration);
-        if validator.snapshot.global_by_id(*global).is_none() {
+            validator.retained_origin(&validator.snapshot.origins.state_bindings, declaration);
+        if validator.snapshot.state_by_id(*state).is_none() {
             return Err(validator.error(
                 origin,
                 format!(
-                    "global declaration {declaration:?} references missing global #{}",
-                    global.get()
+                    "state declaration {declaration:?} references missing state #{}",
+                    state.get()
                 ),
             ));
         }
-        *binding_counts.entry(*global).or_default() += 1;
+        *binding_counts.entry(*state).or_default() += 1;
     }
-    for (global, descriptor) in validator.snapshot.target_table().globals() {
+    for (state, descriptor) in validator.snapshot.target_table().states() {
         let origin =
-            validator.retained_origin(&validator.snapshot.origins.global_descriptors, &global);
-        if descriptor.id != global || binding_counts.get(&global) != Some(&1) {
+            validator.retained_origin(&validator.snapshot.origins.state_descriptors, &state);
+        if descriptor.id != state || binding_counts.get(&state) != Some(&1) {
             return Err(validator.error(
                 origin,
                 format!(
-                    "global #{} does not have one exact declaration binding",
-                    global.get()
+                    "state #{} does not have one exact declaration binding",
+                    state.get()
                 ),
             ));
         }
@@ -526,7 +526,7 @@ fn validate_globals(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildErr
             validator,
             &descriptor.contract,
             origin,
-            &format!("global #{} contract", global.get()),
+            &format!("state #{} contract", state.get()),
         )?;
     }
     Ok(())
@@ -649,10 +649,10 @@ fn validate_guards(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildErro
                 .signature
                 .return_contract
                 .as_ref(),
-            CompileGuardKey::Global(declaration) => validator
+            CompileGuardKey::State(declaration) => validator
                 .snapshot
-                .global(declaration)
-                .map(|global| &global.contract),
+                .state(declaration)
+                .map(|state| &state.contract),
             CompileGuardKey::Field(field) => validator
                 .snapshot
                 .field_descriptor(field)
@@ -691,7 +691,7 @@ fn validate_guard_context(
             guard.context.location == MirGuardLocation::Parameter { index: parameter }
         }
         CompileGuardKey::Return(_) => guard.context.location == MirGuardLocation::Return,
-        CompileGuardKey::Global(_) => guard.context.location == MirGuardLocation::Global,
+        CompileGuardKey::State(_) => guard.context.location == MirGuardLocation::State,
         CompileGuardKey::Field(_) => guard.context.location == MirGuardLocation::Field,
     };
     if valid {
@@ -757,19 +757,19 @@ fn validate_required_guards(validator: &SnapshotValidator<'_>) -> Result<(), Mir
             validator.retained_origin(&validator.snapshot.origins.field_descriptors, &field);
         require_guard(validator, CompileGuardKey::Field(field), contract, origin)?;
     }
-    for (declaration, global) in &validator.snapshot.globals {
+    for (declaration, state) in &validator.snapshot.states {
         let descriptor = validator
             .snapshot
-            .global_by_id(*global)
-            .expect("validated global binding");
+            .state_by_id(*state)
+            .expect("validated state binding");
         let Some(contract) = meaningful(Some(&descriptor.contract)) else {
             continue;
         };
         let origin =
-            validator.retained_origin(&validator.snapshot.origins.global_bindings, declaration);
+            validator.retained_origin(&validator.snapshot.origins.state_bindings, declaration);
         require_guard(
             validator,
-            CompileGuardKey::Global(*declaration),
+            CompileGuardKey::State(*declaration),
             contract,
             origin,
         )?;

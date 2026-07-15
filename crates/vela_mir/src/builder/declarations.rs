@@ -19,7 +19,7 @@ impl FunctionBuilder<'_> {
             self.input.graph().declaration(declaration).ok_or_else(|| {
                 self.inconsistent(origin, "declaration path has no HIR declaration")
             })?;
-        let state = self.input.targets().global(declaration);
+        let state = self.input.targets().state(declaration);
         let constant = self.input.targets().evaluated_constant(declaration);
         if state.is_some() && constant.is_some() {
             return Err(self.inconsistent(

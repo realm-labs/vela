@@ -156,7 +156,7 @@ fn main() {
         .expect("qualified record pattern");
     let script_function_symbols = semantic.function_symbols();
     let type_symbols = semantic.type_symbols();
-    let global_symbols = semantic.global_symbols();
+    let state_symbols = semantic.state_symbols();
     let evaluated_constants = semantic.evaluated_constants().expect("module constants");
     let schema_defaults = semantic
         .schema_defaults(&type_symbols, &evaluated_constants)
@@ -168,7 +168,7 @@ fn main() {
         script_function_symbols: &script_function_symbols,
         script_methods: semantic.script_method_catalog(),
         type_symbols: &type_symbols,
-        global_symbols: &global_symbols,
+        state_symbols: &state_symbols,
         evaluated_constants: &evaluated_constants,
         schema_defaults: &schema_defaults,
         options: &options,
@@ -259,7 +259,7 @@ fn prepare_modules(sources: &[ModuleSource]) -> PreparedSemanticInput {
     let semantic = SemanticCompilation::new(&built).expect("semantic compilation");
     let script_function_symbols = semantic.function_symbols();
     let type_symbols = semantic.type_symbols();
-    let global_symbols = semantic.global_symbols();
+    let state_symbols = semantic.state_symbols();
     let evaluated_constants = semantic.evaluated_constants().expect("module constants");
     let schema_defaults = semantic
         .schema_defaults(&type_symbols, &evaluated_constants)
@@ -271,7 +271,7 @@ fn prepare_modules(sources: &[ModuleSource]) -> PreparedSemanticInput {
         script_function_symbols: &script_function_symbols,
         script_methods: semantic.script_method_catalog(),
         type_symbols: &type_symbols,
-        global_symbols: &global_symbols,
+        state_symbols: &state_symbols,
         evaluated_constants: &evaluated_constants,
         schema_defaults: &schema_defaults,
         options: &options,

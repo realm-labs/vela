@@ -248,7 +248,7 @@ pub enum MirGuardLocation {
     Parameter { index: u32 },
     Return,
     Local,
-    Global,
+    State,
     Field,
 }
 

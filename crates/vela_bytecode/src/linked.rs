@@ -76,6 +76,7 @@ pub struct LinkedProgram {
     method_dispatches: Vec<LinkedMethodDispatch>,
     types: Vec<LinkedType>,
     variants: Vec<LinkedVariant>,
+    states: Vec<crate::LinkedStateDescriptor>,
     functions: Vec<LinkedCodeObject>,
     entry_points: BTreeMap<DebugNameId, ScriptFunctionHandle>,
     entry_points_by_id: BTreeMap<FunctionId, ScriptFunctionHandle>,
@@ -239,6 +240,20 @@ impl LinkedProgram {
             .iter()
             .enumerate()
             .map(|(index, variant)| (VariantHandle::new(index), variant))
+    }
+
+    pub(crate) fn push_state(&mut self, state: crate::LinkedStateDescriptor) {
+        self.states.push(state);
+    }
+
+    #[must_use]
+    pub fn state(&self, slot: StateSlot) -> Option<&crate::LinkedStateDescriptor> {
+        self.states.get(slot.get())
+    }
+
+    #[must_use]
+    pub fn states(&self) -> &[crate::LinkedStateDescriptor] {
+        &self.states
     }
 
     pub fn push_function(&mut self, function: LinkedCodeObject) -> ScriptFunctionHandle {
@@ -506,7 +521,7 @@ pub enum GuardLocation {
     Parameter { index: u16 },
     Return,
     Local,
-    Global,
+    State,
     Field,
 }
 
@@ -1218,9 +1233,9 @@ mod tests {
     }
 
     #[test]
-    fn linked_field_and_global_instructions_use_slots() {
+    fn linked_field_and_state_instructions_use_slots() {
         let mut program = LinkedProgram::new();
-        let global_name = program.intern_debug_name("main::score");
+        let state_name = program.intern_debug_name("main::score");
         let score_name = program.intern_debug_name("score");
         let score_slot = FieldSlot::new(7);
         let player_type = TypeHandle::new(1);
@@ -1237,10 +1252,10 @@ mod tests {
             enum_ty: player_type,
             variant,
         };
-        let global = InstructionKind::LoadExternState {
+        let state = InstructionKind::LoadExternState {
             dst: Register(3),
             slot: StateSlot::new(5),
-            debug_name: global_name,
+            debug_name: state_name,
             cache_site: None,
         };
 
@@ -1258,12 +1273,12 @@ mod tests {
             } if enum_ty == player_type && id == variant
         ));
         assert!(matches!(
-            global,
+            state,
             InstructionKind::LoadExternState {
                 slot,
                 debug_name,
                 ..
-            } if slot == StateSlot::new(5) && debug_name == global_name
+            } if slot == StateSlot::new(5) && debug_name == state_name
         ));
     }
 

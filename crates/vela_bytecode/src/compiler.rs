@@ -23,16 +23,17 @@ use vela_common::SourceId;
 use vela_common::Span;
 use vela_common::{Capability, CapabilitySet};
 use vela_hir::ids::HirDeclId;
-use vela_hir::module_graph::ModuleGraph;
 #[cfg(test)]
 use vela_hir::module_graph::ModuleSource;
+use vela_hir::module_graph::{ModuleGraph, Visibility};
 use vela_hir::source_ingestion::{HirSourceFunction, HirSourceSet, HirSourceSetKind};
+use vela_mir::CompileStateStorage;
 use vela_package::PackageId;
 use vela_registry::RegistryCompileView;
 
 #[cfg(test)]
 use crate::{Constant, UnlinkedTypeGuardPlan};
-use crate::{UnlinkedCodeObject, UnlinkedProgram};
+use crate::{StateDescriptor, StateStorage, StateVisibility, UnlinkedCodeObject, UnlinkedProgram};
 use error::{CompilationRequestError, CompileError, CompileErrorKind, CompileResult};
 use options::CompilerOptions;
 use semantic::SemanticCompilation;
@@ -157,7 +158,7 @@ pub fn compile_function(
     let semantic = SemanticCompilation::new(sources)?;
     let script_function_symbols = semantic.function_symbols();
     let type_symbols = semantic.type_symbols();
-    let global_symbols = semantic.global_symbols();
+    let state_symbols = semantic.state_symbols();
     let evaluated_constants = semantic.evaluated_constants()?;
     let schema_defaults = semantic.schema_defaults(&type_symbols, &evaluated_constants)?;
     let input = semantic_input::prepare_semantic_input(semantic_input::SemanticInputRequest {
@@ -166,7 +167,7 @@ pub fn compile_function(
         script_function_symbols: &script_function_symbols,
         script_methods: semantic.script_method_catalog(),
         type_symbols: &type_symbols,
-        global_symbols: &global_symbols,
+        state_symbols: &state_symbols,
         evaluated_constants: &evaluated_constants,
         schema_defaults: &schema_defaults,
         options: request.options,
@@ -212,7 +213,7 @@ fn compile_program_inner(
     let semantic = SemanticCompilation::new(sources)?;
     let script_function_symbols = semantic.function_symbols();
     let type_symbols = semantic.type_symbols();
-    let global_symbols = semantic.global_symbols();
+    let state_symbols = semantic.state_symbols();
     let evaluated_constants = semantic.evaluated_constants()?;
     let schema_defaults = semantic.schema_defaults(&type_symbols, &evaluated_constants)?;
     let methods = semantic
@@ -227,7 +228,7 @@ fn compile_program_inner(
         script_function_symbols: &script_function_symbols,
         script_methods: semantic.script_method_catalog(),
         type_symbols: &type_symbols,
-        global_symbols: &global_symbols,
+        state_symbols: &state_symbols,
         evaluated_constants: &evaluated_constants,
         schema_defaults: &schema_defaults,
         options,
@@ -235,7 +236,7 @@ fn compile_program_inner(
     })?;
 
     let mut program = UnlinkedProgram::new();
-    program.set_global_layout(global_names(&global_symbols));
+    program.set_states(state_descriptors(graph, &input, &state_symbols)?);
     let (mut code, verified_mir) = compile_mir_roots(&input, graph)?;
     let mir_executables = compiled_mir_executables(&verified_mir);
     attach_compiled_mir_identities(&mut code, &mir_executables);
@@ -608,13 +609,43 @@ fn mir_backend_compile_error(
     .with_span(origin.span)
 }
 
-fn global_names(global_symbols: &BTreeMap<HirDeclId, String>) -> Vec<String> {
-    global_symbols
-        .values()
-        .cloned()
-        .collect::<BTreeSet<_>>()
-        .into_iter()
-        .collect()
+fn state_descriptors(
+    graph: &ModuleGraph,
+    input: &semantic_input::PreparedSemanticInput,
+    state_symbols: &BTreeMap<HirDeclId, String>,
+) -> CompileResult<Vec<StateDescriptor>> {
+    let mut descriptors = state_symbols
+        .iter()
+        .map(|(declaration, symbol)| {
+            let metadata = graph.declaration(*declaration).ok_or_else(|| {
+                CompileError::new(CompileErrorKind::RegistrySnapshot(format!(
+                    "missing HIR declaration for state `{symbol}`"
+                )))
+            })?;
+            let target = input.targets().state(*declaration).ok_or_else(|| {
+                CompileError::new(CompileErrorKind::RegistrySnapshot(format!(
+                    "missing state target for `{symbol}`"
+                )))
+            })?;
+            Ok(StateDescriptor {
+                id: target.id,
+                qualified_name: symbol.clone(),
+                visibility: match metadata.visibility {
+                    Visibility::Private => StateVisibility::Private,
+                    Visibility::Public => StateVisibility::Public,
+                },
+                storage: match target.storage {
+                    CompileStateStorage::Vm => StateStorage::Vm,
+                    CompileStateStorage::Extern => StateStorage::Extern,
+                },
+                type_contract: target.contract.clone(),
+                initializer: None,
+                source_span: Some(metadata.span),
+            })
+        })
+        .collect::<CompileResult<Vec<_>>>()?;
+    descriptors.sort_by(|left, right| left.qualified_name.cmp(&right.qualified_name));
+    Ok(descriptors)
 }
 
 fn verify_program(program: UnlinkedProgram) -> CompileResult<UnlinkedProgram> {

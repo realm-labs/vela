@@ -149,7 +149,7 @@ pub struct CompileTargetSnapshot {
     pattern_constructors: BTreeMap<(FunctionId, HirPatternId), CompilePatternConstructorTarget>,
     host_paths: BTreeMap<(FunctionId, HirExprId), CompileHostPathTarget>,
     try_targets: BTreeMap<(FunctionId, HirExprId), CompileTryTarget>,
-    globals: BTreeMap<HirDeclId, StateId>,
+    states: BTreeMap<HirDeclId, StateId>,
     evaluated_constants: BTreeMap<HirDeclId, MirEvaluatedConstant>,
     evaluated_schema_defaults: BTreeMap<HirBodyId, MirEvaluatedConstant>,
     targets: MirTargetTable,
@@ -173,15 +173,15 @@ impl CompileTargetSnapshot {
     }
 
     #[must_use]
-    pub fn global(&self, declaration: HirDeclId) -> Option<&CompileStateTarget> {
-        self.globals
+    pub fn state(&self, declaration: HirDeclId) -> Option<&CompileStateTarget> {
+        self.states
             .get(&declaration)
-            .and_then(|id| self.targets.global(*id))
+            .and_then(|id| self.targets.state(*id))
     }
 
     #[must_use]
-    pub fn global_by_id(&self, id: StateId) -> Option<&CompileStateTarget> {
-        self.targets.global(id)
+    pub fn state_by_id(&self, id: StateId) -> Option<&CompileStateTarget> {
+        self.targets.state(id)
     }
 
     #[must_use]
@@ -261,29 +261,29 @@ impl CompileTargetSnapshotBuilder {
         }
     }
 
-    pub fn insert_global(
+    pub fn insert_state(
         &mut self,
         declaration: HirDeclId,
         target: CompileStateTarget,
         origin: MirSourceOrigin,
     ) -> Result<(), MirBuildError> {
-        if self.snapshot.globals.contains_key(&declaration) {
-            return Err(MirBuildError::DuplicateGlobalTarget {
+        if self.snapshot.states.contains_key(&declaration) {
+            return Err(MirBuildError::DuplicateStateTarget {
                 declaration,
                 origin,
             });
         }
-        if !self.snapshot.targets.insert_global(target.clone()) {
-            return Err(duplicate_descriptor("global", target.id.get(), origin));
+        if !self.snapshot.targets.insert_state(target.clone()) {
+            return Err(duplicate_descriptor("state", target.id.get(), origin));
         }
         self.snapshot
             .origins
-            .global_descriptors
+            .state_descriptors
             .insert(target.id, origin);
-        self.snapshot.globals.insert(declaration, target.id);
+        self.snapshot.states.insert(declaration, target.id);
         self.snapshot
             .origins
-            .global_bindings
+            .state_bindings
             .insert(declaration, origin);
         Ok(())
     }
@@ -680,7 +680,7 @@ pub enum MirBuildError {
         pattern: HirPatternId,
         origin: MirSourceOrigin,
     },
-    DuplicateGlobalTarget {
+    DuplicateStateTarget {
         declaration: HirDeclId,
         origin: MirSourceOrigin,
     },
@@ -828,8 +828,8 @@ impl fmt::Display for MirBuildError {
                     "duplicate constructor target for function {function:?} at {pattern:?}"
                 )
             }
-            Self::DuplicateGlobalTarget { declaration, .. } => {
-                write!(formatter, "duplicate global target for {declaration:?}")
+            Self::DuplicateStateTarget { declaration, .. } => {
+                write!(formatter, "duplicate state target for {declaration:?}")
             }
             Self::DuplicateEvaluatedConstant { declaration, .. } => {
                 write!(
@@ -960,7 +960,7 @@ impl MirBuildError {
             | Self::DuplicateFunctionTarget { origin, .. }
             | Self::DuplicateCompileTarget { origin, .. }
             | Self::DuplicatePatternConstructor { origin, .. }
-            | Self::DuplicateGlobalTarget { origin, .. }
+            | Self::DuplicateStateTarget { origin, .. }
             | Self::DuplicateEvaluatedConstant { origin, .. }
             | Self::DuplicateEvaluatedSchemaDefault { origin, .. }
             | Self::DuplicateGuardTarget { origin, .. }

@@ -58,7 +58,7 @@ pub(super) struct SemanticInputRequest<'graph, 'methods, 'registry> {
     pub(super) script_function_symbols: &'graph BTreeMap<HirDeclId, String>,
     pub(super) script_methods: &'methods ScriptMethodCatalog,
     pub(super) type_symbols: &'graph BTreeMap<HirDeclId, String>,
-    pub(super) global_symbols: &'graph BTreeMap<HirDeclId, String>,
+    pub(super) state_symbols: &'graph BTreeMap<HirDeclId, String>,
     pub(super) evaluated_constants: &'graph BTreeMap<HirDeclId, MirEvaluatedConstant>,
     pub(super) schema_defaults: &'graph EvaluatedSchemaDefaults,
     pub(super) options: &'graph CompilerOptions,
@@ -120,7 +120,6 @@ impl PreparedSemanticInput {
         &self.analysis
     }
 
-    #[cfg(test)]
     pub(super) const fn targets(&self) -> &CompileTargetSnapshot {
         &self.targets
     }
@@ -219,7 +218,7 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
             script_function_symbols: request.script_function_symbols,
             script_methods: request.script_methods,
             type_symbols: request.type_symbols,
-            global_symbols: request.global_symbols,
+            state_symbols: request.state_symbols,
             evaluated_constants: request.evaluated_constants,
             schema_defaults: request.schema_defaults,
             options: request.options,

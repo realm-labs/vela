@@ -232,7 +232,7 @@ pub struct MirTargetTable {
     types: BTreeMap<TypeId, CompileTypeDescriptor>,
     variants: BTreeMap<VariantId, CompileVariantDescriptor>,
     fields: BTreeMap<FieldId, CompileFieldDescriptor>,
-    globals: BTreeMap<StateId, CompileStateDescriptor>,
+    states: BTreeMap<StateId, CompileStateDescriptor>,
 }
 
 impl MirTargetTable {
@@ -262,8 +262,8 @@ impl MirTargetTable {
     }
 
     #[must_use]
-    pub fn global(&self, id: StateId) -> Option<&CompileStateDescriptor> {
-        self.globals.get(&id)
+    pub fn state(&self, id: StateId) -> Option<&CompileStateDescriptor> {
+        self.states.get(&id)
     }
 
     pub fn functions(&self) -> impl Iterator<Item = (FunctionId, &CompileFunctionDescriptor)> {
@@ -288,8 +288,8 @@ impl MirTargetTable {
         self.fields.iter().map(|(id, value)| (*id, value))
     }
 
-    pub fn globals(&self) -> impl Iterator<Item = (StateId, &CompileStateDescriptor)> {
-        self.globals.iter().map(|(id, value)| (*id, value))
+    pub fn states(&self) -> impl Iterator<Item = (StateId, &CompileStateDescriptor)> {
+        self.states.iter().map(|(id, value)| (*id, value))
     }
 
     pub(crate) fn insert_function(&mut self, value: CompileFunctionDescriptor) -> bool {
@@ -318,8 +318,8 @@ impl MirTargetTable {
         insert_unique(&mut self.fields, value.id, value)
     }
 
-    pub(crate) fn insert_global(&mut self, value: CompileStateDescriptor) -> bool {
-        insert_unique(&mut self.globals, value.id, value)
+    pub(crate) fn insert_state(&mut self, value: CompileStateDescriptor) -> bool {
+        insert_unique(&mut self.states, value.id, value)
     }
 }
 

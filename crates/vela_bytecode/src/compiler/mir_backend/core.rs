@@ -454,19 +454,19 @@ impl<'a> FunctionBackend<'a> {
                 let target = self
                     .program
                     .targets()
-                    .global(state)
+                    .state(state)
                     .ok_or(MirBackendError::MissingTarget("state"))?;
                 let instruction = match operation {
                     MirStateOperation::ReadVmState { .. } => UnlinkedInstructionKind::LoadState {
                         dst: dst.ok_or(MirBackendError::MissingDestination)?,
                         state: target.name.clone(),
-                        slot: self.global_slot(state),
+                        slot: self.state_slot(state),
                         cache_site: None,
                     },
                     MirStateOperation::WriteVmState { value, .. } => {
                         UnlinkedInstructionKind::StoreState {
                             state: target.name.clone(),
-                            slot: self.global_slot(state),
+                            slot: self.state_slot(state),
                             src: self.operand(value, span)?,
                         }
                     }
@@ -474,7 +474,7 @@ impl<'a> FunctionBackend<'a> {
                         UnlinkedInstructionKind::LoadExternState {
                             dst: dst.ok_or(MirBackendError::MissingDestination)?,
                             state: target.name.clone(),
-                            slot: self.global_slot(state),
+                            slot: self.state_slot(state),
                             cache_site: None,
                         }
                     }

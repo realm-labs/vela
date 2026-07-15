@@ -169,7 +169,7 @@ fn prepare_source_inner(
     let script_function_symbols = semantic.function_symbols();
     let script_methods = semantic.script_method_catalog();
     let type_symbols = semantic.type_symbols();
-    let global_symbols = semantic.global_symbols();
+    let state_symbols = semantic.state_symbols();
     let evaluated_constants = semantic.evaluated_constants()?;
     let schema_defaults = semantic.schema_defaults(&type_symbols, &evaluated_constants)?;
     let options = CompilerOptions::default();
@@ -179,7 +179,7 @@ fn prepare_source_inner(
         script_function_symbols: &script_function_symbols,
         script_methods,
         type_symbols: &type_symbols,
-        global_symbols: &global_symbols,
+        state_symbols: &state_symbols,
         evaluated_constants: &evaluated_constants,
         schema_defaults: &schema_defaults,
         options: &options,

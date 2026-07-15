@@ -248,7 +248,7 @@ impl FunctionBuilder<'_> {
                         let descriptor = self
                             .input
                             .targets()
-                            .global(*declaration)
+                            .state(*declaration)
                             .cloned()
                             .ok_or_else(|| {
                                 self.inconsistent(

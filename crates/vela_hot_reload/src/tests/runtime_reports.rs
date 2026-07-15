@@ -296,17 +296,17 @@ fn main() {
         "helper"
     );
     assert_eq!(
-        version.program_image().global_slot("main::state"),
+        version.program_image().state_slot("main::state"),
         Some(vela_common::StateSlot::new(0))
     );
 }
 
 #[test]
-fn program_version_preserves_global_layout() {
+fn program_version_preserves_state_layout() {
     let version = compile_initial(
         SourceId::new(1),
         r#"
-global state: Player;
+extern state state: Player;
 
 fn main() {
     return 1;
@@ -315,13 +315,10 @@ fn main() {
     )
     .expect("compile initial");
 
-    assert_eq!(version.global_names(), ["main::state".to_owned()]);
-    assert_eq!(
-        version.program_image().global_names(),
-        version.global_names()
-    );
+    assert_eq!(version.states()[0].qualified_name, "main::state");
+    assert_eq!(version.program_image().states(), version.states());
     assert!(
-        version.program_image().global_slot("main::state").is_some(),
+        version.program_image().state_slot("main::state").is_some(),
         "program image should keep global slot metadata"
     );
 }
@@ -338,7 +335,7 @@ fn hot_reload_rebuilds_program_image_for_next_version() {
         &old,
         SourceId::new(2),
         r#"
-global state: Player;
+extern state state: Player;
 
 fn helper() {
     return 5;
@@ -357,7 +354,7 @@ fn main() {
     assert!(old.program_image().function_index("helper").is_none());
     assert!(new.program_image().function_index("helper").is_some());
     assert_eq!(
-        new.program_image().global_slot("main::state"),
+        new.program_image().state_slot("main::state"),
         Some(vela_common::StateSlot::new(0))
     );
 }
@@ -400,18 +397,18 @@ fn main() {
 }
 
 #[test]
-fn hot_reload_rebuilds_global_layout_for_next_version() {
+fn hot_reload_rebuilds_state_layout_for_next_version() {
     let initial =
         compile_initial(SourceId::new(1), "fn main() { return 20; }").expect("compile initial");
     let mut runtime = HotReloadRuntime::new(initial);
     let old = runtime.current();
-    assert!(old.global_names().is_empty());
+    assert!(old.states().is_empty());
 
     let update = compile_update(
         &old,
         SourceId::new(2),
         r#"
-global state: Player;
+extern state state: Player;
 
 fn main() {
     return 30;
@@ -425,9 +422,9 @@ fn main() {
 
     assert_eq!(old.id, ProgramVersionId(0));
     assert_eq!(new.id, ProgramVersionId(1));
-    assert_eq!(new.global_names(), ["main::state".to_owned()]);
+    assert_eq!(new.states()[0].qualified_name, "main::state");
     assert!(
-        new.program_image().global_slot("main::state").is_some(),
+        new.program_image().state_slot("main::state").is_some(),
         "new program image should keep global slot metadata"
     );
 }

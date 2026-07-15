@@ -495,24 +495,24 @@ fn mir_verifier_checks_every_referenced_identity_family() {
         MirVerifyErrorKind::MissingGuard(_)
     ));
 
-    let mut global = function();
-    let destination = global.add_synthetic_local(MirValueType::Dynamic, origin());
-    let global_id = StateId::new(91);
-    global
+    let mut state = function();
+    let destination = state.add_synthetic_local(MirValueType::Dynamic, origin());
+    let state_id = StateId::new(91);
+    state
         .append_statement(
-            global.entry_block(),
+            state.entry_block(),
             MirStatement::new(
                 origin(),
                 Some(MirPlace::local(destination)),
-                MirStatementKind::State(MirStateOperation::ReadVmState { state: global_id }),
+                MirStatementKind::State(MirStateOperation::ReadVmState { state: state_id }),
                 MirEffect::state_read(),
                 None,
             ),
         )
-        .expect("global statement");
-    global
+        .expect("state statement");
+    state
         .set_terminator(
-            global.entry_block(),
+            state.entry_block(),
             MirTerminator::new(
                 origin(),
                 MirTerminatorKind::Return(None),
@@ -522,8 +522,8 @@ fn mir_verifier_checks_every_referenced_identity_family() {
         )
         .expect("return");
     assert_eq!(
-        verify_error(&program(global)).into_kind(),
-        MirVerifyErrorKind::MissingTarget(MirVerifyTarget::Global(global_id))
+        verify_error(&program(state)).into_kind(),
+        MirVerifyErrorKind::MissingTarget(MirVerifyTarget::State(state_id))
     );
 }
 

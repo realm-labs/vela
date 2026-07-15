@@ -57,8 +57,8 @@ impl ProgramVersion {
     }
 
     #[must_use]
-    pub fn global_names(&self) -> &[String] {
-        self.artifact.image().global_names()
+    pub fn states(&self) -> &[vela_bytecode::StateDescriptor] {
+        self.artifact.image().states()
     }
 
     #[must_use]

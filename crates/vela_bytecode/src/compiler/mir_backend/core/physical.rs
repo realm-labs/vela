@@ -63,18 +63,18 @@ impl<'a> FunctionBackend<'a> {
         Ok(register)
     }
 
-    pub(super) fn global_slot(&self, global: vela_def::StateId) -> Option<vela_common::StateSlot> {
-        let mut globals = self
+    pub(super) fn state_slot(&self, state: vela_def::StateId) -> Option<vela_common::StateSlot> {
+        let mut states = self
             .program
             .targets()
-            .globals()
+            .states()
             .map(|(id, descriptor)| (id, descriptor.name.as_str()))
             .collect::<Vec<_>>();
-        globals.sort_by(|left, right| left.1.cmp(right.1));
-        globals
+        states.sort_by(|left, right| left.1.cmp(right.1));
+        states
             .into_iter()
             .map(|(id, _)| id)
-            .position(|id| id == global)
+            .position(|id| id == state)
             .map(vela_common::StateSlot::new)
     }
 

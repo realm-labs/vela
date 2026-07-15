@@ -389,7 +389,7 @@ fn linker_rejects_script_call_with_matching_name_and_wrong_id() {
 }
 
 #[test]
-fn linker_maps_globals_map_keys_and_field_slots_without_instruction_names() {
+fn linker_maps_states_map_keys_and_field_slots_without_instruction_names() {
     let mut code = UnlinkedCodeObject::new("main", 4);
     code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(1)));
     code.push_instruction(UnlinkedInstruction::new(
@@ -434,12 +434,15 @@ fn linker_maps_globals_map_keys_and_field_slots_without_instruction_names() {
         },
     ));
     let mut program = UnlinkedProgram::new();
-    program.set_global_layout(["main::state".to_owned()]);
+    program.set_states([crate::StateDescriptor::test_extern(
+        vela_def::StateId::new(1),
+        "main::state",
+    )]);
     program.insert_function(code);
 
     let linked = Linker::new()
         .link_test_program(&program)
-        .expect("global and field slots should link");
+        .expect("state and field slots should link");
     let main = linked
         .functions()
         .find(|(_, code)| linked.debug_name(code.debug_name) == "main")

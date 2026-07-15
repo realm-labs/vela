@@ -176,7 +176,7 @@ pub enum Damage { Physical { amount: i64 } }
 }
 
 #[test]
-fn compiler_lowers_imported_global_roots_to_qualified_host_globals() {
+fn compiler_lowers_imported_state_roots_to_qualified_host_states() {
     let mut registry = vela_registry::DefinitionRegistry::new();
     let player = registry
         .register_type(
@@ -218,13 +218,13 @@ pub extern state state: Player;
         ],
         registry.compile_view(),
     )
-    .expect("imported global root should compile");
+    .expect("imported state root should compile");
     let main = program
         .function("game::main::main")
         .expect("qualified main function");
     let slot = program
-        .global_slot("game::state::state")
-        .expect("global slot should be assigned");
+        .state_slot("game::state::state")
+        .expect("state slot should be assigned");
     assert!(main.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
         UnlinkedInstructionKind::LoadExternState { state, slot: Some(actual), .. }

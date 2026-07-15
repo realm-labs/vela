@@ -127,7 +127,7 @@ pub enum CompileGuardKey {
         parameter: u32,
     },
     Return(FunctionId),
-    Global(HirDeclId),
+    State(HirDeclId),
     Field(FieldId),
 }
 
@@ -257,8 +257,8 @@ impl<'a> CompileFunctionTargets<'a> {
     }
 
     #[must_use]
-    pub fn global_guard(self, declaration: HirDeclId) -> Option<&'a CompileGuardTarget> {
-        self.snapshot.guard(CompileGuardKey::Global(declaration))
+    pub fn state_guard(self, declaration: HirDeclId) -> Option<&'a CompileGuardTarget> {
+        self.snapshot.guard(CompileGuardKey::State(declaration))
     }
 
     #[must_use]
@@ -267,13 +267,13 @@ impl<'a> CompileFunctionTargets<'a> {
     }
 
     #[must_use]
-    pub fn global(self, declaration: HirDeclId) -> Option<&'a CompileStateDescriptor> {
-        self.snapshot.global(declaration)
+    pub fn state(self, declaration: HirDeclId) -> Option<&'a CompileStateDescriptor> {
+        self.snapshot.state(declaration)
     }
 
     #[must_use]
-    pub fn global_by_id(self, id: StateId) -> Option<&'a CompileStateDescriptor> {
-        self.snapshot.global_by_id(id)
+    pub fn state_by_id(self, id: StateId) -> Option<&'a CompileStateDescriptor> {
+        self.snapshot.state_by_id(id)
     }
 
     #[must_use]

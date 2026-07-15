@@ -207,7 +207,7 @@ pub enum MirVerifyTarget {
     Type(TypeId),
     Variant(VariantId),
     Field(FieldId),
-    Global(StateId),
+    State(StateId),
     MirFunction(MirFunctionId),
 }
 

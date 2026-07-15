@@ -52,8 +52,8 @@ fn state_read_inline_cache_is_runtime_local_and_site_indexed() {
         .compile_source_with_id(
             SourceId::new(1),
             r#"
-global first: i64;
-global second: i64;
+state first: i64 = 0;
+state second: i64 = 0;
 
 fn read_first() {
     return first;
@@ -66,10 +66,10 @@ fn read_second() {
         )
         .expect("program should compile");
     let first_slot = program
-        .global_slot("main::first")
+        .state_slot("main::first")
         .expect("first global should have slot");
     let second_slot = program
-        .global_slot("main::second")
+        .state_slot("main::second")
         .expect("second global should have slot");
 
     let mut runtime = Runtime::new(engine, program);
@@ -242,15 +242,15 @@ fn read_value() {
         )
         .expect("initial hot reload source should compile");
     let first_slot = initial
-        .global_names()
+        .states()
         .iter()
-        .position(|name| name == "main::first")
+        .position(|state| state.qualified_name == "main::first")
         .map(StateSlot)
         .expect("first global should have a slot");
     let second_slot = initial
-        .global_names()
+        .states()
         .iter()
-        .position(|name| name == "main::second")
+        .position(|state| state.qualified_name == "main::second")
         .map(StateSlot)
         .expect("second global should have a slot");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
@@ -262,7 +262,7 @@ fn read_value() {
         .cache_sites
         .sites()
         .iter()
-        .find(|site| site.kind == CacheSiteKind::ExternStateRead)
+        .find(|site| site.kind == CacheSiteKind::StateRead)
         .expect("read_value should have an initial global read site")
         .id;
     runtime
@@ -294,8 +294,8 @@ fn read_value() {
         .compile_hot_reload_update_with_id(
             SourceId::new(2),
             r#"
-global first: i64;
-global second: i64;
+state first: i64 = 0;
+state second: i64 = 0;
 
 fn read_value() {
     return second;
@@ -317,7 +317,7 @@ fn read_value() {
         .cache_sites
         .sites()
         .iter()
-        .find(|site| site.kind == CacheSiteKind::ExternStateRead)
+        .find(|site| site.kind == CacheSiteKind::StateRead)
         .expect("reloaded read_value should have a global read site")
         .id;
     assert_eq!(

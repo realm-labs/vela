@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::fmt;
 
 use vela_registry::DebugNameId;
@@ -76,12 +77,21 @@ pub enum VerificationErrorKind {
     },
     StateSlotOutOfBounds {
         slot: usize,
-        global_count: usize,
+        state_count: usize,
     },
     StateSlotNameMismatch {
         slot: usize,
         expected: String,
         actual: String,
+    },
+    StateStorageMismatch {
+        slot: usize,
+        expected: crate::StateStorage,
+        actual: crate::StateStorage,
+    },
+    InvalidStateDescriptor {
+        slot: usize,
+        detail: String,
     },
     CacheSiteOutOfBounds {
         site: CacheSiteId,
@@ -158,6 +168,9 @@ impl fmt::Display for VerificationError {
 impl std::error::Error for VerificationError {}
 
 pub fn verify_program(program: &UnlinkedProgram) -> Result<(), VerificationError> {
+    verify_state_descriptors(program.states(), |function| {
+        program.function_by_id(function).is_some()
+    })?;
     for function in program.functions() {
         verify_code_object(function)?;
         verify_program_instruction_metadata(program, function)?;
@@ -177,6 +190,9 @@ pub fn verify_program(program: &UnlinkedProgram) -> Result<(), VerificationError
 }
 
 pub fn verify_program_image(image: &ProgramImage) -> Result<(), VerificationError> {
+    verify_state_descriptors(image.states(), |function| {
+        image.function_by_id(function).is_some()
+    })?;
     let closure_scope = ClosureIndexScope::Image {
         function_count: image.function_count(),
     };
@@ -203,48 +219,98 @@ pub fn verify_program_image(image: &ProgramImage) -> Result<(), VerificationErro
     Ok(())
 }
 
+fn verify_state_descriptors(
+    states: &[crate::StateDescriptor],
+    has_initializer: impl Fn(vela_def::FunctionId) -> bool,
+) -> Result<(), VerificationError> {
+    let mut ids = BTreeSet::new();
+    let mut names = BTreeSet::new();
+    for (slot, state) in states.iter().enumerate() {
+        let detail = if state.qualified_name.is_empty() {
+            Some("qualified name is empty".to_owned())
+        } else if !ids.insert(state.id) {
+            Some(format!("duplicate state ID {}", state.id.get()))
+        } else if !names.insert(state.qualified_name.as_str()) {
+            Some(format!(
+                "duplicate qualified name `{}`",
+                state.qualified_name
+            ))
+        } else if state.storage == crate::StateStorage::Extern && state.initializer.is_some() {
+            Some("extern state carries an initializer".to_owned())
+        } else if state
+            .initializer
+            .is_some_and(|function| !has_initializer(function))
+        {
+            Some("initializer function is missing from the program".to_owned())
+        } else {
+            None
+        };
+        if let Some(detail) = detail {
+            return Err(error(
+                "<state descriptor>",
+                None,
+                VerificationErrorKind::InvalidStateDescriptor { slot, detail },
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn verify_program_instruction_metadata(
     program: &UnlinkedProgram,
     code: &UnlinkedCodeObject,
 ) -> Result<(), VerificationError> {
-    let global_count = program.global_names().len();
+    let state_count = program.states().len();
     for (index, instruction) in code.instructions.iter().enumerate() {
-        if let UnlinkedInstructionKind::LoadState {
-            state,
-            slot: Some(slot),
-            ..
-        }
-        | UnlinkedInstructionKind::StoreState {
-            state,
-            slot: Some(slot),
-            ..
-        }
-        | UnlinkedInstructionKind::LoadExternState {
-            state,
-            slot: Some(slot),
-            ..
-        } = &instruction.kind
-        {
-            if slot.get() >= global_count {
+        let target = match &instruction.kind {
+            UnlinkedInstructionKind::LoadState {
+                state,
+                slot: Some(slot),
+                ..
+            }
+            | UnlinkedInstructionKind::StoreState {
+                state,
+                slot: Some(slot),
+                ..
+            } => Some((state, *slot, crate::StateStorage::Vm)),
+            UnlinkedInstructionKind::LoadExternState {
+                state,
+                slot: Some(slot),
+                ..
+            } => Some((state, *slot, crate::StateStorage::Extern)),
+            _ => None,
+        };
+        if let Some((state, slot, expected_storage)) = target {
+            if slot.get() >= state_count {
                 return Err(error(
                     &code.name,
                     Some(index),
                     VerificationErrorKind::StateSlotOutOfBounds {
                         slot: slot.get(),
-                        global_count,
+                        state_count,
                     },
                 ));
             }
-            if let Some(expected) = program.global_name(*slot)
-                && expected != state
-            {
+            let descriptor = program.state(slot).expect("state slot bounds were checked");
+            if descriptor.qualified_name != *state {
                 return Err(error(
                     &code.name,
                     Some(index),
                     VerificationErrorKind::StateSlotNameMismatch {
                         slot: slot.get(),
-                        expected: expected.to_owned(),
+                        expected: descriptor.qualified_name.clone(),
                         actual: state.clone(),
+                    },
+                ));
+            }
+            if descriptor.storage != expected_storage {
+                return Err(error(
+                    &code.name,
+                    Some(index),
+                    VerificationErrorKind::StateStorageMismatch {
+                        slot: slot.get(),
+                        expected: expected_storage,
+                        actual: descriptor.storage,
                     },
                 ));
             }
@@ -260,44 +326,57 @@ fn verify_program_image_instruction_metadata(
     image: &ProgramImage,
     code: &UnlinkedCodeObject,
 ) -> Result<(), VerificationError> {
-    let global_count = image.global_names().len();
+    let state_count = image.states().len();
     for (index, instruction) in code.instructions.iter().enumerate() {
-        if let UnlinkedInstructionKind::LoadState {
-            state,
-            slot: Some(slot),
-            ..
-        }
-        | UnlinkedInstructionKind::StoreState {
-            state,
-            slot: Some(slot),
-            ..
-        }
-        | UnlinkedInstructionKind::LoadExternState {
-            state,
-            slot: Some(slot),
-            ..
-        } = &instruction.kind
-        {
-            if slot.get() >= global_count {
+        let target = match &instruction.kind {
+            UnlinkedInstructionKind::LoadState {
+                state,
+                slot: Some(slot),
+                ..
+            }
+            | UnlinkedInstructionKind::StoreState {
+                state,
+                slot: Some(slot),
+                ..
+            } => Some((state, *slot, crate::StateStorage::Vm)),
+            UnlinkedInstructionKind::LoadExternState {
+                state,
+                slot: Some(slot),
+                ..
+            } => Some((state, *slot, crate::StateStorage::Extern)),
+            _ => None,
+        };
+        if let Some((state, slot, expected_storage)) = target {
+            if slot.get() >= state_count {
                 return Err(error(
                     &code.name,
                     Some(index),
                     VerificationErrorKind::StateSlotOutOfBounds {
                         slot: slot.get(),
-                        global_count,
+                        state_count,
                     },
                 ));
             }
-            if let Some(expected) = image.global_name(*slot)
-                && expected != state
-            {
+            let descriptor = image.state(slot).expect("state slot bounds were checked");
+            if descriptor.qualified_name != *state {
                 return Err(error(
                     &code.name,
                     Some(index),
                     VerificationErrorKind::StateSlotNameMismatch {
                         slot: slot.get(),
-                        expected: expected.to_owned(),
+                        expected: descriptor.qualified_name.clone(),
                         actual: state.clone(),
+                    },
+                ));
+            }
+            if descriptor.storage != expected_storage {
+                return Err(error(
+                    &code.name,
+                    Some(index),
+                    VerificationErrorKind::StateStorageMismatch {
+                        slot: slot.get(),
+                        expected: expected_storage,
+                        actual: descriptor.storage,
                     },
                 ));
             }

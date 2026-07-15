@@ -237,16 +237,26 @@ impl RuntimeScriptGlobalStore {
     }
 
     #[must_use]
-    pub fn with_global_layout(names: &[String]) -> Self {
+    pub fn with_state_layout(states: &[vela_bytecode::StateDescriptor]) -> Self {
         Self {
             heap: ScriptHeap::default(),
-            values: ScriptGlobalValues::with_layout(names),
+            values: ScriptGlobalValues::with_layout(
+                &states
+                    .iter()
+                    .map(|state| state.qualified_name.clone())
+                    .collect::<Vec<_>>(),
+            ),
             retained_values: Arc::new(Mutex::new(RuntimeValueRoots::default())),
         }
     }
 
-    pub fn set_global_layout(&mut self, names: &[String]) {
-        self.values.set_layout(names);
+    pub fn set_state_layout(&mut self, states: &[vela_bytecode::StateDescriptor]) {
+        self.values.set_layout(
+            &states
+                .iter()
+                .map(|state| state.qualified_name.clone())
+                .collect::<Vec<_>>(),
+        );
     }
 
     #[must_use]

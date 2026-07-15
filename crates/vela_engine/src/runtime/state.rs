@@ -36,8 +36,8 @@ impl RuntimeState {
         generations.insert(active_generation, GenerationRuntimeState::for_image(image));
         Self {
             id: next_runtime_id(),
-            globals: RuntimeGlobalStore::with_global_layout(image.global_names()),
-            script_globals: RuntimeScriptGlobalStore::with_global_layout(image.global_names()),
+            globals: RuntimeGlobalStore::with_state_layout(image.states()),
+            script_globals: RuntimeScriptGlobalStore::with_state_layout(image.states()),
             sidecars: RuntimeSidecars {
                 active_generation,
                 generations,
@@ -45,13 +45,13 @@ impl RuntimeState {
         }
     }
 
-    pub(super) fn set_global_layout(&mut self, names: &[String]) {
-        self.globals.set_global_layout(names);
-        self.script_globals.set_global_layout(names);
+    pub(super) fn set_state_layout(&mut self, states: &[vela_bytecode::StateDescriptor]) {
+        self.globals.set_state_layout(states);
+        self.script_globals.set_state_layout(states);
     }
 
     pub(super) fn rebind_to_image(&mut self, image: &RuntimeImage) {
-        self.set_global_layout(image.global_names());
+        self.set_state_layout(image.states());
         let generation = image.linked_program().generation();
         self.sidecars
             .generations

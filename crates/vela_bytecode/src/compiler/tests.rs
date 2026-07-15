@@ -62,6 +62,48 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_vm_state_reads_and_assignments_to_vm_state_opcodes() {
+    let program = compile_test_program(
+        SourceId::new(5),
+        r#"
+state counter: i64 = 1;
+
+fn update() {
+    counter = 3;
+    counter += 2;
+    return counter;
+}
+"#,
+    )
+    .expect("VM state program should compile");
+    let update = program.function("update").expect("update bytecode");
+    let slot = program
+        .state_slot("main::counter")
+        .expect("counter should have a state slot");
+
+    assert!(update.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::LoadState {
+            state,
+            slot: Some(actual),
+            ..
+        } if state == "main::counter" && *actual == slot
+    )));
+    assert!(update.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::StoreState {
+            state,
+            slot: Some(actual),
+            ..
+        } if state == "main::counter" && *actual == slot
+    )));
+    assert!(!update.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::LoadExternState { .. }
+    )));
+}
+
+#[test]
 fn compiler_and_linker_preserve_function_asyncness() {
     let program = compile_test_program(
         SourceId::new(4),
@@ -765,18 +807,18 @@ fn main(player: Player) {
             .map(|instruction| &instruction.kind),
         Some(UnlinkedInstructionKind::SetRecordSlot { .. })
     ));
-    let load_global_site = main
+    let load_state_site = main
         .instructions
         .iter()
         .find_map(|instruction| match &instruction.kind {
             UnlinkedInstructionKind::LoadExternState { cache_site, .. } => *cache_site,
             _ => None,
         })
-        .expect("load global should carry cache site");
+        .expect("load state should carry cache site");
     assert_eq!(
         main.cache_sites
-            .get(load_global_site)
-            .expect("load global cache site should exist")
+            .get(load_state_site)
+            .expect("load state cache site should exist")
             .kind,
         CacheSiteKind::ExternStateRead
     );

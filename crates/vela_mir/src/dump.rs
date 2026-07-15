@@ -38,8 +38,8 @@ impl fmt::Display for MirProgram {
         for (id, target) in self.targets().fields() {
             writeln!(formatter, "  target field#{} {target:?}", id.get())?;
         }
-        for (id, target) in self.targets().globals() {
-            writeln!(formatter, "  target global#{} {target:?}", id.get())?;
+        for (id, target) in self.targets().states() {
+            writeln!(formatter, "  target state#{} {target:?}", id.get())?;
         }
         for (function_id, reservation) in self.reservations() {
             write!(formatter, "  fn {function_id} ")?;
@@ -967,7 +967,7 @@ fn effect(effect: MirEffect) -> String {
         ("alloc", effect.may_allocate),
         ("script-call", effect.script_call),
         ("dynamic-call", effect.dynamic_call),
-        ("global-read", effect.state_read),
+        ("state-read", effect.state_read),
         ("host-read", effect.host_read),
         ("host-write", effect.host_write),
         ("host-call", effect.host_call),

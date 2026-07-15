@@ -31,6 +31,77 @@ fn accepts_valid_code_object() {
 }
 
 #[test]
+fn program_verifier_rejects_state_opcodes_with_the_wrong_storage_class() {
+    for (instruction, descriptor_storage, expected_storage) in [
+        (
+            UnlinkedInstructionKind::LoadState {
+                dst: Register(0),
+                state: "main::value".to_owned(),
+                slot: Some(vela_common::StateSlot::new(0)),
+                cache_site: None,
+            },
+            crate::StateStorage::Extern,
+            crate::StateStorage::Vm,
+        ),
+        (
+            UnlinkedInstructionKind::StoreState {
+                state: "main::value".to_owned(),
+                slot: Some(vela_common::StateSlot::new(0)),
+                src: Register(0),
+            },
+            crate::StateStorage::Extern,
+            crate::StateStorage::Vm,
+        ),
+        (
+            UnlinkedInstructionKind::LoadExternState {
+                dst: Register(0),
+                state: "main::value".to_owned(),
+                slot: Some(vela_common::StateSlot::new(0)),
+                cache_site: None,
+            },
+            crate::StateStorage::Vm,
+            crate::StateStorage::Extern,
+        ),
+    ] {
+        let mut descriptor =
+            crate::StateDescriptor::test_extern(vela_def::StateId::new(1), "main::value");
+        descriptor.storage = descriptor_storage;
+        let mut code = UnlinkedCodeObject::new("main", 1);
+        code.push_instruction(UnlinkedInstruction::new(instruction));
+        code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
+            src: Register(0),
+        }));
+        let mut program = UnlinkedProgram::new();
+        program.set_states([descriptor]);
+        program.insert_function(code);
+
+        assert!(matches!(
+            program.verify().expect_err("storage mismatch").kind,
+            VerificationErrorKind::StateStorageMismatch {
+                slot: 0,
+                expected,
+                actual,
+            } if expected == expected_storage && actual == descriptor_storage
+        ));
+    }
+}
+
+#[test]
+fn program_verifier_rejects_an_extern_state_initializer() {
+    let mut descriptor =
+        crate::StateDescriptor::test_extern(vela_def::StateId::new(1), "main::value");
+    descriptor.initializer = Some(vela_def::FunctionId::new(7));
+    let mut program = UnlinkedProgram::new();
+    program.set_states([descriptor]);
+
+    assert!(matches!(
+        program.verify().expect_err("extern initializer").kind,
+        VerificationErrorKind::InvalidStateDescriptor { slot: 0, detail }
+            if detail.contains("extern state")
+    ));
+}
+
+#[test]
 fn accepts_explicit_await_call_with_resume_successor() {
     let mut code =
         UnlinkedCodeObject::new("main", 1).with_asyncness(vela_common::CallableAsyncness::Async);
@@ -1242,7 +1313,7 @@ fn program_image_verify_rejects_out_of_bounds_closure_function_index() {
     ));
     let image = ProgramImage::from_parts(
         [code],
-        Vec::<String>::new(),
+        Vec::<crate::StateDescriptor>::new(),
         crate::script_methods::ScriptMethodTable::default(),
         None,
     );
@@ -1273,7 +1344,7 @@ fn program_image_verify_rejects_out_of_bounds_cache_site_index() {
     ));
     let image = ProgramImage::from_parts(
         [code],
-        Vec::<String>::new(),
+        Vec::<crate::StateDescriptor>::new(),
         crate::script_methods::ScriptMethodTable::default(),
         None,
     );

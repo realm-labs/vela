@@ -33,17 +33,18 @@ impl RuntimeGlobalStore {
     }
 
     #[must_use]
-    pub fn with_global_layout(names: &[String]) -> Self {
+    pub fn with_state_layout(states: &[vela_bytecode::StateDescriptor]) -> Self {
         let mut store = Self::new();
-        store.set_global_layout(names);
+        store.set_state_layout(states);
         store
     }
 
-    pub fn set_global_layout(&mut self, names: &[String]) {
+    pub fn set_state_layout(&mut self, states: &[vela_bytecode::StateDescriptor]) {
         self.slot_by_name.clear();
         self.slots.clear();
-        self.slots.resize(names.len(), None);
-        for (index, name) in names.iter().enumerate() {
+        self.slots.resize(states.len(), None);
+        for (index, state) in states.iter().enumerate() {
+            let name = &state.qualified_name;
             let slot = StateSlot::new(index);
             self.slot_by_name.insert(name.clone(), slot);
             if let Some(host_ref) = self.host_ref(name) {

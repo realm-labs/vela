@@ -123,10 +123,10 @@ mod tests {
     #[test]
     fn cache_site_layout_indexes_descriptors_by_id() {
         let mut layout = CacheSiteLayout::default();
-        let global = layout.push(CacheSiteKind::ExternStateRead, "main", InstructionOffset(3));
+        let state = layout.push(CacheSiteKind::ExternStateRead, "main", InstructionOffset(3));
         let record = layout.push(CacheSiteKind::RecordFieldRead, "main", InstructionOffset(9));
 
-        assert_eq!(global, CacheSiteId::new(0));
+        assert_eq!(state, CacheSiteId::new(0));
         assert_eq!(record, CacheSiteId::new(1));
         assert_eq!(layout.len(), 2);
         assert_eq!(

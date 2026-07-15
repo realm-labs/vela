@@ -702,8 +702,8 @@ mod tests {
 
     #[test]
     fn nested_local_cache_zero_sites_receive_distinct_generation_ids() {
-        let first = cached_global_lambda("first", "main::first", StateSlot::new(0));
-        let second = cached_global_lambda("second", "main::second", StateSlot::new(1));
+        let first = cached_state_lambda("first", "main::first", StateSlot::new(0));
+        let second = cached_state_lambda("second", "main::second", StateSlot::new(1));
         let mut main = UnlinkedCodeObject::new("main", 2);
         main.nested_functions = vec![first, second];
         main.push_instruction(UnlinkedInstruction::new(
@@ -725,7 +725,10 @@ mod tests {
         }));
 
         let mut program = UnlinkedProgram::new();
-        program.set_global_layout(["main::first".to_owned(), "main::second".to_owned()]);
+        program.set_states([
+            crate::StateDescriptor::test_extern(vela_def::StateId::new(1), "main::first"),
+            crate::StateDescriptor::test_extern(vela_def::StateId::new(2), "main::second"),
+        ]);
         program.insert_function(main);
         let artifact = Linker::new()
             .link_test_program(&program)
@@ -744,13 +747,13 @@ mod tests {
         assert_eq!(artifact.profile_layout().functions().len(), 3);
     }
 
-    fn cached_global_lambda(name: &str, global: &str, slot: StateSlot) -> UnlinkedCodeObject {
+    fn cached_state_lambda(name: &str, state: &str, slot: StateSlot) -> UnlinkedCodeObject {
         let mut code = UnlinkedCodeObject::new(name, 1);
         let site = code.push_cache_site(CacheSiteKind::ExternStateRead, InstructionOffset(0));
         code.push_instruction(UnlinkedInstruction::new(
             UnlinkedInstructionKind::LoadExternState {
                 dst: Register(0),
-                state: global.to_owned(),
+                state: state.to_owned(),
                 slot: Some(slot),
                 cache_site: Some(site),
             },

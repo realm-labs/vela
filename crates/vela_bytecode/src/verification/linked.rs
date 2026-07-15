@@ -1,3 +1,4 @@
+use vela_common::StateSlot;
 use vela_registry::DebugNameId;
 
 use crate::linked::{
@@ -34,6 +35,36 @@ pub fn verify_linked_program(program: &LinkedProgram) -> Result<(), Verification
     for (_, variant) in program.variants() {
         verify_linked_debug_name("<linked variant>", None, &context, variant.debug_name)?;
         verify_linked_type_handle("<linked variant>", None, &context, variant.owner)?;
+    }
+    for (slot, state) in program.states().iter().enumerate() {
+        if state.qualified_name.is_empty() {
+            return Err(error(
+                "<linked state descriptor>",
+                None,
+                VerificationErrorKind::InvalidStateDescriptor {
+                    slot,
+                    detail: "qualified name is empty".to_owned(),
+                },
+            ));
+        }
+        if state.storage == crate::StateStorage::Extern && state.initializer.is_some() {
+            return Err(error(
+                "<linked state descriptor>",
+                None,
+                VerificationErrorKind::InvalidStateDescriptor {
+                    slot,
+                    detail: "extern state carries an initializer".to_owned(),
+                },
+            ));
+        }
+        if let Some(initializer) = state.initializer {
+            verify_linked_function_handle(
+                "<linked state descriptor>",
+                None,
+                &context,
+                initializer,
+            )?;
+        }
     }
     for (debug_name, function) in program.entry_points() {
         verify_linked_debug_name("<linked entry point>", None, &context, debug_name)?;
@@ -512,19 +543,54 @@ fn verify_linked_instruction(
             verify_linked_variant_handle(function, instruction_index, context, *variant)
         }
         InstructionKind::LoadState {
-            dst, debug_name, ..
-        }
-        | InstructionKind::LoadExternState {
-            dst, debug_name, ..
+            dst,
+            slot,
+            debug_name,
+            ..
         } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
-            verify_linked_debug_name(function, instruction_index, context, *debug_name)
+            verify_linked_debug_name(function, instruction_index, context, *debug_name)?;
+            verify_linked_state(
+                function,
+                instruction_index,
+                context,
+                *slot,
+                *debug_name,
+                crate::StateStorage::Vm,
+            )
+        }
+        InstructionKind::LoadExternState {
+            dst,
+            slot,
+            debug_name,
+            ..
+        } => {
+            verify_linked_register(function, instruction_index, code, *dst)?;
+            verify_linked_debug_name(function, instruction_index, context, *debug_name)?;
+            verify_linked_state(
+                function,
+                instruction_index,
+                context,
+                *slot,
+                *debug_name,
+                crate::StateStorage::Extern,
+            )
         }
         InstructionKind::StoreState {
-            src, debug_name, ..
+            src,
+            slot,
+            debug_name,
         } => {
             verify_linked_register(function, instruction_index, code, *src)?;
-            verify_linked_debug_name(function, instruction_index, context, *debug_name)
+            verify_linked_debug_name(function, instruction_index, context, *debug_name)?;
+            verify_linked_state(
+                function,
+                instruction_index,
+                context,
+                *slot,
+                *debug_name,
+                crate::StateStorage::Vm,
+            )
         }
         InstructionKind::HostRead {
             dst,
@@ -1200,12 +1266,12 @@ fn verify_linked_cache_site(
 fn verify_linked_cache_site_layout(
     function: &str,
     code: &LinkedCodeObject,
-    generation_global: bool,
+    generation_state: bool,
 ) -> Result<(), VerificationError> {
     for (index, site) in code.cache_sites.sites().iter().enumerate() {
         let expected =
             CacheSiteId::new(u32::try_from(index).expect("cache site count exceeds u32::MAX"));
-        if !generation_global && site.id != expected {
+        if !generation_state && site.id != expected {
             return Err(error(
                 function,
                 None,
@@ -1241,6 +1307,53 @@ fn verify_linked_cache_site_layout(
                 },
             ));
         }
+    }
+    Ok(())
+}
+
+fn verify_linked_state(
+    function: &str,
+    instruction: Option<usize>,
+    context: &LinkedVerificationContext<'_>,
+    slot: StateSlot,
+    debug_name: DebugNameId,
+    expected_storage: crate::StateStorage,
+) -> Result<(), VerificationError> {
+    let Some(program) = context.program else {
+        return Ok(());
+    };
+    let descriptor = program.state(slot).ok_or_else(|| {
+        error(
+            function,
+            instruction,
+            VerificationErrorKind::StateSlotOutOfBounds {
+                slot: slot.get(),
+                state_count: program.states().len(),
+            },
+        )
+    })?;
+    let actual_name = program.debug_name(debug_name);
+    if descriptor.qualified_name != actual_name {
+        return Err(error(
+            function,
+            instruction,
+            VerificationErrorKind::StateSlotNameMismatch {
+                slot: slot.get(),
+                expected: descriptor.qualified_name.clone(),
+                actual: actual_name.to_owned(),
+            },
+        ));
+    }
+    if descriptor.storage != expected_storage {
+        return Err(error(
+            function,
+            instruction,
+            VerificationErrorKind::StateStorageMismatch {
+                slot: slot.get(),
+                expected: expected_storage,
+                actual: descriptor.storage,
+            },
+        ));
     }
     Ok(())
 }
