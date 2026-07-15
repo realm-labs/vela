@@ -74,8 +74,21 @@ fn main(player: Player) {
 }
 "#;
 
-pub(crate) const HOST_GLOBAL_READ_WRITE_SOURCE: &str = r#"
-global state: Player;
+pub(crate) const VM_STATE_READ_WRITE_SOURCE: &str = r#"
+state counter: i64 = 0;
+
+fn main() {
+    let total = 0;
+    for tick in 0..64 {
+        counter += 1;
+        total += counter - tick;
+    }
+    return total;
+}
+"#;
+
+pub(crate) const HOST_EXTERN_STATE_READ_WRITE_SOURCE: &str = r#"
+extern state state: Player;
 
 fn main(player: Player) {
     let total = 0;

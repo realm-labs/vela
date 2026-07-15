@@ -76,7 +76,7 @@ carry bytecode profile counters without enabling inline caches.
 Method-dispatch aggregate rows use the `method_dispatch` prefix so filtered
 quick runs include interpreter, profile-only, and cache-enabled rows together.
 Cache-enabled benchmark rows use the same `Cell`-backed storage shape as the
-engine runtime for copyable global-read, host-access, record-field, and
+engine runtime for copyable state-read, host-access, record-field, and
 resolved method-dispatch entries. Dynamic method-dispatch and native-call
 entries use cloneable target storage.
 
@@ -91,7 +91,8 @@ cache-enabled stdlib/native call, method-dispatch aggregate/detail, script recor
 dynamic method dispatch rows for monomorphic string receivers, monomorphic script receivers, polymorphic standard/script receivers, and deliberate guard-miss pressure, plus the existing static CallMethodId method-dispatch rows for comparison
 record and enum construction and field access
 managed heap allocation and materialization
-declared host globals, host field reads, nested path reads/writes, RMW mutations, dynamic key access, and method calls
+VM-state scalar read/write loops
+declared extern state, host field reads, nested path reads/writes, RMW mutations, dynamic key access, and method calls
 reflection reads, writes, and calls
 hot reload compile/apply/reject workflow
 GC pacing and pause-budget scenarios
@@ -204,6 +205,12 @@ command. Do not accept broad interpreter changes from benchmark deltas alone;
 the profile should identify the dominant stack first.
 
 ## Current Baseline
+
+State-storage hard-switch checkpoint (2026-07-15, Windows x86_64, release,
+quick local run): `vm_state_read_write` executes 64 scalar VM-state
+read/modify/write iterations per invocation at 57.1 us mean. The row is a
+dedicated `vm_state` harness path backed by `VmStateValues`; it establishes a
+repeatable profiling target, not a release threshold.
 
 Executable-generation Phase 0 focused scalar checkpoint (2026-07-11):
 
@@ -504,7 +511,7 @@ Option/Result helper, callback collection/detail, direct-closure, and
 host-boundary aggregate/detail rows with warmed inline caches and bytecode
 profile counters. The record-field detail
 rows cover triplet, quad, quint, and sextet shapes; the host-boundary detail
-rows cover declared global read/write, field read/write, nested path read/write,
+rows cover declared state read/write, field read/write, nested path read/write,
 RMW mutation, dynamic key access, and host method calls; the method-dispatch detail rows cover script
 inherent and trait/default method calls. Direct script-call and direct-closure
 rows are profile-only when their linked operands already avoid runtime lookup

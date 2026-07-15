@@ -1,5 +1,6 @@
 #![allow(clippy::result_large_err)]
 
+use std::cell::RefCell;
 use std::error::Error;
 use std::hint::black_box;
 use std::sync::Arc;
@@ -23,7 +24,7 @@ use vela_vm::heap::{GcBudget, GcConfig, HeapValue, ScriptHeap};
 use vela_vm::heap_execution::HeapExecution;
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
-use vela_vm::{HostExecution, LinkedProgramHostBudgetCall};
+use vela_vm::{HostExecution, LinkedProgramHostBudgetCall, VmStateValues};
 
 #[path = "baseline/cache_delta.rs"]
 mod cache_delta;
@@ -161,6 +162,10 @@ enum CompiledWorkload {
     ScriptProgram {
         program: Arc<LinkedArtifact>,
     },
+    VmState {
+        program: Arc<LinkedArtifact>,
+        values: RefCell<VmStateValues>,
+    },
     HostAccess {
         program: Arc<LinkedArtifact>,
     },
@@ -208,6 +213,9 @@ fn run_once(vm: &Vm, workload: &CompiledWorkload) -> Result<OwnedValue, Box<dyn 
         } => run_instrumented_function(vm, program, caches.as_ref(), profiler),
         CompiledWorkload::ScriptProgram { program } => {
             Ok(vm.run_linked_program(program, "main", &[])?)
+        }
+        CompiledWorkload::VmState { program, values } => {
+            run_vm_state(vm, program, &mut values.borrow_mut())
         }
         CompiledWorkload::Function {
             mode: ExecutionMode::ManagedHeap,
@@ -295,6 +303,28 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
                 program: link_program_for_vm(vm, &program)?,
             })
         }
+        ExecutionMode::VmState => {
+            let registry = bench_compile_registry()?;
+            let program = compile_test_program_with_registry(
+                SourceId::new(1),
+                workload.source,
+                registry.compile_view(),
+            )
+            .map_err(|error| format!("{error:?}"))?;
+            let program = link_program_for_vm(vm, &program)?;
+            let state = program
+                .program()
+                .states()
+                .first()
+                .ok_or_else(|| "VM-state benchmark has no state descriptor".to_owned())?
+                .id;
+            let mut values = VmStateValues::default();
+            values.insert(state, Value::I64(0));
+            Ok(CompiledWorkload::VmState {
+                program,
+                values: RefCell::new(values),
+            })
+        }
         ExecutionMode::ManagedHeap | ExecutionMode::GcPacing => {
             let registry = bench_compile_registry()?;
             let code = compile_test_function_with_registry(
@@ -376,6 +406,29 @@ fn compile_workload(workload: &Workload, vm: &Vm) -> Result<CompiledWorkload, St
             })
         }
     }
+}
+
+fn run_vm_state(
+    vm: &Vm,
+    program: &Arc<LinkedArtifact>,
+    values: &mut VmStateValues,
+) -> Result<OwnedValue, Box<dyn Error>> {
+    let mut adapter = MockStateAdapter::default();
+    let mut access = HostAccess::new();
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        access: &mut access,
+        state_values: Some(values),
+    };
+    let mut budget = ExecutionBudget::unbounded();
+    Ok(vm.run_linked_program_with_host_budget_and_caches(
+        program,
+        "main",
+        &[],
+        &mut host,
+        &mut budget,
+        None,
+    )?)
 }
 
 impl CompiledWorkload {

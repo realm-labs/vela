@@ -5,15 +5,16 @@ use crate::workload_sources::{
     BYTES_METHODS_SOURCE, CALLBACK_COLLECTIONS_SOURCE, DIRECT_CLOSURE_CALLS_SOURCE,
     DYNAMIC_METHOD_CACHE_MISS_SOURCE, DYNAMIC_METHOD_POLYMORPHIC_SOURCE,
     DYNAMIC_SCRIPT_METHOD_MONOMORPHIC_SOURCE, DYNAMIC_STRING_METHOD_MONOMORPHIC_SOURCE,
-    HOST_ACCESS_HOT_OFFSETS_SOURCE, HOST_DYNAMIC_KEY_ACCESS_SOURCE, HOST_FIELD_READ_WRITE_SOURCE,
-    HOST_GLOBAL_READ_WRITE_SOURCE, HOST_METHOD_CALLS_SOURCE, HOST_NESTED_READ_WRITE_SOURCE,
-    HOST_RMW_MUTATION_SOURCE, MAP_CALLBACKS_SOURCE, MAP_FIND_ENTRIES_SOURCE,
-    MATERIALIZATION_SOURCE, METHOD_DISPATCH_SOURCE, NATIVE_CALL_WIDE_ARGS_SOURCE,
-    RANGE_METHODS_SOURCE, RECORD_QUADS_SOURCE, RECORD_QUINTS_SOURCE, RECORD_SEXTETS_SOURCE,
-    RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE, SCRIPT_CALL_WIDE_ARGS_SOURCE,
-    SCRIPT_METHOD_DISPATCH_SOURCE, SET_CALLBACK_PREDICATES_SOURCE, STDLIB_COLLECTIONS_SOURCE,
-    STRING_METHODS_SOURCE, STRING_OPTIONS_SOURCE, STRING_PARSING_SOURCE, STRING_SPLITTING_SOURCE,
-    STRING_TRANSFORMS_SOURCE, TRAIT_METHOD_DISPATCH_SOURCE,
+    HOST_ACCESS_HOT_OFFSETS_SOURCE, HOST_DYNAMIC_KEY_ACCESS_SOURCE,
+    HOST_EXTERN_STATE_READ_WRITE_SOURCE, HOST_FIELD_READ_WRITE_SOURCE, HOST_METHOD_CALLS_SOURCE,
+    HOST_NESTED_READ_WRITE_SOURCE, HOST_RMW_MUTATION_SOURCE, MAP_CALLBACKS_SOURCE,
+    MAP_FIND_ENTRIES_SOURCE, MATERIALIZATION_SOURCE, METHOD_DISPATCH_SOURCE,
+    NATIVE_CALL_WIDE_ARGS_SOURCE, RANGE_METHODS_SOURCE, RECORD_QUADS_SOURCE, RECORD_QUINTS_SOURCE,
+    RECORD_SEXTETS_SOURCE, RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE,
+    SCRIPT_CALL_WIDE_ARGS_SOURCE, SCRIPT_METHOD_DISPATCH_SOURCE, SET_CALLBACK_PREDICATES_SOURCE,
+    STDLIB_COLLECTIONS_SOURCE, STRING_METHODS_SOURCE, STRING_OPTIONS_SOURCE, STRING_PARSING_SOURCE,
+    STRING_SPLITTING_SOURCE, STRING_TRANSFORMS_SOURCE, TRAIT_METHOD_DISPATCH_SOURCE,
+    VM_STATE_READ_WRITE_SOURCE,
 };
 
 #[path = "workloads/collection_families.rs"]
@@ -37,6 +38,7 @@ pub(crate) enum ExecutionMode {
     ScriptProgramProfileOnly,
     ScriptProgramCacheEnabled,
     ManagedHeap,
+    VmState,
     HostAccess,
     HostAccessProfileOnly,
     HostAccessCacheEnabled,
@@ -64,6 +66,7 @@ impl ExecutionMode {
             Self::ScriptProgramProfileOnly => "script_program_profile_only",
             Self::ScriptProgramCacheEnabled => "script_program_cache_enabled",
             Self::ManagedHeap => "managed_heap",
+            Self::VmState => "vm_state",
             Self::HostAccess => "host_access",
             Self::HostAccessProfileOnly => "host_access_profile_only",
             Self::HostAccessCacheEnabled => "host_access_cache_enabled",
@@ -659,6 +662,11 @@ fn main() {
 
 const POST_COLLECTION_WORKLOADS: &[Workload] = &[
     Workload {
+        name: "vm_state_read_write",
+        mode: ExecutionMode::VmState,
+        source: VM_STATE_READ_WRITE_SOURCE,
+    },
+    Workload {
         name: "host_access",
         mode: ExecutionMode::HostAccess,
         source: r#"
@@ -688,12 +696,12 @@ fn main(player: Player) {
     Workload {
         name: "host_state_read_write_hot_offsets",
         mode: ExecutionMode::HostAccessProfileOnly,
-        source: HOST_GLOBAL_READ_WRITE_SOURCE,
+        source: HOST_EXTERN_STATE_READ_WRITE_SOURCE,
     },
     Workload {
         name: "host_state_read_write_cache_hot_offsets",
         mode: ExecutionMode::HostAccessCacheEnabled,
-        source: HOST_GLOBAL_READ_WRITE_SOURCE,
+        source: HOST_EXTERN_STATE_READ_WRITE_SOURCE,
     },
     Workload {
         name: "host_nested_read_write",
