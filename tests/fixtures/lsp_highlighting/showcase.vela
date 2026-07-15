@@ -27,7 +27,7 @@ impl Reward {
 use game::support::source_helper
 
 const START_LEVEL: i64 = 1
-global active_player: SchemaPlayer
+extern state active_player: SchemaPlayer
 
 pub fn main(
     player: SchemaPlayer,

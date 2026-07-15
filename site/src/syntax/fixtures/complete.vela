@@ -36,7 +36,7 @@ impl Tickable for Player {
 use game::rewards as rewards;
 
 const START_LEVEL: i64 = 1;
-global current_player: Player;
+extern state current_player: Player;
 
 fn award(player: Player, rewards: Map) -> Result {
   let log = f"award {{escaped}} {player.name}\n";

@@ -9,7 +9,12 @@ struct ServerState {
     stats: ServerStats,
 }
 
-global state: ServerState;
+state state: ServerState = ServerState {
+    level: 1,
+    name: "boot",
+    total_gold: 0,
+    stats: ServerStats { handled_ticks: 0 },
+};
 
 fn handle_tick(level_gain, gold_gain) {
     state.level += level_gain;
