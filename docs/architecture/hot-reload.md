@@ -136,7 +136,9 @@ Storage or type changes reject. A rename is reported as remove plus add, and an
 initializer edit is reported even when it does not reject. State preservation
 is separate from export compatibility: private removal and private-to-public
 promotion are compatible, while removing an existing public state export or
-downgrading it to private rejects the update.
+downgrading it to private rejects the update. Initializer change reporting
+fingerprints the transitive statically called script-function graph, so edits
+to permitted pure helpers are reported as new-Runtime-only behavior.
 
 Activation is transactional per Runtime: the candidate image, slot maps,
 staged cells, extern bindings, and sidecar are published together only after

@@ -420,6 +420,60 @@ fn reload_preserves_compatible_state_and_initializes_only_added_vm_state() {
 }
 
 #[test]
+fn reload_reports_transitive_initializer_changes_without_reinitializing_existing_state() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_with_id(
+            SourceId::new(310),
+            r#"
+fn inner() -> i64 { return 1; }
+fn outer() -> i64 { return inner(); }
+state value: i64 = outer();
+fn read() { return value; }
+"#,
+        )
+        .expect("initial generation");
+    let update = engine
+        .compile_hot_reload_update_with_id(
+            &initial,
+            SourceId::new(311),
+            r#"
+fn inner() -> i64 { return 9; }
+fn outer() -> i64 { return inner(); }
+state value: i64 = outer();
+fn read() { return value; }
+"#,
+        )
+        .expect("helper-only update");
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine.clone(), initial).expect("runtime initializes");
+    runtime
+        .set_state("main::value", 17_i64)
+        .expect("existing runtime state replacement");
+
+    let report = runtime.apply_hot_update(update).expect("reload applies");
+
+    assert!(report.accepted);
+    assert_eq!(report.initializer_changed_states, ["main::value"]);
+    assert_eq!(
+        runtime.state("main::value"),
+        Ok(Some(OwnedValue::from(17_i64)))
+    );
+
+    let active = runtime
+        .hot_reload_version()
+        .expect("active generation")
+        .as_ref()
+        .clone();
+    let mut new_runtime =
+        Runtime::from_hot_reload_version(engine, active).expect("new Runtime initializes");
+    assert_eq!(
+        new_runtime.state("main::value"),
+        Ok(Some(OwnedValue::from(9_i64)))
+    );
+}
+
+#[test]
 fn reload_rejects_public_state_export_breaks_without_publishing_image_or_state() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine

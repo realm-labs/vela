@@ -1,7 +1,10 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
-use vela_bytecode::{ProgramImage, StateDescriptor, StateStorage, StateVisibility};
-use vela_def::StateId;
+use vela_bytecode::{
+    ProgramImage, StateDescriptor, StateStorage, StateVisibility, UnlinkedCodeObject,
+    UnlinkedInstructionKind,
+};
+use vela_def::{FunctionId, StateId};
 use vela_mir::MirTypeContract;
 
 use crate::error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
@@ -119,18 +122,59 @@ fn initializer_changed(
     new_state: &StateDescriptor,
 ) -> bool {
     match (old_state.initializer, new_state.initializer) {
-        (Some(old), Some(new)) => match (previous.function_by_id(old), next.function_by_id(new)) {
-            (Some(old), Some(new)) => !same_executable_body(old, new),
-            (old, new) => old != new,
-        },
+        (Some(old), Some(new)) => {
+            !same_initializer_call_graph(previous, old, next, new, &mut BTreeSet::new())
+        }
         (old, new) => old != new,
     }
 }
 
-fn same_executable_body(
-    old: &vela_bytecode::UnlinkedCodeObject,
-    new: &vela_bytecode::UnlinkedCodeObject,
+fn same_initializer_call_graph(
+    previous: &ProgramImage,
+    old_id: FunctionId,
+    next: &ProgramImage,
+    new_id: FunctionId,
+    visited: &mut BTreeSet<(FunctionId, FunctionId)>,
 ) -> bool {
+    if !visited.insert((old_id, new_id)) {
+        return true;
+    }
+    let (Some(old), Some(new)) = (previous.function_by_id(old_id), next.function_by_id(new_id))
+    else {
+        return false;
+    };
+    if !same_executable_body(old, new) {
+        return false;
+    }
+
+    let old_calls = script_call_targets(old);
+    let new_calls = script_call_targets(new);
+    old_calls.len() == new_calls.len()
+        && old_calls
+            .into_iter()
+            .zip(new_calls)
+            .all(|(old, new)| same_initializer_call_graph(previous, old, next, new, visited))
+}
+
+fn script_call_targets(code: &UnlinkedCodeObject) -> Vec<FunctionId> {
+    let mut targets = Vec::new();
+    for instruction in &code.instructions {
+        collect_script_call_targets(&instruction.kind, &mut targets);
+    }
+    targets
+}
+
+fn collect_script_call_targets(kind: &UnlinkedInstructionKind, targets: &mut Vec<FunctionId>) {
+    match kind {
+        UnlinkedInstructionKind::CallFunction { target, .. } => targets.push(*target),
+        UnlinkedInstructionKind::AwaitCall { operation, .. } => {
+            collect_script_call_targets(operation, targets);
+        }
+        _ => {}
+    }
+}
+
+fn same_executable_body(old: &UnlinkedCodeObject, new: &UnlinkedCodeObject) -> bool {
     old.asyncness == new.asyncness
         && old.params == new.params
         && old.param_defaults == new.param_defaults

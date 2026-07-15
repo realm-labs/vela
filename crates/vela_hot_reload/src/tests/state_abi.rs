@@ -128,3 +128,97 @@ fn state_abi_accepts_private_to_public_export_addition() {
     assert_eq!(report.visibility_changed_states, ["main::value"]);
     assert_eq!(report.initializer_changed_states, ["main::value"]);
 }
+
+#[test]
+fn state_abi_reports_transitive_initializer_helper_changes() {
+    let initial = compile_initial(
+        SourceId::new(213),
+        r#"
+fn inner() -> i64 { return 1; }
+fn outer() -> i64 { return inner(); }
+fn unrelated() -> i64 { return 10; }
+state value: i64 = outer();
+fn main() { return value; }
+"#,
+    )
+    .expect("initial helper graph");
+    let update = compile_update(
+        &initial,
+        SourceId::new(214),
+        r#"
+fn inner() -> i64 { return 9; }
+fn outer() -> i64 { return inner(); }
+fn unrelated() -> i64 { return 10; }
+state value: i64 = outer();
+fn main() { return value; }
+"#,
+    )
+    .expect("transitive helper change is compatible");
+    let mut runtime = HotReloadRuntime::new(initial);
+    let report = runtime.apply_hot_update_report(update);
+
+    assert!(report.accepted);
+    assert_eq!(report.initializer_changed_states, ["main::value"]);
+}
+
+#[test]
+fn state_abi_ignores_unrelated_helper_changes_for_initializer_reporting() {
+    let initial = compile_initial(
+        SourceId::new(215),
+        r#"
+fn inner() -> i64 { return 1; }
+fn outer() -> i64 { return inner(); }
+fn unrelated() -> i64 { return 10; }
+state value: i64 = outer();
+fn main() { return value; }
+"#,
+    )
+    .expect("initial helper graph");
+    let update = compile_update(
+        &initial,
+        SourceId::new(216),
+        r#"
+fn inner() -> i64 { return 1; }
+fn outer() -> i64 { return inner(); }
+fn unrelated() -> i64 { return 20; }
+state value: i64 = outer();
+fn main() { return value; }
+"#,
+    )
+    .expect("unrelated helper change is compatible");
+    let mut runtime = HotReloadRuntime::new(initial);
+    let report = runtime.apply_hot_update_report(update);
+
+    assert!(report.accepted);
+    assert!(report.initializer_changed_states.is_empty());
+}
+
+#[test]
+fn state_abi_initializer_call_graph_comparison_terminates_on_recursion() {
+    let initial = compile_initial(
+        SourceId::new(217),
+        r#"
+fn recurse() -> i64 { return recurse(); }
+fn unrelated() -> i64 { return 10; }
+state value: i64 = recurse();
+fn main() { return 0; }
+"#,
+    )
+    .expect("recursive pure initializer graph");
+    let update = compile_update(
+        &initial,
+        SourceId::new(218),
+        r#"
+fn recurse() -> i64 { return recurse(); }
+fn unrelated() -> i64 { return 20; }
+state value: i64 = recurse();
+fn main() { return 0; }
+"#,
+    )
+    .expect("unrelated update across recursive graph");
+    let mut runtime = HotReloadRuntime::new(initial);
+    let report = runtime.apply_hot_update_report(update);
+
+    assert!(report.accepted);
+    assert!(report.initializer_changed_states.is_empty());
+}

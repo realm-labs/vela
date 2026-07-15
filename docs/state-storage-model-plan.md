@@ -2,7 +2,8 @@
 
 > **Track:** contextual `state` declarations, explicit VM/host ownership,
 > restricted initialization, and hot-reload state compatibility
-> **Document status:** Batches A-E landed; Batch F in execution (F1-F5 complete)
+> **Document status:** Batches A-E landed; Batch F implementation complete,
+> full acceptance validation pending
 > **Baseline:** post-implementation review of `master` at `afac6150` on
 > 2026-07-15
 > **Execution style:** hard-switch the pre-release language and runtime in
@@ -958,8 +959,9 @@ Run the documentation-site and editor-extension checks listed in
 
 ### 12.6 Batch F: Post-Implementation Review Closure
 
-Status: next active batch. Batches A-E stay landed; this batch closes review
-findings against the existing contract without adding new language scope.
+Status: implementation complete; combined validation and final acceptance are
+pending. Batches A-E stay landed; this batch closes review findings against the
+existing contract without adding new language scope.
 
 Tasks, in execution order:
 
@@ -984,7 +986,7 @@ Tasks, in execution order:
 - [x] `STATE-F5-GENERATION-RECLAIM`: prune dead generation sidecars, removed VM
   roots, and removed extern bindings after the last old-generation owner dies,
   at a normal Runtime safe point without requiring another accepted reload.
-- [ ] `STATE-F6-INIT-FINGERPRINT`: include the transitive permitted script-call
+- [x] `STATE-F6-INIT-FINGERPRINT`: include the transitive permitted script-call
   graph in initializer change detection so a changed pure helper reports the
   affected state as new-Runtime-only behavior.
 
@@ -1137,14 +1139,14 @@ The goal is complete only when all of these are true:
 - [x] VM state supports direct and compound root assignment.
 - [x] extern roots are immutable in Vela and nested mutation uses HostAccess.
 - [x] every VM state has a required explicit type and restricted initializer.
-- [ ] Runtime construction and added-state reload initialization are bounded,
+- [x] Runtime construction and added-state reload initialization are bounded,
       fallible, and transactionally published.
 - [x] state identity and preservation use StateId; dense slots are
       generation-local.
 - [x] exact-compatible state preserves old values/bindings and does not rerun
       initializers.
 - [x] incompatible type/storage changes reject with actionable diagnostics.
-- [ ] removed state remains valid for old generation owners and is later
+- [x] removed state remains valid for old generation owners and is later
       reclaimed.
 - [x] multiple runtimes sharing an image keep independent VM state.
 - [x] host state remains outside script GC and no Rust reference is exposed.
