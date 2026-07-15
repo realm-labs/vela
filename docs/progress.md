@@ -11,14 +11,14 @@ history belongs in Git.
 ## Current Focus
 
 The explicit state-storage hard switch in
-[state-storage-model-plan.md](state-storage-model-plan.md) is complete through
-Batches A-E. Contextual `state` and `extern state` now have distinct semantic,
-bytecode, runtime, reload, reflection, and tooling paths. Each Runtime owns
-independent VM-state cells and validated extern bindings keyed by `StateId`;
-restricted initialization and reload publication are bounded, fallible, and
-transactional. Legacy `global` declarations, embedding APIs, and production
-terminology are removed. Full acceptance passed on 2026-07-15, so M20 cache
-close-out and M20.5 editor follow-up are active again.
+[state-storage-model-plan.md](state-storage-model-plan.md) is landed through
+Batches A-E. Contextual `state` and `extern state` have distinct semantic,
+bytecode, runtime, reload, reflection, and tooling paths, and legacy `global`
+surfaces are removed. Post-implementation review on 2026-07-15 reopened final
+acceptance through Batch F for six uncovered contract, budget, export-ABI,
+initializer-reporting, and generation-reclamation gaps. Batch F is the next
+active execution object; M20 cache close-out and M20.5 editor follow-up resume
+after it closes.
 
 The executor-neutral async implementation from Batches A-D is landed: Vela has
 one explicit frame driver, scoped `Send` Runtime/native futures, direct typed
@@ -46,8 +46,8 @@ storage hard switch reaches final acceptance.
 | M8-M18 | Complete enough | HIR, executable language surface, script metadata, host bridge, reflection, stdlib, embedding, reload, diagnostics, examples, and benchmark foundations satisfy their checkpoints. |
 | M19 | Complete enough | The non-JIT interpreter and heap optimization checkpoint is closed; remaining measured costs belong to cache, value-layout, or later backend work. |
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
-| M20 | Active | Resume cache-family close-out on the accepted explicit state-storage model. |
-| M20.5 | Active follow-up | Resume concrete editor-visible follow-up on the accepted state tooling model. |
+| M20 | Paused for Batch F | Resume cache-family close-out after state review closure. |
+| M20.5 | Paused follow-up | Resume concrete editor-visible follow-up after state review closure. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -114,15 +114,25 @@ storage hard switch reaches final acceptance.
 
 ### State Storage Hard Switch
 
-Batches A-E are complete. The semantic pipeline, VM, embedding API, reload,
-reflection, language service, editor integrations, examples, C ABI, site, and
-active documentation use the explicit state model. Compatibility, isolation,
-rollback, retained-generation lifetime, initializer limits, and tooling
-behavior have focused coverage, and the full acceptance gates pass. No
-state-storage hard-switch gap remains. Disk persistence, snapshots,
-replication, cross-Runtime sharing, state migration, async-frame migration, and
-initializer dependency reads remain explicit non-goals rather than implicit
-follow-up requirements.
+Batches A-E are landed. Batch F is active with six review-closure tasks:
+
+- `STATE-F1-SET-CONTRACT`: validate embedding writes against the linked,
+  recursive `MirTypeContract` instead of HIR display strings;
+- `STATE-F2-EXTERN-CONTRACT`: reject every non-host `extern state` contract in
+  the compiler and verifier rather than disabling runtime type checks;
+- `STATE-F3-INIT-BUDGET`: share one bounded budget across the complete
+  construction/reload initializer transaction, including live-heap staging;
+- `STATE-F4-EXPORT-ABI`: reject removal or visibility downgrade of an existing
+  public state export independently of value preservation;
+- `STATE-F5-GENERATION-RECLAIM`: reclaim dead old-generation state at a normal
+  safe point without waiting for another reload;
+- `STATE-F6-INIT-FINGERPRINT`: report initializer impact when a transitive pure
+  helper changes.
+
+These are gaps against the accepted ownership model, not scope expansion.
+Disk persistence, snapshots, replication, cross-Runtime sharing, structural
+state migration, async-frame migration, and initializer dependency reads
+remain explicit non-goals.
 
 ### Async Post-Review Closure
 
@@ -213,8 +223,11 @@ scanners, runtime execution, live host-state reads, or editor-owned analysis.
 
 ## Validation
 
-The state-storage Batch E acceptance passed on 2026-07-15. The async Batch E
-acceptance remains recorded for 2026-07-14. The combined full gates are:
+The state-storage Batch E gates passed on 2026-07-15, but post-implementation
+review reopened final acceptance through Batch F. The review baseline remains
+green for the complete `vela_engine` and `vela_hot_reload` suites plus focused
+state tests; Batch F must add the missing regressions and rerun the combined
+full gates below. The async Batch E acceptance remains recorded for 2026-07-14.
 
 ```bash
 cargo fmt --all -- --check
@@ -240,10 +253,13 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Resume the M20 cache-family audit and name the next missing proof.
-2. Resume the M20.5 editor-visible follow-up against the accepted state model.
-3. Keep persistence, migration, cross-Runtime sharing, and async-frame
-   migration outside the completed state-storage hard switch.
+1. Execute state-storage Batch F in the order recorded in
+   [state-storage-model-plan.md](state-storage-model-plan.md), with focused
+   regressions for all six review findings.
+2. Resume the M20 cache-family audit after Batch F passes full validation.
+3. Resume the M20.5 editor-visible follow-up against the closed state model.
+4. Keep persistence, migration, cross-Runtime sharing, and async-frame
+   migration outside this review-closure batch.
 
 ## Update Rules
 

@@ -2,8 +2,9 @@
 
 > **Track:** contextual `state` declarations, explicit VM/host ownership,
 > restricted initialization, and hot-reload state compatibility
-> **Document status:** ready for execution
-> **Baseline:** reviewed `master` at `bcf94a12` on 2026-07-15
+> **Document status:** Batches A-E landed; Batch F ready for execution
+> **Baseline:** post-implementation review of `master` at `afac6150` on
+> 2026-07-15
 > **Execution style:** hard-switch the pre-release language and runtime in
 > coherent batches. Intermediate edits inside a batch may be red, but every
 > batch checkpoint and the final acceptance boundary must be green.
@@ -27,6 +28,11 @@ and calls still pass through the existing `HostPath`, `PathProxy`, and
 
 The change is an ownership and hot-reload ABI redesign, not a keyword-only
 rename.
+
+The first implementation passed its original acceptance gates, but the
+2026-07-15 post-implementation review found six uncovered correctness gaps.
+Final acceptance is therefore reopened through Batch F; the landed A-E hard
+switch remains the baseline and is not rolled back.
 
 ---
 
@@ -90,6 +96,8 @@ Execute the batches in order:
 - Batch D: state ABI diff, transactional reload, and generation lifetime.
 - Batch E: tooling, reflection, examples, documentation, audits, and full
   acceptance.
+- Batch F: post-implementation contract, budget, reload-ABI, and lifetime
+  closure.
 
 At the start of every turn, follow AGENTS.md: read docs/goal.md,
 docs/architecture.md, and docs/progress.md; inspect the current diff; and run
@@ -124,6 +132,7 @@ Never mark this goal complete while any of the following is true:
   current language model;
 - required focused tests, full workspace validation, examples, audits, or
   documentation updates have not passed;
+- any Batch F review item or its focused regression test remains open;
 - the completed work is uncommitted or the final worktree is dirty.
 
 Do not report blocked merely because the hard switch is broad. Report blocked
@@ -947,6 +956,69 @@ cargo check --manifest-path fuzz/Cargo.toml --bins
 Run the documentation-site and editor-extension checks listed in
 `docs/validation.md` when those files change.
 
+### 12.6 Batch F: Post-Implementation Review Closure
+
+Status: next active batch. Batches A-E stay landed; this batch closes review
+findings against the existing contract without adding new language scope.
+
+Tasks, in execution order:
+
+- [ ] `STATE-F1-SET-CONTRACT`: make `set_state` and `update_state` resolve the
+  linked `StateDescriptor` and validate the complete normalized
+  `MirTypeContract`. Valid parameterized containers, tuples, Option/Result, and
+  qualified script values must pass; malformed nested values and metadata-free
+  bypasses must fail before replacement.
+- [ ] `STATE-F2-EXTERN-CONTRACT`: require every `extern state` descriptor to
+  carry a `MirTypeContract::Host`. Reject primitive, script-owned, container,
+  callable, and `Any` contracts in both source compilation and bytecode
+  verification; runtime binding must never interpret a non-host contract as
+  "no expected type".
+- [ ] `STATE-F3-INIT-BUDGET`: enforce one execution/allocation budget across the
+  complete Runtime-construction or added-state reload transaction. Do not
+  recreate the full allowance per declaration or use an unbounded budget when
+  materializing staged values into the published heap.
+- [ ] `STATE-F4-EXPORT-ABI`: keep state preservation separate from visibility,
+  while rejecting removal or visibility downgrade of an existing public state
+  export. Private additions/removals and private-to-public additions continue
+  to follow the documented compatibility matrix.
+- [ ] `STATE-F5-GENERATION-RECLAIM`: prune dead generation sidecars, removed VM
+  roots, and removed extern bindings after the last old-generation owner dies,
+  at a normal Runtime safe point without requiring another accepted reload.
+- [ ] `STATE-F6-INIT-FINGERPRINT`: include the transitive permitted script-call
+  graph in initializer change detection so a changed pure helper reports the
+  affected state as new-Runtime-only behavior.
+
+Required regression proof:
+
+- recursive embedding-contract tests cover valid and invalid Array/Map/Set,
+  tuple, Option/Result, record, enum, and qualified-type values;
+- compiler and verifier tests reject `extern state value: i64;` and malformed
+  non-host descriptors before Runtime construction;
+- two individually valid initializers that exceed the shared total budget fail
+  construction/reload transactionally, and live-heap staging is charged;
+- hot reload rejects public-state removal and public-to-private change while
+  retaining the old image/state map;
+- dropping the final retained old closure/value allows removed VM and extern
+  state to be reclaimed without a second reload;
+- changing only a pure helper called by an initializer preserves the existing
+  Runtime value and reports the initializer impact for new runtimes.
+
+Checkpoint:
+
+```text
+cargo fmt --all -- --check
+cargo test -p vela_bytecode state
+cargo test -p vela_engine state
+cargo test -p vela_hot_reload state
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace --all-features --no-fail-fast
+```
+
+Do not add structural state migration, initializer state reads, a second
+initializer evaluator, non-host extern values, compatibility aliases, or a
+permanent generation root to make these tests pass. Keep commits small and
+coherent, preferably separating contract, reload, and lifetime work.
+
 ---
 
 ## 13. Required Test Matrix
@@ -1065,14 +1137,14 @@ The goal is complete only when all of these are true:
 - [x] VM state supports direct and compound root assignment.
 - [x] extern roots are immutable in Vela and nested mutation uses HostAccess.
 - [x] every VM state has a required explicit type and restricted initializer.
-- [x] Runtime construction and added-state reload initialization are bounded,
+- [ ] Runtime construction and added-state reload initialization are bounded,
       fallible, and transactionally published.
 - [x] state identity and preservation use StateId; dense slots are
       generation-local.
 - [x] exact-compatible state preserves old values/bindings and does not rerun
       initializers.
 - [x] incompatible type/storage changes reject with actionable diagnostics.
-- [x] removed state remains valid for old generation owners and is later
+- [ ] removed state remains valid for old generation owners and is later
       reclaimed.
 - [x] multiple runtimes sharing an image keep independent VM state.
 - [x] host state remains outside script GC and no Rust reference is exposed.
@@ -1081,6 +1153,9 @@ The goal is complete only when all of these are true:
       examples, C ABI, site snippets, and active docs use the new model.
 - [x] focused and full validation commands pass.
 - [x] docs/decisions.md records the implemented durable decision.
+- [ ] Batch F closes exact embedding/extern contracts, state export ABI,
+      transaction-wide initializer limits, generation reclamation, and
+      transitive initializer-change reporting with focused regressions.
 - [x] docs/progress.md reflects the milestone truth without becoming a
       changelog.
 - [x] implementation checkpoints are committed with Conventional Commits and
