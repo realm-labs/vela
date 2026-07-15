@@ -236,6 +236,10 @@ fn verify_state_descriptors(states: &[crate::StateDescriptor]) -> Result<(), Ver
             ))
         } else if state.storage == crate::StateStorage::Extern && state.initializer.is_some() {
             Some("extern state carries an initializer".to_owned())
+        } else if state.storage == crate::StateStorage::Extern
+            && !matches!(state.type_contract, vela_mir::MirTypeContract::Host(_))
+        {
+            Some("extern state requires a host type contract".to_owned())
         } else {
             None
         };

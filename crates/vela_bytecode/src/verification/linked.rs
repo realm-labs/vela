@@ -57,6 +57,18 @@ pub fn verify_linked_program(program: &LinkedProgram) -> Result<(), Verification
                 },
             ));
         }
+        if state.storage == crate::StateStorage::Extern
+            && !matches!(state.type_contract, vela_mir::MirTypeContract::Host(_))
+        {
+            return Err(error(
+                "<linked state descriptor>",
+                None,
+                VerificationErrorKind::InvalidStateDescriptor {
+                    slot,
+                    detail: "extern state requires a host type contract".to_owned(),
+                },
+            ));
+        }
         if state.storage == crate::StateStorage::Vm && state.initializer.is_none() {
             return Err(error(
                 "<linked state descriptor>",

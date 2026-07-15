@@ -177,14 +177,14 @@ mod tests {
         let engine = Engine::builder().build().expect("engine should build");
         let program = engine
             .compile_source(
-                "extern state state: i64; fn main() { return state; } fn helper() { return state; }",
+                "state state: i64 = 1; fn main() { return state; } fn helper() { return state; }",
             )
             .expect("fixture compiles");
         let image = RuntimeImage::new_compiled(engine, program);
 
         assert_eq!(image.states()[0].qualified_name, "main::state");
         assert_eq!(image.cache_site_count(), 2);
-        assert_eq!(image.linked_program().function_count(), 2);
+        assert_eq!(image.linked_program().function_count(), 3);
         let main_index = image
             .program_image()
             .function_index("main")

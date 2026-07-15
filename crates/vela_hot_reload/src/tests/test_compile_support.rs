@@ -6,6 +6,7 @@ use vela_bytecode::{LinkedArtifact, Linker};
 use vela_common::SourceId;
 use vela_hir::module_graph::ModuleSource;
 use vela_hir::source_ingestion::{HirSourceSet, build_module_source_set, build_single_source};
+use vela_registry::{DefinitionRegistry, TypeDef};
 
 use crate::abi::HotReloadAbi;
 use crate::compile::{initial_version_from_linked_artifact, update_from_linked_artifact};
@@ -110,13 +111,24 @@ fn compile_module_artifact(
 }
 
 fn compile_artifact(sources: &HirSourceSet, options: &CompilerOptions) -> Arc<LinkedArtifact> {
+    let mut registry = DefinitionRegistry::new();
+    registry
+        .register_type(
+            TypeDef::new(vela_def::DefPath::ty(
+                "host",
+                std::iter::empty::<&str>(),
+                "Player",
+            ))
+            .host_runtime_id(1),
+        )
+        .expect("hot-reload test host type must register");
     let program = compile_program(ProgramCompilationRequest {
         sources,
         options,
-        registry: None,
+        registry: Some(registry.compile_view()),
     })
     .expect("hot-reload test source must compile");
-    Linker::new()
+    Linker::with_registry(&registry)
         .link_compiled_program(program)
         .expect("hot-reload test artifact must link")
 }

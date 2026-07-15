@@ -3,7 +3,7 @@ use vela_mir::{
     CompileGuardKey, CompileGuardTarget, MirEvaluatedConstant, MirGuardLocation, MirTypeContract,
 };
 
-use super::{FixtureRoots, prepare_source};
+use super::{FixtureRoots, prepare_source, prepare_source_with_registry};
 use crate::compiler::error::CompileErrorKind;
 
 #[test]
@@ -38,13 +38,25 @@ fn ignored() -> i64 { return math::max("wrong", 2); }
 
 #[test]
 fn schema_only_program_has_closed_descriptors_without_runtime_roots() {
-    let fixture = prepare_source(
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let current_state = registry
+        .register_type(
+            vela_registry::TypeDef::new(vela_def::DefPath::ty(
+                "host",
+                std::iter::empty::<&str>(),
+                "CurrentState",
+            ))
+            .host_runtime_id(901),
+        )
+        .expect("host state type should register");
+    let fixture = prepare_source_with_registry(
         r#"
 struct Reward { amount: i64 }
 enum State { Ready(value: i64), Idle }
-extern state current: Any;
+extern state current: CurrentState;
 "#,
         FixtureRoots::Program,
+        registry.compile_view(),
     )
     .expect("schema-only semantic input should build");
     let targets = fixture.input.targets();
@@ -79,9 +91,12 @@ extern state current: Any;
     let state = fixture.declarations["current"];
     assert_eq!(
         targets.state(state).map(|state| &state.contract),
-        Some(&MirTypeContract::Any)
+        Some(&MirTypeContract::Host(vela_mir::HostTypeTarget {
+            semantic: current_state,
+            runtime: vela_common::HostTypeId::new(901),
+        }))
     );
-    assert!(targets.guard(CompileGuardKey::State(state)).is_none());
+    assert!(targets.guard(CompileGuardKey::State(state)).is_some());
 }
 
 #[test]

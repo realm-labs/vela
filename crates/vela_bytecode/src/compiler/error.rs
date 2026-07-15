@@ -119,6 +119,10 @@ impl CompileError {
                 format!("state initializer for `{state}` is not effect-restricted: {reason}"),
             )
             .with_code("compiler::invalid_state_initializer"),
+            CompileErrorKind::InvalidExternStateContract { state, actual } => Diagnostic::error(
+                format!("extern state `{state}` requires a registered host type, found `{actual}`"),
+            )
+            .with_code("compiler::invalid_extern_state_contract"),
         };
         Some(match self.span {
             Some(span) => diagnostic.with_span(span),
@@ -146,6 +150,7 @@ pub enum CompileErrorKind {
     MirInput(Box<vela_mir::MirBuildError>),
     RegistrySnapshot(String),
     InvalidStateInitializer { state: String, reason: String },
+    InvalidExternStateContract { state: String, actual: String },
 }
 
 pub type CompileResult<T> = Result<T, CompileError>;

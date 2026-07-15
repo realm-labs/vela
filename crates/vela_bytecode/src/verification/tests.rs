@@ -102,6 +102,56 @@ fn program_verifier_rejects_an_extern_state_initializer() {
 }
 
 #[test]
+fn program_verifier_rejects_non_host_extern_state_contracts() {
+    let contracts = [
+        vela_mir::MirTypeContract::Any,
+        vela_mir::MirTypeContract::Primitive(vela_common::PrimitiveTag::I64),
+        vela_mir::MirTypeContract::Array(Some(Box::new(vela_mir::MirTypeContract::Primitive(
+            vela_common::PrimitiveTag::I64,
+        )))),
+        vela_mir::MirTypeContract::Callable {
+            accepted_kinds: vela_mir::MirCallableKindSet::FUNCTION,
+            positional_arity: None,
+        },
+        vela_mir::MirTypeContract::Definition(vela_def::TypeId::new(2)),
+    ];
+
+    for contract in contracts {
+        let mut descriptor =
+            crate::StateDescriptor::test_extern(vela_def::StateId::new(1), "main::value");
+        descriptor.type_contract = contract;
+        let mut program = UnlinkedProgram::new();
+        program.set_states([descriptor]);
+
+        assert!(matches!(
+            program.verify().expect_err("non-host extern contract").kind,
+            VerificationErrorKind::InvalidStateDescriptor { slot: 0, detail }
+                if detail.contains("host type contract")
+        ));
+    }
+}
+
+#[test]
+fn linked_program_verifier_rejects_non_host_extern_state_contract() {
+    let mut program = LinkedProgram::new();
+    program.push_state(crate::LinkedStateDescriptor {
+        id: vela_def::StateId::new(1),
+        qualified_name: "main::value".to_owned(),
+        visibility: crate::StateVisibility::Private,
+        storage: crate::StateStorage::Extern,
+        type_contract: vela_mir::MirTypeContract::Any,
+        initializer: None,
+        source_span: None,
+    });
+
+    assert!(matches!(
+        program.verify().expect_err("non-host linked extern contract").kind,
+        VerificationErrorKind::InvalidStateDescriptor { slot: 0, detail }
+            if detail.contains("host type contract")
+    ));
+}
+
+#[test]
 fn program_verifier_rejects_a_vm_state_without_an_initializer() {
     let mut descriptor =
         crate::StateDescriptor::test_extern(vela_def::StateId::new(1), "main::value");

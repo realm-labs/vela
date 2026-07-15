@@ -26,7 +26,7 @@ use vela_registry::{TypeHintDef, TypeKindDef};
 use super::contracts::ContractBoundary;
 use super::external::ExternalCatalog;
 use super::{GenerationBuilder, SemanticRoots, input_error, registry_input_error};
-use crate::compiler::error::CompileResult;
+use crate::compiler::error::{CompileError, CompileErrorKind, CompileResult};
 
 impl GenerationBuilder<'_, '_> {
     pub(super) fn insert_script_schema(&mut self) -> CompileResult<()> {
@@ -314,6 +314,17 @@ impl GenerationBuilder<'_, '_> {
             let initializer = (state.storage == StateStorage::Vm)
                 .then(|| script_state_initializer_id(package.as_str(), &symbol));
             let origin = MirSourceOrigin::declaration(declaration, metadata.span);
+            if state.storage == StateStorage::Extern
+                && !matches!(contract, MirTypeContract::Host(_))
+            {
+                return Err(
+                    CompileError::new(CompileErrorKind::InvalidExternStateContract {
+                        state: symbol,
+                        actual: state.type_hint.display(),
+                    })
+                    .with_span(metadata.span),
+                );
+            }
             self.remember_contract(&contract, origin);
             self.targets
                 .insert_state(

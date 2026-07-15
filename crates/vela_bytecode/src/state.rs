@@ -37,7 +37,10 @@ impl StateDescriptor {
             qualified_name: qualified_name.into(),
             visibility: StateVisibility::Private,
             storage: StateStorage::Extern,
-            type_contract: MirTypeContract::Any,
+            type_contract: MirTypeContract::Host(vela_mir::HostTypeTarget {
+                semantic: vela_def::TypeId::new(1),
+                runtime: vela_common::HostTypeId::new(1),
+            }),
             initializer: None,
             source_span: None,
         }

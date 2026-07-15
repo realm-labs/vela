@@ -13,7 +13,7 @@ pub struct RuntimeExternStateBindings {
     bindings: BTreeMap<StateId, ExternStateObject>,
     pending: BTreeMap<String, ExternStateObject>,
     state_ids_by_name: BTreeMap<String, StateId>,
-    expected_types_by_id: BTreeMap<StateId, Option<vela_common::HostTypeId>>,
+    expected_types_by_id: BTreeMap<StateId, vela_common::HostTypeId>,
     next_host_object_id: u64,
 }
 
@@ -46,17 +46,21 @@ impl RuntimeExternStateBindings {
         self.state_ids_by_name = states
             .iter()
             .filter(|state| state.storage == vela_bytecode::StateStorage::Extern)
-            .map(|state| (state.qualified_name.clone(), state.id))
+            .filter_map(|state| match state.type_contract {
+                vela_mir::MirTypeContract::Host(_) => {
+                    Some((state.qualified_name.clone(), state.id))
+                }
+                _ => None,
+            })
             .collect();
         self.expected_types_by_id = states
             .iter()
             .filter(|state| state.storage == vela_bytecode::StateStorage::Extern)
-            .map(|state| {
-                let expected = match state.type_contract {
-                    vela_mir::MirTypeContract::Host(target) => Some(target.runtime),
-                    _ => None,
+            .filter_map(|state| {
+                let vela_mir::MirTypeContract::Host(target) = state.type_contract else {
+                    return None;
                 };
-                (state.id, expected)
+                Some((state.id, target.runtime))
             })
             .collect();
     }
@@ -75,9 +79,8 @@ impl RuntimeExternStateBindings {
                 source_span: None,
             })?;
         let actual_type = value.host_type_id();
-        if let Some(expected) = self.expected_types_by_id.get(&state).copied().flatten()
-            && expected != actual_type
-        {
+        let expected = self.expected_types_by_id[&state];
+        if expected != actual_type {
             return Err(HostError {
                 kind: HostErrorKind::TypeMismatch {
                     expected,
@@ -139,9 +142,10 @@ impl RuntimeExternStateBindings {
                         },
                     )
                 })?;
-            if let vela_mir::MirTypeContract::Host(expected) = state.type_contract
-                && expected.runtime != binding.host_ref.type_id
-            {
+            let vela_mir::MirTypeContract::Host(expected) = state.type_contract else {
+                unreachable!("verified extern state descriptor must carry a host contract");
+            };
+            if expected.runtime != binding.host_ref.type_id {
                 return Err((
                     state.qualified_name.clone(),
                     HostError {

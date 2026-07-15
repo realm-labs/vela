@@ -63,6 +63,27 @@ fn read() { return counter; }
 }
 
 #[test]
+fn compiler_rejects_every_non_host_extern_state_contract_class() {
+    for source in [
+        "extern state value: i64;",
+        "extern state value: Any;",
+        "extern state value: Array<i64>;",
+        "extern state value: Function;",
+        "extern state value: Closure;",
+        "struct Local { value: i64 } extern state value: Local;",
+    ] {
+        let error = compile_test_program(SourceId::new(56), source)
+            .expect_err("non-host extern state contract must fail compilation");
+        assert!(matches!(
+            error.kind,
+            CompileErrorKind::InvalidExternStateContract { ref state, .. }
+                if state == "main::value"
+        ));
+        assert!(error.span.is_some());
+    }
+}
+
+#[test]
 fn compiler_rejects_transitive_state_reads_from_state_initializers() {
     let error = compile_test_program(
         SourceId::new(52),
@@ -84,12 +105,24 @@ state target: i64 = read_source();
 
 #[test]
 fn compiler_rejects_extern_state_reads_from_state_initializers() {
-    let error = compile_test_program(
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty(
+                "host",
+                std::iter::empty::<&str>(),
+                "ExternalState",
+            ))
+            .host_runtime_id(950),
+        )
+        .expect("host state type should register");
+    let error = compile_test_program_with_registry(
         SourceId::new(53),
         r#"
-extern state source: i64;
-state target: i64 = source;
+extern state source: ExternalState;
+state target: ExternalState = source;
 "#,
+        registry.compile_view(),
     )
     .expect_err("extern state reads must be rejected");
 

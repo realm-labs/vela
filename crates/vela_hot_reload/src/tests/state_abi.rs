@@ -33,7 +33,7 @@ fn state_abi_rejects_storage_and_exact_type_contract_changes() {
     let storage_error = compile_update(
         &initial,
         SourceId::new(204),
-        "extern state value: i64; fn main() { return value; }",
+        "extern state value: Player; fn main() { return value; }",
     )
     .expect_err("storage change must reject");
     assert!(matches!(

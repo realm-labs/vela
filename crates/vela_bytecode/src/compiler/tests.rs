@@ -714,7 +714,7 @@ fn compiler_records_cache_site_metadata_for_cacheable_instructions() {
     let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
-extern state bonus: i64;
+extern state bonus: Player;
 
 struct Reward {
     gold: i64,
@@ -727,7 +727,7 @@ impl Reward {
 }
 
 fn main(player: Player) {
-    let reward = Reward { gold: bonus };
+    let reward = Reward { gold: bonus.level };
     reward.gold = reward.gold + 1;
     let current = player.level;
     player.level = current + reward.gold;
