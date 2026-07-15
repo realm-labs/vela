@@ -2,7 +2,7 @@
 
 > **Track:** contextual `state` declarations, explicit VM/host ownership,
 > restricted initialization, and hot-reload state compatibility
-> **Document status:** Batches A-E landed; Batch F ready for execution
+> **Document status:** Batches A-E landed; Batch F in execution (F1 complete)
 > **Baseline:** post-implementation review of `master` at `afac6150` on
 > 2026-07-15
 > **Execution style:** hard-switch the pre-release language and runtime in
@@ -963,7 +963,7 @@ findings against the existing contract without adding new language scope.
 
 Tasks, in execution order:
 
-- [ ] `STATE-F1-SET-CONTRACT`: make `set_state` and `update_state` resolve the
+- [x] `STATE-F1-SET-CONTRACT`: make `set_state` and `update_state` resolve the
   linked `StateDescriptor` and validate the complete normalized
   `MirTypeContract`. Valid parameterized containers, tuples, Option/Result, and
   qualified script values must pass; malformed nested values and metadata-free

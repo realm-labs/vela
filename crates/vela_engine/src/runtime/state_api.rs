@@ -1,5 +1,3 @@
-use vela_bytecode::ProgramImage;
-use vela_hir::module_graph::DeclarationKind;
 use vela_host::error::HostResult;
 use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
@@ -77,101 +75,21 @@ where
     }
 
     pub(super) fn set_owned_state(&mut self, name: String, value: OwnedValue) -> VmResult<()> {
-        validate_state_contract(self.image.program_image(), &name, &value)?;
+        let state = self
+            .image
+            .linked_program()
+            .states()
+            .iter()
+            .find(|state| {
+                state.qualified_name == name && state.storage == vela_bytecode::StateStorage::Vm
+            })
+            .ok_or_else(|| VmError::new(VmErrorKind::MissingVmState { name: name.clone() }))?;
+        vela_vm::validate_owned_value_contract(
+            &value,
+            &state.type_contract,
+            self.image.linked_program(),
+            &name,
+        )?;
         self.state.vm_states.insert(name, value)
-    }
-}
-
-fn validate_state_contract(image: &ProgramImage, name: &str, value: &OwnedValue) -> VmResult<()> {
-    let Some(expected) = state_contract_type(image, name) else {
-        return Ok(());
-    };
-    if expected == "Any" || owned_value_matches_contract(value, &expected) {
-        return Ok(());
-    }
-    Err(VmError::new(VmErrorKind::TypeContractViolation {
-        expected,
-        actual: owned_value_contract_type_name(value),
-        debug_name: name.to_owned(),
-    }))
-}
-
-fn state_contract_type(image: &ProgramImage, name: &str) -> Option<String> {
-    let graph = image.script_metadata()?;
-    let leaf_name = name.rsplit("::").next().unwrap_or(name);
-    let mut leaf_match = None;
-    for module in graph.module_ids() {
-        let module_path = graph.module_path(module)?.join();
-        let declarations = graph.module(module)?;
-        for declaration_name in declarations.names() {
-            let declaration = declarations.get(declaration_name)?;
-            let metadata = graph.declaration(declaration)?;
-            if metadata.kind != DeclarationKind::State {
-                continue;
-            }
-            let symbol = if module_path.is_empty() {
-                metadata.name.clone()
-            } else {
-                format!("{module_path}::{}", metadata.name)
-            };
-            if symbol == name {
-                return graph
-                    .state_metadata(declaration)
-                    .map(|metadata| metadata.type_hint.display());
-            }
-            if metadata.name == leaf_name {
-                let Some(metadata) = graph.state_metadata(declaration) else {
-                    continue;
-                };
-                if leaf_match.is_some() {
-                    return None;
-                }
-                leaf_match = Some(metadata.type_hint.display());
-            }
-        }
-    }
-    leaf_match
-}
-
-fn owned_value_matches_contract(value: &OwnedValue, expected: &str) -> bool {
-    match value {
-        OwnedValue::Unit => expected == "()",
-        OwnedValue::Bool(_) => expected == "bool",
-        OwnedValue::Char(_) => expected == "char",
-        OwnedValue::Scalar(value) => value.primitive_tag().name() == expected,
-        OwnedValue::String(_) => expected == "String",
-        OwnedValue::Bytes(_) => expected == "Bytes",
-        OwnedValue::Tuple(_) => expected == "tuple",
-        OwnedValue::Array(_) => expected == "Array",
-        OwnedValue::Map(_) => expected == "Map",
-        OwnedValue::Set(_) => expected == "Set",
-        OwnedValue::Record { type_name, .. } => type_name == expected,
-        OwnedValue::Enum { enum_name, .. } => enum_name == expected,
-        OwnedValue::Closure(_) => expected == "Closure",
-        OwnedValue::Range(_) => expected == "Range",
-        OwnedValue::Iterator(_) => expected == "Iterator",
-        OwnedValue::HostRef(_) | OwnedValue::PathProxy(_) => false,
-    }
-}
-
-fn owned_value_contract_type_name(value: &OwnedValue) -> String {
-    match value {
-        OwnedValue::Unit => "()".to_owned(),
-        OwnedValue::Bool(_) => "bool".to_owned(),
-        OwnedValue::Char(_) => "char".to_owned(),
-        OwnedValue::Scalar(value) => value.primitive_tag().name().to_owned(),
-        OwnedValue::String(_) => "String".to_owned(),
-        OwnedValue::Bytes(_) => "Bytes".to_owned(),
-        OwnedValue::Tuple(_) => "tuple".to_owned(),
-        OwnedValue::Array(_) => "Array".to_owned(),
-        OwnedValue::Map(_) => "Map".to_owned(),
-        OwnedValue::Set(_) => "Set".to_owned(),
-        OwnedValue::Record { type_name, .. } => type_name.clone(),
-        OwnedValue::Enum { enum_name, .. } => enum_name.clone(),
-        OwnedValue::Closure(_) => "Closure".to_owned(),
-        OwnedValue::Range(_) => "Range".to_owned(),
-        OwnedValue::HostRef(_) => "host_ref".to_owned(),
-        OwnedValue::PathProxy(_) => "path_proxy".to_owned(),
-        OwnedValue::Iterator(_) => "Iterator".to_owned(),
     }
 }

@@ -38,6 +38,7 @@ mod numeric_conversions;
 mod numeric_ops;
 mod option_result;
 mod option_result_methods;
+mod owned_contract;
 pub mod owned_value;
 pub mod ranges;
 mod record_fields;
@@ -91,6 +92,7 @@ use heap_values::{
 pub use heap_values::{
     allocate_zero_field_record, owned_to_persistent_value, persistent_value_to_owned,
 };
+pub use owned_contract::validate_owned_value_contract;
 use owned_value::OwnedValue;
 pub(crate) use reflection_values::{
     runtime_value_to_reflect, value_from_reflect, value_to_reflect,

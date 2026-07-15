@@ -530,6 +530,131 @@ fn read_amount() {
 }
 
 #[test]
+fn runtime_set_state_validates_linked_recursive_contract_before_replacement() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = engine
+        .compile_source_with_id(
+            SourceId::new(1),
+            r#"
+state values: Array<i64> = [1, 2];
+"#,
+        )
+        .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+
+    runtime
+        .set_state("main::values", OwnedValue::array([3_i64, 4_i64]))
+        .expect("matching recursive contract should replace state");
+    let malformed = OwnedValue::array([
+        OwnedValue::from(5_i64),
+        OwnedValue::String("wrong".to_owned()),
+    ]);
+    let error = runtime
+        .set_state("main::values", malformed)
+        .expect_err("nested mismatch should reject replacement");
+
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::TypeContractViolation { expected, .. } if expected == "Array<i64>"
+    ));
+    assert_eq!(
+        runtime.state("main::values"),
+        Ok(Some(OwnedValue::array([3_i64, 4_i64]))),
+        "rejected recursive value must not replace the current state"
+    );
+    assert_eq!(
+        runtime
+            .set_state("main::missing", OwnedValue::from(1_i64))
+            .expect_err("missing linked descriptor must not bypass validation")
+            .kind(),
+        VmErrorKind::MissingVmState {
+            name: "main::missing".to_owned(),
+        }
+    );
+}
+
+#[test]
+fn runtime_set_state_accepts_and_rejects_recursive_contract_matrix() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = engine
+        .compile_source_with_id(
+            SourceId::new(1),
+            r#"
+struct Player {
+    level: i64,
+}
+
+enum Status {
+    Ready,
+    Waiting,
+}
+
+state array: Array<i64> = [1];
+state map: Map<String, i64> = { "score": 1 };
+state tuple: (i64, String) = (1, "ready");
+state option: Option<i64> = Option::Some(1);
+state result: Result<i64, String> = Result::Ok(1);
+state player: Player = Player { level: 1 };
+state status: Status = Status::Ready {};
+"#,
+        )
+        .expect("program should compile");
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+
+    let cases = [
+        (
+            "main::array",
+            OwnedValue::array([2_i64]),
+            OwnedValue::array([OwnedValue::String("wrong".to_owned())]),
+        ),
+        (
+            "main::map",
+            OwnedValue::map([("score", 2_i64)]),
+            OwnedValue::map([("score", OwnedValue::String("wrong".to_owned()))]),
+        ),
+        (
+            "main::tuple",
+            OwnedValue::tuple([OwnedValue::from(2_i64), OwnedValue::from("ready")]),
+            OwnedValue::tuple([OwnedValue::from(2_i64), OwnedValue::from(3_i64)]),
+        ),
+        (
+            "main::option",
+            OwnedValue::enum_variant("Option", "Some", [("0", OwnedValue::from(2_i64))]),
+            OwnedValue::enum_variant("Option", "Some", [("0", OwnedValue::from("wrong"))]),
+        ),
+        (
+            "main::result",
+            OwnedValue::enum_variant("Result", "Ok", [("0", OwnedValue::from(2_i64))]),
+            OwnedValue::enum_variant("Result", "Ok", [("0", OwnedValue::from("wrong"))]),
+        ),
+        (
+            "main::player",
+            OwnedValue::record("main::Player", [("level", 2_i64)]),
+            OwnedValue::record("main::Player", [("name", 2_i64)]),
+        ),
+        (
+            "main::status",
+            OwnedValue::enum_variant("main::Status", "Waiting", Vec::<(&str, OwnedValue)>::new()),
+            OwnedValue::enum_variant(
+                "main::MissingStatus",
+                "Waiting",
+                Vec::<(&str, OwnedValue)>::new(),
+            ),
+        ),
+    ];
+
+    for (name, valid, invalid) in cases {
+        runtime
+            .set_state(name, valid.clone())
+            .unwrap_or_else(|error| panic!("{name} should accept valid value: {error}"));
+        runtime
+            .set_state(name, invalid)
+            .expect_err("malformed recursive value should fail");
+        assert_eq!(runtime.state(name), Ok(Some(valid)));
+    }
+}
+
+#[test]
 fn runtime_update_state_rejects_type_contract_mismatch_without_replacing_value() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine

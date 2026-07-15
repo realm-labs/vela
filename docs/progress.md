@@ -16,9 +16,10 @@ Batches A-E. Contextual `state` and `extern state` have distinct semantic,
 bytecode, runtime, reload, reflection, and tooling paths, and legacy `global`
 surfaces are removed. Post-implementation review on 2026-07-15 reopened final
 acceptance through Batch F for six uncovered contract, budget, export-ABI,
-initializer-reporting, and generation-reclamation gaps. Batch F is the next
-active execution object; M20 cache close-out and M20.5 editor follow-up resume
-after it closes.
+initializer-reporting, and generation-reclamation gaps. F1 is closed: embedding
+state replacement now validates linked recursive `MirTypeContract` metadata.
+Five review gaps remain before M20 cache close-out and M20.5 editor follow-up
+resume.
 
 The executor-neutral async implementation from Batches A-D is landed: Vela has
 one explicit frame driver, scoped `Send` Runtime/native futures, direct typed
@@ -114,10 +115,10 @@ storage hard switch reaches final acceptance.
 
 ### State Storage Hard Switch
 
-Batches A-E are landed. Batch F is active with six review-closure tasks:
+Batches A-E are landed. Batch F is active with five remaining review-closure
+tasks. `STATE-F1-SET-CONTRACT` is complete with linked-descriptor lookup and
+recursive embedding contract validation.
 
-- `STATE-F1-SET-CONTRACT`: validate embedding writes against the linked,
-  recursive `MirTypeContract` instead of HIR display strings;
 - `STATE-F2-EXTERN-CONTRACT`: reject every non-host `extern state` contract in
   the compiler and verifier rather than disabling runtime type checks;
 - `STATE-F3-INIT-BUDGET`: share one bounded budget across the complete
