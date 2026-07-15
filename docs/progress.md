@@ -15,10 +15,14 @@ The explicit state-storage hard switch in
 complete: `state` is contextual, `extern` is reserved, legacy `global`
 declarations are rejected, CST/AST/HIR expose VM versus extern storage, active
 source fixtures use the new forms, and stable identity is named
-`StateId`/`StateSlot` without aliases. Batch B is the current checkpoint:
-initializer bodies and exact contracts must enter HIR, MIR and linked bytecode
-must use storage-specific reads/writes, VM state must support root assignment,
-and extern roots must reject assignment before bytecode generation.
+`StateId`/`StateSlot` without aliases. Batch B is complete: initializer bodies
+and exact contracts enter the semantic pipeline, MIR and linked bytecode use
+storage-specific reads/writes, VM state supports root assignment, extern roots
+reject assignment before bytecode generation, and typed state descriptors map
+generation slots to stable IDs. Batch C is the current checkpoint: introduce
+StateId-keyed persistent stores, compile and run restricted initializers, make
+Runtime construction transactional and fallible, and hard-switch the embedding
+API from global terminology to state ownership.
 
 The executor-neutral async implementation from Batches A-D is landed: Vela has
 one explicit frame driver, scoped `Send` Runtime/native futures, direct typed
@@ -114,13 +118,15 @@ storage hard switch reaches final acceptance.
 
 ### State Storage Hard Switch
 
-Batch A is complete. Batch B must replace the remaining generic global
-semantic, MIR, bytecode, verifier, cache, profiler, and execution paths with
-statically distinct VM-state read/write and extern-state read operations. It
-must lower direct and compound VM-state assignment, reject extern-root
-assignment, and bind initializer bodies through the ordinary HIR pipeline.
-Batch C-D runtime initialization, stores, embedding APIs, reload ABI, and old
-generation lifetime remain gated on that executable ownership split.
+Batches A-B are complete. HIR binds state initializers and exact contracts;
+MIR, bytecode, verifier, caches, and execution statically distinguish VM-state
+read/write from extern-state read; direct and compound VM-state assignment work;
+extern-root assignment is rejected; and executable metadata carries typed
+descriptors with stable identity. Batch C must introduce StateId-keyed
+persistent VM and extern stores, compile and run bounded effect-restricted
+initializers transactionally, make Runtime construction fallible, and replace
+the remaining global embedding surfaces. Batch D reload ABI and old-generation
+lifetime remain gated on those persistent stores.
 
 ### Async Post-Review Closure
 
