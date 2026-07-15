@@ -15,7 +15,7 @@ impl AstNode for SyntaxItem {
             kind,
             SyntaxKind::UseItem
                 | SyntaxKind::ConstItem
-                | SyntaxKind::GlobalItem
+                | SyntaxKind::StateItem
                 | SyntaxKind::FunctionItem
                 | SyntaxKind::StructItem
                 | SyntaxKind::EnumItem
@@ -182,11 +182,17 @@ impl AstNode for SyntaxConstItem {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SyntaxGlobalItem {
+pub struct SyntaxStateItem {
     syntax: SyntaxNode,
 }
 
-impl SyntaxGlobalItem {
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SyntaxStateStorage {
+    Vm,
+    Extern,
+}
+
+impl SyntaxStateItem {
     #[must_use]
     pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
         AstChildren::new(&self.syntax)
@@ -203,8 +209,27 @@ impl SyntaxGlobalItem {
     }
 
     #[must_use]
+    pub fn extern_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::ExternKw)
+    }
+
+    #[must_use]
+    pub fn storage(&self) -> SyntaxStateStorage {
+        if self.extern_token().is_some() {
+            SyntaxStateStorage::Extern
+        } else {
+            SyntaxStateStorage::Vm
+        }
+    }
+
+    #[must_use]
+    pub fn state_token(&self) -> Option<SyntaxToken> {
+        contextual_state_token(&self.syntax)
+    }
+
+    #[must_use]
     pub fn name_token(&self) -> Option<SyntaxToken> {
-        token_after(&self.syntax, SyntaxKind::GlobalKw, SyntaxKind::Ident)
+        token_after_contextual_state(&self.syntax)
     }
 
     #[must_use]
@@ -216,11 +241,16 @@ impl SyntaxGlobalItem {
     pub fn type_hint(&self) -> Option<SyntaxTypeHint> {
         child(&self.syntax)
     }
+
+    #[must_use]
+    pub fn initializer(&self) -> Option<SyntaxExpression> {
+        child(&self.syntax)
+    }
 }
 
-impl AstNode for SyntaxGlobalItem {
+impl AstNode for SyntaxStateItem {
     fn can_cast(kind: SyntaxKind) -> bool {
-        kind == SyntaxKind::GlobalItem
+        kind == SyntaxKind::StateItem
     }
 
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1087,7 +1117,7 @@ fn item_keyword(kind: SyntaxKind) -> bool {
         kind,
         SyntaxKind::UseKw
             | SyntaxKind::ConstKw
-            | SyntaxKind::GlobalKw
+            | SyntaxKind::ExternKw
             | SyntaxKind::FnKw
             | SyntaxKind::StructKw
             | SyntaxKind::EnumKw
@@ -1108,6 +1138,22 @@ fn token_after(parent: &SyntaxNode, after: SyntaxKind, wanted: SyntaxKind) -> Op
             }
             seen_after && token.kind() == wanted
         })
+}
+
+fn contextual_state_token(parent: &SyntaxNode) -> Option<SyntaxToken> {
+    significant_tokens(parent)
+        .find(|token| token.kind() == SyntaxKind::Ident && token.text() == "state")
+}
+
+fn token_after_contextual_state(parent: &SyntaxNode) -> Option<SyntaxToken> {
+    let mut seen_state = false;
+    significant_tokens(parent).find(|token| {
+        if !seen_state && token.kind() == SyntaxKind::Ident && token.text() == "state" {
+            seen_state = true;
+            return false;
+        }
+        seen_state && token.kind() == SyntaxKind::Ident
+    })
 }
 
 fn token_before(

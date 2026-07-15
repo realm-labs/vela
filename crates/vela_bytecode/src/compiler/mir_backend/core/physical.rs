@@ -63,10 +63,7 @@ impl<'a> FunctionBackend<'a> {
         Ok(register)
     }
 
-    pub(super) fn global_slot(
-        &self,
-        global: vela_def::GlobalId,
-    ) -> Option<vela_common::GlobalSlot> {
+    pub(super) fn global_slot(&self, global: vela_def::StateId) -> Option<vela_common::StateSlot> {
         let mut globals = self
             .program
             .targets()
@@ -78,7 +75,7 @@ impl<'a> FunctionBackend<'a> {
             .into_iter()
             .map(|(id, _)| id)
             .position(|id| id == global)
-            .map(vela_common::GlobalSlot::new)
+            .map(vela_common::StateSlot::new)
     }
 
     pub(super) fn stable_field_slot(

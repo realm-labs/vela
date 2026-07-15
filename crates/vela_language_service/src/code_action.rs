@@ -201,7 +201,7 @@ fn importable_declaration(
         && matches!(
             declaration.kind,
             DeclarationKind::Const
-                | DeclarationKind::Global
+                | DeclarationKind::State
                 | DeclarationKind::Function
                 | DeclarationKind::Struct
                 | DeclarationKind::Enum

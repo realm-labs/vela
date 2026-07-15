@@ -70,8 +70,16 @@ pub struct ConstMetadata {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct GlobalMetadata {
+pub struct StateMetadata {
+    pub storage: StateStorage,
     pub type_hint: HirTypeHint,
+    pub initializer_span: Option<Span>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum StateStorage {
+    Vm,
+    Extern,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

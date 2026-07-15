@@ -59,7 +59,7 @@ pub enum Keyword {
     Use,
     Pub,
     Const,
-    Global,
+    Extern,
     Let,
     Fn,
     Struct,
@@ -89,7 +89,7 @@ impl Keyword {
             "use" => Some(Self::Use),
             "pub" => Some(Self::Pub),
             "const" => Some(Self::Const),
-            "global" => Some(Self::Global),
+            "extern" => Some(Self::Extern),
             "let" => Some(Self::Let),
             "fn" => Some(Self::Fn),
             "struct" => Some(Self::Struct),
@@ -120,7 +120,7 @@ impl Keyword {
             Self::Use => SyntaxKind::UseKw,
             Self::Pub => SyntaxKind::PubKw,
             Self::Const => SyntaxKind::ConstKw,
-            Self::Global => SyntaxKind::GlobalKw,
+            Self::Extern => SyntaxKind::ExternKw,
             Self::Let => SyntaxKind::LetKw,
             Self::Fn => SyntaxKind::FnKw,
             Self::Struct => SyntaxKind::StructKw,
@@ -234,5 +234,17 @@ impl Symbol {
             Self::Pipe => SyntaxKind::Pipe,
             Self::Question => SyntaxKind::Question,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Keyword;
+
+    #[test]
+    fn state_and_global_are_identifiers_while_extern_is_reserved() {
+        assert_eq!(Keyword::from_text("state"), None);
+        assert_eq!(Keyword::from_text("global"), None);
+        assert_eq!(Keyword::from_text("extern"), Some(Keyword::Extern));
     }
 }

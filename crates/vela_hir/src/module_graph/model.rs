@@ -51,7 +51,7 @@ pub enum Visibility {
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum DeclarationKind {
     Const,
-    Global,
+    State,
     Function,
     Struct,
     Enum,

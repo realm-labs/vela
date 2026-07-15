@@ -2,10 +2,10 @@ use vela_common::{SourceId, Span};
 
 use crate::ast::{
     AstNode, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBreakStmt, SyntaxCallExpr, SyntaxConstItem,
-    SyntaxContinueStmt, SyntaxExprStmt, SyntaxForStmt, SyntaxGlobalItem, SyntaxIfExpr,
-    SyntaxIndexExpr, SyntaxLambdaExpr, SyntaxMapExpr, SyntaxMatchExpr, SyntaxRecordExpr,
-    SyntaxRecordPattern, SyntaxReturnStmt, SyntaxTryExpr, SyntaxTuplePattern, SyntaxUnaryExpr,
-    SyntaxUseItem,
+    SyntaxContinueStmt, SyntaxExprStmt, SyntaxForStmt, SyntaxIfExpr, SyntaxIndexExpr,
+    SyntaxLambdaExpr, SyntaxMapExpr, SyntaxMatchExpr, SyntaxRecordExpr, SyntaxRecordPattern,
+    SyntaxReturnStmt, SyntaxStateItem, SyntaxStateStorage, SyntaxTryExpr, SyntaxTuplePattern,
+    SyntaxUnaryExpr, SyntaxUseItem,
 };
 use crate::parse::parse_source_with_id;
 use crate::{SyntaxKind, TextRange, TextSize};
@@ -137,16 +137,17 @@ fn parser_parse_source_reports_missing_function_name() {
 }
 
 #[test]
-fn parser_parse_source_structures_use_const_and_global_items() {
+fn parser_parse_source_structures_use_const_and_state_items() {
     let source = r#"use game::state::Player as PlayerState;
 const DEFAULT_LEVEL: i64 = base_level + 1;
-global current_player: Player;
+state current_player: Player = Player::default();
+pub extern state world: World;
 "#;
     let parse = parse_source_with_id(SourceId::new(22), source);
     let tree = parse.tree();
     let use_item = tree.uses().next().expect("use item");
     let const_item = tree.consts().next().expect("const item");
-    let global_item = tree.globals().next().expect("global item");
+    let states = tree.states().collect::<Vec<_>>();
 
     assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
     assert_eq!(tree.syntax().text().to_string(), source);
@@ -157,7 +158,8 @@ global current_player: Player;
         vec![
             SyntaxKind::UseItem,
             SyntaxKind::ConstItem,
-            SyntaxKind::GlobalItem,
+            SyntaxKind::StateItem,
+            SyntaxKind::StateItem,
         ]
     );
     assert_eq!(
@@ -185,14 +187,101 @@ global current_player: Player;
         SyntaxKind::BinaryExpr
     );
     assert_eq!(
-        SyntaxGlobalItem::cast(global_item.syntax().clone())
-            .expect("typed global item")
+        SyntaxStateItem::cast(states[0].syntax().clone())
+            .expect("typed state item")
             .type_hint()
-            .expect("global type hint")
+            .expect("state type hint")
             .syntax()
             .text()
             .to_string(),
         "Player"
+    );
+    assert_eq!(states[0].storage(), SyntaxStateStorage::Vm);
+    assert!(states[0].initializer().is_some());
+    assert_eq!(states[1].storage(), SyntaxStateStorage::Extern);
+    assert!(states[1].initializer().is_none());
+}
+
+#[test]
+fn parser_keeps_state_contextual_in_identifier_positions() {
+    let source = r#"use game::state as state;
+state state: State = State { state: 0 };
+fn state(state: State) {
+    let state = state.state;
+}
+fn global(global: State) {
+    let global = global.state;
+}
+struct State { state: i64 }
+impl State { fn state(self) {} }
+"#;
+    let parse = parse_source_with_id(SourceId::new(23), source);
+    let tree = parse.tree();
+    let state_item = tree.states().next().expect("state item");
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert_eq!(
+        state_item.state_token().expect("introducer").text(),
+        "state"
+    );
+    assert_eq!(state_item.name_text().as_deref(), Some("state"));
+    assert_eq!(
+        tree.functions()
+            .next()
+            .expect("function")
+            .name_text()
+            .as_deref(),
+        Some("state")
+    );
+    assert_eq!(
+        tree.uses().next().expect("use").alias_text().as_deref(),
+        Some("state")
+    );
+}
+
+#[test]
+fn parser_rejects_legacy_global_declarations_with_replacements() {
+    let parse = parse_source_with_id(SourceId::new(24), "global cache: Cache;");
+    let diagnostic = parse
+        .diagnostics()
+        .iter()
+        .find(|diagnostic| diagnostic.code.as_deref() == Some("syntax::legacy_global_decl"))
+        .expect("legacy global diagnostic");
+
+    assert!(parse.tree().states().next().is_none());
+    assert_eq!(diagnostic.candidates.len(), 2);
+    assert!(diagnostic.message.contains("`state` with an initializer"));
+    assert!(diagnostic.message.contains("`extern state`"));
+}
+
+#[test]
+fn parser_rejects_invalid_state_declaration_forms() {
+    let parse = parse_source_with_id(
+        SourceId::new(25),
+        "state : i64 = 0;\nstate missing_initializer: i64;\nextern state host: Host = value;\nstate missing_type = 1;\nextern pub state wrong: Host;",
+    );
+    let messages = parse
+        .diagnostics()
+        .iter()
+        .map(|diagnostic| diagnostic.message.as_str())
+        .collect::<Vec<_>>();
+
+    assert!(messages.contains(&"expected state name"), "{messages:?}");
+    assert!(
+        messages.contains(&"expected state initializer"),
+        "{messages:?}"
+    );
+    assert!(
+        messages.contains(&"extern state cannot have an initializer"),
+        "{messages:?}"
+    );
+    assert!(
+        messages.contains(&"expected explicit state type"),
+        "{messages:?}"
+    );
+    assert!(
+        messages.contains(&"invalid modifier order; use `pub extern state`"),
+        "{messages:?}"
     );
 }
 

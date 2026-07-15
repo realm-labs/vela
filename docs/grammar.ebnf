@@ -73,7 +73,7 @@ escape          = "\\", ( '"' | "\\" | "/" | "n" | "r" | "t" | "0"
 unicode_escape  = "u", "{", HEX_DIGIT, { HEX_DIGIT }, "}" ;
 
 (* Keywords are reserved and cannot be used as IDENT. *)
-keyword         = "use" | "pub" | "const" | "global" | "let" | "fn" | "struct"
+keyword         = "use" | "pub" | "const" | "extern" | "let" | "fn" | "struct"
                 | "enum" | "trait" | "impl" | "for" | "if" | "else"
                 | "match" | "return" | "break" | "continue" | "true"
                 | "false" | "self" | "in" | "as" | "async" | "await" ;
@@ -86,7 +86,8 @@ item            = { attribute, line_ws }, visibility, item_kind ;
 visibility      = [ "pub", ws ] ;
 item_kind       = use_decl
                 | const_decl
-                | global_decl
+                | state_decl
+                | extern_state_decl
                 | function_decl
                 | struct_decl
                 | enum_decl
@@ -99,7 +100,15 @@ use_path        = path, [ ws, "as", ws, IDENT ] ;
 const_decl      = "const", ws, IDENT, ws, [ type_annotation, ws ],
                   "=", ws, expr, item_term ;
 
-global_decl     = "global", ws, IDENT, ws, type_annotation, ws, item_term ;
+contextual_state_kw
+                = IDENT (* token text must be exactly "state" *) ;
+
+state_decl      = contextual_state_kw, ws, IDENT, ws, type_annotation, ws,
+                  "=", ws, expr, item_term ;
+
+extern_state_decl
+                = "extern", ws, contextual_state_kw, ws, IDENT, ws,
+                  type_annotation, ws, item_term ;
 
 function_decl   = [ "async", ws ], "fn", ws, IDENT, ws, parameter_list, ws,
                   [ return_type, ws ], block ;

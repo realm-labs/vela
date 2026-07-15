@@ -452,7 +452,7 @@ fn selectable_format_ranges(parsed: &SyntaxParse<SyntaxSourceFile>) -> Vec<Selec
             SyntaxKind::EnumItem => collect_enum_format_ranges(&item, item_span, &mut ranges),
             SyntaxKind::UseItem
             | SyntaxKind::ConstItem
-            | SyntaxKind::GlobalItem
+            | SyntaxKind::StateItem
             | SyntaxKind::FunctionItem => {}
             kind => unreachable!("non-item syntax kind: {kind:?}"),
         }

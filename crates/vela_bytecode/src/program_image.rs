@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use vela_common::GlobalSlot;
+use vela_common::StateSlot;
 use vela_def::FunctionId;
 use vela_hir::module_graph::ModuleGraph;
 
@@ -16,7 +16,7 @@ pub struct ProgramImage {
     function_by_name: BTreeMap<String, FunctionIndex>,
     function_by_id: BTreeMap<FunctionId, FunctionIndex>,
     global_names: Box<[String]>,
-    global_slots: BTreeMap<String, GlobalSlot>,
+    global_slots: BTreeMap<String, StateSlot>,
     cache_sites: Box<[CacheSiteDesc]>,
     script_methods: ScriptMethodTable,
     script_metadata: Option<ModuleGraph>,
@@ -67,7 +67,7 @@ impl ProgramImage {
         let global_slots = global_names
             .iter()
             .enumerate()
-            .map(|(slot, name)| (name.clone(), GlobalSlot::new(slot)))
+            .map(|(slot, name)| (name.clone(), StateSlot::new(slot)))
             .collect();
 
         Self {
@@ -123,12 +123,12 @@ impl ProgramImage {
     }
 
     #[must_use]
-    pub fn global_slot(&self, name: &str) -> Option<GlobalSlot> {
+    pub fn global_slot(&self, name: &str) -> Option<StateSlot> {
         self.global_slots.get(name).copied()
     }
 
     #[must_use]
-    pub fn global_name(&self, slot: GlobalSlot) -> Option<&str> {
+    pub fn global_name(&self, slot: StateSlot) -> Option<&str> {
         self.global_names.get(slot.get()).map(String::as_str)
     }
 
@@ -281,7 +281,7 @@ fn rewrite_instruction_cache_sites(
 
 #[cfg(test)]
 mod tests {
-    use vela_common::{GlobalSlot, HostTypeId};
+    use vela_common::{HostTypeId, StateSlot};
     use vela_def::{FieldId, FunctionId, MethodId, TypeId};
     use vela_host::target::HostTargetPlan;
 
@@ -332,8 +332,8 @@ mod tests {
 
         let image = ProgramImage::from_program(&program);
 
-        assert_eq!(image.global_slot("main::first"), Some(GlobalSlot::new(0)));
-        assert_eq!(image.global_name(GlobalSlot::new(1)), Some("main::second"));
+        assert_eq!(image.global_slot("main::first"), Some(StateSlot::new(0)));
+        assert_eq!(image.global_name(StateSlot::new(1)), Some("main::second"));
         assert_eq!(image.global_names(), program.global_names());
         assert_eq!(
             image

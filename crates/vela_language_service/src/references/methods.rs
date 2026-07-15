@@ -268,7 +268,7 @@ fn method_reference_target_kind(
         DeclarationKind::Const
         | DeclarationKind::Enum
         | DeclarationKind::Function
-        | DeclarationKind::Global
+        | DeclarationKind::State
         | DeclarationKind::Struct => None,
     }
 }

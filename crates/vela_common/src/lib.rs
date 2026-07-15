@@ -48,7 +48,7 @@ macro_rules! stable_id {
     };
 }
 
-stable_id!(GlobalSlot, usize);
+stable_id!(StateSlot, usize);
 stable_id!(HostMethodId, u128);
 stable_id!(HostObjectId, u64);
 stable_id!(HostTypeId, u64);

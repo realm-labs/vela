@@ -5,7 +5,7 @@ use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{PrimitiveTag, ShapeId};
 use vela_def::{
-    FunctionId, TypeId, script_field_id, script_function_id, script_global_id, script_type_id,
+    FunctionId, TypeId, script_field_id, script_function_id, script_state_id, script_type_id,
     script_type_path, script_variant_id,
 };
 use vela_hir::attributes::schema_id_attr;
@@ -299,7 +299,7 @@ impl GenerationBuilder<'_, '_> {
             let global = self
                 .request
                 .graph
-                .global_metadata(declaration)
+                .state_metadata(declaration)
                 .ok_or_else(registry_input_error)?;
             let Some(contract) = self.type_contract_for_hint(metadata.module, &global.type_hint)
             else {
@@ -310,7 +310,7 @@ impl GenerationBuilder<'_, '_> {
                 .graph
                 .module_package(metadata.module)
                 .ok_or_else(registry_input_error)?;
-            let id = script_global_id(package.as_str(), &symbol);
+            let id = script_state_id(package.as_str(), &symbol);
             let origin = MirSourceOrigin::declaration(declaration, metadata.span);
             self.remember_contract(&contract, origin);
             self.targets

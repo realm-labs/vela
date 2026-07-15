@@ -179,7 +179,7 @@ fn declaration_fact(
             .type_hint
             .as_ref()
             .map(|hint| type_fact_from_hint_in_module(graph, metadata.module, hint)),
-        DeclarationKind::Global => graph.global_metadata(declaration).map(|global| {
+        DeclarationKind::State => graph.state_metadata(declaration).map(|global| {
             let fact = type_fact_from_hint_in_module(graph, metadata.module, &global.type_hint);
             if !matches!(fact, TypeFact::Unknown) {
                 return fact;

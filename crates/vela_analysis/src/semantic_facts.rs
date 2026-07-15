@@ -1081,7 +1081,7 @@ fn constructor_target(
             },
             DeclarationKind::Enum => ConstructorTargetFact::Declaration(declaration),
             DeclarationKind::Const
-            | DeclarationKind::Global
+            | DeclarationKind::State
             | DeclarationKind::Function
             | DeclarationKind::Trait
             | DeclarationKind::Impl => ConstructorTargetFact::Unresolved,

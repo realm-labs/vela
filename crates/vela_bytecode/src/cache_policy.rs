@@ -194,8 +194,8 @@ impl_cache_sites! {
 mod tests {
     use super::*;
     use crate::{
-        DebugNameId, FieldSlot, GlobalSlot, HostTargetPlanId, MethodDispatchHandle, NativeHandle,
-        Register,
+        DebugNameId, FieldSlot, HostTargetPlanId, MethodDispatchHandle, NativeHandle, Register,
+        StateSlot,
     };
     use vela_common::HostMethodId;
     use vela_def::{FunctionId, MethodId};
@@ -214,7 +214,7 @@ mod tests {
                 },
                 InstructionKind::LoadGlobal {
                     dst: Register(0),
-                    slot: GlobalSlot::new(0),
+                    slot: StateSlot::new(0),
                     debug_name: DebugNameId::new(0),
                     cache_site: None,
                 },

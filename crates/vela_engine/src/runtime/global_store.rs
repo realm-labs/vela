@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use vela_common::{GlobalSlot, HostObjectId};
+use vela_common::{HostObjectId, StateSlot};
 use vela_host::adapter::GlobalBinding;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::object::ScriptHostObject;
@@ -11,7 +11,7 @@ const GLOBAL_HOST_OBJECT_ID_BASE: u64 = 1 << 62;
 pub struct RuntimeGlobalStore {
     globals: BTreeMap<String, HostGlobalBinding>,
     slots: Vec<Option<HostRef>>,
-    slot_by_name: BTreeMap<String, GlobalSlot>,
+    slot_by_name: BTreeMap<String, StateSlot>,
     next_host_object_id: u64,
 }
 
@@ -44,7 +44,7 @@ impl RuntimeGlobalStore {
         self.slots.clear();
         self.slots.resize(names.len(), None);
         for (index, name) in names.iter().enumerate() {
-            let slot = GlobalSlot::new(index);
+            let slot = StateSlot::new(index);
             self.slot_by_name.insert(name.clone(), slot);
             if let Some(host_ref) = self.host_ref(name) {
                 self.slots[index] = Some(host_ref);
@@ -82,7 +82,7 @@ impl RuntimeGlobalStore {
     }
 
     #[must_use]
-    pub fn host_ref_by_slot(&self, slot: GlobalSlot) -> Option<HostRef> {
+    pub fn host_ref_by_slot(&self, slot: StateSlot) -> Option<HostRef> {
         self.slots.get(slot.get()).and_then(|host_ref| *host_ref)
     }
 

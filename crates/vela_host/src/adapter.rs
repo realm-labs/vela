@@ -1,4 +1,4 @@
-use vela_common::{GlobalSlot, HostMethodId};
+use vela_common::{HostMethodId, StateSlot};
 
 use crate::{
     error::{HostError, HostErrorKind, HostResult},
@@ -11,7 +11,7 @@ use crate::{
 #[derive(Clone, Copy, Debug)]
 pub struct GlobalBinding<'a> {
     pub name: &'a str,
-    pub slot: Option<GlobalSlot>,
+    pub slot: Option<StateSlot>,
 }
 
 pub trait ScriptStateAdapter {

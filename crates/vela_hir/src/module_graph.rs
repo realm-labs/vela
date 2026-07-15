@@ -29,7 +29,7 @@ use crate::ids::{HirBodyId, HirDeclId, HirNodeId, ModuleId};
 #[cfg(test)]
 use crate::type_hint::HirTypeHint;
 use crate::type_hint::{
-    ConstMetadata, EnumShape, FunctionSignature, GlobalMetadata, ImplMetadata, StructShape,
+    ConstMetadata, EnumShape, FunctionSignature, ImplMetadata, StateMetadata, StructShape,
     TraitShape,
 };
 
@@ -56,7 +56,7 @@ pub struct ModuleGraph {
     declarations_by_kind: BTreeMap<DeclarationKind, BTreeSet<HirDeclId>>,
     declaration_attrs: BTreeMap<HirDeclId, Vec<HirAttribute>>,
     const_metadata: BTreeMap<HirDeclId, ConstMetadata>,
-    global_metadata: BTreeMap<HirDeclId, GlobalMetadata>,
+    state_metadata: BTreeMap<HirDeclId, StateMetadata>,
     bodies: BTreeMap<HirBodyId, HirBody>,
     body_ids_by_source: BTreeMap<SourceId, BTreeSet<HirBodyId>>,
     const_initializer_bodies: BTreeMap<HirDeclId, HirBodyId>,
@@ -223,24 +223,24 @@ impl ModuleGraph {
                         ));
                     }
                 }
-                SyntaxKind::GlobalItem => {
+                SyntaxKind::StateItem => {
                     let Some((name, visibility, name_span, span)) =
-                        syntax_summary.declaration(item_index, DeclarationKind::Global)
+                        syntax_summary.declaration(item_index, DeclarationKind::State)
                     else {
                         continue;
                     };
                     let declaration = self.insert_declaration(
                         &mut hir_module,
                         name,
-                        DeclarationKind::Global,
+                        DeclarationKind::State,
                         visibility,
                         name_span,
                         span,
                     );
                     if let Some(metadata) =
-                        syntax_metadata::global_metadata(&syntax_summary, item_index)
+                        syntax_metadata::state_metadata(&syntax_summary, item_index)
                     {
-                        self.global_metadata.insert(declaration, metadata);
+                        self.state_metadata.insert(declaration, metadata);
                     }
                     self.declaration_attrs.insert(
                         declaration,

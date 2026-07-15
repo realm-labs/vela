@@ -5,7 +5,7 @@ use vela_package::ModulePath;
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::{
     AstNode, SyntaxConstItem, SyntaxEnumItem, SyntaxEnumVariant, SyntaxFunctionItem,
-    SyntaxGlobalItem, SyntaxImplItem, SyntaxImplMethod, SyntaxItem, SyntaxParam, SyntaxSourceFile,
+    SyntaxImplItem, SyntaxImplMethod, SyntaxItem, SyntaxParam, SyntaxSourceFile, SyntaxStateItem,
     SyntaxStructField, SyntaxStructItem, SyntaxTraitItem, SyntaxTraitMethod, SyntaxTypeHint,
     SyntaxUseItem,
 };
@@ -53,8 +53,8 @@ pub(super) fn summarize_source(parsed: &SyntaxParse<SyntaxSourceFile>) -> ParseS
                     optional_syntax_hint(inner.type_hint())
                 ));
             }
-            vela_syntax::SyntaxKind::GlobalItem => {
-                let Some(inner) = SyntaxGlobalItem::cast(item.syntax().clone()) else {
+            vela_syntax::SyntaxKind::StateItem => {
+                let Some(inner) = SyntaxStateItem::cast(item.syntax().clone()) else {
                     continue;
                 };
                 declarations.push(format!(

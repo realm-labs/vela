@@ -3,7 +3,7 @@ use vela_common::{Diagnostic, Span};
 use crate::attributes::HirAttribute;
 use crate::ids::HirNodeId;
 use crate::type_hint::{
-    ConstMetadata, EnumShape, FunctionSignature, GlobalMetadata, ImplMetadata, StructShape,
+    ConstMetadata, EnumShape, FunctionSignature, ImplMetadata, StateMetadata, StructShape,
     TraitShape,
 };
 
@@ -32,11 +32,8 @@ pub(super) fn const_initializer_diagnostics(
         .unwrap_or_default()
 }
 
-pub(super) fn global_metadata(
-    summary: &SyntaxModuleSummary,
-    index: usize,
-) -> Option<GlobalMetadata> {
-    summary.global_metadata(index)
+pub(super) fn state_metadata(summary: &SyntaxModuleSummary, index: usize) -> Option<StateMetadata> {
+    summary.state_metadata(index)
 }
 
 pub(super) fn function_signature(summary: &SyntaxModuleSummary, index: usize) -> FunctionSignature {

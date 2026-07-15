@@ -151,7 +151,7 @@ fn collect_item_ranges(
     ranges: &mut BTreeSet<FoldingRangeKey>,
 ) {
     match item.syntax().kind() {
-        SyntaxKind::UseItem | SyntaxKind::GlobalItem => {}
+        SyntaxKind::UseItem | SyntaxKind::StateItem => {}
         SyntaxKind::ConstItem => {
             if let Some(item) = SyntaxConstItem::cast(item.syntax().clone())
                 && let Some(value) = item.value()

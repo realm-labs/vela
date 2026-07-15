@@ -25,7 +25,7 @@ pub(crate) use cache_policy::{CacheSiteInstruction, CacheSiteStorage};
 use std::collections::BTreeMap;
 
 use vela_common::{
-    CallableAsyncness, GlobalSlot, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span,
+    CallableAsyncness, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span, StateSlot,
 };
 use vela_def::{FunctionId, MethodId, TypeId};
 use vela_hir::ids::HirLocalId;
@@ -60,7 +60,7 @@ pub struct UnlinkedProgram {
     function_by_name: BTreeMap<String, FunctionIndex>,
     function_by_id: BTreeMap<FunctionId, FunctionIndex>,
     global_names: Vec<String>,
-    global_slots: BTreeMap<String, GlobalSlot>,
+    global_slots: BTreeMap<String, StateSlot>,
     script_methods: ScriptMethodTable,
     script_metadata: Option<ModuleGraph>,
 }
@@ -113,19 +113,19 @@ impl UnlinkedProgram {
             if self.global_slots.contains_key(&name) {
                 continue;
             }
-            let slot = GlobalSlot::new(self.global_names.len());
+            let slot = StateSlot::new(self.global_names.len());
             self.global_slots.insert(name.clone(), slot);
             self.global_names.push(name);
         }
     }
 
     #[must_use]
-    pub fn global_slot(&self, name: &str) -> Option<GlobalSlot> {
+    pub fn global_slot(&self, name: &str) -> Option<StateSlot> {
         self.global_slots.get(name).copied()
     }
 
     #[must_use]
-    pub fn global_name(&self, slot: GlobalSlot) -> Option<&str> {
+    pub fn global_name(&self, slot: StateSlot) -> Option<&str> {
         self.global_names.get(slot.get()).map(String::as_str)
     }
 
@@ -1126,7 +1126,7 @@ pub enum UnlinkedInstructionKind {
     LoadGlobal {
         dst: Register,
         global: String,
-        slot: Option<GlobalSlot>,
+        slot: Option<StateSlot>,
         cache_site: Option<CacheSiteId>,
     },
     HostRead {

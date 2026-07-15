@@ -448,7 +448,7 @@ fn linker_maps_globals_map_keys_and_field_slots_without_instruction_names() {
 
     assert!(matches!(
         main.instructions[0].kind,
-        InstructionKind::LoadGlobal { slot, .. } if slot == vela_common::GlobalSlot::new(0)
+        InstructionKind::LoadGlobal { slot, .. } if slot == vela_common::StateSlot::new(0)
     ));
     assert!(matches!(
         &main.instructions[1].kind,

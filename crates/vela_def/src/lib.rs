@@ -8,9 +8,10 @@ mod stable;
 use std::fmt;
 
 pub use script::{
-    script_field_id, script_field_path, script_function_id, script_function_path, script_global_id,
-    script_global_path, script_inherent_method_id, script_trait_id, script_trait_method_id,
-    script_type_id, script_type_path, script_variant_id, script_variant_path,
+    script_field_id, script_field_path, script_function_id, script_function_path,
+    script_inherent_method_id, script_state_id, script_state_path, script_trait_id,
+    script_trait_method_id, script_type_id, script_type_path, script_variant_id,
+    script_variant_path,
 };
 pub use stable::stable_id;
 
@@ -25,7 +26,7 @@ pub enum DefKind {
     Variant,
     Trait,
     Module,
-    Global,
+    State,
 }
 
 impl DefKind {
@@ -39,7 +40,7 @@ impl DefKind {
             Self::Variant => "variant",
             Self::Trait => "trait",
             Self::Module => "module",
-            Self::Global => "global",
+            Self::State => "state",
         }
     }
 }
@@ -144,12 +145,12 @@ impl DefPath {
     }
 
     #[must_use]
-    pub fn global(
+    pub fn state(
         package: impl Into<String>,
         module: impl IntoIterator<Item = impl Into<String>>,
         name: impl Into<String>,
     ) -> Self {
-        Self::new(DefKind::Global, package, module, None::<String>, name)
+        Self::new(DefKind::State, package, module, None::<String>, name)
     }
 
     #[must_use]
@@ -282,7 +283,7 @@ typed_def_id!(TypeId);
 typed_def_id!(FieldId);
 typed_def_id!(VariantId);
 typed_def_id!(TraitId);
-typed_def_id!(GlobalId);
+typed_def_id!(StateId);
 
 #[cfg(test)]
 mod tests {

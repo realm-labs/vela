@@ -106,7 +106,7 @@ use vela_bytecode::{
 };
 #[cfg(test)]
 use vela_bytecode::{Register, UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgram};
-use vela_common::{GlobalSlot, HostMethodId, HostTypeId, ShapeId};
+use vela_common::{HostMethodId, HostTypeId, ShapeId, StateSlot};
 use vela_def::{DefPath, FunctionId, MethodId, TypeId};
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::resolved::{HostAccessOp, HostSchemaEpoch, ResolvedHostAccess};
@@ -254,7 +254,7 @@ pub struct HostExecution<'host> {
 pub struct ScriptGlobalValues {
     by_name: BTreeMap<String, Value>,
     slots: Vec<Option<Value>>,
-    slot_by_name: BTreeMap<String, GlobalSlot>,
+    slot_by_name: BTreeMap<String, StateSlot>,
 }
 
 impl ScriptGlobalValues {
@@ -270,7 +270,7 @@ impl ScriptGlobalValues {
         self.slots.clear();
         self.slots.resize(names.len(), None);
         for (index, name) in names.iter().enumerate() {
-            let slot = GlobalSlot::new(index);
+            let slot = StateSlot::new(index);
             self.slot_by_name.insert(name.clone(), slot);
             if let Some(value) = self.by_name.get(name).copied() {
                 self.slots[index] = Some(value);
@@ -296,7 +296,7 @@ impl ScriptGlobalValues {
     }
 
     #[must_use]
-    pub fn get_resolved(&self, name: &str, slot: Option<GlobalSlot>) -> Option<Value> {
+    pub fn get_resolved(&self, name: &str, slot: Option<StateSlot>) -> Option<Value> {
         if let Some(slot) = slot
             && slot.get() < self.slots.len()
         {
@@ -306,7 +306,7 @@ impl ScriptGlobalValues {
     }
 
     #[must_use]
-    pub fn get_slot(&self, slot: GlobalSlot) -> Option<Value> {
+    pub fn get_slot(&self, slot: StateSlot) -> Option<Value> {
         self.slots.get(slot.get()).and_then(|value| *value)
     }
 
@@ -334,11 +334,11 @@ pub trait VmInlineCaches {
         self.len() == 0
     }
 
-    fn global_read_slot(&self, _site: CacheSiteId) -> Option<GlobalSlot> {
+    fn global_read_slot(&self, _site: CacheSiteId) -> Option<StateSlot> {
         None
     }
 
-    fn set_global_read_slot(&self, _site: CacheSiteId, _slot: GlobalSlot) {}
+    fn set_global_read_slot(&self, _site: CacheSiteId, _slot: StateSlot) {}
 
     fn host_access(&self, _site: CacheSiteId) -> Option<HostInlineCacheEntry> {
         None

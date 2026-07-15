@@ -167,7 +167,7 @@ impl TypeRegistry {
                     self.register_trait(desc);
                 }
                 DeclarationKind::Const
-                | DeclarationKind::Global
+                | DeclarationKind::State
                 | DeclarationKind::Function
                 | DeclarationKind::Impl => {}
             }

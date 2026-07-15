@@ -31,8 +31,8 @@ impl HirSemanticFacts {
                         DeclarationKind::Const => graph
                             .const_metadata(*declaration)
                             .and_then(|metadata| metadata.type_hint.as_ref()),
-                        DeclarationKind::Global => graph
-                            .global_metadata(*declaration)
+                        DeclarationKind::State => graph
+                            .state_metadata(*declaration)
                             .map(|metadata| &metadata.type_hint),
                         _ => None,
                     }?;

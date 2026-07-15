@@ -1,6 +1,6 @@
 use std::cell::{Cell, RefCell};
 use vela_bytecode::{CacheSiteId, DebugNameId, InstructionOffset};
-use vela_common::GlobalSlot;
+use vela_common::StateSlot;
 use vela_vm::{
     DynamicMethodInlineCacheEntry, HostInlineCacheEntry, MethodInlineCacheEntry,
     NativeInlineCacheEntry, RecordFieldInlineCacheEntry, VmBytecodeProfiler, VmInlineCaches,
@@ -8,7 +8,7 @@ use vela_vm::{
 
 #[derive(Debug, Default)]
 pub(crate) struct BenchInlineCaches {
-    global_reads: Vec<Cell<Option<GlobalSlot>>>,
+    global_reads: Vec<Cell<Option<StateSlot>>>,
     host_accesses: Vec<Cell<Option<HostInlineCacheEntry>>>,
     record_fields: Vec<Cell<Option<RecordFieldInlineCacheEntry>>>,
     method_dispatches: Vec<Cell<Option<MethodInlineCacheEntry>>>,
@@ -151,7 +151,7 @@ impl VmInlineCaches for BenchInlineCaches {
         self.global_reads.len()
     }
 
-    fn global_read_slot(&self, site: CacheSiteId) -> Option<GlobalSlot> {
+    fn global_read_slot(&self, site: CacheSiteId) -> Option<StateSlot> {
         let entry = self.global_reads.get(site.index()).and_then(Cell::get);
         if entry.is_some() {
             self.record_hit(BenchCacheFamily::GlobalRead);
@@ -159,7 +159,7 @@ impl VmInlineCaches for BenchInlineCaches {
         entry
     }
 
-    fn set_global_read_slot(&self, site: CacheSiteId, slot: GlobalSlot) {
+    fn set_global_read_slot(&self, site: CacheSiteId, slot: StateSlot) {
         self.record_copy_set(BenchCacheFamily::GlobalRead, &self.global_reads, site, slot);
     }
 

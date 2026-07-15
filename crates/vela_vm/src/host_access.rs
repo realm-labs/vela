@@ -2,7 +2,7 @@ use vela_bytecode::linked::{DynamicCallArgumentLinked, LinkedMethodDispatchKind}
 use vela_bytecode::{
     CacheSiteId, DebugNameId, HostTargetPlanId, LinkedProgram, MethodDispatchHandle, Register,
 };
-use vela_common::{GlobalSlot, HostMethodId, Span};
+use vela_common::{HostMethodId, Span, StateSlot};
 use vela_host::adapter::GlobalBinding;
 use vela_host::path::HostPath;
 use vela_host::resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, ResolvedHostAccess};
@@ -37,7 +37,7 @@ pub(crate) struct CodeHostTargetPlan<'a> {
 pub(crate) fn load_host_global(
     runtime: HostAccessRuntime<'_, '_, '_>,
     name: &str,
-    slot: Option<GlobalSlot>,
+    slot: Option<StateSlot>,
 ) -> VmResult<Value> {
     let host = runtime.host.ok_or_else(|| {
         VmError::new(VmErrorKind::TypeMismatch {
@@ -59,7 +59,7 @@ pub(crate) fn load_host_global(
 pub(crate) fn load_cached_host_global(
     runtime: HostAccessRuntime<'_, '_, '_>,
     name: &str,
-    declared_slot: Option<GlobalSlot>,
+    declared_slot: Option<StateSlot>,
     cache_site: Option<CacheSiteId>,
 ) -> VmResult<Value> {
     let inline_caches = runtime.inline_caches;
@@ -79,7 +79,7 @@ pub(crate) fn load_linked_cached_host_global(
     runtime: HostAccessRuntime<'_, '_, '_>,
     program: &LinkedProgram,
     debug_name: DebugNameId,
-    declared_slot: Option<GlobalSlot>,
+    declared_slot: Option<StateSlot>,
     cache_site: Option<CacheSiteId>,
 ) -> VmResult<Value> {
     load_cached_host_global(

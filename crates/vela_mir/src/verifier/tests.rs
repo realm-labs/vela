@@ -1,6 +1,6 @@
 use vela_analysis::executable::{ExecutableAnalysisGeneration, ExecutableAnalysisInput};
 use vela_common::{PrimitiveTag, ScalarValue, SourceId, Span};
-use vela_def::{FunctionId, GlobalId, TypeId};
+use vela_def::{FunctionId, StateId, TypeId};
 use vela_hir::ids::{HirBodyId, HirDeclId};
 use vela_hir::module_graph::{ModuleGraph, ModuleSource};
 use vela_package::ModulePath;
@@ -497,7 +497,7 @@ fn mir_verifier_checks_every_referenced_identity_family() {
 
     let mut global = function();
     let destination = global.add_synthetic_local(MirValueType::Dynamic, origin());
-    let global_id = GlobalId::new(91);
+    let global_id = StateId::new(91);
     global
         .append_statement(
             global.entry_block(),

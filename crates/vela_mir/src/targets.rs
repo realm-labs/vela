@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, btree_map::Entry};
 
 use vela_common::{HostMethodId, HostTypeId, ShapeId};
-use vela_def::{FieldId, FunctionId, GlobalId, MethodId, TypeId, VariantId};
+use vela_def::{FieldId, FunctionId, MethodId, StateId, TypeId, VariantId};
 
 use crate::{CompileSignature, MethodExecutableTarget, MirTypeContract};
 
@@ -209,7 +209,7 @@ pub struct CompileFieldDescriptor {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompileGlobalDescriptor {
-    pub id: GlobalId,
+    pub id: StateId,
     pub name: String,
     pub contract: MirTypeContract,
 }
@@ -225,7 +225,7 @@ pub struct MirTargetTable {
     types: BTreeMap<TypeId, CompileTypeDescriptor>,
     variants: BTreeMap<VariantId, CompileVariantDescriptor>,
     fields: BTreeMap<FieldId, CompileFieldDescriptor>,
-    globals: BTreeMap<GlobalId, CompileGlobalDescriptor>,
+    globals: BTreeMap<StateId, CompileGlobalDescriptor>,
 }
 
 impl MirTargetTable {
@@ -255,7 +255,7 @@ impl MirTargetTable {
     }
 
     #[must_use]
-    pub fn global(&self, id: GlobalId) -> Option<&CompileGlobalDescriptor> {
+    pub fn global(&self, id: StateId) -> Option<&CompileGlobalDescriptor> {
         self.globals.get(&id)
     }
 
@@ -281,7 +281,7 @@ impl MirTargetTable {
         self.fields.iter().map(|(id, value)| (*id, value))
     }
 
-    pub fn globals(&self) -> impl Iterator<Item = (GlobalId, &CompileGlobalDescriptor)> {
+    pub fn globals(&self) -> impl Iterator<Item = (StateId, &CompileGlobalDescriptor)> {
         self.globals.iter().map(|(id, value)| (*id, value))
     }
 

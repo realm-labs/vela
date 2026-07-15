@@ -155,7 +155,7 @@ fn for_each_type_hint_in_declaration(
     {
         visit_type_hint_and_args(type_hint, &mut visit);
     }
-    if let Some(metadata) = graph.global_metadata(declaration.id) {
+    if let Some(metadata) = graph.state_metadata(declaration.id) {
         visit_type_hint_and_args(&metadata.type_hint, &mut visit);
     }
     if let Some(signature) = graph.function_signature(declaration.id) {

@@ -74,11 +74,11 @@ pub enum VerificationErrorKind {
     ScriptMethodFunctionMissing {
         function: String,
     },
-    GlobalSlotOutOfBounds {
+    StateSlotOutOfBounds {
         slot: usize,
         global_count: usize,
     },
-    GlobalSlotNameMismatch {
+    StateSlotNameMismatch {
         slot: usize,
         expected: String,
         actual: String,
@@ -219,7 +219,7 @@ fn verify_program_instruction_metadata(
                 return Err(error(
                     &code.name,
                     Some(index),
-                    VerificationErrorKind::GlobalSlotOutOfBounds {
+                    VerificationErrorKind::StateSlotOutOfBounds {
                         slot: slot.get(),
                         global_count,
                     },
@@ -231,7 +231,7 @@ fn verify_program_instruction_metadata(
                 return Err(error(
                     &code.name,
                     Some(index),
-                    VerificationErrorKind::GlobalSlotNameMismatch {
+                    VerificationErrorKind::StateSlotNameMismatch {
                         slot: slot.get(),
                         expected: expected.to_owned(),
                         actual: global.clone(),
@@ -262,7 +262,7 @@ fn verify_program_image_instruction_metadata(
                 return Err(error(
                     &code.name,
                     Some(index),
-                    VerificationErrorKind::GlobalSlotOutOfBounds {
+                    VerificationErrorKind::StateSlotOutOfBounds {
                         slot: slot.get(),
                         global_count,
                     },
@@ -274,7 +274,7 @@ fn verify_program_image_instruction_metadata(
                 return Err(error(
                     &code.name,
                     Some(index),
-                    VerificationErrorKind::GlobalSlotNameMismatch {
+                    VerificationErrorKind::StateSlotNameMismatch {
                         slot: slot.get(),
                         expected: expected.to_owned(),
                         actual: global.clone(),

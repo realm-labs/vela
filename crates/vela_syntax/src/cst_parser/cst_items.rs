@@ -1,17 +1,19 @@
 use super::{CstParser, DelimiterDepth};
 use crate::SyntaxKind;
+use vela_common::Diagnostic;
 
 impl CstParser<'_, '_> {
     pub(super) fn item(&mut self, kind: SyntaxKind, end: usize) {
         match kind {
             SyntaxKind::UseItem => self.use_item(end),
             SyntaxKind::ConstItem => self.const_item(end),
-            SyntaxKind::GlobalItem => self.global_item(end),
+            SyntaxKind::StateItem => self.state_item(end),
             SyntaxKind::FunctionItem => self.function_item(end),
             SyntaxKind::StructItem => self.struct_item(end),
             SyntaxKind::EnumItem => self.enum_item(end),
             SyntaxKind::TraitItem => self.trait_item(end),
             SyntaxKind::ImplItem => self.impl_item(end),
+            SyntaxKind::Error => self.legacy_global_item(end),
             _ => self.raw_item(kind, end),
         }
     }
@@ -68,13 +70,65 @@ impl CstParser<'_, '_> {
         self.builder.finish_node();
     }
 
-    fn global_item(&mut self, end: usize) {
-        self.builder.start_node(SyntaxKind::GlobalItem);
-        self.emit_leading_attributes(end);
+    fn state_item(&mut self, end: usize) {
+        let header_start = self.skip_leading_attributes(self.pos, end);
+        let after_pub = if self.at_kind(header_start, SyntaxKind::PubKw) {
+            self.skip_trivia(header_start + 1)
+        } else {
+            header_start
+        };
+        let (is_extern, state_kw) = if self.at_kind(after_pub, SyntaxKind::ExternKw) {
+            (true, self.skip_trivia(after_pub + 1))
+        } else {
+            (false, after_pub)
+        };
+
+        if !self.at_ident_text(state_kw, "state") {
+            let message = if self.at_kind(state_kw, SyntaxKind::PubKw) {
+                "invalid modifier order; use `pub extern state`"
+            } else {
+                "expected `state` after `extern`"
+            };
+            self.error_at(state_kw.min(end.saturating_sub(1)), message);
+        }
+
+        let name = self.skip_trivia(state_kw.saturating_add(1));
+        if !self.at_kind(name, SyntaxKind::Ident) {
+            self.error_at(name.min(end.saturating_sub(1)), "expected state name");
+        }
+
         let initializer = self.find_root_kind_before(SyntaxKind::Equal, self.pos, end);
-        let declaration_end = initializer
-            .or_else(|| self.find_root_kind_before(SyntaxKind::Semicolon, self.pos, end))
+        let terminator = self
+            .find_root_kind_before(SyntaxKind::Semicolon, self.pos, end)
             .unwrap_or(end);
+        let declaration_end = initializer.unwrap_or(terminator);
+        let type_colon = self.find_root_kind_before(SyntaxKind::Colon, name, declaration_end);
+        match type_colon {
+            Some(colon) => {
+                let type_start = self.skip_trivia(colon + 1);
+                let type_end = self.trim_trailing_trivia(type_start, declaration_end);
+                if type_start >= type_end {
+                    self.error_at(colon, "expected explicit state type");
+                }
+            }
+            None => self.error_at(
+                name.min(end.saturating_sub(1)),
+                "expected explicit state type",
+            ),
+        }
+
+        match (is_extern, initializer) {
+            (true, Some(equal)) => {
+                self.error_at(equal, "extern state cannot have an initializer");
+            }
+            (false, None) => {
+                self.error_at(terminator.saturating_sub(1), "expected state initializer");
+            }
+            _ => {}
+        }
+
+        self.builder.start_node(SyntaxKind::StateItem);
+        self.emit_leading_attributes(end);
         self.optional_type_hint_before(self.pos, declaration_end);
         if let Some(equal) = initializer {
             let value_start = self.skip_trivia(equal + 1);
@@ -84,6 +138,28 @@ impl CstParser<'_, '_> {
         }
         self.emit_until(end);
         self.builder.finish_node();
+    }
+
+    fn legacy_global_item(&mut self, end: usize) {
+        let header = self.skip_leading_attributes(self.pos, end);
+        let global = if self.at_kind(header, SyntaxKind::PubKw) {
+            self.skip_trivia(header + 1)
+        } else {
+            header
+        };
+        if let Some(span) = self.tokens.get(global).map(|token| token.span) {
+            self.diagnostics.push(
+                Diagnostic::error(
+                    "`global` declarations were removed; use `state` with an initializer or \
+                     `extern state` for a host-provided root",
+                )
+                .with_code("syntax::legacy_global_decl")
+                .with_span(span)
+                .with_candidate("state name: Type = expression;")
+                .with_candidate("extern state name: Type;"),
+            );
+        }
+        self.raw_item(SyntaxKind::Error, end);
     }
 
     fn optional_type_hint_before(&mut self, start: usize, end: usize) {

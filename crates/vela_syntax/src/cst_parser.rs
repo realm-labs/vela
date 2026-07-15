@@ -560,6 +560,13 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
         if self.at_kind(cursor, SyntaxKind::PubKw) {
             cursor = self.skip_trivia(cursor + 1);
         }
+        if self.at_kind(cursor, SyntaxKind::ExternKw) {
+            let end = self.find_semicolon_item_end(cursor);
+            return Some(ItemBoundary {
+                kind: SyntaxKind::StateItem,
+                end,
+            });
+        }
         if self.at_kind(cursor, SyntaxKind::AsyncKw) {
             let async_pos = cursor;
             cursor = self.skip_trivia(cursor + 1);
@@ -576,7 +583,8 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
         let kind = match self.kind_at(cursor)? {
             SyntaxKind::UseKw => SyntaxKind::UseItem,
             SyntaxKind::ConstKw => SyntaxKind::ConstItem,
-            SyntaxKind::GlobalKw => SyntaxKind::GlobalItem,
+            SyntaxKind::Ident if self.at_ident_text(cursor, "state") => SyntaxKind::StateItem,
+            SyntaxKind::Ident if self.looks_like_legacy_global(cursor) => SyntaxKind::Error,
             SyntaxKind::FnKw => SyntaxKind::FunctionItem,
             SyntaxKind::StructKw => SyntaxKind::StructItem,
             SyntaxKind::EnumKw => SyntaxKind::EnumItem,
@@ -584,13 +592,17 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
             SyntaxKind::ImplKw => SyntaxKind::ImplItem,
             _ => return None,
         };
-        let end = self.find_item_end(kind, cursor);
+        let end = if kind == SyntaxKind::Error {
+            self.find_semicolon_item_end(cursor)
+        } else {
+            self.find_item_end(kind, cursor)
+        };
         Some(ItemBoundary { kind, end })
     }
 
     fn find_item_end(&self, kind: SyntaxKind, keyword_pos: usize) -> usize {
         match kind {
-            SyntaxKind::UseItem | SyntaxKind::GlobalItem | SyntaxKind::ConstItem => {
+            SyntaxKind::UseItem | SyntaxKind::StateItem | SyntaxKind::ConstItem => {
                 self.find_semicolon_item_end(keyword_pos)
             }
             SyntaxKind::FunctionItem
@@ -876,6 +888,18 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
         self.item_boundary_at(next).is_some()
     }
 
+    fn looks_like_legacy_global(&self, cursor: usize) -> bool {
+        if !self.at_ident_text(cursor, "global") {
+            return false;
+        }
+        let name = self.skip_trivia(cursor + 1);
+        if !self.at_kind(name, SyntaxKind::Ident) {
+            return false;
+        }
+        let colon = self.skip_trivia(name + 1);
+        self.at_kind(colon, SyntaxKind::Colon)
+    }
+
     fn next_significant_before(&self, cursor: usize, end: usize) -> Option<usize> {
         let next = self.skip_trivia(cursor);
         (next < end).then_some(next)
@@ -1023,6 +1047,14 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
 
     fn at_kind(&self, cursor: usize, kind: SyntaxKind) -> bool {
         self.kind_at(cursor) == Some(kind)
+    }
+
+    fn at_ident_text(&self, cursor: usize, text: &str) -> bool {
+        self.at_kind(cursor, SyntaxKind::Ident)
+            && self
+                .tokens
+                .get(cursor)
+                .is_some_and(|token| token.text == text)
     }
 
     fn kind_at(&self, cursor: usize) -> Option<SyntaxKind> {

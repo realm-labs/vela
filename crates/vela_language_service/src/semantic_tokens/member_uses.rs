@@ -212,7 +212,7 @@ fn script_method_exists(graph: &ModuleGraph, receiver: &TypeFact, method: &str) 
             DeclarationKind::Const
             | DeclarationKind::Enum
             | DeclarationKind::Function
-            | DeclarationKind::Global
+            | DeclarationKind::State
             | DeclarationKind::Struct => false,
         })
         || script_trait_default_method_exists(graph, receiver, method)

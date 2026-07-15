@@ -1,5 +1,5 @@
 use vela_common::{HostTypeId, PrimitiveTag, ShapeId, SourceId, Span};
-use vela_def::{FieldId, FunctionId, GlobalId, MethodId, TypeId, VariantId};
+use vela_def::{FieldId, FunctionId, MethodId, StateId, TypeId, VariantId};
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId};
 
 use crate::*;
@@ -129,7 +129,7 @@ fn schema_only_snapshot_finalization_proves_complete_descriptor_closure() {
     let enum_type = TypeId::new(404);
     let variant = VariantId::new(405);
     let variant_field = FieldId::new(406);
-    let global = GlobalId::new(407);
+    let global = StateId::new(407);
     let function = FunctionId::new(408);
     let function_declaration = HirDeclId::new(409);
     let record_declaration = HirDeclId::new(410);

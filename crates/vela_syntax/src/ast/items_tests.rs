@@ -31,7 +31,7 @@ fn ast_source_file_iterates_item_children() {
 fn ast_items_expose_visibility_tokens() {
     let source = r#"pub use game::reward::grant;
 pub const MAX: i64 = 10;
-pub global state: ServerState;
+pub state state: ServerState = ServerState::default();
 #[event("tick")]
 pub fn update() {}
 pub struct Reward {}
@@ -58,7 +58,7 @@ fn private() {}
     );
     assert!(tree.uses().next().expect("use item").is_public());
     assert!(tree.consts().next().expect("const item").is_public());
-    assert!(tree.globals().next().expect("global item").is_public());
+    assert!(tree.states().next().expect("state item").is_public());
     assert_eq!(
         tree.functions()
             .next()
@@ -78,7 +78,7 @@ fn private() {}
 fn ast_items_expose_declaration_name_tokens() {
     let source = r#"use game::reward::grant as grant_reward;
 const MAX: i64 = 10;
-global state: ServerState;
+state state: ServerState = ServerState::default();
 fn update(ctx, amount: i64) {}
 struct Reward {
     #[doc("amount")]
@@ -137,9 +137,9 @@ impl Reward {
         Some("MAX")
     );
     assert_eq!(
-        tree.globals()
+        tree.states()
             .next()
-            .expect("global item")
+            .expect("state item")
             .name_text()
             .as_deref(),
         Some("state")

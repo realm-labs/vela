@@ -12,7 +12,7 @@ pub enum SyntaxKind {
     UseItem,
     UsePath,
     ConstItem,
-    GlobalItem,
+    StateItem,
     FunctionItem,
     ParamList,
     Param,
@@ -82,7 +82,7 @@ pub enum SyntaxKind {
     UseKw,
     PubKw,
     ConstKw,
-    GlobalKw,
+    ExternKw,
     LetKw,
     FnKw,
     StructKw,
@@ -167,7 +167,7 @@ impl SyntaxKind {
                 | Self::UseItem
                 | Self::UsePath
                 | Self::ConstItem
-                | Self::GlobalItem
+                | Self::StateItem
                 | Self::FunctionItem
                 | Self::ParamList
                 | Self::Param
@@ -245,7 +245,7 @@ impl SyntaxKind {
             Self::UseKw
                 | Self::PubKw
                 | Self::ConstKw
-                | Self::GlobalKw
+                | Self::ExternKw
                 | Self::LetKw
                 | Self::FnKw
                 | Self::StructKw
@@ -335,7 +335,7 @@ impl From<u16> for SyntaxKind {
             6 => Self::UseItem,
             7 => Self::UsePath,
             8 => Self::ConstItem,
-            9 => Self::GlobalItem,
+            9 => Self::StateItem,
             10 => Self::FunctionItem,
             11 => Self::ParamList,
             12 => Self::Param,
@@ -405,7 +405,7 @@ impl From<u16> for SyntaxKind {
             76 => Self::UseKw,
             77 => Self::PubKw,
             78 => Self::ConstKw,
-            79 => Self::GlobalKw,
+            79 => Self::ExternKw,
             80 => Self::LetKw,
             81 => Self::FnKw,
             82 => Self::StructKw,
@@ -513,7 +513,7 @@ mod tests {
         SyntaxKind::UseItem,
         SyntaxKind::UsePath,
         SyntaxKind::ConstItem,
-        SyntaxKind::GlobalItem,
+        SyntaxKind::StateItem,
         SyntaxKind::FunctionItem,
         SyntaxKind::ParamList,
         SyntaxKind::Param,
@@ -582,7 +582,7 @@ mod tests {
         SyntaxKind::UseKw,
         SyntaxKind::PubKw,
         SyntaxKind::ConstKw,
-        SyntaxKind::GlobalKw,
+        SyntaxKind::ExternKw,
         SyntaxKind::LetKw,
         SyntaxKind::FnKw,
         SyntaxKind::StructKw,

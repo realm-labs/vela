@@ -4,7 +4,7 @@ use std::sync::Weak;
 use vela_bytecode::{
     CacheSiteId, DebugNameId, ExecutableGenerationId, InstructionOffset, LinkedProgram,
 };
-use vela_common::GlobalSlot;
+use vela_common::StateSlot;
 
 use super::{
     RuntimeGlobalStore, RuntimeScriptGlobalStore, bytecode_profile::RuntimeBytecodeProfile,
@@ -117,11 +117,11 @@ impl vela_vm::VmInlineCaches for RuntimeSidecars {
         self.active().inline_caches.len()
     }
 
-    fn global_read_slot(&self, site: CacheSiteId) -> Option<GlobalSlot> {
+    fn global_read_slot(&self, site: CacheSiteId) -> Option<StateSlot> {
         self.active().inline_caches.global_read_slot(site)
     }
 
-    fn set_global_read_slot(&self, site: CacheSiteId, slot: GlobalSlot) {
+    fn set_global_read_slot(&self, site: CacheSiteId, slot: StateSlot) {
         self.active().inline_caches.set_global_read_slot(site, slot);
     }
 

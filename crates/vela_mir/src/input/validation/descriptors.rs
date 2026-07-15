@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use vela_def::GlobalId;
+use vela_def::StateId;
 
 use crate::{
     CompileFunctionClass, CompileFunctionIdentity, CompileGuardKey, CompileMethodClass,
@@ -495,7 +495,7 @@ fn validate_script_method_descriptor(
 }
 
 fn validate_globals(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildError> {
-    let mut binding_counts = BTreeMap::<GlobalId, usize>::new();
+    let mut binding_counts = BTreeMap::<StateId, usize>::new();
     for (declaration, global) in &validator.snapshot.globals {
         let origin =
             validator.retained_origin(&validator.snapshot.origins.global_bindings, declaration);

@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, btree_map::Entry};
 use std::fmt;
 
 use vela_common::ShapeId;
-use vela_def::{FieldId, FunctionId, GlobalId, MethodId, TypeId, VariantId};
+use vela_def::{FieldId, FunctionId, MethodId, StateId, TypeId, VariantId};
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirPatternId};
 
 use crate::{
@@ -272,7 +272,7 @@ impl<'a> CompileFunctionTargets<'a> {
     }
 
     #[must_use]
-    pub fn global_by_id(self, id: GlobalId) -> Option<&'a CompileGlobalDescriptor> {
+    pub fn global_by_id(self, id: StateId) -> Option<&'a CompileGlobalDescriptor> {
         self.snapshot.global_by_id(id)
     }
 

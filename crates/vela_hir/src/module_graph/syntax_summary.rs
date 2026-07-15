@@ -1,10 +1,10 @@
 use vela_common::{Diagnostic, SourceId, Span};
 use vela_syntax::ast::{
     AstChildren, AstNode, SyntaxAttribute, SyntaxAttributeValue, SyntaxConstItem, SyntaxEnumItem,
-    SyntaxEnumVariant, SyntaxExpression, SyntaxFunctionItem, SyntaxGlobalItem, SyntaxImplItem,
-    SyntaxImplMethod, SyntaxItem, SyntaxParam, SyntaxParamList, SyntaxSourceFile,
-    SyntaxStructField, SyntaxStructItem, SyntaxTraitItem, SyntaxTraitMethod, SyntaxTypeHint,
-    SyntaxUseItem,
+    SyntaxEnumVariant, SyntaxExpression, SyntaxFunctionItem, SyntaxImplItem, SyntaxImplMethod,
+    SyntaxItem, SyntaxParam, SyntaxParamList, SyntaxSourceFile, SyntaxStateItem,
+    SyntaxStateStorage, SyntaxStructField, SyntaxStructItem, SyntaxTraitItem, SyntaxTraitMethod,
+    SyntaxTypeHint, SyntaxUseItem,
 };
 use vela_syntax::{Parse as SyntaxParse, SyntaxKind, SyntaxToken, TextRange};
 
@@ -15,8 +15,8 @@ use crate::ids::HirNodeId;
 use crate::top_level::validate_syntax_const_initializer;
 use crate::type_hint::{
     ConstMetadata, EnumShape, EnumVariantFieldsHint, EnumVariantHint, FunctionSignature,
-    GlobalMetadata, HirTypeHint, ImplMetadata, ImplMetadataKind, ImplMethodMetadata, ParamHint,
-    StructFieldHint, StructShape, TraitMethodMetadata, TraitShape,
+    HirTypeHint, ImplMetadata, ImplMetadataKind, ImplMethodMetadata, ParamHint, StateMetadata,
+    StateStorage, StructFieldHint, StructShape, TraitMethodMetadata, TraitShape,
 };
 
 use super::model::{DeclarationKind, Visibility};
@@ -166,10 +166,10 @@ impl SyntaxModuleSummary {
             .map(|expression| SyntaxExpressionSourcePart { expression })
     }
 
-    pub(super) fn global_metadata(&self, index: usize) -> Option<GlobalMetadata> {
-        self.item(index, SyntaxKind::GlobalItem)
-            .and_then(|item| SyntaxGlobalItem::cast(item.syntax().clone()))
-            .and_then(|item| global_metadata(self.source, &item))
+    pub(super) fn state_metadata(&self, index: usize) -> Option<StateMetadata> {
+        self.item(index, SyntaxKind::StateItem)
+            .and_then(|item| SyntaxStateItem::cast(item.syntax().clone()))
+            .and_then(|item| state_metadata(self.source, &item))
     }
 
     pub(super) fn function_signature_or(
@@ -395,12 +395,12 @@ impl SyntaxItemHeader {
                     item.is_public(),
                 )
             }
-            SyntaxKind::GlobalItem => {
-                let item = SyntaxGlobalItem::cast(item.syntax().clone())?;
+            SyntaxKind::StateItem => {
+                let item = SyntaxStateItem::cast(item.syntax().clone())?;
                 declaration_header(
                     source,
                     item.syntax().text_range(),
-                    DeclarationKind::Global,
+                    DeclarationKind::State,
                     item.name_token(),
                     item.is_public(),
                 )
@@ -486,9 +486,16 @@ fn const_metadata(source: SourceId, item: &SyntaxConstItem) -> ConstMetadata {
     }
 }
 
-fn global_metadata(source: SourceId, item: &SyntaxGlobalItem) -> Option<GlobalMetadata> {
-    Some(GlobalMetadata {
+fn state_metadata(source: SourceId, item: &SyntaxStateItem) -> Option<StateMetadata> {
+    Some(StateMetadata {
+        storage: match item.storage() {
+            SyntaxStateStorage::Vm => StateStorage::Vm,
+            SyntaxStateStorage::Extern => StateStorage::Extern,
+        },
         type_hint: hir_type_hint(source, &item.type_hint()?),
+        initializer_span: item
+            .initializer()
+            .map(|initializer| span_for(source, initializer.syntax().text_range())),
     })
 }
 

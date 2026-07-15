@@ -1,5 +1,5 @@
 use crate::{
-    DefPath, FieldId, FunctionId, GlobalId, MethodId, TraitId, TypeId, VariantId, stable_id,
+    DefPath, FieldId, FunctionId, MethodId, StateId, TraitId, TypeId, VariantId, stable_id,
 };
 
 /// Returns the canonical definition path for a script function symbol.
@@ -77,17 +77,17 @@ pub fn script_trait_id(package: &str, symbol: &str) -> TraitId {
     TraitId::from_def_id(DefPath::trait_def(package, module, name).id())
 }
 
-/// Returns the canonical definition path for a script global symbol.
+/// Returns the canonical definition path for a script state symbol.
 #[must_use]
-pub fn script_global_path(package: &str, symbol: &str) -> DefPath {
+pub fn script_state_path(package: &str, symbol: &str) -> DefPath {
     let (module, name) = split_source_symbol(symbol);
-    DefPath::global(package, module, name)
+    DefPath::state(package, module, name)
 }
 
-/// Returns the stable semantic identity for a script global symbol.
+/// Returns the stable semantic identity for a script state symbol.
 #[must_use]
-pub fn script_global_id(package: &str, symbol: &str) -> GlobalId {
-    GlobalId::from_def_id(script_global_path(package, symbol).id())
+pub fn script_state_id(package: &str, symbol: &str) -> StateId {
+    StateId::from_def_id(script_state_path(package, symbol).id())
 }
 
 /// Returns the canonical definition path for a variant of a script enum.
@@ -196,8 +196,8 @@ mod tests {
         super::script_type_id(PACKAGE, symbol, explicit)
     }
 
-    fn script_global_id(symbol: &str) -> GlobalId {
-        super::script_global_id(PACKAGE, symbol)
+    fn script_state_id(symbol: &str) -> StateId {
+        super::script_state_id(PACKAGE, symbol)
     }
 
     fn script_variant_id(symbol: &str, variant: &str, explicit: Option<u128>) -> VariantId {
@@ -242,9 +242,9 @@ mod tests {
             TypeId::from_def_id(DefPath::ty(PACKAGE, ["game", "combat"], "Reward").id())
         );
         assert_eq!(
-            script_global_id("game::combat::current_reward"),
-            GlobalId::from_def_id(
-                DefPath::global(PACKAGE, ["game", "combat"], "current_reward").id()
+            script_state_id("game::combat::current_reward"),
+            StateId::from_def_id(
+                DefPath::state(PACKAGE, ["game", "combat"], "current_reward").id()
             )
         );
         assert_eq!(

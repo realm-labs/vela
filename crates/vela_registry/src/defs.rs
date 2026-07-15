@@ -692,7 +692,7 @@ impl SemanticKey {
                 module: path.module.clone(),
                 name: path.name.clone(),
             },
-            DefKind::Module | DefKind::Global => Self::Function {
+            DefKind::Module | DefKind::State => Self::Function {
                 package: path.package.clone(),
                 module: path.module.clone(),
                 name: path.name.clone(),

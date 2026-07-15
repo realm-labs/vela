@@ -1,5 +1,5 @@
 use vela_bytecode::{CacheSiteId, CacheSiteKind, DebugNameId, FieldSlot, MethodDispatchHandle};
-use vela_common::{GlobalSlot, HostMethodId, HostTypeId, ShapeId, SourceId};
+use vela_common::{HostMethodId, HostTypeId, ShapeId, SourceId, StateSlot};
 use vela_def::TypeId;
 use vela_host::resolved::{HostAccessOp, HostSchemaEpoch, ResolvedHostAccess};
 use vela_vm::{
@@ -245,13 +245,13 @@ fn read_value() {
         .global_names()
         .iter()
         .position(|name| name == "main::first")
-        .map(GlobalSlot)
+        .map(StateSlot)
         .expect("first global should have a slot");
     let second_slot = initial
         .global_names()
         .iter()
         .position(|name| name == "main::second")
-        .map(GlobalSlot)
+        .map(StateSlot)
         .expect("second global should have a slot");
     let mut runtime = Runtime::from_hot_reload_version(engine, initial);
     let initial_site = runtime

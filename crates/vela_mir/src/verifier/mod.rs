@@ -18,7 +18,7 @@ use std::error::Error;
 use std::fmt;
 use std::sync::Arc;
 
-use vela_def::{FieldId, FunctionId, GlobalId, MethodId, TypeId, VariantId};
+use vela_def::{FieldId, FunctionId, MethodId, StateId, TypeId, VariantId};
 
 use crate::{
     MirBlockId, MirEffect, MirFunction, MirFunctionId, MirGuardId, MirLocalId, MirOperand,
@@ -207,7 +207,7 @@ pub enum MirVerifyTarget {
     Type(TypeId),
     Variant(VariantId),
     Field(FieldId),
-    Global(GlobalId),
+    Global(StateId),
     MirFunction(MirFunctionId),
 }
 

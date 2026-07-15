@@ -1,6 +1,6 @@
 use vela_analysis::executable::{ExecutableAnalysisGeneration, ExecutableAnalysisInput};
 use vela_common::{HostTypeId, PrimitiveTag, ScalarValue, SourceId};
-use vela_def::{FieldId, FunctionId, GlobalId, TypeId};
+use vela_def::{FieldId, FunctionId, StateId, TypeId};
 use vela_hir::binding::BindingResolution;
 use vela_hir::body::{HirBody, HirExprKind};
 use vela_hir::ids::HirDeclId;
@@ -19,7 +19,7 @@ use crate::{
 };
 
 const ROOT_FUNCTION: FunctionId = FunctionId::new(9_900);
-const GLOBAL: GlobalId = GlobalId::new(9_901);
+const GLOBAL: StateId = StateId::new(9_901);
 const HOST_TYPE_ID: TypeId = TypeId::new(9_902);
 const HOST_RUNTIME_ID: HostTypeId = HostTypeId::new(9_903);
 const HOST_FIELD_ID: FieldId = FieldId::new(9_904);
@@ -605,7 +605,7 @@ fn fixture_declaration_kinds_are_the_expected_semantic_inputs() {
             .collect::<Vec<_>>(),
         [
             ("VALUE", DeclarationKind::Const),
-            ("state", DeclarationKind::Global),
+            ("state", DeclarationKind::State),
             ("main", DeclarationKind::Function),
         ]
     );

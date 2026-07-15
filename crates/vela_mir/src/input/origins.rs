@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use vela_def::{FieldId, FunctionId, GlobalId, MethodId, TypeId, VariantId};
+use vela_def::{FieldId, FunctionId, MethodId, StateId, TypeId, VariantId};
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirPatternId};
 
 use crate::MirSourceOrigin;
@@ -20,7 +20,7 @@ pub(super) struct CompileTargetOrigins {
     pub(super) variant_descriptors: BTreeMap<VariantId, MirSourceOrigin>,
     pub(super) field_descriptors: BTreeMap<FieldId, MirSourceOrigin>,
     pub(super) global_bindings: BTreeMap<HirDeclId, MirSourceOrigin>,
-    pub(super) global_descriptors: BTreeMap<GlobalId, MirSourceOrigin>,
+    pub(super) global_descriptors: BTreeMap<StateId, MirSourceOrigin>,
     pub(super) calls: BTreeMap<(FunctionId, HirExprId), MirSourceOrigin>,
     pub(super) members: BTreeMap<(FunctionId, HirExprId), MirSourceOrigin>,
     pub(super) constructors: BTreeMap<(FunctionId, HirExprId), MirSourceOrigin>,

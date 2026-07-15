@@ -545,7 +545,7 @@ fn script_method_hover_at_target(
                     .map(|method| trait_method_hover(graph, declaration, method, range))
             }
             DeclarationKind::Const
-            | DeclarationKind::Global
+            | DeclarationKind::State
             | DeclarationKind::Function
             | DeclarationKind::Struct
             | DeclarationKind::Enum
@@ -807,7 +807,7 @@ fn hover_from_declaration(
     let label = qualified_declaration_label(graph, declaration);
     let kind = match declaration.kind {
         DeclarationKind::Const => HoverKind::Const,
-        DeclarationKind::Global => HoverKind::Global,
+        DeclarationKind::State => HoverKind::Global,
         DeclarationKind::Function => HoverKind::Function,
         DeclarationKind::Struct | DeclarationKind::Enum => HoverKind::Type,
         DeclarationKind::Trait => HoverKind::Trait,
@@ -834,8 +834,8 @@ fn declaration_hover_detail_parts(
                 .as_ref()
                 .map(|hint| DisplayParts::type_name(hint.display()))
         }),
-        DeclarationKind::Global => graph
-            .global_metadata(declaration.id)
+        DeclarationKind::State => graph
+            .state_metadata(declaration.id)
             .map(|metadata| DisplayParts::type_name(metadata.type_hint.display())),
         DeclarationKind::Function => graph
             .function_signature(declaration.id)

@@ -51,8 +51,8 @@ impl<'a> SemanticCompilation<'a> {
 
     pub(super) fn global_symbols(&self) -> BTreeMap<HirDeclId, String> {
         match self.kind {
-            HirSourceSetKind::SingleSource => self.symbols(DeclarationKind::Global, true),
-            HirSourceSetKind::ModuleGraph => self.symbols(DeclarationKind::Global, false),
+            HirSourceSetKind::SingleSource => self.symbols(DeclarationKind::State, true),
+            HirSourceSetKind::ModuleGraph => self.symbols(DeclarationKind::State, false),
         }
     }
 

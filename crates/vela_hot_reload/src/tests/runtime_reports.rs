@@ -297,7 +297,7 @@ fn main() {
     );
     assert_eq!(
         version.program_image().global_slot("main::state"),
-        Some(vela_common::GlobalSlot::new(0))
+        Some(vela_common::StateSlot::new(0))
     );
 }
 
@@ -358,7 +358,7 @@ fn main() {
     assert!(new.program_image().function_index("helper").is_some());
     assert_eq!(
         new.program_image().global_slot("main::state"),
-        Some(vela_common::GlobalSlot::new(0))
+        Some(vela_common::StateSlot::new(0))
     );
 }
 

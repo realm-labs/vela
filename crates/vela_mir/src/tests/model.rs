@@ -1,5 +1,5 @@
 use vela_common::{HostTypeId, PrimitiveTag, ScalarValue, SourceId, Span};
-use vela_def::{FunctionId, GlobalId, MethodId, TypeId};
+use vela_def::{FunctionId, MethodId, StateId, TypeId};
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirLocalId, HirNodeId};
 
 use crate::*;
@@ -421,7 +421,7 @@ fn mir_model_exposes_allocating_host_reflection_and_dynamic_boundaries() {
         origin,
         Some(MirPlace::temp(global_result)),
         MirStatementKind::Global(MirGlobalOperation::Read {
-            global: GlobalId::new(285),
+            global: StateId::new(285),
         }),
         incomplete_global,
         None,
@@ -617,7 +617,7 @@ fn mir_model_snapshot_owns_method_signatures_and_guard_contracts() {
     let type_id = TypeId::new(218);
     let variant_id = vela_def::VariantId::new(219);
     let field_id = vela_def::FieldId::new(220);
-    let global_id = GlobalId::new(221);
+    let global_id = StateId::new(221);
     let global_declaration = HirDeclId::new(222);
     let mut snapshot = CompileTargetSnapshot::builder();
     snapshot

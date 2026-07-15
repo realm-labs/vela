@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell};
 
 use vela_bytecode::CacheSiteId;
-use vela_common::GlobalSlot;
+use vela_common::StateSlot;
 use vela_vm::{
     DynamicMethodInlineCacheEntry, HostInlineCacheEntry, MethodInlineCacheEntry,
     NativeInlineCacheEntry, RecordFieldInlineCacheEntry,
@@ -9,7 +9,7 @@ use vela_vm::{
 
 #[derive(Debug, Default)]
 pub(super) struct InlineCaches {
-    global_reads: Vec<Cell<Option<GlobalSlot>>>,
+    global_reads: Vec<Cell<Option<StateSlot>>>,
     host_accesses: Vec<Cell<Option<HostInlineCacheEntry>>>,
     record_fields: Vec<Cell<Option<RecordFieldInlineCacheEntry>>>,
     method_dispatches: Vec<Cell<Option<MethodInlineCacheEntry>>>,
@@ -57,11 +57,11 @@ impl InlineCaches {
         self.global_reads.is_empty()
     }
 
-    pub(super) fn global_read_slot(&self, site: CacheSiteId) -> Option<GlobalSlot> {
+    pub(super) fn global_read_slot(&self, site: CacheSiteId) -> Option<StateSlot> {
         self.global_reads.get(site.index()).and_then(Cell::get)
     }
 
-    pub(super) fn set_global_read_slot(&self, site: CacheSiteId, slot: GlobalSlot) {
+    pub(super) fn set_global_read_slot(&self, site: CacheSiteId, slot: StateSlot) {
         if let Some(entry) = self.global_reads.get(site.index()) {
             entry.set(Some(slot));
         }
@@ -150,11 +150,11 @@ impl vela_vm::VmInlineCaches for InlineCaches {
         self.is_empty()
     }
 
-    fn global_read_slot(&self, site: CacheSiteId) -> Option<GlobalSlot> {
+    fn global_read_slot(&self, site: CacheSiteId) -> Option<StateSlot> {
         self.global_read_slot(site)
     }
 
-    fn set_global_read_slot(&self, site: CacheSiteId, slot: GlobalSlot) {
+    fn set_global_read_slot(&self, site: CacheSiteId, slot: StateSlot) {
         self.set_global_read_slot(site, slot);
     }
 

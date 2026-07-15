@@ -8,7 +8,7 @@ use crate::binding::BindingMap;
 use crate::body::{HirBody, HirField, HirIndex, HirPath, HirPathKind};
 use crate::ids::{HirBodyId, HirDeclId, HirExprId, HirLocalId, HirNodeId, HirPatternId, ModuleId};
 use crate::type_hint::{
-    ConstMetadata, EnumShape, FunctionSignature, GlobalMetadata, ImplMetadata, StructShape,
+    ConstMetadata, EnumShape, FunctionSignature, ImplMetadata, StateMetadata, StructShape,
     TraitShape,
 };
 
@@ -89,8 +89,8 @@ impl ModuleGraph {
     }
 
     #[must_use]
-    pub fn global_metadata(&self, declaration: HirDeclId) -> Option<&GlobalMetadata> {
-        self.global_metadata.get(&declaration)
+    pub fn state_metadata(&self, declaration: HirDeclId) -> Option<&StateMetadata> {
+        self.state_metadata.get(&declaration)
     }
 
     #[must_use]

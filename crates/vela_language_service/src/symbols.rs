@@ -450,7 +450,7 @@ fn symbol_from_declaration(
 fn kind_for_declaration(kind: DeclarationKind) -> DocumentSymbolKind {
     match kind {
         DeclarationKind::Const => DocumentSymbolKind::Constant,
-        DeclarationKind::Global => DocumentSymbolKind::Variable,
+        DeclarationKind::State => DocumentSymbolKind::Variable,
         DeclarationKind::Function => DocumentSymbolKind::Function,
         DeclarationKind::Struct => DocumentSymbolKind::Struct,
         DeclarationKind::Enum => DocumentSymbolKind::Enum,
@@ -579,7 +579,7 @@ fn children_for_declaration(
                 )
             })
             .collect(),
-        DeclarationKind::Const | DeclarationKind::Global | DeclarationKind::Function => Vec::new(),
+        DeclarationKind::Const | DeclarationKind::State | DeclarationKind::Function => Vec::new(),
     }
 }
 
@@ -594,8 +594,8 @@ fn detail_parts_for_declaration(
                 .as_ref()
                 .map(|hint| DisplayParts::type_name(hint.display()))
         }),
-        DeclarationKind::Global => graph
-            .global_metadata(declaration.id)
+        DeclarationKind::State => graph
+            .state_metadata(declaration.id)
             .map(|metadata| DisplayParts::type_name(metadata.type_hint.display())),
         DeclarationKind::Function => graph
             .function_signature(declaration.id)

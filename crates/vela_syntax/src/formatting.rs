@@ -427,7 +427,7 @@ impl CstLayoutWriter {
             }
             SyntaxKind::FnKw
             | SyntaxKind::ConstKw
-            | SyntaxKind::GlobalKw
+            | SyntaxKind::ExternKw
             | SyntaxKind::LetKw
             | SyntaxKind::IfKw
             | SyntaxKind::ElseKw
@@ -494,7 +494,7 @@ fn is_word_like(token: SyntaxKind) -> bool {
             | SyntaxKind::UseKw
             | SyntaxKind::PubKw
             | SyntaxKind::ConstKw
-            | SyntaxKind::GlobalKw
+            | SyntaxKind::ExternKw
             | SyntaxKind::LetKw
             | SyntaxKind::FnKw
             | SyntaxKind::StructKw
@@ -784,6 +784,24 @@ impl Player {
     fn heal(amount: i64) -> i64 {
         return amount
     }
+}
+"
+        );
+    }
+
+    #[test]
+    fn formatting_formats_state_forms_without_reserving_state_identifiers() {
+        let source = "state counter:i64=0;pub extern state world:World;fn state(state:i64){let state=state;}";
+        let formatted = format_source(source_id(), source);
+
+        assert!(formatted.diagnostics().is_empty());
+        assert_eq!(
+            formatted.text(),
+            "\
+state counter: i64 = 0;
+pub extern state world: World;
+fn state(state: i64) {
+    let state = state;
 }
 "
         );

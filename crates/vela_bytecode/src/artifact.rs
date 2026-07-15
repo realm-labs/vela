@@ -693,7 +693,7 @@ fn verify_unbound_cache_correspondence(
 
 #[cfg(test)]
 mod tests {
-    use vela_common::GlobalSlot;
+    use vela_common::StateSlot;
 
     use crate::{
         CacheSiteKind, FunctionIndex, InstructionOffset, Linker, Register, UnlinkedCodeObject,
@@ -702,8 +702,8 @@ mod tests {
 
     #[test]
     fn nested_local_cache_zero_sites_receive_distinct_generation_ids() {
-        let first = cached_global_lambda("first", "main::first", GlobalSlot::new(0));
-        let second = cached_global_lambda("second", "main::second", GlobalSlot::new(1));
+        let first = cached_global_lambda("first", "main::first", StateSlot::new(0));
+        let second = cached_global_lambda("second", "main::second", StateSlot::new(1));
         let mut main = UnlinkedCodeObject::new("main", 2);
         main.nested_functions = vec![first, second];
         main.push_instruction(UnlinkedInstruction::new(
@@ -744,7 +744,7 @@ mod tests {
         assert_eq!(artifact.profile_layout().functions().len(), 3);
     }
 
-    fn cached_global_lambda(name: &str, global: &str, slot: GlobalSlot) -> UnlinkedCodeObject {
+    fn cached_global_lambda(name: &str, global: &str, slot: StateSlot) -> UnlinkedCodeObject {
         let mut code = UnlinkedCodeObject::new(name, 1);
         let site = code.push_cache_site(CacheSiteKind::GlobalRead, InstructionOffset(0));
         code.push_instruction(UnlinkedInstruction::new(

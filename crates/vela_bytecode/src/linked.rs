@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, Weak};
 
 use vela_common::{
-    CallableAsyncness, GlobalSlot, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span,
+    CallableAsyncness, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span, StateSlot,
 };
 use vela_def::{FunctionId, MethodId, TypeId, VariantId};
 use vela_hir::module_graph::ModuleGraph;
@@ -1064,7 +1064,7 @@ pub enum InstructionKind {
     },
     LoadGlobal {
         dst: Register,
-        slot: GlobalSlot,
+        slot: StateSlot,
         debug_name: DebugNameId,
         cache_site: Option<CacheSiteId>,
     },
@@ -1119,7 +1119,7 @@ pub struct DynamicCallArgumentLinked {
 
 #[cfg(test)]
 mod tests {
-    use vela_common::{GlobalSlot, HostTypeId};
+    use vela_common::{HostTypeId, StateSlot};
     use vela_def::FieldId;
     use vela_host::target::HostTargetPlan;
 
@@ -1228,7 +1228,7 @@ mod tests {
         };
         let global = InstructionKind::LoadGlobal {
             dst: Register(3),
-            slot: GlobalSlot::new(5),
+            slot: StateSlot::new(5),
             debug_name: global_name,
             cache_site: None,
         };
@@ -1252,7 +1252,7 @@ mod tests {
                 slot,
                 debug_name,
                 ..
-            } if slot == GlobalSlot::new(5) && debug_name == global_name
+            } if slot == StateSlot::new(5) && debug_name == global_name
         ));
     }
 

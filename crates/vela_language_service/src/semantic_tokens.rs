@@ -793,7 +793,7 @@ fn declaration_use_classification(declaration: &Declaration) -> SemanticTokenCla
 fn declaration_token_type(kind: DeclarationKind) -> SemanticTokenType {
     match kind {
         DeclarationKind::Const => SemanticTokenType::Const,
-        DeclarationKind::Global => SemanticTokenType::Global,
+        DeclarationKind::State => SemanticTokenType::Global,
         DeclarationKind::Function => SemanticTokenType::Function,
         DeclarationKind::Struct => SemanticTokenType::Struct,
         DeclarationKind::Enum => SemanticTokenType::Enum,
@@ -863,7 +863,7 @@ fn member_declaration_classification(
                 })
                 .map(|_| member_declaration_token_classification(SemanticTokenType::Method))
         }),
-        DeclarationKind::Const | DeclarationKind::Global | DeclarationKind::Function => None,
+        DeclarationKind::Const | DeclarationKind::State | DeclarationKind::Function => None,
     }
 }
 

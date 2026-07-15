@@ -2,6 +2,41 @@ use super::*;
 use crate::attributes::HirAttributeValue;
 use crate::binding::LocalBindingKind;
 use crate::body::{HirBodyOwner, HirBodyRoot};
+use crate::type_hint::StateStorage;
+
+#[test]
+fn lowers_vm_and_extern_state_storage_metadata() {
+    let mut graph = ModuleGraph::new();
+    let source_text = r#"
+state counter: i64 = 41 + 1;
+pub extern state world: World;
+"#;
+    let module = graph.add_source(source(1, "game::state", source_text));
+    let declarations = graph.module(module).expect("module declarations");
+    let counter = declarations.get("counter").expect("counter state");
+    let world = declarations.get("world").expect("world state");
+
+    assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
+    assert_eq!(
+        graph
+            .declaration(counter)
+            .map(|declaration| declaration.kind),
+        Some(DeclarationKind::State)
+    );
+    let counter_metadata = graph.state_metadata(counter).expect("counter metadata");
+    assert_eq!(counter_metadata.storage, StateStorage::Vm);
+    assert_eq!(counter_metadata.type_hint.display(), "i64");
+    assert_eq!(
+        counter_metadata
+            .initializer_span
+            .map(|span| span_text(source_text, span)),
+        Some("41 + 1")
+    );
+    let world_metadata = graph.state_metadata(world).expect("world metadata");
+    assert_eq!(world_metadata.storage, StateStorage::Extern);
+    assert_eq!(world_metadata.type_hint.display(), "World");
+    assert_eq!(world_metadata.initializer_span, None);
+}
 
 #[test]
 fn lowers_type_hint_metadata_for_signatures_structs_and_locals() {

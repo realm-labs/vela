@@ -1,6 +1,6 @@
 use vela_analysis::literals::DeferredNumericLiteral;
 use vela_common::ShapeId;
-use vela_def::{FieldId, FunctionId, GlobalId, MethodId, TypeId, VariantId};
+use vela_def::{FieldId, FunctionId, MethodId, StateId, TypeId, VariantId};
 
 use crate::input::{
     CompileHostIndexCapability, CompileParameterDefault, CompilePositionalPolicy, CompileSignature,
@@ -320,7 +320,7 @@ pub enum MirHostOperation {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum MirGlobalOperation {
-    Read { global: GlobalId },
+    Read { global: StateId },
 }
 
 #[derive(Clone, Debug, PartialEq)]

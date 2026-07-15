@@ -552,7 +552,7 @@ fn binding_maps_at<'a>(
             DeclarationKind::Const
             | DeclarationKind::Struct
             | DeclarationKind::Enum
-            | DeclarationKind::Global => None,
+            | DeclarationKind::State => None,
         }
     })
 }

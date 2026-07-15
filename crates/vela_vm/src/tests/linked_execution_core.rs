@@ -73,7 +73,7 @@ fn linked_execution_rejects_undersized_inline_cache_provider() {
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::LoadGlobal {
             dst: Register(0),
-            slot: vela_common::GlobalSlot::new(0),
+            slot: vela_common::StateSlot::new(0),
             debug_name: main_name,
             cache_site: Some(cache_site),
         },

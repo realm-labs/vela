@@ -4,7 +4,7 @@ use std::fmt;
 
 use vela_analysis::executable::ExecutableAnalysisView;
 use vela_common::CallableAsyncness;
-use vela_def::{FieldId, FunctionId, GlobalId, MethodId, TypeId, VariantId};
+use vela_def::{FieldId, FunctionId, MethodId, StateId, TypeId, VariantId};
 use vela_hir::body::HirBodyOwner;
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId, HirPatternId};
 use vela_hir::module_graph::ModuleGraph;
@@ -149,7 +149,7 @@ pub struct CompileTargetSnapshot {
     pattern_constructors: BTreeMap<(FunctionId, HirPatternId), CompilePatternConstructorTarget>,
     host_paths: BTreeMap<(FunctionId, HirExprId), CompileHostPathTarget>,
     try_targets: BTreeMap<(FunctionId, HirExprId), CompileTryTarget>,
-    globals: BTreeMap<HirDeclId, GlobalId>,
+    globals: BTreeMap<HirDeclId, StateId>,
     evaluated_constants: BTreeMap<HirDeclId, MirEvaluatedConstant>,
     evaluated_schema_defaults: BTreeMap<HirBodyId, MirEvaluatedConstant>,
     targets: MirTargetTable,
@@ -180,7 +180,7 @@ impl CompileTargetSnapshot {
     }
 
     #[must_use]
-    pub fn global_by_id(&self, id: GlobalId) -> Option<&CompileGlobalTarget> {
+    pub fn global_by_id(&self, id: StateId) -> Option<&CompileGlobalTarget> {
         self.targets.global(id)
     }
 

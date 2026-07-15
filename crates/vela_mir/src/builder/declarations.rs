@@ -52,7 +52,7 @@ impl FunctionBuilder<'_> {
                 })?;
                 self.lower_evaluated_constant(value, result_type, origin)
             }
-            DeclarationKind::Global => {
+            DeclarationKind::State => {
                 if constant.is_some() {
                     return Err(self.inconsistent(
                         origin,

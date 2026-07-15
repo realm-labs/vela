@@ -1005,7 +1005,7 @@ fn global_contract_type(image: &ProgramImage, name: &str) -> Option<String> {
         for declaration_name in declarations.names() {
             let declaration = declarations.get(declaration_name)?;
             let metadata = graph.declaration(declaration)?;
-            if metadata.kind != DeclarationKind::Global {
+            if metadata.kind != DeclarationKind::State {
                 continue;
             }
             let symbol = if module_path.is_empty() {
@@ -1015,11 +1015,11 @@ fn global_contract_type(image: &ProgramImage, name: &str) -> Option<String> {
             };
             if symbol == name {
                 return graph
-                    .global_metadata(declaration)
+                    .state_metadata(declaration)
                     .map(|metadata| metadata.type_hint.display());
             }
             if metadata.name == leaf_name {
-                let Some(metadata) = graph.global_metadata(declaration) else {
+                let Some(metadata) = graph.state_metadata(declaration) else {
                     continue;
                 };
                 if leaf_match.is_some() {

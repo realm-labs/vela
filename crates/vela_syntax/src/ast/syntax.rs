@@ -1,8 +1,8 @@
 use std::marker::PhantomData;
 
 use super::items::{
-    SyntaxConstItem, SyntaxEnumItem, SyntaxFunctionItem, SyntaxGlobalItem, SyntaxImplItem,
-    SyntaxItem, SyntaxStructItem, SyntaxTraitItem, SyntaxUseItem,
+    SyntaxConstItem, SyntaxEnumItem, SyntaxFunctionItem, SyntaxImplItem, SyntaxItem,
+    SyntaxStateItem, SyntaxStructItem, SyntaxTraitItem, SyntaxUseItem,
 };
 use super::statements::{SyntaxLetStmt, SyntaxStatement};
 use crate::{SyntaxKind, SyntaxNode, SyntaxNodeChildren, SyntaxToken, TextRange};
@@ -71,7 +71,7 @@ impl SyntaxSourceFile {
     }
 
     #[must_use]
-    pub fn globals(&self) -> AstChildren<SyntaxGlobalItem> {
+    pub fn states(&self) -> AstChildren<SyntaxStateItem> {
         AstChildren::new(&self.syntax)
     }
 }
