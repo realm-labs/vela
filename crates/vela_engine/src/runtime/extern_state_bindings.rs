@@ -172,7 +172,7 @@ impl RuntimeExternStateBindings {
     }
 
     pub(super) fn retain_state_ids(&mut self, retained: &BTreeSet<StateId>) {
-        self.bindings.retain(|state, _| retained.contains(&state));
+        self.bindings.retain(|state, _| retained.contains(state));
     }
 
     pub(super) fn missing_bindings(
