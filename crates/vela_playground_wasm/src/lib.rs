@@ -167,6 +167,9 @@ fn compile_error_response(error: CompileError) -> PlaygroundResponse {
         CompileErrorKind::InvalidStateInitializer { state, reason } => {
             single_error_response(format!("invalid state initializer for `{state}`: {reason}"))
         }
+        CompileErrorKind::InvalidExternStateContract { state, actual } => single_error_response(
+            format!("extern state `{state}` requires a registered host type, found `{actual}`"),
+        ),
         CompileErrorKind::UnknownLocal(name) => {
             single_error_response(format!("unknown local `{name}`"))
         }
@@ -414,6 +417,20 @@ mod tests {
         .expect("valid playground response");
 
         assert_eq!(response["ok"], true, "{response:#}");
+    }
+
+    #[test]
+    fn compile_script_reports_invalid_extern_state_contract() {
+        let response: JsonValue = serde_json::from_str(&compile_script(
+            "extern state value: i64; fn main() { return 0; }",
+        ))
+        .expect("valid playground response");
+
+        assert_eq!(response["ok"], false);
+        assert_eq!(
+            response["diagnostics"][0]["code"],
+            "compiler::invalid_extern_state_contract"
+        );
     }
 
     #[test]
