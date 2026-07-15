@@ -45,6 +45,42 @@ decision history lives in
 
 ## Active Architecture Decisions
 
+### Explicit Runtime State Ownership
+
+The pre-release `global` declaration and embedding model is replaced outright
+by `state` and `extern state`. `state` is a contextual module-item introducer:
+the lexer emits it as an identifier, while the parser recognizes it only after
+attributes and optional `pub`, or after reserved `extern`. It remains legal as
+an ordinary identifier in every other binding position. The supported forms
+are `state name: Type = expression;` and `pub extern state name: Type;`; VM
+state requires both an explicit type and initializer, while extern state
+forbids an initializer.
+
+Each `state` owns one mutable VM cell per `Runtime`. Each `extern state` owns no
+script value and resolves only to a type-checked host binding; Vela cannot
+replace its root, and nested mutation continues through `HostRef`, `HostPath`,
+`PathProxy`, and `HostAccess`. Visibility affects name resolution and export
+ABI only. No declaration may select VM versus host storage dynamically, and no
+legacy parser, bytecode, runtime, or embedding compatibility surface remains.
+
+State identity is the stable `StateId` derived from package, module, and
+declaration name. Dense `StateSlot` operands are local to one executable
+generation. Initializers use the verified HIR/MIR/linked execution pipeline,
+run once for every newly created Runtime and only for newly added VM state on
+reload, and are bounded and restricted from state, extern, native, host,
+provider, reflection, capability, IO, event, time, random, and async effects.
+Initialization and reload publication are transactional from script-visible
+state.
+
+Hot reload preserves an existing value or extern binding only when the same
+`StateId` has the same storage kind and exact normalized type contract. It does
+not rerun a preserved initializer. Storage or type changes reject; rename is
+remove plus add. Removed state remains addressable through the slot map owned
+by a live old frame, closure, value, or suspended execution generation and is
+reclaimed only after the final such owner is gone. This preserves old
+generation execution without migrating suspended frames or introducing state
+schema/value migration.
+
 ### Linked-Only VM Execution
 
 The compiler and verifier retain unlinked bytecode as a construction and
