@@ -2,7 +2,7 @@
 
 > **Track:** contextual `state` declarations, explicit VM/host ownership,
 > restricted initialization, and hot-reload state compatibility
-> **Document status:** Batches A-E landed; Batch F in execution (F1-F3 complete)
+> **Document status:** Batches A-E landed; Batch F in execution (F1-F4 complete)
 > **Baseline:** post-implementation review of `master` at `afac6150` on
 > 2026-07-15
 > **Execution style:** hard-switch the pre-release language and runtime in
@@ -977,7 +977,7 @@ Tasks, in execution order:
   complete Runtime-construction or added-state reload transaction. Do not
   recreate the full allowance per declaration or use an unbounded budget when
   materializing staged values into the published heap.
-- [ ] `STATE-F4-EXPORT-ABI`: keep state preservation separate from visibility,
+- [x] `STATE-F4-EXPORT-ABI`: keep state preservation separate from visibility,
   while rejecting removal or visibility downgrade of an existing public state
   export. Private additions/removals and private-to-public additions continue
   to follow the documented compatibility matrix.

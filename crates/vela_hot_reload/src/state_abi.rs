@@ -45,6 +45,14 @@ pub(crate) fn compare_state_abi(
 
     for (id, old_state) in &old {
         let Some(new_state) = new.get(id) else {
+            if old_state.visibility == StateVisibility::Public {
+                return Err(HotReloadError::new(
+                    HotReloadErrorKind::RemovedStateExport {
+                        state: old_state.qualified_name.clone(),
+                        source_span: old_state.source_span.map(Box::new),
+                    },
+                ));
+            }
             changes.removed.push(old_state.qualified_name.clone());
             continue;
         };
@@ -67,6 +75,16 @@ pub(crate) fn compare_state_abi(
             }));
         }
         if old_state.visibility != new_state.visibility {
+            if old_state.visibility == StateVisibility::Public
+                && new_state.visibility == StateVisibility::Private
+            {
+                return Err(HotReloadError::new(
+                    HotReloadErrorKind::DowngradedStateVisibility {
+                        state: new_state.qualified_name.clone(),
+                        source_span: new_state.source_span.map(Box::new),
+                    },
+                ));
+            }
             changes
                 .visibility_changed
                 .push(new_state.qualified_name.clone());

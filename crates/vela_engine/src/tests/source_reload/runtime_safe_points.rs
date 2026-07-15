@@ -420,6 +420,57 @@ fn reload_preserves_compatible_state_and_initializes_only_added_vm_state() {
 }
 
 #[test]
+fn reload_rejects_public_state_export_breaks_without_publishing_image_or_state() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_with_id(
+            SourceId::new(307),
+            "pub state value: i64 = 1; fn read() { return value; }",
+        )
+        .expect("initial generation");
+    let removal = engine.compile_hot_reload_update_with_id(
+        &initial,
+        SourceId::new(308),
+        "fn read() { return 0; }",
+    );
+    let downgrade = engine.compile_hot_reload_update_with_id(
+        &initial,
+        SourceId::new(309),
+        "state value: i64 = 1; fn read() { return value; }",
+    );
+    let initial_id = initial.id;
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime initializes");
+    runtime
+        .set_state("main::value", 11_i64)
+        .expect("state replacement");
+
+    for (update, expected_code) in [
+        (removal, "reload.state.export_removed"),
+        (downgrade, "reload.state.visibility_downgraded"),
+    ] {
+        let report = runtime
+            .apply_hot_update_result_report(hot_reload_result(update))
+            .expect("runtime returns a rejection report");
+
+        assert!(!report.accepted);
+        assert_eq!(report.errors[0].code, expected_code);
+        assert_eq!(
+            runtime.hot_reload_version().expect("active version").id,
+            initial_id
+        );
+        assert_eq!(
+            runtime.state("main::value"),
+            Ok(Some(OwnedValue::from(11_i64)))
+        );
+        let value = runtime
+            .call("read", CallArgs::new(), CallOptions::unbounded())
+            .expect("old image remains callable");
+        assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::from(11_i64)));
+    }
+}
+
+#[test]
 fn added_state_initializer_failure_rolls_back_image_and_state_publication() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine

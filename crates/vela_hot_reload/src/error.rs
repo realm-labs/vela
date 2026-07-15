@@ -69,6 +69,10 @@ impl HotReloadError {
             }
             HotReloadErrorKind::ChangedStateStorage { .. } => "reload.state.storage_changed",
             HotReloadErrorKind::ChangedStateType { .. } => "reload.state.type_changed",
+            HotReloadErrorKind::RemovedStateExport { .. } => "reload.state.export_removed",
+            HotReloadErrorKind::DowngradedStateVisibility { .. } => {
+                "reload.state.visibility_downgraded"
+            }
             HotReloadErrorKind::MissingExternStateBinding { .. } => {
                 "reload.state.extern_binding_missing"
             }
@@ -123,6 +127,8 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedPackageProviderAbi { target, .. } => Some(target.clone()),
             HotReloadErrorKind::ChangedStateStorage { state, .. }
             | HotReloadErrorKind::ChangedStateType { state, .. }
+            | HotReloadErrorKind::RemovedStateExport { state, .. }
+            | HotReloadErrorKind::DowngradedStateVisibility { state, .. }
             | HotReloadErrorKind::MissingExternStateBinding { state, .. }
             | HotReloadErrorKind::InvalidExternStateBinding { state, .. }
             | HotReloadErrorKind::StateInitializerFailed { state, .. } => Some(state.clone()),
@@ -235,6 +241,12 @@ impl HotReloadError {
             } => {
                 format!("state `{state}` changed type contract from {old:?} to {new:?}")
             }
+            HotReloadErrorKind::RemovedStateExport { state, .. } => {
+                format!("public state export `{state}` was removed")
+            }
+            HotReloadErrorKind::DowngradedStateVisibility { state, .. } => {
+                format!("public state export `{state}` became private")
+            }
             HotReloadErrorKind::MissingExternStateBinding { state, .. } => {
                 format!("new extern state `{state}` has no staged host binding")
             }
@@ -331,6 +343,12 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedStateType { .. } => Some(
                 "preserve the exact state type contract or restart with an explicit migration".to_owned(),
             ),
+            HotReloadErrorKind::RemovedStateExport { .. } => Some(
+                "restore the public state export or restart with an explicit migration".to_owned(),
+            ),
+            HotReloadErrorKind::DowngradedStateVisibility { .. } => Some(
+                "keep the existing state public or restart with an explicit migration".to_owned(),
+            ),
             HotReloadErrorKind::MissingExternStateBinding { .. } => Some(
                 "stage a type-compatible host object for the new extern state before activation".to_owned(),
             ),
@@ -383,6 +401,8 @@ impl HotReloadError {
             }
             HotReloadErrorKind::ChangedStateStorage { source_span, .. }
             | HotReloadErrorKind::ChangedStateType { source_span, .. }
+            | HotReloadErrorKind::RemovedStateExport { source_span, .. }
+            | HotReloadErrorKind::DowngradedStateVisibility { source_span, .. }
             | HotReloadErrorKind::MissingExternStateBinding { source_span, .. }
             | HotReloadErrorKind::InvalidExternStateBinding { source_span, .. }
             | HotReloadErrorKind::StateInitializerFailed { source_span, .. } => {
@@ -569,6 +589,14 @@ pub enum HotReloadErrorKind {
         state: String,
         old: Box<MirTypeContract>,
         new: Box<MirTypeContract>,
+        source_span: Option<Box<Span>>,
+    },
+    RemovedStateExport {
+        state: String,
+        source_span: Option<Box<Span>>,
+    },
+    DowngradedStateVisibility {
+        state: String,
         source_span: Option<Box<Span>>,
     },
     MissingExternStateBinding {

@@ -963,6 +963,9 @@ type-checked host binding addressed through `HostRef` and HostAccess. Dense
 `StateSlot` values are generation-local execution operands. The public Rust
 surface is state-specific (`state`, `state_as`, `set_state`, `update_state`,
 builder binding, replacement, and reload staging), with no dual-store fallback.
+State value preservation is independent of module export compatibility.
+Private state may be removed or promoted to public during reload, but removing
+an existing public state export or downgrading it to private is an ABI break.
 
 There is no default end-of-call apply or automatic rollback. If a script writes
 a host field and later traps, the earlier Rust-side mutation remains. PathProxy

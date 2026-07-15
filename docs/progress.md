@@ -20,8 +20,9 @@ initializer-reporting, and generation-reclamation gaps. F1 is closed: embedding
 state replacement now validates linked recursive `MirTypeContract` metadata,
 F2 requires host-only extern contracts in compilation and verification, and F3
 shares one bounded initializer budget across construction and reload live-heap
-staging. Three review gaps remain before M20 cache close-out and M20.5 editor
-follow-up resume.
+staging. F4 rejects removal or visibility downgrade of existing public state
+exports without publishing the candidate image or state map. Two review gaps
+remain before M20 cache close-out and M20.5 editor follow-up resume.
 
 The executor-neutral async implementation from Batches A-D is landed: Vela has
 one explicit frame driver, scoped `Send` Runtime/native futures, direct typed
@@ -117,15 +118,15 @@ storage hard switch reaches final acceptance.
 
 ### State Storage Hard Switch
 
-Batches A-E are landed. Batch F is active with three remaining review-closure
+Batches A-E are landed. Batch F is active with two remaining review-closure
 tasks. `STATE-F1-SET-CONTRACT` is complete with linked-descriptor lookup and
 recursive embedding contract validation. `STATE-F2-EXTERN-CONTRACT` is complete
 with compiler, unlinked-verifier, and linked-verifier host-contract invariants.
 `STATE-F3-INIT-BUDGET` is complete with transaction-wide execution/allocation
 limits covering every declaration and reload live-heap staging.
+`STATE-F4-EXPORT-ABI` is complete with public export removal/downgrade
+rejection independent of private state preservation.
 
-- `STATE-F4-EXPORT-ABI`: reject removal or visibility downgrade of an existing
-  public state export independently of value preservation;
 - `STATE-F5-GENERATION-RECLAIM`: reclaim dead old-generation state at a normal
   safe point without waiting for another reload;
 - `STATE-F6-INIT-FINGERPRINT`: report initializer impact when a transitive pure

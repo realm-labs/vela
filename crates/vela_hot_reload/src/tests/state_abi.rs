@@ -56,7 +56,7 @@ fn state_abi_rejects_storage_and_exact_type_contract_changes() {
 }
 
 #[test]
-fn state_abi_reports_addition_and_removal_as_distinct_changes() {
+fn state_abi_reports_private_addition_and_removal_as_distinct_changes() {
     let initial = compile_initial(
         SourceId::new(206),
         "state old_name: i64 = 1; fn main() { return 0; }",
@@ -73,4 +73,58 @@ fn state_abi_reports_addition_and_removal_as_distinct_changes() {
 
     assert_eq!(report.added_states, ["main::new_name"]);
     assert_eq!(report.removed_states, ["main::old_name"]);
+}
+
+#[test]
+fn state_abi_rejects_public_export_removal_and_visibility_downgrade() {
+    let initial = compile_initial(
+        SourceId::new(208),
+        "pub state value: i64 = 1; fn main() { return value; }",
+    )
+    .expect("initial public state generation");
+
+    let removal_error = compile_update(&initial, SourceId::new(209), "fn main() { return 0; }")
+        .expect_err("public state export removal must reject");
+    assert!(matches!(
+        removal_error.kind,
+        HotReloadErrorKind::RemovedStateExport { ref state, .. } if state == "main::value"
+    ));
+    assert_eq!(removal_error.code(), "reload.state.export_removed");
+
+    let visibility_error = compile_update(
+        &initial,
+        SourceId::new(210),
+        "state value: i64 = 1; fn main() { return value; }",
+    )
+    .expect_err("public state visibility downgrade must reject");
+    assert!(matches!(
+        visibility_error.kind,
+        HotReloadErrorKind::DowngradedStateVisibility { ref state, .. }
+            if state == "main::value"
+    ));
+    assert_eq!(
+        visibility_error.code(),
+        "reload.state.visibility_downgraded"
+    );
+}
+
+#[test]
+fn state_abi_accepts_private_to_public_export_addition() {
+    let initial = compile_initial(
+        SourceId::new(211),
+        "state value: i64 = 1; fn main() { return value; }",
+    )
+    .expect("initial private state generation");
+    let update = compile_update(
+        &initial,
+        SourceId::new(212),
+        "pub state value: i64 = 9; fn main() { return value; }",
+    )
+    .expect("adding a public export is compatible");
+    let mut runtime = HotReloadRuntime::new(initial);
+    let report = runtime.apply_hot_update_report(update);
+
+    assert!(report.accepted);
+    assert_eq!(report.visibility_changed_states, ["main::value"]);
+    assert_eq!(report.initializer_changed_states, ["main::value"]);
 }

@@ -88,6 +88,8 @@ impl HotReloadDiagnosticDetail {
             | HotReloadErrorKind::ChangedPackageProviderAbi { .. }
             | HotReloadErrorKind::ChangedStateStorage { .. }
             | HotReloadErrorKind::ChangedStateType { .. }
+            | HotReloadErrorKind::RemovedStateExport { .. }
+            | HotReloadErrorKind::DowngradedStateVisibility { .. }
             | HotReloadErrorKind::MissingExternStateBinding { .. }
             | HotReloadErrorKind::InvalidExternStateBinding { .. }
             | HotReloadErrorKind::StateInitializerFailed { .. } => None,

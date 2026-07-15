@@ -131,7 +131,10 @@ contract. Existing compatible cells and extern bindings are preserved without
 rerunning initializers. Added VM state is initialized in a temporary staging
 runtime; added extern state must have a staged, type-compatible host binding.
 Storage or type changes reject. A rename is reported as remove plus add, and an
-initializer or visibility edit is reported even when it does not reject.
+initializer edit is reported even when it does not reject. State preservation
+is separate from export compatibility: private removal and private-to-public
+promotion are compatible, while removing an existing public state export or
+downgrading it to private rejects the update.
 
 Activation is transactional per Runtime: the candidate image, slot maps,
 staged cells, extern bindings, and sidecar are published together only after
