@@ -4,8 +4,8 @@ use crate::{
     MirAggregate, MirBlockId, MirCall, MirDynamicArgument, MirFormatPart, MirHostOperation,
     MirHostPathSegment, MirImmediate, MirIndexKey, MirIndexOperation, MirIteratorOperation,
     MirLocalId, MirOperand, MirPatternPredicate, MirPlace, MirReflectionOperation, MirRvalue,
-    MirScriptArgument, MirSourceOrigin, MirStatementId, MirStatementKind, MirTempId,
-    MirTerminatorKind, MirValueType,
+    MirScriptArgument, MirSourceOrigin, MirStateOperation, MirStatementId, MirStatementKind,
+    MirTempId, MirTerminatorKind, MirValueType,
 };
 
 use super::cfg::FunctionGraph;
@@ -444,7 +444,11 @@ pub(crate) fn visit_statement_operands(
                 visitor(value)?;
             }
         },
-        MirStatementKind::Global(_) | MirStatementKind::MaterializeConstant(_) => {}
+        MirStatementKind::State(MirStateOperation::WriteVmState { value, .. }) => visitor(value)?,
+        MirStatementKind::State(
+            MirStateOperation::ReadVmState { .. } | MirStateOperation::ReadExternState { .. },
+        )
+        | MirStatementKind::MaterializeConstant(_) => {}
         MirStatementKind::Allocate(aggregate) => visit_aggregate(aggregate, &mut visitor)?,
         MirStatementKind::FormatString { parts } => {
             for part in parts {

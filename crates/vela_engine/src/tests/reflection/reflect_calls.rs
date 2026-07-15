@@ -65,7 +65,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert_eq!(
@@ -106,7 +106,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert_eq!(
@@ -144,7 +144,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert!(matches!(
@@ -183,7 +183,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert!(matches!(
@@ -223,7 +223,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert!(matches!(
@@ -289,7 +289,7 @@ fn main(player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert_eq!(
@@ -359,7 +359,7 @@ fn main(player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert!(matches!(

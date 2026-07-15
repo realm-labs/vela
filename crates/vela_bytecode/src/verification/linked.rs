@@ -511,10 +511,19 @@ fn verify_linked_instruction(
             verify_linked_type_handle(function, instruction_index, context, *enum_ty)?;
             verify_linked_variant_handle(function, instruction_index, context, *variant)
         }
-        InstructionKind::LoadGlobal {
+        InstructionKind::LoadState {
+            dst, debug_name, ..
+        }
+        | InstructionKind::LoadExternState {
             dst, debug_name, ..
         } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
+            verify_linked_debug_name(function, instruction_index, context, *debug_name)
+        }
+        InstructionKind::StoreState {
+            src, debug_name, ..
+        } => {
+            verify_linked_register(function, instruction_index, code, *src)?;
             verify_linked_debug_name(function, instruction_index, context, *debug_name)
         }
         InstructionKind::HostRead {

@@ -71,7 +71,7 @@ fn linked_host_method_cache_misses_wrong_method_target_guard() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut access,
-            script_globals: None,
+            state_values: None,
         };
         program.function(main).expect("main linked code exists");
         Vm::new().execute_linked_call(
@@ -130,7 +130,7 @@ fn linked_host_method_cache_misses_wrong_method_target_guard() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut access,
-            script_globals: None,
+            state_values: None,
         };
         program.function(main).expect("main linked code exists");
         Vm::new().execute_linked_call(
@@ -161,7 +161,7 @@ fn linked_host_method_cache_misses_wrong_method_target_guard() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut access,
-            script_globals: None,
+            state_values: None,
         };
         program.function(main).expect("main linked code exists");
         Vm::new().execute_linked_call(

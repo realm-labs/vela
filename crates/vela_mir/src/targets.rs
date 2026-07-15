@@ -207,10 +207,17 @@ pub struct CompileFieldDescriptor {
     pub host_runtime: Option<FieldId>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum CompileStateStorage {
+    Vm,
+    Extern,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct CompileGlobalDescriptor {
+pub struct CompileStateDescriptor {
     pub id: StateId,
     pub name: String,
+    pub storage: CompileStateStorage,
     pub contract: MirTypeContract,
 }
 
@@ -225,7 +232,7 @@ pub struct MirTargetTable {
     types: BTreeMap<TypeId, CompileTypeDescriptor>,
     variants: BTreeMap<VariantId, CompileVariantDescriptor>,
     fields: BTreeMap<FieldId, CompileFieldDescriptor>,
-    globals: BTreeMap<StateId, CompileGlobalDescriptor>,
+    globals: BTreeMap<StateId, CompileStateDescriptor>,
 }
 
 impl MirTargetTable {
@@ -255,7 +262,7 @@ impl MirTargetTable {
     }
 
     #[must_use]
-    pub fn global(&self, id: StateId) -> Option<&CompileGlobalDescriptor> {
+    pub fn global(&self, id: StateId) -> Option<&CompileStateDescriptor> {
         self.globals.get(&id)
     }
 
@@ -281,7 +288,7 @@ impl MirTargetTable {
         self.fields.iter().map(|(id, value)| (*id, value))
     }
 
-    pub fn globals(&self) -> impl Iterator<Item = (StateId, &CompileGlobalDescriptor)> {
+    pub fn globals(&self) -> impl Iterator<Item = (StateId, &CompileStateDescriptor)> {
         self.globals.iter().map(|(id, value)| (*id, value))
     }
 
@@ -311,7 +318,7 @@ impl MirTargetTable {
         insert_unique(&mut self.fields, value.id, value)
     }
 
-    pub(crate) fn insert_global(&mut self, value: CompileGlobalDescriptor) -> bool {
+    pub(crate) fn insert_global(&mut self, value: CompileStateDescriptor) -> bool {
         insert_unique(&mut self.globals, value.id, value)
     }
 }

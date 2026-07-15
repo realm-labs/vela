@@ -78,7 +78,7 @@ fn main(player: Player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         run_host_method_program(
             &program,
@@ -141,7 +141,7 @@ fn main(player: Player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         run_host_method_program(
             &program,
@@ -222,7 +222,7 @@ fn main(player: Player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         run_host_method_program(
             &program,
@@ -287,7 +287,7 @@ fn call_host_method_writes_through_and_updates_adapter() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         run_host_method_program(
             &program,
@@ -355,7 +355,7 @@ fn heap_execution_converts_heap_string_for_host_method_call() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         run_host_method_program_runtime(
             &program,
@@ -404,7 +404,7 @@ fn main(player: Player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         run_host_method_program(
             &program,

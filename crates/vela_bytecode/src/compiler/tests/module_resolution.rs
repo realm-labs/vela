@@ -212,7 +212,7 @@ fn main() {
                 vela_package::PackageId::anonymous(),
                 ModulePath::from_qualified("game::state"),
                 r#"
-pub global state: Player;
+pub extern state state: Player;
 "#,
             ),
         ],
@@ -227,8 +227,8 @@ pub global state: Player;
         .expect("global slot should be assigned");
     assert!(main.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        UnlinkedInstructionKind::LoadGlobal { global, slot: Some(actual), .. }
-            if global == "game::state::state" && *actual == slot
+        UnlinkedInstructionKind::LoadExternState { state, slot: Some(actual), .. }
+            if state == "game::state::state" && *actual == slot
     )));
 }
 

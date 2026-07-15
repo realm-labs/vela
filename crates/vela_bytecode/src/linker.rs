@@ -1106,20 +1106,54 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     variant,
                 }
             }
-            UnlinkedInstructionKind::LoadGlobal {
+            UnlinkedInstructionKind::LoadState {
                 dst,
-                global,
+                state,
                 slot,
                 cache_site,
             } => {
-                let slot = slot
-                    .or_else(|| program.global_slot(global))
-                    .ok_or_else(|| LinkError::MissingGlobal {
+                let slot = slot.or_else(|| program.global_slot(state)).ok_or_else(|| {
+                    LinkError::MissingGlobal {
                         function: code.name.clone(),
-                        global: global.clone(),
-                    })?;
-                let debug_name = self.linked.intern_debug_name(global.clone());
-                InstructionKind::LoadGlobal {
+                        global: state.clone(),
+                    }
+                })?;
+                let debug_name = self.linked.intern_debug_name(state.clone());
+                InstructionKind::LoadState {
+                    dst: *dst,
+                    slot,
+                    debug_name,
+                    cache_site: *cache_site,
+                }
+            }
+            UnlinkedInstructionKind::StoreState { state, slot, src } => {
+                let slot = slot.or_else(|| program.global_slot(state)).ok_or_else(|| {
+                    LinkError::MissingGlobal {
+                        function: code.name.clone(),
+                        global: state.clone(),
+                    }
+                })?;
+                let debug_name = self.linked.intern_debug_name(state.clone());
+                InstructionKind::StoreState {
+                    slot,
+                    debug_name,
+                    src: *src,
+                }
+            }
+            UnlinkedInstructionKind::LoadExternState {
+                dst,
+                state,
+                slot,
+                cache_site,
+            } => {
+                let slot = slot.or_else(|| program.global_slot(state)).ok_or_else(|| {
+                    LinkError::MissingGlobal {
+                        function: code.name.clone(),
+                        global: state.clone(),
+                    }
+                })?;
+                let debug_name = self.linked.intern_debug_name(state.clone());
+                InstructionKind::LoadExternState {
                     dst: *dst,
                     slot,
                     debug_name,

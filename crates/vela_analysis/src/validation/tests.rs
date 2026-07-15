@@ -442,6 +442,37 @@ fn assert_array_ordering(
     );
 }
 
+#[test]
+fn direct_extern_state_assignment_is_rejected_but_vm_state_assignment_is_allowed() {
+    let source = SourceId::new(109);
+    let text = r#"
+extern state hosted: i64
+state owned: i64 = 0
+fn main() {
+    hosted = 1;
+    (hosted) += 1;
+    owned = 2;
+}
+"#;
+    let (graph, main) = graph(source, text);
+    let generation = generation(&graph, main, FunctionId::new(10_109));
+    let view = generation.view(FunctionId::new(10_109)).expect("main view");
+    let diagnostics = view.validation_diagnostics();
+
+    assert_eq!(
+        diagnostic_codes(diagnostics),
+        [
+            "analysis::extern_state_assignment",
+            "analysis::extern_state_assignment"
+        ]
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .all(|diagnostic| diagnostic.message.contains("extern state"))
+    );
+}
+
 fn graph(source: SourceId, text: &str) -> (ModuleGraph, HirDeclId) {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(

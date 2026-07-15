@@ -10,8 +10,8 @@ use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId, HirPatternId};
 use vela_hir::module_graph::ModuleGraph;
 
 use crate::{
-    CompileFieldDescriptor, CompileFunctionClass, CompileFunctionDescriptor,
-    CompileGlobalDescriptor, CompileMethodClass, CompileMethodDescriptor, CompileTypeDescriptor,
+    CompileFieldDescriptor, CompileFunctionClass, CompileFunctionDescriptor, CompileMethodClass,
+    CompileMethodDescriptor, CompileStateDescriptor, CompileTypeDescriptor,
     CompileVariantDescriptor, MirBlockId, MirEffect, MirEvaluatedConstant, MirLocalId,
     MirSourceOrigin, MirTargetTable, MirTempId, MirTypeContract,
 };
@@ -96,7 +96,7 @@ pub struct CompileFunctionTarget {
     pub origin: MirSourceOrigin,
 }
 
-pub type CompileGlobalTarget = CompileGlobalDescriptor;
+pub type CompileStateTarget = CompileStateDescriptor;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompileParameter {
@@ -173,14 +173,14 @@ impl CompileTargetSnapshot {
     }
 
     #[must_use]
-    pub fn global(&self, declaration: HirDeclId) -> Option<&CompileGlobalTarget> {
+    pub fn global(&self, declaration: HirDeclId) -> Option<&CompileStateTarget> {
         self.globals
             .get(&declaration)
             .and_then(|id| self.targets.global(*id))
     }
 
     #[must_use]
-    pub fn global_by_id(&self, id: StateId) -> Option<&CompileGlobalTarget> {
+    pub fn global_by_id(&self, id: StateId) -> Option<&CompileStateTarget> {
         self.targets.global(id)
     }
 
@@ -264,7 +264,7 @@ impl CompileTargetSnapshotBuilder {
     pub fn insert_global(
         &mut self,
         declaration: HirDeclId,
-        target: CompileGlobalTarget,
+        target: CompileStateTarget,
         origin: MirSourceOrigin,
     ) -> Result<(), MirBuildError> {
         if self.snapshot.globals.contains_key(&declaration) {

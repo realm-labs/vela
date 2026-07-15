@@ -487,7 +487,7 @@ mod tests {
             ModulePath::from_qualified("game"),
             r#"
             struct Player { level: i64 }
-            global active: Player
+            extern state active: Player
             fn current() {
                 return active;
             }

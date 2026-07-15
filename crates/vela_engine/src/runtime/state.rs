@@ -117,12 +117,12 @@ impl vela_vm::VmInlineCaches for RuntimeSidecars {
         self.active().inline_caches.len()
     }
 
-    fn global_read_slot(&self, site: CacheSiteId) -> Option<StateSlot> {
-        self.active().inline_caches.global_read_slot(site)
+    fn state_read_slot(&self, site: CacheSiteId) -> Option<StateSlot> {
+        self.active().inline_caches.state_read_slot(site)
     }
 
-    fn set_global_read_slot(&self, site: CacheSiteId, slot: StateSlot) {
-        self.active().inline_caches.set_global_read_slot(site, slot);
+    fn set_state_read_slot(&self, site: CacheSiteId, slot: StateSlot) {
+        self.active().inline_caches.set_state_read_slot(site, slot);
     }
 
     fn host_access(&self, site: CacheSiteId) -> Option<vela_vm::HostInlineCacheEntry> {

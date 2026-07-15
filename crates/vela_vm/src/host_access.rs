@@ -34,7 +34,7 @@ pub(crate) struct CodeHostTargetPlan<'a> {
     pub(crate) cache_site: CacheSiteId,
 }
 
-pub(crate) fn load_host_global(
+pub(crate) fn load_extern_state(
     runtime: HostAccessRuntime<'_, '_, '_>,
     name: &str,
     slot: Option<StateSlot>,
@@ -44,11 +44,6 @@ pub(crate) fn load_host_global(
             operation: "host context",
         })
     })?;
-    if let Some(script_globals) = host.script_globals
-        && let Some(value) = script_globals.get_resolved(name, slot)
-    {
-        return Ok(value);
-    }
     let root = host
         .adapter
         .global_ref(GlobalBinding { name, slot })
@@ -56,7 +51,7 @@ pub(crate) fn load_host_global(
     Ok(Value::HostRef(root))
 }
 
-pub(crate) fn load_cached_host_global(
+pub(crate) fn load_cached_extern_state(
     runtime: HostAccessRuntime<'_, '_, '_>,
     name: &str,
     declared_slot: Option<StateSlot>,
@@ -64,30 +59,68 @@ pub(crate) fn load_cached_host_global(
 ) -> VmResult<Value> {
     let inline_caches = runtime.inline_caches;
     let cached_slot = cache_site
-        .and_then(|site| inline_caches.and_then(|caches| caches.global_read_slot(site)))
+        .and_then(|site| inline_caches.and_then(|caches| caches.state_read_slot(site)))
         .or(declared_slot);
-    let value = load_host_global(runtime, name, cached_slot)?;
+    let value = load_extern_state(runtime, name, cached_slot)?;
     if let (Some(caches), Some(cache_site), Some(slot)) = (inline_caches, cache_site, declared_slot)
-        && caches.global_read_slot(cache_site).is_none()
+        && caches.state_read_slot(cache_site).is_none()
     {
-        caches.set_global_read_slot(cache_site, slot);
+        caches.set_state_read_slot(cache_site, slot);
     }
     Ok(value)
 }
 
-pub(crate) fn load_linked_cached_host_global(
+pub(crate) fn load_linked_cached_extern_state(
     runtime: HostAccessRuntime<'_, '_, '_>,
     program: &LinkedProgram,
     debug_name: DebugNameId,
     declared_slot: Option<StateSlot>,
     cache_site: Option<CacheSiteId>,
 ) -> VmResult<Value> {
-    load_cached_host_global(
+    load_cached_extern_state(
         runtime,
         program.debug_name(debug_name),
         declared_slot,
         cache_site,
     )
+}
+
+pub(crate) fn load_linked_state(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    program: &LinkedProgram,
+    debug_name: DebugNameId,
+    slot: StateSlot,
+) -> VmResult<Value> {
+    let name = program.debug_name(debug_name);
+    runtime
+        .host
+        .and_then(|host| host.state_values.as_deref())
+        .and_then(|states| states.get_resolved(name, Some(slot)))
+        .ok_or_else(|| {
+            VmError::new(VmErrorKind::TypeMismatch {
+                operation: "uninitialized VM state",
+            })
+        })
+}
+
+pub(crate) fn store_linked_state(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    program: &LinkedProgram,
+    debug_name: DebugNameId,
+    slot: StateSlot,
+    value: Value,
+) -> VmResult<()> {
+    let name = program.debug_name(debug_name);
+    let states = runtime
+        .host
+        .and_then(|host| host.state_values.as_deref_mut())
+        .ok_or_else(|| {
+            VmError::new(VmErrorKind::TypeMismatch {
+                operation: "VM state context",
+            })
+        })?;
+    states.insert_resolved(name.to_owned(), slot, value);
+    Ok(())
 }
 
 pub(crate) fn execute_host_read(

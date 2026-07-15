@@ -9,7 +9,7 @@ use vela_vm::{
 
 #[derive(Debug, Default)]
 pub(super) struct InlineCaches {
-    global_reads: Vec<Cell<Option<StateSlot>>>,
+    state_reads: Vec<Cell<Option<StateSlot>>>,
     host_accesses: Vec<Cell<Option<HostInlineCacheEntry>>>,
     record_fields: Vec<Cell<Option<RecordFieldInlineCacheEntry>>>,
     method_dispatches: Vec<Cell<Option<MethodInlineCacheEntry>>>,
@@ -40,7 +40,7 @@ impl InlineCaches {
 
     fn with_len(len: usize) -> Self {
         Self {
-            global_reads: empty_cell_cache(len),
+            state_reads: empty_cell_cache(len),
             host_accesses: empty_cell_cache(len),
             record_fields: empty_cell_cache(len),
             method_dispatches: empty_cell_cache(len),
@@ -50,19 +50,19 @@ impl InlineCaches {
     }
 
     pub(super) fn len(&self) -> usize {
-        self.global_reads.len()
+        self.state_reads.len()
     }
 
     pub(super) fn is_empty(&self) -> bool {
-        self.global_reads.is_empty()
+        self.state_reads.is_empty()
     }
 
-    pub(super) fn global_read_slot(&self, site: CacheSiteId) -> Option<StateSlot> {
-        self.global_reads.get(site.index()).and_then(Cell::get)
+    pub(super) fn state_read_slot(&self, site: CacheSiteId) -> Option<StateSlot> {
+        self.state_reads.get(site.index()).and_then(Cell::get)
     }
 
-    pub(super) fn set_global_read_slot(&self, site: CacheSiteId, slot: StateSlot) {
-        if let Some(entry) = self.global_reads.get(site.index()) {
+    pub(super) fn set_state_read_slot(&self, site: CacheSiteId, slot: StateSlot) {
+        if let Some(entry) = self.state_reads.get(site.index()) {
             entry.set(Some(slot));
         }
     }
@@ -150,12 +150,12 @@ impl vela_vm::VmInlineCaches for InlineCaches {
         self.is_empty()
     }
 
-    fn global_read_slot(&self, site: CacheSiteId) -> Option<StateSlot> {
-        self.global_read_slot(site)
+    fn state_read_slot(&self, site: CacheSiteId) -> Option<StateSlot> {
+        self.state_read_slot(site)
     }
 
-    fn set_global_read_slot(&self, site: CacheSiteId, slot: StateSlot) {
-        self.set_global_read_slot(site, slot);
+    fn set_state_read_slot(&self, site: CacheSiteId, slot: StateSlot) {
+        self.set_state_read_slot(site, slot);
     }
 
     fn host_access(&self, site: CacheSiteId) -> Option<HostInlineCacheEntry> {

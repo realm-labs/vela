@@ -8,7 +8,8 @@ pub struct MirEffect {
     pub may_allocate: bool,
     pub script_call: bool,
     pub dynamic_call: bool,
-    pub global_read: bool,
+    pub state_read: bool,
+    pub state_write: bool,
     pub host_read: bool,
     pub host_write: bool,
     pub host_call: bool,
@@ -28,7 +29,8 @@ impl MirEffect {
         may_allocate: false,
         script_call: false,
         dynamic_call: false,
-        global_read: false,
+        state_read: false,
+        state_write: false,
         host_read: false,
         host_write: false,
         host_call: false,
@@ -89,10 +91,20 @@ impl MirEffect {
     }
 
     #[must_use]
-    pub const fn global_read() -> Self {
+    pub const fn state_read() -> Self {
         Self {
             may_trap: true,
-            global_read: true,
+            state_read: true,
+            ..Self::PURE
+        }
+    }
+
+    #[must_use]
+    pub const fn state_write() -> Self {
+        Self {
+            may_trap: true,
+            state_read: true,
+            state_write: true,
             ..Self::PURE
         }
     }
@@ -164,7 +176,8 @@ impl MirEffect {
             may_allocate: self.may_allocate || other.may_allocate,
             script_call: self.script_call || other.script_call,
             dynamic_call: self.dynamic_call || other.dynamic_call,
-            global_read: self.global_read || other.global_read,
+            state_read: self.state_read || other.state_read,
+            state_write: self.state_write || other.state_write,
             host_read: self.host_read || other.host_read,
             host_write: self.host_write || other.host_write,
             host_call: self.host_call || other.host_call,
@@ -185,7 +198,8 @@ impl MirEffect {
             && (!required.may_allocate || self.may_allocate)
             && (!required.script_call || self.script_call)
             && (!required.dynamic_call || self.dynamic_call)
-            && (!required.global_read || self.global_read)
+            && (!required.state_read || self.state_read)
+            && (!required.state_write || self.state_write)
             && (!required.host_read || self.host_read)
             && (!required.host_write || self.host_write)
             && (!required.host_call || self.host_call)

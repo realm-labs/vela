@@ -1062,7 +1062,18 @@ pub enum InstructionKind {
         enum_ty: TypeHandle,
         variant: VariantHandle,
     },
-    LoadGlobal {
+    LoadState {
+        dst: Register,
+        slot: StateSlot,
+        debug_name: DebugNameId,
+        cache_site: Option<CacheSiteId>,
+    },
+    StoreState {
+        slot: StateSlot,
+        debug_name: DebugNameId,
+        src: Register,
+    },
+    LoadExternState {
         dst: Register,
         slot: StateSlot,
         debug_name: DebugNameId,
@@ -1226,7 +1237,7 @@ mod tests {
             enum_ty: player_type,
             variant,
         };
-        let global = InstructionKind::LoadGlobal {
+        let global = InstructionKind::LoadExternState {
             dst: Register(3),
             slot: StateSlot::new(5),
             debug_name: global_name,
@@ -1248,7 +1259,7 @@ mod tests {
         ));
         assert!(matches!(
             global,
-            InstructionKind::LoadGlobal {
+            InstructionKind::LoadExternState {
                 slot,
                 debug_name,
                 ..

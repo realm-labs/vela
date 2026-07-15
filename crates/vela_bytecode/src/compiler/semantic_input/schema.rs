@@ -12,14 +12,14 @@ use vela_hir::attributes::schema_id_attr;
 use vela_hir::body::{HirBody, HirBodyRoot};
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
-use vela_hir::type_hint::{EnumVariantFieldsHint, FunctionSignature, HirTypeHint};
+use vela_hir::type_hint::{EnumVariantFieldsHint, FunctionSignature, HirTypeHint, StateStorage};
 use vela_mir::{
     CompileFieldAccess, CompileFieldDescriptor, CompileFunctionAccess, CompileFunctionClass,
-    CompileFunctionDescriptor, CompileGlobalDescriptor, CompileGuardKey, CompileGuardTarget,
-    CompileMethodAccess, CompileMethodClass, CompileMethodDescriptor, CompileParameter,
-    CompileParameterDefault, CompilePositionalPolicy, CompileSignature, CompileTypeClass,
-    CompileTypeDescriptor, CompileVariantDescriptor, HostTypeTarget, MethodExecutableTarget,
-    MirEffect, MirGuardLocation, MirSourceOrigin, MirTypeContract,
+    CompileFunctionDescriptor, CompileGuardKey, CompileGuardTarget, CompileMethodAccess,
+    CompileMethodClass, CompileMethodDescriptor, CompileParameter, CompileParameterDefault,
+    CompilePositionalPolicy, CompileSignature, CompileStateDescriptor, CompileStateStorage,
+    CompileTypeClass, CompileTypeDescriptor, CompileVariantDescriptor, HostTypeTarget,
+    MethodExecutableTarget, MirEffect, MirGuardLocation, MirSourceOrigin, MirTypeContract,
 };
 use vela_registry::{TypeHintDef, TypeKindDef};
 
@@ -316,9 +316,13 @@ impl GenerationBuilder<'_, '_> {
             self.targets
                 .insert_global(
                     declaration,
-                    CompileGlobalDescriptor {
+                    CompileStateDescriptor {
                         id,
                         name: symbol.clone(),
+                        storage: match global.storage {
+                            StateStorage::Vm => CompileStateStorage::Vm,
+                            StateStorage::Extern => CompileStateStorage::Extern,
+                        },
                         contract: contract.clone(),
                     },
                     origin,

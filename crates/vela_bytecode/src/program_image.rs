@@ -404,21 +404,23 @@ mod tests {
     #[test]
     fn image_rewrites_cache_site_ids_to_image_global_indexes() {
         let mut first = UnlinkedCodeObject::new("read_first", 1);
-        let first_local = first.push_cache_site(CacheSiteKind::GlobalRead, InstructionOffset(0));
+        let first_local =
+            first.push_cache_site(CacheSiteKind::ExternStateRead, InstructionOffset(0));
         first.push_instruction(UnlinkedInstruction::new(
-            UnlinkedInstructionKind::LoadGlobal {
+            UnlinkedInstructionKind::LoadExternState {
                 dst: Register(0),
-                global: "main::first".to_owned(),
+                state: "main::first".to_owned(),
                 slot: None,
                 cache_site: Some(first_local),
             },
         ));
         let mut second = UnlinkedCodeObject::new("read_second", 1);
-        let second_local = second.push_cache_site(CacheSiteKind::GlobalRead, InstructionOffset(0));
+        let second_local =
+            second.push_cache_site(CacheSiteKind::ExternStateRead, InstructionOffset(0));
         second.push_instruction(UnlinkedInstruction::new(
-            UnlinkedInstructionKind::LoadGlobal {
+            UnlinkedInstructionKind::LoadExternState {
                 dst: Register(0),
-                global: "main::second".to_owned(),
+                state: "main::second".to_owned(),
                 slot: None,
                 cache_site: Some(second_local),
             },
@@ -513,7 +515,7 @@ mod tests {
             .instructions
             .iter()
             .find_map(|instruction| match &instruction.kind {
-                UnlinkedInstructionKind::LoadGlobal {
+                UnlinkedInstructionKind::LoadExternState {
                     cache_site: Some(site),
                     ..
                 } => Some(*site),

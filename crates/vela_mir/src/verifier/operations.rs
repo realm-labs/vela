@@ -22,11 +22,11 @@ use vela_common::{CallableAsyncness, PrimitiveTag};
 
 use crate::operations::MirDestinationRequirement;
 use crate::{
-    CompileFunctionClass, CompileMethodClass, MirAwaitOperation, MirBinaryOp, MirCall,
-    MirConstantProvenance, MirContextualBinaryOp, MirDynamicBinaryOp, MirEffect,
-    MirGlobalOperation, MirGuardAssumption, MirIteratorOperation, MirOperand, MirPlace,
-    MirReflectionOperation, MirRvalue, MirSourceNode, MirSourceOrigin, MirStatementId,
-    MirStatementKind, MirTerminatorKind, MirTypeContract, MirUnaryOp, MirValueType,
+    CompileFunctionClass, CompileMethodClass, CompileStateStorage, MirAwaitOperation, MirBinaryOp,
+    MirCall, MirConstantProvenance, MirContextualBinaryOp, MirDynamicBinaryOp, MirEffect,
+    MirGuardAssumption, MirIteratorOperation, MirOperand, MirPlace, MirReflectionOperation,
+    MirRvalue, MirSourceNode, MirSourceOrigin, MirStateOperation, MirStatementId, MirStatementKind,
+    MirTerminatorKind, MirTypeContract, MirUnaryOp, MirValueType,
 };
 
 use super::cfg::FunctionGraph;
@@ -634,18 +634,46 @@ fn verify_statement_kind(
             Some(value),
             None,
         )?,
-        MirStatementKind::Global(MirGlobalOperation::Read { global }) => {
-            let descriptor = verifier.program.targets().global(*global).ok_or_else(|| {
-                missing_target(verifier, statement.origin, MirVerifyTarget::Global(*global))
+        MirStatementKind::State(operation) => {
+            let (state, expected_storage) = match operation {
+                MirStateOperation::ReadVmState { state }
+                | MirStateOperation::WriteVmState { state, .. } => {
+                    (*state, CompileStateStorage::Vm)
+                }
+                MirStateOperation::ReadExternState { state } => {
+                    (*state, CompileStateStorage::Extern)
+                }
+            };
+            let descriptor = verifier.program.targets().global(state).ok_or_else(|| {
+                missing_target(verifier, statement.origin, MirVerifyTarget::Global(state))
             })?;
-            destination_contract(
-                verifier,
-                block,
-                id,
-                statement.origin,
-                destination,
-                Some(&descriptor.contract),
-            )?;
+            if descriptor.storage != expected_storage {
+                return Err(bad_target(
+                    verifier,
+                    statement.origin,
+                    MirVerifyTarget::Global(state),
+                    "state operation does not match the declaration storage class",
+                ));
+            }
+            let contract = match operation {
+                MirStateOperation::ReadVmState { .. }
+                | MirStateOperation::ReadExternState { .. } => Some(&descriptor.contract),
+                MirStateOperation::WriteVmState { value, .. } => {
+                    let actual = verifier.operand_type(value, block, Some(id), statement.origin)?;
+                    if !satisfies_contract(actual, &descriptor.contract) {
+                        return Err(type_error(
+                            verifier,
+                            block,
+                            Some(id),
+                            statement.origin,
+                            "VM-state write value",
+                            actual,
+                        ));
+                    }
+                    None
+                }
+            };
+            destination_contract(verifier, block, id, statement.origin, destination, contract)?;
         }
         MirStatementKind::Allocate(value) => {
             verify_aggregate(verifier, block, id, statement.origin, value, destination)?;

@@ -6,8 +6,8 @@ use vela_def::{FieldId, FunctionId, MethodId, StateId, TypeId, VariantId};
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirPatternId};
 
 use crate::{
-    CompileFieldDescriptor, CompileFunctionDescriptor, CompileGlobalDescriptor,
-    CompileMethodDescriptor, CompileTypeDescriptor, CompileVariantDescriptor, MirEvaluatedConstant,
+    CompileFieldDescriptor, CompileFunctionDescriptor, CompileMethodDescriptor,
+    CompileStateDescriptor, CompileTypeDescriptor, CompileVariantDescriptor, MirEvaluatedConstant,
     MirGuardContext, MirGuardLocation, MirSourceOrigin, MirTargetTable, MirTypeContract,
 };
 
@@ -267,12 +267,12 @@ impl<'a> CompileFunctionTargets<'a> {
     }
 
     #[must_use]
-    pub fn global(self, declaration: HirDeclId) -> Option<&'a CompileGlobalDescriptor> {
+    pub fn global(self, declaration: HirDeclId) -> Option<&'a CompileStateDescriptor> {
         self.snapshot.global(declaration)
     }
 
     #[must_use]
-    pub fn global_by_id(self, id: StateId) -> Option<&'a CompileGlobalDescriptor> {
+    pub fn global_by_id(self, id: StateId) -> Option<&'a CompileStateDescriptor> {
         self.snapshot.global_by_id(id)
     }
 

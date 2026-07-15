@@ -107,7 +107,7 @@ fn host_permission_denied_fixture_renders_source_span() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     let linked = link_fixture_program(&program);
@@ -173,7 +173,7 @@ fn compiled_host_permission_denied_fixture_renders_source_span_and_call_stack() 
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     let linked = link_fixture_program(&program);
@@ -257,7 +257,7 @@ fn host_compound_write_denied_fixture_renders_source_span() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         let linked = link_fixture_program(&program);
         let mut budget = ExecutionBudget::unbounded();
@@ -322,7 +322,7 @@ fn stale_host_ref_fixture_renders_source_span() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     let linked = link_fixture_program(&program);
@@ -388,7 +388,7 @@ fn reflection_unknown_field_fixture_renders_candidates_and_source_span() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     let linked = link_fixture_program_with_vm(&program, &vm);

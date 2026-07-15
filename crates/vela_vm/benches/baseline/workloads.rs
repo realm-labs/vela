@@ -686,12 +686,12 @@ fn main(player: Player) {
         source: HOST_FIELD_READ_WRITE_SOURCE,
     },
     Workload {
-        name: "host_global_read_write_hot_offsets",
+        name: "host_state_read_write_hot_offsets",
         mode: ExecutionMode::HostAccessProfileOnly,
         source: HOST_GLOBAL_READ_WRITE_SOURCE,
     },
     Workload {
-        name: "host_global_read_write_cache_hot_offsets",
+        name: "host_state_read_write_cache_hot_offsets",
         mode: ExecutionMode::HostAccessCacheEnabled,
         source: HOST_GLOBAL_READ_WRITE_SOURCE,
     },

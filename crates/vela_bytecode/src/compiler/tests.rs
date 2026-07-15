@@ -714,7 +714,7 @@ fn compiler_records_cache_site_metadata_for_cacheable_instructions() {
     let program = compile_test_program_with_registry(
         SourceId::new(1),
         r#"
-global bonus: i64;
+extern state bonus: i64;
 
 struct Reward {
     gold: i64,
@@ -746,7 +746,7 @@ fn main(player: Player) {
         .map(|site| site.kind)
         .collect::<Vec<_>>();
 
-    assert!(site_kinds.contains(&CacheSiteKind::GlobalRead));
+    assert!(site_kinds.contains(&CacheSiteKind::ExternStateRead));
     assert!(site_kinds.contains(&CacheSiteKind::NativeCall));
     assert!(site_kinds.contains(&CacheSiteKind::MethodCall));
     assert!(site_kinds.contains(&CacheSiteKind::RecordFieldRead));
@@ -769,7 +769,7 @@ fn main(player: Player) {
         .instructions
         .iter()
         .find_map(|instruction| match &instruction.kind {
-            UnlinkedInstructionKind::LoadGlobal { cache_site, .. } => *cache_site,
+            UnlinkedInstructionKind::LoadExternState { cache_site, .. } => *cache_site,
             _ => None,
         })
         .expect("load global should carry cache site");
@@ -778,7 +778,7 @@ fn main(player: Player) {
             .get(load_global_site)
             .expect("load global cache site should exist")
             .kind,
-        CacheSiteKind::GlobalRead
+        CacheSiteKind::ExternStateRead
     );
     let native_call_site = main
         .instructions

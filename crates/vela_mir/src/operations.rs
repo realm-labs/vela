@@ -319,8 +319,10 @@ pub enum MirHostOperation {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum MirGlobalOperation {
-    Read { global: StateId },
+pub enum MirStateOperation {
+    ReadVmState { state: StateId },
+    WriteVmState { state: StateId, value: MirOperand },
+    ReadExternState { state: StateId },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -422,7 +424,7 @@ pub enum MirStatementKind {
         value: MirOperand,
     },
     Index(MirIndexOperation),
-    Global(MirGlobalOperation),
+    State(MirStateOperation),
     Allocate(MirAggregate),
     FormatString {
         parts: Vec<MirFormatPart>,
@@ -516,7 +518,10 @@ impl MirStatementKind {
             Self::DynamicBinary { .. } => MirEffect::may_trap(),
             Self::Index(MirIndexOperation::Write { .. }) => MirEffect::allocation(),
             Self::Index(MirIndexOperation::Read { .. }) => MirEffect::may_trap(),
-            Self::Global(MirGlobalOperation::Read { .. }) => MirEffect::global_read(),
+            Self::State(
+                MirStateOperation::ReadVmState { .. } | MirStateOperation::ReadExternState { .. },
+            ) => MirEffect::state_read(),
+            Self::State(MirStateOperation::WriteVmState { .. }) => MirEffect::state_write(),
             Self::Allocate(_) | Self::FormatString { .. } | Self::Iterator(_) => {
                 MirEffect::allocation()
             }
@@ -558,7 +563,9 @@ impl MirStatementKind {
             | Self::TupleField { .. }
             | Self::ReadField { .. }
             | Self::Index(MirIndexOperation::Read { .. })
-            | Self::Global(MirGlobalOperation::Read { .. })
+            | Self::State(
+                MirStateOperation::ReadVmState { .. } | MirStateOperation::ReadExternState { .. },
+            )
             | Self::Allocate(_)
             | Self::FormatString { .. }
             | Self::MaterializeConstant(_)
@@ -572,6 +579,7 @@ impl MirStatementKind {
             )
             | Self::Iterator(_) => MirDestinationRequirement::Required,
             Self::WriteField { .. }
+            | Self::State(MirStateOperation::WriteVmState { .. })
             | Self::Index(MirIndexOperation::Write { .. })
             | Self::Host(
                 MirHostOperation::Write { .. }

@@ -69,9 +69,9 @@ fn linked_execution_rejects_undersized_inline_cache_provider() {
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");
     let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 1);
-    let cache_site = code.push_cache_site(CacheSiteKind::GlobalRead, InstructionOffset(0));
+    let cache_site = code.push_cache_site(CacheSiteKind::ExternStateRead, InstructionOffset(0));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
-        vela_bytecode::linked::InstructionKind::LoadGlobal {
+        vela_bytecode::linked::InstructionKind::LoadExternState {
             dst: Register(0),
             slot: vela_common::StateSlot::new(0),
             debug_name: main_name,
@@ -395,7 +395,7 @@ fn linked_program_calls_host_method_by_dispatch_handle() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut access,
-            script_globals: None,
+            state_values: None,
         };
         program.function(main).expect("main linked code exists");
         Vm::new().execute_linked_call(

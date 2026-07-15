@@ -46,7 +46,7 @@ fn main() {
 }
 
 #[test]
-fn global_read_inline_cache_is_runtime_local_and_site_indexed() {
+fn state_read_inline_cache_is_runtime_local_and_site_indexed() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
         .compile_source_with_id(
@@ -81,7 +81,7 @@ fn read_second() {
         .cache_sites
         .sites()
         .iter()
-        .find(|site| site.kind == CacheSiteKind::GlobalRead)
+        .find(|site| site.kind == CacheSiteKind::ExternStateRead)
         .expect("read_first should have global read site")
         .id;
     let second_site = runtime
@@ -92,7 +92,7 @@ fn read_second() {
         .cache_sites
         .sites()
         .iter()
-        .find(|site| site.kind == CacheSiteKind::GlobalRead)
+        .find(|site| site.kind == CacheSiteKind::ExternStateRead)
         .expect("read_second should have global read site")
         .id;
     assert_ne!(first_site, second_site);
@@ -110,7 +110,7 @@ fn read_second() {
         .expect("second global should insert");
 
     assert_eq!(
-        runtime.state.inline_caches().global_read_slot(first_site),
+        runtime.state.inline_caches().state_read_slot(first_site),
         None
     );
 
@@ -122,7 +122,7 @@ fn read_second() {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
     assert_eq!(
-        runtime.state.inline_caches().global_read_slot(first_site),
+        runtime.state.inline_caches().state_read_slot(first_site),
         Some(first_slot)
     );
 
@@ -134,11 +134,11 @@ fn read_second() {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(20)))
     );
     assert_eq!(
-        runtime.state.inline_caches().global_read_slot(second_site),
+        runtime.state.inline_caches().state_read_slot(second_site),
         Some(second_slot)
     );
     assert_eq!(
-        runtime.state.inline_caches().global_read_slot(first_site),
+        runtime.state.inline_caches().state_read_slot(first_site),
         Some(first_slot)
     );
 
@@ -262,7 +262,7 @@ fn read_value() {
         .cache_sites
         .sites()
         .iter()
-        .find(|site| site.kind == CacheSiteKind::GlobalRead)
+        .find(|site| site.kind == CacheSiteKind::ExternStateRead)
         .expect("read_value should have an initial global read site")
         .id;
     runtime
@@ -286,7 +286,7 @@ fn read_value() {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
     assert_eq!(
-        runtime.state.inline_caches().global_read_slot(initial_site),
+        runtime.state.inline_caches().state_read_slot(initial_site),
         Some(first_slot)
     );
 
@@ -317,14 +317,11 @@ fn read_value() {
         .cache_sites
         .sites()
         .iter()
-        .find(|site| site.kind == CacheSiteKind::GlobalRead)
+        .find(|site| site.kind == CacheSiteKind::ExternStateRead)
         .expect("reloaded read_value should have a global read site")
         .id;
     assert_eq!(
-        runtime
-            .state
-            .inline_caches()
-            .global_read_slot(reloaded_site),
+        runtime.state.inline_caches().state_read_slot(reloaded_site),
         None
     );
 
@@ -336,10 +333,7 @@ fn read_value() {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(20)))
     );
     assert_eq!(
-        runtime
-            .state
-            .inline_caches()
-            .global_read_slot(reloaded_site),
+        runtime.state.inline_caches().state_read_slot(reloaded_site),
         Some(second_slot)
     );
 }

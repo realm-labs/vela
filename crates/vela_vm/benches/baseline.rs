@@ -431,7 +431,7 @@ fn run_instrumented_function(
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut access,
-        script_globals: None,
+        state_values: None,
     };
     let mut budget = ExecutionBudget::unbounded();
     Ok(
@@ -810,7 +810,7 @@ fn run_host_access(
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
     let value = vm.run_linked_program_host_budget_call(LinkedProgramHostBudgetCall {
         artifact: program,
@@ -853,7 +853,7 @@ fn run_managed_heap_host_conversion(
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         vm.run_linked_program_with_host_budget_and_caches(
             program,
@@ -901,7 +901,7 @@ fn run_managed_heap_host_read_conversion(
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         vm.run_linked_program_with_host_budget_and_caches(
             program,
@@ -988,7 +988,7 @@ fn run_gameplay_monster_kill(
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         vm.run_linked_program_with_host_budget_and_caches(
             program,

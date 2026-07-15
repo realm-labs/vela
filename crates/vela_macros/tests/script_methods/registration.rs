@@ -73,7 +73,7 @@ fn script_methods_generate_callable_native_registration() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert_eq!(
@@ -120,7 +120,7 @@ fn script_methods_feed_stable_engine_registration_api() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert_eq!(
@@ -456,7 +456,7 @@ fn script_methods_generate_callable_result_native_registration() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert_eq!(
@@ -507,7 +507,7 @@ fn script_methods_generate_callable_option_native_registration() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert_eq!(
@@ -577,7 +577,7 @@ fn main(player: Player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert_eq!(

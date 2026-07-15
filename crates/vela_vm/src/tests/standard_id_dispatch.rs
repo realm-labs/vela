@@ -277,7 +277,7 @@ fn call_native_uses_resolved_host_id_even_when_debug_name_differs() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
     assert_eq!(
         run_linked_standard_id_code_with_host(&vm, code, &mut host),

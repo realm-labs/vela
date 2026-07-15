@@ -2,12 +2,13 @@ use vela_analysis::semantic_facts::OperatorTargetFact;
 use vela_analysis::type_fact::TypeFact;
 use vela_hir::binding::BindingResolution;
 use vela_hir::body::{HirAssignOp, HirExprKind, HirField, HirIndex, HirLiteral};
-use vela_hir::ids::HirExprId;
+use vela_hir::ids::{HirDeclId, HirExprId};
 
 use crate::{
-    CompileFieldTarget, CompileMemberTarget, MirBinaryOp, MirBuildError, MirDynamicBinaryOp,
-    MirEffect, MirFieldTarget, MirImmediate, MirIndexKey, MirIndexOperation, MirNumericBinaryOp,
-    MirOperand, MirPlace, MirSafepoint, MirSourceOrigin, MirStatement, MirStatementKind,
+    CompileFieldTarget, CompileMemberTarget, CompileStateDescriptor, CompileStateStorage,
+    MirBinaryOp, MirBuildError, MirDynamicBinaryOp, MirEffect, MirFieldTarget, MirImmediate,
+    MirIndexKey, MirIndexOperation, MirNumericBinaryOp, MirOperand, MirPlace, MirSafepoint,
+    MirSourceOrigin, MirStateOperation, MirStatement, MirStatementKind,
 };
 
 use super::core::{FunctionBuilder, operand_value_type, value_type};
@@ -17,6 +18,10 @@ use super::tuple_assignments::PreparedTupleProjection;
 #[derive(Clone, Debug)]
 enum PreparedAssignmentTarget {
     Local(crate::MirLocalId),
+    State {
+        declaration: HirDeclId,
+        descriptor: CompileStateDescriptor,
+    },
     Index(PreparedIndexTarget),
     Field(PreparedFieldTarget),
 }
@@ -229,9 +234,47 @@ impl FunctionBuilder<'_> {
         }
 
         match self.expression_kind(target, origin)? {
-            HirExprKind::Path(_) => self
-                .assignment_local(target, origin)
-                .map(|local| Prepared::Ready(PreparedAssignmentTarget::Local(local))),
+            HirExprKind::Path(_) => {
+                let bindings = self
+                    .input
+                    .graph()
+                    .bindings_for_body(self.body.id)
+                    .ok_or_else(|| self.inconsistent(origin, "HIR body has no binding map"))?;
+                match bindings.resolution(target) {
+                    Some(BindingResolution::Local(local)) => self
+                        .local(*local, origin)
+                        .map(|local| Prepared::Ready(PreparedAssignmentTarget::Local(local))),
+                    Some(BindingResolution::Declaration(declaration)) => {
+                        let descriptor = self
+                            .input
+                            .targets()
+                            .global(*declaration)
+                            .cloned()
+                            .ok_or_else(|| {
+                                self.inconsistent(
+                                    origin,
+                                    "assignment declaration has no state compile target",
+                                )
+                            })?;
+                        if descriptor.storage == CompileStateStorage::Extern {
+                            return Err(self.inconsistent(
+                                origin,
+                                "direct assignment to extern state reached MIR",
+                            ));
+                        }
+                        Ok(Prepared::Ready(PreparedAssignmentTarget::State {
+                            declaration: *declaration,
+                            descriptor,
+                        }))
+                    }
+                    Some(BindingResolution::Import(_) | BindingResolution::QualifiedPath(_)) => {
+                        Err(self.inconsistent(origin, "unresolved assignment path reached MIR"))
+                    }
+                    None => {
+                        Err(self.inconsistent(origin, "assignment path has no binding resolution"))
+                    }
+                }
+            }
             HirExprKind::Index(index) => self
                 .prepare_index_target(&index, origin)
                 .map(|target| target.map(PreparedAssignmentTarget::Index)),
@@ -472,6 +515,39 @@ impl FunctionBuilder<'_> {
                 )?;
                 Ok(assigned)
             }
+            PreparedAssignmentTarget::State {
+                declaration,
+                descriptor,
+            } => {
+                let origin = rhs.origin;
+                let current = if rhs.operation == HirAssignOp::Set {
+                    unit()
+                } else {
+                    self.lower_declaration_path(
+                        assignment_target(self.body, rhs.expression).ok_or_else(|| {
+                            self.inconsistent(origin, "state assignment lost its target")
+                        })?,
+                        declaration,
+                        origin,
+                    )?
+                };
+                let assigned = self.assigned_value(rhs.with_current(current))?;
+                let assigned = self.apply_state_guard(declaration, assigned, origin)?;
+                self.function.append_statement(
+                    self.current_block,
+                    MirStatement::new(
+                        origin,
+                        None,
+                        MirStatementKind::State(MirStateOperation::WriteVmState {
+                            state: descriptor.id,
+                            value: assigned.clone(),
+                        }),
+                        MirEffect::state_write(),
+                        None,
+                    ),
+                )?;
+                Ok(assigned)
+            }
             PreparedAssignmentTarget::Index(target) => {
                 let origin = rhs.origin;
                 let current = if rhs.operation == HirAssignOp::Set {
@@ -651,24 +727,6 @@ impl FunctionBuilder<'_> {
                 "assignment expression has no analysis operator target",
             )),
         }
-    }
-
-    fn assignment_local(
-        &self,
-        expression: HirExprId,
-        origin: MirSourceOrigin,
-    ) -> Result<crate::MirLocalId, MirBuildError> {
-        let bindings = self
-            .input
-            .graph()
-            .bindings_for_body(self.body.id)
-            .ok_or_else(|| self.inconsistent(origin, "HIR body has no binding map"))?;
-        let Some(BindingResolution::Local(local)) = bindings.resolution(expression) else {
-            return Err(
-                self.inconsistent(origin, "assignment path does not resolve to a script local")
-            );
-        };
-        self.local(*local, origin)
     }
 
     fn assignment_root_local(

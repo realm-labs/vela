@@ -93,7 +93,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert_eq!(
@@ -120,7 +120,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     let error = exec_reflection_module_program(&vm, &program, &mut host)
@@ -159,7 +159,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     let error = exec_reflection_module_program(&vm, &program, &mut host)
@@ -201,7 +201,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     let error = exec_reflection_module_program(&vm, &program, &mut host)
@@ -267,7 +267,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     let error = exec_reflection_module_program(&vm, &program, &mut host)
@@ -326,7 +326,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert_eq!(

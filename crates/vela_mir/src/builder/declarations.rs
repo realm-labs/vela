@@ -2,8 +2,8 @@ use vela_hir::ids::{HirDeclId, HirExprId};
 use vela_hir::module_graph::DeclarationKind;
 
 use crate::{
-    MirBuildError, MirEffect, MirGlobalOperation, MirOperand, MirPlace, MirSourceOrigin,
-    MirStatement, MirStatementKind,
+    CompileStateStorage, MirBuildError, MirEffect, MirOperand, MirPlace, MirSourceOrigin,
+    MirStateOperation, MirStatement, MirStatementKind,
 };
 
 use super::core::{FunctionBuilder, value_type};
@@ -19,12 +19,12 @@ impl FunctionBuilder<'_> {
             self.input.graph().declaration(declaration).ok_or_else(|| {
                 self.inconsistent(origin, "declaration path has no HIR declaration")
             })?;
-        let global = self.input.targets().global(declaration);
+        let state = self.input.targets().global(declaration);
         let constant = self.input.targets().evaluated_constant(declaration);
-        if global.is_some() && constant.is_some() {
+        if state.is_some() && constant.is_some() {
             return Err(self.inconsistent(
                 origin,
-                "declaration path has both global and evaluated constant compile targets",
+                "declaration path has both state and evaluated constant compile targets",
             ));
         }
         let result_type = self
@@ -41,10 +41,10 @@ impl FunctionBuilder<'_> {
 
         match metadata.kind {
             DeclarationKind::Const => {
-                if global.is_some() {
+                if state.is_some() {
                     return Err(self.inconsistent(
                         origin,
-                        "const declaration path has a global compile target",
+                        "const declaration path has a state compile target",
                     ));
                 }
                 let value = constant.cloned().ok_or_else(|| {
@@ -56,23 +56,26 @@ impl FunctionBuilder<'_> {
                 if constant.is_some() {
                     return Err(self.inconsistent(
                         origin,
-                        "global declaration path has an evaluated constant compile target",
+                        "state declaration path has an evaluated constant compile target",
                     ));
                 }
-                let global = global.ok_or_else(|| {
-                    self.inconsistent(
-                        origin,
-                        "global declaration path has no global compile target",
-                    )
+                let state = state.ok_or_else(|| {
+                    self.inconsistent(origin, "state declaration path has no state compile target")
                 })?;
+                let operation = match state.storage {
+                    CompileStateStorage::Vm => MirStateOperation::ReadVmState { state: state.id },
+                    CompileStateStorage::Extern => {
+                        MirStateOperation::ReadExternState { state: state.id }
+                    }
+                };
                 let destination = self.function.add_temp(result_type, origin);
                 self.function.append_statement(
                     self.current_block,
                     MirStatement::new(
                         origin,
                         Some(MirPlace::temp(destination)),
-                        MirStatementKind::Global(MirGlobalOperation::Read { global: global.id }),
-                        MirEffect::global_read(),
+                        MirStatementKind::State(operation),
+                        MirEffect::state_read(),
                         None,
                     ),
                 )?;
@@ -84,7 +87,7 @@ impl FunctionBuilder<'_> {
             | DeclarationKind::Trait
             | DeclarationKind::Impl => Err(self.inconsistent(
                 origin,
-                "declaration value path does not name a const or global",
+                "declaration value path does not name a const or state",
             )),
         }
     }

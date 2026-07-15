@@ -204,7 +204,7 @@ fn managed_heap_host_execution_materializes_return_and_updates_adapter() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         run_linked_test_program_with_host_budget(
             &Vm::new(),
@@ -247,7 +247,7 @@ fn main(player: Player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         run_linked_test_program_with_host_budget(
             &Vm::new(),
@@ -304,7 +304,7 @@ fn main(player: Player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         run_linked_test_program_with_host_budget(
             &Vm::new(),
@@ -356,7 +356,7 @@ fn main(player: Player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         run_linked_test_program_with_host_budget(
             &Vm::new(),
@@ -409,7 +409,7 @@ fn main(player: Player, target) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         run_linked_test_program_with_host_budget(
             &Vm::new(),

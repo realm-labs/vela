@@ -42,7 +42,7 @@ fn schema_only_program_has_closed_descriptors_without_runtime_roots() {
         r#"
 struct Reward { amount: i64 }
 enum State { Ready(value: i64), Idle }
-global current: Any;
+extern state current: Any;
 "#,
         FixtureRoots::Program,
     )
@@ -89,7 +89,7 @@ fn semantic_guards_retain_true_boundaries_indices_and_clean_names() {
     let fixture = prepare_source(
         r#"
 struct Reward { amount: i64 }
-global current: i64;
+state current: i64 = 0;
 fn guarded(dynamic, required: i64, fallback: i64 = dynamic) -> i64 {
     let local: i64 = dynamic;
     return fallback;

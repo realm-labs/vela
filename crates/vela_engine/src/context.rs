@@ -302,7 +302,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
             Some(host) => HostExecution {
                 adapter: &mut *host.adapter,
                 access: &mut *host.access,
-                script_globals: host.script_globals,
+                state_values: host.state_values.as_deref_mut(),
             },
             None => self
                 .reentry

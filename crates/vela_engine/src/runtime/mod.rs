@@ -648,10 +648,12 @@ where
         let execution_args =
             CallArgs::from_positional(args.iter().cloned()).with_fallback_adapter(adapter);
         let mut execution_host = ExecutionHost::new(execution_args, &mut self.state.globals);
+        let roots = self.state.script_globals.roots();
+        let use_persistent_heap = options.managed_heap || !self.state.script_globals.is_empty();
         let mut host = HostExecution {
             adapter: &mut execution_host,
             access,
-            script_globals: Some(&self.state.script_globals.values),
+            state_values: Some(&mut self.state.script_globals.values),
         };
         let vm = if let Some(hot_reload) = self.hot_reload.as_ref() {
             let current = hot_reload.current();
@@ -663,8 +665,7 @@ where
                 .engine()
                 .into_vm_for_program_image(self.image.program_image())
         };
-        if options.managed_heap || !self.state.script_globals.is_empty() {
-            let roots = self.state.script_globals.roots();
+        if use_persistent_heap {
             vm.run_linked_program_host_call(LinkedProgramHostCall {
                 artifact: self.image.linked_artifact(),
                 entry,
@@ -731,7 +732,7 @@ where
         let mut host = HostExecution {
             adapter: &mut execution_host,
             access,
-            script_globals: Some(&self.state.script_globals.values),
+            state_values: Some(&mut self.state.script_globals.values),
         };
         let vm = if let Some(hot_reload) = self.hot_reload.as_ref() {
             let current = hot_reload.current();
@@ -771,13 +772,13 @@ where
             &mut budget,
         )?;
         let mut access = HostAccess::new();
+        let roots = call.script_globals.roots();
         let mut host = HostExecution {
             adapter: &mut execution_host,
             access: &mut access,
-            script_globals: Some(&call.script_globals.values),
+            state_values: Some(&mut call.script_globals.values),
         };
         let vm = runtime_vm(call.engine, call.registry_image, call.hot_reload);
-        let roots = call.script_globals.roots();
         let mut entry_args = Vec::with_capacity(
             resolved
                 .len()
@@ -820,7 +821,7 @@ where
         let vm = runtime_vm(call.engine, call.registry_image, call.hot_reload);
         let roots = call.script_globals.roots();
         let retained_values = std::sync::Arc::clone(&call.script_globals.retained_values);
-        let script_global_values = &call.script_globals.values;
+        let script_global_values = &mut call.script_globals.values;
         let mut entry_args = Vec::with_capacity(
             resolved
                 .len()
@@ -849,7 +850,7 @@ where
                 let mut host = HostExecution {
                     adapter: &mut execution_host,
                     access: &mut access,
-                    script_globals: Some(script_global_values),
+                    state_values: Some(&mut *script_global_values),
                 };
                 vm.drive_linked_execution(
                     &mut session,

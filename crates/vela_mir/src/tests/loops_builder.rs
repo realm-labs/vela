@@ -119,7 +119,7 @@ fn mir_builder_uses_proven_i64_range_steps_without_materializing_a_range() {
     assert_eq!(
         dump,
         r#"mir {
-  target function#760 CompileFunctionDescriptor { id: FunctionId(760), class: Script, canonical_symbol: "loops_builder::main", debug_name: "main", signature: CompileSignature { asyncness: Sync, parameters: [], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, global_read: false, host_read: false, host_write: false, host_call: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
+  target function#760 CompileFunctionDescriptor { id: FunctionId(760), class: Script, canonical_symbol: "loops_builder::main", debug_name: "main", signature: CompileSignature { asyncness: Sync, parameters: [], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, state_read: false, state_write: false, host_read: false, host_write: false, host_call: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
   fn f0 body h0 owner function#760 symbol="loops_builder::main" @76:10..53/h0 {
     local l0: Script(HirLocalId(0)) Primitive(I64) @76:16..21/h0
     local l1: Synthetic Primitive(I64) @76:25..30/e0

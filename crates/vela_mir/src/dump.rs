@@ -2,10 +2,10 @@ use std::fmt::{self, Write};
 
 use crate::{
     MirAggregate, MirAwaitOperation, MirCall, MirDynamicArgument, MirEffect, MirEvaluatedConstant,
-    MirFormatPart, MirFunction, MirFunctionOwner, MirGlobalOperation, MirHostOperation,
-    MirImmediate, MirIndexOperation, MirIteratorOperation, MirOperand, MirPatternPredicate,
-    MirProgram, MirReflectionOperation, MirRvalue, MirScriptArgument, MirSourceNode,
-    MirSourceOrigin, MirStatement, MirStatementKind, MirTerminator, MirTerminatorKind,
+    MirFormatPart, MirFunction, MirFunctionOwner, MirHostOperation, MirImmediate,
+    MirIndexOperation, MirIteratorOperation, MirOperand, MirPatternPredicate, MirProgram,
+    MirReflectionOperation, MirRvalue, MirScriptArgument, MirSourceNode, MirSourceOrigin,
+    MirStateOperation, MirStatement, MirStatementKind, MirTerminator, MirTerminatorKind,
 };
 
 impl MirProgram {
@@ -281,7 +281,7 @@ fn write_statement(formatter: &mut fmt::Formatter<'_>, statement: &MirStatement)
             operand_text(value)
         )?,
         MirStatementKind::Index(operation) => write_index(formatter, operation)?,
-        MirStatementKind::Global(operation) => write_global(formatter, operation)?,
+        MirStatementKind::State(operation) => write_state(formatter, operation)?,
         MirStatementKind::Allocate(aggregate) => write_aggregate(formatter, aggregate)?,
         MirStatementKind::FormatString { parts } => {
             formatter.write_str("format[")?;
@@ -363,9 +363,22 @@ fn write_dynamic_arguments(
     Ok(())
 }
 
-fn write_global(formatter: &mut fmt::Formatter<'_>, operation: &MirGlobalOperation) -> fmt::Result {
+fn write_state(formatter: &mut fmt::Formatter<'_>, operation: &MirStateOperation) -> fmt::Result {
     match operation {
-        MirGlobalOperation::Read { global } => write!(formatter, "global.read #{}", global.get()),
+        MirStateOperation::ReadVmState { state } => {
+            write!(formatter, "state.read #{}", state.get())
+        }
+        MirStateOperation::WriteVmState { state, value } => {
+            write!(
+                formatter,
+                "state.write #{} <- {}",
+                state.get(),
+                operand_text(value)
+            )
+        }
+        MirStateOperation::ReadExternState { state } => {
+            write!(formatter, "extern-state.read #{}", state.get())
+        }
     }
 }
 
@@ -954,7 +967,7 @@ fn effect(effect: MirEffect) -> String {
         ("alloc", effect.may_allocate),
         ("script-call", effect.script_call),
         ("dynamic-call", effect.dynamic_call),
-        ("global-read", effect.global_read),
+        ("global-read", effect.state_read),
         ("host-read", effect.host_read),
         ("host-write", effect.host_write),
         ("host-call", effect.host_call),

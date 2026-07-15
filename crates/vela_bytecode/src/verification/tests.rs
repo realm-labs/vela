@@ -325,7 +325,7 @@ fn linked_program_verify_rejects_invalid_method_cache_site_operand() {
         },
     ));
     let mut code = LinkedCodeObject::new(main_name, 2);
-    let cache_site = code.push_cache_site(CacheSiteKind::GlobalRead, InstructionOffset(0));
+    let cache_site = code.push_cache_site(CacheSiteKind::ExternStateRead, InstructionOffset(0));
     code.push_instruction(Instruction::new(InstructionKind::CallMethod {
         dst: Register(0),
         receiver: Register(1),
@@ -344,7 +344,7 @@ fn linked_program_verify_rejects_invalid_method_cache_site_operand() {
             VerificationErrorKind::CacheSiteKindMismatch {
                 site: cache_site,
                 expected: CacheSiteKind::MethodCall,
-                actual: CacheSiteKind::GlobalRead,
+                actual: CacheSiteKind::ExternStateRead,
             }
         ))
     );
@@ -1264,9 +1264,9 @@ fn program_image_verify_rejects_out_of_bounds_closure_function_index() {
 fn program_image_verify_rejects_out_of_bounds_cache_site_index() {
     let mut code = UnlinkedCodeObject::new("main", 1);
     code.push_instruction(UnlinkedInstruction::new(
-        UnlinkedInstructionKind::LoadGlobal {
+        UnlinkedInstructionKind::LoadExternState {
             dst: Register(0),
-            global: "main::value".to_owned(),
+            state: "main::value".to_owned(),
             slot: None,
             cache_site: Some(CacheSiteId::new(7)),
         },

@@ -209,8 +209,18 @@ fn verify_program_instruction_metadata(
 ) -> Result<(), VerificationError> {
     let global_count = program.global_names().len();
     for (index, instruction) in code.instructions.iter().enumerate() {
-        if let UnlinkedInstructionKind::LoadGlobal {
-            global,
+        if let UnlinkedInstructionKind::LoadState {
+            state,
+            slot: Some(slot),
+            ..
+        }
+        | UnlinkedInstructionKind::StoreState {
+            state,
+            slot: Some(slot),
+            ..
+        }
+        | UnlinkedInstructionKind::LoadExternState {
+            state,
             slot: Some(slot),
             ..
         } = &instruction.kind
@@ -226,7 +236,7 @@ fn verify_program_instruction_metadata(
                 ));
             }
             if let Some(expected) = program.global_name(*slot)
-                && expected != global
+                && expected != state
             {
                 return Err(error(
                     &code.name,
@@ -234,7 +244,7 @@ fn verify_program_instruction_metadata(
                     VerificationErrorKind::StateSlotNameMismatch {
                         slot: slot.get(),
                         expected: expected.to_owned(),
-                        actual: global.clone(),
+                        actual: state.clone(),
                     },
                 ));
             }
@@ -252,8 +262,18 @@ fn verify_program_image_instruction_metadata(
 ) -> Result<(), VerificationError> {
     let global_count = image.global_names().len();
     for (index, instruction) in code.instructions.iter().enumerate() {
-        if let UnlinkedInstructionKind::LoadGlobal {
-            global,
+        if let UnlinkedInstructionKind::LoadState {
+            state,
+            slot: Some(slot),
+            ..
+        }
+        | UnlinkedInstructionKind::StoreState {
+            state,
+            slot: Some(slot),
+            ..
+        }
+        | UnlinkedInstructionKind::LoadExternState {
+            state,
             slot: Some(slot),
             ..
         } = &instruction.kind
@@ -269,7 +289,7 @@ fn verify_program_image_instruction_metadata(
                 ));
             }
             if let Some(expected) = image.global_name(*slot)
-                && expected != global
+                && expected != state
             {
                 return Err(error(
                     &code.name,
@@ -277,7 +297,7 @@ fn verify_program_image_instruction_metadata(
                     VerificationErrorKind::StateSlotNameMismatch {
                         slot: slot.get(),
                         expected: expected.to_owned(),
-                        actual: global.clone(),
+                        actual: state.clone(),
                     },
                 ));
             }
@@ -642,8 +662,12 @@ fn verify_instruction(
             verify_register(function, instruction_index, code, *dst)?;
             verify_register(function, instruction_index, code, *value)
         }
-        UnlinkedInstructionKind::LoadGlobal { dst, .. } => {
+        UnlinkedInstructionKind::LoadState { dst, .. }
+        | UnlinkedInstructionKind::LoadExternState { dst, .. } => {
             verify_register(function, instruction_index, code, *dst)
+        }
+        UnlinkedInstructionKind::StoreState { src, .. } => {
+            verify_register(function, instruction_index, code, *src)
         }
         UnlinkedInstructionKind::HostRead {
             dst,

@@ -219,7 +219,7 @@ fn reads_host_field_through_host_access() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     let result = exec_host_field(
@@ -253,7 +253,7 @@ fn host_access_cache_refreshes_when_schema_epoch_changes() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         vm.run_linked_program_with_host_budget_and_caches(
             &linked,
@@ -281,7 +281,7 @@ fn host_access_cache_refreshes_when_schema_epoch_changes() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         vm.run_linked_program_with_host_budget_and_caches(
             &linked,
@@ -330,7 +330,7 @@ fn run_host_read_with_caches(
     let mut host = HostExecution {
         adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
     let owner = linked_test_owner(linked.clone());
     vm.run_linked_program_with_host_budget_and_caches(
@@ -488,7 +488,7 @@ fn set_host_field_writes_through_and_updates_adapter() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         exec_host_field(
             &program,
@@ -562,7 +562,7 @@ fn collapsed_host_mutate_and_read_execute_through_target_plan() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         exec_host_field(
             &program,
@@ -619,7 +619,7 @@ fn heap_execution_converts_heap_string_for_host_field_write() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         exec_host_field_runtime(
             &program,
@@ -689,7 +689,7 @@ fn repeated_host_writes_write_through_without_mutation_budget() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         exec_host_field_with_budget(
             &program,
@@ -756,7 +756,7 @@ fn add_host_field_writes_through_and_updates_adapter() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         exec_host_field(
             &program,
@@ -789,7 +789,7 @@ fn host_field_read_rejects_stale_generation() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     let error = exec_host_field(
@@ -840,7 +840,7 @@ fn host_field_read_error_keeps_instruction_source_span() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     let error = exec_host_field(

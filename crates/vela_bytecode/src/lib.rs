@@ -1123,9 +1123,20 @@ pub enum UnlinkedInstructionKind {
         variant: String,
         variant_id: Option<vela_def::VariantId>,
     },
-    LoadGlobal {
+    LoadState {
         dst: Register,
-        global: String,
+        state: String,
+        slot: Option<StateSlot>,
+        cache_site: Option<CacheSiteId>,
+    },
+    StoreState {
+        state: String,
+        slot: Option<StateSlot>,
+        src: Register,
+    },
+    LoadExternState {
+        dst: Register,
+        state: String,
         slot: Option<StateSlot>,
         cache_site: Option<CacheSiteId>,
     },

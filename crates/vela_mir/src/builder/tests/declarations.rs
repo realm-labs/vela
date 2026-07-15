@@ -5,17 +5,18 @@ use vela_hir::binding::BindingResolution;
 use vela_hir::body::{HirBody, HirExprKind};
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModuleSource};
+use vela_hir::type_hint::StateStorage;
 use vela_package::ModulePath;
 
 use crate::{
     CompileFieldAccess, CompileFieldDescriptor, CompileFunctionAccess, CompileFunctionClass,
-    CompileFunctionDescriptor, CompileFunctionIdentity, CompileGlobalDescriptor, CompileGuardKey,
-    CompileGuardTarget, CompileHostPathSegment, CompileHostPathTarget, CompileMemberTarget,
-    CompilePositionalPolicy, CompileSignature, CompileTargetSnapshot, CompileTargetSnapshotBuilder,
-    CompileTypeClass, CompileTypeDescriptor, HostFieldTarget, HostTypeTarget, MirBuildError,
-    MirEffect, MirEvaluatedConstant, MirGlobalOperation, MirGuardLocation, MirHostOperation,
-    MirLoweringConfig, MirLoweringInput, MirOperand, MirPlace, MirRvalue, MirSourceOrigin,
-    MirStatementKind, MirTypeContract, MirValueType,
+    CompileFunctionDescriptor, CompileFunctionIdentity, CompileGuardKey, CompileGuardTarget,
+    CompileHostPathSegment, CompileHostPathTarget, CompileMemberTarget, CompilePositionalPolicy,
+    CompileSignature, CompileStateDescriptor, CompileStateStorage, CompileTargetSnapshot,
+    CompileTargetSnapshotBuilder, CompileTypeClass, CompileTypeDescriptor, HostFieldTarget,
+    HostTypeTarget, MirBuildError, MirEffect, MirEvaluatedConstant, MirGuardLocation,
+    MirHostOperation, MirLoweringConfig, MirLoweringInput, MirOperand, MirPlace, MirRvalue,
+    MirSourceOrigin, MirStateOperation, MirStatementKind, MirTypeContract, MirValueType,
 };
 
 const ROOT_FUNCTION: FunctionId = FunctionId::new(9_900);
@@ -114,13 +115,18 @@ fn insert_global(
     declaration: HirDeclId,
     contract: MirTypeContract,
 ) -> Result<(), MirBuildError> {
-    let metadata = graph.declaration(declaration).expect("global declaration");
+    let metadata = graph.declaration(declaration).expect("state declaration");
+    let storage = match graph.state_metadata(declaration).map(|value| value.storage) {
+        Some(StateStorage::Extern) => CompileStateStorage::Extern,
+        Some(StateStorage::Vm) | None => CompileStateStorage::Vm,
+    };
     let origin = MirSourceOrigin::declaration(declaration, metadata.span);
     targets.insert_global(
         declaration,
-        CompileGlobalDescriptor {
+        CompileStateDescriptor {
             id: GLOBAL,
             name: format!("declarations::{}", metadata.name),
+            storage,
             contract: contract.clone(),
         },
         origin,
@@ -154,7 +160,7 @@ fn insert_constant(
 #[test]
 fn declaration_paths_distinguish_globals_and_scalar_constants_without_read_guards() {
     let source = r#"
-global state: i64
+state state: i64 = 0
 const STEP = 3
 fn main() {
     let first = state;
@@ -180,19 +186,19 @@ fn main() {
     })
     .expect("global and scalar const paths");
     let (_, function) = program.functions().next().expect("main function");
-    let global_reads = function
+    let state_reads = function
         .statements()
         .filter_map(|(_, statement)| match statement.kind {
-            MirStatementKind::Global(MirGlobalOperation::Read { global }) => {
-                Some((statement, global))
+            MirStatementKind::State(MirStateOperation::ReadVmState { state }) => {
+                Some((statement, state))
             }
             _ => None,
         })
         .collect::<Vec<_>>();
-    assert_eq!(global_reads.len(), 2, "{}", program.dump());
-    for (statement, global) in global_reads {
+    assert_eq!(state_reads.len(), 2, "{}", program.dump());
+    for (statement, global) in state_reads {
         assert_eq!(global, GLOBAL);
-        assert_eq!(statement.effect, MirEffect::global_read());
+        assert_eq!(statement.effect, MirEffect::state_read());
         assert_eq!(statement.safepoint, None);
         assert_eq!(source_text(source, statement.origin), "state");
         let Some(MirPlace::Temp(temp)) = statement.destination else {
@@ -223,6 +229,51 @@ fn main() {
         MirStatementKind::MaterializeConstant(_) | MirStatementKind::GuardTrap { .. }
     )));
     assert_eq!(function.guards().count(), 0);
+}
+
+#[test]
+fn vm_state_set_and_compound_assignment_lower_to_explicit_reads_and_writes() {
+    let source = r#"
+state counter: i64 = 1
+fn main() {
+    counter = 5;
+    return counter += 2;
+}
+"#;
+    let program = try_build_declarations(source, |graph, _body, targets| {
+        insert_global(
+            graph,
+            targets,
+            declaration(graph, "counter"),
+            MirTypeContract::Primitive(PrimitiveTag::I64),
+        )
+    })
+    .expect("VM-state assignments");
+    let (_, function) = program.functions().next().expect("main function");
+    let operations = function
+        .statements()
+        .filter_map(|(_, statement)| match &statement.kind {
+            MirStatementKind::State(operation) => Some((operation, statement.effect)),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(operations.len(), 3, "{}", program.dump());
+    assert!(matches!(
+        operations[0],
+        (MirStateOperation::WriteVmState { state: GLOBAL, .. }, effect)
+            if effect == MirEffect::state_write()
+    ));
+    assert!(matches!(
+        operations[1],
+        (MirStateOperation::ReadVmState { state: GLOBAL }, effect)
+            if effect == MirEffect::state_read()
+    ));
+    assert!(matches!(
+        operations[2],
+        (MirStateOperation::WriteVmState { state: GLOBAL, .. }, effect)
+            if effect == MirEffect::state_write()
+    ));
 }
 
 #[test]
@@ -292,7 +343,7 @@ fn imported_and_qualified_const_and_global_paths_share_declaration_lowering() {
         SourceId::new(101),
         vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::config"),
-        "pub const LIMIT: i64 = 7;\npub global state: i64",
+        "pub const LIMIT: i64 = 7;\npub state state: i64 = 0",
     ));
     graph.add_source(ModuleSource::new(
         SourceId::new(102),
@@ -354,7 +405,7 @@ fn main() {
             .statements()
             .filter(|(_, statement)| matches!(
                 statement.kind,
-                MirStatementKind::Global(MirGlobalOperation::Read { global: GLOBAL })
+                MirStatementKind::State(MirStateOperation::ReadVmState { state: GLOBAL })
             ))
             .count(),
         2,
@@ -379,8 +430,8 @@ fn main() {
 }
 
 #[test]
-fn global_read_operand_feeds_hostaccess_root_without_name_reresolution() {
-    let source = "global state: HostRoot\nfn main() { return state.amount; }";
+fn state_read_operand_feeds_hostaccess_root_without_name_reresolution() {
+    let source = "extern state state: HostRoot\nfn main() { return state.amount; }";
     let program = try_build_declarations(source, |graph, body, targets| {
         let state = declaration(graph, "state");
         let (field_expression, field) = body
@@ -467,7 +518,7 @@ fn global_read_operand_feeds_hostaccess_root_without_name_reresolution() {
         .iter()
         .enumerate()
         .find_map(|(index, statement)| {
-            let MirStatementKind::Global(MirGlobalOperation::Read { global: GLOBAL }) =
+            let MirStatementKind::State(MirStateOperation::ReadExternState { state: GLOBAL }) =
                 statement.kind
             else {
                 return None;
@@ -493,7 +544,7 @@ fn global_read_operand_feeds_hostaccess_root_without_name_reresolution() {
     assert_eq!(
         statements
             .iter()
-            .filter(|statement| matches!(statement.kind, MirStatementKind::Global(_)))
+            .filter(|statement| matches!(statement.kind, MirStatementKind::State(_)))
             .count(),
         1
     );
@@ -525,12 +576,12 @@ fn declaration_path_rejects_ambiguous_or_kind_incompatible_targets_without_fallb
     .expect_err("ambiguous declaration target must fail");
     assert!(
         both.to_string()
-            .contains("both global and evaluated constant compile targets"),
+            .contains("both state and evaluated constant compile targets"),
         "{both:?}"
     );
 
     let wrong_kind = try_build_declarations(
-        "global state: i64\nfn main() { return state; }",
+        "state state: i64 = 0\nfn main() { return state; }",
         |graph, _body, targets| {
             let state = declaration(graph, "state");
             targets.insert_evaluated_constant(
@@ -540,11 +591,11 @@ fn declaration_path_rejects_ambiguous_or_kind_incompatible_targets_without_fallb
             )
         },
     )
-    .expect_err("a global cannot use const data");
+    .expect_err("state cannot use const data");
     assert!(
         wrong_kind
             .to_string()
-            .contains("global declaration path has an evaluated constant"),
+            .contains("state declaration path has an evaluated constant"),
         "{wrong_kind:?}"
     );
 
@@ -571,7 +622,7 @@ fn non_value_declaration_paths_do_not_gain_a_dynamic_fallback() {
     assert!(
         error
             .to_string()
-            .contains("declaration value path does not name a const or global"),
+            .contains("declaration value path does not name a const or state"),
         "{error:?}"
     );
 }
@@ -595,7 +646,7 @@ fn fixture_declaration_kinds_are_the_expected_semantic_inputs() {
         SourceId::new(99),
         vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("declaration_kinds"),
-        "const VALUE = 1\nglobal state: i64\nfn main() {}",
+        "const VALUE = 1\nstate state: i64 = 0\nfn main() {}",
     ));
     graph.resolve_imports();
     assert_eq!(

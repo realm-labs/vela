@@ -9,9 +9,9 @@ use crate::{
     CompileFunctionAccess, CompileFunctionClass, CompileFunctionDescriptor,
     CompileFunctionIdentity, CompileParameter, CompileParameterDefault, CompilePositionalPolicy,
     CompileSignature, CompileTargetSnapshot, HostTypeTarget, MirAggregate, MirCall, MirEffect,
-    MirFunction, MirFunctionOwner, MirGlobalOperation, MirGuardId, MirHostOperation, MirHostPath,
-    MirImmediate, MirLocalId, MirLoweringConfig, MirLoweringInput, MirOperand, MirPlace,
-    MirReflectionOperation, MirRvalue, MirSafepoint, MirSafepointId, MirSourceOrigin, MirStatement,
+    MirFunction, MirFunctionOwner, MirGuardId, MirHostOperation, MirHostPath, MirImmediate,
+    MirLocalId, MirLoweringConfig, MirLoweringInput, MirOperand, MirPlace, MirReflectionOperation,
+    MirRvalue, MirSafepoint, MirSafepointId, MirSourceOrigin, MirStateOperation, MirStatement,
     MirStatementKind, MirSwitchCase, MirSwitchValue, MirTargetTable, MirTerminator,
     MirTerminatorKind, MirValueType,
 };
@@ -504,8 +504,8 @@ fn mir_verifier_checks_every_referenced_identity_family() {
             MirStatement::new(
                 origin(),
                 Some(MirPlace::local(destination)),
-                MirStatementKind::Global(MirGlobalOperation::Read { global: global_id }),
-                MirEffect::global_read(),
+                MirStatementKind::State(MirStateOperation::ReadVmState { state: global_id }),
+                MirEffect::state_read(),
                 None,
             ),
         )

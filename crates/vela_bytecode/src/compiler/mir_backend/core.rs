@@ -4,12 +4,12 @@ use vela_host::target::HostTargetPlan;
 use vela_mir::{
     CompileTryFamily, CompileTryTarget, DebugLocalKind, MirAggregate, MirBackendHandoff,
     MirBinaryOp, MirBlockId, MirCall, MirContextualBinaryOp, MirDynamicUnaryOp, MirFieldTarget,
-    MirFormatPart, MirFunction, MirFunctionAnalyses, MirFunctionId, MirGlobalOperation,
-    MirGuardAssumption, MirHostOperation, MirHostPath, MirHostPathSegment, MirIdentityOp,
-    MirImmediate, MirIndexKey, MirIndexOperation, MirIteratorOperation, MirLiteralSide, MirOperand,
-    MirPatternPredicate, MirPlace, MirProgram, MirReflectionOperation, MirRvalue,
-    MirScriptParameterGuardMode, MirStatementId, MirStatementKind, MirSwitchValue,
-    MirTerminatorKind, MirUnaryOp,
+    MirFormatPart, MirFunction, MirFunctionAnalyses, MirFunctionId, MirGuardAssumption,
+    MirHostOperation, MirHostPath, MirHostPathSegment, MirIdentityOp, MirImmediate, MirIndexKey,
+    MirIndexOperation, MirIteratorOperation, MirLiteralSide, MirOperand, MirPatternPredicate,
+    MirPlace, MirProgram, MirReflectionOperation, MirRvalue, MirScriptParameterGuardMode,
+    MirStateOperation, MirStatementId, MirStatementKind, MirSwitchValue, MirTerminatorKind,
+    MirUnaryOp,
 };
 
 use crate::{
@@ -445,21 +445,41 @@ impl<'a> FunctionBackend<'a> {
                 value,
             } => self.write_field(receiver, target, value, span)?,
             MirStatementKind::Index(operation) => self.index(dst, operation, span)?,
-            MirStatementKind::Global(MirGlobalOperation::Read { global }) => {
+            MirStatementKind::State(operation) => {
+                let state = match operation {
+                    MirStateOperation::ReadVmState { state }
+                    | MirStateOperation::WriteVmState { state, .. }
+                    | MirStateOperation::ReadExternState { state } => *state,
+                };
                 let target = self
                     .program
                     .targets()
-                    .global(*global)
-                    .ok_or(MirBackendError::MissingTarget("global"))?;
-                self.emit(
-                    UnlinkedInstructionKind::LoadGlobal {
+                    .global(state)
+                    .ok_or(MirBackendError::MissingTarget("state"))?;
+                let instruction = match operation {
+                    MirStateOperation::ReadVmState { .. } => UnlinkedInstructionKind::LoadState {
                         dst: dst.ok_or(MirBackendError::MissingDestination)?,
-                        global: target.name.clone(),
-                        slot: self.global_slot(*global),
+                        state: target.name.clone(),
+                        slot: self.global_slot(state),
                         cache_site: None,
                     },
-                    span,
-                );
+                    MirStateOperation::WriteVmState { value, .. } => {
+                        UnlinkedInstructionKind::StoreState {
+                            state: target.name.clone(),
+                            slot: self.global_slot(state),
+                            src: self.operand(value, span)?,
+                        }
+                    }
+                    MirStateOperation::ReadExternState { .. } => {
+                        UnlinkedInstructionKind::LoadExternState {
+                            dst: dst.ok_or(MirBackendError::MissingDestination)?,
+                            state: target.name.clone(),
+                            slot: self.global_slot(state),
+                            cache_site: None,
+                        }
+                    }
+                };
+                self.emit(instruction, span);
             }
             MirStatementKind::Allocate(aggregate) => self.allocate(
                 dst.ok_or(MirBackendError::MissingDestination)?,

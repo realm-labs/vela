@@ -414,14 +414,14 @@ fn mir_model_exposes_allocating_host_reflection_and_dynamic_boundaries() {
 
     let global_result = function.add_temp(MirValueType::Dynamic, origin);
     let incomplete_global = MirEffect {
-        global_read: true,
+        state_read: true,
         ..MirEffect::PURE
     };
     let global = MirStatement::new(
         origin,
         Some(MirPlace::temp(global_result)),
-        MirStatementKind::Global(MirGlobalOperation::Read {
-            global: StateId::new(285),
+        MirStatementKind::State(MirStateOperation::ReadVmState {
+            state: StateId::new(285),
         }),
         incomplete_global,
         None,
@@ -430,7 +430,7 @@ fn mir_model_exposes_allocating_host_reflection_and_dynamic_boundaries() {
         function.append_statement(entry, global),
         Err(MirBuildError::IncompleteEffect {
             origin,
-            required: MirEffect::global_read(),
+            required: MirEffect::state_read(),
             actual: incomplete_global,
         })
     );
@@ -698,9 +698,10 @@ fn mir_model_snapshot_owns_method_signatures_and_guard_contracts() {
     snapshot
         .insert_global(
             global_declaration,
-            CompileGlobalDescriptor {
+            CompileStateDescriptor {
                 id: global_id,
                 name: "current_reward".to_owned(),
+                storage: CompileStateStorage::Vm,
                 contract: MirTypeContract::Definition(type_id),
             },
             fact_origin,
@@ -1007,7 +1008,7 @@ fn mir_model_calls_encode_receivers_and_default_delivery_contracts() {
     let receiver = function.add_synthetic_local(MirValueType::Dynamic, origin);
     let method_result = function.add_temp(MirValueType::Dynamic, origin);
     let safepoint = function.add_safepoint(MirSafepoint::new(origin));
-    let signature_effect = MirEffect::global_read();
+    let signature_effect = MirEffect::state_read();
     let script_signature = CompileSignature {
         asyncness: vela_common::CallableAsyncness::Sync,
         parameters: vec![CompileParameter {

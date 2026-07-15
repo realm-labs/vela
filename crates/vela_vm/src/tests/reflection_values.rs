@@ -90,7 +90,7 @@ fn reflection_execution_unit_limit_has_a_stable_edge() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
     let mut exact = ExecutionBudget::new(3, usize::MAX, usize::MAX);
     assert_eq!(
@@ -209,7 +209,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert_eq!(
@@ -241,7 +241,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert_eq!(
@@ -278,7 +278,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert_eq!(
@@ -306,7 +306,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert!(matches!(
@@ -336,7 +336,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert!(matches!(
@@ -383,7 +383,7 @@ fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert!(matches!(
@@ -428,7 +428,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         exec_reflection_value_runtime(
             &vm,
@@ -477,7 +477,7 @@ fn main() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         exec_reflection_value_program_with_budget(
             &vm,
@@ -541,7 +541,7 @@ pub fn main() {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert_eq!(
@@ -577,7 +577,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         exec_reflection_value_program(
             &vm,

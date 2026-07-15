@@ -130,6 +130,7 @@ macro_rules! non_cache_instructions {
             | Self::RangeNext { .. }
             | Self::I64RangeNext { .. }
             | Self::EnumTagEqual { .. }
+            | Self::StoreState { .. }
             | Self::Return { .. }
     };
 }
@@ -138,8 +139,10 @@ impl_cache_sites! {
     UnlinkedInstructionKind;
     delegate { Self::AwaitCall { operation, .. } => operation; }
     cache {
-        Self::LoadGlobal { .. } => (GlobalRead, OptionalOperand);
-        Self::LoadGlobal { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
+        Self::LoadState { .. } => (StateRead, OptionalOperand);
+        Self::LoadState { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
+        Self::LoadExternState { .. } => (ExternStateRead, OptionalOperand);
+        Self::LoadExternState { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
         Self::CallNative { .. } => (NativeCall, OptionalOperand);
         Self::CallNative { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
         Self::CallDynamicMethod { .. } | Self::CallMethodId { .. } => (MethodCall, Sidecar);
@@ -166,8 +169,10 @@ impl_cache_sites! {
     InstructionKind;
     delegate { Self::AwaitCall { operation, .. } => operation; }
     cache {
-        Self::LoadGlobal { .. } => (GlobalRead, OptionalOperand);
-        Self::LoadGlobal { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
+        Self::LoadState { .. } => (StateRead, OptionalOperand);
+        Self::LoadState { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
+        Self::LoadExternState { .. } => (ExternStateRead, OptionalOperand);
+        Self::LoadExternState { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
         Self::CallNative { .. } => (NativeCall, OptionalOperand);
         Self::CallNative { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
         Self::CallDynamicMethod { .. } | Self::CallMethod { .. } => (MethodCall, OptionalOperand);
@@ -206,19 +211,19 @@ mod tests {
         use CacheSiteStorage as S;
         let rows = vec![
             (
-                UnlinkedInstructionKind::LoadGlobal {
+                UnlinkedInstructionKind::LoadExternState {
                     dst: Register(0),
-                    global: "g".into(),
+                    state: "g".into(),
                     slot: None,
                     cache_site: None,
                 },
-                InstructionKind::LoadGlobal {
+                InstructionKind::LoadExternState {
                     dst: Register(0),
                     slot: StateSlot::new(0),
                     debug_name: DebugNameId::new(0),
                     cache_site: None,
                 },
-                K::GlobalRead,
+                K::ExternStateRead,
                 S::OptionalOperand,
                 S::OptionalOperand,
             ),

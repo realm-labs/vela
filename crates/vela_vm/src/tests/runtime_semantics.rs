@@ -377,7 +377,7 @@ fn run_host_compound_fixture(
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut access,
-            script_globals: None,
+            state_values: None,
         };
         run_linked_test_program_with_host_budget(
             &Vm::new(),
@@ -493,7 +493,7 @@ fn main(player: Player, replacement: Player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut access,
-            script_globals: None,
+            state_values: None,
         };
         run_linked_test_program_with_host_budget(
             &Vm::new(),

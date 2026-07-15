@@ -1,4 +1,4 @@
-use vela_hir::ids::HirExprId;
+use vela_hir::ids::{HirDeclId, HirExprId};
 
 use crate::{
     CompileCallArguments, CompileCalleeTarget, MirBuildError, MirEffect, MirGuard,
@@ -8,6 +8,37 @@ use crate::{
 use super::core::FunctionBuilder;
 
 impl FunctionBuilder<'_> {
+    pub(super) fn apply_state_guard(
+        &mut self,
+        declaration: HirDeclId,
+        value: MirOperand,
+        origin: MirSourceOrigin,
+    ) -> Result<MirOperand, MirBuildError> {
+        let Some(target) = self.input.targets().global_guard(declaration).cloned() else {
+            return Ok(value);
+        };
+        let guard = self.function.add_guard(MirGuard {
+            kind: crate::MirGuardKind::Contract,
+            assumption: MirGuardAssumption::Type(target.contract),
+            context: Some(target.context),
+            origin,
+        });
+        self.function.append_statement(
+            self.current_block,
+            MirStatement::new(
+                origin,
+                None,
+                MirStatementKind::GuardTrap {
+                    value: value.clone(),
+                    guard,
+                },
+                MirEffect::may_trap(),
+                None,
+            ),
+        )?;
+        Ok(value)
+    }
+
     /// Apply the one authoritative contract boundary attached to an expression.
     ///
     /// This runs in the central expression wrapper immediately after the value

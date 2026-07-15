@@ -282,9 +282,10 @@ fn schema_only_snapshot_finalization_proves_complete_descriptor_closure() {
     builder
         .insert_global(
             global_declaration,
-            CompileGlobalDescriptor {
+            CompileStateDescriptor {
                 id: global,
                 name: "state".to_owned(),
+                storage: CompileStateStorage::Vm,
                 contract: global_contract.clone(),
             },
             schema_origin,

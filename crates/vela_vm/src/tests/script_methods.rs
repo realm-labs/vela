@@ -412,7 +412,7 @@ fn main(player: Player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert_eq!(
@@ -457,7 +457,7 @@ fn main(player: Player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     assert_eq!(
@@ -504,7 +504,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         run_script_method_program_with_host(
             &vm,
@@ -563,7 +563,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         assert_eq!(
             run_linked_test_entry_with_host_and_caches(
@@ -593,7 +593,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         assert_eq!(
             run_linked_test_entry_with_host_and_caches(
@@ -651,7 +651,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         run_script_method_program_with_host(
             &vm,
@@ -685,7 +685,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut denied_adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         run_script_method_program_with_host(
             &vm,
@@ -706,7 +706,7 @@ fn main(player) {
         let mut host = HostExecution {
             adapter: &mut stale_adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         run_script_method_program_with_host(
             &vm,

@@ -2126,13 +2126,55 @@ impl Vm {
                         *variant,
                     )?;
                 }
-                InstructionKind::LoadGlobal {
+                InstructionKind::LoadState {
+                    dst,
+                    slot,
+                    debug_name,
+                    ..
+                } => {
+                    let value = host_access::load_linked_state(
+                        host_access::HostAccessRuntime {
+                            frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
+                            source_span: instruction.span,
+                        },
+                        program,
+                        *debug_name,
+                        *slot,
+                    )?;
+                    frame.write(*dst, value)?;
+                }
+                InstructionKind::StoreState {
+                    slot,
+                    debug_name,
+                    src,
+                } => {
+                    let value = frame.read(*src)?;
+                    host_access::store_linked_state(
+                        host_access::HostAccessRuntime {
+                            frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
+                            source_span: instruction.span,
+                        },
+                        program,
+                        *debug_name,
+                        *slot,
+                        value,
+                    )?;
+                }
+                InstructionKind::LoadExternState {
                     dst,
                     slot,
                     debug_name,
                     cache_site,
                 } => {
-                    let value = host_access::load_linked_cached_host_global(
+                    let value = host_access::load_linked_cached_extern_state(
                         host_access::HostAccessRuntime {
                             frame,
                             heap: heap.as_deref_mut(),

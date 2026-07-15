@@ -247,7 +247,7 @@ pub struct Vm {
 pub struct HostExecution<'host> {
     pub adapter: &'host mut (dyn ScriptStateAdapter + Send),
     pub access: &'host mut vela_host::access::HostAccess,
-    pub script_globals: Option<&'host ScriptGlobalValues>,
+    pub state_values: Option<&'host mut ScriptGlobalValues>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -285,6 +285,13 @@ impl ScriptGlobalValues {
 
     pub fn insert(&mut self, name: String, value: Value) {
         if let Some(slot) = self.slot_by_name.get(&name).copied() {
+            self.slots[slot.get()] = Some(value);
+        }
+        self.by_name.insert(name, value);
+    }
+
+    pub fn insert_resolved(&mut self, name: String, slot: StateSlot, value: Value) {
+        if slot.get() < self.slots.len() {
             self.slots[slot.get()] = Some(value);
         }
         self.by_name.insert(name, value);
@@ -334,11 +341,11 @@ pub trait VmInlineCaches {
         self.len() == 0
     }
 
-    fn global_read_slot(&self, _site: CacheSiteId) -> Option<StateSlot> {
+    fn state_read_slot(&self, _site: CacheSiteId) -> Option<StateSlot> {
         None
     }
 
-    fn set_global_read_slot(&self, _site: CacheSiteId, _slot: StateSlot) {}
+    fn set_state_read_slot(&self, _site: CacheSiteId, _slot: StateSlot) {}
 
     fn host_access(&self, _site: CacheSiteId) -> Option<HostInlineCacheEntry> {
         None

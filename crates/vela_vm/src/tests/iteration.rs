@@ -307,7 +307,7 @@ fn main() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         run_linked_test_program_with_host_budget(&vm, &program, "main", &[], &mut host, &mut budget)
     };
@@ -363,7 +363,7 @@ fn main() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         run_linked_test_program_with_host_budget(&vm, &program, "main", &[], &mut host, &mut budget)
             .expect_err("stale host iterable item read should fail")

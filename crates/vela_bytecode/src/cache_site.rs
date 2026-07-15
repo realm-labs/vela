@@ -23,8 +23,9 @@ impl CacheSiteId {
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum CacheSiteKind {
-    GlobalRead,
-    GlobalWrite,
+    StateRead,
+    ExternStateRead,
+    StateWrite,
     RecordFieldRead,
     RecordFieldWrite,
     MethodCall,
@@ -122,7 +123,7 @@ mod tests {
     #[test]
     fn cache_site_layout_indexes_descriptors_by_id() {
         let mut layout = CacheSiteLayout::default();
-        let global = layout.push(CacheSiteKind::GlobalRead, "main", InstructionOffset(3));
+        let global = layout.push(CacheSiteKind::ExternStateRead, "main", InstructionOffset(3));
         let record = layout.push(CacheSiteKind::RecordFieldRead, "main", InstructionOffset(9));
 
         assert_eq!(global, CacheSiteId::new(0));

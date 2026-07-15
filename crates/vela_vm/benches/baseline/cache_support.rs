@@ -8,7 +8,7 @@ use vela_vm::{
 
 #[derive(Debug, Default)]
 pub(crate) struct BenchInlineCaches {
-    global_reads: Vec<Cell<Option<StateSlot>>>,
+    state_reads: Vec<Cell<Option<StateSlot>>>,
     host_accesses: Vec<Cell<Option<HostInlineCacheEntry>>>,
     record_fields: Vec<Cell<Option<RecordFieldInlineCacheEntry>>>,
     method_dispatches: Vec<Cell<Option<MethodInlineCacheEntry>>>,
@@ -19,8 +19,8 @@ pub(crate) struct BenchInlineCaches {
 
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct BenchCacheStats {
-    pub(crate) global_read_sets: usize,
-    pub(crate) global_read_hits: usize,
+    pub(crate) state_read_sets: usize,
+    pub(crate) state_read_hits: usize,
     pub(crate) host_access_sets: usize,
     pub(crate) host_access_hits: usize,
     pub(crate) record_field_sets: usize,
@@ -35,7 +35,7 @@ pub(crate) struct BenchCacheStats {
 
 impl BenchCacheStats {
     pub(crate) fn total_sets(self) -> usize {
-        self.global_read_sets
+        self.state_read_sets
             + self.host_access_sets
             + self.record_field_sets
             + self.method_dispatch_sets
@@ -44,7 +44,7 @@ impl BenchCacheStats {
     }
 
     pub(crate) fn total_hits(self) -> usize {
-        self.global_read_hits
+        self.state_read_hits
             + self.host_access_hits
             + self.record_field_hits
             + self.method_dispatch_hits
@@ -55,7 +55,7 @@ impl BenchCacheStats {
 
 #[derive(Clone, Copy)]
 enum BenchCacheFamily {
-    GlobalRead,
+    ExternStateRead,
     HostAccess,
     RecordField,
     MethodDispatch,
@@ -66,7 +66,7 @@ enum BenchCacheFamily {
 impl BenchInlineCaches {
     pub(crate) fn new(len: usize) -> Self {
         Self {
-            global_reads: empty_cell_cache(len),
+            state_reads: empty_cell_cache(len),
             host_accesses: empty_cell_cache(len),
             record_fields: empty_cell_cache(len),
             method_dispatches: empty_cell_cache(len),
@@ -87,7 +87,7 @@ impl BenchInlineCaches {
     fn record_hit(&self, family: BenchCacheFamily) {
         let mut stats = self.stats.get();
         match family {
-            BenchCacheFamily::GlobalRead => stats.global_read_hits += 1,
+            BenchCacheFamily::ExternStateRead => stats.state_read_hits += 1,
             BenchCacheFamily::HostAccess => stats.host_access_hits += 1,
             BenchCacheFamily::RecordField => stats.record_field_hits += 1,
             BenchCacheFamily::MethodDispatch => stats.method_dispatch_hits += 1,
@@ -133,7 +133,7 @@ impl BenchInlineCaches {
     fn record_set(&self, family: BenchCacheFamily) {
         let mut stats = self.stats.get();
         match family {
-            BenchCacheFamily::GlobalRead => stats.global_read_sets += 1,
+            BenchCacheFamily::ExternStateRead => stats.state_read_sets += 1,
             BenchCacheFamily::HostAccess => stats.host_access_sets += 1,
             BenchCacheFamily::RecordField => stats.record_field_sets += 1,
             BenchCacheFamily::MethodDispatch => stats.method_dispatch_sets += 1,
@@ -148,19 +148,24 @@ impl BenchInlineCaches {
 
 impl VmInlineCaches for BenchInlineCaches {
     fn len(&self) -> usize {
-        self.global_reads.len()
+        self.state_reads.len()
     }
 
-    fn global_read_slot(&self, site: CacheSiteId) -> Option<StateSlot> {
-        let entry = self.global_reads.get(site.index()).and_then(Cell::get);
+    fn state_read_slot(&self, site: CacheSiteId) -> Option<StateSlot> {
+        let entry = self.state_reads.get(site.index()).and_then(Cell::get);
         if entry.is_some() {
-            self.record_hit(BenchCacheFamily::GlobalRead);
+            self.record_hit(BenchCacheFamily::ExternStateRead);
         }
         entry
     }
 
-    fn set_global_read_slot(&self, site: CacheSiteId, slot: StateSlot) {
-        self.record_copy_set(BenchCacheFamily::GlobalRead, &self.global_reads, site, slot);
+    fn set_state_read_slot(&self, site: CacheSiteId, slot: StateSlot) {
+        self.record_copy_set(
+            BenchCacheFamily::ExternStateRead,
+            &self.state_reads,
+            site,
+            slot,
+        );
     }
 
     fn host_access(&self, site: CacheSiteId) -> Option<HostInlineCacheEntry> {

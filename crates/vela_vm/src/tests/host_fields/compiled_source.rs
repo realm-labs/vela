@@ -50,7 +50,7 @@ fn main(player: Player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         exec_compiled_host_field(
             &program,
@@ -101,7 +101,7 @@ fn main(player: Player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     let error = exec_compiled_host_field(
@@ -155,7 +155,7 @@ fn main(player: Player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         exec_compiled_host_field(
             &program,
@@ -214,7 +214,7 @@ fn main(player: Player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         exec_compiled_host_field(
             &program,
@@ -275,7 +275,7 @@ fn main(player: Player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         exec_compiled_host_field(
             &program,
@@ -349,7 +349,7 @@ fn main(player: Player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         exec_compiled_host_field(
             &program,
@@ -433,7 +433,7 @@ fn main(player: Player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         exec_compiled_host_field(
             &program,
@@ -511,7 +511,7 @@ fn main(player: Player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         exec_compiled_host_field(
             &program,
@@ -593,7 +593,7 @@ fn bytecode_mutates_host_variant_field_through_host_access() {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         exec_compiled_host_field(
             &program,
@@ -665,7 +665,7 @@ fn main(ctx: Ctx) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         exec_compiled_host_field_with_budget(
             &program,
@@ -734,7 +734,7 @@ fn main(player: Player) {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
-            script_globals: None,
+            state_values: None,
         };
         exec_compiled_host_field_with_budget(
             &program,

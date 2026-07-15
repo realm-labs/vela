@@ -21,6 +21,7 @@ mod capabilities;
 mod constructors;
 mod diagnostics;
 mod host_access;
+mod state_assignments;
 
 #[cfg(test)]
 mod call_tests;
@@ -282,6 +283,7 @@ impl ExecutableValidationFacts {
             calls::record_body(&mut validation, graph, schema, facts, body);
             constructors::record_body(&mut validation, graph, schema, facts, body);
             host_access::record_body(&mut validation, schema, facts, body);
+            state_assignments::record_body(&mut validation, graph, body);
         }
         let constructor_diagnostic_expressions = validation
             .constructor_diagnostic_batches

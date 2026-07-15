@@ -55,30 +55,31 @@ pub use input::{
     CompileCallArguments, CompileCallTarget, CompileCalleeTarget, CompileConstructorField,
     CompileConstructorTarget, CompileConstructorValue, CompileDynamicCallArgument,
     CompileDynamicConstructorField, CompileFieldTarget, CompileFunctionIdentity,
-    CompileFunctionTarget, CompileFunctionTargets, CompileGlobalTarget, CompileGuardKey,
-    CompileGuardTarget, CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget,
+    CompileFunctionTarget, CompileFunctionTargets, CompileGuardKey, CompileGuardTarget,
+    CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget,
     CompileLambdaParameterTarget, CompileLambdaTarget, CompileMemberTarget, CompileParameter,
     CompileParameterDefault, CompilePatternConstructorTarget, CompilePlacedCallArgument,
     CompilePlacedCallValue, CompilePositionalPolicy, CompileReflectionCall, CompileSignature,
-    CompileTargetKind, CompileTargetSnapshot, CompileTargetSnapshotBuilder, CompileTryFamily,
-    CompileTryLayoutTarget, CompileTryTarget, DynamicMethodTarget, HostFieldTarget,
-    HostMethodTarget, MethodExecutableTarget, MirBuildError, MirLoweringConfig, MirLoweringInput,
+    CompileStateTarget, CompileTargetKind, CompileTargetSnapshot, CompileTargetSnapshotBuilder,
+    CompileTryFamily, CompileTryLayoutTarget, CompileTryTarget, DynamicMethodTarget,
+    HostFieldTarget, HostMethodTarget, MethodExecutableTarget, MirBuildError, MirLoweringConfig,
+    MirLoweringInput,
 };
 pub use jit::{MirJitEligibility, MirJitIneligibility, restricted_jit_eligibility};
 pub use operations::{
     MirAggregate, MirAwaitOperation, MirCall, MirContextualBinaryOp, MirContextualNumericLiteral,
     MirDynamicArgument, MirDynamicBinaryOp, MirDynamicUnaryOp, MirFieldTarget, MirFormatPart,
-    MirGlobalOperation, MirHostMutation, MirHostOperation, MirHostPath, MirHostPathSegment,
-    MirIdentityOp, MirIndexKey, MirIndexOperation, MirIteratorOperation, MirLiteralSide,
-    MirReflectionOperation, MirScriptArgument, MirScriptParameterGuardMode, MirStatement,
+    MirHostMutation, MirHostOperation, MirHostPath, MirHostPathSegment, MirIdentityOp, MirIndexKey,
+    MirIndexOperation, MirIteratorOperation, MirLiteralSide, MirReflectionOperation,
+    MirScriptArgument, MirScriptParameterGuardMode, MirStateOperation, MirStatement,
     MirStatementKind,
 };
 pub use origin::{MirSourceNode, MirSourceOrigin};
 pub use targets::{
     CompileFieldAccess, CompileFieldDescriptor, CompileFunctionAccess, CompileFunctionClass,
-    CompileFunctionDescriptor, CompileGlobalDescriptor, CompileMethodAccess, CompileMethodClass,
-    CompileMethodDescriptor, CompileTypeClass, CompileTypeDescriptor, CompileVariantDescriptor,
-    MirTargetTable,
+    CompileFunctionDescriptor, CompileMethodAccess, CompileMethodClass, CompileMethodDescriptor,
+    CompileStateDescriptor, CompileStateStorage, CompileTypeClass, CompileTypeDescriptor,
+    CompileVariantDescriptor, MirTargetTable,
 };
 pub use value::{
     MirBinaryOp, MirComparisonOp, MirConstantProvenance, MirEvaluatedConstant, MirImmediate,

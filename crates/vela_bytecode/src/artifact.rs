@@ -746,11 +746,11 @@ mod tests {
 
     fn cached_global_lambda(name: &str, global: &str, slot: StateSlot) -> UnlinkedCodeObject {
         let mut code = UnlinkedCodeObject::new(name, 1);
-        let site = code.push_cache_site(CacheSiteKind::GlobalRead, InstructionOffset(0));
+        let site = code.push_cache_site(CacheSiteKind::ExternStateRead, InstructionOffset(0));
         code.push_instruction(UnlinkedInstruction::new(
-            UnlinkedInstructionKind::LoadGlobal {
+            UnlinkedInstructionKind::LoadExternState {
                 dst: Register(0),
-                global: global.to_owned(),
+                state: global.to_owned(),
                 slot: Some(slot),
                 cache_site: Some(site),
             },

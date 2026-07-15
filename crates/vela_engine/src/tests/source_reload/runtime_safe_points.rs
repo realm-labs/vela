@@ -222,7 +222,7 @@ fn main(player: Player) {
     let mut host = HostExecution {
         adapter: &mut adapter,
         access: &mut tx,
-        script_globals: None,
+        state_values: None,
     };
 
     let mut budget = vela_vm::budget::ExecutionBudget::unbounded();
