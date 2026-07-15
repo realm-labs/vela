@@ -11,16 +11,17 @@ history belongs in Git.
 ## Current Focus
 
 The explicit state-storage hard switch in
-[state-storage-model-plan.md](state-storage-model-plan.md) is complete and
-accepted. Contextual `state` and `extern state` have distinct semantic,
-bytecode, runtime, reload, reflection, and tooling paths, and legacy `global`
-surfaces are removed. The 2026-07-15 Batch F review closure added recursive
-embedding contracts, host-only extern contracts, transaction-wide initializer
-budgets, public state-export ABI protection, dead-generation reclamation, and
-transitive initializer-helper fingerprints. Focused regressions, full-feature
-workspace and example gates, docs, fuzz-build, editor/site checks, benchmarks,
-and zero-hit audits pass. M20 cache close-out is active again; M20.5 remains the
-next editor follow-up.
+[state-storage-model-plan.md](state-storage-model-plan.md) has Batches A-F
+landed, but final acceptance is reopened through active Batch G. Contextual
+`state` and `extern state` retain their distinct semantic, bytecode, runtime,
+reload, reflection, and tooling paths, and legacy `global` surfaces remain
+removed. The second 2026-07-15 review found five remaining boundaries: exact
+qualified embedding resolution, linked nominal value canonicalization,
+graph-preserving budgeted reload staging, generation reclamation without
+old-state self-roots, and initializer fingerprints through nested executable
+bodies. Host-only extern contracts and public state-export ABI protection stay
+closed. M20 cache close-out waits for Batch G; M20.5 remains the next editor
+follow-up after M20.
 
 The executor-neutral async implementation from Batches A-D is landed: Vela has
 one explicit frame driver, scoped `Send` Runtime/native futures, direct typed
@@ -37,8 +38,8 @@ one provider resolver are implemented without compatibility paths. Full
 features, examples, benches, Rust docs, fuzz build, site gates, audits, and
 performance/memory comparison passed; the result is recorded in
 [the Batch E acceptance report](archive/async-execution-batch-e-acceptance-2026-07-14.md).
-M20 cache close-out and the M20.5 LSP follow-up remain valid after the state
-storage hard switch reaches final acceptance.
+M20 cache close-out and the M20.5 LSP follow-up remain valid after state
+storage Batch G reaches final acceptance.
 
 ## Milestone Snapshot
 
@@ -48,7 +49,7 @@ storage hard switch reaches final acceptance.
 | M8-M18 | Complete enough | HIR, executable language surface, script metadata, host bridge, reflection, stdlib, embedding, reload, diagnostics, examples, and benchmark foundations satisfy their checkpoints. |
 | M19 | Complete enough | The non-JIT interpreter and heap optimization checkpoint is closed; remaining measured costs belong to cache, value-layout, or later backend work. |
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
-| M20 | Active | Resume the cache-family audit and close-out against the accepted state model. |
+| M20 | Paused behind Batch G | Resume the cache-family audit after state-storage final acceptance. |
 | M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
@@ -113,6 +114,20 @@ storage hard switch reaches final acceptance.
   [archive/performance-full-2026-06-06.md](archive/performance-full-2026-06-06.md).
 
 ## Active Gaps
+
+### State Storage Batch G
+
+Batch G is the active execution object. Its tasks, in order, are
+`STATE-G1-EXACT-TYPE-RESOLUTION`, `STATE-G2-NOMINAL-CANONICALIZATION`,
+`STATE-G3-GRAPH-PRESERVING-STAGING`, `STATE-G4-EXTERNAL-OWNER-RECLAIM`, and
+`STATE-G5-NESTED-INIT-FINGERPRINT`. The required behavior and focused
+regression matrix live in
+[state-storage-model-plan.md](state-storage-model-plan.md#127-batch-g-graph-identity-and-lifetime-closure).
+
+Do not close these gaps with qualified-name leaf fallback, shallow nominal
+validation, identity-free insertion, an unbudgeted detached value tree,
+permanent generation roots, a second reload requirement, or whole-program
+initializer fingerprints.
 
 ### Async Post-Review Closure
 
@@ -203,10 +218,13 @@ scanners, runtime execution, live host-state reads, or editor-owned analysis.
 
 ## Validation
 
-State-storage Batch F passed final acceptance on 2026-07-15. The focused state
-suites, full-feature workspace and examples, benchmark build, Rust docs, fuzz
-build, state microbenchmark, editor/site gates, and legacy zero-hit audits are
-green. The async Batch E acceptance remains recorded for 2026-07-14.
+State-storage Batch F's focused suites and original full acceptance gates were
+green on 2026-07-15, but the second review showed that its regression matrix
+was incomplete. The review baseline still passes formatting, workspace clippy,
+focused state tests, and the full-feature workspace tests; Batch G must add its
+five missing proofs and rerun the complete relevant gates before state-storage
+acceptance is restored. The async Batch E acceptance remains recorded for
+2026-07-14.
 
 ```bash
 cargo fmt --all -- --check
@@ -232,9 +250,11 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Resume the M20 cache-family audit against the accepted state model.
-2. Resume the M20.5 editor-visible follow-up after M20 close-out.
-3. Keep persistence, snapshots, replication, cross-Runtime sharing, structural
+1. Execute state-storage Batch G in its documented order and restore final
+   acceptance only after the focused and full gates pass.
+2. Resume the M20 cache-family audit against the accepted state model.
+3. Resume the M20.5 editor-visible follow-up after M20 close-out.
+4. Keep persistence, snapshots, replication, cross-Runtime sharing, structural
    state migration, async-frame migration, and initializer dependency reads as
    explicit non-goals.
 

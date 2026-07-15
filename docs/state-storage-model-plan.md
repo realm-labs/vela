@@ -2,9 +2,9 @@
 
 > **Track:** contextual `state` declarations, explicit VM/host ownership,
 > restricted initialization, and hot-reload state compatibility
-> **Document status:** Batches A-E landed; Batch F implementation complete,
-> full acceptance validation pending
-> **Baseline:** post-implementation review of `master` at `afac6150` on
+> **Document status:** Batches A-F landed; Batch G active after the second
+> post-implementation review reopened final acceptance
+> **Baseline:** second post-implementation review of `master` at `8a84bbec` on
 > 2026-07-15
 > **Execution style:** hard-switch the pre-release language and runtime in
 > coherent batches. Intermediate edits inside a batch may be red, but every
@@ -30,10 +30,11 @@ and calls still pass through the existing `HostPath`, `PathProxy`, and
 The change is an ownership and hot-reload ABI redesign, not a keyword-only
 rename.
 
-The first implementation passed its original acceptance gates, but the
-2026-07-15 post-implementation review found six uncovered correctness gaps.
-Final acceptance is therefore reopened through Batch F; the landed A-E hard
-switch remains the baseline and is not rolled back.
+The first implementation and Batch F passed their listed acceptance gates, but
+the second 2026-07-15 post-implementation review found five uncovered graph,
+identity, and lifetime boundaries. Final acceptance is therefore reopened
+through Batch G; the landed A-F hard switch remains the baseline and is not
+rolled back.
 
 ---
 
@@ -99,6 +100,8 @@ Execute the batches in order:
   acceptance.
 - Batch F: post-implementation contract, budget, reload-ABI, and lifetime
   closure.
+- Batch G: exact nominal embedding, graph-preserving staging, external-owner
+  generation reclamation, and nested initializer-call closure.
 
 At the start of every turn, follow AGENTS.md: read docs/goal.md,
 docs/architecture.md, and docs/progress.md; inspect the current diff; and run
@@ -133,7 +136,8 @@ Never mark this goal complete while any of the following is true:
   current language model;
 - required focused tests, full workspace validation, examples, audits, or
   documentation updates have not passed;
-- any Batch F review item or its focused regression test remains open;
+- any Batch F or Batch G review item or its focused regression test remains
+  open;
 - the completed work is uncommitted or the final worktree is dirty.
 
 Do not report blocked merely because the hard switch is broad. Report blocked
@@ -959,9 +963,10 @@ Run the documentation-site and editor-extension checks listed in
 
 ### 12.6 Batch F: Post-Implementation Review Closure
 
-Status: complete and accepted on 2026-07-15. Batches A-E stay landed; this
-batch closes review findings against the existing contract without adding new
-language scope.
+Status: implementation and listed regression gates completed on 2026-07-15.
+Batches A-E stay landed. The second review found deeper boundary cases outside
+the Batch F matrix; Batch G below owns final acceptance without rolling back
+these fixes or adding language scope.
 
 Tasks, in execution order:
 
@@ -1020,6 +1025,87 @@ Do not add structural state migration, initializer state reads, a second
 initializer evaluator, non-host extern values, compatibility aliases, or a
 permanent generation root to make these tests pass. Keep commits small and
 coherent, preferably separating contract, reload, and lifetime work.
+
+### 12.7 Batch G: Graph, Identity, And Lifetime Closure
+
+Status: active. Execute these tasks in order against the landed Batch F
+baseline. Each task is a correctness closure, not permission to add state
+migration, new initializer effects, or compatibility paths.
+
+Tasks:
+
+- [ ] `STATE-G1-EXACT-TYPE-RESOLUTION`: make embedding type-name resolution
+  prefer an exact canonical qualified name. A qualified input must never fall
+  back to leaf-name matching; an unqualified spelling may resolve only when
+  the existing embedding contract intentionally permits it and the linked
+  generation has exactly one candidate. Reject namespace-spoofed names and do
+  not reject `a::Player` merely because `b::Player` is also linked.
+- [ ] `STATE-G2-NOMINAL-CANONICALIZATION`: replace boolean-only record/enum
+  validation followed by generic owned-value insertion with one linked-aware
+  canonicalization boundary. Recursively validate record field contracts and
+  enum variant payload contracts, reject unknown variants and malformed
+  payloads, and materialize `RecordIdentity`/`EnumIdentity` from linked
+  `TypeId`, `ShapeId`, and `VariantId`. A valid `set_state` or no-op
+  `update_state` must retain normal pattern matching, field use, and runtime
+  type-guard behavior.
+- [ ] `STATE-G3-GRAPH-PRESERVING-STAGING`: move newly initialized reload state
+  from the staging heap to the live heap with a graph-aware, budgeted copier
+  that preserves aliases and cycles. Do not flatten persistent values through
+  an unbudgeted `OwnedValue` tree. Charge the same transaction budget before
+  allocation, terminate on every graph, and accept the same valid cyclic state
+  result that clean Runtime construction accepts. Failure must leave the old
+  image, state map, and reachable live heap unchanged.
+- [ ] `STATE-G4-EXTERNAL-OWNER-RECLAIM`: make old-generation retention depend
+  on owners reachable outside that generation's old-only state roots. A
+  removed state containing an old closure must not keep its own sidecar,
+  linked artifact, removed VM cells, or removed extern bindings alive forever.
+  A genuinely external old frame, suspended execution, closure, iterator, or
+  retained runtime value must continue to pin the generation until it is
+  released. Reclamation still occurs at an ordinary safe point without a
+  second accepted reload.
+- [ ] `STATE-G5-NESTED-INIT-FINGERPRINT`: include script calls inside nested
+  code objects, including closure and parameter-default bodies represented
+  there, in initializer change detection. Traverse only the initializer's
+  permitted transitive call graph, terminate on recursive graphs, and avoid
+  reporting unrelated helper changes.
+
+Required regression proof:
+
+- two linked script types with the same leaf name accept their exact qualified
+  values, while a wrong qualified prefix and ambiguous unqualified spelling
+  fail;
+- record values with correct field names but wrong payload types and enum
+  values with unknown variants or malformed payloads fail before replacement;
+  valid `set_state` and no-op `update_state` values still pass linked type
+  guards and enum pattern matching when consumed by Vela;
+- adding cyclic and alias-rich VM state through hot reload preserves aliases
+  and cycle topology under the shared transaction budget; an insufficient
+  budget returns a structured initializer failure without stack overflow,
+  exponential detached expansion, or partial publication;
+- a removed closure-valued state with no external old-generation owner is
+  reclaimed together with old-only VM and extern state, while an externally
+  retained old closure keeps the same data alive until its final drop;
+- changing only a helper called from a nested initializer closure reports the
+  affected state, an unrelated nested helper remains absent, and nested
+  recursive call graphs terminate deterministically.
+
+Checkpoint:
+
+```text
+cargo fmt --all -- --check
+cargo test -p vela_vm owned_contract
+cargo test -p vela_engine state
+cargo test -p vela_hot_reload state
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace --all-features --no-fail-fast
+```
+
+Do not close Batch G by reserving more type-name aliases, stamping identities
+without validating payloads, disabling cyclic script values or initializer
+collection mutation, retaining every old generation permanently, waiting for
+another reload to reclaim state, or hashing every program function as if it
+were initializer-reachable. Keep the graph copier, nominal canonicalizer,
+generation liveness, and initializer fingerprinting in their owning modules.
 
 ---
 
@@ -1139,28 +1225,36 @@ The goal is complete only when all of these are true:
 - [x] VM state supports direct and compound root assignment.
 - [x] extern roots are immutable in Vela and nested mutation uses HostAccess.
 - [x] every VM state has a required explicit type and restricted initializer.
-- [x] Runtime construction and added-state reload initialization are bounded,
+- [ ] Runtime construction and added-state reload initialization are bounded,
       fallible, and transactionally published.
+- [ ] Rust-side state replacement resolves exact canonical names, validates
+      complete linked record/enum payloads, and preserves nominal runtime
+      identities through `set_state` and `update_state`.
 - [x] state identity and preservation use StateId; dense slots are
       generation-local.
 - [x] exact-compatible state preserves old values/bindings and does not rerun
       initializers.
 - [x] incompatible type/storage changes reject with actionable diagnostics.
-- [x] removed state remains valid for old generation owners and is later
+- [ ] removed state remains valid for old generation owners and is later
       reclaimed.
+- [ ] initializer change reporting covers the complete permitted transitive
+      call graph, including calls inside nested executable bodies.
 - [x] multiple runtimes sharing an image keep independent VM state.
 - [x] host state remains outside script GC and no Rust reference is exposed.
 - [x] the old global embedding API and production terminology are removed.
 - [x] reflection, language service, LSP, formatter, editor integrations,
       examples, C ABI, site snippets, and active docs use the new model.
-- [x] focused and full validation commands pass.
+- [ ] focused Batch G regressions and full validation commands pass.
 - [x] docs/decisions.md records the implemented durable decision.
-- [x] Batch F closes exact embedding/extern contracts, state export ABI,
+- [x] Batch F landed exact embedding/extern contracts, state export ABI,
       transaction-wide initializer limits, generation reclamation, and
-      transitive initializer-change reporting with focused regressions.
+      transitive initializer-change reporting with its listed regressions.
+- [ ] Batch G closes exact qualified-name resolution, linked nominal
+      canonicalization, graph-preserving budgeted staging, self-root-free
+      generation reclamation, and nested initializer-call fingerprints.
 - [x] docs/progress.md reflects the milestone truth without becoming a
       changelog.
-- [x] implementation checkpoints are committed with Conventional Commits and
+- [ ] implementation checkpoints are committed with Conventional Commits and
       the final worktree is clean.
 
 The final report must summarize the activated language/runtime contract,
