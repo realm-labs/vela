@@ -959,9 +959,9 @@ Run the documentation-site and editor-extension checks listed in
 
 ### 12.6 Batch F: Post-Implementation Review Closure
 
-Status: implementation complete; combined validation and final acceptance are
-pending. Batches A-E stay landed; this batch closes review findings against the
-existing contract without adding new language scope.
+Status: complete and accepted on 2026-07-15. Batches A-E stay landed; this
+batch closes review findings against the existing contract without adding new
+language scope.
 
 Tasks, in execution order:
 
@@ -1155,7 +1155,7 @@ The goal is complete only when all of these are true:
       examples, C ABI, site snippets, and active docs use the new model.
 - [x] focused and full validation commands pass.
 - [x] docs/decisions.md records the implemented durable decision.
-- [ ] Batch F closes exact embedding/extern contracts, state export ABI,
+- [x] Batch F closes exact embedding/extern contracts, state export ABI,
       transaction-wide initializer limits, generation reclamation, and
       transitive initializer-change reporting with focused regressions.
 - [x] docs/progress.md reflects the milestone truth without becoming a
