@@ -138,6 +138,9 @@ fn placement_policy(
             variant,
         } => source_variant_signature(graph, *enum_declaration, variant)
             .map_or(PlacementPolicy::Unresolved, PlacementPolicy::Strict),
+        CallTargetFact::RegistryVariant { owner, variant } => schema
+            .and_then(|schema| registry_variant_signature(schema, owner, variant))
+            .map_or(PlacementPolicy::Unresolved, PlacementPolicy::ExactExternal),
         CallTargetFact::ScriptMethod { method } => source_method_signature(graph, *method)
             .map_or(PlacementPolicy::Unresolved, PlacementPolicy::Strict),
         CallTargetFact::RegistryFunction { path }
@@ -171,6 +174,30 @@ fn placement_policy(
             PlacementPolicy::Unresolved
         }
     }
+}
+
+fn registry_variant_signature(
+    schema: &RegistryFacts,
+    owner: &str,
+    variant: &str,
+) -> Option<CallableSignatureFact> {
+    let target = schema.variant_for_owner_or_unique_short_name(owner, variant)?;
+    let field_owner = format!("{}::{}", target.owner, target.name);
+    let parameters = schema
+        .field_targets_for_owner_or_short_name(&field_owner)
+        .into_iter()
+        .map(|field| {
+            CallableParameterFact::new(
+                &field.name,
+                schema
+                    .field_fact(&field.owner_name, &field.name)
+                    .cloned()
+                    .unwrap_or(TypeFact::Unknown),
+                requirement(field.has_default),
+            )
+        })
+        .collect::<Vec<_>>();
+    Some(CallableSignatureFact::new(parameters, target.fact))
 }
 
 fn source_function_signature(

@@ -840,6 +840,16 @@ impl HirSemanticFacts {
                 variant: variant.clone(),
             };
         }
+        if let Some((variant, owner_path)) = path.split_last()
+            && let Some(target) = schema.and_then(|schema| {
+                schema.variant_for_owner_or_unique_short_name(&owner_path.join("::"), variant)
+            })
+        {
+            return CallTargetFact::RegistryVariant {
+                owner: target.owner,
+                variant: target.name,
+            };
+        }
         let qualified = path.join("::");
         let args = call
             .arguments
@@ -904,6 +914,13 @@ impl HirSemanticFacts {
             return TypeFact::Unknown;
         };
         let qualified = path.join("::");
+        if let Some((variant, owner_path)) = path.split_last()
+            && let Some(target) = schema.and_then(|schema| {
+                schema.variant_for_owner_or_unique_short_name(&owner_path.join("::"), variant)
+            })
+        {
+            return target.fact;
+        }
         let args = call
             .arguments
             .iter()

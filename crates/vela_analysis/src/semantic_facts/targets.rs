@@ -34,6 +34,10 @@ pub enum CallTargetFact {
         enum_declaration: HirDeclId,
         variant: String,
     },
+    RegistryVariant {
+        owner: String,
+        variant: String,
+    },
     ScriptMethod {
         method: HirNodeId,
     },

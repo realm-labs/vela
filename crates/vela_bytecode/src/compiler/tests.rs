@@ -144,6 +144,58 @@ state target: i64 = read_source();
 }
 
 #[test]
+fn compiler_rejects_extern_state_reads_from_state_initializers() {
+    let error = compile_test_program(
+        SourceId::new(53),
+        r#"
+extern state source: i64;
+state target: i64 = source;
+"#,
+    )
+    .expect_err("extern state reads must be rejected");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::InvalidStateInitializer { state, reason }
+            if state == "main::target" && reason.contains("state access")
+    ));
+    assert!(error.span.is_some());
+}
+
+#[test]
+fn compiler_rejects_standard_library_calls_from_state_initializers() {
+    let error = compile_test_program(SourceId::new(54), "state target: i64 = math::max(1, 2);")
+        .expect_err("standard-library calls must be rejected");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::InvalidStateInitializer { state, reason }
+            if state == "main::target" && reason.contains("standard-library")
+    ));
+    assert!(error.span.is_some());
+}
+
+#[test]
+fn compiler_rejects_async_work_from_state_initializers() {
+    let error = compile_test_program(
+        SourceId::new(55),
+        r#"
+async fn pending() -> i64 { return 1; }
+state target: i64 = pending().await;
+"#,
+    )
+    .expect_err("async state initializer work must be rejected");
+
+    assert!(matches!(
+        &error.kind,
+        CompileErrorKind::InvalidHirGraph(diagnostics)
+            if diagnostics.iter().any(|diagnostic| {
+                diagnostic.code.as_deref() == Some("syntax::await_outside_async")
+            })
+    ));
+}
+
+#[test]
 fn compiler_and_linker_preserve_function_asyncness() {
     let program = compile_test_program(
         SourceId::new(4),

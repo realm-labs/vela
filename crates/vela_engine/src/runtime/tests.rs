@@ -97,6 +97,87 @@ state value: i64 = recurse();
     ));
 }
 
+#[test]
+fn runtime_state_initializers_construct_managed_aggregate_categories() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = engine
+        .compile_source(
+            r#"
+struct Snapshot {
+    tuple: (i64, String),
+    array: Array<i64>,
+    map: Map<String, i64>,
+    set: Set<i64>,
+    maybe: Option<i64>,
+    outcome: Result<i64, String>,
+    bytes: Bytes,
+}
+state snapshot: Snapshot = Snapshot {
+    tuple: (1, "tuple"),
+    array: [2, 3],
+    map: {"score": 4},
+    set: set::from_array([5, 6]),
+    maybe: Option::Some(7),
+    outcome: Result::Ok(8),
+    bytes: b"bytes",
+};
+"#,
+        )
+        .expect("aggregate initializer compiles");
+    let mut runtime = Runtime::new(engine, program).expect("aggregate initializer runs");
+    let value = runtime
+        .state("main::snapshot")
+        .expect("state read")
+        .expect("snapshot cell");
+    let OwnedValue::Record { type_name, fields } = value else {
+        panic!("snapshot should be a managed record");
+    };
+
+    assert_eq!(type_name, "Snapshot");
+    assert!(matches!(fields.get("tuple"), Some(OwnedValue::Tuple(_))));
+    assert!(matches!(fields.get("array"), Some(OwnedValue::Array(_))));
+    assert!(matches!(fields.get("map"), Some(OwnedValue::Map(_))));
+    assert!(matches!(fields.get("set"), Some(OwnedValue::Set(_))));
+    assert!(matches!(fields.get("maybe"), Some(OwnedValue::Enum { .. })));
+    assert!(matches!(
+        fields.get("outcome"),
+        Some(OwnedValue::Enum { .. })
+    ));
+    assert!(matches!(fields.get("bytes"), Some(OwnedValue::Bytes(_))));
+}
+
+#[test]
+fn runtime_state_initialization_enforces_execution_and_allocation_budgets() {
+    for (case, source, limits) in [
+        (
+            "execution",
+            "fn compute() -> i64 { let first = 1; let second = 2; return first + second; } state value: i64 = compute();",
+            RuntimeInitializationLimits::new(0, 1024, 8),
+        ),
+        (
+            "allocation",
+            "state value: Array<i64> = [1, 2, 3, 4];",
+            RuntimeInitializationLimits::new(100, 1, 8),
+        ),
+    ] {
+        let engine = Engine::builder().build().expect("engine should build");
+        let program = engine.compile_source(source).expect("initializer compiles");
+        let error = match Runtime::builder(engine, program)
+            .expect("runtime image links")
+            .with_initialization_limits(limits)
+            .build()
+        {
+            Ok(_) => panic!("{case} initializer must exhaust its configured budget"),
+            Err(error) => error,
+        };
+
+        assert!(matches!(
+            error,
+            RuntimeBuildError::Initializer { state, .. } if state == "main::value"
+        ));
+    }
+}
+
 fn linked_only_runtime() -> RuntimeImpl<OwnedImage> {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine

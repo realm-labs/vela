@@ -236,6 +236,12 @@ impl GenerationBuilder<'_, '_> {
                 )?;
                 return Ok(());
             }
+            CallTargetFact::RegistryVariant { owner, variant } => {
+                self.insert_registry_variant_call_constructor(
+                    executable, body, expression, &owner, &variant, &placement,
+                )?;
+                return Ok(());
+            }
             CallTargetFact::ScriptMethod { method } => {
                 let field = body.field(call.callee).ok_or_else(registry_input_error)?;
                 let owner = self

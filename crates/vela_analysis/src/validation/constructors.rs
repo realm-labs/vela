@@ -41,7 +41,7 @@ pub(super) fn record_body(
             HirExprKind::Call(call)
                 if matches!(
                     facts.call_target(expression.id),
-                    Some(CallTargetFact::Variant { .. })
+                    Some(CallTargetFact::Variant { .. } | CallTargetFact::RegistryVariant { .. })
                 ) =>
             {
                 tuple_argument_constructor(
@@ -147,20 +147,27 @@ fn tuple_argument_constructor(
     constructor_span: Span,
     arguments: &[HirArgument],
 ) {
-    let Some(CallTargetFact::Variant {
-        enum_declaration,
-        variant,
-    }) = context.facts.call_target(expression)
-    else {
+    let Some(call_target) = context.facts.call_target(expression) else {
         return;
     };
-    let target = ConstructorTargetFact::Variant {
-        enum_declaration: *enum_declaration,
-        variant: variant.clone(),
+    let target = match call_target {
+        CallTargetFact::Variant {
+            enum_declaration,
+            variant,
+        } => ConstructorTargetFact::Variant {
+            enum_declaration: *enum_declaration,
+            variant: variant.clone(),
+        },
+        CallTargetFact::RegistryVariant { owner, variant } => {
+            ConstructorTargetFact::RegistryVariant {
+                owner: owner.clone(),
+                variant: variant.clone(),
+            }
+        }
+        _ => return,
     };
     let source_order = argument_source_values(arguments);
-    let (slots, diagnostics) = match source_variant_shape(context.graph, *enum_declaration, variant)
-    {
+    let (slots, diagnostics) = match constructor_shape(context.graph, context.schema, &target) {
         ConstructorShapeLookup::Known {
             display_name,
             specs,

@@ -462,6 +462,40 @@ impl GenerationBuilder<'_, '_> {
             .map_err(input_error)
     }
 
+    pub(super) fn insert_registry_variant_call_constructor(
+        &mut self,
+        executable: FunctionId,
+        body: &HirBody,
+        expression: HirExprId,
+        owner: &str,
+        variant: &str,
+        call_placement: &vela_analysis::validation::CallArgumentPlacementFact,
+    ) -> CompileResult<()> {
+        let call = body.call(expression).ok_or_else(registry_input_error)?;
+        let origin = self
+            .expression_origin(expression)
+            .ok_or_else(registry_input_error)?;
+        let expected_target = ConstructorTargetFact::RegistryVariant {
+            owner: owner.to_owned(),
+            variant: variant.to_owned(),
+        };
+        let placement = self.checked_tuple_constructor_placement(
+            executable,
+            expression,
+            &call.arguments,
+            call_placement,
+            &expected_target,
+            origin,
+        )?;
+        self.insert_external_record_constructor(
+            executable,
+            expression,
+            owner,
+            Some(variant),
+            &placement,
+        )
+    }
+
     fn constructor_specs(
         &self,
         declaration: HirDeclId,
