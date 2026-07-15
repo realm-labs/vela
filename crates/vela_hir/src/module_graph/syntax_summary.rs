@@ -172,6 +172,16 @@ impl SyntaxModuleSummary {
             .and_then(|item| state_metadata(self.source, &item))
     }
 
+    pub(super) fn state_initializer_source(
+        &self,
+        index: usize,
+    ) -> Option<SyntaxExpressionSourcePart> {
+        self.item(index, SyntaxKind::StateItem)
+            .and_then(|item| SyntaxStateItem::cast(item.syntax().clone()))
+            .and_then(|item| item.initializer())
+            .map(|expression| SyntaxExpressionSourcePart { expression })
+    }
+
     pub(super) fn function_signature_or(
         &self,
         index: usize,
@@ -496,6 +506,7 @@ fn state_metadata(source: SourceId, item: &SyntaxStateItem) -> Option<StateMetad
         initializer_span: item
             .initializer()
             .map(|initializer| span_for(source, initializer.syntax().text_range())),
+        initializer_body: None,
     })
 }
 

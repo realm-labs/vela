@@ -18,6 +18,7 @@ pub struct HirSourceOrigin {
 pub enum HirBodyOwner {
     Declaration(HirDeclId),
     ConstInitializer(HirDeclId),
+    StateInitializer(HirDeclId),
     SchemaFieldDefault(HirDeclId),
     TraitDefaultMethod(HirNodeId),
     ImplMethod(HirNodeId),

@@ -32,10 +32,23 @@ pub extern state world: World;
             .map(|span| span_text(source_text, span)),
         Some("41 + 1")
     );
+    let initializer = graph
+        .state_initializer_body(counter)
+        .expect("counter initializer body");
+    assert_eq!(initializer.owner, HirBodyOwner::StateInitializer(counter));
+    assert!(matches!(initializer.root, HirBodyRoot::Expr(_)));
+    assert_eq!(
+        counter_metadata.initializer_body,
+        Some(initializer.id),
+        "state metadata owns its initializer body identity"
+    );
+    assert!(graph.state_initializer_bindings(counter).is_some());
     let world_metadata = graph.state_metadata(world).expect("world metadata");
     assert_eq!(world_metadata.storage, StateStorage::Extern);
     assert_eq!(world_metadata.type_hint.display(), "World");
     assert_eq!(world_metadata.initializer_span, None);
+    assert_eq!(world_metadata.initializer_body, None);
+    assert!(graph.state_initializer_body(world).is_none());
 }
 
 #[test]

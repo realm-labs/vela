@@ -65,6 +65,7 @@ pub struct ModuleGraph {
     impl_method_bodies: BTreeMap<HirNodeId, HirBodyId>,
     bindings: BTreeMap<HirDeclId, BindingMap>,
     const_initializer_bindings: BTreeMap<HirDeclId, BindingMap>,
+    state_initializer_bindings: BTreeMap<HirDeclId, BindingMap>,
     schema_field_default_bindings: BTreeMap<HirBodyId, BindingMap>,
     function_signatures: BTreeMap<HirDeclId, FunctionSignature>,
     struct_shapes: BTreeMap<HirDeclId, StructShape>,
@@ -168,6 +169,7 @@ impl ModuleGraph {
         };
 
         let mut const_initializers = Vec::new();
+        let mut state_initializers = Vec::new();
         let mut schema_field_defaults = Vec::new();
         let mut function_declarations = Vec::new();
         let mut trait_default_method_declarations = Vec::new();
@@ -246,6 +248,12 @@ impl ModuleGraph {
                         declaration,
                         syntax_metadata::attrs(&syntax_summary, item_index),
                     );
+                    if let Some(initializer) = syntax_summary.state_initializer_source(item_index) {
+                        state_initializers.push(body_binding::ExpressionBodySource::new(
+                            declaration,
+                            initializer,
+                        ));
+                    }
                 }
                 SyntaxKind::FunctionItem => {
                     let Some((name, visibility, name_span, span)) =
@@ -442,6 +450,9 @@ impl ModuleGraph {
         for source in const_initializers {
             self.bind_const_initializer_body(&hir_module, source);
         }
+        for source in state_initializers {
+            self.bind_state_initializer_body(&hir_module, source);
+        }
         for source in schema_field_defaults {
             self.bind_schema_field_default_body(&hir_module, source);
         }
@@ -618,6 +629,21 @@ impl ModuleGraph {
             }
         }
 
+        let state_initializer_bindings = self
+            .state_initializer_bindings
+            .keys()
+            .filter_map(|declaration| {
+                let module = self.declarations.get(declaration)?.module;
+                let imports = imports_by_module.get(&module)?.clone();
+                Some((*declaration, imports))
+            })
+            .collect::<Vec<_>>();
+        for (declaration, imports) in state_initializer_bindings {
+            if let Some(bindings) = self.state_initializer_bindings.get_mut(&declaration) {
+                bindings.resolve_import_declarations(&imports);
+            }
+        }
+
         let trait_default_method_bindings = self
             .trait_default_method_bindings
             .iter()
@@ -678,6 +704,21 @@ impl ModuleGraph {
             .collect::<Vec<_>>();
         for (declaration, declarations) in const_initializer_bindings {
             if let Some(bindings) = self.const_initializer_bindings.get_mut(&declaration) {
+                bindings.resolve_qualified_declarations(&declarations);
+            }
+        }
+
+        let state_initializer_bindings = self
+            .state_initializer_bindings
+            .keys()
+            .filter_map(|declaration| {
+                let module = self.declarations.get(declaration)?.module;
+                let declarations = self.qualified_declarations_for(module);
+                Some((*declaration, declarations))
+            })
+            .collect::<Vec<_>>();
+        for (declaration, declarations) in state_initializer_bindings {
+            if let Some(bindings) = self.state_initializer_bindings.get_mut(&declaration) {
                 bindings.resolve_qualified_declarations(&declarations);
             }
         }

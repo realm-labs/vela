@@ -74,6 +74,7 @@ pub struct StateMetadata {
     pub storage: StateStorage,
     pub type_hint: HirTypeHint,
     pub initializer_span: Option<Span>,
+    pub initializer_body: Option<HirBodyId>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

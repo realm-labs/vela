@@ -112,6 +112,11 @@ impl ModuleGraph {
     }
 
     #[must_use]
+    pub fn state_initializer_bindings(&self, declaration: HirDeclId) -> Option<&BindingMap> {
+        self.state_initializer_bindings.get(&declaration)
+    }
+
+    #[must_use]
     pub fn schema_field_default_bindings(&self, body: HirBodyId) -> Option<&BindingMap> {
         self.schema_field_default_bindings.get(&body)
     }
@@ -127,6 +132,9 @@ impl ModuleGraph {
             crate::body::HirBodyOwner::Declaration(declaration) => self.bindings(declaration),
             crate::body::HirBodyOwner::ConstInitializer(declaration) => {
                 self.const_initializer_bindings(declaration)
+            }
+            crate::body::HirBodyOwner::StateInitializer(declaration) => {
+                self.state_initializer_bindings(declaration)
             }
             crate::body::HirBodyOwner::SchemaFieldDefault(_) => {
                 self.schema_field_default_bindings(body)
@@ -173,6 +181,7 @@ impl ModuleGraph {
                 | crate::body::HirBodyOwner::ParameterDefault { parent, .. } => *parent,
                 crate::body::HirBodyOwner::Declaration(_)
                 | crate::body::HirBodyOwner::ConstInitializer(_)
+                | crate::body::HirBodyOwner::StateInitializer(_)
                 | crate::body::HirBodyOwner::SchemaFieldDefault(_)
                 | crate::body::HirBodyOwner::TraitDefaultMethod(_)
                 | crate::body::HirBodyOwner::ImplMethod(_) => return None,
@@ -186,6 +195,7 @@ impl ModuleGraph {
         self.bindings
             .values()
             .chain(self.const_initializer_bindings.values())
+            .chain(self.state_initializer_bindings.values())
             .chain(self.schema_field_default_bindings.values())
             .chain(self.trait_default_method_bindings.values())
             .chain(self.impl_method_bindings.values())
@@ -305,6 +315,13 @@ impl ModuleGraph {
         self.const_initializer_bodies
             .get(&declaration)
             .and_then(|body| self.body(*body))
+    }
+
+    #[must_use]
+    pub fn state_initializer_body(&self, declaration: HirDeclId) -> Option<&HirBody> {
+        self.state_metadata(declaration)
+            .and_then(|metadata| metadata.initializer_body)
+            .and_then(|body| self.body(body))
     }
 
     #[must_use]

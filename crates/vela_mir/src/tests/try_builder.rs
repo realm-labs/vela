@@ -649,6 +649,7 @@ fn main(fallback, value = fallback?) {
             }),
             HirBodyOwner::Declaration(_) => Some(CompileTryTarget::Expected(RESULT_LAYOUT)),
             HirBodyOwner::ConstInitializer(_)
+            | HirBodyOwner::StateInitializer(_)
             | HirBodyOwner::SchemaFieldDefault(_)
             | HirBodyOwner::TraitDefaultMethod(_)
             | HirBodyOwner::ImplMethod(_) => None,

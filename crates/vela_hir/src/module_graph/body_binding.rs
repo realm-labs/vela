@@ -91,6 +91,27 @@ impl ModuleGraph {
         self.diagnostics.extend(diagnostics);
     }
 
+    pub(super) fn bind_state_initializer_body(
+        &mut self,
+        module: &HirModule,
+        source: ExpressionBodySource,
+    ) {
+        let declaration = source.declaration;
+        let body = self.next_body_id();
+        let (bindings, diagnostics) = self.bind_expression_body(
+            module,
+            source,
+            body,
+            HirBodyOwner::StateInitializer(declaration),
+        );
+        if let Some(metadata) = self.state_metadata.get_mut(&declaration) {
+            metadata.initializer_body = Some(body);
+        }
+        self.state_initializer_bindings
+            .insert(declaration, bindings);
+        self.diagnostics.extend(diagnostics);
+    }
+
     pub(super) fn bind_schema_field_default_body(
         &mut self,
         module: &HirModule,
