@@ -95,6 +95,15 @@ pub enum HostErrorKind {
     HostLeaseUnsupported {
         path: HostPath,
     },
+    NotScopedBorrow {
+        path: HostPath,
+    },
+    ExpiredBorrowedHostRef {
+        path: HostPath,
+    },
+    BorrowStillInUse {
+        path: HostPath,
+    },
 }
 
 pub type HostResult<T> = Result<T, HostError>;

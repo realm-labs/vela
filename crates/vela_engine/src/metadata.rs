@@ -57,6 +57,7 @@ pub(crate) fn inject_native_function_metadata(
     async_native_functions: &[AsyncNativeFunctionEntry],
     async_host_native_functions: &[AsyncHostNativeFunctionEntry],
     async_direct_host_native_functions: &[crate::native::AsyncDirectHostNativeFunctionEntry],
+    scoped_host_native_functions: &[crate::native::ScopedHostNativeFunctionEntry],
     async_context_host_native_functions: &[AsyncContextHostNativeFunctionEntry],
     host_native_functions: &[HostNativeFunctionEntry],
     context_host_native_functions: &[ContextHostNativeFunctionEntry],
@@ -71,6 +72,7 @@ pub(crate) fn inject_native_function_metadata(
                 .iter()
                 .map(|entry| &entry.desc),
         )
+        .chain(scoped_host_native_functions.iter().map(|entry| &entry.desc))
         .chain(
             async_context_host_native_functions
                 .iter()

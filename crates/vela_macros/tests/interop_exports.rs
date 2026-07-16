@@ -19,6 +19,29 @@ pub struct Player {
     level: i64,
 }
 
+#[derive(Debug, ScriptHost)]
+#[script(path = "game::PlayerService")]
+pub struct PlayerService {
+    player: Player,
+    #[script(get, set)]
+    touches: i64,
+}
+
+#[methods(path = "game::PlayerService")]
+impl PlayerService {
+    pub fn touch_count(&self) -> i64 {
+        self.touches
+    }
+
+    pub fn player(&self) -> &Player {
+        &self.player
+    }
+
+    pub fn player_mut(&mut self) -> &mut Player {
+        &mut self.player
+    }
+}
+
 #[trait_export(path = "game::Damageable")]
 pub trait Damageable {
     fn take_damage(&mut self, amount: i64);
@@ -79,6 +102,22 @@ pub fn transfer(first: &mut Player, second: &mut Player, amount: i64) -> i64 {
 pub fn mixed_alias(first: &Player, second: &mut Player) -> i64 {
     second.level += first.level;
     second.level
+}
+
+#[export(path = "game::service_player")]
+pub fn service_player(service: &PlayerService) -> &Player {
+    &service.player
+}
+
+#[export(path = "game::service_player_mut")]
+pub fn service_player_mut(service: &mut PlayerService) -> &mut Player {
+    &mut service.player
+}
+
+#[export(path = "game::touch_service")]
+pub fn touch_service(service: &mut PlayerService) -> i64 {
+    service.touches += 1;
+    service.touches
 }
 
 pub struct StrictAmount(i64);
@@ -321,10 +360,14 @@ fn host_export_runtime(source: &str) -> Runtime {
         .capability(Capability::HostWrite)
         .capability(Capability::Random)
         .register_host_type::<Player>()
+        .register_host_type::<PlayerService>()
         .register_exports(vela_export_bundle_grant_exp())
         .register_exports(vela_export_bundle_sum_levels())
         .register_exports(vela_export_bundle_transfer())
         .register_exports(vela_export_bundle_mixed_alias())
+        .register_exports(vela_export_bundle_service_player())
+        .register_exports(vela_export_bundle_service_player_mut())
+        .register_exports(vela_export_bundle_touch_service())
         .register_exports(vela_export_bundle_roll())
         .register_exports(vela_export_bundle_strict_grant())
         .register_exports(vela_export_bundle_fail_grant())
@@ -333,6 +376,7 @@ fn host_export_runtime(source: &str) -> Runtime {
         .register_exports(vela_export_bundle_transfer_async())
         .register_exports(vela_export_bundle_hold_player_async())
         .register_exports(Player::vela_inherent_exports())
+        .register_exports(PlayerService::vela_inherent_exports())
         .register_exports(Player::vela_protocol_Damageable_exports())
         .build()
         .expect("host exports should register");
@@ -380,6 +424,147 @@ fn host_exports_allow_two_shared_aliases() {
         .expect("shared aliases should coexist");
 
     assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(12)));
+}
+
+#[test]
+fn shared_borrowed_return_freezes_owner_and_behaves_as_host_ref() {
+    let mut runtime = host_export_runtime(
+        "fn main(service: PlayerService) { let first = game::service_player(service); let second = game::service_player(service); return first.current_level() + second.current_level(); }",
+    );
+    let service = PlayerService {
+        player: Player { level: 6 },
+        touches: 0,
+    };
+
+    let result = runtime
+        .call(
+            "main",
+            CallArgs::new().with_host_ref("service", &service),
+            CallOptions::unbounded(),
+        )
+        .expect("shared borrowed children should support ordinary host methods");
+
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(12)));
+}
+
+#[test]
+fn shared_borrowed_return_rejects_owner_write_and_cleans_up_at_root_end() {
+    let mut runtime = host_export_runtime(
+        "fn blocked(service: PlayerService) { let player = game::service_player(service); game::touch_service(service); return player.current_level(); } fn after(service: PlayerService) { return game::touch_service(service); }",
+    );
+    let mut service = PlayerService {
+        player: Player { level: 6 },
+        touches: 0,
+    };
+
+    let error = runtime
+        .call(
+            "blocked",
+            CallArgs::new().with_host_mut("service", &mut service),
+            CallOptions::unbounded(),
+        )
+        .expect_err("a live shared-origin child must freeze owner writes");
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::Host(vela_host::error::HostErrorKind::HostObjectBusy { .. })
+    ));
+
+    let result = runtime
+        .call(
+            "after",
+            CallArgs::new().with_host_mut("service", &mut service),
+            CallOptions::unbounded(),
+        )
+        .expect("root cleanup must release the retained owner lease");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(1)));
+    assert_eq!(service.touches, 1);
+}
+
+#[test]
+fn exclusive_borrowed_return_mutates_child_and_freezes_all_owner_calls() {
+    let mut runtime = host_export_runtime(
+        "fn blocked(service: PlayerService) { let player = game::service_player_mut(service); player.increment(2); return game::touch_service(service); } fn via_method(service: PlayerService) { let player = service.player_mut(); player.increment(3); return player.current_level(); }",
+    );
+    let mut service = PlayerService {
+        player: Player { level: 5 },
+        touches: 0,
+    };
+
+    let error = runtime
+        .call(
+            "blocked",
+            CallArgs::new().with_host_mut("service", &mut service),
+            CallOptions::unbounded(),
+        )
+        .expect_err("exclusive-origin child must freeze every owner call");
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::Host(vela_host::error::HostErrorKind::HostObjectBusy { .. })
+    ));
+    assert_eq!(service.player.level, 7);
+
+    let result = runtime
+        .call(
+            "via_method",
+            CallArgs::new().with_host_mut("service", &mut service),
+            CallOptions::unbounded(),
+        )
+        .expect("borrowed-return methods should use the same scoped adapter");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(10)));
+    assert_eq!(service.player.level, 10);
+}
+
+#[test]
+fn host_release_invalidates_alias_group_and_unfreezes_owner() {
+    let mut runtime = host_export_runtime(
+        "fn release_then_touch(service: PlayerService) { let player = service.player_mut(); let alias = player; host::release(player); return game::touch_service(service); } fn use_expired(service: PlayerService) { let player = service.player(); let alias = player; host::release(player); return alias.current_level(); } fn release_root(service: PlayerService) { host::release(service); }",
+    );
+    let mut service = PlayerService {
+        player: Player { level: 5 },
+        touches: 0,
+    };
+
+    let result = runtime
+        .call(
+            "release_then_touch",
+            CallArgs::new().with_host_mut("service", &mut service),
+            CallOptions::unbounded(),
+        )
+        .expect("explicit release should immediately unfreeze the owner");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(1)));
+
+    let error = runtime
+        .call(
+            "use_expired",
+            CallArgs::new().with_host_mut("service", &mut service),
+            CallOptions::unbounded(),
+        )
+        .expect_err("all aliases of a released child must expire");
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::Host(vela_host::error::HostErrorKind::ExpiredBorrowedHostRef { .. })
+    ));
+
+    let error = runtime
+        .call(
+            "release_root",
+            CallArgs::new().with_host_mut("service", &mut service),
+            CallOptions::unbounded(),
+        )
+        .expect_err("ordinary root HostRefs are not scoped borrows");
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::Host(vela_host::error::HostErrorKind::NotScopedBorrow { .. })
+    ));
+}
+
+#[test]
+fn bare_release_name_is_not_registered() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let error = engine
+        .compile_source("fn main(value) { release(value); }")
+        .expect_err("only host::release is reserved");
+    assert!(error.to_string().contains("release"));
 }
 
 #[test]

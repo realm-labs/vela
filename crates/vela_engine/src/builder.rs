@@ -16,6 +16,7 @@ use crate::native::{
     AsyncContextHostNativeFunctionEntry, AsyncDirectHostNativeFunctionEntry,
     AsyncHostNativeFunctionEntry, AsyncNativeFunctionEntry, ContextHostNativeFunctionEntry,
     HostNativeFunctionEntry, NativeCallFuture, NativeFunctionDesc, NativeFunctionEntry,
+    ScopedHostNativeFunctionEntry,
 };
 use crate::permission::{Capability, CapabilitySet, ExecutionProfile};
 use crate::schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
@@ -34,6 +35,7 @@ pub struct EngineBuilder {
     async_native_functions: Vec<AsyncNativeFunctionEntry>,
     async_host_native_functions: Vec<AsyncHostNativeFunctionEntry>,
     async_direct_host_native_functions: Vec<AsyncDirectHostNativeFunctionEntry>,
+    scoped_host_native_functions: Vec<ScopedHostNativeFunctionEntry>,
     async_context_host_native_functions: Vec<AsyncContextHostNativeFunctionEntry>,
     host_native_functions: Vec<HostNativeFunctionEntry>,
     context_host_native_functions: Vec<ContextHostNativeFunctionEntry>,
@@ -314,6 +316,32 @@ impl EngineBuilder {
         self
     }
 
+    /// Registers a synchronous native that returns an owner-frozen host child.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn register_scoped_host_fn(
+        mut self,
+        desc: NativeFunctionDesc,
+        requests: impl Fn(
+            &[OwnedValue],
+        )
+            -> VmResult<Vec<(vela_host::path::HostRef, vela_host::lease::HostLeaseKind)>>
+        + Send
+        + Sync
+        + 'static,
+        function: impl for<'host> Fn(
+            &mut [vela_host::lease::ErasedHostLease<'host>],
+            Vec<OwnedValue>,
+        ) -> VmResult<vela_host::adapter::ScopedHostReturn<'host>>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        self.scoped_host_native_functions
+            .push(ScopedHostNativeFunctionEntry::new(desc, requests, function));
+        self
+    }
+
     #[must_use]
     pub fn register_typed_host_native_fn<Args, F>(
         self,
@@ -513,7 +541,32 @@ impl EngineBuilder {
         })
     }
 
-    pub fn build(self) -> EngineResult<Engine> {
+    pub fn build(mut self) -> EngineResult<Engine> {
+        let release_id = vela_def::FunctionId::new(u128::from(vela_common::stable_id(
+            "host_intrinsic",
+            "host",
+            "release",
+        )));
+        self.host_native_functions
+            .push(HostNativeFunctionEntry::new(
+                NativeFunctionDesc::new("host::release", release_id)
+                    .param("value", crate::native::TypeHint::Any)
+                    .returns(crate::native::TypeHint::unit())
+                    .effects(crate::native::EffectSet::pure())
+                    .access(crate::native::FunctionAccess::public())
+                    .docs("Releases one call-tree-scoped borrowed host value."),
+                |args, host| {
+                    let [OwnedValue::HostRef(root)] = args else {
+                        return Err(vela_vm::error::VmError::new(
+                            vela_vm::error::VmErrorKind::TypeMismatch {
+                                operation: "host::release scoped host value",
+                            },
+                        ));
+                    };
+                    host.adapter.release_scoped_host(*root)?;
+                    Ok(OwnedValue::Unit)
+                },
+            ));
         let mut types = self.types;
         if self.stdio || self.fs_io {
             types.push(crate::io::io_error_type_desc());
@@ -545,6 +598,7 @@ impl EngineBuilder {
                 async_native: &self.async_native_functions,
                 async_host: &self.async_host_native_functions,
                 async_direct_host: &self.async_direct_host_native_functions,
+                scoped_host: &self.scoped_host_native_functions,
                 async_context_host: &self.async_context_host_native_functions,
                 host: &self.host_native_functions,
                 context_host: &self.context_host_native_functions,
@@ -560,6 +614,7 @@ impl EngineBuilder {
                 async_native: &self.async_native_functions,
                 async_host: &self.async_host_native_functions,
                 async_direct_host: &self.async_direct_host_native_functions,
+                scoped_host: &self.scoped_host_native_functions,
                 async_context_host: &self.async_context_host_native_functions,
                 host: &self.host_native_functions,
                 context_host: &self.context_host_native_functions,
@@ -589,6 +644,7 @@ impl EngineBuilder {
             &self.async_native_functions,
             &self.async_host_native_functions,
             &self.async_direct_host_native_functions,
+            &self.scoped_host_native_functions,
             &self.async_context_host_native_functions,
             &self.host_native_functions,
             &self.context_host_native_functions,
@@ -601,6 +657,7 @@ impl EngineBuilder {
             async_native_functions: self.async_native_functions,
             async_host_native_functions: self.async_host_native_functions,
             async_direct_host_native_functions: self.async_direct_host_native_functions,
+            scoped_host_native_functions: self.scoped_host_native_functions,
             async_context_host_native_functions: self.async_context_host_native_functions,
             host_native_functions: self.host_native_functions,
             context_host_native_functions: self.context_host_native_functions,

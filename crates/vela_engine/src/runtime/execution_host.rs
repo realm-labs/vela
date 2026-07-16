@@ -1,7 +1,14 @@
 use vela_common::HostMethodId;
-use vela_host::adapter::{ExternStateBinding, HostLeaseInvoker, ScriptStateAdapter};
+use vela_host::adapter::{
+    ExternStateBinding, HostLeaseInvoker, ScopedHostReturn, ScopedHostReturnInvoker,
+    ScriptStateAdapter,
+};
 use vela_host::error::{HostError, HostErrorKind, HostResult};
-use vela_host::lease::{ErasedHostLease, HostLeaseKind, host_lease_unsupported, host_object_busy};
+use vela_host::lease::{
+    BorrowLeaseId, ErasedHostLease, HostLeaseKind, ScopedHostLeaseSlot, host_lease_unsupported,
+    host_object_busy,
+};
+use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
 use vela_host::resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess};
 use vela_host::target::HostTargetInstance;
@@ -32,6 +39,14 @@ pub(super) struct ExecutionHost<'state, 'host> {
     extern_states: &'state mut RuntimeExternStateBindings,
     fallback: FallbackAdapter<'host>,
     next_direct_object_id: u64,
+    scoped_hosts: BTreeMap<HostRef, ScopedHostBinding<'host>>,
+    expired_scoped_hosts: BTreeSet<HostRef>,
+}
+
+struct ScopedHostBinding<'host> {
+    _borrow_lease_id: BorrowLeaseId,
+    access: HostLeaseKind,
+    object: ScopedHostLeaseSlot<'host>,
 }
 
 pub(super) trait ExecutionHostBoundary: ScriptStateAdapter + Send {
@@ -67,6 +82,8 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
             extern_states,
             fallback,
             next_direct_object_id: EXECUTION_HOST_OBJECT_ID_BASE,
+            scoped_hosts: BTreeMap::new(),
+            expired_scoped_hosts: BTreeSet::new(),
         };
         execution_host
             .args
@@ -115,6 +132,73 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
             .pop()
             .ok_or_else(|| host_lease_unsupported(root))
     }
+
+    fn take_execution_host_lease(
+        &mut self,
+        root: HostRef,
+        kind: HostLeaseKind,
+    ) -> HostResult<ErasedHostLease<'host>> {
+        if self.expired_scoped_hosts.contains(&root) {
+            return Err(HostError {
+                kind: HostErrorKind::ExpiredBorrowedHostRef {
+                    path: vela_host::path::HostPath::new(root),
+                },
+                source_span: None,
+            });
+        }
+        if let Some(binding) = self.scoped_hosts.get(&root) {
+            return match (binding.access, kind) {
+                (HostLeaseKind::Shared, HostLeaseKind::Exclusive) => Err(host_object_busy(root)),
+                (_, HostLeaseKind::Shared) => binding
+                    .object
+                    .try_read_arc()
+                    .map(|object| ErasedHostLease::ScopedShared { object })
+                    .ok_or_else(|| host_object_busy(root)),
+                (HostLeaseKind::Exclusive, HostLeaseKind::Exclusive) => binding
+                    .object
+                    .try_write_arc()
+                    .map(|object| ErasedHostLease::ScopedExclusive { object })
+                    .ok_or_else(|| host_object_busy(root)),
+            };
+        }
+        self.take_host_lease(root, kind)
+    }
+
+    fn take_execution_host_leases(
+        &mut self,
+        requests: &[(HostRef, HostLeaseKind)],
+    ) -> HostResult<Vec<ErasedHostLease<'host>>> {
+        let mut leases = Vec::with_capacity(requests.len());
+        for (root, kind) in requests {
+            match self.take_execution_host_lease(*root, *kind) {
+                Ok(lease) => leases.push(lease),
+                Err(error) => {
+                    drop(leases);
+                    return Err(error);
+                }
+            }
+        }
+        Ok(leases)
+    }
+
+    fn retain_scoped_host(&mut self, returned: ScopedHostReturn<'host>) -> HostRef {
+        let type_id = returned.object.host_type_id();
+        let root = HostRef::new(
+            type_id,
+            vela_common::HostObjectId::new(self.next_direct_object_id),
+            1,
+        );
+        self.next_direct_object_id = self.next_direct_object_id.saturating_add(1);
+        self.scoped_hosts.insert(
+            root,
+            ScopedHostBinding {
+                _borrow_lease_id: BorrowLeaseId::new(root.object_id.get()),
+                access: returned.access,
+                object: Arc::new(parking_lot::RwLock::new(Box::new(returned.object))),
+            },
+        );
+        root
+    }
 }
 
 impl ExecutionHostBoundary for ExecutionHost<'_, '_> {
@@ -133,7 +217,7 @@ impl ExecutionHostBoundary for ExecutionHost<'_, '_> {
                 }))
             });
         };
-        match self.take_host_lease(root, kind) {
+        match self.take_execution_host_lease(root, kind) {
             Ok(lease) => prepared.invoke_with_host_lease(lease),
             Err(error) => Box::pin(async move { Err(error.into()) }),
         }
@@ -154,7 +238,7 @@ impl ExecutionHostBoundary for ExecutionHost<'_, '_> {
                     return Err(host_lease_unsupported(*root).into());
                 }
             }
-            let mut leases = self.args.take_host_leases(&requests)?;
+            let mut leases = self.take_execution_host_leases(&requests)?;
             prepared.invoke_with_host_leases(&mut leases).await
         })
     }
@@ -299,6 +383,29 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_> {
         invoke(&mut leases, self)
     }
 
+    fn with_scoped_host_return(
+        &mut self,
+        requests: &[(HostRef, HostLeaseKind)],
+        invoke: &mut ScopedHostReturnInvoker<'_>,
+    ) -> HostResult<Option<HostRef>> {
+        if requests
+            .iter()
+            .all(|(root, _)| self.args.direct_binding(*root).is_some())
+        {
+            let mut leases = self.args.take_host_leases(requests)?;
+            let returned = invoke(&mut leases)?;
+            return match returned {
+                Some(_) => Err(host_lease_unsupported(requests[0].0)),
+                None => Ok(None),
+            };
+        }
+        self.parent.with_scoped_host_return(requests, invoke)
+    }
+
+    fn release_scoped_host(&mut self, root: HostRef) -> HostResult<()> {
+        self.parent.release_scoped_host(root)
+    }
+
     fn resolve_host_access(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
         match self.args.direct_binding_by_type(spec.plan.root_type) {
             Some((_, HostArgBinding::Shared { object, .. })) => object.resolve_host_target(spec),
@@ -422,8 +529,51 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
                 return Err(host_lease_unsupported(*root));
             }
         }
-        let mut leases = self.args.take_host_leases(requests)?;
+        let mut leases = self.take_execution_host_leases(requests)?;
         invoke(&mut leases, self)
+    }
+
+    fn with_scoped_host_return(
+        &mut self,
+        requests: &[(HostRef, HostLeaseKind)],
+        invoke: &mut ScopedHostReturnInvoker<'_>,
+    ) -> HostResult<Option<HostRef>> {
+        for (root, _) in requests {
+            if self.extern_states.binding(*root).is_some() {
+                return Err(host_lease_unsupported(*root));
+            }
+        }
+        let mut leases = self.take_execution_host_leases(requests)?;
+        Ok(invoke(&mut leases)?.map(|returned| self.retain_scoped_host(returned)))
+    }
+
+    fn release_scoped_host(&mut self, root: HostRef) -> HostResult<()> {
+        let Some(binding) = self.scoped_hosts.get(&root) else {
+            let kind = if self.expired_scoped_hosts.contains(&root) {
+                HostErrorKind::ExpiredBorrowedHostRef {
+                    path: vela_host::path::HostPath::new(root),
+                }
+            } else {
+                HostErrorKind::NotScopedBorrow {
+                    path: vela_host::path::HostPath::new(root),
+                }
+            };
+            return Err(HostError {
+                kind,
+                source_span: None,
+            });
+        };
+        if Arc::strong_count(&binding.object) != 1 {
+            return Err(HostError {
+                kind: HostErrorKind::BorrowStillInUse {
+                    path: vela_host::path::HostPath::new(root),
+                },
+                source_span: None,
+            });
+        }
+        self.scoped_hosts.remove(&root);
+        self.expired_scoped_hosts.insert(root);
+        Ok(())
     }
 
     fn resolve_host_access(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
@@ -731,3 +881,5 @@ mod tests {
         assert!(host.args.direct_binding(child_ref).is_none());
     }
 }
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;

@@ -3,7 +3,7 @@ use vela_def::StateId;
 
 use crate::{
     error::{HostError, HostErrorKind, HostResult},
-    lease::{ErasedHostLease, HostLeaseKind, host_lease_unsupported},
+    lease::{ErasedHostLease, HostLeaseKind, ScopedBorrowedHostCell, host_lease_unsupported},
     path::HostRef,
     resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess},
     target::HostTargetInstance,
@@ -20,6 +20,16 @@ pub type HostLeaseInvoker<'callback> = dyn for<'lease> FnMut(
         &mut [ErasedHostLease<'lease>],
         &mut (dyn ScriptStateAdapter + Send),
     ) -> HostResult<()>
+    + 'callback;
+
+pub struct ScopedHostReturn<'lease> {
+    pub object: ScopedBorrowedHostCell<'lease>,
+    pub access: HostLeaseKind,
+}
+
+pub type ScopedHostReturnInvoker<'callback> = dyn for<'lease> FnMut(
+        &mut [ErasedHostLease<'lease>],
+    ) -> HostResult<Option<ScopedHostReturn<'lease>>>
     + 'callback;
 
 pub trait ScriptStateAdapter {
@@ -57,6 +67,25 @@ pub trait ScriptStateAdapter {
                 expected: "at least one exact host lease request",
             })),
         }
+    }
+
+    /// Runs one synchronous invocation and retains an optional owner-frozen
+    /// child in this adapter's root execution scope.
+    fn with_scoped_host_return(
+        &mut self,
+        requests: &[(HostRef, HostLeaseKind)],
+        _invoke: &mut ScopedHostReturnInvoker<'_>,
+    ) -> HostResult<Option<HostRef>> {
+        match requests.first() {
+            Some((root, _)) => Err(host_lease_unsupported(*root)),
+            None => Err(HostError::new(HostErrorKind::InvalidArgument {
+                expected: "at least one scoped host lease request",
+            })),
+        }
+    }
+
+    fn release_scoped_host(&mut self, root: HostRef) -> HostResult<()> {
+        Err(host_lease_unsupported(root))
     }
 
     fn read_host(

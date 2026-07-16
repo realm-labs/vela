@@ -474,6 +474,7 @@ pub(crate) fn validate_native_functions(
         .chain(functions.async_native.iter().map(|entry| &entry.desc))
         .chain(functions.async_host.iter().map(|entry| &entry.desc))
         .chain(functions.async_direct_host.iter().map(|entry| &entry.desc))
+        .chain(functions.scoped_host.iter().map(|entry| &entry.desc))
         .chain(functions.async_context_host.iter().map(|entry| &entry.desc))
         .chain(functions.host.iter().map(|entry| &entry.desc))
         .chain(functions.context_host.iter().map(|entry| &entry.desc))

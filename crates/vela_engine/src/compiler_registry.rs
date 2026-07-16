@@ -12,6 +12,7 @@ use crate::native::{
     AsyncContextHostNativeFunctionEntry, AsyncDirectHostNativeFunctionEntry,
     AsyncHostNativeFunctionEntry, AsyncNativeFunctionEntry, ContextHostNativeFunctionEntry,
     HostNativeFunctionEntry, NativeFunctionDesc, NativeFunctionEntry,
+    ScopedHostNativeFunctionEntry,
 };
 
 pub(crate) struct EngineFunctionEntries<'a> {
@@ -19,6 +20,7 @@ pub(crate) struct EngineFunctionEntries<'a> {
     pub(crate) async_native: &'a [AsyncNativeFunctionEntry],
     pub(crate) async_host: &'a [AsyncHostNativeFunctionEntry],
     pub(crate) async_direct_host: &'a [AsyncDirectHostNativeFunctionEntry],
+    pub(crate) scoped_host: &'a [ScopedHostNativeFunctionEntry],
     pub(crate) async_context_host: &'a [AsyncContextHostNativeFunctionEntry],
     pub(crate) host: &'a [HostNativeFunctionEntry],
     pub(crate) context_host: &'a [ContextHostNativeFunctionEntry],
@@ -44,6 +46,7 @@ pub(crate) fn definition_registry_from_engine_parts(
         .chain(functions.async_native.iter().map(|entry| &entry.desc))
         .chain(functions.async_host.iter().map(|entry| &entry.desc))
         .chain(functions.async_direct_host.iter().map(|entry| &entry.desc))
+        .chain(functions.scoped_host.iter().map(|entry| &entry.desc))
         .chain(functions.async_context_host.iter().map(|entry| &entry.desc))
         .chain(functions.host.iter().map(|entry| &entry.desc))
         .chain(functions.context_host.iter().map(|entry| &entry.desc))
@@ -475,6 +478,7 @@ mod tests {
                 async_native: &[],
                 async_host: &[],
                 async_direct_host: &[],
+                scoped_host: &[],
                 async_context_host: &[],
                 host: &[],
                 context_host: &[],

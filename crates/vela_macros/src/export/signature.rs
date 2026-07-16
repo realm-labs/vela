@@ -684,6 +684,47 @@ impl ClassifiedSignature {
             })
     }
 
+    pub(crate) fn supports_sync_scoped_host_adapter(&self) -> bool {
+        !self.is_async
+            && !self.has_hidden_context()
+            && matches!(
+                self.returns.mode,
+                ReturnMode::ScopedHost {
+                    origin: BorrowOrigin::Parameter(_),
+                    ..
+                }
+            )
+            && matches!(self.returns.ty, TypeShape::Host(_, _))
+            && self.parameters.iter().all(|parameter| {
+                matches!(
+                    parameter.mode,
+                    ParameterMode::Value | ParameterMode::SharedHost | ParameterMode::ExclusiveHost
+                )
+            })
+    }
+
+    pub(crate) fn supports_sync_scoped_method_adapter(&self) -> bool {
+        !self.is_async
+            && !self.has_hidden_context()
+            && matches!(
+                self.returns.mode,
+                ReturnMode::ScopedHost {
+                    origin: BorrowOrigin::Receiver,
+                    ..
+                }
+            )
+            && matches!(self.returns.ty, TypeShape::Host(_, _))
+            && self
+                .parameters
+                .first()
+                .is_some_and(|parameter| matches!(parameter.ty, TypeShape::ReceiverHost))
+            && self
+                .parameters
+                .iter()
+                .skip(1)
+                .all(|parameter| parameter.mode == ParameterMode::Value)
+    }
+
     pub(crate) fn supports_sync_method_adapter(&self) -> bool {
         self.supports_sync_host_adapter()
             && !self.has_hidden_context()

@@ -121,12 +121,14 @@ storage Batch G reaches final acceptance.
 
 ### Unified Rust/Vela Interop Batch B
 
-Batch B is active. It must register item and module exports through one
-descriptor/adapter path, acquire complete named host-parameter lease sets
-atomically, prove exact concrete identity before references exist, generate
-method and selected trait-method thunks, and establish deterministic cleanup.
-Owner-frozen borrowed host returns, child lease identity, and root invalidation
-remain part of this checkpoint rather than a separate durable-handle model.
+Batch B is active. Item/module exports, inherent and selected trait-method
+thunks, exact named multi-lease preflight, ordinary sync/async Rust adapters,
+and direct owner-frozen `&T`/`&mut T` returns are implemented. Scoped children
+have distinct borrow identities, preserve shared/exclusive access, freeze their
+owner through a retained safe self-cell lease, support `host::release`, and are
+invalidated at root teardown. Approved Option/Result/tuple borrowed-return
+shapes and conservative automatic last-use/lexical release remain before the
+Batch B/C checkpoint closes.
 
 ### State Storage Batch G
 

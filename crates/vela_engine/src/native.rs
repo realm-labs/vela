@@ -624,6 +624,48 @@ pub struct AsyncDirectHostNativeFunctionEntry {
     pub function: AsyncDirectHostFunction,
 }
 
+#[derive(Clone)]
+pub struct ScopedHostNativeFunctionEntry {
+    pub desc: NativeFunctionDesc,
+    pub requests: HostLeaseRequestFactory,
+    pub function: Arc<
+        dyn for<'host> Fn(
+                &mut [vela_host::lease::ErasedHostLease<'host>],
+                Vec<OwnedValue>,
+            ) -> VmResult<vela_host::adapter::ScopedHostReturn<'host>>
+            + Send
+            + Sync
+            + 'static,
+    >,
+}
+
+impl ScopedHostNativeFunctionEntry {
+    #[must_use]
+    pub fn new(
+        desc: NativeFunctionDesc,
+        requests: impl Fn(
+            &[OwnedValue],
+        )
+            -> VmResult<Vec<(vela_host::path::HostRef, vela_host::lease::HostLeaseKind)>>
+        + Send
+        + Sync
+        + 'static,
+        function: impl for<'host> Fn(
+            &mut [vela_host::lease::ErasedHostLease<'host>],
+            Vec<OwnedValue>,
+        ) -> VmResult<vela_host::adapter::ScopedHostReturn<'host>>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        Self {
+            desc,
+            requests: Arc::new(requests),
+            function: Arc::new(function),
+        }
+    }
+}
+
 impl AsyncDirectHostNativeFunctionEntry {
     #[must_use]
     pub fn new(

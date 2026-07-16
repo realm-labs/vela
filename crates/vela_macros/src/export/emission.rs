@@ -79,6 +79,9 @@ pub(crate) fn function_value_adapter(
     item: &ItemFn,
     signature: &ClassifiedSignature,
 ) -> Option<TokenStream> {
+    if signature.supports_sync_scoped_host_adapter() {
+        return Some(function_sync_scoped_host_adapter(item, signature));
+    }
     if signature.supports_async_host_adapter() {
         return Some(function_async_host_adapter(item, signature));
     }
@@ -210,6 +213,190 @@ pub(crate) fn function_value_adapter(
             )
         }
     })
+}
+
+fn function_sync_scoped_host_adapter(
+    item: &ItemFn,
+    signature: &ClassifiedSignature,
+) -> TokenStream {
+    let function_ident = &item.sig.ident;
+    let contract_ident = format_ident!("vela_callable_contract_{function_ident}");
+    let register_ident = format_ident!("vela_register_export_{function_ident}");
+    let bundle_ident = format_ident!("vela_export_bundle_{function_ident}");
+    let expected = signature.parameters.len();
+    let ReturnMode::ScopedHost { child, .. } = signature.returns.mode else {
+        unreachable!("scoped adapter requires a scoped host return");
+    };
+    let child_kind = match child {
+        HostAccess::Shared => quote! { ::vela_host::lease::HostLeaseKind::Shared },
+        HostAccess::Exclusive => quote! { ::vela_host::lease::HostLeaseKind::Exclusive },
+    };
+    let TypeShape::Host(child_ty, _) = &signature.returns.ty else {
+        unreachable!("direct scoped adapter requires a direct host return");
+    };
+    let request_bindings = signature
+        .parameters
+        .iter()
+        .enumerate()
+        .filter_map(|(index, parameter)| {
+            let TypeShape::Host(ty, access) = &parameter.ty else {
+                return None;
+            };
+            let kind = match access {
+                HostAccess::Shared => quote! { ::vela_host::lease::HostLeaseKind::Shared },
+                HostAccess::Exclusive => {
+                    quote! { ::vela_host::lease::HostLeaseKind::Exclusive }
+                }
+            };
+            Some(quote! {
+                ::vela_engine::interop::HostParamLeaseRequest::from_argument(
+                    &__vela_contract,
+                    #index,
+                    #index,
+                    <#ty as ::vela_engine::interop::VelaHostBoundary>::vela_host_type_id(),
+                    #kind,
+                    &args[#index],
+                )?
+            })
+        })
+        .collect::<Vec<_>>();
+    let argument_bindings = signature
+        .parameters
+        .iter()
+        .enumerate()
+        .filter_map(|(index, parameter)| {
+            if matches!(parameter.ty, TypeShape::Host(_, _)) {
+                return None;
+            }
+            let name = format_ident!("__vela_arg_{}", parameter.name);
+            let ty = parameter
+                .rust_ty
+                .as_ref()
+                .expect("value parameters retain their Rust type");
+            Some(quote! {
+                let #name = <#ty as ::vela_engine::args::FromScriptArg>::from_script_arg(
+                    &args[#index],
+                )?;
+            })
+        })
+        .collect::<Vec<_>>();
+    let host_parameter = signature
+        .parameters
+        .iter()
+        .find(|parameter| matches!(parameter.ty, TypeShape::Host(_, _)))
+        .expect("scoped free return has one host origin");
+    let host_name = format_ident!("__vela_arg_{}", host_parameter.name);
+    let TypeShape::Host(host_ty, host_access) = &host_parameter.ty else {
+        unreachable!();
+    };
+    let host_binding = match host_access {
+        HostAccess::Shared => quote! {
+            let #host_name = __vela_parent_lease
+                .object()
+                .lease_any()
+                .and_then(|object| object.downcast_ref::<#host_ty>())
+                .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(__vela_owner))?;
+        },
+        HostAccess::Exclusive => quote! {
+            let #host_name = __vela_parent_lease
+                .object_mut()
+                .and_then(|object| object.lease_any_mut())
+                .and_then(|object| object.downcast_mut::<#host_ty>())
+                .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(__vela_owner))?;
+        },
+    };
+    let argument_names = signature
+        .parameters
+        .iter()
+        .map(|parameter| format_ident!("__vela_arg_{}", parameter.name))
+        .collect::<Vec<_>>();
+    let wrap_child = match child {
+        HostAccess::Shared => quote! { ::vela_host::lease::shared_scoped_host(__vela_child) },
+        HostAccess::Exclusive => {
+            quote! { ::vela_host::lease::exclusive_scoped_host(__vela_child) }
+        }
+    };
+    let child_reference = match child {
+        HostAccess::Shared => quote! { &#child_ty },
+        HostAccess::Exclusive => quote! { &mut #child_ty },
+    };
+
+    quote! {
+        #[doc(hidden)]
+        #[must_use]
+        pub fn #register_ident(
+            builder: ::vela_engine::builder::EngineBuilder,
+        ) -> ::vela_engine::builder::EngineBuilder {
+            builder.register_scoped_host_fn(
+                #contract_ident().native_function_desc(),
+                move |args| {
+                    let __vela_contract = #contract_ident();
+                    if args.len() != #expected {
+                        return Err(::vela_vm::error::VmError::new(
+                            ::vela_vm::error::VmErrorKind::ArityMismatch {
+                                name: __vela_contract.public_path,
+                                expected: #expected,
+                                actual: args.len(),
+                            },
+                        ));
+                    }
+                    let __vela_requests = vec![#(#request_bindings),*];
+                    ::vela_engine::interop::preflight_host_parameter_leases(&__vela_requests)
+                },
+                move |leases, args| {
+                    let __vela_callable = #contract_ident().public_path;
+                    if args.len() != #expected {
+                        return Err(::vela_vm::error::VmError::new(
+                            ::vela_vm::error::VmErrorKind::ArityMismatch {
+                                name: __vela_callable,
+                                expected: #expected,
+                                actual: args.len(),
+                            },
+                        ));
+                    }
+                    #(#argument_bindings)*
+                    let __vela_owner = match args.iter().find_map(|argument| match argument {
+                        ::vela_vm::owned_value::OwnedValue::HostRef(root) => Some(*root),
+                        _ => None,
+                    }) {
+                        Some(root) => root,
+                        None => return Err(::vela_vm::error::VmError::new(
+                            ::vela_vm::error::VmErrorKind::TypeMismatch {
+                                operation: "scoped host owner",
+                            },
+                        )),
+                    };
+                    let __vela_parent = leases
+                        .first_mut()
+                        .expect("preflight emits the borrowed return owner")
+                        .take();
+                    let __vela_object = ::vela_engine::interop::catch_export_panic(
+                        &__vela_callable,
+                        || ::vela_host::lease::try_scoped_host_cell(
+                            __vela_parent,
+                            move |__vela_parent_lease| {
+                                #host_binding
+                                let __vela_child: #child_reference = #function_ident(#(#argument_names),*);
+                                Ok(#wrap_child)
+                            },
+                        ),
+                    )?;
+                    Ok(::vela_host::adapter::ScopedHostReturn {
+                        object: __vela_object,
+                        access: #child_kind,
+                    })
+                },
+            )
+        }
+
+        #[must_use]
+        pub fn #bundle_ident() -> ::vela_engine::interop::ExportBundle {
+            ::vela_engine::interop::ExportBundle::new(
+                vec![#contract_ident()],
+                #register_ident,
+            )
+        }
+    }
 }
 
 fn function_async_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) -> TokenStream {
@@ -612,6 +799,11 @@ pub(crate) fn method_adapter(
     trait_path: Option<&syn::Path>,
     signature: &ClassifiedSignature,
 ) -> Option<TokenStream> {
+    if signature.supports_sync_scoped_method_adapter() {
+        return Some(method_sync_scoped_host_adapter(
+            method, self_ty, trait_path, signature,
+        ));
+    }
     if signature.supports_async_method_adapter() {
         return Some(method_async_adapter(method, self_ty, trait_path, signature));
     }
@@ -812,6 +1004,165 @@ pub(crate) fn method_adapter(
             })
         }
     })
+}
+
+fn method_sync_scoped_host_adapter(
+    method: &ImplItemFn,
+    self_ty: &syn::Type,
+    trait_path: Option<&syn::Path>,
+    signature: &ClassifiedSignature,
+) -> TokenStream {
+    let method_ident = &method.sig.ident;
+    let contract_ident = format_ident!("vela_callable_contract_{method_ident}");
+    let register_ident = format_ident!("vela_register_export_{method_ident}");
+    let receiver = signature
+        .parameters
+        .first()
+        .expect("scoped method has a receiver");
+    let receiver_kind = match receiver.mode {
+        ParameterMode::SharedHost => quote! { ::vela_host::lease::HostLeaseKind::Shared },
+        ParameterMode::ExclusiveHost => {
+            quote! { ::vela_host::lease::HostLeaseKind::Exclusive }
+        }
+        _ => unreachable!("scoped method receiver is borrowed"),
+    };
+    let receiver_binding = match receiver.mode {
+        ParameterMode::SharedHost => quote! {
+            let __vela_receiver = __vela_parent_lease
+                .object()
+                .lease_any()
+                .and_then(|object| object.downcast_ref::<#self_ty>())
+                .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(receiver.root))?;
+        },
+        ParameterMode::ExclusiveHost => quote! {
+            let __vela_receiver = __vela_parent_lease
+                .object_mut()
+                .and_then(|object| object.lease_any_mut())
+                .and_then(|object| object.downcast_mut::<#self_ty>())
+                .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(receiver.root))?;
+        },
+        _ => unreachable!(),
+    };
+    let ReturnMode::ScopedHost { child, .. } = signature.returns.mode else {
+        unreachable!();
+    };
+    let TypeShape::Host(child_ty, _) = &signature.returns.ty else {
+        unreachable!();
+    };
+    let child_kind = match child {
+        HostAccess::Shared => quote! { ::vela_host::lease::HostLeaseKind::Shared },
+        HostAccess::Exclusive => quote! { ::vela_host::lease::HostLeaseKind::Exclusive },
+    };
+    let child_reference = match child {
+        HostAccess::Shared => quote! { &#child_ty },
+        HostAccess::Exclusive => quote! { &mut #child_ty },
+    };
+    let wrap_child = match child {
+        HostAccess::Shared => quote! { ::vela_host::lease::shared_scoped_host(__vela_child) },
+        HostAccess::Exclusive => {
+            quote! { ::vela_host::lease::exclusive_scoped_host(__vela_child) }
+        }
+    };
+    let expected = signature.parameters.len().saturating_sub(1);
+    let value_bindings = signature
+        .parameters
+        .iter()
+        .skip(1)
+        .enumerate()
+        .map(|(index, parameter)| {
+            let name = format_ident!("__vela_arg_{}", parameter.name);
+            let ty = parameter.rust_ty.as_ref().expect("value parameter type");
+            quote! {
+                let #name = <#ty as ::vela_engine::args::FromScriptArg>::from_script_arg(
+                    &args[#index],
+                )?;
+            }
+        })
+        .collect::<Vec<_>>();
+    let argument_names = signature
+        .parameters
+        .iter()
+        .skip(1)
+        .map(|parameter| format_ident!("__vela_arg_{}", parameter.name))
+        .collect::<Vec<_>>();
+    let call_target = trait_path.map_or_else(
+        || quote! { <#self_ty>::#method_ident },
+        |path| quote! { <#self_ty as #path>::#method_ident },
+    );
+
+    quote! {
+        #[doc(hidden)]
+        #[must_use]
+        pub fn #register_ident(
+            builder: ::vela_engine::builder::EngineBuilder,
+        ) -> ::vela_engine::builder::EngineBuilder {
+            let __vela_contract = Self::#contract_ident();
+            let mut __vela_desc = __vela_contract.native_method_desc(
+                <#self_ty as ::vela_engine::schema::ScriptHostSchema>::script_host_type_desc().key,
+            );
+            __vela_desc.id = ::vela_common::HostMethodId::new(
+                ::core::primitive::u128::from(::vela_common::stable_id(
+                    "host_method",
+                    <#self_ty>::vela_stable_type_path(),
+                    ::core::stringify!(#method_ident),
+                )),
+            );
+            builder.register_native_method_fn(__vela_desc, move |receiver, args, host| {
+                if !receiver.segments.is_empty() {
+                    return Err(::vela_host::lease::host_lease_unsupported(receiver.root).into());
+                }
+                if args.len() != #expected {
+                    return Err(::vela_vm::error::VmError::new(
+                        ::vela_vm::error::VmErrorKind::ArityMismatch {
+                            name: __vela_contract.public_path.clone(),
+                            expected: #expected,
+                            actual: args.len(),
+                        },
+                    ));
+                }
+                #(#value_bindings)*
+                let __vela_requests = [(receiver.root, #receiver_kind)];
+                let mut __vela_invocation_error = None;
+                let __vela_retained = host.adapter.with_scoped_host_return(
+                    &__vela_requests,
+                    &mut |leases| {
+                        let __vela_parent = leases
+                            .first_mut()
+                            .expect("scoped method retains its receiver")
+                            .take();
+                        match ::vela_engine::interop::catch_export_panic(
+                            &__vela_contract.public_path,
+                            || ::vela_host::lease::try_scoped_host_cell(
+                                __vela_parent,
+                                move |__vela_parent_lease| {
+                                    #receiver_binding
+                                    let __vela_child: #child_reference = #call_target(
+                                        __vela_receiver,
+                                        #(#argument_names),*
+                                    );
+                                    Ok(#wrap_child)
+                                },
+                            ),
+                        ) {
+                            Ok(object) => Ok(Some(::vela_host::adapter::ScopedHostReturn {
+                                object,
+                                access: #child_kind,
+                            })),
+                            Err(error) => {
+                                __vela_invocation_error = Some(error);
+                                Ok(None)
+                            }
+                        }
+                    },
+                )?;
+                match __vela_retained {
+                    Some(root) => Ok(::vela_vm::owned_value::OwnedValue::HostRef(root)),
+                    None => Err(__vela_invocation_error
+                        .expect("missing scoped method invocation result")),
+                }
+            })
+        }
+    }
 }
 
 fn method_async_adapter(
