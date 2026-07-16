@@ -12,10 +12,13 @@ history belongs in Git.
 
 The approved unified Rust/Vela interop track in
 [rust-vela-interop-model-plan.md](rust-vela-interop-model-plan.md) is now the
-active execution object. Batch A is establishing the shared callable contract,
+active execution object. Batch A is complete: the shared callable contract,
 deterministic ABI fingerprints and diffs, one effect-to-capability projection,
-the signature classifier, conversion proof surface, and fixed export/bindgen
-authoring decisions before runtime behavior changes.
+ordinary signature classifier, value/host metadata proof traits, explicit
+function/module/method/protocol spellings, stable protocol identity, compiler UI
+fixtures, ABI-policy documentation, and fixed bindgen delivery decisions are
+landed without changing runtime dispatch. Batch B is active on generated export
+bundles, ordinary value adapters, and exact atomic host-reference leases.
 
 The explicit state-storage hard switch has Batches A-F landed, but its final
 Batch G remains queued behind this explicitly scheduled interop track. Its five
@@ -51,7 +54,7 @@ storage Batch G reaches final acceptance.
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
 | M20 | Paused behind Batch G | Resume the cache-family audit after state-storage final acceptance. |
 | M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
-| Rust/Vela interop | Batch A active | Shared callable ABI and compile-time proof surface are in progress. |
+| Rust/Vela interop | Batch B active | Callable proof is complete; ordinary Rust export adapters are in progress. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -116,13 +119,14 @@ storage Batch G reaches final acceptance.
 
 ## Active Gaps
 
-### Unified Rust/Vela Interop Batch A
+### Unified Rust/Vela Interop Batch B
 
-Batch A is active. It must close the fixed export and bindgen decisions, shared
-callable metadata/fingerprints/diffs, normalized effect and capability rules,
-one signature classifier, deterministic conversion families, compile-pass and
-compile-fail proof, stable Vela protocol identities, and the explicit ABI versus
-deployment-policy boundary before ordinary Rust export adapters are added.
+Batch B is active. It must register item and module exports through one
+descriptor/adapter path, acquire complete named host-parameter lease sets
+atomically, prove exact concrete identity before references exist, generate
+method and selected trait-method thunks, and establish deterministic cleanup.
+Owner-frozen borrowed host returns, child lease identity, and root invalidation
+remain part of this checkpoint rather than a separate durable-handle model.
 
 ### State Storage Batch G
 
@@ -259,7 +263,7 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Complete unified Rust/Vela interop Batch A, then execute Batches B-G in
+1. Complete unified Rust/Vela interop Batch B, then execute Batches C-G in
    checkpoint order.
 2. Return to state-storage Batch G and restore its final acceptance.
 3. Resume the M20 cache-family audit against the accepted state model.
