@@ -498,7 +498,7 @@ mod tests {
         assert!(output.contains("fn __vela_rust_level"));
         assert!(output.contains("pub fn level"));
         assert!(output.contains("VELA_INTERCEPT_SLOT_LEVEL"));
-        assert!(output.contains("push_host_mut"));
+        assert!(output.contains("push_positional_host_mut"));
         assert!(output.contains("__vela_rust_level (context , player , amount)"));
     }
 }
