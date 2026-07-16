@@ -2003,6 +2003,21 @@ bindings. `HostRef`, `PathProxy`, lease guards, `CallArgs`, and erased runtime
 values remain internal boundary mechanisms or explicit low-level escape hatches,
 not normal business-function parameters.
 
+### Borrowed Host Returns Freeze Their Parent Owner
+
+A supported Rust `&T`/`&mut T` host return is exposed to Vela as a
+call-tree-scoped HostRef backed by the retained, pinned parent owner/service
+lease and provenance. It does not require a business ID, resolver, or
+generation-based relookup. Shared-origin children permit later shared calls on
+the owner but reject exclusive calls; an exclusive-origin child rejects every
+later owner call. Conflicts fail immediately rather than block. These children
+may propagate through local Vela values and nested Rust/Vela calls in the same
+root, including scoped await suspension, but cannot escape through state,
+globals, the root result, native caches, or unscoped tasks. Root cleanup
+invalidates children and releases parent freezes deterministically without
+depending on GC timing. A durable cross-root HostRef remains a separate,
+explicit model.
+
 ### Trusted Native Mutation Uses A Coarse Call Boundary
 
 Direct Vela field and path mutation remains fine-grained through `HostAccess`.

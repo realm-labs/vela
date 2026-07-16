@@ -77,9 +77,14 @@ record accepted design decisions in `docs/decisions.md`.
 7. A nested cross-language call may derive a scoped child reborrow from a live
    parent lease. It inherits canonical identity and provenance and is not an
    unrelated second acquisition.
-8. Borrowed returns and escaped call-scoped host references are unsupported.
-   Generated references cannot be stored in Vela state, returned to Vela,
-   cached in native state, or moved into an unscoped task.
+8. A supported borrowed host return does not expose a Rust reference. The
+   adapter creates a call-tree-scoped child `HostRef` and retains the parent
+   host owner/service lease for as long as that child may be used. Children
+   derived from a shared parent keep the owner shared-frozen; a child derived
+   from an exclusive parent keeps it exclusive-frozen. These child HostRefs may
+   propagate through ordinary Vela locals, local containers, and nested
+   Rust/Vela calls in the same root call tree, but cannot escape into `state`,
+   `extern state`, globals, native caches, the root result, or an unscoped task.
 9. Direct Vela field, index, and path mutations continue through
    `HostRef`/`HostPath`/`PathProxy` and `HostAccess` with their normal fine-grain
    direct-operation policy. That policy is not imported into ordinary callable
@@ -112,9 +117,11 @@ record accepted design decisions in `docs/decisions.md`.
     call. It is not intercepted or made hot-swappable implicitly.
 17. Optional service hot override uses an immutable dispatch generation pinned
     by the root call. It does not redefine the ordinary callable boundary.
-18. No `unsafe` reference fabrication is allowed. Lease and binding guards use
-    safe Rust and RAII across success, error, panic, cancellation, re-entry
-    failure, and dropped futures.
+18. No `unsafe` reference fabrication is allowed, including from an address or
+    `TypeId` alone. A borrowed-return child is backed by the retained, pinned
+    parent lease and scoped provenance, not by identity guessing. Lease and
+    binding guards use safe Rust and RAII across success, error, panic,
+    cancellation, re-entry failure, and dropped futures.
 19. Scattered Rust functions may use item-level export attributes. Related
     functions and methods use explicit module/impl export groups that infer
     stable paths and base effects, generate one deterministic registration
@@ -302,6 +309,35 @@ exclusive receiver lease. An explicit `#[vela::methods]` block exports its
 supported public methods; private helpers remain ordinary Rust-only methods.
 Per-method `#[vela::export(...)]` is reserved for a rename, access override, or
 additional effects.
+
+Methods may return ordinary Rust host borrows when the receiver is the
+unambiguous owner:
+
+```rust,ignore
+#[vela::methods]
+impl GameService {
+    pub fn player(&self, id: PlayerId) -> Option<&Player> {
+        self.players.get(&id)
+    }
+
+    pub fn player_mut(&mut self, id: PlayerId) -> Option<&mut Player> {
+        self.players.get_mut(&id)
+    }
+}
+```
+
+Vela receives scoped HostRef-backed values with ordinary syntax:
+
+```vela
+let player = service.player(id)?;
+rules.validate(player);
+```
+
+The shared result keeps `service` shared-frozen, so later shared service calls
+remain valid and exclusive calls fail immediately. The mutable result keeps
+`service` exclusive-frozen, so every later service call fails while the result
+remains in its usable root scope. Section 5.5 defines propagation, alias,
+cleanup, and escape rules.
 
 ### 2.4 Export Rust trait implementations
 
@@ -589,6 +625,8 @@ CallableContract {
     callable_kind
     parameters
     return_type
+    return_mode
+    borrowed_return_origin
     sync_or_async
     effects
     access
@@ -624,8 +662,19 @@ ExclusiveHost
 HiddenContext
 ```
 
+Returns independently classify as:
+
+```text
+OwnedValueReturn
+StructuredValueReturn
+ScopedSharedHostReturn { parent_origin }
+ScopedExclusiveHostReturn { parent_origin }
+RuntimeResultReturn
+```
+
 Mode is ABI. Changing a parameter between owned value, `&T`, and `&mut T` is
-not a compatible body-only change. Neither is changing sync/async shape,
+not a compatible body-only change. Neither is changing owned versus scoped
+host return mode, borrowed-return origin/freeze/access mode, sync/async shape,
 parameter order or stable identity, return type, or the effective effect upper
 bound. The derived coarse capability requirement changes with the effect set;
 it is not a separately authored second ABI field.
@@ -724,6 +773,8 @@ capabilities. They resolve a target before the ordinary prepared-call path.
 | `&T` for a registered direct host type | shared host | host object | Exact-object shared lease for the call. |
 | `&mut T` for a registered direct host type | exclusive host | host object | Exact-object exclusive lease for the call. |
 | `&self`, `&mut self` on exported host methods | shared/exclusive host | method receiver | Same classifier and lease model as parameters. |
+| `&T` returned from a supported borrowed host origin | scoped shared host return | read-only host object | Retain the parent lease and create a call-tree-scoped child `HostRef`. |
+| `&mut T` returned from a supported borrowed host origin | scoped exclusive host return | writable host object | Retain the exclusive parent lease and create a call-tree-scoped child `HostRef`. |
 | supported `Option<T>`/`Result<T, E>` | structured value | Option/Result form | Every nested type must be boundary-safe. |
 | `VmResult<T>` return | runtime result | value or call error | Error maps through normal VM diagnostics. |
 
@@ -736,8 +787,11 @@ sync and async execution and cannot be hidden in macro expansion.
 Reject these at export or binding generation time with a diagnostic on the
 exact item or parameter:
 
-- borrowed returns including `&T`, `&mut T`, `&str`, slices, and borrowed
-  container views;
+- borrowed `&str`, slices, container views, or non-host values that cannot be
+  represented as an owner-frozen scoped HostRef;
+- borrowed host returns with no unambiguous retained parent origin, including
+  a free function with multiple possible host parents and no explicit origin;
+- `&mut T` returned from a shared `&self`/`&Owner` origin in the first slice;
 - raw pointers, pinned references, mutex guards, lease guards, task-local
   guards, and implementation types carrying uncontrolled lifetimes;
 - generic exported functions or methods that require Vela monomorphization;
@@ -754,9 +808,27 @@ signature. This must not add script-language generics.
 
 ### 4.3 Return and error mapping
 
-Borrowed values cannot leave an invocation. Initial returns are copied/owned
-boundary values, Runtime-managed Vela values retained by generated bindings, or
-explicit host handles whose ownership already dominates the call.
+Borrowed scalar/container views cannot leave an invocation. A supported host
+borrow may leave the Rust callable only by becoming an owner-frozen scoped
+HostRef. The raw Rust reference remains inside the generated boundary; Vela
+receives a capability-bearing host value whose parent lease and provenance are
+retained by the current root call tree.
+
+The first slice infers the borrowed-return origin from an exported method
+receiver or from the sole eligible borrowed host parameter of a free function.
+If more than one parent could own the result, export fails unless a later
+explicit-origin form is approved. The parent freeze mode follows the origin
+borrow (`&self`/`&Owner` is shared, `&mut self`/`&mut Owner` is exclusive),
+while the child HostRef preserves the returned reference's own read/write
+capability. The initial model rejects a mutable child returned from a shared
+origin instead of attempting a lease upgrade after authored Rust has run.
+
+Approved structured results recursively preserve this rule. For example,
+`Option<&Player>` and `Result<&mut Player, E>` become Option/Result values whose
+success payload is a scoped HostRef. An owned result remains an ordinary copied
+or converted boundary value. A separately designed durable host handle may
+cross root calls later, but stable identity/resolver machinery is not required
+for this initial borrowed-return path.
 
 The generated API must distinguish:
 
@@ -804,8 +876,8 @@ The interop boundary keeps semantic contracts separate from deployment policy.
 Callable ABI contains:
 
 - stable callable identity and kind;
-- ordered parameters, boundary modes, return/error mapping, and sync/async
-  shape;
+- ordered parameters, boundary modes, return/error mapping, borrowed-return
+  origin/freeze/access modes, and sync/async shape;
 - the effective `EffectSet` upper bound;
 - semantic public and reflection-access flags.
 
@@ -926,6 +998,13 @@ not automatically become `&mut Field`; nested paths continue through
 `HostPath`/`HostAccess` unless that nested value is independently registered as
 an exact direct host object.
 
+An owner-frozen borrowed return is a separate scoped proof path, not an
+exception based on pointer guessing. Its target type still needs registered
+script-visible host metadata, but it need not be an independently resolvable
+root object: the retained exact parent lease, the Rust-returned borrow, and the
+call-tree-local slot jointly prove its lifetime. That proof expires with the
+root scope and cannot create a durable HostRef.
+
 ### 5.4 Scoped reborrow provenance
 
 A nested call may safely pass a reborrow of a current Rust reference:
@@ -957,13 +1036,74 @@ The parent lease remains the authority. A child cannot outlive it, change
 identity, bypass an active exclusive chain, or be retained by an unscoped task.
 Pointer address and type alone never authorize a reborrow.
 
-### 5.5 Lifetime, escape, and cleanup
+### 5.5 Owner-frozen borrowed host returns
 
-Invocation-scoped references and handles cannot escape into Vela `state`,
-`extern state`, globals, returned heap containers, a native cache, or an
-unscoped task. The preferred authoring experience diagnoses escape at the write
-site. The minimum runtime requirement is deterministic invalidation when the
-originating scope closes.
+When an exported Rust method or function returns a supported `&T` or `&mut T`,
+the generated adapter retains the parent host owner/service lease instead of
+releasing it at callable return. It allocates a call-tree-local host slot,
+records the parent `LeaseProvenanceId`, result type, child access mode, and root
+execution scope, then exposes that slot to Vela as an ordinary HostRef value.
+The child does not need a business ID, stable resolver, or generation-based
+relookup because the pinned parent and its borrow remain frozen for the child's
+entire usable scope.
+
+Here "service" means the registered Rust host instance that owns the returned
+borrow. It does not require the optional service trait, provider, or dispatch
+slot model from Section 10.
+
+The parent conflict rule is deliberately coarse and non-blocking:
+
+| Live borrowed-return children from one owner | Later calls on that owner |
+| --- | --- |
+| none | shared and exclusive calls allowed |
+| one or more children derived from `&Owner`/`&self` | shared calls allowed; every exclusive call rejected |
+| any child derived from `&mut Owner`/`&mut self` | every shared or exclusive call rejected |
+
+Only a call that returns a live borrowed child retains the freeze. An ordinary
+shared or exclusive call returning an owned value releases its lease normally
+when the call ends. Conflicts fail immediately with a structured owner-busy
+diagnostic; the runtime never waits for a lease and therefore introduces no
+lock-order deadlock path.
+
+Shared-origin methods may be called repeatedly, so Vela may hold multiple
+shared child HostRefs from one owner. After an exclusive-origin borrowed return,
+Vela cannot call the owner again to obtain a second mutable child. Rust code
+that needs to expose multiple disjoint mutable objects must return them from one
+call, for example `Option<(&mut Player, &mut Player)>`; normal Rust type safety
+proves the authored return set and the adapter creates sibling child slots
+under the same retained exclusive parent lease.
+
+Within the root call tree, a borrowed-return HostRef may be assigned, cloned,
+placed in local arrays/records/Option/Result values, returned from a nested Vela
+function to its caller, passed through nested Vela calls, and converted back to
+a scoped Rust `&T`/`&mut T` for another exported Rust call. Its access mode may
+only stay the same or narrow; a shared child can never become mutable. Clones
+share one canonical child identity and do not authorize simultaneous mutable
+reborrows; ordinary alias preflight rejects conflicting sibling uses before
+Rust references are created.
+
+The first implementation may conservatively retain each parent freeze until
+the root call tree finishes, even if the VM can no longer reach an individual
+child. A later deterministic early-release optimization may unfreeze after the
+last child is explicitly dead, but correctness must not depend on GC timing.
+Root completion, error, panic conversion, cancellation, or future drop
+invalidates every child slot and releases its retained parent lease.
+
+This model requires the parent service instance to remain pinned and requires
+all access that could conflict with its Rust borrow to participate in the same
+lease boundary. External Rust code may not bypass the Runtime and mutate the
+service while borrowed-return children are live. A deployment that cannot
+provide that ownership proof must reject borrowed-return export for that
+owner.
+
+### 5.6 Lifetime, escape, and cleanup
+
+Call-tree-scoped borrowed-return HostRefs may propagate through local heap
+containers and nested function results, but cannot escape into Vela `state`,
+`extern state`, globals, the final root result, a native cache, or an unscoped
+task. The preferred authoring experience diagnoses escape at the write site.
+The minimum runtime requirement is deterministic invalidation when the root
+execution scope closes.
 
 RAII releases temporary references, bindings, and leases on:
 
@@ -984,6 +1124,8 @@ Rust export macros generate or register:
 - canonical public path and stable native/method identity;
 - `CallableContract` and ABI fingerprint;
 - parameter names, types, modes, defaults, and docs;
+- return family, borrowed-host origin, child access mode, and retained parent
+  freeze mode where applicable;
 - signature-inferred base effects, explicit additional effects, the normalized
   effective upper bound, derived coarse capabilities, visibility, and
   reflection access;
@@ -1311,6 +1453,10 @@ Trust rules are:
 - Generated Rust bindings expose matching Rust async calls.
 - A host lease crosses suspension only when the scoped async lease model proves
   lifetime, `Send` safety, and cancellation cleanup.
+- A borrowed-return HostRef may cross an awaited suspension in the same root
+  call tree only through that scoped model; its parent owner remains frozen for
+  the suspension, and cancellation or future drop invalidates the child and
+  releases the parent lease.
 - Generated code never turns a borrowed `&mut T` into an unscoped `'static`
   capture.
 - Re-entry while an exclusive lease is held rejects unrelated aliases and
@@ -1373,6 +1519,8 @@ At minimum define stable diagnostics for:
 - unprovable direct-host lease;
 - aliased mutable host arguments;
 - invalid or expired reborrow provenance;
+- borrowed-return parent owner busy;
+- ambiguous or unsupported borrowed-return origin;
 - call-scoped host handle escape;
 - missing exported callable or method;
 - async call from an invalid context;
@@ -1387,7 +1535,7 @@ applicable. They never expose pointer values or raw host addresses.
 | Area | Primary responsibility |
 | --- | --- |
 | `vela_common` / definition IDs | Stable callable, function, method, service, diagnostic, and source identities. |
-| `vela_host` | Exact-object proof, canonical lease identity, atomic requests, reborrow provenance, HostAccess gates, and RAII. |
+| `vela_host` | Exact-object proof, canonical lease identity, atomic requests, reborrow provenance, owner-frozen borrowed-return slots, HostAccess gates, and RAII. |
 | `vela_reflect` | Read-only callable contracts, type and Vela protocol metadata, implemented-protocol relationships, effects, derived coarse capabilities, and origins; no live deployment grants. |
 | `vela_macros` | Rust signature classification, function/inherent/trait export adapters, external-impl UFCS declarations, descriptors, and compile-time diagnostics. |
 | `vela_hir` | Resolve Rust exports like normal functions/methods and retain exact callable identity. |
@@ -1416,9 +1564,10 @@ not start a later batch to hide a failing earlier checkpoint.
 - [ ] A2. Define the shared callable contract, boundary modes, fingerprints,
   normalized effective effects, human-readable ABI diffs, and one canonical
   effect-to-capability projection.
-- [ ] A3. Extract one parameter classifier shared by free functions, context
+- [ ] A3. Extract one signature classifier shared by free functions, context
   functions, host methods, async methods, and optional services. It must return
-  both boundary modes and the signature-inferred base effect.
+  parameter modes, return family and origin, retained freeze/access modes, and
+  the signature-inferred base effect.
 - [ ] A4. Define deterministic conversion traits or generated operations for
   every supported value, host, return, and error family.
 - [ ] A5. Add macro and bindgen compile-pass/compile-fail fixtures for all
@@ -1463,10 +1612,18 @@ removing a redundant explicit effect does not change a callable fingerprint.
 - [ ] B11. Add a declaration-only external-trait adapter for an existing impl
   that cannot be annotated. Require selected signatures, UFCS type checking,
   an already boundary-supported receiver type, and no duplicate Rust impl.
+- [ ] B12. Convert supported `&T`/`&mut T` host returns, including approved
+  Option/Result/tuple shapes, into call-tree-scoped HostRefs backed by the
+  retained parent owner lease and provenance rather than stable-ID relookup.
+- [ ] B13. Implement the shared/exclusive owner-freeze matrix, call-tree-local
+  child slots, read/write capability preservation, immediate owner-busy
+  diagnostics, deterministic root-end invalidation, and rollback when return
+  conversion fails.
 
 Checkpoint: supported Rust exports use ordinary signatures, many related
-functions register as one explicit bundle, and no conflicting reference set
-can enter authored Rust.
+functions register as one explicit bundle, no conflicting reference set can
+enter authored Rust, and supported borrowed host returns become scoped HostRefs
+without an authored wrapper, business identity, or resolver.
 
 ### Batch C: Natural Vela-To-Rust Calls
 
@@ -1526,9 +1683,14 @@ without runtime strings or manual boundary values.
   effects exceed the current Rust callable's effective ceiling before the
   operation or child body runs.
 - [ ] E8. Establish round-trip and boundary-cost benchmarks before optimizing.
+- [ ] E9. Allow borrowed-return HostRefs to propagate through local Vela
+  containers and nested Rust/Vela calls, and across scoped await suspension,
+  while rejecting state/global/root-result/native-cache/unscoped-task escape.
 
-Checkpoint: nested bidirectional calls behave like one call tree and preserve
-Rust alias safety, Runtime policy, and hot-reload ownership.
+Checkpoint: nested bidirectional calls behave like one call tree, borrowed
+host returns may be recomposed within that tree while freezing their parent
+owners, and Rust alias safety, Runtime policy, and hot-reload ownership remain
+preserved.
 
 ### Batch F: Optional Service Slots And Hot Override
 
@@ -1559,7 +1721,8 @@ changing the ordinary interop ABI or active-call selection.
 - [ ] G3. Cover signature conversion, alias rejection, nested reborrow,
   inferred/additional effects, nested effect-ceiling denial, capability denial
   before authored code, policy-versus-ABI separation, local and external trait
-  export, async cancellation, and reload ABI mismatch.
+  export, borrowed-return owner freezing and escape rejection, async
+  cancellation, and reload ABI mismatch.
 - [ ] G4. Document export, binding generation, registration, calling,
   debugging, deployment, activation, and rollback workflows.
 - [ ] G5. Audit public examples and docs for unnecessary `HostRef`, `CallArgs`,
@@ -1586,6 +1749,9 @@ gates pass.
 - [ ] An exported Rust host-mutating function accepts `&mut T` without authored
   host wrappers or a redundant `host_write` annotation.
 - [ ] An exported Rust host method accepts ordinary `&self`/`&mut self`.
+- [ ] An exported method may return supported `&T`/`&mut T` host borrows that
+  Vela receives as ordinary read-only/writable HostRefs without an identity or
+  resolver annotation.
 - [ ] An annotatable Rust trait impl exports through `#[vela::methods]`
   without an inherent forwarding method or user-authored wrapper body.
 - [ ] An existing external trait impl exports a selected, explicitly declared
@@ -1623,7 +1789,19 @@ gates pass.
 - [ ] Opaque adapters with type ID but no exact-object proof are rejected.
 - [ ] Panic, error, cancellation, re-entry failure, and future drop release
   leases.
-- [ ] Borrowed results and scoped-handle escapes fail deterministically.
+- [ ] Multiple shared-origin borrowed returns from one owner coexist and still
+  allow shared owner calls while every exclusive owner call is rejected.
+- [ ] A live exclusive-origin borrowed return rejects every later call on its
+  parent owner, without blocking, until deterministic scope cleanup.
+- [ ] Shared returned children cannot be upgraded to mutable, and an initial
+  `&Owner -> &mut T` return is rejected.
+- [ ] One Rust call may return multiple disjoint mutable references under one
+  retained exclusive parent lease; a second owner call cannot acquire another.
+- [ ] Borrowed-return HostRefs work through local containers and nested
+  Rust/Vela calls but state/global/root-result/native-cache/unscoped-task
+  escapes fail deterministically.
+- [ ] Root success, error, panic, cancellation, and future drop invalidate
+  borrowed-return children and unfreeze their parent owners.
 
 ### 16.3 Direction and nesting equivalence
 
@@ -1685,6 +1863,9 @@ Record reproducible baselines before optimization:
 | Vela-to-Rust exclusive host call | exclusive lease and adapter thunk |
 | Vela-to-Rust exported method | receiver resolution and lease |
 | Vela-to-Rust exported trait method | protocol implementation resolution and lease |
+| shared borrowed host return | child-slot creation and retained shared-owner freeze |
+| exclusive borrowed host return | child-slot creation and retained exclusive-owner freeze |
+| borrowed child passed back to Rust | provenance reborrow without parent reacquisition |
 | Rust-to-Vela generated root call | binding, root host scope, and VM entry |
 | Rust-to-Vela same-session re-entry | child binding and frame push/pop |
 | Vela -> Rust -> Vela round trip | provenance and context inheritance |
@@ -1717,7 +1898,9 @@ This plan does not implement:
 - arbitrary business permission strings in callable contracts, binding
   schemas, or ABI fingerprints;
 - script-language generics or Rust monomorphization from Vela;
-- borrowed data escaping an invocation;
+- owner-frozen borrowed HostRefs escaping their root invocation;
+- indefinite service freezing through persistent state/global/native-cache
+  retention of a borrowed return;
 - downcasting opaque adapters from type ID alone;
 - arbitrary nested `PathProxy` conversion into Rust field references;
 - arbitrary retained cross-language closures in the first slice;
@@ -1796,11 +1979,19 @@ Recommended: whole-service selection first. Defer partial override. If explicit
 delegation to the displaced implementation is required, generate a
 generation-pinned typed delegate; never infer fallback after an error.
 
-### O7. Scoped host-handle escape diagnostics
+### R3. Owner-frozen borrowed host returns
 
-Recommended: recursively reject obvious writes of scoped handles into escaping
-containers/state at the write site and always retain deterministic scope-close
-invalidation as the safety backstop.
+Decision: a supported Rust `&T`/`&mut T` host return becomes a call-tree-scoped
+HostRef backed by a retained parent owner/service lease. It does not require a
+business identity, resolver, or generation-based relookup. Shared-origin
+children keep the owner shared-frozen; exclusive-origin children keep it
+exclusive-frozen. Conflicting owner calls fail immediately rather than wait.
+Children may propagate through local Vela containers and nested Rust/Vela calls
+in the same root, including scoped await suspension, but may not escape through
+state, globals, the root result, native caches, or unscoped tasks. Root cleanup
+invalidates children and releases parent freezes deterministically; correctness
+never depends on GC timing. Durable cross-root host handles remain a separate,
+explicit future model.
 
 ## 20. Suggested First Vertical Slice Task
 
@@ -1820,6 +2011,12 @@ Expected behavior:
     authored effect annotation.
   - One ordinary &self Player method infers host_read and one &mut self method
     infers host_write.
+  - One &self service method returns &Player as a shared scoped HostRef; Vela
+    passes it through a local container and into another Rust function while
+    later shared service calls remain allowed and an exclusive call is denied.
+  - One &mut self service method returns &mut Player as an exclusive scoped
+    HostRef; every later service call is denied without blocking until root
+    cleanup, which invalidates the child and releases the freeze.
   - One context function explicitly adds random or event_emit beyond its
     signature-inferred base.
   - Vela calls all three with normal function/method syntax.
@@ -1846,6 +2043,10 @@ Tests:
   - explicit_effects_only_add_to_inferred_base
   - vela_calls_ordinary_rust_export
   - vela_calls_ordinary_rust_host_method
+  - shared_borrowed_return_freezes_owner_against_exclusive_calls
+  - exclusive_borrowed_return_freezes_owner_against_all_calls
+  - borrowed_return_propagates_through_local_values_and_rust_calls
+  - borrowed_return_escape_and_post_root_use_are_rejected
   - rust_typed_binding_calls_vela_export
   - round_trip_reentry_preserves_one_execution_session
   - nested_reborrow_restores_parent_reference
@@ -1860,7 +2061,8 @@ Do not change:
   - Do not expose HostRef, HostPath, PathProxy, HostLeaseRef, HostLeaseMut,
     CallArgs, OwnedValue, or HostAccess in ordinary authored signatures.
   - Do not introduce a service trait or slot for ordinary function calls.
-  - Do not add script generics, borrowed returns, or arbitrary Rust discovery.
+  - Do not add script generics, durable/unscoped borrowed-return escape, or
+    arbitrary Rust discovery.
   - Do not add another Runtime execution API or frame driver.
   - Do not implement field-level sandboxing inside trusted Rust code.
   - Do not scan arbitrary Rust bodies to guess effects.
@@ -1914,6 +2116,10 @@ The goal is complete only when all of the following are true:
 13. Local and external Rust trait implementations expose only their selected,
     boundary-safe Vela protocol surface and use the ordinary method call,
     lease, reflection, effect, and ABI paths.
-14. Non-service round-trip and optional mixed-service examples, acceptance
+14. Supported borrowed host returns become owner-frozen scoped HostRefs that
+    preserve read/write capability, propagate within one root call tree,
+    reject conflicting owner calls without blocking, and release
+    deterministically without business identity/resolver machinery.
+15. Non-service round-trip and optional mixed-service examples, acceptance
     tests, documentation, benchmarks, formatting, lint, and workspace tests are
     complete and green.
