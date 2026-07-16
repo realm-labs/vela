@@ -3,6 +3,7 @@ use vela_def::StateId;
 
 use crate::{
     error::{HostError, HostErrorKind, HostResult},
+    lease::{ErasedHostLease, HostLeaseKind, host_lease_unsupported},
     path::HostRef,
     resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess},
     target::HostTargetInstance,
@@ -14,6 +15,12 @@ pub struct ExternStateBinding<'a> {
     pub id: StateId,
     pub name: &'a str,
 }
+
+pub type HostLeaseInvoker<'callback> = dyn for<'lease> FnMut(
+        &mut [ErasedHostLease<'lease>],
+        &mut (dyn ScriptStateAdapter + Send),
+    ) -> HostResult<()>
+    + 'callback;
 
 pub trait ScriptStateAdapter {
     fn host_schema_epoch(&self) -> HostSchemaEpoch {
@@ -31,6 +38,25 @@ pub trait ScriptStateAdapter {
 
     fn resolve_host_access(&self, _spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
         Ok(ResolvedHostAccess::generic_target(self.host_schema_epoch()))
+    }
+
+    /// Runs one invocation while holding an atomically acquired set of exact
+    /// direct-host leases.
+    ///
+    /// Generic/opaque adapters deliberately fail closed. Runtime execution
+    /// adapters override this only when their call arguments retain the
+    /// concrete Rust objects and can prove canonical identity and lifetime.
+    fn with_host_leases(
+        &mut self,
+        requests: &[(HostRef, HostLeaseKind)],
+        _invoke: &mut HostLeaseInvoker<'_>,
+    ) -> HostResult<()> {
+        match requests.first() {
+            Some((root, _)) => Err(host_lease_unsupported(*root)),
+            None => Err(HostError::new(HostErrorKind::InvalidArgument {
+                expected: "at least one exact host lease request",
+            })),
+        }
     }
 
     fn read_host(

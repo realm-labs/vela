@@ -173,6 +173,20 @@ pub enum VmErrorKind {
         expected: usize,
         actual: usize,
     },
+    HostArgumentTypeMismatch {
+        callable: String,
+        parameter: String,
+        expected: vela_common::HostTypeId,
+        actual: vela_common::HostTypeId,
+    },
+    AliasedMutableHostArguments {
+        callable: String,
+        first_parameter: String,
+        second_parameter: String,
+    },
+    RustCallablePanicked {
+        callable: String,
+    },
     Host(HostErrorKind),
     Reflect(ReflectErrorKind),
     UnknownRecordField {
@@ -231,6 +245,9 @@ impl VmErrorKind {
             Self::AsyncCallRequiresAwait { .. } => "vm::async_call_requires_await",
             Self::UnknownMethod { .. } => "vm::unknown_method",
             Self::ArityMismatch { .. } => "vm::arity_mismatch",
+            Self::HostArgumentTypeMismatch { .. } => "vm::host_argument_type_mismatch",
+            Self::AliasedMutableHostArguments { .. } => "vm::aliased_mutable_host_arguments",
+            Self::RustCallablePanicked { .. } => "vm::rust_callable_panicked",
             Self::Host(_) => "vm::host_error",
             Self::Reflect(kind) => kind.code(),
             Self::UnknownRecordField { .. } => "vm::unknown_record_field",
@@ -291,6 +308,24 @@ impl VmErrorKind {
                 actual,
             } => {
                 format!("`{name}` expected {expected} arguments but got {actual}")
+            }
+            Self::HostArgumentTypeMismatch {
+                callable,
+                parameter,
+                expected,
+                actual,
+            } => format!(
+                "host parameter `{parameter}` of `{callable}` expected type {expected:?}, found {actual:?}"
+            ),
+            Self::AliasedMutableHostArguments {
+                callable,
+                first_parameter,
+                second_parameter,
+            } => format!(
+                "host parameters `{first_parameter}` and `{second_parameter}` of `{callable}` alias while at least one requires exclusive access"
+            ),
+            Self::RustCallablePanicked { callable } => {
+                format!("exported Rust callable `{callable}` panicked")
             }
             Self::Host(kind) => format!("host error: {kind:?}"),
             Self::Reflect(kind) => kind.message(),

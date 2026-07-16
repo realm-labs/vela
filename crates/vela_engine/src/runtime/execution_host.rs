@@ -1,5 +1,5 @@
 use vela_common::HostMethodId;
-use vela_host::adapter::{ExternStateBinding, ScriptStateAdapter};
+use vela_host::adapter::{ExternStateBinding, HostLeaseInvoker, ScriptStateAdapter};
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::lease::{ErasedHostLease, HostLeaseKind, host_lease_unsupported, host_object_busy};
 use vela_host::path::HostRef;
@@ -240,6 +240,20 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_> {
         self.parent.extern_state_ref(state)
     }
 
+    fn with_host_leases(
+        &mut self,
+        requests: &[(HostRef, HostLeaseKind)],
+        invoke: &mut HostLeaseInvoker<'_>,
+    ) -> HostResult<()> {
+        for (root, _) in requests {
+            if self.args.direct_binding(*root).is_none() {
+                return Err(host_lease_unsupported(*root));
+            }
+        }
+        let mut leases = self.args.take_host_leases(requests)?;
+        invoke(&mut leases, self)
+    }
+
     fn resolve_host_access(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
         match self.args.direct_binding_by_type(spec.plan.root_type) {
             Some((_, HostArgBinding::Shared { object, .. })) => object.resolve_host_target(spec),
@@ -351,6 +365,20 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         self.extern_states
             .host_ref_for_binding(state)
             .or_else(|_| self.fallback.extern_state_ref(state))
+    }
+
+    fn with_host_leases(
+        &mut self,
+        requests: &[(HostRef, HostLeaseKind)],
+        invoke: &mut HostLeaseInvoker<'_>,
+    ) -> HostResult<()> {
+        for (root, _) in requests {
+            if self.extern_states.binding(*root).is_some() {
+                return Err(host_lease_unsupported(*root));
+            }
+        }
+        let mut leases = self.args.take_host_leases(requests)?;
+        invoke(&mut leases, self)
     }
 
     fn resolve_host_access(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {

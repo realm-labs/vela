@@ -79,6 +79,9 @@ pub(crate) fn function_value_adapter(
     item: &ItemFn,
     signature: &ClassifiedSignature,
 ) -> Option<TokenStream> {
+    if signature.supports_sync_host_adapter() {
+        return Some(function_sync_host_adapter(item, signature));
+    }
     if !signature.supports_sync_value_adapter() {
         return None;
     }
@@ -130,6 +133,198 @@ pub(crate) fn function_value_adapter(
             )
         }
     })
+}
+
+fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) -> TokenStream {
+    let function_ident = &item.sig.ident;
+    let contract_ident = format_ident!("vela_callable_contract_{function_ident}");
+    let register_ident = format_ident!("vela_register_export_{function_ident}");
+    let bundle_ident = format_ident!("vela_export_bundle_{function_ident}");
+    let expected = signature
+        .parameters
+        .iter()
+        .filter(|parameter| parameter.mode != ParameterMode::HiddenContext)
+        .count();
+    let mut runtime_argument_index = 0_usize;
+    let request_bindings = signature
+        .parameters
+        .iter()
+        .enumerate()
+        .filter_map(|(contract_index, parameter)| {
+            if parameter.mode == ParameterMode::HiddenContext {
+                return None;
+            }
+            let argument_index = runtime_argument_index;
+            runtime_argument_index += 1;
+            let TypeShape::Host(ty, access) = &parameter.ty else {
+                return None;
+            };
+            let kind = match access {
+                HostAccess::Shared => quote! { ::vela_host::lease::HostLeaseKind::Shared },
+                HostAccess::Exclusive => {
+                    quote! { ::vela_host::lease::HostLeaseKind::Exclusive }
+                }
+            };
+            Some(quote! {
+                ::vela_engine::interop::HostParamLeaseRequest::from_argument(
+                    &__vela_contract,
+                    #contract_index,
+                    #argument_index,
+                    <#ty as ::vela_engine::interop::VelaHostBoundary>::vela_host_type_id(),
+                    #kind,
+                    &args[#argument_index],
+                )?
+            })
+        })
+        .collect::<Vec<_>>();
+    let mut host_lease_index = 0_usize;
+    let mut runtime_argument_index = 0_usize;
+    let argument_bindings = signature
+        .parameters
+        .iter()
+        .map(|parameter| {
+            let name = format_ident!("__vela_arg_{}", parameter.name);
+            if parameter.mode == ParameterMode::HiddenContext {
+                return quote! { let #name = &mut *__vela_context; };
+            }
+            let argument_index = runtime_argument_index;
+            runtime_argument_index += 1;
+            match &parameter.ty {
+                TypeShape::Host(ty, HostAccess::Shared) => {
+                    let lease_index = host_lease_index;
+                    host_lease_index += 1;
+                    quote! {
+                        let #name = __vela_leases
+                            .next()
+                            .and_then(|lease| lease.object().lease_any())
+                            .and_then(|object| object.downcast_ref::<#ty>())
+                            .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(
+                                __vela_requests[#lease_index].canonical_host_identity,
+                            ))?;
+                    }
+                }
+                TypeShape::Host(ty, HostAccess::Exclusive) => {
+                    let lease_index = host_lease_index;
+                    host_lease_index += 1;
+                    quote! {
+                        let #name = __vela_leases
+                            .next()
+                            .and_then(|lease| lease.object_mut())
+                            .and_then(|object| object.lease_any_mut())
+                            .and_then(|object| object.downcast_mut::<#ty>())
+                            .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(
+                                __vela_requests[#lease_index].canonical_host_identity,
+                            ))?;
+                    }
+                }
+                _ => {
+                    let ty = parameter
+                        .rust_ty
+                        .as_ref()
+                        .expect("value parameters retain their Rust type");
+                    quote! {
+                        let #name = <#ty as ::vela_engine::args::FromScriptArg>::from_script_arg(
+                            &args[#argument_index],
+                        )?;
+                    }
+                }
+            }
+        })
+        .collect::<Vec<_>>();
+    let argument_names = signature
+        .parameters
+        .iter()
+        .map(|parameter| format_ident!("__vela_arg_{}", parameter.name))
+        .collect::<Vec<_>>();
+    let invocation = quote! {
+        let mut __vela_leases = __vela_erased_leases.iter_mut();
+        #(#argument_bindings)*
+        ::vela_engine::interop::catch_export_panic(
+            &__vela_contract.public_path,
+            || ::vela_engine::typed::IntoNativeReturn::into_native_return(
+                #function_ident(#(#argument_names),*)
+            ),
+        )
+    };
+    let registration = if signature.has_hidden_context() {
+        quote! {
+            builder.register_context_host_native_fn(
+                __vela_desc,
+                move |args, __vela_outer_context| {
+                    if args.len() != #expected {
+                        return Err(::vela_vm::error::VmError::new(
+                            ::vela_vm::error::VmErrorKind::ArityMismatch {
+                                name: __vela_contract.public_path.clone(),
+                                expected: #expected,
+                                actual: args.len(),
+                            },
+                        ));
+                    }
+                    let __vela_requests = vec![#(#request_bindings),*];
+                    let __vela_lease_requests =
+                        ::vela_engine::interop::preflight_host_parameter_leases(
+                            &__vela_requests,
+                        )?;
+                    __vela_outer_context.with_host_leases(
+                        &__vela_lease_requests,
+                        |__vela_erased_leases, __vela_context| {
+                            #invocation
+                        },
+                    )
+                },
+            )
+        }
+    } else {
+        quote! {
+            builder.register_host_native_fn(__vela_desc, move |args, host| {
+                if args.len() != #expected {
+                    return Err(::vela_vm::error::VmError::new(
+                        ::vela_vm::error::VmErrorKind::ArityMismatch {
+                            name: __vela_contract.public_path.clone(),
+                            expected: #expected,
+                            actual: args.len(),
+                        },
+                    ));
+                }
+                let __vela_requests = vec![#(#request_bindings),*];
+                let __vela_lease_requests =
+                    ::vela_engine::interop::preflight_host_parameter_leases(&__vela_requests)?;
+                let mut __vela_result = None;
+                host.adapter.with_host_leases(
+                    &__vela_lease_requests,
+                    &mut |__vela_erased_leases, _leased_adapter| {
+                        __vela_result = Some((|| -> ::vela_vm::error::VmResult<
+                            ::vela_vm::owned_value::OwnedValue
+                        > {
+                            #invocation
+                        })());
+                        Ok(())
+                    },
+                )?;
+                __vela_result.expect("host lease callback must run exactly once")
+            })
+        }
+    };
+
+    quote! {
+        #[doc(hidden)]
+        #[must_use]
+        pub fn #register_ident(
+            builder: ::vela_engine::builder::EngineBuilder,
+        ) -> ::vela_engine::builder::EngineBuilder {
+            let __vela_contract = #contract_ident();
+            let __vela_desc = __vela_contract.native_function_desc();
+            #registration
+        }
+
+        #[must_use]
+        pub fn #bundle_ident() -> ::vela_engine::interop::ExportBundle {
+            ::vela_engine::interop::ExportBundle::new(
+                vec![#contract_ident()],
+                #register_ident,
+            )
+        }
+    }
 }
 
 pub(crate) fn method_contract(

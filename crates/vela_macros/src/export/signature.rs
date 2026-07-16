@@ -640,6 +640,29 @@ impl ClassifiedSignature {
             .iter()
             .any(|parameter| parameter.mode == ParameterMode::HiddenContext)
     }
+
+    pub(crate) fn supports_sync_host_adapter(&self) -> bool {
+        !self.is_async
+            && matches!(
+                self.returns.mode,
+                ReturnMode::Owned | ReturnMode::Structured
+            )
+            && self.parameters.iter().all(|parameter| {
+                matches!(
+                    parameter.mode,
+                    ParameterMode::Value
+                        | ParameterMode::SharedHost
+                        | ParameterMode::ExclusiveHost
+                        | ParameterMode::HiddenContext
+                )
+            })
+            && self.parameters.iter().any(|parameter| {
+                matches!(
+                    parameter.mode,
+                    ParameterMode::SharedHost | ParameterMode::ExclusiveHost
+                )
+            })
+    }
 }
 
 fn is_str(ty: &Type) -> bool {

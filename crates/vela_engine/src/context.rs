@@ -1,7 +1,9 @@
 use vela_common::{HostMethodId, Span};
 use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
+use vela_host::lease::{ErasedHostLease, HostLeaseKind};
 use vela_host::path::HostPath;
+use vela_host::path::HostRef;
 use vela_host::value::HostValue;
 use vela_vm::HostExecution;
 use vela_vm::budget::ExecutionBudget;
@@ -138,6 +140,55 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
                 .expect("reentrant native context has execution state")
                 .adapter(),
         }
+    }
+
+    /// Executes a generated ordinary Rust context export while retaining its
+    /// complete exact-object lease set. The nested context reuses the same
+    /// engine, access gates, VM state, and budget; only the adapter reborrow is
+    /// narrowed to the lease callback.
+    #[doc(hidden)]
+    pub fn with_host_leases<R>(
+        &mut self,
+        requests: &[(HostRef, HostLeaseKind)],
+        mut invoke: impl for<'lease, 'nested_ctx, 'nested_host> FnMut(
+            &mut [ErasedHostLease<'lease>],
+            &mut NativeCallContext<'nested_ctx, 'nested_host>,
+        ) -> VmResult<R>,
+    ) -> VmResult<R> {
+        let Some(host) = self.host.take() else {
+            return Err(reentry_unavailable());
+        };
+        let engine = self.engine;
+        let mut budget = self.budget.take();
+        let mut result = None;
+        let lease_result = {
+            let access = &mut *host.access;
+            let mut state_values = host.state_values.as_deref_mut();
+            host.adapter
+                .with_host_leases(requests, &mut |leases, leased_adapter| {
+                    let mut leased_host = HostExecution {
+                        adapter: leased_adapter,
+                        access: &mut *access,
+                        state_values: state_values.as_deref_mut(),
+                    };
+                    let mut nested = NativeCallContext::new(
+                        engine,
+                        &mut leased_host,
+                        budget.as_deref_mut(),
+                        None,
+                    );
+                    result = Some(invoke(leases, &mut nested));
+                    Ok(())
+                })
+        };
+        self.host = Some(host);
+        self.budget = budget;
+        lease_result?;
+        result.ok_or_else(|| {
+            vela_vm::error::VmError::new(vela_vm::error::VmErrorKind::TypeMismatch {
+                operation: "host lease callback did not run",
+            })
+        })?
     }
 
     pub fn access(&mut self) -> &mut HostAccess {
