@@ -67,6 +67,12 @@ impl EngineBuilder {
         self
     }
 
+    /// Installs one explicitly generated Rust export bundle.
+    #[must_use]
+    pub fn register_exports(self, bundle: crate::interop::ExportBundle) -> Self {
+        bundle.install(self)
+    }
+
     #[must_use]
     pub fn register_host_type<T: ScriptHostSchema>(self) -> Self {
         self.register_type(T::script_host_type_desc())

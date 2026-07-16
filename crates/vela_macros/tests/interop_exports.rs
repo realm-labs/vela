@@ -1,8 +1,11 @@
 use vela_engine::context::NativeCallContext;
+use vela_engine::engine::Engine;
 use vela_engine::interop::{BoundaryMode, CallableKind};
 use vela_engine::native::EffectSet;
 use vela_macros::{ScriptHost, export, export_module, methods, trait_export};
+use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::VmResult;
+use vela_vm::owned_value::OwnedValue;
 
 #[derive(Debug, ScriptHost)]
 #[script(path = "game::Player")]
@@ -126,7 +129,8 @@ fn trait_export_uses_explicit_vela_protocol_identity() {
 
 #[test]
 fn export_module_groups_public_contracts_once() {
-    let contracts = rules_exports::vela_export_contracts();
+    let bundle = rules_exports::vela_exports();
+    let contracts = bundle.contracts();
 
     assert_eq!(contracts.len(), 2);
     assert_eq!(contracts[0].public_path, "rules::clamp");
@@ -135,4 +139,25 @@ fn export_module_groups_public_contracts_once() {
     assert_eq!(rules_exports::clamp(-2), 0);
     assert_eq!(rules_exports::random_floor(), 1);
     assert_eq!(rules_exports::private_helper(), 2);
+}
+
+#[test]
+fn export_bundle_registers_value_functions_with_engine_once() {
+    let engine = Engine::builder()
+        .register_exports(rules_exports::vela_exports())
+        .build()
+        .expect("export bundle should register");
+    let program = engine
+        .compile_source("fn main() { return rules::clamp(-7); }")
+        .expect("Vela should resolve the exported Rust function");
+    let vm = engine.into_vm_for_program(program.bytecode());
+    let linked = engine
+        .link_compiled_program(program)
+        .expect("exported Rust function should link");
+    let mut budget = ExecutionBudget::unbounded();
+
+    assert_eq!(
+        vm.run_linked_program_with_budget(&linked, "main", &[], &mut budget),
+        Ok(OwnedValue::i64(0))
+    );
 }

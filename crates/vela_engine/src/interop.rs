@@ -7,11 +7,51 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt;
 use std::hash::Hash;
+use std::sync::Arc;
 
 use vela_common::{CallableAsyncness, CapabilitySet, Span, stable_id};
 
 use crate::native::{EffectSet, TypeHint};
 use crate::schema::ScriptHostSchema;
+
+type ExportInstaller =
+    dyn Fn(crate::builder::EngineBuilder) -> crate::builder::EngineBuilder + Send + Sync + 'static;
+
+/// One explicitly generated registration bundle. It carries immutable
+/// callable contracts plus generated erased adapters; there is no inventory or
+/// process-global discovery.
+pub struct ExportBundle {
+    contracts: Vec<CallableContract>,
+    installer: Arc<ExportInstaller>,
+}
+
+impl ExportBundle {
+    #[must_use]
+    pub fn new(
+        contracts: Vec<CallableContract>,
+        installer: impl Fn(crate::builder::EngineBuilder) -> crate::builder::EngineBuilder
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        Self {
+            contracts,
+            installer: Arc::new(installer),
+        }
+    }
+
+    #[must_use]
+    pub fn contracts(&self) -> &[CallableContract] {
+        &self.contracts
+    }
+
+    pub(crate) fn install(
+        self,
+        builder: crate::builder::EngineBuilder,
+    ) -> crate::builder::EngineBuilder {
+        (self.installer)(builder)
+    }
+}
 
 /// Deterministic metadata proof for an ordinary owned/copy boundary value.
 /// Conversion is performed by the existing `IntoScriptArg`/`FromScriptArg`
@@ -373,6 +413,35 @@ impl CallableContract {
     #[must_use]
     pub const fn required_capabilities(&self) -> CapabilitySet {
         self.effects.required_capability_set()
+    }
+
+    /// Projects a Rust function contract into the existing canonical native
+    /// descriptor used by semantic registration and linking.
+    #[must_use]
+    pub fn native_function_desc(&self) -> crate::native::NativeFunctionDesc {
+        let mut desc = crate::native::NativeFunctionDesc::new(
+            self.public_path.clone(),
+            crate::native::NativeFunctionId::new(self.identity.stable),
+        )
+        .returns(self.returns.ty.clone())
+        .effects(self.effects)
+        .asyncness(self.asyncness)
+        .access(crate::native::FunctionAccess {
+            public: self.access.public,
+            reflect_visible: self.access.reflect_visible,
+            reflect_callable: self.access.reflect_callable,
+        });
+        for parameter in self
+            .parameters
+            .iter()
+            .filter(|parameter| parameter.mode != BoundaryMode::HiddenContext)
+        {
+            desc = desc.param(parameter.name.clone(), parameter.ty.clone());
+        }
+        if let Some(docs) = &self.docs {
+            desc = desc.docs(docs.clone());
+        }
+        desc.callable_contract(self.clone())
     }
 
     /// Computes a deterministic fingerprint from semantic ABI only.

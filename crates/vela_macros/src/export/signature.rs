@@ -68,6 +68,7 @@ pub(super) struct ClassifiedParameter {
     pub(super) name: String,
     pub(super) ty: TypeShape,
     pub(super) mode: ParameterMode,
+    pub(super) rust_ty: Option<Type>,
 }
 
 #[derive(Clone)]
@@ -193,6 +194,7 @@ fn classify_signature(
                     } else {
                         ParameterMode::SharedHost
                     },
+                    rust_ty: None,
                 }
             }
             FnArg::Receiver(receiver) => {
@@ -300,6 +302,7 @@ fn classify_parameter(parameter: &PatType) -> Result<ClassifiedParameter> {
             name,
             ty: TypeShape::Unit,
             mode: ParameterMode::HiddenContext,
+            rust_ty: Some(parameter.ty.as_ref().clone()),
         });
     }
     if let Type::Reference(reference) = parameter.ty.as_ref() {
@@ -315,6 +318,7 @@ fn classify_parameter(parameter: &PatType) -> Result<ClassifiedParameter> {
                 name,
                 ty: TypeShape::String,
                 mode: ParameterMode::ReadOnlyValueBorrow,
+                rust_ty: Some(parameter.ty.as_ref().clone()),
             });
         }
         if is_u8_slice(&reference.elem) {
@@ -328,6 +332,7 @@ fn classify_parameter(parameter: &PatType) -> Result<ClassifiedParameter> {
                 name,
                 ty: TypeShape::Bytes,
                 mode: ParameterMode::ReadOnlyValueBorrow,
+                rust_ty: Some(parameter.ty.as_ref().clone()),
             });
         }
         let host_ty = direct_host_type(&reference.elem)?;
@@ -344,12 +349,14 @@ fn classify_parameter(parameter: &PatType) -> Result<ClassifiedParameter> {
             } else {
                 ParameterMode::SharedHost
             },
+            rust_ty: Some(parameter.ty.as_ref().clone()),
         });
     }
     Ok(ClassifiedParameter {
         name,
         ty: classify_owned_type(&parameter.ty)?,
         mode: ParameterMode::Value,
+        rust_ty: Some(parameter.ty.as_ref().clone()),
     })
 }
 
@@ -614,6 +621,24 @@ impl TypeShape {
             self,
             Self::Array(_) | Self::Map(_, _) | Self::Set(_) | Self::Option(_) | Self::Result(_, _)
         )
+    }
+}
+
+impl ClassifiedSignature {
+    pub(crate) fn supports_sync_value_adapter(&self) -> bool {
+        !self.is_async
+            && self.parameters.iter().all(|parameter| {
+                matches!(
+                    parameter.mode,
+                    ParameterMode::Value | ParameterMode::HiddenContext
+                )
+            })
+    }
+
+    pub(crate) fn has_hidden_context(&self) -> bool {
+        self.parameters
+            .iter()
+            .any(|parameter| parameter.mode == ParameterMode::HiddenContext)
     }
 }
 

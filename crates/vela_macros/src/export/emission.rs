@@ -75,6 +75,63 @@ pub(crate) fn function_contract(
     }
 }
 
+pub(crate) fn function_value_adapter(
+    item: &ItemFn,
+    signature: &ClassifiedSignature,
+) -> Option<TokenStream> {
+    if !signature.supports_sync_value_adapter() {
+        return None;
+    }
+    let function_ident = &item.sig.ident;
+    let contract_ident = format_ident!("vela_callable_contract_{function_ident}");
+    let register_ident = format_ident!("vela_register_export_{function_ident}");
+    let bundle_ident = format_ident!("vela_export_bundle_{function_ident}");
+    let value_types = signature
+        .parameters
+        .iter()
+        .filter(|parameter| parameter.mode == ParameterMode::Value)
+        .filter_map(|parameter| parameter.rust_ty.as_ref())
+        .collect::<Vec<_>>();
+    let args_tuple = match value_types.as_slice() {
+        [] => quote! { () },
+        [ty] => quote! { (#ty,) },
+        types => quote! { (#(#types),*) },
+    };
+    let registration = if signature.has_hidden_context() {
+        quote! {
+            builder.register_typed_context_host_native_fn::<#args_tuple, _>(
+                #contract_ident().native_function_desc(),
+                #function_ident,
+            )
+        }
+    } else {
+        quote! {
+            builder.register_typed_native_fn::<#args_tuple, _>(
+                #contract_ident().native_function_desc(),
+                #function_ident,
+            )
+        }
+    };
+
+    Some(quote! {
+        #[doc(hidden)]
+        #[must_use]
+        pub fn #register_ident(
+            builder: ::vela_engine::builder::EngineBuilder,
+        ) -> ::vela_engine::builder::EngineBuilder {
+            #registration
+        }
+
+        #[must_use]
+        pub fn #bundle_ident() -> ::vela_engine::interop::ExportBundle {
+            ::vela_engine::interop::ExportBundle::new(
+                vec![#contract_ident()],
+                #register_ident,
+            )
+        }
+    })
+}
+
 pub(crate) fn method_contract(
     method: &ImplItemFn,
     owner_path: &str,

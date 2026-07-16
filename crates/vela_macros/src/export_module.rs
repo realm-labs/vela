@@ -28,6 +28,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     };
     let mut generated = Vec::new();
     let mut contract_functions = Vec::new();
+    let mut registration_functions = Vec::new();
     for item in items.iter_mut() {
         let Item::Fn(function) = item else {
             continue;
@@ -51,10 +52,18 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             docs.as_deref(),
             &classified,
         ));
+        let adapter = emission::function_value_adapter(function, &classified).ok_or_else(|| {
+            syn::Error::new_spanned(
+                &function.sig,
+                "this export-module signature requires the direct host/async adapter batch",
+            )
+        })?;
+        generated.push(adapter);
         contract_functions.push(format_ident!(
             "vela_callable_contract_{}",
             function.sig.ident
         ));
+        registration_functions.push(format_ident!("vela_register_export_{}", function.sig.ident));
     }
     if contract_functions.is_empty() {
         return Err(syn::Error::new_spanned(
@@ -68,8 +77,15 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     items.push(Item::Verbatim(quote! {
         #[doc(hidden)]
         #[must_use]
-        pub fn vela_export_contracts() -> Vec<::vela_engine::interop::CallableContract> {
-            vec![#(#contract_functions()),*]
+        pub fn vela_exports() -> ::vela_engine::interop::ExportBundle {
+            ::vela_engine::interop::ExportBundle::new(
+                vec![#(#contract_functions()),*],
+                |builder| {
+                    let builder = builder;
+                    #(let builder = #registration_functions(builder);)*
+                    builder
+                },
+            )
         }
     }));
     Ok(quote! { #module })
@@ -158,7 +174,7 @@ mod tests {
 
         assert!(output.contains("game::normalize"));
         assert!(output.contains("game::roll"));
-        assert!(output.contains("vela_export_contracts"));
+        assert!(output.contains("vela_exports"));
         assert!(!output.contains("vela_callable_contract_helper"));
     }
 }

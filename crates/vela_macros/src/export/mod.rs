@@ -36,10 +36,12 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let docs = attrs.docs.clone().or_else(|| docs_from_attrs(&item.attrs));
     let classified = classify_function(&item.sig, &attrs.effects)?;
     let generated = emission::function_contract(&item, &attrs, docs.as_deref(), &classified);
+    let adapter = emission::function_value_adapter(&item, &classified);
 
     Ok(quote! {
         #item
         #generated
+        #adapter
     })
 }
 
