@@ -1,8 +1,8 @@
 # Rust/Vela Unified Interop And Call Model Plan
 
-> Track: ordinary Rust signatures, generated bidirectional bindings, unified
-> call execution, host-reference lease safety, and optional hot-swappable
-> service dispatch
+> Track: ordinary Rust signatures, signature-derived effects, grouped export
+> bundles, generated bidirectional bindings, unified call execution,
+> host-reference lease safety, and optional hot-swappable service dispatch
 >
 > Status: approved design direction; implementation has not started
 >
@@ -102,11 +102,12 @@ record accepted design decisions in `docs/decisions.md`.
     APIs or execution loops.
 14. Nested calls inherit the pinned linked artifact, state view, heap, host
     boundary, remaining budgets, capabilities, tracing, and cancellation.
-15. Sync versus async, parameter modes, return type, and the declared effect
-    upper bound are callable ABI. Coarse required capabilities are a
-    deterministic projection of that effect set. Active deployment grants,
-    callable allowlists, policy profiles, and reflection-tool permissions are
-    runtime policy, not callable ABI.
+15. Sync versus async, parameter modes, return type, and the effective effect
+    upper bound are callable ABI. For Rust exports, the effective set is the
+    signature-inferred base effect union explicit additional effects. Coarse
+    required capabilities are a deterministic projection of that final set.
+    Active deployment grants, callable allowlists, policy profiles, and
+    reflection-tool permissions are runtime policy, not callable ABI.
 16. A direct call to a concrete Rust function or value remains an ordinary Rust
     call. It is not intercepted or made hot-swappable implicitly.
 17. Optional service hot override uses an immutable dispatch generation pinned
@@ -114,6 +115,10 @@ record accepted design decisions in `docs/decisions.md`.
 18. No `unsafe` reference fabrication is allowed. Lease and binding guards use
     safe Rust and RAII across success, error, panic, cancellation, re-entry
     failure, and dropped futures.
+19. Scattered Rust functions may use item-level export attributes. Related
+    functions and methods use explicit module/impl export groups that infer
+    stable paths and base effects, generate one deterministic registration
+    bundle, and never rely on ambient inventory or process-global discovery.
 
 ### Required implementation batches
 
@@ -148,6 +153,9 @@ Do not declare this goal complete while any of the following remains true:
 - callable contracts, binding schemas, ABI fingerprints, or native-call hot
   paths contain arbitrary business permission strings or active deployment
   grants;
+- ordinary `&T`/`&mut T` effects must be repeated manually, or a related
+  function group requires one path prefix and Engine registration call per
+  function;
 - service override remains the only demonstrated use of the interop layer;
 - focused, workspace, formatting, and lint validation are not green.
 
@@ -197,8 +205,9 @@ target authoring experience for statically known cross-language calls.
 An ordinary Rust item is not script-visible merely because it exists. An item
 enters the interop schema only through an approved export attribute, derive,
 registration API, or generated contract. The export surface fixes its stable
-path, signature, effect upper bound, docs, and semantic visibility/reflection
-access. Its coarse capability requirement is derived from the effect set. The
+path, signature, effective effect upper bound, docs, and semantic
+visibility/reflection access. Its coarse capability requirement is derived
+from the effect set. The
 active `ExecutionProfile`, capability grants, callable allowlists, and other
 deployment policy do not enter the export schema or callable fingerprint.
 
@@ -208,17 +217,15 @@ ABI.
 
 ## 2. Target User Experience
 
-The syntax below defines the intended experience. Exact attribute and generated
-binding spelling remains an implementation decision, but the amount of
-business-code ceremony is fixed by this plan.
+The syntax below fixes the intended authoring experience. Minor generated type
+or helper names may change during implementation, but export grouping, path
+defaults, signature-inferred base effects, and explicit-extra-effect spelling
+are part of this plan.
 
 ### 2.1 Export an ordinary Rust function to Vela
 
 ```rust
-#[vela::export(
-    path = "game::grant_exp",
-    effect = "write_host"
-)]
+#[vela::export(path = "game::grant_exp")]
 pub fn grant_exp(player: &mut Player, amount: i64) -> VmResult<()> {
     player.exp += amount.max(0);
     Ok(())
@@ -245,7 +252,7 @@ reference.
 An exported Rust function may request runtime services with a hidden context:
 
 ```rust
-#[vela::export(path = "game::grant_exp", effect = "write_host")]
+#[vela::export(path = "game::grant_exp")]
 pub fn grant_exp(
     _ctx: &mut NativeCallContext<'_, '_>,
     player: &mut Player,
@@ -257,8 +264,8 @@ pub fn grant_exp(
 ```
 
 `NativeCallContext` is supplied by the runtime and is not a Vela-visible
-argument. The runtime checks the coarse capability projection of the declared
-effects before the body starts; the context does not introduce arbitrary
+argument. The runtime checks the coarse capability projection of the effective
+effect set before the body starts; the context does not introduce arbitrary
 business permission strings. Functions that do not need re-entry, state,
 tracing, cancellation, or other runtime services omit it.
 
@@ -267,15 +274,17 @@ tracing, cancellation, or other runtime services omit it.
 ```rust
 #[vela::methods]
 impl Player {
-    #[vela::export(effect = "write_host")]
     pub fn grant_exp(&mut self, amount: i64) -> VmResult<()> {
         self.exp += amount.max(0);
         Ok(())
     }
 
-    #[vela::export(effect = "read_host")]
     pub fn level(&self) -> i64 {
         self.level
+    }
+
+    fn normalize_amount(amount: i64) -> i64 {
+        amount.max(0)
     }
 }
 ```
@@ -289,9 +298,93 @@ let before = player.level();
 
 Receiver syntax is not a special host proxy API. The compiler resolves the
 registered method and the generated adapter performs the required shared or
-exclusive receiver lease.
+exclusive receiver lease. An explicit `#[vela::methods]` block exports its
+supported public methods; private helpers remain ordinary Rust-only methods.
+Per-method `#[vela::export(...)]` is reserved for a rename, access override, or
+additional effects.
 
-### 2.4 Call an exported Vela function from Rust
+### 2.4 Signature-inferred effects and explicit extras
+
+The export macro derives a conservative base effect from the classified Rust
+signature:
+
+| Signature fact | Inferred base effect |
+| --- | --- |
+| no host receiver or host parameter | `pure` |
+| one or more `&T` / `&self` host borrows | `host_read` |
+| any `&mut T` / `&mut self` host borrow | `host_write` |
+
+`host_write` subsumes signature-visible host reads. `HiddenContext` does not by
+itself add an effect. Extra effects that are not visible in the signature use
+an identifier list and are unioned with the inferred base:
+
+```rust,ignore
+#[vela::export(
+    path = "game::roll_and_notify",
+    effects(random, event_emit)
+)]
+pub fn roll_and_notify(
+    ctx: &mut NativeCallContext<'_, '_>,
+    player: &mut Player,
+) -> VmResult<()> {
+    todo!("use capability-scoped random/event APIs through ctx and mutate player")
+}
+```
+
+Explicit effects may widen but never remove the signature-inferred base. The
+effective set, not whether a component was inferred or written, participates
+in the callable fingerprint. Therefore removing a redundant explicit
+`host_write` annotation is not an ABI change.
+
+### 2.5 Bulk export and one-time registration
+
+Hosts with many related functions use one explicit export-module boundary.
+Immediate supported `pub fn` items are exported under the configured prefix;
+private helpers are not:
+
+```rust,ignore
+#[vela::export_module(path = "game")]
+mod exports {
+    pub fn normalize(amount: i64) -> i64 {
+        amount.max(0)
+    }
+
+    pub fn settle_level(
+        ctx: &mut NativeCallContext<'_, '_>,
+        player: &mut Player,
+        amount: i64,
+    ) -> VmResult<Reward> {
+        let mut rules = ctx.bindings::<game_bindings::Rules>()?;
+        let reward = rules.calculate_reward(player, player.level)?;
+        player.exp += amount.max(0);
+        Ok(reward)
+    }
+
+    fn normalize_amount(amount: i64) -> i64 {
+        amount.max(0)
+    }
+}
+```
+
+The module macro derives `game::normalize` and `game::settle_level`, emits one
+deterministic descriptor/adapter bundle, and exposes one generated registration
+entrypoint:
+
+```rust,ignore
+let engine = Engine::builder()
+    .register_exports(exports::vela_exports())
+    .build()?;
+```
+
+Within an export module, a function-level `#[vela::export(...)]` is needed only
+for a rename, access override, docs/metadata override, or explicit additional
+effects. The export module is the explicit approval boundary; this is not
+process-wide discovery or automatic exposure of unrelated Rust items.
+An unsupported immediate public function is a declaration-time error rather
+than being silently skipped; make a helper private or move it outside the
+export module.
+
+### 2.6 Call an exported Vela function from Rust
 
 Vela source:
 
@@ -324,13 +417,13 @@ The binding is runtime-bound authority and compile-time type information, not a
 business-object proxy. A Runtime remains explicit because a Vela function has
 runtime-local code, state, policy, and generation ownership.
 
-### 2.5 Nested Rust-to-Vela re-entry
+### 2.7 Nested Rust-to-Vela re-entry
 
 An exported Rust function can call a typed Vela binding through its active
 context:
 
 ```rust,ignore
-#[vela::export(path = "game::settle_level", effect = "write_host")]
+#[vela::export(path = "game::settle_level")]
 pub fn settle_level(
     ctx: &mut NativeCallContext<'_, '_>,
     player: &mut Player,
@@ -348,7 +441,7 @@ use is suspended by Rust for the child call and resumes afterward. The child
 inherits the current execution session rather than starting a new Runtime
 execution.
 
-### 2.6 Async calls
+### 2.8 Async calls
 
 Vela uses its existing explicit await syntax:
 
@@ -366,7 +459,7 @@ Sync versus async is part of the callable contract. A generated sync binding
 cannot invoke an async target accidentally, and an async binding uses the same
 scoped `Send` execution future and session driver as `Runtime::call_async`.
 
-### 2.7 Optional replaceable service
+### 2.9 Optional replaceable service
 
 Only operations that require implementation selection or hot override need a
 service contract and slot:
@@ -414,7 +507,8 @@ discarding identity distinctions that remain useful.
 
 The contract is reflection metadata and a compile/link/runtime validation
 input. It exposes neither Rust layout nor mutable runtime type structure.
-`effects` is the declared upper bound and deterministically projects to the
+`effects` is the effective upper bound: the signature-inferred base union
+explicit additional effects. It deterministically projects to the
 domain-neutral `CapabilitySet` used by runtime authorization. `access` contains
 semantic public/reflection visibility, not deployment grants or arbitrary
 permission names. The active profile, callable allowlist, host-type allowlist,
@@ -434,7 +528,7 @@ HiddenContext
 
 Mode is ABI. Changing a parameter between owned value, `&T`, and `&mut T` is
 not a compatible body-only change. Neither is changing sync/async shape,
-parameter order or stable identity, return type, or the declared effect upper
+parameter order or stable identity, return type, or the effective effect upper
 bound. The derived coarse capability requirement changes with the effect set;
 it is not a separately authored second ABI field.
 
@@ -582,7 +676,7 @@ An exported Rust body is trusted native code. Before it begins, the runtime
 enforces:
 
 - callable visibility and registration;
-- the declared effect upper bound and its derived coarse capabilities;
+- the effective effect upper bound and its derived coarse capabilities;
 - parameter and return ABI;
 - exact host type and canonical identity;
 - shared/exclusive lease compatibility;
@@ -613,7 +707,7 @@ Callable ABI contains:
 - stable callable identity and kind;
 - ordered parameters, boundary modes, return/error mapping, and sync/async
   shape;
-- the declared `EffectSet` upper bound;
+- the effective `EffectSet` upper bound;
 - semantic public and reflection-access flags.
 
 Deployment policy contains:
@@ -636,6 +730,46 @@ prepared target caches do not depend on a per-user, per-object, or per-call
 permission graph. If mutable policy is introduced later, one coarse
 Runtime-level policy generation may invalidate prepared authorization caches;
 it must not add field-level policy dimensions to ordinary call targets.
+
+### 4.6 Effect inference and nested enforcement
+
+The shared parameter classifier computes the Rust signature's base effect at
+macro expansion time. `SharedHost` contributes `host_read`, `ExclusiveHost`
+contributes `host_write`, and `host_write` dominates `host_read`. Value borrows
+such as `&str` and `&[u8]` do not count as host reads. A hidden
+`NativeCallContext` contributes no effect by itself.
+
+Explicit `effects(...)` entries add to that base. The macro rejects attempts to
+remove or contradict an inferred effect and emits only the final normalized
+`EffectSet` into `CallableContract`, reflection, binding schemas, and ABI
+fingerprints. It does not scan arbitrary Rust function bodies or helper-call
+graphs; such scanning would be incomplete across traits, macros, aliases, and
+conditional compilation.
+
+The unified export path must not inherit the existing shape-specific macro
+fallback that treats every omitted effect as `pure`. Omission means "use the
+classified signature base". Low-level `HostRef`/`NativeCallContext` descriptors
+whose effects are not visible in an ordinary signature continue to declare
+their effects explicitly.
+
+Capability-scoped `NativeCallContext` operations and generated nested bindings
+enforce two conditions before the operation or child callable begins:
+
+1. the requested operation or child's effective effects are a subset of the
+   current Rust callable's effective effect ceiling;
+2. the active Runtime profile grants the derived coarse capabilities.
+
+For example, a signature-inferred `host_write` callable may invoke a pure or
+`host_read` child. It must explicitly add `random` before invoking a child that
+uses randomness. A mismatch fails before the child body runs and never widens
+the parent contract dynamically.
+
+Trusted Rust can still perform an undeclared direct global Rust side effect
+without going through `NativeCallContext`; the runtime cannot introspect or
+undo arbitrary Rust code. Policy-sensitive IO, events, time, random,
+reflection, and re-entry should therefore use capability-scoped context APIs.
+Bypassing them is a trusted-native contract violation, not a reason to add
+proxies to ordinary parameters.
 
 ## 5. Host Lease, Alias, And Lifetime Safety
 
@@ -751,10 +885,27 @@ Rust export macros generate or register:
 - canonical public path and stable native/method identity;
 - `CallableContract` and ABI fingerprint;
 - parameter names, types, modes, defaults, and docs;
-- effect upper bound, derived coarse capabilities, visibility, and reflection
-  access;
+- signature-inferred base effects, explicit additional effects, the normalized
+  effective upper bound, derived coarse capabilities, visibility, and
+  reflection access;
 - the erased export adapter;
 - compile-time rejection for unsupported Rust signatures.
+
+Scattered exports may use item-level `#[vela::export(path = "...")]`. Related
+free functions should use `#[vela::export_module(path = "...")]`, which treats
+supported immediate `pub fn` items as the explicit export set, derives their
+paths from the prefix and Rust names, and generates one deterministic
+`vela_exports()` registration bundle. `#[vela::methods]` provides the same
+explicit block boundary for supported public inherent methods. Private items
+remain Rust-only. Unsupported public functions or methods inside an explicit
+group fail at their declaration instead of silently disappearing from the
+export schema.
+
+The generated bundle is registered once through `EngineBuilder::register_exports`.
+It is an ordinary value produced by generated code, not ambient inventory,
+linker-section discovery, a process-global registry, or runtime source
+scanning. Multiple bundles may be registered explicitly; normal duplicate path
+and stable-identity validation applies to their combined schema.
 
 Duplicate stable identities or public paths are rejected during registration
 or compilation. Macro-generated descriptors and hand-written low-level
@@ -806,7 +957,7 @@ used for linking. It includes:
 - parameter names, types, modes, and defaults;
 - return and error mapping;
 - sync/async shape;
-- effect upper bounds and derived coarse capability requirements;
+- effective effect upper bounds and derived coarse capability requirements;
 - contract fingerprints and source origins.
 
 The schema does not serialize the Runtime's active grants, callable allowlist,
@@ -1018,11 +1169,12 @@ migration design.
 
 ## 11. Effects, Capabilities, And Trust
 
-Every exported callable declares one `EffectSet` upper bound. Its required
-domain-neutral `CapabilitySet` is derived by the same canonical mapping during
-registration, analysis, linking, and runtime dispatch. Callables do not author
-a second capability list and do not carry arbitrary business permission
-strings.
+Every exported callable publishes one normalized effective `EffectSet` upper
+bound. For Rust exports this is the signature-inferred base union explicit
+additional effects. Its required domain-neutral `CapabilitySet` is derived by
+the same canonical mapping during registration, analysis, linking, and runtime
+dispatch. Callables do not author a second capability list and do not carry
+arbitrary business permission strings.
 
 For Vela functions that call other exported functions or service slots, static
 analysis computes the transitive upper bound of known effects and its coarse
@@ -1030,7 +1182,7 @@ capability projection. Runtime checks remain authoritative because the active
 profile, callable surface, allowlists, and slot configuration are
 deployment-specific.
 
-The declared effect upper bound participates in callable ABI. Active grants,
+The effective effect upper bound participates in callable ABI. Active grants,
 the selected `ExecutionProfile`, callable/host-type allowlists, reflection-tool
 permissions, and filesystem policy do not. A policy may reject binding,
 staging, or invocation before authored code runs, but a policy difference must
@@ -1041,6 +1193,8 @@ Trust rules are:
 - Vela direct host operations obey fine-grained HostAccess policy;
 - trusted Rust exports obey callable-level gates and lease safety;
 - a Vela implementation may not widen its declared contract effects;
+- capability-scoped context operations and nested bindings may not exceed the
+  current Rust callable's effective effect ceiling;
 - target kind is recorded for tracing but is not a security decision after
   validation;
 - reflection member `required_permissions` remain reflection tooling/policy
@@ -1155,29 +1309,35 @@ not start a later batch to hide a failing earlier checkpoint.
 
 ### Batch A: Callable Contract And Proof Surface
 
-- [ ] A1. Resolve open spelling and bindgen decisions from Section 19.
+- [ ] A1. Implement the fixed export/effect spelling from Section 2 and resolve
+  the remaining bindgen delivery decisions from Section 19.
 - [ ] A2. Define the shared callable contract, boundary modes, fingerprints,
-  human-readable ABI diffs, and one canonical effect-to-capability projection.
+  normalized effective effects, human-readable ABI diffs, and one canonical
+  effect-to-capability projection.
 - [ ] A3. Extract one parameter classifier shared by free functions, context
-  functions, host methods, async methods, and optional services.
+  functions, host methods, async methods, and optional services. It must return
+  both boundary modes and the signature-inferred base effect.
 - [ ] A4. Define deterministic conversion traits or generated operations for
   every supported value, host, return, and error family.
 - [ ] A5. Add macro and bindgen compile-pass/compile-fail fixtures for all
-  supported and rejected signatures.
+  supported and rejected signatures, inferred effects, and explicit additive
+  effect lists.
 - [ ] A6. Keep deployment grants, allowlists, reflection member permissions,
   and arbitrary business permission strings out of callable contracts,
   binding schemas, fingerprints, and native-call hot paths.
 - [ ] A7. Record callable-grained trusted Rust semantics, the ABI/policy split,
   and deferred field-level sandboxing in architecture and authoring docs.
 
-Checkpoint: valid contracts produce deterministic metadata; invalid signatures
-fail at their declaration without changing runtime behavior; changing Runtime
-grants does not change a callable fingerprint.
+Checkpoint: valid contracts produce deterministic metadata and normalized
+effects; invalid signatures or contradictory effect declarations fail at their
+declaration without changing runtime behavior; changing Runtime grants or
+removing a redundant explicit effect does not change a callable fingerprint.
 
 ### Batch B: Ordinary Rust Exports
 
-- [ ] B1. Support ordinary copied/owned parameters for one canonical Rust
-  export attribute and registration path.
+- [ ] B1. Support ordinary copied/owned parameters for item-level
+  `#[vela::export]` and module-level `#[vela::export_module]` through one
+  canonical descriptor/adapter path.
 - [ ] B2. Support direct `&T` and `&mut T` parameters for synchronous free and
   context functions.
 - [ ] B3. Align exported `&self`/`&mut self` methods with the same classifier.
@@ -1190,9 +1350,13 @@ grants does not change a callable fingerprint.
   cancellation, and dropped futures.
 - [ ] B8. Keep low-level descriptor APIs available without making them the
   default authoring surface.
+- [ ] B9. Generate one deterministic `vela_exports()` bundle per export module
+  and register it explicitly with one `register_exports` call, without ambient
+  inventory or runtime discovery.
 
-Checkpoint: supported Rust exports use ordinary signatures and no conflicting
-reference set can enter authored Rust.
+Checkpoint: supported Rust exports use ordinary signatures, many related
+functions register as one explicit bundle, and no conflicting reference set
+can enter authored Rust.
 
 ### Batch C: Natural Vela-To-Rust Calls
 
@@ -1245,7 +1409,10 @@ without runtime strings or manual boundary values.
 - [ ] E6. Prove budget, coarse capability profile, heap, state, tracing,
   generation, and cancellation inheritance across every language transition
   without a per-call permission graph.
-- [ ] E7. Establish round-trip and boundary-cost benchmarks before optimizing.
+- [ ] E7. Reject a capability-scoped context operation or nested binding whose
+  effects exceed the current Rust callable's effective ceiling before the
+  operation or child body runs.
+- [ ] E8. Establish round-trip and boundary-cost benchmarks before optimizing.
 
 Checkpoint: nested bidirectional calls behave like one call tree and preserve
 Rust alias safety, Runtime policy, and hot-reload ownership.
@@ -1277,8 +1444,9 @@ changing the ordinary interop ABI or active-call selection.
   Rust functions/methods and whose Rust host calls exported Vela functions.
 - [ ] G2. Build a separate mixed Rust/Vela multi-service hot-override example.
 - [ ] G3. Cover signature conversion, alias rejection, nested reborrow,
-  capability denial before authored code, policy-versus-ABI separation, async
-  cancellation, and reload ABI mismatch.
+  inferred/additional effects, nested effect-ceiling denial, capability denial
+  before authored code, policy-versus-ABI separation, async cancellation, and
+  reload ABI mismatch.
 - [ ] G4. Document export, binding generation, registration, calling,
   debugging, deployment, activation, and rollback workflows.
 - [ ] G5. Audit public examples and docs for unnecessary `HostRef`, `CallArgs`,
@@ -1286,8 +1454,9 @@ changing the ordinary interop ABI or active-call selection.
 - [ ] G6. Record reproducible boundary benchmarks and optimize only measured
   regressions.
 - [ ] G7. Audit for duplicate execution APIs, duplicate signature classifiers,
-  string-based linked or permission lookup, live grants in fingerprints,
-  escaped wrappers, and unbounded paths.
+  per-function path/effect ceremony that should be inferred, string-based
+  linked or permission lookup, ambient export discovery, live grants in
+  fingerprints, escaped wrappers, and unbounded paths.
 - [ ] G8. Run focused and full workspace validation gates.
 - [ ] G9. Update `docs/progress.md` only when the repository reaches the
   corresponding checkpoint.
@@ -1302,8 +1471,16 @@ gates pass.
 
 - [ ] An exported Rust scalar function uses only ordinary Rust types.
 - [ ] An exported Rust host-mutating function accepts `&mut T` without authored
-  host wrappers.
+  host wrappers or a redundant `host_write` annotation.
 - [ ] An exported Rust host method accepts ordinary `&self`/`&mut self`.
+- [ ] `&T`/`&self` infer `host_read`, `&mut T`/`&mut self` infer
+  `host_write`, and value-only signatures infer `pure`.
+- [ ] Explicit `effects(...)` add to but cannot remove the signature-inferred
+  base, and only the normalized final set enters the fingerprint.
+- [ ] One explicit export module registers many supported public functions
+  through one generated bundle; private helpers remain unexported.
+- [ ] Unsupported public functions or methods inside an explicit export group
+  fail at declaration time rather than being silently skipped.
 - [ ] Vela calls Rust exports with normal function, qualified, and method
   syntax.
 - [ ] Rust calls a Vela export through generated typed code without `CallArgs`,
@@ -1339,6 +1516,8 @@ gates pass.
 - [ ] Rust -> Vela -> Rust nested dispatch uses one session.
 - [ ] Every direction reports equivalent ABI, capability, budget, alias, and
   cancellation error classes.
+- [ ] A nested binding whose effect set exceeds its Rust parent's effective
+  ceiling fails before the child body runs.
 
 ### 16.4 Reload and generation behavior
 
@@ -1357,6 +1536,8 @@ gates pass.
 ### 16.5 Trust, reflection, and tooling
 
 - [ ] Callable capability denial occurs before a trusted Rust body runs.
+- [ ] Capability-scoped context operations cannot exceed the current Rust
+  callable's effective effect ceiling even when the Runtime grants more.
 - [ ] Callable contracts, generated binding schemas, and fingerprints contain
   no arbitrary business permission strings or active deployment grants.
 - [ ] Coarse callable requirements are derived from `EffectSet`; reflection
@@ -1424,18 +1605,22 @@ This plan does not implement:
 - distributed RPC, process service discovery, or a general dependency
   injection container.
 
-## 19. Open Decisions For Document Iteration
+## 19. Resolved Authoring And Open Delivery Decisions
 
-Resolve each item before the batch that depends on it. The core direction in
-Sections 0-18 is accepted; these are spelling and delivery decisions rather
-than reasons to return to a service-first model.
+The authoring spelling in R1 is resolved. Resolve each remaining open item
+before the batch that depends on it. These delivery decisions are not reasons
+to return to a service-first model.
 
-### O1. Rust export attribute spelling
+### R1. Rust export grouping and effect spelling
 
-Recommended: one canonical `#[vela::export(...)]` surface for free functions
-and methods, with `#[vela::methods]` only marking an impl block when needed.
-Avoid separate macros that create subtly different function/context/host ABI
-models.
+Decision: use item-level `#[vela::export(path = "...")]` for scattered
+functions, `#[vela::export_module(path = "...")]` for an explicit module of
+exported public functions, and `#[vela::methods]` for an explicit inherent-impl
+boundary. Module/impl grouping supplies default paths and one registration
+bundle. Signature classification infers the base effect; per-function
+`#[vela::export(effects(...))]` adds exceptional effects or overrides metadata.
+Avoid separate function/context/host macros or module-wide default effects that
+create subtly different ABI models or silently overgrant every function.
 
 ### O2. Rust binding generation command and artifact
 
@@ -1488,23 +1673,37 @@ Context:
   Do not require service/provider setup for this slice.
 
 Expected behavior:
-  - Rust exports a scalar normalize function with ordinary values.
-  - Rust exports grant_exp(player: &mut Player, amount: i64).
-  - Rust exports one ordinary &self or &mut self Player method.
+  - One export module registers scalar normalize and grant_exp functions with
+    one generated bundle and no repeated game:: path prefix.
+  - normalize infers pure from ordinary value parameters.
+  - grant_exp(player: &mut Player, amount: i64) infers host_write without an
+    authored effect annotation.
+  - One ordinary &self Player method infers host_read and one &mut self method
+    infers host_write.
+  - One context function explicitly adds random or event_emit beyond its
+    signature-inferred base.
   - Vela calls all three with normal function/method syntax.
   - Engine emits a typed Rust binding for a public Vela level_up function.
   - Rust calls level_up through that binding without CallArgs or OwnedValue.
   - One exported Rust function re-enters a Vela helper while holding
     &mut Player, using an authorized child reborrow.
   - Passing one Player to two exclusive Rust parameters fails before Rust runs.
-  - write_host derives the fixed host-write capability requirement, and a
-    Runtime without that grant rejects the call before the Rust body runs.
+  - A nested binding whose effects exceed its Rust parent's ceiling fails
+    before the child body runs.
+  - The inferred host_write effective set derives the fixed host-write
+    capability requirement, and a Runtime without that grant rejects the call
+    before the Rust body runs.
   - The callable fingerprint and generated schema contain no active Runtime
     grants or arbitrary business permission strings.
   - Compatible Vela body reload keeps the Rust binding valid; incompatible ABI
     is rejected.
 
 Tests:
+  - export_module_registers_public_functions_once
+  - private_export_module_helpers_remain_unregistered
+  - unsupported_public_export_group_item_fails_at_declaration
+  - rust_signature_infers_normalized_effects
+  - explicit_effects_only_add_to_inferred_base
   - vela_calls_ordinary_rust_export
   - vela_calls_ordinary_rust_host_method
   - rust_typed_binding_calls_vela_export
@@ -1512,6 +1711,7 @@ Tests:
   - nested_reborrow_restores_parent_reference
   - aliased_mutable_export_arguments_fail_before_invocation
   - coarse_capability_denial_precedes_rust_body
+  - nested_binding_cannot_widen_parent_effects
   - deployment_grants_do_not_change_callable_fingerprint
   - generated_binding_re_resolves_compatible_reload
   - generated_binding_rejects_incompatible_reload_abi
@@ -1523,6 +1723,8 @@ Do not change:
   - Do not add script generics, borrowed returns, or arbitrary Rust discovery.
   - Do not add another Runtime execution API or frame driver.
   - Do not implement field-level sandboxing inside trusted Rust code.
+  - Do not scan arbitrary Rust bodies to guess effects.
+  - Do not add module-wide default effects or ambient export inventory.
   - Do not add arbitrary permission strings or live policy grants to callable
     metadata, generated schemas, or ABI fingerprints.
 
@@ -1554,14 +1756,21 @@ The goal is complete only when all of the following are true:
    artifact generation.
 7. Callable contracts, generated bindings, reflection, tooling, and reload use
    deterministic stable identities and ABI fingerprints.
-8. Callable effects deterministically derive coarse capability requirements;
-   active grants, allowlists, reflection permissions, and arbitrary business
-   permission strings remain outside callable ABI and generated fingerprints.
-9. Trusted Rust mutation is clearly callable-grained: invocation capability
+8. Rust signatures infer normalized `pure`/`host_read`/`host_write` base
+   effects, explicit effects only add to that base, and nested context/binding
+   operations cannot widen the current callable ceiling dynamically.
+9. Explicit export modules and method groups register many supported public
+   callables through deterministic bundles while private helpers remain
+   Rust-only; no ambient inventory or repeated per-function path/effect
+   ceremony is required.
+10. Callable effects deterministically derive coarse capability requirements;
+    active grants, allowlists, reflection permissions, and arbitrary business
+    permission strings remain outside callable ABI and generated fingerprints.
+11. Trusted Rust mutation is clearly callable-grained: invocation capability
    and lease checks are enforced, while field-level sandboxing inside `&mut T`
    bodies is explicitly deferred.
-10. Optional service contracts and hot override reuse the general callable
+12. Optional service contracts and hot override reuse the general callable
    model instead of defining a parallel boundary or execution path.
-11. Non-service round-trip and optional mixed-service examples, acceptance
+13. Non-service round-trip and optional mixed-service examples, acceptance
     tests, documentation, benchmarks, formatting, lint, and workspace tests are
     complete and green.

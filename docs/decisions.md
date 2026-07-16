@@ -2017,17 +2017,38 @@ execution model.
 
 ### Callable ABI Excludes Deployment Policy
 
-An exported callable authors one `EffectSet` upper bound, and the existing
-canonical mapping derives its domain-neutral `CapabilitySet` requirement. The
-effect upper bound is callable ABI; the active `ExecutionProfile`, granted
-capabilities, callable/host-type allowlists, filesystem policy, and reflection
-member permissions are deployment policy and do not enter interop callable or
-generated-binding fingerprints. Reflection `required_permissions` must not be
-reused as native business authorization, and ordinary native dispatch must not
-perform arbitrary permission-string lookups. If Runtime policy later becomes
-mutable, one coarse Runtime policy generation may invalidate prepared
-authorization caches without adding per-field or per-object dimensions to
-ordinary call targets.
+An exported callable publishes one normalized effective `EffectSet`, and the
+existing canonical mapping derives its domain-neutral `CapabilitySet`
+requirement. The effective effect upper bound is callable ABI; the active
+`ExecutionProfile`, granted capabilities, callable/host-type allowlists,
+filesystem policy, and reflection member permissions are deployment policy and
+do not enter interop callable or generated-binding fingerprints. Reflection
+`required_permissions` must not be reused as native business authorization,
+and ordinary native dispatch must not perform arbitrary permission-string
+lookups. If Runtime policy later becomes mutable, one coarse Runtime policy
+generation may invalidate prepared authorization caches without adding
+per-field or per-object dimensions to ordinary call targets.
+
+### Signature-Inferred Effects And Explicit Export Bundles
+
+For Rust exports, the effective effect set is the parameter-classifier-derived
+base union explicit additional effects. Shared host borrows infer `host_read`,
+exclusive host borrows infer `host_write`, and value-only signatures infer
+`pure`; `NativeCallContext` alone adds nothing. `effects(...)` may widen but
+never remove this base. Capability-scoped context operations and generated
+nested bindings reject any operation whose effects exceed the current Rust
+callable's ceiling before it begins, even when the Runtime grants the wider
+capability.
+
+Scattered functions use item-level `#[vela::export]`. Related functions use an
+explicit `#[vela::export_module(path = "...")]` whose supported immediate
+public functions form one approved export set and one generated
+`vela_exports()` registration bundle; private helpers remain Rust-only.
+`#[vela::methods]` is the equivalent explicit inherent-impl boundary. Engine
+registers bundles explicitly through `register_exports`; no ambient inventory,
+process-global discovery, or module-wide default effect is introduced. An
+unsupported public item inside either explicit group fails at declaration time
+instead of being silently omitted.
 
 ### Service Dispatch Is An Optional Interop Extension
 

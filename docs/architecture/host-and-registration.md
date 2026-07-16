@@ -413,12 +413,15 @@ host type method      account.ledger.add(code, amount)
 All three shapes must become registry entries with stable IDs, signatures,
 effects, access metadata, docs, and conversion rules. Scripts call them
 normally, but the VM dispatches them through a native function table and checks
-declared effects against the engine capability profile.
+effective effects against the engine capability profile.
 
-The callable authors one domain-neutral `EffectSet`; its required
-`CapabilitySet` is derived by the canonical effect-to-capability mapping. Native
-export attributes and descriptors do not accept arbitrary business permission
-strings. `FunctionAccess` records semantic public/reflection access, not active
+An ordinary Rust export publishes one domain-neutral `EffectSet` formed from
+its signature-inferred base plus explicit additional effects. `&T`/`&self`
+host borrows infer `host_read`; `&mut T`/`&mut self` infer `host_write`;
+value-only signatures infer `pure`. Its required `CapabilitySet` is derived by
+the canonical effect-to-capability mapping. Native export attributes and
+descriptors do not accept arbitrary business permission strings.
+`FunctionAccess` records semantic public/reflection access, not active
 deployment grants or a callable ACL.
 
 ### Native Function Descriptor
@@ -549,6 +552,26 @@ let engine = Engine::builder()
     .build()?;
 ```
 
+The unified Rust/Vela interop hard switch replaces those shape-specific
+authoring macros with item-level `#[vela::export]`, explicit
+`#[vela::export_module]` groups for many free functions, and
+`#[vela::methods]` groups for inherent methods. An export module treats its
+supported immediate public functions as the approved surface, derives paths
+from one configured prefix, and generates one deterministic `vela_exports()`
+bundle. Engine registers that value once through `register_exports`; there is
+no ambient inventory, linker-section discovery, or runtime source scan.
+An unsupported public item inside an explicit export group is a declaration
+error rather than a silently omitted export; private helpers remain Rust-only.
+
+Signature inference supplies ordinary `pure`/`host_read`/`host_write` cases.
+Only exceptional effects use an additive identifier list such as
+`#[vela::export(effects(random, event_emit))]`. Module-wide default effects are
+not supported because they silently overgrant unrelated functions. The final
+normalized set, rather than annotation spelling, is callable ABI.
+The unified export path does not reuse the older shape-specific macro fallback
+that interprets every omitted effect as `pure`; omission means use the inferred
+signature base.
+
 ### Rust Signature Mapping
 
 Native functions should use narrow conversion rules:
@@ -652,10 +675,13 @@ CallHostMethod(account.ledger, add, ["credit", 100])
 function module/name/stable_id must be unique
 function overloading is unsupported; duplicate script-visible names are invalid
 registered signatures must be deterministic and serializable into TypeRegistry
-effects must be declared up front
+signature classification infers pure/host_read/host_write base effects
+explicit effect lists may add to but never remove the inferred base
+the normalized effective effect set is fixed before registration
 coarse capability requirements are derived from effects
 active ExecutionProfile grants and allowlists are deployment policy, not callable ABI
 capability checks happen before effectful native call dispatch
+context operations and nested bindings cannot exceed the current callable effect ceiling
 native-call authorization does not perform arbitrary business-string lookups
 native calls consume execution budget
 native functions cannot store Value or HostRef beyond the call unless explicitly allowed
