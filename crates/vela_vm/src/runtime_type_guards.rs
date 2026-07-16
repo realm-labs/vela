@@ -981,10 +981,34 @@ fn execute_type_id_guard(
     heap: Option<&HeapExecution<'_>>,
     debug_name: &str,
 ) -> VmResult<()> {
-    if runtime_type_id(value, heap) == Some(expected) {
+    if runtime_type_id(value, heap) == Some(expected)
+        || runtime_unidentified_script_type_name(value, heap) == Some(expected_name)
+    {
         return Ok(());
     }
     Err(type_contract_error(value, expected_name, heap, debug_name))
+}
+
+fn runtime_unidentified_script_type_name<'a>(
+    value: &Value,
+    heap: Option<&'a HeapExecution<'_>>,
+) -> Option<&'a str> {
+    let Value::HeapRef(reference) = value else {
+        return None;
+    };
+    match heap.and_then(|heap| heap.heap.get(*reference)) {
+        Some(HeapValue::Record {
+            type_name,
+            identity: None,
+            ..
+        }) => Some(type_name),
+        Some(HeapValue::Enum {
+            enum_name,
+            identity: None,
+            ..
+        }) => Some(enum_name),
+        _ => None,
+    }
 }
 
 fn execute_variant_id_guard(

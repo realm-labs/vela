@@ -249,6 +249,7 @@ fn compile_program_inner(
         crate::binding_schema::build_rust_binding_schema(
             graph,
             &script_function_symbols,
+            &type_symbols,
             &methods,
             &verified_mir,
         )

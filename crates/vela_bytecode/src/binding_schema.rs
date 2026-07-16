@@ -8,14 +8,16 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::{CallableAsyncness, Capability, CapabilitySet, Span, stable_id};
 use vela_def::{FunctionId, MethodId, TypeId};
+use vela_hir::attributes::schema_id_attr;
 use vela_hir::ids::HirDeclId;
+use vela_hir::ids::ModuleId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, Visibility};
 use vela_hir::script_methods::ScriptMethod;
-use vela_hir::type_hint::{FunctionSignature, HirTypeHint};
+use vela_hir::type_hint::{EnumVariantFieldsHint, FunctionSignature, HirTypeHint, StructFieldHint};
 use vela_mir::{MirAwaitOperation, MirCall, MirEffect, MirStatementKind, MirTerminatorKind};
 use vela_package::{ModulePath, PackageId};
 
-pub const RUST_BINDING_SCHEMA_VERSION: u32 = 1;
+pub const RUST_BINDING_SCHEMA_VERSION: u32 = 2;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RustBindingSchema {
@@ -33,7 +35,57 @@ pub struct RustBindingPackage {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RustBindingModule {
     pub path: ModulePath,
+    pub types: Box<[RustBindingTypeDefinition]>,
     pub callables: Box<[RustBindingCallable]>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum RustBindingTypeDefinition {
+    Record(RustBindingRecord),
+    Enum(RustBindingEnum),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RustBindingRecord {
+    pub type_id: TypeId,
+    pub schema_fingerprint: u64,
+    pub public_path: String,
+    pub rust_name: String,
+    pub fields: Box<[RustBindingField]>,
+    pub docs: Option<String>,
+    pub source: Span,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RustBindingEnum {
+    pub type_id: TypeId,
+    pub schema_fingerprint: u64,
+    pub public_path: String,
+    pub rust_name: String,
+    pub variants: Box<[RustBindingVariant]>,
+    pub docs: Option<String>,
+    pub source: Span,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RustBindingField {
+    pub name: String,
+    pub ty: RustBindingType,
+    pub source: Span,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RustBindingVariant {
+    pub name: String,
+    pub fields: RustBindingVariantFields,
+    pub source: Span,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum RustBindingVariantFields {
+    Unit,
+    Tuple(Box<[RustBindingType]>),
+    Record(Box<[RustBindingField]>),
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -107,6 +159,10 @@ pub enum RustBindingParameterDefault {
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum RustBindingType {
     Any,
+    Definition {
+        type_id: TypeId,
+        public_path: String,
+    },
     Path {
         segments: Box<[String]>,
         arguments: Box<[RustBindingType]>,
@@ -114,21 +170,46 @@ pub enum RustBindingType {
 }
 
 impl RustBindingType {
-    fn from_hint(hint: Option<&HirTypeHint>) -> Self {
-        hint.map_or(Self::Any, |hint| Self::Path {
-            segments: hint.path.clone().into_boxed_slice(),
-            arguments: hint
-                .args
-                .iter()
-                .map(|argument| Self::from_hint(Some(argument)))
-                .collect::<Vec<_>>()
-                .into_boxed_slice(),
+    fn from_hint(
+        graph: &ModuleGraph,
+        module: ModuleId,
+        type_symbols: &BTreeMap<HirDeclId, String>,
+        hint: Option<&HirTypeHint>,
+    ) -> Self {
+        hint.map_or(Self::Any, |hint| {
+            let definition = [DeclarationKind::Struct, DeclarationKind::Enum]
+                .into_iter()
+                .find_map(|kind| graph.resolve_visible_declaration_path(module, &hint.path, kind));
+            if let Some(definition) = definition
+                && let Some(symbol) = type_symbols.get(&definition.id)
+                && let Some(package) = graph.module_package(definition.module)
+            {
+                let explicit =
+                    schema_id_attr(graph.declaration_attrs(definition.id)).map(u128::from);
+                return Self::Definition {
+                    type_id: vela_def::script_type_id(package.as_str(), symbol, explicit),
+                    public_path: symbol.clone(),
+                };
+            }
+            Self::Path {
+                segments: hint.path.clone().into_boxed_slice(),
+                arguments: hint
+                    .args
+                    .iter()
+                    .map(|argument| Self::from_hint(graph, module, type_symbols, Some(argument)))
+                    .collect::<Vec<_>>()
+                    .into_boxed_slice(),
+            }
         })
     }
 
     fn encode(&self, output: &mut String) {
         match self {
             Self::Any => output.push_str("any"),
+            Self::Definition {
+                type_id,
+                public_path,
+            } => output.push_str(&format!("def:{:032x}:{public_path}", type_id.get())),
             Self::Path {
                 segments,
                 arguments,
@@ -280,6 +361,21 @@ impl RustBindingSchema {
             .flat_map(|module| &module.callables)
     }
 
+    pub fn types(&self) -> impl Iterator<Item = &RustBindingTypeDefinition> {
+        self.packages
+            .iter()
+            .flat_map(|package| &package.modules)
+            .flat_map(|module| &module.types)
+    }
+
+    #[must_use]
+    pub fn type_definition(&self, type_id: TypeId) -> Option<&RustBindingTypeDefinition> {
+        self.types().find(|definition| match definition {
+            RustBindingTypeDefinition::Record(record) => record.type_id == type_id,
+            RustBindingTypeDefinition::Enum(item) => item.type_id == type_id,
+        })
+    }
+
     #[must_use]
     pub fn callable(&self, identity: RustBindingCallableIdentity) -> Option<&RustBindingCallable> {
         self.callables()
@@ -290,7 +386,7 @@ impl RustBindingSchema {
     pub(crate) fn empty() -> Self {
         Self {
             version: RUST_BINDING_SCHEMA_VERSION,
-            checksum: stable_id("vela_rust_binding_schema_v1", "", ""),
+            checksum: stable_id("vela_rust_binding_schema_v2", "", ""),
             packages: Box::new([]),
         }
     }
@@ -299,12 +395,124 @@ impl RustBindingSchema {
 pub(crate) fn build_rust_binding_schema(
     graph: &ModuleGraph,
     function_symbols: &BTreeMap<HirDeclId, String>,
+    type_symbols: &BTreeMap<HirDeclId, String>,
     methods: &[ScriptMethod],
     bundle: &vela_mir::OwnedVerifiedMirBundle,
 ) -> Result<RustBindingSchema, String> {
     let effects = effective_effects(bundle);
     let method_owners = method_owners(bundle)?;
-    let mut modules = BTreeMap::<(PackageId, ModulePath), Vec<RustBindingCallable>>::new();
+    #[derive(Default)]
+    struct ModuleBindings {
+        types: Vec<RustBindingTypeDefinition>,
+        callables: Vec<RustBindingCallable>,
+    }
+    let mut modules = BTreeMap::<(PackageId, ModulePath), ModuleBindings>::new();
+
+    for (declaration, symbol) in type_symbols {
+        let metadata = graph
+            .declaration(*declaration)
+            .ok_or_else(|| "binding-schema type has no declaration metadata".to_owned())?;
+        if metadata.visibility != Visibility::Public {
+            continue;
+        }
+        let package = graph
+            .module_package(metadata.module)
+            .cloned()
+            .ok_or_else(|| "binding-schema type has no package owner".to_owned())?;
+        let module = graph
+            .module_path(metadata.module)
+            .cloned()
+            .ok_or_else(|| "binding-schema type has no module owner".to_owned())?;
+        let explicit = schema_id_attr(graph.declaration_attrs(*declaration)).map(u128::from);
+        let type_id = vela_def::script_type_id(package.as_str(), symbol, explicit);
+        let mut definition = match metadata.kind {
+            DeclarationKind::Struct => RustBindingTypeDefinition::Record(RustBindingRecord {
+                type_id,
+                schema_fingerprint: 0,
+                public_path: symbol.clone(),
+                rust_name: metadata.name.clone(),
+                fields: graph
+                    .struct_shape(*declaration)
+                    .ok_or_else(|| "binding-schema record has no shape".to_owned())?
+                    .fields
+                    .iter()
+                    .map(|field| binding_field(graph, metadata.module, type_symbols, field))
+                    .collect::<Vec<_>>()
+                    .into_boxed_slice(),
+                docs: docs(graph.declaration_attrs(*declaration)),
+                source: metadata.span,
+            }),
+            DeclarationKind::Enum => RustBindingTypeDefinition::Enum(RustBindingEnum {
+                type_id,
+                schema_fingerprint: 0,
+                public_path: symbol.clone(),
+                rust_name: metadata.name.clone(),
+                variants: graph
+                    .enum_shape(*declaration)
+                    .ok_or_else(|| "binding-schema enum has no shape".to_owned())?
+                    .variants
+                    .iter()
+                    .map(|variant| RustBindingVariant {
+                        name: variant.name.clone(),
+                        fields: match &variant.fields {
+                            EnumVariantFieldsHint::Unit => RustBindingVariantFields::Unit,
+                            EnumVariantFieldsHint::Tuple(fields) => {
+                                RustBindingVariantFields::Tuple(
+                                    fields
+                                        .iter()
+                                        .map(|field| {
+                                            RustBindingType::from_hint(
+                                                graph,
+                                                metadata.module,
+                                                type_symbols,
+                                                field.type_hint.as_ref(),
+                                            )
+                                        })
+                                        .collect::<Vec<_>>()
+                                        .into_boxed_slice(),
+                                )
+                            }
+                            EnumVariantFieldsHint::Record(fields) => {
+                                RustBindingVariantFields::Record(
+                                    fields
+                                        .iter()
+                                        .map(|field| {
+                                            binding_field(
+                                                graph,
+                                                metadata.module,
+                                                type_symbols,
+                                                field,
+                                            )
+                                        })
+                                        .collect::<Vec<_>>()
+                                        .into_boxed_slice(),
+                                )
+                            }
+                        },
+                        source: variant.span,
+                    })
+                    .collect::<Vec<_>>()
+                    .into_boxed_slice(),
+                docs: docs(graph.declaration_attrs(*declaration)),
+                source: metadata.span,
+            }),
+            _ => continue,
+        };
+        let fingerprint = type_definition_fingerprint(&definition);
+        match &mut definition {
+            RustBindingTypeDefinition::Record(record) => {
+                record.schema_fingerprint = fingerprint;
+            }
+            RustBindingTypeDefinition::Enum(item) => {
+                item.schema_fingerprint = fingerprint;
+            }
+        }
+        modules
+            .entry((package, module))
+            .or_default()
+            .types
+            .push(definition);
+    }
 
     for (declaration, symbol) in function_symbols {
         let metadata = graph
@@ -332,11 +540,18 @@ pub(crate) fn build_rust_binding_schema(
             metadata.name.clone(),
             None,
             signature,
+            graph,
+            metadata.module,
+            type_symbols,
             effects.get(&executable).copied().unwrap_or(MirEffect::PURE),
             docs(graph.declaration_attrs(*declaration)),
             metadata.span,
         );
-        modules.entry((package, module)).or_default().push(callable);
+        modules
+            .entry((package, module))
+            .or_default()
+            .callables
+            .push(callable);
     }
 
     for method in methods {
@@ -368,26 +583,37 @@ pub(crate) fn build_rust_binding_schema(
                 public_path: method.owner().target_type().to_owned(),
             }),
             method.signature(),
+            graph,
+            method.module(),
+            type_symbols,
             effects.get(&executable).copied().unwrap_or(MirEffect::PURE),
             None,
             method.origin().span,
         );
-        modules.entry((package, module)).or_default().push(callable);
+        modules
+            .entry((package, module))
+            .or_default()
+            .callables
+            .push(callable);
     }
 
     let mut packages = BTreeMap::<PackageId, Vec<RustBindingModule>>::new();
-    for ((package, path), mut callables) in modules {
-        callables.sort_by(|left, right| {
+    for ((package, path), mut bindings) in modules {
+        bindings.callables.sort_by(|left, right| {
             left.public_path
                 .cmp(&right.public_path)
                 .then(left.identity.cmp(&right.identity))
         });
+        bindings
+            .types
+            .sort_by(|left, right| type_definition_path(left).cmp(type_definition_path(right)));
         packages
             .entry(package)
             .or_default()
             .push(RustBindingModule {
                 path,
-                callables: callables.into_boxed_slice(),
+                types: bindings.types.into_boxed_slice(),
+                callables: bindings.callables.into_boxed_slice(),
             });
     }
     let packages = packages
@@ -401,28 +627,103 @@ pub(crate) fn build_rust_binding_schema(
         })
         .collect::<Vec<_>>()
         .into_boxed_slice();
-    let canonical = packages
-        .iter()
-        .flat_map(|package| {
-            package.modules.iter().flat_map(move |module| {
-                module.callables.iter().map(move |callable| {
-                    format!(
-                        "{}:{}:{}:{:016x}",
-                        package.id,
-                        module.path.join(),
-                        callable.identity.abi_name(),
-                        callable.contract_fingerprint
-                    )
-                })
-            })
-        })
-        .collect::<Vec<_>>()
-        .join("|");
+    let mut canonical_parts = Vec::new();
+    for package in &packages {
+        for module in &package.modules {
+            let prefix = format!("{}:{}", package.id, module.path.join());
+            for definition in &module.types {
+                canonical_parts.push(match definition {
+                    RustBindingTypeDefinition::Record(record) => format!(
+                        "{prefix}:t:{:032x}:{:016x}",
+                        record.type_id.get(),
+                        record.schema_fingerprint
+                    ),
+                    RustBindingTypeDefinition::Enum(item) => format!(
+                        "{prefix}:t:{:032x}:{:016x}",
+                        item.type_id.get(),
+                        item.schema_fingerprint
+                    ),
+                });
+            }
+            for callable in &module.callables {
+                canonical_parts.push(format!(
+                    "{prefix}:{}:{:016x}",
+                    callable.identity.abi_name(),
+                    callable.contract_fingerprint
+                ));
+            }
+        }
+    }
+    let canonical = canonical_parts.join("|");
     Ok(RustBindingSchema {
         version: RUST_BINDING_SCHEMA_VERSION,
-        checksum: stable_id("vela_rust_binding_schema_v1", "", &canonical),
+        checksum: stable_id("vela_rust_binding_schema_v2", "", &canonical),
         packages,
     })
+}
+
+fn binding_field(
+    graph: &ModuleGraph,
+    module: ModuleId,
+    type_symbols: &BTreeMap<HirDeclId, String>,
+    field: &StructFieldHint,
+) -> RustBindingField {
+    RustBindingField {
+        name: field.name.clone(),
+        ty: RustBindingType::from_hint(graph, module, type_symbols, field.type_hint.as_ref()),
+        source: field.span,
+    }
+}
+
+fn type_definition_path(definition: &RustBindingTypeDefinition) -> &str {
+    match definition {
+        RustBindingTypeDefinition::Record(record) => &record.public_path,
+        RustBindingTypeDefinition::Enum(item) => &item.public_path,
+    }
+}
+
+fn type_definition_fingerprint(definition: &RustBindingTypeDefinition) -> u64 {
+    let mut canonical = String::new();
+    match definition {
+        RustBindingTypeDefinition::Record(record) => {
+            canonical.push_str("record:");
+            canonical.push_str(&record.public_path);
+            for field in &record.fields {
+                canonical.push_str("|f:");
+                canonical.push_str(&field.name);
+                canonical.push(':');
+                field.ty.encode(&mut canonical);
+            }
+        }
+        RustBindingTypeDefinition::Enum(item) => {
+            canonical.push_str("enum:");
+            canonical.push_str(&item.public_path);
+            for variant in &item.variants {
+                canonical.push_str("|v:");
+                canonical.push_str(&variant.name);
+                match &variant.fields {
+                    RustBindingVariantFields::Unit => canonical.push_str(":unit"),
+                    RustBindingVariantFields::Tuple(fields) => {
+                        canonical.push_str(":tuple");
+                        for field in fields {
+                            canonical.push(':');
+                            field.encode(&mut canonical);
+                        }
+                    }
+                    RustBindingVariantFields::Record(fields) => {
+                        canonical.push_str(":record");
+                        for field in fields {
+                            canonical.push_str(":f:");
+                            canonical.push_str(&field.name);
+                            canonical.push(':');
+                            field.ty.encode(&mut canonical);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    stable_id("vela_rust_binding_type_v1", "", &canonical)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -433,17 +734,25 @@ fn callable(
     rust_name: String,
     owner: Option<RustBindingMethodOwner>,
     signature: &FunctionSignature,
+    graph: &ModuleGraph,
+    module: ModuleId,
+    type_symbols: &BTreeMap<HirDeclId, String>,
     effect: MirEffect,
     docs: Option<String>,
     source: Span,
 ) -> RustBindingCallable {
-    let parameters = signature
+    let mut parameters = signature
         .params
         .iter()
         .map(|parameter| RustBindingParameter {
             identity: stable_id("callable_parameter", &public_path, &parameter.name),
             name: parameter.name.clone(),
-            ty: RustBindingType::from_hint(parameter.type_hint.as_ref()),
+            ty: RustBindingType::from_hint(
+                graph,
+                module,
+                type_symbols,
+                parameter.type_hint.as_ref(),
+            ),
             mode: RustBindingBoundaryMode::Value,
             default: parameter
                 .default_value_span
@@ -452,11 +761,20 @@ fn callable(
                 }),
             source: parameter.span,
         })
-        .collect::<Vec<_>>()
-        .into_boxed_slice();
+        .collect::<Vec<_>>();
+    if let Some(owner) = owner.as_ref()
+        && let Some(receiver) = parameters.first_mut()
+        && receiver.name == "self"
+    {
+        receiver.ty = RustBindingType::Definition {
+            type_id: owner.type_id,
+            public_path: owner.public_path.clone(),
+        };
+    }
+    let parameters = parameters.into_boxed_slice();
     let effects = RustBindingEffectSet::from(effect);
     let returns = RustBindingReturn {
-        ty: RustBindingType::from_hint(signature.return_type.as_ref()),
+        ty: RustBindingType::from_hint(graph, module, type_symbols, signature.return_type.as_ref()),
         mode: RustBindingReturnMode::Value,
         error_mode: RustBindingErrorMode::VmResult,
     };
@@ -624,7 +942,7 @@ mod tests {
 
     use super::{
         RUST_BINDING_SCHEMA_VERSION, RustBindingCallableIdentity, RustBindingParameterDefault,
-        RustBindingType,
+        RustBindingType, RustBindingTypeDefinition, RustBindingVariantFields,
     };
     use crate::compiler::compile_test_program;
 
@@ -657,6 +975,15 @@ impl Counter {
             .map(|callable| callable.public_path.as_str())
             .collect::<Vec<_>>();
         assert_eq!(paths, ["Counter::add", "calculate"]);
+        let definitions = schema.types().collect::<Vec<_>>();
+        assert_eq!(definitions.len(), 1);
+        let RustBindingTypeDefinition::Record(counter) = definitions[0] else {
+            panic!("Counter should be a record binding")
+        };
+        assert_eq!(counter.public_path, "Counter");
+        assert_eq!(counter.fields.len(), 1);
+        assert_eq!(counter.fields[0].name, "value");
+        assert_ne!(counter.schema_fingerprint, 0);
         assert!(schema.callables().all(|callable| matches!(
             callable.identity,
             RustBindingCallableIdentity::Function(_) | RustBindingCallableIdentity::Method { .. }
@@ -715,6 +1042,56 @@ impl Counter {
                 .as_ref()
                 .map(|owner| owner.public_path.as_str()),
             Some("Counter")
+        );
+        assert_eq!(
+            method.parameters[0].ty,
+            RustBindingType::Definition {
+                type_id: counter.type_id,
+                public_path: "Counter".to_owned(),
+            }
+        );
+    }
+
+    #[test]
+    fn schema_exports_enum_shapes_and_fingerprints_type_changes() {
+        let first = compile_test_program(
+            SourceId::new(506),
+            r#"
+pub enum Choice { None, One(value: i64), Named { value: i64 } }
+pub fn echo(value: Choice) -> Choice { return value; }
+"#,
+        )
+        .expect("first enum schema");
+        let changed = compile_test_program(
+            SourceId::new(507),
+            r#"
+pub enum Choice { None, One(value: String), Named { value: i64 } }
+pub fn echo(value: Choice) -> Choice { return value; }
+"#,
+        )
+        .expect("changed enum schema");
+
+        let RustBindingTypeDefinition::Enum(item) =
+            first.binding_schema().types().next().expect("enum binding")
+        else {
+            panic!("Choice should be an enum binding")
+        };
+        assert_eq!(item.variants.len(), 3);
+        assert!(matches!(
+            item.variants[0].fields,
+            RustBindingVariantFields::Unit
+        ));
+        assert!(matches!(
+            item.variants[1].fields,
+            RustBindingVariantFields::Tuple(_)
+        ));
+        assert!(matches!(
+            item.variants[2].fields,
+            RustBindingVariantFields::Record(_)
+        ));
+        assert_ne!(
+            first.binding_schema().checksum(),
+            changed.binding_schema().checksum()
         );
     }
 

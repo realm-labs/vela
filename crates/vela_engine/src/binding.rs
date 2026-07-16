@@ -13,7 +13,8 @@ use crate::context::NativeCallContext;
 use crate::runtime::handles::StableVelaFunction;
 use crate::runtime::{CallArgs, CallOptions, Runtime};
 
-pub use vela_vm::error::VmResult;
+pub use vela_vm::error::{VmError, VmErrorKind, VmResult};
+pub use vela_vm::owned_value::OwnedValue;
 
 const DEFAULT_BINDING_EXECUTION_UNITS: u64 = 1_000_000;
 const DEFAULT_BINDING_MEMORY_BYTES: usize = 8 * 1024 * 1024;
@@ -103,7 +104,35 @@ impl BindingCallableSpec {
 pub struct BindingSchemaSpec {
     pub version: u32,
     pub checksum: u64,
+    pub types: &'static [BindingTypeSpec],
     pub callables: &'static [BindingCallableSpec],
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct BindingTypeSpec {
+    pub public_path: &'static str,
+    pub type_id: u128,
+    pub schema_fingerprint: u64,
+    pub source: Span,
+}
+
+impl BindingTypeSpec {
+    #[must_use]
+    pub const fn new(
+        public_path: &'static str,
+        type_id: u128,
+        schema_fingerprint: u64,
+        source: u32,
+        start: u32,
+        end: u32,
+    ) -> Self {
+        Self {
+            public_path,
+            type_id,
+            schema_fingerprint,
+            source: Span::new(SourceId::new(source), start, end),
+        }
+    }
 }
 
 impl BindingSchemaSpec {
@@ -116,8 +145,15 @@ impl BindingSchemaSpec {
         Self {
             version,
             checksum,
+            types: &[],
             callables,
         }
+    }
+
+    #[must_use]
+    pub const fn with_types(mut self, types: &'static [BindingTypeSpec]) -> Self {
+        self.types = types;
+        self
     }
 }
 
@@ -160,6 +196,11 @@ pub enum BindingErrorKind {
         expected_fingerprint: u64,
         actual_fingerprint: u64,
     },
+    MissingType,
+    IncompatibleType {
+        expected_fingerprint: u64,
+        actual_fingerprint: u64,
+    },
     ReentryUnavailable,
 }
 
@@ -170,6 +211,8 @@ impl BindingError {
             BindingErrorKind::SchemaVersion { .. } => "binding.schema.version",
             BindingErrorKind::MissingCallable => "binding.callable.missing",
             BindingErrorKind::IncompatibleCallable { .. } => "binding.callable.incompatible",
+            BindingErrorKind::MissingType => "binding.type.missing",
+            BindingErrorKind::IncompatibleType { .. } => "binding.type.incompatible",
             BindingErrorKind::ReentryUnavailable => "binding.reentry.unavailable",
         }
     }
@@ -193,6 +236,21 @@ impl fmt::Display for BindingError {
             } => write!(
                 formatter,
                 "generated binding target `{}` has contract {:016x}, but the active artifact has {:016x}",
+                self.public_path.unwrap_or("<unknown>"),
+                expected_fingerprint,
+                actual_fingerprint
+            ),
+            BindingErrorKind::MissingType => write!(
+                formatter,
+                "generated binding type `{}` is missing from the active artifact",
+                self.public_path.unwrap_or("<unknown>")
+            ),
+            BindingErrorKind::IncompatibleType {
+                expected_fingerprint,
+                actual_fingerprint,
+            } => write!(
+                formatter,
+                "generated binding type `{}` has schema {:016x}, but the active artifact has {:016x}",
                 self.public_path.unwrap_or("<unknown>"),
                 expected_fingerprint,
                 actual_fingerprint
@@ -461,6 +519,29 @@ fn validate_schema(expected: &BindingSchemaSpec, actual: &RustBindingSchema) -> 
             });
         }
     }
+    for expected_type in expected.types {
+        let Some(actual_type) = actual.type_definition(TypeId::new(expected_type.type_id)) else {
+            return Err(BindingError {
+                kind: BindingErrorKind::MissingType,
+                public_path: Some(expected_type.public_path),
+                source: Some(expected_type.source),
+            });
+        };
+        let actual_fingerprint = match actual_type {
+            vela_bytecode::RustBindingTypeDefinition::Record(record) => record.schema_fingerprint,
+            vela_bytecode::RustBindingTypeDefinition::Enum(item) => item.schema_fingerprint,
+        };
+        if actual_fingerprint != expected_type.schema_fingerprint {
+            return Err(BindingError {
+                kind: BindingErrorKind::IncompatibleType {
+                    expected_fingerprint: expected_type.schema_fingerprint,
+                    actual_fingerprint,
+                },
+                public_path: Some(expected_type.public_path),
+                source: Some(expected_type.source),
+            });
+        }
+    }
     Ok(())
 }
 
@@ -499,6 +580,38 @@ mod tests {
             schema.checksum() ^ fingerprint_delta ^ u64::from(identity_delta != 0),
             callables,
         )))
+    }
+
+    fn function_and_type_spec(schema: &RustBindingSchema) -> &'static BindingSchemaSpec {
+        let spec = function_spec(schema, "echo", 0, 0);
+        let definition = schema.types().next().expect("test type");
+        let (public_path, type_id, fingerprint, source) = match definition {
+            vela_bytecode::RustBindingTypeDefinition::Record(record) => (
+                record.public_path.clone(),
+                record.type_id,
+                record.schema_fingerprint,
+                record.source,
+            ),
+            vela_bytecode::RustBindingTypeDefinition::Enum(item) => (
+                item.public_path.clone(),
+                item.type_id,
+                item.schema_fingerprint,
+                item.source,
+            ),
+        };
+        let public_path = Box::leak(public_path.into_boxed_str());
+        let types = Box::leak(
+            vec![BindingTypeSpec::new(
+                public_path,
+                type_id.get(),
+                fingerprint,
+                source.source.get(),
+                source.start,
+                source.end,
+            )]
+            .into_boxed_slice(),
+        );
+        Box::leak(Box::new((*spec).with_types(types)))
     }
 
     #[test]
@@ -561,6 +674,34 @@ mod tests {
 
         assert_eq!(error.code(), "binding.callable.missing");
         assert_eq!(error.source, Some(source));
+    }
+
+    #[test]
+    fn binding_rejects_incompatible_generated_model_schema() {
+        let engine = Engine::builder().build().expect("engine");
+        let first = engine
+            .compile_source(
+                "pub struct Model { value: i64 } pub fn echo(value: Model) -> Model { return value; }",
+            )
+            .expect("first program");
+        let expected = function_and_type_spec(first.binding_schema());
+        let changed = engine
+            .compile_source(
+                "pub struct Model { value: String } pub fn echo(value: Model) -> Model { return value; }",
+            )
+            .expect("changed program");
+        let mut runtime = Runtime::new(engine, changed).expect("runtime");
+
+        let error = RootBinding::bind(&mut runtime, expected)
+            .err()
+            .expect("model mismatch");
+
+        assert_eq!(error.code(), "binding.type.incompatible");
+        assert_eq!(error.public_path, Some("Model"));
+        assert!(matches!(
+            error.kind,
+            BindingErrorKind::IncompatibleType { .. }
+        ));
     }
 
     #[test]

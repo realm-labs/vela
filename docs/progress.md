@@ -56,7 +56,7 @@ storage Batch G reaches final acceptance.
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
 | M20 | Paused behind Batch G | Resume the cache-family audit after state-storage final acceptance. |
 | M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
-| Rust/Vela interop | Batch D active | Generated typed root and active-session bindings execute scalar Vela exports; conversion and reload closure remain. |
+| Rust/Vela interop | Batch D active | Generated root and active-session bindings execute value/container/record/enum/method/async surfaces across body reload; generated host-reference reborrows remain. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -136,20 +136,23 @@ teardown. Sealed MIR analysis inserts conservative releases after proven last
 uses, at lexical death, on safe branch edges, before dead-value suspension, and
 on await resume after an awaited last use; observable aliases and escapes
 suppress automatic release. The compiler now emits one deterministic,
-policy-free Rust binding schema from public HIR callables and verified MIR,
-including receiver-qualified trait-method identities, structural signatures,
-transitive effects, contract fingerprints, and source origins, and carries it
-unchanged into `LinkedArtifact`. The single `vela_bindgen` generator consumes
-only that schema and deterministically emits package/module-shaped sync and
-async Rust methods, stable target specifications, the schema checksum, and
-source-origin documentation without a second Vela parser. Generated code now
-binds once against the active artifact, validates source-backed contract
-fingerprints, invokes stable function identities with bounded defaults, and
-uses the same linked execution session for `NativeCallContext` re-entry. A
-workspace compile fixture executes the generated scalar surface without
-runtime strings or manual boundary values. Batch D still needs the complete
-owned/custom/host-reference conversion matrix, method receiver generation,
-compatible body-reload proof, and async execution proof.
+policy-free Rust binding schema from public HIR declarations and verified MIR,
+including receiver-qualified method identities, structural callable
+signatures, public record/enum definitions, transitive effects, callable and
+type fingerprints, and source origins, and carries it unchanged into
+`LinkedArtifact`. The single `vela_bindgen` generator consumes only that schema
+and deterministically emits package/module-shaped sync and async Rust methods,
+owned record/enum models, typed script-method receivers, stable target
+specifications, the schema checksum, and source-origin documentation without a
+second Vela parser. Generated code binds once against the active artifact,
+validates source-backed callable and model fingerprints, invokes stable
+function identities with bounded defaults, and uses the same linked execution
+session for `NativeCallContext` re-entry. A workspace fixture executes scalars,
+borrowed strings/bytes, arrays, Option/Result, records, enums, methods, async
+functions, and compatible body reload without runtime strings or manual
+boundary values. Batch D still needs ordinary generated host-reference
+arguments and canonical active-context child reborrows before its checkpoint
+closes.
 
 ### State Storage Batch G
 

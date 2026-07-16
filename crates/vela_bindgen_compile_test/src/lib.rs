@@ -43,6 +43,29 @@ pub fn call_generated_conversions(
     Ok((text, bytes, first, maybe, outcome))
 }
 
+pub type ModelResults = (
+    vela_bindings::types::Point,
+    i64,
+    vela_bindings::types::Choice,
+);
+
+pub fn call_generated_models(
+    runtime: &mut vela_engine::runtime::Runtime,
+) -> Result<ModelResults, String> {
+    let mut package = vela_bindings::bind(runtime).map_err(|error| error.to_string())?;
+    let mut module = package.dev_vela_anonymous_root_module();
+    let point = module
+        .shift(vela_bindings::types::Point { x: 1, y: 2 })
+        .map_err(|error| error.to_string())?;
+    let sum = module
+        .sum(point.clone())
+        .map_err(|error| error.to_string())?;
+    let choice = module
+        .echo_choice(vela_bindings::types::Choice::Named { value: 7 })
+        .map_err(|error| error.to_string())?;
+    Ok((point, sum, choice))
+}
+
 pub fn call_generated_active(
     context: &mut vela_engine::context::NativeCallContext<'_, '_>,
     left: i64,
@@ -86,6 +109,14 @@ mod tests {
         assert_eq!(
             ready(super::call_generated_label(&mut runtime)),
             Ok("value".to_owned())
+        );
+        assert_eq!(
+            super::call_generated_models(&mut runtime),
+            Ok((
+                super::vela_bindings::types::Point { x: 2, y: 3 },
+                5,
+                super::vela_bindings::types::Choice::Named { value: 7 },
+            ))
         );
     }
 

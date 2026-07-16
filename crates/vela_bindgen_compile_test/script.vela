@@ -6,3 +6,17 @@ pub fn bytes_len(value: Bytes) -> i64 { return value.len(); }
 pub fn first(values: Array<i64>) -> i64 { return values[0]; }
 pub fn maybe(value: Option<i64>) -> Option<i64> { return value; }
 pub fn outcome(value: Result<i64, String>) -> Result<i64, String> { return value; }
+
+pub struct Point { x: i64, y: i64 }
+pub enum Choice { None, One(value: i64), Named { value: i64 } }
+
+pub fn shift(point: Point) -> Point {
+    return Point { x: point.x + 1, y: point.y + 1 };
+}
+
+pub fn echo_choice(value: Choice) -> Choice { return value; }
+pub fn make_choice() -> Choice { return Choice::Named { value: 11 }; }
+
+impl Point {
+    pub fn sum(self) -> i64 { return self.x + self.y; }
+}

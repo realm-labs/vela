@@ -1,9 +1,10 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{self, Write};
 
 use vela_bytecode::{
     RUST_BINDING_SCHEMA_VERSION, RustBindingCallable, RustBindingCallableIdentity,
-    RustBindingModule, RustBindingSchema, RustBindingType,
+    RustBindingModule, RustBindingSchema, RustBindingType, RustBindingTypeDefinition,
+    RustBindingVariantFields,
 };
 use vela_common::Span;
 
@@ -85,6 +86,7 @@ pub fn generate_rust_bindings(
         })
     })?;
     let modules = collect_modules(schema, &mut diagnostics);
+    validate_types(schema, &mut diagnostics);
     if !diagnostics.is_empty() {
         return Err(RustBindingGenerationError {
             diagnostics: diagnostics.into_boxed_slice(),
@@ -100,7 +102,11 @@ pub fn generate_rust_bindings(
         schema.checksum()
     )
     .expect("writing to String");
-    writeln!(code, "#[allow(clippy::all, dead_code)]").expect("writing to String");
+    writeln!(
+        code,
+        "#[allow(clippy::all, dead_code, non_camel_case_types)]"
+    )
+    .expect("writing to String");
     writeln!(code, "pub mod {module_name} {{").expect("writing to String");
     writeln!(
         code,
@@ -114,7 +120,15 @@ pub fn generate_rust_bindings(
         schema.checksum()
     )
     .expect("writing to String");
+    writeln!(
+        code,
+        "    fn conversion_error(expected: &'static str) -> ::vela_engine::binding::VmError {{"
+    )
+    .expect("writing to String");
+    writeln!(code, "        ::vela_engine::binding::VmError::new(::vela_engine::binding::VmErrorKind::TypeContractViolation {{ expected: expected.to_owned(), actual: \"incompatible generated binding value\".to_owned(), debug_name: expected.to_owned() }})").expect("writing to String");
+    writeln!(code, "    }}").expect("writing to String");
     render_specs(&mut code, &modules, schema);
+    render_types(&mut code, schema);
     render_package(&mut code, &modules);
     for module in &modules {
         render_module(&mut code, module);
@@ -126,6 +140,58 @@ pub fn generate_rust_bindings(
         schema_version: schema.version(),
         schema_checksum: schema.checksum(),
     })
+}
+
+fn validate_types(schema: &RustBindingSchema, diagnostics: &mut Vec<RustBindingDiagnostic>) {
+    let mut generated_names = BTreeMap::<String, (&str, Span)>::new();
+    for definition in schema.types() {
+        let (public_path, source) = match definition {
+            RustBindingTypeDefinition::Record(record) => {
+                for field in &record.fields {
+                    let _ = render_type(&field.ty, field.source, diagnostics);
+                }
+                (&record.public_path, record.source)
+            }
+            RustBindingTypeDefinition::Enum(item) => {
+                for variant in &item.variants {
+                    match &variant.fields {
+                        RustBindingVariantFields::Unit => {}
+                        RustBindingVariantFields::Tuple(fields) => {
+                            for field in fields {
+                                let _ = render_type(field, variant.source, diagnostics);
+                            }
+                        }
+                        RustBindingVariantFields::Record(fields) => {
+                            for field in fields {
+                                let _ = render_type(&field.ty, field.source, diagnostics);
+                            }
+                        }
+                    }
+                }
+                (&item.public_path, item.source)
+            }
+        };
+        let name = generated_type_name(public_path);
+        if name.is_empty() {
+            diagnostics.push(RustBindingDiagnostic {
+                code: "bindgen::invalid_type_name",
+                message: format!(
+                    "Vela type `{public_path}` cannot be represented as a generated Rust type"
+                ),
+                source: Some(source),
+            });
+            continue;
+        }
+        if let Some((other_path, _)) = generated_names.insert(name.clone(), (public_path, source)) {
+            diagnostics.push(RustBindingDiagnostic {
+                code: "bindgen::type_name_collision",
+                message: format!(
+                    "Vela types `{other_path}` and `{public_path}` both map to generated Rust type `{name}`"
+                ),
+                source: Some(source),
+            });
+        }
+    }
 }
 
 struct GeneratedModule<'schema> {
@@ -286,8 +352,278 @@ fn render_specs(output: &mut String, modules: &[GeneratedModule<'_>], schema: &R
             writeln!(output, "        {constructor},").expect("writing to String");
         }
     }
+    writeln!(output, "    ]).with_types(&[").expect("writing to String");
+    for package in schema.packages() {
+        for module in &package.modules {
+            for definition in &module.types {
+                let (path, id, fingerprint, source) = match definition {
+                    RustBindingTypeDefinition::Record(record) => (
+                        &record.public_path,
+                        record.type_id,
+                        record.schema_fingerprint,
+                        record.source,
+                    ),
+                    RustBindingTypeDefinition::Enum(item) => (
+                        &item.public_path,
+                        item.type_id,
+                        item.schema_fingerprint,
+                        item.source,
+                    ),
+                };
+                writeln!(
+                    output,
+                    "        ::vela_engine::binding::BindingTypeSpec::new({path:?}, 0x{:032x}, 0x{fingerprint:016x}, {}, {}, {}),",
+                    id.get(), source.source.get(), source.start, source.end
+                )
+                .expect("writing to String");
+            }
+        }
+    }
     writeln!(output, "    ]);").expect("writing to String");
-    let _ = schema;
+}
+
+fn render_types(output: &mut String, schema: &RustBindingSchema) {
+    writeln!(output, "    pub mod types {{").expect("writing to String");
+    for definition in schema
+        .packages()
+        .iter()
+        .flat_map(|package| &package.modules)
+        .flat_map(|module| &module.types)
+    {
+        match definition {
+            RustBindingTypeDefinition::Record(record) => render_record(output, record),
+            RustBindingTypeDefinition::Enum(item) => render_enum(output, item),
+        }
+    }
+    writeln!(output, "    }}").expect("writing to String");
+}
+
+fn render_record(output: &mut String, record: &vela_bytecode::RustBindingRecord) {
+    let name = generated_type_name(&record.public_path);
+    writeln!(output, "        #[derive(Clone, Debug, PartialEq)]").expect("writing to String");
+    writeln!(output, "        pub struct {name} {{").expect("writing to String");
+    for field in &record.fields {
+        let field_name = rust_identifier(&field.name, NameStyle::Snake)
+            .unwrap_or_else(|| "invalid_field".to_owned());
+        let ty = render_type(&field.ty, field.source, &mut Vec::new());
+        writeln!(output, "            pub {field_name}: {ty},").expect("writing to String");
+    }
+    writeln!(output, "        }}").expect("writing to String");
+    writeln!(
+        output,
+        "        impl ::vela_engine::args::IntoScriptArg for {name} {{"
+    )
+    .expect("writing to String");
+    writeln!(
+        output,
+        "            fn into_script_arg(self) -> ::vela_engine::binding::OwnedValue {{"
+    )
+    .expect("writing to String");
+    writeln!(
+        output,
+        "                ::vela_engine::binding::OwnedValue::record({:?}, [",
+        record.public_path
+    )
+    .expect("writing to String");
+    for field in &record.fields {
+        let field_name = rust_identifier(&field.name, NameStyle::Snake)
+            .unwrap_or_else(|| "invalid_field".to_owned());
+        writeln!(output, "                    ({:?}, ::vela_engine::args::IntoScriptArg::into_script_arg(self.{field_name})),", field.name).expect("writing to String");
+    }
+    writeln!(output, "                ])").expect("writing to String");
+    writeln!(output, "            }}").expect("writing to String");
+    writeln!(output, "        }}").expect("writing to String");
+    render_record_from_value(output, record, &name);
+}
+
+fn render_record_from_value(
+    output: &mut String,
+    record: &vela_bytecode::RustBindingRecord,
+    name: &str,
+) {
+    writeln!(
+        output,
+        "        impl ::vela_engine::args::FromScriptArg for {name} {{"
+    )
+    .expect("writing to String");
+    writeln!(
+        output,
+        "            const TYPE_NAME: &'static str = {:?};",
+        record.public_path
+    )
+    .expect("writing to String");
+    writeln!(output, "            fn from_script_arg(value: &::vela_engine::binding::OwnedValue) -> ::vela_engine::binding::VmResult<Self> {{").expect("writing to String");
+    writeln!(output, "                let ::vela_engine::binding::OwnedValue::Record {{ type_name, fields }} = value else {{ return Err(super::conversion_error(Self::TYPE_NAME)); }};").expect("writing to String");
+    writeln!(output, "                if type_name != {:?} {{ return Err(super::conversion_error(Self::TYPE_NAME)); }}", record.public_path).expect("writing to String");
+    writeln!(output, "                if fields.len() != {} {{ return Err(super::conversion_error(Self::TYPE_NAME)); }}", record.fields.len()).expect("writing to String");
+    writeln!(output, "                Ok(Self {{").expect("writing to String");
+    for field in &record.fields {
+        let field_name = rust_identifier(&field.name, NameStyle::Snake)
+            .unwrap_or_else(|| "invalid_field".to_owned());
+        let ty = render_type(&field.ty, field.source, &mut Vec::new());
+        writeln!(output, "                    {field_name}: <{ty} as ::vela_engine::args::FromScriptArg>::from_script_arg(fields.get({:?}).ok_or_else(|| super::conversion_error(Self::TYPE_NAME))?)?,", field.name).expect("writing to String");
+    }
+    writeln!(output, "                }})").expect("writing to String");
+    writeln!(output, "            }}").expect("writing to String");
+    writeln!(output, "        }}").expect("writing to String");
+}
+
+fn render_enum(output: &mut String, item: &vela_bytecode::RustBindingEnum) {
+    let name = generated_type_name(&item.public_path);
+    writeln!(output, "        #[derive(Clone, Debug, PartialEq)]").expect("writing to String");
+    writeln!(output, "        pub enum {name} {{").expect("writing to String");
+    for variant in &item.variants {
+        let variant_name = rust_identifier(&variant.name, NameStyle::Preserve)
+            .unwrap_or_else(|| "InvalidVariant".to_owned());
+        match &variant.fields {
+            RustBindingVariantFields::Unit => {
+                writeln!(output, "            {variant_name},").expect("writing to String");
+            }
+            RustBindingVariantFields::Tuple(fields) => {
+                let fields = fields
+                    .iter()
+                    .map(|field| render_type(field, variant.source, &mut Vec::new()))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                writeln!(output, "            {variant_name}({fields}),")
+                    .expect("writing to String");
+            }
+            RustBindingVariantFields::Record(fields) => {
+                writeln!(output, "            {variant_name} {{").expect("writing to String");
+                for field in fields {
+                    let field_name = rust_identifier(&field.name, NameStyle::Snake)
+                        .unwrap_or_else(|| "invalid_field".to_owned());
+                    let ty = render_type(&field.ty, field.source, &mut Vec::new());
+                    writeln!(output, "                {field_name}: {ty},")
+                        .expect("writing to String");
+                }
+                writeln!(output, "            }},").expect("writing to String");
+            }
+        }
+    }
+    writeln!(output, "        }}").expect("writing to String");
+    render_enum_into_value(output, item, &name);
+    render_enum_from_value(output, item, &name);
+}
+
+fn render_enum_into_value(output: &mut String, item: &vela_bytecode::RustBindingEnum, name: &str) {
+    writeln!(
+        output,
+        "        impl ::vela_engine::args::IntoScriptArg for {name} {{"
+    )
+    .expect("writing to String");
+    writeln!(
+        output,
+        "            fn into_script_arg(self) -> ::vela_engine::binding::OwnedValue {{"
+    )
+    .expect("writing to String");
+    writeln!(output, "                match self {{").expect("writing to String");
+    for variant in &item.variants {
+        let variant_name = rust_identifier(&variant.name, NameStyle::Preserve)
+            .unwrap_or_else(|| "InvalidVariant".to_owned());
+        match &variant.fields {
+            RustBindingVariantFields::Unit => {
+                writeln!(output, "                    Self::{variant_name} => ::vela_engine::binding::OwnedValue::enum_variant({:?}, {:?}, [] as [(&str, ::vela_engine::binding::OwnedValue); 0]),", item.public_path, variant.name).expect("writing to String");
+            }
+            RustBindingVariantFields::Tuple(fields) => {
+                let bindings = (0..fields.len())
+                    .map(|index| format!("field_{index}"))
+                    .collect::<Vec<_>>();
+                writeln!(output, "                    Self::{variant_name}({}) => ::vela_engine::binding::OwnedValue::enum_variant({:?}, {:?}, [", bindings.join(", "), item.public_path, variant.name).expect("writing to String");
+                for (index, binding) in bindings.iter().enumerate() {
+                    writeln!(output, "                        ({:?}, ::vela_engine::args::IntoScriptArg::into_script_arg({binding})),", index.to_string()).expect("writing to String");
+                }
+                writeln!(output, "                    ]),").expect("writing to String");
+            }
+            RustBindingVariantFields::Record(fields) => {
+                let bindings = fields
+                    .iter()
+                    .map(|field| {
+                        rust_identifier(&field.name, NameStyle::Snake)
+                            .unwrap_or_else(|| "invalid_field".to_owned())
+                    })
+                    .collect::<Vec<_>>();
+                writeln!(output, "                    Self::{variant_name} {{ {} }} => ::vela_engine::binding::OwnedValue::enum_variant({:?}, {:?}, [", bindings.join(", "), item.public_path, variant.name).expect("writing to String");
+                for (field, binding) in fields.iter().zip(&bindings) {
+                    writeln!(output, "                        ({:?}, ::vela_engine::args::IntoScriptArg::into_script_arg({binding})),", field.name).expect("writing to String");
+                }
+                writeln!(output, "                    ]),").expect("writing to String");
+            }
+        }
+    }
+    writeln!(output, "                }}").expect("writing to String");
+    writeln!(output, "            }}").expect("writing to String");
+    writeln!(output, "        }}").expect("writing to String");
+}
+
+fn render_enum_from_value(output: &mut String, item: &vela_bytecode::RustBindingEnum, name: &str) {
+    writeln!(
+        output,
+        "        impl ::vela_engine::args::FromScriptArg for {name} {{"
+    )
+    .expect("writing to String");
+    writeln!(
+        output,
+        "            const TYPE_NAME: &'static str = {:?};",
+        item.public_path
+    )
+    .expect("writing to String");
+    writeln!(output, "            fn from_script_arg(value: &::vela_engine::binding::OwnedValue) -> ::vela_engine::binding::VmResult<Self> {{").expect("writing to String");
+    writeln!(output, "                let ::vela_engine::binding::OwnedValue::Enum {{ enum_name, variant, fields }} = value else {{ return Err(super::conversion_error(Self::TYPE_NAME)); }};").expect("writing to String");
+    writeln!(output, "                if enum_name != {:?} {{ return Err(super::conversion_error(Self::TYPE_NAME)); }}", item.public_path).expect("writing to String");
+    writeln!(output, "                match variant.as_str() {{").expect("writing to String");
+    for variant in &item.variants {
+        let variant_name = rust_identifier(&variant.name, NameStyle::Preserve)
+            .unwrap_or_else(|| "InvalidVariant".to_owned());
+        match &variant.fields {
+            RustBindingVariantFields::Unit => {
+                writeln!(
+                    output,
+                    "                    {:?} if fields.is_empty() => Ok(Self::{variant_name}),",
+                    variant.name
+                )
+                .expect("writing to String");
+            }
+            RustBindingVariantFields::Tuple(field_types) => {
+                writeln!(
+                    output,
+                    "                    {:?} if fields.len() == {} => Ok(Self::{variant_name}(",
+                    variant.name,
+                    field_types.len()
+                )
+                .expect("writing to String");
+                for (index, ty) in field_types.iter().enumerate() {
+                    let ty = render_type(ty, variant.source, &mut Vec::new());
+                    writeln!(output, "                        <{ty} as ::vela_engine::args::FromScriptArg>::from_script_arg(fields.get({:?}).ok_or_else(|| super::conversion_error(Self::TYPE_NAME))?)?,", index.to_string()).expect("writing to String");
+                }
+                writeln!(output, "                    )),").expect("writing to String");
+            }
+            RustBindingVariantFields::Record(field_types) => {
+                writeln!(
+                    output,
+                    "                    {:?} if fields.len() == {} => Ok(Self::{variant_name} {{",
+                    variant.name,
+                    field_types.len()
+                )
+                .expect("writing to String");
+                for field in field_types {
+                    let field_name = rust_identifier(&field.name, NameStyle::Snake)
+                        .unwrap_or_else(|| "invalid_field".to_owned());
+                    let ty = render_type(&field.ty, field.source, &mut Vec::new());
+                    writeln!(output, "                        {field_name}: <{ty} as ::vela_engine::args::FromScriptArg>::from_script_arg(fields.get({:?}).ok_or_else(|| super::conversion_error(Self::TYPE_NAME))?)?,", field.name).expect("writing to String");
+                }
+                writeln!(output, "                    }}),").expect("writing to String");
+            }
+        }
+    }
+    writeln!(
+        output,
+        "                    _ => Err(super::conversion_error(Self::TYPE_NAME)),"
+    )
+    .expect("writing to String");
+    writeln!(output, "                }}").expect("writing to String");
+    writeln!(output, "            }}").expect("writing to String");
+    writeln!(output, "        }}").expect("writing to String");
 }
 
 fn render_package(output: &mut String, modules: &[GeneratedModule<'_>]) {
@@ -380,9 +716,14 @@ fn render_callable(output: &mut String, generated: &GeneratedCallable<'_>) {
         .parameter_types
         .iter()
         .zip(&callable.parameters)
-        .map(|(ty, parameter)| {
-            let name = rust_identifier(&parameter.name, NameStyle::Snake)
-                .unwrap_or_else(|| "invalid_parameter".to_owned());
+        .enumerate()
+        .map(|(index, (ty, parameter))| {
+            let name = if index == 0 && callable.owner.is_some() && parameter.name == "self" {
+                "receiver".to_owned()
+            } else {
+                rust_identifier(&parameter.name, NameStyle::Snake)
+                    .unwrap_or_else(|| "invalid_parameter".to_owned())
+            };
             format!("{name}: {ty}")
         })
         .collect::<Vec<_>>()
@@ -390,9 +731,14 @@ fn render_callable(output: &mut String, generated: &GeneratedCallable<'_>) {
     let arguments = callable
         .parameters
         .iter()
-        .map(|parameter| {
-            rust_identifier(&parameter.name, NameStyle::Snake)
-                .unwrap_or_else(|| "invalid_parameter".to_owned())
+        .enumerate()
+        .map(|(index, parameter)| {
+            if index == 0 && callable.owner.is_some() && parameter.name == "self" {
+                "receiver".to_owned()
+            } else {
+                rust_identifier(&parameter.name, NameStyle::Snake)
+                    .unwrap_or_else(|| "invalid_parameter".to_owned())
+            }
         })
         .collect::<Vec<_>>();
     let tuple = match arguments.as_slice() {
@@ -442,6 +788,9 @@ fn render_type(
                 source: Some(source),
             });
             "()".to_owned()
+        }
+        RustBindingType::Definition { public_path, .. } => {
+            format!("super::types::{}", generated_type_name(public_path))
         }
         RustBindingType::Path {
             segments,
@@ -519,6 +868,19 @@ fn render_type(
             }
         }
     }
+}
+
+fn generated_type_name(public_path: &str) -> String {
+    public_path
+        .split("::")
+        .filter_map(|segment| rust_identifier(segment, NameStyle::Preserve))
+        .map(|segment| {
+            let mut characters = plain_identifier(&segment).chars();
+            characters.next().map_or_else(String::new, |first| {
+                first.to_ascii_uppercase().to_string() + characters.as_str()
+            })
+        })
+        .collect::<String>()
 }
 
 fn render_parameter_type(
@@ -645,6 +1007,48 @@ pub async fn names(values: Array<String>) -> Result<String, String> { return "ok
             schema("pub fn consume(values: Iterator<i64>) -> i64 { return values.count(); }");
         let error = generate_rust_bindings(&schema, &RustBindingGeneratorOptions::default())
             .expect_err("iterator boundary should fail");
+
+        assert!(error.diagnostics().iter().any(|diagnostic| {
+            diagnostic.code == "bindgen::unsupported_iterator_boundary"
+                && diagnostic.source.is_some()
+        }));
+    }
+
+    #[test]
+    fn generation_emits_owned_models_and_typed_method_receivers() {
+        let schema = schema(
+            r#"
+pub struct Point { x: i64, y: i64 }
+pub enum Choice { None, One(value: i64), Named { value: i64 } }
+pub fn choose(value: Choice) -> Point { return Point { x: 1, y: 2 }; }
+impl Point { pub fn sum(self) -> i64 { return self.x + self.y; } }
+"#,
+        );
+        let generated = generate_rust_bindings(&schema, &RustBindingGeneratorOptions::default())
+            .expect("model bindings");
+
+        syn::parse_file(&generated.code).expect("generated models must parse as Rust");
+        assert!(generated.code.contains("pub struct Point"));
+        assert!(generated.code.contains("pub enum Choice"));
+        assert!(
+            generated
+                .code
+                .contains("pub fn sum(&mut self, receiver: super::types::Point)")
+        );
+        assert!(generated.code.contains("if fields.len() != 2"));
+        assert!(generated.code.contains("\"Named\" if fields.len() == 1"));
+    }
+
+    #[test]
+    fn generation_reports_unsupported_nested_model_fields_at_their_source() {
+        let schema = schema(
+            r#"
+pub struct Stream { values: Iterator<i64> }
+pub fn echo(value: Stream) -> Stream { return value; }
+"#,
+        );
+        let error = generate_rust_bindings(&schema, &RustBindingGeneratorOptions::default())
+            .expect_err("nested iterator boundary should fail");
 
         assert!(error.diagnostics().iter().any(|diagnostic| {
             diagnostic.code == "bindgen::unsupported_iterator_boundary"

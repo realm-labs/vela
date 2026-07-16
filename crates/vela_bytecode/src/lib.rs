@@ -23,10 +23,11 @@ pub use artifact::test_support;
 pub use artifact::{LinkedArtifact, MirExecutableLayout, ProfileFunctionLayout, ProfileLayout};
 pub use binding_schema::{
     RUST_BINDING_SCHEMA_VERSION, RustBindingBoundaryMode, RustBindingCallable,
-    RustBindingCallableIdentity, RustBindingEffectSet, RustBindingErrorMode,
-    RustBindingMethodOwner, RustBindingModule, RustBindingPackage, RustBindingParameter,
-    RustBindingParameterDefault, RustBindingReturn, RustBindingReturnMode, RustBindingSchema,
-    RustBindingType,
+    RustBindingCallableIdentity, RustBindingEffectSet, RustBindingEnum, RustBindingErrorMode,
+    RustBindingField, RustBindingMethodOwner, RustBindingModule, RustBindingPackage,
+    RustBindingParameter, RustBindingParameterDefault, RustBindingRecord, RustBindingReturn,
+    RustBindingReturnMode, RustBindingSchema, RustBindingType, RustBindingTypeDefinition,
+    RustBindingVariant, RustBindingVariantFields,
 };
 pub use budget_metadata::MirBudgetCharge;
 pub(crate) use cache_policy::{CacheSiteInstruction, CacheSiteStorage};
