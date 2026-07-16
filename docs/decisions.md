@@ -1992,6 +1992,24 @@ async path or second backend representation is introduced.
 
 ## Unified Rust/Vela Interop Decisions
 
+### Binding Generation And Error Surface
+
+The Engine/compiler emits one deterministic, language-neutral export schema;
+the official Rust generator consumes that schema and may be invoked through a
+CLI or build helper without reparsing Vela source. Generated artifacts record
+the schema checksum and source origins. The Rust surface is a runtime-bound
+package/module object with ordinary typed methods and an equivalent
+`NativeCallContext`-borrowed carrier for same-session re-entry; neither uses an
+ambient Runtime or requires a user-authored service trait.
+
+`VmResult<T>` denotes call failure, while a boundary-safe `Result<T, E>` is an
+ordinary Vela Result value and generates the corresponding Rust type. The
+initial trusted-native profile remains callable visibility, normalized effects
+and derived coarse capabilities, exact type/lease safety, and budgets. A
+special restricted profile is deferred until a concrete deployment requires
+one and must use an explicit low-level `HostAccess` opt-in rather than changing
+ordinary Rust signatures or callable ABI.
+
 ### Ordinary Signatures Are The Canonical Authoring Surface
 
 The accepted direction is defined by

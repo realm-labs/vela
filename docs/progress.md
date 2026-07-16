@@ -10,18 +10,18 @@ history belongs in Git.
 
 ## Current Focus
 
-The explicit state-storage hard switch in
-[state-storage-model-plan.md](state-storage-model-plan.md) has Batches A-F
-landed, but final acceptance is reopened through active Batch G. Contextual
-`state` and `extern state` retain their distinct semantic, bytecode, runtime,
-reload, reflection, and tooling paths, and legacy `global` surfaces remain
-removed. The second 2026-07-15 review found five remaining boundaries: exact
-qualified embedding resolution, linked nominal value canonicalization,
-graph-preserving budgeted reload staging, generation reclamation without
-old-state self-roots, and initializer fingerprints through nested executable
-bodies. Host-only extern contracts and public state-export ABI protection stay
-closed. M20 cache close-out waits for Batch G; M20.5 remains the next editor
-follow-up after M20.
+The approved unified Rust/Vela interop track in
+[rust-vela-interop-model-plan.md](rust-vela-interop-model-plan.md) is now the
+active execution object. Batch A is establishing the shared callable contract,
+deterministic ABI fingerprints and diffs, one effect-to-capability projection,
+the signature classifier, conversion proof surface, and fixed export/bindgen
+authoring decisions before runtime behavior changes.
+
+The explicit state-storage hard switch has Batches A-F landed, but its final
+Batch G remains queued behind this explicitly scheduled interop track. Its five
+open graph/identity/lifetime proofs remain unchanged. M20 cache close-out waits
+for state-storage acceptance; M20.5 remains the next editor follow-up after
+M20.
 
 The executor-neutral async implementation from Batches A-D is landed: Vela has
 one explicit frame driver, scoped `Send` Runtime/native futures, direct typed
@@ -51,6 +51,7 @@ storage Batch G reaches final acceptance.
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
 | M20 | Paused behind Batch G | Resume the cache-family audit after state-storage final acceptance. |
 | M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
+| Rust/Vela interop | Batch A active | Shared callable ABI and compile-time proof surface are in progress. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -115,9 +116,17 @@ storage Batch G reaches final acceptance.
 
 ## Active Gaps
 
+### Unified Rust/Vela Interop Batch A
+
+Batch A is active. It must close the fixed export and bindgen decisions, shared
+callable metadata/fingerprints/diffs, normalized effect and capability rules,
+one signature classifier, deterministic conversion families, compile-pass and
+compile-fail proof, stable Vela protocol identities, and the explicit ABI versus
+deployment-policy boundary before ordinary Rust export adapters are added.
+
 ### State Storage Batch G
 
-Batch G is the active execution object. Its tasks, in order, are
+Batch G remains queued. Its tasks, in order, are
 `STATE-G1-EXACT-TYPE-RESOLUTION`, `STATE-G2-NOMINAL-CANONICALIZATION`,
 `STATE-G3-GRAPH-PRESERVING-STAGING`, `STATE-G4-EXTERNAL-OWNER-RECLAIM`, and
 `STATE-G5-NESTED-INIT-FINGERPRINT`. The required behavior and focused
@@ -250,11 +259,12 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Execute state-storage Batch G in its documented order and restore final
-   acceptance only after the focused and full gates pass.
-2. Resume the M20 cache-family audit against the accepted state model.
-3. Resume the M20.5 editor-visible follow-up after M20 close-out.
-4. Keep persistence, snapshots, replication, cross-Runtime sharing, structural
+1. Complete unified Rust/Vela interop Batch A, then execute Batches B-G in
+   checkpoint order.
+2. Return to state-storage Batch G and restore its final acceptance.
+3. Resume the M20 cache-family audit against the accepted state model.
+4. Resume the M20.5 editor-visible follow-up after M20 close-out.
+5. Keep persistence, snapshots, replication, cross-Runtime sharing, structural
    state migration, async-frame migration, and initializer dependency reads as
    explicit non-goals.
 

@@ -200,6 +200,21 @@ impl EffectSet {
         }
     }
 
+    /// Returns the normalized fixed-bit representation used by callable ABI
+    /// fingerprints. Deployment grants are intentionally represented by
+    /// [`CapabilitySet`] instead and never enter these bits.
+    #[must_use]
+    pub const fn bits(self) -> u16 {
+        self.bits
+    }
+
+    /// Returns whether `self` is an effect ceiling that permits every effect
+    /// in `required`.
+    #[must_use]
+    pub const fn contains_all(self, required: Self) -> bool {
+        self.bits & required.bits == required.bits
+    }
+
     #[must_use]
     pub const fn reads_host(self) -> bool {
         self.contains(Self::READS_HOST)

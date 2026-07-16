@@ -15,6 +15,7 @@ pub mod engine;
 pub mod error;
 pub mod host_lease;
 pub mod host_type;
+pub mod interop;
 pub mod io;
 mod metadata;
 pub mod method;
