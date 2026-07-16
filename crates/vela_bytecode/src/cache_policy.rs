@@ -131,6 +131,7 @@ macro_rules! non_cache_instructions {
             | Self::I64RangeNext { .. }
             | Self::EnumTagEqual { .. }
             | Self::StoreState { .. }
+            | Self::ReleaseBorrowLease { .. }
             | Self::Return { .. }
     };
 }

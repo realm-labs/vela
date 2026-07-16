@@ -5,9 +5,10 @@ use vela_hir::ids::{HirBodyId, HirExprId, HirLocalId};
 use crate::{
     CompileCallArguments, CompileCalleeTarget, CompileFunctionClass, CompileMethodClass,
     CompileParameterDefault, CompilePlacedCallArgument, CompilePlacedCallValue, CompileSignature,
-    MirAwaitOperation, MirBuildError, MirCall, MirDynamicArgument, MirEffect, MirOperand, MirPlace,
-    MirSafepoint, MirScriptArgument, MirScriptParameterGuardMode, MirSourceOrigin, MirStatement,
-    MirStatementKind, MirTerminator, MirTerminatorKind, MirValueType,
+    MirAwaitOperation, MirBuildError, MirCall, MirDynamicArgument, MirEffect, MirHostOperation,
+    MirOperand, MirPlace, MirSafepoint, MirScriptArgument, MirScriptParameterGuardMode,
+    MirSourceOrigin, MirStatement, MirStatementKind, MirTerminator, MirTerminatorKind,
+    MirValueType,
 };
 
 use super::core::{FunctionBuilder, value_type};
@@ -54,6 +55,39 @@ impl FunctionBuilder<'_> {
         }
         if matches!(target.callee, CompileCalleeTarget::Reflection { .. }) {
             return self.lower_reflection_call(expression, call, &target, origin, await_context);
+        }
+        if matches!(target.callee, CompileCalleeTarget::NativeFunction { function, .. } if function == vela_def::host_release_function_id())
+        {
+            if await_context.is_some() {
+                return Err(self.unsupported(origin, "awaiting host::release"));
+            }
+            let descriptor = self
+                .input
+                .targets()
+                .function_descriptor(vela_def::host_release_function_id())
+                .cloned()
+                .ok_or_else(|| {
+                    self.inconsistent(origin, "host::release has no function descriptor")
+                })?;
+            let arguments =
+                self.lower_external_arguments(&target.arguments, &descriptor.signature, origin)?;
+            let [root] = arguments.as_slice() else {
+                return Err(self.inconsistent(origin, "host::release requires one argument"));
+            };
+            let destination = self.function.add_temp(MirValueType::Unit, origin);
+            self.function.append_statement(
+                self.current_block,
+                MirStatement::new(
+                    origin,
+                    Some(MirPlace::temp(destination)),
+                    MirStatementKind::Host(MirHostOperation::ReleaseBorrowLease {
+                        root: root.clone(),
+                    }),
+                    MirEffect::PURE,
+                    None,
+                ),
+            )?;
+            return Ok(MirOperand::Temp(destination));
         }
 
         let (call, effect) = match target.callee {
@@ -185,6 +219,10 @@ impl FunctionBuilder<'_> {
                         debug_name,
                         signature: descriptor.signature,
                         arguments,
+                        scoped_borrow_return: self
+                            .input
+                            .targets()
+                            .is_scoped_borrow_function(function),
                     },
                     effect,
                 )

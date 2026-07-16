@@ -2041,6 +2041,13 @@ the unconditional fallback and releases parent freezes deterministically
 without depending on GC timing. A durable cross-root HostRef remains a
 separate, explicit model.
 
+`host::release` is compiler-reserved and lowers through MIR to the dedicated
+`ReleaseBorrowLease` instruction rather than an ordinary native call. Automatic
+release is a sealed post-verification MIR analysis over direct scoped-return
+facts, liveness, compiler-only temp aliases, and exact CFG edges. It never
+classifies an ordinary HostRef, and observable local aliases, container/state/
+closure escapes, root returns, or explicit release suppress the automatic path.
+
 ### Trusted Native Mutation Uses A Coarse Call Boundary
 
 Direct Vela field and path mutation remains fine-grained through `HostAccess`.

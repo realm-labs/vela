@@ -6,8 +6,8 @@ use crate::{
 };
 
 use super::support::{
-    arity_accepts, bad_target, destination_contract, error, method_target, missing_target,
-    require_type, satisfies_contract, type_error, verify_contract,
+    arity_accepts, bad_target, destination_accepts, destination_contract, error, method_target,
+    missing_target, require_type, satisfies_contract, type_error, verify_contract,
 };
 
 #[derive(Clone, Copy)]
@@ -48,7 +48,28 @@ pub(super) fn verify_host(
     operation: &MirHostOperation,
     destination: Option<MirValueType>,
 ) -> Result<(), MirVerifyError> {
+    if let MirHostOperation::ReleaseBorrowLease { root } = operation {
+        let root_type = verifier.operand_type(root, block, Some(statement), origin)?;
+        if !matches!(root_type, MirValueType::Dynamic | MirValueType::Host(_)) {
+            return Err(host_error(
+                verifier,
+                block,
+                statement,
+                origin,
+                "borrow lease release requires a host operand",
+            ));
+        }
+        return destination_accepts(
+            verifier,
+            block,
+            statement,
+            origin,
+            destination,
+            MirValueType::Unit,
+        );
+    }
     let (root, path) = match operation {
+        MirHostOperation::ReleaseBorrowLease { .. } => unreachable!(),
         MirHostOperation::Read { root, path }
         | MirHostOperation::Write { root, path, .. }
         | MirHostOperation::Mutate { root, path, .. }
@@ -70,6 +91,7 @@ pub(super) fn verify_host(
     verify_prefix_access(verifier, block, statement, origin, path)?;
 
     match operation {
+        MirHostOperation::ReleaseBorrowLease { .. } => unreachable!(),
         MirHostOperation::Read { .. } => {
             require_terminal(
                 verifier,

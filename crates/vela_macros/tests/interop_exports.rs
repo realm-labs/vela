@@ -1,3 +1,4 @@
+use vela_bytecode::UnlinkedInstructionKind;
 use vela_engine::args::FromScriptArg;
 use vela_engine::context::NativeCallContext;
 use vela_engine::engine::Engine;
@@ -555,7 +556,7 @@ fn shared_borrowed_return_rejects_owner_write_and_cleans_up_at_root_end() {
 }
 
 #[test]
-fn exclusive_borrowed_return_mutates_child_and_freezes_all_owner_calls() {
+fn exclusive_borrowed_return_releases_after_proven_last_use() {
     let mut runtime = host_export_runtime(
         "fn blocked(service: PlayerService) { let player = game::service_player_mut(service); player.increment(2); return game::touch_service(service); } fn via_method(service: PlayerService) { let player = service.player_mut(); player.increment(3); return player.current_level(); }",
     );
@@ -564,18 +565,16 @@ fn exclusive_borrowed_return_mutates_child_and_freezes_all_owner_calls() {
         touches: 0,
     };
 
-    let error = runtime
+    let result = runtime
         .call(
             "blocked",
             CallArgs::new().with_host_mut("service", &mut service),
             CallOptions::unbounded(),
         )
-        .expect_err("exclusive-origin child must freeze every owner call");
-    assert!(matches!(
-        error.kind(),
-        VmErrorKind::Host(vela_host::error::HostErrorKind::HostObjectBusy { .. })
-    ));
+        .expect("the compiler should release the child after its proven last use");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(1)));
     assert_eq!(service.player.level, 7);
+    assert_eq!(service.touches, 1);
 
     let result = runtime
         .call(
@@ -586,6 +585,64 @@ fn exclusive_borrowed_return_mutates_child_and_freezes_all_owner_calls() {
         .expect("borrowed-return methods should use the same scoped adapter");
     assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(10)));
     assert_eq!(service.player.level, 10);
+}
+
+#[test]
+fn aliased_borrowed_return_remains_frozen_without_explicit_release() {
+    let mut runtime = host_export_runtime(
+        "fn main(service: PlayerService) { let player = service.player_mut(); let alias = player; player.increment(2); return game::touch_service(service); }",
+    );
+    let mut service = PlayerService {
+        player: Player { level: 5 },
+        touches: 0,
+    };
+
+    let error = runtime
+        .call(
+            "main",
+            CallArgs::new().with_host_mut("service", &mut service),
+            CallOptions::unbounded(),
+        )
+        .expect_err("an observable alias must suppress automatic release");
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::Host(vela_host::error::HostErrorKind::HostObjectBusy { .. })
+    ));
+    assert_eq!(service.player.level, 7);
+}
+
+#[test]
+fn borrowed_return_releases_at_lexical_and_every_branch_end() {
+    let mut runtime = host_export_runtime(
+        "fn lexical(service: PlayerService) { { let player = service.player_mut(); player.increment(1); } return game::touch_service(service); } fn branch(service: PlayerService, flag: bool) { let player = service.player_mut(); if flag { player.increment(2); } else { player.increment(3); } return game::touch_service(service); } fn one_branch(service: PlayerService, flag: bool) { let player = service.player_mut(); if flag { player.increment(4); } return game::touch_service(service); }",
+    );
+    let mut service = PlayerService {
+        player: Player { level: 5 },
+        touches: 0,
+    };
+
+    for (function, flag) in [
+        ("lexical", None),
+        ("branch", Some(true)),
+        ("branch", Some(false)),
+        ("one_branch", Some(true)),
+        ("one_branch", Some(false)),
+    ] {
+        let mut args = CallArgs::new().with_host_mut("service", &mut service);
+        if let Some(flag) = flag {
+            args = args.with_value("flag", flag);
+        }
+        let result = runtime
+            .call(function, args, CallOptions::unbounded())
+            .expect("all outgoing paths should end the proven scoped borrow");
+        assert_eq!(
+            runtime.value_to_owned(&result),
+            Ok(OwnedValue::i64(service.touches))
+        );
+    }
+
+    assert_eq!(service.player.level, 15);
+    assert_eq!(service.touches, 5);
 }
 
 #[test]
@@ -630,6 +687,40 @@ fn host_release_invalidates_alias_group_and_unfreezes_owner() {
         error.kind(),
         VmErrorKind::Host(vela_host::error::HostErrorKind::NotScopedBorrow { .. })
     ));
+}
+
+#[test]
+fn explicit_and_automatic_release_compile_to_dedicated_instruction() {
+    let engine = Engine::builder()
+        .capability(Capability::HostRead)
+        .capability(Capability::HostWrite)
+        .register_host_type::<Player>()
+        .register_host_type::<PlayerService>()
+        .register_exports(Player::vela_inherent_exports())
+        .register_exports(PlayerService::vela_inherent_exports())
+        .build()
+        .expect("release instruction fixture should register");
+    let program = engine
+        .compile_source(
+            "fn explicit(service: PlayerService) { let player = service.player_mut(); host::release(player); } fn automatic(service: PlayerService) { let player = service.player_mut(); player.increment(1); }",
+        )
+        .expect("release instruction fixture should compile");
+
+    for function in ["explicit", "automatic"] {
+        let code = program
+            .bytecode()
+            .function(function)
+            .expect("compiled function should exist");
+        assert!(code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::ReleaseBorrowLease { .. }
+        )));
+        assert!(!code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::CallNative { native, .. }
+                if native == vela_def::host_release_function_id()
+        )));
+    }
 }
 
 #[test]
@@ -1094,6 +1185,74 @@ fn value_only_async_export_uses_ordinary_await_syntax() {
     drop(future);
 
     assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(12)));
+}
+
+#[test]
+fn borrowed_return_releases_before_await_when_dead() {
+    let mut runtime = host_export_runtime(
+        "async fn main(service: PlayerService) { let player = service.player_mut(); player.increment(2); game::double_async(3).await; return game::touch_service(service); }",
+    );
+    let mut service = PlayerService {
+        player: Player { level: 5 },
+        touches: 0,
+    };
+    let mut future = Box::pin(runtime.call_async(
+        "main",
+        CallArgs::new().with_host_mut("service", &mut service),
+        CallOptions::unbounded(),
+    ));
+    let waker = std::task::Waker::noop();
+    let mut context = std::task::Context::from_waker(waker);
+    let value = loop {
+        match std::future::Future::poll(future.as_mut(), &mut context) {
+            std::task::Poll::Ready(value) => {
+                break value.expect("the dead child should be released before suspension");
+            }
+            std::task::Poll::Pending => continue,
+        }
+    };
+    drop(future);
+
+    assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(1)));
+    assert_eq!(service.player.level, 7);
+    assert_eq!(service.touches, 1);
+}
+
+#[test]
+fn borrowed_return_releases_on_resume_after_await_last_use() {
+    let mut runtime = host_export_runtime(
+        "async fn main(service: PlayerService, other: Player) { let player = service.player_mut(); game::transfer_async(player, other, 2).await; return game::touch_service(service); }",
+    );
+    let mut service = PlayerService {
+        player: Player { level: 5 },
+        touches: 0,
+    };
+    let mut other = Player { level: 3 };
+    let mut future = Box::pin(
+        runtime.call_async(
+            "main",
+            CallArgs::new()
+                .with_host_mut("service", &mut service)
+                .with_host_mut("other", &mut other),
+            CallOptions::unbounded(),
+        ),
+    );
+    let waker = std::task::Waker::noop();
+    let mut context = std::task::Context::from_waker(waker);
+    let value = loop {
+        match std::future::Future::poll(future.as_mut(), &mut context) {
+            std::task::Poll::Ready(value) => {
+                break value.expect("the resume edge should release the child");
+            }
+            std::task::Poll::Pending => continue,
+        }
+    };
+    drop(future);
+
+    assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(1)));
+    assert_eq!(service.player.level, 3);
+    assert_eq!(other.level, 5);
+    assert_eq!(service.touches, 1);
 }
 
 #[test]

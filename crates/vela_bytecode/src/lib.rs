@@ -1149,6 +1149,10 @@ pub enum UnlinkedInstructionKind {
         slot: Option<StateSlot>,
         cache_site: Option<CacheSiteId>,
     },
+    ReleaseBorrowLease {
+        dst: Register,
+        src: Register,
+    },
     HostRead {
         dst: Register,
         root: Register,

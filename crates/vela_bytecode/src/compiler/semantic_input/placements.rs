@@ -468,6 +468,7 @@ impl GenerationBuilder<'_, '_> {
                     definition.access.reflect_callable,
                     definition.access.required_permissions().to_vec(),
                 ),
+                scoped_borrow_return: self.request.options.is_scoped_borrow_method(runtime),
             }),
             name,
             &definition.signature.params,

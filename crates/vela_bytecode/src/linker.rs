@@ -1183,6 +1183,12 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     cache_site: *cache_site,
                 }
             }
+            UnlinkedInstructionKind::ReleaseBorrowLease { dst, src } => {
+                InstructionKind::ReleaseBorrowLease {
+                    dst: *dst,
+                    src: *src,
+                }
+            }
             UnlinkedInstructionKind::HostRead {
                 dst,
                 root,

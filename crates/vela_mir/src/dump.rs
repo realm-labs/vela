@@ -543,6 +543,7 @@ fn write_call(formatter: &mut fmt::Formatter<'_>, call: &MirCall) -> fmt::Result
             receiver,
             signature,
             arguments,
+            ..
         } => {
             write!(
                 formatter,
@@ -567,6 +568,7 @@ fn write_call(formatter: &mut fmt::Formatter<'_>, call: &MirCall) -> fmt::Result
             debug_name,
             signature,
             arguments,
+            ..
         } => {
             write!(
                 formatter,
@@ -637,6 +639,11 @@ fn write_operand_values(
 
 fn write_host(formatter: &mut fmt::Formatter<'_>, operation: &MirHostOperation) -> fmt::Result {
     match operation {
+        MirHostOperation::ReleaseBorrowLease { root } => write!(
+            formatter,
+            "host.release_borrow_lease {}",
+            operand_text(root)
+        ),
         MirHostOperation::Read { root, path } => write!(
             formatter,
             "host.read {} type#{} path={:?}",

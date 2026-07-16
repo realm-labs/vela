@@ -2215,6 +2215,22 @@ impl Vm {
                     )?;
                     frame.write(*dst, value)?;
                 }
+                InstructionKind::ReleaseBorrowLease { dst, src } => {
+                    let Value::HostRef(root) = frame.read(*src)? else {
+                        return Err(VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "release borrowed host lease",
+                        })
+                        .with_source_span(instruction.span));
+                    };
+                    let host = host.as_deref_mut().ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "release borrowed host lease without host boundary",
+                        })
+                        .with_source_span(instruction.span)
+                    })?;
+                    host.adapter.release_scoped_host(root)?;
+                    frame.write(*dst, Value::Unit)?;
+                }
                 InstructionKind::HostRead {
                     dst,
                     root,

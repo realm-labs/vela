@@ -553,7 +553,8 @@ fn instruction_matches_budget_class(
         ),
         Class::HostAccess => matches!(
             kind,
-            InstructionKind::HostRead { .. }
+            InstructionKind::ReleaseBorrowLease { .. }
+                | InstructionKind::HostRead { .. }
                 | InstructionKind::HostWrite { .. }
                 | InstructionKind::HostMutate { .. }
                 | InstructionKind::HostRemove { .. }

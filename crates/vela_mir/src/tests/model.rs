@@ -118,6 +118,7 @@ fn mir_model_requires_safepoints_for_calls_even_with_incomplete_effect_metadata(
                 effect: MirEffect::PURE,
             },
             arguments: Vec::new(),
+            scoped_borrow_return: false,
         }),
         MirEffect::may_trap(),
         None,
@@ -1088,6 +1089,7 @@ fn mir_model_calls_encode_receivers_and_default_delivery_contracts() {
             debug_name: "native::limit".to_owned(),
             signature: external_signature.clone(),
             arguments: Vec::new(),
+            scoped_borrow_return: false,
         }),
         MirEffect::external_call(),
         Some(safepoint),
@@ -1105,6 +1107,7 @@ fn mir_model_calls_encode_receivers_and_default_delivery_contracts() {
                     debug_name: "native::limit".to_owned(),
                     signature: external_signature.clone(),
                     arguments: vec![MirOperand::Immediate(MirImmediate::Unit)],
+                    scoped_borrow_return: false,
                 }),
                 ..external_call
             },
@@ -1131,6 +1134,7 @@ fn mir_model_calls_encode_receivers_and_default_delivery_contracts() {
                         MirOperand::Immediate(MirImmediate::Unit),
                         MirOperand::Immediate(MirImmediate::Unit),
                     ],
+                    scoped_borrow_return: false,
                 }),
                 MirEffect::external_call(),
                 Some(safepoint),
@@ -1151,6 +1155,7 @@ fn mir_model_calls_encode_receivers_and_default_delivery_contracts() {
                 ..external_signature
             },
             arguments: vec![MirOperand::Immediate(MirImmediate::Unit)],
+            scoped_borrow_return: false,
         }),
         MirEffect::external_call(),
         Some(safepoint),
@@ -1177,6 +1182,7 @@ fn mir_model_calls_encode_receivers_and_default_delivery_contracts() {
                         MirOperand::Immediate(MirImmediate::Unit),
                         MirOperand::Immediate(MirImmediate::Unit),
                     ],
+                    scoped_borrow_return: false,
                 }),
                 ..variadic_call
             },

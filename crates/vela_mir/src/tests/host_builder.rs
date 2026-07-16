@@ -480,6 +480,7 @@ fn host_method_target() -> HostMethodTarget {
         runtime: GRANT_RUNTIME,
         signature: grant_signature(),
         access: host_method_access(),
+        scoped_borrow_return: false,
     }
 }
 
@@ -490,6 +491,7 @@ fn touch_method_target() -> HostMethodTarget {
         runtime: TOUCH_RUNTIME,
         signature: touch_signature(),
         access: host_method_access(),
+        scoped_borrow_return: false,
     }
 }
 
@@ -500,6 +502,7 @@ fn mix_method_target() -> HostMethodTarget {
         runtime: MIX_RUNTIME,
         signature: mix_signature(),
         access: host_method_access(),
+        scoped_borrow_return: false,
     }
 }
 

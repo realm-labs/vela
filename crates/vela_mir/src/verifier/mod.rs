@@ -98,6 +98,7 @@ pub struct MirDebugAvailability {
 #[derive(Clone, Debug, PartialEq)]
 pub struct MirFunctionAnalyses {
     pub value_liveness: crate::MirLiveness,
+    pub borrow_releases: crate::MirBorrowReleaseSchedule,
     pub root_liveness: MirRootLiveness,
     pub debug_availability: MirDebugAvailability,
     pub facts: crate::MirProgramPointFacts,
@@ -426,6 +427,8 @@ pub fn verify_owned_mir(program: MirProgram) -> Result<OwnedVerifiedMirProgram, 
         .functions()
         .map(|(id, function)| {
             let mut analyses = crate::liveness::sealed_analyses(function);
+            analyses.borrow_releases =
+                crate::borrow_release::analyze(function, &analyses.value_liveness);
             analyses.facts = crate::facts::analyze(&program, function);
             let verifier = FunctionVerifier::new(&program, id, function);
             let graph = cfg::analyze(&verifier)

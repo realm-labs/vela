@@ -17,8 +17,10 @@ deterministic ABI fingerprints and diffs, one effect-to-capability projection,
 ordinary signature classifier, value/host metadata proof traits, explicit
 function/module/method/protocol spellings, stable protocol identity, compiler UI
 fixtures, ABI-policy documentation, and fixed bindgen delivery decisions are
-landed without changing runtime dispatch. Batch B is active on generated export
-bundles, ordinary value adapters, and exact atomic host-reference leases.
+landed without changing runtime dispatch. Batches B and C are complete:
+ordinary Rust exports, exact lease adapters, owner-frozen borrowed returns,
+natural Vela calls, and conservative early release all use the shared runtime
+path. Batch D is active on authoritative typed Rust-to-Vela bindings.
 
 The explicit state-storage hard switch has Batches A-F landed, but its final
 Batch G remains queued behind this explicitly scheduled interop track. Its five
@@ -54,7 +56,7 @@ storage Batch G reaches final acceptance.
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
 | M20 | Paused behind Batch G | Resume the cache-family audit after state-storage final acceptance. |
 | M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
-| Rust/Vela interop | Batch B active | Callable proof is complete; ordinary Rust export adapters are in progress. |
+| Rust/Vela interop | Batch D active | Ordinary Rust exports and natural Vela calls satisfy the Batch B/C checkpoints; typed Rust-to-Vela bindings are next. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -119,18 +121,23 @@ storage Batch G reaches final acceptance.
 
 ## Active Gaps
 
-### Unified Rust/Vela Interop Batch B
+### Unified Rust/Vela Interop Batch D
 
-Batch B is active. Item/module exports, inherent and selected trait-method
+Batches B and C are complete. Item/module exports, inherent and selected trait-method
 thunks, exact named multi-lease preflight, ordinary sync/async Rust adapters,
 and owner-frozen `&T`/`&mut T` returns are implemented, including direct,
 `VmResult`, `Option`, `Result`, and homogeneous borrowed tuple success shapes.
 Tuple siblings retain one parent lease while receiving distinct child IDs and
 independent shared/exclusive invocation leases. Scoped children
 have distinct borrow identities, preserve shared/exclusive access, freeze their
-owner through a retained safe self-cell lease, support `host::release`, and are
-invalidated at root teardown. Conservative automatic last-use/lexical release
-remains before the Batch B/C checkpoint closes.
+owner through a retained safe self-cell lease, support the dedicated
+`ReleaseBorrowLease` lowering for `host::release`, and are invalidated at root
+teardown. Sealed MIR analysis inserts conservative releases after proven last
+uses, at lexical death, on safe branch edges, before dead-value suspension, and
+on await resume after an awaited last use; observable aliases and escapes
+suppress automatic release. Batch D's authoritative binding schema, generator,
+runtime binding, stable re-resolution, active-context carrier, and source-backed
+diagnostics remain open.
 
 ### State Storage Batch G
 
@@ -267,8 +274,7 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Complete unified Rust/Vela interop Batch B, then execute Batches C-G in
-   checkpoint order.
+1. Execute unified Rust/Vela interop Batches D-G in checkpoint order.
 2. Return to state-storage Batch G and restore its final acceptance.
 3. Resume the M20 cache-family audit against the accepted state model.
 4. Resume the M20.5 editor-visible follow-up after M20 close-out.

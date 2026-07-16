@@ -349,6 +349,29 @@ impl Engine {
             )
         {
             options = add_native_signature_hints(options, desc);
+            if desc.callable_contract.as_ref().is_some_and(|contract| {
+                matches!(
+                    contract.returns.mode,
+                    crate::interop::ReturnMode::ScopedHost { .. }
+                ) && matches!(contract.returns.ty, crate::native::TypeHint::Host(_))
+            }) {
+                options = options.with_scoped_borrow_function(desc.id);
+            }
+        }
+        for entry in self.native_methods.values() {
+            if entry
+                .desc
+                .callable_contract
+                .as_ref()
+                .is_some_and(|contract| {
+                    matches!(
+                        contract.returns.mode,
+                        crate::interop::ReturnMode::ScopedHost { .. }
+                    ) && matches!(contract.returns.ty, crate::native::TypeHint::Host(_))
+                })
+            {
+                options = options.with_scoped_borrow_method(entry.desc.id);
+            }
         }
         if self.reflection_policy.is_some() {
             options = options.with_native_module_root("reflect");

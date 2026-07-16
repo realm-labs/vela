@@ -222,6 +222,7 @@ fn mir_verifier_accepts_registry_native_value_method_and_reflection_targets() {
             debug_name: "dispatch".to_owned(),
             signature: registry_signature.clone(),
             arguments: Vec::new(),
+            scoped_borrow_return: false,
         }),
         MirStatementKind::Call(MirCall::ValueMethod {
             owner,
@@ -673,6 +674,7 @@ fn mir_verifier_rechecks_call_argument_placement_after_construction() {
                 debug_name: "one".to_owned(),
                 signature: native_signature,
                 arguments: Vec::new(),
+                scoped_borrow_return: false,
             }),
             MirEffect::external_call(),
             Some(safepoint),

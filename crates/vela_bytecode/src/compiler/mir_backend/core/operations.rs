@@ -161,7 +161,14 @@ impl<'a> FunctionBackend<'a> {
         operation: &MirHostOperation,
         span: vela_common::Span,
     ) -> Result<UnlinkedInstructionKind, MirBackendError> {
+        if let MirHostOperation::ReleaseBorrowLease { root } = operation {
+            return Ok(UnlinkedInstructionKind::ReleaseBorrowLease {
+                dst: dst.ok_or(MirBackendError::MissingDestination)?,
+                src: self.operand(root, span)?,
+            });
+        }
         let (root, path) = match operation {
+            MirHostOperation::ReleaseBorrowLease { .. } => unreachable!(),
             MirHostOperation::Read { root, path } | MirHostOperation::Remove { root, path } => {
                 (root, path)
             }
@@ -172,6 +179,7 @@ impl<'a> FunctionBackend<'a> {
         let root = self.operand(root, span)?;
         let (target, dynamic_args) = self.host_target(path, span)?;
         let kind = match operation {
+            MirHostOperation::ReleaseBorrowLease { .. } => unreachable!(),
             MirHostOperation::Read { .. } => UnlinkedInstructionKind::HostRead {
                 dst: dst.ok_or(MirBackendError::MissingDestination)?,
                 root,

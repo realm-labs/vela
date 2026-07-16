@@ -542,11 +542,7 @@ impl EngineBuilder {
     }
 
     pub fn build(mut self) -> EngineResult<Engine> {
-        let release_id = vela_def::FunctionId::new(u128::from(vela_common::stable_id(
-            "host_intrinsic",
-            "host",
-            "release",
-        )));
+        let release_id = vela_def::host_release_function_id();
         self.host_native_functions
             .push(HostNativeFunctionEntry::new(
                 NativeFunctionDesc::new("host::release", release_id)

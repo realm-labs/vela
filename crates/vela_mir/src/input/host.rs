@@ -23,6 +23,7 @@ pub struct HostMethodTarget {
     pub signature: CompileSignature,
     /// Immutable policy snapshot; MIR and its backends do not query a registry.
     pub access: CompileMethodAccess,
+    pub scoped_borrow_return: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

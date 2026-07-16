@@ -72,6 +72,7 @@ struct FunctionBackend<'a> {
     analyses: &'a BTreeMap<MirFunctionId, MirFunctionAnalyses>,
     facts: &'a vela_mir::MirProgramPointFacts,
     budget: &'a vela_mir::MirBudgetSchedule,
+    borrow_releases: &'a vela_mir::MirBorrowReleaseSchedule,
     code: UnlinkedCodeObject,
     locals: BTreeMap<vela_mir::MirLocalId, Register>,
     temps: BTreeMap<vela_mir::MirTempId, Register>,
@@ -224,6 +225,10 @@ impl<'a> FunctionBackend<'a> {
                 .get(&function_id)
                 .ok_or(MirBackendError::MissingMirFunction(function_id))?
                 .budget,
+            borrow_releases: &analyses
+                .get(&function_id)
+                .ok_or(MirBackendError::MissingMirFunction(function_id))?
+                .borrow_releases,
             function_id,
             function,
             code,
@@ -265,6 +270,10 @@ impl<'a> FunctionBackend<'a> {
                     );
                 }
                 self.statement(statement)?;
+                let releases = self.borrow_releases.after_statement(*statement_id).to_vec();
+                for value in releases {
+                    self.emit_automatic_release(value, statement.origin.span);
+                }
             }
             self.current_statement = None;
             let terminator = block

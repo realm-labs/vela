@@ -229,6 +229,7 @@ pub enum MirCall {
         debug_name: String,
         signature: CompileSignature,
         arguments: Vec<MirOperand>,
+        scoped_borrow_return: bool,
     },
     StdlibFunction {
         function: FunctionId,
@@ -291,6 +292,9 @@ pub enum MirHostMutation {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum MirHostOperation {
+    ReleaseBorrowLease {
+        root: MirOperand,
+    },
     Read {
         root: MirOperand,
         path: MirHostPath,
@@ -456,6 +460,7 @@ impl MirAwaitOperation {
     pub(crate) const fn minimum_effect(&self) -> MirEffect {
         match self {
             Self::Call(call) => call.minimum_effect(),
+            Self::Host(MirHostOperation::ReleaseBorrowLease { .. }) => MirEffect::PURE,
             Self::Host(MirHostOperation::Read { .. }) => MirEffect::host_read(),
             Self::Host(
                 MirHostOperation::Write { .. }
@@ -535,6 +540,7 @@ impl MirStatementKind {
             Self::MakeRange { .. } => MirEffect::may_trap(),
             Self::Call(call) => call.minimum_effect(),
             Self::Host(operation) => match operation {
+                MirHostOperation::ReleaseBorrowLease { .. } => MirEffect::PURE,
                 MirHostOperation::Read { .. } => MirEffect::host_read(),
                 MirHostOperation::Write { .. }
                 | MirHostOperation::Mutate { .. }
@@ -571,7 +577,11 @@ impl MirStatementKind {
             | Self::MaterializeConstant(_)
             | Self::MakeRange { .. }
             | Self::Call(_)
-            | Self::Host(MirHostOperation::Read { .. } | MirHostOperation::Call { .. })
+            | Self::Host(
+                MirHostOperation::ReleaseBorrowLease { .. }
+                | MirHostOperation::Read { .. }
+                | MirHostOperation::Call { .. },
+            )
             | Self::Reflect(
                 MirReflectionOperation::Read { .. }
                 | MirReflectionOperation::Write { .. }
