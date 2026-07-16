@@ -2007,12 +2007,27 @@ not normal business-function parameters.
 
 Direct Vela field and path mutation remains fine-grained through `HostAccess`.
 For an exported trusted Rust callable, `HostAccess` instead gates callable
-permission, effects, capabilities, exact host identity, and shared/exclusive
-leases before generated code creates an invocation-scoped Rust reference. Once
-`&mut T` enters trusted Rust, field-level Rust mutation is allowed. A future
-stronger sandbox may restrict callable sets or opt selected functions into
-low-level HostAccess, but it must not force proxies into the default authoring
-surface or create a second execution model.
+visibility/registration, effects, derived coarse capabilities, exact host
+identity, and shared/exclusive leases before generated code creates an
+invocation-scoped Rust reference. Once `&mut T` enters trusted Rust,
+field-level Rust mutation is allowed. A future stronger sandbox may restrict
+callable sets or opt selected functions into low-level HostAccess, but it must
+not force proxies into the default authoring surface or create a second
+execution model.
+
+### Callable ABI Excludes Deployment Policy
+
+An exported callable authors one `EffectSet` upper bound, and the existing
+canonical mapping derives its domain-neutral `CapabilitySet` requirement. The
+effect upper bound is callable ABI; the active `ExecutionProfile`, granted
+capabilities, callable/host-type allowlists, filesystem policy, and reflection
+member permissions are deployment policy and do not enter interop callable or
+generated-binding fingerprints. Reflection `required_permissions` must not be
+reused as native business authorization, and ordinary native dispatch must not
+perform arbitrary permission-string lookups. If Runtime policy later becomes
+mutable, one coarse Runtime policy generation may invalidate prepared
+authorization caches without adding per-field or per-object dimensions to
+ordinary call targets.
 
 ### Service Dispatch Is An Optional Interop Extension
 

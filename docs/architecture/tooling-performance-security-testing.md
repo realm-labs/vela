@@ -54,6 +54,9 @@ These are copied documentation and tooling hints, not generic script types or
 static enforcement.
 Field access records expose copied `required_permissions` so admin/debug tools
 can explain why a field is hidden or denied under the active reflection policy.
+Those strings belong only to reflection tooling/policy. They are not native-call
+business authorization and must not enter Rust/Vela callable contracts,
+generated binding fingerprints, or the ordinary call hot path.
 Method and trait-method reflection records expose copied `params`, `return`,
 and `returns` metadata. `return` matches function reflection naming, while
 `returns` is a script-accessible alias because `return` is a keyword.

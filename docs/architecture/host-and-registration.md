@@ -415,6 +415,12 @@ effects, access metadata, docs, and conversion rules. Scripts call them
 normally, but the VM dispatches them through a native function table and checks
 declared effects against the engine capability profile.
 
+The callable authors one domain-neutral `EffectSet`; its required
+`CapabilitySet` is derived by the canonical effect-to-capability mapping. Native
+export attributes and descriptors do not accept arbitrary business permission
+strings. `FunctionAccess` records semantic public/reflection access, not active
+deployment grants or a callable ACL.
+
 ### Native Function Descriptor
 
 ```rust
@@ -589,6 +595,9 @@ does not promise field-level sandboxing inside the Rust body. Direct Vela
 field/index/path mutations retain their fine-grained `HostAccess` policy; a
 future stronger native sandbox may opt specific functions into the low-level
 HostAccess API without changing the default ordinary-signature model.
+Reflection member `required_permissions` remain reflection tooling/policy
+metadata and must not be reused as authorization for this ordinary native-call
+path.
 
 ### Method Registration
 
@@ -644,7 +653,10 @@ function module/name/stable_id must be unique
 function overloading is unsupported; duplicate script-visible names are invalid
 registered signatures must be deterministic and serializable into TypeRegistry
 effects must be declared up front
+coarse capability requirements are derived from effects
+active ExecutionProfile grants and allowlists are deployment policy, not callable ABI
 capability checks happen before effectful native call dispatch
+native-call authorization does not perform arbitrary business-string lookups
 native calls consume execution budget
 native functions cannot store Value or HostRef beyond the call unless explicitly allowed
 native functions cannot mutate TypeRegistry at runtime

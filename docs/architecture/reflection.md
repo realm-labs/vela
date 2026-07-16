@@ -568,3 +568,7 @@ lacks a required field permission. Dynamic script record and enum payload
 reflection uses the same permission metadata when the registry knows the script
 field, while `reflect::set` still returns an updated copied value rather than
 mutating type structure.
+These names are confined to reflection tooling/policy. Rust/Vela ordinary
+callable authorization derives coarse capabilities from `EffectSet` and must
+not copy these names into callable contracts, binding fingerprints, or native
+dispatch checks.
