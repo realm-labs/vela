@@ -2004,6 +2004,9 @@ ambient Runtime or requires a user-authored service trait.
 
 `VmResult<T>` denotes call failure, while a boundary-safe `Result<T, E>` is an
 ordinary Vela Result value and generates the corresponding Rust type. The
+same return/error classification applies to replaceable entries; replacement
+must not introduce a separate `VmResult<T>`-only authoring subset or attempt to
+reconstruct a Rust `&T`/`&mut T` through `FromScriptArg`. The
 initial trusted-native profile remains callable visibility, normalized effects
 and derived coarse capabilities, exact type/lease safety, and budgets. A
 special restricted profile is deferred until a concrete deployment requires
@@ -2181,21 +2184,42 @@ generation and atomically publishes one full immutable table for future host
 roots. Adjacent methods remain Rust. Vela errors propagate without executing
 the Rust fallback, and an explicit Vela base-call facility is deferred.
 
-Each selected target retains the Runtime and linked artifact that own its Vela
-function. Applying a later partial delta therefore preserves both the old slot
-selection and its executable authority instead of reinterpreting an old
-`FunctionId` in the newest package. Override adapters pass parameters
-positionally because Rust's synthetic receiver name and Vela-local parameter
-names are not ABI; host arguments still carry exact direct bindings and the
-slot contract supplies their shared/exclusive modes. `ProviderKey` remains a
-separate provider declaration identity and never doubles as a replaceable slot
-or dispatch-generation key.
+An override target retains stable callable and artifact identity, but it must
+not own a mutable `Mutex<Runtime>` as a second execution authority. A host root
+uses an explicit runtime-bound dispatch authority to enter one execution;
+nested override calls use the active re-entry authority and push onto the same
+`ExecutionSession`. They inherit the pinned artifact, heap, state view,
+HostAccess, remaining budgets, effect ceiling, capabilities, tracing,
+cancellation, and lease provenance. The integration must not use an ambient
+Runtime, a reentrant global lock, or target-local default budgets. Independent
+host roots must not be serialized solely because they select functions from
+the same override package.
+
+Applying a later partial delta preserves the old slot selection and stable
+executable identity without reinterpreting an old `FunctionId` in a new
+artifact. Every candidate and generation also carries an unforgeable
+controller/layout identity; staging, activation, rollback, and target lookup
+reject cross-controller values even when layouts have equal length. Override
+adapters pass parameters positionally because Rust's synthetic receiver name
+and Vela-local parameter names are not ABI, while the imported slot contract
+supplies exact shared/exclusive modes, return/error mode, borrowed-return
+provenance/freeze/access, sync/async shape, types, and normalized effect
+ceiling. A strict effect subset is valid; exceeding the ceiling is not.
+`ProviderKey` remains a separate provider declaration identity and never
+doubles as a replaceable slot or dispatch-generation key.
 
 Host integrations may pin a dispatch root before any Vela call, such as at the
 start of an actor mailbox turn, so Rust handlers and nested Rust/Vela service
 calls share one generation. Conversion, borrowed-return provenance/freeze,
 lease, Runtime call target, execution session, policy, and diagnostics continue
 to use the common interop paths.
+
+The 2026-07-17 post-implementation review found that the first mechanism slice
+does not yet satisfy the preceding decision: it uses target-owned Runtime
+locks, staging-time path strings, lossy contract checks, and a
+`VmResult<T>`-only replaceable macro. Those shapes are implementation gaps, not
+accepted compatibility contracts, and may be replaced outright during the
+post-review closure.
 
 ### Context Natives Use A Session-Aware VM Boundary
 

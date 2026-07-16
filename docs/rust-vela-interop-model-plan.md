@@ -4,16 +4,21 @@
 > bundles, generated bidirectional bindings, unified call execution,
 > host-reference lease safety, and optional hot-replaceable dispatch
 >
-> Status: complete on 2026-07-17; acceptance evidence is archived in
-> [`rust-vela-interop-acceptance-2026-07-17.md`](archive/rust-vela-interop-acceptance-2026-07-17.md)
+> Status: ordinary bidirectional interop accepted; optional replaceable
+> dispatch reopened by post-implementation review on 2026-07-17
+>
+> Evidence: the original green-gate report is preserved in
+> [`rust-vela-interop-acceptance-2026-07-17.md`](archive/rust-vela-interop-acceptance-2026-07-17.md),
+> and its completion conclusion is superseded by
+> [`rust-vela-interop-post-review-2026-07-17.md`](archive/rust-vela-interop-post-review-2026-07-17.md)
 >
 > Baseline: `master` at `bf524975e` on 2026-07-16
 >
 > Execution: coherent pre-release batches; reuse the existing VM call, native,
 > method, provider, and re-entry paths
 >
-> Roadmap: completed execution contract; current work remains tracked in
-> `progress.md`
+> Roadmap: Batches A-D and the ordinary-call portion of Batch E are accepted;
+> the replaceable portions of Batches E-G remain open and are tracked below
 
 This document defines a general Rust/Vela interoperability model. Its primary
 goal is not service replacement. Its primary goal is that explicitly exported
@@ -137,14 +142,78 @@ record accepted design decisions in `docs/decisions.md`.
 
 ### Required implementation batches
 
-- Batch A: shared callable contract and compile-time proof surface.
-- Batch B: ordinary Rust export signatures and generated adapters.
-- Batch C: natural Vela-to-Rust function and method calls.
-- Batch D: generated typed Rust-to-Vela bindings.
-- Batch E: nested bidirectional calls, reborrows, async, and unified policy.
-- Batch F: optional macro-generated callable-entry interception and Vela
-  override functions.
-- Batch G: end-to-end acceptance, tooling, documentation, and performance.
+- Batch A: accepted — shared callable contract and compile-time proof surface.
+- Batch B: accepted — ordinary Rust export signatures and generated adapters.
+- Batch C: accepted — natural Vela-to-Rust function and method calls.
+- Batch D: accepted — generated typed Rust-to-Vela bindings.
+- Batch E: ordinary re-entry accepted; replaceable nesting and unified policy
+  inheritance reopened.
+- Batch F: reopened — optional macro-generated callable-entry interception and
+  Vela override functions.
+- Batch G: reopened for replaceable coverage — end-to-end acceptance, tooling,
+  documentation, and performance.
+
+### Post-implementation review correction — 2026-07-17
+
+The original acceptance run proved ordinary exports, generated bindings,
+HostRef/lease behavior, single-level override activation, partial deltas,
+rollback, and the empty-slot fast path. It did not prove that the optional
+replaceable layer obeys the same execution and ABI contract as ordinary
+interop. Full formatting, lint, workspace tests, and the two runnable override
+examples remain green, but they are not sufficient evidence for final
+completion.
+
+The following closure tasks reopen the replaceable portions of Batches E-G:
+
+- [ ] F-REVIEW-1. Replace target-owned `Mutex<Runtime>` execution with an
+  explicit session-aware invocation authority. A host root may enter a Runtime
+  once; an override reached from an active Vela execution must push a child on
+  the current `ExecutionSession`. Nested replaceable calls must neither
+  deadlock nor serialize unrelated host roots through one package-global lock.
+- [ ] F-REVIEW-2. Inherit the pinned linked artifact, heap, state view,
+  HostAccess, remaining budgets, effect ceiling, capabilities, tracing,
+  cancellation, lease provenance, and dispatch generation across every
+  replaceable transition. No override hit may construct fresh default budgets
+  or observe a newer artifact inside one root operation. Staging must publish a
+  coherent immutable artifact or artifact set for the selected delta instead
+  of retaining a separately executing mutable Runtime per target.
+- [ ] F-REVIEW-3. Give every `DispatchGeneration` and `DispatchCandidate` an
+  unforgeable controller/layout identity. `stage_from`, activation, rollback,
+  and target lookup must reject a base or candidate from another controller,
+  even when the two layouts have the same length; target slot identity must be
+  validated rather than stored only as diagnostic metadata.
+- [ ] F-REVIEW-4. Resolve `#[override(host::path::target)]` against the host
+  symbol registry during compilation/linking and import the target
+  `CallableContract`. Unknown targets and incompatible optional type hints must
+  fail before a stage candidate exists; runtime strings must not be the linked
+  target identity.
+- [ ] F-REVIEW-5. Validate the complete inherited callable contract at staging:
+  exact parameter modes, return mode, error mode, borrowed-return origin,
+  parent freeze, child access, sync/async shape, types, and the normalized
+  effect ceiling. A strict effect subset is allowed; an effect outside the
+  target ceiling is rejected even when capability projection loses the
+  distinction.
+- [ ] F-REVIEW-6. Reuse the ordinary generated return/error adapter for
+  replaceable entries. Ordinary values, boundary-safe `Result<T, E>`, host
+  business result aliases, and supported borrowed host returns must not be
+  narrowed to `VmResult<T>` or converted through `FromScriptArg for &T`.
+- [ ] F-REVIEW-7. Provide and demonstrate the reusable host-business-macro
+  integration promised by F2. Business authors must not assign dense indices,
+  repeat authority plumbing, collect slot descriptors one method at a time, or
+  construct a handwritten proxy. Add a Handler-trait and Service-struct
+  fixture matching the p9-lattice integration shape.
+- [ ] G-REVIEW-1. Add regression tests for same-Runtime nested replaceable
+  calls, async suspension and cancellation, remaining-budget inheritance,
+  artifact/generation pinning, cross-controller candidate rejection, complete
+  ABI/effect validation, business `Result` mapping, and borrowed-return
+  propagation/release.
+- [ ] G-REVIEW-2. Rerun the complete validation, runnable examples, and
+  replaceable benchmarks, then publish a new acceptance report. The old report
+  remains historical evidence and must not be relabeled as the final result.
+
+Until all tasks above pass, the no-override fast path and the demonstrated
+single-level activation/rollback slice are supported implementation facts, but
+optional replacement is not a completed production contract.
 
 ### Never-complete conditions
 

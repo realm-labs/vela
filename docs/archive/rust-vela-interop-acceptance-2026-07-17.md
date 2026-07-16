@@ -1,6 +1,12 @@
 # Rust/Vela Interop Acceptance — 2026-07-17
 
-This report records the final evidence for
+> **Status correction:** a post-implementation review reopened the optional
+> replaceable-dispatch portion of the plan. This report remains evidence for
+> the tests, audits, examples, and benchmarks that passed, but its final
+> completion conclusion is superseded by
+> [`rust-vela-interop-post-review-2026-07-17.md`](rust-vela-interop-post-review-2026-07-17.md).
+
+This report records the original acceptance-run evidence for
 [`rust-vela-interop-model-plan.md`](../rust-vela-interop-model-plan.md). The
 plan's durable product contract remains in the main document; this archive
 keeps the test, audit, and measurement detail out of `progress.md`.

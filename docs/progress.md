@@ -10,14 +10,17 @@ history belongs in Git.
 
 ## Current Focus
 
-The unified Rust/Vela interop plan is complete. Ordinary Rust exports, exact
-lease adapters, owner-frozen borrowed returns, generated typed Rust-to-Vela
-bindings, same-session sync/async re-entry, effect ceilings, and immutable
-optional override generations use the shared execution path. Build-time
-binding generation is the primary documented workflow; separate runnable
-handler and service-method examples prove activation and rollback. The full
-acceptance, audit, validation, and benchmark evidence is archived in
-[rust-vela-interop-acceptance-2026-07-17.md](archive/rust-vela-interop-acceptance-2026-07-17.md).
+The ordinary Rust/Vela interop path is accepted: Rust exports, exact lease
+adapters, owner-frozen borrowed returns, generated typed Rust-to-Vela bindings,
+and `NativeCallContext` sync/async re-entry use the shared execution path.
+Post-implementation review reopened the optional replaceable-dispatch layer:
+its current target-owned Runtime starts a second execution with fresh budgets,
+can deadlock on same-Runtime nesting, lacks controller-owned generation proof,
+performs incomplete ABI/effect validation, narrows returns to `VmResult<T>`,
+resolves override targets at staging by string, and still exposes low-level
+slot ceremony to business authors. The corrected status and closure tasks live
+in [the unified plan](rust-vela-interop-model-plan.md#post-implementation-review-correction--2026-07-17)
+and [the post-review report](archive/rust-vela-interop-post-review-2026-07-17.md).
 
 The explicit state-storage hard switch has Batches A-F landed, and its final
 Batch G is now the active execution object. Its five open
@@ -52,7 +55,7 @@ storage Batch G reaches final acceptance.
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
 | M20 | Paused behind Batch G | Resume the cache-family audit after state-storage final acceptance. |
 | M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
-| Rust/Vela interop | Complete | Ordinary generated interop and optional macro-generated hot replacement pass end-to-end acceptance, audits, benchmarks, and full validation. |
+| Rust/Vela interop | Partially complete; replaceable reopened | Ordinary generated interop is accepted. Optional replacement must close same-session execution, generation ownership, exact contract, return mapping, static linking, and business-macro integration gaps. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -101,9 +104,11 @@ storage Batch G reaches final acceptance.
   schema and build-time generated typed Rust surface. Runtime strings and
   boundary wrapper values remain low-level dynamic escape hatches, not the
   primary call workflow.
-- Optional `#[replaceable]` entries use stable slots, immutable root-pinned
-  generations, target-owned Runtime authority, partial activation, and
-  rollback without retrying authored side effects.
+- Optional `#[replaceable]` entries currently prove stable dense slots, an
+  empty-slot fast path, immutable root-pinned selection, partial activation,
+  rollback, and no fallback retry. Their target-owned Runtime execution and
+  low-level authoring surface are provisional and are not the accepted final
+  interop architecture.
 
 ### Standard Library, Tooling, And Proof
 
@@ -123,6 +128,24 @@ storage Batch G reaches final acceptance.
   [archive/performance-full-2026-06-06.md](archive/performance-full-2026-06-06.md).
 
 ## Active Gaps
+
+### Rust/Vela Replaceable Dispatch Post-Review
+
+Ordinary interop remains accepted. Optional replacement must complete
+`F-REVIEW-1` through `F-REVIEW-7` and `G-REVIEW-1` through `G-REVIEW-2` in the
+[unified plan](rust-vela-interop-model-plan.md#post-implementation-review-correction--2026-07-17).
+The closure requires one session-aware invocation authority, inherited runtime
+policy and remaining budgets, controller/layout-owned generations, statically
+linked override targets, complete callable-contract validation, ordinary
+return/error/borrowed-return mapping, and a p9-lattice-shaped business macro
+fixture. Do not close it by adding a reentrant or process-global Runtime lock,
+replenishing nested budgets, accepting capability projection as full ABI,
+fabricating Rust references, or documenting manual slot indices as the final
+business surface.
+
+The currently green single-level activation, partial-delta, rollback,
+empty-slot benchmark, and runnable examples remain baseline evidence. They do
+not prove nested replacement or final acceptance.
 
 ### State Storage Batch G
 
@@ -228,8 +251,11 @@ scanners, runtime execution, live host-state reads, or editor-owned analysis.
 ## Validation
 
 Unified Rust/Vela interop passed its complete workspace, examples, docs, site,
-benchmark-build, and fuzz-build gates on 2026-07-17. Its detailed acceptance
-matrix and audit are archived.
+benchmark-build, and fuzz-build gates on 2026-07-17. Post-review reruns of root
+formatting, all-feature workspace clippy/tests, focused dispatch tests, and the
+two runnable replacement examples also passed. Those gates establish a green
+baseline, but the optional replaceable acceptance matrix was incomplete; its
+original report is historical evidence rather than current completion proof.
 
 State-storage Batch F's focused suites and original full acceptance gates were
 green on 2026-07-15, but the second review showed that its regression matrix
@@ -264,9 +290,11 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 ## Next Up
 
 1. Complete state-storage Batch G and restore its final acceptance.
-2. Resume the M20 cache-family audit against the accepted state model.
-3. Resume the M20.5 editor-visible follow-up after M20 close-out.
-4. Keep persistence, snapshots, replication, cross-Runtime sharing, structural
+2. Schedule and close the Rust/Vela replaceable-dispatch post-review tasks
+   before restoring unified-interop completion.
+3. Resume the M20 cache-family audit against the accepted state model.
+4. Resume the M20.5 editor-visible follow-up after M20 close-out.
+5. Keep persistence, snapshots, replication, cross-Runtime sharing, structural
    state migration, async-frame migration, and initializer dependency reads as
    explicit non-goals.
 

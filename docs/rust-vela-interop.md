@@ -103,6 +103,15 @@ should use generated bindings.
 
 ## Optional Single-Callable Replacement
 
+> **Post-review status:** the current API is an experimental mechanism slice,
+> not the completed production replacement contract. Single-level activation,
+> partial deltas, rollback, error propagation, and the empty-slot fast path are
+> demonstrated. Same-Runtime nested replacement, same-session budget/policy
+> inheritance, controller-owned generations, complete ABI/borrowed-return
+> validation, static override linking, ordinary business result mapping, and
+> host-business-macro ergonomics remain open in the
+> [unified plan](rust-vela-interop-model-plan.md#post-implementation-review-correction--2026-07-17).
+
 Replacement is an explicit extension. A selected public entry keeps its normal
 call shape while the macro moves its body to a private Rust fallback:
 
@@ -149,16 +158,22 @@ controller.rollback(previous);
 ```
 
 Pin a `DispatchRoot` at the host operation boundary, such as an actor mailbox
-turn. Active roots retain their immutable generation while activation changes
-future roots. A staged package is a partial delta: unmentioned targets and
-their owning Runtime/artifact remain selected. Rollback republishes a prior
-generation. A Vela error propagates and never retries the displaced Rust body.
+turn. In the current mechanism, active roots retain their immutable target
+selection while activation changes future roots. A staged package is a partial
+delta, rollback republishes a prior generation, and a Vela error propagates
+without retrying the displaced Rust body. Do not yet rely on nested
+replaceable calls sharing the active Vela session or remaining budgets; that is
+a required closure item rather than a current guarantee.
 
 The no-override entry performs one dense indexed lookup and empty-entry branch
 before the private Rust fallback. It does not perform a string/hash lookup,
 global lock, allocation, serialization, or dynamic trait dispatch.
 
 ## Deployment Checklist
+
+The ordinary generated interop checklist below is production-oriented. Treat
+the optional replacement steps as evaluation-only until the post-review
+closure receives a replacement acceptance report.
 
 1. Generate bindings from the exact package/source graph used for deployment.
 2. Register export bundles, host types, capabilities, and policy explicitly.
