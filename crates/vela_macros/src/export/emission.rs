@@ -5,7 +5,7 @@ use syn::{ImplItemFn, ItemFn};
 use super::attrs::ExportAttrs;
 use super::signature::{
     BorrowOrigin, ClassifiedSignature, EffectName, ErrorMode, HostAccess, ParameterMode,
-    ReturnMode, TypeShape,
+    ReturnMode, ScopedReturnContainer, TypeShape,
 };
 
 pub(crate) fn function_contract(
@@ -231,8 +231,17 @@ fn function_sync_scoped_host_adapter(
         HostAccess::Shared => quote! { ::vela_host::lease::HostLeaseKind::Shared },
         HostAccess::Exclusive => quote! { ::vela_host::lease::HostLeaseKind::Exclusive },
     };
-    let TypeShape::Host(child_ty, _) = &signature.returns.ty else {
-        unreachable!("direct scoped adapter requires a direct host return");
+    let container = signature
+        .scoped_return_container()
+        .expect("scoped adapter has a supported return container");
+    let child_shape = match &signature.returns.ty {
+        TypeShape::Host(_, _) => &signature.returns.ty,
+        TypeShape::Option(inner) => &**inner,
+        TypeShape::Result(ok, _) => &**ok,
+        _ => unreachable!(),
+    };
+    let TypeShape::Host(child_ty, _) = child_shape else {
+        unreachable!("scoped adapter requires a direct host payload");
     };
     let request_bindings = signature
         .parameters
@@ -295,14 +304,14 @@ fn function_sync_scoped_host_adapter(
                 .object()
                 .lease_any()
                 .and_then(|object| object.downcast_ref::<#host_ty>())
-                .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(__vela_owner))?;
+                .expect("preflight-validated scoped shared owner");
         },
         HostAccess::Exclusive => quote! {
             let #host_name = __vela_parent_lease
                 .object_mut()
                 .and_then(|object| object.lease_any_mut())
                 .and_then(|object| object.downcast_mut::<#host_ty>())
-                .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(__vela_owner))?;
+                .expect("preflight-validated scoped exclusive owner");
         },
     };
     let argument_names = signature
@@ -319,6 +328,107 @@ fn function_sync_scoped_host_adapter(
     let child_reference = match child {
         HostAccess::Shared => quote! { &#child_ty },
         HostAccess::Exclusive => quote! { &mut #child_ty },
+    };
+    let scoped_return = quote! {
+        ::vela_host::adapter::ScopedHostReturn {
+            object: __vela_object,
+            access: #child_kind,
+        }
+    };
+    let outcome = match (container, signature.returns.error_mode) {
+        (ScopedReturnContainer::Direct, ErrorMode::Value) => quote! {
+            let __vela_object = ::vela_engine::interop::catch_export_panic(
+                &__vela_callable,
+                || ::vela_host::lease::try_scoped_host_cell(
+                    __vela_parent,
+                    move |__vela_parent_lease| {
+                        #host_binding
+                        let __vela_child: #child_reference = #function_ident(#(#argument_names),*);
+                        Ok(#wrap_child)
+                    },
+                ),
+            )?;
+            Ok(::vela_engine::native::ScopedHostNativeOutcome::Direct(#scoped_return))
+        },
+        (ScopedReturnContainer::Direct, ErrorMode::RuntimeResult) => quote! {
+            let __vela_object = ::vela_engine::interop::catch_export_panic(
+                &__vela_callable,
+                || Ok(::vela_host::lease::try_scoped_host_cell(
+                    __vela_parent,
+                    move |__vela_parent_lease| {
+                        #host_binding
+                        match #function_ident(#(#argument_names),*) {
+                            Ok(__vela_child) => Ok(#wrap_child),
+                            Err(__vela_error) => Err(__vela_error),
+                        }
+                    },
+                )),
+            )??;
+            Ok(::vela_engine::native::ScopedHostNativeOutcome::Direct(#scoped_return))
+        },
+        (ScopedReturnContainer::Option, ErrorMode::Value) => quote! {
+            let __vela_built = ::vela_engine::interop::catch_export_panic(
+                &__vela_callable,
+                || Ok(::vela_host::lease::try_scoped_host_cell(
+                    __vela_parent,
+                    move |__vela_parent_lease| {
+                        #host_binding
+                        match #function_ident(#(#argument_names),*) {
+                            Some(__vela_child) => Ok(#wrap_child),
+                            None => Err(()),
+                        }
+                    },
+                )),
+            )?;
+            match __vela_built {
+                Ok(__vela_object) => Ok(
+                    ::vela_engine::native::ScopedHostNativeOutcome::OptionSome(#scoped_return),
+                ),
+                Err(()) => Ok(::vela_engine::native::ScopedHostNativeOutcome::Value(
+                    ::vela_vm::owned_value::OwnedValue::enum_variant(
+                        "Option",
+                        "None",
+                        ::std::iter::empty::<(
+                            &'static str,
+                            ::vela_vm::owned_value::OwnedValue,
+                        )>(),
+                    ),
+                )),
+            }
+        },
+        (ScopedReturnContainer::Result, ErrorMode::Value) => quote! {
+            let __vela_built = ::vela_engine::interop::catch_export_panic(
+                &__vela_callable,
+                || Ok(::vela_host::lease::try_scoped_host_cell(
+                    __vela_parent,
+                    move |__vela_parent_lease| {
+                        #host_binding
+                        match #function_ident(#(#argument_names),*) {
+                            Ok(__vela_child) => Ok(#wrap_child),
+                            Err(__vela_error) => Err(__vela_error),
+                        }
+                    },
+                )),
+            )?;
+            match __vela_built {
+                Ok(__vela_object) => Ok(
+                    ::vela_engine::native::ScopedHostNativeOutcome::ResultOk(#scoped_return),
+                ),
+                Err(__vela_error) => Ok(::vela_engine::native::ScopedHostNativeOutcome::Value(
+                    ::vela_vm::owned_value::OwnedValue::enum_variant(
+                        "Result",
+                        "Err",
+                        [(
+                            "0",
+                            ::vela_engine::args::IntoScriptArg::into_script_arg(__vela_error),
+                        )],
+                    ),
+                )),
+            }
+        },
+        (_, ErrorMode::RuntimeResult) => {
+            unreachable!("VmResult is unwrapped before return-container classification")
+        }
     };
 
     quote! {
@@ -355,36 +465,11 @@ fn function_sync_scoped_host_adapter(
                         ));
                     }
                     #(#argument_bindings)*
-                    let __vela_owner = match args.iter().find_map(|argument| match argument {
-                        ::vela_vm::owned_value::OwnedValue::HostRef(root) => Some(*root),
-                        _ => None,
-                    }) {
-                        Some(root) => root,
-                        None => return Err(::vela_vm::error::VmError::new(
-                            ::vela_vm::error::VmErrorKind::TypeMismatch {
-                                operation: "scoped host owner",
-                            },
-                        )),
-                    };
                     let __vela_parent = leases
                         .first_mut()
                         .expect("preflight emits the borrowed return owner")
                         .take();
-                    let __vela_object = ::vela_engine::interop::catch_export_panic(
-                        &__vela_callable,
-                        || ::vela_host::lease::try_scoped_host_cell(
-                            __vela_parent,
-                            move |__vela_parent_lease| {
-                                #host_binding
-                                let __vela_child: #child_reference = #function_ident(#(#argument_names),*);
-                                Ok(#wrap_child)
-                            },
-                        ),
-                    )?;
-                    Ok(::vela_host::adapter::ScopedHostReturn {
-                        object: __vela_object,
-                        access: #child_kind,
-                    })
+                    #outcome
                 },
             )
         }
@@ -1032,21 +1117,30 @@ fn method_sync_scoped_host_adapter(
                 .object()
                 .lease_any()
                 .and_then(|object| object.downcast_ref::<#self_ty>())
-                .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(receiver.root))?;
+                .expect("preflight-validated scoped shared receiver");
         },
         ParameterMode::ExclusiveHost => quote! {
             let __vela_receiver = __vela_parent_lease
                 .object_mut()
                 .and_then(|object| object.lease_any_mut())
                 .and_then(|object| object.downcast_mut::<#self_ty>())
-                .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(receiver.root))?;
+                .expect("preflight-validated scoped exclusive receiver");
         },
         _ => unreachable!(),
     };
     let ReturnMode::ScopedHost { child, .. } = signature.returns.mode else {
         unreachable!();
     };
-    let TypeShape::Host(child_ty, _) = &signature.returns.ty else {
+    let container = signature
+        .scoped_return_container()
+        .expect("scoped method has a supported return container");
+    let child_shape = match &signature.returns.ty {
+        TypeShape::Host(_, _) => &signature.returns.ty,
+        TypeShape::Option(inner) => &**inner,
+        TypeShape::Result(ok, _) => &**ok,
+        _ => unreachable!(),
+    };
+    let TypeShape::Host(child_ty, _) = child_shape else {
         unreachable!();
     };
     let child_kind = match child {
@@ -1089,6 +1183,149 @@ fn method_sync_scoped_host_adapter(
         || quote! { <#self_ty>::#method_ident },
         |path| quote! { <#self_ty as #path>::#method_ident },
     );
+    let scoped_return = quote! {
+        ::vela_host::adapter::ScopedHostReturn {
+            object: __vela_object,
+            access: #child_kind,
+        }
+    };
+    let invocation = match (container, signature.returns.error_mode) {
+        (ScopedReturnContainer::Direct, ErrorMode::Value) => quote! {
+            match ::vela_engine::interop::catch_export_panic(
+                &__vela_contract.public_path,
+                || ::vela_host::lease::try_scoped_host_cell(
+                    __vela_parent,
+                    move |__vela_parent_lease| {
+                        #receiver_binding
+                        let __vela_child: #child_reference = #call_target(
+                            __vela_receiver,
+                            #(#argument_names),*
+                        );
+                        Ok(#wrap_child)
+                    },
+                ),
+            ) {
+                Ok(__vela_object) => Ok(Some(#scoped_return)),
+                Err(__vela_error) => {
+                    __vela_invocation_result = Some(Err(__vela_error));
+                    Ok(None)
+                }
+            }
+        },
+        (ScopedReturnContainer::Direct, ErrorMode::RuntimeResult) => quote! {
+            match ::vela_engine::interop::catch_export_panic(
+                &__vela_contract.public_path,
+                || Ok(::vela_host::lease::try_scoped_host_cell(
+                    __vela_parent,
+                    move |__vela_parent_lease| {
+                        #receiver_binding
+                        match #call_target(__vela_receiver, #(#argument_names),*) {
+                            Ok(__vela_child) => Ok(#wrap_child),
+                            Err(__vela_error) => Err(__vela_error),
+                        }
+                    },
+                )),
+            ) {
+                Ok(Ok(__vela_object)) => Ok(Some(#scoped_return)),
+                Ok(Err(__vela_error)) | Err(__vela_error) => {
+                    __vela_invocation_result = Some(Err(__vela_error));
+                    Ok(None)
+                }
+            }
+        },
+        (ScopedReturnContainer::Option, ErrorMode::Value) => quote! {
+            match ::vela_engine::interop::catch_export_panic(
+                &__vela_contract.public_path,
+                || Ok(::vela_host::lease::try_scoped_host_cell(
+                    __vela_parent,
+                    move |__vela_parent_lease| {
+                        #receiver_binding
+                        match #call_target(__vela_receiver, #(#argument_names),*) {
+                            Some(__vela_child) => Ok(#wrap_child),
+                            None => Err(()),
+                        }
+                    },
+                )),
+            ) {
+                Ok(Ok(__vela_object)) => Ok(Some(#scoped_return)),
+                Ok(Err(())) => {
+                    __vela_invocation_result = Some(Ok(
+                        ::vela_vm::owned_value::OwnedValue::enum_variant(
+                            "Option",
+                            "None",
+                            ::std::iter::empty::<(
+                                &'static str,
+                                ::vela_vm::owned_value::OwnedValue,
+                            )>(),
+                        ),
+                    ));
+                    Ok(None)
+                }
+                Err(__vela_error) => {
+                    __vela_invocation_result = Some(Err(__vela_error));
+                    Ok(None)
+                }
+            }
+        },
+        (ScopedReturnContainer::Result, ErrorMode::Value) => quote! {
+            match ::vela_engine::interop::catch_export_panic(
+                &__vela_contract.public_path,
+                || Ok(::vela_host::lease::try_scoped_host_cell(
+                    __vela_parent,
+                    move |__vela_parent_lease| {
+                        #receiver_binding
+                        match #call_target(__vela_receiver, #(#argument_names),*) {
+                            Ok(__vela_child) => Ok(#wrap_child),
+                            Err(__vela_error) => Err(__vela_error),
+                        }
+                    },
+                )),
+            ) {
+                Ok(Ok(__vela_object)) => Ok(Some(#scoped_return)),
+                Ok(Err(__vela_error)) => {
+                    __vela_invocation_result = Some(Ok(
+                        ::vela_vm::owned_value::OwnedValue::enum_variant(
+                            "Result",
+                            "Err",
+                            [(
+                                "0",
+                                ::vela_engine::args::IntoScriptArg::into_script_arg(
+                                    __vela_error,
+                                ),
+                            )],
+                        ),
+                    ));
+                    Ok(None)
+                }
+                Err(__vela_error) => {
+                    __vela_invocation_result = Some(Err(__vela_error));
+                    Ok(None)
+                }
+            }
+        },
+        (_, ErrorMode::RuntimeResult) => {
+            unreachable!("VmResult is unwrapped before return-container classification")
+        }
+    };
+    let retained_result = match container {
+        ScopedReturnContainer::Direct => quote! {
+            ::vela_vm::owned_value::OwnedValue::HostRef(root)
+        },
+        ScopedReturnContainer::Option => quote! {
+            ::vela_vm::owned_value::OwnedValue::enum_variant(
+                "Option",
+                "Some",
+                [("0", ::vela_vm::owned_value::OwnedValue::HostRef(root))],
+            )
+        },
+        ScopedReturnContainer::Result => quote! {
+            ::vela_vm::owned_value::OwnedValue::enum_variant(
+                "Result",
+                "Ok",
+                [("0", ::vela_vm::owned_value::OwnedValue::HostRef(root))],
+            )
+        },
+    };
 
     quote! {
         #[doc(hidden)]
@@ -1122,7 +1359,7 @@ fn method_sync_scoped_host_adapter(
                 }
                 #(#value_bindings)*
                 let __vela_requests = [(receiver.root, #receiver_kind)];
-                let mut __vela_invocation_error = None;
+                let mut __vela_invocation_result = None;
                 let __vela_retained = host.adapter.with_scoped_host_return(
                     &__vela_requests,
                     &mut |leases| {
@@ -1130,35 +1367,13 @@ fn method_sync_scoped_host_adapter(
                             .first_mut()
                             .expect("scoped method retains its receiver")
                             .take();
-                        match ::vela_engine::interop::catch_export_panic(
-                            &__vela_contract.public_path,
-                            || ::vela_host::lease::try_scoped_host_cell(
-                                __vela_parent,
-                                move |__vela_parent_lease| {
-                                    #receiver_binding
-                                    let __vela_child: #child_reference = #call_target(
-                                        __vela_receiver,
-                                        #(#argument_names),*
-                                    );
-                                    Ok(#wrap_child)
-                                },
-                            ),
-                        ) {
-                            Ok(object) => Ok(Some(::vela_host::adapter::ScopedHostReturn {
-                                object,
-                                access: #child_kind,
-                            })),
-                            Err(error) => {
-                                __vela_invocation_error = Some(error);
-                                Ok(None)
-                            }
-                        }
+                        #invocation
                     },
                 )?;
                 match __vela_retained {
-                    Some(root) => Ok(::vela_vm::owned_value::OwnedValue::HostRef(root)),
-                    None => Err(__vela_invocation_error
-                        .expect("missing scoped method invocation result")),
+                    Some(root) => Ok(#retained_result),
+                    None => __vela_invocation_result
+                        .expect("missing scoped method invocation result"),
                 }
             })
         }

@@ -332,7 +332,7 @@ impl EngineBuilder {
         function: impl for<'host> Fn(
             &mut [vela_host::lease::ErasedHostLease<'host>],
             Vec<OwnedValue>,
-        ) -> VmResult<vela_host::adapter::ScopedHostReturn<'host>>
+        ) -> VmResult<crate::native::ScopedHostNativeOutcome<'host>>
         + Send
         + Sync
         + 'static,

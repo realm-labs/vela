@@ -40,6 +40,14 @@ impl PlayerService {
     pub fn player_mut(&mut self) -> &mut Player {
         &mut self.player
     }
+
+    pub fn maybe_player(&self, present: bool) -> Option<&Player> {
+        present.then_some(&self.player)
+    }
+
+    pub fn checked_player(&self, allowed: bool) -> Result<&Player, i64> {
+        if allowed { Ok(&self.player) } else { Err(42) }
+    }
 }
 
 #[trait_export(path = "game::Damageable")]
@@ -112,6 +120,29 @@ pub fn service_player(service: &PlayerService) -> &Player {
 #[export(path = "game::service_player_mut")]
 pub fn service_player_mut(service: &mut PlayerService) -> &mut Player {
     &mut service.player
+}
+
+#[export(path = "game::maybe_service_player")]
+pub fn maybe_service_player(service: &PlayerService, present: bool) -> Option<&Player> {
+    present.then_some(&service.player)
+}
+
+#[export(path = "game::checked_service_player")]
+pub fn checked_service_player(service: &PlayerService, allowed: bool) -> Result<&Player, i64> {
+    if allowed {
+        Ok(&service.player)
+    } else {
+        Err(41)
+    }
+}
+
+#[export(path = "game::fallible_service_player")]
+pub fn fallible_service_player(service: &PlayerService, allowed: bool) -> VmResult<&Player> {
+    allowed.then_some(&service.player).ok_or_else(|| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "fallible borrowed host return",
+        })
+    })
 }
 
 #[export(path = "game::touch_service")]
@@ -367,6 +398,9 @@ fn host_export_runtime(source: &str) -> Runtime {
         .register_exports(vela_export_bundle_mixed_alias())
         .register_exports(vela_export_bundle_service_player())
         .register_exports(vela_export_bundle_service_player_mut())
+        .register_exports(vela_export_bundle_maybe_service_player())
+        .register_exports(vela_export_bundle_checked_service_player())
+        .register_exports(vela_export_bundle_fallible_service_player())
         .register_exports(vela_export_bundle_touch_service())
         .register_exports(vela_export_bundle_roll())
         .register_exports(vela_export_bundle_strict_grant())
@@ -556,6 +590,113 @@ fn host_release_invalidates_alias_group_and_unfreezes_owner() {
         error.kind(),
         VmErrorKind::Host(vela_host::error::HostErrorKind::NotScopedBorrow { .. })
     ));
+}
+
+#[test]
+fn option_and_result_borrowed_returns_retain_only_success_children() {
+    let mut runtime = host_export_runtime(
+        "fn some(service: PlayerService) { let player = game::maybe_service_player(service, true)?; return Option::Some(player.current_level()); } fn none(service: PlayerService) { let player = game::maybe_service_player(service, false)?; return Option::Some(player.current_level()); } fn ok(service: PlayerService) { let player = game::checked_service_player(service, true)?; return Result::Ok(player.current_level()); } fn err(service: PlayerService) { let player = game::checked_service_player(service, false)?; return Result::Ok(player.current_level()); }",
+    );
+    let service = PlayerService {
+        player: Player { level: 8 },
+        touches: 0,
+    };
+
+    for (entry, variant) in [
+        ("some", "Some"),
+        ("none", "None"),
+        ("ok", "Ok"),
+        ("err", "Err"),
+    ] {
+        let value = runtime
+            .call(
+                entry,
+                CallArgs::new().with_host_ref("service", &service),
+                CallOptions::unbounded(),
+            )
+            .expect("structured borrowed return branch should execute");
+        let owned = runtime
+            .value_to_owned(&value)
+            .expect("result should materialize");
+        assert!(matches!(
+            owned,
+            OwnedValue::Enum { variant: ref actual, .. } if actual == variant
+        ));
+    }
+}
+
+#[test]
+fn option_and_result_borrowed_method_returns_match_free_functions() {
+    let mut runtime = host_export_runtime(
+        "fn some(service: PlayerService) { let player = service.maybe_player(true)?; return Option::Some(player.current_level()); } fn none(service: PlayerService) { let player = service.maybe_player(false)?; return Option::Some(player.current_level()); } fn ok(service: PlayerService) { let player = service.checked_player(true)?; return Result::Ok(player.current_level()); } fn err(service: PlayerService) { let player = service.checked_player(false)?; return Result::Ok(player.current_level()); }",
+    );
+    let service = PlayerService {
+        player: Player { level: 9 },
+        touches: 0,
+    };
+
+    for (entry, variant) in [
+        ("some", "Some"),
+        ("none", "None"),
+        ("ok", "Ok"),
+        ("err", "Err"),
+    ] {
+        let value = runtime
+            .call(
+                entry,
+                CallArgs::new().with_host_ref("service", &service),
+                CallOptions::unbounded(),
+            )
+            .expect("structured borrowed method return branch should execute");
+        let owned = runtime
+            .value_to_owned(&value)
+            .expect("result should materialize");
+        assert!(matches!(
+            owned,
+            OwnedValue::Enum { variant: ref actual, .. } if actual == variant
+        ));
+    }
+}
+
+#[test]
+fn vm_result_borrowed_return_releases_owner_on_error() {
+    let mut runtime = host_export_runtime(
+        "fn ok(service: PlayerService) { let player = game::fallible_service_player(service, true); return player.current_level(); } fn fail(service: PlayerService) { let player = game::fallible_service_player(service, false); return player.current_level(); } fn after(service: PlayerService) { return game::touch_service(service); }",
+    );
+    let mut service = PlayerService {
+        player: Player { level: 8 },
+        touches: 0,
+    };
+    let value = runtime
+        .call(
+            "ok",
+            CallArgs::new().with_host_mut("service", &mut service),
+            CallOptions::unbounded(),
+        )
+        .expect("VmResult success should retain the borrowed child");
+    assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(8)));
+
+    let error = runtime
+        .call(
+            "fail",
+            CallArgs::new().with_host_mut("service", &mut service),
+            CallOptions::unbounded(),
+        )
+        .expect_err("VmResult error should cross the boundary");
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::TypeMismatch {
+            operation: "fallible borrowed host return"
+        }
+    ));
+    let value = runtime
+        .call(
+            "after",
+            CallArgs::new().with_host_mut("service", &mut service),
+            CallOptions::unbounded(),
+        )
+        .expect("error cleanup must release the owner lease");
+    assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(1)));
 }
 
 #[test]

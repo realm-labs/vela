@@ -632,11 +632,18 @@ pub struct ScopedHostNativeFunctionEntry {
         dyn for<'host> Fn(
                 &mut [vela_host::lease::ErasedHostLease<'host>],
                 Vec<OwnedValue>,
-            ) -> VmResult<vela_host::adapter::ScopedHostReturn<'host>>
+            ) -> VmResult<ScopedHostNativeOutcome<'host>>
             + Send
             + Sync
             + 'static,
     >,
+}
+
+pub enum ScopedHostNativeOutcome<'host> {
+    Direct(vela_host::adapter::ScopedHostReturn<'host>),
+    OptionSome(vela_host::adapter::ScopedHostReturn<'host>),
+    ResultOk(vela_host::adapter::ScopedHostReturn<'host>),
+    Value(OwnedValue),
 }
 
 impl ScopedHostNativeFunctionEntry {
@@ -653,7 +660,7 @@ impl ScopedHostNativeFunctionEntry {
         function: impl for<'host> Fn(
             &mut [vela_host::lease::ErasedHostLease<'host>],
             Vec<OwnedValue>,
-        ) -> VmResult<vela_host::adapter::ScopedHostReturn<'host>>
+        ) -> VmResult<ScopedHostNativeOutcome<'host>>
         + Send
         + Sync
         + 'static,

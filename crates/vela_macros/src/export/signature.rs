@@ -127,6 +127,13 @@ pub(super) enum ErrorMode {
     RuntimeResult,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum ScopedReturnContainer {
+    Direct,
+    Option,
+    Result,
+}
+
 #[derive(Clone)]
 pub(super) struct ClassifiedReturn {
     pub(super) ty: TypeShape,
@@ -694,13 +701,26 @@ impl ClassifiedSignature {
                     ..
                 }
             )
-            && matches!(self.returns.ty, TypeShape::Host(_, _))
+            && self.scoped_return_container().is_some()
             && self.parameters.iter().all(|parameter| {
                 matches!(
                     parameter.mode,
                     ParameterMode::Value | ParameterMode::SharedHost | ParameterMode::ExclusiveHost
                 )
             })
+    }
+
+    pub(crate) fn scoped_return_container(&self) -> Option<ScopedReturnContainer> {
+        match &self.returns.ty {
+            TypeShape::Host(_, _) => Some(ScopedReturnContainer::Direct),
+            TypeShape::Option(inner) if matches!(&**inner, TypeShape::Host(_, _)) => {
+                Some(ScopedReturnContainer::Option)
+            }
+            TypeShape::Result(ok, _) if matches!(&**ok, TypeShape::Host(_, _)) => {
+                Some(ScopedReturnContainer::Result)
+            }
+            _ => None,
+        }
     }
 
     pub(crate) fn supports_sync_scoped_method_adapter(&self) -> bool {
@@ -713,7 +733,7 @@ impl ClassifiedSignature {
                     ..
                 }
             )
-            && matches!(self.returns.ty, TypeShape::Host(_, _))
+            && self.scoped_return_container().is_some()
             && self
                 .parameters
                 .first()

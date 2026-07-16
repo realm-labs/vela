@@ -24,7 +24,7 @@ use crate::native::{
     AsyncContextHostNativeFunctionEntry, AsyncDirectHostNativeFunctionEntry,
     AsyncHostNativeFunctionEntry, AsyncNativeFunctionEntry, ContextHostNativeFunctionEntry,
     HostNativeFunctionEntry, NativeFunctionDesc, NativeFunctionEntry,
-    ScopedHostNativeFunctionEntry,
+    ScopedHostNativeFunctionEntry, ScopedHostNativeOutcome,
 };
 use crate::permission::CapabilitySet;
 
@@ -554,21 +554,34 @@ impl Engine {
             vm.register_host_native_with_id(id, move |args, host| {
                 check_capabilities(&name, &effects, capabilities)?;
                 let requests = requests(args)?;
-                let mut invocation_error = None;
+                let mut invocation_result = None;
+                let mut envelope = ScopedHostEnvelope::Direct;
                 let retained =
                     host.adapter.with_scoped_host_return(
                         &requests,
                         &mut |leases| match function(leases, args.to_vec()) {
-                            Ok(returned) => Ok(Some(returned)),
+                            Ok(ScopedHostNativeOutcome::Direct(returned)) => Ok(Some(returned)),
+                            Ok(ScopedHostNativeOutcome::OptionSome(returned)) => {
+                                envelope = ScopedHostEnvelope::OptionSome;
+                                Ok(Some(returned))
+                            }
+                            Ok(ScopedHostNativeOutcome::ResultOk(returned)) => {
+                                envelope = ScopedHostEnvelope::ResultOk;
+                                Ok(Some(returned))
+                            }
+                            Ok(ScopedHostNativeOutcome::Value(value)) => {
+                                invocation_result = Some(Ok(value));
+                                Ok(None)
+                            }
                             Err(error) => {
-                                invocation_error = Some(error);
+                                invocation_result = Some(Err(error));
                                 Ok(None)
                             }
                         },
                     )?;
                 match retained {
-                    Some(root) => Ok(OwnedValue::HostRef(root)),
-                    None => Err(invocation_error.expect("missing scoped host invocation result")),
+                    Some(root) => Ok(envelope.wrap(root)),
+                    None => invocation_result.expect("missing scoped host invocation result"),
                 }
             });
         }
@@ -767,24 +780,35 @@ impl Engine {
                 vm.register_host_native_with_id(id, move |args, host| {
                     check_capabilities(&alias, &effects, capabilities)?;
                     let requests = requests(args)?;
-                    let mut invocation_error = None;
+                    let mut invocation_result = None;
+                    let mut envelope = ScopedHostEnvelope::Direct;
                     let retained =
                         host.adapter
                             .with_scoped_host_return(&requests, &mut |leases| match function(
                                 leases,
                                 args.to_vec(),
                             ) {
-                                Ok(returned) => Ok(Some(returned)),
+                                Ok(ScopedHostNativeOutcome::Direct(returned)) => Ok(Some(returned)),
+                                Ok(ScopedHostNativeOutcome::OptionSome(returned)) => {
+                                    envelope = ScopedHostEnvelope::OptionSome;
+                                    Ok(Some(returned))
+                                }
+                                Ok(ScopedHostNativeOutcome::ResultOk(returned)) => {
+                                    envelope = ScopedHostEnvelope::ResultOk;
+                                    Ok(Some(returned))
+                                }
+                                Ok(ScopedHostNativeOutcome::Value(value)) => {
+                                    invocation_result = Some(Ok(value));
+                                    Ok(None)
+                                }
                                 Err(error) => {
-                                    invocation_error = Some(error);
+                                    invocation_result = Some(Err(error));
                                     Ok(None)
                                 }
                             })?;
                     match retained {
-                        Some(root) => Ok(OwnedValue::HostRef(root)),
-                        None => {
-                            Err(invocation_error.expect("missing scoped host invocation result"))
-                        }
+                        Some(root) => Ok(envelope.wrap(root)),
+                        None => invocation_result.expect("missing scoped host invocation result"),
                     }
                 });
             } else if let Some(entry) = self.async_context_host_native_functions.get(&id) {
@@ -920,6 +944,27 @@ impl Engine {
         let mut vm = Vm::new();
         self.install_with_registry_and_abi(&mut vm, self.registry_for_program_image(image), abi);
         vm
+    }
+}
+
+#[derive(Clone, Copy)]
+enum ScopedHostEnvelope {
+    Direct,
+    OptionSome,
+    ResultOk,
+}
+
+impl ScopedHostEnvelope {
+    fn wrap(self, root: vela_host::path::HostRef) -> OwnedValue {
+        match self {
+            Self::Direct => OwnedValue::HostRef(root),
+            Self::OptionSome => {
+                OwnedValue::enum_variant("Option", "Some", [("0", OwnedValue::HostRef(root))])
+            }
+            Self::ResultOk => {
+                OwnedValue::enum_variant("Result", "Ok", [("0", OwnedValue::HostRef(root))])
+            }
+        }
     }
 }
 
