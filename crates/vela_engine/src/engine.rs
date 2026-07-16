@@ -644,8 +644,13 @@ impl Engine {
                     if let Some(error) = capability_error {
                         return Err(error);
                     }
-                    let mut context =
-                        crate::context::NativeCallContext::new(&engine, host, budget, None);
+                    let mut context = crate::context::NativeCallContext::new(
+                        &engine,
+                        host,
+                        budget,
+                        None,
+                        effects.required_capability_set(),
+                    );
                     function(args, &mut context).await
                 })
             });
@@ -747,8 +752,13 @@ impl Engine {
             let engine = self.clone();
             vm.register_context_host_native_with_id(id, move |args, host, budget| {
                 check_capabilities(&name, &effects, capabilities)?;
-                let mut context =
-                    crate::context::NativeCallContext::new(&engine, host, budget, None);
+                let mut context = crate::context::NativeCallContext::new(
+                    &engine,
+                    host,
+                    budget,
+                    None,
+                    effects.required_capability_set(),
+                );
                 function(args, &mut context)
             });
         }
@@ -880,8 +890,13 @@ impl Engine {
                         if let Some(error) = capability_error {
                             return Err(error);
                         }
-                        let mut context =
-                            crate::context::NativeCallContext::new(&engine, host, budget, None);
+                        let mut context = crate::context::NativeCallContext::new(
+                            &engine,
+                            host,
+                            budget,
+                            None,
+                            effects.required_capability_set(),
+                        );
                         function(args, &mut context).await
                     })
                 });
@@ -902,8 +917,13 @@ impl Engine {
                 let engine = self.clone();
                 vm.register_budgeted_host_native_with_id(id, move |args, host, budget| {
                     check_capabilities(&alias, &effects, capabilities)?;
-                    let mut context =
-                        crate::context::NativeCallContext::new(&engine, host, budget, None);
+                    let mut context = crate::context::NativeCallContext::new(
+                        &engine,
+                        host,
+                        budget,
+                        None,
+                        effects.required_capability_set(),
+                    );
                     function(args, &mut context)
                 });
             }

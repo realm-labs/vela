@@ -1,6 +1,7 @@
 #[doc("Add two values through a generated binding.")]
 pub fn add(left: i64, right: i64) -> i64 { return left + right; }
 pub async fn label(value: i64) -> String { return "value"; }
+pub fn random_value() -> i64 { return math::random(1, 6); }
 pub fn text_len(value: String) -> i64 { return value.len(); }
 pub fn bytes_len(value: Bytes) -> i64 { return value.len(); }
 pub fn first(values: Array<i64>) -> i64 { return values[0]; }
@@ -41,4 +42,12 @@ pub fn round_trip(player: Player, amount: i64) -> i64 {
 
 pub fn round_trip_unrelated(player: Player) -> i64 {
     return test::reject_unrelated(player);
+}
+
+pub fn effect_ceiling_denied() -> i64 {
+    return test::deny_effect_expansion();
+}
+
+pub fn context_effect_ceiling_denied() -> i64 {
+    return test::deny_context_random();
 }

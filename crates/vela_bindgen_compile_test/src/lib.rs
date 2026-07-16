@@ -31,6 +31,23 @@ pub fn reject_unrelated(
     module.raise(&mut unrelated, 1)
 }
 
+#[vela_macros::export(path = "test::deny_effect_expansion")]
+pub fn deny_effect_expansion(
+    context: &mut vela_engine::context::NativeCallContext<'_, '_>,
+) -> vela_engine::binding::VmResult<i64> {
+    let mut package = vela_bindings::bind_active(context)?;
+    let mut module = package.dev_vela_anonymous_root_module();
+    module.random_value()
+}
+
+#[vela_macros::export(path = "test::deny_context_random")]
+pub fn deny_context_random(
+    context: &mut vela_engine::context::NativeCallContext<'_, '_>,
+) -> vela_engine::binding::VmResult<i64> {
+    context.require_capability(vela_engine::permission::Capability::Random)?;
+    Ok(1)
+}
+
 pub fn call_generated_add(runtime: &mut vela_engine::runtime::Runtime) -> Result<i64, String> {
     let mut package = vela_bindings::bind(runtime).map_err(|error| error.to_string())?;
     let mut module = package.dev_vela_anonymous_root_module();
@@ -147,12 +164,20 @@ mod tests {
 
     #[test]
     fn generated_binding_executes_without_runtime_names_or_manual_values() {
+        assert_eq!(
+            super::vela_callable_contract_reenter_player().effects,
+            vela_engine::native::EffectSet::host_write()
+        );
         let engine = vela_engine::engine::Engine::builder()
             .capability(vela_engine::permission::Capability::HostRead)
             .capability(vela_engine::permission::Capability::HostWrite)
             .register_host_type::<super::Player>()
             .register_exports(super::vela_export_bundle_reenter_player())
             .register_exports(super::vela_export_bundle_reject_unrelated())
+            .register_exports(super::vela_export_bundle_deny_effect_expansion())
+            .register_exports(super::vela_export_bundle_deny_context_random())
+            .with_controlled_random(7)
+            .capability(vela_engine::permission::Capability::Random)
             .build()
             .expect("engine");
         let program = engine
@@ -224,6 +249,36 @@ mod tests {
                 operation: "generated active host argument lacks live lease provenance"
             }
         ));
+        let effect_error = runtime
+            .call(
+                "effect_ceiling_denied",
+                vela_engine::runtime::CallArgs::new(),
+                vela_engine::runtime::CallOptions::new(100_000, 1024 * 1024, 32),
+            )
+            .expect_err("nested random effect must exceed a pure Rust ceiling");
+        assert!(
+            matches!(
+            effect_error.kind(),
+            vela_engine::binding::VmErrorKind::PermissionDenied { native, capability }
+                if native == "random_value" && capability == "random"
+            ),
+            "unexpected effect-ceiling error: {effect_error:?}"
+        );
+        let context_error = runtime
+            .call(
+                "context_effect_ceiling_denied",
+                vela_engine::runtime::CallArgs::new(),
+                vela_engine::runtime::CallOptions::new(100_000, 1024 * 1024, 32),
+            )
+            .expect_err("context random operation must exceed a pure Rust ceiling");
+        assert!(
+            matches!(
+                context_error.kind(),
+                vela_engine::binding::VmErrorKind::PermissionDenied { native, capability }
+                    if native == "NativeCallContext operation" && capability == "random"
+            ),
+            "unexpected context effect-ceiling error: {context_error:?}"
+        );
     }
 
     fn require_send<T: Send>(_: &T) {}
@@ -236,6 +291,10 @@ mod tests {
             .register_host_type::<super::Player>()
             .register_exports(super::vela_export_bundle_reenter_player())
             .register_exports(super::vela_export_bundle_reject_unrelated())
+            .register_exports(super::vela_export_bundle_deny_effect_expansion())
+            .register_exports(super::vela_export_bundle_deny_context_random())
+            .with_controlled_random(7)
+            .capability(vela_engine::permission::Capability::Random)
             .build()
             .expect("engine");
         let initial = engine

@@ -2117,6 +2117,17 @@ nested bindings reject any operation whose effects exceed the current Rust
 callable's ceiling before it begins, even when the Runtime grants the wider
 capability.
 
+`NativeCallContext` carries the normalized coarse capability projection of the
+currently executing Rust callable as an inherited effect ceiling. Nested lease
+contexts preserve it, `require_capability` checks it in addition to Runtime
+grants, and generated active bindings project the target Vela effect bits
+through the same canonical mapping before pushing a child frame. `host_write`
+continues to imply host-read authority while retaining the canonical
+fingerprint projection. This is a fixed-bitset preflight, not a per-call
+permission graph. Generated async host arguments use a prepared scoped
+`CallArgs` future whose Runtime/context borrow may be shorter than the retained
+host-reference lifetime; no reference lifetime is erased or extended.
+
 Scattered functions use item-level `#[vela::export]`. Related functions use an
 explicit `#[vela::export_module(path = "...")]` whose supported immediate
 public functions form one approved export set and one generated

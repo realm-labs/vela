@@ -409,6 +409,7 @@ impl NativeReentry for ActiveNativeReentry<'_, '_> {
     fn with_host_leases(
         &mut self,
         requests: &[(HostRef, vela_host::lease::HostLeaseKind)],
+        effect_ceiling: vela_common::CapabilitySet,
         invoke: &mut NativeContextLeaseInvoker<'_>,
     ) -> VmResult<()> {
         let runtime_id = self.runtime_id;
@@ -440,7 +441,8 @@ impl NativeReentry for ActiveNativeReentry<'_, '_> {
                     retained_values: std::sync::Arc::clone(&retained_values),
                     sidecars: &mut *sidecars,
                 };
-                let mut context = NativeCallContext::new_reentry(engine, &mut nested_reentry);
+                let mut context =
+                    NativeCallContext::new_reentry(engine, &mut nested_reentry, effect_ceiling);
                 context.set_host_provenance(requests, leases);
                 invoke(leases, &mut context)
             })
@@ -527,6 +529,7 @@ struct RuntimeDirectContextInvoker<'execution, 'heap> {
     root: HostRef,
     args: Vec<OwnedValue>,
     function: crate::method::AsyncContextDirectNativeMethodFunction,
+    effect_ceiling: vela_common::CapabilitySet,
 }
 
 impl DirectContextInvoker for RuntimeDirectContextInvoker<'_, '_> {
@@ -555,7 +558,8 @@ impl DirectContextInvoker for RuntimeDirectContextInvoker<'_, '_> {
                 sidecars: self.sidecars,
             };
             let engine = self.engine.clone();
-            let mut context = NativeCallContext::new_reentry(&engine, &mut nested);
+            let mut context =
+                NativeCallContext::new_reentry(&engine, &mut nested, self.effect_ceiling);
             (self.function)(self.root, leases, self.args, &mut context).await
         })
     }
@@ -577,7 +581,11 @@ pub(super) async fn invoke_prepared_async(
         let engine = active.engine.clone();
         let function = std::sync::Arc::clone(&entry.function);
         let args = prepared.args().to_vec();
-        let mut context = NativeCallContext::new_reentry(&engine, active);
+        let mut context = NativeCallContext::new_reentry(
+            &engine,
+            active,
+            entry.desc.effects.required_capability_set(),
+        );
         return function(&args, &mut context).await;
     }
     if let Some(entry) = prepared
@@ -630,6 +638,7 @@ pub(super) async fn invoke_prepared_async(
             root,
             args: prepared.args().to_vec(),
             function: std::sync::Arc::clone(function),
+            effect_ceiling: entry.desc.effects.required_capability_set(),
         };
         return active
             .host
@@ -675,6 +684,10 @@ pub(super) fn invoke_prepared_context(
     let engine = active.engine.clone();
     let function = std::sync::Arc::clone(&entry.function);
     let args = prepared.args().to_vec();
-    let mut context = NativeCallContext::new_reentry(&engine, active);
+    let mut context = NativeCallContext::new_reentry(
+        &engine,
+        active,
+        entry.desc.effects.required_capability_set(),
+    );
     function(&args, &mut context)
 }

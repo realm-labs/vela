@@ -5,7 +5,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 use vela_bytecode::{RustBindingCallableIdentity, RustBindingSchema};
-use vela_common::{SourceId, Span};
+use vela_common::{Capability, CapabilitySet, SourceId, Span};
 use vela_def::{FunctionId, MethodId, TypeId};
 use vela_host::lease::HostLeaseKind;
 use vela_host::object::ScriptHostObject;
@@ -500,6 +500,10 @@ impl BindingAuthority for ActiveBinding<'_, '_, '_> {
         A: IntoBindingArgs,
     {
         let spec = callable.spec()?;
+        self.context.require_capabilities(
+            spec.public_path,
+            binding_required_capabilities(spec.effect_bits),
+        )?;
         let result = self
             .context
             .call(stable_target(spec), args.into_call_args())?;
@@ -518,6 +522,10 @@ impl BindingAuthority for ActiveBinding<'_, '_, '_> {
     {
         Box::pin(async move {
             let spec = callable.spec()?;
+            self.context.require_capabilities(
+                spec.public_path,
+                binding_required_capabilities(spec.effect_bits),
+            )?;
             let result = self
                 .context
                 .call_async(stable_target(spec), args.into_call_args())
@@ -536,6 +544,10 @@ impl BindingAuthority for ActiveBinding<'_, '_, '_> {
         R: FromScriptArg,
     {
         let spec = callable.spec()?;
+        self.context.require_capabilities(
+            spec.public_path,
+            binding_required_capabilities(spec.effect_bits),
+        )?;
         let result = self.context.call(stable_target(spec), args)?;
         let owned = self.context.value_to_owned(&result)?;
         R::from_script_arg(&owned)
@@ -551,6 +563,10 @@ impl BindingAuthority for ActiveBinding<'_, '_, '_> {
     {
         Box::pin(async move {
             let spec = callable.spec()?;
+            self.context.require_capabilities(
+                spec.public_path,
+                binding_required_capabilities(spec.effect_bits),
+            )?;
             let result = self.context.call_async(stable_target(spec), args).await?;
             let owned = self.context.value_to_owned(&result)?;
             R::from_script_arg(&owned)
@@ -641,6 +657,30 @@ fn stable_target(spec: &'static BindingCallableSpec) -> StableVelaFunction {
         function: FunctionId::new(spec.executable),
         diagnostic_name: spec.public_path,
     }
+}
+
+fn binding_required_capabilities(effect_bits: u32) -> CapabilitySet {
+    let mut required = CapabilitySet::new();
+    for (bit, capability) in [
+        (6, Capability::HostRead),
+        (7, Capability::HostWrite),
+        (12, Capability::EventEmit),
+        (13, Capability::Time),
+        (14, Capability::Random),
+        (15, Capability::IoRead),
+        (16, Capability::IoWrite),
+        (9, Capability::ReflectionRead),
+        (10, Capability::ReflectionWrite),
+        (11, Capability::ReflectionCall),
+    ] {
+        if effect_bits & (1 << bit) != 0 {
+            required.insert(capability);
+        }
+    }
+    if required.contains(Capability::HostWrite) {
+        required = required.without(Capability::HostRead);
+    }
+    required
 }
 
 fn validate_schema(expected: &BindingSchemaSpec, actual: &RustBindingSchema) -> BindingResult<()> {

@@ -27,11 +27,24 @@ pub fn reject_unrelated(
     Ok(player.level)
 }
 
+#[export(path = "test::deny_effect_expansion")]
+pub fn deny_effect_expansion(_context: &mut NativeCallContext<'_, '_>) -> VmResult<i64> {
+    Ok(0)
+}
+
+#[export(path = "test::deny_context_random")]
+pub fn deny_context_random(_context: &mut NativeCallContext<'_, '_>) -> VmResult<i64> {
+    Ok(0)
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let engine = Engine::builder()
         .register_host_type::<model::Player>()
         .register_exports(vela_export_bundle_reenter_player())
         .register_exports(vela_export_bundle_reject_unrelated())
+        .register_exports(vela_export_bundle_deny_effect_expansion())
+        .register_exports(vela_export_bundle_deny_context_random())
+        .with_controlled_random(7)
         .build()
         .map_err(|error| error.to_string())?;
     let program = engine

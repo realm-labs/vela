@@ -12,6 +12,7 @@ use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
+use crate::native::EffectSet;
 use crate::permission::{Capability, CapabilitySet};
 use crate::runtime::handles::{RuntimeCallTargetKind, RuntimeMethodSelectorKind};
 use crate::runtime::{
@@ -37,6 +38,7 @@ pub(crate) trait NativeReentry: Send {
     fn with_host_leases(
         &mut self,
         requests: &[(HostRef, HostLeaseKind)],
+        effect_ceiling: CapabilitySet,
         invoke: &mut NativeContextLeaseInvoker<'_>,
     ) -> VmResult<()>;
 
@@ -74,6 +76,7 @@ pub struct NativeCallContext<'ctx, 'host> {
     budget: Option<&'ctx mut ExecutionBudget>,
     reentry: Option<&'ctx mut dyn NativeReentry>,
     host_provenance: Vec<ActiveHostProvenance>,
+    effect_ceiling: CapabilitySet,
 }
 
 #[derive(Clone, Copy)]
@@ -89,6 +92,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         host: &'ctx mut HostExecution<'host>,
         budget: Option<&'ctx mut ExecutionBudget>,
         reentry: Option<&'ctx mut dyn NativeReentry>,
+        effect_ceiling: CapabilitySet,
     ) -> Self {
         Self {
             engine,
@@ -96,16 +100,22 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
             budget,
             reentry,
             host_provenance: Vec::new(),
+            effect_ceiling,
         }
     }
 
-    pub(crate) fn new_reentry(engine: &'ctx Engine, reentry: &'ctx mut dyn NativeReentry) -> Self {
+    pub(crate) fn new_reentry(
+        engine: &'ctx Engine,
+        reentry: &'ctx mut dyn NativeReentry,
+        effect_ceiling: CapabilitySet,
+    ) -> Self {
         Self {
             engine,
             host: None,
             budget: None,
             reentry: Some(reentry),
             host_provenance: Vec::new(),
+            effect_ceiling,
         }
     }
 
@@ -174,6 +184,23 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         self.capabilities().contains(capability)
     }
 
+    /// Checks a capability-scoped native operation against both the Runtime
+    /// grant and the active Rust callable's declared effect ceiling.
+    pub fn require_capability(&self, capability: Capability) -> VmResult<()> {
+        if !self.capabilities().contains(capability) {
+            return Err(vela_vm::error::VmError::new(
+                vela_vm::error::VmErrorKind::PermissionDenied {
+                    native: "NativeCallContext operation".to_owned(),
+                    capability: capability.as_str().to_owned(),
+                },
+            ));
+        }
+        self.require_capabilities(
+            "NativeCallContext operation",
+            CapabilitySet::new().with(capability),
+        )
+    }
+
     pub fn adapter(&mut self) -> &mut dyn ScriptStateAdapter {
         match self.host.as_deref_mut() {
             Some(host) => host.adapter,
@@ -199,10 +226,17 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         ) -> VmResult<R>,
     ) -> VmResult<R> {
         let engine = self.engine;
+        let effect_ceiling = self.effect_ceiling;
         if let Some(host) = self.host.take() {
             let mut budget = self.budget.take();
-            let result =
-                invoke_context_with_host_leases(engine, host, &mut budget, requests, &mut invoke);
+            let result = invoke_context_with_host_leases(
+                engine,
+                host,
+                &mut budget,
+                requests,
+                effect_ceiling,
+                &mut invoke,
+            );
             self.host = Some(host);
             self.budget = budget;
             return result;
@@ -212,7 +246,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
             .as_deref_mut()
             .ok_or_else(reentry_unavailable)?;
         let mut result = None;
-        reentry.with_host_leases(requests, &mut |leases, context| {
+        reentry.with_host_leases(requests, effect_ceiling, &mut |leases, context| {
             result = Some(invoke(leases, context));
             Ok(())
         })?;
@@ -282,6 +316,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
     }
 
     pub fn read_path(&mut self, path: &HostPath, source_span: Option<Span>) -> VmResult<HostValue> {
+        self.require_effects("NativeCallContext::read_path", EffectSet::host_read())?;
         let host = self.host_execution();
         Ok(host
             .access
@@ -308,6 +343,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         value: HostValue,
         source_span: Option<Span>,
     ) -> VmResult<()> {
+        self.require_effects("NativeCallContext::set_path", EffectSet::host_write())?;
         let host = self.host_execution();
         host.access
             .write_diagnostic_path(host.adapter, path, value, source_span)?;
@@ -320,6 +356,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         value: HostValue,
         source_span: Option<Span>,
     ) -> VmResult<()> {
+        self.require_effects("NativeCallContext::add_path", EffectSet::host_write())?;
         let host = self.host_execution();
         host.access
             .add_diagnostic_path(host.adapter, path, value, source_span)?;
@@ -332,6 +369,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         value: HostValue,
         source_span: Option<Span>,
     ) -> VmResult<()> {
+        self.require_effects("NativeCallContext::sub_path", EffectSet::host_write())?;
         let host = self.host_execution();
         host.access
             .sub_diagnostic_path(host.adapter, path, value, source_span)?;
@@ -344,6 +382,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         value: HostValue,
         source_span: Option<Span>,
     ) -> VmResult<()> {
+        self.require_effects("NativeCallContext::mul_path", EffectSet::host_write())?;
         let host = self.host_execution();
         host.access
             .mul_diagnostic_path(host.adapter, path, value, source_span)?;
@@ -356,6 +395,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         value: HostValue,
         source_span: Option<Span>,
     ) -> VmResult<()> {
+        self.require_effects("NativeCallContext::div_path", EffectSet::host_write())?;
         let host = self.host_execution();
         host.access
             .div_diagnostic_path(host.adapter, path, value, source_span)?;
@@ -368,6 +408,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         value: HostValue,
         source_span: Option<Span>,
     ) -> VmResult<()> {
+        self.require_effects("NativeCallContext::rem_path", EffectSet::host_write())?;
         let host = self.host_execution();
         host.access
             .rem_diagnostic_path(host.adapter, path, value, source_span)?;
@@ -380,6 +421,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         value: HostValue,
         source_span: Option<Span>,
     ) -> VmResult<()> {
+        self.require_effects("NativeCallContext::push_path", EffectSet::host_write())?;
         let host = self.host_execution();
         host.access
             .push_diagnostic_path(host.adapter, path, value, source_span)?;
@@ -387,6 +429,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
     }
 
     pub fn remove_path(&mut self, path: HostPath, source_span: Option<Span>) -> VmResult<()> {
+        self.require_effects("NativeCallContext::remove_path", EffectSet::host_write())?;
         let host = self.host_execution();
         host.access
             .remove_diagnostic_path(host.adapter, path, source_span)?;
@@ -400,6 +443,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         args: Vec<HostValue>,
         source_span: Option<Span>,
     ) -> VmResult<HostValue> {
+        self.require_effects("NativeCallContext::call_method", EffectSet::host_write())?;
         let host = self.host_execution();
         Ok(host.access.call_diagnostic_path_method(
             host.adapter,
@@ -441,6 +485,36 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
                 .host_execution(),
         }
     }
+
+    pub(crate) fn require_capabilities(
+        &self,
+        operation: &str,
+        required: CapabilitySet,
+    ) -> VmResult<()> {
+        let available = if self.effect_ceiling.contains(Capability::HostWrite) {
+            self.effect_ceiling.with(Capability::HostRead)
+        } else {
+            self.effect_ceiling
+        };
+        if available.contains_all(required) {
+            return Ok(());
+        }
+        let capability = required
+            .difference(available)
+            .iter()
+            .next()
+            .expect("a capability is missing from the effect ceiling");
+        Err(vela_vm::error::VmError::new(
+            vela_vm::error::VmErrorKind::PermissionDenied {
+                native: operation.to_owned(),
+                capability: capability.as_str().to_owned(),
+            },
+        ))
+    }
+
+    fn require_effects(&self, operation: &str, effects: EffectSet) -> VmResult<()> {
+        self.require_capabilities(operation, effects.required_capability_set())
+    }
 }
 
 fn invoke_context_with_host_leases<R>(
@@ -448,6 +522,7 @@ fn invoke_context_with_host_leases<R>(
     host: &mut HostExecution<'_>,
     budget: &mut Option<&mut ExecutionBudget>,
     requests: &[(HostRef, HostLeaseKind)],
+    effect_ceiling: CapabilitySet,
     invoke: &mut impl for<'lease, 'nested_ctx, 'nested_host> FnMut(
         &mut [ErasedHostLease<'lease>],
         &mut NativeCallContext<'nested_ctx, 'nested_host>,
@@ -464,8 +539,13 @@ fn invoke_context_with_host_leases<R>(
                     access: &mut *access,
                     state_values: state_values.as_deref_mut(),
                 };
-                let mut nested =
-                    NativeCallContext::new(engine, &mut leased_host, budget.as_deref_mut(), None);
+                let mut nested = NativeCallContext::new(
+                    engine,
+                    &mut leased_host,
+                    budget.as_deref_mut(),
+                    None,
+                    effect_ceiling,
+                );
                 nested.set_host_provenance(requests, leases);
                 result = Some(invoke(leases, &mut nested));
                 Ok(())
