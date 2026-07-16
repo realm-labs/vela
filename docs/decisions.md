@@ -2085,13 +2085,24 @@ Direct script-visible method names remain unique across inherent and trait
 surfaces; unresolved collisions are registration errors rather than Rust-style
 UFCS guessing.
 
-### Service Dispatch Is An Optional Interop Extension
+### Hot-Replaceable Dispatch Is An Optional Interop Extension
 
 Ordinary Rust/Vela calls require neither a service trait nor a dispatch slot.
-Service contracts group the same callable contracts and add only configured
-target selection, pinned immutable dispatch generations, activation, and
-rollback. Rust/Vela service targets must reuse the common conversion, lease,
-Runtime call target, execution session, policy, and diagnostics paths.
+Runtime replacement is explicit: one `ReplaceableSlotId` selects a compatible
+Rust or Vela implementation of one existing callable contract, while an
+optional `DispatchGroupId` atomically groups related service methods. A service
+trait is permitted when it is already the natural Rust contract, but is not
+required merely to make a handler replaceable.
+
+Only calls through the generated typed dispatch facade are replaceable. Direct
+concrete Rust calls and internal `self.method()` calls remain direct and are
+never intercepted. Independent handlers may switch per slot; methods sharing
+service invariants use whole-group selection first, with partial group override
+deferred. Target selection, pinned immutable dispatch generations, activation,
+and rollback reuse the common conversion, borrowed-return provenance/freeze,
+lease, Runtime call target, execution session, policy, and diagnostics paths.
+Activation affects future root calls only, and rollback never retries or
+rewinds an in-flight call.
 
 ## Validation Rules
 
