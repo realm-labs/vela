@@ -31,8 +31,11 @@ cargo bench -p vela_engine --bench interop -- --quick
 
 The `interop` harness isolates the direct Rust lower bound, Vela-to-Rust scalar,
 shared-host and exclusive-host exports, a schema-backed generated Rust-to-Vela
-root call, and a same-session Vela-to-Rust-to-Vela round trip. Compilation and
-Runtime construction remain outside the timed loop.
+root call, a same-session Vela-to-Rust-to-Vela round trip, the optional
+replaceable empty-slot and local-hit paths, and partial-delta staging plus
+activation and its first call. Compilation and Runtime construction remain
+outside the ordinary call loops; the staging row intentionally includes
+candidate materialization and publication.
 
 The Batch E pre-optimization quick checkpoint on 2026-07-17 used parent commit
 `87e871439`, Rust/Cargo 1.97.0, macOS 26.5.2 arm64, the optimized bench profile,
@@ -42,6 +45,15 @@ ns shared host, 11,889 ns exclusive host, 10,091 ns generated Rust-to-Vela,
 and 12,157 ns for the Vela-Rust-Vela round trip. Checksums were stable. These
 are boundary baselines, not optimization targets; stable multi-sample runs use
 `--stable`.
+
+The Batch F optional-dispatch quick checkpoint on 2026-07-17 used commit parent
+`4c5e36a66` with the same toolchain/profile and quick sampling rules. The empty
+dense-slot branch plus direct Rust fallback measured 2.7 ns/call, a local Vela
+override hit measured 2,853 ns/call, and partial two-slot delta staging,
+activation, root pinning, and the first override call measured 3,001 ns per
+iteration. Checksums were stable. The empty-slot result is the no-override
+fast-path baseline; the other rows are not compared to ordinary interop calls
+because they isolate different work.
 
 `baseline` accepts optional workload-name substring filters after `--`, for
 example `cargo bench -p vela_vm --bench baseline -- --quick host_field`.
