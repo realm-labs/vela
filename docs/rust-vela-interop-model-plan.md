@@ -303,7 +303,105 @@ supported public methods; private helpers remain ordinary Rust-only methods.
 Per-method `#[vela::export(...)]` is reserved for a rename, access override, or
 additional effects.
 
-### 2.4 Signature-inferred effects and explicit extras
+### 2.4 Export Rust trait implementations
+
+Vela traits are runtime protocols, not a projection of Rust's complete trait
+system. Export is explicit: implementing a Rust trait does not automatically
+make that trait, its methods, its associated items, or its supertraits visible
+to Vela.
+
+For a trait and implementation authored in the integration crate, export the
+protocol contract and annotate the existing implementation directly:
+
+```rust,ignore
+#[vela::trait_export(path = "game::Damageable")]
+pub trait Damageable {
+    fn take_damage(&mut self, amount: i64);
+    fn is_alive(&self) -> bool;
+}
+
+#[vela::methods]
+impl Damageable for Player {
+    fn take_damage(&mut self, amount: i64) {
+        self.hp -= amount.max(0);
+    }
+
+    fn is_alive(&self) -> bool {
+        self.hp > 0
+    }
+}
+```
+
+`#[vela::methods]` therefore supports both explicit inherent impl blocks and
+explicit trait impl blocks. On a trait impl it generates callable adapters for
+the boundary-safe trait methods, records that the receiver implements the
+Vela protocol, and adds both the protocol and implementation to the enclosing
+export bundle. It does not generate a second Rust trait impl or change Rust
+method resolution. A per-method skip or export override may narrow the exposed
+surface. Every selected method must be boundary-safe; an unsupported selected
+method fails at its declaration instead of disappearing silently.
+
+The same form works when the trait comes from another crate if the application
+owns and can annotate the legal Rust impl block:
+
+```rust,ignore
+#[vela::methods(protocol = "game::Damageable")]
+impl external_game::Damageable for Player {
+    fn take_damage(&mut self, amount: i64) {
+        external_game::damage_player(self, amount);
+    }
+
+    fn is_alive(&self) -> bool {
+        self.hp > 0
+    }
+}
+```
+
+The explicit `protocol` path maps the Rust trait to a stable Vela protocol
+identity; Rust trait paths are not used as accidental public ABI.
+
+When the type, trait, and existing impl all live in external crates, the
+application cannot attach an attribute or create a duplicate impl. A
+declaration-only adapter lists the selected boundary surface and generates the
+UFCS call thunks without user-authored wrapper bodies:
+
+```rust,ignore
+vela::export_external_trait_impl! {
+    type external_game::Player;
+    trait external_game::Damageable as "game::Damageable";
+
+    fn take_damage(&mut self, amount: i64);
+    fn is_alive(&self) -> bool;
+}
+```
+
+This declaration repeats the exported method signatures because stable Rust
+provides no general reflection API for enumerating an external trait or impl.
+Generated code must type-check each declared signature against the referenced
+UFCS method. If an integration crate already ships a Vela export bundle, the
+application registers that bundle instead of restating the declarations.
+
+Trait methods follow the same parameter classifier, effect inference, lease,
+return, async, and ABI rules as inherent methods. Generic methods, exposed
+associated types, uncontrolled lifetimes, and Rust-only parameters such as
+`Formatter<'_>` cannot be exported directly. Such a method needs an explicit
+boundary-safe mapping, for example mapping `Display` to a Vela `to_string()`
+method. Marker and implementation-detail traits such as `Send`, `Sync`, and
+`Serialize` are not exposed merely because a type implements them.
+
+Vela does not inherit Rust's UFCS ambiguity rules. A type's directly callable
+script-visible method names must remain unique across its inherent and trait
+surfaces. A collision requires an explicit script-visible rename or a future
+protocol-qualified call form; the first slice rejects an unresolved collision
+at registration.
+
+The current `#[script(implements = "...")]` metadata annotation is not this
+feature: it records a reflected name but does not prove a Rust trait bound or
+install trait-method call targets. Implementation must replace that metadata-
+only claim for the new export path with generated, type-checked protocol and
+implementation descriptors.
+
+### 2.5 Signature-inferred effects and explicit extras
 
 The export macro derives a conservative base effect from the classified Rust
 signature:
@@ -336,7 +434,7 @@ effective set, not whether a component was inferred or written, participates
 in the callable fingerprint. Therefore removing a redundant explicit
 `host_write` annotation is not an ABI change.
 
-### 2.5 Bulk export and one-time registration
+### 2.6 Bulk export and one-time registration
 
 Hosts with many related functions use one explicit export-module boundary.
 Immediate supported `pub fn` items are exported under the configured prefix;
@@ -384,7 +482,7 @@ An unsupported immediate public function is a declaration-time error rather
 than being silently skipped; make a helper private or move it outside the
 export module.
 
-### 2.6 Call an exported Vela function from Rust
+### 2.7 Call an exported Vela function from Rust
 
 Vela source:
 
@@ -417,7 +515,7 @@ The binding is runtime-bound authority and compile-time type information, not a
 business-object proxy. A Runtime remains explicit because a Vela function has
 runtime-local code, state, policy, and generation ownership.
 
-### 2.7 Nested Rust-to-Vela re-entry
+### 2.8 Nested Rust-to-Vela re-entry
 
 An exported Rust function can call a typed Vela binding through its active
 context:
@@ -441,7 +539,7 @@ use is suspended by Rust for the child call and resumes afterward. The child
 inherits the current execution session rather than starting a new Runtime
 execution.
 
-### 2.8 Async calls
+### 2.9 Async calls
 
 Vela uses its existing explicit await syntax:
 
@@ -459,7 +557,7 @@ Sync versus async is part of the callable contract. A generated sync binding
 cannot invoke an async target accidentally, and an async binding uses the same
 scoped `Send` execution future and session driver as `Runtime::call_async`.
 
-### 2.9 Optional replaceable service
+### 2.10 Optional replaceable service
 
 Only operations that require implementation selection or hot override need a
 service contract and slot:
@@ -542,6 +640,7 @@ Vela function
 Vela bound method
 Rust exported function
 Rust exported host method
+Rust exported trait method
 Vela provider method
 optional service-slot method
 ```
@@ -896,10 +995,13 @@ free functions should use `#[vela::export_module(path = "...")]`, which treats
 supported immediate `pub fn` items as the explicit export set, derives their
 paths from the prefix and Rust names, and generates one deterministic
 `vela_exports()` registration bundle. `#[vela::methods]` provides the same
-explicit block boundary for supported public inherent methods. Private items
-remain Rust-only. Unsupported public functions or methods inside an explicit
-group fail at their declaration instead of silently disappearing from the
-export schema.
+explicit block boundary for supported public inherent methods and supported
+trait impl methods. `#[vela::trait_export]` contributes a Vela protocol
+contract, while a declaration-only external-trait adapter contributes the
+selected signatures and generated UFCS thunks for an impl that cannot be
+annotated. Private items and unselected Rust traits remain Rust-only.
+Unsupported public functions or methods inside an explicit group fail at
+their declaration instead of silently disappearing from the export schema.
 
 The generated bundle is registered once through `EngineBuilder::register_exports`.
 It is an ordinary value produced by generated code, not ambient inventory,
@@ -1286,8 +1388,8 @@ applicable. They never expose pointer values or raw host addresses.
 | --- | --- |
 | `vela_common` / definition IDs | Stable callable, function, method, service, diagnostic, and source identities. |
 | `vela_host` | Exact-object proof, canonical lease identity, atomic requests, reborrow provenance, HostAccess gates, and RAII. |
-| `vela_reflect` | Read-only callable contracts, type metadata, effects, derived coarse capabilities, and origins; no live deployment grants. |
-| `vela_macros` | Rust signature classification, export adapters, descriptors, and compile-time diagnostics. |
+| `vela_reflect` | Read-only callable contracts, type and Vela protocol metadata, implemented-protocol relationships, effects, derived coarse capabilities, and origins; no live deployment grants. |
+| `vela_macros` | Rust signature classification, function/inherent/trait export adapters, external-impl UFCS declarations, descriptors, and compile-time diagnostics. |
 | `vela_hir` | Resolve Rust exports like normal functions/methods and retain exact callable identity. |
 | `vela_analysis` / LSP crates | Call facts, effects, completion, navigation, hover, and diagnostics. |
 | `vela_bytecode` / linker | Linked callable targets, binding schemas, and ABI fingerprints. |
@@ -1327,6 +1429,8 @@ not start a later batch to hide a failing earlier checkpoint.
   binding schemas, fingerprints, and native-call hot paths.
 - [ ] A7. Record callable-grained trusted Rust semantics, the ABI/policy split,
   and deferred field-level sandboxing in architecture and authoring docs.
+- [ ] A8. Define stable Vela protocol identities and deterministic trait-method
+  contracts without treating Rust trait paths or `TypeId` as public ABI.
 
 Checkpoint: valid contracts produce deterministic metadata and normalized
 effects; invalid signatures or contradictory effect declarations fail at their
@@ -1353,6 +1457,12 @@ removing a redundant explicit effect does not change a callable fingerprint.
 - [ ] B9. Generate one deterministic `vela_exports()` bundle per export module
   and register it explicitly with one `register_exports` call, without ambient
   inventory or runtime discovery.
+- [ ] B10. Extend `#[vela::methods]` to explicit trait impl blocks, add
+  `#[vela::trait_export]`, and generate reflection metadata and call thunks
+  through the same method adapter path used by inherent methods.
+- [ ] B11. Add a declaration-only external-trait adapter for an existing impl
+  that cannot be annotated. Require selected signatures, UFCS type checking,
+  an already boundary-supported receiver type, and no duplicate Rust impl.
 
 Checkpoint: supported Rust exports use ordinary signatures, many related
 functions register as one explicit bundle, and no conflicting reference set
@@ -1373,6 +1483,9 @@ can enter authored Rust.
   tracing, and cancellation consistently before authored Rust runs.
 - [ ] C7. Add completion, signature, hover, definition, and reference coverage
   for Rust exports.
+- [ ] C8. Resolve exported trait methods through stable Vela protocol and
+  implementation identities, including runtime `implements` checks and
+  dynamic protocol dispatch.
 
 Checkpoint: Vela calls Rust free functions and methods with ordinary syntax and
 ordinary Vela values or host objects.
@@ -1445,8 +1558,8 @@ changing the ordinary interop ABI or active-call selection.
 - [ ] G2. Build a separate mixed Rust/Vela multi-service hot-override example.
 - [ ] G3. Cover signature conversion, alias rejection, nested reborrow,
   inferred/additional effects, nested effect-ceiling denial, capability denial
-  before authored code, policy-versus-ABI separation, async cancellation, and
-  reload ABI mismatch.
+  before authored code, policy-versus-ABI separation, local and external trait
+  export, async cancellation, and reload ABI mismatch.
 - [ ] G4. Document export, binding generation, registration, calling,
   debugging, deployment, activation, and rollback workflows.
 - [ ] G5. Audit public examples and docs for unnecessary `HostRef`, `CallArgs`,
@@ -1473,6 +1586,12 @@ gates pass.
 - [ ] An exported Rust host-mutating function accepts `&mut T` without authored
   host wrappers or a redundant `host_write` annotation.
 - [ ] An exported Rust host method accepts ordinary `&self`/`&mut self`.
+- [ ] An annotatable Rust trait impl exports through `#[vela::methods]`
+  without an inherent forwarding method or user-authored wrapper body.
+- [ ] An existing external trait impl exports a selected, explicitly declared
+  boundary-safe surface with UFCS signature checking and no duplicate impl.
+- [ ] Implementing a Rust trait alone exposes nothing to Vela; marker traits
+  and unsupported methods remain Rust-only.
 - [ ] `&T`/`&self` infer `host_read`, `&mut T`/`&mut self` infer
   `host_write`, and value-only signatures infer `pure`.
 - [ ] Explicit `effects(...)` add to but cannot remove the signature-inferred
@@ -1547,6 +1666,9 @@ gates pass.
 - [ ] Direct Vela path writes retain fine-grained HostAccess checks.
 - [ ] Reflection reports callable metadata without creating references or
   mutating contracts.
+- [ ] Reflection reports stable Vela protocol identities, selected trait
+  methods, and implemented-protocol relationships without claiming that all
+  Rust traits are Vela-visible.
 - [ ] Completion, signature help, hover, definition, and references work for
   Rust exports.
 - [ ] Generated Rust binding errors name their Vela source declaration.
@@ -1562,6 +1684,7 @@ Record reproducible baselines before optimization:
 | Vela-to-Rust shared host call | exact identity and shared lease |
 | Vela-to-Rust exclusive host call | exclusive lease and adapter thunk |
 | Vela-to-Rust exported method | receiver resolution and lease |
+| Vela-to-Rust exported trait method | protocol implementation resolution and lease |
 | Rust-to-Vela generated root call | binding, root host scope, and VM entry |
 | Rust-to-Vela same-session re-entry | child binding and frame push/pop |
 | Vela -> Rust -> Vela round trip | provenance and context inheritance |
@@ -1582,6 +1705,8 @@ reflection-permission lookups into each native call.
 This plan does not implement:
 
 - automatic exposure or invocation of every Rust item;
+- automatic exposure of every Rust trait implemented by an exported type;
+- runtime enumeration of external Rust trait definitions or impl graphs;
 - arbitrary Rust ABI reflection;
 - interception of direct calls to concrete Rust functions or objects;
 - an ambient global Runtime hidden behind generated calls;
@@ -1615,12 +1740,27 @@ to return to a service-first model.
 
 Decision: use item-level `#[vela::export(path = "...")]` for scattered
 functions, `#[vela::export_module(path = "...")]` for an explicit module of
-exported public functions, and `#[vela::methods]` for an explicit inherent-impl
-boundary. Module/impl grouping supplies default paths and one registration
-bundle. Signature classification infers the base effect; per-function
+exported public functions, and `#[vela::methods]` for an explicit inherent or
+trait impl boundary. Module/impl grouping supplies default paths and one
+registration bundle. Signature classification infers the base effect;
+per-function
 `#[vela::export(effects(...))]` adds exceptional effects or overrides metadata.
 Avoid separate function/context/host macros or module-wide default effects that
 create subtly different ABI models or silently overgrant every function.
+
+### R2. Rust trait implementation export
+
+Decision: Rust trait implementation does not imply Vela exposure. A Vela
+protocol has its own stable public identity. A locally authored trait uses
+`#[vela::trait_export]`, and an annotatable `impl Trait for Type` uses the same
+`#[vela::methods]` boundary and generated adapter path as inherent methods. An
+external trait maps explicitly to a Vela protocol identity. If the type, trait,
+and existing impl cannot be annotated, a declaration-only external adapter
+must list the selected method signatures and generate type-checked UFCS thunks;
+it must not generate a duplicate Rust impl. Unsupported signatures require an
+explicit boundary-safe mapping. No design may depend on runtime Rust trait
+enumeration, automatic exposure of marker traits, or user-authored forwarding
+methods for otherwise boundary-safe annotatable impls.
 
 ### O2. Rust binding generation command and artifact
 
@@ -1759,10 +1899,10 @@ The goal is complete only when all of the following are true:
 8. Rust signatures infer normalized `pure`/`host_read`/`host_write` base
    effects, explicit effects only add to that base, and nested context/binding
    operations cannot widen the current callable ceiling dynamically.
-9. Explicit export modules and method groups register many supported public
-   callables through deterministic bundles while private helpers remain
-   Rust-only; no ambient inventory or repeated per-function path/effect
-   ceremony is required.
+9. Explicit export modules and inherent or trait method groups register many
+   supported public callables through deterministic bundles while private
+   helpers and unselected Rust traits remain Rust-only; no ambient inventory or
+   repeated per-function path/effect ceremony is required.
 10. Callable effects deterministically derive coarse capability requirements;
     active grants, allowlists, reflection permissions, and arbitrary business
     permission strings remain outside callable ABI and generated fingerprints.
@@ -1771,6 +1911,9 @@ The goal is complete only when all of the following are true:
    bodies is explicitly deferred.
 12. Optional service contracts and hot override reuse the general callable
    model instead of defining a parallel boundary or execution path.
-13. Non-service round-trip and optional mixed-service examples, acceptance
+13. Local and external Rust trait implementations expose only their selected,
+    boundary-safe Vela protocol surface and use the ordinary method call,
+    lease, reflection, effect, and ABI paths.
+14. Non-service round-trip and optional mixed-service examples, acceptance
     tests, documentation, benchmarks, formatting, lint, and workspace tests are
     complete and green.

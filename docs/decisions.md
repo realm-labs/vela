@@ -2044,11 +2044,26 @@ Scattered functions use item-level `#[vela::export]`. Related functions use an
 explicit `#[vela::export_module(path = "...")]` whose supported immediate
 public functions form one approved export set and one generated
 `vela_exports()` registration bundle; private helpers remain Rust-only.
-`#[vela::methods]` is the equivalent explicit inherent-impl boundary. Engine
-registers bundles explicitly through `register_exports`; no ambient inventory,
-process-global discovery, or module-wide default effect is introduced. An
-unsupported public item inside either explicit group fails at declaration time
-instead of being silently omitted.
+`#[vela::methods]` is the equivalent explicit inherent-or-trait-impl boundary.
+Engine registers bundles explicitly through `register_exports`; no ambient
+inventory, process-global discovery, or module-wide default effect is
+introduced. An unsupported public item inside either explicit group fails at
+declaration time instead of being silently omitted.
+
+### Rust Trait Exposure Is An Explicit Vela Protocol Mapping
+
+Implementing a Rust trait does not automatically expose it to Vela. A Vela
+protocol owns a stable public identity independent of the Rust trait path.
+Annotatable trait impls use `#[vela::methods]` and the ordinary method adapter
+path without inherent forwarding methods. Existing external impls that cannot
+be annotated use a declaration-only adapter that lists the selected
+boundary-safe signatures and generates type-checked UFCS thunks without a
+duplicate Rust impl. Marker traits, unselected methods, generic methods,
+associated-type surfaces, and other unsupported Rust-only signatures remain
+unexposed unless explicitly mapped to a boundary-safe Vela protocol method.
+Direct script-visible method names remain unique across inherent and trait
+surfaces; unresolved collisions are registration errors rather than Rust-style
+UFCS guessing.
 
 ### Service Dispatch Is An Optional Interop Extension
 
