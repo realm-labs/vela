@@ -126,6 +126,22 @@ impl<'a> CallArgs<'a> {
         self
     }
 
+    #[doc(hidden)]
+    pub fn push_positional_host_ref<T>(&mut self, value: &'a T) -> &mut Self
+    where
+        T: ScriptHostObject + Sync + 'a,
+    {
+        self.entries.push(CallArg::PositionalHost {
+            host_ref: None,
+            type_id: value.host_type_id(),
+            binding: HostArgBinding::Shared {
+                object: value,
+                leases: Arc::new(AtomicUsize::new(0)),
+            },
+        });
+        self
+    }
+
     /// Adds writable call-scoped host state.
     ///
     /// Mutable-origin bindings require `Sync` as well as `Send` so async
@@ -137,6 +153,21 @@ impl<'a> CallArgs<'a> {
     {
         self.entries.push(CallArg::NamedHost {
             name: name.into(),
+            host_ref: None,
+            type_id: value.host_type_id(),
+            binding: HostArgBinding::Mutable {
+                object: Arc::new(parking_lot::RwLock::new(value)),
+            },
+        });
+        self
+    }
+
+    #[doc(hidden)]
+    pub fn push_positional_host_mut<T>(&mut self, value: &'a mut T) -> &mut Self
+    where
+        T: ScriptHostObject + Send + Sync + 'a,
+    {
+        self.entries.push(CallArg::PositionalHost {
             host_ref: None,
             type_id: value.host_type_id(),
             binding: HostArgBinding::Mutable {
@@ -312,7 +343,9 @@ impl<'a> CallArgs<'a> {
         let mut has_named = false;
         for entry in &self.entries {
             match entry {
-                CallArg::Positional(_) | CallArg::PositionalValue(_) => has_positional = true,
+                CallArg::Positional(_)
+                | CallArg::PositionalValue(_)
+                | CallArg::PositionalHost { .. } => has_positional = true,
                 CallArg::Named { .. } | CallArg::NamedValue { .. } | CallArg::NamedHost { .. } => {
                     has_named = true
                 }
@@ -371,6 +404,9 @@ impl<'a> CallArgs<'a> {
         for entry in &mut self.entries {
             if let CallArg::NamedHost {
                 host_ref, type_id, ..
+            }
+            | CallArg::PositionalHost {
+                host_ref, type_id, ..
             } = entry
                 && host_ref.is_none()
             {
@@ -394,6 +430,11 @@ impl<'a> CallArgs<'a> {
                 host_ref: Some(host_ref),
                 binding,
                 ..
+            }
+            | CallArg::PositionalHost {
+                host_ref: Some(host_ref),
+                binding,
+                ..
             } if *host_ref == root => Some(binding),
             _ => None,
         })
@@ -402,6 +443,11 @@ impl<'a> CallArgs<'a> {
     pub(super) fn direct_binding_mut(&mut self, root: HostRef) -> Option<&mut HostArgBinding<'a>> {
         self.entries.iter_mut().find_map(|entry| match entry {
             CallArg::NamedHost {
+                host_ref: Some(host_ref),
+                binding,
+                ..
+            }
+            | CallArg::PositionalHost {
                 host_ref: Some(host_ref),
                 binding,
                 ..
@@ -416,6 +462,12 @@ impl<'a> CallArgs<'a> {
     ) -> Option<(HostRef, &HostArgBinding<'a>)> {
         self.entries.iter().find_map(|entry| match entry {
             CallArg::NamedHost {
+                host_ref: Some(host_ref),
+                type_id: binding_type,
+                binding,
+                ..
+            }
+            | CallArg::PositionalHost {
                 host_ref: Some(host_ref),
                 type_id: binding_type,
                 binding,
@@ -509,6 +561,11 @@ pub(super) enum CallArg<'a> {
         type_id: vela_common::HostTypeId,
         binding: HostArgBinding<'a>,
     },
+    PositionalHost {
+        host_ref: Option<HostRef>,
+        type_id: vela_common::HostTypeId,
+        binding: HostArgBinding<'a>,
+    },
 }
 
 impl CallArg<'_> {
@@ -532,8 +589,13 @@ impl CallArg<'_> {
             Self::NamedHost {
                 host_ref: Some(host_ref),
                 ..
+            }
+            | Self::PositionalHost {
+                host_ref: Some(host_ref),
+                ..
             } => Ok(Value::HostRef(*host_ref)),
-            Self::NamedHost { host_ref: None, .. } => Err(call_args_type_error(
+            Self::NamedHost { host_ref: None, .. }
+            | Self::PositionalHost { host_ref: None, .. } => Err(call_args_type_error(
                 "direct host argument was not assigned an execution identity",
             )),
         }
@@ -545,6 +607,7 @@ impl CallArg<'_> {
             Self::Named { name, .. }
             | Self::NamedValue { name, .. }
             | Self::NamedHost { name, .. } => Some(name),
+            Self::PositionalHost { .. } => None,
         }
     }
 }

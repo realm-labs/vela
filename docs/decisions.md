@@ -2181,6 +2181,16 @@ generation and atomically publishes one full immutable table for future host
 roots. Adjacent methods remain Rust. Vela errors propagate without executing
 the Rust fallback, and an explicit Vela base-call facility is deferred.
 
+Each selected target retains the Runtime and linked artifact that own its Vela
+function. Applying a later partial delta therefore preserves both the old slot
+selection and its executable authority instead of reinterpreting an old
+`FunctionId` in the newest package. Override adapters pass parameters
+positionally because Rust's synthetic receiver name and Vela-local parameter
+names are not ABI; host arguments still carry exact direct bindings and the
+slot contract supplies their shared/exclusive modes. `ProviderKey` remains a
+separate provider declaration identity and never doubles as a replaceable slot
+or dispatch-generation key.
+
 Host integrations may pin a dispatch root before any Vela call, such as at the
 start of an actor mailbox turn, so Rust handlers and nested Rust/Vela service
 calls share one generation. Conversion, borrowed-return provenance/freeze,

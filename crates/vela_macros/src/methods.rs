@@ -6,6 +6,7 @@ use syn::{ImplItem, ItemImpl, LitStr, Result, Visibility, parse::Parser, parse2}
 
 use crate::attrs::parse_qualified_name;
 use crate::export::emission;
+use crate::export::replaceable;
 use crate::export::signature::classify_method;
 use crate::signature::{
     docs_from_attrs, reject_extern_signature, reject_generic_signature, reject_unsafe_signature,
@@ -19,24 +20,40 @@ pub(crate) fn expand(attr: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
-    let item = parse2::<ItemImpl>(input)?;
+    let mut item = parse2::<ItemImpl>(input)?;
     reject_generic_signature(&item.generics, "#[vela::methods]")?;
     let owner_path = parse_owner_path(attr, &item)?;
     let trait_path = item.trait_.as_ref().map(|(_, path, _)| path);
     let mut generated = Vec::new();
     let mut contract_functions = Vec::new();
     let mut registration_functions = Vec::new();
-    for impl_item in &item.items {
+    let mut fallbacks = Vec::new();
+    for impl_item in &mut item.items {
         let ImplItem::Fn(method) = impl_item else {
             continue;
         };
+        let replaceable_attrs = replaceable::take_method_attrs(method)?;
         if trait_path.is_none() && !matches!(method.vis, Visibility::Public(_)) {
+            if replaceable_attrs.is_some() {
+                return Err(syn::Error::new_spanned(
+                    &method.vis,
+                    "replaceable methods must be public",
+                ));
+            }
             continue;
         }
         reject_generic_signature(&method.sig.generics, "#[vela::methods]")?;
         reject_unsafe_signature(&method.sig, "#[vela::methods]")?;
         reject_extern_signature(&method.sig, "#[vela::methods]")?;
-        let signature = classify_method(&method.sig, &BTreeSet::new())?;
+        let additional_effects = replaceable_attrs
+            .as_ref()
+            .map_or_else(BTreeSet::new, |attrs| attrs.effects.clone());
+        let signature = classify_method(&method.sig, &additional_effects)?;
+        if let Some(attrs) = replaceable_attrs.as_ref() {
+            let rewritten = replaceable::rewrite_method(method, attrs, &signature)?;
+            fallbacks.push(ImplItem::Fn(rewritten.fallback));
+            generated.push(rewritten.generated);
+        }
         let docs = docs_from_attrs(&method.attrs);
         generated.push(emission::method_contract(
             method,
@@ -64,6 +81,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             method.sig.ident
         ));
     }
+    item.items.extend(fallbacks);
     if generated.is_empty() {
         return Err(syn::Error::new_spanned(
             &item,
@@ -172,5 +190,41 @@ mod tests {
         assert!(!output.contains("vela_callable_contract_helper"));
         assert!(output.contains("host_read"));
         assert!(output.contains("host_write"));
+    }
+
+    #[test]
+    fn methods_rewrites_replaceable_entry_and_keeps_adjacent_methods_direct() {
+        let expanded = expand_result(
+            quote! { path = "host::game::Service" },
+            quote! {
+                impl Service {
+                    #[replaceable(
+                        path = "host::game::Service::compute",
+                        authority = "context",
+                        index = 2
+                    )]
+                    pub fn compute(
+                        &self,
+                        context: &mut ActorContext,
+                        value: i64,
+                    ) -> VmResult<i64> {
+                        Ok(self.adjacent(value))
+                    }
+
+                    pub fn adjacent(&self, value: i64) -> i64 { value + 1 }
+                }
+            },
+        )
+        .expect("replaceable method group should expand");
+        let output = expanded.to_string();
+
+        assert!(output.contains("pub fn compute"));
+        assert!(output.contains("fn __vela_rust_compute"));
+        assert!(output.contains("Self :: VELA_INTERCEPT_SLOT_COMPUTE"));
+        assert!(output.contains("Self :: vela_callable_contract_compute"));
+        assert!(output.contains("push_positional_host_ref (self)"));
+        assert!(output.contains("push_positional_host_mut (context)"));
+        assert!(output.contains("pub fn adjacent"));
+        assert!(!output.contains("__vela_rust_adjacent"));
     }
 }

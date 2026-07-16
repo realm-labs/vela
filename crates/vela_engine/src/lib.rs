@@ -4,6 +4,8 @@
 
 #![allow(clippy::result_large_err)]
 
+extern crate self as vela_engine;
+
 pub mod args;
 pub mod binding;
 pub mod builder;
@@ -12,6 +14,7 @@ mod compiler_options;
 mod compiler_registry;
 pub mod context;
 pub mod context_schema;
+pub mod dispatch;
 pub mod engine;
 pub mod error;
 pub mod host_lease;

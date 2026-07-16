@@ -25,8 +25,11 @@ owned models, ordinary host references, stable reload, async value calls, and
 same-session active re-entry. Batch E is complete: generated sync/async child
 reborrows, same-session round trips, parent restoration, effect-ceiling
 enforcement, inherited execution ownership, scoped borrowed-return
-propagation/release, and interop boundary benchmarks are verified. Batch F
-optional hot-replaceable dispatch is active.
+propagation/release, and interop boundary benchmarks are verified. Batch F is
+complete: immutable dispatch generations, free-function and method
+interception, partial-delta activation, root pinning, rollback, and fail-closed
+override validation are landed. Batch G acceptance, examples, documentation,
+audits, and full validation are active.
 
 The explicit state-storage hard switch has Batches A-F landed, but its final
 Batch G remains queued behind this explicitly scheduled interop track. Its five
@@ -62,7 +65,7 @@ storage Batch G reaches final acceptance.
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
 | M20 | Paused behind Batch G | Resume the cache-family audit after state-storage final acceptance. |
 | M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
-| Rust/Vela interop | Batch F active | Nested sync/async interop and effect ceilings are complete; optional macro-generated hot-replaceable dispatch is next. |
+| Rust/Vela interop | Batch G active | Optional macro-generated hot replacement is complete; end-to-end acceptance, documentation, and full validation remain. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -127,7 +130,7 @@ storage Batch G reaches final acceptance.
 
 ## Active Gaps
 
-### Unified Rust/Vela Interop Batch F
+### Unified Rust/Vela Interop Batch G
 
 Batches B and C are complete. Item/module exports, inherent and selected trait-method
 thunks, exact named multi-lease preflight, ordinary sync/async Rust adapters,
@@ -171,8 +174,17 @@ tests cover shared budget, artifact generation, heap/state roots, host
 boundary, sidecars/tracing, and cancellation ownership across nesting. The
 reproducible `vela_engine` interop benchmark covers direct Rust,
 scalar/shared/exclusive Vela-to-Rust, generated Rust-to-Vela, and
-Vela-Rust-Vela round-trip costs. Batch F now needs the optional immutable
-dispatch-generation and macro interception layer.
+Vela-Rust-Vela round-trip costs. Optional hot replacement now uses stable slot
+identity, dense build-local indices, immutable root-pinned generations, and
+target-owned Runtime/artifact authority. `#[replaceable]` preserves ordinary
+free-function and `#[methods]` method call shapes while generating private Rust
+fallbacks; Vela `#[override(host::...)]` declarations are staged as arbitrary
+partial deltas, preserve unmentioned targets across packages, activate for
+future roots, and roll back without fallback retries. Provider identity and
+reload remain on their existing independent path. Batch G must now land the
+ordinary round-trip and separate handler/method examples, authoring/deployment
+documentation, public-surface and duplicate-path audits, replaceable benchmark
+rows, and full workspace/examples/docs validation.
 
 ### State Storage Batch G
 
@@ -309,7 +321,7 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Execute unified Rust/Vela interop Batches D-G in checkpoint order.
+1. Complete unified Rust/Vela interop Batch G acceptance and full validation.
 2. Return to state-storage Batch G and restore its final acceptance.
 3. Resume the M20 cache-family audit against the accepted state model.
 4. Resume the M20.5 editor-visible follow-up after M20 close-out.

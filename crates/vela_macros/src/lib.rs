@@ -23,6 +23,13 @@ pub fn export(attr: TokenStream, input: TokenStream) -> TokenStream {
     export::expand(attr.into(), input.into()).into()
 }
 
+/// Makes one explicitly selected Rust entry interceptable by a pinned Vela
+/// dispatch root while preserving its ordinary public call signature.
+#[proc_macro_attribute]
+pub fn replaceable(attr: TokenStream, input: TokenStream) -> TokenStream {
+    export::replaceable::expand(attr.into(), input.into()).into()
+}
+
 /// Exports the supported public functions in one explicit inline module.
 #[proc_macro_attribute]
 pub fn export_module(attr: TokenStream, input: TokenStream) -> TokenStream {
