@@ -1990,6 +1990,38 @@ contract. Declared async functions and any MIR function with an `AwaitCall`
 terminator carry the explicit `MirJitIneligibility::Async` reason; no compiled
 async path or second backend representation is introduced.
 
+## Unified Rust/Vela Interop Decisions
+
+### Ordinary Signatures Are The Canonical Authoring Surface
+
+The accepted direction is defined by
+[rust-vela-interop-model-plan.md](rust-vela-interop-model-plan.md). Explicitly
+exported Rust functions and methods use ordinary copied/owned values and
+invocation-scoped `&T`/`&mut T`; Vela calls them with normal function or method
+syntax. Rust calls exported Vela items through compiler-schema-backed generated
+bindings. `HostRef`, `PathProxy`, lease guards, `CallArgs`, and erased runtime
+values remain internal boundary mechanisms or explicit low-level escape hatches,
+not normal business-function parameters.
+
+### Trusted Native Mutation Uses A Coarse Call Boundary
+
+Direct Vela field and path mutation remains fine-grained through `HostAccess`.
+For an exported trusted Rust callable, `HostAccess` instead gates callable
+permission, effects, capabilities, exact host identity, and shared/exclusive
+leases before generated code creates an invocation-scoped Rust reference. Once
+`&mut T` enters trusted Rust, field-level Rust mutation is allowed. A future
+stronger sandbox may restrict callable sets or opt selected functions into
+low-level HostAccess, but it must not force proxies into the default authoring
+surface or create a second execution model.
+
+### Service Dispatch Is An Optional Interop Extension
+
+Ordinary Rust/Vela calls require neither a service trait nor a dispatch slot.
+Service contracts group the same callable contracts and add only configured
+target selection, pinned immutable dispatch generations, activation, and
+rollback. Rust/Vela service targets must reuse the common conversion, lease,
+Runtime call target, execution session, policy, and diagnostics paths.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

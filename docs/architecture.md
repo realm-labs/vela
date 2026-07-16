@@ -211,6 +211,7 @@ contract before changing that subsystem:
 - [Tooling, performance, security, and testing](architecture/tooling-performance-security-testing.md)
 - [Native LSP architecture](architecture/lsp.md)
 - [Packages and service providers](packages-and-providers.md)
+- [Unified Rust/Vela interop and call model plan](rust-vela-interop-model-plan.md)
 - [Clean identity refactor](architecture/clean-identity-refactor.md)
 - [Executor-neutral async execution plan](async-execution-model-plan.md)
 - [State storage model execution plan](state-storage-model-plan.md)

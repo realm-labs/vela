@@ -279,12 +279,14 @@ operation when the type schema declares index support. Missing support should
 be diagnosed as unsupported index access once the compiler has enough receiver
 type facts; dynamic fallback remains a runtime adapter error.
 
-Rust native methods that need another host object parameter should use typed
-handle/proxy wrappers such as `HostRef`, `PathProxy`, or typed embedding
-wrappers. These wrappers store handles, target plans, dynamic args, or optional
-type metadata; they do not contain Rust references. Except for receiver syntax
-sugar generated inside future typed registration helpers, script-visible Rust parameters should not use bare
-`&T` or `&mut T`.
+Low-level Rust native methods may use typed handles such as `HostRef` and
+`PathProxy`. The approved ordinary interop target instead permits authored
+`&T`/`&mut T` parameters when generated registration code can prove the exact
+direct host object, acquire the complete shared/exclusive lease set atomically,
+and keep every reference invocation-scoped. Vela still receives only host
+handles; the Rust references exist solely inside the trusted native call. The
+queued implementation contract is defined in
+[the unified Rust/Vela interop plan](../rust-vela-interop-model-plan.md).
 
 ### Direct Call Arguments
 
@@ -551,11 +553,12 @@ Rust bool/char/i8..i64/u8..u64/f32/f64/String/Vec<u8>
 Option<T> in Rust API             <-> Vela Option::Some(value) or Option::None
 Vec<T> / HashMap<K, V> copies      <-> script array/map values
 HostRef<T>                         <-> host object reference
+&T / &mut T in generated exports  <-> invocation-scoped shared/exclusive host lease
 &mut NativeCallContext             -> explicit host service and HostAccess access
 HostResult<T>                      -> Vela call success or diagnostic error
 ```
 
-Do not expose these Rust types directly to scripts:
+Do not represent these Rust implementation types as Vela values:
 
 ```text
 &T
@@ -566,13 +569,26 @@ network connection handles
 runtime-owned service pointers
 ```
 
+`&T` and `&mut T` may appear in an ordinary exported Rust signature only as
+generated adapter inputs. The adapter receives a Vela `HostRef`, validates
+exact type and canonical identity through the host boundary, atomically
+acquires an invocation-scoped lease, and calls trusted Rust. The reference is
+never visible to Vela, reflection, GC state, or persistent script storage.
+
 If a native function needs to mutate host state, it should either:
 
 ```text
 record HostAccess operations through NativeCallContext
 call ScriptStateAdapter resolved target methods
+receive a generated invocation-scoped &mut T after HostAccess callable and lease checks
 return a value that script code later writes through normal HostAccess paths
 ```
+
+The generated `&mut T` path is callable-grained trusted native authority. It
+does not promise field-level sandboxing inside the Rust body. Direct Vela
+field/index/path mutations retain their fine-grained `HostAccess` policy; a
+future stronger native sandbox may opt specific functions into the low-level
+HostAccess API without changing the default ordinary-signature model.
 
 ### Method Registration
 
