@@ -4,15 +4,16 @@
 > bundles, generated bidirectional bindings, unified call execution,
 > host-reference lease safety, and optional hot-replaceable dispatch
 >
-> Status: approved design direction; implementation has not started
+> Status: complete on 2026-07-17; acceptance evidence is archived in
+> [`rust-vela-interop-acceptance-2026-07-17.md`](archive/rust-vela-interop-acceptance-2026-07-17.md)
 >
 > Baseline: `master` at `bf524975e` on 2026-07-16
 >
 > Execution: coherent pre-release batches; reuse the existing VM call, native,
 > method, provider, and re-entry paths
 >
-> Roadmap: queued work; this document does not replace the active checkpoint in
-> `progress.md` until explicitly scheduled
+> Roadmap: completed execution contract; current work remains tracked in
+> `progress.md`
 
 This document defines a general Rust/Vela interoperability model. Its primary
 goal is not service replacement. Its primary goal is that explicitly exported

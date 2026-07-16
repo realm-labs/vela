@@ -212,6 +212,7 @@ contract before changing that subsystem:
 - [Native LSP architecture](architecture/lsp.md)
 - [Packages and service providers](packages-and-providers.md)
 - [Unified Rust/Vela interop and call model plan](rust-vela-interop-model-plan.md)
+- [Rust/Vela interop authoring and deployment](rust-vela-interop.md)
 - [Clean identity refactor](architecture/clean-identity-refactor.md)
 - [Executor-neutral async execution plan](async-execution-model-plan.md)
 - [State storage model execution plan](state-storage-model-plan.md)

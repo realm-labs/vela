@@ -10,32 +10,19 @@ history belongs in Git.
 
 ## Current Focus
 
-The approved unified Rust/Vela interop track in
-[rust-vela-interop-model-plan.md](rust-vela-interop-model-plan.md) is now the
-active execution object. Batch A is complete: the shared callable contract,
-deterministic ABI fingerprints and diffs, one effect-to-capability projection,
-ordinary signature classifier, value/host metadata proof traits, explicit
-function/module/method/protocol spellings, stable protocol identity, compiler UI
-fixtures, ABI-policy documentation, and fixed bindgen delivery decisions are
-landed without changing runtime dispatch. Batches B and C are complete:
-ordinary Rust exports, exact lease adapters, owner-frozen borrowed returns,
-natural Vela calls, and conservative early release all use the shared runtime
-path. Batch D is complete: authoritative typed Rust-to-Vela bindings cover
-owned models, ordinary host references, stable reload, async value calls, and
-same-session active re-entry. Batch E is complete: generated sync/async child
-reborrows, same-session round trips, parent restoration, effect-ceiling
-enforcement, inherited execution ownership, scoped borrowed-return
-propagation/release, and interop boundary benchmarks are verified. Batch F is
-complete: immutable dispatch generations, free-function and method
-interception, partial-delta activation, root pinning, rollback, and fail-closed
-override validation are landed. Batch G acceptance, examples, documentation,
-audits, and full validation are active.
+The unified Rust/Vela interop plan is complete. Ordinary Rust exports, exact
+lease adapters, owner-frozen borrowed returns, generated typed Rust-to-Vela
+bindings, same-session sync/async re-entry, effect ceilings, and immutable
+optional override generations use the shared execution path. Build-time
+binding generation is the primary documented workflow; separate runnable
+handler and service-method examples prove activation and rollback. The full
+acceptance, audit, validation, and benchmark evidence is archived in
+[rust-vela-interop-acceptance-2026-07-17.md](archive/rust-vela-interop-acceptance-2026-07-17.md).
 
-The explicit state-storage hard switch has Batches A-F landed, but its final
-Batch G remains queued behind this explicitly scheduled interop track. Its five
-open graph/identity/lifetime proofs remain unchanged. M20 cache close-out waits
-for state-storage acceptance; M20.5 remains the next editor follow-up after
-M20.
+The explicit state-storage hard switch has Batches A-F landed, and its final
+Batch G is now the active execution object. Its five open
+graph/identity/lifetime proofs remain unchanged. M20 cache close-out waits for
+state-storage acceptance; M20.5 remains the next editor follow-up after M20.
 
 The executor-neutral async implementation from Batches A-D is landed: Vela has
 one explicit frame driver, scoped `Send` Runtime/native futures, direct typed
@@ -65,7 +52,7 @@ storage Batch G reaches final acceptance.
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
 | M20 | Paused behind Batch G | Resume the cache-family audit after state-storage final acceptance. |
 | M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
-| Rust/Vela interop | Batch G active | Optional macro-generated hot replacement is complete; end-to-end acceptance, documentation, and full validation remain. |
+| Rust/Vela interop | Complete | Ordinary generated interop and optional macro-generated hot replacement pass end-to-end acceptance, audits, benchmarks, and full validation. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -110,6 +97,13 @@ storage Batch G reaches final acceptance.
 - `PackageId + ModulePath` is the sole script module identity. Package/provider
   compilation and reload use sealed package/HIR snapshots and linked artifact
   metadata rather than parallel package-unaware paths.
+- Ordinary Rust/Vela integrations use one deterministic compiler-owned binding
+  schema and build-time generated typed Rust surface. Runtime strings and
+  boundary wrapper values remain low-level dynamic escape hatches, not the
+  primary call workflow.
+- Optional `#[replaceable]` entries use stable slots, immutable root-pinned
+  generations, target-owned Runtime authority, partial activation, and
+  rollback without retrying authored side effects.
 
 ### Standard Library, Tooling, And Proof
 
@@ -130,65 +124,9 @@ storage Batch G reaches final acceptance.
 
 ## Active Gaps
 
-### Unified Rust/Vela Interop Batch G
-
-Batches B and C are complete. Item/module exports, inherent and selected trait-method
-thunks, exact named multi-lease preflight, ordinary sync/async Rust adapters,
-and owner-frozen `&T`/`&mut T` returns are implemented, including direct,
-`VmResult`, `Option`, `Result`, and homogeneous borrowed tuple success shapes.
-Tuple siblings retain one parent lease while receiving distinct child IDs and
-independent shared/exclusive invocation leases. Scoped children
-have distinct borrow identities, preserve shared/exclusive access, freeze their
-owner through a retained safe self-cell lease, support the dedicated
-`ReleaseBorrowLease` lowering for `host::release`, and are invalidated at root
-teardown. Sealed MIR analysis inserts conservative releases after proven last
-uses, at lexical death, on safe branch edges, before dead-value suspension, and
-on await resume after an awaited last use; observable aliases and escapes
-suppress automatic release. The compiler now emits one deterministic,
-policy-free Rust binding schema from public HIR declarations and verified MIR,
-including receiver-qualified method identities, structural callable
-signatures, public record/enum definitions, transitive effects, callable and
-type fingerprints, and source origins, and carries it unchanged into
-`LinkedArtifact`. The single `vela_bindgen` generator consumes only that schema
-and deterministically emits package/module-shaped sync and async Rust methods,
-owned record/enum models, typed script-method receivers, stable target
-specifications, the schema checksum, and source-origin documentation without a
-second Vela parser. Generated code binds once against the active artifact,
-validates source-backed callable and model fingerprints, invokes stable
-function identities with bounded defaults, and uses the same linked execution
-session for `NativeCallContext` re-entry. A workspace fixture executes scalars,
-borrowed strings/bytes, arrays, Option/Result, records, enums, methods, async
-functions, and compatible body reload without runtime strings or manual
-boundary values. Generated host parameters now use ordinary `&T`/`&mut T` at
-the Rust call site. Root bindings create call-scoped direct host arguments;
-active bindings match the Rust reborrow against provenance captured from the
-live parent lease, reuse its canonical `HostRef`, and install a child direct
-scope for the nested call. Sync and scoped `Send` async bindings retain that
-child across suspension, release it on completion or future drop, and restore
-parent Rust use. Unrelated pointers and shared-to-exclusive upgrades fail
-before the child body. The active Rust callable's normalized effect ceiling is
-inherited by leased child contexts; capability-scoped context operations and
-generated nested bindings are rejected before the requested operation when
-they exceed it, independent of wider Runtime grants. Existing execution-session
-tests cover shared budget, artifact generation, heap/state roots, host
-boundary, sidecars/tracing, and cancellation ownership across nesting. The
-reproducible `vela_engine` interop benchmark covers direct Rust,
-scalar/shared/exclusive Vela-to-Rust, generated Rust-to-Vela, and
-Vela-Rust-Vela round-trip costs. Optional hot replacement now uses stable slot
-identity, dense build-local indices, immutable root-pinned generations, and
-target-owned Runtime/artifact authority. `#[replaceable]` preserves ordinary
-free-function and `#[methods]` method call shapes while generating private Rust
-fallbacks; Vela `#[override(host::...)]` declarations are staged as arbitrary
-partial deltas, preserve unmentioned targets across packages, activate for
-future roots, and roll back without fallback retries. Provider identity and
-reload remain on their existing independent path. Batch G must now land the
-ordinary round-trip and separate handler/method examples, authoring/deployment
-documentation, public-surface and duplicate-path audits, replaceable benchmark
-rows, and full workspace/examples/docs validation.
-
 ### State Storage Batch G
 
-Batch G remains queued. Its tasks, in order, are
+Batch G is active. Its tasks, in order, are
 `STATE-G1-EXACT-TYPE-RESOLUTION`, `STATE-G2-NOMINAL-CANONICALIZATION`,
 `STATE-G3-GRAPH-PRESERVING-STAGING`, `STATE-G4-EXTERNAL-OWNER-RECLAIM`, and
 `STATE-G5-NESTED-INIT-FINGERPRINT`. The required behavior and focused
@@ -289,6 +227,10 @@ scanners, runtime execution, live host-state reads, or editor-owned analysis.
 
 ## Validation
 
+Unified Rust/Vela interop passed its complete workspace, examples, docs, site,
+benchmark-build, and fuzz-build gates on 2026-07-17. Its detailed acceptance
+matrix and audit are archived.
+
 State-storage Batch F's focused suites and original full acceptance gates were
 green on 2026-07-15, but the second review showed that its regression matrix
 was incomplete. The review baseline still passes formatting, workspace clippy,
@@ -321,11 +263,10 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Complete unified Rust/Vela interop Batch G acceptance and full validation.
-2. Return to state-storage Batch G and restore its final acceptance.
-3. Resume the M20 cache-family audit against the accepted state model.
-4. Resume the M20.5 editor-visible follow-up after M20 close-out.
-5. Keep persistence, snapshots, replication, cross-Runtime sharing, structural
+1. Complete state-storage Batch G and restore its final acceptance.
+2. Resume the M20 cache-family audit against the accepted state model.
+3. Resume the M20.5 editor-visible follow-up after M20 close-out.
+4. Keep persistence, snapshots, replication, cross-Runtime sharing, structural
    state migration, async-frame migration, and initializer dependency reads as
    explicit non-goals.
 

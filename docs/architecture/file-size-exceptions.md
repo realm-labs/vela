@@ -10,6 +10,7 @@ clear; they are not permission for unrelated growth.
 | File | Reviewed reason |
 |---|---|
 | `vela_vm/src/linked_execution.rs` | Exhaustive linked opcode dispatch and its root/frame-driver glue. Execution-session/frame/continuation definitions and start policy live in `execution_session.rs`, async boundary/resume policy in `async_resume.rs`, and reentry push/abort policy in `execution_reentry.rs`; this exception does not cover adding those responsibilities back. |
+| `vela_vm/src/lib.rs` | Public VM embedding façade, call parameter structs, cache/profiler contracts, and thin entry methods. Opcode execution, session ownership, async resume, reentry, host access, heap operations, and tests are already split into focused modules; the remaining façade is reviewed as one API surface. |
 | `vela_lsp_server/src/global_state.rs` | One typed LSP state machine and its message-transition fixture matrix; splitting transitions from queue/state ownership would duplicate protocol setup. |
 | `vela_lsp_server/src/lsp/to_proto.rs` | Exhaustive protocol projection table whose variants are reviewed together. |
 | `vela_vm/src/runtime_type_guards.rs` | Mutually recursive exhaustive guard interpreter; container, sum, callable, and identity cases share cycle/stamp state. |
