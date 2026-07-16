@@ -1,0 +1,5 @@
+error: ordinary exported signatures cannot mention a Vela boundary wrapper
+ --> tests/ui/interop/fail/boundary_wrapper.rs:4:21
+  |
+4 | pub fn bad(_player: vela_host::path::HostRef) {}
+  |                     ^^^^^^^^^^^^^^^^^^^^^^^^

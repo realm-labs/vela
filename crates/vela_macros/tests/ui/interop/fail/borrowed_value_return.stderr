@@ -1,0 +1,5 @@
+error: borrowed scalar or container views cannot leave an exported Rust invocation
+ --> tests/ui/interop/fail/borrowed_value_return.rs:4:29
+  |
+4 | pub fn name(value: &str) -> &str {
+  |                             ^^^^

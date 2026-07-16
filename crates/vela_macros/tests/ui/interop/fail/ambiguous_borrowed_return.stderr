@@ -1,0 +1,5 @@
+error: borrowed host return requires exactly one unambiguous borrowed host parameter
+ --> tests/ui/interop/fail/ambiguous_borrowed_return.rs:7:50
+  |
+7 | pub fn player(_left: &Service, _right: &Service) -> &Player {
+  |                                                  ^^^^^^^^^^

@@ -1,0 +1,5 @@
+error: #[vela::export] does not support generic parameters or where clauses
+ --> tests/ui/interop/fail/generic_function.rs:4:16
+  |
+4 | pub fn identity<T>(value: T) -> T {
+  |                ^
