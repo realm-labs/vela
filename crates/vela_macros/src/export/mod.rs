@@ -1,4 +1,4 @@
-mod attrs;
+pub(crate) mod attrs;
 pub(crate) mod emission;
 pub(crate) mod signature;
 

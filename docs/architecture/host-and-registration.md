@@ -285,8 +285,43 @@ Low-level Rust native methods may use typed handles such as `HostRef` and
 direct host object, acquire the complete shared/exclusive lease set atomically,
 and keep every reference invocation-scoped. Vela still receives only host
 handles; the Rust references exist solely inside the trusted native call. The
-queued implementation contract is defined in
+active implementation contract is defined in
 [the unified Rust/Vela interop plan](../rust-vela-interop-model-plan.md).
+
+### Unified Callable Boundary
+
+Explicit Rust exports and public Vela bindings share one `CallableContract`.
+Its ABI contains stable semantic identity, ordered parameter names and boundary
+modes, return/error mode, sync versus async shape, normalized effective
+effects, and semantic visibility. Its deterministic fingerprint excludes docs,
+source positions, active capability grants, execution profiles, callable and
+host-type allowlists, reflection permissions, budgets, filesystem policy, and
+arbitrary business permission strings. Hot reload and generated bindings use a
+field-level ABI diff when fingerprints disagree.
+
+Rust signatures infer their base effects from the shared parameter classifier:
+value-only and read-only value-borrow parameters are `pure`, `&T`/`&self` host
+parameters infer `host_read`, and any `&mut T`/`&mut self` infers `host_write`.
+`effects(...)` may add time, random, event, IO, reflection, or other host
+effects but cannot remove the inferred base. One canonical fixed-bit mapping
+derives the coarse `CapabilitySet`; callers do not author a second capability
+list.
+
+An exported Rust body is trusted native code. Before it starts, the runtime
+must validate callable registration and visibility, the effect-derived coarse
+capabilities, budget entry, argument ABI, exact concrete host identity, and the
+complete atomic shared/exclusive lease set. Once an exclusive lease safely
+creates invocation-scoped `&mut T`, ordinary Rust field authority applies for
+that call. Script field metadata does not sandbox statements inside the Rust
+body. Deployments needing a narrower native sandbox should expose fewer
+callables or opt a specific advanced callable into low-level `HostAccess`; the
+ordinary reference surface does not become a proxy API.
+
+Rust traits enter Vela only through an explicit protocol export with its own
+stable Vela public path. Rust trait paths and `TypeId` values are not public
+protocol identity, and implementing a Rust trait alone exposes no methods.
+Inherent and selected trait methods use the same parameter classifier,
+effects, leases, callable ABI, and normal Vela method syntax.
 
 ### Direct Call Arguments
 

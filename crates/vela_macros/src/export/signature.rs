@@ -141,7 +141,7 @@ pub(crate) struct ClassifiedSignature {
     pub(super) is_async: bool,
 }
 
-pub(super) fn classify_function(
+pub(crate) fn classify_function(
     signature: &Signature,
     additional_effects: &BTreeSet<EffectName>,
 ) -> Result<ClassifiedSignature> {

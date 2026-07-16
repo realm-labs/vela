@@ -1,7 +1,7 @@
 use vela_engine::context::NativeCallContext;
 use vela_engine::interop::{BoundaryMode, CallableKind};
 use vela_engine::native::EffectSet;
-use vela_macros::{ScriptHost, export, methods, trait_export};
+use vela_macros::{ScriptHost, export, export_module, methods, trait_export};
 use vela_vm::error::VmResult;
 
 #[derive(Debug, ScriptHost)]
@@ -24,6 +24,22 @@ impl Damageable for Player {
 
     fn is_alive(&self) -> bool {
         self.level > 0
+    }
+}
+
+#[export_module(path = "rules")]
+mod rules_exports {
+    pub fn clamp(amount: i64) -> i64 {
+        amount.max(0)
+    }
+
+    #[export(effects(random))]
+    pub fn random_floor() -> i64 {
+        1
+    }
+
+    pub(super) fn private_helper() -> i64 {
+        2
     }
 }
 
@@ -106,4 +122,17 @@ fn trait_export_uses_explicit_vela_protocol_identity() {
     let mut player = Player { level: 5 };
     player.take_damage(2);
     assert!(player.is_alive());
+}
+
+#[test]
+fn export_module_groups_public_contracts_once() {
+    let contracts = rules_exports::vela_export_contracts();
+
+    assert_eq!(contracts.len(), 2);
+    assert_eq!(contracts[0].public_path, "rules::clamp");
+    assert_eq!(contracts[1].public_path, "rules::random_floor");
+    assert_eq!(contracts[1].effects, EffectSet::random());
+    assert_eq!(rules_exports::clamp(-2), 0);
+    assert_eq!(rules_exports::random_floor(), 1);
+    assert_eq!(rules_exports::private_helper(), 2);
 }

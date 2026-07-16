@@ -4,6 +4,7 @@
 
 mod attrs;
 mod export;
+mod export_module;
 mod hash;
 mod methods;
 mod script_function;
@@ -19,6 +20,12 @@ use proc_macro::TokenStream;
 #[proc_macro_attribute]
 pub fn export(attr: TokenStream, input: TokenStream) -> TokenStream {
     export::expand(attr.into(), input.into()).into()
+}
+
+/// Exports the supported public functions in one explicit inline module.
+#[proc_macro_attribute]
+pub fn export_module(attr: TokenStream, input: TokenStream) -> TokenStream {
+    export_module::expand(attr.into(), input.into()).into()
 }
 
 /// Exports the supported public methods in one explicit inherent impl group.

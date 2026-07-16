@@ -8,22 +8,31 @@ use crate::attrs::parse_qualified_name;
 use super::signature::EffectName;
 
 #[derive(Clone, Debug)]
-pub(super) struct ExportAttrs {
-    pub(super) path: String,
-    pub(super) effects: BTreeSet<EffectName>,
-    pub(super) docs: Option<String>,
+pub(crate) struct ExportAttrs {
+    pub(crate) path: String,
+    pub(crate) effects: BTreeSet<EffectName>,
+    pub(crate) docs: Option<String>,
 }
 
 impl ExportAttrs {
-    pub(super) fn parse(tokens: TokenStream) -> Result<Self> {
-        let mut path = None;
+    pub(crate) fn parse(tokens: TokenStream) -> Result<Self> {
+        Self::parse_with_default(tokens, None)
+    }
+
+    pub(crate) fn parse_with_default(
+        tokens: TokenStream,
+        default_path: Option<String>,
+    ) -> Result<Self> {
+        let mut path = default_path;
+        let mut explicit_path = false;
         let mut effects = BTreeSet::new();
         let mut docs = None;
         let parser = syn::meta::parser(|meta| {
             if meta.path.is_ident("path") {
-                if path.is_some() {
+                if explicit_path {
                     return Err(meta.error("duplicate export path"));
                 }
+                explicit_path = true;
                 path = Some(parse_qualified_name(
                     meta.value()?.parse::<LitStr>()?,
                     "export path",

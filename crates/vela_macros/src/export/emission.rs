@@ -8,7 +8,7 @@ use super::signature::{
     ReturnMode, TypeShape,
 };
 
-pub(super) fn function_contract(
+pub(crate) fn function_contract(
     item: &ItemFn,
     attrs: &ExportAttrs,
     docs: Option<&str>,
