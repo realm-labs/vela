@@ -2,6 +2,7 @@
 members = [
     "crates/vela_analysis",
     "crates/vela_bytecode",
+    "crates/vela_bindgen",
     "crates/vela_c_api",
     "crates/vela_cli",
     "crates/vela_common",
@@ -49,6 +50,7 @@ blake3 = "1"
 toml_edit = "0.23"
 vela_analysis = { path = "crates/vela_analysis" }
 vela_bytecode = { path = "crates/vela_bytecode" }
+vela_bindgen = { path = "crates/vela_bindgen" }
 vela_c_api = { path = "crates/vela_c_api" }
 vela_cli = { path = "crates/vela_cli" }
 vela_common = { path = "crates/vela_common" }

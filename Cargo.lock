@@ -1093,6 +1093,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "vela_bindgen"
+version = "0.1.0"
+dependencies = [
+ "syn",
+ "vela_bytecode",
+ "vela_common",
+ "vela_engine",
+]
+
+[[package]]
 name = "vela_bytecode"
 version = "0.1.0"
 dependencies = [

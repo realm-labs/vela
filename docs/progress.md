@@ -139,9 +139,12 @@ suppress automatic release. The compiler now emits one deterministic,
 policy-free Rust binding schema from public HIR callables and verified MIR,
 including receiver-qualified trait-method identities, structural signatures,
 transitive effects, contract fingerprints, and source origins, and carries it
-unchanged into `LinkedArtifact`. Batch D's generator, runtime binding, stable
-re-resolution, active-context carrier, and source-backed diagnostics remain
-open.
+unchanged into `LinkedArtifact`. The single `vela_bindgen` generator consumes
+only that schema and deterministically emits package/module-shaped sync and
+async Rust methods, stable target specifications, the schema checksum, and
+source-origin documentation without a second Vela parser. Batch D's runtime
+binding, stable re-resolution, active-context carrier, conversion closure, and
+source-backed diagnostics remain open.
 
 ### State Storage Batch G
 

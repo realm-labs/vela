@@ -1,0 +1,16 @@
+[package]
+name = "vela_bindgen"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+vela_bytecode = { workspace = true }
+vela_common = { workspace = true }
+
+[dev-dependencies]
+syn = { workspace = true }
+vela_engine = { workspace = true }
+
+[lints]
+workspace = true

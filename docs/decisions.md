@@ -2034,6 +2034,12 @@ not participate in callable fingerprints. Trait method identity is the pair of
 semantic receiver `TypeId` and protocol `MethodId`; its executable
 `FunctionId` remains the direct call target.
 
+`vela_bindgen` is the sole Rust code generator. It consumes the compiler-owned
+schema directly and emits one runtime-bound package with deterministic module
+accessors, sync/async typed methods, stable callable specifications, checksum,
+and Vela source-origin documentation. CLI or build integration may wrap this
+crate, but may not implement another source scanner, parser, or generator.
+
 ### Borrowed Host Returns Freeze Their Parent Owner
 
 A supported Rust `&T`/`&mut T` host return is exposed to Vela as a

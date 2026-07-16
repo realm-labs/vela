@@ -230,7 +230,8 @@ impl RustBindingEffectSet {
         capabilities
     }
 
-    fn bits(self) -> u32 {
+    #[must_use]
+    pub fn bits(self) -> u32 {
         let flags = [
             self.may_trap,
             self.may_allocate,
