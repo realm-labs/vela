@@ -91,7 +91,7 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
             &signature,
         ));
         generated.push(
-            emission::method_sync_adapter(
+            emission::method_adapter(
                 &impl_method,
                 &self_ty,
                 Some(&declaration.trait_path),

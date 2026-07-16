@@ -120,6 +120,23 @@ pub fn panic_grant(_player: &mut Player) {
     panic!("authored Rust panic payload must not cross the boundary");
 }
 
+#[export(path = "game::double_async")]
+pub async fn double_async(amount: i64) -> i64 {
+    amount * 2
+}
+
+#[export(path = "game::transfer_async")]
+pub async fn transfer_async(first: &mut Player, second: &mut Player, amount: i64) -> i64 {
+    first.level -= amount;
+    second.level += amount;
+    first.level + second.level
+}
+
+#[export(path = "game::hold_player_async")]
+pub async fn hold_player_async(_player: &mut Player) {
+    std::future::pending::<()>().await;
+}
+
 #[export(path = "game::roll", effects(random))]
 pub fn roll(_ctx: &mut NativeCallContext<'_, '_>, player: &Player) -> i64 {
     player.level
@@ -143,6 +160,31 @@ impl Player {
 
     pub fn combined(&self, other: &Player) -> i64 {
         self.level + other.level
+    }
+
+    pub async fn increment_async(&mut self, amount: i64) -> i64 {
+        self.level += amount;
+        self.level
+    }
+
+    pub async fn absorb_async(&mut self, other: &mut Player) -> i64 {
+        self.level += other.level;
+        other.level = 0;
+        self.level
+    }
+
+    pub async fn hold_async(&mut self) {
+        std::future::pending::<()>().await;
+    }
+
+    pub async fn context_increment_async(
+        &mut self,
+        context: &mut NativeCallContext<'_, '_>,
+        amount: i64,
+    ) -> VmResult<i64> {
+        context.charge_execution_units(1)?;
+        self.level += amount;
+        Ok(self.level)
     }
 
     fn rust_only_helper(&self) -> i64 {
@@ -287,6 +329,9 @@ fn host_export_runtime(source: &str) -> Runtime {
         .register_exports(vela_export_bundle_strict_grant())
         .register_exports(vela_export_bundle_fail_grant())
         .register_exports(vela_export_bundle_panic_grant())
+        .register_exports(vela_export_bundle_double_async())
+        .register_exports(vela_export_bundle_transfer_async())
+        .register_exports(vela_export_bundle_hold_player_async())
         .register_exports(Player::vela_inherent_exports())
         .register_exports(Player::vela_protocol_Damageable_exports())
         .build()
@@ -591,4 +636,209 @@ fn declaration_only_external_trait_adapter_calls_existing_impl() {
 
     assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
     assert_eq!(npc.hp, 2);
+}
+
+#[test]
+fn value_only_async_export_uses_ordinary_await_syntax() {
+    let mut runtime =
+        host_export_runtime("async fn main() { return game::double_async(6).await; }");
+    let mut future =
+        Box::pin(runtime.call_async("main", CallArgs::new(), CallOptions::unbounded()));
+    let waker = std::task::Waker::noop();
+    let mut context = std::task::Context::from_waker(waker);
+    let value = loop {
+        match std::future::Future::poll(future.as_mut(), &mut context) {
+            std::task::Poll::Ready(value) => break value.expect("async export should complete"),
+            std::task::Poll::Pending => continue,
+        }
+    };
+    drop(future);
+
+    assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(12)));
+}
+
+#[test]
+fn async_host_function_exports_hold_all_leases_to_completion() {
+    let mut runtime = host_export_runtime(
+        "async fn main(first: Player, second: Player) { return game::transfer_async(first, second, 3).await; }",
+    );
+    let mut first = Player { level: 10 };
+    let mut second = Player { level: 4 };
+    let mut future = Box::pin(
+        runtime.call_async(
+            "main",
+            CallArgs::new()
+                .with_host_mut("first", &mut first)
+                .with_host_mut("second", &mut second),
+            CallOptions::unbounded(),
+        ),
+    );
+    let waker = std::task::Waker::noop();
+    let mut context = std::task::Context::from_waker(waker);
+    let value = loop {
+        match std::future::Future::poll(future.as_mut(), &mut context) {
+            std::task::Poll::Ready(value) => {
+                break value.expect("async host export should complete");
+            }
+            std::task::Poll::Pending => continue,
+        }
+    };
+    drop(future);
+
+    assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(14)));
+    assert_eq!((first.level, second.level), (7, 7));
+}
+
+#[test]
+fn async_host_function_exports_preflight_aliases() {
+    let mut runtime = host_export_runtime(
+        "async fn main(player: Player) { return game::transfer_async(player, player, 3).await; }",
+    );
+    let mut player = Player { level: 10 };
+    let mut future = Box::pin(runtime.call_async(
+        "main",
+        CallArgs::new().with_host_mut("player", &mut player),
+        CallOptions::unbounded(),
+    ));
+    let waker = std::task::Waker::noop();
+    let mut context = std::task::Context::from_waker(waker);
+    let error = loop {
+        match std::future::Future::poll(future.as_mut(), &mut context) {
+            std::task::Poll::Ready(result) => {
+                break result
+                    .expect_err("aliased async mutable parameters must fail before invocation");
+            }
+            std::task::Poll::Pending => continue,
+        }
+    };
+    drop(future);
+
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::AliasedMutableHostArguments {
+            callable: "game::transfer_async".to_owned(),
+            first_parameter: "first".to_owned(),
+            second_parameter: "second".to_owned(),
+        }
+    );
+    assert_eq!(player.level, 10);
+}
+
+#[test]
+fn dropping_async_host_function_releases_retained_lease() {
+    let mut runtime = host_export_runtime(
+        "async fn main(player: Player) { game::hold_player_async(player).await; } fn after(player: Player) { game::grant_exp(player, 1); return player.current_level(); }",
+    );
+    let mut player = Player { level: 3 };
+    let mut future = Box::pin(runtime.call_async(
+        "main",
+        CallArgs::new().with_host_mut("player", &mut player),
+        CallOptions::unbounded(),
+    ));
+    let waker = std::task::Waker::noop();
+    let mut context = std::task::Context::from_waker(waker);
+    assert!(matches!(
+        std::future::Future::poll(future.as_mut(), &mut context),
+        std::task::Poll::Pending
+    ));
+    drop(future);
+
+    let value = runtime
+        .call(
+            "after",
+            CallArgs::new().with_host_mut("player", &mut player),
+            CallOptions::unbounded(),
+        )
+        .expect("dropping the future must release all retained host leases");
+    assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(4)));
+    assert_eq!(player.level, 4);
+}
+
+#[test]
+fn async_method_exports_hold_receiver_and_parameter_leases_to_completion() {
+    let mut runtime = host_export_runtime(
+        "async fn main(first: Player, second: Player) { first.increment_async(2).await; return first.absorb_async(second).await; }",
+    );
+    let mut first = Player { level: 3 };
+    let mut second = Player { level: 4 };
+    let mut future = Box::pin(
+        runtime.call_async(
+            "main",
+            CallArgs::new()
+                .with_host_mut("first", &mut first)
+                .with_host_mut("second", &mut second),
+            CallOptions::unbounded(),
+        ),
+    );
+    let waker = std::task::Waker::noop();
+    let mut context = std::task::Context::from_waker(waker);
+    let value = loop {
+        match std::future::Future::poll(future.as_mut(), &mut context) {
+            std::task::Poll::Ready(value) => {
+                break value.expect("async method exports should complete");
+            }
+            std::task::Poll::Pending => continue,
+        }
+    };
+    drop(future);
+
+    assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(9)));
+    assert_eq!((first.level, second.level), (9, 0));
+}
+
+#[test]
+fn dropping_async_method_call_releases_retained_receiver_lease() {
+    let mut runtime = host_export_runtime(
+        "async fn main(player: Player) { player.hold_async().await; } fn after(player: Player) { player.increment(1); return player.current_level(); }",
+    );
+    let mut player = Player { level: 3 };
+    let mut future = Box::pin(runtime.call_async(
+        "main",
+        CallArgs::new().with_host_mut("player", &mut player),
+        CallOptions::unbounded(),
+    ));
+    let waker = std::task::Waker::noop();
+    let mut context = std::task::Context::from_waker(waker);
+    assert!(matches!(
+        std::future::Future::poll(future.as_mut(), &mut context),
+        std::task::Poll::Pending
+    ));
+    drop(future);
+
+    let value = runtime
+        .call(
+            "after",
+            CallArgs::new().with_host_mut("player", &mut player),
+            CallOptions::unbounded(),
+        )
+        .expect("dropping the future must release the retained receiver lease");
+    assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(4)));
+    assert_eq!(player.level, 4);
+}
+
+#[test]
+fn async_context_method_retains_receiver_lease_and_runtime_authority() {
+    let mut runtime = host_export_runtime(
+        "async fn main(player: Player) { return player.context_increment_async(3).await; }",
+    );
+    let mut player = Player { level: 4 };
+    let mut future = Box::pin(runtime.call_async(
+        "main",
+        CallArgs::new().with_host_mut("player", &mut player),
+        CallOptions::unbounded(),
+    ));
+    let waker = std::task::Waker::noop();
+    let mut context = std::task::Context::from_waker(waker);
+    let value = loop {
+        match std::future::Future::poll(future.as_mut(), &mut context) {
+            std::task::Poll::Ready(value) => {
+                break value.expect("async context method should complete");
+            }
+            std::task::Poll::Pending => continue,
+        }
+    };
+    drop(future);
+
+    assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(7)));
+    assert_eq!(player.level, 7);
 }

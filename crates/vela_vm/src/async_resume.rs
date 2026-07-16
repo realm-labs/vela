@@ -54,6 +54,13 @@ impl PreparedAsyncCall {
                     }))
                 })
             }
+            native_function_calls::PreparedAsyncNativeFunction::DirectHostFunction { .. } => {
+                Box::pin(async {
+                    Err(VmError::new(VmErrorKind::TypeMismatch {
+                        operation: "async direct host function invocation",
+                    }))
+                })
+            }
         }
     }
 
@@ -71,6 +78,15 @@ impl PreparedAsyncCall {
         matches!(
             self.function,
             native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod { .. }
+                | native_function_calls::PreparedAsyncNativeFunction::DirectHostFunction { .. }
+        )
+    }
+
+    #[must_use]
+    pub fn requires_host_lease_set(&self) -> bool {
+        matches!(
+            self.function,
+            native_function_calls::PreparedAsyncNativeFunction::DirectHostFunction { .. }
         )
     }
 
@@ -94,6 +110,13 @@ impl PreparedAsyncCall {
                 Box::pin(async {
                     Err(VmError::new(VmErrorKind::TypeMismatch {
                         operation: "async direct host method invocation",
+                    }))
+                })
+            }
+            native_function_calls::PreparedAsyncNativeFunction::DirectHostFunction { .. } => {
+                Box::pin(async {
+                    Err(VmError::new(VmErrorKind::TypeMismatch {
+                        operation: "async direct host function invocation",
                     }))
                 })
             }
@@ -135,6 +158,41 @@ impl PreparedAsyncCall {
             });
         };
         function(receiver.root, lease, self.args.clone())
+    }
+
+    #[must_use]
+    pub fn host_lease_requests(
+        &self,
+    ) -> Option<Vec<(vela_host::path::HostRef, vela_host::lease::HostLeaseKind)>> {
+        match &self.function {
+            native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod {
+                receiver,
+                lease_kind,
+                ..
+            } if receiver.segments.is_empty() => Some(vec![(receiver.root, *lease_kind)]),
+            native_function_calls::PreparedAsyncNativeFunction::DirectHostFunction {
+                requests,
+                ..
+            } => Some(requests.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn invoke_with_host_leases<'invoke, 'lease>(
+        &'invoke self,
+        leases: &'invoke mut [vela_host::lease::ErasedHostLease<'lease>],
+    ) -> NativeCallFuture<'invoke> {
+        match &self.function {
+            native_function_calls::PreparedAsyncNativeFunction::DirectHostFunction {
+                function,
+                ..
+            } => function(leases, self.args.clone()),
+            _ => Box::pin(async {
+                Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "async multiple host lease invocation",
+                }))
+            }),
+        }
     }
 
     #[must_use]

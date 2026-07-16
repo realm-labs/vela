@@ -625,14 +625,13 @@ impl TypeShape {
 }
 
 impl ClassifiedSignature {
-    pub(crate) fn supports_sync_value_adapter(&self) -> bool {
-        !self.is_async
-            && self.parameters.iter().all(|parameter| {
-                matches!(
-                    parameter.mode,
-                    ParameterMode::Value | ParameterMode::HiddenContext
-                )
-            })
+    pub(crate) fn supports_value_adapter(&self) -> bool {
+        self.parameters.iter().all(|parameter| {
+            matches!(
+                parameter.mode,
+                ParameterMode::Value | ParameterMode::HiddenContext
+            )
+        })
     }
 
     pub(crate) fn has_hidden_context(&self) -> bool {
@@ -664,6 +663,27 @@ impl ClassifiedSignature {
             })
     }
 
+    pub(crate) fn supports_async_host_adapter(&self) -> bool {
+        self.is_async
+            && !self.has_hidden_context()
+            && matches!(
+                self.returns.mode,
+                ReturnMode::Owned | ReturnMode::Structured
+            )
+            && self.parameters.iter().all(|parameter| {
+                matches!(
+                    parameter.mode,
+                    ParameterMode::Value | ParameterMode::SharedHost | ParameterMode::ExclusiveHost
+                )
+            })
+            && self.parameters.iter().any(|parameter| {
+                matches!(
+                    parameter.mode,
+                    ParameterMode::SharedHost | ParameterMode::ExclusiveHost
+                )
+            })
+    }
+
     pub(crate) fn supports_sync_method_adapter(&self) -> bool {
         self.supports_sync_host_adapter()
             && !self.has_hidden_context()
@@ -671,6 +691,27 @@ impl ClassifiedSignature {
                 .parameters
                 .first()
                 .is_some_and(|parameter| matches!(parameter.ty, TypeShape::ReceiverHost))
+    }
+
+    pub(crate) fn supports_async_method_adapter(&self) -> bool {
+        self.is_async
+            && matches!(
+                self.returns.mode,
+                ReturnMode::Owned | ReturnMode::Structured
+            )
+            && self
+                .parameters
+                .first()
+                .is_some_and(|parameter| matches!(parameter.ty, TypeShape::ReceiverHost))
+            && self.parameters.iter().all(|parameter| {
+                matches!(
+                    parameter.mode,
+                    ParameterMode::Value
+                        | ParameterMode::SharedHost
+                        | ParameterMode::ExclusiveHost
+                        | ParameterMode::HiddenContext
+                )
+            })
     }
 }
 

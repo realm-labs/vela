@@ -171,7 +171,17 @@ pub type AsyncDirectHostMethodFunction = Arc<
         + Sync
         + 'static,
 >;
-pub(crate) enum ConditionalAsyncNativeFunction {
+pub type AsyncDirectHostFunction = Arc<
+    dyn for<'invoke, 'lease> Fn(
+            &'invoke mut [vela_host::lease::ErasedHostLease<'lease>],
+            Vec<OwnedValue>,
+        ) -> NativeCallFuture<'invoke>
+        + Send
+        + Sync
+        + 'static,
+>;
+#[doc(hidden)]
+pub enum ConditionalAsyncNativeFunction {
     Pure(AsyncNativeFunction),
     Host(AsyncHostNativeFunction),
     HostMethod {
@@ -183,9 +193,14 @@ pub(crate) enum ConditionalAsyncNativeFunction {
         receiver: vela_host::path::HostPath,
         lease_kind: vela_host::lease::HostLeaseKind,
     },
+    DirectHostFunction {
+        function: AsyncDirectHostFunction,
+        requests: Vec<(vela_host::path::HostRef, vela_host::lease::HostLeaseKind)>,
+    },
 }
 
-pub(crate) enum ConditionalHostNativeOutcome {
+#[doc(hidden)]
+pub enum ConditionalHostNativeOutcome {
     Complete(OwnedValue),
     Async {
         function: ConditionalAsyncNativeFunction,
@@ -785,7 +800,8 @@ impl Vm {
             .insert(id, (lease_kind, Arc::new(function)));
     }
 
-    pub(crate) fn register_conditional_host_native_with_id(
+    #[doc(hidden)]
+    pub fn register_conditional_host_native_with_id(
         &mut self,
         id: FunctionId,
         function: impl for<'host, 'budget> Fn(

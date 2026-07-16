@@ -13,9 +13,9 @@ use crate::error::{EngineError, EngineErrorKind, EngineResult};
 use crate::host_type::HostTypeSpec;
 use crate::method::{AsyncNativeMethodEntry, NativeMethodDesc, NativeMethodEntry};
 use crate::native::{
-    AsyncContextHostNativeFunctionEntry, AsyncHostNativeFunctionEntry, AsyncNativeFunctionEntry,
-    ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeCallFuture, NativeFunctionDesc,
-    NativeFunctionEntry,
+    AsyncContextHostNativeFunctionEntry, AsyncDirectHostNativeFunctionEntry,
+    AsyncHostNativeFunctionEntry, AsyncNativeFunctionEntry, ContextHostNativeFunctionEntry,
+    HostNativeFunctionEntry, NativeCallFuture, NativeFunctionDesc, NativeFunctionEntry,
 };
 use crate::permission::{Capability, CapabilitySet, ExecutionProfile};
 use crate::schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
@@ -33,6 +33,7 @@ pub struct EngineBuilder {
     native_functions: Vec<NativeFunctionEntry>,
     async_native_functions: Vec<AsyncNativeFunctionEntry>,
     async_host_native_functions: Vec<AsyncHostNativeFunctionEntry>,
+    async_direct_host_native_functions: Vec<AsyncDirectHostNativeFunctionEntry>,
     async_context_host_native_functions: Vec<AsyncContextHostNativeFunctionEntry>,
     host_native_functions: Vec<HostNativeFunctionEntry>,
     context_host_native_functions: Vec<ContextHostNativeFunctionEntry>,
@@ -284,6 +285,35 @@ impl EngineBuilder {
         self
     }
 
+    /// Registers an async native whose complete host borrow set is acquired
+    /// atomically before its future is created.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn register_async_direct_host_fn(
+        mut self,
+        desc: NativeFunctionDesc,
+        requests: impl Fn(
+            &[OwnedValue],
+        )
+            -> VmResult<Vec<(vela_host::path::HostRef, vela_host::lease::HostLeaseKind)>>
+        + Send
+        + Sync
+        + 'static,
+        function: impl for<'invoke, 'lease> Fn(
+            &'invoke mut [vela_host::lease::ErasedHostLease<'lease>],
+            Vec<OwnedValue>,
+        ) -> NativeCallFuture<'invoke>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        self.async_direct_host_native_functions
+            .push(AsyncDirectHostNativeFunctionEntry::new(
+                desc, requests, function,
+            ));
+        self
+    }
+
     #[must_use]
     pub fn register_typed_host_native_fn<Args, F>(
         self,
@@ -514,6 +544,7 @@ impl EngineBuilder {
                 native: &self.native_functions,
                 async_native: &self.async_native_functions,
                 async_host: &self.async_host_native_functions,
+                async_direct_host: &self.async_direct_host_native_functions,
                 async_context_host: &self.async_context_host_native_functions,
                 host: &self.host_native_functions,
                 context_host: &self.context_host_native_functions,
@@ -528,6 +559,7 @@ impl EngineBuilder {
                 native: &self.native_functions,
                 async_native: &self.async_native_functions,
                 async_host: &self.async_host_native_functions,
+                async_direct_host: &self.async_direct_host_native_functions,
                 async_context_host: &self.async_context_host_native_functions,
                 host: &self.host_native_functions,
                 context_host: &self.context_host_native_functions,
@@ -556,6 +588,7 @@ impl EngineBuilder {
             &self.native_functions,
             &self.async_native_functions,
             &self.async_host_native_functions,
+            &self.async_direct_host_native_functions,
             &self.async_context_host_native_functions,
             &self.host_native_functions,
             &self.context_host_native_functions,
@@ -567,6 +600,7 @@ impl EngineBuilder {
             native_functions: self.native_functions,
             async_native_functions: self.async_native_functions,
             async_host_native_functions: self.async_host_native_functions,
+            async_direct_host_native_functions: self.async_direct_host_native_functions,
             async_context_host_native_functions: self.async_context_host_native_functions,
             host_native_functions: self.host_native_functions,
             context_host_native_functions: self.context_host_native_functions,

@@ -57,6 +57,10 @@ pub(crate) enum PreparedAsyncNativeFunction {
         receiver: vela_host::path::HostPath,
         lease_kind: vela_host::lease::HostLeaseKind,
     },
+    DirectHostFunction {
+        function: crate::AsyncDirectHostFunction,
+        requests: Vec<(vela_host::path::HostRef, vela_host::lease::HostLeaseKind)>,
+    },
 }
 
 #[derive(Clone)]
@@ -178,6 +182,9 @@ pub(crate) fn dispatch_linked_native_function_call(
                         receiver,
                         lease_kind,
                     },
+                    ConditionalAsyncNativeFunction::DirectHostFunction { function, requests } => {
+                        PreparedAsyncNativeFunction::DirectHostFunction { function, requests }
+                    }
                 },
                 args,
                 destination: call.dst,

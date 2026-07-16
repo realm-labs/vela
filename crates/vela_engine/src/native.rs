@@ -3,6 +3,7 @@ use std::sync::Arc;
 use vela_common::{CallableAsyncness, PrimitiveTag, Span};
 use vela_def::FunctionId;
 use vela_reflect::registry::{AttrMap, TypeKey};
+use vela_vm::AsyncDirectHostFunction;
 use vela_vm::HostExecution;
 use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
@@ -605,6 +606,50 @@ impl AsyncNativeFunctionEntry {
 pub struct AsyncHostNativeFunctionEntry {
     pub desc: NativeFunctionDesc,
     pub function: AsyncHostNativeFunction,
+}
+
+pub type HostLeaseRequestFactory = Arc<
+    dyn Fn(
+            &[OwnedValue],
+        ) -> VmResult<Vec<(vela_host::path::HostRef, vela_host::lease::HostLeaseKind)>>
+        + Send
+        + Sync
+        + 'static,
+>;
+
+#[derive(Clone)]
+pub struct AsyncDirectHostNativeFunctionEntry {
+    pub desc: NativeFunctionDesc,
+    pub requests: HostLeaseRequestFactory,
+    pub function: AsyncDirectHostFunction,
+}
+
+impl AsyncDirectHostNativeFunctionEntry {
+    #[must_use]
+    pub fn new(
+        mut desc: NativeFunctionDesc,
+        requests: impl Fn(
+            &[OwnedValue],
+        )
+            -> VmResult<Vec<(vela_host::path::HostRef, vela_host::lease::HostLeaseKind)>>
+        + Send
+        + Sync
+        + 'static,
+        function: impl for<'invoke, 'lease> Fn(
+            &'invoke mut [vela_host::lease::ErasedHostLease<'lease>],
+            Vec<OwnedValue>,
+        ) -> NativeCallFuture<'invoke>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        desc.asyncness = CallableAsyncness::Async;
+        Self {
+            desc,
+            requests: Arc::new(requests),
+            function: Arc::new(function),
+        }
+    }
 }
 
 impl AsyncHostNativeFunctionEntry {

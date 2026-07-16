@@ -46,13 +46,14 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             &signature,
         ));
         generated.push(
-            emission::method_sync_adapter(method, &item.self_ty, trait_path, &signature)
-                .ok_or_else(|| {
+            emission::method_adapter(method, &item.self_ty, trait_path, &signature).ok_or_else(
+                || {
                     syn::Error::new_spanned(
                         &method.sig,
                         "this exported method requires the async or borrowed-return adapter batch",
                     )
-                })?,
+                },
+            )?,
         );
         contract_functions.push(quote::format_ident!(
             "vela_callable_contract_{}",

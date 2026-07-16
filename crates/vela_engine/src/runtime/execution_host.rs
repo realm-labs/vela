@@ -42,6 +42,11 @@ pub(super) trait ExecutionHostBoundary: ScriptStateAdapter + Send {
         prepared: &'call PreparedAsyncCall,
     ) -> NativeCallFuture<'call>;
 
+    fn invoke_prepared_with_leases<'call>(
+        &'call mut self,
+        prepared: &'call PreparedAsyncCall,
+    ) -> NativeCallFuture<'call>;
+
     fn invoke_direct_context<'call>(
         &'call mut self,
         requests: Vec<(HostRef, HostLeaseKind)>,
@@ -134,6 +139,26 @@ impl ExecutionHostBoundary for ExecutionHost<'_, '_> {
         }
     }
 
+    fn invoke_prepared_with_leases<'call>(
+        &'call mut self,
+        prepared: &'call PreparedAsyncCall,
+    ) -> NativeCallFuture<'call> {
+        Box::pin(async move {
+            let requests = prepared.host_lease_requests().ok_or_else(|| {
+                VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "async direct host function leases",
+                })
+            })?;
+            for (root, _) in &requests {
+                if self.extern_states.binding(*root).is_some() {
+                    return Err(host_lease_unsupported(*root).into());
+                }
+            }
+            let mut leases = self.args.take_host_leases(&requests)?;
+            prepared.invoke_with_host_leases(&mut leases).await
+        })
+    }
+
     fn invoke_direct_context<'call>(
         &'call mut self,
         requests: Vec<(HostRef, HostLeaseKind)>,
@@ -212,6 +237,26 @@ impl ExecutionHostBoundary for ReentryExecutionHost<'_> {
             },
             Err(error) => Box::pin(async move { Err(error.into()) }),
         }
+    }
+
+    fn invoke_prepared_with_leases<'call>(
+        &'call mut self,
+        prepared: &'call PreparedAsyncCall,
+    ) -> NativeCallFuture<'call> {
+        Box::pin(async move {
+            let requests = prepared.host_lease_requests().ok_or_else(|| {
+                VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "nested async direct host function leases",
+                })
+            })?;
+            for (root, _) in &requests {
+                if self.args.direct_binding(*root).is_none() {
+                    return Err(host_lease_unsupported(*root).into());
+                }
+            }
+            let mut leases = self.args.take_host_leases(&requests)?;
+            prepared.invoke_with_host_leases(&mut leases).await
+        })
     }
 
     fn invoke_direct_context<'call>(

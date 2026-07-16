@@ -514,6 +514,9 @@ pub(super) async fn invoke_prepared_async(
             .invoke_direct_context(requests, Box::new(invoke))
             .await;
     }
+    if prepared.requires_host_lease_set() {
+        return active.host.invoke_prepared_with_leases(prepared).await;
+    }
     if prepared.requires_host_lease() {
         return active.host.invoke_prepared_with_lease(prepared).await;
     }
