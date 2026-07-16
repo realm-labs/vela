@@ -6,11 +6,23 @@ version.workspace = true
 publish = false
 
 [dependencies]
+vela_common = { workspace = true }
+vela_def = { workspace = true }
 vela_engine = { workspace = true }
+vela_host = { workspace = true }
+vela_macros = { workspace = true }
+vela_reflect = { workspace = true }
+vela_vm = { workspace = true }
 
 [build-dependencies]
 vela_bindgen = { workspace = true }
+vela_common = { workspace = true }
+vela_def = { workspace = true }
 vela_engine = { workspace = true }
+vela_host = { workspace = true }
+vela_macros = { workspace = true }
+vela_reflect = { workspace = true }
+vela_vm = { workspace = true }
 
 [lints]
 workspace = true

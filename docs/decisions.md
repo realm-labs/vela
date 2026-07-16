@@ -2042,6 +2042,17 @@ script-method receivers, stable callable/type specifications, checksum, and
 Vela source-origin documentation. CLI or build integration may wrap this
 crate, but may not implement another source scanner, parser, or generator.
 
+Generated host-reference parameters are classified from the verified MIR host
+contract and emitted as ordinary `&T` or `&mut T`. A root binding installs a
+normal call-scoped direct host argument. An active binding may install the
+argument only when the concrete Rust reference address and host type match
+provenance captured from a live parent lease; it then reuses the parent's
+canonical `HostRef` in a child direct scope. This comparison never dereferences
+a fabricated pointer and never constructs a Rust reference. The child scope
+owns the Rust reborrow, shadows the parent identity only for the nested call,
+and drops before parent use resumes. Missing provenance and shared-to-exclusive
+upgrades fail before Vela execution.
+
 ### Borrowed Host Returns Freeze Their Parent Owner
 
 A supported Rust `&T`/`&mut T` host return is exposed to Vela as a

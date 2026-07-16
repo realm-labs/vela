@@ -7,6 +7,8 @@ use std::pin::Pin;
 use vela_bytecode::{RustBindingCallableIdentity, RustBindingSchema};
 use vela_common::{SourceId, Span};
 use vela_def::{FunctionId, MethodId, TypeId};
+use vela_host::lease::HostLeaseKind;
+use vela_host::object::ScriptHostObject;
 
 use crate::args::{FromScriptArg, IntoScriptArg};
 use crate::context::NativeCallContext;
@@ -353,6 +355,32 @@ pub trait BindingAuthority {
     where
         R: FromScriptArg + Send + 'call,
         A: IntoBindingArgs + Send + 'call;
+
+    fn call_prepared<'args, R>(
+        &mut self,
+        callable: &BindingCallable,
+        args: CallArgs<'args>,
+    ) -> VmResult<R>
+    where
+        R: FromScriptArg;
+
+    fn push_host_ref<'args, T>(
+        &mut self,
+        args: &mut CallArgs<'args>,
+        name: &'static str,
+        value: &'args T,
+    ) -> VmResult<()>
+    where
+        T: ScriptHostObject + Sync + 'args;
+
+    fn push_host_mut<'args, T>(
+        &mut self,
+        args: &mut CallArgs<'args>,
+        name: &'static str,
+        value: &'args mut T,
+    ) -> VmResult<()>
+    where
+        T: ScriptHostObject + Send + Sync + 'args;
 }
 
 impl BindingAuthority for RootBinding<'_> {
@@ -394,6 +422,48 @@ impl BindingAuthority for RootBinding<'_> {
             R::from_script_arg(&owned)
         })
     }
+
+    fn call_prepared<'args, R>(
+        &mut self,
+        callable: &BindingCallable,
+        args: CallArgs<'args>,
+    ) -> VmResult<R>
+    where
+        R: FromScriptArg,
+    {
+        let spec = callable.spec()?;
+        let result = self
+            .runtime
+            .call(stable_target(spec), args, self.options.call.clone())?;
+        let owned = self.runtime.value_to_owned(&result)?;
+        R::from_script_arg(&owned)
+    }
+
+    fn push_host_ref<'args, T>(
+        &mut self,
+        args: &mut CallArgs<'args>,
+        name: &'static str,
+        value: &'args T,
+    ) -> VmResult<()>
+    where
+        T: ScriptHostObject + Sync + 'args,
+    {
+        args.push_host_ref(name, value);
+        Ok(())
+    }
+
+    fn push_host_mut<'args, T>(
+        &mut self,
+        args: &mut CallArgs<'args>,
+        name: &'static str,
+        value: &'args mut T,
+    ) -> VmResult<()>
+    where
+        T: ScriptHostObject + Send + Sync + 'args,
+    {
+        args.push_host_mut(name, value);
+        Ok(())
+    }
 }
 
 impl BindingAuthority for ActiveBinding<'_, '_, '_> {
@@ -428,6 +498,52 @@ impl BindingAuthority for ActiveBinding<'_, '_, '_> {
             let owned = self.context.value_to_owned(&result)?;
             R::from_script_arg(&owned)
         })
+    }
+
+    fn call_prepared<'args, R>(
+        &mut self,
+        callable: &BindingCallable,
+        args: CallArgs<'args>,
+    ) -> VmResult<R>
+    where
+        R: FromScriptArg,
+    {
+        let spec = callable.spec()?;
+        let result = self.context.call(stable_target(spec), args)?;
+        let owned = self.context.value_to_owned(&result)?;
+        R::from_script_arg(&owned)
+    }
+
+    fn push_host_ref<'args, T>(
+        &mut self,
+        args: &mut CallArgs<'args>,
+        name: &'static str,
+        value: &'args T,
+    ) -> VmResult<()>
+    where
+        T: ScriptHostObject + Sync + 'args,
+    {
+        let root = self
+            .context
+            .resolve_host_reborrow(value, HostLeaseKind::Shared)?;
+        args.push_reborrowed_host_ref(name, root, value);
+        Ok(())
+    }
+
+    fn push_host_mut<'args, T>(
+        &mut self,
+        args: &mut CallArgs<'args>,
+        name: &'static str,
+        value: &'args mut T,
+    ) -> VmResult<()>
+    where
+        T: ScriptHostObject + Send + Sync + 'args,
+    {
+        let root = self
+            .context
+            .resolve_host_reborrow(value, HostLeaseKind::Exclusive)?;
+        args.push_reborrowed_host_mut(name, root, value);
+        Ok(())
     }
 }
 

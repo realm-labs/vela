@@ -20,3 +20,18 @@ pub fn make_choice() -> Choice { return Choice::Named { value: 11 }; }
 impl Point {
     pub fn sum(self) -> i64 { return self.x + self.y; }
 }
+
+pub fn raise(player: Player, amount: i64) -> i64 {
+    player.level += amount;
+    return player.level;
+}
+
+pub fn read_level(player: Player) -> i64 { return player.level; }
+
+pub fn round_trip(player: Player, amount: i64) -> i64 {
+    return test::reenter_player(player, amount);
+}
+
+pub fn round_trip_unrelated(player: Player) -> i64 {
+    return test::reject_unrelated(player);
+}

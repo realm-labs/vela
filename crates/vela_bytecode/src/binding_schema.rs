@@ -17,7 +17,7 @@ use vela_hir::type_hint::{EnumVariantFieldsHint, FunctionSignature, HirTypeHint,
 use vela_mir::{MirAwaitOperation, MirCall, MirEffect, MirStatementKind, MirTerminatorKind};
 use vela_package::{ModulePath, PackageId};
 
-pub const RUST_BINDING_SCHEMA_VERSION: u32 = 2;
+pub const RUST_BINDING_SCHEMA_VERSION: u32 = 3;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RustBindingSchema {
@@ -138,6 +138,8 @@ pub struct RustBindingMethodOwner {
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum RustBindingBoundaryMode {
     Value,
+    SharedHost,
+    ExclusiveHost,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -159,6 +161,11 @@ pub enum RustBindingParameterDefault {
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum RustBindingType {
     Any,
+    Host {
+        semantic_type_id: TypeId,
+        runtime_type_id: vela_common::HostTypeId,
+        public_path: String,
+    },
     Definition {
         type_id: TypeId,
         public_path: String,
@@ -206,6 +213,15 @@ impl RustBindingType {
     fn encode(&self, output: &mut String) {
         match self {
             Self::Any => output.push_str("any"),
+            Self::Host {
+                semantic_type_id,
+                runtime_type_id,
+                public_path,
+            } => output.push_str(&format!(
+                "host:{:032x}:{:016x}:{public_path}",
+                semantic_type_id.get(),
+                runtime_type_id.get()
+            )),
             Self::Definition {
                 type_id,
                 public_path,
@@ -386,7 +402,7 @@ impl RustBindingSchema {
     pub(crate) fn empty() -> Self {
         Self {
             version: RUST_BINDING_SCHEMA_VERSION,
-            checksum: stable_id("vela_rust_binding_schema_v2", "", ""),
+            checksum: stable_id("vela_rust_binding_schema_v3", "", ""),
             packages: Box::new([]),
         }
     }
@@ -543,6 +559,7 @@ pub(crate) fn build_rust_binding_schema(
             graph,
             metadata.module,
             type_symbols,
+            runtime_signature(bundle, executable),
             effects.get(&executable).copied().unwrap_or(MirEffect::PURE),
             docs(graph.declaration_attrs(*declaration)),
             metadata.span,
@@ -586,6 +603,7 @@ pub(crate) fn build_rust_binding_schema(
             graph,
             method.module(),
             type_symbols,
+            runtime_signature(bundle, executable),
             effects.get(&executable).copied().unwrap_or(MirEffect::PURE),
             None,
             method.origin().span,
@@ -657,7 +675,7 @@ pub(crate) fn build_rust_binding_schema(
     let canonical = canonical_parts.join("|");
     Ok(RustBindingSchema {
         version: RUST_BINDING_SCHEMA_VERSION,
-        checksum: stable_id("vela_rust_binding_schema_v2", "", &canonical),
+        checksum: stable_id("vela_rust_binding_schema_v3", "", &canonical),
         packages,
     })
 }
@@ -737,29 +755,51 @@ fn callable(
     graph: &ModuleGraph,
     module: ModuleId,
     type_symbols: &BTreeMap<HirDeclId, String>,
+    runtime_signature: Option<&vela_mir::CompileSignature>,
     effect: MirEffect,
     docs: Option<String>,
     source: Span,
 ) -> RustBindingCallable {
+    let runtime_offset = usize::from(
+        owner.is_some()
+            && signature
+                .params
+                .first()
+                .is_some_and(|parameter| parameter.name == "self")
+            && runtime_signature.is_some_and(|runtime| {
+                runtime.parameters.len().saturating_add(1) == signature.params.len()
+            }),
+    );
     let mut parameters = signature
         .params
         .iter()
-        .map(|parameter| RustBindingParameter {
-            identity: stable_id("callable_parameter", &public_path, &parameter.name),
-            name: parameter.name.clone(),
-            ty: RustBindingType::from_hint(
+        .enumerate()
+        .map(|(index, parameter)| {
+            let runtime_contract = index.checked_sub(runtime_offset).and_then(|index| {
+                runtime_signature
+                    .and_then(|runtime| runtime.parameters.get(index))
+                    .and_then(|parameter| parameter.contract.as_ref())
+            });
+            let (ty, mode) = binding_parameter_type(
                 graph,
                 module,
                 type_symbols,
                 parameter.type_hint.as_ref(),
-            ),
-            mode: RustBindingBoundaryMode::Value,
-            default: parameter
-                .default_value_span
-                .map_or(RustBindingParameterDefault::Required, |source| {
-                    RustBindingParameterDefault::VelaExpression { source }
-                }),
-            source: parameter.span,
+                runtime_contract,
+                effect,
+            );
+            RustBindingParameter {
+                identity: stable_id("callable_parameter", &public_path, &parameter.name),
+                name: parameter.name.clone(),
+                ty,
+                mode,
+                default: parameter
+                    .default_value_span
+                    .map_or(RustBindingParameterDefault::Required, |source| {
+                        RustBindingParameterDefault::VelaExpression { source }
+                    }),
+                source: parameter.span,
+            }
         })
         .collect::<Vec<_>>();
     if let Some(owner) = owner.as_ref()
@@ -801,6 +841,49 @@ fn callable(
         docs,
         source,
     }
+}
+
+fn binding_parameter_type(
+    graph: &ModuleGraph,
+    module: ModuleId,
+    type_symbols: &BTreeMap<HirDeclId, String>,
+    hint: Option<&HirTypeHint>,
+    contract: Option<&vela_mir::MirTypeContract>,
+    effect: MirEffect,
+) -> (RustBindingType, RustBindingBoundaryMode) {
+    if let Some(vela_mir::MirTypeContract::Host(target)) = contract {
+        let public_path = hint
+            .map(|hint| hint.path.join("::"))
+            .filter(|path| !path.is_empty())
+            .unwrap_or_else(|| format!("HostType_{:016x}", target.runtime.get()));
+        let mode = if effect.host_write {
+            RustBindingBoundaryMode::ExclusiveHost
+        } else {
+            RustBindingBoundaryMode::SharedHost
+        };
+        return (
+            RustBindingType::Host {
+                semantic_type_id: target.semantic,
+                runtime_type_id: target.runtime,
+                public_path,
+            },
+            mode,
+        );
+    }
+    (
+        RustBindingType::from_hint(graph, module, type_symbols, hint),
+        RustBindingBoundaryMode::Value,
+    )
+}
+
+fn runtime_signature(
+    bundle: &vela_mir::OwnedVerifiedMirBundle,
+    executable: FunctionId,
+) -> Option<&vela_mir::CompileSignature> {
+    bundle
+        .root(executable)
+        .and_then(|root| root.program().targets().function(executable))
+        .map(|descriptor| &descriptor.signature)
 }
 
 fn contract_fingerprint(

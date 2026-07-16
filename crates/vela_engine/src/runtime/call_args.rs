@@ -146,6 +146,47 @@ impl<'a> CallArgs<'a> {
         self
     }
 
+    pub(crate) fn push_reborrowed_host_ref<T>(
+        &mut self,
+        name: impl Into<String>,
+        host_ref: HostRef,
+        value: &'a T,
+    ) -> &mut Self
+    where
+        T: ScriptHostObject + Sync + 'a,
+    {
+        self.entries.push(CallArg::NamedHost {
+            name: name.into(),
+            host_ref: Some(host_ref),
+            type_id: value.host_type_id(),
+            binding: HostArgBinding::Shared {
+                object: value,
+                leases: Arc::new(AtomicUsize::new(0)),
+            },
+        });
+        self
+    }
+
+    pub(crate) fn push_reborrowed_host_mut<T>(
+        &mut self,
+        name: impl Into<String>,
+        host_ref: HostRef,
+        value: &'a mut T,
+    ) -> &mut Self
+    where
+        T: ScriptHostObject + Send + Sync + 'a,
+    {
+        self.entries.push(CallArg::NamedHost {
+            name: name.into(),
+            host_ref: Some(host_ref),
+            type_id: value.host_type_id(),
+            binding: HostArgBinding::Mutable {
+                object: Arc::new(parking_lot::RwLock::new(value)),
+            },
+        });
+        self
+    }
+
     #[must_use]
     pub fn with(mut self, value: impl Into<OwnedValue>) -> Self {
         self.push(value);

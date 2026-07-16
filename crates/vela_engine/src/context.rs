@@ -2,6 +2,7 @@ use vela_common::{HostMethodId, Span};
 use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::lease::{ErasedHostLease, HostLeaseKind};
+use vela_host::object::ScriptHostObject;
 use vela_host::path::HostPath;
 use vela_host::path::HostRef;
 use vela_host::value::HostValue;
@@ -29,16 +30,20 @@ pub(crate) trait NativeReentry: Send {
 
     fn host_execution(&mut self) -> HostExecution<'_>;
 
-    fn execution_parts(&mut self) -> (HostExecution<'_>, Option<&mut ExecutionBudget>);
-
     fn budget(&self) -> Option<&ExecutionBudget>;
 
     fn budget_mut(&mut self) -> Option<&mut ExecutionBudget>;
 
-    fn call<'call>(
-        &'call mut self,
+    fn with_host_leases(
+        &mut self,
+        requests: &[(HostRef, HostLeaseKind)],
+        invoke: &mut NativeContextLeaseInvoker<'_>,
+    ) -> VmResult<()>;
+
+    fn call<'args>(
+        &mut self,
         target: RuntimeCallTargetKind,
-        args: CallArgs<'call>,
+        args: CallArgs<'args>,
     ) -> VmResult<VelaValue>;
 
     fn call_async<'call>(
@@ -54,11 +59,26 @@ pub(crate) trait NativeReentry: Send {
     ) -> VmResult<VelaMethodTarget>;
 }
 
+pub(crate) type NativeContextLeaseInvoker<'invoke> =
+    dyn for<'lease, 'nested_ctx, 'nested_host> FnMut(
+            &mut [ErasedHostLease<'lease>],
+            &mut NativeCallContext<'nested_ctx, 'nested_host>,
+        ) -> VmResult<()>
+        + 'invoke;
+
 pub struct NativeCallContext<'ctx, 'host> {
     engine: &'ctx Engine,
     host: Option<&'ctx mut HostExecution<'host>>,
     budget: Option<&'ctx mut ExecutionBudget>,
     reentry: Option<&'ctx mut dyn NativeReentry>,
+    host_provenance: Vec<ActiveHostProvenance>,
+}
+
+#[derive(Clone, Copy)]
+struct ActiveHostProvenance {
+    root: HostRef,
+    mode: HostLeaseKind,
+    object_address: usize,
 }
 
 impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
@@ -73,6 +93,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
             host: Some(host),
             budget,
             reentry,
+            host_provenance: Vec::new(),
         }
     }
 
@@ -82,10 +103,11 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
             host: None,
             budget: None,
             reentry: Some(reentry),
+            host_provenance: Vec::new(),
         }
     }
 
-    pub fn call<'call, T>(&'call mut self, target: T, args: CallArgs<'call>) -> VmResult<VelaValue>
+    pub fn call<'args, T>(&mut self, target: T, args: CallArgs<'args>) -> VmResult<VelaValue>
     where
         T: RuntimeCallTarget,
     {
@@ -182,12 +204,20 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
             self.budget = budget;
             return result;
         }
-        let (mut host, mut budget) = self
+        let reentry = self
             .reentry
             .as_deref_mut()
-            .ok_or_else(reentry_unavailable)?
-            .execution_parts();
-        invoke_context_with_host_leases(engine, &mut host, &mut budget, requests, &mut invoke)
+            .ok_or_else(reentry_unavailable)?;
+        let mut result = None;
+        reentry.with_host_leases(requests, &mut |leases, context| {
+            result = Some(invoke(leases, context));
+            Ok(())
+        })?;
+        result.ok_or_else(|| {
+            vela_vm::error::VmError::new(vela_vm::error::VmErrorKind::TypeMismatch {
+                operation: "reentry host lease callback did not run",
+            })
+        })?
     }
 
     pub fn access(&mut self) -> &mut HostAccess {
@@ -199,6 +229,53 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
                 .expect("reentrant native context has execution state")
                 .access(),
         }
+    }
+
+    pub(crate) fn resolve_host_reborrow<T>(
+        &self,
+        value: &T,
+        requested: HostLeaseKind,
+    ) -> VmResult<HostRef>
+    where
+        T: ScriptHostObject,
+    {
+        let address = (value as *const T).cast::<()>() as usize;
+        let actual_type = value.host_type_id();
+        self.host_provenance
+            .iter()
+            .find(|provenance| {
+                provenance.object_address == address
+                    && provenance.root.type_id == actual_type
+                    && (requested == HostLeaseKind::Shared
+                        || provenance.mode == HostLeaseKind::Exclusive)
+            })
+            .map(|provenance| provenance.root)
+            .ok_or_else(|| {
+                vela_vm::error::VmError::new(vela_vm::error::VmErrorKind::TypeMismatch {
+                    operation: "generated active host argument lacks live lease provenance",
+                })
+            })
+    }
+
+    pub(crate) fn set_host_provenance(
+        &mut self,
+        requests: &[(HostRef, HostLeaseKind)],
+        leases: &[ErasedHostLease<'_>],
+    ) {
+        self.host_provenance = requests
+            .iter()
+            .zip(leases)
+            .filter_map(|((root, mode), lease)| {
+                lease
+                    .object()
+                    .lease_any()
+                    .map(|object| ActiveHostProvenance {
+                        root: *root,
+                        mode: *mode,
+                        object_address: (object as *const dyn std::any::Any).cast::<()>() as usize,
+                    })
+            })
+            .collect();
     }
 
     pub fn read_path(&mut self, path: &HostPath, source_span: Option<Span>) -> VmResult<HostValue> {
@@ -386,6 +463,7 @@ fn invoke_context_with_host_leases<R>(
                 };
                 let mut nested =
                     NativeCallContext::new(engine, &mut leased_host, budget.as_deref_mut(), None);
+                nested.set_host_provenance(requests, leases);
                 result = Some(invoke(leases, &mut nested));
                 Ok(())
             })

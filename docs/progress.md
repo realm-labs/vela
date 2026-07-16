@@ -20,7 +20,10 @@ fixtures, ABI-policy documentation, and fixed bindgen delivery decisions are
 landed without changing runtime dispatch. Batches B and C are complete:
 ordinary Rust exports, exact lease adapters, owner-frozen borrowed returns,
 natural Vela calls, and conservative early release all use the shared runtime
-path. Batch D is active on authoritative typed Rust-to-Vela bindings.
+path. Batch D is complete: authoritative typed Rust-to-Vela bindings cover
+owned models, ordinary host references, stable reload, async value calls, and
+same-session active re-entry. Batch E is active on full nested/async policy and
+inheritance closure.
 
 The explicit state-storage hard switch has Batches A-F landed, but its final
 Batch G remains queued behind this explicitly scheduled interop track. Its five
@@ -56,7 +59,7 @@ storage Batch G reaches final acceptance.
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
 | M20 | Paused behind Batch G | Resume the cache-family audit after state-storage final acceptance. |
 | M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
-| Rust/Vela interop | Batch D active | Generated root and active-session bindings execute value/container/record/enum/method/async surfaces across body reload; generated host-reference reborrows remain. |
+| Rust/Vela interop | Batch E active | Generated root and active-session bindings preserve canonical host identity across nested sync reborrows; async host reborrows and full inheritance acceptance remain. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -121,7 +124,7 @@ storage Batch G reaches final acceptance.
 
 ## Active Gaps
 
-### Unified Rust/Vela Interop Batch D
+### Unified Rust/Vela Interop Batch E
 
 Batches B and C are complete. Item/module exports, inherent and selected trait-method
 thunks, exact named multi-lease preflight, ordinary sync/async Rust adapters,
@@ -150,9 +153,14 @@ function identities with bounded defaults, and uses the same linked execution
 session for `NativeCallContext` re-entry. A workspace fixture executes scalars,
 borrowed strings/bytes, arrays, Option/Result, records, enums, methods, async
 functions, and compatible body reload without runtime strings or manual
-boundary values. Batch D still needs ordinary generated host-reference
-arguments and canonical active-context child reborrows before its checkpoint
-closes.
+boundary values. Generated host parameters now use ordinary `&T`/`&mut T` at
+the Rust call site. Root bindings create call-scoped direct host arguments;
+active bindings match the Rust reborrow against provenance captured from the
+live parent lease, reuse its canonical `HostRef`, and install a child direct
+scope for the nested call. The child scope drops before parent Rust use resumes,
+while unrelated pointers and shared-to-exclusive upgrades fail before the
+child body. Batch E still needs async host-reference reborrows, the complete
+nested effect-ceiling/inheritance matrix, and boundary benchmark closure.
 
 ### State Storage Batch G
 

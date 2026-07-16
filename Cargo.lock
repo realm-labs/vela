@@ -1107,7 +1107,13 @@ name = "vela_bindgen_compile_test"
 version = "0.1.0"
 dependencies = [
  "vela_bindgen",
+ "vela_common",
+ "vela_def",
  "vela_engine",
+ "vela_host",
+ "vela_macros",
+ "vela_reflect",
+ "vela_vm",
 ]
 
 [[package]]

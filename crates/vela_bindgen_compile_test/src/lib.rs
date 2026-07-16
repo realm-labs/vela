@@ -1,6 +1,35 @@
 //! Compile-only proof that the official generator targets the public binding API.
 
+mod model;
+
+pub use model::Player;
+
 include!(concat!(env!("OUT_DIR"), "/vela_bindings.rs"));
+
+#[vela_macros::export(path = "test::reenter_player")]
+pub fn reenter_player(
+    context: &mut vela_engine::context::NativeCallContext<'_, '_>,
+    player: &mut Player,
+    amount: i64,
+) -> vela_engine::binding::VmResult<i64> {
+    let before = player.level;
+    let mut package = vela_bindings::bind_active(context)?;
+    let mut module = package.dev_vela_anonymous_root_module();
+    let nested = module.raise(player, amount)?;
+    player.level += 1;
+    Ok(before + nested + player.level)
+}
+
+#[vela_macros::export(path = "test::reject_unrelated")]
+pub fn reject_unrelated(
+    context: &mut vela_engine::context::NativeCallContext<'_, '_>,
+    _player: &mut Player,
+) -> vela_engine::binding::VmResult<i64> {
+    let mut unrelated = Player { level: 99 };
+    let mut package = vela_bindings::bind_active(context)?;
+    let mut module = package.dev_vela_anonymous_root_module();
+    module.raise(&mut unrelated, 1)
+}
 
 pub fn call_generated_add(runtime: &mut vela_engine::runtime::Runtime) -> Result<i64, String> {
     let mut package = vela_bindings::bind(runtime).map_err(|error| error.to_string())?;
@@ -76,6 +105,19 @@ pub fn call_generated_active(
     module.add(left, right)
 }
 
+pub fn call_generated_host(
+    runtime: &mut vela_engine::runtime::Runtime,
+    player: &mut Player,
+) -> Result<(i64, i64), String> {
+    let mut package = vela_bindings::bind(runtime).map_err(|error| error.to_string())?;
+    let mut module = package.dev_vela_anonymous_root_module();
+    let raised = module.raise(player, 2).map_err(|error| error.to_string())?;
+    let read = module
+        .read_level(player)
+        .map_err(|error| error.to_string())?;
+    Ok((raised, read))
+}
+
 #[cfg(test)]
 mod tests {
     use std::future::Future;
@@ -94,6 +136,11 @@ mod tests {
     #[test]
     fn generated_binding_executes_without_runtime_names_or_manual_values() {
         let engine = vela_engine::engine::Engine::builder()
+            .capability(vela_engine::permission::Capability::HostRead)
+            .capability(vela_engine::permission::Capability::HostWrite)
+            .register_host_type::<super::Player>()
+            .register_exports(super::vela_export_bundle_reenter_player())
+            .register_exports(super::vela_export_bundle_reject_unrelated())
             .build()
             .expect("engine");
         let program = engine
@@ -118,11 +165,52 @@ mod tests {
                 super::vela_bindings::types::Choice::Named { value: 7 },
             ))
         );
+        let mut player = super::Player { level: 10 };
+        assert_eq!(
+            super::call_generated_host(&mut runtime, &mut player),
+            Ok((12, 12))
+        );
+        assert_eq!(player.level, 12);
+        let round_trip = runtime
+            .call(
+                "round_trip",
+                vela_engine::runtime::CallArgs::new()
+                    .with_host_mut("player", &mut player)
+                    .with_value("amount", 3_i64),
+                vela_engine::runtime::CallOptions::new(100_000, 1024 * 1024, 32),
+            )
+            .expect("round trip");
+        let owned = runtime
+            .value_to_owned(&round_trip)
+            .expect("owned round trip");
+        assert_eq!(
+            <i64 as vela_engine::args::FromScriptArg>::from_script_arg(&owned),
+            Ok(43)
+        );
+        assert_eq!(player.level, 16);
+        let unrelated_error = runtime
+            .call(
+                "round_trip_unrelated",
+                vela_engine::runtime::CallArgs::new().with_host_mut("player", &mut player),
+                vela_engine::runtime::CallOptions::new(100_000, 1024 * 1024, 32),
+            )
+            .expect_err("unrelated active reborrow must fail");
+        assert!(matches!(
+            unrelated_error.kind(),
+            vela_engine::binding::VmErrorKind::TypeMismatch {
+                operation: "generated active host argument lacks live lease provenance"
+            }
+        ));
     }
 
     #[test]
     fn generated_binding_re_resolves_after_compatible_body_reload() {
         let engine = vela_engine::engine::Engine::builder()
+            .capability(vela_engine::permission::Capability::HostRead)
+            .capability(vela_engine::permission::Capability::HostWrite)
+            .register_host_type::<super::Player>()
+            .register_exports(super::vela_export_bundle_reenter_player())
+            .register_exports(super::vela_export_bundle_reject_unrelated())
             .build()
             .expect("engine");
         let initial = engine

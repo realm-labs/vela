@@ -2,9 +2,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{self, Write};
 
 use vela_bytecode::{
-    RUST_BINDING_SCHEMA_VERSION, RustBindingCallable, RustBindingCallableIdentity,
-    RustBindingModule, RustBindingSchema, RustBindingType, RustBindingTypeDefinition,
-    RustBindingVariantFields,
+    RUST_BINDING_SCHEMA_VERSION, RustBindingBoundaryMode, RustBindingCallable,
+    RustBindingCallableIdentity, RustBindingModule, RustBindingSchema, RustBindingType,
+    RustBindingTypeDefinition, RustBindingVariantFields,
 };
 use vela_common::Span;
 
@@ -267,9 +267,29 @@ fn collect_modules<'schema>(
                     .parameters
                     .iter()
                     .map(|parameter| {
-                        render_parameter_type(&parameter.ty, parameter.source, diagnostics)
+                        render_parameter_type(
+                            &parameter.ty,
+                            parameter.mode,
+                            parameter.source,
+                            diagnostics,
+                        )
                     })
                     .collect::<Vec<_>>();
+                if callable.asyncness.is_async()
+                    && callable
+                        .parameters
+                        .iter()
+                        .any(|parameter| parameter.mode != RustBindingBoundaryMode::Value)
+                {
+                    diagnostics.push(RustBindingDiagnostic {
+                        code: "bindgen::unsupported_async_host_boundary",
+                        message: format!(
+                            "async Vela callable `{}` cannot yet retain a generated Rust host reference",
+                            callable.public_path
+                        ),
+                        source: Some(callable.source),
+                    });
+                }
                 let return_type = render_type(&callable.returns.ty, callable.source, diagnostics);
                 callables.push(GeneratedCallable {
                     schema_index: 0,
@@ -741,6 +761,10 @@ fn render_callable(output: &mut String, generated: &GeneratedCallable<'_>) {
             }
         })
         .collect::<Vec<_>>();
+    let has_host_parameters = callable
+        .parameters
+        .iter()
+        .any(|parameter| parameter.mode != RustBindingBoundaryMode::Value);
     let tuple = match arguments.as_slice() {
         [] => "()".to_owned(),
         [argument] => format!("({argument},)"),
@@ -749,6 +773,36 @@ fn render_callable(output: &mut String, generated: &GeneratedCallable<'_>) {
     let call = if callable.asyncness.is_async() {
         format!(
             "self.authority.call_async::<{}, _>(&{}, {tuple}).await",
+            generated.return_type, generated.constant_name
+        )
+    } else if has_host_parameters {
+        let mut prepared =
+            String::from("let mut __vela_args = ::vela_engine::runtime::CallArgs::new(); ");
+        for (parameter, argument) in callable.parameters.iter().zip(&arguments) {
+            match parameter.mode {
+                RustBindingBoundaryMode::Value => {
+                    write!(prepared, "__vela_args.push_value({:?}, ::vela_engine::args::IntoScriptArg::into_script_arg({argument})); ", parameter.name).expect("writing to String");
+                }
+                RustBindingBoundaryMode::SharedHost => {
+                    write!(
+                        prepared,
+                        "self.authority.push_host_ref(&mut __vela_args, {:?}, {argument})?; ",
+                        parameter.name
+                    )
+                    .expect("writing to String");
+                }
+                RustBindingBoundaryMode::ExclusiveHost => {
+                    write!(
+                        prepared,
+                        "self.authority.push_host_mut(&mut __vela_args, {:?}, {argument})?; ",
+                        parameter.name
+                    )
+                    .expect("writing to String");
+                }
+            }
+        }
+        format!(
+            "{prepared}self.authority.call_prepared::<{}>(&{}, __vela_args)",
             generated.return_type, generated.constant_name
         )
     } else {
@@ -789,6 +843,7 @@ fn render_type(
             });
             "()".to_owned()
         }
+        RustBindingType::Host { public_path, .. } => render_external_type_path(public_path),
         RustBindingType::Definition { public_path, .. } => {
             format!("super::types::{}", generated_type_name(public_path))
         }
@@ -885,9 +940,27 @@ fn generated_type_name(public_path: &str) -> String {
 
 fn render_parameter_type(
     ty: &RustBindingType,
+    mode: RustBindingBoundaryMode,
     source: Span,
     diagnostics: &mut Vec<RustBindingDiagnostic>,
 ) -> String {
+    if let RustBindingType::Host { public_path, .. } = ty {
+        let ty = render_external_type_path(public_path);
+        return match mode {
+            RustBindingBoundaryMode::SharedHost => format!("&{ty}"),
+            RustBindingBoundaryMode::ExclusiveHost => format!("&mut {ty}"),
+            RustBindingBoundaryMode::Value => {
+                diagnostics.push(RustBindingDiagnostic {
+                    code: "bindgen::invalid_host_boundary_mode",
+                    message: format!(
+                        "host type `{public_path}` requires a shared or exclusive reference mode"
+                    ),
+                    source: Some(source),
+                });
+                ty
+            }
+        };
+    }
     match ty {
         RustBindingType::Path {
             segments,
@@ -903,6 +976,15 @@ fn render_parameter_type(
         }
         _ => render_type(ty, source, diagnostics),
     }
+}
+
+fn render_external_type_path(public_path: &str) -> String {
+    let path = public_path
+        .split("::")
+        .filter_map(|segment| rust_identifier(segment, NameStyle::Preserve))
+        .collect::<Vec<_>>()
+        .join("::");
+    format!("crate::{path}")
 }
 
 #[derive(Clone, Copy)]

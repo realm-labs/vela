@@ -64,6 +64,12 @@ enum ScopedHostObjectBinding<'host> {
 pub(super) trait ExecutionHostBoundary: ScriptStateAdapter + Send {
     fn assign_direct_host_refs(&mut self, args: &mut CallArgs<'_>);
 
+    fn with_execution_host_leases(
+        &mut self,
+        requests: &[(HostRef, HostLeaseKind)],
+        invoke: &mut ExecutionHostLeaseInvoker<'_>,
+    ) -> VmResult<()>;
+
     fn invoke_prepared_with_lease<'call>(
         &'call mut self,
         prepared: &'call PreparedAsyncCall,
@@ -80,6 +86,12 @@ pub(super) trait ExecutionHostBoundary: ScriptStateAdapter + Send {
         invoke: Box<dyn DirectContextInvoker + 'call>,
     ) -> NativeCallFuture<'call>;
 }
+
+pub(super) type ExecutionHostLeaseInvoker<'invoke> = dyn for<'lease, 'host> FnMut(
+        &mut [ErasedHostLease<'lease>],
+        &'host mut dyn ExecutionHostBoundary,
+    ) -> VmResult<()>
+    + 'invoke;
 
 impl<'state, 'host> ExecutionHost<'state, 'host> {
     pub(super) fn new(
@@ -316,6 +328,20 @@ impl ExecutionHostBoundary for ExecutionHost<'_, '_> {
         args.assign_direct_host_refs(&mut self.next_direct_object_id);
     }
 
+    fn with_execution_host_leases(
+        &mut self,
+        requests: &[(HostRef, HostLeaseKind)],
+        invoke: &mut ExecutionHostLeaseInvoker<'_>,
+    ) -> VmResult<()> {
+        for (root, _) in requests {
+            if self.extern_states.binding(*root).is_some() {
+                return Err(host_lease_unsupported(*root).into());
+            }
+        }
+        let mut leases = self.take_execution_host_leases(requests)?;
+        invoke(&mut leases, self)
+    }
+
     fn invoke_prepared_with_lease<'call>(
         &'call mut self,
         prepared: &'call PreparedAsyncCall,
@@ -370,15 +396,15 @@ impl ExecutionHostBoundary for ExecutionHost<'_, '_> {
     }
 }
 
-pub(super) struct ReentryExecutionHost<'scope> {
-    args: CallArgs<'scope>,
-    parent: &'scope mut dyn ExecutionHostBoundary,
+pub(super) struct ReentryExecutionHost<'args, 'parent> {
+    args: CallArgs<'args>,
+    parent: &'parent mut dyn ExecutionHostBoundary,
 }
 
-impl<'scope> ReentryExecutionHost<'scope> {
+impl<'args, 'parent> ReentryExecutionHost<'args, 'parent> {
     pub(super) fn new(
-        mut args: CallArgs<'scope>,
-        parent: &'scope mut dyn ExecutionHostBoundary,
+        mut args: CallArgs<'args>,
+        parent: &'parent mut dyn ExecutionHostBoundary,
     ) -> VmResult<Self> {
         if args.take_fallback().is_some() {
             return Err(vela_vm::error::VmError::new(
@@ -405,9 +431,24 @@ impl<'scope> ReentryExecutionHost<'scope> {
     }
 }
 
-impl ExecutionHostBoundary for ReentryExecutionHost<'_> {
+impl ExecutionHostBoundary for ReentryExecutionHost<'_, '_> {
     fn assign_direct_host_refs(&mut self, args: &mut CallArgs<'_>) {
         self.parent.assign_direct_host_refs(args);
+    }
+
+    fn with_execution_host_leases(
+        &mut self,
+        requests: &[(HostRef, HostLeaseKind)],
+        invoke: &mut ExecutionHostLeaseInvoker<'_>,
+    ) -> VmResult<()> {
+        if requests
+            .iter()
+            .all(|(root, _)| self.args.direct_binding(*root).is_some())
+        {
+            let mut leases = self.args.take_host_leases(requests)?;
+            return invoke(&mut leases, self);
+        }
+        self.parent.with_execution_host_leases(requests, invoke)
     }
 
     fn invoke_prepared_with_lease<'call>(
@@ -470,7 +511,7 @@ impl ExecutionHostBoundary for ReentryExecutionHost<'_> {
     }
 }
 
-impl ScriptStateAdapter for ReentryExecutionHost<'_> {
+impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
     fn host_schema_epoch(&self) -> HostSchemaEpoch {
         self.parent.host_schema_epoch()
     }

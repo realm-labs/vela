@@ -12,7 +12,7 @@ use vela_vm::{
     PreparedAsyncCall, PreparedContextCall, VmStateValues,
 };
 
-use crate::context::{NativeCallContext, NativeReentry};
+use crate::context::{NativeCallContext, NativeContextLeaseInvoker, NativeReentry};
 use crate::engine::Engine;
 use crate::method::AsyncNativeMethodImplementation;
 
@@ -122,10 +122,10 @@ impl ActiveNativeReentry<'_, '_> {
         })
     }
 
-    fn drive_sync<'call>(
-        &'call mut self,
+    fn drive_sync<'args>(
+        &mut self,
         target: handles::EntryRequest,
-        args: CallArgs<'call>,
+        args: CallArgs<'args>,
     ) -> VmResult<VelaValue> {
         if target.asyncness.is_async() {
             return Err(VmError::new(VmErrorKind::AsyncEntryRequiresCallAsync {
@@ -395,17 +395,6 @@ impl NativeReentry for ActiveNativeReentry<'_, '_> {
         }
     }
 
-    fn execution_parts(&mut self) -> (HostExecution<'_>, Option<&mut ExecutionBudget>) {
-        (
-            HostExecution {
-                adapter: self.host,
-                access: self.access,
-                state_values: Some(&mut *self.vm_state_values),
-            },
-            Some(self.budget),
-        )
-    }
-
     fn budget(&self) -> Option<&ExecutionBudget> {
         Some(self.budget)
     }
@@ -414,10 +403,50 @@ impl NativeReentry for ActiveNativeReentry<'_, '_> {
         Some(self.budget)
     }
 
-    fn call<'call>(
-        &'call mut self,
+    fn with_host_leases(
+        &mut self,
+        requests: &[(HostRef, vela_host::lease::HostLeaseKind)],
+        invoke: &mut NativeContextLeaseInvoker<'_>,
+    ) -> VmResult<()> {
+        let runtime_id = self.runtime_id;
+        let engine = self.engine;
+        let registry_image = self.registry_image;
+        let artifact = self.artifact;
+        let vm = self.vm;
+        let retained_values = std::sync::Arc::clone(&self.retained_values);
+        let session = &mut *self.session;
+        let access = &mut *self.access;
+        let heap = &mut *self.heap;
+        let budget = &mut *self.budget;
+        let vm_state_values = &mut *self.vm_state_values;
+        let sidecars = &mut *self.sidecars;
+        self.host
+            .with_execution_host_leases(requests, &mut |leases, leased_host| {
+                let mut nested_reentry = ActiveNativeReentry {
+                    runtime_id,
+                    engine,
+                    registry_image,
+                    artifact,
+                    vm,
+                    session: &mut *session,
+                    host: leased_host,
+                    access: &mut *access,
+                    heap: &mut *heap,
+                    budget: &mut *budget,
+                    vm_state_values: &mut *vm_state_values,
+                    retained_values: std::sync::Arc::clone(&retained_values),
+                    sidecars: &mut *sidecars,
+                };
+                let mut context = NativeCallContext::new_reentry(engine, &mut nested_reentry);
+                context.set_host_provenance(requests, leases);
+                invoke(leases, &mut context)
+            })
+    }
+
+    fn call<'args>(
+        &mut self,
         target: RuntimeCallTargetKind,
-        args: CallArgs<'call>,
+        args: CallArgs<'args>,
     ) -> VmResult<VelaValue> {
         let target = self.resolve_target(target)?;
         self.drive_sync(target, args)
