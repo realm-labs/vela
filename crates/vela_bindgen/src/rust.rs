@@ -200,7 +200,9 @@ fn collect_modules<'schema>(
                 let parameter_types = callable
                     .parameters
                     .iter()
-                    .map(|parameter| render_type(&parameter.ty, parameter.source, diagnostics))
+                    .map(|parameter| {
+                        render_parameter_type(&parameter.ty, parameter.source, diagnostics)
+                    })
                     .collect::<Vec<_>>();
                 let return_type = render_type(&callable.returns.ty, callable.source, diagnostics);
                 callables.push(GeneratedCallable {
@@ -516,6 +518,28 @@ fn render_type(
                 }
             }
         }
+    }
+}
+
+fn render_parameter_type(
+    ty: &RustBindingType,
+    source: Span,
+    diagnostics: &mut Vec<RustBindingDiagnostic>,
+) -> String {
+    match ty {
+        RustBindingType::Path {
+            segments,
+            arguments,
+        } if arguments.is_empty() && segments.last().is_some_and(|last| last == "String") => {
+            "&str".to_owned()
+        }
+        RustBindingType::Path {
+            segments,
+            arguments,
+        } if arguments.is_empty() && segments.last().is_some_and(|last| last == "Bytes") => {
+            "&[u8]".to_owned()
+        }
+        _ => render_type(ty, source, diagnostics),
     }
 }
 
